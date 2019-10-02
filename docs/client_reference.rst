@@ -1440,14 +1440,14 @@ ClientTimeout
 
    .. attribute:: sock_connect
 
-      A timeout for connecting to a peer for a new connection, not
+      Timeout for connecting to a peer for a new connection, not
       given from a pool.  See also :attr:`connect`.
 
       :class:`float`, ``None`` by default.
 
    .. attribute:: sock_read
 
-      A timeout for reading a portion of data from a peer.
+      Timeout between two events of reading a portion of data from the peer.
 
       :class:`float`, ``None`` by default.
 

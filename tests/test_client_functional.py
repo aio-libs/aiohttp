@@ -596,6 +596,46 @@ async def test_timeout_on_session_read_timeout(aiohttp_client, mocker) -> None:
         await client.get('/')
 
 
+async def test_timeout_on_read_silence_sock_read_timeout(
+        aiohttp_client, mocker) -> None:
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
+
+    TIMEOUT = 0.01
+
+    async def handler(request):
+        resp = web.StreamResponse()
+        await resp.prepare(request)
+        # send data in small chunks so that the overall
+        # timeout is bigger than client's timeout
+        N_CHUNKS = 10
+        for i in range(N_CHUNKS + 5):
+            # ok, no timeout error raised
+            await resp.write(b'data')
+            await asyncio.sleep(TIMEOUT / N_CHUNKS)
+
+        # now keep silence for longer than client's timeout
+        # and let the client to abort the connection
+        await asyncio.sleep(TIMEOUT * 10)
+        await resp.write(b'data')
+        return resp
+
+    async def middleware(request, handler):
+        with pytest.raises(ConnectionResetError,
+                           match='Cannot write to closing transport'):
+            await handler(request)
+
+    app = web.Application(middlewares=[middleware])
+    app.router.add_route('GET', '/', handler)
+
+    conn = aiohttp.TCPConnector()
+    client = await aiohttp_client(
+        app,
+        connector=conn,
+        timeout=aiohttp.ClientTimeout(sock_read=TIMEOUT))
+
+    await client.get('/')
+
+
 async def test_timeout_on_reading_data(aiohttp_client, mocker) -> None:
     loop = asyncio.get_event_loop()
 
