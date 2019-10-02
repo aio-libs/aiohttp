@@ -9,11 +9,10 @@ sudo: required
 language: python
 
 python:
-- &py35 3.5
 - &py36 3.6
 - &py37 3.7
 - nightly
-- &pypy3 pypy3.5-6.0.0
+- &pypy3 pypy3
 
 install:
 - &upgrade_python_toolset pip install --upgrade pip wheel setuptools
@@ -313,13 +312,6 @@ jobs:
       <<: *deploy_step
 
     # Build and deploy MacOS binary wheels for each OSX+Python combo possible
-    # OS X 10.10, Python 3.5
-  - <<: *osx_pypi_deploy_base_1010
-    name: *env_os1010_msg
-    python: *py35
-    env:
-      <<: *env_osx_base
-      PYTHON_VERSION: *py35
     # OS X 10.10, Python 3.6
   - <<: *osx_pypi_deploy_base_1010
     name: *env_os1010_msg
@@ -334,13 +326,6 @@ jobs:
     env:
       <<: *env_osx_base
       PYTHON_VERSION: *py37
-    # OS X 10.11, Python 3.5
-  - <<: *osx_pypi_deploy_base_1011
-    name: *env_os1011_msg
-    python: *py35
-    env:
-      <<: *env_osx_base
-      PYTHON_VERSION: *py35
     # OS X 10.11, Python 3.6
   - <<: *osx_pypi_deploy_base_1011
     name: *env_os1011_msg
@@ -355,13 +340,6 @@ jobs:
     env:
       <<: *env_osx_base
       PYTHON_VERSION: *py37
-    # OS X 10.12, Python 3.5
-  - <<: *osx_pypi_deploy_base_1012
-    name: *env_os1012_msg
-    python: *py35
-    env:
-      <<: *env_osx_base
-      PYTHON_VERSION: *py35
     # OS X 10.12, Python 3.6
   - <<: *osx_pypi_deploy_base_1012
     name: *env_os1012_msg
