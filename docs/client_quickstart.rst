@@ -354,12 +354,6 @@ can chain get and post requests together::
    await session.post('http://httpbin.org/post',
                       data=resp.content)
 
-.. note::
-
-   Python 3.5 has no native support for asynchronous generators, use
-   ``async_generator`` library as workaround.
-
-
 .. _aiohttp-client-websockets:
 
 
