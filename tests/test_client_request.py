@@ -4,7 +4,6 @@ import asyncio
 import hashlib
 import io
 import pathlib
-import urllib.parse
 import zlib
 from http.cookies import SimpleCookie
 from unittest import mock
