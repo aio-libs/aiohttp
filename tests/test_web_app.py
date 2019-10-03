@@ -560,3 +560,8 @@ def test_app_iter():
     app['a'] = '1'
     app['b'] = '2'
     assert sorted(list(app)) == ['a', 'b']
+
+
+def test_app_boolean() -> None:
+    app = web.Application()
+    assert app
