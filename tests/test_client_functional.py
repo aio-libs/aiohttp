@@ -1,3 +1,4 @@
+# HTTP client functional tests against aiohttp.web server
 import asyncio
 import datetime
 import http.cookies
