@@ -10,7 +10,6 @@ import socket
 from unittest import mock
 
 import pytest
-from async_generator import async_generator, yield_
 from multidict import MultiDict
 
 import aiohttp
@@ -634,6 +633,56 @@ async def test_timeout_on_read_silence_sock_read_timeout(
         timeout=aiohttp.ClientTimeout(sock_read=TIMEOUT))
 
     await client.get('/')
+
+
+async def test_read_timeout_between_chunks(aiohttp_client, mocker) -> None:
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
+
+    async def handler(request):
+        resp = aiohttp.web.StreamResponse()
+        await resp.prepare(request)
+        # write data 4 times, with pauses. Total time 0.4 seconds.
+        for _ in range(4):
+            await asyncio.sleep(0.1)
+            await resp.write(b'data\n')
+        return resp
+
+    app = web.Application()
+    app.add_routes([web.get('/', handler)])
+
+    # A timeout of 0.2 seconds should apply per read.
+    timeout = aiohttp.ClientTimeout(sock_read=0.2)
+    client = await aiohttp_client(app, timeout=timeout)
+
+    res = b''
+    async with await client.get('/') as resp:
+        res += await resp.read()
+
+    assert res == b'data\n' * 4
+
+
+async def test_read_timeout_on_reading_chunks(aiohttp_client, mocker) -> None:
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
+
+    async def handler(request):
+        resp = aiohttp.web.StreamResponse()
+        await resp.prepare(request)
+        await resp.write(b'data\n')
+        await asyncio.sleep(1)
+        await resp.write(b'data\n')
+        return resp
+
+    app = web.Application()
+    app.add_routes([web.get('/', handler)])
+
+    # A timeout of 0.2 seconds should apply per read.
+    timeout = aiohttp.ClientTimeout(sock_read=0.2)
+    client = await aiohttp_client(app, timeout=timeout)
+
+    async with await client.get('/') as resp:
+        assert (await resp.content.read(5)) == b'data\n'
+        with pytest.raises(asyncio.TimeoutError):
+            await resp.content.read()
 
 
 async def test_timeout_on_reading_data(aiohttp_client, mocker) -> None:
@@ -1558,12 +1607,11 @@ async def test_POST_STREAM_DATA(aiohttp_client, fname) -> None:
     with fname.open('rb') as f:
         data_size = len(f.read())
 
-    @async_generator
     async def gen(fname):
         with fname.open('rb') as f:
             data = f.read(100)
             while data:
-                await yield_(data)
+                yield data
                 data = f.read(100)
 
     resp = await client.post(
@@ -2853,10 +2901,9 @@ async def test_async_payload_generator(aiohttp_client) -> None:
 
     client = await aiohttp_client(app)
 
-    @async_generator
     async def gen():
         for i in range(100):
-            await yield_(b'1234567890')
+            yield b'1234567890'
 
     resp = await client.post('/', data=gen())
     assert resp.status == 200

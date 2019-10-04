@@ -51,6 +51,8 @@ def test_base_ctor() -> None:
 
     assert '__dict__' not in dir(req)
 
+    assert req
+
 
 def test_ctor() -> None:
     req = make_mocked_request('GET', '/path/to?a=1&b=2')

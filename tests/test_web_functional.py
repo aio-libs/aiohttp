@@ -7,7 +7,6 @@ import zlib
 from unittest import mock
 
 import pytest
-from async_generator import async_generator, yield_
 from multidict import CIMultiDictProxy, MultiDict
 from yarl import URL
 
@@ -785,12 +784,11 @@ async def test_response_with_async_gen(aiohttp_client, fname) -> None:
 
     data_size = len(data)
 
-    @async_generator
     async def stream(f_name):
         with f_name.open('rb') as f:
             data = f.read(100)
             while data:
-                await yield_(data)
+                yield data
                 data = f.read(100)
 
     async def handler(request):
@@ -816,12 +814,11 @@ async def test_response_with_async_gen_no_params(aiohttp_client,
 
     data_size = len(data)
 
-    @async_generator
     async def stream():
         with fname.open('rb') as f:
             data = f.read(100)
             while data:
-                await yield_(data)
+                yield data
                 data = f.read(100)
 
     async def handler(request):
