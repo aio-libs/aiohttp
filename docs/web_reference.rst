@@ -1413,6 +1413,8 @@ duplicated like one using :meth:`Application.copy`.
       The table is a :class:`list` of :class:`RouteDef` items or
       :class:`RouteTableDef`.
 
+      Returns a :class:`list` of registered :class:`AbstractRoute` instances.
+
       The method is a shortcut for
       ``app.router.add_routes(routes_table)``, see also
       :meth:`UrlDispatcher.add_routes`.
@@ -1568,6 +1570,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       The table is a :class:`list` of :class:`RouteDef` items or
       :class:`RouteTableDef`.
+
+      Returns a :class:`list` of registered :class:`AbstractRoute` instances.
 
       .. versionadded:: 2.3
 
@@ -2079,6 +2083,8 @@ The definition is created by functions like :func:`get` or
       Register itself into :class:`UrlDispatcher`.
 
       Abstract method, should be overridden by subclasses.
+
+      Returns the registered resource.
 
 
 .. class:: RouteDef

@@ -1109,10 +1109,13 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         for resource in self._resources:
             resource.freeze()
 
-    def add_routes(self, routes: Iterable[AbstractRouteDef]) -> None:
+    def add_routes(
+            self, routes: Iterable[AbstractRouteDef]
+    ) -> List[Optional[AbstractRoute]]:
         """Append routes to route table.
 
         Parameter should be a sequence of RouteDef objects.
+
+        Returns a list of registered AbstractRoute instances.
         """
-        for route_def in routes:
-            route_def.register(self)
+        return [route_def.register(self) for route_def in routes]
