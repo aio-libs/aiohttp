@@ -10,7 +10,7 @@ gunicorn==19.9.0
 multidict==4.5.2
 pytest==5.2.0
 pytest-cov==2.8.0
-pytest-mock==1.11.0
+pytest-mock==1.11.1
 tox==3.13.2
 trustme==0.5.2; platform_machine=="x86_64"  # cryptography doesn't work on i686
 cryptography==2.7; platform_machine=="x86_64"  # cryptography doesn't work on i686
