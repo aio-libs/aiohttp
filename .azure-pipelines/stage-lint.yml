@@ -8,6 +8,10 @@ stages:
       vmImage: 'ubuntu-latest'
 
     steps:
+    - checkout: self
+      submodules: true
+      clean: true
+
     - task: UsePythonVersion@0
       inputs:
         versionSpec: '3.7'
@@ -26,6 +30,10 @@ stages:
       vmImage: 'ubuntu-latest'
 
     steps:
+    - checkout: self
+      submodules: true
+      clean: true
+
     - task: UsePythonVersion@0
       inputs:
         versionSpec: '3.7'
@@ -44,6 +52,10 @@ stages:
       vmImage: 'ubuntu-latest'
 
     steps:
+    - checkout: self
+      submodules: true
+      clean: true
+
     - task: UsePythonVersion@0
       inputs:
         versionSpec: '3.7'
@@ -54,7 +66,6 @@ stages:
       displayName: 'Install deps'
 
     - script: |
-        git submodule update --init
         pip install -e .
       displayName: 'Install itself'
       env:
@@ -69,6 +80,10 @@ stages:
       vmImage: 'ubuntu-latest'
 
     steps:
+    - checkout: self
+      submodules: true
+      clean: true
+
     - task: UsePythonVersion@0
       inputs:
         versionSpec: '3.7'
@@ -90,6 +105,10 @@ stages:
       vmImage: 'ubuntu-latest'
 
     steps:
+    - checkout: self
+      submodules: true
+      clean: true
+
     - task: UsePythonVersion@0
       inputs:
         versionSpec: '3.7'
