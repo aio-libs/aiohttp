@@ -112,4 +112,4 @@ stages:
     steps:
     - script: |
         LC_ALL=C sort -c CONTRIBUTORS.txt
-      displayNtame: 'Making sure that CONTRIBUTORS.txt remains sorted'
+      displayName: 'Making sure that CONTRIBUTORS.txt remains sorted'
