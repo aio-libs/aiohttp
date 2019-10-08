@@ -622,7 +622,7 @@ short duration before closing::
 Note that the appropriate amount of time to wait will vary from
 application to application.
 
-All if this will eventually become obsolete when the asyncio internals
+All of this will eventually become obsolete when the asyncio internals
 are changed so that aiohttp itself can wait on the underlying
 connection to close. Please follow issue `#1925
 <https://github.com/aio-libs/aiohttp/issues/1925>`_ for the progress
