@@ -41,6 +41,9 @@ stages:
         parameters:
           steps:
             - script: |
+                make cythonize
+              displayName: 'Cythonize'
+            - script: |
                 python setup.py sdist
               displayName: 'Make tarball'
 
@@ -120,7 +123,7 @@ stages:
                 make cythonize
                 python setup.py bdist_wheel
               displayName: 'Make wheel'
-              
+
 - template: templates/stage-publish.yml@templates
   parameters:
     github: release-upload
