@@ -21,7 +21,7 @@ stages:
         make flake8
       displayName: 'Run flake8'
 
-  - job: 'black'
+  - job: 'isort'
     pool:
       vmImage: 'ubuntu-latest'
 
@@ -36,8 +36,8 @@ stages:
       displayName: 'Install deps'
 
     - script: |
-        make black-check
-      displayName: 'Run black checker'
+        make isort
+      displayName: 'Run isort checker'
 
   - job: 'mypy'
     pool:

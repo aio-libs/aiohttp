@@ -1,6 +1,7 @@
 # Some simple testing tasks (sorry, UNIX only).
 
 PYXS = $(wildcard aiohttp/*.pyx)
+SRC = aiohttp examples tests setup.py
 
 all: test
 
@@ -39,13 +40,15 @@ flake: .flake
 	fi
 	@touch .flake
 
-check_changes:
-	./tools/check_changes.py
+
+flake8:
+	flake8 $(SRC)
 
 mypy: .flake
-	if python -c "import sys; sys.exit(sys.implementation.name!='cpython')"; then \
-            mypy aiohttp; \
-	fi
+	mypy aiohttp
+
+check_changes:
+	./tools/check_changes.py
 
 .develop: .install-deps $(shell find aiohttp -type f) .flake check_changes mypy
 	# pip install -e .
