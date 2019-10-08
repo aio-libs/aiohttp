@@ -44,6 +44,12 @@ stages:
       displayName: 'Install deps'
 
     - script: |
+        pip install -e .
+      displayName: 'Install itself'
+      env:
+        AIOHTTP_NO_EXTENSIONS: 1
+
+    - script: |
         make isort-check
       displayName: 'Run isort checker'
 
