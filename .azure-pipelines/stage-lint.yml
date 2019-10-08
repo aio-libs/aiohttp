@@ -54,6 +54,7 @@ stages:
       displayName: 'Install deps'
 
     - script: |
+        git submodule update --init
         pip install -e .
       displayName: 'Install itself'
       env:
