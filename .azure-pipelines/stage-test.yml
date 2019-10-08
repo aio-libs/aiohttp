@@ -49,6 +49,10 @@ stages:
       vmImage: '$(image)'
 
     steps:
+    - checkout: self
+      clean: true
+      submodules: true
+
     - task: UsePythonVersion@0
       inputs:
         versionSpec: '$(python.version)'
