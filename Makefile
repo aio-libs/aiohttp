@@ -18,6 +18,7 @@ cythonize: .install-cython $(PYXS:.pyx=.c)
 	pip install -r requirements/dev.txt
 	@touch .install-deps
 
+
 isort:
 	isort -rc $(SRC)
 
@@ -46,7 +47,11 @@ mypy: .flake
 	mypy aiohttp
 
 isort-check:
-	isort -rc --check-only $(SRC)
+	@if ! isort -rc --check-only $(SRC); then \
+            echo "Import sort errors, run 'make isort' to fix them!!!"; \
+            isort --diff -rc $(SRC); \
+            false; \
+	fi
 
 check_changes:
 	./tools/check_changes.py
