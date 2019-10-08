@@ -19,9 +19,7 @@ cythonize: .install-cython $(PYXS:.pyx=.c)
 	@touch .install-deps
 
 isort:
-	isort -rc aiohttp
-	isort -rc tests
-	isort -rc examples
+	isort -rc $(SRC)
 
 flake: .flake
 
@@ -46,6 +44,9 @@ flake8:
 
 mypy: .flake
 	mypy aiohttp
+
+isort-check:
+	isort -rc --check-only $(SRC)
 
 check_changes:
 	./tools/check_changes.py

@@ -36,7 +36,7 @@ stages:
       displayName: 'Install deps'
 
     - script: |
-        make isort
+        make isort-check
       displayName: 'Run isort checker'
 
   - job: 'mypy'
