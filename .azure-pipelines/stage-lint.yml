@@ -104,3 +104,12 @@ stages:
     - script: |
         twine check dist/*
       displayName: 'Run twine checker'
+
+  - job: 'contributors'
+    pool:
+      vmImage: 'ubuntu-latest'
+
+    steps:
+    - script: |
+        LC_ALL=C sort -c CONTRIBUTORS.txt
+      displayNtame: 'Making sure that CONTRIBUTORS.txt remains sorted'

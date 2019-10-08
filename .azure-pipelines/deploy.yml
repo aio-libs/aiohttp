@@ -61,6 +61,10 @@ stages:
       vmImage: 'ubuntu-latest'
     container: manylinux
     steps:
+      - checkout: self
+        submodules: true
+        clean: true
+
       - script: |
           /opt/python/$(python.code)/bin/python -m venv .build-venv
         displayName: 'Use Python $(python.code)'
