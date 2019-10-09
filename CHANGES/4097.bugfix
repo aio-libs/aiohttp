@@ -1,1 +1,0 @@
-Fix misleading message in the string representation of `ClientConnectorError`; `self.ssl == None` means certification checks relaxed, not SSL disabled
