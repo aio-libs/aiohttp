@@ -1,4 +1,4 @@
-"""Tests for http_exceptions.py"""
+# Tests for http_exceptions.py
 
 import pickle
 

@@ -1,4 +1,4 @@
-"""HTTP websocket server functional tests"""
+# HTTP websocket server functional tests
 
 import asyncio
 

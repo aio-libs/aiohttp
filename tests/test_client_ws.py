@@ -185,11 +185,10 @@ async def test_ws_connect_err_challenge(loop, ws_key, key_data) -> None:
 
 
 async def test_ws_connect_common_headers(ws_key, loop, key_data) -> None:
-    """Emulate a headers dict being reused for a second ws_connect.
+    # Emulate a headers dict being reused for a second ws_connect.
 
-    In this scenario, we need to ensure that the newly generated secret key
-    is sent to the server, not the stale key.
-    """
+    # In this scenario, we need to ensure that the newly generated secret key
+    # is sent to the server, not the stale key.
     headers = {}
 
     async def test_connection() -> None:

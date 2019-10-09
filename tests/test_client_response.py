@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Tests for aiohttp/client.py"""
+# Tests for aiohttp/client.py
 
 import gc
 import sys
