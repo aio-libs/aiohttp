@@ -70,15 +70,20 @@ stages:
       displayName: 'Cythonize'
 
     - script: |
-        pip install -r requirements/dev.txt
+        pip install -r requirements/dev.txt pytest-azurepipelines
       displayName: 'Install dependencies'
       env:
         AIOHTTP_NO_EXTENSIONS: '$(no_extensions)'
 
     - script: |
-        pytest tests -vv
+        pytest tests -vv --nunit-xml=nunit.xml
         python -m coverage xml
       displayName: 'pytest'
+
+    - task: PublishTestResults@2
+      inputs:
+        testResultsFormat: NUnit
+        testResultsFiles: '**/nunit.xml'
 
     - script: |
         pip install codecov
