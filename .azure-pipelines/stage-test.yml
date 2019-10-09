@@ -49,6 +49,7 @@ stages:
       vmImage: '$(image)'
 
     timeoutInMinutes: 10
+    continueOnError: $[ eq(variables['image'], 'windows-latest') ]
 
     steps:
     - checkout: self
