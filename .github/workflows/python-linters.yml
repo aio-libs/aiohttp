@@ -53,7 +53,7 @@ jobs:
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v1
       with:
-        version: ${{ matrix.python-version }}
+        python-version: ${{ matrix.python-version }}
     - name: Upgrade Python Toolset
       run: |
         python -m pip install --upgrade pip wheel setuptools
