@@ -70,7 +70,7 @@ stages:
       displayName: 'Cythonize'
 
     - script: |
-        pip install -r requirements/dev.txt
+        pip install -r requirements/dev.txt pytest-azurepipelines
       displayName: 'Install dependencies'
       env:
         AIOHTTP_NO_EXTENSIONS: '$(no_extensions)'
