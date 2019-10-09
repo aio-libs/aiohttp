@@ -22,4 +22,4 @@ aiodns==2.0.0; platform_system!="Windows"  # required c-ares will not build on w
 codecov==2.0.15
 uvloop==0.12.1; platform_system!="Windows" and implementation_name=="cpython" and python_version<"3.7" # MagicStack/uvloop#14
 idna-ssl==1.1.0; python_version<"3.7"
-typing_extensions==3.7.2; python_version<"3.7"
+typing_extensions==3.7.4; python_version<"3.7"

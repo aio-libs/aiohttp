@@ -1,0 +1,22 @@
+trigger:
+  batch: true
+  branches:
+    include:
+    - master
+    - ?.?*  # matches to backport branches, e.g. 3.6
+    exclude:
+    - refs/tags/*
+pr:
+  autoCancel: true
+  branches:
+    include:
+    - master
+
+variables:
+- group: codecov
+
+stages:
+- template: stage-lint.yml
+- template: stage-test.yml
+  parameters:
+    codecov.token: '$(codecov.token)'
