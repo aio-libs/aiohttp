@@ -1,4 +1,3 @@
-import codecs
 import pathlib
 import re
 import sys
@@ -17,7 +16,10 @@ if sys.version_info < (3, 5, 3):
 here = pathlib.Path(__file__).parent
 
 
-if (here / '.git').exists() and not (here / 'vendor/http-parser/README.md').exists():
+if (
+    (here / '.git').exists() and
+    not (here / 'vendor/http-parser/README.md').exists()
+):
     print("Install submodules when building from git clone", file=sys.stderr)
     print("Hint:", file=sys.stderr)
     print("  git submodule update --init", file=sys.stderr)
@@ -60,7 +62,6 @@ class ve_build_ext(build_ext):
         except (CCompilerError, DistutilsExecError,
                 DistutilsPlatformError, ValueError):
             raise BuildFailed()
-
 
 
 txt = (here / 'aiohttp' / '__init__.py').read_text('utf-8')
