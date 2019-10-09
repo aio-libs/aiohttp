@@ -132,4 +132,4 @@ install:
 	@pip install -U 'pip'
 	@pip install -Ur requirements/dev.txt
 
-.PHONY: all build flake test vtest cov clean doc
+.PHONY: all build flake test vtest cov clean doc mypy

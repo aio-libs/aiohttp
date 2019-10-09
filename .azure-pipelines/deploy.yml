@@ -1,7 +1,7 @@
 trigger:
-  branches:
+  tags:
     include:
-    - refs/tags/*
+    - v?.*
 pr: none
 
 
