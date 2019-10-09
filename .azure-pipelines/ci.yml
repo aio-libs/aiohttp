@@ -3,6 +3,7 @@ trigger:
   branches:
     include:
     - master
+    - ?.?*  # matches to backport branches, e.g. 3.6
     exclude:
     - refs/tags/*
 pr:
