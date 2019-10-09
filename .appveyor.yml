@@ -33,14 +33,14 @@ test_script:
 after_test:
   - "tools/build.cmd %PYTHON%\\python.exe -m codecov -f coverage.xml -X gcov"
 
-artifacts:
-  - path: dist\*
+# artifacts:
+#   - path: dist\*
 
-deploy_script:
-  - ps: >-
-      if($env:appveyor_repo_tag -eq 'True') {
-          Invoke-Expression "$env:PYTHON\\python.exe -m twine upload dist/* --username $env:PYPI_USER --password $env:PYPI_PASSWD --skip-existing"
-      }
+# deploy_script:
+#   - ps: >-
+#       if($env:appveyor_repo_tag -eq 'True') {
+#           Invoke-Expression "$env:PYTHON\\python.exe -m twine upload dist/* --username $env:PYPI_USER --password $env:PYPI_PASSWD --skip-existing"
+#       }
 
 #notifications:
 #  - provider: Webhook
