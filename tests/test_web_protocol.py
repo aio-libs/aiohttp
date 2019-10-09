@@ -1,4 +1,4 @@
-"""Tests for aiohttp/server.py"""
+# Tests for aiohttp/server.py
 
 import asyncio
 import platform
