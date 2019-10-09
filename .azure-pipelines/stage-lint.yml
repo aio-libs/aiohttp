@@ -1,6 +1,6 @@
 stages:
 - stage: lint
-  displayName: 'Run linters'
+  displayName: 'Lint'
 
   jobs:
   - job: 'flake8'
@@ -98,9 +98,11 @@ stages:
     - script: |
         apt install libenchant-dev
         pip install -r requirements/doc-spelling.txt
+        pip install -r requirements/towncrier.txt
       displayName: 'Install deps'
 
     - script: |
+        towncrier --yes
         make doc
       displayName: 'Run docs checker'
       env:
