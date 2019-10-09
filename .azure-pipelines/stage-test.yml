@@ -77,8 +77,11 @@ stages:
 
     - script: |
         pytest tests -vv
-        python -m coverage xml
       displayName: 'pytest'
+
+    - script: |
+        python -m coverage xml
+      displayName: 'Prepare coverage'
 
     - script: |
         pip install codecov
