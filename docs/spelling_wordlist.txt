@@ -184,9 +184,10 @@ param
 params
 pathlib
 peername
+pickleable
 ping
 pipelining
-pluggable
+plugable
 plugin
 poller
 pong
