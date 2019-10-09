@@ -40,14 +40,14 @@ stages:
         architecture: 'x64'
 
     - script: |
-        pip install -r requirements/lint.txt
-      displayName: 'Install deps'
-
-    - script: |
         pip install -e .
       displayName: 'Install itself'
       env:
         AIOHTTP_NO_EXTENSIONS: 1
+
+    - script: |
+        pip install -r requirements/lint.txt
+      displayName: 'Install deps'
 
     - script: |
         make isort-check
