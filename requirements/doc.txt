@@ -1,5 +1,5 @@
 sphinx==2.2.0
 sphinxcontrib-asyncio==0.2.0
-pygments>=2.1
+pygments==2.4.2
 aiohttp-theme==0.1.5
 sphinxcontrib-blockdiag==1.5.5
