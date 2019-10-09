@@ -48,6 +48,8 @@ stages:
     pool:
       vmImage: '$(image)'
 
+    timeoutInMinutes: 10
+
     steps:
     - checkout: self
       clean: true
