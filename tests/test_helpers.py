@@ -193,7 +193,7 @@ class TestPyReify(ReifyMixin):
     reify = helpers.reify_py
 
 
-if not helpers.NO_EXTENSIONS and not IS_PYPY:
+if not helpers.NO_EXTENSIONS and not IS_PYPY and hasattr(helpers, 'reify_c'):
     class TestCReify(ReifyMixin):
         reify = helpers.reify_c
 
