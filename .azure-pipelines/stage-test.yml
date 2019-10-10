@@ -89,4 +89,4 @@ stages:
       displayName: 'Upload coverage reports'
       condition: ne(variables['codecov.token'], '')
       env:
-        CODECOV_TOKEN: '$(codecov.token)'
+        CODECOV_TOKEN: ${{ parameters.codecov.token }}
