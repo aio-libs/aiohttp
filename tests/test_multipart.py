@@ -1055,9 +1055,7 @@ class TestMultipartWriter:
         assert message == b'foo\r\n--:--\r\n'
 
     async def test_preserve_content_disposition_header(self, buf, stream):
-        """
-        https://github.com/aio-libs/aiohttp/pull/3475#issuecomment-451072381
-        """
+        # https://github.com/aio-libs/aiohttp/pull/3475#issuecomment-451072381
         with open(__file__, 'rb') as fobj:
             with aiohttp.MultipartWriter('form-data', boundary=':') as writer:
                 part = writer.append(
@@ -1086,9 +1084,7 @@ class TestMultipartWriter:
         )
 
     async def test_set_content_disposition_override(self, buf, stream):
-        """
-        https://github.com/aio-libs/aiohttp/pull/3475#issuecomment-451072381
-        """
+        # https://github.com/aio-libs/aiohttp/pull/3475#issuecomment-451072381
         with open(__file__, 'rb') as fobj:
             with aiohttp.MultipartWriter('form-data', boundary=':') as writer:
                 part = writer.append(
@@ -1117,9 +1113,7 @@ class TestMultipartWriter:
         )
 
     async def test_reset_content_disposition_header(self, buf, stream):
-        """
-        https://github.com/aio-libs/aiohttp/pull/3475#issuecomment-451072381
-        """
+        # https://github.com/aio-libs/aiohttp/pull/3475#issuecomment-451072381
         with open(__file__, 'rb') as fobj:
             with aiohttp.MultipartWriter('form-data', boundary=':') as writer:
                 part = writer.append(

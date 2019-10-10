@@ -1,4 +1,4 @@
-"""Tests of http client with custom Connector"""
+# Tests of http client with custom Connector
 
 import asyncio
 import gc
@@ -27,19 +27,19 @@ from aiohttp.tracing import Trace
 
 @pytest.fixture()
 def key():
-    """Connection key"""
+    # Connection key
     return ConnectionKey('localhost', 80, False, None, None, None, None)
 
 
 @pytest.fixture
 def key2():
-    """Connection key"""
+    # Connection key
     return ConnectionKey('localhost', 80, False, None, None, None, None)
 
 
 @pytest.fixture
 def ssl_key():
-    """Connection key"""
+    # Connection key
     return ConnectionKey('localhost', 80, True, None, None, None, None)
 
 

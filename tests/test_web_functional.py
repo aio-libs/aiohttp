@@ -261,7 +261,7 @@ async def test_multipart_empty(aiohttp_client) -> None:
 
 
 async def test_multipart_content_transfer_encoding(aiohttp_client) -> None:
-    """For issue #1168"""
+    # For issue #1168
     with multipart.MultipartWriter() as writer:
         writer.append(b'\x00' * 10,
                       headers={'Content-Transfer-Encoding': 'binary'})
@@ -457,17 +457,16 @@ def test_repr_for_application() -> None:
 
 
 async def test_expect_default_handler_unknown(aiohttp_client) -> None:
-    """Test default Expect handler for unknown Expect value.
+    # Test default Expect handler for unknown Expect value.
 
-    A server that does not understand or is unable to comply with any of
-    the expectation values in the Expect field of a request MUST respond
-    with appropriate error status. The server MUST respond with a 417
-    (Expectation Failed) status if any of the expectations cannot be met
-    or, if there are other problems with the request, some other 4xx
-    status.
+    # A server that does not understand or is unable to comply with any of
+    # the expectation values in the Expect field of a request MUST respond
+    # with appropriate error status. The server MUST respond with a 417
+    # (Expectation Failed) status if any of the expectations cannot be met
+    # or, if there are other problems with the request, some other 4xx
+    # status.
 
-    http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.20
-    """
+    # http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.20
     async def handler(request):
         await request.post()
         pytest.xfail('Handler should not proceed to this point in case of '
@@ -1858,7 +1857,7 @@ async def test_request_tracing(aiohttp_server) -> None:
                        socket.AF_INET: '127.0.0.1'}
 
         def __init__(self, fakes):
-            """fakes -- dns -> port dict"""
+            # fakes -- dns -> port dict
             self._fakes = fakes
             self._resolver = aiohttp.DefaultResolver()
 

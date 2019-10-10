@@ -1,4 +1,4 @@
-"""Tests for streams.py"""
+# Tests for streams.py
 
 import abc
 import asyncio
@@ -725,8 +725,7 @@ class TestStreamReader:
             stream.end_http_chunk_receiving()
 
     async def test_readchunk_with_unread(self) -> None:
-        """Test that stream.unread does not break controlled chunk receiving.
-        """
+        # Test that stream.unread does not break controlled chunk receiving.
         stream = self._make_one()
 
         # Send 2 chunks
@@ -765,9 +764,8 @@ class TestStreamReader:
         assert not end_of_chunk
 
     async def test_readchunk_with_other_read_calls(self) -> None:
-        """Test that stream.readchunk works when other read calls are made on
-        the stream.
-        """
+        # Test that stream.readchunk works when other read calls are made on
+        # the stream.
         stream = self._make_one()
 
         stream.begin_http_chunk_receiving()
@@ -802,7 +800,7 @@ class TestStreamReader:
         assert not end_of_chunk
 
     async def test_chunksplits_memory_leak(self) -> None:
-        """ Test for memory leak on chunksplits """
+        # Test for memory leak on chunksplits
         stream = self._make_one()
 
         N = 500
@@ -826,7 +824,7 @@ class TestStreamReader:
         assert abs(after - before) == 0
 
     async def test_read_empty_chunks(self) -> None:
-        """Test that feeding empty chunks does not break stream"""
+        # Test that feeding empty chunks does not break stream
         stream = self._make_one()
 
         # Simulate empty first chunk. This is significant special case
@@ -855,9 +853,8 @@ class TestStreamReader:
         assert data == b'ungzipped data'
 
     async def test_readchunk_separate_http_chunk_tail(self) -> None:
-        """Test that stream.readchunk returns (b'', True) when end of
-        http chunk received after body
-        """
+        # Test that stream.readchunk returns (b'', True) when end of
+        # http chunk received after body
         loop = asyncio.get_event_loop()
         stream = self._make_one()
 
@@ -1299,9 +1296,8 @@ async def test_stream_reader_lines() -> None:
 
 
 async def test_stream_reader_chunks_complete() -> None:
-    """Tests if chunked iteration works if the chunking works out
-    (i.e. the data is divisible by the chunk size)
-    """
+    # Tests if chunked iteration works if the chunking works out
+    # (i.e. the data is divisible by the chunk size)
     chunk_iter = chunkify(DATA, 9)
     async for data in (await create_stream()).iter_chunked(9):
         assert data == next(chunk_iter, None)
@@ -1309,7 +1305,7 @@ async def test_stream_reader_chunks_complete() -> None:
 
 
 async def test_stream_reader_chunks_incomplete() -> None:
-    """Tests if chunked iteration works if the last chunk is incomplete"""
+    # Tests if chunked iteration works if the last chunk is incomplete
     chunk_iter = chunkify(DATA, 8)
     async for data in (await create_stream()).iter_chunked(8):
         assert data == next(chunk_iter, None)
@@ -1317,7 +1313,7 @@ async def test_stream_reader_chunks_incomplete() -> None:
 
 
 async def test_data_queue_empty() -> None:
-    """Tests that async looping yields nothing if nothing is there"""
+    # Tests that async looping yields nothing if nothing is there
     loop = asyncio.get_event_loop()
     buffer = streams.DataQueue(loop)
     buffer.feed_eof()
@@ -1327,7 +1323,7 @@ async def test_data_queue_empty() -> None:
 
 
 async def test_data_queue_items() -> None:
-    """Tests that async looping yields objects identically"""
+    # Tests that async looping yields objects identically
     loop = asyncio.get_event_loop()
     buffer = streams.DataQueue(loop)
 
