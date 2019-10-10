@@ -4,13 +4,15 @@ trigger:
     include:
     - master
     - ?.?*  # matches to backport branches, e.g. 3.6
+  tags:
     exclude:
-    - refs/tags/*
+    - '*'
 pr:
   autoCancel: true
   branches:
     include:
     - master
+    - ?.?*  # matches to backport branches, e.g. 3.6
 
 variables:
 - group: codecov

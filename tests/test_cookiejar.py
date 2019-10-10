@@ -632,7 +632,7 @@ class TestCookieJarSafe(TestCookieJarBase):
         self.assertEqual(cookie["expires"], "")
 
     def test_cookie_not_expired_when_added_after_removal(self) -> None:
-        """Test case for https://github.com/aio-libs/aiohttp/issues/2084"""
+        # Test case for https://github.com/aio-libs/aiohttp/issues/2084
         timestamps = [533588.993, 533588.993, 533588.993,
                       533588.993, 533589.093, 533589.093]
 

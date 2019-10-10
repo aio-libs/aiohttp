@@ -134,4 +134,4 @@ install:
 
 develop: .develop
 
-.PHONY: all build flake test vtest cov clean doc
+.PHONY: all build flake test vtest cov clean doc mypy
