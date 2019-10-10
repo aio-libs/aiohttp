@@ -75,7 +75,7 @@ After that please install libraries required for development:
 
 .. code-block:: shell
 
-   $ pip install -r requirements/dev.txt
+   $ make install-dev
 
 .. note::
 
