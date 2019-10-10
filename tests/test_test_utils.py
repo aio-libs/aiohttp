@@ -90,10 +90,8 @@ async def test_with_client_fails(loop) -> None:
 
 
 async def test_aiohttp_client_close_is_idempotent() -> None:
-    """
-    a test client, called multiple times, should
-    not attempt to close the server again.
-    """
+    # a test client, called multiple times, should
+    # not attempt to close the server again.
     app = _create_example_app()
     client = _TestClient(_TestServer(app))
     await client.close()

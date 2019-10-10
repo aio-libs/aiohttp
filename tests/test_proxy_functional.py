@@ -12,7 +12,7 @@ from aiohttp import web
 
 @pytest.fixture
 def proxy_test_server(aiohttp_raw_server, loop, monkeypatch):
-    """Handle all proxy requests and imitate remote server response."""
+    # Handle all proxy requests and imitate remote server response.
 
     _patch_ssl_transport(monkeypatch)
 
@@ -471,7 +471,7 @@ async def xtest_proxy_https_multi_conn_limit(proxy_test_server, loop):
 
 
 def _patch_ssl_transport(monkeypatch):
-    """Make ssl transport substitution to prevent ssl handshake."""
+    # Make ssl transport substitution to prevent ssl handshake.
     def _make_ssl_transport_dummy(self, rawsock, protocol, sslcontext,
                                   waiter=None, **kwargs):
         return self._make_socket_transport(rawsock, protocol, waiter,
@@ -487,7 +487,7 @@ original_is_file = pathlib.Path.is_file
 
 
 def mock_is_file(self):
-    """ make real netrc file invisible in home dir """
+    # make real netrc file invisible in home dir
     if self.name in ['_netrc', '.netrc'] and self.parent == self.home():
         return False
     else:

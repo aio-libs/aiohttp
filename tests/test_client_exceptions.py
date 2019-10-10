@@ -1,4 +1,4 @@
-"""Tests for client_exceptions.py"""
+# Tests for client_exceptions.py
 
 import errno
 import pickle
