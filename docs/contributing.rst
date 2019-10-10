@@ -75,7 +75,7 @@ After that please install libraries required for development:
 
 .. code-block:: shell
 
-   $ make develop
+   $ make install-dev
 
 .. note::
 

@@ -132,6 +132,6 @@ install:
 	@pip install -U 'pip'
 	@pip install -Ur requirements/dev.txt
 
-develop: .develop
+install-dev: .develop
 
 .PHONY: all build flake test vtest cov clean doc mypy
