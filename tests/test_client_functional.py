@@ -1403,7 +1403,7 @@ async def test_POST_FILES_SINGLE(aiohttp_client, fname) -> None:
 
     async def handler(request):
         data = await request.text()
-        with fname.open('r') as f:
+        with fname.open('rb') as f:
             content = f.read()
             assert content == data
             # if system cannot determine 'application/pgp-keys' MIME type
@@ -1419,7 +1419,7 @@ async def test_POST_FILES_SINGLE(aiohttp_client, fname) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with fname.open('r') as f:
+    with fname.open('rb') as f:
         resp = await client.post('/', data=f)
         assert 200 == resp.status
         resp.close()
