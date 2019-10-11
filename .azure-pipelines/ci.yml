@@ -20,5 +20,3 @@ variables:
 stages:
 - template: stage-lint.yml
 - template: stage-test.yml
-  parameters:
-    codecov.token: '$(codecov.token)'
