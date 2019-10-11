@@ -251,9 +251,8 @@ class Application(MutableMapping[str, Any]):
         factory = partial(MatchedSubAppResource, rule, subapp)
         return self._add_subapp(factory, subapp)
 
-    def add_routes(
-            self, routes: Iterable[AbstractRouteDef]
-    ) -> List[Optional[AbstractRoute]]:
+    def add_routes(self,
+                   routes: Iterable[AbstractRouteDef]) -> List[AbstractRoute]:
         return self.router.add_routes(routes)
 
     @property

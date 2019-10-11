@@ -39,7 +39,7 @@ __all__ = ('AbstractRouteDef', 'RouteDef', 'StaticDef', 'RouteTableDef',
 
 class AbstractRouteDef(abc.ABC):
     @abc.abstractmethod
-    def register(self, router: UrlDispatcher) -> Optional[AbstractRoute]:
+    def register(self, router: UrlDispatcher) -> List[AbstractRoute]:
         pass  # pragma: no cover
 
 
@@ -62,13 +62,13 @@ class RouteDef(AbstractRouteDef):
                 "{info}>".format(method=self.method, path=self.path,
                                  handler=self.handler, info=''.join(info)))
 
-    def register(self, router: UrlDispatcher) -> AbstractRoute:
+    def register(self, router: UrlDispatcher) -> List[AbstractRoute]:
         if self.method in hdrs.METH_ALL:
             reg = getattr(router, 'add_'+self.method.lower())
-            return reg(self.path, self.handler, **self.kwargs)
+            return [reg(self.path, self.handler, **self.kwargs)]
         else:
-            return router.add_route(self.method, self.path, self.handler,
-                                    **self.kwargs)
+            return [router.add_route(self.method, self.path, self.handler,
+                    **self.kwargs)]
 
 
 @attr.s(frozen=True, repr=False, slots=True)
@@ -85,8 +85,12 @@ class StaticDef(AbstractRouteDef):
                 "{info}>".format(prefix=self.prefix, path=self.path,
                                  info=''.join(info)))
 
-    def register(self, router: UrlDispatcher) -> None:
-        router.add_static(self.prefix, self.path, **self.kwargs)
+    def register(self, router: UrlDispatcher) -> List[AbstractRoute]:
+        resource = router.add_static(self.prefix, self.path, **self.kwargs)
+        routes = resource.get_info().get('routes')
+        if routes is not None:
+            return [routes['GET'], routes['HEAD']]
+        return []
 
 
 def route(method: str, path: str, handler: _HandlerType,

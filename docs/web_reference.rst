@@ -2084,7 +2084,7 @@ The definition is created by functions like :func:`get` or
 
       Abstract method, should be overridden by subclasses.
 
-      Returns the registered resource.
+      Returns a list of registered `AbstractRoute` objects.
 
 
 .. class:: RouteDef

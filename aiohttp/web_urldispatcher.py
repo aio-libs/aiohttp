@@ -552,7 +552,8 @@ class StaticResource(PrefixResource):
 
     def get_info(self) -> Dict[str, Any]:
         return {'directory': self._directory,
-                'prefix': self._prefix}
+                'prefix': self._prefix,
+                'routes': self._routes}
 
     def set_options_route(self, handler: _WebHandler) -> None:
         if 'OPTIONS' in self._routes:
@@ -1109,13 +1110,15 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         for resource in self._resources:
             resource.freeze()
 
-    def add_routes(
-            self, routes: Iterable[AbstractRouteDef]
-    ) -> List[Optional[AbstractRoute]]:
+    def add_routes(self,
+                   routes: Iterable[AbstractRouteDef]) -> List[AbstractRoute]:
         """Append routes to route table.
 
         Parameter should be a sequence of RouteDef objects.
 
         Returns a list of registered AbstractRoute instances.
         """
-        return [route_def.register(self) for route_def in routes]
+        registered_routes = []
+        for route_def in routes:
+            registered_routes.extend(route_def.register(self))
+        return registered_routes
