@@ -1,5 +1,4 @@
-conditions: v1
-version: "= 0"
+version: ~> 1.0
 if: >  # Forbid running non-PR pushes from pyup bot
   not (type != pull_request AND branch =~ ^pyup\-scheduled\-update\-)
 
@@ -157,67 +156,67 @@ _helpers:
     - $HOME/Library/Caches/Homebrew
     - $PYTHON_INSTALLER_DIR_PATH
     - $GIT_INSTALLER_DIR_PATH
-- &generic_deploy_base
-  stage: &deploy_stage_name deploy (PYPI upload itself runs only for tagged commits)
-  <<: *_mainstream_python_base
-  deploy: &deploy_step
-    provider: pypi
-    # `skip_cleanup: true` is required to preserve binary wheels, built
-    # inside of manylinux1 docker container during `script` step above.
-    skip_cleanup: true
-    # `skip-existing: true` is required to skip uploading dists, already
-    # present in PYPI instead of failing the whole process.
-    # This happens when other CI (AppVeyor etc.) has already uploaded
-    # the very same dist (usually sdist).
-    skip-existing: true
-    user: __token__
-    password:
-      # Encrypted with `travis encrypt -r aio-libs/aiohttp --api-endpoint 'https://api.travis-ci.com/'`:
-      secure: >-
-        LC+sJojSdf4KhjHc/loszfAQmUM/VNHJarmC3sY9Dfa3qUS+2bnXxQmLK+lNw6mlAaoTaz7Y4MQDggAH1pBkP5jKjQrUjArjCNSYIubmfjhFqRYGa1xFrBjEJYjYNEfFzjPx+TUX2+qHKaZ8qp7nxFaPHG4JKuUHZQk7F7J/zs3VufWnYmc+QhOGbWFfcWZwpFly46HNrX78/6Plr84Gsz0Hws3K3GHkyXusX9axlByUpe9VZ+nVcANF6PGzqFwipXEWAe31vYO4MnYuZRotQiWVsaHDb9Ki+OyHVJJ02xp4ooofBsYhgZ8axtWKu8639xtTlOagecjKBenhipOQc6OrVWigyYfARVUDY5bBWQlyyOKh5TJkrTScLf5P6MKQ+Pgj3hkzyDELusgxd7Jkb/CN3GraX7U0808x5TiOcm7/3BO+eR3+mP54n6qAyHB+ckOQzWRHMeGPjOy2eIR3VkVcFzJCpIJwtArjWVzO5KFBzPYdxgz2IVBhZRyg66AlQ+GHFp2sI6rZXOqQnJWZOL+RZe/xqircgwUQQm2MGjwW05K5WT2WEwuGkmRnFwSdcKv+PSrmCIyXoy3neo9u9rPbrwBfBIbPj3MmE51edUy2rS/qw7jLUG683RNXcx/LTXAtd7SZgaWVHnvyukBPi5akyGeV0Pd00Th3tkqYBto=
-    # Although Travis CI instructs `setup.py` to build source distribution,
-    # which is default value for distribution option (`distribution: sdist`),
-    # it will also upload all wheels we've previously built in manylinux1
-    # docker container using `twine upload -r pypi dist/*` command.
-    # Also since commit https://github.com/travis-ci/dpl/commit/90b5e39
-    # it is default that Travis PYPI provider has `skip_upload_docs: true`
-    # set by default.
-    # Besides above, we don't do cleanup of `dist/*`, because it's being done
-    # by Travis CI PYPI deployment provider after upload, unconditionally.
-    on:
-      tags: true
-      all_branches: true
-- &osx_pypi_deploy_base_1011
-  <<: *osx_python_base
-  <<: *generic_deploy_base
-  name: &env_os1011_msg Build and deploy to PYPI of OS X 10.11 binary wheel
-  osx_image: xcode7.3
-  script: skip
-  after_success: []
-  python: *py37
-  env:
-    <<: *env_osx_base
-    PYTHON_VERSION: *py37
-  deploy:
-    <<: *deploy_step
-    skip_cleanup: false
-    distributions: bdist_wheel
-- &osx_pypi_deploy_base_1012
-  <<: *osx_pypi_deploy_base_1011
-  name: &env_os1012_msg Build and deploy to PYPI of OS X 10.12 binary wheel
-  osx_image: xcode8.1
-  python: *py37
-  env:
-    <<: *env_osx_base
-    PYTHON_VERSION: *py37
-- &osx_pypi_deploy_base_1010
-  <<: *osx_pypi_deploy_base_1011
-  name: &env_os1010_msg Build and deploy to PYPI of OS X 10.10 binary wheel
-  osx_image: xcode6.4
-  python: *py37
-  env:
-    <<: *env_osx_base
-    PYTHON_VERSION: *py37
+# - &generic_deploy_base
+#   stage: &deploy_stage_name deploy (PYPI upload itself runs only for tagged commits)
+#   <<: *_mainstream_python_base
+#   deploy: &deploy_step
+#     provider: pypi
+#     # `skip_cleanup: true` is required to preserve binary wheels, built
+#     # inside of manylinux1 docker container during `script` step above.
+#     skip_cleanup: true
+#     # `skip-existing: true` is required to skip uploading dists, already
+#     # present in PYPI instead of failing the whole process.
+#     # This happens when other CI (AppVeyor etc.) has already uploaded
+#     # the very same dist (usually sdist).
+#     skip-existing: true
+#     user: __token__
+#     password:
+#       # Encrypted with `travis encrypt -r aio-libs/aiohttp --api-endpoint 'https://api.travis-ci.com/'`:
+#       secure: >-
+#         LC+sJojSdf4KhjHc/loszfAQmUM/VNHJarmC3sY9Dfa3qUS+2bnXxQmLK+lNw6mlAaoTaz7Y4MQDggAH1pBkP5jKjQrUjArjCNSYIubmfjhFqRYGa1xFrBjEJYjYNEfFzjPx+TUX2+qHKaZ8qp7nxFaPHG4JKuUHZQk7F7J/zs3VufWnYmc+QhOGbWFfcWZwpFly46HNrX78/6Plr84Gsz0Hws3K3GHkyXusX9axlByUpe9VZ+nVcANF6PGzqFwipXEWAe31vYO4MnYuZRotQiWVsaHDb9Ki+OyHVJJ02xp4ooofBsYhgZ8axtWKu8639xtTlOagecjKBenhipOQc6OrVWigyYfARVUDY5bBWQlyyOKh5TJkrTScLf5P6MKQ+Pgj3hkzyDELusgxd7Jkb/CN3GraX7U0808x5TiOcm7/3BO+eR3+mP54n6qAyHB+ckOQzWRHMeGPjOy2eIR3VkVcFzJCpIJwtArjWVzO5KFBzPYdxgz2IVBhZRyg66AlQ+GHFp2sI6rZXOqQnJWZOL+RZe/xqircgwUQQm2MGjwW05K5WT2WEwuGkmRnFwSdcKv+PSrmCIyXoy3neo9u9rPbrwBfBIbPj3MmE51edUy2rS/qw7jLUG683RNXcx/LTXAtd7SZgaWVHnvyukBPi5akyGeV0Pd00Th3tkqYBto=
+#     # Although Travis CI instructs `setup.py` to build source distribution,
+#     # which is default value for distribution option (`distribution: sdist`),
+#     # it will also upload all wheels we've previously built in manylinux1
+#     # docker container using `twine upload -r pypi dist/*` command.
+#     # Also since commit https://github.com/travis-ci/dpl/commit/90b5e39
+#     # it is default that Travis PYPI provider has `skip_upload_docs: true`
+#     # set by default.
+#     # Besides above, we don't do cleanup of `dist/*`, because it's being done
+#     # by Travis CI PYPI deployment provider after upload, unconditionally.
+#     on:
+#       tags: true
+#       all_branches: true
+# - &osx_pypi_deploy_base_1011
+#   <<: *osx_python_base
+#   <<: *generic_deploy_base
+#   name: &env_os1011_msg Build and deploy to PYPI of OS X 10.11 binary wheel
+#   osx_image: xcode7.3
+#   script: skip
+#   after_success: []
+#   python: *py37
+#   env:
+#     <<: *env_osx_base
+#     PYTHON_VERSION: *py37
+#   deploy:
+#     <<: *deploy_step
+#     skip_cleanup: false
+#     distributions: bdist_wheel
+# - &osx_pypi_deploy_base_1012
+#   <<: *osx_pypi_deploy_base_1011
+#   name: &env_os1012_msg Build and deploy to PYPI of OS X 10.12 binary wheel
+#   osx_image: xcode8.1
+#   python: *py37
+#   env:
+#     <<: *env_osx_base
+#     PYTHON_VERSION: *py37
+# - &osx_pypi_deploy_base_1010
+#   <<: *osx_pypi_deploy_base_1011
+#   name: &env_os1010_msg Build and deploy to PYPI of OS X 10.10 binary wheel
+#   osx_image: xcode6.4
+#   python: *py37
+#   env:
+#     <<: *env_osx_base
+#     PYTHON_VERSION: *py37
 
 os: linux
 
@@ -225,6 +224,7 @@ jobs:
   fast_finish: true
   allow_failures:
   - python: nightly
+  - python: pypy3
 
   include:
   - name: 3.7 without extensions
@@ -298,62 +298,62 @@ jobs:
       PYTHON_VERSION: *py37
   # pypy3.5-5.10.0 fails under OS X because it's unsupported
 
-  # Build and deploy manylinux1 binary wheels and source distribution
-  - <<: *generic_deploy_base
-    <<: *_reset_steps
-    env: Build and deploy to PYPI of manylinux1 binary wheels for all supported Pythons and source distribution=
-    services:
-    - docker
-    script:
-    - pip install -r requirements/cython.txt
-    - make cythonize
-    - ./tools/run_docker.sh "aiohttp"
-    deploy:
-      <<: *deploy_step
+  # # Build and deploy manylinux1 binary wheels and source distribution
+  # - <<: *generic_deploy_base
+  #   <<: *_reset_steps
+  #   env: Build and deploy to PYPI of manylinux1 binary wheels for all supported Pythons and source distribution=
+  #   services:
+  #   - docker
+  #   script:
+  #   - pip install -r requirements/cython.txt
+  #   - make cythonize
+  #   - ./tools/run_docker.sh "aiohttp"
+  #   deploy:
+  #     <<: *deploy_step
 
-    # Build and deploy MacOS binary wheels for each OSX+Python combo possible
-    # OS X 10.10, Python 3.6
-  - <<: *osx_pypi_deploy_base_1010
-    name: *env_os1010_msg
-    python: *py36
-    env:
-      <<: *env_osx_base
-      PYTHON_VERSION: *py36
-    # OS X 10.10, Python 3.7
-  - <<: *osx_pypi_deploy_base_1010
-    name: *env_os1010_msg
-    python: *py37
-    env:
-      <<: *env_osx_base
-      PYTHON_VERSION: *py37
-    # OS X 10.11, Python 3.6
-  - <<: *osx_pypi_deploy_base_1011
-    name: *env_os1011_msg
-    python: *py36
-    env:
-      <<: *env_osx_base
-      PYTHON_VERSION: *py36
-    # OS X 10.11, Python 3.7
-  - <<: *osx_pypi_deploy_base_1011
-    name: *env_os1011_msg
-    python: *py37
-    env:
-      <<: *env_osx_base
-      PYTHON_VERSION: *py37
-    # OS X 10.12, Python 3.6
-  - <<: *osx_pypi_deploy_base_1012
-    name: *env_os1012_msg
-    python: *py36
-    env:
-      <<: *env_osx_base
-      PYTHON_VERSION: *py36
-    # OS X 10.12, Python 3.7
-  - <<: *osx_pypi_deploy_base_1012
-    name: *env_os1012_msg
-    python: *py37
-    env:
-      <<: *env_osx_base
-      PYTHON_VERSION: *py37
+  #   # Build and deploy MacOS binary wheels for each OSX+Python combo possible
+  #   # OS X 10.10, Python 3.6
+  # - <<: *osx_pypi_deploy_base_1010
+  #   name: *env_os1010_msg
+  #   python: *py36
+  #   env:
+  #     <<: *env_osx_base
+  #     PYTHON_VERSION: *py36
+  #   # OS X 10.10, Python 3.7
+  # - <<: *osx_pypi_deploy_base_1010
+  #   name: *env_os1010_msg
+  #   python: *py37
+  #   env:
+  #     <<: *env_osx_base
+  #     PYTHON_VERSION: *py37
+  #   # OS X 10.11, Python 3.6
+  # - <<: *osx_pypi_deploy_base_1011
+  #   name: *env_os1011_msg
+  #   python: *py36
+  #   env:
+  #     <<: *env_osx_base
+  #     PYTHON_VERSION: *py36
+  #   # OS X 10.11, Python 3.7
+  # - <<: *osx_pypi_deploy_base_1011
+  #   name: *env_os1011_msg
+  #   python: *py37
+  #   env:
+  #     <<: *env_osx_base
+  #     PYTHON_VERSION: *py37
+  #   # OS X 10.12, Python 3.6
+  # - <<: *osx_pypi_deploy_base_1012
+  #   name: *env_os1012_msg
+  #   python: *py36
+  #   env:
+  #     <<: *env_osx_base
+  #     PYTHON_VERSION: *py36
+  #   # OS X 10.12, Python 3.7
+  # - <<: *osx_pypi_deploy_base_1012
+  #   name: *env_os1012_msg
+  #   python: *py37
+  #   env:
+  #     <<: *env_osx_base
+  #     PYTHON_VERSION: *py37
 
 stages:
 - *doc_stage_name
