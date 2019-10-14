@@ -1251,7 +1251,7 @@ async def test_POST_FILES(aiohttp_client, fname) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with fname.open() as f:
+    with fname.open('rb') as f:
         resp = await client.post(
             '/', data={'some': f, 'test': b'data'}, chunked=True)
         assert 200 == resp.status
@@ -1273,7 +1273,7 @@ async def test_POST_FILES_DEFLATE(aiohttp_client, fname) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with fname.open() as f:
+    with fname.open('rb') as f:
         resp = await client.post(
             '/',
             data={'some': f},
@@ -1324,8 +1324,8 @@ async def test_POST_FILES_STR(aiohttp_client, fname) -> None:
 
     async def handler(request):
         data = await request.post()
-        with fname.open() as f:
-            content1 = f.read()
+        with fname.open('rb') as f:
+            content1 = f.read().decode()
         content2 = data['some']
         assert content1 == content2
         return web.Response()
@@ -1334,8 +1334,8 @@ async def test_POST_FILES_STR(aiohttp_client, fname) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with fname.open() as f:
-        resp = await client.post('/', data={'some': f.read()})
+    with fname.open('rb') as f:
+        resp = await client.post('/', data={'some': f.read().decode()})
         assert 200 == resp.status
         resp.close()
 
@@ -1353,7 +1353,7 @@ async def test_POST_FILES_STR_SIMPLE(aiohttp_client, fname) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with fname.open() as f:
+    with fname.open('rb') as f:
         resp = await client.post('/', data=f.read())
         assert 200 == resp.status
         resp.close()
@@ -1373,7 +1373,7 @@ async def test_POST_FILES_LIST(aiohttp_client, fname) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with fname.open() as f:
+    with fname.open('rb') as f:
         resp = await client.post('/', data=[('some', f)])
         assert 200 == resp.status
         resp.close()
@@ -1394,7 +1394,7 @@ async def test_POST_FILES_CT(aiohttp_client, fname) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with fname.open() as f:
+    with fname.open('rb') as f:
         form = aiohttp.FormData()
         form.add_field('some', f, content_type='text/plain')
         resp = await client.post('/', data=form)
@@ -1406,14 +1406,14 @@ async def test_POST_FILES_SINGLE(aiohttp_client, fname) -> None:
 
     async def handler(request):
         data = await request.text()
-        with fname.open('r') as f:
-            content = f.read()
+        with fname.open('rb') as f:
+            content = f.read().decode()
             assert content == data
-            # if system cannot determine 'application/pgp-keys' MIME type
-            # then use 'application/octet-stream' default
-        assert request.content_type in ['application/pgp-keys',
-                                        'text/plain',
-                                        'application/octet-stream']
+        # if system cannot determine 'text/x-python' MIME type
+        # then use 'application/octet-stream' default
+        assert request.content_type in ['text/plain',
+                                        'application/octet-stream',
+                                        'text/x-python']
         assert 'content-disposition' not in request.headers
 
         return web.Response()
@@ -1422,7 +1422,7 @@ async def test_POST_FILES_SINGLE(aiohttp_client, fname) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with fname.open() as f:
+    with fname.open('rb') as f:
         resp = await client.post('/', data=f)
         assert 200 == resp.status
         resp.close()
@@ -1433,14 +1433,14 @@ async def test_POST_FILES_SINGLE_content_disposition(
 
     async def handler(request):
         data = await request.text()
-        with fname.open('r') as f:
-            content = f.read()
+        with fname.open('rb') as f:
+            content = f.read().decode()
             assert content == data
-            # if system cannot determine 'application/pgp-keys' MIME type
-            # then use 'application/octet-stream' default
-        assert request.content_type in ['application/pgp-keys',
-                                        'text/plain',
-                                        'application/octet-stream']
+        # if system cannot determine 'application/pgp-keys' MIME type
+        # then use 'application/octet-stream' default
+        assert request.content_type in ['text/plain',
+                                        'application/octet-stream',
+                                        'text/x-python']
         assert request.headers['content-disposition'] == (
             "inline; filename=\"conftest.py\"; filename*=utf-8''conftest.py")
 
@@ -1450,7 +1450,7 @@ async def test_POST_FILES_SINGLE_content_disposition(
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with fname.open() as f:
+    with fname.open('rb') as f:
         resp = await client.post(
             '/', data=aiohttp.get_payload(f, disposition='inline'))
         assert 200 == resp.status
@@ -1532,8 +1532,8 @@ async def test_POST_FILES_WITH_DATA(aiohttp_client, fname) -> None:
     async def handler(request):
         data = await request.post()
         assert data['test'] == 'true'
-        assert data['some'].content_type in ['application/pgp-keys',
-                                             'text/plain; charset=utf-8',
+        assert data['some'].content_type in ['text/x-python',
+                                             'text/plain',
                                              'application/octet-stream']
         assert data['some'].filename == fname.name
         with fname.open('rb') as f:
@@ -1545,7 +1545,7 @@ async def test_POST_FILES_WITH_DATA(aiohttp_client, fname) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with fname.open() as f:
+    with fname.open('rb') as f:
         resp = await client.post('/', data={'test': 'true', 'some': f})
         assert 200 == resp.status
         resp.close()
