@@ -104,7 +104,7 @@ def unix_sockname(tmp_path, tmp_path_factory):
 
     # N.B. Different OS kernels have different fs path length limitations
     # for it. For Linux, it's 108, for HP-UX it's 92 (or higher) depending
-    # on its version. For for most of the BSDs (Open, Free, macOS) it's
+    # on its version. For most of the BSDs (Open, Free, macOS) it's
     # mostly 104 but sometimes it can be down to 100.
 
     # Ref: https://github.com/aio-libs/aiohttp/issues/3572
