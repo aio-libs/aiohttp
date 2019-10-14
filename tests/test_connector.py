@@ -265,22 +265,22 @@ async def test_close() -> None:
 
 async def test_get(loop) -> None:
     conn = aiohttp.BaseConnector()
-    assert conn._get(1) is None
+    assert await conn._get(1) is None
 
     proto = create_mocked_conn(loop)
     conn._conns[1] = [(proto, loop.time())]
-    assert conn._get(1) == proto
+    assert await conn._get(1) == proto
     await conn.close()
 
 
 async def test_get_expired(loop) -> None:
     conn = aiohttp.BaseConnector()
     key = ConnectionKey('localhost', 80, False, None, None, None, None)
-    assert conn._get(key) is None
+    assert await conn._get(key) is None
 
     proto = create_mocked_conn(loop)
     conn._conns[key] = [(proto, loop.time() - 1000)]
-    assert conn._get(key) is None
+    assert await conn._get(key) is None
     assert not conn._conns
     await conn.close()
 
@@ -288,12 +288,12 @@ async def test_get_expired(loop) -> None:
 async def test_get_expired_ssl(loop) -> None:
     conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
     key = ConnectionKey('localhost', 80, True, None, None, None, None)
-    assert conn._get(key) is None
+    assert await conn._get(key) is None
 
     proto = create_mocked_conn(loop)
     transport = proto.transport
     conn._conns[key] = [(proto, loop.time() - 1000)]
-    assert conn._get(key) is None
+    assert await conn._get(key) is None
     assert not conn._conns
     assert conn._cleanup_closed_transports == [transport]
     await conn.close()
@@ -950,7 +950,7 @@ async def test_get_pop_empty_conns(loop) -> None:
     conn = aiohttp.BaseConnector()
     key = ('127.0.0.1', 80, False)
     conn._conns[key] = []
-    proto = conn._get(key)
+    proto = await conn._get(key)
     assert proto is None
     assert not conn._conns
 

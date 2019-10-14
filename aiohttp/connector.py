@@ -492,7 +492,7 @@ class BaseConnector:
                 for trace in traces:
                     await trace.send_connection_queued_end()
 
-        proto = self._get(key)
+        proto = await self._get(key)
         if proto is None:
             placeholder = cast(ResponseHandler,
                                _TransportPlaceholder(self._loop))
@@ -531,7 +531,7 @@ class BaseConnector:
         self._acquired_per_host[key].add(proto)
         return Connection(self, key, proto, self._loop)
 
-    def _get(self, key: 'ConnectionKey') -> Optional[ResponseHandler]:
+    async def _get(self, key: 'ConnectionKey') -> Optional[ResponseHandler]:
         try:
             conns = self._conns[key]
         except KeyError:
