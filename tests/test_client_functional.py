@@ -1530,7 +1530,7 @@ async def test_POST_FILES_WITH_DATA(aiohttp_client, fname) -> None:
         data = await request.post()
         assert data['test'] == 'true'
         assert data['some'].content_type in ['text/x-python',
-                                             'text/plain; charset=utf-8',
+                                             'text/plain',
                                              'application/octet-stream']
         assert data['some'].filename == fname.name
         with fname.open('rb') as f:

@@ -73,7 +73,7 @@ stages:
         AIOHTTP_NO_EXTENSIONS: '$(no_extensions)'
 
     - script: |
-        pytest tests -vvx
+        pytest tests -vv
       displayName: 'pytest'
 
     - script: |
