@@ -311,7 +311,7 @@ async def test_post_single_file(aiohttp_client) -> None:
 
     def check_file(fs):
         fullname = here / fs.filename
-        with fullname.open() as f:
+        with fullname.open('rb') as f:
             test_data = f.read().encode()
             data = fs.file.read()
             assert test_data == data
@@ -331,7 +331,7 @@ async def test_post_single_file(aiohttp_client) -> None:
 
     fname = here / 'data.unknown_mime_type'
 
-    resp = await client.post('/', data=[fname.open()])
+    resp = await client.post('/', data=[fname.open('rb')])
     assert 200 == resp.status
 
 
@@ -374,7 +374,7 @@ async def test_post_files(aiohttp_client) -> None:
 
     def check_file(fs):
         fullname = here / fs.filename
-        with fullname.open() as f:
+        with fullname.open('rb') as f:
             test_data = f.read().encode()
             data = fs.file.read()
             assert test_data == data
@@ -392,8 +392,8 @@ async def test_post_files(aiohttp_client) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with (here / 'data.unknown_mime_type').open() as f1:
-        with (here / 'conftest.py').open() as f2:
+    with (here / 'data.unknown_mime_type').open('rb') as f1:
+        with (here / 'conftest.py').open('rb') as f2:
             resp = await client.post('/', data=[f1, f2])
             assert 200 == resp.status
 
