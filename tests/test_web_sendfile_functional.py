@@ -323,9 +323,9 @@ async def test_static_file_huge(aiohttp_client, tmpdir) -> None:
     filename = 'huge_data.unknown_mime_type'
 
     # fill 20MB file
-    with tmpdir.join(filename).open('w') as f:
+    with tmpdir.join(filename).open('wb') as f:
         for i in range(1024*20):
-            f.write(chr(i % 64 + 0x20) * 1024)
+            f.write((chr(i % 64 + 0x20) * 1024).encode())
 
     file_st = os.stat(str(tmpdir.join(filename)))
 
@@ -755,9 +755,9 @@ async def test_static_file_huge_cancel(aiohttp_client, tmpdir) -> None:
     filename = 'huge_data.unknown_mime_type'
 
     # fill 100MB file
-    with tmpdir.join(filename).open('w') as f:
+    with tmpdir.join(filename).open('wb') as f:
         for i in range(1024*20):
-            f.write(chr(i % 64 + 0x20) * 1024)
+            f.write((chr(i % 64 + 0x20) * 1024).encode())
 
     task = None
 
