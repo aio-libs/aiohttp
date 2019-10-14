@@ -312,7 +312,7 @@ async def test_post_single_file(aiohttp_client) -> None:
     def check_file(fs):
         fullname = here / fs.filename
         with fullname.open('rb') as f:
-            test_data = f.read().encode()
+            test_data = f.read()
             data = fs.file.read()
             assert test_data == data
 
@@ -375,7 +375,7 @@ async def test_post_files(aiohttp_client) -> None:
     def check_file(fs):
         fullname = here / fs.filename
         with fullname.open('rb') as f:
-            test_data = f.read().encode()
+            test_data = f.read()
             data = fs.file.read()
             assert test_data == data
 
