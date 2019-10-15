@@ -1,4 +1,4 @@
-"""Tests for aiohttp/protocol.py"""
+# Tests for aiohttp/protocol.py
 
 import asyncio
 import zlib
@@ -41,7 +41,7 @@ def protocol():
 
 @pytest.fixture(params=REQUEST_PARSERS)
 def parser(loop, protocol, request):
-    """Parser implementations"""
+    # Parser implementations
     return request.param(protocol, loop,
                          max_line_size=8190,
                          max_headers=32768,
@@ -50,13 +50,13 @@ def parser(loop, protocol, request):
 
 @pytest.fixture(params=REQUEST_PARSERS)
 def request_cls(request):
-    """Request Parser class"""
+    # Request Parser class
     return request.param
 
 
 @pytest.fixture(params=RESPONSE_PARSERS)
 def response(loop, protocol, request):
-    """Parser implementations"""
+    # Parser implementations
     return request.param(protocol, loop,
                          max_line_size=8190,
                          max_headers=32768,
@@ -65,7 +65,7 @@ def response(loop, protocol, request):
 
 @pytest.fixture(params=RESPONSE_PARSERS)
 def response_cls(request):
-    """Parser implementations"""
+    # Parser implementations
     return request.param
 
 

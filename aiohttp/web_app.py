@@ -75,7 +75,7 @@ class Application(MutableMapping[str, Any]):
 
     def __init__(self, *,
                  logger: logging.Logger=web_logger,
-                 middlewares: Sequence[_Middleware]=(),
+                 middlewares: Iterable[_Middleware]=(),
                  handler_args: Mapping[str, Any]=None,
                  client_max_size: int=1024**2,
                  debug: Any=...  # mypy doesn't support ellipsis
@@ -337,6 +337,9 @@ class Application(MutableMapping[str, Any]):
 
     def __repr__(self) -> str:
         return "<Application 0x{:x}>".format(id(self))
+
+    def __bool__(self) -> bool:
+        return True
 
 
 class CleanupError(RuntimeError):

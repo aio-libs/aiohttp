@@ -1,4 +1,4 @@
-"""Tests for aiohttp/worker.py"""
+# Tests for aiohttp/worker.py
 import asyncio
 import os
 import socket

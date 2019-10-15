@@ -458,3 +458,7 @@ class WebSocketResponse(StreamResponse):
                         WSMsgType.CLOSED):
             raise StopAsyncIteration  # NOQA
         return msg
+
+    def _cancel(self, exc: BaseException) -> None:
+        if self._reader is not None:
+            self._reader.set_exception(exc)

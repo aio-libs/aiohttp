@@ -1,4 +1,4 @@
-"""Tests for client_exceptions.py"""
+# Tests for client_exceptions.py
 
 import errno
 import pickle
@@ -123,8 +123,8 @@ class TestClientConnectorError:
         err = client.ClientConnectorError(
             connection_key=self.connection_key,
             os_error=OSError(errno.ENOENT, 'No such file'))
-        assert str(err) == ("Cannot connect to host example.com:8080 ssl:None "
-                            "[No such file]")
+        assert str(err) == ("Cannot connect to host example.com:8080 ssl:"
+                            "default [No such file]")
 
 
 class TestClientConnectorCertificateError:

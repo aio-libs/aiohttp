@@ -6,8 +6,6 @@ environment:
   PYTHONIOENCODING: "utf8:backslashreplace"
   PYTHONLEGACYWINDOWSSTDIO: "1"
   matrix:
-    - PYTHON: "C:\\Python35"
-    - PYTHON: "C:\\Python35-x64"
     - PYTHON: "C:\\Python36"
     - PYTHON: "C:\\Python36-x64"
     - PYTHON: "C:\\Python37"
@@ -53,14 +51,14 @@ on_finish:
     $wc = New-Object 'System.Net.WebClient'
     $wc.UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\.test-results\pytest\results.xml))
 
-artifacts:
-  - path: dist\*
+# artifacts:
+#   - path: dist\*
 
-deploy_script:
-  - ps: >-
-      if($env:appveyor_repo_tag -eq 'True') {
-          Invoke-Expression "$env:PYTHON\\python.exe -m twine upload dist/* --username $env:PYPI_USER --password $env:PYPI_PASSWD --skip-existing"
-      }
+# deploy_script:
+#   - ps: >-
+#       if($env:appveyor_repo_tag -eq 'True') {
+#           Invoke-Expression "$env:PYTHON\\python.exe -m twine upload dist/* --username $env:PYPI_USER --password $env:PYPI_PASSWD --skip-existing"
+#       }
 
 #notifications:
 #  - provider: Webhook
