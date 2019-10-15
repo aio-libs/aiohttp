@@ -2680,9 +2680,11 @@ async def test_request_conn_closed(aiohttp_client) -> None:
     app.router.add_get('/', handler)
 
     client = await aiohttp_client(app)
-    with pytest.raises(aiohttp.ServerDisconnectedError):
+    with pytest.raises(aiohttp.ServerDisconnectedError) as excinfo:
         resp = await client.get('/')
         await resp.read()
+
+    assert str(excinfo.value) != ''
 
 
 async def test_dont_close_explicit_connector(aiohttp_client) -> None:
