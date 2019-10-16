@@ -300,7 +300,7 @@ worker processes.
    `uvloop <https://github.com/MagicStack/uvloop>`_, you can use the
    ``aiohttp.GunicornUVLoopWebWorker`` worker class.
 
-Proxying through NGINX
+Proxy through NGINX
 ----------------------
 
 We can proxy our gunicorn workers through NGINX with a configuration like this:
@@ -335,7 +335,7 @@ use the `proxy_pass <https://nginx.org/en/docs/http/ngx_http_proxy_module.html#p
 directive to send web traffic to our workers. If everything is configured correctly,
 we should reach our application at the ip address of our web server.
 
-Proxying through NGINX + SSL
+Proxy through NGINX + SSL
 ----------------------------
 
 Here is an example NGINX configuration setup to accept SSL connections:
