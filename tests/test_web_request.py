@@ -694,6 +694,16 @@ def test_url_https_with_closed_transport() -> None:
     assert str(req.url).startswith('https://')
 
 
+async def test_get_extra_info_default() -> None:
+    transp = mock.Mock()
+    transp.get_extra_info.return_value = ('10.10.10.10', 1234)
+    req = make_mocked_request('GET', '/', transport=transp)
+    req._protocol = None
+    default = 'default'
+    extra_info = await req.get_extra_info('test', default)
+    assert extra_info == default
+
+
 def test_eq() -> None:
     req1 = make_mocked_request('GET', '/path/to?a=1&b=2')
     req2 = make_mocked_request('GET', '/path/to?a=1&b=2')
