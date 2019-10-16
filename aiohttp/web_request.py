@@ -586,6 +586,18 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         """Return async iterator to process BODY as multipart."""
         return MultipartReader(self._headers, self._payload)
 
+    async def get_extra_info(self, name: str, default: Any = None):
+        """Extra info from protocol transport"""
+        protocol = self._protocol
+        if protocol is None:
+            return default
+
+        transport = protocol.transport
+        if transport is None:
+            return default
+
+        return transport.get_extra_info(name, default)
+
     async def post(self) -> 'MultiDictProxy[Union[str, bytes, FileField]]':
         """Return POST parameters."""
         if self._post is not None:
