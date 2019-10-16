@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import warnings
-from functools import partial
+from functools import partial, update_wrapper
 from typing import (  # noqa
     TYPE_CHECKING,
     Any,
@@ -325,7 +325,9 @@ class Application(MutableMapping[str, Any]):
                 for app in match_info.apps[::-1]:
                     assert app.pre_frozen, "middleware handlers are not ready"
                     for m in app._middlewares_handlers:  # noqa
-                        handler = partial(m, handler=handler)
+                        handler = update_wrapper(
+                            partial(m, handler=handler), handler
+                        )
 
             resp = await handler(request)
 
