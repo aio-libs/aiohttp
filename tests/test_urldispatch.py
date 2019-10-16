@@ -421,9 +421,7 @@ def test_add_static_append_version_non_exists_file_without_slash(
 
 
 def test_add_static_append_version_follow_symlink(router, tmp_path) -> None:
-    """
-    Tests the access to a symlink, in static folder with apeend_version
-    """
+    # Tests the access to a symlink, in static folder with apeend_version
     symlink_path = tmp_path / 'append_version_symlink'
     symlink_target_path = pathlib.Path(__file__).parent
     pathlib.Path(str(symlink_path)).symlink_to(str(symlink_target_path), True)
@@ -442,9 +440,7 @@ def test_add_static_append_version_follow_symlink(router, tmp_path) -> None:
 
 def test_add_static_append_version_not_follow_symlink(router,
                                                       tmp_path) -> None:
-    """
-    Tests the access to a symlink, in static folder with apeend_version
-    """
+    # Tests the access to a symlink, in static folder with apeend_version
 
     symlink_path = tmp_path / 'append_version_symlink'
     symlink_target_path = pathlib.Path(__file__).parent
@@ -1241,9 +1237,7 @@ def test_prefixed_subapp_resource_canonical(app) -> None:
 
 
 async def test_prefixed_subapp_overlap(app) -> None:
-    """
-    Subapp should not overshadow other subapps with overlapping prefixes
-    """
+    # Subapp should not overshadow other subapps with overlapping prefixes
     subapp1 = web.Application()
     handler1 = make_handler()
     subapp1.router.add_get('/a', handler1)

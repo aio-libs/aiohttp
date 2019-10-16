@@ -166,6 +166,7 @@ Manuel Miranda
 Marat Sharafutdinov
 Marco Paolini
 Mariano Anaya
+Martijn Pieters
 Martin Melka
 Martin Richard
 Mathias Fröjdman
@@ -223,6 +224,7 @@ Simon Kennedy
 Sin-Woo Bang
 Stanislas Plum
 Stanislav Prokop
+Stefan Tjarks
 Stepan Pletnev
 Stephen Granade
 Steven Seguin

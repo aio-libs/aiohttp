@@ -2,7 +2,6 @@ import asyncio
 from unittest import mock
 
 import pytest
-from async_generator import async_generator, yield_
 
 from aiohttp import log, web
 from aiohttp.helpers import PY_36
@@ -182,10 +181,9 @@ async def test_cleanup_ctx() -> None:
     out = []
 
     def f(num):
-        @async_generator
         async def inner(app):
             out.append('pre_' + str(num))
-            await yield_(None)
+            yield None
             out.append('post_' + str(num))
         return inner
 
@@ -205,12 +203,11 @@ async def test_cleanup_ctx_exception_on_startup() -> None:
     exc = Exception('fail')
 
     def f(num, fail=False):
-        @async_generator
         async def inner(app):
             out.append('pre_' + str(num))
             if fail:
                 raise exc
-            await yield_(None)
+            yield None
             out.append('post_' + str(num))
         return inner
 
@@ -233,10 +230,9 @@ async def test_cleanup_ctx_exception_on_cleanup() -> None:
     exc = Exception('fail')
 
     def f(num, fail=False):
-        @async_generator
         async def inner(app):
             out.append('pre_' + str(num))
-            await yield_(None)
+            yield None
             out.append('post_' + str(num))
             if fail:
                 raise exc
@@ -259,10 +255,9 @@ async def test_cleanup_ctx_exception_on_cleanup_multiple() -> None:
     out = []
 
     def f(num, fail=False):
-        @async_generator
         async def inner(app):
             out.append('pre_' + str(num))
-            await yield_(None)
+            yield None
             out.append('post_' + str(num))
             if fail:
                 raise Exception('fail_' + str(num))
@@ -288,12 +283,11 @@ async def test_cleanup_ctx_multiple_yields() -> None:
     out = []
 
     def f(num):
-        @async_generator
         async def inner(app):
             out.append('pre_' + str(num))
-            await yield_(None)
+            yield None
             out.append('post_' + str(num))
-            await yield_(None)
+            yield None
         return inner
 
     app.cleanup_ctx.append(f(1))
@@ -378,12 +372,11 @@ async def test_subapp_on_startup(aiohttp_client) -> None:
     ctx_pre_called = False
     ctx_post_called = False
 
-    @async_generator
     async def cleanup_ctx(app):
         nonlocal ctx_pre_called, ctx_post_called
         ctx_pre_called = True
         app['cleanup'] = True
-        await yield_(None)
+        yield None
         ctx_post_called = True
 
     subapp.cleanup_ctx.append(cleanup_ctx)
@@ -457,3 +450,8 @@ def test_forbid_changing_frozen_app() -> None:
     app.freeze()
     with pytest.raises(RuntimeError):
         app['key'] = 'value'
+
+
+def test_app_boolean() -> None:
+    app = web.Application()
+    assert app

@@ -1,4 +1,4 @@
-"""Tests for http/websocket.py"""
+# Tests for http/websocket.py
 
 import base64
 import os
