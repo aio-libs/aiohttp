@@ -135,7 +135,7 @@ The client session supports the context manager protocol for self closing.
 
          Async callback support is added.
 
-   :param timeout: a :class:`ClientTimeout` settings structure, 5min
+   :param timeout: a :class:`ClientTimeout` settings structure, 300 seconds (5min)
         total timeout by default.
 
       .. versionadded:: 3.3
@@ -347,7 +347,7 @@ The client session supports the context manager protocol for self closing.
             :class:`float` is still supported for sake of backward
             compatibility.
 
-            If :class:`float` is passed it is a *total* timeout.
+            If :class:`float` is passed it is a *total* timeout (in seconds).
 
       :param ssl: SSL validation mode. ``None`` for default SSL check
                   (:func:`ssl.create_default_context` is used),
@@ -683,7 +683,7 @@ certification chaining.
                                does not have Content-Length header.
                                ``True`` by default (optional).
 
-   :param timeout: a :class:`ClientTimeout` settings structure, 5min
+   :param timeout: a :class:`ClientTimeout` settings structure, 300 seconds (5min)
         total timeout by default.
 
 
@@ -1422,13 +1422,13 @@ ClientTimeout
 
    .. attribute:: total
 
-      Total timeout for the whole request.
+      Maximal number of seconds for the whole request.
 
       :class:`float`, ``None`` by default.
 
    .. attribute:: connect
 
-      Total timeout for acquiring a connection from pool.  The time
+      Maximal number of seconds for acquiring a connection from pool.  The time
       consists connection establishment for a new connection or
       waiting for a free connection from a pool if pool connection
       limits are exceeded.
@@ -1440,14 +1440,14 @@ ClientTimeout
 
    .. attribute:: sock_connect
 
-      A timeout for connecting to a peer for a new connection, not
+      Maximal number of seconds for connecting to a peer for a new connection, not
       given from a pool.  See also :attr:`connect`.
 
       :class:`float`, ``None`` by default.
 
    .. attribute:: sock_read
 
-      A timeout for reading a portion of data from a peer.
+      Maximal number of seconds for reading a portion of data from a peer.
 
       :class:`float`, ``None`` by default.
 
