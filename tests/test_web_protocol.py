@@ -839,17 +839,28 @@ async def test_two_data_received_without_waking_up_start_task(srv) -> None:
 
 
 async def test_client_disconnect(aiohttp_server) -> None:
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
+    disconnected_notified = False
 
     async def handler(request):
+
+        async def disconn():
+            nonlocal disconnected_notified
+            await request.wait_for_disconnection()
+            disconnected_notified = True
+
+        disconn_task = loop.create_task(disconn())
+
         buf = b""
         with pytest.raises(ConnectionError):
             while len(buf) < 10:
                 buf += await request.content.read(10)
         # return with closed transport means premature client disconnection
+        await asyncio.sleep(0)
+        disconn_task.cancel()
         return web.Response()
 
-    loop = asyncio.get_event_loop()
-    loop.set_debug(True)
     logger = mock.Mock()
     app = web.Application()
     app.router.add_route('POST', '/', handler)
@@ -871,3 +882,4 @@ Host: localhost:{port}\r
     writer.close()
     await asyncio.sleep(0.1)
     logger.debug.assert_called_with('Ignored premature client disconnection.')
+    assert disconnected_notified
