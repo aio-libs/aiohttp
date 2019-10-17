@@ -211,7 +211,7 @@ class TestClientConnectorCertificateError:
 class TestServerDisconnectedError:
     def test_ctor(self) -> None:
         err = client.ServerDisconnectedError()
-        assert err.message is None
+        assert err.message == 'Server disconnected'
 
         err = client.ServerDisconnectedError(message='No connection')
         assert err.message == 'No connection'
@@ -227,7 +227,12 @@ class TestServerDisconnectedError:
 
     def test_repr(self) -> None:
         err = client.ServerDisconnectedError()
-        assert repr(err) == "ServerDisconnectedError()"
+        if sys.version_info < (3, 7):
+            assert repr(err) == ("ServerDisconnectedError"
+                                 "('Server disconnected',)")
+        else:
+            assert repr(err) == ("ServerDisconnectedError"
+                                 "('Server disconnected')")
 
         err = client.ServerDisconnectedError(message='No connection')
         if sys.version_info < (3, 7):
@@ -237,7 +242,7 @@ class TestServerDisconnectedError:
 
     def test_str(self) -> None:
         err = client.ServerDisconnectedError()
-        assert str(err) == ''
+        assert str(err) == 'Server disconnected'
 
         err = client.ServerDisconnectedError(message='No connection')
         assert str(err) == 'No connection'
