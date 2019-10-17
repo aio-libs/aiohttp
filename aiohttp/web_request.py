@@ -586,7 +586,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         """Return async iterator to process BODY as multipart."""
         return MultipartReader(self._headers, self._payload)
 
-    async def get_extra_info(self, name: str, default: Any = None):
+    async def get_extra_info(self, name: str, default: Any = None) -> Any:
         """Extra info from protocol transport"""
         protocol = self._protocol
         if protocol is None:
