@@ -567,8 +567,8 @@ class TimerNoop(BaseTimerContext):
 
     def __exit__(self, exc_type: Optional[Type[BaseException]],
                  exc_val: Optional[BaseException],
-                 exc_tb: Optional[TracebackType]) -> Optional[bool]:
-        return False
+                 exc_tb: Optional[TracebackType]) -> None:
+        return
 
 
 class TimerContext(BaseTimerContext):
