@@ -224,7 +224,7 @@ class BaseConnector:
         self._loop = loop
         self._factory = functools.partial(ResponseHandler, loop=loop)
 
-        self.cookies = SimpleCookie()
+        self.cookies = SimpleCookie()  # type: SimpleCookie[str]
 
         # start keep-alive connection cleanup task
         self._cleanup_handle = None
