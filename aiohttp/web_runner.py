@@ -97,7 +97,7 @@ class TCPSite(BaseSite):
         loop = asyncio.get_event_loop()
         server = self._runner.server
         assert server is not None
-        self._server = await loop.create_server(  # type: ignore
+        self._server = await loop.create_server(
             server, self._host, self._port,
             ssl=self._ssl_context, backlog=self._backlog,
             reuse_address=self._reuse_address,
@@ -184,7 +184,7 @@ class SockSite(BaseSite):
         loop = asyncio.get_event_loop()
         server = self._runner.server
         assert server is not None
-        self._server = await loop.create_server(  # type: ignore
+        self._server = await loop.create_server(
             server, sock=self._sock,
             ssl=self._ssl_context, backlog=self._backlog)
 
