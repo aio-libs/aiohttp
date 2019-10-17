@@ -1422,7 +1422,7 @@ ClientTimeout
 
    .. attribute:: total
 
-      Total timeout for the whole request.
+      Total number of seconds for the whole request.
 
       :class:`float`, ``None`` by default.
 
