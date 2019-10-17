@@ -29,7 +29,7 @@ if TYPE_CHECKING:  # pragma: no cover
     _CIMultiDictProxy = CIMultiDictProxy[str]
     _MultiDict = MultiDict[str]
     _MultiDictProxy = MultiDictProxy[str]
-    from http.cookies import BaseCookie  # noqa
+    from http.cookies import BaseCookie, Morsel  # noqa
 else:
     _CIMultiDict = CIMultiDict
     _CIMultiDictProxy = CIMultiDictProxy
@@ -43,8 +43,13 @@ LooseHeaders = Union[Mapping[Union[str, istr], str], _CIMultiDict,
                      _CIMultiDictProxy]
 RawHeaders = Tuple[Tuple[bytes, bytes], ...]
 StrOrURL = Union[str, URL]
-LooseCookies = Union[Iterable[Tuple[str, 'BaseCookie[str]']],
-                     Mapping[str, 'BaseCookie[str]'], 'BaseCookie[str]']
+LooseCookies = Union[
+    Iterable[Tuple[str, 'BaseCookie[str]']],
+    Iterable[Tuple[str, 'Morsel[Any]']],
+    Mapping[str, 'BaseCookie[str]'],
+    Mapping[str, 'Morsel[Any]'],
+    'BaseCookie[str]',
+]
 
 
 if sys.version_info >= (3, 6):
