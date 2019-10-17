@@ -160,11 +160,11 @@ class ServerDisconnectedError(ServerConnectionError):
     """Server disconnected."""
 
     def __init__(self, message: Optional[str]=None) -> None:
-        self.message = message
         if message is None:
-            self.args = ()
-        else:
-            self.args = (message,)
+            message = 'Server disconnected'
+
+        self.args = (message,)
+        self.message = message
 
 
 class ServerTimeoutError(ServerConnectionError, asyncio.TimeoutError):
