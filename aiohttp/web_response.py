@@ -70,7 +70,7 @@ class StreamResponse(BaseClass, HeadersMixin):
         self._chunked = False
         self._compression = False
         self._compression_force = None  # type: Optional[ContentCoding]
-        self._cookies = SimpleCookie()
+        self._cookies = SimpleCookie()  # type: SimpleCookie[str]
 
         self._req = None  # type: Optional[BaseRequest]
         self._payload_writer = None  # type: Optional[AbstractStreamWriter]
@@ -173,7 +173,7 @@ class StreamResponse(BaseClass, HeadersMixin):
         return self._headers
 
     @property
-    def cookies(self) -> SimpleCookie:
+    def cookies(self) -> 'SimpleCookie[str]':
         return self._cookies
 
     def set_cookie(self, name: str, value: str, *,
