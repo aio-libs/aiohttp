@@ -218,3 +218,4 @@ Table Of Contents
    misc
    external
    contributing
+   tutorial/index
