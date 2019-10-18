@@ -123,7 +123,7 @@ Please feel free to file an issue on the `bug tracker
 <https://github.com/aio-libs/aiohttp/issues>`_ if you have found a bug
 or have some suggestion in order to improve the library.
 
-The library uses `Travis <https://travis-ci.com/aio-libs/aiohttp>`_ for
+The library uses `Azure Pipelines <https://dev.azure.com/aio-libs/aiohttp/_build>`_ for
 Continuous Integration.
 
 
