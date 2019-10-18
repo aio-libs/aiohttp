@@ -55,7 +55,7 @@ The client session supports the context manager protocol for self closing.
    The class for creating client sessions and making requests.
 
 
-   :param aiohttp.connector.BaseConnector connector: BaseConnector
+   :param aiohttp.BaseConnector connector: BaseConnector
       sub-class instance to support connection pooling.
 
    :param loop: :ref:`event loop<asyncio-event-loop>` used for
@@ -197,7 +197,7 @@ The client session supports the context manager protocol for self closing.
 
    .. attribute:: connector
 
-   :class:`aiohttp.connector.BaseConnector` derived instance used
+      :class:`aiohttp.BaseConnector` derived instance used
       for the session.
 
       A read-only property.
@@ -759,7 +759,7 @@ certification chaining.
 
       .. versionadded:: 3.4
 
-   :param aiohttp.connector.BaseConnector connector: BaseConnector sub-class
+   :param aiohttp.BaseConnector connector: BaseConnector sub-class
       instance to support connection pooling.
 
    :param bool read_until_eof: Read response until EOF if response
