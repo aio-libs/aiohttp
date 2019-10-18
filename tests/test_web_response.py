@@ -660,7 +660,7 @@ def test_response_cookie_path() -> None:
             'httponly; '
             'max-age=10; '
             'path=/home; '
-            'samesite=lax; ' 
+            'samesite=lax; '
             'secure; '
             'version=2.0')
 
