@@ -356,6 +356,8 @@ and :ref:`aiohttp-web-signals` handlers.
       :param default: Default value to be used when no value for ``name`` is
                       found (default is ``None``).
 
+      .. versionadded:: 3.7
+
    .. comethod:: read()
 
       Read request body, returns :class:`bytes` object with body content.
