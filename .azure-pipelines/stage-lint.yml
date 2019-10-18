@@ -79,7 +79,7 @@ stages:
 
     - script: |
         make mypy
-      displayName: 'Run black checker'
+      displayName: 'Run mypy checker'
 
   - job: 'docs'
     pool:
