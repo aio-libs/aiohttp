@@ -27,7 +27,7 @@ from multidict import CIMultiDict, istr
 
 from . import hdrs, payload
 from .abc import AbstractStreamWriter
-from .helpers import HeadersMixin, rfc822_formatted_time, sentinel
+from .helpers import PY_38, HeadersMixin, rfc822_formatted_time, sentinel
 from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
@@ -42,7 +42,7 @@ else:
     BaseClass = collections.abc.MutableMapping
 
 
-if 'samesite' not in Morsel._reserved:  # type: ignore
+if not PY_38:
     # allow samesite to be used in python < 3.8
     # already permitted in python 3.8, see https://bugs.python.org/issue29613
     Morsel._reserved['samesite'] = 'SameSite'  # type: ignore
