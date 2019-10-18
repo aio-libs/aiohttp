@@ -364,6 +364,18 @@ and :ref:`aiohttp-web-signals` handlers.
 
       :return: a cloned :class:`Request` instance.
 
+   .. method:: get_extra_info(name, default=None)
+
+      Reads extra information from the protocol's transport.
+      If no value associated with ``name`` is found, ``default`` is returned.
+
+      :param str name: The key to look up in the transport extra information.
+
+      :param default: Default value to be used when no value for ``name`` is
+                      found (default is ``None``).
+
+      .. versionadded:: 3.7
+
    .. comethod:: read()
 
       Read request body, returns :class:`bytes` object with body content.
