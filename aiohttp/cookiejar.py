@@ -124,7 +124,7 @@ class CookieJar(AbstractCookieJar):
             return
 
         if isinstance(cookies, Mapping):
-            cookies = cookies.items()  # type: ignore
+            cookies = cookies.items()
 
         for name, cookie in cookies:
             if not isinstance(cookie, Morsel):
