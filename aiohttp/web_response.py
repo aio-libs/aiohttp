@@ -9,7 +9,7 @@ import warnings
 import zlib
 from concurrent.futures import Executor
 from email.utils import parsedate
-from http.cookies import SimpleCookie, Morsel
+from http.cookies import Morsel, SimpleCookie
 from typing import (  # noqa
     TYPE_CHECKING,
     Any,
@@ -42,10 +42,10 @@ else:
     BaseClass = collections.abc.MutableMapping
 
 
-if 'samesite' not in Morsel._reserved:
+if 'samesite' not in Morsel._reserved:  # type: ignore
     # allow samesite to be used in python < 3.8
     # already permitted in python 3.8, see https://bugs.python.org/issue29613
-    Morsel._reserved['samesite'] = 'SameSite'
+    Morsel._reserved['samesite'] = 'SameSite'  # type: ignore
 
 
 class ContentCoding(enum.Enum):
