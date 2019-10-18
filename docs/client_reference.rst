@@ -53,7 +53,7 @@ The client session supports the context manager protocol for self closing.
    The class for creating client sessions and making requests.
 
 
-   :param aiohttp.connector.BaseConnector connector: BaseConnector
+   :param aiohttp.BaseConnector connector: BaseConnector
       sub-class instance to support connection pooling.
 
    :param dict cookies: Cookies to send with the request (optional)
@@ -188,7 +188,7 @@ The client session supports the context manager protocol for self closing.
 
    .. attribute:: connector
 
-   :class:`aiohttp.connector.BaseConnector` derived instance used
+      :class:`aiohttp.BaseConnector` derived instance used
       for the session.
 
       A read-only property.
@@ -207,6 +207,13 @@ The client session supports the context manager protocol for self closing.
       require exact url from location header. To disable *re-quote* system
       create ``ClientSession`` with ``requote_redirect_url=False``.
 
+   .. attribute:: timeout
+
+      Default client timeouts, :class:`ClientTimeout` instance.  The value can
+      be tuned by passing *timeout* parameter to :class:`ClientSession`
+      constructor.
+
+      .. versionadded:: 3.7
 
    .. comethod:: request(method, url, *, params=None, data=None, json=None,\
                          cookies=None, headers=None, skip_auto_headers=None, \
@@ -676,7 +683,7 @@ certification chaining.
 
       .. versionadded:: 3.4
 
-   :param aiohttp.connector.BaseConnector connector: BaseConnector sub-class
+   :param aiohttp.BaseConnector connector: BaseConnector sub-class
       instance to support connection pooling.
 
    :param bool read_until_eof: Read response until EOF if response
@@ -1422,7 +1429,7 @@ ClientTimeout
 
    .. attribute:: total
 
-      Maximal number of seconds for the whole request.
+      Total number of seconds for the whole request.
 
       :class:`float`, ``None`` by default.
 
