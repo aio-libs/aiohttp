@@ -103,14 +103,10 @@ old_debug = coroutines._DEBUG  # type: ignore
 coroutines._DEBUG = False  # type: ignore
 
 
-@asyncio.coroutine
-def noop(*args, **kwargs):  # type: ignore
-    return  # type: ignore
-
-
-async def noop2(*args: Any, **kwargs: Any) -> None:
+async def noop(*args: Any, **kwargs: Any) -> None:
     return
 
+noop2 = noop
 
 coroutines._DEBUG = old_debug  # type: ignore
 
