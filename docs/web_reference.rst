@@ -657,7 +657,8 @@ StreamResponse
 
    .. method:: set_cookie(name, value, *, path='/', expires=None, \
                           domain=None, max_age=None, \
-                          secure=None, httponly=None, version=None)
+                          secure=None, httponly=None, version=None, \
+                          samesite=None)
 
       Convenient way for setting :attr:`cookies`, allows to specify
       some additional properties like *max_age* in a single call.

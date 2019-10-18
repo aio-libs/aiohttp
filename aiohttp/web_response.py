@@ -9,7 +9,7 @@ import warnings
 import zlib
 from concurrent.futures import Executor
 from email.utils import parsedate
-from http.cookies import SimpleCookie
+from http.cookies import SimpleCookie, Morsel
 from typing import (  # noqa
     TYPE_CHECKING,
     Any,
@@ -40,6 +40,12 @@ if TYPE_CHECKING:  # pragma: no cover
     BaseClass = MutableMapping[str, Any]
 else:
     BaseClass = collections.abc.MutableMapping
+
+
+if 'samesite' not in Morsel._reserved:
+    # allow samesite to be used in python < 3.8
+    # already permitted in python 3.8, see https://bugs.python.org/issue29613
+    Morsel._reserved['samesite'] = 'SameSite'
 
 
 class ContentCoding(enum.Enum):
@@ -171,7 +177,8 @@ class StreamResponse(BaseClass, HeadersMixin):
                    path: str='/',
                    secure: Optional[str]=None,
                    httponly: Optional[str]=None,
-                   version: Optional[str]=None) -> None:
+                   version: Optional[str]=None,
+                   samesite: Optional[str]=None) -> None:
         """Set or update response cookie.
 
         Sets new cookie or updates existent with new value.
@@ -207,6 +214,8 @@ class StreamResponse(BaseClass, HeadersMixin):
             c['httponly'] = httponly
         if version is not None:
             c['version'] = version
+        if samesite is not None:
+            c['samesite'] = samesite
 
     def del_cookie(self, name: str, *,
                    domain: Optional[str]=None,
