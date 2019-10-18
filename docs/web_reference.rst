@@ -2098,7 +2098,7 @@ The definition is created by functions like :func:`get` or
 
       .. versionchanged:: 3.7
 
-      Return value updated from ``None`` to :class:`list` of
+         Return value updated from ``None`` to :class:`list` of
          :class:`AbstractRoute` instances.
 
 
