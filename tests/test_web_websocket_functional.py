@@ -246,8 +246,10 @@ async def test_send_recv_json(loop, aiohttp_client) -> None:
 
 async def test_close_timeout(loop, aiohttp_client) -> None:
     aborted = loop.create_future()
+    elapsed = 1e10  # something big
 
     async def handler(request):
+        nonlocal elapsed
         ws = web.WebSocketResponse(timeout=0.1)
         await ws.prepare(request)
         assert 'request' == (await ws.receive_str())
@@ -255,9 +257,6 @@ async def test_close_timeout(loop, aiohttp_client) -> None:
         begin = ws._loop.time()
         assert (await ws.close())
         elapsed = ws._loop.time() - begin
-        assert elapsed < 0.201, \
-            'close() should have returned before ' \
-            'at most 2x timeout.'
         assert ws.close_code == 1006
         assert isinstance(ws.exception(), asyncio.TimeoutError)
         aborted.set_result(1)
@@ -293,6 +292,10 @@ async def test_close_timeout(loop, aiohttp_client) -> None:
 
     await asyncio.sleep(0.08, loop=loop)
     assert (await aborted)
+
+    assert elapsed < 0.201, \
+        'close() should have returned before ' \
+        'at most 2x timeout.'
 
     await ws.close()
 
