@@ -679,10 +679,13 @@ async def test_client_session_custom_attr() -> None:
         session.custom = None
 
 
-async def test_client_session_timeout_args(loop) -> None:
+async def test_client_session_timeout_default_args(loop) -> None:
     session1 = ClientSession()
-    assert session1._timeout == client.DEFAULT_TIMEOUT
+    assert session1.timeout == client.DEFAULT_TIMEOUT
 
+async def test_client_session_timeout_argument() -> None:
+    session = ClientSession(timeout=500)
+    assert session.timeout == 500
 
 async def test_requote_redirect_url_default() -> None:
     session = ClientSession()

@@ -913,6 +913,11 @@ class ClientSession:
         """Do URL requoting on redirection handling."""
         return self._requote_redirect_url
 
+    @property
+    def timeout(self) -> Union[object, ClientTimeout]:
+        """Timeout for the session."""
+        return self._timeout
+
     def detach(self) -> None:
         """Detach connector from session without closing the former.
 
