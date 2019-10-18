@@ -207,6 +207,13 @@ The client session supports the context manager protocol for self closing.
       require exact url from location header. To disable *re-quote* system
       create ``ClientSession`` with ``requote_redirect_url=False``.
 
+   .. attribute:: timeout
+
+      Default client timeouts, :class:`ClientTimeout` instance.  The value can
+      be tuned by passing *timeout* parameter to :class:`ClientSession`
+      constructor.
+
+      .. versionadded:: 3.7
 
    .. comethod:: request(method, url, *, params=None, data=None, json=None,\
                          cookies=None, headers=None, skip_auto_headers=None, \
