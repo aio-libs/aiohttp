@@ -44,6 +44,7 @@ from .web_routedef import AbstractRouteDef
 from .web_server import Server
 from .web_urldispatcher import (
     AbstractResource,
+    AbstractRoute,
     Domain,
     MaskDomain,
     MatchedSubAppResource,
@@ -310,8 +311,9 @@ class Application(MutableMapping[str, Any]):
         factory = partial(MatchedSubAppResource, rule, subapp)
         return self._add_subapp(factory, subapp)
 
-    def add_routes(self, routes: Iterable[AbstractRouteDef]) -> None:
-        self.router.add_routes(routes)
+    def add_routes(self,
+                   routes: Iterable[AbstractRouteDef]) -> List[AbstractRoute]:
+        return self.router.add_routes(routes)
 
     @property
     def on_response_prepare(self) -> _RespPrepareSignal:
