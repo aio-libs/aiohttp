@@ -1582,7 +1582,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       .. versionchanged:: 3.7
 
-      Return value updated from ``None`` to :class:`list` of
+         Return value updated from ``None`` to :class:`list` of
          :class:`AbstractRoute` instances.
 
    .. method:: add_get(path, handler, *, name=None, allow_head=True, **kwargs)
