@@ -129,6 +129,7 @@ Jake Davis
 Jakob Ackermann
 Jakub Wilk
 Jashandeep Sohi
+Jens Steinhauser
 Jeongkyu Shin
 Jeroen van der Heijden
 Jesus Cea
@@ -205,6 +206,7 @@ Pepe Osca
 Philipp A.
 Pieter van Beek
 Rafael Viotti
+Raphael Bialon
 Raúl Cumplido
 Required Field
 Robert Lu
@@ -229,6 +231,7 @@ Stepan Pletnev
 Stephen Granade
 Steven Seguin
 Sunghyun Hwang
+Sunit Deshpande
 Sviatoslav Bulbakha
 Sviatoslav Sydorenko
 Taha Jahangir
@@ -276,5 +279,6 @@ Young-Ho Cha
 Yuriy Shatrov
 Yury Selivanov
 Yusuke Tsutsumi
+Zlatan Sičanica
 Марк Коренберг
 Семён Марьясин

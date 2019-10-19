@@ -53,7 +53,7 @@ The client session supports the context manager protocol for self closing.
    The class for creating client sessions and making requests.
 
 
-   :param aiohttp.connector.BaseConnector connector: BaseConnector
+   :param aiohttp.BaseConnector connector: BaseConnector
       sub-class instance to support connection pooling.
 
    :param dict cookies: Cookies to send with the request (optional)
@@ -135,7 +135,7 @@ The client session supports the context manager protocol for self closing.
 
          Async callback support is added.
 
-   :param timeout: a :class:`ClientTimeout` settings structure, 5min
+   :param timeout: a :class:`ClientTimeout` settings structure, 300 seconds (5min)
         total timeout by default.
 
       .. versionadded:: 3.3
@@ -188,7 +188,7 @@ The client session supports the context manager protocol for self closing.
 
    .. attribute:: connector
 
-   :class:`aiohttp.connector.BaseConnector` derived instance used
+      :class:`aiohttp.BaseConnector` derived instance used
       for the session.
 
       A read-only property.
@@ -207,6 +207,13 @@ The client session supports the context manager protocol for self closing.
       require exact url from location header. To disable *re-quote* system
       create ``ClientSession`` with ``requote_redirect_url=False``.
 
+   .. attribute:: timeout
+
+      Default client timeouts, :class:`ClientTimeout` instance.  The value can
+      be tuned by passing *timeout* parameter to :class:`ClientSession`
+      constructor.
+
+      .. versionadded:: 3.7
 
    .. comethod:: request(method, url, *, params=None, data=None, json=None,\
                          cookies=None, headers=None, skip_auto_headers=None, \
@@ -347,7 +354,7 @@ The client session supports the context manager protocol for self closing.
             :class:`float` is still supported for sake of backward
             compatibility.
 
-            If :class:`float` is passed it is a *total* timeout.
+            If :class:`float` is passed it is a *total* timeout (in seconds).
 
       :param ssl: SSL validation mode. ``None`` for default SSL check
                   (:func:`ssl.create_default_context` is used),
@@ -676,14 +683,14 @@ certification chaining.
 
       .. versionadded:: 3.4
 
-   :param aiohttp.connector.BaseConnector connector: BaseConnector sub-class
+   :param aiohttp.BaseConnector connector: BaseConnector sub-class
       instance to support connection pooling.
 
    :param bool read_until_eof: Read response until EOF if response
                                does not have Content-Length header.
                                ``True`` by default (optional).
 
-   :param timeout: a :class:`ClientTimeout` settings structure, 5min
+   :param timeout: a :class:`ClientTimeout` settings structure, 300 seconds (5min)
         total timeout by default.
 
 
@@ -1422,13 +1429,13 @@ ClientTimeout
 
    .. attribute:: total
 
-      Total timeout for the whole request.
+      Total number of seconds for the whole request.
 
       :class:`float`, ``None`` by default.
 
    .. attribute:: connect
 
-      Total timeout for acquiring a connection from pool.  The time
+      Maximal number of seconds for acquiring a connection from pool.  The time
       consists connection establishment for a new connection or
       waiting for a free connection from a pool if pool connection
       limits are exceeded.
@@ -1440,14 +1447,14 @@ ClientTimeout
 
    .. attribute:: sock_connect
 
-      A timeout for connecting to a peer for a new connection, not
+      Maximal number of seconds for connecting to a peer for a new connection, not
       given from a pool.  See also :attr:`connect`.
 
       :class:`float`, ``None`` by default.
 
    .. attribute:: sock_read
 
-      A timeout for reading a portion of data from a peer.
+      Maximal number of seconds for reading a portion of data from a peer.
 
       :class:`float`, ``None`` by default.
 

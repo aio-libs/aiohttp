@@ -346,6 +346,18 @@ and :ref:`aiohttp-web-signals` handlers.
 
       :return: a cloned :class:`Request` instance.
 
+   .. method:: get_extra_info(name, default=None)
+
+      Reads extra information from the protocol's transport.
+      If no value associated with ``name`` is found, ``default`` is returned.
+
+      :param str name: The key to look up in the transport extra information.
+
+      :param default: Default value to be used when no value for ``name`` is
+                      found (default is ``None``).
+
+      .. versionadded:: 3.7
+
    .. comethod:: read()
 
       Read request body, returns :class:`bytes` object with body content.
@@ -1413,11 +1425,18 @@ duplicated like one using :meth:`Application.copy`.
       The table is a :class:`list` of :class:`RouteDef` items or
       :class:`RouteTableDef`.
 
+      :returns: :class:`list` of registered :class:`AbstractRoute` instances.
+
       The method is a shortcut for
       ``app.router.add_routes(routes_table)``, see also
       :meth:`UrlDispatcher.add_routes`.
 
       .. versionadded:: 3.1
+
+      .. versionchanged:: 3.7
+
+         Return value updated from ``None`` to :class:`list` of
+         :class:`AbstractRoute` instances.
 
    .. comethod:: startup()
 
@@ -1569,7 +1588,14 @@ Router is any object that implements :class:`AbstractRouter` interface.
       The table is a :class:`list` of :class:`RouteDef` items or
       :class:`RouteTableDef`.
 
+      :returns: :class:`list` of registered :class:`AbstractRoute` instances.
+
       .. versionadded:: 2.3
+
+      .. versionchanged:: 3.7
+
+         Return value updated from ``None`` to :class:`list` of
+         :class:`AbstractRoute` instances.
 
    .. method:: add_get(path, handler, *, name=None, allow_head=True, **kwargs)
 
@@ -2079,6 +2105,13 @@ The definition is created by functions like :func:`get` or
       Register itself into :class:`UrlDispatcher`.
 
       Abstract method, should be overridden by subclasses.
+
+      :returns: :class:`list` of registered :class:`AbstractRoute` objects.
+
+      .. versionchanged:: 3.7
+
+         Return value updated from ``None`` to :class:`list` of
+         :class:`AbstractRoute` instances.
 
 
 .. class:: RouteDef
