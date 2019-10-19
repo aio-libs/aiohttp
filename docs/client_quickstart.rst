@@ -402,10 +402,10 @@ Timeouts
 
 Timeout settings are stored in :class:`ClientTimeout` data structure.
 
-By default *aiohttp* uses a *total* 5min timeout, it means that the
+By default *aiohttp* uses a *total* 300 seconds (5min) timeout, it means that the
 whole operation should finish in 5 minutes.
 
-The value could be overridden by *timeout* parameter for the session::
+The value could be overridden by *timeout* parameter for the session (specified in seconds)::
 
     timeout = aiohttp.ClientTimeout(total=60)
     async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -420,24 +420,24 @@ Supported :class:`ClientTimeout` fields are:
 
    ``total``
 
-      The whole operation time including connection
+      The maximal number of seconds for the whole operation including connection
       establishment, request sending and response reading.
 
    ``connect``
 
-      The time
-      consists connection establishment for a new connection or
-      waiting for a free connection from a pool if pool connection
+      The maximal number of seconds for
+      connection establishment of a new connection or
+      for waiting for a free connection from a pool if pool connection
       limits are exceeded.
 
    ``sock_connect``
 
-      A timeout for connecting to a peer for a new connection, not
+      The maximal number of seconds for connecting to a peer for a new connection, not
       given from a pool.
 
    ``sock_read``
 
-      The maximum allowed timeout for period between reading a new
+      The maximal number of seconds allowed for period between reading a new
       data portion from a peer.
 
 All fields are floats, ``None`` or ``0`` disables a particular timeout check, see the
