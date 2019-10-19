@@ -293,7 +293,7 @@ async def test_close_timeout(loop, aiohttp_client) -> None:
     await asyncio.sleep(0.08, loop=loop)
     assert (await aborted)
 
-    assert elapsed < 0.201, \
+    assert elapsed < 0.25, \
         'close() should have returned before ' \
         'at most 2x timeout.'
 
