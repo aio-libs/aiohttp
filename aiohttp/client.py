@@ -14,6 +14,7 @@ from typing import (  # noqa
     Awaitable,
     Callable,
     Coroutine,
+    FrozenSet,
     Generator,
     Generic,
     Iterable,
@@ -919,12 +920,12 @@ class ClientSession:
         return self._timeout
 
     @property
-    def headers(self) -> CIMultiDict[str]:
-        """The headers of the client session."""
+    def default_headers(self) -> 'CIMultiDict[str]':
+        """The default headers of the client session."""
         return self._default_headers
 
     @property
-    def skip_auto_headers(self) -> frozenset:
+    def skip_auto_headers(self) -> FrozenSet[istr]:
         """Headers for which autogeneration should be skipped"""
         return self._skip_auto_headers
 
@@ -944,7 +945,9 @@ class ClientSession:
         return self._connector_owner
 
     @property
-    def raise_for_status(self) -> bool:
+    def raise_for_status(
+        self
+    ) -> Union[bool, Callable[[ClientResponse], Awaitable[None]]]:
         """
         Should `ClientResponse.raise_for_status()`
         be called for each response
