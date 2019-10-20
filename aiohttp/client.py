@@ -11,6 +11,8 @@ import warnings
 from types import SimpleNamespace, TracebackType
 from typing import (  # noqa
     Any,
+    Awaitable,
+    Callable,
     Coroutine,
     FrozenSet,
     Generator,
