@@ -972,17 +972,25 @@ Connection
 
       Connection transport
 
-   .. method:: close()
+   .. comethod:: close()
 
       Close connection with forcibly closing underlying socket.
 
-   .. method:: release()
+      .. versionchanged:: 4.0
+
+         The method is converted from a regular function to async one.
+
+   .. comethod:: release()
 
       Release connection back to connector.
 
       Underlying socket is not closed, the connection may be reused
       later if timeout (30 seconds by default) for connection was not
       expired.
+
+      .. versionchanged:: 4.0
+
+         The method is converted from a regular function to async one.
 
 
 Response object

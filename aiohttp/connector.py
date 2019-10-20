@@ -137,19 +137,19 @@ class Connection:
             with suppress(Exception):
                 cb()
 
-    def close(self) -> None:
+    async def close(self) -> None:
         self._notify_release()
 
         if self._protocol is not None:
-            self._connector._release(
+            await self._connector._release(
                 self._key, self._protocol, should_close=True)
             self._protocol = None
 
-    def release(self) -> None:
+    async def release(self) -> None:
         self._notify_release()
 
         if self._protocol is not None:
-            self._connector._release(
+            await self._connector._release(
                 self._key, self._protocol,
                 should_close=self._protocol.should_close)
             self._protocol = None
@@ -311,7 +311,7 @@ class BaseConnector:
                     if proto.is_connected():
                         if use_time - deadline < 0:
                             transport = proto.transport
-                            proto.close()
+                            await proto.close()
                             if (key.is_ssl and
                                     not self._cleanup_closed_disabled):
                                 self._cleanup_closed_transports.append(
@@ -368,8 +368,8 @@ class BaseConnector:
                     err_msg = "Error while closing connector: " + repr(res)
                     logging.error(err_msg)
 
-    def _close_immediately(self) -> List['asyncio.Future[None]']:
-        waiters = []  # type: List['asyncio.Future[None]']
+    def _close_immediately(self) -> List['Awaitable[None]']:
+        waiters = []  # type: List['Awaitable[None]']
 
         if self._closed:
             return waiters
@@ -390,12 +390,10 @@ class BaseConnector:
 
             for data in self._conns.values():
                 for proto, t0 in data:
-                    proto.close()
-                    waiters.append(proto.closed)
+                    waiters.append(proto.close())
 
             for proto in self._acquired:
-                proto.close()
-                waiters.append(proto.closed)
+                waiters.append(proto.close())
 
             # TODO (A.Yushovskiy, 24-May-2019) collect transp. closing futures
             for transport in self._cleanup_closed_transports:
@@ -506,7 +504,7 @@ class BaseConnector:
             try:
                 proto = await self._create_connection(req, traces, timeout)
                 if self._closed:
-                    proto.close()
+                    await proto.close()
                     raise ClientConnectionError("Connector is closed.")
             except BaseException:
                 if not self._closed:
@@ -543,7 +541,7 @@ class BaseConnector:
             if proto.is_connected():
                 if t1 - t0 > self._keepalive_timeout:
                     transport = proto.transport
-                    proto.close()
+                    await proto.close()
                     # only for SSL transports
                     if key.is_ssl and not self._cleanup_closed_disabled:
                         self._cleanup_closed_transports.append(transport)
@@ -597,8 +595,8 @@ class BaseConnector:
         else:
             self._release_waiter()
 
-    def _release(self, key: 'ConnectionKey', protocol: ResponseHandler,
-                 *, should_close: bool=False) -> None:
+    async def _release(self, key: 'ConnectionKey', protocol: ResponseHandler,
+                       *, should_close: bool=False) -> None:
         if self._closed:
             # acquired connection is already released on connector closing
             return
@@ -610,7 +608,7 @@ class BaseConnector:
 
         if should_close or protocol.should_close:
             transport = protocol.transport
-            protocol.close()
+            await protocol.close()
 
             if key.is_ssl and not self._cleanup_closed_disabled:
                 self._cleanup_closed_transports.append(transport)
@@ -724,7 +722,7 @@ class TCPConnector(BaseConnector):
         self._family = family
         self._local_addr = local_addr
 
-    def _close_immediately(self) -> List['asyncio.Future[None]']:
+    def _close_immediately(self) -> List['Awaitable[None]']:
         for ev in self._throttle_dns_events.values():
             ev.cancel()
         return super()._close_immediately()

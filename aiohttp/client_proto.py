@@ -58,13 +58,14 @@ class ResponseHandler(BaseProtocol,
     def force_close(self) -> None:
         self._should_close = True
 
-    def close(self) -> None:
+    async def close(self) -> None:
         transport = self.transport
         if transport is not None:
             transport.close()
             self.transport = None
             self._payload = None
             self._drop_timeout()
+            await self.closed
 
     def is_connected(self) -> bool:
         return self.transport is not None
