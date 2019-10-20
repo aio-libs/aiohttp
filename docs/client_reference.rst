@@ -215,6 +215,82 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 3.7
 
+   .. attribute:: headers
+
+      HTTP Headers that sent with every request
+
+      May be either *iterable of key-value pairs* or
+      :class:`~collections.abc.Mapping`
+      (e.g. :class:`dict`,
+      :class:`~multidict.CIMultiDict`).
+
+      .. versionadded:: 3.7
+
+   .. attribute:: skip_auto_headers
+
+      Set of headers for which autogeneration skipped.
+
+      :class:`frozenset` of :class:`str` or :class:`~aiohttp.istr` (optional)
+
+      .. versionadded:: 3.7
+
+   .. attribute:: auth
+
+      An object that represents HTTP Basic Authorization.
+
+      :class:`~aiohttp.BasicAuth` (optional)
+
+      .. versionadded:: 3.7
+
+   .. attribute:: json_serialize
+
+      Json serializer callable.
+
+      By default :func:`json.dumps` function.
+
+      .. versionadded:: 3.7
+
+   .. attribute:: connector_owner
+
+      Should connector be closed on session closing
+
+      :class:`bool` (optional)
+
+      .. versionadded:: 3.7
+
+   .. attribute:: raise_for_status
+
+      Should :meth:`ClientResponse.raise_for_status()` be called for each response
+
+      Either :class:`bool` or :class:`callable`
+
+      .. versionadded:: 3.7
+
+   .. attribute:: auto_decompress
+
+      Should the body response be automatically decompressed
+
+      :class:`bool` default is ``True``
+
+      .. versionadded:: 3.7
+
+   .. attribute:: trust_env
+
+      Should get proxies information from HTTP_PROXY / HTTPS_PROXY environment
+      variables or ~/.netrc file if present
+
+      :class:`bool` default is ``False``
+
+      .. versionadded:: 3.7
+
+   .. attribute:: trace_config
+
+      A list of :class:`TraceConfig` instances used for client
+      tracing.  ``None`` (default) is used for request tracing
+      disabling.  See :ref:`aiohttp-client-tracing-reference` for more information.
+
+      .. versionadded:: 3.7
+
    .. comethod:: request(method, url, *, params=None, data=None, json=None,\
                          cookies=None, headers=None, skip_auto_headers=None, \
                          auth=None, allow_redirects=True,\
