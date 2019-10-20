@@ -70,7 +70,7 @@ async def test_close_coro(create_session) -> None:
 async def test_init_headers_simple_dict(create_session) -> None:
     session = await create_session(headers={"h1": "header1",
                                             "h2": "header2"})
-    assert (sorted(session._default_headers.items()) ==
+    assert (sorted(session.headers.items()) ==
             ([("h1", "header1"), ("h2", "header2")]))
 
 
@@ -78,7 +78,7 @@ async def test_init_headers_list_of_tuples(create_session) -> None:
     session = await create_session(headers=[("h1", "header1"),
                                             ("h2", "header2"),
                                             ("h3", "header3")])
-    assert (session._default_headers ==
+    assert (session.headers ==
             CIMultiDict([("h1", "header1"),
                          ("h2", "header2"),
                          ("h3", "header3")]))
@@ -88,7 +88,7 @@ async def test_init_headers_MultiDict(create_session) -> None:
     session = await create_session(headers=MultiDict([("h1", "header1"),
                                                       ("h2", "header2"),
                                                       ("h3", "header3")]))
-    assert (session._default_headers ==
+    assert (session.headers ==
             CIMultiDict([("H1", "header1"),
                          ("H2", "header2"),
                          ("H3", "header3")]))
@@ -99,7 +99,7 @@ async def test_init_headers_list_of_tuples_with_duplicates(
     session = await create_session(headers=[("h1", "header11"),
                                             ("h2", "header21"),
                                             ("h1", "header12")])
-    assert (session._default_headers ==
+    assert (session.headers ==
             CIMultiDict([("H1", "header11"),
                          ("H2", "header21"),
                          ("H1", "header12")]))
