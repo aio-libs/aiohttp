@@ -920,7 +920,7 @@ class ClientSession:
         return self._timeout
 
     @property
-    def default_headers(self) -> 'CIMultiDict[str]':
+    def headers(self) -> 'CIMultiDict[str]':
         """The default headers of the client session."""
         return self._default_headers
 
@@ -956,7 +956,7 @@ class ClientSession:
 
     @property
     def auto_decompress(self) -> bool:
-        """Should automatically decompress response body"""
+        """Should the body response be automatically decompressed"""
         return self._auto_decompress
 
     @property
