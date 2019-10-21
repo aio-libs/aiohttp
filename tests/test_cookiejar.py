@@ -4,7 +4,6 @@ import itertools
 import pathlib
 import unittest
 from http.cookies import BaseCookie, Morsel, SimpleCookie
-
 from unittest import mock
 
 import pytest
