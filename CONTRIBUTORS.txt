@@ -1,6 +1,7 @@
 - Contributors -
 ----------------
 A. Jesse Jiryu Davis
+Adam Bannister
 Adam Cooper
 Adam Mills
 Adrián Chaves
