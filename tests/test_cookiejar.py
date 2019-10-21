@@ -4,7 +4,7 @@ import itertools
 import os
 import tempfile
 import unittest
-from http.cookies import SimpleCookie
+from http.cookies import SimpleCookie, BaseCookie, Morsel
 from unittest import mock
 
 import pytest
@@ -656,3 +656,20 @@ async def test_dummy_cookie_jar() -> None:
         next(iter(dummy_jar))
     assert not dummy_jar.filter_cookies(URL("http://example.com/"))
     dummy_jar.clear()
+
+
+async def test_loose_cookies_types() -> None:
+    jar = CookieJar()
+
+    accepted_types = {
+        'StrBaseCookieTuples': [('str', BaseCookie())],
+        'StrMorselTuples': [('str', Morsel())],
+        'StrStrTuples': [('str', 'str'), ],
+        'StrToBaseCookieMapping': {'str': BaseCookie()},
+        'StrToMorselMapping': {'str': Morsel()},
+        'StrToStrMapping': {'str': 'str'},
+        'BaseCookie[str]': SimpleCookie(),
+    }
+
+    for name, loose_cookies_type in accepted_types.items():
+        jar.update_cookies(cookies=loose_cookies_type)
