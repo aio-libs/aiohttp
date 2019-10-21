@@ -7,7 +7,7 @@ Changelog
     file is managed by towncrier. You *may* edit previous change logs to
     fix problems like typo corrections or such.
     To add a new change log entry, please see
-    https://pip.pypa.io/en/latest/development/#adding-a-news-entry
+    https://pip.pypa.io/en/latest/development/contributing/#news-entries
     we named the news folder "changes".
 
     WARNING: Don't drop the next directive!

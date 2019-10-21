@@ -51,7 +51,8 @@ class ClientResponseError(ClientError):
                  history: Tuple[ClientResponse, ...], *,
                  status: Optional[int]=None,
                  message: str='',
-                 headers: Optional[_CIMultiDict]=None) -> None:
+                 headers: Optional[_CIMultiDict]=None,
+                 response: Optional[ClientResponse]=None) -> None:
         self.request_info = request_info
         if status is not None:
             self.status = status
@@ -60,6 +61,7 @@ class ClientResponseError(ClientError):
         self.message = message
         self.headers = headers
         self.history = history
+        self.response = response
         self.args = (request_info, history)
 
     def __str__(self) -> str:

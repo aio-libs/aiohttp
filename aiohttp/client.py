@@ -715,7 +715,8 @@ class ClientSession:
                     resp.history,
                     message='Invalid response status',
                     status=resp.status,
-                    headers=resp.headers)
+                    headers=resp.headers,
+                    response=resp)
 
             if resp.headers.get(hdrs.UPGRADE, '').lower() != 'websocket':
                 raise WSServerHandshakeError(
@@ -723,7 +724,8 @@ class ClientSession:
                     resp.history,
                     message='Invalid upgrade header',
                     status=resp.status,
-                    headers=resp.headers)
+                    headers=resp.headers,
+                    response=resp)
 
             if resp.headers.get(hdrs.CONNECTION, '').lower() != 'upgrade':
                 raise WSServerHandshakeError(
@@ -731,7 +733,8 @@ class ClientSession:
                     resp.history,
                     message='Invalid connection header',
                     status=resp.status,
-                    headers=resp.headers)
+                    headers=resp.headers,
+                    response=resp)
 
             # key calculation
             key = resp.headers.get(hdrs.SEC_WEBSOCKET_ACCEPT, '')
@@ -743,7 +746,8 @@ class ClientSession:
                     resp.history,
                     message='Invalid challenge response',
                     status=resp.status,
-                    headers=resp.headers)
+                    headers=resp.headers,
+                    response=resp)
 
             # websocket protocol
             protocol = None
@@ -770,7 +774,8 @@ class ClientSession:
                             resp.history,
                             message=exc.args[0],
                             status=resp.status,
-                            headers=resp.headers)
+                            headers=resp.headers,
+                            response=resp)
                 else:
                     compress = 0
                     notakeover = False
