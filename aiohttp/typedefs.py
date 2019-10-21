@@ -51,8 +51,10 @@ StrToMorselMapping = Mapping[str, 'Morsel[Any]']
 LooseCookies = Union[
     StrBaseCookieTuples,
     StrMorselTuples,
+    Iterable[Tuple[str, str]],
     StrToBaseCookieMapping,
     StrToMorselMapping,
+    Mapping[str, str],
     'BaseCookie[str]',
 ]
 
