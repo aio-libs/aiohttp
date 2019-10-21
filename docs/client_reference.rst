@@ -1040,10 +1040,9 @@ TCPConnector
    :param int ttl_dns_cache: expire after some seconds the DNS entries, ``None``
       means cached forever. By default 10 seconds.
 
-      By default DNS entries are cached forever, in some environments the IP
-      addresses related to a specific HOST can change after a specific time. Use
-      this option to keep the DNS cache updated refreshing each entry after N
-      seconds.
+      In some environments the IP addresses related to a specific HOST can
+      change after a specific time. Use this option to keep the DNS cache
+      updated refreshing each entry after N seconds.
 
    :param int limit: total number simultaneous connections. If *limit* is
                      ``None`` the connector has no limit (default: 100).
