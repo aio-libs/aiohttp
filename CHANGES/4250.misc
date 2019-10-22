@@ -1,1 +1,1 @@
-Add two more types to LooseCookies with tests for the allowed types.
+Fixed annotations of the cookies parameter of CookieJar.update_cookies() and ClientRequest.update_cookies().
