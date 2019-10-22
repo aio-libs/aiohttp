@@ -44,17 +44,15 @@ LooseHeaders = Union[Mapping[Union[str, istr], str], _CIMultiDict,
 RawHeaders = Tuple[Tuple[bytes, bytes], ...]
 StrOrURL = Union[str, URL]
 
-StrBaseCookieTuples = Iterable[Tuple[str, 'BaseCookie[str]']]
-StrMorselTuples = Iterable[Tuple[str, 'Morsel[str]']]
-StrToBaseCookieMapping = Mapping[str, 'BaseCookie[str]']
-StrToMorselMapping = Mapping[str, 'Morsel[Any]']
+LooseCookiesMappings = Mapping[
+    str, Union[str, 'BaseCookie[str]', 'Morsel[Any]']
+]
+LooseCookiesIterables = Iterable[
+    Tuple[str, Union[str, 'BaseCookie[str]', 'Morsel[Any]']]
+]
 LooseCookies = Union[
-    StrBaseCookieTuples,
-    StrMorselTuples,
-    Iterable[Tuple[str, str]],
-    StrToBaseCookieMapping,
-    StrToMorselMapping,
-    Mapping[str, str],
+    LooseCookiesMappings,
+    LooseCookiesIterables,
     'BaseCookie[str]',
 ]
 
