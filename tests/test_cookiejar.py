@@ -667,15 +667,15 @@ async def test_dummy_cookie_jar() -> None:
 async def test_loose_cookies_types() -> None:
     jar = CookieJar()
 
-    accepted_types = {
-        'StrBaseCookieTuples': [('str', BaseCookie())],
-        'StrMorselTuples': [('str', Morsel())],
-        'StrStrTuples': [('str', 'str'), ],
-        'StrToBaseCookieMapping': {'str': BaseCookie()},
-        'StrToMorselMapping': {'str': Morsel()},
-        'StrToStrMapping': {'str': 'str'},
-        'BaseCookie[str]': SimpleCookie(),
-    }
+    accepted_types = [
+        [('str', BaseCookie())],
+        [('str', Morsel())],
+        [('str', 'str'), ],
+        {'str': BaseCookie()},
+        {'str': Morsel()},
+        {'str': 'str'},
+        SimpleCookie(),
+    ]
 
-    for name, loose_cookies_type in accepted_types.items():
+    for loose_cookies_type in accepted_types:
         jar.update_cookies(cookies=loose_cookies_type)
