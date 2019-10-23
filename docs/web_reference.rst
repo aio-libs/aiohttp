@@ -762,7 +762,8 @@ StreamResponse
       calling this method.
 
       The coroutine calls :attr:`~aiohttp.web.Application.on_response_prepare`
-      signal handlers.
+      signal handlers after default headers have been computed and directly
+      before headers are sent.
 
    .. comethod:: write(data)
 
@@ -1316,10 +1317,11 @@ duplicated like one using :meth:`Application.copy`.
 
    .. attribute:: on_response_prepare
 
-      A :class:`~aiohttp.Signal` that is fired at the beginning
+      A :class:`~aiohttp.Signal` that is fired near the end
       of :meth:`StreamResponse.prepare` with parameters *request* and
       *response*. It can be used, for example, to add custom headers to each
-      response before sending.
+      response, or to modify the default headers computed by the application,
+      directly before sending the headers to the client.
 
       Signal handlers should have the following signature::
 
