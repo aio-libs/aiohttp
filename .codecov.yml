@@ -1,3 +1,6 @@
+codecov:
+  branch: 3.7
+
 coverage:
   range: "95..100"
 
