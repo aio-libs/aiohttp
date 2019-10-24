@@ -361,7 +361,6 @@ class BaseConnector:
         waiters = self._close_immediately()
         if waiters:
             results = await asyncio.gather(*waiters,
-                                           loop=self._loop,
                                            return_exceptions=True)
             for res in results:
                 if isinstance(res, Exception):
@@ -944,7 +943,7 @@ class TCPConnector(BaseConnector):
             hosts = await asyncio.shield(self._resolve_host(
                 host,
                 port,
-                traces=traces), loop=self._loop)
+                traces=traces))
         except OSError as exc:
             # in case of proxy it is not ClientProxyConnectionError
             # it is problem of resolving proxy ip itself

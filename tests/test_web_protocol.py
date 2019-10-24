@@ -855,10 +855,7 @@ async def test_client_disconnect(aiohttp_server) -> None:
     app.router.add_route('POST', '/', handler)
     server = await aiohttp_server(app, logger=logger)
 
-    if helpers.PY_38:
-        writer = await asyncio.connect('127.0.0.1', server.port)
-    else:
-        _, writer = await asyncio.open_connection('127.0.0.1', server.port)
+    _, writer = await asyncio.open_connection('127.0.0.1', server.port)
     writer.write("""POST / HTTP/1.1\r
 Connection: keep-alive\r
 Content-Length: 10\r
