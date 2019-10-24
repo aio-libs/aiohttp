@@ -883,3 +883,31 @@ Host: localhost:{port}\r
     await asyncio.sleep(0.1)
     logger.debug.assert_called_with('Ignored premature client disconnection.')
     assert disconnected_notified
+
+
+async def test_wait_for_disconnection_cancel(srv, buf, monkeypatch) -> None:
+    # srv is aiohttp.web_protocol.RequestHandler
+
+    waiter_tasks = []
+
+    async def request_waiter(request):
+        await request.wait_for_disconnection()
+
+    orig_request_factory = srv._request_factory
+
+    def request_factory(*args, **kwargs):
+        request = orig_request_factory(*args, **kwargs)
+        loop = asyncio.get_event_loop()
+        waiter_tasks.append(loop.create_task(request_waiter(request)))
+        return request
+
+    monkeypatch.setattr(srv, "_request_factory", request_factory)
+
+    srv.data_received(
+        b'GET / HTTP/1.1\r\n\r\n')
+
+    await asyncio.sleep(0.05)
+    assert buf.startswith(b'HTTP/1.1 200 OK\r\n')
+
+    assert len(waiter_tasks) == 1
+    assert waiter_tasks[0].cancelled()

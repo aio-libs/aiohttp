@@ -698,6 +698,10 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         for fut in self._disconnection_waiters:
             set_result(fut, None)
 
+    def _finish(self) -> None:
+        for fut in self._disconnection_waiters:
+            fut.cancel()
+
     async def wait_for_disconnection(self) -> None:
         """Returns when the connection that sent this request closes
 
