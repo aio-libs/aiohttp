@@ -18,7 +18,7 @@ class EventResultOrError:
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
         self._exc = None  # type: Optional[BaseException]
-        self._event = asyncio.Event(loop=loop)
+        self._event = asyncio.Event()
         self._waiters = collections.deque()  # type: Deque[asyncio.Future[Any]]
 
     def set(self, exc: Optional[BaseException]=None) -> None:
