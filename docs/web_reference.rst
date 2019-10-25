@@ -442,6 +442,14 @@ and :ref:`aiohttp-web-signals` handlers.
           required work will be processed by :mod:`aiohttp.web`
           internal machinery.
 
+   .. comethod:: wait_for_disconnection()
+
+      Returns when the connection that sent this request closes
+
+      This can be used in handlers as a means of receiving a notification of
+      premature client disconnection.
+
+      .. versionadded:: 4.0
 
 .. class:: Request
 

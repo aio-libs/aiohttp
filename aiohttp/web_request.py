@@ -703,13 +703,6 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             fut.cancel()
 
     async def wait_for_disconnection(self) -> None:
-        """Returns when the connection that sent this request closes
-
-        This can be used in handlers as a means to receive a notification of
-        premature client disconnection.
-
-        .. versionadded:: 4.0
-        """
         fut = asyncio.Future()  # type: asyncio.Future[None]
         self._disconnection_waiters.add(fut)
         try:
