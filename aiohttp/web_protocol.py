@@ -537,7 +537,7 @@ class RequestHandler(BaseProtocol):
         prematurely.
         """
         if self._request_parser is not None:
-            # self._request_parser.set_upgraded(False)
+            self._request_parser.set_upgraded(False)
             self._upgrade = False
             if self._message_tail:
                 self._request_parser.feed_data(self._message_tail)

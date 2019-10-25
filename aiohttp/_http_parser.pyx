@@ -533,6 +533,9 @@ cdef class HttpParser:
         else:
             return messages, False, b''
 
+    def set_upgraded(self, val):
+        self._upgraded = val
+
 
 cdef class HttpRequestParser(HttpParser):
 
