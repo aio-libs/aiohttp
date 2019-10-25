@@ -703,7 +703,8 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             fut.cancel()
 
     async def wait_for_disconnection(self) -> None:
-        fut = asyncio.Future()  # type: asyncio.Future[None]
+        loop = asyncio.get_event_loop()
+        fut = loop.create_future()  # type: asyncio.Future[None]
         self._disconnection_waiters.add(fut)
         try:
             await fut
