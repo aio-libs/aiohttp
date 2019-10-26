@@ -695,7 +695,7 @@ class TCPConnector(BaseConnector):
     """
 
     def __init__(self, *,
-                 use_dns_cache: bool=True, ttl_dns_cache: int=10,
+                 use_dns_cache: bool=True, ttl_dns_cache: Optional[int]=10,
                  family: int=0,
                  ssl: Union[None, bool, Fingerprint, SSLContext]=None,
                  local_addr: Optional[Tuple[str, int]]=None,

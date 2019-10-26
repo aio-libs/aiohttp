@@ -921,7 +921,7 @@ TCPConnector
       *side effects* also.
 
    :param int ttl_dns_cache: expire after some seconds the DNS entries, ``None``
-      means cached forever. By default 10 seconds.
+      means cached forever. By default 10 seconds (optional).
 
       In some environments the IP addresses related to a specific HOST can
       change after a specific time. Use this option to keep the DNS cache
