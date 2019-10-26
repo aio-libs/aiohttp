@@ -53,9 +53,19 @@ async def test_middleware_chain(loop, aiohttp_client) -> None:
     async def handler(request):
         return web.Response(text='OK')
 
+    handler.annotation = "annotation_value"
+
+    async def handler2(request):
+        return web.Response(text='OK')
+
+    middleware_annotation_seen_values = []
+
     def make_middleware(num):
         @web.middleware
         async def middleware(request, handler):
+            middleware_annotation_seen_values.append(
+                getattr(handler, "annotation", None)
+            )
             resp = await handler(request)
             resp.text = resp.text + '[{}]'.format(num)
             return resp
@@ -65,11 +75,68 @@ async def test_middleware_chain(loop, aiohttp_client) -> None:
     app.middlewares.append(make_middleware(1))
     app.middlewares.append(make_middleware(2))
     app.router.add_route('GET', '/', handler)
+    app.router.add_route('GET', '/r2', handler2)
     client = await aiohttp_client(app)
     resp = await client.get('/')
     assert 200 == resp.status
     txt = await resp.text()
     assert 'OK[2][1]' == txt
+    assert middleware_annotation_seen_values == [
+        'annotation_value', 'annotation_value'
+    ]
+
+    # check that attributes from handler are not applied to handler2
+    resp = await client.get('/r2')
+    assert 200 == resp.status
+    assert middleware_annotation_seen_values == [
+        'annotation_value', 'annotation_value', None, None
+    ]
+
+
+async def test_middleware_subapp(loop, aiohttp_client) -> None:
+    async def sub_handler(request):
+        return web.Response(text='OK')
+
+    sub_handler.annotation = "annotation_value"
+
+    async def handler(request):
+        return web.Response(text='OK')
+
+    middleware_annotation_seen_values = []
+
+    def make_middleware(num):
+        @web.middleware
+        async def middleware(request, handler):
+            annotation = getattr(handler, "annotation", None)
+            if annotation is not None:
+                middleware_annotation_seen_values.append(
+                    "{}/{}".format(annotation, num)
+                )
+            return await handler(request)
+        return middleware
+
+    app = web.Application()
+    app.middlewares.append(make_middleware(1))
+    app.router.add_route('GET', '/r2', handler)
+
+    subapp = web.Application()
+    subapp.middlewares.append(make_middleware(2))
+    subapp.router.add_route('GET', '/', sub_handler)
+    app.add_subapp("/sub", subapp)
+
+    client = await aiohttp_client(app)
+    resp = await client.get('/sub/')
+    assert 200 == resp.status
+    await resp.text()
+    assert middleware_annotation_seen_values == [
+        'annotation_value/1', 'annotation_value/2'
+    ]
+
+    # check that attributes from sub_handler are not applied to handler
+    del middleware_annotation_seen_values[:]
+    resp = await client.get('/r2')
+    assert 200 == resp.status
+    assert middleware_annotation_seen_values == []
 
 
 @pytest.fixture
