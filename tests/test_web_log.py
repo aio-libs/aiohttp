@@ -5,8 +5,16 @@ from unittest import mock
 import pytest
 
 import aiohttp
+from aiohttp import web
 from aiohttp.abc import AbstractAccessLogger
+from aiohttp.helpers import PY_37
 from aiohttp.web_log import AccessLogger
+
+try:
+    from contextvars import ContextVar
+except ImportError:
+    ContextVar = None
+
 
 IS_PYPY = platform.python_implementation() == 'PyPy'
 
@@ -157,3 +165,32 @@ def test_logger_abc() -> None:
     access_logger = Logger(mock_logger, '{request} {response} {time}')
     access_logger.log('request', 'response', 1)
     mock_logger.info.assert_called_with('request response 1')
+
+
+@pytest.mark.skipif(not PY_37,
+                    reason="contextvars support is required")
+async def test_contextvars_logger(aiohttp_server, aiohttp_client):
+    VAR = ContextVar('VAR')
+
+    async def handler(request):
+        return web.Response()
+
+    @web.middleware
+    async def middleware(request, handler):
+        VAR.set("uuid")
+        return await handler(request)
+
+    msg = None
+
+    class Logger(AbstractAccessLogger):
+        def log(self, request, response, time):
+            nonlocal msg
+            msg = 'contextvars: {}'.format(VAR.get())
+
+    app = web.Application(middlewares=[middleware])
+    app.router.add_get('/', handler)
+    server = await aiohttp_server(app, access_log_class=Logger)
+    client = await aiohttp_client(server)
+    resp = await client.get('/')
+    assert 200 == resp.status
+    assert msg == 'contextvars: uuid'
