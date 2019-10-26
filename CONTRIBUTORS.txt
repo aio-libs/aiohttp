@@ -94,6 +94,8 @@ Eugene Naydenov
 Eugene Nikolaiev
 Eugene Tolmachev
 Evert Lammerts
+Felix Yan
+Fernanda Guimarães
 FichteFoll
 Florian Scheffler
 Frederik Gladhorn

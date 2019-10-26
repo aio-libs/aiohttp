@@ -713,7 +713,7 @@ class TCPConnector(BaseConnector):
 
     def __init__(self, *, verify_ssl: bool=True,
                  fingerprint: Optional[bytes]=None,
-                 use_dns_cache: bool=True, ttl_dns_cache: int=10,
+                 use_dns_cache: bool=True, ttl_dns_cache: Optional[int]=10,
                  family: int=0,
                  ssl_context: Optional[SSLContext]=None,
                  ssl: Union[None, bool, Fingerprint, SSLContext]=None,
