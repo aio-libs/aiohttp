@@ -1,4 +1,4 @@
-"""Tests of http client with custom Connector"""
+# Tests of http client with custom Connector
 
 import asyncio
 import gc
@@ -18,8 +18,9 @@ import aiohttp
 from aiohttp import client, web
 from aiohttp.client import ClientRequest, ClientTimeout
 from aiohttp.client_reqrep import ConnectionKey
-from aiohttp.connector import Connection, _DNSCacheTable
+from aiohttp.connector import Connection, TCPConnector, _DNSCacheTable
 from aiohttp.helpers import PY_37
+from aiohttp.locks import EventResultOrError
 from aiohttp.test_utils import make_mocked_coro, unused_port
 from aiohttp.tracing import Trace
 from conftest import needs_unix
@@ -27,19 +28,19 @@ from conftest import needs_unix
 
 @pytest.fixture()
 def key():
-    """Connection key"""
+    # Connection key
     return ConnectionKey('localhost', 80, False, None, None, None, None)
 
 
 @pytest.fixture
 def key2():
-    """Connection key"""
+    # Connection key
     return ConnectionKey('localhost', 80, False, None, None, None, None)
 
 
 @pytest.fixture
 def ssl_key():
-    """Connection key"""
+    # Connection key
     return ConnectionKey('localhost', 80, True, None, None, None, None)
 
 
@@ -733,7 +734,7 @@ async def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
         await asyncio.sleep(0)
         await conn.close()
 
-        with pytest.raises(asyncio.futures.CancelledError):
+        with pytest.raises(asyncio.CancelledError):
             await f
 
 
@@ -741,16 +742,16 @@ async def test_tcp_connector_dns_tracing(loop, dns_response) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
     on_dns_resolvehost_start = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock())
+        side_effect=make_mocked_coro(mock.Mock())
     )
     on_dns_resolvehost_end = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock())
+        side_effect=make_mocked_coro(mock.Mock())
     )
     on_dns_cache_hit = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock())
+        side_effect=make_mocked_coro(mock.Mock())
     )
     on_dns_cache_miss = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock())
+        side_effect=make_mocked_coro(mock.Mock())
     )
 
     trace_config = aiohttp.TraceConfig(
@@ -816,10 +817,10 @@ async def test_tcp_connector_dns_tracing_cache_disabled(loop,
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
     on_dns_resolvehost_start = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock())
+        side_effect=make_mocked_coro(mock.Mock())
     )
     on_dns_resolvehost_end = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock())
+        side_effect=make_mocked_coro(mock.Mock())
     )
 
     trace_config = aiohttp.TraceConfig(
@@ -890,10 +891,10 @@ async def test_tcp_connector_dns_tracing_throttle_requests(
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
     on_dns_cache_hit = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock())
+        side_effect=make_mocked_coro(mock.Mock())
     )
     on_dns_cache_miss = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock())
+        side_effect=make_mocked_coro(mock.Mock())
     )
 
     trace_config = aiohttp.TraceConfig(
@@ -1028,10 +1029,10 @@ async def test_connect_tracing(loop) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
     on_connection_create_start = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock())
+        side_effect=make_mocked_coro(mock.Mock())
     )
     on_connection_create_end = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock())
+        side_effect=make_mocked_coro(mock.Mock())
     )
 
     trace_config = aiohttp.TraceConfig(
@@ -1420,10 +1421,10 @@ async def test_connect_queued_operation_tracing(loop, key) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
     on_connection_queued_start = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock())
+        side_effect=make_mocked_coro(mock.Mock())
     )
     on_connection_queued_end = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock())
+        side_effect=make_mocked_coro(mock.Mock())
     )
 
     trace_config = aiohttp.TraceConfig(
@@ -1480,7 +1481,7 @@ async def test_connect_reuseconn_tracing(loop, key) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
     on_connection_reuseconn = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock())
+        side_effect=make_mocked_coro(mock.Mock())
     )
 
     trace_config = aiohttp.TraceConfig(
@@ -2257,3 +2258,32 @@ class TestDNSCacheTable:
 
         addrs = dns_cache_table.next_addrs('foo')
         assert addrs == ['127.0.0.1']
+
+
+async def test_connector_cache_trace_race():
+    class DummyTracer:
+        async def send_dns_cache_hit(self, *args, **kwargs):
+            connector._cached_hosts.remove(("", 0))
+
+    token = object()
+    connector = TCPConnector()
+    connector._cached_hosts.add(("", 0), [token])
+
+    traces = [DummyTracer()]
+    assert await connector._resolve_host("", 0, traces) == [token]
+
+
+async def test_connector_throttle_trace_race(loop):
+    key = ("", 0)
+    token = object()
+
+    class DummyTracer:
+        async def send_dns_cache_hit(self, *args, **kwargs):
+            event = connector._throttle_dns_events.pop(key)
+            event.set()
+            connector._cached_hosts.add(key, [token])
+
+    connector = TCPConnector()
+    connector._throttle_dns_events[key] = EventResultOrError(loop)
+    traces = [DummyTracer()]
+    assert await connector._resolve_host("", 0, traces) == [token]

@@ -140,7 +140,7 @@ async def test_bad() -> None:
         if IS_PYPY and bool(os.environ.get('PYTHONASYNCIODEBUG'))
         else {'failed': 1, 'passed': 1}
     )
-    """Under PyPy "coroutine 'foobar' was never awaited" does not happen."""
+    # Under PyPy "coroutine 'foobar' was never awaited" does not happen.
     result.assert_outcomes(**expected_outcomes)
 
 

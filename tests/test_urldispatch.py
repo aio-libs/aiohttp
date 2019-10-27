@@ -421,9 +421,7 @@ def test_add_static_append_version_non_exists_file_without_slash(
 
 
 def test_add_static_append_version_follow_symlink(router, tmp_path) -> None:
-    """
-    Tests the access to a symlink, in static folder with apeend_version
-    """
+    # Tests the access to a symlink, in static folder with apeend_version
     symlink_path = tmp_path / 'append_version_symlink'
     symlink_target_path = pathlib.Path(__file__).parent
     pathlib.Path(str(symlink_path)).symlink_to(str(symlink_target_path), True)
@@ -442,9 +440,7 @@ def test_add_static_append_version_follow_symlink(router, tmp_path) -> None:
 
 def test_add_static_append_version_not_follow_symlink(router,
                                                       tmp_path) -> None:
-    """
-    Tests the access to a symlink, in static folder with apeend_version
-    """
+    # Tests the access to a symlink, in static folder with apeend_version
 
     symlink_path = tmp_path / 'append_version_symlink'
     symlink_target_path = pathlib.Path(__file__).parent
@@ -904,8 +900,11 @@ async def test_match_info_get_info_dynamic2(router) -> None:
 def test_static_resource_get_info(router) -> None:
     directory = pathlib.Path(aiohttp.__file__).parent.resolve()
     resource = router.add_static('/st', directory)
-    assert resource.get_info() == {'directory': directory,
-                                   'prefix': '/st'}
+    info = resource.get_info()
+    assert len(info) == 3
+    assert info['directory'] == directory
+    assert info['prefix'] == '/st'
+    assert all([type(r) is ResourceRoute for r in info['routes'].values()])
 
 
 async def test_system_route_get_info(router) -> None:
@@ -1235,3 +1234,45 @@ def test_prefixed_subapp_resource_canonical(app) -> None:
     subapp = web.Application()
     res = subapp.add_subapp(canonical, subapp)
     assert res.canonical == canonical
+
+
+async def test_prefixed_subapp_overlap(app) -> None:
+    # Subapp should not overshadow other subapps with overlapping prefixes
+    subapp1 = web.Application()
+    handler1 = make_handler()
+    subapp1.router.add_get('/a', handler1)
+    app.add_subapp('/s', subapp1)
+
+    subapp2 = web.Application()
+    handler2 = make_handler()
+    subapp2.router.add_get('/b', handler2)
+    app.add_subapp('/ss', subapp2)
+
+    match_info = await app.router.resolve(make_mocked_request('GET', '/s/a'))
+    assert match_info.route.handler is handler1
+    match_info = await app.router.resolve(make_mocked_request('GET', '/ss/b'))
+    assert match_info.route.handler is handler2
+
+
+async def test_prefixed_subapp_empty_route(app) -> None:
+    subapp = web.Application()
+    handler = make_handler()
+    subapp.router.add_get('', handler)
+    app.add_subapp('/s', subapp)
+
+    match_info = await app.router.resolve(make_mocked_request('GET', '/s'))
+    assert match_info.route.handler is handler
+    match_info = await app.router.resolve(make_mocked_request('GET', '/s/'))
+    assert "<MatchInfoError 404: Not Found>" == repr(match_info)
+
+
+async def test_prefixed_subapp_root_route(app) -> None:
+    subapp = web.Application()
+    handler = make_handler()
+    subapp.router.add_get('/', handler)
+    app.add_subapp('/s', subapp)
+
+    match_info = await app.router.resolve(make_mocked_request('GET', '/s/'))
+    assert match_info.route.handler is handler
+    match_info = await app.router.resolve(make_mocked_request('GET', '/s'))
+    assert "<MatchInfoError 404: Not Found>" == repr(match_info)

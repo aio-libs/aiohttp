@@ -11,7 +11,10 @@ import warnings
 from types import SimpleNamespace, TracebackType
 from typing import (  # noqa
     Any,
+    Awaitable,
+    Callable,
     Coroutine,
+    FrozenSet,
     Generator,
     Generic,
     Iterable,
@@ -66,7 +69,9 @@ from .client_reqrep import ClientRequest as ClientRequest
 from .client_reqrep import ClientResponse as ClientResponse
 from .client_reqrep import Fingerprint as Fingerprint
 from .client_reqrep import RequestInfo as RequestInfo
+from .client_ws import DEFAULT_WS_CLIENT_TIMEOUT
 from .client_ws import ClientWebSocketResponse as ClientWebSocketResponse
+from .client_ws import ClientWSTimeout
 from .connector import BaseConnector as BaseConnector
 from .connector import NamedPipeConnector as NamedPipeConnector
 from .connector import TCPConnector as TCPConnector
@@ -192,7 +197,7 @@ class ClientSession:
                  version: HttpVersion=http.HttpVersion11,
                  cookie_jar: Optional[AbstractCookieJar]=None,
                  connector_owner: bool=True,
-                 raise_for_status: bool=False,
+                 raise_for_status: Union[bool, Callable[[ClientResponse], Awaitable[None]]]=False,  # noqa
                  timeout: Union[object, ClientTimeout]=sentinel,
                  auto_decompress: bool=True,
                  trust_env: bool=False,
@@ -239,10 +244,10 @@ class ClientSession:
 
         # Convert to list of tuples
         if headers:
-            headers = CIMultiDict(headers)
+            real_headers = CIMultiDict(headers)  # type: CIMultiDict[str]
         else:
-            headers = CIMultiDict()
-        self._default_headers = headers
+            real_headers = CIMultiDict()
+        self._default_headers = real_headers   # type: CIMultiDict[str]
         if skip_auto_headers is not None:
             self._skip_auto_headers = frozenset([istr(i)
                                                  for i in skip_auto_headers])
@@ -299,7 +304,7 @@ class ClientSession:
             compress: Optional[str]=None,
             chunked: Optional[bool]=None,
             expect100: bool=False,
-            raise_for_status: Optional[bool]=None,
+            raise_for_status: Union[None, bool, Callable[[ClientResponse], Awaitable[None]]]=None,  # noqa
             read_until_eof: bool=True,
             proxy: Optional[StrOrURL]=None,
             proxy_auth: Optional[BasicAuth]=None,
@@ -542,7 +547,12 @@ class ClientSession:
             # check response status
             if raise_for_status is None:
                 raise_for_status = self._raise_for_status
-            if raise_for_status:
+
+            if raise_for_status is None:
+                pass
+            elif callable(raise_for_status):
+                await raise_for_status(resp)
+            elif raise_for_status:
                 resp.raise_for_status()
 
             # register connection
@@ -584,7 +594,7 @@ class ClientSession:
             url: StrOrURL, *,
             method: str=hdrs.METH_GET,
             protocols: Iterable[str]=(),
-            timeout: float=10.0,
+            timeout: Union[ClientWSTimeout, float]=sentinel,
             receive_timeout: Optional[float]=None,
             autoclose: bool=True,
             autoping: bool=True,
@@ -623,7 +633,7 @@ class ClientSession:
             url: StrOrURL, *,
             method: str=hdrs.METH_GET,
             protocols: Iterable[str]=(),
-            timeout: float=10.0,
+            timeout: Union[ClientWSTimeout, float]=sentinel,
             receive_timeout: Optional[float]=None,
             autoclose: bool=True,
             autoping: bool=True,
@@ -638,6 +648,25 @@ class ClientSession:
             compress: int=0,
             max_msg_size: int=4*1024*1024
     ) -> ClientWebSocketResponse:
+        if timeout is not sentinel:
+            if isinstance(timeout, ClientWSTimeout):
+                ws_timeout = timeout
+            else:
+                warnings.warn("parameter 'timeout' of type 'float' "
+                              "is deprecated, please use "
+                              "'timeout=ClientWSTimeout(ws_close=...)'",
+                              DeprecationWarning,
+                              stacklevel=2)
+                ws_timeout = ClientWSTimeout(ws_close=timeout)
+        else:
+            ws_timeout = DEFAULT_WS_CLIENT_TIMEOUT
+        if receive_timeout is not None:
+            warnings.warn("float parameter 'receive_timeout' "
+                          "is deprecated, please use parameter "
+                          "'timeout=ClientWSTimeout(ws_receive=...)'",
+                          DeprecationWarning,
+                          stacklevel=2)
+            ws_timeout = attr.evolve(ws_timeout, ws_receive=receive_timeout)
 
         if headers is None:
             real_headers = CIMultiDict()  # type: CIMultiDict[str]
@@ -766,11 +795,10 @@ class ClientSession:
                                            writer,
                                            protocol,
                                            resp,
-                                           timeout,
+                                           ws_timeout,
                                            autoclose,
                                            autoping,
                                            self._loop,
-                                           receive_timeout=receive_timeout,
                                            heartbeat=heartbeat,
                                            compress=compress,
                                            client_notakeover=notakeover)
@@ -885,6 +913,65 @@ class ClientSession:
     def requote_redirect_url(self) -> bool:
         """Do URL requoting on redirection handling."""
         return self._requote_redirect_url
+
+    @property
+    def timeout(self) -> Union[object, ClientTimeout]:
+        """Timeout for the session."""
+        return self._timeout
+
+    @property
+    def headers(self) -> 'CIMultiDict[str]':
+        """The default headers of the client session."""
+        return self._default_headers
+
+    @property
+    def skip_auto_headers(self) -> FrozenSet[istr]:
+        """Headers for which autogeneration should be skipped"""
+        return self._skip_auto_headers
+
+    @property
+    def auth(self) -> Optional[BasicAuth]:
+        """An object that represents HTTP Basic Authorization"""
+        return self._default_auth
+
+    @property
+    def json_serialize(self) -> JSONEncoder:
+        """Json serializer callable"""
+        return self._json_serialize
+
+    @property
+    def connector_owner(self) -> bool:
+        """Should connector be closed on session closing"""
+        return self._connector_owner
+
+    @property
+    def raise_for_status(
+        self
+    ) -> Union[bool, Callable[[ClientResponse], Awaitable[None]]]:
+        """
+        Should `ClientResponse.raise_for_status()`
+        be called for each response
+        """
+        return self._raise_for_status
+
+    @property
+    def auto_decompress(self) -> bool:
+        """Should the body response be automatically decompressed"""
+        return self._auto_decompress
+
+    @property
+    def trust_env(self) -> bool:
+        """
+        Should get proxies information
+        from HTTP_PROXY / HTTPS_PROXY environment variables
+        or ~/.netrc file if present
+        """
+        return self._trust_env
+
+    @property
+    def trace_configs(self) -> List[TraceConfig]:
+        """A list of TraceConfig instances used for client tracing"""
+        return self._trace_configs
 
     def detach(self) -> None:
         """Detach connector from session without closing the former.

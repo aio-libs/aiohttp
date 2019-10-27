@@ -1,6 +1,7 @@
 import asyncio
 import socket
 from collections.abc import MutableMapping
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -50,6 +51,8 @@ def test_base_ctor() -> None:
     assert req.keep_alive
 
     assert '__dict__' not in dir(req)
+
+    assert req
 
 
 def test_ctor() -> None:
@@ -690,6 +693,31 @@ def test_url_https_with_closed_transport() -> None:
     req = make_mocked_request('GET', '/', sslcontext=True)
     req._protocol = None
     assert str(req.url).startswith('https://')
+
+
+async def test_get_extra_info() -> None:
+    valid_key = 'test'
+    valid_value = 'existent'
+    default_value = 'default'
+
+    def get_extra_info(name: str, default: Any = None):
+        return {valid_key: valid_value}.get(name, default)
+    transp = mock.Mock()
+    transp.get_extra_info.side_effect = get_extra_info
+    req = make_mocked_request('GET', '/', transport=transp)
+
+    req_extra_info = req.get_extra_info(valid_key, default_value)
+    transp_extra_info = req._protocol.transport.get_extra_info(valid_key,
+                                                               default_value)
+    assert req_extra_info == transp_extra_info
+
+    req._protocol.transport = None
+    extra_info = req.get_extra_info(valid_key, default_value)
+    assert extra_info == default_value
+
+    req._protocol = None
+    extra_info = req.get_extra_info(valid_key, default_value)
+    assert extra_info == default_value
 
 
 def test_eq() -> None:

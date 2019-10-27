@@ -224,7 +224,7 @@ class BaseConnector:
         self._loop = loop
         self._factory = functools.partial(ResponseHandler, loop=loop)
 
-        self.cookies = SimpleCookie()
+        self.cookies = SimpleCookie()  # type: SimpleCookie[str]
 
         # start keep-alive connection cleanup task
         self._cleanup_handle = None
@@ -361,7 +361,6 @@ class BaseConnector:
         waiters = self._close_immediately()
         if waiters:
             results = await asyncio.gather(*waiters,
-                                           loop=self._loop,
                                            return_exceptions=True)
             for res in results:
                 if isinstance(res, Exception):
@@ -696,7 +695,7 @@ class TCPConnector(BaseConnector):
     """
 
     def __init__(self, *,
-                 use_dns_cache: bool=True, ttl_dns_cache: int=10,
+                 use_dns_cache: bool=True, ttl_dns_cache: Optional[int]=10,
                  family: int=0,
                  ssl: Union[None, bool, Fingerprint, SSLContext]=None,
                  local_addr: Optional[Tuple[str, int]]=None,
@@ -778,24 +777,28 @@ class TCPConnector(BaseConnector):
 
         if (key in self._cached_hosts) and \
                 (not self._cached_hosts.expired(key)):
+            # get result early, before any await (#4014)
+            result = self._cached_hosts.next_addrs(key)
 
             if traces:
                 for trace in traces:
                     await trace.send_dns_cache_hit(host)
-
-            return self._cached_hosts.next_addrs(key)
+            return result
 
         if key in self._throttle_dns_events:
+            # get event early, before any await (#4014)
+            event = self._throttle_dns_events[key]
             if traces:
                 for trace in traces:
                     await trace.send_dns_cache_hit(host)
-            await self._throttle_dns_events[key].wait()
+            await event.wait()
         else:
+            # update dict early, before any await (#4014)
+            self._throttle_dns_events[key] = \
+                EventResultOrError(self._loop)
             if traces:
                 for trace in traces:
                     await trace.send_dns_cache_miss(host)
-            self._throttle_dns_events[key] = \
-                EventResultOrError(self._loop)
             try:
 
                 if traces:
@@ -845,7 +848,16 @@ class TCPConnector(BaseConnector):
             sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
             sslcontext.options |= ssl.OP_NO_SSLv2
             sslcontext.options |= ssl.OP_NO_SSLv3
-            sslcontext.options |= ssl.OP_NO_COMPRESSION
+            try:
+                sslcontext.options |= ssl.OP_NO_COMPRESSION
+            except AttributeError as attr_err:
+                warnings.warn(
+                    '{!s}: The Python interpreter is compiled '
+                    'against OpenSSL < 1.0.0. Ref: '
+                    'https://docs.python.org/3/library/ssl.html'
+                    '#ssl.OP_NO_COMPRESSION'.
+                    format(attr_err),
+                )
             sslcontext.set_default_verify_paths()
             return sslcontext
 
@@ -900,9 +912,7 @@ class TCPConnector(BaseConnector):
             **kwargs: Any) -> Tuple[asyncio.Transport, ResponseHandler]:
         try:
             with CeilTimeout(timeout.sock_connect):
-                return cast(
-                    Tuple[asyncio.Transport, ResponseHandler],
-                    await self._loop.create_connection(*args, **kwargs))
+                return await self._loop.create_connection(*args, **kwargs)  # type: ignore  # noqa
         except cert_errors as exc:
             raise ClientConnectorCertificateError(
                 req.connection_key, exc) from exc
@@ -933,7 +943,7 @@ class TCPConnector(BaseConnector):
             hosts = await asyncio.shield(self._resolve_host(
                 host,
                 port,
-                traces=traces), loop=self._loop)
+                traces=traces))
         except OSError as exc:
             # in case of proxy it is not ClientProxyConnectionError
             # it is problem of resolving proxy ip itself

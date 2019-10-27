@@ -9,15 +9,10 @@ Async http client/server framework
 
 |
 
-.. image:: https://travis-ci.com/aio-libs/aiohttp.svg?branch=master
-   :target: https://travis-ci.com/aio-libs/aiohttp
+.. image:: https://dev.azure.com/aio-libs/aiohttp/_apis/build/status/CI?branchName=master
+   :target: https://dev.azure.com/aio-libs/aiohttp/_build
    :align: right
-   :alt: Travis status for master branch
-
-.. image:: https://ci.appveyor.com/api/projects/status/tnddy9k6pphl8w7k/branch/master?svg=true
-   :target: https://ci.appveyor.com/project/aio-libs/aiohttp
-   :align: right
-   :alt: AppVeyor status for master branch
+   :alt: Azure Pipelines status for master branch
 
 .. image:: https://codecov.io/gh/aio-libs/aiohttp/branch/master/graph/badge.svg
    :target: https://codecov.io/gh/aio-libs/aiohttp
@@ -41,7 +36,7 @@ Key Features
 - Supports both client and server side of HTTP protocol.
 - Supports both client and server Web-Sockets out-of-the-box and avoids
   Callback Hell.
-- Provides Web-server with middlewares and pluggable routing.
+- Provides Web-server with middlewares and plugable routing.
 
 
 Getting started

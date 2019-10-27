@@ -171,7 +171,6 @@ class ClientRequest:
     body = b''
     auth = None
     response = None
-    response_class = None
 
     _writer = None  # async task for streaming data
     _continue = None  # waiter future for '100 Continue' response
@@ -315,7 +314,7 @@ class ClientRequest:
         netloc = cast(str, self.url.raw_host)
         if helpers.is_ipv6_address(netloc):
             netloc = '[{}]'.format(netloc)
-        if not self.url.is_default_port():
+        if self.url.port is not None and not self.url.is_default_port():
             netloc += ':' + str(self.url.port)
         self.headers[hdrs.HOST] = netloc
 
@@ -348,7 +347,7 @@ class ClientRequest:
         if not cookies:
             return
 
-        c = SimpleCookie()
+        c = SimpleCookie()  # type: SimpleCookie[str]
         if hdrs.COOKIE in self.headers:
             c.load(self.headers.get(hdrs.COOKIE, ''))
             del self.headers[hdrs.COOKIE]
@@ -361,7 +360,7 @@ class ClientRequest:
             if isinstance(value, Morsel):
                 # Preserve coded_value
                 mrsl_val = value.get(value.key, Morsel())
-                mrsl_val.set(value.key, value.value, value.coded_value)  # type: ignore  # noqa
+                mrsl_val.set(value.key, value.value, value.coded_value)
                 c[name] = mrsl_val
             else:
                 c[name] = value  # type: ignore
@@ -639,7 +638,7 @@ class ClientResponse(HeadersMixin):
         super().__init__()
 
         self.method = method
-        self.cookies = SimpleCookie()
+        self.cookies = SimpleCookie()  # type: SimpleCookie[str]
 
         self._real_url = url
         self._url = url.with_fragment(None)

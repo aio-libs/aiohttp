@@ -536,7 +536,7 @@ class StaticResource(PrefixResource):
             if filepath.is_file():
                 # TODO cache file content
                 # with file watcher for cache invalidation
-                with open(str(filepath), mode='rb') as f:
+                with filepath.open('rb') as f:
                     file_bytes = f.read()
                 h = self._get_file_hash(file_bytes)
                 url = url.with_query({self.VERSION_KEY: h})
@@ -552,7 +552,8 @@ class StaticResource(PrefixResource):
 
     def get_info(self) -> Dict[str, Any]:
         return {'directory': self._directory,
-                'prefix': self._prefix}
+                'prefix': self._prefix,
+                'routes': self._routes}
 
     def set_options_route(self, handler: _WebHandler) -> None:
         if 'OPTIONS' in self._routes:
@@ -682,7 +683,8 @@ class PrefixedSubAppResource(PrefixResource):
                 'prefix': self._prefix}
 
     async def resolve(self, request: Request) -> _Resolve:
-        if not request.url.raw_path.startswith(self._prefix):
+        if not request.url.raw_path.startswith(self._prefix + '/') and \
+                request.url.raw_path != self._prefix:
             return None, set()
         match_info = await self._app.router.resolve(request)
         match_info.add_app(self._app)
@@ -1108,10 +1110,15 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         for resource in self._resources:
             resource.freeze()
 
-    def add_routes(self, routes: Iterable[AbstractRouteDef]) -> None:
+    def add_routes(self,
+                   routes: Iterable[AbstractRouteDef]) -> List[AbstractRoute]:
         """Append routes to route table.
 
         Parameter should be a sequence of RouteDef objects.
+
+        Returns a list of registered AbstractRoute instances.
         """
+        registered_routes = []
         for route_def in routes:
-            route_def.register(self)
+            registered_routes.extend(route_def.register(self))
+        return registered_routes

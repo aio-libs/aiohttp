@@ -7,7 +7,6 @@ import zlib
 from unittest import mock
 
 import pytest
-from async_generator import async_generator, yield_
 from multidict import CIMultiDictProxy, MultiDict
 from yarl import URL
 
@@ -20,6 +19,7 @@ from aiohttp import (
     multipart,
     web,
 )
+from aiohttp.test_utils import make_mocked_coro
 
 try:
     import ssl
@@ -260,7 +260,7 @@ async def test_multipart_empty(aiohttp_client) -> None:
 
 
 async def test_multipart_content_transfer_encoding(aiohttp_client) -> None:
-    """For issue #1168"""
+    # For issue #1168
     with multipart.MultipartWriter() as writer:
         writer.append(b'\x00' * 10,
                       headers={'Content-Transfer-Encoding': 'binary'})
@@ -311,8 +311,8 @@ async def test_post_single_file(aiohttp_client) -> None:
 
     def check_file(fs):
         fullname = here / fs.filename
-        with fullname.open() as f:
-            test_data = f.read().encode()
+        with fullname.open('rb') as f:
+            test_data = f.read()
             data = fs.file.read()
             assert test_data == data
 
@@ -331,7 +331,7 @@ async def test_post_single_file(aiohttp_client) -> None:
 
     fname = here / 'data.unknown_mime_type'
 
-    resp = await client.post('/', data=[fname.open()])
+    resp = await client.post('/', data=[fname.open('rb')])
     assert 200 == resp.status
 
 
@@ -374,8 +374,8 @@ async def test_post_files(aiohttp_client) -> None:
 
     def check_file(fs):
         fullname = here / fs.filename
-        with fullname.open() as f:
-            test_data = f.read().encode()
+        with fullname.open('rb') as f:
+            test_data = f.read()
             data = fs.file.read()
             assert test_data == data
 
@@ -392,8 +392,8 @@ async def test_post_files(aiohttp_client) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with (here / 'data.unknown_mime_type').open() as f1:
-        with (here / 'conftest.py').open() as f2:
+    with (here / 'data.unknown_mime_type').open('rb') as f1:
+        with (here / 'conftest.py').open('rb') as f2:
             resp = await client.post('/', data=[f1, f2])
             assert 200 == resp.status
 
@@ -456,17 +456,16 @@ def test_repr_for_application() -> None:
 
 
 async def test_expect_default_handler_unknown(aiohttp_client) -> None:
-    """Test default Expect handler for unknown Expect value.
+    # Test default Expect handler for unknown Expect value.
 
-    A server that does not understand or is unable to comply with any of
-    the expectation values in the Expect field of a request MUST respond
-    with appropriate error status. The server MUST respond with a 417
-    (Expectation Failed) status if any of the expectations cannot be met
-    or, if there are other problems with the request, some other 4xx
-    status.
+    # A server that does not understand or is unable to comply with any of
+    # the expectation values in the Expect field of a request MUST respond
+    # with appropriate error status. The server MUST respond with a 417
+    # (Expectation Failed) status if any of the expectations cannot be met
+    # or, if there are other problems with the request, some other 4xx
+    # status.
 
-    http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.20
-    """
+    # http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.20
     async def handler(request):
         await request.post()
         pytest.xfail('Handler should not proceed to this point in case of '
@@ -784,12 +783,11 @@ async def test_response_with_async_gen(aiohttp_client, fname) -> None:
 
     data_size = len(data)
 
-    @async_generator
     async def stream(f_name):
         with f_name.open('rb') as f:
             data = f.read(100)
             while data:
-                await yield_(data)
+                yield data
                 data = f.read(100)
 
     async def handler(request):
@@ -815,12 +813,11 @@ async def test_response_with_async_gen_no_params(aiohttp_client,
 
     data_size = len(data)
 
-    @async_generator
     async def stream():
         with fname.open('rb') as f:
             data = f.read(100)
             while data:
-                await yield_(data)
+                yield data
                 data = f.read(100)
 
     async def handler(request):
@@ -1752,17 +1749,17 @@ async def test_iter_any(aiohttp_server) -> None:
 
 async def test_request_tracing(aiohttp_server) -> None:
 
-    on_request_start = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
-    on_request_end = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+    on_request_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
     on_dns_resolvehost_start = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock()))
+        side_effect=make_mocked_coro(mock.Mock()))
     on_dns_resolvehost_end = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock()))
-    on_request_redirect = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+        side_effect=make_mocked_coro(mock.Mock()))
+    on_request_redirect = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
     on_connection_create_start = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock()))
+        side_effect=make_mocked_coro(mock.Mock()))
     on_connection_create_end = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock()))
+        side_effect=make_mocked_coro(mock.Mock()))
 
     async def redirector(request):
         raise web.HTTPFound(location=URL('/redirected'))
@@ -1794,7 +1791,7 @@ async def test_request_tracing(aiohttp_server) -> None:
                        socket.AF_INET: '127.0.0.1'}
 
         def __init__(self, fakes):
-            """fakes -- dns -> port dict"""
+            # fakes -- dns -> port dict
             self._fakes = fakes
             self._resolver = aiohttp.DefaultResolver()
 

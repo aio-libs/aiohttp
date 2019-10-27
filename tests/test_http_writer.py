@@ -1,4 +1,4 @@
-"""Tests for aiohttp/http_writer.py"""
+# Tests for aiohttp/http_writer.py
 import zlib
 from unittest import mock
 

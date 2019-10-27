@@ -17,6 +17,7 @@ from aiohttp.client import ClientSession
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import BaseConnector, TCPConnector
 from aiohttp.helpers import PY_36
+from aiohttp.test_utils import make_mocked_coro
 
 
 @pytest.fixture
@@ -69,7 +70,7 @@ async def test_close_coro(create_session) -> None:
 async def test_init_headers_simple_dict(create_session) -> None:
     session = await create_session(headers={"h1": "header1",
                                             "h2": "header2"})
-    assert (sorted(session._default_headers.items()) ==
+    assert (sorted(session.headers.items()) ==
             ([("h1", "header1"), ("h2", "header2")]))
 
 
@@ -77,7 +78,7 @@ async def test_init_headers_list_of_tuples(create_session) -> None:
     session = await create_session(headers=[("h1", "header1"),
                                             ("h2", "header2"),
                                             ("h3", "header3")])
-    assert (session._default_headers ==
+    assert (session.headers ==
             CIMultiDict([("h1", "header1"),
                          ("h2", "header2"),
                          ("h3", "header3")]))
@@ -87,7 +88,7 @@ async def test_init_headers_MultiDict(create_session) -> None:
     session = await create_session(headers=MultiDict([("h1", "header1"),
                                                       ("h2", "header2"),
                                                       ("h3", "header3")]))
-    assert (session._default_headers ==
+    assert (session.headers ==
             CIMultiDict([("H1", "header1"),
                          ("H2", "header2"),
                          ("H3", "header3")]))
@@ -98,7 +99,7 @@ async def test_init_headers_list_of_tuples_with_duplicates(
     session = await create_session(headers=[("h1", "header11"),
                                             ("h2", "header21"),
                                             ("h1", "header12")])
-    assert (session._default_headers ==
+    assert (session.headers ==
             CIMultiDict([("H1", "header11"),
                          ("H2", "header21"),
                          ("H1", "header12")]))
@@ -164,7 +165,11 @@ async def test_merge_headers_with_list_of_tuples_duplicated_names(
 
 
 def test_http_GET(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    # Python 3.8 will auto use mock.AsyncMock, it has different behavior
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.get("http://test.example.com",
                     params={"x": 1},
                     **params)
@@ -177,7 +182,10 @@ def test_http_GET(session, params) -> None:
 
 
 def test_http_OPTIONS(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.options("http://opt.example.com",
                         params={"x": 2},
                         **params)
@@ -190,7 +198,10 @@ def test_http_OPTIONS(session, params) -> None:
 
 
 def test_http_HEAD(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.head("http://head.example.com",
                      params={"x": 2},
                      **params)
@@ -203,7 +214,10 @@ def test_http_HEAD(session, params) -> None:
 
 
 def test_http_POST(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.post("http://post.example.com",
                      params={"x": 2},
                      data="Some_data",
@@ -217,7 +231,10 @@ def test_http_POST(session, params) -> None:
 
 
 def test_http_PUT(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.put("http://put.example.com",
                     params={"x": 2},
                     data="Some_data",
@@ -231,7 +248,10 @@ def test_http_PUT(session, params) -> None:
 
 
 def test_http_PATCH(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.patch("http://patch.example.com",
                       params={"x": 2},
                       data="Some_data",
@@ -245,7 +265,10 @@ def test_http_PATCH(session, params) -> None:
 
 
 def test_http_DELETE(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.delete("http://delete.example.com",
                        params={"x": 2},
                        **params)
@@ -491,7 +514,10 @@ async def test_session_default_version(loop) -> None:
 
 
 def test_proxy_str(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.get("http://test.example.com",
                     proxy='http://proxy.com',
                     **params)
@@ -515,9 +541,9 @@ async def test_request_tracing(loop, aiohttp_client) -> None:
     body = 'This is request body'
     gathered_req_body = BytesIO()
     gathered_res_body = BytesIO()
-    on_request_start = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
-    on_request_redirect = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
-    on_request_end = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+    on_request_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_request_redirect = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
 
     async def on_request_chunk_sent(session, context, params):
         gathered_req_body.write(params.chunk)
@@ -568,9 +594,9 @@ async def test_request_tracing(loop, aiohttp_client) -> None:
 
 
 async def test_request_tracing_exception(loop) -> None:
-    on_request_end = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+    on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
     on_request_exception = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock())
+        side_effect=make_mocked_coro(mock.Mock())
     )
 
     trace_config = aiohttp.TraceConfig()
@@ -653,10 +679,13 @@ async def test_client_session_custom_attr() -> None:
         session.custom = None
 
 
-async def test_client_session_timeout_args(loop) -> None:
+async def test_client_session_timeout_default_args(loop) -> None:
     session1 = ClientSession()
-    assert session1._timeout == client.DEFAULT_TIMEOUT
+    assert session1.timeout == client.DEFAULT_TIMEOUT
 
+async def test_client_session_timeout_argument() -> None:
+    session = ClientSession(timeout=500)
+    assert session.timeout == 500
 
 async def test_requote_redirect_url_default() -> None:
     session = ClientSession()

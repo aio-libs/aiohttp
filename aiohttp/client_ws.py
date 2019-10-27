@@ -4,6 +4,7 @@ import asyncio
 from typing import Any, Optional
 
 import async_timeout
+import attr
 
 from .client_exceptions import ClientError
 from .client_reqrep import ClientResponse
@@ -25,6 +26,15 @@ from .typedefs import (
 )
 
 
+@attr.s(frozen=True, slots=True)
+class ClientWSTimeout:
+    ws_receive = attr.ib(type=Optional[float], default=None)
+    ws_close = attr.ib(type=Optional[float], default=None)
+
+
+DEFAULT_WS_CLIENT_TIMEOUT = ClientWSTimeout(ws_receive=None, ws_close=10.0)
+
+
 class ClientWebSocketResponse:
 
     def __init__(self,
@@ -32,12 +42,11 @@ class ClientWebSocketResponse:
                  writer: WebSocketWriter,
                  protocol: Optional[str],
                  response: ClientResponse,
-                 timeout: float,
+                 timeout: ClientWSTimeout,
                  autoclose: bool,
                  autoping: bool,
                  loop: asyncio.AbstractEventLoop,
                  *,
-                 receive_timeout: Optional[float]=None,
                  heartbeat: Optional[float]=None,
                  compress: int=0,
                  client_notakeover: bool=False) -> None:
@@ -50,8 +59,7 @@ class ClientWebSocketResponse:
         self._closed = False
         self._closing = False
         self._close_code = None  # type: Optional[int]
-        self._timeout = timeout
-        self._receive_timeout = receive_timeout
+        self._timeout = timeout  # type: ClientWSTimeout
         self._autoclose = autoclose
         self._autoping = autoping
         self._heartbeat = heartbeat
@@ -187,7 +195,8 @@ class ClientWebSocketResponse:
 
             while True:
                 try:
-                    with async_timeout.timeout(self._timeout, loop=self._loop):
+                    with async_timeout.timeout(self._timeout.ws_close,
+                                               loop=self._loop):
                         msg = await self._reader.read()
                 except asyncio.CancelledError:
                     self._close_code = 1006
@@ -222,7 +231,7 @@ class ClientWebSocketResponse:
                 self._waiting = self._loop.create_future()
                 try:
                     with async_timeout.timeout(
-                            timeout or self._receive_timeout,
+                            timeout or self._timeout.ws_receive,
                             loop=self._loop):
                         msg = await self._reader.read()
                     self._reset_heartbeat()
