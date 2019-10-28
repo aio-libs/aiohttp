@@ -156,7 +156,7 @@ Dependencies
 Communication channels
 ======================
 
-*aio-libs* google group: https://groups.google.com/forum/#!forum/aio-libs
+*aio-libs discourse group*: https://aio-libs.discourse.group
 
 Feel free to post your questions and ideas here.
 
