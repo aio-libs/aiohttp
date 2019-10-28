@@ -92,6 +92,9 @@ class BaseTestServer(ABC):
         self.scheme = scheme
         self.skip_url_asserts = skip_url_asserts
 
+    def set_root(self, url: URL):
+        self._root = url
+
     async def start_server(self,
                            **kwargs: Any) -> None:
         if self.runner:
