@@ -139,9 +139,7 @@ Feel free to make a Pull Request for adding your link to these pages!
 Communication channels
 ======================
 
-*aio-libs* google group: https://groups.google.com/forum/#!forum/aio-libs
-
-Feel free to post your questions and ideas here.
+*aio-libs discourse group*: https://aio-libs.discourse.group
 
 *gitter chat* https://gitter.im/aio-libs/Lobby
 
