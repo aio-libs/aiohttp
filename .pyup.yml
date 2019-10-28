@@ -1,4 +1,0 @@
-# Label PRs with `deps-update` label
-label_prs: deps-update
-
-schedule: every week
