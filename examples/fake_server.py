@@ -32,8 +32,7 @@ class FakeResolver:
 
 class FakeFacebook:
 
-    def __init__(self, *, loop):
-        self.loop = loop
+    def __init__(self):
         self.app = web.Application()
         self.app.router.add_routes(
             [web.get('/v2.7/me', self.on_me),
@@ -92,7 +91,7 @@ class FakeFacebook:
             }})
 
 
-async def main(loop):
+async def main():
     token = "ER34gsSGGS34XCBKd7u"
 
     fake_facebook = FakeFacebook()
@@ -113,4 +112,4 @@ async def main(loop):
 
 
 loop = asyncio.get_event_loop()
-loop.run_until_complete(main(loop))
+loop.run_until_complete(main())
