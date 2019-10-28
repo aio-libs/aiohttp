@@ -94,7 +94,7 @@ class FakeFacebook:
 async def main():
     token = "ER34gsSGGS34XCBKd7u"
 
-    fake_facebook = FakeFacebook(loop=loop)
+    fake_facebook = FakeFacebook()
     info = await fake_facebook.start()
     resolver = FakeResolver(info)
     connector = aiohttp.TCPConnector(resolver=resolver, ssl=False)
