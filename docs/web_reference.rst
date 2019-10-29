@@ -1572,8 +1572,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
        *variable rule* like ``'/a/{var}'`` (see
        :ref:`handling variable paths <aiohttp-web-variable-handler>`)
 
-      Pay attention please: *handler* is converted to coroutine internally when
-      it is a regular function.
+      Pay attention please: *handler* must be a coroutine.
 
       :param str method: HTTP method for route. Should be one of
                          ``'GET'``, ``'POST'``, ``'PUT'``,
