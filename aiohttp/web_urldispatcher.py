@@ -30,6 +30,7 @@ from typing import (  # noqa
 )
 
 from yarl import URL
+from functools import partial
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
@@ -128,14 +129,14 @@ class AbstractRoute(abc.ABC):
         if expect_handler is None:
             expect_handler = _default_expect_handler
 
-        assert asyncio.iscoroutinefunction(expect_handler), \
+        assert self.iscoroutinefunction(expect_handler), \
             'Coroutine is expected, got {!r}'.format(expect_handler)
 
         method = method.upper()
         if not HTTP_METHOD_RE.match(method):
             raise ValueError("{} is not allowed HTTP method".format(method))
 
-        if asyncio.iscoroutinefunction(handler):
+        if self.iscoroutinefunction(handler):
             pass
         elif isinstance(handler, type) and issubclass(handler, AbstractView):
             pass
@@ -147,6 +148,12 @@ class AbstractRoute(abc.ABC):
         self._handler = handler
         self._expect_handler = expect_handler
         self._resource = resource
+
+    @staticmethod
+    def iscoroutinefunction(handler):
+        while isinstance(handler, partial):
+            handler = object.func
+        return asyncio.iscoroutinefunction(handler)
 
     @property
     def method(self) -> str:
