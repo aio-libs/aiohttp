@@ -116,6 +116,7 @@ class AbstractResource(Sized, Iterable['AbstractRoute']):
     def raw_match(self, path: str) -> bool:
         """Perform a raw match against path"""
 
+
 class AbstractRoute(abc.ABC):
 
     def __init__(self, method: str,
