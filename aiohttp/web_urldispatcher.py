@@ -6,6 +6,7 @@ import keyword
 import os
 import re
 from contextlib import contextmanager
+from functools import partial
 from pathlib import Path
 from types import MappingProxyType
 from typing import (  # noqa
@@ -30,7 +31,6 @@ from typing import (  # noqa
 )
 
 from yarl import URL
-from functools import partial
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
