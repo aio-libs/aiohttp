@@ -727,13 +727,13 @@ StreamResponse
                           specification the cookie
                           conforms. (Optional, *version=1* by default)
 
-      .. versionadded:: 3.7
-
       :param str samesite: Asserts that a cookie must not be sent with
-                           cross-origin requests, providing some protection
-                           against cross-site request forgery attacks.
-                           Generally the value should be one of: ``None``,
-                           ``Lax`` or ``Strict``.
+         cross-origin requests, providing some protection
+         against cross-site request forgery attacks.
+         Generally the value should be one of: ``None``,
+         ``Lax`` or ``Strict``. (optional)
+
+            .. versionadded:: 3.7
 
       .. warning::
 
