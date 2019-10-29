@@ -113,10 +113,10 @@ coroutines._DEBUG = old_debug  # type: ignore
 if PY_38:
     iscoroutinefunction = asyncio.iscoroutinefunction
 else:
-    def iscoroutinefunction(handler: Callable[..., Any]) -> bool:
-        while isinstance(handler, functools.partial):
-            handler = handler.func
-        return asyncio.iscoroutinefunction(handler)
+    def iscoroutinefunction(func: Callable[..., Any]) -> bool:
+        while isinstance(func, functools.partial):
+            func = func.func
+        return asyncio.iscoroutinefunction(func)
 
 json_re = re.compile(r'^application/(?:[\w.+-]+?\+)?json')
 
