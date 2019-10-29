@@ -6,7 +6,6 @@ import keyword
 import os
 import re
 from contextlib import contextmanager
-from functools import partial
 from pathlib import Path
 from types import MappingProxyType
 from typing import (  # noqa
@@ -34,7 +33,7 @@ from yarl import URL
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
-from .helpers import DEBUG
+from .helpers import DEBUG, iscoroutinefunction
 from .http import HttpVersion11
 from .typedefs import PathLike
 from .web_exceptions import (
@@ -118,7 +117,6 @@ class AbstractResource(Sized, Iterable['AbstractRoute']):
     def raw_match(self, path: str) -> bool:
         """Perform a raw match against path"""
 
-
 class AbstractRoute(abc.ABC):
 
     def __init__(self, method: str,
@@ -129,14 +127,14 @@ class AbstractRoute(abc.ABC):
         if expect_handler is None:
             expect_handler = _default_expect_handler
 
-        assert self.iscoroutinefunction(expect_handler), \
+        assert iscoroutinefunction(expect_handler), \
             'Coroutine is expected, got {!r}'.format(expect_handler)
 
         method = method.upper()
         if not HTTP_METHOD_RE.match(method):
             raise ValueError("{} is not allowed HTTP method".format(method))
 
-        if self.iscoroutinefunction(handler):
+        if iscoroutinefunction(handler):
             pass
         elif isinstance(handler, type) and issubclass(handler, AbstractView):
             pass
@@ -148,12 +146,6 @@ class AbstractRoute(abc.ABC):
         self._handler = handler
         self._expect_handler = expect_handler
         self._resource = resource
-
-    @staticmethod
-    def iscoroutinefunction(handler: Any) -> bool:
-        while isinstance(handler, partial):
-            handler = handler.func
-        return asyncio.iscoroutinefunction(handler)
 
     @property
     def method(self) -> str:
