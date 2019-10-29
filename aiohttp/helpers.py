@@ -114,7 +114,7 @@ if not PY_38:
     def iscoroutinefunction(handler: Any) -> bool:
         while isinstance(handler, functools.partial):
             handler = handler.func
-    return asyncio.iscoroutinefunction(handler)
+        return asyncio.iscoroutinefunction(handler)
 else:
     iscoroutinefunction = asyncio.iscoroutinefunction
 
