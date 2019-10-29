@@ -119,6 +119,23 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
 
         self.loop.run_until_complete(run())
 
+    def test_server_external_class(self) -> None:
+        async def run():
+            server = aiohttp.test_utils.ExternalTestServer(
+                URL("http://localhost:8097")
+            )
+
+            assert server.port == 8097
+            assert server.host == 'localhost'
+            assert server.scheme == 'http'
+
+            with pytest.raises(NotImplementedError):
+                await server.start_server()
+
+            await server.close()
+
+        self.loop.run_until_complete(run())
+
 
 def test_get_route(loop, test_client) -> None:
     async def test_get_route() -> None:
