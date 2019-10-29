@@ -17,6 +17,7 @@ from typing import (  # noqa
     Mapping,
     MutableMapping,
     Optional,
+    Set,
     Tuple,
     Union,
     cast,
@@ -35,6 +36,7 @@ from .helpers import (
     is_expected_content_type,
     reify,
     sentinel,
+    set_result,
 )
 from .http_parser import RawRequestMessage
 from .multipart import BodyPartReader, MultipartReader
@@ -110,7 +112,9 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         '_message', '_protocol', '_payload_writer', '_payload', '_headers',
         '_method', '_version', '_rel_url', '_post', '_read_bytes',
         '_state', '_cache', '_task', '_client_max_size', '_loop',
-        '_transport_sslcontext', '_transport_peername')
+        '_transport_sslcontext', '_transport_peername',
+        '_disconnection_waiters',
+    )
 
     def __init__(self, message: RawRequestMessage,
                  payload: StreamReader, protocol: 'RequestHandler',
@@ -142,6 +146,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self._task = task
         self._client_max_size = client_max_size
         self._loop = loop
+        self._disconnection_waiters = set()  # type: Set[asyncio.Future[None]]
 
         transport = self._protocol.transport
         assert transport is not None
@@ -673,6 +678,18 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self._post = MultiDictProxy(out)
         return self._post
 
+    def get_extra_info(self, name: str, default: Any = None) -> Any:
+        """Extra info from protocol transport"""
+        protocol = self._protocol
+        if protocol is None:
+            return default
+
+        transport = protocol.transport
+        if transport is None:
+            return default
+
+        return transport.get_extra_info(name, default)
+
     def __repr__(self) -> str:
         ascii_encodable_path = self.path.encode('ascii', 'backslashreplace') \
             .decode('ascii')
@@ -690,6 +707,21 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
     def _cancel(self, exc: BaseException) -> None:
         self._payload.set_exception(exc)
+        for fut in self._disconnection_waiters:
+            set_result(fut, None)
+
+    def _finish(self) -> None:
+        for fut in self._disconnection_waiters:
+            fut.cancel()
+
+    async def wait_for_disconnection(self) -> None:
+        loop = asyncio.get_event_loop()
+        fut = loop.create_future()  # type: asyncio.Future[None]
+        self._disconnection_waiters.add(fut)
+        try:
+            await fut
+        finally:
+            self._disconnection_waiters.remove(fut)
 
 
 class Request(BaseRequest):
