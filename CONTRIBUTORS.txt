@@ -282,6 +282,7 @@ Young-Ho Cha
 Yuriy Shatrov
 Yury Selivanov
 Yusuke Tsutsumi
+Yuval Ofir
 Zlatan Sičanica
 Марк Коренберг
 Семён Марьясин
