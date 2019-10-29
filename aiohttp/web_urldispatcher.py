@@ -1,5 +1,4 @@
 import abc
-import asyncio
 import base64
 import hashlib
 import keyword
@@ -33,7 +32,7 @@ from yarl import URL
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
-from .helpers import DEBUG
+from .helpers import DEBUG, iscoroutinefunction
 from .http import HttpVersion11
 from .typedefs import PathLike
 from .web_exceptions import (
@@ -128,14 +127,14 @@ class AbstractRoute(abc.ABC):
         if expect_handler is None:
             expect_handler = _default_expect_handler
 
-        assert asyncio.iscoroutinefunction(expect_handler), \
+        assert iscoroutinefunction(expect_handler), \
             'Coroutine is expected, got {!r}'.format(expect_handler)
 
         method = method.upper()
         if not HTTP_METHOD_RE.match(method):
             raise ValueError("{} is not allowed HTTP method".format(method))
 
-        if asyncio.iscoroutinefunction(handler):
+        if iscoroutinefunction(handler):
             pass
         elif isinstance(handler, type) and issubclass(handler, AbstractView):
             pass
