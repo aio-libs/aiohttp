@@ -111,7 +111,7 @@ async def noop(*args: Any, **kwargs: Any) -> None:
 coroutines._DEBUG = old_debug  # type: ignore
 
 if not PY_38:
-    def iscoroutinefunction(handler: Any) -> bool:
+    def iscoroutinefunction(handler: Callable[..., Any]) -> bool:
         while isinstance(handler, functools.partial):
             handler = handler.func
         return asyncio.iscoroutinefunction(handler)
