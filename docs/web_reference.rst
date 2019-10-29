@@ -689,7 +689,8 @@ StreamResponse
 
    .. method:: set_cookie(name, value, *, path='/', expires=None, \
                           domain=None, max_age=None, \
-                          secure=None, httponly=None, version=None)
+                          secure=None, httponly=None, version=None, \
+                          samesite=None)
 
       Convenient way for setting :attr:`cookies`, allows to specify
       some additional properties like *max_age* in a single call.
@@ -733,6 +734,14 @@ StreamResponse
                           version of the state management
                           specification the cookie
                           conforms. (Optional, *version=1* by default)
+
+      :param str samesite: Asserts that a cookie must not be sent with
+         cross-origin requests, providing some protection
+         against cross-site request forgery attacks.
+         Generally the value should be one of: ``None``,
+         ``Lax`` or ``Strict``. (optional)
+
+            .. versionadded:: 3.7
 
       .. warning::
 
