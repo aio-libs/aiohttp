@@ -13,16 +13,15 @@ class MyView(web.View):
 
     async def get(self):
         return web.json_response({
-            'method': 'get',
-            'args': dict(self.request.GET),
+            'method': self.request.method,
+            'args': dict(self.request.rel_url.query),
             'headers': dict(self.request.headers),
         }, dumps=functools.partial(json.dumps, indent=4))
 
     async def post(self):
         data = await self.request.post()
         return web.json_response({
-            'method': 'post',
-            'args': dict(self.request.GET),
+            'method': self.request.method,
             'data': dict(data),
             'headers': dict(self.request.headers),
         }, dumps=functools.partial(json.dumps, indent=4))
