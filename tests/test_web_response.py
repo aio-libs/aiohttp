@@ -653,13 +653,14 @@ def test_response_cookie_path() -> None:
             'Set-Cookie: name=value; expires=123; Path=/')
     resp.set_cookie('name', 'value', domain='example.com',
                     path='/home', expires='123', max_age='10',
-                    secure=True, httponly=True, version='2.0')
+                    secure=True, httponly=True, version='2.0', samesite='lax')
     assert (str(resp.cookies).lower() == 'set-cookie: name=value; '
             'domain=example.com; '
             'expires=123; '
             'httponly; '
             'max-age=10; '
             'path=/home; '
+            'samesite=lax; '
             'secure; '
             'version=2.0')
 
