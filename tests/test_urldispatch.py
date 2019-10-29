@@ -1,6 +1,7 @@
 import pathlib
 import re
 from collections.abc import Container, Iterable, Mapping, MutableMapping, Sized
+from functools import partial
 from urllib.parse import unquote
 
 import pytest
@@ -32,6 +33,12 @@ def make_handler():
 
     return handler
 
+def make_partial_handler():
+
+    async def handler(a, request):
+        return Response(request)  # pragma: no cover
+
+    return partial(handler, 5)
 
 @pytest.fixture
 def app():
@@ -71,6 +78,10 @@ def test_register_uncommon_http_methods(router) -> None:
     for method in uncommon_http_methods:
         router.add_route(method, '/handler/to/path', make_handler())
 
+
+async def test_add_partial_handler(router) -> None:
+    handler = make_partial_handler()
+    router.add_get('/handler/to/path', handler)
 
 async def test_add_sync_handler(router) -> None:
     def handler(request):
