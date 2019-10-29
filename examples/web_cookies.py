@@ -15,6 +15,12 @@ tmpl = '''\
     </body>
 </html>'''
 
+class RedirectionResponse(web.Response):
+    def __init__(self, location: str, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.headers['Location'] = location
+        self.set_status(302)
+
 
 async def root(request):
     resp = web.Response(content_type='text/html')
@@ -23,13 +29,13 @@ async def root(request):
 
 
 async def login(request):
-    resp = web.HTTPFound(location='/')
+    resp = RedirectionResponse(location='/')
     resp.set_cookie('AUTH', 'secret')
     return resp
 
 
 async def logout(request):
-    resp = web.HTTPFound(location='/')
+    resp = RedirectionResponse(location='/')
     resp.del_cookie('AUTH')
     return resp
 
