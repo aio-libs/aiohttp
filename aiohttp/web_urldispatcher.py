@@ -1,5 +1,4 @@
 import abc
-import asyncio
 import base64
 import hashlib
 import keyword
