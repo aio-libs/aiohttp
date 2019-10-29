@@ -150,7 +150,7 @@ class AbstractRoute(abc.ABC):
         self._resource = resource
 
     @staticmethod
-    def iscoroutinefunction(handler):
+    def iscoroutinefunction(handler: Any) -> bool:
         while isinstance(handler, partial):
             handler = handler.func
         return asyncio.iscoroutinefunction(handler)
