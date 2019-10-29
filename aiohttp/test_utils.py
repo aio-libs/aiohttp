@@ -26,11 +26,7 @@ from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
 import aiohttp
-from aiohttp.client import (
-    ClientResponse,
-    _RequestContextManager,
-    _WSRequestContextManager,
-)
+from aiohttp.client import _RequestContextManager, _WSRequestContextManager
 
 from . import ClientSession, hdrs
 from .abc import AbstractCookieJar
@@ -74,29 +70,75 @@ def unused_port() -> int:
         return s.getsockname()[1]
 
 
-class BaseTestServer(ABC):
+class AbstractTestServer(ABC):
     __test__ = False
 
-    def __init__(self,
-                 *,
-                 scheme: Union[str, object]=sentinel,
-                 host: str='127.0.0.1',
-                 port: Optional[int]=None,
-                 skip_url_asserts: bool=False,
+    def __init__(self, *,
+                 skip_url_asserts: bool = False,
                  **kwargs: Any) -> None:
-        self.runner = None  # type: Optional[BaseRunner]
-        self._root = None  # type: Optional[URL]
-        self.host = host
-        self.port = port
-        self._closed = False
-        self.scheme = scheme
+        self._root = None    # type: Optional[URL]
         self.skip_url_asserts = skip_url_asserts
 
-    def set_root(self, url: URL) -> None:
-        self._root = url
+    def make_url(self, path: str) -> URL:
+        assert self._root is not None
+        url = URL(path)
+        if not self.skip_url_asserts:
+            assert not url.is_absolute()
+            return self._root.join(url)
+        else:
+            return URL(str(self._root) + path)
 
-    async def start_server(self,
-                           **kwargs: Any) -> None:
+
+class ExternalTestServer(AbstractTestServer):
+    __test__ = False
+
+    def __init__(self, root: URL, *,
+                 skip_url_asserts: bool = False,
+                 **kwargs: Any):
+        assert root.is_absolute(), "Only absolute URL allowed"
+        super().__init__(skip_url_asserts=skip_url_asserts, **kwargs)
+        self._root = root       # type: URL
+
+    async def start_server(self) -> None:
+        raise NotImplementedError(
+            "ExternalTestServer doesn't support start_server"
+        )
+
+    async def close(self) -> None:
+        return
+
+    @property
+    def host(self) -> str:
+        return self._root.host      # type: ignore
+
+    @property
+    def port(self) -> int:
+        return self._root.port      # type: ignore
+
+    @property
+    def scheme(self) -> str:
+        return self._root.scheme
+
+
+class BaseTestServer(AbstractTestServer):
+    __test__ = False
+
+    def __init__(self, *,
+                 scheme: Union[str, object] = sentinel,
+                 host: str = '127.0.0.1',
+                 port: Optional[int] = None,
+                 skip_url_asserts: bool = False, **kwargs: Any) -> None:
+        super().__init__(
+            skip_url_asserts=skip_url_asserts,
+            **kwargs
+        )
+        self.scheme = scheme
+        self.host = host
+        self.port = port
+        self.runner = None  # type: Optional[BaseRunner]
+        self._closed = False
+
+    async def start_server(self, **kwargs: Any) -> None:
         if self.runner:
             return
         self._ssl = kwargs.pop('ssl', None)
@@ -223,10 +265,10 @@ class TestClient:
     """
     __test__ = False
 
-    def __init__(self, server: BaseTestServer, *,
+    def __init__(self, server: Union[ExternalTestServer, BaseTestServer], *,
                  cookie_jar: Optional[AbstractCookieJar]=None,
                  **kwargs: Any) -> None:
-        if not isinstance(server, BaseTestServer):
+        if not isinstance(server, (ExternalTestServer, BaseTestServer)):
             raise TypeError("server must be TestServer "
                             "instance, found type: %r" % type(server))
         self._server = server
@@ -239,14 +281,14 @@ class TestClient:
         self._websockets = []  # type: List[ClientWebSocketResponse]
 
     async def start_server(self) -> None:
-        await self._server.start_server()
+        return await self._server.start_server()
 
     @property
     def scheme(self) -> Union[str, object]:
         return self._server.scheme
 
     @property
-    def host(self) -> str:
+    def host(self) -> Optional[str]:
         return self._server.host
 
     @property
@@ -254,7 +296,7 @@ class TestClient:
         return self._server.port
 
     @property
-    def server(self) -> BaseTestServer:
+    def server(self) -> AbstractTestServer:
         return self._server
 
     @property

@@ -1,3 +1,2 @@
-Added `BaseTestServer.set_root` method.
-Useful when you start server not using `start_server` method, but still
-using `TestClient`.
+Added class `ExternalTestServer`.
+Useful when you using `TestClient` but starts server externally.

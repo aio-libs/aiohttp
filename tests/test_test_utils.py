@@ -106,10 +106,18 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
         self.loop.run_until_complete(test_get_route())
 
     def test_server_set_root(self) -> None:
-        server = aiohttp.test_utils.TestServer(self.get_app())
-        server.set_root(URL("http://localhost:8097"))
+        async def run():
+            server = aiohttp.test_utils.ExternalTestServer(
+                URL("http://localhost:8097")
+            )
 
-        assert server._root == URL("http://localhost:8097")
+            assert server.make_url('/') == URL("http://localhost:8097/")
+            assert server.make_url('/foo') == URL("http://localhost:8097/foo")
+
+            client = aiohttp.test_utils.TestClient(server)
+            assert client.make_url("/") == URL("http://localhost:8097/")
+
+        self.loop.run_until_complete(run())
 
 
 def test_get_route(loop, test_client) -> None:
