@@ -152,7 +152,7 @@ class AbstractRoute(abc.ABC):
     @staticmethod
     def iscoroutinefunction(handler):
         while isinstance(handler, partial):
-            handler = object.func
+            handler = handler.func
         return asyncio.iscoroutinefunction(handler)
 
     @property
