@@ -110,11 +110,13 @@ async def noop(*args: Any, **kwargs: Any) -> None:
 
 coroutines._DEBUG = old_debug  # type: ignore
 
-def iscoroutinefunction(handler: Any) -> bool:
-    if not PY_38:
+if not PY_38:
+    def iscoroutinefunction(handler: Any) -> bool:
         while isinstance(handler, functools.partial):
             handler = handler.func
     return asyncio.iscoroutinefunction(handler)
+else:
+    iscoroutinefunction = asyncio.iscoroutinefunction
 
 json_re = re.compile(r'^application/(?:[\w.+-]+?\+)?json')
 
