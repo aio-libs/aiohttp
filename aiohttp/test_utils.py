@@ -168,11 +168,13 @@ class BaseTestServer(AbstractTestServer):
         assert sockets is not None
         self._port = sockets[0].getsockname()[1]
 
-        if self.scheme is None:
+        if self._scheme is None:
             self._scheme = 'https' if self._ssl else 'http'
 
         self._root = URL.build(
-            scheme=self._scheme, host=self._host, port=self._port
+            scheme=self._scheme,
+            host=self._host,
+            port=self._port,
         )
 
     @abstractmethod  # pragma: no cover
