@@ -76,7 +76,11 @@ class AbstractTestServer(ABC):
     def __init__(self, *,
                  skip_url_asserts: bool = False,
                  **kwargs: Any) -> None:
-        self._root = None    # type: Optional[URL]
+        self._root = None           # type: Optional[URL]
+        self._host = '127.0.0.1'    # type: str
+        self._port = None           # type: Optional[int]
+        self._scheme = None         # type: Optional[str]
+
         self.skip_url_asserts = skip_url_asserts
 
     def make_url(self, path: str) -> URL:
@@ -88,6 +92,24 @@ class AbstractTestServer(ABC):
         else:
             return URL(str(self._root) + path)
 
+    async def start_server(self) -> None:
+        return
+
+    async def close(self) -> None:
+        return
+
+    @property
+    def host(self) -> str:
+        return self._host
+
+    @property
+    def port(self) -> Optional[int]:
+        return self._port
+
+    @property
+    def scheme(self) -> Optional[str]:
+        return self._scheme
+
 
 class ExternalTestServer(AbstractTestServer):
     __test__ = False
@@ -98,14 +120,6 @@ class ExternalTestServer(AbstractTestServer):
         assert root.is_absolute(), "Only absolute URL allowed"
         super().__init__(skip_url_asserts=skip_url_asserts, **kwargs)
         self._root = root       # type: URL
-
-    async def start_server(self) -> None:
-        raise NotImplementedError(
-            "ExternalTestServer doesn't support start_server"
-        )
-
-    async def close(self) -> None:
-        return
 
     @property
     def host(self) -> str:
@@ -124,7 +138,7 @@ class BaseTestServer(AbstractTestServer):
     __test__ = False
 
     def __init__(self, *,
-                 scheme: Union[str, object] = sentinel,
+                 scheme: Optional[str] = None,
                  host: str = '127.0.0.1',
                  port: Optional[int] = None,
                  skip_url_asserts: bool = False, **kwargs: Any) -> None:
@@ -132,9 +146,9 @@ class BaseTestServer(AbstractTestServer):
             skip_url_asserts=skip_url_asserts,
             **kwargs
         )
-        self.scheme = scheme
-        self.host = host
-        self.port = port
+        self._scheme = scheme
+        self._host = host
+        self._port = port
         self.runner = None  # type: Optional[BaseRunner]
         self._closed = False
 
@@ -144,26 +158,22 @@ class BaseTestServer(AbstractTestServer):
         self._ssl = kwargs.pop('ssl', None)
         self.runner = await self._make_runner(**kwargs)
         await self.runner.setup()
-        if not self.port:
-            self.port = 0
-        _sock = get_port_socket(self.host, self.port)
-        self.host, self.port = _sock.getsockname()[:2]
+        _sock = get_port_socket(self.host, self.port or 0)
+        self._host, self._port = _sock.getsockname()[:2]
         site = SockSite(self.runner, sock=_sock, ssl_context=self._ssl)
         await site.start()
         server = site._server
         assert server is not None
         sockets = server.sockets
         assert sockets is not None
-        self.port = sockets[0].getsockname()[1]
-        if self.scheme is sentinel:
-            if self._ssl:
-                scheme = 'https'
-            else:
-                scheme = 'http'
-            self.scheme = scheme
-        self._root = URL('{}://{}:{}'.format(self.scheme,
-                                             self.host,
-                                             self.port))
+        self._port = sockets[0].getsockname()[1]
+
+        if self.scheme is None:
+            self._scheme = 'https' if self._ssl else 'http'
+
+        self._root = URL.build(
+            scheme=self._scheme, host=self._host, port=self._port
+        )
 
     @abstractmethod  # pragma: no cover
     async def _make_runner(self, **kwargs: Any) -> BaseRunner:
@@ -211,7 +221,7 @@ class BaseTestServer(AbstractTestServer):
             assert self.runner is not None
             await self.runner.cleanup()
             self._root = None
-            self.port = None
+            self._port = None
             self._closed = True
 
     async def __aenter__(self) -> 'BaseTestServer':
@@ -228,7 +238,7 @@ class BaseTestServer(AbstractTestServer):
 class TestServer(BaseTestServer):
 
     def __init__(self, app: Application, *,
-                 scheme: Union[str, object]=sentinel,
+                 scheme: Optional[str]=None,
                  host: str='127.0.0.1',
                  port: Optional[int]=None,
                  **kwargs: Any):
@@ -242,7 +252,7 @@ class TestServer(BaseTestServer):
 class RawTestServer(BaseTestServer):
 
     def __init__(self, handler: _RequestHandler, *,
-                 scheme: Union[str, object]=sentinel,
+                 scheme: Optional[str]=None,
                  host: str='127.0.0.1',
                  port: Optional[int]=None,
                  **kwargs: Any) -> None:

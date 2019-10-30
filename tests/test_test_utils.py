@@ -128,10 +128,7 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
             assert server.port == 8097
             assert server.host == 'localhost'
             assert server.scheme == 'http'
-
-            with pytest.raises(NotImplementedError):
-                await server.start_server()
-
+            await server.start_server()
             await server.close()
 
         self.loop.run_until_complete(run())
