@@ -146,13 +146,17 @@ async def test_send_recv_text(loop, aiohttp_client) -> None:
     closed = loop.create_future()
 
     async def handler(request):
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
-        msg = await ws.receive_str()
-        await ws.send_str(msg+'/answer')
-        await ws.close()
-        closed.set_result(1)
-        return ws
+        try:
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
+            msg = await ws.receive_str()
+            await ws.send_str(msg+'/answer')
+            await ws.close()
+            closed.set_result(1)
+            return ws
+        except Exception as exc:
+            closed.set_exception(exc)
+            raise
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
@@ -180,14 +184,18 @@ async def test_send_recv_bytes(loop, aiohttp_client) -> None:
     closed = loop.create_future()
 
     async def handler(request):
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
+        try:
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
 
-        msg = await ws.receive_bytes()
-        await ws.send_bytes(msg+b'/answer')
-        await ws.close()
-        closed.set_result(1)
-        return ws
+            msg = await ws.receive_bytes()
+            await ws.send_bytes(msg+b'/answer')
+            await ws.close()
+            closed.set_result(1)
+            return ws
+        except Exception as exc:
+            closed.set_exception(exc)
+            raise
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
@@ -214,13 +222,17 @@ async def test_send_recv_json(loop, aiohttp_client) -> None:
     closed = loop.create_future()
 
     async def handler(request):
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
-        data = await ws.receive_json()
-        await ws.send_json({'response': data['request']})
-        await ws.close()
-        closed.set_result(1)
-        return ws
+        try:
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
+            data = await ws.receive_json()
+            await ws.send_json({'response': data['request']})
+            await ws.close()
+            closed.set_result(1)
+            return ws
+        except Exception as exc:
+            closed.set_exception(exc)
+            raise
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
@@ -249,18 +261,22 @@ async def test_close_timeout(loop, aiohttp_client) -> None:
     elapsed = 1e10  # something big
 
     async def handler(request):
-        nonlocal elapsed
-        ws = web.WebSocketResponse(timeout=0.1)
-        await ws.prepare(request)
-        assert 'request' == (await ws.receive_str())
-        await ws.send_str('reply')
-        begin = ws._loop.time()
-        assert (await ws.close())
-        elapsed = ws._loop.time() - begin
-        assert ws.close_code == 1006
-        assert isinstance(ws.exception(), asyncio.TimeoutError)
-        aborted.set_result(1)
-        return ws
+        try:
+            nonlocal elapsed
+            ws = web.WebSocketResponse(timeout=0.1)
+            await ws.prepare(request)
+            assert 'request' == (await ws.receive_str())
+            await ws.send_str('reply')
+            begin = ws._loop.time()
+            assert (await ws.close())
+            elapsed = ws._loop.time() - begin
+            assert ws.close_code == 1006
+            assert isinstance(ws.exception(), asyncio.TimeoutError)
+            aborted.set_result(1)
+            return ws
+        except Exception as exc:
+            aborted.set_exception(exc)
+            raise
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
@@ -269,15 +285,15 @@ async def test_close_timeout(loop, aiohttp_client) -> None:
     ws = await client.ws_connect('/')
     await ws.send_str('request')
     assert 'reply' == (await ws.receive_str())
-
     # The server closes here.  Then the client sends bogus messages with an
     # internval shorter than server-side close timeout, to make the server
     # hanging indefinitely.
     await asyncio.sleep(0.08)
-    msg = await ws._reader.read()
+    msg = await ws.receive()
     assert msg.type == WSMsgType.CLOSE
 
     await asyncio.sleep(0.08)
+
     assert (await aborted)
 
     assert elapsed < 0.25, \
@@ -326,22 +342,25 @@ async def test_concurrent_close(loop, aiohttp_client) -> None:
     msg = await ws.receive()
     assert msg.type == WSMsgType.CLOSED
 
-
 async def test_auto_pong_with_closing_by_peer(loop, aiohttp_client) -> None:
 
     closed = loop.create_future()
 
     async def handler(request):
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
-        await ws.receive()
+        try:
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
+            await ws.receive()
 
-        msg = await ws.receive()
-        assert msg.type == WSMsgType.CLOSE
-        assert msg.data == 1000
-        assert msg.extra == 'exit message'
-        closed.set_result(None)
-        return ws
+            msg = await ws.receive()
+            assert msg.type == WSMsgType.CLOSE
+            assert msg.data == 1000
+            assert msg.extra == 'exit message'
+            closed.set_result(None)
+            return ws
+        except Exception as exc:
+            closed.set_exception(exc)
+            raise
 
     app = web.Application()
     app.router.add_get('/', handler)
@@ -362,13 +381,17 @@ async def test_ping(loop, aiohttp_client) -> None:
     closed = loop.create_future()
 
     async def handler(request):
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
+        try:
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
 
-        await ws.ping('data')
-        await ws.receive()
-        closed.set_result(None)
-        return ws
+            await ws.ping('data')
+            await ws.receive()
+            closed.set_result(None)
+            return ws
+        except Exception as exc:
+            closed.set_exception(exc)
+            raise
 
     app = web.Application()
     app.router.add_get('/', handler)
@@ -389,12 +412,16 @@ async def aiohttp_client_ping(loop, aiohttp_client):
     closed = loop.create_future()
 
     async def handler(request):
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
+        try:
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
 
-        await ws.receive()
-        closed.set_result(None)
-        return ws
+            await ws.receive()
+            closed.set_result(None)
+            return ws
+        except Exception as exc:
+            closed.set_exception(exc)
+            raise
 
     app = web.Application()
     app.router.add_get('/', handler)
@@ -415,19 +442,23 @@ async def test_pong(loop, aiohttp_client) -> None:
     closed = loop.create_future()
 
     async def handler(request):
-        ws = web.WebSocketResponse(autoping=False)
-        await ws.prepare(request)
+        try:
+            ws = web.WebSocketResponse(autoping=False)
+            await ws.prepare(request)
 
-        msg = await ws.receive()
-        assert msg.type == WSMsgType.PING
-        await ws.pong('data')
+            msg = await ws.receive()
+            assert msg.type == WSMsgType.PING
+            await ws.pong('data')
 
-        msg = await ws.receive()
-        assert msg.type == WSMsgType.CLOSE
-        assert msg.data == 1000
-        assert msg.extra == 'exit message'
-        closed.set_result(None)
-        return ws
+            msg = await ws.receive()
+            assert msg.type == WSMsgType.CLOSE
+            assert msg.data == 1000
+            assert msg.extra == 'exit message'
+            closed.set_result(None)
+            return ws
+        except Exception as exc:
+            closed.set_exception(exc)
+            raise
 
     app = web.Application()
     app.router.add_get('/', handler)
@@ -450,14 +481,18 @@ async def test_change_status(loop, aiohttp_client) -> None:
     closed = loop.create_future()
 
     async def handler(request):
-        ws = web.WebSocketResponse()
-        ws.set_status(200)
-        assert 200 == ws.status
-        await ws.prepare(request)
-        assert 101 == ws.status
-        await ws.close()
-        closed.set_result(None)
-        return ws
+        try:
+            ws = web.WebSocketResponse()
+            ws.set_status(200)
+            assert 200 == ws.status
+            await ws.prepare(request)
+            assert 101 == ws.status
+            await ws.close()
+            closed.set_result(None)
+            return ws
+        except Exception as exc:
+            closed.set_exception(exc)
+            raise
 
     app = web.Application()
     app.router.add_get('/', handler)
@@ -475,12 +510,16 @@ async def test_handle_protocol(loop, aiohttp_client) -> None:
     closed = loop.create_future()
 
     async def handler(request):
-        ws = web.WebSocketResponse(protocols=('foo', 'bar'))
-        await ws.prepare(request)
-        await ws.close()
-        assert 'bar' == ws.ws_protocol
-        closed.set_result(None)
-        return ws
+        try:
+            ws = web.WebSocketResponse(protocols=('foo', 'bar'))
+            await ws.prepare(request)
+            await ws.close()
+            assert 'bar' == ws.ws_protocol
+            closed.set_result(None)
+            return ws
+        except Exception as exc:
+            closed.set_exception(exc)
+            raise
 
     app = web.Application()
     app.router.add_get('/', handler)
@@ -497,11 +536,15 @@ async def test_server_close_handshake(loop, aiohttp_client) -> None:
     closed = loop.create_future()
 
     async def handler(request):
-        ws = web.WebSocketResponse(protocols=('foo', 'bar'))
-        await ws.prepare(request)
-        await ws.close()
-        closed.set_result(None)
-        return ws
+        try:
+            ws = web.WebSocketResponse(protocols=('foo', 'bar'))
+            await ws.prepare(request)
+            await ws.close()
+            closed.set_result(None)
+            return ws
+        except Exception as exc:
+            closed.set_exception(exc)
+            raise
 
     app = web.Application()
     app.router.add_get('/', handler)
@@ -521,22 +564,26 @@ async def aiohttp_client_close_handshake(loop, aiohttp_client, ceil):
     closed = loop.create_future()
 
     async def handler(request):
-        ws = web.WebSocketResponse(
-            autoclose=False, protocols=('foo', 'bar'))
-        await ws.prepare(request)
+        try:
+            ws = web.WebSocketResponse(
+                autoclose=False, protocols=('foo', 'bar'))
+            await ws.prepare(request)
 
-        msg = await ws.receive()
-        assert msg.type == WSMsgType.CLOSE
-        assert not ws.closed
-        await ws.close()
-        assert ws.closed
-        assert ws.close_code == 1007
+            msg = await ws.receive()
+            assert msg.type == WSMsgType.CLOSE
+            assert not ws.closed
+            await ws.close()
+            assert ws.closed
+            assert ws.close_code == 1007
 
-        msg = await ws.receive()
-        assert msg.type == WSMsgType.CLOSED
+            msg = await ws.receive()
+            assert msg.type == WSMsgType.CLOSED
 
-        closed.set_result(None)
-        return ws
+            closed.set_result(None)
+            return ws
+        except Exception as exc:
+            closed.set_exception(exc)
+            raise
 
     app = web.Application()
     app.router.add_get('/', handler)
@@ -557,11 +604,15 @@ async def test_server_close_handshake_server_eats_client_messages(
     closed = loop.create_future()
 
     async def handler(request):
-        ws = web.WebSocketResponse(protocols=('foo', 'bar'))
-        await ws.prepare(request)
-        await ws.close()
-        closed.set_result(None)
-        return ws
+        try:
+            ws = web.WebSocketResponse(protocols=('foo', 'bar'))
+            await ws.prepare(request)
+            await ws.close()
+            closed.set_result(None)
+            return ws
+        except Exception as exc:
+            closed.set_exception(exc)
+            raise
 
     app = web.Application()
     app.router.add_get('/', handler)
@@ -575,6 +626,10 @@ async def test_server_close_handshake_server_eats_client_messages(
 
     await ws.send_str('text')
     await ws.send_bytes(b'bytes')
+    # await ws.send_bytes(b'bytes2')
+    # msg = await ws.receive()
+    # assert msg.type == WSMsgType.CLOSED
+    # await ws.send_bytes(b'bytes 2')
     await ws.ping()
 
     await ws.close()
@@ -677,15 +732,19 @@ async def test_server_ws_async_for(loop, aiohttp_server) -> None:
     closed = loop.create_future()
 
     async def handler(request):
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
-        async for msg in ws:
-            assert msg.type == aiohttp.WSMsgType.TEXT
-            s = msg.data
-            await ws.send_str(s + '/answer')
-        await ws.close()
-        closed.set_result(1)
-        return ws
+        try:
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
+            async for msg in ws:
+                assert msg.type == aiohttp.WSMsgType.TEXT
+                s = msg.data
+                await ws.send_str(s + '/answer')
+            await ws.close()
+            closed.set_result(1)
+            return ws
+        except Exception as exc:
+            closed.set_exception(exc)
+            raise
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
@@ -710,22 +769,26 @@ async def test_closed_async_for(loop, aiohttp_client) -> None:
     closed = loop.create_future()
 
     async def handler(request):
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
+        try:
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
 
-        messages = []
-        async for msg in ws:
-            messages.append(msg)
-            if 'stop' == msg.data:
-                await ws.send_str('stopping')
-                await ws.close()
+            messages = []
+            async for msg in ws:
+                messages.append(msg)
+                if 'stop' == msg.data:
+                    await ws.send_str('stopping')
+                    await ws.close()
 
-        assert 1 == len(messages)
-        assert messages[0].type == WSMsgType.TEXT
-        assert messages[0].data == 'stop'
+            assert 1 == len(messages)
+            assert messages[0].type == WSMsgType.TEXT
+            assert messages[0].data == 'stop'
 
-        closed.set_result(None)
-        return ws
+            closed.set_result(None)
+            return ws
+        except Exception as exc:
+            closed.set_exception(exc)
+            raise
 
     app = web.Application()
     app.router.add_get('/', handler)

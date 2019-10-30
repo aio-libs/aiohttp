@@ -21,7 +21,6 @@ async def test_send_recv_text(aiohttp_client) -> None:
     async def handler(request):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
-
         msg = await ws.receive_str()
         await ws.send_str(msg+'/answer')
         await ws.close()
@@ -140,17 +139,19 @@ async def test_ping_pong(aiohttp_client) -> None:
     closed = loop.create_future()
 
     async def handler(request):
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
-
-        msg = await ws.receive_bytes()
-        await ws.ping()
-        await ws.send_bytes(msg+b'/answer')
         try:
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
+
+            msg = await ws.receive_bytes()
+            await ws.ping()
+            await ws.send_bytes(msg+b'/answer')
             await ws.close()
-        finally:
             closed.set_result(1)
-        return ws
+            return ws
+        except Exception as exc:
+            closed.set_exception(exc)
+            raise
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
@@ -176,17 +177,19 @@ async def test_ping_pong_manual(aiohttp_client) -> None:
     closed = loop.create_future()
 
     async def handler(request):
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
-
-        msg = await ws.receive_bytes()
-        await ws.ping()
-        await ws.send_bytes(msg+b'/answer')
         try:
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
+
+            msg = await ws.receive_bytes()
+            await ws.ping()
+            await ws.send_bytes(msg+b'/answer')
             await ws.close()
-        finally:
             closed.set_result(1)
-        return ws
+            return ws
+        except Exception as exc:
+            closed.set_exception(exc)
+            raise
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
@@ -277,15 +280,16 @@ async def test_close_from_server(aiohttp_client) -> None:
     closed = loop.create_future()
 
     async def handler(request):
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
-
         try:
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
             await ws.receive_bytes()
             await ws.close()
-        finally:
             closed.set_result(1)
-        return ws
+            return ws
+        except Exception as exc:
+            closed.set_exception(exc)
+            raise
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
@@ -309,17 +313,18 @@ async def test_close_manual(aiohttp_client) -> None:
     closed = loop.create_future()
 
     async def handler(request):
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
-
-        await ws.receive_bytes()
-        await ws.send_str('test')
-
         try:
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
+
+            await ws.receive_bytes()
+            await ws.send_str('test')
             await ws.close()
-        finally:
             closed.set_result(1)
-        return ws
+            return ws
+        except Exception as exc:
+            closed.set_exception(exc)
+            raise
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
@@ -814,15 +819,16 @@ async def test_closed_async_for(aiohttp_client) -> None:
     closed = loop.create_future()
 
     async def handler(request):
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
-
         try:
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
             await ws.send_bytes(b'started')
             await ws.receive_bytes()
-        finally:
             closed.set_result(1)
-        return ws
+            return ws
+        except Exception as exc:
+            closed.set_exception(exc)
+            raise
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
