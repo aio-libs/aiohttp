@@ -84,10 +84,12 @@ async def test_aiohttp_client_close_is_idempotent() -> None:
     await client.close()
 
 
-class TestAioHTTPTestCase(AioHTTPTestCase):
-
+class TestServerBaseTestCase(AioHTTPTestCase):
     def get_app(self):
         return _create_example_app()
+
+
+class TestAioHTTPTestCase(TestServerBaseTestCase):
 
     @unittest_run_loop
     async def test_example_with_loop(self) -> None:
@@ -105,19 +107,19 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
 
         self.loop.run_until_complete(test_get_route())
 
-    def test_server_set_root(self) -> None:
-        async def run():
-            server = aiohttp.test_utils.ExternalTestServer(
-                URL("http://localhost:8097")
-            )
 
-            assert server.make_url('/') == URL("http://localhost:8097/")
-            assert server.make_url('/foo') == URL("http://localhost:8097/foo")
+class TestExternalTestServerTestCase(TestServerBaseTestCase):
+    @unittest_run_loop
+    async def test_server_set_root(self) -> None:
+        server = aiohttp.test_utils.ExternalTestServer(
+            URL("http://localhost:8097")
+        )
 
-            client = aiohttp.test_utils.TestClient(server)
-            assert client.make_url("/") == URL("http://localhost:8097/")
+        assert server.make_url('/') == URL("http://localhost:8097/")
+        assert server.make_url('/foo') == URL("http://localhost:8097/foo")
 
-        self.loop.run_until_complete(run())
+        client = aiohttp.test_utils.TestClient(server)
+        assert client.make_url("/") == URL("http://localhost:8097/")
 
     def test_server_external_class(self) -> None:
         async def run():
