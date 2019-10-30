@@ -1,10 +1,6 @@
 import warnings
 from http import HTTPStatus
-<<<<<<< HEAD
-from typing import Any, Iterable, Optional, Set, Tuple
-=======
 from typing import Any, Iterable, Optional, Set, Tuple, Union
->>>>>>> 8d2f742a... 'del_cookie' and update tests
 
 from multidict import CIMultiDict
 from yarl import URL
