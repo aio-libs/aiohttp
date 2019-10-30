@@ -1,11 +1,16 @@
 import warnings
 from http import HTTPStatus
+<<<<<<< HEAD
 from typing import Any, Iterable, Optional, Set, Tuple
+=======
+from typing import Any, Iterable, Optional, Set, Tuple, Union
+>>>>>>> 8d2f742a... 'del_cookie' and update tests
 
 from multidict import CIMultiDict
 from yarl import URL
 
 from . import hdrs
+from .cookiejar import SimpleCookie
 from .typedefs import LooseHeaders, StrOrURL
 
 __all__ = (
@@ -122,10 +127,79 @@ class HTTPException(Exception):
         self._reason = reason
         self._text = text
         self._headers = real_headers
+        self._cookies: 'SimpleCookie[str]' = SimpleCookie()
         self.args = ()
 
     def __bool__(self) -> bool:
         return True
+
+    @property
+    def cookies(self) -> 'SimpleCookie[str]':
+        return self._cookies
+
+    def set_cookie(self, name: str, value: str, *,
+                   expires: Optional[str]=None,
+                   domain: Optional[str]=None,
+                   max_age: Optional[Union[int, str]]=None,
+                   path: str='/',
+                   secure: Optional[bool]=None,
+                   httponly: Optional[bool]=None,
+                   version: Optional[str]=None,
+                   samesite: Optional[str]=None) -> None:
+        """Set or update response cookie.
+
+        Sets new cookie or updates existent with new value.
+        Also updates only those params which are not None.
+        """
+
+        old = self._cookies.get(name)
+        if old is not None and old.coded_value == '':
+            # deleted cookie
+            self._cookies.pop(name, None)
+
+        self._cookies[name] = value
+        c = self._cookies[name]
+
+        if expires is not None:
+            c['expires'] = expires
+        elif c.get('expires') == 'Thu, 01 Jan 1970 00:00:00 GMT':
+            del c['expires']
+
+        if domain is not None:
+            c['domain'] = domain
+
+        if max_age is not None:
+            c['max-age'] = str(max_age)
+        elif 'max-age' in c:
+            del c['max-age']
+
+        c['path'] = path
+
+        if secure is not None:
+            c['secure'] = secure
+        if httponly is not None:
+            c['httponly'] = httponly
+        if version is not None:
+            c['version'] = version
+        if samesite is not None:
+            c['samesite'] = samesite
+
+        for cookie in self._cookies.values():
+            value = cookie.output(header='')[1:]
+            self._headers.add(hdrs.SET_COOKIE, value)
+
+    def del_cookie(self, name: str, *,
+                   domain: Optional[str]=None,
+                   path: str='/') -> None:
+        """Delete cookie.
+
+        Creates new empty expired cookie.
+        """
+        # TODO: do we need domain/path here?
+        self._cookies.pop(name, None)
+        self.set_cookie(name, '', max_age=0,
+                        expires="Thu, 01 Jan 1970 00:00:00 GMT",
+                        domain=domain, path=path)
 
     @property
     def status(self) -> int:
