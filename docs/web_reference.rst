@@ -346,6 +346,18 @@ and :ref:`aiohttp-web-signals` handlers.
 
       :return: a cloned :class:`Request` instance.
 
+   .. method:: get_extra_info(name, default=None)
+
+      Reads extra information from the protocol's transport.
+      If no value associated with ``name`` is found, ``default`` is returned.
+
+      :param str name: The key to look up in the transport extra information.
+
+      :param default: Default value to be used when no value for ``name`` is
+                      found (default is ``None``).
+
+      .. versionadded:: 3.7
+
    .. comethod:: read()
 
       Read request body, returns :class:`bytes` object with body content.
@@ -442,6 +454,18 @@ and :ref:`aiohttp-web-signals` handlers.
           required work will be processed by :mod:`aiohttp.web`
           internal machinery.
 
+   .. comethod:: wait_for_disconnection()
+
+      Returns when the connection that sent this request closes
+
+      If there is no client disconnection during request handling, this
+      coroutine gets cancelled automatically at the end of this request being
+      handled.
+
+      This can be used in handlers as a means of receiving a notification of
+      premature client disconnection.
+
+      .. versionadded:: 4.0
 
 .. class:: Request
 
@@ -657,7 +681,8 @@ StreamResponse
 
    .. method:: set_cookie(name, value, *, path='/', expires=None, \
                           domain=None, max_age=None, \
-                          secure=None, httponly=None, version=None)
+                          secure=None, httponly=None, version=None, \
+                          samesite=None)
 
       Convenient way for setting :attr:`cookies`, allows to specify
       some additional properties like *max_age* in a single call.
@@ -701,6 +726,14 @@ StreamResponse
                           version of the state management
                           specification the cookie
                           conforms. (Optional, *version=1* by default)
+
+      :param str samesite: Asserts that a cookie must not be sent with
+         cross-origin requests, providing some protection
+         against cross-site request forgery attacks.
+         Generally the value should be one of: ``None``,
+         ``Lax`` or ``Strict``. (optional)
+
+            .. versionadded:: 3.7
 
       .. warning::
 
@@ -1413,11 +1446,18 @@ duplicated like one using :meth:`Application.copy`.
       The table is a :class:`list` of :class:`RouteDef` items or
       :class:`RouteTableDef`.
 
+      :returns: :class:`list` of registered :class:`AbstractRoute` instances.
+
       The method is a shortcut for
       ``app.router.add_routes(routes_table)``, see also
       :meth:`UrlDispatcher.add_routes`.
 
       .. versionadded:: 3.1
+
+      .. versionchanged:: 3.7
+
+         Return value updated from ``None`` to :class:`list` of
+         :class:`AbstractRoute` instances.
 
    .. comethod:: startup()
 
@@ -1541,8 +1581,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
        *variable rule* like ``'/a/{var}'`` (see
        :ref:`handling variable paths <aiohttp-web-variable-handler>`)
 
-      Pay attention please: *handler* is converted to coroutine internally when
-      it is a regular function.
+      Pay attention please: *handler* must be a coroutine.
 
       :param str method: HTTP method for route. Should be one of
                          ``'GET'``, ``'POST'``, ``'PUT'``,
@@ -1569,7 +1608,14 @@ Router is any object that implements :class:`AbstractRouter` interface.
       The table is a :class:`list` of :class:`RouteDef` items or
       :class:`RouteTableDef`.
 
+      :returns: :class:`list` of registered :class:`AbstractRoute` instances.
+
       .. versionadded:: 2.3
+
+      .. versionchanged:: 3.7
+
+         Return value updated from ``None`` to :class:`list` of
+         :class:`AbstractRoute` instances.
 
    .. method:: add_get(path, handler, *, name=None, allow_head=True, **kwargs)
 
@@ -2079,6 +2125,13 @@ The definition is created by functions like :func:`get` or
       Register itself into :class:`UrlDispatcher`.
 
       Abstract method, should be overridden by subclasses.
+
+      :returns: :class:`list` of registered :class:`AbstractRoute` objects.
+
+      .. versionchanged:: 3.7
+
+         Return value updated from ``None`` to :class:`list` of
+         :class:`AbstractRoute` instances.
 
 
 .. class:: RouteDef

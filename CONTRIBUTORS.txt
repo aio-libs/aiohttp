@@ -1,6 +1,7 @@
 - Contributors -
 ----------------
 A. Jesse Jiryu Davis
+Adam Bannister
 Adam Cooper
 Adam Mills
 Adrián Chaves
@@ -98,6 +99,7 @@ Eugene Nikolaiev
 Eugene Tolmachev
 Evert Lammerts
 Felix Yan
+Fernanda Guimarães
 FichteFoll
 Florian Scheffler
 Frederik Gladhorn
@@ -129,6 +131,7 @@ Jake Davis
 Jakob Ackermann
 Jakub Wilk
 Jashandeep Sohi
+Jens Steinhauser
 Jeongkyu Shin
 Jeroen van der Heijden
 Jesus Cea
@@ -205,10 +208,12 @@ Pepe Osca
 Philipp A.
 Pieter van Beek
 Rafael Viotti
+Raphael Bialon
 Raúl Cumplido
 Required Field
 Robert Lu
 Robert Nikolich
+Roman Markeloff
 Roman Podoliaka
 Samuel Colvin
 Sean Hunt
@@ -229,6 +234,7 @@ Stepan Pletnev
 Stephen Granade
 Steven Seguin
 Sunghyun Hwang
+Sunit Deshpande
 Sviatoslav Bulbakha
 Sviatoslav Sydorenko
 Taha Jahangir
@@ -276,5 +282,7 @@ Young-Ho Cha
 Yuriy Shatrov
 Yury Selivanov
 Yusuke Tsutsumi
+Yuval Ofir
+Zlatan Sičanica
 Марк Коренберг
 Семён Марьясин

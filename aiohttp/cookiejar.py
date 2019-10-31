@@ -52,7 +52,7 @@ class CookieJar(AbstractCookieJar):
 
     def __init__(self, *, unsafe: bool=False) -> None:
         self._loop = get_running_loop()
-        self._cookies = defaultdict(SimpleCookie)  #type: DefaultDict[str, SimpleCookie]  # noqa
+        self._cookies = defaultdict(SimpleCookie)  #type: DefaultDict[str, SimpleCookie[str]]  # noqa
         self._host_only_cookies = set()  # type: Set[Tuple[str, str]]
         self._unsafe = unsafe
         self._next_expiration = next_whole_second()
@@ -124,11 +124,11 @@ class CookieJar(AbstractCookieJar):
             return
 
         if isinstance(cookies, Mapping):
-            cookies = cookies.items()  # type: ignore
+            cookies = cookies.items()
 
         for name, cookie in cookies:
             if not isinstance(cookie, Morsel):
-                tmp = SimpleCookie()
+                tmp = SimpleCookie()  # type: SimpleCookie[str]
                 tmp[name] = cookie  # type: ignore
                 cookie = tmp[name]
 
@@ -202,7 +202,7 @@ class CookieJar(AbstractCookieJar):
                           .format(type(request_url)),
                           DeprecationWarning)
             request_url = URL(request_url)
-        filtered = SimpleCookie()
+        filtered = SimpleCookie()  # type: SimpleCookie[str]
         hostname = request_url.raw_host or ""
         is_not_secure = request_url.scheme not in ("https", "wss")
 

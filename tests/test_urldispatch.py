@@ -1,6 +1,7 @@
 import pathlib
 import re
 from collections.abc import Container, Iterable, Mapping, MutableMapping, Sized
+from functools import partial
 from urllib.parse import unquote
 
 import pytest
@@ -32,6 +33,12 @@ def make_handler():
 
     return handler
 
+def make_partial_handler():
+
+    async def handler(a, request):
+        return Response(request)  # pragma: no cover
+
+    return partial(handler, 5)
 
 @pytest.fixture
 def app():
@@ -71,6 +78,10 @@ def test_register_uncommon_http_methods(router) -> None:
     for method in uncommon_http_methods:
         router.add_route(method, '/handler/to/path', make_handler())
 
+
+async def test_add_partial_handler(router) -> None:
+    handler = make_partial_handler()
+    router.add_get('/handler/to/path', handler)
 
 async def test_add_sync_handler(router) -> None:
     def handler(request):
@@ -900,8 +911,11 @@ async def test_match_info_get_info_dynamic2(router) -> None:
 def test_static_resource_get_info(router) -> None:
     directory = pathlib.Path(aiohttp.__file__).parent.resolve()
     resource = router.add_static('/st', directory)
-    assert resource.get_info() == {'directory': directory,
-                                   'prefix': '/st'}
+    info = resource.get_info()
+    assert len(info) == 3
+    assert info['directory'] == directory
+    assert info['prefix'] == '/st'
+    assert all([type(r) is ResourceRoute for r in info['routes'].values()])
 
 
 async def test_system_route_get_info(router) -> None:

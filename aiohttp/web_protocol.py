@@ -560,6 +560,7 @@ class RequestHandler(BaseProtocol):
         can get exception information. Returns True if the client disconnects
         prematurely.
         """
+        request._finish()
         if self._request_parser is not None:
             self._request_parser.set_upgraded(False)
             self._upgrade = False
@@ -638,9 +639,9 @@ class RequestHandler(BaseProtocol):
                                  status: int,
                                  exc: Optional[BaseException]=None,
                                  message: Optional[str]=None) -> None:
-        request = BaseRequest(  # type: ignore
+        request = BaseRequest(
             ERROR,
-            EMPTY_PAYLOAD,
+            EMPTY_PAYLOAD,  # type: ignore
             self, writer,
             current_task(),
             self._loop)

@@ -110,6 +110,14 @@ async def noop(*args: Any, **kwargs: Any) -> None:
 
 coroutines._DEBUG = old_debug  # type: ignore
 
+if PY_38:
+    iscoroutinefunction = asyncio.iscoroutinefunction
+else:
+    def iscoroutinefunction(func: Callable[..., Any]) -> bool:
+        while isinstance(func, functools.partial):
+            func = func.func
+        return asyncio.iscoroutinefunction(func)
+
 json_re = re.compile(r'^application/(?:[\w.+-]+?\+)?json')
 
 
@@ -567,8 +575,8 @@ class TimerNoop(BaseTimerContext):
 
     def __exit__(self, exc_type: Optional[Type[BaseException]],
                  exc_val: Optional[BaseException],
-                 exc_tb: Optional[TracebackType]) -> Optional[bool]:
-        return False
+                 exc_tb: Optional[TracebackType]) -> None:
+        return
 
 
 class TimerContext(BaseTimerContext):

@@ -839,26 +839,34 @@ async def test_two_data_received_without_waking_up_start_task(srv) -> None:
 
 
 async def test_client_disconnect(aiohttp_server) -> None:
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
+    disconnected_notified = False
 
     async def handler(request):
+
+        async def disconn():
+            nonlocal disconnected_notified
+            await request.wait_for_disconnection()
+            disconnected_notified = True
+
+        disconn_task = loop.create_task(disconn())
+
         buf = b""
         with pytest.raises(ConnectionError):
             while len(buf) < 10:
                 buf += await request.content.read(10)
         # return with closed transport means premature client disconnection
+        await asyncio.sleep(0)
+        disconn_task.cancel()
         return web.Response()
 
-    loop = asyncio.get_event_loop()
-    loop.set_debug(True)
     logger = mock.Mock()
     app = web.Application()
     app.router.add_route('POST', '/', handler)
     server = await aiohttp_server(app, logger=logger)
 
-    if helpers.PY_38:
-        writer = await asyncio.connect('127.0.0.1', server.port)
-    else:
-        _, writer = await asyncio.open_connection('127.0.0.1', server.port)
+    _, writer = await asyncio.open_connection('127.0.0.1', server.port)
     writer.write("""POST / HTTP/1.1\r
 Connection: keep-alive\r
 Content-Length: 10\r
@@ -871,3 +879,32 @@ Host: localhost:{port}\r
     writer.close()
     await asyncio.sleep(0.1)
     logger.debug.assert_called_with('Ignored premature client disconnection.')
+    assert disconnected_notified
+
+
+async def test_wait_for_disconnection_cancel(srv, buf, monkeypatch) -> None:
+    # srv is aiohttp.web_protocol.RequestHandler
+
+    waiter_tasks = []
+
+    async def request_waiter(request):
+        await request.wait_for_disconnection()
+
+    orig_request_factory = srv._request_factory
+
+    def request_factory(*args, **kwargs):
+        request = orig_request_factory(*args, **kwargs)
+        loop = asyncio.get_event_loop()
+        waiter_tasks.append(loop.create_task(request_waiter(request)))
+        return request
+
+    monkeypatch.setattr(srv, "_request_factory", request_factory)
+
+    srv.data_received(
+        b'GET / HTTP/1.1\r\n\r\n')
+
+    await asyncio.sleep(0.05)
+    assert buf.startswith(b'HTTP/1.1 200 OK\r\n')
+
+    assert len(waiter_tasks) == 1
+    assert waiter_tasks[0].cancelled()

@@ -224,7 +224,7 @@ class BaseConnector:
         self._loop = loop
         self._factory = functools.partial(ResponseHandler, loop=loop)
 
-        self.cookies = SimpleCookie()
+        self.cookies = SimpleCookie()  # type: SimpleCookie[str]
 
         # start keep-alive connection cleanup task
         self._cleanup_handle = None
@@ -361,7 +361,6 @@ class BaseConnector:
         waiters = self._close_immediately()
         if waiters:
             results = await asyncio.gather(*waiters,
-                                           loop=self._loop,
                                            return_exceptions=True)
             for res in results:
                 if isinstance(res, Exception):
@@ -696,7 +695,7 @@ class TCPConnector(BaseConnector):
     """
 
     def __init__(self, *,
-                 use_dns_cache: bool=True, ttl_dns_cache: int=10,
+                 use_dns_cache: bool=True, ttl_dns_cache: Optional[int]=10,
                  family: int=0,
                  ssl: Union[None, bool, Fingerprint, SSLContext]=None,
                  local_addr: Optional[Tuple[str, int]]=None,
@@ -944,7 +943,7 @@ class TCPConnector(BaseConnector):
             hosts = await asyncio.shield(self._resolve_host(
                 host,
                 port,
-                traces=traces), loop=self._loop)
+                traces=traces))
         except OSError as exc:
             # in case of proxy it is not ClientProxyConnectionError
             # it is problem of resolving proxy ip itself
