@@ -235,7 +235,7 @@ size::
             self.buffer.extend(data)
 
     writer = Writer()
-    mpwriter.writer(writer)
+    mpwriter.write(writer)
     await aiohttp.post('http://example.com',
                        data=writer.buffer, headers=mpwriter.headers)
 
