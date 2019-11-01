@@ -76,39 +76,66 @@ class AbstractTestServer(ABC):
     def __init__(self, *,
                  skip_url_asserts: bool = False,
                  **kwargs: Any) -> None:
-        self._root = None           # type: Optional[URL]
-        self._host = '127.0.0.1'    # type: str
-        self._port = None           # type: Optional[int]
-        self._scheme = None         # type: Optional[str]
-
+        self.__root = URL.build(
+            scheme='http', host='localhost', port=None,
+        )  # type: URL
+        self.no_port = True
         self.skip_url_asserts = skip_url_asserts
 
     def make_url(self, path: str) -> URL:
-        assert self._root is not None
+        assert self.__root is not None
         url = URL(path)
         if not self.skip_url_asserts:
             assert not url.is_absolute()
-            return self._root.join(url)
+            return self.__root.join(url)
         else:
-            return URL(str(self._root) + path)
+            return URL(str(self.__root) + path)
+
+    @property
+    def root(self) -> URL:
+        return self.__root
+
+    @root.setter
+    def root(self, value: URL) -> None:
+        assert value.is_absolute(), "URL must be absolute"
+        self.__root = value
+
+    @property
+    def host(self) -> str:
+        return self.__root.host  # type: ignore
+
+    @host.setter
+    def host(self, value: str) -> None:
+        self.__root = self.__root.with_host(value)
+
+    @property
+    def port(self) -> Optional[int]:
+        if self.no_port:
+            return None
+        return self.__root.port
+
+    @port.setter
+    def port(self, value: Optional[int]) -> None:
+        if value is None:
+            self.no_port = True
+            return
+
+        self.__root = self.__root.with_port(value)
+        self.no_port = False
+
+    @property
+    def scheme(self) -> str:
+        return self.__root.scheme
+
+    @scheme.setter
+    def scheme(self, value: str) -> None:
+        self.__root = self.__root.with_scheme(value)
 
     async def start_server(self) -> None:
         return
 
     async def close(self) -> None:
         return
-
-    @property
-    def host(self) -> str:
-        return self._host
-
-    @property
-    def port(self) -> Optional[int]:
-        return self._port
-
-    @property
-    def scheme(self) -> Optional[str]:
-        return self._scheme
 
 
 class ExternalTestServer(AbstractTestServer):
@@ -119,19 +146,8 @@ class ExternalTestServer(AbstractTestServer):
                  **kwargs: Any):
         assert root.is_absolute(), "Only absolute URL allowed"
         super().__init__(skip_url_asserts=skip_url_asserts, **kwargs)
-        self._root = root       # type: URL
-
-    @property
-    def host(self) -> str:
-        return self._root.host      # type: ignore
-
-    @property
-    def port(self) -> int:
-        return self._root.port      # type: ignore
-
-    @property
-    def scheme(self) -> str:
-        return self._root.scheme
+        self.no_port = False
+        self.root = root       # type: URL
 
 
 class BaseTestServer(AbstractTestServer):
@@ -142,53 +158,50 @@ class BaseTestServer(AbstractTestServer):
                  host: str = '127.0.0.1',
                  port: Optional[int] = None,
                  skip_url_asserts: bool = False, **kwargs: Any) -> None:
-        super().__init__(
-            skip_url_asserts=skip_url_asserts,
-            **kwargs
-        )
-        self._scheme = scheme
-        self._host = host
-        self._port = port
-        self.runner = None  # type: Optional[BaseRunner]
+
+        super().__init__(skip_url_asserts=skip_url_asserts, **kwargs)
+
+        if scheme:
+            self.scheme = scheme
+
+        if host:
+            self.host = host
+
+        if port:
+            self.port = port
+
+        self._ssl = None
         self._closed = False
+        self.runner = None  # type: Optional[BaseRunner]
 
     async def start_server(self, **kwargs: Any) -> None:
         if self.runner:
             return
-        self._ssl = kwargs.pop('ssl', None)
+
         self.runner = await self._make_runner(**kwargs)
         await self.runner.setup()
+
         _sock = get_port_socket(self.host, self.port or 0)
-        self._host, self._port = _sock.getsockname()[:2]
+        self.host, self.port = _sock.getsockname()[:2]
+        self._ssl = kwargs.pop('ssl', None)
+
         site = SockSite(self.runner, sock=_sock, ssl_context=self._ssl)
         await site.start()
+
         server = site._server
         assert server is not None
+
         sockets = server.sockets
         assert sockets is not None
-        self._port = sockets[0].getsockname()[1]
 
-        if self._scheme is None:
-            self._scheme = 'https' if self._ssl else 'http'
+        self.port = sockets[0].getsockname()[1]
 
-        self._root = URL.build(
-            scheme=self._scheme,
-            host=self._host,
-            port=self._port,
-        )
+        if self._ssl:
+            self.scheme = 'https'
 
     @abstractmethod  # pragma: no cover
     async def _make_runner(self, **kwargs: Any) -> BaseRunner:
         pass
-
-    def make_url(self, path: str) -> URL:
-        assert self._root is not None
-        url = URL(path)
-        if not self.skip_url_asserts:
-            assert not url.is_absolute()
-            return self._root.join(url)
-        else:
-            return URL(str(self._root) + path)
 
     @property
     def started(self) -> bool:
@@ -222,9 +235,8 @@ class BaseTestServer(AbstractTestServer):
         if self.started and not self.closed:
             assert self.runner is not None
             await self.runner.cleanup()
-            self._root = None
-            self._port = None
             self._closed = True
+            self.no_port = True
 
     async def __aenter__(self) -> 'BaseTestServer':
         await self.start_server()
