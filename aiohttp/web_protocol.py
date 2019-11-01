@@ -247,7 +247,7 @@ class RequestHandler(BaseProtocol):
 
         if self._current_request is not None:
             if exc is None:
-                exc = ConnectionResetError("Connetion lost")
+                exc = ConnectionResetError("Connection lost")
             self._current_request._cancel(exc)
 
         if self._error_handler is not None:
