@@ -24,6 +24,7 @@ from typing import (  # noqa
     Awaitable,
     Callable,
     Dict,
+    Generator,
     Iterable,
     Iterator,
     List,
@@ -36,7 +37,6 @@ from typing import (  # noqa
     TypeVar,
     Union,
     cast,
-    Generator
 )
 from urllib.parse import quote
 from urllib.request import getproxies
