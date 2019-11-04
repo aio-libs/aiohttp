@@ -36,6 +36,7 @@ from typing import (  # noqa
     TypeVar,
     Union,
     cast,
+    Generator
 )
 from urllib.parse import quote
 from urllib.request import getproxies
@@ -102,7 +103,7 @@ old_debug = coroutines._DEBUG  # type: ignore
 
 
 class noop:
-    def __await__(self):
+    def __await__(self) -> Generator[None, None, None]:
         yield
 
 
