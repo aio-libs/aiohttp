@@ -20,13 +20,13 @@ lockLabel: outdated
 # Comment to post before locking. Set to `false` to disable
 lockComment: |
   This thread has been automatically locked since there has not been
-  any recent activity after it was closed. Please open a [new issue] for
+  any recent activity after it was closed. Please open a [new issue][newissue] for
   related bugs.
 
   If you feel like there's important points made in this discussion,
-  please include those exceprts into that [new issue].
+  please include those exceprts in that [new issue][newissue].
 
-  [new issue]: https://github.com/aio-libs/aiohttp/issues/new
+  [newissue]: https://github.com/aio-libs/aiohttp/issues/new
 
 # Assign `resolved` as the reason for locking. Set to `false` to disable
 setLockReason: true
