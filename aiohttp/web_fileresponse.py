@@ -3,6 +3,7 @@ import mimetypes
 import os
 import pathlib
 from functools import partial
+from socket import SocketType
 from typing import (  # noqa
     IO,
     TYPE_CHECKING,
@@ -56,6 +57,8 @@ class SendfileStreamWriter(StreamWriter):
         self._count = count
         self._offset = fobj.tell()
         self._in_fd = fobj.fileno()
+        self._sendfile_impl = self._sendfile_aiohttp \
+            if not getattr(loop, 'sendfile') else self._sendfile_asyncio
 
     def _write(self, chunk: bytes) -> None:
         # we overwrite StreamWriter._write, so nothing can be appended to
@@ -92,21 +95,33 @@ class SendfileStreamWriter(StreamWriter):
     def _done_fut(self, out_fd: int, fut: 'asyncio.Future[None]') -> None:
         self.loop.remove_writer(out_fd)
 
+    async def _sendfile_asyncio(self, out_socket: SocketType) -> None:
+        out_fd = out_socket.fileno()
+        loop = self.loop
+        if not self._do_sendfile(out_fd):
+            fut = loop.create_future()
+            fut.add_done_callback(partial(self._done_fut, out_fd))
+            loop.add_writer(out_fd, self._sendfile_cb, fut, out_fd)
+            await fut
+
+    async def _sendfile_aiohttp(self, _: SocketType) -> None:
+        loop = self.loop
+        assert self.transport is not None
+        n = await loop.sendfile(self.transport, self._fobj,
+                                self._offset, self._count)
+        assert n == self._count
+        self._count = 0
+
     async def sendfile(self) -> None:
         assert self.transport is not None
         out_socket = self.transport.get_extra_info('socket').dup()
         out_socket.setblocking(False)
-        out_fd = out_socket.fileno()
 
         loop = self.loop
         data = b''.join(self._sendfile_buffer)
         try:
             await loop.sock_sendall(out_socket, data)
-            if not self._do_sendfile(out_fd):
-                fut = loop.create_future()
-                fut.add_done_callback(partial(self._done_fut, out_fd))
-                loop.add_writer(out_fd, self._sendfile_cb, fut, out_fd)
-                await fut
+            await self._sendfile_impl(out_socket)
         except asyncio.CancelledError:
             raise
         except Exception:
