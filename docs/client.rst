@@ -15,3 +15,4 @@ The page contains all information about aiohttp Client API:
    Advanced Usage <client_advanced>
    Reference <client_reference>
    Tracing Reference <tracing_reference>
+   The aiohttp Request Lifecycle <http_request_lifecycle>
