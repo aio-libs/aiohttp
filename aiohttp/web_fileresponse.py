@@ -95,7 +95,7 @@ class SendfileStreamWriter(StreamWriter):
     def _done_fut(self, out_fd: int, fut: 'asyncio.Future[None]') -> None:
         self.loop.remove_writer(out_fd)
 
-    async def _sendfile_asyncio(self, out_socket: SocketType) -> None:
+    async def _sendfile_aiohttp(self, out_socket: SocketType) -> None:
         out_fd = out_socket.fileno()
         loop = self.loop
         if not self._do_sendfile(out_fd):
@@ -104,7 +104,7 @@ class SendfileStreamWriter(StreamWriter):
             loop.add_writer(out_fd, self._sendfile_cb, fut, out_fd)
             await fut
 
-    async def _sendfile_aiohttp(self, _: SocketType) -> None:
+    async def _sendfile_asyncio(self, _: SocketType) -> None:
         loop = self.loop
         assert self.transport is not None
         n = await loop.sendfile(self.transport, self._fobj,
