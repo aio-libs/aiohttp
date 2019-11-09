@@ -98,16 +98,10 @@ SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
 TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 
-coroutines = asyncio.coroutines
-old_debug = coroutines._DEBUG  # type: ignore
-
-
 class noop:
     def __await__(self) -> Generator[None, None, None]:
         yield
 
-
-coroutines._DEBUG = old_debug  # type: ignore
 
 if PY_38:
     iscoroutinefunction = asyncio.iscoroutinefunction
