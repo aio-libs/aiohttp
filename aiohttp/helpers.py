@@ -24,6 +24,7 @@ from typing import (  # noqa
     Awaitable,
     Callable,
     Dict,
+    Generator,
     Iterable,
     Iterator,
     List,
@@ -100,12 +101,10 @@ TOKEN = CHAR ^ CTL ^ SEPARATORS
 coroutines = asyncio.coroutines
 old_debug = coroutines._DEBUG  # type: ignore
 
-# prevent "coroutine noop was never awaited" warning.
-coroutines._DEBUG = False  # type: ignore
 
-
-async def noop(*args: Any, **kwargs: Any) -> None:
-    return
+class noop:
+    def __await__(self) -> Generator[None, None, None]:
+        yield
 
 
 coroutines._DEBUG = old_debug  # type: ignore
