@@ -205,8 +205,6 @@ class WebSocketResponse(StreamResponse):
         headers, protocol, compress, notakeover = self._handshake(
             request)
 
-        self._reset_heartbeat()
-
         self.set_status(101)
         self.headers.update(headers)
         self.force_close()
@@ -224,6 +222,9 @@ class WebSocketResponse(StreamResponse):
                     protocol: str, writer: WebSocketWriter) -> None:
         self._ws_protocol = protocol
         self._writer = writer
+
+        self._reset_heartbeat()
+
         loop = self._loop
         assert loop is not None
         self._reader = FlowControlDataQueue(
