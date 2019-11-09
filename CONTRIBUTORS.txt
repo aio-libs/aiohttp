@@ -125,7 +125,6 @@ Igor Pavlov
 Ilya Chichak
 Ingmar Steen
 Ivan Larin
-Kevin Samuel
 Jacob Champion
 Jaesung Lee
 Jake Davis
@@ -152,6 +151,7 @@ Justas Trimailovas
 Justin Foo
 Justin Turner Arthur
 Kay Zheng
+Kevin Samuel
 Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
