@@ -97,17 +97,9 @@ SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
 TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 
-coroutines = asyncio.coroutines
-old_debug = coroutines._DEBUG  # type: ignore
-
-
 class noop:
     def __await__(self) -> Generator[None, None, None]:
         yield
-
-noop2 = noop
-
-coroutines._DEBUG = old_debug  # type: ignore
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
