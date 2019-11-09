@@ -49,7 +49,7 @@ from .helpers import (
     CeilTimeout,
     get_running_loop,
     is_ip_address,
-    noop2,
+    noop,
     sentinel,
 )
 from .http import RESPONSES
@@ -390,7 +390,7 @@ class BaseConnector:
     def close(self) -> Awaitable[None]:
         """Close all opened transports."""
         self._close()
-        return _DeprecationWaiter(noop2())
+        return _DeprecationWaiter(noop())
 
     def _close(self) -> None:
         if self._closed:
