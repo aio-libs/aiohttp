@@ -6,28 +6,27 @@ Contributing
 Instructions for contributors
 -----------------------------
 
-
-In order to make a clone of the GitHub_ repo: open the link and press the
-"Fork" button on the upper-right menu of the web page.
+In order to make a clone of the GitHub_ repo: open the link and press the "Fork" button on the upper-right menu of the web page.
 
 I hope everybody knows how to work with git and github nowadays :)
 
 Workflow is pretty straightforward:
 
-  1. Clone the GitHub_ repo using ``--recurse-submodules`` argument
+  1. Clone the GitHub_ repo using the ``--recurse-submodules`` argument
 
-  2. Make a change
+  2. Setup your machine with the required dev environment
 
-  3. Make sure all tests passed
+  3. Make a change
 
-  4. Add a file into ``CHANGES`` folder (`Changelog update`_).
+  4. Make sure all tests passed
 
-  5. Commit changes to own aiohttp clone
+  5. Add a file into ``CHANGES`` folder (see `Changelog update`_ for how).
 
-  6. Make pull request from github page for your clone against master branch
+  6. Commit changes to your own aiohttp clone
 
-  7. Optionally make backport Pull Request(s) for landing a bug fix
-     into released aiohttp versions.
+  7. Make a pull request from the github page of your clone against the master branch
+
+  8. Optionally make backport Pull Request(s) for landing a bug fix into released aiohttp versions.
 
 .. note::
 
@@ -68,8 +67,7 @@ For *virtualenvwrapper*:
    $ cd aiohttp
    $ mkvirtualenv --python=`which python3` aiohttp
 
-There are other tools like *pyvenv* but you know the rule of thumb
-now: create a python3 virtual environment and activate it.
+There are other tools like *pyvenv* but you know the rule of thumb now: create a python3 virtual environment and activate it.
 
 After that please install libraries required for development:
 
@@ -79,13 +77,17 @@ After that please install libraries required for development:
 
 .. note::
 
-  If you plan to use ``pdb`` or ``ipdb`` within the test suite, execute:
+  For now, the development tooling depends on ``make`` and assumes an Unix OS If you wish to contribute to aiohttp from a Windows machine, the easiest way is probably to `configure the WSL <https://docs.microsoft.com/en-us/windows/wsl/install-win10>`_ so you can use the same instructions. If it's not possible for you or if it doesn't work, please contact us so we can find a solution together.
+
+.. warning::
+
+  If you plan to use temporary ``print()``, ``pdb`` or ``ipdb`` within the test suite, execute it with ``-s``:
 
   .. code-block:: shell
 
      $ py.test tests -s
 
-  command to run the tests with disabled output capturing.
+  in order to run the tests without output capturing.
 
 Congratulations, you are ready to run the test suite!
 
