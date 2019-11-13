@@ -47,7 +47,7 @@ from .client_proto import ResponseHandler
 from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
 from .helpers import (
     PY_36,
-    CeilTimeout,
+    ceil_timeout,
     get_running_loop,
     is_ip_address,
     sentinel,
@@ -911,7 +911,7 @@ class TCPConnector(BaseConnector):
             client_error: Type[Exception]=ClientConnectorError,
             **kwargs: Any) -> Tuple[asyncio.Transport, ResponseHandler]:
         try:
-            with CeilTimeout(timeout.sock_connect):
+            async with ceil_timeout(timeout.sock_connect):
                 return await self._loop.create_connection(*args, **kwargs)  # type: ignore  # noqa
         except cert_errors as exc:
             raise ClientConnectorCertificateError(
@@ -1108,7 +1108,7 @@ class UnixConnector(BaseConnector):
                                  traces: List['Trace'],
                                  timeout: 'ClientTimeout') -> ResponseHandler:
         try:
-            with CeilTimeout(timeout.sock_connect):
+            async with ceil_timeout(timeout.sock_connect):
                 _, proto = await self._loop.create_unix_connection(
                     self._factory, self._path)
         except OSError as exc:
@@ -1152,7 +1152,7 @@ class NamedPipeConnector(BaseConnector):
                                  traces: List['Trace'],
                                  timeout: 'ClientTimeout') -> ResponseHandler:
         try:
-            with CeilTimeout(timeout.sock_connect):
+            async with ceil_timeout(timeout.sock_connect):
                 _, proto = await self._loop.create_pipe_connection(  # type: ignore # noqa
                     self._factory, self._path
                 )

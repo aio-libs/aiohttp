@@ -612,17 +612,13 @@ class TimerContext(BaseTimerContext):
             self._cancelled = True
 
 
-class CeilTimeout(async_timeout.timeout):
-
-    def __enter__(self) -> async_timeout.timeout:
-        if self._timeout is not None:
-            self._task = current_task(loop=self._loop)
-            if self._task is None:
-                raise RuntimeError(
-                    'Timeout context manager should be used inside a task')
-            self._cancel_handler = self._loop.call_at(
-                ceil(self._loop.time() + self._timeout), self._cancel_task)
-        return self
+def ceil_timeout(delay: Optional[float]) -> async_timeout.Timeout:
+    if delay is not None:
+        loop = get_running_loop()
+        now = loop.time()
+        return async_timeout.timeout_at(ceil(now + delay))
+    else:
+        return async_timeout.timeout(None)
 
 
 class HeadersMixin:
