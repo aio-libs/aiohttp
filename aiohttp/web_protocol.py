@@ -26,7 +26,7 @@ from .abc import (
     AbstractStreamWriter,
 )
 from .base_protocol import BaseProtocol
-from .helpers import CeilTimeout, current_task
+from .helpers import ceil_timeout, current_task
 from .http import (
     HttpProcessingError,
     HttpRequestParser,
@@ -222,7 +222,7 @@ class RequestHandler(BaseProtocol):
 
         # wait for handlers
         with suppress(asyncio.CancelledError, asyncio.TimeoutError):
-            with CeilTimeout(timeout, loop=self._loop):
+            async with ceil_timeout(timeout):
                 if (self._error_handler is not None and
                         not self._error_handler.done()):
                     await self._error_handler
@@ -505,7 +505,7 @@ class RequestHandler(BaseProtocol):
                         with suppress(
                                 asyncio.TimeoutError, asyncio.CancelledError):
                             while not payload.is_eof() and now < end_t:
-                                with CeilTimeout(end_t - now, loop=loop):
+                                async with ceil_timeout(end_t - now):
                                     # read and ignore
                                     await payload.readany()
                                 now = loop.time()
