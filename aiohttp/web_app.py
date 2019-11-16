@@ -215,18 +215,24 @@ class Application(MutableMapping[str, Any]):
         reg_handler('on_cleanup')
 
     def add_subapp(self, prefix: str,
-                   subapp: 'Application') -> AbstractResource:
+                   subapp: 'Application',
+                   name: Optional[str] = None,
+                   backref: Optional[str] = None,
+                   ) -> AbstractResource:
         if not isinstance(prefix, str):
             raise TypeError("Prefix must be str")
         prefix = prefix.rstrip('/')
         if not prefix:
             raise ValueError("Prefix cannot be empty")
         factory = partial(PrefixedSubAppResource, prefix, subapp)
-        return self._add_subapp(factory, subapp)
+        return self._add_subapp(factory, subapp, name, backref)
 
     def _add_subapp(self,
                     resource_factory: Callable[[], AbstractResource],
-                    subapp: 'Application') -> AbstractResource:
+                    subapp: 'Application',
+                    name: Optional[str] = None,
+                    backref: Optional[str] = None,
+                    ) -> AbstractResource:
         if self.frozen:
             raise RuntimeError(
                 "Cannot add sub application to frozen application")
@@ -237,6 +243,12 @@ class Application(MutableMapping[str, Any]):
         self._reg_subapp_signals(subapp)
         self._subapps.append(subapp)
         subapp.pre_freeze()
+
+        if name is not None:
+            self[name] = subapp
+        if backref is not None:
+            subapp[name] = self
+
         return resource
 
     def add_domain(self, domain: str,
