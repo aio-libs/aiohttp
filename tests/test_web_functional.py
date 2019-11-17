@@ -40,7 +40,7 @@ def fname(here):
 def new_dummy_form():
     form = FormData()
     form.add_field('name', b'123',
-                content_transfer_encoding='base64')
+                   content_transfer_encoding='base64')
     return form
 
 
