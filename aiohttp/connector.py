@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import functools
 import logging
 import random
@@ -30,7 +31,7 @@ from typing import (  # noqa
 
 import attr
 
-from . import hdrs, helpers
+from . import hdrs
 from .abc import AbstractResolver
 from .client_exceptions import (
     ClientConnectionError,
@@ -48,6 +49,7 @@ from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
 from .helpers import (
     PY_36,
     ceil_timeout,
+    create_task,
     get_running_loop,
     is_ip_address,
     sentinel,
@@ -221,7 +223,7 @@ class BaseConnector:
         self.cookies = SimpleCookie()  # type: SimpleCookie[str]
 
         # start keep-alive connection cleanup task
-        self._cleanup_handle = None
+        self._cleanup_handle = create_task(self._cleanup())
 
     def __del__(self, _warnings: Any=warnings) -> None:
         if self._closed:
@@ -282,34 +284,32 @@ class BaseConnector:
         """
         return self._limit_per_host
 
-    def _cleanup(self) -> None:
+    async def _cleanup(self) -> None:
         """Cleanup unused transports."""
-        if self._cleanup_handle:
-            self._cleanup_handle.cancel()
+        while True:
+            now = self._loop.time()
+            timeout = self._keepalive_timeout
 
-        now = self._loop.time()
-        timeout = self._keepalive_timeout
+            if self._conns:
+                to_close = []
+                connections = {}
+                deadline = now - timeout
+                for key, conns in self._conns.items():
+                    alive = []
+                    for proto, use_time in conns:
+                        if proto.is_connected():
+                            if use_time - deadline < 0:
+                                to_close.append(proto.close())
+                            else:
+                                alive.append((proto, use_time))
 
-        if self._conns:
-            connections = {}
-            deadline = now - timeout
-            for key, conns in self._conns.items():
-                alive = []
-                for proto, use_time in conns:
-                    if proto.is_connected():
-                        if use_time - deadline < 0:
-                            await proto.close()
-                        else:
-                            alive.append((proto, use_time))
+                    if alive:
+                        connections[key] = alive
 
-                if alive:
-                    connections[key] = alive
+                self._conns = connections
+                await asyncio.gather(*to_close)
 
-            self._conns = connections
-
-        if self._conns:
-            self._cleanup_handle = helpers.weakref_handle(
-                self, '_cleanup', timeout, self._loop)
+            await asyncio.sleep(timeout)
 
     def _drop_acquired_per_host(self, key: 'ConnectionKey',
                                 val: ResponseHandler) -> None:
@@ -323,6 +323,10 @@ class BaseConnector:
 
     async def close(self) -> None:
         """Close all opened transports."""
+        self._cleanup_handle.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await self._cleanup_handle
+
         waiters = self._close_immediately()
         if waiters:
             results = await asyncio.gather(*waiters,
@@ -345,8 +349,7 @@ class BaseConnector:
                 return waiters
 
             # cancel cleanup task
-            if self._cleanup_handle:
-                self._cleanup_handle.cancel()
+            self._cleanup_handle.cancel()
 
             for data in self._conns.values():
                 for proto, t0 in data:
@@ -361,7 +364,6 @@ class BaseConnector:
             self._conns.clear()
             self._acquired.clear()
             self._waiters.clear()
-            self._cleanup_handle = None
 
     @property
     def closed(self) -> bool:
@@ -562,10 +564,6 @@ class BaseConnector:
             if conns is None:
                 conns = self._conns[key] = []
             conns.append((protocol, self._loop.time()))
-
-            if self._cleanup_handle is None:
-                self._cleanup_handle = helpers.weakref_handle(
-                    self, '_cleanup', self._keepalive_timeout, self._loop)
 
     async def _create_connection(self, req: 'ClientRequest',
                                  traces: List['Trace'],
