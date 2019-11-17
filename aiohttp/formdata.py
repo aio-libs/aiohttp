@@ -37,10 +37,6 @@ class FormData:
     def is_multipart(self) -> bool:
         return self._is_multipart
 
-    @property
-    def is_processed(self) -> bool:
-        return self._is_processed
-
     def add_field(self, name: str, value: Any, *,
                   content_type: Optional[str]=None,
                   filename: Optional[str]=None,
