@@ -47,7 +47,7 @@ from .client_proto import ResponseHandler
 from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
 from .helpers import (
     PY_36,
-    CeilTimeout,
+    ceil_timeout,
     get_running_loop,
     is_ip_address,
     sentinel,
@@ -361,7 +361,6 @@ class BaseConnector:
         waiters = self._close_immediately()
         if waiters:
             results = await asyncio.gather(*waiters,
-                                           loop=self._loop,
                                            return_exceptions=True)
             for res in results:
                 if isinstance(res, Exception):
@@ -694,7 +693,7 @@ class TCPConnector(BaseConnector):
     """
 
     def __init__(self, *,
-                 use_dns_cache: bool=True, ttl_dns_cache: int=10,
+                 use_dns_cache: bool=True, ttl_dns_cache: Optional[int]=10,
                  family: int=0,
                  ssl: Union[None, bool, Fingerprint, SSLContext]=None,
                  local_addr: Optional[Tuple[str, int]]=None,
@@ -910,7 +909,7 @@ class TCPConnector(BaseConnector):
             client_error: Type[Exception]=ClientConnectorError,
             **kwargs: Any) -> Tuple[asyncio.Transport, ResponseHandler]:
         try:
-            with CeilTimeout(timeout.sock_connect):
+            async with ceil_timeout(timeout.sock_connect):
                 return await self._loop.create_connection(*args, **kwargs)  # type: ignore  # noqa
         except cert_errors as exc:
             raise ClientConnectorCertificateError(
@@ -942,7 +941,7 @@ class TCPConnector(BaseConnector):
             hosts = await asyncio.shield(self._resolve_host(
                 host,
                 port,
-                traces=traces), loop=self._loop)
+                traces=traces))
         except OSError as exc:
             # in case of proxy it is not ClientProxyConnectionError
             # it is problem of resolving proxy ip itself
@@ -1107,7 +1106,7 @@ class UnixConnector(BaseConnector):
                                  traces: List['Trace'],
                                  timeout: 'ClientTimeout') -> ResponseHandler:
         try:
-            with CeilTimeout(timeout.sock_connect):
+            async with ceil_timeout(timeout.sock_connect):
                 _, proto = await self._loop.create_unix_connection(
                     self._factory, self._path)
         except OSError as exc:
@@ -1151,7 +1150,7 @@ class NamedPipeConnector(BaseConnector):
                                  traces: List['Trace'],
                                  timeout: 'ClientTimeout') -> ResponseHandler:
         try:
-            with CeilTimeout(timeout.sock_connect):
+            async with ceil_timeout(timeout.sock_connect):
                 _, proto = await self._loop.create_pipe_connection(  # type: ignore # noqa
                     self._factory, self._path
                 )

@@ -138,8 +138,8 @@ peers. ::
 
         try:
             async for msg in channel.iter():
-                answer = process message(msg)
-                ws.send_str(answer)
+                answer = process_the_message(msg)  # your function here
+                await ws.send_str(answer)
         finally:
             await redis.unsubscribe('channel:1')
 

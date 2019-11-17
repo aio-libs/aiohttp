@@ -333,7 +333,7 @@ tasks also).
   :attr:`Application.on_startup` and :attr:`Application.on_shutdown`,
   :attr:`Application.on_cleanup`) are executed inside the same context.
 
-  E.g. all context modifications made on application startup a visible on teardown.
+  E.g. all context modifications made on application startup are visible on teardown.
 
 * On every request handling *aiohttp* creates a context copy. :term:`web-handler` has
   all variables installed on initialization stage. But the context modification made by
@@ -768,6 +768,9 @@ The simple startup code for serving HTTP site on ``'localhost'``, port
     await runner.setup()
     site = web.TCPSite(runner, 'localhost', 8080)
     await site.start()
+
+    while True:
+        await asyncio.sleep(3600)  # sleep forever
 
 To stop serving call :meth:`AppRunner.cleanup`::
 

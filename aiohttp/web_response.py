@@ -9,7 +9,7 @@ import warnings
 import zlib
 from concurrent.futures import Executor
 from email.utils import parsedate
-from http.cookies import SimpleCookie
+from http.cookies import Morsel, SimpleCookie
 from typing import (  # noqa
     TYPE_CHECKING,
     Any,
@@ -27,7 +27,7 @@ from multidict import CIMultiDict, istr
 
 from . import hdrs, payload
 from .abc import AbstractStreamWriter
-from .helpers import HeadersMixin, rfc822_formatted_time, sentinel
+from .helpers import PY_38, HeadersMixin, rfc822_formatted_time, sentinel
 from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
@@ -40,6 +40,12 @@ if TYPE_CHECKING:  # pragma: no cover
     BaseClass = MutableMapping[str, Any]
 else:
     BaseClass = collections.abc.MutableMapping
+
+
+if not PY_38:
+    # allow samesite to be used in python < 3.8
+    # already permitted in python 3.8, see https://bugs.python.org/issue29613
+    Morsel._reserved['samesite'] = 'SameSite'  # type: ignore
 
 
 class ContentCoding(enum.Enum):
@@ -169,9 +175,10 @@ class StreamResponse(BaseClass, HeadersMixin):
                    domain: Optional[str]=None,
                    max_age: Optional[Union[int, str]]=None,
                    path: str='/',
-                   secure: Optional[str]=None,
-                   httponly: Optional[str]=None,
-                   version: Optional[str]=None) -> None:
+                   secure: Optional[bool]=None,
+                   httponly: Optional[bool]=None,
+                   version: Optional[str]=None,
+                   samesite: Optional[str]=None) -> None:
         """Set or update response cookie.
 
         Sets new cookie or updates existent with new value.
@@ -207,6 +214,8 @@ class StreamResponse(BaseClass, HeadersMixin):
             c['httponly'] = httponly
         if version is not None:
             c['version'] = version
+        if samesite is not None:
+            c['samesite'] = samesite
 
     def del_cookie(self, name: str, *,
                    domain: Optional[str]=None,

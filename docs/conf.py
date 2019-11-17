@@ -86,7 +86,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'aiohttp'
-copyright = '2013-2018, Aiohttp contributors'
+copyright = '2013-2019, Aiohttp contributors'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -169,6 +169,10 @@ html_theme_options = {
                'target': 'https://badge.fury.io/py/aiohttp',
                 'height': '20',
                 'alt': 'Latest PyPI package version'},
+               {'image': 'https://img.shields.io/discourse/status?server=https%3A%2F%2Faio-libs.discourse.group',
+               'target': 'https://aio-libs.discourse.group',
+                'height': '20',
+                'alt': 'Discourse status'},
                {'image': 'https://badges.gitter.im/Join%20Chat.svg',
                 'target': 'https://gitter.im/aio-libs/Lobby',
                 'height': '20',

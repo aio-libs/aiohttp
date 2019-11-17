@@ -26,9 +26,14 @@ Async http client/server framework
    :target: https://docs.aiohttp.org/
    :alt: Latest Read The Docs
 
+.. image:: https://img.shields.io/discourse/status?server=https%3A%2F%2Faio-libs.discourse.group
+   :target: https://aio-libs.discourse.group
+   :alt: Discourse status
+
 .. image:: https://badges.gitter.im/Join%20Chat.svg
-    :target: https://gitter.im/aio-libs/Lobby
-    :alt: Chat on Gitter
+   :target: https://gitter.im/aio-libs/Lobby
+   :alt: Chat on Gitter
+
 
 Key Features
 ============
@@ -52,19 +57,29 @@ To get something from the web:
   import aiohttp
   import asyncio
 
-  async def fetch(session, url):
-      async with session.get(url) as response:
-          return await response.text()
-
   async def main():
+
       async with aiohttp.ClientSession() as session:
-          html = await fetch(session, 'http://python.org')
-          print(html)
+          async with session.get('http://python.org') as response:
 
-  if __name__ == '__main__':
-      loop = asyncio.get_event_loop()
-      loop.run_until_complete(main())
+              print("Status:", response.status)
+              print("Content-type:", response.headers['content-type'])
 
+              html = await response.text()
+              print("Body:", html[:15], "...")
+
+  loop = asyncio.get_event_loop()
+  loop.run_until_complete(main())
+
+This prints:
+
+.. code-block::
+
+    Status: 200
+    Content-type: text/html; charset=utf-8
+    Body: <!doctype html> ...
+
+Comming from `requests <https://requests.readthedocs.io/>`_ ? Read `why we need so many lines <https://aiohttp.readthedocs.io/en/latest/http_request_lifecycle.html>`_.
 
 Server
 ------
@@ -133,9 +148,7 @@ Feel free to make a Pull Request for adding your link to these pages!
 Communication channels
 ======================
 
-*aio-libs* google group: https://groups.google.com/forum/#!forum/aio-libs
-
-Feel free to post your questions and ideas here.
+*aio-libs discourse group*: https://aio-libs.discourse.group
 
 *gitter chat* https://gitter.im/aio-libs/Lobby
 

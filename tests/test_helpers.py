@@ -3,6 +3,7 @@ import base64
 import gc
 import os
 import platform
+from math import modf
 from unittest import mock
 
 import pytest
@@ -338,9 +339,6 @@ def test_timer_context_no_task(loop) -> None:
             pass
 
 
-# -------------------------------- CeilTimeout --------------------------
-
-
 async def test_weakref_handle(loop) -> None:
     cb = mock.Mock()
     helpers.weakref_handle(cb, 'test', 0.01, loop, False)
@@ -354,6 +352,8 @@ async def test_weakref_handle_weak(loop) -> None:
     del cb
     gc.collect()
     await asyncio.sleep(0.1)
+
+# -------------------- ceil math -------------------------
 
 
 def test_ceil_call_later() -> None:
@@ -371,16 +371,15 @@ def test_ceil_call_later_no_timeout() -> None:
     assert not loop.call_at.called
 
 
-async def test_ceil_timeout(loop) -> None:
-    with helpers.CeilTimeout(None, loop=loop) as timeout:
-        assert timeout._timeout is None
-        assert timeout._cancel_handler is None
+async def test_ceil_timeout_none(loop) -> None:
+    async with helpers.ceil_timeout(None) as cm:
+        assert cm.deadline is None
 
 
-def test_ceil_timeout_no_task(loop) -> None:
-    with pytest.raises(RuntimeError):
-        with helpers.CeilTimeout(10, loop=loop):
-            pass
+async def test_ceil_timeout_round(loop) -> None:
+    async with helpers.ceil_timeout(1.5) as cm:
+        frac, integer = modf(cm.deadline)
+        assert frac == 0
 
 
 # -------------------------------- ContentDisposition -------------------

@@ -5,7 +5,7 @@ import hashlib
 import io
 import pathlib
 import zlib
-from http.cookies import SimpleCookie
+from http.cookies import BaseCookie, Morsel, SimpleCookie
 from unittest import mock
 
 import pytest
@@ -1121,3 +1121,22 @@ def test_insecure_fingerprint_md5(loop) -> None:
 def test_insecure_fingerprint_sha1(loop) -> None:
     with pytest.raises(ValueError):
         Fingerprint(hashlib.sha1(b"foo").digest())
+
+
+def test_loose_cookies_types(loop) -> None:
+    req = ClientRequest('get', URL('http://python.org'), loop=loop)
+    morsel = Morsel()
+    morsel.set(key='string', val='Another string', coded_val='really')
+
+    accepted_types = [
+        [('str', BaseCookie())],
+        [('str', morsel)],
+        [('str', 'str'), ],
+        {'str': BaseCookie()},
+        {'str': morsel},
+        {'str': 'str'},
+        SimpleCookie(),
+    ]
+
+    for loose_cookies_type in accepted_types:
+        req.update_cookies(cookies=loose_cookies_type)

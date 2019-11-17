@@ -14,6 +14,7 @@ from typing import (  # noqa
     Awaitable,
     Callable,
     Coroutine,
+    FrozenSet,
     Generator,
     Generic,
     Iterable,
@@ -79,8 +80,8 @@ from .cookiejar import CookieJar
 from .helpers import (
     PY_36,
     BasicAuth,
-    CeilTimeout,
     TimeoutHandle,
+    ceil_timeout,
     get_running_loop,
     proxies_from_env,
     sentinel,
@@ -436,8 +437,7 @@ class ClientSession:
 
                     # connection timeout
                     try:
-                        with CeilTimeout(real_timeout.connect,
-                                         loop=self._loop):
+                        async with ceil_timeout(real_timeout.connect):
                             assert self._connector is not None
                             conn = await self._connector.connect(
                                 req,
@@ -917,6 +917,60 @@ class ClientSession:
     def timeout(self) -> Union[object, ClientTimeout]:
         """Timeout for the session."""
         return self._timeout
+
+    @property
+    def headers(self) -> 'CIMultiDict[str]':
+        """The default headers of the client session."""
+        return self._default_headers
+
+    @property
+    def skip_auto_headers(self) -> FrozenSet[istr]:
+        """Headers for which autogeneration should be skipped"""
+        return self._skip_auto_headers
+
+    @property
+    def auth(self) -> Optional[BasicAuth]:
+        """An object that represents HTTP Basic Authorization"""
+        return self._default_auth
+
+    @property
+    def json_serialize(self) -> JSONEncoder:
+        """Json serializer callable"""
+        return self._json_serialize
+
+    @property
+    def connector_owner(self) -> bool:
+        """Should connector be closed on session closing"""
+        return self._connector_owner
+
+    @property
+    def raise_for_status(
+        self
+    ) -> Union[bool, Callable[[ClientResponse], Awaitable[None]]]:
+        """
+        Should `ClientResponse.raise_for_status()`
+        be called for each response
+        """
+        return self._raise_for_status
+
+    @property
+    def auto_decompress(self) -> bool:
+        """Should the body response be automatically decompressed"""
+        return self._auto_decompress
+
+    @property
+    def trust_env(self) -> bool:
+        """
+        Should get proxies information
+        from HTTP_PROXY / HTTPS_PROXY environment variables
+        or ~/.netrc file if present
+        """
+        return self._trust_env
+
+    @property
+    def trace_configs(self) -> List[TraceConfig]:
+        """A list of TraceConfig instances used for client tracing"""
+        return self._trace_configs
 
     def detach(self) -> None:
         """Detach connector from session without closing the former.

@@ -24,6 +24,7 @@ from typing import (  # noqa
     Awaitable,
     Callable,
     Dict,
+    Generator,
     Iterable,
     Iterator,
     List,
@@ -97,18 +98,18 @@ SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
 TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 
-coroutines = asyncio.coroutines
-old_debug = coroutines._DEBUG  # type: ignore
-
-# prevent "coroutine noop was never awaited" warning.
-coroutines._DEBUG = False  # type: ignore
+class noop:
+    def __await__(self) -> Generator[None, None, None]:
+        yield
 
 
-async def noop(*args: Any, **kwargs: Any) -> None:
-    return
-
-
-coroutines._DEBUG = old_debug  # type: ignore
+if PY_38:
+    iscoroutinefunction = asyncio.iscoroutinefunction
+else:
+    def iscoroutinefunction(func: Callable[..., Any]) -> bool:
+        while isinstance(func, functools.partial):
+            func = func.func
+        return asyncio.iscoroutinefunction(func)
 
 json_re = re.compile(r'^application/(?:[\w.+-]+?\+)?json')
 
@@ -611,17 +612,13 @@ class TimerContext(BaseTimerContext):
             self._cancelled = True
 
 
-class CeilTimeout(async_timeout.timeout):
-
-    def __enter__(self) -> async_timeout.timeout:
-        if self._timeout is not None:
-            self._task = current_task(loop=self._loop)
-            if self._task is None:
-                raise RuntimeError(
-                    'Timeout context manager should be used inside a task')
-            self._cancel_handler = self._loop.call_at(
-                ceil(self._loop.time() + self._timeout), self._cancel_task)
-        return self
+def ceil_timeout(delay: Optional[float]) -> async_timeout.Timeout:
+    if delay is not None:
+        loop = get_running_loop()
+        now = loop.time()
+        return async_timeout.timeout_at(ceil(now + delay))
+    else:
+        return async_timeout.timeout(None)
 
 
 class HeadersMixin:
