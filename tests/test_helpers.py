@@ -1,6 +1,5 @@
 import asyncio
 import base64
-import gc
 import os
 import platform
 from math import modf
@@ -338,20 +337,6 @@ def test_timer_context_no_task(loop) -> None:
         with helpers.TimerContext(loop):
             pass
 
-
-async def test_weakref_handle(loop) -> None:
-    cb = mock.Mock()
-    helpers.weakref_handle(cb, 'test', 0.01, loop, False)
-    await asyncio.sleep(0.1)
-    assert cb.test.called
-
-
-async def test_weakref_handle_weak(loop) -> None:
-    cb = mock.Mock()
-    helpers.weakref_handle(cb, 'test', 0.01, loop, False)
-    del cb
-    gc.collect()
-    await asyncio.sleep(0.1)
 
 # -------------------- ceil math -------------------------
 

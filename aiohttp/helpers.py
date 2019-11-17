@@ -13,7 +13,6 @@ import platform
 import re
 import sys
 import time
-import weakref
 from collections import namedtuple
 from contextlib import suppress
 from math import ceil
@@ -492,23 +491,6 @@ def rfc822_formatted_time() -> str:
         )
         _cached_current_datetime = now
     return _cached_formatted_datetime
-
-
-def _weakref_handle(info):  # type: ignore
-    ref, name = info
-    ob = ref()
-    if ob is not None:
-        with suppress(Exception):
-            getattr(ob, name)()
-
-
-def weakref_handle(ob, name, timeout, loop, ceil_timeout=True):  # type: ignore
-    if timeout is not None and timeout > 0:
-        when = loop.time() + timeout
-        if ceil_timeout:
-            when = ceil(when)
-
-        return loop.call_at(when, _weakref_handle, (weakref.ref(ob), name))
 
 
 def call_later(cb, timeout, loop):  # type: ignore
