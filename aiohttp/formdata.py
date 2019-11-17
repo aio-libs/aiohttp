@@ -5,7 +5,6 @@ from urllib.parse import urlencode
 from multidict import MultiDict, MultiDictProxy
 
 from . import hdrs, multipart, payload
-from .client_exceptions import ClientPayloadError
 from .helpers import guess_filename
 from .payload import Payload
 
