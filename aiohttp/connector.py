@@ -178,22 +178,16 @@ class BaseConnector:
         after each request (and between redirects).
     limit - The total number of simultaneous connections.
     limit_per_host - Number of simultaneous connections to one host.
-    enable_cleanup_closed - Enables clean-up closed ssl transports.
-                            Disabled by default.
     loop - Optional event loop.
     """
 
     _closed = True  # prevent AttributeError in __del__ if ctor was failed
     _source_traceback = None
 
-    # abort transport after 2 seconds (cleanup broken connections)
-    _cleanup_closed_period = 2.0
-
     def __init__(self, *,
                  keepalive_timeout: Union[object, None, float]=sentinel,
                  force_close: bool=False,
-                 limit: int=100, limit_per_host: int=0,
-                 enable_cleanup_closed: bool=False) -> None:
+                 limit: int=100, limit_per_host: int=0) -> None:
 
         if force_close:
             if keepalive_timeout is not None and \
@@ -228,12 +222,6 @@ class BaseConnector:
 
         # start keep-alive connection cleanup task
         self._cleanup_handle = None
-
-        # start cleanup closed transports task
-        self._cleanup_closed_handle = None
-        self._cleanup_closed_disabled = not enable_cleanup_closed
-        self._cleanup_closed_transports = []  # type: List[Optional[asyncio.Transport]]  # noqa
-        self._cleanup_closed()
 
     def __del__(self, _warnings: Any=warnings) -> None:
         if self._closed:
@@ -310,12 +298,7 @@ class BaseConnector:
                 for proto, use_time in conns:
                     if proto.is_connected():
                         if use_time - deadline < 0:
-                            transport = proto.transport
                             await proto.close()
-                            if (key.is_ssl and
-                                    not self._cleanup_closed_disabled):
-                                self._cleanup_closed_transports.append(
-                                    transport)
                         else:
                             alive.append((proto, use_time))
 
@@ -337,24 +320,6 @@ class BaseConnector:
         conns.remove(val)
         if not conns:
             del self._acquired_per_host[key]
-
-    def _cleanup_closed(self) -> None:
-        """Double confirmation for transport close.
-        Some broken ssl servers may leave socket open without proper close.
-        """
-        if self._cleanup_closed_handle:
-            self._cleanup_closed_handle.cancel()
-
-        for transport in self._cleanup_closed_transports:
-            if transport is not None:
-                transport.abort()
-
-        self._cleanup_closed_transports = []
-
-        if not self._cleanup_closed_disabled:
-            self._cleanup_closed_handle = helpers.weakref_handle(
-                self, '_cleanup_closed',
-                self._cleanup_closed_period, self._loop)
 
     async def close(self) -> None:
         """Close all opened transports."""
@@ -383,21 +348,12 @@ class BaseConnector:
             if self._cleanup_handle:
                 self._cleanup_handle.cancel()
 
-            # cancel cleanup close task
-            if self._cleanup_closed_handle:
-                self._cleanup_closed_handle.cancel()
-
             for data in self._conns.values():
                 for proto, t0 in data:
                     waiters.append(proto.close())
 
             for proto in self._acquired:
                 waiters.append(proto.close())
-
-            # TODO (A.Yushovskiy, 24-May-2019) collect transp. closing futures
-            for transport in self._cleanup_closed_transports:
-                if transport is not None:
-                    transport.abort()
 
             return waiters
 
@@ -406,8 +362,6 @@ class BaseConnector:
             self._acquired.clear()
             self._waiters.clear()
             self._cleanup_handle = None
-            self._cleanup_closed_transports.clear()
-            self._cleanup_closed_handle = None
 
     @property
     def closed(self) -> bool:
@@ -539,11 +493,7 @@ class BaseConnector:
             proto, t0 = conns.pop()
             if proto.is_connected():
                 if t1 - t0 > self._keepalive_timeout:
-                    transport = proto.transport
                     await proto.close()
-                    # only for SSL transports
-                    if key.is_ssl and not self._cleanup_closed_disabled:
-                        self._cleanup_closed_transports.append(transport)
                 else:
                     if not conns:
                         # The very last connection was reclaimed: drop the key
@@ -606,11 +556,7 @@ class BaseConnector:
             should_close = True
 
         if should_close or protocol.should_close:
-            transport = protocol.transport
             await protocol.close()
-
-            if key.is_ssl and not self._cleanup_closed_disabled:
-                self._cleanup_closed_transports.append(transport)
         else:
             conns = self._conns.get(key)
             if conns is None:
@@ -687,8 +633,6 @@ class TCPConnector(BaseConnector):
         after each request (and between redirects).
     limit - The total number of simultaneous connections.
     limit_per_host - Number of simultaneous connections to one host.
-    enable_cleanup_closed - Enables clean-up closed ssl transports.
-                            Disabled by default.
     loop - Optional event loop.
     """
 
@@ -700,12 +644,10 @@ class TCPConnector(BaseConnector):
                  resolver: Optional[AbstractResolver]=None,
                  keepalive_timeout: Union[None, float, object]=sentinel,
                  force_close: bool=False,
-                 limit: int=100, limit_per_host: int=0,
-                 enable_cleanup_closed: bool=False) -> None:
+                 limit: int=100, limit_per_host: int=0) -> None:
         super().__init__(keepalive_timeout=keepalive_timeout,
                          force_close=force_close,
-                         limit=limit, limit_per_host=limit_per_host,
-                         enable_cleanup_closed=enable_cleanup_closed)
+                         limit=limit, limit_per_host=limit_per_host)
 
         if not isinstance(ssl, SSL_ALLOWED_TYPES):
             raise TypeError("ssl should be SSLContext, bool, Fingerprint, "
@@ -969,9 +911,7 @@ class TCPConnector(BaseConnector):
                 try:
                     fingerprint.check(transp)
                 except ServerFingerprintMismatch as exc:
-                    transp.close()
-                    if not self._cleanup_closed_disabled:
-                        self._cleanup_closed_transports.append(transp)
+                    await proto.close()
                     last_exc = exc
                     continue
 

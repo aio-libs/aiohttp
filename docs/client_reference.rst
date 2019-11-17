@@ -805,8 +805,7 @@ BaseConnector
 ^^^^^^^^^^^^^
 
 .. class:: BaseConnector(*, keepalive_timeout=15, \
-                         force_close=False, limit=100, limit_per_host=0, \
-                         enable_cleanup_closed=False)
+                         force_close=False, limit=100, limit_per_host=0)
 
    Base class for all connectors.
 
@@ -826,11 +825,6 @@ BaseConnector
 
    :param bool force_close: close underlying sockets after
                             connection releasing (optional).
-
-   :param bool enable_cleanup_closed: some SSL servers do not properly complete
-      SSL shutdown process, in that case asyncio leaks ssl connections.
-      If this parameter is set to True, aiohttp additionally aborts underlining
-      transport after 2 seconds. It is off by default.
 
    .. attribute:: closed
 
@@ -891,8 +885,7 @@ TCPConnector
                  use_dns_cache=True, ttl_dns_cache=10, \
                  family=0, local_addr=None, \
                  resolver=None, keepalive_timeout=sentinel, \
-                 force_close=False, limit=100, limit_per_host=0, \
-                 enable_cleanup_closed=False)
+                 force_close=False, limit=100, limit_per_host=0)
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
@@ -960,11 +953,6 @@ TCPConnector
 
    :param bool force_close: close underlying sockets after
                             connection releasing (optional).
-
-   :param bool enable_cleanup_closed: Some ssl servers do not properly complete
-      SSL shutdown process, in that case asyncio leaks SSL connections.
-      If this parameter is set to True, aiohttp additionally aborts underlining
-      transport after 2 seconds. It is off by default.
 
    .. attribute:: family
 
