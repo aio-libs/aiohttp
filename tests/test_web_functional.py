@@ -37,6 +37,13 @@ def fname(here):
     return here / 'conftest.py'
 
 
+def new_dummy_form():
+    form = FormData()
+    form.add_field('name', b'123',
+                   content_transfer_encoding='base64')
+    return form
+
+
 async def test_simple_get(aiohttp_client) -> None:
 
     async def handler(request):
@@ -513,15 +520,11 @@ async def test_100_continue_custom(aiohttp_client) -> None:
         if request.version == HttpVersion11:
             await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
 
-    form = FormData()
-    form.add_field('name', b'123',
-                   content_transfer_encoding='base64')
-
     app = web.Application()
     app.router.add_post('/', handler, expect_handler=expect_handler)
     client = await aiohttp_client(app)
 
-    resp = await client.post('/', data=form, expect100=True)
+    resp = await client.post('/', data=new_dummy_form(), expect100=True)
     assert 200 == resp.status
     assert expect_received
 
@@ -540,20 +543,16 @@ async def test_100_continue_custom_response(aiohttp_client) -> None:
 
             await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
 
-    form = FormData()
-    form.add_field('name', b'123',
-                   content_transfer_encoding='base64')
-
     app = web.Application()
     app.router.add_post('/', handler, expect_handler=expect_handler)
     client = await aiohttp_client(app)
 
     auth_err = False
-    resp = await client.post('/', data=form, expect100=True)
+    resp = await client.post('/', data=new_dummy_form(), expect100=True)
     assert 200 == resp.status
 
     auth_err = True
-    resp = await client.post('/', data=form, expect100=True)
+    resp = await client.post('/', data=new_dummy_form(), expect100=True)
     assert 403 == resp.status
 
 
