@@ -1,2 +1,2 @@
 pytest==5.2.4
-twine==2.0.0
+twine==3.0.0
