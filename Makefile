@@ -28,7 +28,6 @@ flake: .flake
                       $(shell find tests -type f) \
                       $(shell find examples -type f)
 	flake8 aiohttp examples tests
-	python setup.py check -rms
 	@if ! isort -c -rc aiohttp tests examples; then \
             echo "Import sort errors, run 'make isort' to fix them!!!"; \
             isort --diff -rc aiohttp tests examples; \
