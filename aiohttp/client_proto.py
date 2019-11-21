@@ -64,6 +64,13 @@ class ResponseHandler(BaseProtocol,
             self._payload = None
             self._drop_timeout()
 
+        # The parser can have a reference back to this instance
+        # via parser.protocol set it to None to avoid leaking objects
+        self._parser = None
+
+        # And same most likely goes for _payload_parser as well
+        self._payload_parser = None
+
     def is_connected(self) -> bool:
         return self.transport is not None
 
