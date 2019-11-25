@@ -2,7 +2,7 @@
 import asyncio
 import platform
 import signal
-from typing import Any
+from typing import Any, Optional
 from unittest.mock import patch
 
 import pytest
@@ -22,8 +22,8 @@ def make_runner(loop: Any, app: Any):
     asyncio.set_event_loop(loop)
     runners = []
 
-    def go(**kwargs):
-        runner = web.AppRunner(app, **kwargs)
+    def go(app_param: Optional[web.AppRunner] = None, **kwargs):
+        runner = web.AppRunner(app_param or app, **kwargs)
         runners.append(runner)
         return runner
 
@@ -265,3 +265,55 @@ def test_run_after_asyncio_run() -> None:
 
     web.run_app(app)
     assert spy.called, "run_app() should work after asyncio.run()."
+
+async def test_app_runner_serve_forever_uninitialized(
+        make_runner, loop) -> None:
+    runner = make_runner()
+    with pytest.raises(RuntimeError):
+        await runner.serve_forever()
+
+
+async def test_app_runner_serve_forever_concurrent_call(
+        make_runner, loop) -> None:
+    runner = make_runner()
+    task = loop.create_task(runner.serve_forever())
+    await asyncio.sleep(0.01)
+    with pytest.raises(RuntimeError):
+        await runner.serve_forever()
+    task.cancel()
+
+
+async def test_app_runner_serve_forever_multiple_times(
+        make_runner, loop) -> None:
+    runner = make_runner()
+    for i in range(3):
+        await runner.setup()
+        task = loop.create_task(runner.serve_forever())
+        await asyncio.sleep(0.01)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+
+async def test_app_runner_serve_forever_cleanup_called(
+        make_runner, app, loop) -> None:
+
+    called = False
+
+    async def on_cleanup(app_param):
+        nonlocal called
+        assert app is app_param
+        called = True
+
+    app.on_cleanup.append(on_cleanup)
+    app.freeze()
+    runner = make_runner(app)
+    await runner.setup()
+
+    task = loop.create_task(runner.serve_forever())
+    await asyncio.sleep(0.01)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert called
