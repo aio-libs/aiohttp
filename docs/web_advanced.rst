@@ -768,9 +768,7 @@ The simple startup code for serving HTTP site on ``'localhost'``, port
     await runner.setup()
     site = web.TCPSite(runner, 'localhost', 8080)
     await site.start()
-
-    while True:
-        await asyncio.sleep(3600)  # sleep forever
+    await runner.serve_forever()
 
 To stop serving call :meth:`AppRunner.cleanup`::
 
