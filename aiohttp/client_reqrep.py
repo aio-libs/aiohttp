@@ -729,6 +729,16 @@ class ClientResponse(HeadersMixin):
         print(self.headers, file=out)
         return out.getvalue()
 
+    def __bool__(self) -> bool:
+        """Returns True if :attr:`status` is less than 400.
+
+        Checks if the status code of the response is superior or equal to 400
+        to see if there was a client error or a server error. If
+        the status code, is inferior to 400, this will return True. This
+        is **not** a check to see if the response code is ``200 OK``.
+        """
+        return 400 > self.status
+
     @property
     def connection(self) -> Optional['Connection']:
         return self._connection

@@ -638,6 +638,20 @@ def test_raise_for_status_2xx() -> None:
     response.raise_for_status()  # should not raise
 
 
+def test_bool_ok_with_status_2xx() -> None:
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              traces=[],
+                              loop=mock.Mock(),
+                              session=mock.Mock())
+    response.status = 200
+    response.reason = 'OK'
+    assert bool(response) is True
+
+
 def test_raise_for_status_4xx() -> None:
     response = ClientResponse('get', URL('http://def-cl-resp.org'),
                               request_info=mock.Mock(),
@@ -654,6 +668,20 @@ def test_raise_for_status_4xx() -> None:
     assert str(cm.value.status) == '409'
     assert str(cm.value.message) == "CONFLICT"
     assert response.closed
+
+
+def test_bool_not_ok_with_status_4xx() -> None:
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              traces=[],
+                              loop=mock.Mock(),
+                              session=mock.Mock())
+    response.status = 409
+    response.reason = 'CONFLICT'
+    assert bool(response) is False
 
 
 def test_raise_for_status_4xx_without_reason() -> None:
