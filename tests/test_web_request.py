@@ -1,5 +1,6 @@
 import asyncio
 import socket
+import weakref
 from collections.abc import MutableMapping
 from typing import Any
 from unittest import mock
@@ -765,3 +766,8 @@ async def test_json_invalid_content_type(aiohttp_client) -> None:
         resp_text = await resp.text()
         assert resp_text == ('Attempt to decode JSON with '
                              'unexpected mimetype: text/plain')
+
+
+def test_weakref_creation() -> None:
+    req = make_mocked_request('GET', '/')
+    weakref.ref(req)
