@@ -3,6 +3,7 @@ import datetime
 import gzip
 import json
 import re
+import weakref
 from concurrent.futures import ThreadPoolExecutor
 from unittest import mock
 
@@ -1089,6 +1090,11 @@ def test_response_with_immutable_headers() -> None:
                     headers=CIMultiDictProxy(CIMultiDict({'Header': 'Value'})))
     assert resp.headers == {'Header': 'Value',
                             'Content-Type': 'text/plain; charset=utf-8'}
+
+
+def test_weakref_creation() -> None:
+    resp = Response()
+    weakref.ref(resp)
 
 
 class TestJSONResponse:

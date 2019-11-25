@@ -113,7 +113,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         '_method', '_version', '_rel_url', '_post', '_read_bytes',
         '_state', '_cache', '_task', '_client_max_size', '_loop',
         '_transport_sslcontext', '_transport_peername',
-        '_disconnection_waiters',
+        '_disconnection_waiters', '__weakref__'
     )
 
     def __init__(self, message: RawRequestMessage,
