@@ -2458,6 +2458,7 @@ application on specific TCP or Unix socket, e.g.::
     await runner.setup()
     site = web.TCPSite(runner, 'localhost', 8080)
     await site.start()
+    # wait for finish signal
     await runner.serve_forever()
 
 
