@@ -77,7 +77,7 @@ stages:
         architecture: 'x64'
 
     - script: |
-        python -m pip install --upgrade pip setuptools
+        python -m pip install --upgrade pip setuptools wheel
       displayName: 'Update pip'
 
     - script: |
