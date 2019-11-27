@@ -62,7 +62,7 @@ def test_ctor() -> None:
     assert 'GET' == req.method
     assert HttpVersion(1, 1) == req.version
     # MacOS may return CamelCased host name, need .lower()
-    assert req.host == socket.getfqdn().lower()
+    assert req.host.lower() == socket.getfqdn().lower()
     assert '/path/to?a=1&b=2' == req.path_qs
     assert '/path/to' == req.path
     assert 'a=1&b=2' == req.query_string
