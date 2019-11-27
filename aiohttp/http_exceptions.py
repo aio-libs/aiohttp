@@ -100,8 +100,8 @@ class BadStatusLine(BadHttpMessage):
         self.args = (line,)
         self.line = line
 
-    __str__ = Exception.__str__  # type: ignore
-    __repr__ = Exception.__repr__  # type: ignore
+    __str__ = Exception.__str__
+    __repr__ = Exception.__repr__
 
 
 class InvalidURLError(BadHttpMessage):
