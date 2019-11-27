@@ -5,6 +5,7 @@ import contextlib
 import functools
 import gc
 import inspect
+import os
 import socket
 import sys
 import unittest
@@ -57,12 +58,17 @@ else:
     SSLContext = None
 
 
+REUSE_ADDRESS = os.name == 'posix' and sys.platform != 'cygwin'
+
+
 def get_unused_port_socket(host: str) -> socket.socket:
     return get_port_socket(host, 0)
 
 
 def get_port_socket(host: str, port: int) -> socket.socket:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    if REUSE_ADDRESS:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind((host, port))
     return s
 
