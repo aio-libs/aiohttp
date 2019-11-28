@@ -282,7 +282,7 @@ If you want to send JSON data::
     async with session.post(url, json={'example': 'test'}) as resp:
         ...
 
-To send text with appropriate content-type just use ``text`` attribute ::
+To send text with appropriate content-type just use ``data`` argument::
 
     async with session.post(url, data='Тест') as resp:
         ...
