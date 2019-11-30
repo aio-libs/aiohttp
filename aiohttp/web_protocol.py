@@ -276,6 +276,8 @@ class RequestHandler(BaseProtocol):
 
         if self._error_handler is not None:
             self._error_handler.cancel()
+        if self._task_handler is not None:
+            self._task_handler.cancel()
 
         self._task_handler = None
 
