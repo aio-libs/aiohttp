@@ -47,7 +47,7 @@ class FormData:
             if filename is None and content_transfer_encoding is None:
                 filename = name
 
-        type_options = MultiDict({'name': name})
+        type_options: MultiDict[str] = MultiDict({'name': name})
         if filename is not None and not isinstance(filename, str):
             raise TypeError('filename must be an instance of str. '
                             'Got: %s' % filename)
