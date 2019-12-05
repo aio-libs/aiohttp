@@ -232,6 +232,7 @@ class ClientRequest:
         self.update_version(version)
         self.update_host(url)
         self.update_headers(headers)
+        self.update_proxy_headers(proxy_headers)
         self.update_auto_headers(skip_auto_headers)
         self.update_cookies(cookies)
         self.update_content_encoding(data)
@@ -328,6 +329,15 @@ class ClientRequest:
                     self.headers[key] = value
                 else:
                     self.headers.add(key, value)
+
+    def update_proxy_headers(self, proxy_headers: Optional[LooseHeaders]) -> None:
+        """Update proxy headers."""
+        if proxy_headers:
+            if isinstance(proxy_headers, (dict, MultiDictProxy, MultiDict)):
+                proxy_headers = proxy_headers.items()  # type: ignore
+
+            for key, value in proxy_headers:
+                self.headers.add(key, value)
 
     def update_auto_headers(self, skip_auto_headers: Iterable[str]) -> None:
         self.skip_auto_headers = CIMultiDict(
