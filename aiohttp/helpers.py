@@ -39,7 +39,7 @@ from typing import (  # noqa
     cast,
 )
 from urllib.parse import quote
-from urllib.request import getproxies
+from urllib.request import getproxies, proxy_bypass  # noqa: F401
 
 import async_timeout
 import attr

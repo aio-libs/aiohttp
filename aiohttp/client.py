@@ -84,6 +84,7 @@ from .helpers import (
     ceil_timeout,
     get_running_loop,
     proxies_from_env,
+    proxy_bypass,
     sentinel,
     strip_auth_from_url,
 )
@@ -422,11 +423,13 @@ class ClientSession:
                     if proxy is not None:
                         proxy = URL(proxy)
                     elif self._trust_env:
-                        for scheme, proxy_info in proxies_from_env().items():
-                            if scheme == url.scheme:
-                                proxy = proxy_info.proxy
-                                proxy_auth = proxy_info.proxy_auth
-                                break
+                        if not proxy_bypass(str(url.host)):
+                            for scheme, proxy_info in proxies_from_env()\
+                                    .items():
+                                if scheme == url.scheme:
+                                    proxy = proxy_info.proxy
+                                    proxy_auth = proxy_info.proxy_auth
+                                    break
 
                     req = self._request_class(
                         method, url, params=params, headers=headers,

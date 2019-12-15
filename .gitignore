@@ -61,3 +61,4 @@ virtualenv.py
 pip-wheel-metadata
 .test-results
 coverage.xml
+.venv/
