@@ -1,4 +1,4 @@
-mypy==0.750; implementation_name=="cpython"
+mypy==0.760; implementation_name=="cpython"
 flake8==3.7.9
 flake8-pyi==19.3.0; python_version >= "3.6"
 black==19.10b0; python_version >= "3.6"
