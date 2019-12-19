@@ -11,7 +11,7 @@ from .client_exceptions import (
 )
 from .helpers import BaseTimerContext, set_exception, set_result
 from .http import HttpResponseParser, RawResponseMessage
-from .streams import EMPTY_PAYLOAD, DataQueue, StreamReader
+from .streams import DEFAULT_LIMIT, EMPTY_PAYLOAD, DataQueue, StreamReader
 
 
 class ResponseHandler(BaseProtocol,
@@ -140,7 +140,9 @@ class ResponseHandler(BaseProtocol,
             data, self._tail = self._tail, b''
             self.data_received(data)
 
-    def set_response_params(self, *, timer: BaseTimerContext=None,
+    def set_response_params(self, *,
+                            timer: BaseTimerContext=None,
+                            limit: int=DEFAULT_LIMIT,
                             skip_payload: bool=False,
                             read_until_eof: bool=False,
                             auto_decompress: bool=True,
@@ -151,7 +153,7 @@ class ResponseHandler(BaseProtocol,
         self._reschedule_timeout()
 
         self._parser = HttpResponseParser(
-            self, self._loop, timer=timer,
+            self, self._loop, timer=timer, limit=limit,
             payload_exception=ClientPayloadError,
             read_until_eof=read_until_eof,
             auto_decompress=auto_decompress)

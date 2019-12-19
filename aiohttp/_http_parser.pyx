@@ -20,7 +20,8 @@ from .http_writer import (HttpVersion as _HttpVersion,
                           HttpVersion10 as _HttpVersion10,
                           HttpVersion11 as _HttpVersion11)
 from .http_parser import DeflateBuffer as _DeflateBuffer
-from .streams import (EMPTY_PAYLOAD as _EMPTY_PAYLOAD,
+from .streams import (DEFAULT_LIMIT as _DEFAULT_LIMIT,
+                      EMPTY_PAYLOAD as _EMPTY_PAYLOAD,
                       StreamReader as _StreamReader)
 
 cimport cython
@@ -266,6 +267,7 @@ cdef class HttpParser:
         object _loop
         object _timer
 
+        size_t _limit
         size_t _max_line_size
         size_t _max_field_size
         size_t _max_headers
@@ -307,6 +309,7 @@ cdef class HttpParser:
 
     cdef _init(self, cparser.http_parser_type mode,
                    object protocol, object loop, object timer=None,
+                   size_t limit=_DEFAULT_LIMIT,
                    size_t max_line_size=8190, size_t max_headers=32768,
                    size_t max_field_size=8190, payload_exception=None,
                    bint response_with_body=True, bint auto_decompress=True):
@@ -330,6 +333,7 @@ cdef class HttpParser:
         self._raw_value = bytearray()
         self._has_value = False
 
+        self._limit = limit
         self._max_line_size = max_line_size
         self._max_headers = max_headers
         self._max_field_size = max_field_size
@@ -430,7 +434,8 @@ cdef class HttpParser:
         if (self._cparser.content_length > 0 or chunked or
                 self._cparser.method == 5):  # CONNECT: 5
             payload = StreamReader(
-                self._protocol, timer=self._timer, loop=self._loop)
+                self._protocol, limit=self._limit,
+                timer=self._timer, loop=self._loop)
         else:
             payload = EMPTY_PAYLOAD
 
@@ -540,11 +545,12 @@ cdef class HttpParser:
 cdef class HttpRequestParser(HttpParser):
 
     def __init__(self, protocol, loop, timer=None,
+                 size_t limit=_DEFAULT_LIMIT,
                  size_t max_line_size=8190, size_t max_headers=32768,
                  size_t max_field_size=8190, payload_exception=None,
                  bint response_with_body=True, bint read_until_eof=False):
          self._init(cparser.HTTP_REQUEST, protocol, loop, timer,
-                    max_line_size, max_headers, max_field_size,
+                    limit, max_line_size, max_headers, max_field_size,
                     payload_exception, response_with_body)
 
     cdef object _on_status_complete(self):
@@ -567,12 +573,13 @@ cdef class HttpRequestParser(HttpParser):
 cdef class HttpResponseParser(HttpParser):
 
     def __init__(self, protocol, loop, timer=None,
+                 size_t limit=_DEFAULT_LIMIT,
                  size_t max_line_size=8190, size_t max_headers=32768,
                  size_t max_field_size=8190, payload_exception=None,
                  bint response_with_body=True, bint read_until_eof=False,
                  bint auto_decompress=True):
         self._init(cparser.HTTP_RESPONSE, protocol, loop, timer,
-                   max_line_size, max_headers, max_field_size,
+                   limit, max_line_size, max_headers, max_field_size,
                    payload_exception, response_with_body, auto_decompress)
 
     cdef object _on_status_complete(self):

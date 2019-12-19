@@ -23,7 +23,7 @@ from .http_exceptions import (
 )
 from .http_writer import HttpVersion, HttpVersion10
 from .log import internal_logger
-from .streams import EMPTY_PAYLOAD, StreamReader
+from .streams import DEFAULT_LIMIT, EMPTY_PAYLOAD, StreamReader
 from .typedefs import RawHeaders
 
 try:
@@ -168,6 +168,7 @@ class HttpParser(abc.ABC):
 
     def __init__(self, protocol: BaseProtocol,
                  loop: asyncio.AbstractEventLoop,
+                 limit: int=DEFAULT_LIMIT,
                  max_line_size: int=8190,
                  max_headers: int=32768,
                  max_field_size: int=8190,
@@ -184,6 +185,7 @@ class HttpParser(abc.ABC):
         self.max_line_size = max_line_size
         self.max_headers = max_headers
         self.max_field_size = max_field_size
+        self.limit = limit
         self.timer = timer
         self.code = code
         self.method = method
@@ -288,7 +290,8 @@ class HttpParser(abc.ABC):
                         if ((length is not None and length > 0) or
                                 msg.chunked and not msg.upgrade):
                             payload = StreamReader(
-                                self.protocol, timer=self.timer, loop=loop)
+                                self.protocol, limit=self.limit,
+                                timer=self.timer, loop=loop)
                             payload_parser = HttpPayloadParser(
                                 payload, length=length,
                                 chunked=msg.chunked, method=method,
@@ -300,7 +303,8 @@ class HttpParser(abc.ABC):
                                 self._payload_parser = payload_parser
                         elif method == METH_CONNECT:
                             payload = StreamReader(
-                                self.protocol, timer=self.timer, loop=loop)
+                                self.protocol, limit=self.limit,
+                                timer=self.timer, loop=loop)
                             self._upgraded = True
                             self._payload_parser = HttpPayloadParser(
                                 payload, method=msg.method,
@@ -310,7 +314,8 @@ class HttpParser(abc.ABC):
                             if (getattr(msg, 'code', 100) >= 199 and
                                     length is None and self.read_until_eof):
                                 payload = StreamReader(
-                                    self.protocol, timer=self.timer, loop=loop)
+                                    self.protocol, limit=self.limit,
+                                    timer=self.timer, loop=loop)
                                 payload_parser = HttpPayloadParser(
                                     payload, length=length,
                                     chunked=msg.chunked, method=method,

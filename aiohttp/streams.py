@@ -241,8 +241,8 @@ class StreamReader(AsyncStreamReaderMixin):
             self._waiter = None
             set_result(waiter, None)
 
-        if (self._size > self._high_water and
-                not self._protocol._reading_paused):
+        if (self._high_water and self._size > self._high_water
+                and not self._protocol._reading_paused):
             self._protocol.pause_reading()
 
     def begin_http_chunk_receiving(self) -> None:
@@ -318,7 +318,7 @@ class StreamReader(AsyncStreamReaderMixin):
                 if ichar:
                     not_enough = False
 
-                if line_size > self._high_water:
+                if self._high_water and line_size > self._high_water:
                     raise ValueError('Line is too long')
 
             if self._eof:
@@ -611,12 +611,14 @@ class FlowControlDataQueue(DataQueue[_T]):
     def feed_data(self, data: _T, size: int=0) -> None:
         super().feed_data(data, size)
 
-        if self._size > self._limit and not self._protocol._reading_paused:
+        if (self._limit and self._size > self._limit
+                and not self._protocol._reading_paused):
             self._protocol.pause_reading()
 
     async def read(self) -> _T:
         try:
             return await super().read()
         finally:
-            if self._size < self._limit and self._protocol._reading_paused:
+            if (self._limit and self._size < self._limit
+                    and self._protocol._reading_paused):
                 self._protocol.resume_reading()

@@ -94,7 +94,7 @@ from .http_websocket import (  # noqa
     ws_ext_gen,
     ws_ext_parse,
 )
-from .streams import FlowControlDataQueue
+from .streams import DEFAULT_LIMIT, FlowControlDataQueue
 from .tracing import Trace, TraceConfig
 from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
 
@@ -310,6 +310,7 @@ class ClientSession:
             expect100: bool=False,
             raise_for_status: Union[None, bool, Callable[[ClientResponse], Awaitable[None]]]=None,  # noqa
             read_until_eof: bool=True,
+            limit: int=DEFAULT_LIMIT,
             proxy: Optional[StrOrURL]=None,
             proxy_auth: Optional[BasicAuth]=None,
             timeout: Union[ClientTimeout, object]=sentinel,
@@ -457,7 +458,7 @@ class ClientSession:
 
                     assert conn.protocol is not None
                     conn.protocol.set_response_params(
-                        timer=timer,
+                        limit=limit, timer=timer,
                         skip_payload=method.upper() == 'HEAD',
                         read_until_eof=read_until_eof,
                         auto_decompress=self._auto_decompress,
@@ -1094,6 +1095,7 @@ def request(
         expect100: bool=False,
         raise_for_status: Optional[bool]=None,
         read_until_eof: bool=True,
+        limit: int=DEFAULT_LIMIT,
         proxy: Optional[StrOrURL]=None,
         proxy_auth: Optional[BasicAuth]=None,
         timeout: Union[ClientTimeout, object]=sentinel,
@@ -1159,6 +1161,7 @@ def request(
                          expect100=expect100,
                          raise_for_status=raise_for_status,
                          read_until_eof=read_until_eof,
+                         limit=limit,
                          proxy=proxy,
                          proxy_auth=proxy_auth,),
         session)
