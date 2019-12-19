@@ -177,7 +177,7 @@ JSON Request
 ============
 
 Any of session's request methods like :func:`request`,
-:meth:`ClientSession.get`, :meth:`ClientSesssion.post` etc. accept
+:meth:`ClientSession.get`, :meth:`ClientSession.post` etc. accept
 `json` parameter::
 
   async with aiohttp.ClientSession() as session:
