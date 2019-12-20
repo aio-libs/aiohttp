@@ -1,4 +1,3 @@
-import abc
 import asyncio
 import enum
 import io
@@ -6,7 +5,7 @@ import json
 import mimetypes
 import os
 import warnings
-from abc import ABC, abstractmethod
+from abc import ABC, ABCMeta, abstractmethod
 from itertools import chain
 from typing import (
     IO,
@@ -441,7 +440,7 @@ class StreamReaderPayload(AsyncIterablePayload):
         super().__init__(value.iter_any(), *args, **kwargs)
 
 
-class TempFileMetaclass(abc.ABCMeta):
+class TempFileMetaclass(ABCMeta):
     def __instancecheck__(self, instance: Any) -> bool:
         return hasattr(instance, 'read') and hasattr(instance, 'close')
 
