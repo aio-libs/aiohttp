@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import io
 import pathlib
+import tempfile
 import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from unittest import mock
@@ -1140,3 +1141,28 @@ def test_loose_cookies_types(loop) -> None:
 
     for loose_cookies_type in accepted_types:
         req.update_cookies(cookies=loose_cookies_type)
+
+
+@pytest.mark.parametrize(
+    'file_fn', (
+        tempfile.TemporaryFile,
+        tempfile.NamedTemporaryFile,
+        tempfile.SpooledTemporaryFile,
+    )
+)
+async def test_temporary_file(file_fn, loop, conn) -> None:
+    body = b'x' * 2**17
+    for meth in ClientRequest.POST_METHODS:
+        with file_fn() as f:
+            f.write(body)
+            f.seek(0)
+            req = ClientRequest(
+                meth, URL('http://python.org/'),
+                data=f, loop=loop)
+            resp = await req.send(conn)
+            assert '/' == req.url.path
+            assert isinstance(req.body, payload.IOBasePayload)
+            assert body == req.body._value.read()
+            assert 'application/octet-stream' == req.headers['CONTENT-TYPE']
+            await req.close()
+            resp.close()

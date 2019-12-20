@@ -1,3 +1,4 @@
+import abc
 import asyncio
 import enum
 import io
@@ -440,6 +441,15 @@ class StreamReaderPayload(AsyncIterablePayload):
         super().__init__(value.iter_any(), *args, **kwargs)
 
 
+class TempFileMetaclass(abc.ABCMeta):
+    def __instancecheck__(self, instance: Any) -> bool:
+        return hasattr(instance, 'read') and hasattr(instance, 'close')
+
+
+class TempFilePayload(IOBasePayload, metaclass=TempFileMetaclass):
+    pass
+
+
 PAYLOAD_REGISTRY = PayloadRegistry()
 PAYLOAD_REGISTRY.register(BytesPayload, (bytes, bytearray, memoryview))
 PAYLOAD_REGISTRY.register(StringPayload, str)
@@ -448,7 +458,7 @@ PAYLOAD_REGISTRY.register(TextIOPayload, io.TextIOBase)
 PAYLOAD_REGISTRY.register(BytesIOPayload, io.BytesIO)
 PAYLOAD_REGISTRY.register(
     BufferedReaderPayload, (io.BufferedReader, io.BufferedRandom))
-PAYLOAD_REGISTRY.register(IOBasePayload, io.IOBase)
+PAYLOAD_REGISTRY.register(IOBasePayload, (io.IOBase, TempFilePayload))
 PAYLOAD_REGISTRY.register(StreamReaderPayload, StreamReader)
 # try_last for giving a chance to more specialized async interables like
 # multidict.BodyPartReaderPayload override the default
