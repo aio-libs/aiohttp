@@ -239,7 +239,7 @@ def selector_loop():  # type: ignore
         if PY_38:
             policy = asyncio.WindowsSelectorEventLoopPolicy()  # type: ignore
         else:
-            policy = asyncio.DefaultEventLoopPolicy()  # type: ignore
+            policy = asyncio.DefaultEventLoopPolicy()
         asyncio.set_event_loop_policy(policy)
 
     with loop_context(policy.new_event_loop) as _loop:
