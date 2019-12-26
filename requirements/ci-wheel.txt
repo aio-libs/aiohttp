@@ -1,6 +1,5 @@
 -r flake.txt
-attrs==19.1.0
-async-generator==1.10
+attrs==19.2.0
 async-timeout==3.0.1
 Brotli==1.0.7
 cchardet==2.1.4
@@ -8,11 +7,11 @@ chardet==3.0.4
 coverage==4.5.4
 gunicorn==19.9.0
 multidict==4.5.2
-pytest==5.1.2
-pytest-cov==2.7.1
-pytest-mock==1.10.4
+pytest==5.2.1
+pytest-cov==2.8.1
+pytest-mock==1.11.1
 tox==3.13.2
-twine==1.14.0
+twine==1.15.0
 typing_extensions==3.7.4
 yarl==1.3.0
 

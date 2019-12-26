@@ -5,6 +5,13 @@ update_configs:
     directory: "/"
     update_schedule: "live"
     target_branch: "master"
+    automerged_updates:
+    - match:
+        dependency_type: "development"
+        update_type: "all"
+    - match:
+        dependency_type: "production"
+        update_type: "all"
   # Keep 3.6 branch up to date
   - package_manager: "python"
     directory: "/"
@@ -12,3 +19,10 @@ update_configs:
     target_branch: "3.6"
     commit_message:
       prefix: "[3.6] "
+    automerged_updates:
+    - match:
+        dependency_type: "development"
+        update_type: "all"
+    - match:
+        dependency_type: "production"
+        update_type: "all"

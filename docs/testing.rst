@@ -71,6 +71,8 @@ proxy methods to the client for common operations such as
 Pytest
 ~~~~~~
 
+.. currentmodule:: pytest_aiohttp
+
 The :data:`aiohttp_client` fixture available from pytest-aiohttp_ plugin
 allows you to create a client to make requests to test your app.
 
@@ -234,6 +236,9 @@ Pytest tooling has the following fixtures:
 
 Unittest
 ~~~~~~~~
+
+.. currentmodule:: aiohttp.test_utils
+
 
 To test applications with the standard library's unittest or unittest-based
 functionality, the AioHTTPTestCase is provided::
@@ -507,7 +512,7 @@ basis, the TestClient object can be used directly::
 
     with loop_context() as loop:
         app = _create_example_app()
-        client = TestClient(TestSever(app), loop=loop)
+        client = TestClient(TestServer(app), loop=loop)
         loop.run_until_complete(client.start_server())
         root = "http://127.0.0.1:{}".format(port)
 

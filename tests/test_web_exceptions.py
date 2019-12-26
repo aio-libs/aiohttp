@@ -1,4 +1,5 @@
 import collections
+import pickle
 from traceback import format_exception
 
 import pytest
@@ -82,70 +83,6 @@ def test_terminal_classes_has_status_code() -> None:
     assert 1 == codes.most_common(1)[0][1]
 
 
-async def test_HTTPOk(aiohttp_client) -> None:
-
-    async def handler(request):
-        raise web.HTTPOk()
-
-    app = web.Application()
-    app.router.add_get('/', handler)
-    cli = await aiohttp_client(app)
-
-    resp = await cli.get('/')
-    assert 200 == resp.status
-    txt = await resp.text()
-    assert "200: OK" == txt
-
-
-async def test_HTTPFound(aiohttp_client) -> None:
-
-    async def handler(request):
-        raise web.HTTPFound(location='/redirect')
-
-    app = web.Application()
-    app.router.add_get('/', handler)
-    cli = await aiohttp_client(app)
-
-    resp = await cli.get('/', allow_redirects=False)
-    assert 302 == resp.status
-    txt = await resp.text()
-    assert "302: Found" == txt
-    assert '/redirect' == resp.headers['location']
-
-
-def test_HTTPFound_location_str() -> None:
-    exc = web.HTTPFound(location='/redirect')
-    assert exc.location == URL('/redirect')
-    assert exc.headers['Location'] == '/redirect'
-
-
-def test_HTTPFound_location_url() -> None:
-    exc = web.HTTPFound(location=URL('/redirect'))
-    assert exc.location == URL('/redirect')
-    assert exc.headers['Location'] == '/redirect'
-
-
-def test_HTTPFound_empty_location() -> None:
-    with pytest.raises(ValueError):
-        web.HTTPFound(location='')
-
-    with pytest.raises(ValueError):
-        web.HTTPFound(location=None)
-
-
-def test_HTTPFound_location_CRLF() -> None:
-    exc = web.HTTPFound(location='/redirect\r\n')
-    assert '\r\n' not in exc.headers['Location']
-
-
-async def test_HTTPMethodNotAllowed() -> None:
-    exc = web.HTTPMethodNotAllowed('GET', ['POST', 'PUT'])
-    assert 'GET' == exc.method
-    assert {'POST', 'PUT'} == exc.allowed_methods
-    assert 'POST,PUT' == exc.headers['allow']
-    assert '405: Method Not Allowed' == exc.text
-
-
 def test_with_text() -> None:
     resp = web.HTTPNotFound(text="Page not found")
     assert 404 == resp.status
@@ -164,20 +101,13 @@ def test_empty_text_204() -> None:
 
 
 def test_empty_text_205() -> None:
-    resp = web.HTTPNoContent()
+    resp = web.HTTPResetContent()
     assert resp.text is None
 
 
 def test_empty_text_304() -> None:
     resp = web.HTTPNoContent()
     resp.text is None
-
-
-def test_link_header_451() -> None:
-    resp = web.HTTPUnavailableForLegalReasons(link='http://warning.or.kr/')
-
-    assert URL('http://warning.or.kr/') == resp.link
-    assert '<http://warning.or.kr/>; rel="blocked-by"' == resp.headers['Link']
 
 
 def test_HTTPException_retains_cause() -> None:
@@ -189,3 +119,191 @@ def test_HTTPException_retains_cause() -> None:
     tb = ''.join(format_exception(ei.type, ei.value, ei.tb))
     assert 'CustomException' in tb
     assert 'direct cause' in tb
+
+
+class TestHTTPOk:
+    def test_ctor_all(self) -> None:
+        resp = web.HTTPOk(headers={'X-Custom': 'value'},
+                          reason='Done',
+                          text='text', content_type='custom')
+        assert resp.text == 'text'
+        assert resp.headers == {'X-Custom': 'value',
+                                'Content-Type': 'custom'}
+        assert resp.reason == 'Done'
+        assert resp.status == 200
+
+    def test_pickle(self) -> None:
+        resp = web.HTTPOk(headers={'X-Custom': 'value'},
+                          reason='Done',
+                          text='text', content_type='custom')
+        resp.foo = 'bar'
+        for proto in range(2, pickle.HIGHEST_PROTOCOL + 1):
+            pickled = pickle.dumps(resp, proto)
+            resp2 = pickle.loads(pickled)
+            assert resp2.text == 'text'
+            assert resp2.headers == resp.headers
+            assert resp2.reason == 'Done'
+            assert resp2.status == 200
+            assert resp2.foo == 'bar'
+
+    async def test_app(self, aiohttp_client) -> None:
+
+        async def handler(request):
+            raise web.HTTPOk()
+
+        app = web.Application()
+        app.router.add_get('/', handler)
+        cli = await aiohttp_client(app)
+
+        resp = await cli.get('/')
+        assert 200 == resp.status
+        txt = await resp.text()
+        assert "200: OK" == txt
+
+
+class TestHTTPFound:
+    def test_location_str(self) -> None:
+        exc = web.HTTPFound(location='/redirect')
+        assert exc.location == URL('/redirect')
+        assert exc.headers['Location'] == '/redirect'
+
+    def test_location_url(self) -> None:
+        exc = web.HTTPFound(location=URL('/redirect'))
+        assert exc.location == URL('/redirect')
+        assert exc.headers['Location'] == '/redirect'
+
+    def test_empty_location(self) -> None:
+        with pytest.raises(ValueError):
+            web.HTTPFound(location='')
+        with pytest.raises(ValueError):
+            web.HTTPFound(location=None)
+
+    def test_location_CRLF(self) -> None:
+        exc = web.HTTPFound(location='/redirect\r\n')
+        assert '\r\n' not in exc.headers['Location']
+
+    def test_pickle(self) -> None:
+        resp = web.HTTPFound(location='http://example.com',
+                             headers={'X-Custom': 'value'},
+                             reason='Wow',
+                             text='text', content_type='custom')
+        resp.foo = 'bar'
+        for proto in range(2, pickle.HIGHEST_PROTOCOL + 1):
+            pickled = pickle.dumps(resp, proto)
+            resp2 = pickle.loads(pickled)
+            assert resp2.location == URL('http://example.com')
+            assert resp2.text == 'text'
+            assert resp2.headers == resp.headers
+            assert resp2.reason == 'Wow'
+            assert resp2.status == 302
+            assert resp2.foo == 'bar'
+
+    async def test_app(self, aiohttp_client) -> None:
+
+        async def handler(request):
+            raise web.HTTPFound(location='/redirect')
+
+        app = web.Application()
+        app.router.add_get('/', handler)
+        cli = await aiohttp_client(app)
+
+        resp = await cli.get('/', allow_redirects=False)
+        assert 302 == resp.status
+        txt = await resp.text()
+        assert "302: Found" == txt
+        assert '/redirect' == resp.headers['location']
+
+
+class TestHTTPMethodNotAllowed:
+    async def test_ctor(self) -> None:
+        resp = web.HTTPMethodNotAllowed('GET', ['POST', 'PUT'],
+                                        headers={'X-Custom': 'value'},
+                                        reason='Unsupported',
+                                        text='text', content_type='custom')
+        assert resp.method == 'GET'
+        assert resp.allowed_methods == {'POST', 'PUT'}
+        assert resp.text == 'text'
+        assert resp.headers == {'X-Custom': 'value',
+                                'Content-Type': 'custom',
+                                'Allow': 'POST,PUT'}
+        assert resp.reason == 'Unsupported'
+        assert resp.status == 405
+
+    def test_pickle(self) -> None:
+        resp = web.HTTPMethodNotAllowed(method='GET',
+                                        allowed_methods=('POST', 'PUT'),
+                                        headers={'X-Custom': 'value'},
+                                        reason='Unsupported',
+                                        text='text', content_type='custom')
+        resp.foo = 'bar'
+        for proto in range(2, pickle.HIGHEST_PROTOCOL + 1):
+            pickled = pickle.dumps(resp, proto)
+            resp2 = pickle.loads(pickled)
+            assert resp2.method == 'GET'
+            assert resp2.allowed_methods == {'POST', 'PUT'}
+            assert resp2.text == 'text'
+            assert resp2.headers == resp.headers
+            assert resp2.reason == 'Unsupported'
+            assert resp2.status == 405
+            assert resp2.foo == 'bar'
+
+
+class TestHTTPRequestEntityTooLarge:
+    def test_ctor(self) -> None:
+        resp = web.HTTPRequestEntityTooLarge(max_size=100, actual_size=123,
+                                             headers={'X-Custom': 'value'},
+                                             reason='Too large')
+        assert resp.text == ('Maximum request body size 100 exceeded, '
+                             'actual body size 123')
+        assert resp.headers == {'X-Custom': 'value',
+                                'Content-Type': 'text/plain'}
+        assert resp.reason == 'Too large'
+        assert resp.status == 413
+
+    def test_pickle(self) -> None:
+        resp = web.HTTPRequestEntityTooLarge(100, actual_size=123,
+                                             headers={'X-Custom': 'value'},
+                                             reason='Too large')
+        resp.foo = 'bar'
+        for proto in range(2, pickle.HIGHEST_PROTOCOL + 1):
+            pickled = pickle.dumps(resp, proto)
+            resp2 = pickle.loads(pickled)
+            assert resp2.text == resp.text
+            assert resp2.headers == resp.headers
+            assert resp2.reason == 'Too large'
+            assert resp2.status == 413
+            assert resp2.foo == 'bar'
+
+
+class TestHTTPUnavailableForLegalReasons:
+    def test_ctor(self) -> None:
+        resp = web.HTTPUnavailableForLegalReasons(
+            link='http://warning.or.kr/',
+            headers={'X-Custom': 'value'},
+            reason='Zaprescheno',
+            text='text', content_type='custom')
+        assert resp.link == URL('http://warning.or.kr/')
+        assert resp.text == 'text'
+        assert resp.headers == {
+            'X-Custom': 'value',
+            'Content-Type': 'custom',
+            'Link': '<http://warning.or.kr/>; rel="blocked-by"'}
+        assert resp.reason == 'Zaprescheno'
+        assert resp.status == 451
+
+    def test_pickle(self) -> None:
+        resp = web.HTTPUnavailableForLegalReasons(
+            link='http://warning.or.kr/',
+            headers={'X-Custom': 'value'},
+            reason='Zaprescheno',
+            text='text', content_type='custom')
+        resp.foo = 'bar'
+        for proto in range(2, pickle.HIGHEST_PROTOCOL + 1):
+            pickled = pickle.dumps(resp, proto)
+            resp2 = pickle.loads(pickled)
+            assert resp2.link == URL('http://warning.or.kr/')
+            assert resp2.text == 'text'
+            assert resp2.headers == resp.headers
+            assert resp2.reason == 'Zaprescheno'
+            assert resp2.status == 451
+            assert resp2.foo == 'bar'

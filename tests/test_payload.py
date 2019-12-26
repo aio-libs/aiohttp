@@ -1,7 +1,6 @@
 from io import StringIO
 
 import pytest
-from async_generator import async_generator
 
 from aiohttp import payload
 
@@ -90,18 +89,18 @@ def test_string_io_payload() -> None:
 
 
 def test_async_iterable_payload_default_content_type() -> None:
-    @async_generator
     async def gen():
-        pass
+        return
+        yield
 
     p = payload.AsyncIterablePayload(gen())
     assert p.content_type == 'application/octet-stream'
 
 
 def test_async_iterable_payload_explicit_content_type() -> None:
-    @async_generator
     async def gen():
-        pass
+        return
+        yield
 
     p = payload.AsyncIterablePayload(gen(), content_type='application/custom')
     assert p.content_type == 'application/custom'

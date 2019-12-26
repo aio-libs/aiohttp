@@ -13,7 +13,6 @@ from typing import Any, Callable, List, Optional, Tuple, Union
 
 from .base_protocol import BaseProtocol
 from .helpers import NO_EXTENSIONS
-from .log import ws_logger
 from .streams import DataQueue
 
 __all__ = ('WS_CLOSED_MESSAGE', 'WS_CLOSING_MESSAGE', 'WS_KEY',
@@ -91,7 +90,10 @@ class WebSocketError(Exception):
 
     def __init__(self, code: int, message: str) -> None:
         self.code = code
-        super().__init__(message)
+        super().__init__(code, message)
+
+    def __str__(self) -> str:
+        return self.args[1]
 
 
 class WSHandshakeError(Exception):
@@ -356,9 +358,12 @@ class WebSocketReader:
                             left = len(self._decompressobj.unconsumed_tail)
                             raise WebSocketError(
                                 WSCloseCode.MESSAGE_TOO_BIG,
-                                "Decompressed message size exceeds limit {}".
-                                format(self._max_msg_size + left,
-                                       self._max_msg_size))
+                                "Decompressed message size {} exceeds limit {}"
+                                .format(
+                                    self._max_msg_size + left,
+                                    self._max_msg_size
+                                )
+                            )
                     else:
                         payload_merged = bytes(self._partial)
 
@@ -552,8 +557,8 @@ class WebSocketWriter:
     async def _send_frame(self, message: bytes, opcode: int,
                           compress: Optional[int]=None) -> None:
         """Send a frame over the websocket with message as its payload."""
-        if self._closing:
-            ws_logger.warning('websocket connection is closing.')
+        if self._closing and not (opcode & WSMsgType.CLOSE):
+            raise ConnectionResetError('Cannot write to closing transport')
 
         rsv = 0
 
@@ -595,20 +600,25 @@ class WebSocketWriter:
             mask = mask.to_bytes(4, 'big')
             message = bytearray(message)
             _websocket_mask(mask, message)
-            self.transport.write(header + mask + message)
+            self._write(header + mask + message)
             self._output_size += len(header) + len(mask) + len(message)
         else:
             if len(message) > MSG_SIZE:
-                self.transport.write(header)
-                self.transport.write(message)
+                self._write(header)
+                self._write(message)
             else:
-                self.transport.write(header + message)
+                self._write(header + message)
 
             self._output_size += len(header) + len(message)
 
         if self._output_size > self._limit:
             self._output_size = 0
             await self.protocol._drain_helper()
+
+    def _write(self, data: bytes) -> None:
+        if self.transport is None or self.transport.is_closing():
+            raise ConnectionResetError('Cannot write to closing transport')
+        self.transport.write(data)
 
     async def pong(self, message: bytes=b'') -> None:
         """Send pong message."""
