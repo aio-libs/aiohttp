@@ -938,6 +938,8 @@ class ClientResponse(HeadersMixin):
             if mimetype.type == 'application' and mimetype.subtype == 'json':
                 # RFC 7159 states that the default encoding is UTF-8.
                 encoding = 'utf-8'
+            elif self._body is None:
+                raise RuntimeError("Trying to get encoding of not read body")
             else:
                 encoding = chardet.detect(self._body)['encoding']
         if not encoding:

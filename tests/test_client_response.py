@@ -424,6 +424,30 @@ async def test_text_detect_encoding_if_invalid_charset(loop, session) -> None:
     assert response.get_encoding().lower() in ('windows-1251', 'maccyrillic')
 
 
+async def test_get_encoding_body_none(loop, session) -> None:
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              traces=[],
+                              loop=loop,
+                              session=session)
+
+    def side_effect(*args, **kwargs):
+        fut = loop.create_future()
+        fut.set_result('{"encoding": "test"}')
+        return fut
+
+    response._headers = {'Content-Type': 'text/html'}
+    content = response.content = mock.Mock()
+    content.read.side_effect = side_effect
+
+    with pytest.raises(RuntimeError):
+        response.get_encoding()
+    assert response.closed
+
+
 async def test_text_after_read(loop, session) -> None:
     response = ClientResponse('get', URL('http://def-cl-resp.org'),
                               request_info=mock.Mock(),
