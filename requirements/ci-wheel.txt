@@ -9,7 +9,7 @@ gunicorn==20.0.4
 multidict==4.7.3
 pytest==5.3.2
 pytest-cov==2.8.1
-pytest-mock==1.13.0
+pytest-mock==2.0.0
 typing_extensions==3.7.4.1
 yarl==1.4.2
 
