@@ -296,7 +296,11 @@ class WebSocketResponse(StreamResponse):
 
     async def send_json(self, data: Any, compress: Optional[bool]=None, *,
                         dumps: JSONEncoder=json.dumps) -> None:
-        await self.send_str(dumps(data), compress=compress)
+        serialized_data = dumps(data)
+        if isinstance(serialized_data, str):
+            await self.send_str(serialized_data, compress=compress)
+        else:
+            await self.send_bytes(serialized_data, compress=compress)
 
     async def write_eof(self) -> None:  # type: ignore
         if self._eof_sent:

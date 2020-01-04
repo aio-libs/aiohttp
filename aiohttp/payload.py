@@ -384,9 +384,11 @@ class JsonPayload(BytesPayload):
                  dumps: JSONEncoder=json.dumps,
                  *args: Any,
                  **kwargs: Any) -> None:
-
+        serialized_value = dumps(value)
+        if isinstance(serialized_value, str):
+            serialized_value = serialized_value.encode(encoding)
         super().__init__(
-            dumps(value).encode(encoding),
+            serialized_value,
             content_type=content_type, encoding=encoding, *args, **kwargs)
 
 

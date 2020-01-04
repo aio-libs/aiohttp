@@ -165,7 +165,11 @@ class ClientWebSocketResponse:
     async def send_json(self, data: Any,
                         compress: Optional[int]=None,
                         *, dumps: JSONEncoder=DEFAULT_JSON_ENCODER) -> None:
-        await self.send_str(dumps(data), compress=compress)
+        serialized_data = dumps(data)
+        if isinstance(serialized_data, str):
+            await self.send_str(serialized_data, compress=compress)
+        else:
+            await self.send_bytes(serialized_data, compress=compress)
 
     async def close(self, *, code: int=1000, message: bytes=b'') -> bool:
         # we need to break `receive()` cycle first,

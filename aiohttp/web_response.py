@@ -704,6 +704,7 @@ def json_response(data: Any=sentinel, *,
                   text: str=None,
                   body: bytes=None,
                   status: int=200,
+                  encoding: str = 'utf-8',
                   reason: Optional[str]=None,
                   headers: LooseHeaders=None,
                   content_type: str='application/json',
@@ -714,6 +715,12 @@ def json_response(data: Any=sentinel, *,
                 "only one of data, text, or body should be specified"
             )
         else:
-            text = dumps(data)
+            response_text = dumps(data)
+            if isinstance(response_text, bytes):
+                text = response_text.decode(
+                    encoding
+                )
+            else:
+                text = response_text
     return Response(text=text, body=body, status=status, reason=reason,
                     headers=headers, content_type=content_type)

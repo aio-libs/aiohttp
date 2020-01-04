@@ -37,7 +37,7 @@ else:
     _MultiDictProxy = MultiDictProxy
 
 Byteish = Union[bytes, bytearray, memoryview]
-JSONEncoder = Callable[[Any], str]
+JSONEncoder = Callable[[Any], Union[str, bytes]]
 JSONDecoder = Callable[[str], Any]
 LooseHeaders = Union[Mapping[Union[str, istr], str], _CIMultiDict,
                      _CIMultiDictProxy]

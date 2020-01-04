@@ -287,6 +287,7 @@ Yuriy Shatrov
 Yury Selivanov
 Yusuke Tsutsumi
 Yuval Ofir
+Zachary Smith
 Zlatan Sičanica
 Марк Коренберг
 Семён Марьясин

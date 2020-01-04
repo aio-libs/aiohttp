@@ -1630,6 +1630,32 @@ async def test_json_custom(aiohttp_client) -> None:
         await client.post('/', data="some data", json={'some': 'data'})
 
 
+async def test_json_bytes(aiohttp_client) -> None:
+
+    async def handler(request):
+        assert request.content_type == 'application/json'
+        data = await request.json()
+        return web.Response(body=aiohttp.JsonPayload(data))
+
+    used = False
+
+    def dumps(obj):
+        nonlocal used
+        used = True
+        return json.dumps(obj).encode('utf-8')
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = await aiohttp_client(app, json_serialize=dumps)
+
+    resp = await client.post('/', json={'some': 'data'})
+    assert 200 == resp.status
+    assert used
+    content = await resp.json()
+    assert content == {'some': 'data'}
+    resp.close()
+
+
 async def test_expect_continue(aiohttp_client) -> None:
     expect_called = False
 
