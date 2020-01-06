@@ -443,7 +443,10 @@ async def test_get_encoding_body_none(loop, session) -> None:
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(
+        RuntimeError,
+        match='^Cannot guess the encoding of a not yet read body$',
+    ):
         response.get_encoding()
     assert response.closed
 

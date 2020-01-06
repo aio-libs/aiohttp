@@ -1305,7 +1305,8 @@ Response object
       decode a response. Some encodings detected by cchardet are not known by
       Python (e.g. VISCII).
 
-      :raise RuntimeError: if body hasn't been read for :term:`cchardet` usage
+      :raise RuntimeError: if called before the body has been read,
+                           for :term:`cchardet` usage
 
       .. versionadded:: 3.0
 
