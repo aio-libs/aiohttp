@@ -939,7 +939,8 @@ class ClientResponse(HeadersMixin):
                 # RFC 7159 states that the default encoding is UTF-8.
                 encoding = 'utf-8'
             elif self._body is None:
-                raise RuntimeError('Cannot guess the encoding of a not yet read body')
+                raise RuntimeError('Cannot guess the encoding of '
+                                   'a not yet read body')
             else:
                 encoding = chardet.detect(self._body)['encoding']
         if not encoding:
