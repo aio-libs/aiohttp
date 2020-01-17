@@ -37,6 +37,16 @@ Workflow is pretty straightforward:
    needed. The Pull Request is automatically squashed into the single commit
    once the PR is accepted.
 
+.. note::
+
+   GitHub issue and pull request threads are automatically locked when there has
+   not been any recent activity for one year.  Please open a `new issue
+   <https://github.com/aio-libs/aiohttp/issues/new>`_ for related bugs.
+
+   If you feel like there are important points in the locked discussions,
+   please include those exceprts into that new issue.
+
+
 Preconditions for running aiohttp test suite
 --------------------------------------------
 
