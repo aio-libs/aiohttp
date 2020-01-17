@@ -669,6 +669,7 @@ class Response(StreamResponse):
         return await super()._start(request)
 
     def _compress_body(self, zlib_mode: int) -> None:
+        assert zlib_mode > 0
         compressobj = zlib.compressobj(wbits=zlib_mode)
         body_in = self._body
         assert body_in is not None
@@ -683,7 +684,7 @@ class Response(StreamResponse):
             # Instead of using _payload_writer.enable_compression,
             # compress the whole body
             zlib_mode = (16 + zlib.MAX_WBITS
-                         if coding == ContentCoding.gzip else -zlib.MAX_WBITS)
+                         if coding == ContentCoding.gzip else zlib.MAX_WBITS)
             body_in = self._body
             assert body_in is not None
             if self._zlib_executor_size is not None and \
