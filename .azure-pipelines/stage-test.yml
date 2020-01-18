@@ -71,7 +71,7 @@ stages:
     pool:
       vmImage: '$(image)'
 
-    timeoutInMinutes: 10
+    timeoutInMinutes: 15
 
     steps:
     - checkout: self
