@@ -21,16 +21,15 @@ stages:
           python.version: '3.7'
           no_extensions: ''
           image: 'ubuntu-latest'
+        Py38-Cython-Linux:
+          python.version: '3.8'
+          no_extensions: ''
         Py35-Pure-Linux:
           python.version: '3.5'
           no_extensions: 'Y'
           image: 'ubuntu-latest'
-        Py36-Pure-Linux:
-          python.version: '3.6'
-          no_extensions: 'Y'
-          image: 'ubuntu-latest'
-        Py37-Pure-Linux:
-          python.version: '3.7'
+        Py38-Pure-Linux:
+          python.version: '3.8'
           no_extensions: 'Y'
           image: 'ubuntu-latest'
 #        PyPy3-Linux:
@@ -49,6 +48,10 @@ stages:
           python.version: '3.7'
           no_extensions: ''
           image: 'windows-latest'
+        Py38-Cython-Win:
+          python.version: '3.8'
+          no_extensions: ''
+          image: 'windows-latest'
         Py35-Cython-Mac:
           python.version: '3.5'
           no_extensions: ''
@@ -61,10 +64,14 @@ stages:
           python.version: '3.7'
           no_extensions: ''
           image: 'macos-latest'
+        Py38-Cython-Mac:
+          python.version: '3.8'
+          no_extensions: ''
+          image: 'macos-latest'
     pool:
       vmImage: '$(image)'
 
-    timeoutInMinutes: 10
+    timeoutInMinutes: 15
 
     steps:
     - checkout: self

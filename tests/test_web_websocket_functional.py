@@ -273,7 +273,7 @@ async def test_close_timeout(loop, aiohttp_client) -> None:
     # The server closes here.  Then the client sends bogus messages with an
     # internval shorter than server-side close timeout, to make the server
     # hanging indefinitely.
-    await asyncio.sleep(0.08, loop=loop)
+    await asyncio.sleep(0.08)
     msg = await ws._reader.read()
     assert msg.type == WSMsgType.CLOSE
     await ws.send_str('hang')
@@ -281,16 +281,16 @@ async def test_close_timeout(loop, aiohttp_client) -> None:
     # i am not sure what do we test here
     # under uvloop this code raises RuntimeError
     try:
-        await asyncio.sleep(0.08, loop=loop)
+        await asyncio.sleep(0.08)
         await ws.send_str('hang')
-        await asyncio.sleep(0.08, loop=loop)
+        await asyncio.sleep(0.08)
         await ws.send_str('hang')
-        await asyncio.sleep(0.08, loop=loop)
+        await asyncio.sleep(0.08)
         await ws.send_str('hang')
     except RuntimeError:
         pass
 
-    await asyncio.sleep(0.08, loop=loop)
+    await asyncio.sleep(0.08)
     assert (await aborted)
 
     assert elapsed < 0.25, \
@@ -316,7 +316,7 @@ async def test_concurrent_close(loop, aiohttp_client) -> None:
         msg = await ws.receive()
         assert msg.type == WSMsgType.CLOSING
 
-        await asyncio.sleep(0, loop=loop)
+        await asyncio.sleep(0)
 
         msg = await ws.receive()
         assert msg.type == WSMsgType.CLOSED
@@ -335,7 +335,7 @@ async def test_concurrent_close(loop, aiohttp_client) -> None:
     msg = await ws.receive()
     assert msg.type == WSMsgType.CLOSE
 
-    await asyncio.sleep(0, loop=loop)
+    await asyncio.sleep(0)
     msg = await ws.receive()
     assert msg.type == WSMsgType.CLOSED
 
@@ -713,7 +713,7 @@ async def test_server_ws_async_for(loop, aiohttp_server) -> None:
     app.router.add_route('GET', '/', handler)
     server = await aiohttp_server(app)
 
-    async with aiohttp.ClientSession(loop=loop) as sm:
+    async with aiohttp.ClientSession() as sm:
         async with sm.ws_connect(server.make_url('/')) as resp:
 
             items = ['q1', 'q2', 'q3']
