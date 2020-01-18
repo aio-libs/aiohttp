@@ -21,15 +21,12 @@ stages:
           python.version: '3.7'
           no_extensions: ''
           image: 'ubuntu-latest'
-<<<<<<< HEAD
-        Py35-Pure-Linux:
-          python.version: '3.5'
-          no_extensions: 'Y'
-=======
         Py38-Cython-Linux:
           python.version: '3.8'
           no_extensions: ''
->>>>>>> ec493d6c... Fix python 3.8 tests under Windows (#4513)
+        Py35-Pure-Linux:
+          python.version: '3.5'
+          no_extensions: 'Y'
           image: 'ubuntu-latest'
         Py36-Pure-Linux:
           python.version: '3.6'
@@ -59,17 +56,14 @@ stages:
           python.version: '3.7'
           no_extensions: ''
           image: 'windows-latest'
-<<<<<<< HEAD
-        Py35-Cython-Mac:
-          python.version: '3.5'
-          no_extensions: ''
-          image: 'macos-latest'
-=======
         Py38-Cython-Win:
           python.version: '3.8'
           no_extensions: ''
           image: 'windows-latest'
->>>>>>> ec493d6c... Fix python 3.8 tests under Windows (#4513)
+        Py35-Cython-Mac:
+          python.version: '3.5'
+          no_extensions: ''
+          image: 'macos-latest'
         Py36-Cython-Mac:
           python.version: '3.6'
           no_extensions: ''
