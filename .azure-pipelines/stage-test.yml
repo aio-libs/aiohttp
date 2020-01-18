@@ -69,7 +69,7 @@ stages:
           no_extensions: ''
           image: 'macos-latest'
     pool:
-      vmImage: "$(image)"
+      vmImage: '$(image)'
 
     timeoutInMinutes: 15
 
