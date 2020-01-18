@@ -2,6 +2,7 @@ import asyncio
 import io
 import json
 import pathlib
+import sys
 import zlib
 from unittest import mock
 
@@ -171,13 +172,15 @@ class TestPartReader:
         assert c3 == b''
 
     async def test_read_incomplete_chunk(self, newline) -> None:
-        loop = asyncio.get_event_loop()
         stream = Stream(b'')
 
-        def prepare(data):
-            f = loop.create_future()
-            f.set_result(data)
-            return f
+        if sys.version_info >= (3, 8, 1):
+            # Workaround for a weird behavior of patch.object
+            def prepare(data):
+                return data
+        else:
+            async def prepare(data):
+                return data
 
         with mock.patch.object(stream, 'read', side_effect=[
             prepare(b'Hello, '),
@@ -218,13 +221,15 @@ class TestPartReader:
         assert data == result
 
     async def test_read_boundary_with_incomplete_chunk(self, newline) -> None:
-        loop = asyncio.get_event_loop()
         stream = Stream(b'')
 
-        def prepare(data):
-            f = loop.create_future()
-            f.set_result(data)
-            return f
+        if sys.version_info >= (3, 8, 1):
+            # Workaround for weird 3.8.1 patch.object() behavior
+            def prepare(data):
+                return data
+        else:
+            async def prepare(data):
+                return data
 
         with mock.patch.object(stream, 'read', side_effect=[
             prepare(b'Hello, World'),
