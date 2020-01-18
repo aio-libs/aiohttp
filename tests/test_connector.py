@@ -193,7 +193,7 @@ async def test_del_with_scheduled_cleanup(loop) -> None:
         # obviously doesn't deletion because loop has a strong
         # reference to connector's instance method, isn't it?
         del conn
-        await asyncio.sleep(0.01, loop=loop)
+        await asyncio.sleep(0.01)
         gc.collect()
 
     assert not conns_impl
@@ -647,7 +647,7 @@ async def test_tcp_connector_resolve_host(loop) -> None:
 def dns_response(loop):
     async def coro():
         # simulates a network operation
-        await asyncio.sleep(0, loop=loop)
+        await asyncio.sleep(0)
         return ["127.0.0.1"]
     return coro
 
@@ -709,7 +709,7 @@ async def test_tcp_connector_dns_throttle_requests(loop, dns_response) -> None:
         m_resolver().resolve.return_value = dns_response()
         loop.create_task(conn._resolve_host('localhost', 8080))
         loop.create_task(conn._resolve_host('localhost', 8080))
-        await asyncio.sleep(0, loop=loop)
+        await asyncio.sleep(0)
         m_resolver().resolve.assert_called_once_with(
             'localhost',
             8080,
@@ -729,7 +729,7 @@ async def test_tcp_connector_dns_throttle_requests_exception_spread(
         m_resolver().resolve.side_effect = e
         r1 = loop.create_task(conn._resolve_host('localhost', 8080))
         r2 = loop.create_task(conn._resolve_host('localhost', 8080))
-        await asyncio.sleep(0, loop=loop)
+        await asyncio.sleep(0)
         assert r1.exception() == e
         assert r2.exception() == e
 
@@ -748,7 +748,7 @@ async def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
         loop.create_task(conn._resolve_host('localhost', 8080))
         f = loop.create_task(conn._resolve_host('localhost', 8080))
 
-        await asyncio.sleep(0, loop=loop)
+        await asyncio.sleep(0)
         conn.close()
 
         with pytest.raises(asyncio.CancelledError):
@@ -938,7 +938,7 @@ async def test_tcp_connector_dns_tracing_throttle_requests(
         m_resolver().resolve.return_value = dns_response()
         loop.create_task(conn._resolve_host('localhost', 8080, traces=traces))
         loop.create_task(conn._resolve_host('localhost', 8080, traces=traces))
-        await asyncio.sleep(0, loop=loop)
+        await asyncio.sleep(0)
         on_dns_cache_hit.assert_called_once_with(
             session,
             trace_config_ctx,
@@ -1103,7 +1103,7 @@ async def test_close_during_connect(loop) -> None:
     conn._create_connection.return_value = fut
 
     task = loop.create_task(conn.connect(req, None, ClientTimeout()))
-    await asyncio.sleep(0, loop=loop)
+    await asyncio.sleep(0)
     conn.close()
 
     fut.set_result(proto)
@@ -1423,10 +1423,10 @@ async def test_connect_with_limit(loop, key) -> None:
 
     task = loop.create_task(f())
 
-    await asyncio.sleep(0.01, loop=loop)
+    await asyncio.sleep(0.01)
     assert not acquired
     connection1.release()
-    await asyncio.sleep(0, loop=loop)
+    await asyncio.sleep(0)
     assert acquired
     await task
     conn.close()
@@ -1486,7 +1486,7 @@ async def test_connect_queued_operation_tracing(loop, key) -> None:
         connection2.release()
 
     task = asyncio.ensure_future(f(), loop=loop)
-    await asyncio.sleep(0.01, loop=loop)
+    await asyncio.sleep(0.01)
     connection1.release()
     await task
     conn.close()
@@ -1557,10 +1557,10 @@ async def test_connect_with_limit_and_limit_per_host(loop, key) -> None:
 
     task = loop.create_task(f())
 
-    await asyncio.sleep(0.01, loop=loop)
+    await asyncio.sleep(0.01)
     assert not acquired
     connection1.release()
-    await asyncio.sleep(0, loop=loop)
+    await asyncio.sleep(0)
     assert acquired
     await task
     conn.close()
@@ -1589,10 +1589,10 @@ async def test_connect_with_no_limit_and_limit_per_host(loop, key) -> None:
 
     task = loop.create_task(f())
 
-    await asyncio.sleep(0.01, loop=loop)
+    await asyncio.sleep(0.01)
     assert not acquired
     connection1.release()
-    await asyncio.sleep(0, loop=loop)
+    await asyncio.sleep(0)
     assert acquired
     await task
     conn.close()
@@ -1623,7 +1623,7 @@ async def test_connect_with_no_limits(loop, key) -> None:
 
     task = loop.create_task(f())
 
-    await asyncio.sleep(0.01, loop=loop)
+    await asyncio.sleep(0.01)
     assert acquired
     connection1.release()
     await task
@@ -1653,7 +1653,7 @@ async def test_connect_with_limit_cancelled(loop) -> None:
     with pytest.raises(asyncio.TimeoutError):
         # limit exhausted
         await asyncio.wait_for(conn.connect(req, None, ClientTimeout()),
-                               0.01, loop=loop)
+                               0.01)
     connection.close()
 
 
@@ -1695,7 +1695,7 @@ async def test_connect_with_limit_concurrent(loop) -> None:
     async def create_connection(req, traces, timeout):
         nonlocal num_connections
         num_connections += 1
-        await asyncio.sleep(0, loop=loop)
+        await asyncio.sleep(0)
 
         # Make a new transport mock each time because acquired
         # transports are stored in a set. Reusing the same object
@@ -1724,13 +1724,13 @@ async def test_connect_with_limit_concurrent(loop) -> None:
         num_requests += 1
         if not start:
             connection = await conn.connect(req, None, ClientTimeout())
-            await asyncio.sleep(0, loop=loop)
+            await asyncio.sleep(0)
             connection.release()
         tasks = [
             loop.create_task(f(start=False))
             for i in range(start_requests)
         ]
-        await asyncio.wait(tasks, loop=loop)
+        await asyncio.wait(tasks)
 
     await f()
     conn.close()
@@ -1749,11 +1749,11 @@ async def test_connect_waiters_cleanup(loop) -> None:
 
     t = loop.create_task(conn.connect(req, None, ClientTimeout()))
 
-    await asyncio.sleep(0, loop=loop)
+    await asyncio.sleep(0)
     assert conn._waiters.keys()
 
     t.cancel()
-    await asyncio.sleep(0, loop=loop)
+    await asyncio.sleep(0)
     assert not conn._waiters.keys()
 
 
@@ -1768,7 +1768,7 @@ async def test_connect_waiters_cleanup_key_error(loop) -> None:
 
     t = loop.create_task(conn.connect(req, None, ClientTimeout()))
 
-    await asyncio.sleep(0, loop=loop)
+    await asyncio.sleep(0)
     assert conn._waiters.keys()
 
     # we delete the entry explicitly before the
@@ -1776,7 +1776,7 @@ async def test_connect_waiters_cleanup_key_error(loop) -> None:
     # must expect a none failure termination
     conn._waiters.clear()
     t.cancel()
-    await asyncio.sleep(0, loop=loop)
+    await asyncio.sleep(0)
     assert not conn._waiters.keys() == []
 
 
@@ -1875,7 +1875,7 @@ async def test_error_on_connection(loop, key) -> None:
 
     t1 = loop.create_task(conn.connect(req, None, ClientTimeout()))
     t2 = loop.create_task(conn.connect(req, None, ClientTimeout()))
-    await asyncio.sleep(0, loop=loop)
+    await asyncio.sleep(0)
     assert not t1.done()
     assert not t2.done()
     assert len(conn._acquired_per_host[key]) == 1
@@ -1908,7 +1908,7 @@ async def test_cancelled_waiter(loop) -> None:
     conn._acquired.add(proto)
 
     conn2 = loop.create_task(conn.connect(req, None, ClientTimeout()))
-    await asyncio.sleep(0, loop=loop)
+    await asyncio.sleep(0)
     conn2.cancel()
 
     with pytest.raises(asyncio.CancelledError):
@@ -1943,7 +1943,7 @@ async def test_error_on_connection_with_cancelled_waiter(loop, key) -> None:
     t1 = loop.create_task(conn.connect(req, None, ClientTimeout()))
     t2 = loop.create_task(conn.connect(req, None, ClientTimeout()))
     t3 = loop.create_task(conn.connect(req, None, ClientTimeout()))
-    await asyncio.sleep(0, loop=loop)
+    await asyncio.sleep(0)
     assert not t1.done()
     assert not t2.done()
     assert len(conn._acquired_per_host[key]) == 1
@@ -2006,9 +2006,12 @@ async def test_unix_connector_permission(loop) -> None:
 
 @pytest.mark.skipif(platform.system() != "Windows",
                     reason="Proactor Event loop present only in Windows")
-async def test_named_pipe_connector_wrong_loop(loop, pipe_name) -> None:
+async def test_named_pipe_connector_wrong_loop(
+    selector_loop,
+    pipe_name
+) -> None:
     with pytest.raises(RuntimeError):
-        aiohttp.NamedPipeConnector(pipe_name, loop=loop)
+        aiohttp.NamedPipeConnector(pipe_name, loop=asyncio.get_event_loop())
 
 
 @pytest.mark.skipif(platform.system() != "Windows",
@@ -2245,7 +2248,7 @@ class TestDNSCacheTable:
     async def test_expired_ttl(self, loop) -> None:
         dns_cache_table = _DNSCacheTable(ttl=0.01)
         dns_cache_table.add('localhost', ['127.0.0.1'])
-        await asyncio.sleep(0.02, loop=loop)
+        await asyncio.sleep(0.02)
         assert dns_cache_table.expired('localhost')
 
     def test_next_addrs(self, dns_cache_table) -> None:

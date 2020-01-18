@@ -21,7 +21,7 @@ Then you can use `file_sender` like this:
 
 """
 
-import asyncio
+import types
 import warnings
 from typing import Any, Awaitable, Callable, Dict, Tuple
 
@@ -37,12 +37,12 @@ class _stream_wrapper:
                  coro: Callable[..., Awaitable[None]],
                  args: Tuple[Any, ...],
                  kwargs: Dict[str, Any]) -> None:
-        self.coro = asyncio.coroutine(coro)
+        self.coro = types.coroutine(coro)
         self.args = args
         self.kwargs = kwargs
 
     async def __call__(self, writer: AbstractStreamWriter) -> None:
-        await self.coro(writer, *self.args, **self.kwargs)
+        await self.coro(writer, *self.args, **self.kwargs)  # type: ignore
 
 
 class streamer:

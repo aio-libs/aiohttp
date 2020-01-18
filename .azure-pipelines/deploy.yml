@@ -60,6 +60,9 @@ stages:
         py37 x64:
           python.code: 'cp37-cp37m'
           manylinux: 'manylinux_64'
+        py38 x64:
+          python.code: 'cp38-cp38'
+          manylinux: 'manylinux_64'
     pool:
       vmImage: 'ubuntu-latest'
     container: manylinux
@@ -106,9 +109,15 @@ stages:
           python.version: '3.7'
           python.architecture: 'x64'
           image: 'windows-latest'
+<<<<<<< HEAD
         Win py35 x86:
           python.version: '3.5'
           python.architecture: 'x86'
+=======
+        Win py38 x64:
+          python.version: '3.8'
+          python.architecture: 'x64'
+>>>>>>> ec493d6c... Fix python 3.8 tests under Windows (#4513)
           image: 'windows-latest'
         Win py36 x86:
           python.version: '3.6'
@@ -118,16 +127,27 @@ stages:
           python.version: '3.7'
           python.architecture: 'x86'
           image: 'windows-latest'
+<<<<<<< HEAD
         Mac py35:
           python.version: '3.5'
           image: 'macos-latest'
           python.architecture: 'x64'
+=======
+        Win py38 x86:
+          python.version: '3.8'
+          python.architecture: 'x86'
+          image: 'windows-latest'
+>>>>>>> ec493d6c... Fix python 3.8 tests under Windows (#4513)
         Mac py36:
           python.version: '3.6'
           image: 'macos-latest'
           python.architecture: 'x64'
         Mac py37:
           python.version: '3.7'
+          image: 'macos-latest'
+          python.architecture: 'x64'
+        Mac py38:
+          python.version: '3.8'
           image: 'macos-latest'
           python.architecture: 'x64'
     pool:

@@ -276,8 +276,7 @@ async def test_partially_applied_handler(aiohttp_client) -> None:
     async def handler(data, request):
         return web.Response(body=data)
 
-    with pytest.warns(DeprecationWarning):
-        app.router.add_route('GET', '/', functools.partial(handler, b'hello'))
+    app.router.add_route('GET', '/', functools.partial(handler, b'hello'))
     client = await aiohttp_client(app)
 
     r = await client.get('/')
