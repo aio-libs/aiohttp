@@ -3,6 +3,7 @@ import contextlib
 import gc
 import json
 import re
+import sys
 from http.cookies import SimpleCookie
 from io import BytesIO
 from unittest import mock
@@ -593,7 +594,7 @@ async def test_request_tracing(loop, aiohttp_client) -> None:
             {'ok': True}).encode('utf8')
 
 
-async def test_request_tracing_exception(loop) -> None:
+async def test_request_tracing_exception() -> None:
     on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
     on_request_exception = mock.Mock(
         side_effect=make_mocked_coro(mock.Mock())
@@ -605,9 +606,13 @@ async def test_request_tracing_exception(loop) -> None:
 
     with mock.patch("aiohttp.client.TCPConnector.connect") as connect_patched:
         error = Exception()
-        f = loop.create_future()
-        f.set_exception(error)
-        connect_patched.return_value = f
+        if sys.version_info >= (3, 8, 1):
+            connect_patched.side_effect = error
+        else:
+            loop = asyncio.get_event_loop()
+            f = loop.create_future()
+            f.set_exception(error)
+            connect_patched.return_value = f
 
         session = aiohttp.ClientSession(
             trace_configs=[trace_config]

@@ -1443,7 +1443,10 @@ async def test_app_max_client_size(aiohttp_client) -> None:
     assert 413 == resp.status
     resp_text = await resp.text()
     assert 'Maximum request body size 1048576 exceeded, ' \
-           'actual body size 1048591' in resp_text
+           'actual body size' in resp_text
+    # Maximum request body size X exceeded, actual body size X
+    body_size = int(resp_text.split()[-1])
+    assert body_size >= max_size
 
 
 async def test_app_max_client_size_adjusted(aiohttp_client) -> None:
@@ -1469,7 +1472,10 @@ async def test_app_max_client_size_adjusted(aiohttp_client) -> None:
     assert 413 == resp.status
     resp_text = await resp.text()
     assert 'Maximum request body size 2097152 exceeded, ' \
-           'actual body size 2097166' in resp_text
+           'actual body size' in resp_text
+    # Maximum request body size X exceeded, actual body size X
+    body_size = int(resp_text.split()[-1])
+    assert body_size >= custom_max_size
 
 
 async def test_app_max_client_size_none(aiohttp_client) -> None:
