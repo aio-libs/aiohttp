@@ -4,7 +4,7 @@ import warnings
 
 import pytest
 
-from aiohttp.helpers import PY_37, isasyncgenfunction
+from aiohttp.helpers import PY_37, PY_38, isasyncgenfunction
 from aiohttp.web import Application
 
 from .test_utils import (
@@ -223,6 +223,23 @@ def proactor_loop():  # type: ignore
         policy._loop_factory = asyncio.ProactorEventLoop  # type: ignore
     else:
         policy = asyncio.WindowsProactorEventLoopPolicy()  # type: ignore
+        asyncio.set_event_loop_policy(policy)
+
+    with loop_context(policy.new_event_loop) as _loop:
+        asyncio.set_event_loop(_loop)
+        yield _loop
+
+
+@pytest.fixture
+def selector_loop():  # type: ignore
+    if not PY_37:
+        policy = asyncio.get_event_loop_policy()
+        policy._loop_factory = asyncio.SelectorEventLoop  # type: ignore
+    else:
+        if PY_38:
+            policy = asyncio.WindowsSelectorEventLoopPolicy()  # type: ignore
+        else:
+            policy = asyncio.DefaultEventLoopPolicy()
         asyncio.set_event_loop_policy(policy)
 
     with loop_context(policy.new_event_loop) as _loop:
