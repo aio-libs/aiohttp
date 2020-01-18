@@ -167,7 +167,11 @@ async def test_addresses(make_runner, unix_sockname) -> None:
 
 @pytest.mark.skipif(platform.system() != "Windows",
                     reason="Proactor Event loop present only in Windows")
-async def test_named_pipe_runner_wrong_loop(app, pipe_name) -> None:
+async def test_named_pipe_runner_wrong_loop(
+    app,
+    selector_loop,
+    pipe_name
+) -> None:
     runner = web.AppRunner(app)
     await runner.setup()
     with pytest.raises(RuntimeError):

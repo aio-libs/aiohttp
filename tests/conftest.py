@@ -1,3 +1,4 @@
+import asyncio
 import os
 import socket
 import ssl
@@ -9,6 +10,8 @@ from unittest import mock
 from uuid import uuid4
 
 import pytest
+
+from aiohttp.test_utils import loop_context
 
 try:
     import trustme
@@ -174,3 +177,20 @@ def unix_sockname(tmp_path, tmp_path_factory):
                     assert_sock_fits(sock_path)
                 yield sock_path
                 return
+
+
+@pytest.fixture
+def selector_loop():
+    if sys.version_info < (3, 7):
+        policy = asyncio.get_event_loop_policy()
+        policy._loop_factory = asyncio.SelectorEventLoop  # type: ignore
+    else:
+        if sys.version_info >= (3, 8):
+            policy = asyncio.WindowsSelectorEventLoopPolicy()  # type: ignore
+        else:
+            policy = asyncio.DefaultEventLoopPolicy()
+        asyncio.set_event_loop_policy(policy)
+
+    with loop_context(policy.new_event_loop) as _loop:
+        asyncio.set_event_loop(_loop)
+        yield _loop
