@@ -28,14 +28,6 @@ stages:
           python.version: '3.5'
           no_extensions: 'Y'
           image: 'ubuntu-latest'
-        Py36-Pure-Linux:
-          python.version: '3.6'
-          no_extensions: 'Y'
-          image: 'ubuntu-latest'
-        Py37-Pure-Linux:
-          python.version: '3.7'
-          no_extensions: 'Y'
-          image: 'ubuntu-latest'
         Py38-Pure-Linux:
           python.version: '3.8'
           no_extensions: 'Y'
