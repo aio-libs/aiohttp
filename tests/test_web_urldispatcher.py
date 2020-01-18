@@ -2,6 +2,7 @@ import functools
 import os
 import pathlib
 import shutil
+import sys
 import tempfile
 from unittest import mock
 from unittest.mock import MagicMock
@@ -276,7 +277,16 @@ async def test_partially_applied_handler(aiohttp_client) -> None:
     async def handler(data, request):
         return web.Response(body=data)
 
-    app.router.add_route('GET', '/', functools.partial(handler, b'hello'))
+    if sys.version_info >= (3, 8):
+        app.router.add_route('GET', '/', functools.partial(handler, b'hello'))
+    else:
+        with pytest.warns(DeprecationWarning):
+            app.router.add_route(
+                'GET',
+                '/',
+                functools.partial(handler, b'hello')
+            )
+
     client = await aiohttp_client(app)
 
     r = await client.get('/')
