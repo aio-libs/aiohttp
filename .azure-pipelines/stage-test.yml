@@ -24,6 +24,7 @@ stages:
         Py38-Cython-Linux:
           python.version: '3.8'
           no_extensions: ''
+          image: 'ubuntu-latest'
         Py35-Pure-Linux:
           python.version: '3.5'
           no_extensions: 'Y'
