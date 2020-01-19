@@ -645,7 +645,7 @@ async def test_close(srv, transport) -> None:
             b'Host: example.com\r\n'
             b'Content-Length: 0\r\n\r\n')
 
-        await asyncio.sleep(0.05)
+        await asyncio.sleep(0.1)
         assert srv._task_handler
         assert srv._waiter
 
