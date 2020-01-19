@@ -96,23 +96,24 @@ class SendfileStreamWriter(StreamWriter):
     async def sendfile(self) -> None:
         assert self.transport is not None
         loop = self.loop
-        ### if hasattr(loop, "sendfile"):
-        ###     # Python 3.7+
-        ###     breakpoint()
-        ###     await loop.sendfile(
-        ###         self.transport,
-        ###         self._fobj,
-        ###         self._offset,
-        ###         self._count
-        ###     )
-        ###     return
+        data = b''.join(self._sendfile_buffer)
+        if hasattr(loop, "sendfile"):
+            # Python 3.7+
+            self.transport.write(data)
+            await loop.sendfile(
+                self.transport,
+                self._fobj,
+                self._offset,
+                self._count
+            )
+            await super().write_eof()
+            return
 
         self._fobj.seek(self._offset)
         out_socket = self.transport.get_extra_info('socket').dup()
         out_socket.setblocking(False)
         out_fd = out_socket.fileno()
 
-        data = b''.join(self._sendfile_buffer)
         try:
             await loop.sock_sendall(out_socket, data)
             if not self._do_sendfile(out_fd):
@@ -170,7 +171,12 @@ class FileResponse(StreamResponse):
         if (transport.get_extra_info("sslcontext") or
                 transport.get_extra_info("socket") is None or
                 self.compression):
-            writer = await self._sendfile_fallback(request, fobj, count)
+            writer = await self._sendfile_fallback(
+                request,
+                fobj,
+                offset,
+                count
+            )
         else:
             writer = SendfileStreamWriter(
                 request.protocol,
