@@ -234,7 +234,8 @@ def proactor_loop():  # type: ignore
 @pytest.fixture
 def unused_port(aiohttp_unused_port):  # type: ignore # pragma: no cover
     warnings.warn("Deprecated, use aiohttp_unused_port fixture instead",
-                  DeprecationWarning)
+                  DeprecationWarning,
+                  stacklevel=2)
     return aiohttp_unused_port
 
 
@@ -270,7 +271,8 @@ def aiohttp_server(loop):  # type: ignore
 @pytest.fixture
 def test_server(aiohttp_server):  # type: ignore  # pragma: no cover
     warnings.warn("Deprecated, use aiohttp_server fixture instead",
-                  DeprecationWarning)
+                  DeprecationWarning,
+                  stacklevel=2)
     return aiohttp_server
 
 
@@ -300,7 +302,8 @@ def aiohttp_raw_server(loop):  # type: ignore
 @pytest.fixture
 def raw_test_server(aiohttp_raw_server):  # type: ignore  # pragma: no cover
     warnings.warn("Deprecated, use aiohttp_raw_server fixture instead",
-                  DeprecationWarning)
+                  DeprecationWarning,
+                  stacklevel=2)
     return aiohttp_raw_server
 
 
@@ -348,5 +351,6 @@ def aiohttp_client(loop):  # type: ignore
 @pytest.fixture
 def test_client(aiohttp_client):  # type: ignore  # pragma: no cover
     warnings.warn("Deprecated, use aiohttp_client fixture instead",
-                  DeprecationWarning)
+                  DeprecationWarning,
+                  stacklevel=2)
     return aiohttp_client
