@@ -255,7 +255,7 @@ def get_running_loop(
     if loop is None:
         loop = asyncio.get_event_loop()
     if not loop.is_running():
-        warnings.warn("The object should be created from async function",
+        warnings.warn("The object should be created within an async function",
                       DeprecationWarning, stacklevel=3)
         if loop.get_debug():
             internal_logger.warning(
