@@ -259,7 +259,7 @@ def get_running_loop(
                       DeprecationWarning, stacklevel=3)
         if loop.get_debug():
             internal_logger.warning(
-                "The object should be created from async function",
+                "The object should be created within an async function",
                 stack_info=True)
     return loop
 
