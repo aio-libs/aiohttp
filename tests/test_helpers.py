@@ -458,7 +458,7 @@ def test_proxies_from_env_http_with_auth(mocker) -> None:
 def test_get_running_loop_not_running(loop) -> None:
     with pytest.raises(
             RuntimeError,
-            match="The object should be created from async function"):
+            match="The object should be created within an async function"):
         helpers.get_running_loop()
 
 
