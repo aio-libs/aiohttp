@@ -5,7 +5,17 @@ import sys
 from argparse import ArgumentParser
 from collections.abc import Iterable
 from importlib import import_module
-from typing import Any, Awaitable, Callable, List, Optional, Type, Union, cast
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    List,
+    Optional,
+    Set,
+    Type,
+    Union,
+    cast,
+)
 
 from .abc import AbstractAccessLogger
 from .helpers import all_tasks
@@ -368,8 +378,8 @@ async def _run_app(app: Union[Application, Awaitable[Application]], *,
         await runner.cleanup()
 
 
-def _cancel_all_tasks(loop: asyncio.AbstractEventLoop) -> None:
-    to_cancel = all_tasks(loop)
+def _cancel_tasks(to_cancel: Set['asyncio.Task[Any]'],
+                  loop: asyncio.AbstractEventLoop) -> None:
     if not to_cancel:
         return
 
@@ -416,25 +426,28 @@ def run_app(app: Union[Application, Awaitable[Application]], *,
             access_log.addHandler(logging.StreamHandler())
 
     try:
-        loop.run_until_complete(_run_app(app,
-                                         host=host,
-                                         port=port,
-                                         path=path,
-                                         sock=sock,
-                                         shutdown_timeout=shutdown_timeout,
-                                         ssl_context=ssl_context,
-                                         print=print,
-                                         backlog=backlog,
-                                         access_log_class=access_log_class,
-                                         access_log_format=access_log_format,
-                                         access_log=access_log,
-                                         handle_signals=handle_signals,
-                                         reuse_address=reuse_address,
-                                         reuse_port=reuse_port))
+        main_task = loop.create_task(_run_app(
+            app,
+            host=host,
+            port=port,
+            path=path,
+            sock=sock,
+            shutdown_timeout=shutdown_timeout,
+            ssl_context=ssl_context,
+            print=print,
+            backlog=backlog,
+            access_log_class=access_log_class,
+            access_log_format=access_log_format,
+            access_log=access_log,
+            handle_signals=handle_signals,
+            reuse_address=reuse_address,
+            reuse_port=reuse_port))
+        loop.run_until_complete(main_task)
     except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
         pass
     finally:
-        _cancel_all_tasks(loop)
+        _cancel_tasks({main_task}, loop)
+        _cancel_tasks(all_tasks(loop), loop)
         if sys.version_info >= (3, 6):  # don't use PY_36 to pass mypy
             loop.run_until_complete(loop.shutdown_asyncgens())
         loop.close()
