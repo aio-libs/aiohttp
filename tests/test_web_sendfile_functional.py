@@ -742,7 +742,7 @@ async def test_static_file_compression(aiohttp_client, sender) -> None:
 
     resp = await client.get('/')
     assert resp.status == 200
-    zcomp = zlib.compressobj(wbits=-zlib.MAX_WBITS)
+    zcomp = zlib.compressobj(wbits=zlib.MAX_WBITS)
     expected_body = zcomp.compress(b'file content\n') + zcomp.flush()
     assert expected_body == await resp.read()
     assert 'application/octet-stream' == resp.headers['Content-Type']
