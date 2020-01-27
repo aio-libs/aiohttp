@@ -1,7 +1,6 @@
 # Tests for aiohttp/protocol.py
 
 import asyncio
-import zlib
 from unittest import mock
 
 import pytest
@@ -837,31 +836,65 @@ class TestParsePayload:
         assert b'12' == b''.join(d for d, _ in out._buffer)
         assert b'45' == tail
 
-    _comp = zlib.compressobj(wbits=-zlib.MAX_WBITS)
-    _COMPRESSED = b''.join([_comp.compress(b'data'), _comp.flush()])
-
     async def test_http_payload_parser_deflate(self, stream) -> None:
-        length = len(self._COMPRESSED)
-        out = aiohttp.FlowControlDataQueue(stream,
-                                           loop=asyncio.get_event_loop())
-        p = HttpPayloadParser(
-            out, length=length, compression='deflate')
-        p.feed_data(self._COMPRESSED)
-        assert b'data' == b''.join(d for d, _ in out._buffer)
-        assert out.is_eof()
-
-    async def test_http_payload_parser_deflate_no_wbits(self, stream) -> None:
-        comp = zlib.compressobj()
-        COMPRESSED = b''.join([comp.compress(b'data'), comp.flush()])
+        # c=compressobj(wbits=15); b''.join([c.compress(b'data'), c.flush()])
+        COMPRESSED = b'x\x9cKI,I\x04\x00\x04\x00\x01\x9b'
 
         length = len(COMPRESSED)
         out = aiohttp.FlowControlDataQueue(stream,
                                            loop=asyncio.get_event_loop())
-        p = HttpPayloadParser(
-            out, length=length, compression='deflate')
+        p = HttpPayloadParser(out, length=length, compression='deflate')
         p.feed_data(COMPRESSED)
         assert b'data' == b''.join(d for d, _ in out._buffer)
         assert out.is_eof()
+
+    async def test_http_payload_parser_deflate_no_hdrs(self, stream) -> None:
+        """Tests incorrectly formed data (no zlib headers) """
+
+        # c=compressobj(wbits=-15); b''.join([c.compress(b'data'), c.flush()])
+        COMPRESSED = b'KI,I\x04\x00'
+
+        length = len(COMPRESSED)
+        out = aiohttp.FlowControlDataQueue(stream,
+                                           loop=asyncio.get_event_loop())
+        p = HttpPayloadParser(out, length=length, compression='deflate')
+        p.feed_data(COMPRESSED)
+        assert b'data' == b''.join(d for d, _ in out._buffer)
+        assert out.is_eof()
+
+    async def test_http_payload_parser_deflate_light(self, stream) -> None:
+        # c=compressobj(wbits=9); b''.join([c.compress(b'data'), c.flush()])
+        COMPRESSED = b'\x18\x95KI,I\x04\x00\x04\x00\x01\x9b'
+
+        length = len(COMPRESSED)
+        out = aiohttp.FlowControlDataQueue(stream,
+                                           loop=asyncio.get_event_loop())
+        p = HttpPayloadParser(out, length=length, compression='deflate')
+        p.feed_data(COMPRESSED)
+        assert b'data' == b''.join(d for d, _ in out._buffer)
+        assert out.is_eof()
+
+    async def test_http_payload_parser_deflate_split(self, stream) -> None:
+        out = aiohttp.FlowControlDataQueue(stream,
+                                           loop=asyncio.get_event_loop())
+        p = HttpPayloadParser(out, compression='deflate', readall=True)
+        # Feeding one correct byte should be enough to choose exact
+        # deflate decompressor
+        p.feed_data(b'x', 1)
+        p.feed_data(b'\x9cKI,I\x04\x00\x04\x00\x01\x9b', 11)
+        p.feed_eof()
+        assert b'data' == b''.join(d for d, _ in out._buffer)
+
+    async def test_http_payload_parser_deflate_split_err(self, stream) -> None:
+        out = aiohttp.FlowControlDataQueue(stream,
+                                           loop=asyncio.get_event_loop())
+        p = HttpPayloadParser(out, compression='deflate', readall=True)
+        # Feeding one wrong byte should be enough to choose exact
+        # deflate decompressor
+        p.feed_data(b'K', 1)
+        p.feed_data(b'I,I\x04\x00', 5)
+        p.feed_eof()
+        assert b'data' == b''.join(d for d, _ in out._buffer)
 
     async def test_http_payload_parser_length_zero(self, stream) -> None:
         out = aiohttp.FlowControlDataQueue(stream,
@@ -892,7 +925,8 @@ class TestDeflateBuffer:
         dbuf.decompressor = mock.Mock()
         dbuf.decompressor.decompress.return_value = b'line'
 
-        dbuf.feed_data(b'data', 4)
+        # First byte should be b'x' in order code not to change the decoder.
+        dbuf.feed_data(b'xxxx', 4)
         assert [b'line'] == list(d for d, _ in buf._buffer)
 
     async def test_feed_data_err(self, stream) -> None:
@@ -905,7 +939,9 @@ class TestDeflateBuffer:
         dbuf.decompressor.decompress.side_effect = exc
 
         with pytest.raises(http_exceptions.ContentEncodingError):
-            dbuf.feed_data(b'data', 4)
+            # Should be more than 4 bytes to trigger deflate FSM error.
+            # Should start with b'x', otherwise code switch mocked decoder.
+            dbuf.feed_data(b'xsomedata', 9)
 
     async def test_feed_eof(self, stream) -> None:
         buf = aiohttp.FlowControlDataQueue(stream,

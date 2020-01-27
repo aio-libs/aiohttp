@@ -1,5 +1,4 @@
 # Tests for aiohttp/http_writer.py
-import zlib
 from unittest import mock
 
 import pytest
@@ -117,12 +116,10 @@ async def test_write_payload_chunked_filter_mutiple_chunks(
         b'2\r\na2\r\n0\r\n\r\n')
 
 
-compressor = zlib.compressobj(wbits=-zlib.MAX_WBITS)
-COMPRESSED = b''.join([compressor.compress(b'data'), compressor.flush()])
-
-
 async def test_write_payload_deflate_compression(protocol,
                                                  transport, loop) -> None:
+
+    COMPRESSED = b'x\x9cKI,I\x04\x00\x04\x00\x01\x9b'
     write = transport.write = mock.Mock()
     msg = http.StreamWriter(protocol, loop)
     msg.enable_compression('deflate')
@@ -148,7 +145,12 @@ async def test_write_payload_deflate_and_chunked(
     await msg.write(b'ta')
     await msg.write_eof()
 
-    assert b'6\r\nKI,I\x04\x00\r\n0\r\n\r\n' == buf
+    thing = (
+        b'2\r\nx\x9c\r\n'
+        b'a\r\nKI,I\x04\x00\x04\x00\x01\x9b\r\n'
+        b'0\r\n\r\n'
+    )
+    assert thing == buf
 
 
 async def test_write_drain(protocol, transport, loop) -> None:

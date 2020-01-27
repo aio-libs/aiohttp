@@ -708,30 +708,36 @@ class DeflateBuffer:
             self.decompressor = brotli.Decompressor()
         else:
             zlib_mode = (16 + zlib.MAX_WBITS
-                         if encoding == 'gzip' else -zlib.MAX_WBITS)
+                         if encoding == 'gzip' else zlib.MAX_WBITS)
             self.decompressor = zlib.decompressobj(wbits=zlib_mode)
 
     def set_exception(self, exc: BaseException) -> None:
         self.out.set_exception(exc)
 
     def feed_data(self, chunk: bytes, size: int) -> None:
+        if not size:
+            return
+
         self.size += size
+
+        # RFC1950
+        # bits 0..3 = CM = 0b1000 = 8 = "deflate"
+        # bits 4..7 = CINFO = 1..7 = windows size.
+        if not self._started_decoding and self.encoding == 'deflate' \
+                and chunk[0] & 0xf != 8:
+            # Change the decoder to decompress incorrectly compressed data
+            # Actually we should issue a warning about non-RFC-compilant data.
+            self.decompressor = zlib.decompressobj(wbits=-zlib.MAX_WBITS)
+
         try:
             chunk = self.decompressor.decompress(chunk)
         except Exception:
-            if not self._started_decoding and self.encoding == 'deflate':
-                self.decompressor = zlib.decompressobj()
-                try:
-                    chunk = self.decompressor.decompress(chunk)
-                except Exception:
-                    raise ContentEncodingError(
-                        'Can not decode content-encoding: %s' % self.encoding)
-            else:
-                raise ContentEncodingError(
-                    'Can not decode content-encoding: %s' % self.encoding)
+            raise ContentEncodingError(
+                'Can not decode content-encoding: %s' % self.encoding)
+
+        self._started_decoding = True
 
         if chunk:
-            self._started_decoding = True
             self.out.feed_data(chunk, len(chunk))
 
     def feed_eof(self) -> None:
