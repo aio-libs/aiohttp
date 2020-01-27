@@ -55,7 +55,7 @@ class StreamWriter(AbstractStreamWriter):
 
     def enable_compression(self, encoding: str='deflate') -> None:
         zlib_mode = (16 + zlib.MAX_WBITS
-                     if encoding == 'gzip' else -zlib.MAX_WBITS)
+                     if encoding == 'gzip' else zlib.MAX_WBITS)
         self._compress = zlib.compressobj(wbits=zlib_mode)
 
     def _write(self, chunk: bytes) -> None:
