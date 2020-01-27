@@ -686,7 +686,11 @@ async def test_upload_file_object(aiohttp_client) -> None:
         assert 200 == resp.status
 
 
-async def test_empty_content_for_query_without_body(aiohttp_client) -> None:
+@pytest.mark.parametrize("method", [
+    "get", "post", "options", "post", "put", "patch", "delete"
+])
+async def test_empty_content_for_query_without_body(
+        method, aiohttp_client) -> None:
 
     async def handler(request):
         assert not request.body_exists
@@ -696,10 +700,10 @@ async def test_empty_content_for_query_without_body(aiohttp_client) -> None:
         return web.Response()
 
     app = web.Application()
-    app.router.add_post('/', handler)
+    app.router.add_route(method, '/', handler)
     client = await aiohttp_client(app)
 
-    resp = await client.post('/')
+    resp = await client.request(method, '/')
     assert 200 == resp.status
 
 
