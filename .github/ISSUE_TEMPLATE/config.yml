@@ -1,0 +1,29 @@
+# Ref: https://help.github.com/en/github/building-a-strong-community/configuring-issue-templates-for-your-repository#configuring-the-template-chooser
+blank_issues_enabled: true  # default
+contact_links:
+- name: 🔐 Security bug report 🔥
+  url: https://github.com/aio-libs/.github/security/policy
+  about: |
+    Please learn how to report security vulnerabilities here.
+
+    For all security related bugs, send an email
+    instead of using this issue tracker and you
+    will receive a prompt response.
+
+    For more information, see
+    https://github.com/aio-libs/.github/security/policy
+- name: 🤷💻🤦 StackOverflow
+  url: https://stackoverflow.com/questions/tagged/aiohttp
+  about: Please ask typical Q&A here
+- name: 💬 Gitter Chat
+  url: https://gitter.im/aio-libs/Lobby
+  about: Chat with devs and community
+- name: 💬 Discourse
+  url: https://aio-libs.discourse.group/
+  about: Please start usage discussions here
+- name: 💬 Mailing list
+  url: https://groups.google.com/forum/#!forum/aio-libs
+  about: Usage Q&A
+- name: 📝 Code of Conduct
+  url: https://github.com/aio-libs/.github/blob/master/CODE_OF_CONDUCT.md
+  about: ❤ Be nice to other members of the community. ☮ Behave.
