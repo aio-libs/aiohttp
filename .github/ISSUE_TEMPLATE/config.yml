@@ -1,5 +1,5 @@
 # Ref: https://help.github.com/en/github/building-a-strong-community/configuring-issue-templates-for-your-repository#configuring-the-template-chooser
-blank_issues_enabled: true  # default
+blank_issues_enabled: false  # default: true
 contact_links:
 - name: 🔐 Security bug report 🔥
   url: https://github.com/aio-libs/.github/security/policy
