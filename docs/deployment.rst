@@ -408,6 +408,6 @@ Log <aiohttp-logging-access-log-format-spec>`.
 
 
 Proxy through Apache at your own risk
-----------------------------
+-------------------------------------
 Issues have been reported using Apache2 in front of aiohttp server: `#2687 Intermittent 502 proxy errors when running behind Apache
   <https://github.com/aio-libs/aiohttp/issues/2687>`.
