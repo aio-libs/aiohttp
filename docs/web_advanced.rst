@@ -546,7 +546,7 @@ This can be accomplished by subscribing to the
 
 
 Additionally, the :attr:`Application.on_startup` and
-:attr:`Application.on_cleanup` signals can be subscribed to for
+:attr:`Application.on_cleanup` signals can be subscribed to
 application component setup and tear down accordingly.
 
 The following example will properly initialize and dispose an aiopg connection
