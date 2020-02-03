@@ -1125,7 +1125,7 @@ WebSocketResponse
 
       :param int code: closing code
 
-      :param message: optional payload of *pong* message,
+      :param message: optional payload of *close* message,
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
