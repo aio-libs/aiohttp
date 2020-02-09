@@ -480,7 +480,10 @@ class BaseConnector:
 
                 raise e
             finally:
-                if not waiters:
+                # `waiters` may be deleted from `self._waiters` by another
+                # coroutine, and `self._waiters[key]` may contain another
+                # deque, the later should not be deleted.
+                if not waiters and self._waiters[key] is waiters:
                     try:
                         del self._waiters[key]
                     except KeyError:
