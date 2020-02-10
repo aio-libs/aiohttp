@@ -2290,3 +2290,42 @@ async def test_connector_throttle_trace_race(loop):
     connector._throttle_dns_events[key] = EventResultOrError(loop)
     traces = [DummyTracer()]
     assert await connector._resolve_host("", 0, traces) == [token]
+
+
+async def test_connector_does_not_remove_needed_waiters(loop, key) -> None:
+    proto = create_mocked_conn(loop)
+    proto.is_connected.return_value = True
+
+    req = ClientRequest('GET', URL('https://localhost:80'), loop=loop)
+    connection_key = req.connection_key
+
+    connector = aiohttp.BaseConnector()
+    connector._available_connections = mock.Mock(return_value=0)
+    connector._conns[key] = [(proto, loop.time())]
+    connector._create_connection = create_mocked_conn(loop)
+    connector._create_connection.return_value = loop.create_future()
+    connector._create_connection.return_value.set_result(proto)
+
+    dummy_waiter = loop.create_future()
+
+    async def await_connection_and_check_waiters():
+        connection = await connector.connect(req, [], ClientTimeout())
+        try:
+            assert connection_key in connector._waiters
+            assert dummy_waiter in connector._waiters[connection_key]
+        finally:
+            connection.close()
+
+    async def allow_connection_and_add_dummy_waiter():
+        # `asyncio.gather` may execute coroutines not in order.
+        # Skip one event loop run cycle in such a case.
+        if connection_key not in connector._waiters:
+            await asyncio.sleep(0)
+        connector._waiters[connection_key].popleft().set_result(None)
+        del connector._waiters[connection_key]
+        connector._waiters[connection_key].append(dummy_waiter)
+
+    await asyncio.gather(
+        await_connection_and_check_waiters(),
+        allow_connection_and_add_dummy_waiter(),
+    )
