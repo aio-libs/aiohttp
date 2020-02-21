@@ -300,17 +300,24 @@ async def _run_app(app: Union[Application, Awaitable[Application]], *,
                    access_log: Optional[logging.Logger]=access_logger,
                    handle_signals: bool=True,
                    reuse_address: Optional[bool]=None,
-                   reuse_port: Optional[bool]=None) -> None:
+                   reuse_port: Optional[bool]=None,
+                   **kwargs: Any) -> None:
     # An internal function to actually do all dirty job for application running
     if asyncio.iscoroutine(app):
         app = await app  # type: ignore
 
     app = cast(Application, app)
 
-    runner = AppRunner(app, handle_signals=handle_signals,
-                       access_log_class=access_log_class,
-                       access_log_format=access_log_format,
-                       access_log=access_log)
+    runner_kwargs = {}
+    runner_kwargs.update(kwargs)
+    runner_kwargs.update(
+        handle_signals=handle_signals,
+        access_log_class=access_log_class,
+        access_log_format=access_log_format,
+        access_log=access_log
+    )
+
+    runner = AppRunner(app, **runner_kwargs)
 
     await runner.setup()
 
@@ -414,7 +421,8 @@ def run_app(app: Union[Application, Awaitable[Application]], *,
             access_log: Optional[logging.Logger]=access_logger,
             handle_signals: bool=True,
             reuse_address: Optional[bool]=None,
-            reuse_port: Optional[bool]=None) -> None:
+            reuse_port: Optional[bool]=None,
+            **kwargs: Any) -> None:
     """Run an app locally"""
     loop = asyncio.get_event_loop()
 
@@ -441,7 +449,8 @@ def run_app(app: Union[Application, Awaitable[Application]], *,
             access_log=access_log,
             handle_signals=handle_signals,
             reuse_address=reuse_address,
-            reuse_port=reuse_port))
+            reuse_port=reuse_port,
+            **kwargs))
         loop.run_until_complete(main_task)
     except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
         pass
