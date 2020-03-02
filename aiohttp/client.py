@@ -267,7 +267,7 @@ class ClientSession:
 
     def __del__(self, _warnings: Any=warnings) -> None:
         try:
-            if not self.closed:
+            if not self.closed and self.connector_owner:
                 if PY_36:
                     kwargs = {'source': self}
                 else:
