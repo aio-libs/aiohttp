@@ -50,8 +50,8 @@ class ClientWebSocketResponse:
                  *,
                  heartbeat: Optional[float]=None,
                  headers: Optional[CIMultiDict[str]]=None,
-                 compress: Optional[int]=0,
-                 client_notakeover: Optional[bool]=False) -> None:
+                 compress: int=0,
+                 client_notakeover: bool=False) -> None:
         self._response = response
         self._conn = response.connection
 
