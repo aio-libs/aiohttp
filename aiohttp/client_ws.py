@@ -5,6 +5,7 @@ from typing import Any, Optional
 
 import async_timeout
 import attr
+from multidict import CIMultiDict
 
 from .client_exceptions import ClientError
 from .client_reqrep import ClientResponse
@@ -48,8 +49,9 @@ class ClientWebSocketResponse:
                  loop: asyncio.AbstractEventLoop,
                  *,
                  heartbeat: Optional[float]=None,
-                 compress: int=0,
-                 client_notakeover: bool=False) -> None:
+                 headers: Optional[CIMultiDict[str]]=None,
+                 compress: Optional[int]=0,
+                 client_notakeover: Optional[bool]=False) -> None:
         self._response = response
         self._conn = response.connection
 
@@ -63,6 +65,7 @@ class ClientWebSocketResponse:
         self._autoclose = autoclose
         self._autoping = autoping
         self._heartbeat = heartbeat
+        self._headers = headers
         self._heartbeat_cb = None
         if heartbeat is not None:
             self._pong_heartbeat = heartbeat / 2.0
@@ -121,6 +124,10 @@ class ClientWebSocketResponse:
     @property
     def protocol(self) -> Optional[str]:
         return self._protocol
+
+    @property
+    def headers(self) -> Optional[CIMultiDict[str]]:
+        return self._headers
 
     @property
     def compress(self) -> int:

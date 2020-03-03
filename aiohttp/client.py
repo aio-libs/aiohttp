@@ -802,6 +802,7 @@ class ClientSession:
                                            autoclose,
                                            autoping,
                                            self._loop,
+                                           headers=real_headers,
                                            heartbeat=heartbeat,
                                            compress=compress,
                                            client_notakeover=notakeover)
