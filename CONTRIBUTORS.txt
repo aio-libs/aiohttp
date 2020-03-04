@@ -46,6 +46,7 @@ Ben Bader
 Ben Timby
 Benedikt Reinartz
 Boris Feld
+Borys Vorona
 Boyi Chen
 Brett Cannon
 Brian C. Lane
