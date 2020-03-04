@@ -23,7 +23,8 @@ from .typedefs import (
     DEFAULT_JSON_ENCODER,
     JSONDecoder,
     JSONEncoder,
-    _CIMultiDict)
+    _CIMultiDict,
+)
 
 
 @attr.s(frozen=True, slots=True)
