@@ -5,7 +5,6 @@ from typing import Any, Optional
 
 import async_timeout
 import attr
-from multidict import CIMultiDict
 
 from .client_exceptions import ClientError
 from .client_reqrep import ClientResponse
@@ -24,7 +23,7 @@ from .typedefs import (
     DEFAULT_JSON_ENCODER,
     JSONDecoder,
     JSONEncoder,
-)
+    _CIMultiDict)
 
 
 @attr.s(frozen=True, slots=True)
@@ -49,7 +48,7 @@ class ClientWebSocketResponse:
                  loop: asyncio.AbstractEventLoop,
                  *,
                  heartbeat: Optional[float]=None,
-                 headers: Optional[CIMultiDict[str]]=None,
+                 headers: Optional[_CIMultiDict]=None,
                  compress: int=0,
                  client_notakeover: bool=False) -> None:
         self._response = response
@@ -126,7 +125,7 @@ class ClientWebSocketResponse:
         return self._protocol
 
     @property
-    def headers(self) -> Optional[CIMultiDict[str]]:
+    def headers(self) -> Optional[_CIMultiDict]:
         return self._headers
 
     @property
