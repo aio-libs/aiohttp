@@ -150,10 +150,10 @@ the :attr:`~ClientResponse.history` attribute::
 
     resp = await session.get('http://example.com/some/redirect/')
     assert resp.status == 200
-    assert resp.url = URL('http://example.com/some/other/url/')
+    assert resp.url == URL('http://example.com/some/other/url/')
     assert len(resp.history) == 1
     assert resp.history[0].status == 301
-    assert resp.history[0].url = URL(
+    assert resp.history[0].url == URL(
         'http://example.com/some/redirect/')
 
 If no redirects occurred or ``allow_redirects`` is set to ``False``,
