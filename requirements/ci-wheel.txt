@@ -3,7 +3,7 @@ attrs==19.3.0
 async-generator==1.10
 async-timeout==3.0.1
 brotlipy==0.7.0
-cchardet==2.1.5
+cchardet==2.1.6
 chardet==3.0.4
 coverage==5.0.3
 gunicorn==20.0.4
