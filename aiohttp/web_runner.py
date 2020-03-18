@@ -68,9 +68,6 @@ class BaseSite(ABC):
         # named pipes do not have wait_closed property
         if hasattr(self._server, 'wait_closed'):
             await self._server.wait_closed()
-        await self._runner.shutdown()
-        assert self._runner.server
-        await self._runner.server.shutdown(self._shutdown_timeout)
         self._runner._unreg_site(self)
 
 
@@ -255,6 +252,8 @@ class BaseRunner(ABC):
         # still present on failure
         for site in list(self._sites):
             await site.stop()
+        await self.shutdown()
+        await self._server.shutdown(60.0)
         await self._cleanup_server()
         self._server = None
         if self._handle_signals:
