@@ -1,0 +1,1 @@
+Fixed wrong "Usage" docstring of ``aiohttp.client.request``.
