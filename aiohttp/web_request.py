@@ -555,7 +555,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
                 body.extend(chunk)
                 if self._client_max_size:
                     body_size = len(body)
-                    if body_size >= self._client_max_size:
+                    if body_size > self._client_max_size:
                         raise HTTPRequestEntityTooLarge(
                             max_size=self._client_max_size,
                             actual_size=body_size
