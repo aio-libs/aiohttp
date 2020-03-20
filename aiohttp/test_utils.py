@@ -5,6 +5,7 @@ import contextlib
 import functools
 import gc
 import inspect
+import ipaddress
 import os
 import socket
 import sys
@@ -65,8 +66,11 @@ def get_unused_port_socket(host: str) -> socket.socket:
     return get_port_socket(host, 0)
 
 
-def get_port_socket(host: str, port: int) -> socket.socket:
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+def get_port_socket(
+        host: str,
+        port: int,
+        family: socket.AddressFamily = socket.AF_INET) -> socket.socket:
+    s = socket.socket(family, socket.SOCK_STREAM)
     if REUSE_ADDRESS:
         # Windows has different semantics for SO_REUSEADDR,
         # so don't set it. Ref:
@@ -110,7 +114,15 @@ class BaseTestServer(ABC):
         await self.runner.setup()
         if not self.port:
             self.port = 0
-        _sock = get_port_socket(self.host, self.port)
+        absolute_host = self.host
+        try:
+            version = ipaddress.ip_address(self.host).version
+            if version == 6:
+                absolute_host = f"[{self.host}]"
+        except ValueError:
+            version = 4
+        family = socket.AF_INET6 if version == 6 else socket.AF_INET
+        _sock = get_port_socket(self.host, self.port, family=family)
         self.host, self.port = _sock.getsockname()[:2]
         site = SockSite(self.runner, sock=_sock, ssl_context=self._ssl)
         await site.start()
@@ -126,7 +138,7 @@ class BaseTestServer(ABC):
                 scheme = 'http'
             self.scheme = scheme
         self._root = URL('{}://{}:{}'.format(self.scheme,
-                                             self.host,
+                                             absolute_host,
                                              self.port))
 
     @abstractmethod  # pragma: no cover
