@@ -119,10 +119,10 @@ class BaseTestServer(ABC):
         absolute_host = self.host
         try:
             version = ipaddress.ip_address(self.host).version
-            if version == 6:
-                absolute_host = f"[{self.host}]"
         except ValueError:
             version = 4
+        if version == 6:
+            absolute_host = f"[{self.host}]"
         family = socket.AF_INET6 if version == 6 else socket.AF_INET
         _sock = get_port_socket(self.host, self.port, family=family)
         self.host, self.port = _sock.getsockname()[:2]
