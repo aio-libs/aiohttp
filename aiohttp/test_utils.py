@@ -62,8 +62,10 @@ else:
 REUSE_ADDRESS = os.name == 'posix' and sys.platform != 'cygwin'
 
 
-def get_unused_port_socket(host: str) -> socket.socket:
-    return get_port_socket(host, 0)
+def get_unused_port_socket(
+        host: str,
+        family: socket.AddressFamily = socket.AF_INET) -> socket.socket:
+    return get_port_socket(host, 0, family)
 
 
 def get_port_socket(
