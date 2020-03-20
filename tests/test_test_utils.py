@@ -307,7 +307,7 @@ async def test_custom_port(loop, app, aiohttp_unused_port) -> None:
     await client.close()
 
 
-@pytest.mark.parametrize("hostname,expected_host",
+@pytest.mark.parametrize(("hostname", "expected_host"),
                          [("127.0.0.1", "127.0.0.1"),
                           ("localhost", "127.0.0.1"),
                           ("::1", "::1")])
