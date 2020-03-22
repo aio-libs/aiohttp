@@ -371,3 +371,14 @@ async def test_base_test_server_socket_factory(
         pass
 
     assert factory_called
+
+@pytest.mark.parametrize(("hostname", "expected_host"),
+                         [("127.0.0.1", "127.0.0.1"),
+                          ("localhost", "127.0.0.1"),
+                          ("::1", "::1")])
+async def test_test_server_hostnames(hostname, expected_host, loop) -> None:
+    app = _create_example_app()
+    server = _TestServer(app, host=hostname, loop=loop)
+    async with server:
+        pass
+    assert server.host == expected_host
