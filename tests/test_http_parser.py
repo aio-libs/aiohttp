@@ -852,7 +852,8 @@ class TestParsePayload:
         assert out.is_eof()
         assert b'asdf' == b''.join(out._buffer)
 
-    async def test_parse_chunked_payload_split_end_with_trailers(self, protocol) -> None:
+    async def test_parse_chunked_payload_split_end_trailers(self,
+                                                            protocol) -> None:
         out = aiohttp.StreamReader(protocol, loop=None)
         p = HttpPayloadParser(out, chunked=True)
         p.feed_data(b'4\r\nasdf\r\n0\r\n')
@@ -866,7 +867,8 @@ class TestParsePayload:
         raises=AssertionError,
         reason="see https://github.com/aio-libs/aiohttp/issues/4630"
     )
-    async def test_parse_chunked_payload_split_end_with_trailers2(self, protocol) -> None:
+    async def test_parse_chunked_payload_split_end_trailers2(self,
+                                                             protocol) -> None:
         out = aiohttp.StreamReader(protocol, loop=None)
         p = HttpPayloadParser(out, chunked=True)
         p.feed_data(b'4\r\nasdf\r\n0\r\n')
