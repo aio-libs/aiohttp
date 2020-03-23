@@ -333,6 +333,7 @@ async def test_handle_uncompleted(
     IS_MACOS,
     raises=TypeError,
     reason='Intermittently fails on macOS',
+    strict=False,
 )
 async def test_handle_uncompleted_pipe(
         make_srv, transport, request_handler, handle_with_error):
