@@ -423,6 +423,15 @@ def test_proxies_from_env_http(mocker) -> None:
     assert ret['http'].proxy_auth is None
 
 
+def test_proxies_from_env_http_proxy_for_ws_proto(mocker) -> None:
+    url = URL('http://aiohttp.io/path')
+    mocker.patch.dict(os.environ, {'ws_proxy': str(url)})
+    ret = helpers.proxies_from_env()
+    assert ret.keys() == {'ws'}
+    assert ret['ws'].proxy == url
+    assert ret['ws'].proxy_auth is None
+
+
 def test_proxies_from_env_http_proxy_for_https_proto(mocker) -> None:
     url = URL('http://aiohttp.io/path')
     mocker.patch.dict(os.environ, {'https_proxy': str(url)})
@@ -431,14 +440,38 @@ def test_proxies_from_env_http_proxy_for_https_proto(mocker) -> None:
     assert ret['https'].proxy == url
     assert ret['https'].proxy_auth is None
 
+def test_proxies_from_env_http_proxy_for_wss_proto(mocker) -> None:
+    url = URL('http://aiohttp.io/path')
+    mocker.patch.dict(os.environ, {'wss_proxy': str(url)})
+    ret = helpers.proxies_from_env()
+    assert ret.keys() == {'wss'}
+    assert ret['wss'].proxy == url
+    assert ret['wss'].proxy_auth is None
+
 
 def test_proxies_from_env_https_proxy_skipped(mocker) -> None:
     url = URL('https://aiohttp.io/path')
     mocker.patch.dict(os.environ, {'https_proxy': str(url)})
     log = mocker.patch('aiohttp.log.client_logger.warning')
     assert helpers.proxies_from_env() == {}
-    log.assert_called_with('HTTPS proxies %s are not supported, ignoring',
-                           URL('https://aiohttp.io/path'))
+    log.assert_called_with('%s proxies %s are not supported, ignoring',
+                           'HTTPS', URL('https://aiohttp.io/path'))
+
+def test_proxies_from_env_ws_proxy_skipped(mocker) -> None:
+    url = URL('ws://aiohttp.io/path')
+    mocker.patch.dict(os.environ, {'wss_proxy': str(url)})
+    log = mocker.patch('aiohttp.log.client_logger.warning')
+    assert helpers.proxies_from_env() == {}
+    log.assert_called_with('%s proxies %s are not supported, ignoring',
+                           'WS', URL('ws://aiohttp.io/path'))
+
+def test_proxies_from_env_wss_proxy_skipped(mocker) -> None:
+    url = URL('wss://aiohttp.io/path')
+    mocker.patch.dict(os.environ, {'wss_proxy': str(url)})
+    log = mocker.patch('aiohttp.log.client_logger.warning')
+    assert helpers.proxies_from_env() == {}
+    log.assert_called_with('%s proxies %s are not supported, ignoring',
+                           'WSS', URL('wss://aiohttp.io/path'))
 
 
 def test_proxies_from_env_http_with_auth(mocker) -> None:

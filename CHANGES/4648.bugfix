@@ -1,0 +1,1 @@
+Fix issue with proxy configured by environment variables for websockets.

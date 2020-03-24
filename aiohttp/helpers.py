@@ -229,15 +229,16 @@ class ProxyInfo:
 
 def proxies_from_env() -> Dict[str, ProxyInfo]:
     proxy_urls = {k: URL(v) for k, v in getproxies().items()
-                  if k in ('http', 'https')}
+                  if k in ('http', 'https', 'ws', 'wss')}
     netrc_obj = netrc_from_env()
     stripped = {k: strip_auth_from_url(v) for k, v in proxy_urls.items()}
     ret = {}
     for proto, val in stripped.items():
         proxy, auth = val
-        if proxy.scheme == 'https':
+        if proxy.scheme in ('https', 'ws', 'wss'):
             client_logger.warning(
-                "HTTPS proxies %s are not supported, ignoring", proxy)
+                "%s proxies %s are not supported, ignoring",
+                proxy.scheme.upper(), proxy)
             continue
         if netrc_obj and auth is None:
             auth_from_netrc = None
