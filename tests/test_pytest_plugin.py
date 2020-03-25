@@ -1,8 +1,11 @@
 import os
 import platform
 import sys
+import warnings
 
 import pytest
+
+from aiohttp import pytest_plugin
 
 pytest_plugins = 'pytester'
 
@@ -243,3 +246,13 @@ def test_finalized() -> None:
     testdir.makeconftest(CONFTEST)
     result = testdir.runpytest('-p', 'no:sugar', '--aiohttp-loop=pyloop')
     result.assert_outcomes(passed=2)
+
+
+def test_warnings_propagated():
+    with warnings.catch_warnings(record=True) as log:
+        with pytest_plugin._runtime_warning_context():
+            warnings.warn('test warning is propagated')
+        assert len(log) == 1
+        message = log[0].message
+        assert isinstance(message, UserWarning)
+        assert message.args == ('test warning is propagated',)
