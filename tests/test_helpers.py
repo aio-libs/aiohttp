@@ -415,9 +415,9 @@ def test_set_content_disposition_bad_param() -> None:
 # --------------------- proxies_from_env ------------------------------
 
 @pytest.mark.parametrize('protocol', ['http', 'https', 'ws', 'wss'])
-def test_proxies_from_env(mocker, protocol) -> None:
+def test_proxies_from_env(monkeypatch, protocol) -> None:
     url = URL('http://aiohttp.io/path')
-    mocker.patch.dict(os.environ, {protocol + '_proxy': str(url)})
+    monkeypatch.setenv(protocol + '_proxy', str(url))
     ret = helpers.proxies_from_env()
     assert ret.keys() == {protocol}
     assert ret[protocol].proxy == url
@@ -425,15 +425,13 @@ def test_proxies_from_env(mocker, protocol) -> None:
 
 
 @pytest.mark.parametrize('protocol', ['https', 'wss'])
-def test_proxies_from_env_skipped(mocker, caplog, protocol) -> None:
+def test_proxies_from_env_skipped(monkeypatch, caplog, protocol) -> None:
     url = URL(protocol + '://aiohttp.io/path')
-    mocker.patch.dict(os.environ, {protocol + '_proxy': str(url)})
-
+    monkeypatch.setenv(protocol + '_proxy', str(url))
     assert helpers.proxies_from_env() == {}
     assert len(caplog.records) == 1
-
-    log_message = '{proto!s} proxies {url!s} are not supported, ignoring'.format(
-        proto=protocol.upper(), url=url)
+    log_message = '{proto!s} proxies {url!s} are not supported, ' \
+                  'ignoring'.format(proto=protocol.upper(), url=url)
     assert caplog.record_tuples == [('aiohttp.client', 30, log_message)]
 
 
