@@ -826,7 +826,9 @@ class TestParsePayload:
         assert isinstance(out.exception(),
                           http_exceptions.TransferEncodingError)
 
-    @pytest.mark.xfail(reason="see https://github.com/aio-libs/aiohttp/issues/4630")
+    @pytest.mark.xfail(
+        reason="see https://github.com/aio-libs/aiohttp/issues/4630"
+    )
     async def test_parse_chunked_payload_split_end(self, protocol) -> None:
         out = aiohttp.StreamReader(protocol, loop=None)
         p = HttpPayloadParser(out, chunked=True)
@@ -836,7 +838,9 @@ class TestParsePayload:
         assert out.is_eof()
         assert b'asdf' == b''.join(out._buffer)
 
-    @pytest.mark.xfail("see https://github.com/aio-libs/aiohttp/issues/4630")
+    @pytest.mark.xfail(
+        reason="see https://github.com/aio-libs/aiohttp/issues/4630"
+    )
     async def test_parse_chunked_payload_split_end2(self, protocol) -> None:
         out = aiohttp.StreamReader(protocol, loop=None)
         p = HttpPayloadParser(out, chunked=True)
@@ -857,7 +861,9 @@ class TestParsePayload:
         assert out.is_eof()
         assert b'asdf' == b''.join(out._buffer)
 
-    @pytest.mark.xfail(reason="see https://github.com/aio-libs/aiohttp/issues/4630")
+    @pytest.mark.xfail(
+        reason="see https://github.com/aio-libs/aiohttp/issues/4630"
+    )
     async def test_parse_chunked_payload_split_end_trailers2(self,
                                                              protocol) -> None:
         out = aiohttp.StreamReader(protocol, loop=None)
