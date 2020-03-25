@@ -430,8 +430,10 @@ def test_proxies_from_env_skipped(monkeypatch, caplog, protocol) -> None:
     monkeypatch.setenv(protocol + '_proxy', str(url))
     assert helpers.proxies_from_env() == {}
     assert len(caplog.records) == 1
-    log_message = '{proto!s} proxies {url!s} are not supported, ' \
-                  'ignoring'.format(proto=protocol.upper(), url=url)
+    log_message = (
+        '{proto!s} proxies {url!s} are not supported, ignoring'.
+        format(proto=protocol.upper(), url=url)
+    )
     assert caplog.record_tuples == [('aiohttp.client', 30, log_message)]
 
 
