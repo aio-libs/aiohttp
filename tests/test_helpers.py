@@ -432,8 +432,8 @@ def test_proxies_from_env_skipped(mocker, caplog, protocol) -> None:
     assert helpers.proxies_from_env() == {}
     assert len(caplog.records) == 1
 
-    log_message = '{} proxies {} are not supported, ignoring'.format(
-        protocol.upper(), str(url))
+    log_message = '{proto!s} proxies {url!s} are not supported, ignoring'.format(
+        proto=protocol.upper(), url=url)
     assert caplog.record_tuples == [('aiohttp.client', 30, log_message)]
 
 
