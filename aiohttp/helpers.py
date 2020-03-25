@@ -235,7 +235,7 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
     ret = {}
     for proto, val in stripped.items():
         proxy, auth = val
-        if proxy.scheme in ('https', 'ws', 'wss'):
+        if proxy.scheme in ('https', 'wss'):
             client_logger.warning(
                 "%s proxies %s are not supported, ignoring",
                 proxy.scheme.upper(), proxy)
