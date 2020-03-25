@@ -440,9 +440,9 @@ def test_proxies_from_env_http_proxy_for_https_proto(mocker) -> None:
     assert ret['https'].proxy == url
     assert ret['https'].proxy_auth is None
 
-def test_proxies_from_env_http_proxy_for_wss_proto(mocker) -> None:
+def test_proxies_from_env_http_proxy_for_wss_proto(monkeypatch) -> None:
     url = URL('http://aiohttp.io/path')
-    mocker.patch.dict(os.environ, {'wss_proxy': str(url)})
+    monkeypatch.setenv('wss_proxy', str(url))
     ret = helpers.proxies_from_env()
     assert ret.keys() == {'wss'}
     assert ret['wss'].proxy == url
