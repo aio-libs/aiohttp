@@ -175,6 +175,7 @@ Manuel Miranda
 Marat Sharafutdinov
 Marco Paolini
 Mariano Anaya
+Mariusz Masztalerczuk
 Martijn Pieters
 Martin Melka
 Martin Richard
