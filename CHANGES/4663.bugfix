@@ -1,1 +1,1 @@
-Allows to register Options method handlers for resources.
+Support registering OPTIONS HTTP method handlers via RouteTableDef.
