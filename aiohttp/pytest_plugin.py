@@ -129,6 +129,13 @@ def _runtime_warning_context():  # type: ignore
                 '\n'.join(rw)
             ))
 
+    # Propagate warnings to pytest
+    for msg in _warnings:
+        warnings.showwarning(
+            msg.message,   # type: ignore
+            msg.category, msg.filename, msg.lineno, msg.file, msg.line
+        )
+
 
 @contextlib.contextmanager
 def _passthrough_loop_context(loop, fast=False):  # type: ignore
