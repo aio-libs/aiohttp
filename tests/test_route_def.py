@@ -232,6 +232,22 @@ def test_delete_deco(router) -> None:
     assert str(route.url_for()) == '/path'
 
 
+def test_options_deco(router) -> None:
+    routes = web.RouteTableDef()
+
+    @routes.options('/path')
+    async def handler(request):
+        pass
+
+    router.add_routes(routes)
+
+    assert len(router.routes()) == 1
+
+    route = list(router.routes())[0]
+    assert route.method == 'OPTIONS'
+    assert str(route.url_for()) == '/path'
+
+
 def test_route_deco(router) -> None:
     routes = web.RouteTableDef()
 
