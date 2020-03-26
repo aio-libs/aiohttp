@@ -262,6 +262,7 @@ Vasiliy Faronov
 Vasyl Baran
 Victor Collod
 Victor Kovtun
+Victor Makarov
 Vikas Kawadia
 Viktor Danyliuk
 Ville Skyttä
