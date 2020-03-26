@@ -248,11 +248,10 @@ def test_finalized() -> None:
     result.assert_outcomes(passed=2)
 
 
-def test_warnings_propagated():
-    with warnings.catch_warnings(record=True) as log:
-        with pytest_plugin._runtime_warning_context():
-            warnings.warn('test warning is propagated')
-        assert len(log) == 1
-        message = log[0].message
-        assert isinstance(message, UserWarning)
-        assert message.args == ('test warning is propagated',)
+def test_warnings_propagated(recwarn):
+    with pytest_plugin._runtime_warning_context():
+        warnings.warn('test warning is propagated')
+    assert len(recwarn) == 1
+    message = recwarn[0].message
+    assert isinstance(message, UserWarning)
+    assert message.args == ('test warning is propagated',)
