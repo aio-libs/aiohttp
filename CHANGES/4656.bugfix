@@ -1,1 +1,1 @@
-Fix pytest warnings propagation
+Propagate all warnings captured in coroutine test functions to pytest.
