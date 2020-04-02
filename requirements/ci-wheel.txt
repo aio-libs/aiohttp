@@ -10,7 +10,7 @@ multidict==4.7.5
 pytest==5.4.1
 pytest-cov==2.8.1
 pytest-mock==3.0.0
-typing_extensions==3.7.4.1
+typing_extensions==3.7.4.2
 yarl==1.4.2
 
 # Using PEP 508 env markers to control dependency on runtimes:
