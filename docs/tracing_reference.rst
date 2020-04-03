@@ -299,6 +299,14 @@ TraceRequestChunkSentParams
 
    See :attr:`TraceConfig.on_request_chunk_sent` for details.
 
+   .. attribute:: method
+
+       Method that will be used  to make the request.
+
+   .. attribute:: url
+
+       URL that will be used  for the request.
+
    .. attribute:: chunk
 
        Bytes of chunk sent
@@ -312,6 +320,14 @@ TraceResponseChunkSentParams
    .. versionadded:: 3.1
 
    See :attr:`TraceConfig.on_response_chunk_received` for details.
+
+   .. attribute:: method
+
+       Method that will be used  to make the request.
+
+   .. attribute:: url
+
+       URL that will be used  for the request.
 
    .. attribute:: chunk
 
