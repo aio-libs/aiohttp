@@ -77,6 +77,7 @@ def test_run(worker, loop) -> None:
     worker.log = mock.Mock()
     worker.cfg = mock.Mock()
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
+    worker.cfg.graceful_timeout = 100
     worker.cfg.is_ssl = False
     worker.sockets = []
 
@@ -91,6 +92,7 @@ def test_run_async_factory(worker, loop) -> None:
     worker.log = mock.Mock()
     worker.cfg = mock.Mock()
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
+    worker.cfg.graceful_timeout = 100
     worker.cfg.is_ssl = False
     worker.sockets = []
     app = worker.wsgi
