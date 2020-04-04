@@ -1,0 +1,1 @@
+Fix duplicate calls to shutdown signal handlers when there are multiple sites registered to the app.
