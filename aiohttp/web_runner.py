@@ -202,6 +202,10 @@ class BaseRunner(ABC):
         return self._server
 
     @property
+    def shutdown_timeout(self) -> float:
+        return self._shutdown_timeout
+
+    @property
     def addresses(self) -> List[str]:
         ret = []  # type: List[str]
         for site in self._sites:

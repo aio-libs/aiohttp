@@ -2492,6 +2492,12 @@ application on specific TCP or Unix socket, e.g.::
       A read-only :class:`set` of served sites (:class:`TCPSite` /
       :class:`UnixSite` / :class:`NamedPipeSite` / :class:`SockSite` instances).
 
+   .. attribute:: shutdown_timeout
+
+      The timeout for closing opened connections in all served sites upon runner cleanup.
+
+      .. versionadded:: 4.0
+
    .. comethod:: setup()
 
       Initialize the server. Should be called before adding sites.
@@ -2637,7 +2643,7 @@ application on specific TCP or Unix socket, e.g.::
                            supported on Windows.
 
 .. class:: UnixSite(runner, path, *, \
-                   shutdown_timeout=60.0, ssl_context=None, \
+                   ssl_context=None, \
                    backlog=128)
 
    Serve a runner on UNIX socket.
@@ -2645,10 +2651,6 @@ application on specific TCP or Unix socket, e.g.::
    :param runner: a runner to serve.
 
    :param str path: PATH to UNIX socket to listen.
-
-   :param float shutdown_timeout: a timeout for closing opened
-                                  connections on :meth:`BaseSite.stop`
-                                  call.
 
    :param ssl_context: a :class:`ssl.SSLContext` instance for serving
                        SSL/TLS secure server, ``None`` for plain HTTP
@@ -2660,7 +2662,7 @@ application on specific TCP or Unix socket, e.g.::
 
                        ``128`` by default.
 
-.. class:: NamedPipeSite(runner, path, *, shutdown_timeout=60.0)
+.. class:: NamedPipeSite(runner, path, *)
 
    Serve a runner on Named Pipe in Windows.
 
@@ -2668,12 +2670,8 @@ application on specific TCP or Unix socket, e.g.::
 
    :param str path: PATH of named pipe to listen.
 
-   :param float shutdown_timeout: a timeout for closing opened
-                                  connections on :meth:`BaseSite.stop`
-                                  call.
-
 .. class:: SockSite(runner, sock, *, \
-                   shutdown_timeout=60.0, ssl_context=None, \
+                   ssl_context=None, \
                    backlog=128)
 
    Serve a runner on UNIX socket.
@@ -2681,10 +2679,6 @@ application on specific TCP or Unix socket, e.g.::
    :param runner: a runner to serve.
 
    :param sock: :class:`socket.socket` to listen.
-
-   :param float shutdown_timeout: a timeout for closing opened
-                                  connections on :meth:`BaseSite.stop`
-                                  call.
 
    :param ssl_context: a :class:`ssl.SSLContext` instance for serving
                        SSL/TLS secure server, ``None`` for plain HTTP
