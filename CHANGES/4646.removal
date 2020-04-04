@@ -1,1 +1,1 @@
-Move shutdown_timeout arguments from BaseSite to BaseRunner
+Move shutdown_timeout argument from BaseSite to BaseRunner
