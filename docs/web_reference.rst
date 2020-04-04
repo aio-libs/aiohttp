@@ -2603,7 +2603,7 @@ application on specific TCP or Unix socket, e.g.::
 
 
 .. class:: TCPSite(runner, host=None, port=None, *, \
-                   shutdown_timeout=60.0, ssl_context=None, \
+                   ssl_context=None, \
                    backlog=128, reuse_address=None, \
                    reuse_port=None)
 
@@ -2614,10 +2614,6 @@ application on specific TCP or Unix socket, e.g.::
    :param str host: HOST to listen on, ``'0.0.0.0'`` if ``None`` (default).
 
    :param int port: PORT to listed on, ``8080`` if ``None`` (default).
-
-   :param float shutdown_timeout: a timeout for closing opened
-                                  connections on :meth:`BaseSite.stop`
-                                  call.
 
    :param ssl_context: a :class:`ssl.SSLContext` instance for serving
                        SSL/TLS secure server, ``None`` for plain HTTP

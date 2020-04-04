@@ -308,6 +308,7 @@ async def _run_app(app: Union[Application, Awaitable[Application]], *,
     app = cast(Application, app)
 
     runner = AppRunner(app, handle_signals=handle_signals,
+                       shutdown_timeout=shutdown_timeout,
                        access_log_class=access_log_class,
                        access_log_format=access_log_format,
                        access_log=access_log)
@@ -320,7 +321,6 @@ async def _run_app(app: Union[Application, Awaitable[Application]], *,
         if host is not None:
             if isinstance(host, (str, bytes, bytearray, memoryview)):
                 sites.append(TCPSite(runner, host, port,
-                                     shutdown_timeout=shutdown_timeout,
                                      ssl_context=ssl_context,
                                      backlog=backlog,
                                      reuse_address=reuse_address,
@@ -328,14 +328,12 @@ async def _run_app(app: Union[Application, Awaitable[Application]], *,
             else:
                 for h in host:
                     sites.append(TCPSite(runner, h, port,
-                                         shutdown_timeout=shutdown_timeout,
                                          ssl_context=ssl_context,
                                          backlog=backlog,
                                          reuse_address=reuse_address,
                                          reuse_port=reuse_port))
         elif path is None and sock is None or port is not None:
             sites.append(TCPSite(runner, port=port,
-                                 shutdown_timeout=shutdown_timeout,
                                  ssl_context=ssl_context, backlog=backlog,
                                  reuse_address=reuse_address,
                                  reuse_port=reuse_port))
@@ -343,26 +341,22 @@ async def _run_app(app: Union[Application, Awaitable[Application]], *,
         if path is not None:
             if isinstance(path, (str, bytes, bytearray, memoryview)):
                 sites.append(UnixSite(runner, path,
-                                      shutdown_timeout=shutdown_timeout,
                                       ssl_context=ssl_context,
                                       backlog=backlog))
             else:
                 for p in path:
                     sites.append(UnixSite(runner, p,
-                                          shutdown_timeout=shutdown_timeout,
                                           ssl_context=ssl_context,
                                           backlog=backlog))
 
         if sock is not None:
             if not isinstance(sock, Iterable):
                 sites.append(SockSite(runner, sock,
-                                      shutdown_timeout=shutdown_timeout,
                                       ssl_context=ssl_context,
                                       backlog=backlog))
             else:
                 for s in sock:
                     sites.append(SockSite(runner, s,
-                                          shutdown_timeout=shutdown_timeout,
                                           ssl_context=ssl_context,
                                           backlog=backlog))
         for site in sites:
