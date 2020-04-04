@@ -35,17 +35,15 @@ def _raise_graceful_exit() -> None:
 
 
 class BaseSite(ABC):
-    __slots__ = ('_runner', '_shutdown_timeout', '_ssl_context', '_backlog',
+    __slots__ = ('_runner', '_ssl_context', '_backlog',
                  '_server')
 
     def __init__(self, runner: 'BaseRunner', *,
-                 shutdown_timeout: float=60.0,
                  ssl_context: Optional[SSLContext]=None,
                  backlog: int=128) -> None:
         if runner.server is None:
             raise RuntimeError("Call runner.setup() before making a site")
         self._runner = runner
-        self._shutdown_timeout = shutdown_timeout
         self._ssl_context = ssl_context
         self._backlog = backlog
         self._server = None  # type: Optional[asyncio.AbstractServer]
@@ -76,12 +74,10 @@ class TCPSite(BaseSite):
 
     def __init__(self, runner: 'BaseRunner',
                  host: str=None, port: int=None, *,
-                 shutdown_timeout: float=60.0,
                  ssl_context: Optional[SSLContext]=None,
                  backlog: int=128, reuse_address: Optional[bool]=None,
                  reuse_port: Optional[bool]=None) -> None:
-        super().__init__(runner, shutdown_timeout=shutdown_timeout,
-                         ssl_context=ssl_context, backlog=backlog)
+        super().__init__(runner, ssl_context=ssl_context, backlog=backlog)
         if host is None:
             host = "0.0.0.0"
         self._host = host
@@ -112,11 +108,9 @@ class UnixSite(BaseSite):
     __slots__ = ('_path', )
 
     def __init__(self, runner: 'BaseRunner', path: str, *,
-                 shutdown_timeout: float=60.0,
                  ssl_context: Optional[SSLContext]=None,
                  backlog: int=128) -> None:
-        super().__init__(runner, shutdown_timeout=shutdown_timeout,
-                         ssl_context=ssl_context, backlog=backlog)
+        super().__init__(runner, ssl_context=ssl_context, backlog=backlog)
         self._path = path
 
     @property
@@ -137,13 +131,12 @@ class UnixSite(BaseSite):
 class NamedPipeSite(BaseSite):
     __slots__ = ('_path', )
 
-    def __init__(self, runner: 'BaseRunner', path: str, *,
-                 shutdown_timeout: float=60.0) -> None:
+    def __init__(self, runner: 'BaseRunner', path: str) -> None:
         loop = asyncio.get_event_loop()
         if not isinstance(loop, asyncio.ProactorEventLoop):  # type: ignore
             raise RuntimeError("Named Pipes only available in proactor"
                                "loop under windows")
-        super().__init__(runner, shutdown_timeout=shutdown_timeout)
+        super().__init__(runner)
         self._path = path
 
     @property
@@ -165,11 +158,9 @@ class SockSite(BaseSite):
     __slots__ = ('_sock', '_name')
 
     def __init__(self, runner: 'BaseRunner', sock: socket.socket, *,
-                 shutdown_timeout: float=60.0,
                  ssl_context: Optional[SSLContext]=None,
                  backlog: int=128) -> None:
-        super().__init__(runner, shutdown_timeout=shutdown_timeout,
-                         ssl_context=ssl_context, backlog=backlog)
+        super().__init__(runner, ssl_context=ssl_context, backlog=backlog)
         self._sock = sock
         scheme = 'https' if self._ssl_context else 'http'
         if hasattr(socket, 'AF_UNIX') and sock.family == socket.AF_UNIX:
@@ -194,10 +185,14 @@ class SockSite(BaseSite):
 
 
 class BaseRunner(ABC):
-    __slots__ = ('_handle_signals', '_kwargs', '_server', '_sites')
+    __slots__ = ('_handle_signals', '_shutdown_timeout', '_kwargs', '_server',
+                 '_sites')
 
-    def __init__(self, *, handle_signals: bool=False, **kwargs: Any) -> None:
+    def __init__(self, *, handle_signals: bool=False,
+                 shutdown_timeout: float=60.0,
+                 **kwargs: Any) -> None:
         self._handle_signals = handle_signals
+        self._shutdown_timeout = shutdown_timeout
         self._kwargs = kwargs
         self._server = None  # type: Optional[Server]
         self._sites = []  # type: List[BaseSite]
@@ -253,7 +248,7 @@ class BaseRunner(ABC):
         for site in list(self._sites):
             await site.stop()
         await self.shutdown()
-        await self._server.shutdown(60.0)
+        await self._server.shutdown(self._shutdown_timeout)
         await self._cleanup_server()
         self._server = None
         if self._handle_signals:
