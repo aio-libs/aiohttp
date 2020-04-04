@@ -1,6 +1,7 @@
 import asyncio
 import platform
 import signal
+from typing import AsyncIterator
 
 import pytest
 
@@ -65,6 +66,45 @@ async def test_site_double_added(make_runner) -> None:
         await site.start()
 
     assert len(runner.sites) == 1
+
+
+async def test_app_runner_with_multiple_sites(app, make_runner) -> None:
+
+    startup_count = 0
+    shutdown_count = 0
+
+    async def cleanup_ctx(app: web.Application) -> AsyncIterator[None]:
+        nonlocal startup_count, shutdown_count
+        startup_count += 1
+        yield
+        shutdown_count += 1
+
+    async def startup(app: web.Application) -> None:
+        nonlocal startup_count
+        startup_count += 1
+
+    async def shutdown(app: web.Application) -> None:
+        nonlocal shutdown_count
+        shutdown_count += 1
+
+    app.on_startup.append(startup)
+    app.on_shutdown.append(shutdown)
+    app.cleanup_ctx.append(cleanup_ctx)
+    runner = make_runner()
+    await runner.setup()
+    sites = [
+        web.SockSite(runner, get_unused_port_socket('127.0.0.1')),
+        web.SockSite(runner, get_unused_port_socket('127.0.0.1')),
+    ]
+    for site in sites:
+        await site.start()
+
+    assert len(runner.sites) == 2
+
+    await runner.cleanup()
+
+    assert startup_count == shutdown_count
+    assert startup_count == 2
 
 
 async def test_site_stop_not_started(make_runner) -> None:
