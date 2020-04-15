@@ -3,9 +3,10 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import pytest
+from yarl import URL
 
 from aiohttp import web
-from aiohttp.web_urldispatcher import SystemRoute
+from aiohttp.web_urldispatcher import PlainResource, SystemRoute, UrlDispatcher
 
 
 @pytest.mark.parametrize(
@@ -407,3 +408,28 @@ async def test_static_absolute_url(aiohttp_client, tmp_path) -> None:
     client = await aiohttp_client(app)
     resp = await client.get('/static/' + str(file_path.resolve()))
     assert resp.status == 403
+
+def test_register_resource(aiohttp_client) -> None:
+    router = UrlDispatcher()
+    path = "/result/"
+    url = URL.build(path=path)
+
+    correct_name = "check-for-result"
+    resource = PlainResource(url.raw_path, name=correct_name)
+    router.register_resource(resource)
+
+    assert resource == router._named_resources[correct_name]
+
+def test_register_resource_with_python_keyword(aiohttp_client) -> None:
+    router = UrlDispatcher()
+    path = "/result/"
+    url = URL.build(path=path)
+
+    wrong_name = "for"
+    resource = PlainResource(url.raw_path, name=wrong_name)
+    with pytest.raises(
+        ValueError,
+        match="^Incorrect route name 'for', "
+        'python keywords cannot be used for route name$',
+    ):
+        router.register_resource(resource)

@@ -977,10 +977,10 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         name = resource.name
 
         if name is not None:
-            if keyword.iskeyword(name):
-                raise ValueError('Incorrect route name {!r}, '
+            if keyword.iskeyword(name.strip()):
+                raise ValueError(f'Incorrect route name {name!r}, '
                                  'python keywords cannot be used '
-                                 'for route name'.format(name))
+                                 'for route name')
             parts = self.NAME_SPLIT_RE.split(name)
             for part in parts:
                 if not part.isidentifier():
