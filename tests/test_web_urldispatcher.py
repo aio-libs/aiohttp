@@ -3,11 +3,10 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import pytest
+from yarl import URL
 
 from aiohttp import web
-from aiohttp.web_urldispatcher import SystemRoute, UrlDispatcher, PlainResource
-
-from yarl import URL
+from aiohttp.web_urldispatcher import PlainResource, SystemRoute, UrlDispatcher
 
 
 @pytest.mark.parametrize(
