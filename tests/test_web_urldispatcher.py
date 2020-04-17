@@ -5,7 +5,9 @@ from unittest.mock import MagicMock
 import pytest
 
 from aiohttp import web
-from aiohttp.web_urldispatcher import SystemRoute
+from aiohttp.web_urldispatcher import SystemRoute, UrlDispatcher, PlainResource
+
+from yarl import URL
 
 
 @pytest.mark.parametrize(
@@ -407,3 +409,14 @@ async def test_static_absolute_url(aiohttp_client, tmp_path) -> None:
     client = await aiohttp_client(app)
     resp = await client.get('/static/' + str(file_path.resolve()))
     assert resp.status == 403
+
+def test_register_resource() -> None:
+    router = UrlDispatcher()
+    path = "/result/"
+    name = "check-for-result"
+    url = URL.build(path=path)
+    resource = PlainResource(url.raw_path, name=name)
+    try:
+        router.register_resource(resource)
+    except ValueError:
+        pytest.fail()
