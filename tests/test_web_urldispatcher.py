@@ -411,6 +411,7 @@ async def test_static_absolute_url(aiohttp_client, tmp_path) -> None:
     assert resp.status == 403
 
 def test_register_resource() -> None:
+    # GH 4691
     router = UrlDispatcher()
     path = "/result/"
     name = "check-for-result"
