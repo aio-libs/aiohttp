@@ -3,8 +3,9 @@
 import asyncio
 from typing import Any, Optional
 
-import async_timeout
 import attr
+
+import async_timeout
 
 from .client_exceptions import ClientError
 from .client_reqrep import ClientResponse

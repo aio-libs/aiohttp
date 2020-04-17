@@ -1,9 +1,9 @@
 import asyncio
 
-import async_timeout
 import pytest
 
 import aiohttp
+import async_timeout
 from aiohttp import hdrs, web
 from aiohttp.client_ws import ClientWSTimeout
 

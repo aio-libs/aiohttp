@@ -3,7 +3,6 @@
 import sys
 from pathlib import Path
 
-
 ALLOWED_SUFFIXES = ['.feature',
                     '.bugfix',
                     '.doc',
