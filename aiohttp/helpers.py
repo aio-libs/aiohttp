@@ -47,7 +47,6 @@ from multidict import MultiDict, MultiDictProxy
 from typing_extensions import final
 from yarl import URL
 
-
 from . import hdrs
 from .log import client_logger
 from .typedefs import PathLike  # noqa
