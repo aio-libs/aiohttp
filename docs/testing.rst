@@ -381,6 +381,66 @@ functionality, the AioHTTPTestCase is provided::
    Handles executing an asynchronous function, using
    the :attr:`AioHTTPTestCase.loop` of the :class:`AioHTTPTestCase`.
 
+Patching unittest test cases
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Patching test cases is tricky, when using python older than 3.8 ``'patch'`` does not behave as it has to.
+We recommend using asynctest_ that provides a patch method that is capable of creating
+a magic mock that is async capable. It can be used with decorator as well as with context manager.::
+
+    from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+    from aiohttp.web_app import Application
+    from aiohttp.web_request import Request
+    from aiohttp.web_response import Response
+    from aiohttp.web_routedef import get
+    from asynctest.mock import patch
+
+
+    async def do_something():
+        print('something')
+
+
+    async def ping(request: Request) -> Response:
+        await do_something()
+        return Response(text='pong')
+
+
+    class TestApplication(AioHTTPTestCase):
+        def get_app(self) -> Application:
+            app = Application()
+            app.router.add_routes([
+                get('/ping/', ping)
+            ])
+
+            return app
+
+        @unittest_run_loop
+        async def test_ping(self):
+            resp = await self.client.get('/ping/')
+
+            self.assertEqual(resp.status, 200)
+            self.assertEqual(await resp.text(), 'pong')
+
+        @unittest_run_loop
+        async def test_ping_mocked_do_something(self):
+            with patch('test_bug.do_something') as do_something_patch:
+                resp = await self.client.get('/ping/')
+
+                self.assertEqual(resp.status, 200)
+                self.assertEqual(await resp.text(), 'pong')
+
+                self.assertTrue(do_something_patch.called)
+
+        @unittest_run_loop
+        @patch('test_bug.do_something')
+        async def test_ping_mocked_do_something_decorated(self, do_something_patch):
+            resp = await self.client.get('/ping/')
+
+            self.assertEqual(resp.status, 200)
+            self.assertEqual(await resp.text(), 'pong')
+
+            self.assertTrue(do_something_patch.called)
+
 
 Faking request object
 ---------------------
@@ -821,3 +881,4 @@ Utilities
 
 .. _pytest: http://pytest.org/latest/
 .. _pytest-aiohttp: https://pypi.python.org/pypi/pytest-aiohttp
+.. _asynctest: https://pypi.org/project/asynctest/
