@@ -111,7 +111,7 @@ class StreamReader(AsyncStreamReaderMixin):
                  loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
         self._protocol = protocol
         self._low_water = limit if limit is not None else DEFAULT_LIMIT
-        self._high_water = limit * 2 if limit is not None else DEFAULT_LIMIT * 2
+        self._high_water = self._low_water * 2
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
@@ -620,4 +620,3 @@ class FlowControlDataQueue(DataQueue[_T]):
         finally:
             if self._size < self._limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()
-
