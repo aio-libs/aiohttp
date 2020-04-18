@@ -106,12 +106,12 @@ class StreamReader(AsyncStreamReaderMixin):
     total_bytes = 0
 
     def __init__(self, protocol: BaseProtocol,
-                 *, limit: int=DEFAULT_LIMIT,
+                 *, limit: Optional[int]=None,
                  timer: Optional[BaseTimerContext]=None,
-                 loop: asyncio.AbstractEventLoop) -> None:
+                 loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
         self._protocol = protocol
-        self._low_water = limit
-        self._high_water = limit * 2
+        self._low_water = limit if limit is not None else DEFAULT_LIMIT
+        self._high_water = limit * 2 if limit is not None else DEFAULT_LIMIT * 2
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
@@ -601,12 +601,12 @@ class FlowControlDataQueue(DataQueue[_T]):
     It is a destination for parsed data."""
 
     def __init__(self, protocol: BaseProtocol, *,
-                 limit: int=DEFAULT_LIMIT,
+                 limit: Optional[int]=None,
                  loop: asyncio.AbstractEventLoop) -> None:
         super().__init__(loop=loop)
 
         self._protocol = protocol
-        self._limit = limit * 2
+        self._limit = limit * 2 if limit is not None else DEFAULT_LIMIT
 
     def feed_data(self, data: _T, size: int=0) -> None:
         super().feed_data(data, size)
@@ -620,3 +620,4 @@ class FlowControlDataQueue(DataQueue[_T]):
         finally:
             if self._size < self._limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()
+
