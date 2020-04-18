@@ -5,10 +5,9 @@ import hashlib
 import json
 from typing import Any, Iterable, Optional, Tuple
 
+import async_timeout
 import attr
 from multidict import CIMultiDict
-
-import async_timeout
 
 from . import hdrs
 from .abc import AbstractStreamWriter

@@ -30,9 +30,8 @@ from typing import (  # noqa
 
 import attr
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
-from yarl import URL
-
 from typing_extensions import final
+from yarl import URL
 
 from . import hdrs, http, payload
 from .abc import AbstractCookieJar
