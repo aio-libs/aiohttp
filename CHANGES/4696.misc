@@ -1,0 +1,1 @@
+Make aiohttp.streams.DEFAULT_LIMIT changeable allowing a workaround for long lines
