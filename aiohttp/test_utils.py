@@ -9,7 +9,6 @@ import ipaddress
 import os
 import socket
 import sys
-import unittest
 from abc import ABC, abstractmethod
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Callable, Iterator, List, Optional, Type, Union
@@ -19,17 +18,13 @@ from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
 import aiohttp
-from aiohttp.client import (
-    ClientResponse,
-    _RequestContextManager,
-    _WSRequestContextManager,
-)
+from aiohttp.client import _RequestContextManager, _WSRequestContextManager
 
 from . import ClientSession, hdrs
 from .abc import AbstractCookieJar
 from .client_reqrep import ClientResponse
 from .client_ws import ClientWebSocketResponse
-from .helpers import sentinel
+from .helpers import PY_38, sentinel
 from .http import HttpVersion, RawRequestMessage
 from .signals import Signal
 from .web import (
@@ -49,6 +44,10 @@ if TYPE_CHECKING:  # pragma: no cover
 else:
     SSLContext = None
 
+if PY_38:
+    from unittest import IsolatedAsyncioTestCase as TestCase
+else:
+    from asynctest import TestCase  # type: ignore
 
 REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
 
@@ -386,7 +385,7 @@ class TestClient:
         await self.close()
 
 
-class AioHTTPTestCase(unittest.TestCase):
+class AioHTTPTestCase(TestCase):
     """A base class to allow for unittest web applications using
     aiohttp.
 
@@ -420,26 +419,23 @@ class AioHTTPTestCase(unittest.TestCase):
         raise RuntimeError("Did you forget to define get_application()?")
 
     def setUp(self) -> None:
-        self.loop = setup_test_loop()
-
-        self.app = self.loop.run_until_complete(self.get_application())
-        self.server = self.loop.run_until_complete(self.get_server(self.app))
-        self.client = self.loop.run_until_complete(self.get_client(self.server))
-
-        self.loop.run_until_complete(self.client.start_server())
+        if PY_38:
+            self.loop = asyncio.get_event_loop()
 
         self.loop.run_until_complete(self.setUpAsync())
 
     async def setUpAsync(self) -> None:
-        pass
+        self.app = await self.get_application()
+        self.server = await self.get_server(self.app)
+        self.client = await self.get_client(self.server)
+
+        await self.client.start_server()
 
     def tearDown(self) -> None:
         self.loop.run_until_complete(self.tearDownAsync())
-        self.loop.run_until_complete(self.client.close())
-        teardown_test_loop(self.loop)
 
     async def tearDownAsync(self) -> None:
-        pass
+        await self.client.close()
 
     async def get_server(self, app: Application) -> TestServer:
         """Return a TestServer instance."""
