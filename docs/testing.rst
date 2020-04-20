@@ -885,4 +885,3 @@ Utilities
 
 .. _pytest: http://pytest.org/latest/
 .. _pytest-aiohttp: https://pypi.python.org/pypi/pytest-aiohttp
-.. _asynctest: https://pypi.org/project/asynctest/
