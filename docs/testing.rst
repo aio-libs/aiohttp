@@ -388,12 +388,13 @@ Patching test cases is tricky, when using python older than 3.8 ``'patch'`` does
 We recommend using asynctest_ that provides a patch method that is capable of creating
 a magic mock that supports async. It can be used with decorator as well as with context manager::
 
+    from asynctest.mock import patch
+
     from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
     from aiohttp.web_app import Application
     from aiohttp.web_request import Request
     from aiohttp.web_response import Response
     from aiohttp.web_routedef import get
-    from asynctest.mock import patch
 
 
     async def do_something():
