@@ -391,7 +391,7 @@ a magic mock that supports async. It can be used with a decorator as well as wit
 .. code-block:: python
    :emphasize-lines: 1,37,46
 
-    from asynctest.mock import patch
+    from asynctest.mock import patch as async_patch
 
     from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
     from aiohttp.web_app import Application
@@ -427,7 +427,7 @@ a magic mock that supports async. It can be used with a decorator as well as wit
 
         @unittest_run_loop
         async def test_ping_mocked_do_something(self):
-            with patch('tests.do_something') as do_something_patch:
+            with async_patch('tests.do_something') as do_something_patch:
                 resp = await self.client.get('/ping/')
 
                 self.assertEqual(resp.status, 200)
@@ -436,7 +436,7 @@ a magic mock that supports async. It can be used with a decorator as well as wit
                 self.assertTrue(do_something_patch.called)
 
         @unittest_run_loop
-        @patch('tests.do_something')
+        @async_patch('tests.do_something')
         async def test_ping_mocked_do_something_decorated(self, do_something_patch):
             resp = await self.client.get('/ping/')
 
