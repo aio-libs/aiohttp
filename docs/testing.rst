@@ -384,8 +384,8 @@ functionality, the AioHTTPTestCase is provided::
 Patching unittest test cases
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Patching test cases is tricky, when using python older than 3.8 ``'patch'`` does not behave as it has to.
-We recommend using asynctest_ that provides a patch method that is capable of creating
+Patching test cases is tricky, when using python older than 3.8  :py:func:`unittest.mock.patch` does not behave as it has to.
+We recommend using :py:mod:`asynctest` that provides :py:func:`asynctest.patch` that is capable of creating
 a magic mock that supports async. It can be used with a decorator as well as with a context manager:
 
 .. code-block:: python
