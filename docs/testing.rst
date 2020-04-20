@@ -386,7 +386,10 @@ Patching unittest test cases
 
 Patching test cases is tricky, when using python older than 3.8 ``'patch'`` does not behave as it has to.
 We recommend using asynctest_ that provides a patch method that is capable of creating
-a magic mock that supports async. It can be used with decorator as well as with context manager::
+a magic mock that supports async. It can be used with a decorator as well as with a context manager:
+
+.. code-block:: python
+   :emphasize-lines: 1,37,46
 
     from asynctest.mock import patch
 
