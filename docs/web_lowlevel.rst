@@ -14,7 +14,7 @@ Abstract
 Sometimes users don't need high-level concepts introduced in
 :ref:`aiohttp-web`: applications, routers, middlewares and signals.
 
-All that is needed is supporting an asynchronous callable which accepts a
+All that may be needed is supporting an asynchronous callable which accepts a
 request and returns a response object.
 
 This is done by introducing :class:`aiohttp.web.Server` class which
