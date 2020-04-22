@@ -11,10 +11,10 @@ This topic describes :mod:`aiohttp.web` based *low level* API.
 Abstract
 --------
 
-Sometimes user don't need high-level concepts introduced in
+Sometimes users don't need high-level concepts introduced in
 :ref:`aiohttp-web`: applications, routers, middlewares and signals.
 
-All what is needed is supporting asynchronous callable which accepts a
+All that is needed is supporting an asynchronous callable which accepts a
 request and returns a response object.
 
 This is done by introducing :class:`aiohttp.web.Server` class which
