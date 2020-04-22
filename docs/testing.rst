@@ -229,6 +229,24 @@ Pytest tooling has the following fixtures:
 
       The fixture was renamed from ``unused_port`` to ``aiohttp_unused_port``.
 
+.. data:: aiohttp_client_cls
+
+   A fixture for passing custom :class:`~aiohttp.test_utils.TestClient` implementations::
+
+       class MyClient(TestClient):
+           async def login(self, *, user, pw):
+               payload = {"username": user, "password": pw}
+               return await self.post("/login", json=payload)
+
+       @pytest.fixture
+       def aiohttp_client_cls():
+           return MyClient
+
+       def test_login(aiohttp_client):
+           app = web.Application()
+           client = await aiohttp_client(app)
+           await client.login(user="admin", pw="s3cr3t")
+
 
 .. _aiohttp-testing-unittest-example:
 

@@ -290,7 +290,34 @@ def aiohttp_raw_server(loop):  # type: ignore
 
 
 @pytest.fixture
-def aiohttp_client(loop):  # type: ignore
+def aiohttp_client_cls():  # type: ignore
+    """
+    Client class to use in ``aiohttp_client`` factory.
+
+    Use it for passing custom ``TestClient`` implementations.
+
+    Example::
+
+       class MyClient(TestClient):
+           async def login(self, *, user, pw):
+               payload = {"username": user, "password": pw}
+               return await self.post("/login", json=payload)
+
+       @pytest.fixture
+       def aiohttp_client_cls():
+           return MyClient
+
+       def test_login(aiohttp_client):
+           app = web.Application()
+           client = await aiohttp_client(app)
+           await client.login(user="admin", pw="s3cr3t")
+
+    """
+    return TestClient
+
+
+@pytest.fixture
+def aiohttp_client(loop, aiohttp_client_cls):  # type: ignore
     """Factory to create a TestClient instance.
 
     aiohttp_client(app, **kwargs)
@@ -303,9 +330,9 @@ def aiohttp_client(loop):  # type: ignore
         if isinstance(__param, Application):
             server_kwargs = server_kwargs or {}
             server = TestServer(__param, **server_kwargs)
-            client = TestClient(server, **kwargs)
+            client = aiohttp_client_cls(server, **kwargs)
         elif isinstance(__param, BaseTestServer):
-            client = TestClient(__param, **kwargs)
+            client = aiohttp_client_cls(__param, **kwargs)
         else:
             raise ValueError("Unknown argument type: %r" % type(__param))
 
