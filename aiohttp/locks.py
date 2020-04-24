@@ -1,5 +1,11 @@
 import asyncio
 import collections
+from typing import Any, Optional
+
+try:
+    from typing import Deque
+except ImportError:
+    from typing_extensions import Deque  # noqa
 
 
 class EventResultOrError:
@@ -9,17 +15,17 @@ class EventResultOrError:
 
     thanks to @vorpalsmith for the simple design.
     """
-    def __init__(self, loop):
+    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
-        self._exc = None
-        self._event = asyncio.Event(loop=loop)
-        self._waiters = collections.deque()
+        self._exc = None  # type: Optional[BaseException]
+        self._event = asyncio.Event()
+        self._waiters = collections.deque()  # type: Deque[asyncio.Future[Any]]
 
-    def set(self, exc=None):
+    def set(self, exc: Optional[BaseException]=None) -> None:
         self._exc = exc
         self._event.set()
 
-    async def wait(self):
+    async def wait(self) -> Any:
         waiter = self._loop.create_task(self._event.wait())
         self._waiters.append(waiter)
         try:
@@ -32,7 +38,7 @@ class EventResultOrError:
 
         return val
 
-    def cancel(self):
+    def cancel(self) -> None:
         """ Cancel all waiters """
         for waiter in self._waiters:
             waiter.cancel()

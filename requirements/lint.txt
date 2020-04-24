@@ -1,0 +1,5 @@
+mypy==0.770; implementation_name=="cpython"
+flake8==3.7.9
+flake8-pyi==19.3.0; python_version >= "3.6"
+black==19.10b0; python_version >= "3.6"
+isort==4.3.21

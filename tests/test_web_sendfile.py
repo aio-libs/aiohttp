@@ -2,76 +2,10 @@ from unittest import mock
 
 from aiohttp import hdrs
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
-from aiohttp.web_fileresponse import FileResponse, SendfileStreamWriter
+from aiohttp.web_fileresponse import FileResponse
 
 
-def test_static_handle_eof(loop):
-    fake_loop = mock.Mock()
-    with mock.patch('aiohttp.web_fileresponse.os') as m_os:
-        out_fd = 30
-        in_fd = 31
-        fut = loop.create_future()
-        m_os.sendfile.return_value = 0
-        writer = SendfileStreamWriter(mock.Mock(), mock.Mock(), fake_loop)
-        writer._sendfile_cb(fut, out_fd, in_fd, 0, 100, fake_loop, False)
-        m_os.sendfile.assert_called_with(out_fd, in_fd, 0, 100)
-        assert fut.done()
-        assert fut.result() is None
-        assert not fake_loop.add_writer.called
-        assert not fake_loop.remove_writer.called
-
-
-def test_static_handle_again(loop):
-    fake_loop = mock.Mock()
-    with mock.patch('aiohttp.web_fileresponse.os') as m_os:
-        out_fd = 30
-        in_fd = 31
-        fut = loop.create_future()
-        m_os.sendfile.side_effect = BlockingIOError()
-        writer = SendfileStreamWriter(mock.Mock(), mock.Mock(), fake_loop)
-        writer._sendfile_cb(fut, out_fd, in_fd, 0, 100, fake_loop, False)
-        m_os.sendfile.assert_called_with(out_fd, in_fd, 0, 100)
-        assert not fut.done()
-        fake_loop.add_writer.assert_called_with(out_fd,
-                                                writer._sendfile_cb,
-                                                fut, out_fd, in_fd, 0, 100,
-                                                fake_loop, True)
-        assert not fake_loop.remove_writer.called
-
-
-def test_static_handle_exception(loop):
-    fake_loop = mock.Mock()
-    with mock.patch('aiohttp.web_fileresponse.os') as m_os:
-        out_fd = 30
-        in_fd = 31
-        fut = loop.create_future()
-        exc = OSError()
-        m_os.sendfile.side_effect = exc
-        writer = SendfileStreamWriter(mock.Mock(), mock.Mock(), fake_loop)
-        writer._sendfile_cb(fut, out_fd, in_fd, 0, 100, fake_loop, False)
-        m_os.sendfile.assert_called_with(out_fd, in_fd, 0, 100)
-        assert fut.done()
-        assert exc is fut.exception()
-        assert not fake_loop.add_writer.called
-        assert not fake_loop.remove_writer.called
-
-
-def test__sendfile_cb_return_on_cancelling(loop):
-    fake_loop = mock.Mock()
-    with mock.patch('aiohttp.web_fileresponse.os') as m_os:
-        out_fd = 30
-        in_fd = 31
-        fut = loop.create_future()
-        fut.cancel()
-        writer = SendfileStreamWriter(mock.Mock(), mock.Mock(), fake_loop)
-        writer._sendfile_cb(fut, out_fd, in_fd, 0, 100, fake_loop, False)
-        assert fut.done()
-        assert not fake_loop.add_writer.called
-        assert not fake_loop.remove_writer.called
-        assert not m_os.sendfile.called
-
-
-def test_using_gzip_if_header_present_and_file_available(loop):
+def test_using_gzip_if_header_present_and_file_available(loop) -> None:
     request = make_mocked_request(
         'GET', 'http://python.org/logo.png', headers={
             hdrs.ACCEPT_ENCODING: 'gzip'
@@ -98,7 +32,7 @@ def test_using_gzip_if_header_present_and_file_available(loop):
     assert gz_filepath.open.called
 
 
-def test_gzip_if_header_not_present_and_file_available(loop):
+def test_gzip_if_header_not_present_and_file_available(loop) -> None:
     request = make_mocked_request(
         'GET', 'http://python.org/logo.png', headers={
         }
@@ -124,7 +58,7 @@ def test_gzip_if_header_not_present_and_file_available(loop):
     assert not gz_filepath.open.called
 
 
-def test_gzip_if_header_not_present_and_file_not_available(loop):
+def test_gzip_if_header_not_present_and_file_not_available(loop) -> None:
     request = make_mocked_request(
         'GET', 'http://python.org/logo.png', headers={
         }
@@ -150,7 +84,7 @@ def test_gzip_if_header_not_present_and_file_not_available(loop):
     assert not gz_filepath.open.called
 
 
-def test_gzip_if_header_present_and_file_not_available(loop):
+def test_gzip_if_header_present_and_file_not_available(loop) -> None:
     request = make_mocked_request(
         'GET', 'http://python.org/logo.png', headers={
             hdrs.ACCEPT_ENCODING: 'gzip'
@@ -175,3 +109,23 @@ def test_gzip_if_header_present_and_file_not_available(loop):
 
     assert filepath.open.called
     assert not gz_filepath.open.called
+
+
+def test_status_controlled_by_user(loop) -> None:
+    request = make_mocked_request(
+        'GET', 'http://python.org/logo.png', headers={
+        }
+    )
+
+    filepath = mock.Mock()
+    filepath.name = 'logo.png'
+    filepath.open = mock.mock_open()
+    filepath.stat.return_value = mock.MagicMock()
+    filepath.stat.st_size = 1024
+
+    file_sender = FileResponse(filepath, status=203)
+    file_sender._sendfile = make_mocked_coro(None)
+
+    loop.run_until_complete(file_sender.prepare(request))
+
+    assert file_sender._status == 203

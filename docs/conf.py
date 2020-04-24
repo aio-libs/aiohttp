@@ -13,7 +13,7 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import codecs
+import io
 import os
 import re
 import sys
@@ -21,7 +21,7 @@ import sys
 _docs_path = os.path.dirname(__file__)
 _version_path = os.path.abspath(os.path.join(_docs_path,
                                              '..', 'aiohttp', '__init__.py'))
-with codecs.open(_version_path, 'r', 'latin1') as fp:
+with io.open(_version_path, 'r', encoding='latin1') as fp:
     try:
         _version_info = re.search(r"^__version__ = '"
                                   r"(?P<major>\d+)"
@@ -33,13 +33,6 @@ with codecs.open(_version_path, 'r', 'latin1') as fp:
         raise RuntimeError('Unable to determine version.')
 
 
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-sys.path.insert(0, os.path.abspath('..'))
-sys.path.insert(0, os.path.abspath('.'))
-
-
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -49,7 +42,6 @@ sys.path.insert(0, os.path.abspath('.'))
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
     'sphinxcontrib.asyncio',
@@ -75,7 +67,12 @@ intersphinx_mapping = {
     'aiohttpremotes':
         ('https://aiohttp-remotes.readthedocs.io/en/stable/', None),
     'aiohttpsession':
-        ('https://aiohttp-session.readthedocs.io/en/stable/', None)}
+        ('https://aiohttp-session.readthedocs.io/en/stable/', None),
+    'aiohttpdemos':
+        ('https://aiohttp-demos.readthedocs.io/en/latest/', None),
+    'asynctest':
+        ('https://asynctest.readthedocs.io/en/latest/', None),
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -91,7 +88,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'aiohttp'
-copyright = '2013-2018, Aiohttp contributors'
+copyright = '2013-2020, aiohttp maintainers'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -162,10 +159,10 @@ html_theme_options = {
     'github_button': True,
     'github_type': 'star',
     'github_banner': True,
-    'badges': [{'image': 'https://secure.travis-ci.org/aio-libs/aiohttp.svg?branch=master',
-                'target': 'https://travis-ci.org/aio-libs/aiohttp',
+    'badges': [{'image': 'https://dev.azure.com/aio-libs/aiohttp/_apis/build/status/CI?branchName=master',
+                'target': 'https://dev.azure.com/aio-libs/aiohttp/_build',
                 'height': '20',
-                'alt': 'Travis CI status'},
+                'alt': 'Azure Pipelines CI status'},
                {'image': 'https://codecov.io/github/aio-libs/aiohttp/coverage.svg?branch=master',
                'target': 'https://codecov.io/github/aio-libs/aiohttp',
                 'height': '20',
@@ -174,6 +171,10 @@ html_theme_options = {
                'target': 'https://badge.fury.io/py/aiohttp',
                 'height': '20',
                 'alt': 'Latest PyPI package version'},
+               {'image': 'https://img.shields.io/discourse/status?server=https%3A%2F%2Faio-libs.discourse.group',
+               'target': 'https://aio-libs.discourse.group',
+                'height': '20',
+                'alt': 'Discourse status'},
                {'image': 'https://badges.gitter.im/Join%20Chat.svg',
                 'target': 'https://gitter.im/aio-libs/Lobby',
                 'height': '20',

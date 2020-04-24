@@ -17,11 +17,11 @@ async def wshandler(request):
     while True:
         msg = await ws.receive()
 
-        if msg.type == web.WSMsgType.text:
+        if msg.type == web.WSMsgType.TEXT:
             await ws.send_str(msg.data)
-        elif msg.type == web.WSMsgType.binary:
+        elif msg.type == web.WSMsgType.BINARY:
             await ws.send_bytes(msg.data)
-        elif msg.type == web.WSMsgType.close:
+        elif msg.type == web.WSMsgType.CLOSE:
             await ws.close()
             break
         else:
@@ -50,8 +50,6 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s %(levelname)s %(message)s')
-
-    loop = asyncio.get_event_loop()
     app, srv, handler = loop.run_until_complete(main(loop))
     try:
         loop.run_forever()

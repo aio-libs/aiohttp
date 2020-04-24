@@ -12,11 +12,9 @@ Helpful pages.
    glossary
 
 .. toctree::
-   :hidden:
+   :titlesonly:
 
    changes
-
-* :ref:`aiohttp_changes`
 
 Indices and tables
 ------------------

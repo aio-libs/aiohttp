@@ -1,5 +1,10 @@
 """Low-level http related exceptions."""
 
+
+from typing import Optional, Union
+
+from .typedefs import _CIMultiDict
+
 __all__ = ('HttpProcessingError',)
 
 
@@ -17,13 +22,20 @@ class HttpProcessingError(Exception):
     message = ''
     headers = None
 
-    def __init__(self, *, code=None, message='', headers=None):
+    def __init__(self, *,
+                 code: Optional[int]=None,
+                 message: str='',
+                 headers: Optional[_CIMultiDict]=None) -> None:
         if code is not None:
             self.code = code
         self.headers = headers
         self.message = message
 
-        super().__init__("%s, message='%s'" % (self.code, message))
+    def __str__(self) -> str:
+        return "%s, message=%r" % (self.code, self.message)
+
+    def __repr__(self) -> str:
+        return "<%s: %s>" % (self.__class__.__name__, self)
 
 
 class BadHttpMessage(HttpProcessingError):
@@ -31,8 +43,10 @@ class BadHttpMessage(HttpProcessingError):
     code = 400
     message = 'Bad Request'
 
-    def __init__(self, message, *, headers=None):
+    def __init__(self, message: str, *,
+                 headers: Optional[_CIMultiDict]=None) -> None:
         super().__init__(message=message, headers=headers)
+        self.args = (message,)
 
 
 class HttpBadRequest(BadHttpMessage):
@@ -59,28 +73,35 @@ class ContentLengthError(PayloadEncodingError):
 
 class LineTooLong(BadHttpMessage):
 
-    def __init__(self, line, limit='Unknown', actual_size='Unknown'):
+    def __init__(self, line: str,
+                 limit: str='Unknown',
+                 actual_size: str='Unknown') -> None:
         super().__init__(
             "Got more than %s bytes (%s) when reading %s." % (
                 limit, actual_size, line))
+        self.args = (line, limit, actual_size)
 
 
 class InvalidHeader(BadHttpMessage):
 
-    def __init__(self, hdr):
+    def __init__(self, hdr: Union[bytes, str]) -> None:
         if isinstance(hdr, bytes):
             hdr = hdr.decode('utf-8', 'surrogateescape')
         super().__init__('Invalid HTTP Header: {}'.format(hdr))
         self.hdr = hdr
+        self.args = (hdr,)
 
 
 class BadStatusLine(BadHttpMessage):
 
-    def __init__(self, line=''):
-        if not line:
+    def __init__(self, line: str='') -> None:
+        if not isinstance(line, str):
             line = repr(line)
-        self.args = line,
+        self.args = (line,)
         self.line = line
+
+    __str__ = Exception.__str__
+    __repr__ = Exception.__repr__
 
 
 class InvalidURLError(BadHttpMessage):

@@ -1,11 +1,14 @@
-import collections
+import collections.abc
 import datetime
+import gzip
 import json
 import re
+import weakref
+from concurrent.futures import ThreadPoolExecutor
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDict
+from multidict import CIMultiDict, CIMultiDictProxy
 
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, signals
 from aiohttp.payload import BytesPayload
@@ -65,7 +68,7 @@ def writer(buf):
     return writer
 
 
-def test_stream_response_ctor():
+def test_stream_response_ctor() -> None:
     resp = StreamResponse()
     assert 200 == resp.status
     assert resp.keep_alive is None
@@ -77,52 +80,60 @@ def test_stream_response_ctor():
     assert resp.task is req.task
 
 
-def test_stream_response_hashable():
+def test_stream_response_hashable() -> None:
     # should not raise exception
     hash(StreamResponse())
 
 
-def test_stream_response_is_mutable_mapping():
+def test_stream_response_eq() -> None:
+    resp1 = StreamResponse()
+    resp2 = StreamResponse()
+
+    assert resp1 == resp1
+    assert not resp1 == resp2
+
+
+def test_stream_response_is_mutable_mapping() -> None:
     resp = StreamResponse()
-    assert isinstance(resp, collections.MutableMapping)
+    assert isinstance(resp, collections.abc.MutableMapping)
     resp['key'] = 'value'
     assert 'value' == resp['key']
 
 
-def test_stream_response_delitem():
+def test_stream_response_delitem() -> None:
     resp = StreamResponse()
     resp['key'] = 'value'
     del resp['key']
     assert 'key' not in resp
 
 
-def test_stream_response_len():
+def test_stream_response_len() -> None:
     resp = StreamResponse()
     assert len(resp) == 0
     resp['key'] = 'value'
     assert len(resp) == 1
 
 
-def test_request_iter():
+def test_request_iter() -> None:
     resp = StreamResponse()
     resp['key'] = 'value'
     resp['key2'] = 'value2'
     assert set(resp) == {'key', 'key2'}
 
 
-def test_content_length():
+def test_content_length() -> None:
     resp = StreamResponse()
     assert resp.content_length is None
 
 
-def test_content_length_setter():
+def test_content_length_setter() -> None:
     resp = StreamResponse()
 
     resp.content_length = 234
     assert 234 == resp.content_length
 
 
-def test_content_length_setter_with_enable_chunked_encoding():
+def test_content_length_setter_with_enable_chunked_encoding() -> None:
     resp = StreamResponse()
 
     resp.enable_chunked_encoding()
@@ -130,7 +141,7 @@ def test_content_length_setter_with_enable_chunked_encoding():
         resp.content_length = 234
 
 
-def test_drop_content_length_header_on_setting_len_to_None():
+def test_drop_content_length_header_on_setting_len_to_None() -> None:
     resp = StreamResponse()
 
     resp.content_length = 1
@@ -139,7 +150,7 @@ def test_drop_content_length_header_on_setting_len_to_None():
     assert 'Content-Length' not in resp.headers
 
 
-def test_set_content_length_to_None_on_non_set():
+def test_set_content_length_to_None_on_non_set() -> None:
     resp = StreamResponse()
 
     resp.content_length = None
@@ -148,14 +159,14 @@ def test_set_content_length_to_None_on_non_set():
     assert 'Content-Length' not in resp.headers
 
 
-def test_setting_content_type():
+def test_setting_content_type() -> None:
     resp = StreamResponse()
 
     resp.content_type = 'text/html'
     assert 'text/html' == resp.headers['content-type']
 
 
-def test_setting_charset():
+def test_setting_charset() -> None:
     resp = StreamResponse()
 
     resp.content_type = 'text/html'
@@ -163,13 +174,13 @@ def test_setting_charset():
     assert 'text/html; charset=koi8-r' == resp.headers['content-type']
 
 
-def test_default_charset():
+def test_default_charset() -> None:
     resp = StreamResponse()
 
     assert resp.charset is None
 
 
-def test_reset_charset():
+def test_reset_charset() -> None:
     resp = StreamResponse()
 
     resp.content_type = 'text/html'
@@ -177,7 +188,7 @@ def test_reset_charset():
     assert resp.charset is None
 
 
-def test_reset_charset_after_setting():
+def test_reset_charset_after_setting() -> None:
     resp = StreamResponse()
 
     resp.content_type = 'text/html'
@@ -186,19 +197,19 @@ def test_reset_charset_after_setting():
     assert resp.charset is None
 
 
-def test_charset_without_content_type():
+def test_charset_without_content_type() -> None:
     resp = StreamResponse()
 
     with pytest.raises(RuntimeError):
         resp.charset = 'koi8-r'
 
 
-def test_last_modified_initial():
+def test_last_modified_initial() -> None:
     resp = StreamResponse()
     assert resp.last_modified is None
 
 
-def test_last_modified_string():
+def test_last_modified_string() -> None:
     resp = StreamResponse()
 
     dt = datetime.datetime(1990, 1, 2, 3, 4, 5, 0, datetime.timezone.utc)
@@ -206,7 +217,7 @@ def test_last_modified_string():
     assert resp.last_modified == dt
 
 
-def test_last_modified_timestamp():
+def test_last_modified_timestamp() -> None:
     resp = StreamResponse()
 
     dt = datetime.datetime(1970, 1, 1, 0, 0, 0, 0, datetime.timezone.utc)
@@ -218,7 +229,7 @@ def test_last_modified_timestamp():
     assert resp.last_modified == dt
 
 
-def test_last_modified_datetime():
+def test_last_modified_datetime() -> None:
     resp = StreamResponse()
 
     dt = datetime.datetime(2001, 2, 3, 4, 5, 6, 0, datetime.timezone.utc)
@@ -226,7 +237,7 @@ def test_last_modified_datetime():
     assert resp.last_modified == dt
 
 
-def test_last_modified_reset():
+def test_last_modified_reset() -> None:
     resp = StreamResponse()
 
     resp.last_modified = 0
@@ -234,7 +245,7 @@ def test_last_modified_reset():
     assert resp.last_modified is None
 
 
-async def test_start():
+async def test_start() -> None:
     req = make_request('GET', '/')
     resp = StreamResponse()
     assert resp.keep_alive is None
@@ -253,7 +264,7 @@ async def test_start():
     assert msg is msg3
 
 
-async def test_chunked_encoding():
+async def test_chunked_encoding() -> None:
     req = make_request('GET', '/')
     resp = StreamResponse()
     assert not resp.chunked
@@ -265,7 +276,7 @@ async def test_chunked_encoding():
     assert msg.chunked
 
 
-def test_enable_chunked_encoding_with_content_length():
+def test_enable_chunked_encoding_with_content_length() -> None:
     resp = StreamResponse()
 
     resp.content_length = 234
@@ -273,22 +284,7 @@ def test_enable_chunked_encoding_with_content_length():
         resp.enable_chunked_encoding()
 
 
-async def test_chunk_size():
-    req = make_request('GET', '/')
-    resp = StreamResponse()
-    assert not resp.chunked
-
-    with pytest.warns(DeprecationWarning):
-        resp.enable_chunked_encoding(chunk_size=8192)
-    assert resp.chunked
-
-    msg = await resp.prepare(req)
-    assert msg.chunked
-    assert msg.enable_chunking.called
-    assert msg.filter is not None
-
-
-async def test_chunked_encoding_forbidden_for_http_10():
+async def test_chunked_encoding_forbidden_for_http_10() -> None:
     req = make_request('GET', '/', version=HttpVersion10)
     resp = StreamResponse()
     resp.enable_chunked_encoding()
@@ -299,7 +295,7 @@ async def test_chunked_encoding_forbidden_for_http_10():
                     str(ctx.value))
 
 
-async def test_compression_no_accept():
+async def test_compression_no_accept() -> None:
     req = make_request('GET', '/')
     resp = StreamResponse()
     assert not resp.chunked
@@ -312,33 +308,7 @@ async def test_compression_no_accept():
     assert not msg.enable_compression.called
 
 
-async def test_force_compression_no_accept_backwards_compat():
-    req = make_request('GET', '/')
-    resp = StreamResponse()
-    assert not resp.chunked
-
-    assert not resp.compression
-    resp.enable_compression(force=True)
-    assert resp.compression
-
-    msg = await resp.prepare(req)
-    assert msg.enable_compression.called
-    assert msg.filter is not None
-
-
-async def test_force_compression_false_backwards_compat():
-    req = make_request('GET', '/')
-    resp = StreamResponse()
-
-    assert not resp.compression
-    resp.enable_compression(force=False)
-    assert resp.compression
-
-    msg = await resp.prepare(req)
-    assert not msg.enable_compression.called
-
-
-async def test_compression_default_coding():
+async def test_compression_default_coding() -> None:
     req = make_request(
         'GET', '/',
         headers=CIMultiDict({hdrs.ACCEPT_ENCODING: 'gzip, deflate'}))
@@ -356,7 +326,7 @@ async def test_compression_default_coding():
     assert msg.filter is not None
 
 
-async def test_force_compression_deflate():
+async def test_force_compression_deflate() -> None:
     req = make_request(
         'GET', '/',
         headers=CIMultiDict({hdrs.ACCEPT_ENCODING: 'gzip, deflate'}))
@@ -370,7 +340,7 @@ async def test_force_compression_deflate():
     assert 'deflate' == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 
-async def test_force_compression_no_accept_deflate():
+async def test_force_compression_no_accept_deflate() -> None:
     req = make_request('GET', '/')
     resp = StreamResponse()
 
@@ -382,7 +352,7 @@ async def test_force_compression_no_accept_deflate():
     assert 'deflate' == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 
-async def test_force_compression_gzip():
+async def test_force_compression_gzip() -> None:
     req = make_request(
         'GET', '/',
         headers=CIMultiDict({hdrs.ACCEPT_ENCODING: 'gzip, deflate'}))
@@ -396,7 +366,7 @@ async def test_force_compression_gzip():
     assert 'gzip' == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 
-async def test_force_compression_no_accept_gzip():
+async def test_force_compression_no_accept_gzip() -> None:
     req = make_request('GET', '/')
     resp = StreamResponse()
 
@@ -408,7 +378,33 @@ async def test_force_compression_no_accept_gzip():
     assert 'gzip' == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 
-async def test_change_content_length_if_compression_enabled():
+async def test_change_content_threaded_compression_enabled() -> None:
+    req = make_request('GET', '/')
+    body_thread_size = 1024
+    body = b'answer' * body_thread_size
+    resp = Response(body=body,
+                    zlib_executor_size=body_thread_size)
+    resp.enable_compression(ContentCoding.gzip)
+
+    await resp.prepare(req)
+    assert gzip.decompress(resp._compressed_body) == body
+
+
+async def test_change_content_threaded_compression_enabled_explicit() -> None:
+    req = make_request('GET', '/')
+    body_thread_size = 1024
+    body = b'answer' * body_thread_size
+    with ThreadPoolExecutor(1) as executor:
+        resp = Response(body=body,
+                        zlib_executor_size=body_thread_size,
+                        zlib_executor=executor)
+        resp.enable_compression(ContentCoding.gzip)
+
+        await resp.prepare(req)
+        assert gzip.decompress(resp._compressed_body) == body
+
+
+async def test_change_content_length_if_compression_enabled() -> None:
     req = make_request('GET', '/')
     resp = Response(body=b'answer')
     resp.enable_compression(ContentCoding.gzip)
@@ -418,7 +414,7 @@ async def test_change_content_length_if_compression_enabled():
         resp.content_length != len(b'answer')
 
 
-async def test_set_content_length_if_compression_enabled():
+async def test_set_content_length_if_compression_enabled() -> None:
     writer = mock.Mock()
 
     async def write_headers(status_line, headers):
@@ -437,7 +433,7 @@ async def test_set_content_length_if_compression_enabled():
     assert resp.content_length == 26
 
 
-async def test_remove_content_length_if_compression_enabled_http11():
+async def test_remove_content_length_if_compression_enabled_http11() -> None:
     writer = mock.Mock()
 
     async def write_headers(status_line, headers):
@@ -453,7 +449,7 @@ async def test_remove_content_length_if_compression_enabled_http11():
     assert resp.content_length is None
 
 
-async def test_remove_content_length_if_compression_enabled_http10():
+async def test_remove_content_length_if_compression_enabled_http10() -> None:
     writer = mock.Mock()
 
     async def write_headers(status_line, headers):
@@ -470,7 +466,7 @@ async def test_remove_content_length_if_compression_enabled_http10():
     assert resp.content_length is None
 
 
-async def test_force_compression_identity():
+async def test_force_compression_identity() -> None:
     writer = mock.Mock()
 
     async def write_headers(status_line, headers):
@@ -487,7 +483,7 @@ async def test_force_compression_identity():
     assert resp.content_length == 123
 
 
-async def test_force_compression_identity_response():
+async def test_force_compression_identity_response() -> None:
     writer = mock.Mock()
 
     async def write_headers(status_line, headers):
@@ -503,7 +499,7 @@ async def test_force_compression_identity_response():
     assert resp.content_length == 6
 
 
-async def test_rm_content_length_if_compression_enabled_on_payload_http11():
+async def test_rm_content_length_if_compression_http11() -> None:
     writer = mock.Mock()
 
     async def write_headers(status_line, headers):
@@ -521,7 +517,7 @@ async def test_rm_content_length_if_compression_enabled_on_payload_http11():
     assert resp.content_length is None
 
 
-async def test_rm_content_length_if_compression_enabled_on_payload_http10():
+async def test_rm_content_length_if_compression_http10() -> None:
     writer = mock.Mock()
 
     async def write_headers(status_line, headers):
@@ -537,7 +533,7 @@ async def test_rm_content_length_if_compression_enabled_on_payload_http10():
     assert resp.content_length is None
 
 
-async def test_content_length_on_chunked():
+async def test_content_length_on_chunked() -> None:
     req = make_request('GET', '/')
     resp = Response(body=b'answer')
     assert resp.content_length == 6
@@ -546,7 +542,7 @@ async def test_content_length_on_chunked():
     await resp.prepare(req)
 
 
-async def test_write_non_byteish():
+async def test_write_non_byteish() -> None:
     resp = StreamResponse()
     await resp.prepare(make_request('GET', '/'))
 
@@ -554,14 +550,14 @@ async def test_write_non_byteish():
         await resp.write(123)
 
 
-async def test_write_before_start():
+async def test_write_before_start() -> None:
     resp = StreamResponse()
 
     with pytest.raises(RuntimeError):
         await resp.write(b'data')
 
 
-async def test_cannot_write_after_eof():
+async def test_cannot_write_after_eof() -> None:
     resp = StreamResponse()
     req = make_request('GET', '/')
     await resp.prepare(req)
@@ -575,7 +571,7 @@ async def test_cannot_write_after_eof():
     assert not req.writer.write.called
 
 
-async def test___repr___after_eof():
+async def test___repr___after_eof() -> None:
     resp = StreamResponse()
     await resp.prepare(make_request('GET', '/'))
 
@@ -588,14 +584,14 @@ async def test___repr___after_eof():
     assert resp_repr == '<StreamResponse OK eof>'
 
 
-async def test_cannot_write_eof_before_headers():
+async def test_cannot_write_eof_before_headers() -> None:
     resp = StreamResponse()
 
     with pytest.raises(AssertionError):
         await resp.write_eof()
 
 
-async def test_cannot_write_eof_twice():
+async def test_cannot_write_eof_twice() -> None:
     resp = StreamResponse()
     writer = mock.Mock()
     resp_impl = await resp.prepare(make_request('GET', '/'))
@@ -612,7 +608,7 @@ async def test_cannot_write_eof_twice():
     assert not writer.write.called
 
 
-def test_force_close():
+def test_force_close() -> None:
     resp = StreamResponse()
 
     assert resp.keep_alive is None
@@ -620,14 +616,7 @@ def test_force_close():
     assert resp.keep_alive is False
 
 
-async def test_response_output_length():
-    resp = StreamResponse()
-    await resp.prepare(make_request('GET', '/'))
-    with pytest.warns(DeprecationWarning):
-        assert resp.output_length
-
-
-def test_response_cookies():
+def test_response_cookies() -> None:
     resp = StreamResponse()
 
     assert resp.cookies == {}
@@ -653,7 +642,7 @@ def test_response_cookies():
     assert str(resp.cookies) == expected
 
 
-def test_response_cookie_path():
+def test_response_cookie_path() -> None:
     resp = StreamResponse()
 
     assert resp.cookies == {}
@@ -665,18 +654,19 @@ def test_response_cookie_path():
             'Set-Cookie: name=value; expires=123; Path=/')
     resp.set_cookie('name', 'value', domain='example.com',
                     path='/home', expires='123', max_age='10',
-                    secure=True, httponly=True, version='2.0')
+                    secure=True, httponly=True, version='2.0', samesite='lax')
     assert (str(resp.cookies).lower() == 'set-cookie: name=value; '
             'domain=example.com; '
             'expires=123; '
             'httponly; '
             'max-age=10; '
             'path=/home; '
+            'samesite=lax; '
             'secure; '
             'version=2.0')
 
 
-def test_response_cookie__issue_del_cookie():
+def test_response_cookie__issue_del_cookie() -> None:
     resp = StreamResponse()
 
     assert resp.cookies == {}
@@ -688,7 +678,7 @@ def test_response_cookie__issue_del_cookie():
     assert re.match(expected, str(resp.cookies))
 
 
-def test_cookie_set_after_del():
+def test_cookie_set_after_del() -> None:
     resp = StreamResponse()
 
     resp.del_cookie('name')
@@ -698,7 +688,7 @@ def test_cookie_set_after_del():
     assert str(resp.cookies) == expected
 
 
-def test_set_status_with_reason():
+def test_set_status_with_reason() -> None:
     resp = StreamResponse()
 
     resp.set_status(200, "Everithing is fine!")
@@ -706,7 +696,7 @@ def test_set_status_with_reason():
     assert "Everithing is fine!" == resp.reason
 
 
-async def test_start_force_close():
+async def test_start_force_close() -> None:
     req = make_request('GET', '/')
     resp = StreamResponse()
     resp.force_close()
@@ -716,26 +706,26 @@ async def test_start_force_close():
     assert not resp.keep_alive
 
 
-async def test___repr__():
+async def test___repr__() -> None:
     req = make_request('GET', '/path/to')
     resp = StreamResponse(reason=301)
     await resp.prepare(req)
     assert "<StreamResponse 301 GET /path/to >" == repr(resp)
 
 
-def test___repr___not_prepared():
+def test___repr___not_prepared() -> None:
     resp = StreamResponse(reason=301)
     assert "<StreamResponse 301 not prepared>" == repr(resp)
 
 
-async def test_keep_alive_http10_default():
+async def test_keep_alive_http10_default() -> None:
     req = make_request('GET', '/', version=HttpVersion10)
     resp = StreamResponse()
     await resp.prepare(req)
     assert not resp.keep_alive
 
 
-async def test_keep_alive_http10_switched_on():
+async def test_keep_alive_http10_switched_on() -> None:
     headers = CIMultiDict(Connection='keep-alive')
     req = make_request('GET', '/', version=HttpVersion10, headers=headers)
     req._message = req._message._replace(should_close=False)
@@ -744,7 +734,7 @@ async def test_keep_alive_http10_switched_on():
     assert resp.keep_alive
 
 
-async def test_keep_alive_http09():
+async def test_keep_alive_http09() -> None:
     headers = CIMultiDict(Connection='keep-alive')
     req = make_request('GET', '/', version=HttpVersion(0, 9), headers=headers)
     resp = StreamResponse()
@@ -752,7 +742,7 @@ async def test_keep_alive_http09():
     assert not resp.keep_alive
 
 
-async def test_prepare_twice():
+async def test_prepare_twice() -> None:
     req = make_request('GET', '/')
     resp = StreamResponse()
 
@@ -761,7 +751,7 @@ async def test_prepare_twice():
     assert impl1 is impl2
 
 
-async def test_prepare_calls_signal():
+async def test_prepare_calls_signal() -> None:
     app = mock.Mock()
     sig = make_mocked_coro()
     on_response_prepare = signals.Signal(app)
@@ -778,7 +768,7 @@ async def test_prepare_calls_signal():
 # Response class
 
 
-def test_response_ctor():
+def test_response_ctor() -> None:
     resp = Response()
 
     assert 200 == resp.status
@@ -788,7 +778,7 @@ def test_response_ctor():
     assert 'CONTENT-LENGTH' not in resp.headers
 
 
-async def test_ctor_with_headers_and_status():
+async def test_ctor_with_headers_and_status() -> None:
     resp = Response(body=b'body', status=201,
                     headers={'Age': '12', 'DATE': 'date'})
 
@@ -802,7 +792,7 @@ async def test_ctor_with_headers_and_status():
     assert resp.headers['CONTENT-LENGTH'] == '4'
 
 
-def test_ctor_content_type():
+def test_ctor_content_type() -> None:
     resp = Response(content_type='application/json')
 
     assert 200 == resp.status
@@ -812,12 +802,12 @@ def test_ctor_content_type():
             resp.headers)
 
 
-def test_ctor_text_body_combined():
+def test_ctor_text_body_combined() -> None:
     with pytest.raises(ValueError):
         Response(body=b'123', text='test text')
 
 
-async def test_ctor_text():
+async def test_ctor_text() -> None:
     resp = Response(text='test text')
 
     assert 200 == resp.status
@@ -835,31 +825,31 @@ async def test_ctor_text():
     assert resp.headers['CONTENT-LENGTH'] == '9'
 
 
-def test_ctor_charset():
+def test_ctor_charset() -> None:
     resp = Response(text='текст', charset='koi8-r')
 
     assert 'текст'.encode('koi8-r') == resp.body
     assert 'koi8-r' == resp.charset
 
 
-def test_ctor_charset_default_utf8():
+def test_ctor_charset_default_utf8() -> None:
     resp = Response(text='test test', charset=None)
 
     assert 'utf-8' == resp.charset
 
 
-def test_ctor_charset_in_content_type():
+def test_ctor_charset_in_content_type() -> None:
     with pytest.raises(ValueError):
         Response(text='test test', content_type='text/plain; charset=utf-8')
 
 
-def test_ctor_charset_without_text():
+def test_ctor_charset_without_text() -> None:
     resp = Response(content_type='text/plain', charset='koi8-r')
 
     assert 'koi8-r' == resp.charset
 
 
-def test_ctor_content_type_with_extra():
+def test_ctor_content_type_with_extra() -> None:
     resp = Response(text='test test', content_type='text/plain; version=0.0.4')
 
     assert resp.content_type == 'text/plain'
@@ -867,31 +857,31 @@ def test_ctor_content_type_with_extra():
         'text/plain; version=0.0.4; charset=utf-8'
 
 
-def test_ctor_both_content_type_param_and_header_with_text():
+def test_ctor_both_content_type_param_and_header_with_text() -> None:
     with pytest.raises(ValueError):
         Response(headers={'Content-Type': 'application/json'},
                  content_type='text/html', text='text')
 
 
-def test_ctor_both_charset_param_and_header_with_text():
+def test_ctor_both_charset_param_and_header_with_text() -> None:
     with pytest.raises(ValueError):
         Response(headers={'Content-Type': 'application/json'},
                  charset='koi8-r', text='text')
 
 
-def test_ctor_both_content_type_param_and_header():
+def test_ctor_both_content_type_param_and_header() -> None:
     with pytest.raises(ValueError):
         Response(headers={'Content-Type': 'application/json'},
                  content_type='text/html')
 
 
-def test_ctor_both_charset_param_and_header():
+def test_ctor_both_charset_param_and_header() -> None:
     with pytest.raises(ValueError):
         Response(headers={'Content-Type': 'application/json'},
                  charset='koi8-r')
 
 
-async def test_assign_nonbyteish_body():
+async def test_assign_nonbyteish_body() -> None:
     resp = Response(body=b'data')
 
     with pytest.raises(ValueError):
@@ -906,7 +896,7 @@ async def test_assign_nonbyteish_body():
     assert 4 == resp.content_length
 
 
-def test_assign_nonstr_text():
+def test_assign_nonstr_text() -> None:
     resp = Response(text='test')
 
     with pytest.raises(AssertionError):
@@ -915,13 +905,13 @@ def test_assign_nonstr_text():
     assert 4 == resp.content_length
 
 
-def test_response_set_content_length():
+def test_response_set_content_length() -> None:
     resp = Response()
     with pytest.raises(RuntimeError):
         resp.content_length = 1
 
 
-async def test_send_headers_for_empty_body(buf, writer):
+async def test_send_headers_for_empty_body(buf, writer) -> None:
     req = make_request('GET', '/', writer=writer)
     resp = Response()
 
@@ -935,7 +925,7 @@ async def test_send_headers_for_empty_body(buf, writer):
                     'Server: .+\r\n\r\n', txt)
 
 
-async def test_render_with_body(buf, writer):
+async def test_render_with_body(buf, writer) -> None:
     req = make_request('GET', '/', writer=writer)
     resp = Response(body=b'data')
 
@@ -951,7 +941,7 @@ async def test_render_with_body(buf, writer):
                     'data', txt)
 
 
-async def test_send_set_cookie_header(buf, writer):
+async def test_send_set_cookie_header(buf, writer) -> None:
     resp = Response()
     resp.cookies['name'] = 'value'
     req = make_request('GET', '/', writer=writer)
@@ -968,7 +958,7 @@ async def test_send_set_cookie_header(buf, writer):
                     'Server: .+\r\n\r\n', txt)
 
 
-async def test_consecutive_write_eof():
+async def test_consecutive_write_eof() -> None:
     writer = mock.Mock()
     writer.write_eof = make_mocked_coro()
     writer.write_headers = make_mocked_coro()
@@ -982,7 +972,7 @@ async def test_consecutive_write_eof():
     writer.write_eof.assert_called_once_with(data)
 
 
-def test_set_text_with_content_type():
+def test_set_text_with_content_type() -> None:
     resp = Response()
     resp.content_type = "text/html"
     resp.text = "text"
@@ -992,7 +982,7 @@ def test_set_text_with_content_type():
     assert "text/html" == resp.content_type
 
 
-def test_set_text_with_charset():
+def test_set_text_with_charset() -> None:
     resp = Response()
     resp.content_type = 'text/plain'
     resp.charset = "KOI8-R"
@@ -1003,62 +993,62 @@ def test_set_text_with_charset():
     assert "koi8-r" == resp.charset
 
 
-def test_default_content_type_in_stream_response():
+def test_default_content_type_in_stream_response() -> None:
     resp = StreamResponse()
     assert resp.content_type == 'application/octet-stream'
 
 
-def test_default_content_type_in_response():
+def test_default_content_type_in_response() -> None:
     resp = Response()
     assert resp.content_type == 'application/octet-stream'
 
 
-def test_content_type_with_set_text():
+def test_content_type_with_set_text() -> None:
     resp = Response(text='text')
     assert resp.content_type == 'text/plain'
 
 
-def test_content_type_with_set_body():
+def test_content_type_with_set_body() -> None:
     resp = Response(body=b'body')
     assert resp.content_type == 'application/octet-stream'
 
 
-def test_started_when_not_started():
+def test_started_when_not_started() -> None:
     resp = StreamResponse()
     assert not resp.prepared
 
 
-async def test_started_when_started():
+async def test_started_when_started() -> None:
     resp = StreamResponse()
     await resp.prepare(make_request('GET', '/'))
     assert resp.prepared
 
 
-async def test_drain_before_start():
+async def test_drain_before_start() -> None:
     resp = StreamResponse()
     with pytest.raises(AssertionError):
         await resp.drain()
 
 
-async def test_changing_status_after_prepare_raises():
+async def test_changing_status_after_prepare_raises() -> None:
     resp = StreamResponse()
     await resp.prepare(make_request('GET', '/'))
     with pytest.raises(AssertionError):
         resp.set_status(400)
 
 
-def test_nonstr_text_in_ctor():
+def test_nonstr_text_in_ctor() -> None:
     with pytest.raises(TypeError):
         Response(text=b'data')
 
 
-def test_text_in_ctor_with_content_type():
+def test_text_in_ctor_with_content_type() -> None:
     resp = Response(text='data', content_type='text/html')
     assert 'data' == resp.text
     assert 'text/html' == resp.content_type
 
 
-def test_text_in_ctor_with_content_type_header():
+def test_text_in_ctor_with_content_type_header() -> None:
     resp = Response(text='текст',
                     headers={'Content-Type': 'text/html; charset=koi8-r'})
     assert 'текст'.encode('koi8-r') == resp.body
@@ -1066,7 +1056,7 @@ def test_text_in_ctor_with_content_type_header():
     assert 'koi8-r' == resp.charset
 
 
-def test_text_in_ctor_with_content_type_header_multidict():
+def test_text_in_ctor_with_content_type_header_multidict() -> None:
     headers = CIMultiDict({'Content-Type': 'text/html; charset=koi8-r'})
     resp = Response(text='текст',
                     headers=headers)
@@ -1075,7 +1065,7 @@ def test_text_in_ctor_with_content_type_header_multidict():
     assert 'koi8-r' == resp.charset
 
 
-def test_body_in_ctor_with_content_type_header_multidict():
+def test_body_in_ctor_with_content_type_header_multidict() -> None:
     headers = CIMultiDict({'Content-Type': 'text/html; charset=koi8-r'})
     resp = Response(body='текст'.encode('koi8-r'),
                     headers=headers)
@@ -1084,28 +1074,40 @@ def test_body_in_ctor_with_content_type_header_multidict():
     assert 'koi8-r' == resp.charset
 
 
-def test_text_with_empty_payload():
+def test_text_with_empty_payload() -> None:
     resp = Response(status=200)
     assert resp.body is None
     assert resp.text is None
 
 
-def test_response_with_content_length_header_without_body():
+def test_response_with_content_length_header_without_body() -> None:
     resp = Response(headers={'Content-Length': 123})
     assert resp.content_length == 123
 
 
+def test_response_with_immutable_headers() -> None:
+    resp = Response(text='text',
+                    headers=CIMultiDictProxy(CIMultiDict({'Header': 'Value'})))
+    assert resp.headers == {'Header': 'Value',
+                            'Content-Type': 'text/plain; charset=utf-8'}
+
+
+def test_weakref_creation() -> None:
+    resp = Response()
+    weakref.ref(resp)
+
+
 class TestJSONResponse:
 
-    def test_content_type_is_application_json_by_default(self):
+    def test_content_type_is_application_json_by_default(self) -> None:
         resp = json_response('')
         assert 'application/json' == resp.content_type
 
-    def test_passing_text_only(self):
+    def test_passing_text_only(self) -> None:
         resp = json_response(text=json.dumps('jaysawn'))
         assert resp.text == json.dumps('jaysawn')
 
-    def test_data_and_text_raises_value_error(self):
+    def test_data_and_text_raises_value_error(self) -> None:
         with pytest.raises(ValueError) as excinfo:
             json_response(data='foo', text='bar')
         expected_message = (
@@ -1113,7 +1115,7 @@ class TestJSONResponse:
         )
         assert expected_message == excinfo.value.args[0]
 
-    def test_data_and_body_raises_value_error(self):
+    def test_data_and_body_raises_value_error(self) -> None:
         with pytest.raises(ValueError) as excinfo:
             json_response(data='foo', body=b'bar')
         expected_message = (
@@ -1121,11 +1123,11 @@ class TestJSONResponse:
         )
         assert expected_message == excinfo.value.args[0]
 
-    def test_text_is_json_encoded(self):
+    def test_text_is_json_encoded(self) -> None:
         resp = json_response({'foo': 42})
         assert json.dumps({'foo': 42}) == resp.text
 
-    def test_content_type_is_overrideable(self):
+    def test_content_type_is_overrideable(self) -> None:
         resp = json_response({'foo': 42},
                              content_type='application/vnd.json+api')
         assert 'application/vnd.json+api' == resp.content_type

@@ -1,34 +1,70 @@
 import asyncio
 import codecs
 import io
-import json
 import re
 import sys
 import traceback
 import warnings
-from collections import namedtuple
 from hashlib import md5, sha1, sha256
 from http.cookies import CookieError, Morsel, SimpleCookie
-from types import MappingProxyType
+from types import MappingProxyType, TracebackType
+from typing import (  # noqa
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 import attr
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs, helpers, http, multipart, payload
-from .client_exceptions import (ClientConnectionError, ClientOSError,
-                                ClientResponseError, ContentTypeError,
-                                InvalidURL, ServerFingerprintMismatch)
+from .abc import AbstractStreamWriter
+from .client_exceptions import (
+    ClientConnectionError,
+    ClientOSError,
+    ClientResponseError,
+    ContentTypeError,
+    InvalidURL,
+    ServerFingerprintMismatch,
+)
 from .formdata import FormData
-from .helpers import PY_36, HeadersMixin, TimerNoop, noop, reify, set_result
+from .helpers import (  # noqa
+    PY_36,
+    BaseTimerContext,
+    BasicAuth,
+    HeadersMixin,
+    TimerNoop,
+    is_expected_content_type,
+    noop,
+    reify,
+    set_result,
+)
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, StreamWriter
 from .log import client_logger
-
+from .streams import StreamReader  # noqa
+from .typedefs import (
+    DEFAULT_JSON_DECODER,
+    JSONDecoder,
+    LooseCookies,
+    LooseHeaders,
+    RawHeaders,
+)
 
 try:
     import ssl
+    from ssl import SSLContext
 except ImportError:  # pragma: no cover
-    ssl = None
+    ssl = None  # type: ignore
+    SSLContext = object  # type: ignore
 
 try:
     import cchardet as chardet
@@ -39,25 +75,28 @@ except ImportError:  # pragma: no cover
 __all__ = ('ClientRequest', 'ClientResponse', 'RequestInfo', 'Fingerprint')
 
 
-json_re = re.compile('^application/(?:[\w.+-]+?\+)?json')
+if TYPE_CHECKING:  # pragma: no cover
+    from .client import ClientSession  # noqa
+    from .connector import Connection  # noqa
+    from .tracing import Trace  # noqa
 
 
 @attr.s(frozen=True, slots=True)
 class ContentDisposition:
-    type = attr.ib(type=str)
-    parameters = attr.ib(type=MappingProxyType)
-    filename = attr.ib(type=str)
+    type = attr.ib(type=str)  # type: Optional[str]
+    parameters = attr.ib(type=MappingProxyType)  # type: MappingProxyType[str, str]  # noqa
+    filename = attr.ib(type=str)  # type: Optional[str]
 
 
 @attr.s(frozen=True, slots=True)
 class RequestInfo:
     url = attr.ib(type=URL)
     method = attr.ib(type=str)
-    headers = attr.ib(type=CIMultiDictProxy)
+    headers = attr.ib(type=CIMultiDictProxy)  # type: CIMultiDictProxy[str]
     real_url = attr.ib(type=URL)
 
     @real_url.default
-    def real_url_default(self):
+    def real_url_default(self) -> URL:
         return self.url
 
 
@@ -68,7 +107,7 @@ class Fingerprint:
         32: sha256,
     }
 
-    def __init__(self, fingerprint, ssl_context=None):
+    def __init__(self, fingerprint: bytes, ssl_context=None) -> None:
         digestlen = len(fingerprint)
         hashfunc = self.HASHFUNC_BY_DIGESTLEN.get(digestlen)
         if not hashfunc:
@@ -81,14 +120,14 @@ class Fingerprint:
         self._ssl_context = ssl_context
 
     @property
-    def fingerprint(self):
+    def fingerprint(self) -> bytes:
         return self._fingerprint
 
     @property
     def ssl_context(self):
         return self._ssl_context
 
-    def check(self, transport):
+    def check(self, transport: asyncio.Transport) -> None:
         if not transport.get_extra_info('sslcontext'):
             return
         sslobj = transport.get_extra_info('ssl_object')
@@ -106,48 +145,17 @@ else:  # pragma: no cover
     SSL_ALLOWED_TYPES = type(None)
 
 
-def _merge_ssl_params(ssl, verify_ssl, ssl_context, fingerprint):
-    if verify_ssl is not None and not verify_ssl:
-        warnings.warn("verify_ssl is deprecated, use ssl=False instead",
-                      DeprecationWarning,
-                      stacklevel=3)
-        if ssl is not None:
-            raise ValueError("verify_ssl, ssl_context, fingerprint and ssl "
-                             "parameters are mutually exclusive")
-        else:
-            ssl = False
-    if ssl_context is not None:
-        warnings.warn("ssl_context is deprecated, use ssl=context instead",
-                      DeprecationWarning,
-                      stacklevel=3)
-        if ssl is not None:
-            raise ValueError("verify_ssl, ssl_context, fingerprint and ssl "
-                             "parameters are mutually exclusive")
-        else:
-            ssl = ssl_context
-    if fingerprint is not None:
-        warnings.warn("fingerprint is deprecated, "
-                      "use ssl=Fingerprint(fingerprint) instead",
-                      DeprecationWarning,
-                      stacklevel=3)
-        if ssl is not None:
-            raise ValueError("verify_ssl, ssl_context, fingerprint and ssl "
-                             "parameters are mutually exclusive")
-        else:
-            ssl = Fingerprint(fingerprint)
-    if not isinstance(ssl, SSL_ALLOWED_TYPES):
-        raise TypeError("ssl should be SSLContext, bool, Fingerprint or None, "
-                        "got {!r} instead.".format(ssl))
-    return ssl
-
-
-ConnectionKey = namedtuple('ConnectionKey', ['host', 'port', 'ssl'])
-
-
-def _is_expected_content_type(response_content_type, expected_content_type):
-    if expected_content_type == 'application/json':
-        return json_re.match(response_content_type)
-    return expected_content_type in response_content_type
+@attr.s(slots=True, frozen=True)
+class ConnectionKey:
+    # the key should contain an information about used proxy / TLS
+    # to prevent reusing wrong connections from a pool
+    host = attr.ib(type=str)
+    port = attr.ib(type=int)  # type: Optional[int]
+    is_ssl = attr.ib(type=bool)
+    ssl = attr.ib()  # type: Union[SSLContext, None, bool, Fingerprint]
+    proxy = attr.ib()  # type: Optional[URL]
+    proxy_auth = attr.ib()  # type: Optional[BasicAuth]
+    proxy_headers_hash = attr.ib(type=int)  # type: Optional[int] # noqa # hash(CIMultiDict)
 
 
 class ClientRequest:
@@ -168,7 +176,6 @@ class ClientRequest:
     body = b''
     auth = None
     response = None
-    response_class = None
 
     _writer = None  # async task for streaming data
     _continue = None  # waiter future for '100 Continue' response
@@ -178,24 +185,32 @@ class ClientRequest:
     # because _writer is instance method, thus it keeps a reference to self.
     # Until writer has finished finalizer will not be called.
 
-    def __init__(self, method, url, *,
-                 params=None, headers=None, skip_auto_headers=frozenset(),
-                 data=None, cookies=None,
-                 auth=None, version=http.HttpVersion11, compress=None,
-                 chunked=None, expect100=False,
-                 loop=None, response_class=None,
-                 proxy=None, proxy_auth=None,
-                 timer=None, session=None, auto_decompress=True,
-                 ssl=None,
-                 proxy_headers=None,
-                 traces=None):
-
-        if loop is None:
-            loop = asyncio.get_event_loop()
+    def __init__(self, method: str, url: URL, *,
+                 params: Optional[Mapping[str, str]]=None,
+                 headers: Optional[LooseHeaders]=None,
+                 skip_auto_headers: Iterable[str]=frozenset(),
+                 data: Any=None,
+                 cookies: Optional[LooseCookies]=None,
+                 auth: Optional[BasicAuth]=None,
+                 version: http.HttpVersion=http.HttpVersion11,
+                 compress: Optional[str]=None,
+                 chunked: Optional[bool]=None,
+                 expect100: bool=False,
+                 loop: asyncio.AbstractEventLoop,
+                 response_class: Optional[Type['ClientResponse']]=None,
+                 proxy: Optional[URL]=None,
+                 proxy_auth: Optional[BasicAuth]=None,
+                 timer: Optional[BaseTimerContext]=None,
+                 session: Optional['ClientSession']=None,
+                 ssl: Union[SSLContext, bool, Fingerprint, None]=None,
+                 proxy_headers: Optional[LooseHeaders]=None,
+                 traces: Optional[List['Trace']]=None):
 
         assert isinstance(url, URL), url
         assert isinstance(proxy, (URL, type(None))), proxy
-        self._session = session
+        # FIXME: session is None in tests only, need to fix tests
+        # assert session is not None
+        self._session = cast('ClientSession', session)
         if params:
             q = MultiDict(url.query)
             url2 = url.with_query(params)
@@ -208,9 +223,12 @@ class ClientRequest:
         self.compress = compress
         self.loop = loop
         self.length = None
-        self.response_class = response_class or ClientResponse
+        if response_class is None:
+            real_response_class = ClientResponse
+        else:
+            real_response_class = response_class
+        self.response_class = real_response_class  # type: Type[ClientResponse]
         self._timer = timer if timer is not None else TimerNoop()
-        self._auto_decompress = auto_decompress
         self._ssl = ssl
 
         if loop.get_debug():
@@ -233,34 +251,44 @@ class ClientRequest:
             traces = []
         self._traces = traces
 
-    def is_ssl(self):
+    def is_ssl(self) -> bool:
         return self.url.scheme in ('https', 'wss')
 
     @property
-    def ssl(self):
+    def ssl(self) -> Union['SSLContext', None, bool, Fingerprint]:
         return self._ssl
 
     @property
-    def connection_key(self):
-        return ConnectionKey(self.host, self.port, self.is_ssl())
+    def connection_key(self) -> ConnectionKey:
+        proxy_headers = self.proxy_headers
+        if proxy_headers:
+            h = hash(tuple((k, v) for k, v in proxy_headers.items()))  # type: Optional[int]  # noqa
+        else:
+            h = None
+        return ConnectionKey(self.host, self.port, self.is_ssl(),
+                             self.ssl,
+                             self.proxy, self.proxy_auth, h)
 
     @property
-    def host(self):
-        return self.url.host
+    def host(self) -> str:
+        ret = self.url.raw_host
+        assert ret is not None
+        return ret
 
     @property
-    def port(self):
+    def port(self) -> Optional[int]:
         return self.url.port
 
     @property
-    def request_info(self):
+    def request_info(self) -> RequestInfo:
+        headers = CIMultiDictProxy(self.headers)  # type: CIMultiDictProxy[str]
         return RequestInfo(self.url, self.method,
-                           self.headers, self.original_url)
+                           headers, self.original_url)
 
-    def update_host(self, url):
+    def update_host(self, url: URL) -> None:
         """Update destination host, port and connection type (ssl)."""
         # get host/port
-        if not url.host:
+        if not url.raw_host:
             raise InvalidURL(url)
 
         # basic auth info
@@ -268,7 +296,7 @@ class ClientRequest:
         if username:
             self.auth = helpers.BasicAuth(username, password or '')
 
-    def update_version(self, version):
+    def update_version(self, version: Union[http.HttpVersion, str]) -> None:
         """Convert request version to two elements tuple.
 
         parser HTTP version '1.1' => (1, 1)
@@ -276,65 +304,75 @@ class ClientRequest:
         if isinstance(version, str):
             v = [l.strip() for l in version.split('.', 1)]
             try:
-                version = int(v[0]), int(v[1])
+                version = http.HttpVersion(int(v[0]), int(v[1]))
             except ValueError:
                 raise ValueError(
                     'Can not parse http version number: {}'
                     .format(version)) from None
         self.version = version
 
-    def update_headers(self, headers):
+    def update_headers(self, headers: Optional[LooseHeaders]) -> None:
         """Update request headers."""
-        self.headers = CIMultiDict()
+        self.headers = CIMultiDict()  # type: CIMultiDict[str]
+
+        # add host
+        netloc = cast(str, self.url.raw_host)
+        if helpers.is_ipv6_address(netloc):
+            netloc = '[{}]'.format(netloc)
+        if self.url.port is not None and not self.url.is_default_port():
+            netloc += ':' + str(self.url.port)
+        self.headers[hdrs.HOST] = netloc
+
         if headers:
             if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
-                headers = headers.items()
+                headers = headers.items()  # type: ignore
 
             for key, value in headers:
-                self.headers.add(key, value)
+                # A special case for Host header
+                if key.lower() == 'host':
+                    self.headers[key] = value
+                else:
+                    self.headers.add(key, value)
 
-    def update_auto_headers(self, skip_auto_headers):
+    def update_auto_headers(self, skip_auto_headers: Iterable[str]) -> None:
         self.skip_auto_headers = CIMultiDict(
             (hdr, None) for hdr in sorted(skip_auto_headers))
         used_headers = self.headers.copy()
-        used_headers.extend(self.skip_auto_headers)
+        used_headers.extend(self.skip_auto_headers)  # type: ignore
 
         for hdr, val in self.DEFAULT_HEADERS.items():
             if hdr not in used_headers:
                 self.headers.add(hdr, val)
 
-        # add host
-        if hdrs.HOST not in used_headers:
-            netloc = self.url.raw_host
-            if not self.url.is_default_port():
-                netloc += ':' + str(self.url.port)
-            self.headers[hdrs.HOST] = netloc
-
         if hdrs.USER_AGENT not in used_headers:
             self.headers[hdrs.USER_AGENT] = SERVER_SOFTWARE
 
-    def update_cookies(self, cookies):
+    def update_cookies(self, cookies: Optional[LooseCookies]) -> None:
         """Update request cookies header."""
         if not cookies:
             return
 
-        c = SimpleCookie()
+        c = SimpleCookie()  # type: SimpleCookie[str]
         if hdrs.COOKIE in self.headers:
             c.load(self.headers.get(hdrs.COOKIE, ''))
             del self.headers[hdrs.COOKIE]
 
-        for name, value in cookies.items():
+        if isinstance(cookies, Mapping):
+            iter_cookies = cookies.items()
+        else:
+            iter_cookies = cookies  # type: ignore
+        for name, value in iter_cookies:
             if isinstance(value, Morsel):
                 # Preserve coded_value
                 mrsl_val = value.get(value.key, Morsel())
                 mrsl_val.set(value.key, value.value, value.coded_value)
                 c[name] = mrsl_val
             else:
-                c[name] = value
+                c[name] = value  # type: ignore
 
         self.headers[hdrs.COOKIE] = c.output(header='', sep=';').strip()
 
-    def update_content_encoding(self, data):
+    def update_content_encoding(self, data: Any) -> None:
         """Set request content encoding."""
         if not data:
             return
@@ -351,7 +389,7 @@ class ClientRequest:
             self.headers[hdrs.CONTENT_ENCODING] = self.compress
             self.chunked = True  # enable chunked, no need to deal with length
 
-    def update_transfer_encoding(self):
+    def update_transfer_encoding(self) -> None:
         """Analyze transfer-encoding header."""
         te = self.headers.get(hdrs.TRANSFER_ENCODING, '').lower()
 
@@ -372,7 +410,7 @@ class ClientRequest:
             if hdrs.CONTENT_LENGTH not in self.headers:
                 self.headers[hdrs.CONTENT_LENGTH] = str(len(self.body))
 
-    def update_auth(self, auth):
+    def update_auth(self, auth: Optional[BasicAuth]) -> None:
         """Set basic auth."""
         if auth is None:
             auth = self.auth
@@ -384,7 +422,7 @@ class ClientRequest:
 
         self.headers[hdrs.AUTHORIZATION] = auth.encode()
 
-    def update_body_from_data(self, body):
+    def update_body_from_data(self, body: Any) -> None:
         if not body:
             return
 
@@ -409,18 +447,16 @@ class ClientRequest:
                     if hdrs.CONTENT_LENGTH not in self.headers:
                         self.headers[hdrs.CONTENT_LENGTH] = str(size)
 
-        # set content-type
-        if (hdrs.CONTENT_TYPE not in self.headers and
-                hdrs.CONTENT_TYPE not in self.skip_auto_headers):
-            self.headers[hdrs.CONTENT_TYPE] = body.content_type
-
         # copy payload headers
-        if body.headers:
-            for (key, value) in body.headers.items():
-                if key not in self.headers:
-                    self.headers[key] = value
+        assert body.headers
+        for (key, value) in body.headers.items():
+            if key in self.headers:
+                continue
+            if key in self.skip_auto_headers:
+                continue
+            self.headers[key] = value
 
-    def update_expect_continue(self, expect=False):
+    def update_expect_continue(self, expect: bool=False) -> None:
         if expect:
             self.headers[hdrs.EXPECT] = '100-continue'
         elif self.headers.get(hdrs.EXPECT, '').lower() == '100-continue':
@@ -429,7 +465,9 @@ class ClientRequest:
         if expect:
             self._continue = self.loop.create_future()
 
-    def update_proxy(self, proxy, proxy_auth, proxy_headers):
+    def update_proxy(self, proxy: Optional[URL],
+                     proxy_auth: Optional[BasicAuth],
+                     proxy_headers: Optional[LooseHeaders]) -> None:
         if proxy and not proxy.scheme == 'http':
             raise ValueError("Only http proxies are supported")
         if proxy_auth and not isinstance(proxy_auth, helpers.BasicAuth):
@@ -438,7 +476,7 @@ class ClientRequest:
         self.proxy_auth = proxy_auth
         self.proxy_headers = proxy_headers
 
-    def keep_alive(self):
+    def keep_alive(self) -> bool:
         if self.version < HttpVersion10:
             # keep alive not supported at all
             return False
@@ -452,22 +490,25 @@ class ClientRequest:
 
         return True
 
-    async def write_bytes(self, writer, conn):
+    async def write_bytes(self, writer: AbstractStreamWriter,
+                          conn: 'Connection') -> None:
         """Support coroutines that yields bytes objects."""
         # 100 response
         if self._continue is not None:
             await writer.drain()
             await self._continue
 
+        protocol = conn.protocol
+        assert protocol is not None
         try:
             if isinstance(self.body, payload.Payload):
                 await self.body.write(writer)
             else:
                 if isinstance(self.body, (bytes, bytearray)):
-                    self.body = (self.body,)
+                    self.body = (self.body,)  # type: ignore
 
                 for chunk in self.body:
-                    await writer.write(chunk)
+                    await writer.write(chunk)  # type: ignore
 
             await writer.write_eof()
         except OSError as exc:
@@ -476,22 +517,26 @@ class ClientRequest:
                 'Can not write request body for %s' % self.url)
             new_exc.__context__ = exc
             new_exc.__cause__ = exc
-            conn.protocol.set_exception(new_exc)
+            protocol.set_exception(new_exc)
         except asyncio.CancelledError as exc:
             if not conn.closed:
-                conn.protocol.set_exception(exc)
+                protocol.set_exception(exc)
         except Exception as exc:
-            conn.protocol.set_exception(exc)
+            protocol.set_exception(exc)
         finally:
             self._writer = None
 
-    async def send(self, conn):
+    async def send(self, conn: 'Connection') -> 'ClientResponse':
         # Specify request target:
         # - CONNECT request must send authority form URI
         # - not CONNECT proxy must send absolute form URI
         # - most common is origin form URI
         if self.method == hdrs.METH_CONNECT:
-            path = '{}:{}'.format(self.url.raw_host, self.url.port)
+            connect_host = self.url.raw_host
+            assert connect_host is not None
+            if helpers.is_ipv6_address(connect_host):
+                connect_host = '[{}]'.format(connect_host)
+            path = '{}:{}'.format(connect_host, self.url.port)
         elif self.proxy and not self.is_ssl():
             path = str(self.url)
         else:
@@ -499,8 +544,10 @@ class ClientRequest:
             if self.url.raw_query_string:
                 path += '?' + self.url.raw_query_string
 
+        protocol = conn.protocol
+        assert protocol is not None
         writer = StreamWriter(
-            conn.protocol, self.loop,
+            protocol, self.loop,
             on_chunk_sent=self._on_chunk_request_sent
         )
 
@@ -536,31 +583,32 @@ class ClientRequest:
 
         self._writer = self.loop.create_task(self.write_bytes(writer, conn))
 
-        self.response = self.response_class(
+        response_class = self.response_class
+        assert response_class is not None
+        self.response = response_class(
             self.method, self.original_url,
             writer=self._writer, continue100=self._continue, timer=self._timer,
             request_info=self.request_info,
-            auto_decompress=self._auto_decompress,
             traces=self._traces,
             loop=self.loop,
             session=self._session
         )
         return self.response
 
-    async def close(self):
+    async def close(self) -> None:
         if self._writer is not None:
             try:
                 await self._writer
             finally:
                 self._writer = None
 
-    def terminate(self):
+    def terminate(self) -> None:
         if self._writer is not None:
             if not self.loop.is_closed():
                 self._writer.cancel()
             self._writer = None
 
-    async def _on_chunk_request_sent(self, chunk):
+    async def _on_chunk_request_sent(self, chunk: bytes) -> None:
         for trace in self._traces:
             await trace.send_request_chunk_sent(chunk)
 
@@ -569,84 +617,87 @@ class ClientResponse(HeadersMixin):
 
     # from the Status-Line of the response
     version = None  # HTTP-Version
-    status = None   # Status-Code
+    status = None   # type: int  # Status-Code
     reason = None   # Reason-Phrase
 
-    content = None  # Payload stream
-    headers = None  # Response headers, CIMultiDictProxy
-    raw_headers = None  # Response raw headers, a sequence of pairs
+    content = None  # type: StreamReader  # Payload stream
+    _headers = None  # type: CIMultiDictProxy[str]  # Response headers
+    _raw_headers = None  # type: RawHeaders  # Response raw headers
 
     _connection = None  # current connection
-    _reader = None     # input stream
     _source_traceback = None
     # setted up by ClientRequest after ClientResponse object creation
     # post-init stage allows to not change ctor signature
     _closed = True  # to allow __del__ for non-initialized properly response
+    _released = False
 
-    def __init__(self, method, url, *,
-                 writer, continue100, timer,
-                 request_info, auto_decompress,
-                 traces, loop, session):
+    def __init__(self, method: str, url: URL, *,
+                 writer: 'asyncio.Task[None]',
+                 continue100: Optional['asyncio.Future[bool]'],
+                 timer: BaseTimerContext,
+                 request_info: RequestInfo,
+                 traces: List['Trace'],
+                 loop: asyncio.AbstractEventLoop,
+                 session: 'ClientSession') -> None:
         assert isinstance(url, URL)
+        super().__init__()
 
         self.method = method
-        self.headers = None
-        self.cookies = SimpleCookie()
+        self.cookies = SimpleCookie()  # type: SimpleCookie[str]
 
         self._real_url = url
         self._url = url.with_fragment(None)
-        self._body = None
-        self._writer = writer
+        self._body = None  # type: Optional[bytes]
+        self._writer = writer  # type: Optional[asyncio.Task[None]]
         self._continue = continue100  # None by default
         self._closed = True
-        self._history = ()
+        self._history = ()  # type: Tuple[ClientResponse, ...]
         self._request_info = request_info
         self._timer = timer if timer is not None else TimerNoop()
-        self._auto_decompress = auto_decompress  # True by default
-        self._cache = {}  # required for @reify method decorator
+        self._cache = {}  # type: Dict[str, Any]
         self._traces = traces
         self._loop = loop
-        self._session = session  # store a reference to session #1985
+        # store a reference to session #1985
+        self._session = session  # type: Optional[ClientSession]
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
-    @property
-    def url(self):
+    @reify
+    def url(self) -> URL:
         return self._url
 
-    @property
-    def url_obj(self):
-        warnings.warn(
-            "Deprecated, use .url #1654", DeprecationWarning, stacklevel=2)
-        return self._url
-
-    @property
-    def real_url(self):
+    @reify
+    def real_url(self) -> URL:
         return self._real_url
 
-    @property
-    def host(self):
+    @reify
+    def host(self) -> str:
+        assert self._url.host is not None
         return self._url.host
 
-    @property
-    def _headers(self):
-        return self.headers
+    @reify
+    def headers(self) -> 'CIMultiDictProxy[str]':
+        return self._headers
 
-    @property
-    def request_info(self):
+    @reify
+    def raw_headers(self) -> RawHeaders:
+        return self._raw_headers
+
+    @reify
+    def request_info(self) -> RequestInfo:
         return self._request_info
 
     @reify
-    def content_disposition(self):
+    def content_disposition(self) -> Optional[ContentDisposition]:
         raw = self._headers.get(hdrs.CONTENT_DISPOSITION)
         if raw is None:
             return None
-        disposition_type, params = multipart.parse_content_disposition(raw)
-        params = MappingProxyType(params)
+        disposition_type, params_dct = multipart.parse_content_disposition(raw)
+        params = MappingProxyType(params_dct)
         filename = multipart.content_disposition_filename(params)
         return ContentDisposition(disposition_type, params, filename)
 
-    def __del__(self, _warnings=warnings):
+    def __del__(self, _warnings: Any=warnings) -> None:
         if self._closed:
             return
 
@@ -668,7 +719,7 @@ class ClientResponse(HeadersMixin):
                     context['source_traceback'] = self._source_traceback
                 self._loop.call_exception_handler(context)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         out = io.StringIO()
         ascii_encodable_url = str(self.url)
         if self.reason:
@@ -684,38 +735,46 @@ class ClientResponse(HeadersMixin):
         return out.getvalue()
 
     @property
-    def connection(self):
+    def connection(self) -> Optional['Connection']:
         return self._connection
 
-    @property
-    def history(self):
-        """A sequence of of responses, if redirects occurred."""
+    @reify
+    def history(self) -> Tuple['ClientResponse', ...]:
+        """A sequence of responses, if redirects occurred."""
         return self._history
 
-    @property
-    def links(self):
+    @reify
+    def links(self) -> 'MultiDictProxy[MultiDictProxy[Union[str, URL]]]':
         links_str = ", ".join(self.headers.getall("link", []))
 
-        links = MultiDict()
-
         if not links_str:
-            return MultiDictProxy(links)
+            return MultiDictProxy(MultiDict())
+
+        links = MultiDict()  # type: MultiDict[MultiDictProxy[Union[str, URL]]]
 
         for val in re.split(r",(?=\s*<)", links_str):
-            url, params = re.match(r"\s*<(.*)>(.*)", val).groups()
-            params = params.split(";")[1:]
+            match = re.match(r"\s*<(.*)>(.*)", val)
+            if match is None:  # pragma: no cover
+                # the check exists to suppress mypy error
+                continue
+            url, params_str = match.groups()
+            params = params_str.split(";")[1:]
 
-            link = MultiDict()
+            link = MultiDict()  # type: MultiDict[Union[str, URL]]
 
             for param in params:
-                key, _, value, _ = re.match(
+                match = re.match(
                     r"^\s*(\S*)\s*=\s*(['\"]?)(.*?)(\2)\s*$",
                     param, re.M
-                ).groups()
+                )
+                if match is None:  # pragma: no cover
+                    # the check exists to suppress mypy error
+                    continue
+                key, _, value, _ = match.groups()
 
                 link.add(key, value)
 
-            key = link.get("rel", url)
+            key = link.get("rel", url)  # type: ignore
 
             link.add("url", self.url.join(URL(url)))
 
@@ -723,23 +782,17 @@ class ClientResponse(HeadersMixin):
 
         return MultiDictProxy(links)
 
-    async def start(self, connection, read_until_eof=False):
+    async def start(self, connection: 'Connection') -> 'ClientResponse':
         """Start response processing."""
         self._closed = False
         self._protocol = connection.protocol
         self._connection = connection
 
-        connection.protocol.set_response_params(
-            timer=self._timer,
-            skip_payload=self.method.lower() == 'head',
-            read_until_eof=read_until_eof,
-            auto_decompress=self._auto_decompress)
-
         with self._timer:
             while True:
                 # read response
                 try:
-                    (message, payload) = await self._protocol.read()
+                    message, payload = await self._protocol.read()  # type: ignore  # noqa
                 except http.HttpProcessingError as exc:
                     raise ClientResponseError(
                         self.request_info, self.history,
@@ -763,8 +816,8 @@ class ClientResponse(HeadersMixin):
         self.reason = message.reason
 
         # headers
-        self.headers = CIMultiDictProxy(message.headers)
-        self.raw_headers = tuple(message.raw_headers)
+        self._headers = message.headers  # type is CIMultiDictProxy
+        self._raw_headers = message.raw_headers  # type is Tuple[bytes, bytes]
 
         # payload
         self.content = payload
@@ -778,7 +831,7 @@ class ClientResponse(HeadersMixin):
                     'Can not load response cookies: %s', exc)
         return self
 
-    def _response_eof(self):
+    def _response_eof(self) -> None:
         if self._closed:
             return
 
@@ -796,10 +849,12 @@ class ClientResponse(HeadersMixin):
         self._cleanup_writer()
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         return self._closed
 
-    def close(self):
+    def close(self) -> None:
+        if not self._released:
+            self._notify_content()
         if self._closed:
             return
 
@@ -811,9 +866,10 @@ class ClientResponse(HeadersMixin):
             self._connection.close()
             self._connection = None
         self._cleanup_writer()
-        self._notify_content()
 
-    def release(self):
+    def release(self) -> Any:
+        if not self._released:
+            self._notify_content()
         if self._closed:
             return noop()
 
@@ -823,11 +879,13 @@ class ClientResponse(HeadersMixin):
             self._connection = None
 
         self._cleanup_writer()
-        self._notify_content()
         return noop()
 
-    def raise_for_status(self):
+    def raise_for_status(self) -> None:
         if 400 <= self.status:
+            # reason should always be not None for a started response
+            assert self.reason is not None
+            self.release()
             raise ClientResponseError(
                 self.request_info,
                 self.history,
@@ -835,19 +893,20 @@ class ClientResponse(HeadersMixin):
                 message=self.reason,
                 headers=self.headers)
 
-    def _cleanup_writer(self):
+    def _cleanup_writer(self) -> None:
         if self._writer is not None:
             self._writer.cancel()
         self._writer = None
         self._session = None
 
-    def _notify_content(self):
+    def _notify_content(self) -> None:
         content = self.content
-        if content and content.exception() is None and not content.is_eof():
+        if content and content.exception() is None:
             content.set_exception(
                 ClientConnectionError('Connection closed'))
+        self._released = True
 
-    async def wait_for_close(self):
+    async def wait_for_close(self) -> None:
         if self._writer is not None:
             try:
                 await self._writer
@@ -855,7 +914,7 @@ class ClientResponse(HeadersMixin):
                 self._writer = None
         self.release()
 
-    async def read(self):
+    async def read(self) -> bytes:
         """Read response payload."""
         if self._body is None:
             try:
@@ -865,10 +924,12 @@ class ClientResponse(HeadersMixin):
             except BaseException:
                 self.close()
                 raise
+        elif self._released:
+            raise ClientConnectionError('Connection closed')
 
         return self._body
 
-    def get_encoding(self):
+    def get_encoding(self) -> str:
         ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
         mimetype = helpers.parse_mimetype(ctype)
 
@@ -882,6 +943,9 @@ class ClientResponse(HeadersMixin):
             if mimetype.type == 'application' and mimetype.subtype == 'json':
                 # RFC 7159 states that the default encoding is UTF-8.
                 encoding = 'utf-8'
+            elif self._body is None:
+                raise RuntimeError('Cannot guess the encoding of '
+                                   'a not yet read body')
             else:
                 encoding = chardet.detect(self._body)['encoding']
         if not encoding:
@@ -889,7 +953,8 @@ class ClientResponse(HeadersMixin):
 
         return encoding
 
-    async def text(self, encoding=None, errors='strict'):
+    async def text(self,
+                   encoding: Optional[str]=None, errors: str='strict') -> str:
         """Read response payload and decode."""
         if self._body is None:
             await self.read()
@@ -897,17 +962,18 @@ class ClientResponse(HeadersMixin):
         if encoding is None:
             encoding = self.get_encoding()
 
-        return self._body.decode(encoding, errors=errors)
+        return self._body.decode(encoding, errors=errors)  # type: ignore
 
-    async def json(self, *, encoding=None, loads=json.loads,
-                   content_type='application/json'):
+    async def json(self, *, encoding: str=None,
+                   loads: JSONDecoder=DEFAULT_JSON_DECODER,
+                   content_type: Optional[str]='application/json') -> Any:
         """Read and decodes JSON response."""
         if self._body is None:
             await self.read()
 
         if content_type:
             ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
-            if not _is_expected_content_type(ctype, content_type):
+            if not is_expected_content_type(ctype, content_type):
                 raise ContentTypeError(
                     self.request_info,
                     self.history,
@@ -915,19 +981,18 @@ class ClientResponse(HeadersMixin):
                              'unexpected mimetype: %s' % ctype),
                     headers=self.headers)
 
-        stripped = self._body.strip()
-        if not stripped:
-            return None
-
         if encoding is None:
             encoding = self.get_encoding()
 
-        return loads(stripped.decode(encoding))
+        return loads(self._body.decode(encoding))  # type: ignore
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> 'ClientResponse':
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self,
+                        exc_type: Optional[Type[BaseException]],
+                        exc_val: Optional[BaseException],
+                        exc_tb: Optional[TracebackType]) -> None:
         # similar to _RequestContextManager, we do not need to check
         # for exceptions, response object can closes connection
         # is state is broken

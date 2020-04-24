@@ -1,44 +1,48 @@
-import asyncio
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 
-from aiohttp.tracing import (Trace, TraceConfig,
-                             TraceConnectionCreateEndParams,
-                             TraceConnectionCreateStartParams,
-                             TraceConnectionQueuedEndParams,
-                             TraceConnectionQueuedStartParams,
-                             TraceConnectionReuseconnParams,
-                             TraceDnsCacheHitParams, TraceDnsCacheMissParams,
-                             TraceDnsResolveHostEndParams,
-                             TraceDnsResolveHostStartParams,
-                             TraceRequestChunkSentParams,
-                             TraceRequestEndParams,
-                             TraceRequestExceptionParams,
-                             TraceRequestRedirectParams,
-                             TraceRequestStartParams,
-                             TraceResponseChunkReceivedParams)
+from aiohttp.test_utils import make_mocked_coro
+from aiohttp.tracing import (
+    Trace,
+    TraceConfig,
+    TraceConnectionCreateEndParams,
+    TraceConnectionCreateStartParams,
+    TraceConnectionQueuedEndParams,
+    TraceConnectionQueuedStartParams,
+    TraceConnectionReuseconnParams,
+    TraceDnsCacheHitParams,
+    TraceDnsCacheMissParams,
+    TraceDnsResolveHostEndParams,
+    TraceDnsResolveHostStartParams,
+    TraceRequestChunkSentParams,
+    TraceRequestEndParams,
+    TraceRequestExceptionParams,
+    TraceRequestRedirectParams,
+    TraceRequestStartParams,
+    TraceResponseChunkReceivedParams,
+)
 
 
 class TestTraceConfig:
 
-    def test_trace_config_ctx_default(self):
+    def test_trace_config_ctx_default(self) -> None:
         trace_config = TraceConfig()
         assert isinstance(trace_config.trace_config_ctx(), SimpleNamespace)
 
-    def test_trace_config_ctx_factory(self):
+    def test_trace_config_ctx_factory(self) -> None:
         trace_config = TraceConfig(trace_config_ctx_factory=dict)
         assert isinstance(trace_config.trace_config_ctx(), dict)
 
-    def test_trace_config_ctx_request_ctx(self):
+    def test_trace_config_ctx_request_ctx(self) -> None:
         trace_request_ctx = Mock()
         trace_config = TraceConfig()
         trace_config_ctx = trace_config.trace_config_ctx(
             trace_request_ctx=trace_request_ctx)
         assert trace_config_ctx.trace_request_ctx is trace_request_ctx
 
-    def test_freeze(self):
+    def test_freeze(self) -> None:
         trace_config = TraceConfig()
         trace_config.freeze()
 
@@ -138,10 +142,10 @@ class TestTrace:
             TraceDnsCacheMissParams
         )
     ])
-    async def test_send(self, loop, signal, params, param_obj):
+    async def test_send(self, signal, params, param_obj) -> None:
         session = Mock()
         trace_request_ctx = Mock()
-        callback = Mock(side_effect=asyncio.coroutine(Mock()))
+        callback = Mock(side_effect=make_mocked_coro(Mock()))
 
         trace_config = TraceConfig()
         getattr(trace_config, "on_%s" % signal).append(callback)

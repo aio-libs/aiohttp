@@ -1,11 +1,9 @@
+.. module:: aiohttp.abc
+
 .. _aiohttp-abc:
 
 Abstract Base Classes
 =====================
-
-.. module:: aiohttp
-
-.. currentmodule:: aiohttp
 
 Abstract routing
 ----------------
@@ -18,7 +16,7 @@ but few of them are.
 aiohttp.web is built on top of few concepts: *application*, *router*,
 *request* and *response*.
 
-*router* is a *pluggable* part: a library user may build a *router*
+*router* is a *plugable* part: a library user may build a *router*
 from scratch, all other parts should work with new router seamlessly.
 
 :class:`AbstractRouter` has the only mandatory method:

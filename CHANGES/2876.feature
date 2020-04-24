@@ -1,1 +1,0 @@
-Extract route definitions into separate ``web_routedef.py`` file

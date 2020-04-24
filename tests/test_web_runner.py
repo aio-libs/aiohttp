@@ -5,6 +5,8 @@ import signal
 import pytest
 
 from aiohttp import web
+from aiohttp.abc import AbstractAccessLogger
+from aiohttp.test_utils import get_unused_port_socket
 
 
 @pytest.fixture
@@ -26,7 +28,7 @@ def make_runner(loop, app):
         loop.run_until_complete(runner.cleanup())
 
 
-async def test_site_for_nonfrozen_app(make_runner):
+async def test_site_for_nonfrozen_app(make_runner) -> None:
     runner = make_runner()
     with pytest.raises(RuntimeError):
         web.TCPSite(runner)
@@ -35,7 +37,7 @@ async def test_site_for_nonfrozen_app(make_runner):
 
 @pytest.mark.skipif(platform.system() == "Windows",
                     reason="the test is not valid for Windows")
-async def test_runner_setup_handle_signals(make_runner):
+async def test_runner_setup_handle_signals(make_runner) -> None:
     runner = make_runner(handle_signals=True)
     await runner.setup()
     assert signal.getsignal(signal.SIGTERM) is not signal.SIG_DFL
@@ -45,7 +47,7 @@ async def test_runner_setup_handle_signals(make_runner):
 
 @pytest.mark.skipif(platform.system() == "Windows",
                     reason="the test is not valid for Windows")
-async def test_runner_setup_without_signal_handling(make_runner):
+async def test_runner_setup_without_signal_handling(make_runner) -> None:
     runner = make_runner(handle_signals=False)
     await runner.setup()
     assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
@@ -53,10 +55,11 @@ async def test_runner_setup_without_signal_handling(make_runner):
     assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
 
 
-async def test_site_double_added(make_runner):
+async def test_site_double_added(make_runner) -> None:
+    _sock = get_unused_port_socket('127.0.0.1')
     runner = make_runner()
     await runner.setup()
-    site = web.TCPSite(runner)
+    site = web.SockSite(runner, _sock)
     await site.start()
     with pytest.raises(RuntimeError):
         await site.start()
@@ -64,7 +67,7 @@ async def test_site_double_added(make_runner):
     assert len(runner.sites) == 1
 
 
-async def test_site_stop_not_started(make_runner):
+async def test_site_stop_not_started(make_runner) -> None:
     runner = make_runner()
     await runner.setup()
     site = web.TCPSite(runner)
@@ -74,13 +77,13 @@ async def test_site_stop_not_started(make_runner):
     assert len(runner.sites) == 0
 
 
-async def test_custom_log_format(make_runner):
+async def test_custom_log_format(make_runner) -> None:
     runner = make_runner(access_log_format='abc')
     await runner.setup()
     assert runner.server._kwargs['access_log_format'] == 'abc'
 
 
-async def test_unreg_site(make_runner):
+async def test_unreg_site(make_runner) -> None:
     runner = make_runner()
     await runner.setup()
     site = web.TCPSite(runner)
@@ -88,11 +91,102 @@ async def test_unreg_site(make_runner):
         runner._unreg_site(site)
 
 
-async def test_app_property(make_runner, app):
+async def test_app_property(make_runner, app) -> None:
     runner = make_runner()
     assert runner.app is app
 
 
-def test_non_app():
+def test_non_app() -> None:
     with pytest.raises(TypeError):
         web.AppRunner(object())
+
+
+def test_app_handler_args() -> None:
+    app = web.Application(handler_args={'test': True})
+    runner = web.AppRunner(app)
+    assert runner._kwargs == {'access_log_class': web.AccessLogger,
+                              'test': True}
+
+
+async def test_app_make_handler_access_log_class_bad_type1() -> None:
+    class Logger:
+        pass
+
+    app = web.Application()
+
+    with pytest.raises(TypeError):
+        web.AppRunner(app, access_log_class=Logger)
+
+
+async def test_app_make_handler_access_log_class_bad_type2() -> None:
+    class Logger:
+        pass
+
+    app = web.Application(handler_args={'access_log_class': Logger})
+
+    with pytest.raises(TypeError):
+        web.AppRunner(app)
+
+
+async def test_app_make_handler_access_log_class1() -> None:
+
+    class Logger(AbstractAccessLogger):
+
+        def log(self, request, response, time):
+            pass
+
+    app = web.Application()
+    runner = web.AppRunner(app, access_log_class=Logger)
+    assert runner._kwargs['access_log_class'] is Logger
+
+
+async def test_app_make_handler_access_log_class2() -> None:
+
+    class Logger(AbstractAccessLogger):
+
+        def log(self, request, response, time):
+            pass
+
+    app = web.Application(handler_args={'access_log_class': Logger})
+    runner = web.AppRunner(app)
+    assert runner._kwargs['access_log_class'] is Logger
+
+
+async def test_addresses(make_runner, unix_sockname) -> None:
+    _sock = get_unused_port_socket('127.0.0.1')
+    runner = make_runner()
+    await runner.setup()
+    tcp = web.SockSite(runner, _sock)
+    await tcp.start()
+    unix = web.UnixSite(runner, unix_sockname)
+    await unix.start()
+    actual_addrs = runner.addresses
+    expected_host, expected_post = _sock.getsockname()[:2]
+    assert actual_addrs == [(expected_host, expected_post), unix_sockname]
+
+
+@pytest.mark.skipif(platform.system() != "Windows",
+                    reason="Proactor Event loop present only in Windows")
+async def test_named_pipe_runner_wrong_loop(
+    app,
+    selector_loop,
+    pipe_name
+) -> None:
+    runner = web.AppRunner(app)
+    await runner.setup()
+    with pytest.raises(RuntimeError):
+        web.NamedPipeSite(runner, pipe_name)
+
+
+@pytest.mark.skipif(platform.system() != "Windows",
+                    reason="Proactor Event loop present only in Windows")
+async def test_named_pipe_runner_proactor_loop(
+    proactor_loop,
+    app,
+    pipe_name
+) -> None:
+    runner = web.AppRunner(app)
+    await runner.setup()
+    pipe = web.NamedPipeSite(runner, pipe_name)
+    await pipe.start()
+    await runner.cleanup()

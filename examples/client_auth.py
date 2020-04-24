@@ -12,12 +12,11 @@ async def fetch(session):
         print(body)
 
 
-async def go(loop):
+async def go():
     async with aiohttp.ClientSession(
-            auth=aiohttp.BasicAuth('andrew', 'password'),
-            loop=loop) as session:
+            auth=aiohttp.BasicAuth('andrew', 'password')) as session:
         await fetch(session)
 
 
 loop = asyncio.get_event_loop()
-loop.run_until_complete(go(loop))
+loop.run_until_complete(go())

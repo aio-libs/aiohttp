@@ -1,0 +1,23 @@
+* @asvetlov
+/.github/* @webknjaz @asvetlov
+/.circleci/* @webknjaz @asvetlov
+/CHANGES/* @asvetlov
+/docs/* @asvetlov
+/examples/* @asvetlov
+/requirements/* @webknjaz @asvetlov
+/tests/* @asvetlov
+/tools/* @webknjaz @asvetlov
+/vendor/* @webknjaz @asvetlov
+*.ini @webknjaz @asvetlov
+*.md @webknjaz @asvetlov
+*.rst @webknjaz @asvetlov
+*.toml @webknjaz @asvetlov
+*.txt @webknjaz @asvetlov
+*.yml @webknjaz @asvetlov
+*.yaml @webknjaz @asvetlov
+.editorconfig @webknjaz @asvetlov
+.git* @webknjaz
+Makefile @webknjaz @asvetlov
+setup.py @webknjaz @asvetlov
+setup.cfg @webknjaz @asvetlov
+tox.ini @webknjaz

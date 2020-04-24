@@ -1,9 +1,9 @@
+.. currentmodule:: aiohttp.web
+
 .. _aiohttp-web-lowlevel:
 
 Low Level Server
 ================
-
-.. currentmodule:: aiohttp.web
 
 
 This topic describes :mod:`aiohttp.web` based *low level* API.
@@ -11,10 +11,10 @@ This topic describes :mod:`aiohttp.web` based *low level* API.
 Abstract
 --------
 
-Sometimes user don't need high-level concepts introduced in
+Sometimes users don't need high-level concepts introduced in
 :ref:`aiohttp-web`: applications, routers, middlewares and signals.
 
-All what is needed is supporting asynchronous callable which accepts a
+All that may be needed is supporting an asynchronous callable which accepts a
 request and returns a response object.
 
 This is done by introducing :class:`aiohttp.web.Server` class which
@@ -55,9 +55,13 @@ The following code demonstrates very trivial usage example::
        return web.Response(text="OK")
 
 
-   async def main(loop):
+   async def main():
        server = web.Server(handler)
-       await loop.create_server(server, "127.0.0.1", 8080)
+       runner = web.ServerRunner(server)
+       await runner.setup()
+       site = web.TCPSite(runner, 'localhost', 8080)
+       await site.start()
+
        print("======= Serving on http://127.0.0.1:8080/ ======")
 
        # pause here for very long time by serving HTTP requests and
@@ -68,7 +72,7 @@ The following code demonstrates very trivial usage example::
    loop = asyncio.get_event_loop()
 
    try:
-       loop.run_until_complete(main(loop))
+       loop.run_until_complete(main())
    except KeyboardInterrupt:
        pass
    loop.close()
@@ -79,10 +83,11 @@ In the snippet we have ``handler`` which returns a regular
 
 This *handler* is processed by ``server`` (:class:`Server` which acts
 as *protocol factory*).  Network communication is created by
-``loop.create_server`` call to serve ``http://127.0.0.1:8080/``.
+:ref:`runners API <aiohttp-web-app-runners-reference>` to serve
+``http://127.0.0.1:8080/``.
 
-The handler should process every request: ``GET``, ``POST``,
-Web-Socket for every *path*.
+The handler should process every request for every *path*, e.g.
+``GET``, ``POST``, Web-Socket.
 
 The example is very basic: it always return ``200 OK`` response, real
-life code should be much more complex.
+life code is much more complex usually.

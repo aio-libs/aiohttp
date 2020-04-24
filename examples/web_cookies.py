@@ -6,7 +6,6 @@ from pprint import pformat
 
 from aiohttp import web
 
-
 tmpl = '''\
 <html>
     <body>
@@ -24,19 +23,19 @@ async def root(request):
 
 
 async def login(request):
-    resp = web.HTTPFound(location='/')
-    resp.set_cookie('AUTH', 'secret')
-    return resp
+    exc = web.HTTPFound(location='/')
+    exc.set_cookie('AUTH', 'secret')
+    raise exc
 
 
 async def logout(request):
-    resp = web.HTTPFound(location='/')
-    resp.del_cookie('AUTH')
-    return resp
+    exc = web.HTTPFound(location='/')
+    exc.del_cookie('AUTH')
+    raise exc
 
 
-def init(loop):
-    app = web.Application(loop=loop)
+def init():
+    app = web.Application()
     app.router.add_get('/', root)
     app.router.add_get('/login', login)
     app.router.add_get('/logout', logout)

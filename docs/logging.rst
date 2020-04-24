@@ -1,10 +1,9 @@
+.. currentmodule:: aiohttp
+
 .. _aiohttp-logging:
 
 Logging
 =======
-
-.. currentmodule:: aiohttp
-
 
 *aiohttp* uses standard :mod:`logging` for tracking the
 library activity.
@@ -23,29 +22,40 @@ page does not provide instructions for logging subscribing while the
 most friendly method is :func:`logging.config.dictConfig` for
 configuring whole loggers in your application.
 
+Logging does not work out of the box. It requires at least minimal ``'logging'``
+configuration.
+Example of minimal working logger setup::
 
+  import logging
+  from aiohttp import web
+
+  app = web.Application()
+  logging.basicConfig(level=logging.DEBUG)
+  web.run_app(app, port=5000)
+
+.. versionadded:: 4.0.0
 
 Access logs
 -----------
 
-Access log by default is switched on and uses ``'aiohttp.access'``
-logger name.
+Access logs are enabled by default. If the `debug` flag is set, and the default
+logger ``'aiohttp.access'`` is used, access logs will be output to
+:obj:`~sys.stderr` if no handlers are attached.
+Furthermore, if the default logger has no log level set, the log level will be
+set to :obj:`logging.DEBUG`.
 
-The log may be controlled by :meth:`aiohttp.web.AppRunner` and 
+This logging may be controlled by :meth:`aiohttp.web.AppRunner` and
 :func:`aiohttp.web.run_app`.
 
-
-Pass *access_log* parameter with value of :class:`logging.Logger`
-instance to override default logger.
+To override the default logger, pass an instance of :class:`logging.Logger` to
+override the default logger.
 
 .. note::
 
-   Use ``web.run_app(app, access_log=None)`` for disabling access logs.
+   Use ``web.run_app(app, access_log=None)`` to disable access logs.
 
 
-Other parameter called *access_log_format* may be used for specifying log
-format (see below).
-
+In addition, *access_log_format* may be used to specify the log format.
 
 .. _aiohttp-logging-access-log-format-spec:
 
@@ -71,7 +81,7 @@ request and response:
 +--------------+---------------------------------------------------------+
 | ``%s``       | Response status code                                    |
 +--------------+---------------------------------------------------------+
-| ``%b``       | Size of response in bytes, excluding HTTP headers       |
+| ``%b``       | Size of response in bytes, including HTTP headers       |
 +--------------+---------------------------------------------------------+
 | ``%T``       | The time taken to serve the request, in seconds         |
 +--------------+---------------------------------------------------------+
@@ -85,7 +95,7 @@ request and response:
 | ``%{FOO}o``  | ``response.headers['FOO']``                             |
 +--------------+---------------------------------------------------------+
 
-Default access log format is::
+The default access log format is::
 
    '%a %t "%r" %s %b "%{Referer}i" "%{User-Agent}i"'
 
@@ -93,7 +103,7 @@ Default access log format is::
 
 *access_log_class* introduced.
 
-Example of drop-in replacement for :class:`aiohttp.helpers.AccessLogger`::
+Example of a drop-in replacement for the default access logger::
 
   from aiohttp.abc import AbstractAccessLogger
 
@@ -105,37 +115,62 @@ Example of drop-in replacement for :class:`aiohttp.helpers.AccessLogger`::
                            f'done in {time}s: {response.status}')
 
 
+.. versionadded:: 4.0.0
+
+
+``AccessLogger.log()`` can now access any exception raised while processing
+the request with ``sys.exc_info()``.
+
+
+.. versionadded:: 4.0.0
+
+
+If your logging needs to perform IO you can instead inherit from
+:class:`aiohttp.abc.AbstractAsyncAccessLogger`::
+
+
+  from aiohttp.abc import AbstractAsyncAccessLogger
+
+  class AccessLogger(AbstractAsyncAccessLogger):
+
+      async def log(self, request, response, time):
+          logging_service = request.app['logging_service']
+          await logging_service.log(f'{request.remote} '
+                                    f'"{request.method} {request.path} '
+                                    f'done in {time}s: {response.status}')
+
+
+This also allows access to the results of coroutines on the ``request`` and
+``response``, e.g. ``request.text()``.
+
 .. _gunicorn-accesslog:
 
 Gunicorn access logs
 ^^^^^^^^^^^^^^^^^^^^
 When `Gunicorn <http://docs.gunicorn.org/en/latest/index.html>`_ is used for
-:ref:`deployment <aiohttp-deployment-gunicorn>` its default access log format
+:ref:`deployment <aiohttp-deployment-gunicorn>`, its default access log format
 will be automatically replaced with the default aiohttp's access log format.
 
 If Gunicorn's option access_logformat_ is
-specified explicitly it should use aiohttp's format specification.
+specified explicitly, it should use aiohttp's format specification.
 
-Gunicorn access log works only if accesslog_ is specified explicitly in your
+Gunicorn's access log works only if accesslog_ is specified explicitly in your
 config or as a command line option.
 This configuration can be either a path or ``'-'``. If the application uses
 a custom logging setup intercepting the ``'gunicorn.access'`` logger,
 accesslog_ should be set to ``'-'`` to prevent Gunicorn to create an empty
 access log file upon every startup.
 
-
-
-
 Error logs
 ----------
 
-*aiohttp.web* uses logger named ``'aiohttp.server'`` to store errors
+:mod:`aiohttp.web` uses a logger named ``'aiohttp.server'`` to store errors
 given on web requests handling.
 
-The log is enabled by default.
+This log is enabled by default.
 
-To use different logger name please pass *logger* parameter
-(:class:`logging.Logger` instance) to :meth:`aiohttp.web.AppRunner` constructor.
+To use a different logger name, pass *logger* (:class:`logging.Logger`
+instance) to the :meth:`aiohttp.web.AppRunner` constructor.
 
 
 .. _access_logformat:

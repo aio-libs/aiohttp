@@ -1,65 +1,82 @@
 # Some simple testing tasks (sorry, UNIX only).
 
+PYXS = $(wildcard aiohttp/*.pyx)
+SRC = aiohttp examples tests setup.py
+
 all: test
 
-.install-deps: $(shell find requirements -type f)
-	@pip install -U -r requirements/dev.txt
+.install-cython:
+	pip install -r requirements/cython.txt
+	touch .install-cython
+
+aiohttp/%.c: aiohttp/%.pyx
+	cython -3 -o $@ $< -I aiohttp
+
+cythonize: .install-cython $(PYXS:.pyx=.c)
+
+.install-deps: cythonize $(shell find requirements -type f)
+	pip install -r requirements/dev.txt
 	@touch .install-deps
 
+
 isort:
-	isort -rc aiohttp
-	isort -rc tests
-	isort -rc examples
-	isort -rc demos
+	isort -rc $(SRC)
 
 flake: .flake
 
 .flake: .install-deps $(shell find aiohttp -type f) \
                       $(shell find tests -type f) \
-                      $(shell find examples -type f) \
-                      $(shell find demos -type f)
-	@flake8 aiohttp examples tests demos
-	python setup.py check -rms
+                      $(shell find examples -type f)
+	flake8 aiohttp examples tests
 	@if ! isort -c -rc aiohttp tests examples; then \
             echo "Import sort errors, run 'make isort' to fix them!!!"; \
             isort --diff -rc aiohttp tests examples; \
             false; \
 	fi
+	@if ! LC_ALL=C sort -c CONTRIBUTORS.txt; then \
+            echo "CONTRIBUTORS.txt sort error"; \
+	fi
 	@touch .flake
 
-check_changes:
-	@./tools/check_changes.py
 
-.develop: .install-deps $(shell find aiohttp -type f) .flake check_changes
-	@pip install -e .
+flake8:
+	flake8 $(SRC)
+
+mypy: .flake
+	mypy aiohttp
+
+isort-check:
+	@if ! isort -rc --check-only $(SRC); then \
+            echo "Import sort errors, run 'make isort' to fix them!!!"; \
+            isort --diff -rc $(SRC); \
+            false; \
+	fi
+
+check_changes:
+	./tools/check_changes.py
+
+.develop: .install-deps $(shell find aiohttp -type f) .flake check_changes mypy
+	# pip install -e .
 	@touch .develop
 
 test: .develop
-	@pytest -q ./tests
+	@pytest -q
 
 vtest: .develop
-	@pytest -s -v ./tests
+	@pytest -s -v
 
 cov cover coverage:
 	tox
 
 cov-dev: .develop
-	@echo "Run without extensions"
-	@AIOHTTP_NO_EXTENSIONS=1 pytest --cov=aiohttp tests
-	@pytest --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
+	@pytest --cov-report=html
 	@echo "open file://`pwd`/htmlcov/index.html"
 
-cov-ci-no-ext: .develop
-	@echo "Run without extensions"
-	@AIOHTTP_NO_EXTENSIONS=1 pytest --cov=aiohttp tests
-cov-ci-aio-debug: .develop
-	@echo "Run in debug mode"
-	@PYTHONASYNCIODEBUG=1 pytest --cov=aiohttp --cov-append tests
 cov-ci-run: .develop
 	@echo "Regular run"
-	@pytest --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
+	@pytest --cov-report=html
 
-cov-dev-full: cov-ci-no-ext cov-ci-aio-debug cov-ci-run
+cov-dev-full: cov-ci-run
 	@echo "open file://`pwd`/htmlcov/index.html"
 
 clean:
@@ -111,7 +128,9 @@ doc-spelling:
 	@make -C docs spelling SPHINXOPTS="-W -E"
 
 install:
-	@pip install -U pip
+	@pip install -U 'pip'
 	@pip install -Ur requirements/dev.txt
 
-.PHONY: all build flake test vtest cov clean doc
+install-dev: .develop
+
+.PHONY: all build flake test vtest cov clean doc mypy

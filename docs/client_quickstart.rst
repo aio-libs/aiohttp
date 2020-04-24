@@ -1,10 +1,10 @@
+.. currentmodule:: aiohttp
+
 .. _aiohttp-client-quickstart:
 
 ===================
  Client Quickstart
 ===================
-
-.. currentmodule:: aiohttp
 
 Eager to get started? This page gives a good introduction in how to
 get started with aiohttp client API.
@@ -61,6 +61,18 @@ Other HTTP methods are available as well::
    A session contains a connection pool inside. Connection reusage and
    keep-alives (both are on by default) may speed up total performance.
 
+   You may find more information about creating persistent sessions
+   in :ref:`aiohttp-persistent-session`.
+
+A session context manager usage is not mandatory
+but ``await session.close()`` method
+should be called in this case, e.g.::
+
+    session = aiohttp.ClientSession()
+    async with session.get('...'):
+        # ...
+    await session.close()
+
 
 Passing Parameters In URLs
 ==========================
@@ -91,7 +103,7 @@ that case you can specify multiple values for each key::
     params = [('key', 'value1'), ('key', 'value2')]
     async with session.get('http://httpbin.org/get',
                            params=params) as r:
-        expect == 'http://httpbin.org/get?key=value2&key=value1'
+        expect = 'http://httpbin.org/get?key=value2&key=value1'
         assert str(r.url) == expect
 
 You can also pass :class:`str` content as param, but beware -- content
@@ -108,7 +120,7 @@ is not encoded by library. Note that ``+`` is not encoded::
    Canonization encodes *host* part by :term:`IDNA` codec and applies
    :term:`requoting` to *path* and *query* parts.
 
-   For example ``URL('http://example.com/путь%30?a=%31')`` is converted to
+   For example ``URL('http://example.com/путь/%30?a=%31')`` is converted to
    ``URL('http://example.com/%D0%BF%D1%83%D1%82%D1%8C/0?a=1')``.
 
    Sometimes canonization is not desirable if server accepts exact
@@ -126,7 +138,7 @@ is not encoded by library. Note that ``+`` is not encoded::
 Response Content and Status Code
 ================================
 
-We can read the content of the server's response and it's status
+We can read the content of the server's response and its status
 code. Consider the GitHub time-line again::
 
     async with session.get('https://api.github.com/events') as resp:
@@ -159,17 +171,17 @@ The ``gzip`` and ``deflate`` transfer-encodings are automatically
 decoded for you.
 
 You can enable ``brotli`` transfer-encodings support,
-just install  `brotlipy <https://github.com/python-hyper/brotlipy>`_.
+just install  `Brotli <https://pypi.org/project/Brotli>`_.
 
 JSON Request
 ============
 
 Any of session's request methods like :func:`request`,
-:meth:`ClientSession.get`, :meth:`ClientSesssion.post` etc. accept
+:meth:`ClientSession.get`, :meth:`ClientSession.post` etc. accept
 `json` parameter::
 
   async with aiohttp.ClientSession() as session:
-      async with session.post(url, json={'test': 'object'})
+      await session.post(url, json={'test': 'object'})
 
 
 By default session uses python's standard :mod:`json` module for
@@ -273,9 +285,9 @@ If you want to send JSON data::
     async with session.post(url, json={'example': 'test'}) as resp:
         ...
 
-To send text with appropriate content-type just use ``text`` attribute ::
+To send text with appropriate content-type just use ``data`` argument::
 
-    async with session.post(url, text='Тест') as resp:
+    async with session.post(url, data='Тест') as resp:
         ...
 
 POST a Multipart-Encoded File
@@ -342,18 +354,6 @@ can chain get and post requests together::
    await session.post('http://httpbin.org/post',
                       data=resp.content)
 
-.. note::
-
-   Python 3.5 has no native support for asynchronous generators, use
-   ``async_generator`` library as workaround.
-
-.. deprecated:: 3.1
-
-   ``aiohttp`` still supports ``aiohttp.streamer`` decorator but this
-   approach is deprecated in favor of *asynchronous generators* as
-   shown above.
-
-
 .. _aiohttp-client-websockets:
 
 
@@ -368,9 +368,7 @@ parameter and returns :class:`ClientWebSocketResponse`, with that
 object you can communicate with websocket server using response's
 methods::
 
-   session = aiohttp.ClientSession()
    async with session.ws_connect('http://example.org/ws') as ws:
-
        async for msg in ws:
            if msg.type == aiohttp.WSMsgType.TEXT:
                if msg.data == 'close cmd':
@@ -378,8 +376,6 @@ methods::
                    break
                else:
                    await ws.send_str(msg.data + '/answer')
-           elif msg.type == aiohttp.WSMsgType.CLOSED:
-               break
            elif msg.type == aiohttp.WSMsgType.ERROR:
                break
 
@@ -390,20 +386,55 @@ multiple writer tasks which can only send data asynchronously (by
 ``await ws.send_str('data')`` for example).
 
 
+.. _aiohttp-client-timeouts:
 
 Timeouts
 ========
 
-By default all IO operations have 5min timeout. The timeout may be
-overridden by passing ``timeout`` parameter into
-:meth:`ClientSession.get` and family::
+Timeout settings are stored in :class:`ClientTimeout` data structure.
 
-    async with session.get('https://github.com', timeout=60) as r:
+By default *aiohttp* uses a *total* 300 seconds (5min) timeout, it means that the
+whole operation should finish in 5 minutes.
+
+The value could be overridden by *timeout* parameter for the session (specified in seconds)::
+
+    timeout = aiohttp.ClientTimeout(total=60)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
         ...
 
-``None`` or ``0`` disables timeout check.
+Timeout could be overridden for a request like :meth:`ClientSession.get`::
 
-.. note::
+    async with session.get(url, timeout=timeout) as resp:
+        ...
 
-   Timeout is cumulative time, it includes all operations like sending request,
-   redirects, response parsing, consuming response, etc.
+Supported :class:`ClientTimeout` fields are:
+
+   ``total``
+
+      The maximal number of seconds for the whole operation including connection
+      establishment, request sending and response reading.
+
+   ``connect``
+
+      The maximal number of seconds for
+      connection establishment of a new connection or
+      for waiting for a free connection from a pool if pool connection
+      limits are exceeded.
+
+   ``sock_connect``
+
+      The maximal number of seconds for connecting to a peer for a new connection, not
+      given from a pool.
+
+   ``sock_read``
+
+      The maximal number of seconds allowed for period between reading a new
+      data portion from a peer.
+
+All fields are floats, ``None`` or ``0`` disables a particular timeout check, see the
+:class:`ClientTimeout` reference for defaults and additional details.
+
+Thus the default timeout is::
+
+   aiohttp.ClientTimeout(total=5*60, connect=None,
+                         sock_connect=None, sock_read=None)

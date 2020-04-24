@@ -5,6 +5,7 @@ import pytest
 
 import aiohttp
 from aiohttp import hdrs, web
+from aiohttp.client_ws import ClientWSTimeout
 
 
 @pytest.fixture
@@ -15,7 +16,7 @@ def ceil(mocker):
     mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
 
 
-async def test_send_recv_text(loop, aiohttp_client):
+async def test_send_recv_text(aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -41,7 +42,7 @@ async def test_send_recv_text(loop, aiohttp_client):
     assert resp.get_extra_info('socket') is None
 
 
-async def test_send_recv_bytes_bad_type(loop, aiohttp_client):
+async def test_send_recv_bytes_bad_type(aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -63,7 +64,7 @@ async def test_send_recv_bytes_bad_type(loop, aiohttp_client):
         await resp.close()
 
 
-async def test_send_recv_bytes(loop, aiohttp_client):
+async def test_send_recv_bytes(aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -87,7 +88,7 @@ async def test_send_recv_bytes(loop, aiohttp_client):
     await resp.close()
 
 
-async def test_send_recv_text_bad_type(loop, aiohttp_client):
+async def test_send_recv_text_bad_type(aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -111,7 +112,7 @@ async def test_send_recv_text_bad_type(loop, aiohttp_client):
         await resp.close()
 
 
-async def test_send_recv_json(loop, aiohttp_client):
+async def test_send_recv_json(aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -134,8 +135,8 @@ async def test_send_recv_json(loop, aiohttp_client):
     await resp.close()
 
 
-async def test_ping_pong(loop, aiohttp_client):
-
+async def test_ping_pong(aiohttp_client) -> None:
+    loop = asyncio.get_event_loop()
     closed = loop.create_future()
 
     async def handler(request):
@@ -170,8 +171,8 @@ async def test_ping_pong(loop, aiohttp_client):
     await closed
 
 
-async def test_ping_pong_manual(loop, aiohttp_client):
-
+async def test_ping_pong_manual(aiohttp_client) -> None:
+    loop = asyncio.get_event_loop()
     closed = loop.create_future()
 
     async def handler(request):
@@ -211,7 +212,7 @@ async def test_ping_pong_manual(loop, aiohttp_client):
     await closed
 
 
-async def test_close(loop, aiohttp_client):
+async def test_close(aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -239,7 +240,7 @@ async def test_close(loop, aiohttp_client):
     assert msg.type == aiohttp.WSMsgType.CLOSED
 
 
-async def test_concurrent_close(loop, aiohttp_client):
+async def test_concurrent_close(aiohttp_client) -> None:
     client_ws = None
 
     async def handler(request):
@@ -266,13 +267,13 @@ async def test_concurrent_close(loop, aiohttp_client):
     msg = await ws.receive()
     assert msg.type == aiohttp.WSMsgType.CLOSING
 
-    await asyncio.sleep(0.01, loop=loop)
+    await asyncio.sleep(0.01)
     msg = await ws.receive()
     assert msg.type == aiohttp.WSMsgType.CLOSED
 
 
-async def test_close_from_server(loop, aiohttp_client):
-
+async def test_close_from_server(aiohttp_client) -> None:
+    loop = asyncio.get_event_loop()
     closed = loop.create_future()
 
     async def handler(request):
@@ -303,8 +304,8 @@ async def test_close_from_server(loop, aiohttp_client):
     await closed
 
 
-async def test_close_manual(loop, aiohttp_client):
-
+async def test_close_manual(aiohttp_client) -> None:
+    loop = asyncio.get_event_loop()
     closed = loop.create_future()
 
     async def handler(request):
@@ -340,20 +341,21 @@ async def test_close_manual(loop, aiohttp_client):
     assert resp.closed
 
 
-async def test_close_timeout(loop, aiohttp_client):
+async def test_close_timeout_sock_close_read(aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         await ws.receive_bytes()
         await ws.send_str('test')
-        await asyncio.sleep(1, loop=loop)
+        await asyncio.sleep(1)
         return ws
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = await aiohttp_client(app)
-    resp = await client.ws_connect('/', timeout=0.2, autoclose=False)
+    timeout = ClientWSTimeout(ws_close=0.2)
+    resp = await client.ws_connect('/', timeout=timeout, autoclose=False)
 
     await resp.send_bytes(b'ask')
 
@@ -366,14 +368,46 @@ async def test_close_timeout(loop, aiohttp_client):
     assert isinstance(resp.exception(), asyncio.TimeoutError)
 
 
-async def test_close_cancel(loop, aiohttp_client):
+async def test_close_timeout_deprecated(aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         await ws.receive_bytes()
         await ws.send_str('test')
-        await asyncio.sleep(10, loop=loop)
+        await asyncio.sleep(1)
+        return ws
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = await aiohttp_client(app)
+    with pytest.warns(DeprecationWarning,
+                      match="parameter 'timeout' of type 'float' "
+                            "is deprecated, please use "
+                            r"'timeout=ClientWSTimeout\(ws_close=...\)'"
+                      ):
+        resp = await client.ws_connect('/', timeout=0.2, autoclose=False)
+
+    await resp.send_bytes(b'ask')
+
+    msg = await resp.receive()
+    assert msg.data == 'test'
+    assert msg.type == aiohttp.WSMsgType.TEXT
+
+    msg = await resp.close()
+    assert resp.closed
+    assert isinstance(resp.exception(), asyncio.TimeoutError)
+
+
+async def test_close_cancel(aiohttp_client) -> None:
+    loop = asyncio.get_event_loop()
+
+    async def handler(request):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.receive_bytes()
+        await ws.send_str('test')
+        await asyncio.sleep(10)
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
@@ -386,14 +420,14 @@ async def test_close_cancel(loop, aiohttp_client):
     assert text.data == 'test'
 
     t = loop.create_task(resp.close())
-    await asyncio.sleep(0.1, loop=loop)
+    await asyncio.sleep(0.1)
     t.cancel()
-    await asyncio.sleep(0.1, loop=loop)
+    await asyncio.sleep(0.1)
     assert resp.closed
     assert resp.exception() is None
 
 
-async def test_override_default_headers(loop, aiohttp_client):
+async def test_override_default_headers(aiohttp_client) -> None:
 
     async def handler(request):
         assert request.headers[hdrs.SEC_WEBSOCKET_VERSION] == '8'
@@ -413,7 +447,7 @@ async def test_override_default_headers(loop, aiohttp_client):
     await resp.close()
 
 
-async def test_additional_headers(loop, aiohttp_client):
+async def test_additional_headers(aiohttp_client) -> None:
 
     async def handler(request):
         assert request.headers['x-hdr'] == 'xtra'
@@ -433,7 +467,7 @@ async def test_additional_headers(loop, aiohttp_client):
     await resp.close()
 
 
-async def test_recv_protocol_error(loop, aiohttp_client):
+async def test_recv_protocol_error(aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -453,12 +487,13 @@ async def test_recv_protocol_error(loop, aiohttp_client):
     msg = await resp.receive()
     assert msg.type == aiohttp.WSMsgType.ERROR
     assert type(msg.data) is aiohttp.WebSocketError
-    assert msg.data.args[0] == 'Received frame with non-zero reserved bits'
+    assert msg.data.code == aiohttp.WSCloseCode.PROTOCOL_ERROR
+    assert str(msg.data) == 'Received frame with non-zero reserved bits'
     assert msg.extra is None
     await resp.close()
 
 
-async def test_recv_timeout(loop, aiohttp_client):
+async def test_recv_timeout(aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -466,7 +501,7 @@ async def test_recv_timeout(loop, aiohttp_client):
 
         await ws.receive_str()
 
-        await asyncio.sleep(0.1, loop=request.app.loop)
+        await asyncio.sleep(0.1)
 
         await ws.close()
         return ws
@@ -478,13 +513,13 @@ async def test_recv_timeout(loop, aiohttp_client):
     await resp.send_str('ask')
 
     with pytest.raises(asyncio.TimeoutError):
-        with async_timeout.timeout(0.01, loop=app.loop):
+        async with async_timeout.timeout(0.01):
             await resp.receive()
 
     await resp.close()
 
 
-async def test_receive_timeout(loop, aiohttp_client):
+async def test_receive_timeout_sock_read(aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -497,15 +532,43 @@ async def test_receive_timeout(loop, aiohttp_client):
     app.router.add_route('GET', '/', handler)
 
     client = await aiohttp_client(app)
-    resp = await client.ws_connect('/', receive_timeout=0.1)
+    receive_timeout = ClientWSTimeout(ws_receive=0.1)
+    resp = await client.ws_connect('/', timeout=receive_timeout)
 
     with pytest.raises(asyncio.TimeoutError):
-        await resp.receive(0.05)
+        await resp.receive(timeout=0.05)
 
     await resp.close()
 
 
-async def test_custom_receive_timeout(loop, aiohttp_client):
+async def test_receive_timeout_deprecation(aiohttp_client) -> None:
+
+    async def handler(request):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.receive()
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+
+    client = await aiohttp_client(app)
+    with pytest.warns(
+        DeprecationWarning,
+        match="float parameter 'receive_timeout' "
+              "is deprecated, please use parameter "
+              r"'timeout=ClientWSTimeout\(ws_receive=...\)'"
+    ):
+        resp = await client.ws_connect('/', receive_timeout=0.1)
+
+    with pytest.raises(asyncio.TimeoutError):
+        await resp.receive(timeout=0.05)
+
+    await resp.close()
+
+
+async def test_custom_receive_timeout(aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -526,7 +589,7 @@ async def test_custom_receive_timeout(loop, aiohttp_client):
     await resp.close()
 
 
-async def test_heartbeat(loop, aiohttp_client, ceil):
+async def test_heartbeat(aiohttp_client, ceil) -> None:
     ping_received = False
 
     async def handler(request):
@@ -534,7 +597,7 @@ async def test_heartbeat(loop, aiohttp_client, ceil):
         ws = web.WebSocketResponse(autoping=False)
         await ws.prepare(request)
         msg = await ws.receive()
-        if msg.type == aiohttp.WSMsgType.ping:
+        if msg.type == aiohttp.WSMsgType.PING:
             ping_received = True
         await ws.close()
         return ws
@@ -551,7 +614,7 @@ async def test_heartbeat(loop, aiohttp_client, ceil):
     assert ping_received
 
 
-async def test_heartbeat_no_pong(loop, aiohttp_client, ceil):
+async def test_heartbeat_no_pong(aiohttp_client, ceil) -> None:
     ping_received = False
 
     async def handler(request):
@@ -559,7 +622,7 @@ async def test_heartbeat_no_pong(loop, aiohttp_client, ceil):
         ws = web.WebSocketResponse(autoping=False)
         await ws.prepare(request)
         msg = await ws.receive()
-        if msg.type == aiohttp.WSMsgType.ping:
+        if msg.type == aiohttp.WSMsgType.PING:
             ping_received = True
         await ws.receive()
         return ws
@@ -576,7 +639,7 @@ async def test_heartbeat_no_pong(loop, aiohttp_client, ceil):
     assert ping_received
 
 
-async def test_send_recv_compress(loop, aiohttp_client):
+async def test_send_recv_compress(aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -602,7 +665,7 @@ async def test_send_recv_compress(loop, aiohttp_client):
     assert resp.get_extra_info('socket') is None
 
 
-async def test_send_recv_compress_wbits(loop, aiohttp_client):
+async def test_send_recv_compress_wbits(aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -630,7 +693,7 @@ async def test_send_recv_compress_wbits(loop, aiohttp_client):
     assert resp.get_extra_info('socket') is None
 
 
-async def test_send_recv_compress_wbit_error(loop, aiohttp_client):
+async def test_send_recv_compress_wbit_error(aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -648,7 +711,7 @@ async def test_send_recv_compress_wbit_error(loop, aiohttp_client):
         await client.ws_connect('/', compress=1)
 
 
-async def test_ws_client_async_for(loop, aiohttp_client):
+async def test_ws_client_async_for(aiohttp_client) -> None:
     items = ['q1', 'q2', 'q3']
 
     async def handler(request):
@@ -674,7 +737,7 @@ async def test_ws_client_async_for(loop, aiohttp_client):
     assert resp.closed
 
 
-async def test_ws_async_with(loop, aiohttp_server):
+async def test_ws_async_with(aiohttp_server) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -689,7 +752,7 @@ async def test_ws_async_with(loop, aiohttp_server):
 
     server = await aiohttp_server(app)
 
-    async with aiohttp.ClientSession(loop=loop) as client:
+    async with aiohttp.ClientSession() as client:
         async with client.ws_connect(server.make_url('/')) as ws:
             await ws.send_str('request')
             msg = await ws.receive()
@@ -698,7 +761,7 @@ async def test_ws_async_with(loop, aiohttp_server):
         assert ws.closed
 
 
-async def test_ws_async_with_send(loop, aiohttp_server):
+async def test_ws_async_with_send(aiohttp_server) -> None:
     # send_xxx methods have to return awaitable objects
 
     async def handler(request):
@@ -714,7 +777,7 @@ async def test_ws_async_with_send(loop, aiohttp_server):
 
     server = await aiohttp_server(app)
 
-    async with aiohttp.ClientSession(loop=loop) as client:
+    async with aiohttp.ClientSession() as client:
         async with client.ws_connect(server.make_url('/')) as ws:
             await ws.send_str('request')
             msg = await ws.receive()
@@ -723,7 +786,7 @@ async def test_ws_async_with_send(loop, aiohttp_server):
         assert ws.closed
 
 
-async def test_ws_async_with_shortcut(loop, aiohttp_server):
+async def test_ws_async_with_shortcut(aiohttp_server) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -737,7 +800,7 @@ async def test_ws_async_with_shortcut(loop, aiohttp_server):
     app.router.add_route('GET', '/', handler)
     server = await aiohttp_server(app)
 
-    async with aiohttp.ClientSession(loop=loop) as client:
+    async with aiohttp.ClientSession() as client:
         async with client.ws_connect(server.make_url('/')) as ws:
             await ws.send_str('request')
             msg = await ws.receive()
@@ -746,8 +809,8 @@ async def test_ws_async_with_shortcut(loop, aiohttp_server):
         assert ws.closed
 
 
-async def test_closed_async_for(loop, aiohttp_client):
-
+async def test_closed_async_for(aiohttp_client) -> None:
+    loop = asyncio.get_event_loop()
     closed = loop.create_future()
 
     async def handler(request):
@@ -779,3 +842,52 @@ async def test_closed_async_for(loop, aiohttp_client):
     assert resp.closed
 
     await closed
+
+
+async def test_peer_connection_lost(aiohttp_client) -> None:
+
+    async def handler(request):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        msg = await ws.receive_str()
+        assert msg == 'ask'
+        await ws.send_str('answer')
+        request.transport.close()
+        await asyncio.sleep(10)
+        return ws
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect('/')
+    await resp.send_str('ask')
+    assert 'answer' == await resp.receive_str()
+
+    msg = await resp.receive()
+    assert msg.type == aiohttp.WSMsgType.CLOSED
+    await resp.close()
+
+
+async def test_peer_connection_lost_iter(aiohttp_client) -> None:
+
+    async def handler(request):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        msg = await ws.receive_str()
+        assert msg == 'ask'
+        await ws.send_str('answer')
+        request.transport.close()
+        await asyncio.sleep(100)
+        return ws
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect('/')
+    await resp.send_str('ask')
+    async for msg in resp:
+        assert 'answer' == msg.data
+
+    await resp.close()

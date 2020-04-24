@@ -6,7 +6,6 @@ import os
 
 from aiohttp import web
 
-
 WS_FILE = os.path.join(os.path.dirname(__file__), 'websocket.html')
 
 
@@ -18,6 +17,8 @@ async def wshandler(request):
             return web.Response(body=fp.read(), content_type='text/html')
 
     await resp.prepare(request)
+
+    await resp.send_str('Welcome!!!')
 
     try:
         print('Someone joined.')

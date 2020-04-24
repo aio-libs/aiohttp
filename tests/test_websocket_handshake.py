@@ -1,4 +1,4 @@
-"""Tests for http/websocket.py"""
+# Tests for http/websocket.py
 
 import base64
 import os
@@ -32,21 +32,14 @@ def gen_ws_headers(protocols='', compress=0, extension_text='',
     return hdrs, key
 
 
-async def test_not_get():
-    ws = web.WebSocketResponse()
-    req = make_mocked_request('POST', '/')
-    with pytest.raises(web.HTTPMethodNotAllowed):
-        await ws.prepare(req)
-
-
-async def test_no_upgrade():
+async def test_no_upgrade() -> None:
     ws = web.WebSocketResponse()
     req = make_mocked_request('GET', '/')
     with pytest.raises(web.HTTPBadRequest):
         await ws.prepare(req)
 
 
-async def test_no_connection():
+async def test_no_connection() -> None:
     ws = web.WebSocketResponse()
     req = make_mocked_request('GET', '/', headers={'Upgrade': 'websocket',
                                                    'Connection': 'keep-alive'})
@@ -54,7 +47,7 @@ async def test_no_connection():
         await ws.prepare(req)
 
 
-async def test_protocol_version_unset():
+async def test_protocol_version_unset() -> None:
     ws = web.WebSocketResponse()
     req = make_mocked_request('GET', '/', headers={'Upgrade': 'websocket',
                                                    'Connection': 'upgrade'})
@@ -62,7 +55,7 @@ async def test_protocol_version_unset():
         await ws.prepare(req)
 
 
-async def test_protocol_version_not_supported():
+async def test_protocol_version_not_supported() -> None:
     ws = web.WebSocketResponse()
     req = make_mocked_request('GET', '/',
                               headers={'Upgrade': 'websocket',
@@ -72,7 +65,7 @@ async def test_protocol_version_not_supported():
         await ws.prepare(req)
 
 
-async def test_protocol_key_not_present():
+async def test_protocol_key_not_present() -> None:
     ws = web.WebSocketResponse()
     req = make_mocked_request('GET', '/',
                               headers={'Upgrade': 'websocket',
@@ -82,7 +75,7 @@ async def test_protocol_key_not_present():
         await ws.prepare(req)
 
 
-async def test_protocol_key_invalid():
+async def test_protocol_key_invalid() -> None:
     ws = web.WebSocketResponse()
     req = make_mocked_request('GET', '/',
                               headers={'Upgrade': 'websocket',
@@ -93,7 +86,7 @@ async def test_protocol_key_invalid():
         await ws.prepare(req)
 
 
-async def test_protocol_key_bad_size():
+async def test_protocol_key_bad_size() -> None:
     ws = web.WebSocketResponse()
     sec_key = base64.b64encode(os.urandom(2))
     val = sec_key.decode()
@@ -106,7 +99,7 @@ async def test_protocol_key_bad_size():
         await ws.prepare(req)
 
 
-async def test_handshake_ok():
+async def test_handshake_ok() -> None:
     hdrs, sec_key = gen_ws_headers()
     ws = web.WebSocketResponse()
     req = make_mocked_request('GET', '/', headers=hdrs)
@@ -116,7 +109,7 @@ async def test_handshake_ok():
     assert ws.ws_protocol is None
 
 
-async def test_handshake_protocol():
+async def test_handshake_protocol() -> None:
     # Tests if one protocol is returned by handshake
     proto = 'chat'
 
@@ -128,7 +121,7 @@ async def test_handshake_protocol():
     assert ws.ws_protocol == proto
 
 
-async def test_handshake_protocol_agreement():
+async def test_handshake_protocol_agreement() -> None:
     # Tests if the right protocol is selected given multiple
     best_proto = 'worse_proto'
     wanted_protos = ['best', 'chat', 'worse_proto']
@@ -143,7 +136,7 @@ async def test_handshake_protocol_agreement():
     assert ws.ws_protocol == best_proto
 
 
-async def test_handshake_protocol_unsupported(caplog):
+async def test_handshake_protocol_unsupported(caplog) -> None:
     # Tests if a protocol mismatch handshake warns and returns None
     proto = 'chat'
     req = make_mocked_request('GET', '/',
@@ -157,7 +150,7 @@ async def test_handshake_protocol_unsupported(caplog):
     assert ws.ws_protocol is None
 
 
-async def test_handshake_compress():
+async def test_handshake_compress() -> None:
     hdrs, sec_key = gen_ws_headers(compress=15)
 
     req = make_mocked_request('GET', '/', headers=hdrs)
@@ -168,7 +161,7 @@ async def test_handshake_compress():
     assert ws.compress == 15
 
 
-def test_handshake_compress_server_notakeover():
+def test_handshake_compress_server_notakeover() -> None:
     hdrs, sec_key = gen_ws_headers(compress=15, server_notakeover=True)
 
     req = make_mocked_request('GET', '/', headers=hdrs)
@@ -183,7 +176,7 @@ def test_handshake_compress_server_notakeover():
         'permessage-deflate; server_no_context_takeover')
 
 
-def test_handshake_compress_client_notakeover():
+def test_handshake_compress_client_notakeover() -> None:
     hdrs, sec_key = gen_ws_headers(compress=15, client_notakeover=True)
 
     req = make_mocked_request('GET', '/', headers=hdrs)
@@ -198,7 +191,7 @@ def test_handshake_compress_client_notakeover():
     assert compress == 15
 
 
-def test_handshake_compress_wbits():
+def test_handshake_compress_wbits() -> None:
     hdrs, sec_key = gen_ws_headers(compress=9)
 
     req = make_mocked_request('GET', '/', headers=hdrs)
@@ -212,7 +205,7 @@ def test_handshake_compress_wbits():
     assert compress == 9
 
 
-def test_handshake_compress_wbits_error():
+def test_handshake_compress_wbits_error() -> None:
     hdrs, sec_key = gen_ws_headers(compress=6)
 
     req = make_mocked_request('GET', '/', headers=hdrs)
@@ -224,7 +217,7 @@ def test_handshake_compress_wbits_error():
     assert compress == 0
 
 
-def test_handshake_compress_bad_ext():
+def test_handshake_compress_bad_ext() -> None:
     hdrs, sec_key = gen_ws_headers(compress=15, extension_text='bad')
 
     req = make_mocked_request('GET', '/', headers=hdrs)
@@ -236,7 +229,7 @@ def test_handshake_compress_bad_ext():
     assert compress == 0
 
 
-def test_handshake_compress_multi_ext_bad():
+def test_handshake_compress_multi_ext_bad() -> None:
     hdrs, sec_key = gen_ws_headers(compress=15,
                                    extension_text='bad, permessage-deflate')
 
@@ -249,7 +242,7 @@ def test_handshake_compress_multi_ext_bad():
     assert headers['Sec-Websocket-Extensions'] == 'permessage-deflate'
 
 
-def test_handshake_compress_multi_ext_wbits():
+def test_handshake_compress_multi_ext_wbits() -> None:
     hdrs, sec_key = gen_ws_headers(compress=6,
                                    extension_text=', permessage-deflate')
 
@@ -261,3 +254,13 @@ def test_handshake_compress_multi_ext_wbits():
     assert 'Sec-Websocket-Extensions' in headers
     assert headers['Sec-Websocket-Extensions'] == 'permessage-deflate'
     assert compress == 15
+
+
+def test_handshake_no_transfer_encoding() -> None:
+    hdrs, sec_key = gen_ws_headers()
+    req = make_mocked_request('GET', '/', headers=hdrs)
+
+    ws = web.WebSocketResponse()
+    headers, _, compress, notakeover = ws._handshake(req)
+
+    assert 'Transfer-Encoding' not in headers

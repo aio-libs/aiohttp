@@ -1,6 +1,5 @@
 from aiohttp.frozenlist import FrozenList
 
-
 __all__ = ('Signal',)
 
 
@@ -32,4 +31,4 @@ class Signal(FrozenList):
             raise RuntimeError("Cannot send non-frozen signal.")
 
         for receiver in self:
-            await receiver(*args, **kwargs)
+            await receiver(*args, **kwargs)  # type: ignore

@@ -6,28 +6,46 @@ Contributing
 Instructions for contributors
 -----------------------------
 
-
-In order to make a clone of the GitHub_ repo: open the link and press the
-"Fork" button on the upper-right menu of the web page.
+In order to make a clone of the GitHub_ repo: open the link and press the "Fork" button on the upper-right menu of the web page.
 
 I hope everybody knows how to work with git and github nowadays :)
 
 Workflow is pretty straightforward:
 
-  1. Clone the GitHub_ repo
+  1. Clone the GitHub_ repo using the ``--recurse-submodules`` argument
 
-  2. Make a change
+  2. Setup your machine with the required dev environment
 
-  3. Make sure all tests passed
+  3. Make a change
 
-  4. Add a file into ``CHANGES`` folder (`Changelog update`_).
+  4. Make sure all tests passed
 
-  5. Commit changes to own aiohttp clone
+  5. Add a file into ``CHANGES`` folder (see `Changelog update`_ for how).
 
-  6. Make pull request from github page for your clone against master branch
+  6. Commit changes to your own aiohttp clone
 
-  7. Optionally make backport Pull Request(s) for landing a bug fix
-     into released aiohttp versions.
+  7. Make a pull request from the github page of your clone against the master branch
+
+  8. Optionally make backport Pull Request(s) for landing a bug fix into released aiohttp versions.
+
+.. note::
+
+   The project uses *Squash-and-Merge* strategy for *GitHub Merge* button.
+
+   Basically it means that there is **no need to rebase** a Pull Request against
+   *master* branch. Just ``git merge`` *master* into your working copy (a fork) if
+   needed. The Pull Request is automatically squashed into the single commit
+   once the PR is accepted.
+
+.. note::
+
+   GitHub issue and pull request threads are automatically locked when there has
+   not been any recent activity for one year.  Please open a `new issue
+   <https://github.com/aio-libs/aiohttp/issues/new>`_ for related bugs.
+
+   If you feel like there are important points in the locked discussions,
+   please include those exceprts into that new issue.
+
 
 Preconditions for running aiohttp test suite
 --------------------------------------------
@@ -59,23 +77,27 @@ For *virtualenvwrapper*:
    $ cd aiohttp
    $ mkvirtualenv --python=`which python3` aiohttp
 
-There are other tools like *pyvenv* but you know the rule of thumb
-now: create a python3 virtual environment and activate it.
+There are other tools like *pyvenv* but you know the rule of thumb now: create a python3 virtual environment and activate it.
 
 After that please install libraries required for development:
 
 .. code-block:: shell
 
-   $ pip install -r requirements/dev.txt
+   $ make install-dev
 
 .. note::
-  If you plan to use ``pdb`` or ``ipdb`` within the test suite, execute:
 
-.. code-block:: shell
+  For now, the development tooling depends on ``make`` and assumes an Unix OS If you wish to contribute to aiohttp from a Windows machine, the easiest way is probably to `configure the WSL <https://docs.microsoft.com/en-us/windows/wsl/install-win10>`_ so you can use the same instructions. If it's not possible for you or if it doesn't work, please contact us so we can find a solution together.
 
-    $ py.test tests -s
+.. warning::
 
-  command to run the tests with disabled output capturing.
+  If you plan to use temporary ``print()``, ``pdb`` or ``ipdb`` within the test suite, execute it with ``-s``:
+
+  .. code-block:: shell
+
+     $ py.test tests -s
+
+  in order to run the tests without output capturing.
 
 Congratulations, you are ready to run the test suite!
 

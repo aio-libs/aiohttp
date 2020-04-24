@@ -12,7 +12,7 @@ def router():
     return UrlDispatcher()
 
 
-def test_get(router):
+def test_get(router) -> None:
     async def handler(request):
         pass
 
@@ -29,7 +29,7 @@ def test_get(router):
     assert route2.method == 'HEAD'
 
 
-def test_head(router):
+def test_head(router) -> None:
     async def handler(request):
         pass
 
@@ -42,7 +42,20 @@ def test_head(router):
     assert str(route.url_for()) == '/'
 
 
-def test_post(router):
+def test_options(router) -> None:
+    async def handler(request):
+        pass
+
+    router.add_routes([web.options('/', handler)])
+    assert len(router.routes()) == 1
+
+    route = list(router.routes())[0]
+    assert route.handler is handler
+    assert route.method == 'OPTIONS'
+    assert str(route.url_for()) == '/'
+
+
+def test_post(router) -> None:
     async def handler(request):
         pass
 
@@ -54,7 +67,7 @@ def test_post(router):
     assert str(route.url_for()) == '/'
 
 
-def test_put(router):
+def test_put(router) -> None:
     async def handler(request):
         pass
 
@@ -67,7 +80,7 @@ def test_put(router):
     assert str(route.url_for()) == '/'
 
 
-def test_patch(router):
+def test_patch(router) -> None:
     async def handler(request):
         pass
 
@@ -80,7 +93,7 @@ def test_patch(router):
     assert str(route.url_for()) == '/'
 
 
-def test_delete(router):
+def test_delete(router) -> None:
     async def handler(request):
         pass
 
@@ -93,7 +106,7 @@ def test_delete(router):
     assert str(route.url_for()) == '/'
 
 
-def test_route(router):
+def test_route(router) -> None:
     async def handler(request):
         pass
 
@@ -106,7 +119,7 @@ def test_route(router):
     assert str(route.url_for()) == '/'
 
 
-def test_static(router):
+def test_static(router) -> None:
     folder = pathlib.Path(__file__).parent
     router.add_routes([web.static('/prefix', folder)])
     assert len(router.resources()) == 1  # 2 routes: for HEAD and GET
@@ -115,11 +128,11 @@ def test_static(router):
     info = resource.get_info()
     assert info['prefix'] == '/prefix'
     assert info['directory'] == folder
-    url = resource.url_for(filename='sample.key')
-    assert url == URL('/prefix/sample.key')
+    url = resource.url_for(filename='aiohttp.png')
+    assert url == URL('/prefix/aiohttp.png')
 
 
-def test_head_deco(router):
+def test_head_deco(router) -> None:
     routes = web.RouteTableDef()
 
     @routes.head('/path')
@@ -135,7 +148,7 @@ def test_head_deco(router):
     assert str(route.url_for()) == '/path'
 
 
-def test_get_deco(router):
+def test_get_deco(router) -> None:
     routes = web.RouteTableDef()
 
     @routes.get('/path')
@@ -155,7 +168,7 @@ def test_get_deco(router):
     assert str(route2.url_for()) == '/path'
 
 
-def test_post_deco(router):
+def test_post_deco(router) -> None:
     routes = web.RouteTableDef()
 
     @routes.post('/path')
@@ -171,7 +184,7 @@ def test_post_deco(router):
     assert str(route.url_for()) == '/path'
 
 
-def test_put_deco(router):
+def test_put_deco(router) -> None:
     routes = web.RouteTableDef()
 
     @routes.put('/path')
@@ -187,7 +200,7 @@ def test_put_deco(router):
     assert str(route.url_for()) == '/path'
 
 
-def test_patch_deco(router):
+def test_patch_deco(router) -> None:
     routes = web.RouteTableDef()
 
     @routes.patch('/path')
@@ -203,7 +216,7 @@ def test_patch_deco(router):
     assert str(route.url_for()) == '/path'
 
 
-def test_delete_deco(router):
+def test_delete_deco(router) -> None:
     routes = web.RouteTableDef()
 
     @routes.delete('/path')
@@ -219,7 +232,23 @@ def test_delete_deco(router):
     assert str(route.url_for()) == '/path'
 
 
-def test_route_deco(router):
+def test_options_deco(router) -> None:
+    routes = web.RouteTableDef()
+
+    @routes.options('/path')
+    async def handler(request):
+        pass
+
+    router.add_routes(routes)
+
+    assert len(router.routes()) == 1
+
+    route = list(router.routes())[0]
+    assert route.method == 'OPTIONS'
+    assert str(route.url_for()) == '/path'
+
+
+def test_route_deco(router) -> None:
     routes = web.RouteTableDef()
 
     @routes.route('OTHER', '/path')
@@ -235,7 +264,7 @@ def test_route_deco(router):
     assert str(route.url_for()) == '/path'
 
 
-def test_routedef_sequence_protocol():
+def test_routedef_sequence_protocol() -> None:
     routes = web.RouteTableDef()
 
     @routes.delete('/path')
@@ -250,7 +279,7 @@ def test_routedef_sequence_protocol():
     assert list(routes)[0] is info
 
 
-def test_repr_route_def():
+def test_repr_route_def() -> None:
     routes = web.RouteTableDef()
 
     @routes.get('/path')
@@ -261,7 +290,7 @@ def test_repr_route_def():
     assert repr(rd) == "<RouteDef GET /path -> 'handler'>"
 
 
-def test_repr_route_def_with_extra_info():
+def test_repr_route_def_with_extra_info() -> None:
     routes = web.RouteTableDef()
 
     @routes.get('/path', extra='info')
@@ -272,7 +301,7 @@ def test_repr_route_def_with_extra_info():
     assert repr(rd) == "<RouteDef GET /path -> 'handler', extra='info'>"
 
 
-def test_repr_static_def():
+def test_repr_static_def() -> None:
     routes = web.RouteTableDef()
 
     routes.static('/prefix', '/path', name='name')
@@ -281,7 +310,7 @@ def test_repr_static_def():
     assert repr(rd) == "<StaticDef /prefix -> /path, name='name'>"
 
 
-def test_repr_route_table_def():
+def test_repr_route_table_def() -> None:
     routes = web.RouteTableDef()
 
     @routes.get('/path')

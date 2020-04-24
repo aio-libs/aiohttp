@@ -1,7 +1,6 @@
 from io import StringIO
 
 import pytest
-from async_generator import async_generator
 
 from aiohttp import payload
 
@@ -20,7 +19,7 @@ class Payload(payload.Payload):
         pass
 
 
-def test_register_type(registry):
+def test_register_type(registry) -> None:
     class TestProvider:
         pass
 
@@ -29,7 +28,7 @@ def test_register_type(registry):
     assert isinstance(p, Payload)
 
 
-def test_register_unsupported_order(registry):
+def test_register_unsupported_order(registry) -> None:
     class TestProvider:
         pass
 
@@ -37,7 +36,7 @@ def test_register_unsupported_order(registry):
         payload.register_payload(Payload, TestProvider, order=object())
 
 
-def test_payload_ctor():
+def test_payload_ctor() -> None:
     p = Payload('test', encoding='utf-8', filename='test.txt')
     assert p._value == 'test'
     assert p._encoding == 'utf-8'
@@ -46,27 +45,27 @@ def test_payload_ctor():
     assert p.content_type == 'text/plain'
 
 
-def test_payload_content_type():
+def test_payload_content_type() -> None:
     p = Payload('test', headers={'content-type': 'application/json'})
     assert p.content_type == 'application/json'
 
 
-def test_bytes_payload_default_content_type():
+def test_bytes_payload_default_content_type() -> None:
     p = payload.BytesPayload(b'data')
     assert p.content_type == 'application/octet-stream'
 
 
-def test_bytes_payload_explicit_content_type():
+def test_bytes_payload_explicit_content_type() -> None:
     p = payload.BytesPayload(b'data', content_type='application/custom')
     assert p.content_type == 'application/custom'
 
 
-def test_bytes_payload_bad_type():
+def test_bytes_payload_bad_type() -> None:
     with pytest.raises(TypeError):
         payload.BytesPayload(object())
 
 
-def test_string_payload():
+def test_string_payload() -> None:
     p = payload.StringPayload('test')
     assert p.encoding == 'utf-8'
     assert p.content_type == 'text/plain; charset=utf-8'
@@ -81,7 +80,7 @@ def test_string_payload():
     assert p.content_type == 'text/plain; charset=koi8-r'
 
 
-def test_string_io_payload():
+def test_string_io_payload() -> None:
     s = StringIO('ű' * 5000)
     p = payload.StringIOPayload(s)
     assert p.encoding == 'utf-8'
@@ -89,25 +88,25 @@ def test_string_io_payload():
     assert p.size == 10000
 
 
-def test_async_iterable_payload_default_content_type():
-    @async_generator
+def test_async_iterable_payload_default_content_type() -> None:
     async def gen():
-        pass
+        return
+        yield
 
     p = payload.AsyncIterablePayload(gen())
     assert p.content_type == 'application/octet-stream'
 
 
-def test_async_iterable_payload_explicit_content_type():
-    @async_generator
+def test_async_iterable_payload_explicit_content_type() -> None:
     async def gen():
-        pass
+        return
+        yield
 
     p = payload.AsyncIterablePayload(gen(), content_type='application/custom')
     assert p.content_type == 'application/custom'
 
 
-def test_async_iterable_payload_not_async_iterable():
+def test_async_iterable_payload_not_async_iterable() -> None:
 
     with pytest.raises(TypeError):
         payload.AsyncIterablePayload(object())
