@@ -463,10 +463,6 @@ class RequestHandler(BaseProtocol):
                 # notify server about keep-alive
                 self._keepalive = bool(resp.keep_alive)
 
-                # log access
-                if self.access_log:
-                    self.log_access(request, resp, loop.time() - start)
-
                 # check payload
                 if not payload.is_eof():
                     lingering_time = self._lingering_time
