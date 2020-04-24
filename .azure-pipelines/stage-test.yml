@@ -86,6 +86,7 @@ stages:
       displayName: 'Cythonize'
 
     - script: |
+        pip install wheel
         pip install -r requirements/dev.txt
       displayName: 'Install dependencies'
       env:
