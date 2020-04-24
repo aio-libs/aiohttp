@@ -25,3 +25,4 @@ project, pointing to `<https://github.com/aio-libs/aiohttp>`_.
 * `doh-proxy <https://github.com/facebookexperimental/doh-proxy>`_ DNS Over HTTPS Proxy.
 * `Mariner <https://gitlab.com/radek-sprta/mariner>`_ Command-line torrent searcher.
 * `DEEPaaS API <https//github.com/indigo-dc/deepaas>`_ REST API for Machine learning, Deep learning and artificial intelligence applications.
+* `BentoML <https://github.com/bentoml/BentoML>`_ Machine Learning model serving framework
