@@ -12,7 +12,13 @@ from typing import (
     Union,
 )
 
-from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
+from multidict import (
+    CIMultiDict,
+    CIMultiDictProxy,
+    MultiDict,
+    MultiDictProxy,
+    istr,
+)
 from yarl import URL
 
 DEFAULT_JSON_ENCODER = json.dumps
@@ -23,7 +29,7 @@ if TYPE_CHECKING:  # pragma: no cover
     _CIMultiDictProxy = CIMultiDictProxy[str]
     _MultiDict = MultiDict[str]
     _MultiDictProxy = MultiDictProxy[str]
-    from http.cookies import BaseCookie  # noqa
+    from http.cookies import BaseCookie, Morsel  # noqa
 else:
     _CIMultiDict = CIMultiDict
     _CIMultiDictProxy = CIMultiDictProxy
@@ -33,11 +39,22 @@ else:
 Byteish = Union[bytes, bytearray, memoryview]
 JSONEncoder = Callable[[Any], str]
 JSONDecoder = Callable[[str], Any]
-LooseHeaders = Union[Mapping[str, str], _CIMultiDict, _CIMultiDictProxy]
+LooseHeaders = Union[Mapping[Union[str, istr], str], _CIMultiDict,
+                     _CIMultiDictProxy]
 RawHeaders = Tuple[Tuple[bytes, bytes], ...]
 StrOrURL = Union[str, URL]
-LooseCookies = Union[Iterable[Tuple[str, 'BaseCookie[str]']],
-                     Mapping[str, 'BaseCookie[str]'], 'BaseCookie[str]']
+
+LooseCookiesMappings = Mapping[
+    str, Union[str, 'BaseCookie[str]', 'Morsel[Any]']
+]
+LooseCookiesIterables = Iterable[
+    Tuple[str, Union[str, 'BaseCookie[str]', 'Morsel[Any]']]
+]
+LooseCookies = Union[
+    LooseCookiesMappings,
+    LooseCookiesIterables,
+    'BaseCookie[str]',
+]
 
 
 if sys.version_info >= (3, 6):

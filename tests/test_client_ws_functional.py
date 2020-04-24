@@ -5,6 +5,7 @@ import pytest
 
 import aiohttp
 from aiohttp import hdrs, web
+from aiohttp.client_ws import ClientWSTimeout
 
 
 @pytest.fixture
@@ -340,7 +341,7 @@ async def test_close_manual(aiohttp_client) -> None:
     assert resp.closed
 
 
-async def test_close_timeout(aiohttp_client) -> None:
+async def test_close_timeout_sock_close_read(aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -353,7 +354,39 @@ async def test_close_timeout(aiohttp_client) -> None:
     app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = await aiohttp_client(app)
-    resp = await client.ws_connect('/', timeout=0.2, autoclose=False)
+    timeout = ClientWSTimeout(ws_close=0.2)
+    resp = await client.ws_connect('/', timeout=timeout, autoclose=False)
+
+    await resp.send_bytes(b'ask')
+
+    msg = await resp.receive()
+    assert msg.data == 'test'
+    assert msg.type == aiohttp.WSMsgType.TEXT
+
+    msg = await resp.close()
+    assert resp.closed
+    assert isinstance(resp.exception(), asyncio.TimeoutError)
+
+
+async def test_close_timeout_deprecated(aiohttp_client) -> None:
+
+    async def handler(request):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.receive_bytes()
+        await ws.send_str('test')
+        await asyncio.sleep(1)
+        return ws
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = await aiohttp_client(app)
+    with pytest.warns(DeprecationWarning,
+                      match="parameter 'timeout' of type 'float' "
+                            "is deprecated, please use "
+                            r"'timeout=ClientWSTimeout\(ws_close=...\)'"
+                      ):
+        resp = await client.ws_connect('/', timeout=0.2, autoclose=False)
 
     await resp.send_bytes(b'ask')
 
@@ -454,7 +487,8 @@ async def test_recv_protocol_error(aiohttp_client) -> None:
     msg = await resp.receive()
     assert msg.type == aiohttp.WSMsgType.ERROR
     assert type(msg.data) is aiohttp.WebSocketError
-    assert msg.data.args[0] == 'Received frame with non-zero reserved bits'
+    assert msg.data.code == aiohttp.WSCloseCode.PROTOCOL_ERROR
+    assert str(msg.data) == 'Received frame with non-zero reserved bits'
     assert msg.extra is None
     await resp.close()
 
@@ -479,13 +513,13 @@ async def test_recv_timeout(aiohttp_client) -> None:
     await resp.send_str('ask')
 
     with pytest.raises(asyncio.TimeoutError):
-        with async_timeout.timeout(0.01):
+        async with async_timeout.timeout(0.01):
             await resp.receive()
 
     await resp.close()
 
 
-async def test_receive_timeout(aiohttp_client) -> None:
+async def test_receive_timeout_sock_read(aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -498,10 +532,38 @@ async def test_receive_timeout(aiohttp_client) -> None:
     app.router.add_route('GET', '/', handler)
 
     client = await aiohttp_client(app)
-    resp = await client.ws_connect('/', receive_timeout=0.1)
+    receive_timeout = ClientWSTimeout(ws_receive=0.1)
+    resp = await client.ws_connect('/', timeout=receive_timeout)
 
     with pytest.raises(asyncio.TimeoutError):
-        await resp.receive(0.05)
+        await resp.receive(timeout=0.05)
+
+    await resp.close()
+
+
+async def test_receive_timeout_deprecation(aiohttp_client) -> None:
+
+    async def handler(request):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.receive()
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+
+    client = await aiohttp_client(app)
+    with pytest.warns(
+        DeprecationWarning,
+        match="float parameter 'receive_timeout' "
+              "is deprecated, please use parameter "
+              r"'timeout=ClientWSTimeout\(ws_receive=...\)'"
+    ):
+        resp = await client.ws_connect('/', receive_timeout=0.1)
+
+    with pytest.raises(asyncio.TimeoutError):
+        await resp.receive(timeout=0.05)
 
     await resp.close()
 

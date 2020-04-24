@@ -1,4 +1,4 @@
-"""Tests for aiohttp/worker.py"""
+# Tests for aiohttp/worker.py
 import asyncio
 import os
 import socket
@@ -69,7 +69,6 @@ def test_init_process(worker) -> None:
         except TypeError:
             pass
 
-        assert m_asyncio.get_event_loop.return_value.close.called
         assert m_asyncio.new_event_loop.called
         assert m_asyncio.set_event_loop.called
 
@@ -195,7 +194,7 @@ def test__get_valid_log_format_ok(worker, source, result) -> None:
 def test__get_valid_log_format_exc(worker) -> None:
     with pytest.raises(ValueError) as exc:
         worker._get_valid_log_format(WRONG_LOG_FORMAT)
-    assert '%(name)s' in str(exc)
+    assert '%(name)s' in str(exc.value)
 
 
 async def test__run_ok_parent_changed(worker, loop,
@@ -270,7 +269,7 @@ def test__create_ssl_context_with_ciphers(
     worker.cfg.certfile = tls_certificate_pem_path
     worker.cfg.keyfile = tls_certificate_pem_path
     worker.cfg.ca_certs = None
-    worker.cfg.ciphers = 'PSK'
+    worker.cfg.ciphers = '3DES PSK'
     ctx = worker._create_ssl_context(worker.cfg)
     assert isinstance(ctx, ssl.SSLContext)
 

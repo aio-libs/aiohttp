@@ -4,11 +4,10 @@ from unittest import mock
 import pytest
 from multidict import CIMultiDict
 
-from aiohttp import WSMessage, WSMsgType, signals
-from aiohttp.log import ws_logger
+from aiohttp import WSMsgType, signals
 from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
-from aiohttp.web import HTTPBadRequest, HTTPMethodNotAllowed, WebSocketResponse
+from aiohttp.web import HTTPBadRequest, WebSocketResponse
 from aiohttp.web_ws import WS_CLOSED_MESSAGE, WebSocketReady
 
 
@@ -105,34 +104,6 @@ async def test_nonstarted_receive_json() -> None:
         await ws.receive_json()
 
 
-async def test_receive_str_nonstring(make_request) -> None:
-    req = make_request('GET', '/')
-    ws = WebSocketResponse()
-    await ws.prepare(req)
-
-    async def receive():
-        return WSMessage(WSMsgType.BINARY, b'data', b'')
-
-    ws.receive = receive
-
-    with pytest.raises(TypeError):
-        await ws.receive_str()
-
-
-async def test_receive_bytes_nonsbytes(make_request) -> None:
-    req = make_request('GET', '/')
-    ws = WebSocketResponse()
-    await ws.prepare(req)
-
-    async def receive():
-        return WSMessage(WSMsgType.TEXT, 'data', b'')
-
-    ws.receive = receive
-
-    with pytest.raises(TypeError):
-        await ws.receive_bytes()
-
-
 async def test_send_str_nonstring(make_request) -> None:
     req = make_request('GET', '/')
     ws = WebSocketResponse()
@@ -203,12 +174,6 @@ def test_can_prepare_unknown_protocol(make_request) -> None:
     assert WebSocketReady(True, None) == ws.can_prepare(req)
 
 
-def test_can_prepare_invalid_method(make_request) -> None:
-    req = make_request('POST', '/')
-    ws = WebSocketResponse()
-    assert WebSocketReady(False, None) == ws.can_prepare(req)
-
-
 def test_can_prepare_without_upgrade(make_request) -> None:
     req = make_request('GET', '/',
                        headers=CIMultiDict({}))
@@ -232,52 +197,48 @@ def test_closed_after_ctor() -> None:
     assert ws.close_code is None
 
 
-async def test_send_str_closed(make_request, mocker) -> None:
+async def test_send_str_closed(make_request) -> None:
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     await ws.prepare(req)
     ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
     await ws.close()
 
-    mocker.spy(ws_logger, 'warning')
-    await ws.send_str('string')
-    assert ws_logger.warning.called
+    with pytest.raises(ConnectionError):
+        await ws.send_str('string')
 
 
-async def test_send_bytes_closed(make_request, mocker) -> None:
+async def test_send_bytes_closed(make_request) -> None:
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     await ws.prepare(req)
     ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
     await ws.close()
 
-    mocker.spy(ws_logger, 'warning')
-    await ws.send_bytes(b'bytes')
-    assert ws_logger.warning.called
+    with pytest.raises(ConnectionError):
+        await ws.send_bytes(b'bytes')
 
 
-async def test_send_json_closed(make_request, mocker) -> None:
+async def test_send_json_closed(make_request) -> None:
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     await ws.prepare(req)
     ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
     await ws.close()
 
-    mocker.spy(ws_logger, 'warning')
-    await ws.send_json({'type': 'json'})
-    assert ws_logger.warning.called
+    with pytest.raises(ConnectionError):
+        await ws.send_json({'type': 'json'})
 
 
-async def test_ping_closed(make_request, mocker) -> None:
+async def test_ping_closed(make_request) -> None:
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     await ws.prepare(req)
     ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
     await ws.close()
 
-    mocker.spy(ws_logger, 'warning')
-    await ws.ping()
-    assert ws_logger.warning.called
+    with pytest.raises(ConnectionError):
+        await ws.ping()
 
 
 async def test_pong_closed(make_request, mocker) -> None:
@@ -287,9 +248,8 @@ async def test_pong_closed(make_request, mocker) -> None:
     ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
     await ws.close()
 
-    mocker.spy(ws_logger, 'warning')
-    await ws.pong()
-    assert ws_logger.warning.called
+    with pytest.raises(ConnectionError):
+        await ws.pong()
 
 
 async def test_close_idempotent(make_request) -> None:
@@ -302,11 +262,11 @@ async def test_close_idempotent(make_request) -> None:
     assert not (await ws.close(code=2, message='message2'))
 
 
-async def test_prepare_invalid_method(make_request) -> None:
+async def test_prepare_post_method_ok(make_request) -> None:
     req = make_request('POST', '/')
     ws = WebSocketResponse()
-    with pytest.raises(HTTPMethodNotAllowed):
-        await ws.prepare(req)
+    await ws.prepare(req)
+    assert ws.prepared
 
 
 async def test_prepare_without_upgrade(make_request) -> None:
@@ -360,40 +320,6 @@ async def test_receive_eofstream_in_reader(make_request, loop) -> None:
     assert ws.closed
 
 
-async def test_receive_exc_in_reader(make_request, loop) -> None:
-    req = make_request('GET', '/')
-    ws = WebSocketResponse()
-    await ws.prepare(req)
-
-    ws._reader = mock.Mock()
-    exc = ValueError()
-    res = loop.create_future()
-    res.set_exception(exc)
-    ws._reader.read = make_mocked_coro(res)
-    ws._payload_writer.drain = mock.Mock()
-    ws._payload_writer.drain.return_value = loop.create_future()
-    ws._payload_writer.drain.return_value.set_result(True)
-
-    msg = await ws.receive()
-    assert msg.type == WSMsgType.ERROR
-    assert msg.data is exc
-    assert ws.exception() is exc
-
-
-async def test_receive_cancelled(make_request, loop) -> None:
-    req = make_request('GET', '/')
-    ws = WebSocketResponse()
-    await ws.prepare(req)
-
-    ws._reader = mock.Mock()
-    res = loop.create_future()
-    res.set_exception(asyncio.CancelledError())
-    ws._reader.read = make_mocked_coro(res)
-
-    with pytest.raises(asyncio.CancelledError):
-        await ws.receive()
-
-
 async def test_receive_timeouterror(make_request, loop) -> None:
     req = make_request('GET', '/')
     ws = WebSocketResponse()
@@ -434,33 +360,7 @@ async def test_concurrent_receive(make_request) -> None:
         await ws.receive()
 
 
-async def test_close_exc(make_request, loop, mocker) -> None:
-    req = make_request('GET', '/')
-
-    ws = WebSocketResponse()
-    await ws.prepare(req)
-
-    ws._reader = mock.Mock()
-    exc = ValueError()
-    ws._reader.read.return_value = loop.create_future()
-    ws._reader.read.return_value.set_exception(exc)
-    ws._payload_writer.drain = mock.Mock()
-    ws._payload_writer.drain.return_value = loop.create_future()
-    ws._payload_writer.drain.return_value.set_result(True)
-
-    await ws.close()
-    assert ws.closed
-    assert ws.exception() is exc
-
-    ws._closed = False
-    ws._reader.read.return_value = loop.create_future()
-    ws._reader.read.return_value.set_exception(asyncio.CancelledError())
-    with pytest.raises(asyncio.CancelledError):
-        await ws.close()
-    assert ws.close_code == 1006
-
-
-async def test_close_exc2(make_request) -> None:
+async def test_close_exc(make_request) -> None:
 
     req = make_request('GET', '/')
     ws = WebSocketResponse()
@@ -502,3 +402,11 @@ async def test_send_with_per_message_deflate(make_request, mocker) -> None:
 
     await ws.send_json('[{}]', compress=9)
     writer_send.assert_called_with('"[{}]"', binary=False, compress=9)
+
+
+async def test_no_transfer_encoding_header(make_request, mocker) -> None:
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    await ws._start(req)
+
+    assert 'Transfer-Encoding' not in ws.headers

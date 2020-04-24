@@ -2,7 +2,7 @@ from unittest import mock
 
 import pytest
 
-from aiohttp.formdata import FormData
+from aiohttp import ClientSession, FormData
 
 
 @pytest.fixture
@@ -86,3 +86,16 @@ async def test_formdata_field_name_is_not_quoted(buf, writer) -> None:
     payload = form()
     await payload.write(writer)
     assert b'name="emails[]"' in buf
+
+
+async def test_mark_formdata_as_processed() -> None:
+    async with ClientSession() as session:
+        url = "http://httpbin.org/anything"
+        data = FormData()
+        data.add_field("test", "test_value", content_type="application/json")
+
+        await session.post(url, data=data)
+        assert len(data._writer._parts) == 1
+
+        with pytest.raises(RuntimeError):
+            await session.post(url, data=data)

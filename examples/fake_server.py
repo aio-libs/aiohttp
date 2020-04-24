@@ -14,10 +14,10 @@ class FakeResolver:
                    socket.AF_INET: '127.0.0.1',
                    socket.AF_INET6: '::1'}
 
-    def __init__(self, fakes, *, loop):
+    def __init__(self, fakes):
         """fakes -- dns -> port dict"""
         self._fakes = fakes
-        self._resolver = DefaultResolver(loop=loop)
+        self._resolver = DefaultResolver()
 
     async def resolve(self, host, port=0, family=socket.AF_INET):
         fake_port = self._fakes.get(host)
@@ -32,9 +32,8 @@ class FakeResolver:
 
 class FakeFacebook:
 
-    def __init__(self, *, loop):
-        self.loop = loop
-        self.app = web.Application(loop=loop)
+    def __init__(self):
+        self.app = web.Application()
         self.app.router.add_routes(
             [web.get('/v2.7/me', self.on_me),
              web.get('/v2.7/me/friends', self.on_my_friends)])
@@ -92,17 +91,15 @@ class FakeFacebook:
             }})
 
 
-async def main(loop):
+async def main():
     token = "ER34gsSGGS34XCBKd7u"
 
-    fake_facebook = FakeFacebook(loop=loop)
+    fake_facebook = FakeFacebook()
     info = await fake_facebook.start()
-    resolver = FakeResolver(info, loop=loop)
-    connector = aiohttp.TCPConnector(loop=loop, resolver=resolver,
-                                     verify_ssl=False)
+    resolver = FakeResolver(info)
+    connector = aiohttp.TCPConnector(resolver=resolver, ssl=False)
 
-    async with aiohttp.ClientSession(connector=connector,
-                                     loop=loop) as session:
+    async with aiohttp.ClientSession(connector=connector) as session:
         async with session.get('https://graph.facebook.com/v2.7/me',
                                params={'access_token': token}) as resp:
             print(await resp.json())
@@ -115,4 +112,4 @@ async def main(loop):
 
 
 loop = asyncio.get_event_loop()
-loop.run_until_complete(main(loop))
+loop.run_until_complete(main())

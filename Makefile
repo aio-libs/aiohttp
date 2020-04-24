@@ -1,6 +1,7 @@
 # Some simple testing tasks (sorry, UNIX only).
 
 PYXS = $(wildcard aiohttp/*.pyx)
+SRC = aiohttp examples tests setup.py
 
 all: test
 
@@ -17,10 +18,9 @@ cythonize: .install-cython $(PYXS:.pyx=.c)
 	pip install -r requirements/dev.txt
 	@touch .install-deps
 
+
 isort:
-	isort -rc aiohttp
-	isort -rc tests
-	isort -rc examples
+	isort -rc $(SRC)
 
 flake: .flake
 
@@ -28,7 +28,6 @@ flake: .flake
                       $(shell find tests -type f) \
                       $(shell find examples -type f)
 	flake8 aiohttp examples tests
-	python setup.py check -rms
 	@if ! isort -c -rc aiohttp tests examples; then \
             echo "Import sort errors, run 'make isort' to fix them!!!"; \
             isort --diff -rc aiohttp tests examples; \
@@ -39,34 +38,43 @@ flake: .flake
 	fi
 	@touch .flake
 
-check_changes:
-	./tools/check_changes.py
+
+flake8:
+	flake8 $(SRC)
 
 mypy: .flake
-	if python -c "import sys; sys.exit(sys.implementation.name!='cpython')"; then \
-            mypy aiohttp; \
+	mypy aiohttp
+
+isort-check:
+	@if ! isort -rc --check-only $(SRC); then \
+            echo "Import sort errors, run 'make isort' to fix them!!!"; \
+            isort --diff -rc $(SRC); \
+            false; \
 	fi
+
+check_changes:
+	./tools/check_changes.py
 
 .develop: .install-deps $(shell find aiohttp -type f) .flake check_changes mypy
 	# pip install -e .
 	@touch .develop
 
 test: .develop
-	@pytest -c pytest.ci.ini -q
+	@pytest -q
 
 vtest: .develop
-	@pytest -c pytest.ci.ini -s -v
+	@pytest -s -v
 
 cov cover coverage:
 	tox
 
 cov-dev: .develop
-	@pytest -c pytest.ci.ini --cov-report=html
+	@pytest --cov-report=html
 	@echo "open file://`pwd`/htmlcov/index.html"
 
 cov-ci-run: .develop
 	@echo "Regular run"
-	@pytest -c pytest.ci.ini --cov-report=html
+	@pytest --cov-report=html
 
 cov-dev-full: cov-ci-run
 	@echo "open file://`pwd`/htmlcov/index.html"
@@ -120,7 +128,9 @@ doc-spelling:
 	@make -C docs spelling SPHINXOPTS="-W -E"
 
 install:
-	@pip install -U 'pip<19'
+	@pip install -U 'pip'
 	@pip install -Ur requirements/dev.txt
 
-.PHONY: all build flake test vtest cov clean doc
+install-dev: .develop
+
+.PHONY: all build flake test vtest cov clean doc mypy

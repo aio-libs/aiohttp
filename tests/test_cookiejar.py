@@ -1,13 +1,13 @@
 import asyncio
 import datetime
 import itertools
-import os
-import tempfile
+import pathlib
 import unittest
-from http.cookies import SimpleCookie
+from http.cookies import BaseCookie, Morsel, SimpleCookie
 from unittest import mock
 
 import pytest
+from freezegun import freeze_time
 from yarl import URL
 
 from aiohttp import CookieJar, DummyCookieJar
@@ -15,6 +15,32 @@ from aiohttp import CookieJar, DummyCookieJar
 
 @pytest.fixture
 def cookies_to_send():
+    return SimpleCookie(
+        "shared-cookie=first; "
+        "domain-cookie=second; Domain=example.com; "
+        "subdomain1-cookie=third; Domain=test1.example.com; "
+        "subdomain2-cookie=fourth; Domain=test2.example.com; "
+        "dotted-domain-cookie=fifth; Domain=.example.com; "
+        "different-domain-cookie=sixth; Domain=different.org; "
+        "secure-cookie=seventh; Domain=secure.com; Secure; "
+        "no-path-cookie=eighth; Domain=pathtest.com; "
+        "path1-cookie=nineth; Domain=pathtest.com; Path=/; "
+        "path2-cookie=tenth; Domain=pathtest.com; Path=/one; "
+        "path3-cookie=eleventh; Domain=pathtest.com; Path=/one/two; "
+        "path4-cookie=twelfth; Domain=pathtest.com; Path=/one/two/; "
+        "expires-cookie=thirteenth; Domain=expirestest.com; Path=/;"
+        " Expires=Tue, 1 Jan 2039 12:00:00 GMT; "
+        "max-age-cookie=fourteenth; Domain=maxagetest.com; Path=/;"
+        " Max-Age=60; "
+        "invalid-max-age-cookie=fifteenth; Domain=invalid-values.com; "
+        " Max-Age=string; "
+        "invalid-expires-cookie=sixteenth; Domain=invalid-values.com; "
+        " Expires=string;"
+    )
+
+
+@pytest.fixture
+def cookies_to_send_with_expired():
     return SimpleCookie(
         "shared-cookie=first; "
         "domain-cookie=second; Domain=example.com; "
@@ -134,7 +160,7 @@ def test_path_matching() -> None:
 
 
 async def test_constructor(loop, cookies_to_send, cookies_to_receive) -> None:
-    jar = CookieJar(loop=loop)
+    jar = CookieJar()
     jar.update_cookies(cookies_to_send)
     jar_cookies = SimpleCookie()
     for cookie in jar:
@@ -144,22 +170,35 @@ async def test_constructor(loop, cookies_to_send, cookies_to_receive) -> None:
     assert jar._loop is loop
 
 
-async def test_save_load(loop, cookies_to_send, cookies_to_receive) -> None:
-    file_path = tempfile.mkdtemp() + '/aiohttp.test.cookie'
+async def test_constructor_with_expired(loop, cookies_to_send_with_expired,
+                                        cookies_to_receive) -> None:
+    jar = CookieJar()
+    jar.update_cookies(cookies_to_send_with_expired)
+    jar_cookies = SimpleCookie()
+    for cookie in jar:
+        dict.__setitem__(jar_cookies, cookie.key, cookie)
+    expected_cookies = cookies_to_send_with_expired
+    assert jar_cookies != expected_cookies
+    assert jar._loop is loop
+
+
+async def test_save_load(
+    tmp_path, loop, cookies_to_send, cookies_to_receive
+) -> None:
+    file_path = pathlib.Path(str(tmp_path)) / 'aiohttp.test.cookie'
 
     # export cookie jar
-    jar_save = CookieJar(loop=loop)
+    jar_save = CookieJar()
     jar_save.update_cookies(cookies_to_receive)
     jar_save.save(file_path=file_path)
 
-    jar_load = CookieJar(loop=loop)
+    jar_load = CookieJar()
     jar_load.load(file_path=file_path)
 
     jar_test = SimpleCookie()
     for cookie in jar_load:
         jar_test[cookie.key] = cookie
 
-    os.unlink(file_path)
     assert jar_test == cookies_to_receive
 
 
@@ -169,7 +208,7 @@ async def test_update_cookie_with_unicode_domain(loop) -> None:
         "idna-domain-second=second; Domain=xn--9caa.com; Path=/;",
     )
 
-    jar = CookieJar(loop=loop)
+    jar = CookieJar()
     jar.update_cookies(SimpleCookie(cookies[0]), URL("http://éé.com/"))
     jar.update_cookies(SimpleCookie(cookies[1]), URL("http://xn--9caa.com/"))
 
@@ -196,7 +235,7 @@ async def test_filter_cookies_str_deprecated(loop) -> None:
 
 
 async def test_domain_filter_ip_cookie_send(loop) -> None:
-    jar = CookieJar(loop=loop)
+    jar = CookieJar()
     cookies = SimpleCookie(
         "shared-cookie=first; "
         "domain-cookie=second; Domain=example.com; "
@@ -234,7 +273,7 @@ async def test_domain_filter_ip_cookie_receive(cookies_to_receive) -> None:
 
 
 async def test_preserving_ip_domain_cookies(loop) -> None:
-    jar = CookieJar(loop=loop, unsafe=True)
+    jar = CookieJar(unsafe=True)
     jar.update_cookies(SimpleCookie(
         "shared-cookie=first; "
         "ip-cookie=second; Domain=127.0.0.1;"
@@ -246,7 +285,7 @@ async def test_preserving_ip_domain_cookies(loop) -> None:
 
 
 async def test_preserving_quoted_cookies(loop) -> None:
-    jar = CookieJar(loop=loop, unsafe=True)
+    jar = CookieJar(unsafe=True)
     jar.update_cookies(SimpleCookie(
         "ip-cookie=\"second\"; Domain=127.0.0.1;"
     ))
@@ -256,7 +295,7 @@ async def test_preserving_quoted_cookies(loop) -> None:
 
 
 async def test_ignore_domain_ending_with_dot(loop) -> None:
-    jar = CookieJar(loop=loop, unsafe=True)
+    jar = CookieJar(unsafe=True)
     jar.update_cookies(SimpleCookie("cookie=val; Domain=example.com.;"),
                        URL("http://www.example.com"))
     cookies_sent = jar.filter_cookies(URL("http://www.example.com/"))
@@ -340,10 +379,19 @@ class TestCookieJarSafe(TestCookieJarBase):
         self.jar = self.loop.run_until_complete(make_jar())
 
     def timed_request(self, url, update_time, send_time):
-        with mock.patch.object(self.loop, 'time', return_value=update_time):
+        if isinstance(update_time, int):
+            update_time = datetime.timedelta(seconds=update_time)
+        elif isinstance(update_time, float):
+            update_time = datetime.datetime.fromtimestamp(update_time)
+        if isinstance(send_time, int):
+            send_time = datetime.timedelta(seconds=send_time)
+        elif isinstance(send_time, float):
+            send_time = datetime.datetime.fromtimestamp(send_time)
+
+        with freeze_time(update_time):
             self.jar.update_cookies(self.cookies_to_send)
 
-        with mock.patch.object(self.loop, 'time', return_value=send_time):
+        with freeze_time(send_time):
             cookies_sent = self.jar.filter_cookies(URL(url))
 
         self.jar.clear()
@@ -584,7 +632,7 @@ class TestCookieJarSafe(TestCookieJarBase):
         self.assertEqual(cookie["expires"], "")
 
     def test_cookie_not_expired_when_added_after_removal(self) -> None:
-        """Test case for https://github.com/aio-libs/aiohttp/issues/2084"""
+        # Test case for https://github.com/aio-libs/aiohttp/issues/2084
         timestamps = [533588.993, 533588.993, 533588.993,
                       533588.993, 533589.093, 533589.093]
 
@@ -614,3 +662,20 @@ async def test_dummy_cookie_jar() -> None:
         next(iter(dummy_jar))
     assert not dummy_jar.filter_cookies(URL("http://example.com/"))
     dummy_jar.clear()
+
+
+async def test_loose_cookies_types() -> None:
+    jar = CookieJar()
+
+    accepted_types = [
+        [('str', BaseCookie())],
+        [('str', Morsel())],
+        [('str', 'str'), ],
+        {'str': BaseCookie()},
+        {'str': Morsel()},
+        {'str': 'str'},
+        SimpleCookie(),
+    ]
+
+    for loose_cookies_type in accepted_types:
+        jar.update_cookies(cookies=loose_cookies_type)

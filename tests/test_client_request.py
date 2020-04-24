@@ -3,14 +3,12 @@
 import asyncio
 import hashlib
 import io
-import os.path
-import urllib.parse
+import pathlib
 import zlib
-from http.cookies import SimpleCookie
+from http.cookies import BaseCookie, Morsel, SimpleCookie
 from unittest import mock
 
 import pytest
-from async_generator import async_generator, yield_
 from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
 
@@ -199,6 +197,11 @@ def test_host_port_nondefault_wss(make_request) -> None:
     assert req.is_ssl()
 
 
+def test_host_port_none_port(make_request) -> None:
+    req = make_request('get', 'unix://localhost/path')
+    assert req.headers['Host'] == 'localhost'
+
+
 def test_host_port_err(make_request) -> None:
     with pytest.raises(ValueError):
         make_request('get', 'http://python.org:123e/')
@@ -269,12 +272,6 @@ def test_host_header_ipv4_with_port(make_request) -> None:
 def test_host_header_ipv6_with_port(make_request) -> None:
     req = make_request('get', 'http://[::2]:99')
     assert req.headers['HOST'] == '[::2]:99'
-
-
-def test_default_loop(loop) -> None:
-    asyncio.set_event_loop(loop)
-    req = ClientRequest('get', URL('http://python.org/'))
-    assert req.loop is loop
 
 
 def test_default_headers_useragent(make_request) -> None:
@@ -450,32 +447,6 @@ def test_cookies_merge_with_headers(make_request) -> None:
                        cookies={'cookie2': 'val2'})
 
     assert 'cookie1=val1; cookie2=val2' == req.headers['COOKIE']
-
-
-def test_unicode_get1(make_request) -> None:
-    req = make_request('get', 'http://python.org',
-                       params={'foo': 'f\xf8\xf8'})
-    assert 'http://python.org/?foo=f%C3%B8%C3%B8' == str(req.url)
-
-
-def test_unicode_get2(make_request) -> None:
-    req = make_request('', 'http://python.org',
-                       params={'f\xf8\xf8': 'f\xf8\xf8'})
-
-    assert 'http://python.org/?f%C3%B8%C3%B8=f%C3%B8%C3%B8' == str(req.url)
-
-
-def test_unicode_get3(make_request) -> None:
-    req = make_request('', 'http://python.org', params={'foo': 'foo'})
-    assert 'http://python.org/?foo=foo' == str(req.url)
-
-
-def test_unicode_get4(make_request) -> None:
-    def join(*suffix):
-        return urllib.parse.urljoin('http://python.org/', '/'.join(suffix))
-
-    req = make_request('', join('\xf8'), params={'foo': 'foo'})
-    assert 'http://python.org/%C3%B8?foo=foo' == str(req.url)
 
 
 def test_query_multivalued_param(make_request) -> None:
@@ -661,8 +632,8 @@ async def test_pass_falsy_data(loop) -> None:
     await req.close()
 
 
-async def test_pass_falsy_data_file(loop, tmpdir) -> None:
-    testfile = tmpdir.join('tmpfile').open('w+b')
+async def test_pass_falsy_data_file(loop, tmp_path) -> None:
+    testfile = (tmp_path / 'tmpfile').open('w+b')
     testfile.write(b'data')
     testfile.seek(0)
     skip = frozenset([hdrs.CONTENT_TYPE])
@@ -795,15 +766,14 @@ async def test_chunked_transfer_encoding(loop, conn) -> None:
 
 
 async def test_file_upload_not_chunked(loop) -> None:
-    here = os.path.dirname(__file__)
-    fname = os.path.join(here, 'aiohttp.png')
-    with open(fname, 'rb') as f:
+    file_path = pathlib.Path(__file__).parent / 'aiohttp.png'
+    with file_path.open('rb') as f:
         req = ClientRequest(
             'post', URL('http://python.org/'),
             data=f,
             loop=loop)
         assert not req.chunked
-        assert req.headers['CONTENT-LENGTH'] == str(os.path.getsize(fname))
+        assert req.headers['CONTENT-LENGTH'] == str(file_path.stat().st_size)
         await req.close()
 
 
@@ -822,23 +792,21 @@ async def test_precompressed_data_stays_intact(loop) -> None:
 
 
 async def test_file_upload_not_chunked_seek(loop) -> None:
-    here = os.path.dirname(__file__)
-    fname = os.path.join(here, 'aiohttp.png')
-    with open(fname, 'rb') as f:
+    file_path = pathlib.Path(__file__).parent / 'aiohttp.png'
+    with file_path.open('rb') as f:
         f.seek(100)
         req = ClientRequest(
             'post', URL('http://python.org/'),
             data=f,
             loop=loop)
         assert req.headers['CONTENT-LENGTH'] == \
-            str(os.path.getsize(fname) - 100)
+            str(file_path.stat().st_size - 100)
         await req.close()
 
 
 async def test_file_upload_force_chunked(loop) -> None:
-    here = os.path.dirname(__file__)
-    fname = os.path.join(here, 'aiohttp.png')
-    with open(fname, 'rb') as f:
+    file_path = pathlib.Path(__file__).parent / 'aiohttp.png'
+    with file_path.open('rb') as f:
         req = ClientRequest(
             'post', URL('http://python.org/'),
             data=f,
@@ -870,10 +838,9 @@ async def test_expect_100_continue_header(loop, conn) -> None:
 
 
 async def test_data_stream(loop, buf, conn) -> None:
-    @async_generator
     async def gen():
-        await yield_(b'binary data')
-        await yield_(b' result')
+        yield b'binary data'
+        yield b' result'
 
     req = ClientRequest(
         'POST', URL('http://python.org/'), data=gen(), loop=loop)
@@ -910,9 +877,8 @@ async def test_data_file(loop, buf, conn) -> None:
 async def test_data_stream_exc(loop, conn) -> None:
     fut = loop.create_future()
 
-    @async_generator
     async def gen():
-        await yield_(b'binary data')
+        yield b'binary data'
         await fut
 
     req = ClientRequest(
@@ -921,7 +887,7 @@ async def test_data_stream_exc(loop, conn) -> None:
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
 
     async def throw_exc():
-        await asyncio.sleep(0.01, loop=loop)
+        await asyncio.sleep(0.01)
         fut.set_exception(ValueError)
 
     loop.create_task(throw_exc())
@@ -936,9 +902,10 @@ async def test_data_stream_exc(loop, conn) -> None:
 async def test_data_stream_exc_chain(loop, conn) -> None:
     fut = loop.create_future()
 
-    @async_generator
     async def gen():
         await fut
+        return
+        yield
 
     req = ClientRequest('POST', URL('http://python.org/'),
                         data=gen(), loop=loop)
@@ -946,7 +913,7 @@ async def test_data_stream_exc_chain(loop, conn) -> None:
     inner_exc = ValueError()
 
     async def throw_exc():
-        await asyncio.sleep(0.01, loop=loop)
+        await asyncio.sleep(0.01)
         fut.set_exception(inner_exc)
 
     loop.create_task(throw_exc())
@@ -963,10 +930,9 @@ async def test_data_stream_exc_chain(loop, conn) -> None:
 
 
 async def test_data_stream_continue(loop, buf, conn) -> None:
-    @async_generator
     async def gen():
-        await yield_(b'binary data')
-        await yield_(b' result')
+        yield b'binary data'
+        yield b' result'
 
     req = ClientRequest(
         'POST', URL('http://python.org/'), data=gen(),
@@ -974,7 +940,7 @@ async def test_data_stream_continue(loop, buf, conn) -> None:
     assert req.chunked
 
     async def coro():
-        await asyncio.sleep(0.0001, loop=loop)
+        await asyncio.sleep(0.0001)
         req._continue.set_result(1)
 
     loop.create_task(coro())
@@ -993,7 +959,7 @@ async def test_data_continue(loop, buf, conn) -> None:
         expect100=True, loop=loop)
 
     async def coro():
-        await asyncio.sleep(0.0001, loop=loop)
+        await asyncio.sleep(0.0001)
         req._continue.set_result(1)
 
     loop.create_task(coro())
@@ -1007,10 +973,9 @@ async def test_data_continue(loop, buf, conn) -> None:
 
 
 async def test_close(loop, buf, conn) -> None:
-    @async_generator
     async def gen():
         await asyncio.sleep(0.00001)
-        await yield_(b'result')
+        yield b'result'
 
     req = ClientRequest(
         'POST', URL('http://python.org/'), data=gen(), loop=loop)
@@ -1066,7 +1031,7 @@ def test_terminate_with_closed_loop(loop, conn) -> None:
 
     async def go():
         nonlocal req, resp, writer
-        req = ClientRequest('get', URL('http://python.org'))
+        req = ClientRequest('get', URL('http://python.org'), loop=loop)
         resp = await req.send(conn)
         assert req._writer is not None
         writer = req._writer = mock.Mock()
@@ -1090,7 +1055,7 @@ def test_terminate_without_writer(loop) -> None:
     assert req._writer is None
 
 
-async def test_custom_req_rep(loop) -> None:
+async def test_custom_req_rep(loop, create_mocked_conn) -> None:
     conn = None
 
     class CustomResponse(ClientResponse):
@@ -1125,15 +1090,14 @@ async def test_custom_req_rep(loop) -> None:
 
     async def create_connection(req, traces, timeout):
         assert isinstance(req, CustomRequest)
-        return mock.Mock()
-    connector = BaseConnector(loop=loop)
+        return create_mocked_conn()
+    connector = BaseConnector()
     connector._create_connection = create_connection
 
     session = aiohttp.ClientSession(
         request_class=CustomRequest,
         response_class=CustomResponse,
-        connector=connector,
-        loop=loop)
+        connector=connector)
 
     resp = await session.request(
         'get', URL('http://example.com/path/to'))
@@ -1157,3 +1121,22 @@ def test_insecure_fingerprint_md5(loop) -> None:
 def test_insecure_fingerprint_sha1(loop) -> None:
     with pytest.raises(ValueError):
         Fingerprint(hashlib.sha1(b"foo").digest())
+
+
+def test_loose_cookies_types(loop) -> None:
+    req = ClientRequest('get', URL('http://python.org'), loop=loop)
+    morsel = Morsel()
+    morsel.set(key='string', val='Another string', coded_val='really')
+
+    accepted_types = [
+        [('str', BaseCookie())],
+        [('str', morsel)],
+        [('str', 'str'), ],
+        {'str': BaseCookie()},
+        {'str': morsel},
+        {'str': 'str'},
+        SimpleCookie(),
+    ]
+
+    for loose_cookies_type in accepted_types:
+        req.update_cookies(cookies=loose_cookies_type)

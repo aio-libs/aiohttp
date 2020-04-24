@@ -1,4 +1,4 @@
-"""Tests for http/websocket.py"""
+# Tests for http/websocket.py
 
 import base64
 import os
@@ -30,13 +30,6 @@ def gen_ws_headers(protocols='', compress=0, extension_text='',
             params += '; ' + extension_text
         hdrs += [('Sec-Websocket-Extensions', params)]
     return hdrs, key
-
-
-async def test_not_get() -> None:
-    ws = web.WebSocketResponse()
-    req = make_mocked_request('POST', '/')
-    with pytest.raises(web.HTTPMethodNotAllowed):
-        await ws.prepare(req)
 
 
 async def test_no_upgrade() -> None:
@@ -261,3 +254,13 @@ def test_handshake_compress_multi_ext_wbits() -> None:
     assert 'Sec-Websocket-Extensions' in headers
     assert headers['Sec-Websocket-Extensions'] == 'permessage-deflate'
     assert compress == 15
+
+
+def test_handshake_no_transfer_encoding() -> None:
+    hdrs, sec_key = gen_ws_headers()
+    req = make_mocked_request('GET', '/', headers=hdrs)
+
+    ws = web.WebSocketResponse()
+    headers, _, compress, notakeover = ws._handshake(req)
+
+    assert 'Transfer-Encoding' not in headers

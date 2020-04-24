@@ -1,9 +1,9 @@
+.. currentmodule:: aiohttp
+
 .. _aiohttp-client-advanced:
 
 Advanced Client Usage
 =====================
-
-.. currentmodule:: aiohttp
 
 .. _aiohttp-client-session:
 
@@ -150,10 +150,10 @@ the :attr:`~ClientResponse.history` attribute::
 
     resp = await session.get('http://example.com/some/redirect/')
     assert resp.status == 200
-    assert resp.url = URL('http://example.com/some/other/url/')
+    assert resp.url == URL('http://example.com/some/other/url/')
     assert len(resp.history) == 1
     assert resp.history[0].status == 301
-    assert resp.history[0].url = URL(
+    assert resp.history[0].url == URL(
         'http://example.com/some/redirect/')
 
 If no redirects occurred or ``allow_redirects`` is set to ``False``,
@@ -280,10 +280,10 @@ same request and to the same :class:`TraceConfig` class, perhaps::
 
     async def on_request_start(
             session, trace_config_ctx, params):
-        trace_config_ctx.start = session.loop.time()
+        trace_config_ctx.start = asyncio.get_event_loop().time()
 
     async def on_request_end(session, trace_config_ctx, params):
-        elapsed = session.loop.time() - trace_config_ctx.start
+        elapsed = asyncio.get_event_loop().time() - trace_config_ctx.start
         print("Request took {}".format(elapsed))
 
 
@@ -397,6 +397,17 @@ If your HTTP server uses UNIX domain sockets you can use
   session = aiohttp.ClientSession(connector=conn)
 
 
+Named pipes in Windows
+^^^^^^^^^^^^^^^^^^^^^^
+
+If your HTTP server uses Named pipes you can use
+:class:`~aiohttp.NamedPipeConnector`::
+
+  conn = aiohttp.NamedPipeConnector(path=r'\\.\pipe\<name-of-pipe>')
+  session = aiohttp.ClientSession(connector=conn)
+
+It will only work with the ProactorEventLoop
+
 SSL control for TCP sockets
 ---------------------------
 
@@ -489,8 +500,9 @@ DER with e.g::
 Proxy support
 -------------
 
-aiohttp supports HTTP/HTTPS proxies. You have to use
-*proxy* parameter::
+aiohttp supports plain HTTP proxies and HTTP proxies that can be upgraded to HTTPS
+via the HTTP CONNECT method. aiohttp does not support proxies that must be
+connected to via ``https://``. To connect, use the *proxy* parameter::
 
    async with aiohttp.ClientSession() as session:
        async with session.get("http://python.org",
@@ -515,8 +527,8 @@ Contrary to the ``requests`` library, it won't read environment
 variables by default. But you can do so by passing
 ``trust_env=True`` into :class:`aiohttp.ClientSession`
 constructor for extracting proxy configuration from
-*HTTP_PROXY* or *HTTPS_PROXY* *environment variables* (both are case
-insensitive)::
+*HTTP_PROXY*, *HTTPS_PROXY*, *WS_PROXY* or *WSS_PROXY* *environment 
+variables* (all are case insensitive)::
 
    async with aiohttp.ClientSession(trust_env=True) as session:
        async with session.get("http://python.org") as resp:
@@ -610,7 +622,7 @@ short duration before closing::
 Note that the appropriate amount of time to wait will vary from
 application to application.
 
-All if this will eventually become obsolete when the asyncio internals
+All of this will eventually become obsolete when the asyncio internals
 are changed so that aiohttp itself can wait on the underlying
 connection to close. Please follow issue `#1925
 <https://github.com/aio-libs/aiohttp/issues/1925>`_ for the progress

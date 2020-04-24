@@ -166,8 +166,8 @@ class HeadersParser:
 
 class HttpParser(abc.ABC):
 
-    def __init__(self, protocol: Optional[BaseProtocol]=None,
-                 loop: Optional[asyncio.AbstractEventLoop]=None,
+    def __init__(self, protocol: BaseProtocol,
+                 loop: asyncio.AbstractEventLoop,
                  max_line_size: int=8190,
                  max_headers: int=32768,
                  max_field_size: int=8190,
@@ -410,6 +410,13 @@ class HttpParser(abc.ABC):
             chunked = True
 
         return (headers, raw_headers, close_conn, encoding, upgrade, chunked)
+
+    def set_upgraded(self, val: bool) -> None:
+        """Set connection upgraded (to websocket) mode.
+
+        :param bool val: new state.
+        """
+        self._upgraded = val
 
 
 class HttpRequestParser(HttpParser):
@@ -698,34 +705,58 @@ class DeflateBuffer:
             if not HAS_BROTLI:  # pragma: no cover
                 raise ContentEncodingError(
                     'Can not decode content-encoding: brotli (br). '
-                    'Please install `brotlipy`')
-            self.decompressor = brotli.Decompressor()
+                    'Please install `Brotli`')
+
+            class BrotliDecoder:
+                # Supports both 'brotlipy' and 'Brotli' packages
+                # since they share an import name. The top branches
+                # are for 'brotlipy' and bottom branches for 'Brotli'
+                def __init__(self) -> None:
+                    self._obj = brotli.Decompressor()
+
+                def decompress(self, data: bytes) -> bytes:
+                    if hasattr(self._obj, "decompress"):
+                        return self._obj.decompress(data)
+                    return self._obj.process(data)
+
+                def flush(self) -> bytes:
+                    if hasattr(self._obj, "flush"):
+                        return self._obj.flush()
+                    return b""
+
+            self.decompressor = BrotliDecoder()  # type: Any
         else:
             zlib_mode = (16 + zlib.MAX_WBITS
-                         if encoding == 'gzip' else -zlib.MAX_WBITS)
+                         if encoding == 'gzip' else zlib.MAX_WBITS)
             self.decompressor = zlib.decompressobj(wbits=zlib_mode)
 
     def set_exception(self, exc: BaseException) -> None:
         self.out.set_exception(exc)
 
     def feed_data(self, chunk: bytes, size: int) -> None:
+        if not size:
+            return
+
         self.size += size
+
+        # RFC1950
+        # bits 0..3 = CM = 0b1000 = 8 = "deflate"
+        # bits 4..7 = CINFO = 1..7 = windows size.
+        if not self._started_decoding and self.encoding == 'deflate' \
+                and chunk[0] & 0xf != 8:
+            # Change the decoder to decompress incorrectly compressed data
+            # Actually we should issue a warning about non-RFC-compilant data.
+            self.decompressor = zlib.decompressobj(wbits=-zlib.MAX_WBITS)
+
         try:
             chunk = self.decompressor.decompress(chunk)
         except Exception:
-            if not self._started_decoding and self.encoding == 'deflate':
-                self.decompressor = zlib.decompressobj()
-                try:
-                    chunk = self.decompressor.decompress(chunk)
-                except Exception:
-                    raise ContentEncodingError(
-                        'Can not decode content-encoding: %s' % self.encoding)
-            else:
-                raise ContentEncodingError(
-                    'Can not decode content-encoding: %s' % self.encoding)
+            raise ContentEncodingError(
+                'Can not decode content-encoding: %s' % self.encoding)
+
+        self._started_decoding = True
 
         if chunk:
-            self._started_decoding = True
             self.out.feed_data(chunk, len(chunk))
 
     def feed_eof(self) -> None:

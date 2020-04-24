@@ -12,6 +12,7 @@ from typing import (
     Awaitable,
     Callable,
     Optional,
+    Tuple,
     Type,
     Union,
     cast,
@@ -25,7 +26,7 @@ from .abc import (
     AbstractStreamWriter,
 )
 from .base_protocol import BaseProtocol
-from .helpers import CeilTimeout, current_task
+from .helpers import ceil_timeout, current_task
 from .http import (
     HttpProcessingError,
     HttpRequestParser,
@@ -107,8 +108,6 @@ class RequestHandler(BaseProtocol):
 
     :param bool tcp_keepalive: TCP keep-alive is on, default is on
 
-    :param bool debug: enable debug mode
-
     :param logger: custom logger object
     :type logger: aiohttp.log.server_logger
 
@@ -137,8 +136,9 @@ class RequestHandler(BaseProtocol):
                  '_lingering_time', '_messages', '_message_tail',
                  '_waiter', '_error_handler', '_task_handler',
                  '_upgrade', '_payload_parser', '_request_parser',
-                 '_reading_paused', 'logger', 'debug', 'access_log',
-                 'access_logger', '_close', '_force_close')
+                 '_reading_paused', 'logger', 'access_log',
+                 'access_logger', '_close', '_force_close',
+                 '_current_request')
 
     def __init__(self, manager: 'Server', *,
                  loop: asyncio.AbstractEventLoop,
@@ -148,7 +148,6 @@ class RequestHandler(BaseProtocol):
                  access_log_class: _AnyAbstractAccessLogger=AccessLogger,
                  access_log: Logger=access_logger,
                  access_log_format: str=AccessLogger.LOG_FORMAT,
-                 debug: bool=False,
                  max_line_size: int=8190,
                  max_headers: int=32768,
                  max_field_size: int=8190,
@@ -158,6 +157,7 @@ class RequestHandler(BaseProtocol):
 
         self._request_count = 0
         self._keepalive = False
+        self._current_request = None  # type: Optional[BaseRequest]
         self._manager = manager  # type: Optional[Server]
         self._request_handler = manager.request_handler  # type: Optional[_RequestHandler]  # noqa
         self._request_factory = manager.request_factory  # type: Optional[_RequestFactory]  # noqa
@@ -186,7 +186,6 @@ class RequestHandler(BaseProtocol):
             payload_exception=RequestPayloadError)   # type: Optional[HttpRequestParser]  # noqa
 
         self.logger = logger
-        self.debug = debug
         self.access_log = access_log
         if access_log:
             if issubclass(access_log_class, AbstractAsyncAccessLogger):
@@ -223,10 +222,13 @@ class RequestHandler(BaseProtocol):
 
         # wait for handlers
         with suppress(asyncio.CancelledError, asyncio.TimeoutError):
-            with CeilTimeout(timeout, loop=self._loop):
+            async with ceil_timeout(timeout):
                 if (self._error_handler is not None and
                         not self._error_handler.done()):
                     await self._error_handler
+
+                if self._current_request is not None:
+                    self._current_request._cancel(asyncio.CancelledError())
 
                 if (self._task_handler is not None and
                         not self._task_handler.done()):
@@ -267,8 +269,10 @@ class RequestHandler(BaseProtocol):
         if self._keepalive_handle is not None:
             self._keepalive_handle.cancel()
 
-        if self._task_handler is not None:
-            self._task_handler.cancel()
+        if self._current_request is not None:
+            if exc is None:
+                exc = ConnectionResetError("Connection lost")
+            self._current_request._cancel(exc)
 
         if self._error_handler is not None:
             self._error_handler.cancel()
@@ -376,7 +380,7 @@ class RequestHandler(BaseProtocol):
                                          self._loop.time() - request_start)
 
     def log_debug(self, *args: Any, **kw: Any) -> None:
-        if self.debug:
+        if self._loop.get_debug():
             self.logger.debug(*args, **kw)
 
     def log_exception(self, *args: Any, **kw: Any) -> None:
@@ -398,6 +402,37 @@ class RequestHandler(BaseProtocol):
         # reschedule itself to next second
         self._keepalive_handle = self._loop.call_later(
             self.KEEPALIVE_RESCHEDULE_DELAY, self._process_keepalive)
+
+    async def _handle_request(self,
+                              request: BaseRequest,
+                              start_time: float,
+                              ) -> Tuple[StreamResponse, bool]:
+        assert self._request_handler is not None
+        try:
+            try:
+                self._current_request = request
+                resp = await self._request_handler(request)
+            finally:
+                self._current_request = None
+        except HTTPException as exc:
+            resp = Response(status=exc.status,
+                            reason=exc.reason,
+                            text=exc.text,
+                            headers=exc.headers)
+            reset = await self.finish_response(request, resp, start_time)
+        except asyncio.CancelledError:
+            raise
+        except asyncio.TimeoutError as exc:
+            self.log_debug('Request handler timed out.', exc_info=exc)
+            resp = self.handle_error(request, 504)
+            reset = await self.finish_response(request, resp, start_time)
+        except Exception as exc:
+            resp = self.handle_error(request, 500, exc)
+            reset = await self.finish_response(request, resp, start_time)
+        else:
+            reset = await self.finish_response(request, resp, start_time)
+
+        return resp, reset
 
     async def start(self) -> None:
         """Process incoming request.
@@ -440,27 +475,12 @@ class RequestHandler(BaseProtocol):
             try:
                 # a new task is used for copy context vars (#3406)
                 task = self._loop.create_task(
-                    self._request_handler(request))
+                    self._handle_request(request, start))
                 try:
-                    resp = await task
-                except HTTPException as exc:
-                    resp = Response(status=exc.status,
-                                    reason=exc.reason,
-                                    text=exc.text,
-                                    headers=exc.headers)
-                    reset = await self.finish_response(request, resp, start)
-                except asyncio.CancelledError:
+                    resp, reset = await task
+                except (asyncio.CancelledError, ConnectionError):
                     self.log_debug('Ignored premature client disconnection')
                     break
-                except asyncio.TimeoutError as exc:
-                    self.log_debug('Request handler timed out.', exc_info=exc)
-                    resp = self.handle_error(request, 504)
-                    reset = await self.finish_response(request, resp, start)
-                except Exception as exc:
-                    resp = self.handle_error(request, 500, exc)
-                    reset = await self.finish_response(request, resp, start)
-                else:
-                    reset = await self.finish_response(request, resp, start)
 
                 # Drop the processed task from asyncio.Task.all_tasks() early
                 del task
@@ -485,7 +505,7 @@ class RequestHandler(BaseProtocol):
                         with suppress(
                                 asyncio.TimeoutError, asyncio.CancelledError):
                             while not payload.is_eof() and now < end_t:
-                                with CeilTimeout(end_t - now, loop=loop):
+                                async with ceil_timeout(end_t - now):
                                     # read and ignore
                                     await payload.readany()
                                 now = loop.time()
@@ -501,7 +521,7 @@ class RequestHandler(BaseProtocol):
                 self.log_debug('Ignored premature client disconnection ')
                 break
             except RuntimeError as exc:
-                if self.debug:
+                if self._loop.get_debug():
                     self.log_exception(
                         'Unhandled runtime exception', exc_info=exc)
                 self.force_close()
@@ -540,6 +560,13 @@ class RequestHandler(BaseProtocol):
         can get exception information. Returns True if the client disconnects
         prematurely.
         """
+        request._finish()
+        if self._request_parser is not None:
+            self._request_parser.set_upgraded(False)
+            self._upgrade = False
+            if self._message_tail:
+                self._request_parser.feed_data(self._message_tail)
+                self._message_tail = b''
         try:
             prepare_meth = resp.prepare
         except AttributeError:
@@ -553,7 +580,7 @@ class RequestHandler(BaseProtocol):
         try:
             await prepare_meth(request)
             await resp.write_eof()
-        except ConnectionResetError:
+        except ConnectionError:
             await self.log_access(request, resp, start_time)
             return True
         else:
@@ -578,7 +605,7 @@ class RequestHandler(BaseProtocol):
             )
             msg = HTTPStatus.INTERNAL_SERVER_ERROR.description
             tb = None
-            if self.debug:
+            if self._loop.get_debug():
                 with suppress(Exception):
                     tb = traceback.format_exc()
 
@@ -612,9 +639,9 @@ class RequestHandler(BaseProtocol):
                                  status: int,
                                  exc: Optional[BaseException]=None,
                                  message: Optional[str]=None) -> None:
-        request = BaseRequest(  # type: ignore
+        request = BaseRequest(
             ERROR,
-            EMPTY_PAYLOAD,
+            EMPTY_PAYLOAD,  # type: ignore
             self, writer,
             current_task(),
             self._loop)

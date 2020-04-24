@@ -4,6 +4,7 @@ import asyncio
 import base64
 import binascii
 import cgi
+import datetime
 import functools
 import inspect
 import netrc
@@ -20,8 +21,10 @@ from pathlib import Path
 from types import TracebackType
 from typing import (  # noqa
     Any,
+    Awaitable,
     Callable,
     Dict,
+    Generator,
     Iterable,
     Iterator,
     List,
@@ -41,6 +44,7 @@ from urllib.request import getproxies
 import async_timeout
 import attr
 from multidict import MultiDict, MultiDictProxy
+from typing_extensions import final
 from yarl import URL
 
 from . import hdrs
@@ -51,6 +55,7 @@ __all__ = ('BasicAuth', 'ChainMapProxy')
 
 PY_36 = sys.version_info >= (3, 6)
 PY_37 = sys.version_info >= (3, 7)
+PY_38 = sys.version_info >= (3, 8)
 
 if not PY_37:
     import idna_ssl
@@ -93,23 +98,20 @@ SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
 TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 
-coroutines = asyncio.coroutines
-old_debug = coroutines._DEBUG  # type: ignore
-
-# prevent "coroutine noop was never awaited" warning.
-coroutines._DEBUG = False  # type: ignore
+class noop:
+    def __await__(self) -> Generator[None, None, None]:
+        yield
 
 
-@asyncio.coroutine
-def noop(*args, **kwargs):  # type: ignore
-    return  # type: ignore
+if PY_38:
+    iscoroutinefunction = asyncio.iscoroutinefunction
+else:
+    def iscoroutinefunction(func: Callable[..., Any]) -> bool:
+        while isinstance(func, functools.partial):
+            func = func.func
+        return asyncio.iscoroutinefunction(func)
 
-
-async def noop2(*args: Any, **kwargs: Any) -> None:
-    return
-
-
-coroutines._DEBUG = old_debug  # type: ignore
+json_re = re.compile(r'^application/(?:[\w.+-]+?\+)?json')
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
@@ -227,15 +229,16 @@ class ProxyInfo:
 
 def proxies_from_env() -> Dict[str, ProxyInfo]:
     proxy_urls = {k: URL(v) for k, v in getproxies().items()
-                  if k in ('http', 'https')}
+                  if k in ('http', 'https', 'ws', 'wss')}
     netrc_obj = netrc_from_env()
     stripped = {k: strip_auth_from_url(v) for k, v in proxy_urls.items()}
     ret = {}
     for proto, val in stripped.items():
         proxy, auth = val
-        if proxy.scheme == 'https':
+        if proxy.scheme in ('https', 'wss'):
             client_logger.warning(
-                "HTTPS proxies %s are not supported, ignoring", proxy)
+                "%s proxies %s are not supported, ignoring",
+                proxy.scheme.upper(), proxy)
             continue
         if netrc_obj and auth is None:
             auth_from_netrc = None
@@ -261,13 +264,20 @@ def current_task(
         return asyncio.Task.current_task(loop=loop)
 
 
-def get_running_loop(
-    loop: Optional[asyncio.AbstractEventLoop]=None
-) -> asyncio.AbstractEventLoop:
-    if loop is None:
+if sys.version_info >= (3, 7):
+    create_task = asyncio.create_task
+else:
+    def create_task(coro: Awaitable[_T]) -> 'asyncio.Task[_T]':
         loop = asyncio.get_event_loop()
+        return loop.create_task(coro)
+
+
+def get_running_loop() -> asyncio.AbstractEventLoop:
+    loop = asyncio.get_event_loop()
     if not loop.is_running():
-        raise RuntimeError("The object should be created from async function")
+        raise RuntimeError(
+            "The object should be created within an async function"
+        )
     return loop
 
 
@@ -365,6 +375,13 @@ def content_disposition_header(disptype: str,
     return value
 
 
+def is_expected_content_type(response_content_type: str,
+                             expected_content_type: str) -> bool:
+    if expected_content_type == 'application/json':
+        return json_re.match(response_content_type) is not None
+    return expected_content_type in response_content_type
+
+
 class reify:
     """Use as a class method decorator.  It operates almost exactly like
     the Python `@property` decorator, but it puts the result of the
@@ -445,8 +462,17 @@ def is_ip_address(
     return is_ipv4_address(host) or is_ipv6_address(host)
 
 
-_cached_current_datetime = None
-_cached_formatted_datetime = None
+def next_whole_second() -> datetime.datetime:
+    """Return current time rounded up to the next whole second."""
+    return (
+        datetime.datetime.now(
+            datetime.timezone.utc).replace(microsecond=0) +
+        datetime.timedelta(seconds=0)
+    )
+
+
+_cached_current_datetime = None  # type: Optional[int]
+_cached_formatted_datetime = ""
 
 
 def rfc822_formatted_time() -> str:
@@ -463,12 +489,12 @@ def rfc822_formatted_time() -> str:
                       "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
-        year, month, day, hh, mm, ss, wd, y, z = time.gmtime(now)  # type: ignore  # noqa
+        year, month, day, hh, mm, ss, wd, *tail = time.gmtime(now)
         _cached_formatted_datetime = "%s, %02d %3s %4d %02d:%02d:%02d GMT" % (
             _weekdayname[wd], day, _monthname[month], year, hh, mm, ss
         )
         _cached_current_datetime = now
-    return _cached_formatted_datetime  # type: ignore
+    return _cached_formatted_datetime
 
 
 def _weakref_handle(info):  # type: ignore
@@ -545,8 +571,8 @@ class TimerNoop(BaseTimerContext):
 
     def __exit__(self, exc_type: Optional[Type[BaseException]],
                  exc_val: Optional[BaseException],
-                 exc_tb: Optional[TracebackType]) -> Optional[bool]:
-        return False
+                 exc_tb: Optional[TracebackType]) -> None:
+        return
 
 
 class TimerContext(BaseTimerContext):
@@ -589,27 +615,23 @@ class TimerContext(BaseTimerContext):
             self._cancelled = True
 
 
-class CeilTimeout(async_timeout.timeout):
-
-    def __enter__(self) -> async_timeout.timeout:
-        if self._timeout is not None:
-            self._task = current_task(loop=self._loop)
-            if self._task is None:
-                raise RuntimeError(
-                    'Timeout context manager should be used inside a task')
-            self._cancel_handler = self._loop.call_at(
-                ceil(self._loop.time() + self._timeout), self._cancel_task)
-        return self
+def ceil_timeout(delay: Optional[float]) -> async_timeout.Timeout:
+    if delay is not None:
+        loop = get_running_loop()
+        now = loop.time()
+        return async_timeout.timeout_at(ceil(now + delay))
+    else:
+        return async_timeout.timeout(None)
 
 
 class HeadersMixin:
 
-    ATTRS = frozenset([
-        '_content_type', '_content_dict', '_stored_content_type'])
+    __slots__ = ('_content_type', '_content_dict', '_stored_content_type')
 
-    _content_type = None  # type: Optional[str]
-    _content_dict = None  # type: Optional[Dict[str, str]]
-    _stored_content_type = sentinel
+    def __init__(self) -> None:
+        self._content_type = None  # type: Optional[str]
+        self._content_dict = None  # type: Optional[Dict[str, str]]
+        self._stored_content_type = sentinel
 
     def _parse_content_type(self, raw: str) -> None:
         self._stored_content_type = raw
@@ -657,6 +679,7 @@ def set_exception(fut: 'asyncio.Future[_T]', exc: BaseException) -> None:
         fut.set_exception(exc)
 
 
+@final
 class ChainMapProxy(Mapping[str, Any]):
     __slots__ = ('_maps',)
 

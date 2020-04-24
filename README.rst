@@ -9,15 +9,10 @@ Async http client/server framework
 
 |
 
-.. image:: https://travis-ci.com/aio-libs/aiohttp.svg?branch=master
-   :target: https://travis-ci.com/aio-libs/aiohttp
+.. image:: https://dev.azure.com/aio-libs/aiohttp/_apis/build/status/CI?branchName=master
+   :target: https://dev.azure.com/aio-libs/aiohttp/_build
    :align: right
-   :alt: Travis status for master branch
-
-.. image:: https://ci.appveyor.com/api/projects/status/tnddy9k6pphl8w7k/branch/master?svg=true
-   :target: https://ci.appveyor.com/project/aio-libs/aiohttp
-   :align: right
-   :alt: AppVeyor status for master branch
+   :alt: Azure Pipelines status for master branch
 
 .. image:: https://codecov.io/gh/aio-libs/aiohttp/branch/master/graph/badge.svg
    :target: https://codecov.io/gh/aio-libs/aiohttp
@@ -31,9 +26,14 @@ Async http client/server framework
    :target: https://docs.aiohttp.org/
    :alt: Latest Read The Docs
 
+.. image:: https://img.shields.io/discourse/status?server=https%3A%2F%2Faio-libs.discourse.group
+   :target: https://aio-libs.discourse.group
+   :alt: Discourse status
+
 .. image:: https://badges.gitter.im/Join%20Chat.svg
-    :target: https://gitter.im/aio-libs/Lobby
-    :alt: Chat on Gitter
+   :target: https://gitter.im/aio-libs/Lobby
+   :alt: Chat on Gitter
+
 
 Key Features
 ============
@@ -41,7 +41,7 @@ Key Features
 - Supports both client and server side of HTTP protocol.
 - Supports both client and server Web-Sockets out-of-the-box and avoids
   Callback Hell.
-- Provides Web-server with middlewares and pluggable routing.
+- Provides Web-server with middlewares and plugable routing.
 
 
 Getting started
@@ -57,19 +57,29 @@ To get something from the web:
   import aiohttp
   import asyncio
 
-  async def fetch(session, url):
-      async with session.get(url) as response:
-          return await response.text()
-
   async def main():
+
       async with aiohttp.ClientSession() as session:
-          html = await fetch(session, 'http://python.org')
-          print(html)
+          async with session.get('http://python.org') as response:
 
-  if __name__ == '__main__':
-      loop = asyncio.get_event_loop()
-      loop.run_until_complete(main())
+              print("Status:", response.status)
+              print("Content-type:", response.headers['content-type'])
 
+              html = await response.text()
+              print("Body:", html[:15], "...")
+
+  loop = asyncio.get_event_loop()
+  loop.run_until_complete(main())
+
+This prints:
+
+.. code-block::
+
+    Status: 200
+    Content-type: text/html; charset=utf-8
+    Body: <!doctype html> ...
+
+Comming from `requests <https://requests.readthedocs.io/>`_ ? Read `why we need so many lines <https://aiohttp.readthedocs.io/en/latest/http_request_lifecycle.html>`_.
 
 Server
 ------
@@ -138,9 +148,7 @@ Feel free to make a Pull Request for adding your link to these pages!
 Communication channels
 ======================
 
-*aio-libs* google group: https://groups.google.com/forum/#!forum/aio-libs
-
-Feel free to post your questions and ideas here.
+*aio-libs discourse group*: https://aio-libs.discourse.group
 
 *gitter chat* https://gitter.im/aio-libs/Lobby
 

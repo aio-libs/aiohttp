@@ -85,6 +85,13 @@
       A mechanism for encoding information in a Uniform Resource
       Locator (URL) if URL parts don't fit in safe characters space.
 
+   requests
+
+      Currently the most popular synchronous library to make
+      HTTP requests in Python.
+
+      https://requests.readthedocs.io
+
    requoting
 
       Applying :term:`percent-encoding` to non-safe symbols and decode

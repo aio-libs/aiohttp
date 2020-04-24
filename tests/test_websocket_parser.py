@@ -1,3 +1,4 @@
+import pickle
 import random
 import struct
 import zlib
@@ -21,7 +22,7 @@ from aiohttp.http_websocket import (
 
 def build_frame(message, opcode, use_mask=False, noheader=False, is_fin=True,
                 compress=False):
-    """Send a frame over the websocket with message as its payload."""
+    # Send a frame over the websocket with message as its payload.
     if compress:
         compressobj = zlib.compressobj(wbits=-9)
         message = compressobj.compress(message)
@@ -69,7 +70,7 @@ def build_frame(message, opcode, use_mask=False, noheader=False, is_fin=True,
 
 
 def build_close_frame(code=1000, message=b'', noheader=False):
-    """Close the websocket, sending the specified code and message."""
+    # Close the websocket, sending the specified code and message.
     if isinstance(message, str):  # pragma: no cover
         message = message.encode('utf-8')
     return build_frame(
@@ -483,3 +484,20 @@ def test_compressed_msg_too_large(out) -> None:
     with pytest.raises(WebSocketError) as ctx:
         parser._feed_data(data)
     assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
+
+
+class TestWebSocketError:
+    def test_ctor(self) -> None:
+        err = WebSocketError(WSCloseCode.PROTOCOL_ERROR, 'Something invalid')
+        assert err.code == WSCloseCode.PROTOCOL_ERROR
+        assert str(err) == 'Something invalid'
+
+    def test_pickle(self) -> None:
+        err = WebSocketError(WSCloseCode.PROTOCOL_ERROR, 'Something invalid')
+        err.foo = 'bar'
+        for proto in range(pickle.HIGHEST_PROTOCOL + 1):
+            pickled = pickle.dumps(err, proto)
+            err2 = pickle.loads(pickled)
+            assert err2.code == WSCloseCode.PROTOCOL_ERROR
+            assert str(err2) == 'Something invalid'
+            assert err2.foo == 'bar'

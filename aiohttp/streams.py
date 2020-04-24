@@ -13,7 +13,6 @@ try:  # pragma: no cover
 except ImportError:
     from typing_extensions import Deque  # noqa
 
-
 __all__ = (
     'EMPTY_PAYLOAD', 'EofStream', 'StreamReader', 'DataQueue',
     'FlowControlDataQueue')
@@ -109,7 +108,7 @@ class StreamReader(AsyncStreamReaderMixin):
     def __init__(self, protocol: BaseProtocol,
                  *, limit: int=DEFAULT_LIMIT,
                  timer: Optional[BaseTimerContext]=None,
-                 loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
+                 loop: asyncio.AbstractEventLoop) -> None:
         self._protocol = protocol
         self._low_water = limit
         self._high_water = limit * 2
@@ -261,7 +260,7 @@ class StreamReader(AsyncStreamReaderMixin):
         # self._http_chunk_splits contains logical byte offsets from start of
         # the body transfer. Each offset is the offset of the end of a chunk.
         # "Logical" means bytes, accessible for a user.
-        # If no chunks containig logical data were received, current position
+        # If no chunks containing logical data were received, current position
         # is difinitely zero.
         pos = self._http_chunk_splits[-1] if self._http_chunk_splits else 0
 
@@ -333,18 +332,6 @@ class StreamReader(AsyncStreamReaderMixin):
     async def read(self, n: int=-1) -> bytes:
         if self._exception is not None:
             raise self._exception
-
-        # migration problem; with DataQueue you have to catch
-        # EofStream exception, so common way is to run payload.read() inside
-        # infinite loop. what can cause real infinite loop with StreamReader
-        # lets keep this code one major release.
-        if __debug__:
-            if self._eof and not self._buffer:
-                self._eof_counter = getattr(self, '_eof_counter', 0) + 1
-                if self._eof_counter > 5:
-                    internal_logger.warning(
-                        'Multiple access to StreamReader in eof state, '
-                        'might be infinite loop.', stack_info=True)
 
         if not n:
             return b''
@@ -421,7 +408,7 @@ class StreamReader(AsyncStreamReaderMixin):
             block = await self.read(n)
             if not block:
                 partial = b''.join(blocks)
-                raise asyncio.streams.IncompleteReadError(
+                raise asyncio.IncompleteReadError(
                     partial, len(partial) + n)
             blocks.append(block)
             n -= len(block)
@@ -470,7 +457,7 @@ class StreamReader(AsyncStreamReaderMixin):
         return data
 
     def _read_nowait(self, n: int) -> bytes:
-        """ Read not more than n bytes, or whole buffer is n == -1 """
+        """ Read not more than n bytes, or whole buffer if n == -1 """
         chunks = []
 
         while self._buffer:
@@ -526,7 +513,7 @@ class EmptyStreamReader(AsyncStreamReaderMixin):
         return (b'', True)
 
     async def readexactly(self, n: int) -> bytes:
-        raise asyncio.streams.IncompleteReadError(b'', n)
+        raise asyncio.IncompleteReadError(b'', n)
 
     def read_nowait(self) -> bytes:
         return b''

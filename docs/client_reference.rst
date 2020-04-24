@@ -1,11 +1,9 @@
+.. currentmodule:: aiohttp
+
 .. _aiohttp-client-reference:
 
 Client Reference
 ================
-
-.. module:: aiohttp
-.. currentmodule:: aiohttp
-
 
 Client Session
 --------------
@@ -39,12 +37,11 @@ Usage example::
 
 The client session supports the context manager protocol for self closing.
 
-.. class:: ClientSession(*, connector=None, loop=None, cookies=None, \
+.. class:: ClientSession(*, connector=None, cookies=None, \
                          headers=None, skip_auto_headers=None, \
                          auth=None, json_serialize=json.dumps, \
                          version=aiohttp.HttpVersion11, \
-                         cookie_jar=None, read_timeout=None, \
-                         conn_timeout=None, \
+                         cookie_jar=None,
                          timeout=sentinel, \
                          raise_for_status=False, \
                          connector_owner=True, \
@@ -56,19 +53,8 @@ The client session supports the context manager protocol for self closing.
    The class for creating client sessions and making requests.
 
 
-   :param aiohttp.connector.BaseConnector connector: BaseConnector
+   :param aiohttp.BaseConnector connector: BaseConnector
       sub-class instance to support connection pooling.
-
-   :param loop: :ref:`event loop<asyncio-event-loop>` used for
-      processing HTTP requests.
-
-      If *loop* is ``None`` the constructor
-      borrows it from *connector* if specified.
-
-      :func:`asyncio.get_event_loop` is used for getting default event
-      loop otherwise.
-
-      .. deprecated:: 2.0
 
    :param dict cookies: Cookies to send with the request (optional)
 
@@ -112,7 +98,7 @@ The client session supports the context manager protocol for self closing.
 
       By default :func:`json.dumps` function.
 
-   :param bool raise_for_status:
+   :param ~typing.Union[bool, callable] raise_for_status:
 
       Automatically call :meth:`ClientResponse.raise_for_status()` for
       each response, ``False`` by default.
@@ -129,26 +115,30 @@ The client session supports the context manager protocol for self closing.
       requests where you need to handle responses with status 400 or
       higher.
 
-   :param timeout: a :class:`ClientTimeout` settings structure, 5min
+      You can also provide a coroutine which takes the response as an
+      argument and can raise an exception based on custom logic, e.g.::
+
+          async def custom_check(response):
+              if response.status not in {201, 202}:
+                  raise RuntimeError('expected either 201 or 202')
+              text = await response.text()
+              if 'apple pie' not in text:
+                  raise RuntimeError('I wanted to see "apple pie" in response')
+
+          client_session = aiohttp.ClientSession(raise_for_status=custom_check)
+          ...
+
+      As with boolean values, you're free to set this on the session and/or
+      overwrite it on a per-request basis.
+
+      .. versionchanged:: 4.0
+
+         Async callback support is added.
+
+   :param timeout: a :class:`ClientTimeout` settings structure, 300 seconds (5min)
         total timeout by default.
 
       .. versionadded:: 3.3
-
-   :param float read_timeout: Request operations timeout. ``read_timeout`` is
-      cumulative for all request operations (request, redirects, responses,
-      data consuming). By default, the read timeout is 5*60 seconds.
-      Use ``None`` or ``0`` to disable timeout checks.
-
-      .. deprecated:: 3.3
-
-         Use ``timeout`` parameter instead.
-
-   :param float conn_timeout: timeout for connection establishing
-      (optional). Values ``0`` or ``None`` mean no timeout.
-
-      .. deprecated:: 3.3
-
-         Use ``timeout`` parameter instead.
 
    :param bool connector_owner:
 
@@ -198,7 +188,7 @@ The client session supports the context manager protocol for self closing.
 
    .. attribute:: connector
 
-   :class:`aiohttp.connector.BaseConnector` derived instance used
+      :class:`aiohttp.BaseConnector` derived instance used
       for the session.
 
       A read-only property.
@@ -215,23 +205,91 @@ The client session supports the context manager protocol for self closing.
 
       aiohttp re quote's redirect urls by default, but some servers
       require exact url from location header. To disable *re-quote* system
-      set :attr:`requote_redirect_url` attribute to ``False``.
+      create ``ClientSession`` with ``requote_redirect_url=False``.
 
-      .. versionadded:: 2.1
+   .. attribute:: timeout
 
-      .. note:: This parameter affects all subsequent requests.
+      Default client timeouts, :class:`ClientTimeout` instance.  The value can
+      be tuned by passing *timeout* parameter to :class:`ClientSession`
+      constructor.
 
-      .. deprecated:: 3.5
+      .. versionadded:: 3.7
 
-         The attribute modification is deprecated.
+   .. attribute:: headers
 
-   .. attribute:: loop
+      HTTP Headers that sent with every request
 
-      A loop instance used for session creation.
+      May be either *iterable of key-value pairs* or
+      :class:`~collections.abc.Mapping`
+      (e.g. :class:`dict`,
+      :class:`~multidict.CIMultiDict`).
 
-      A read-only property.
+      .. versionadded:: 3.7
 
-      .. deprecated:: 3.5
+   .. attribute:: skip_auto_headers
+
+      Set of headers for which autogeneration skipped.
+
+      :class:`frozenset` of :class:`str` or :class:`~aiohttp.istr` (optional)
+
+      .. versionadded:: 3.7
+
+   .. attribute:: auth
+
+      An object that represents HTTP Basic Authorization.
+
+      :class:`~aiohttp.BasicAuth` (optional)
+
+      .. versionadded:: 3.7
+
+   .. attribute:: json_serialize
+
+      Json serializer callable.
+
+      By default :func:`json.dumps` function.
+
+      .. versionadded:: 3.7
+
+   .. attribute:: connector_owner
+
+      Should connector be closed on session closing
+
+      :class:`bool` (optional)
+
+      .. versionadded:: 3.7
+
+   .. attribute:: raise_for_status
+
+      Should :meth:`ClientResponse.raise_for_status()` be called for each response
+
+      Either :class:`bool` or :class:`callable`
+
+      .. versionadded:: 3.7
+
+   .. attribute:: auto_decompress
+
+      Should the body response be automatically decompressed
+
+      :class:`bool` default is ``True``
+
+      .. versionadded:: 3.7
+
+   .. attribute:: trust_env
+
+      Should get proxies information from HTTP_PROXY / HTTPS_PROXY environment
+      variables or ~/.netrc file if present
+
+      :class:`bool` default is ``False``
+
+      .. versionadded:: 3.7
+
+   .. attribute:: trace_config
+
+      A list of :class:`TraceConfig` instances used for client
+      tracing.  ``None`` (default) is used for request tracing
+      disabling.  See :ref:`aiohttp-client-tracing-reference` for more information.
+
+      .. versionadded:: 3.7
 
    .. comethod:: request(method, url, *, params=None, data=None, json=None,\
                          cookies=None, headers=None, skip_auto_headers=None, \
@@ -310,7 +368,7 @@ The client session supports the context manager protocol for self closing.
          with a *Content-Encoding* and *Content-Length* headers.
          ``None`` by default (optional).
 
-      :param int chunked: Enable chunked transfer encoding.
+      :param bool chunked: Enable chunked transfer encoding.
          It is up to the developer
          to decide how to chunk data streams. If chunking is enabled, aiohttp
          encodes the provided chunks in the "Transfer-encoding: chunked" format.
@@ -320,12 +378,40 @@ The client session supports the context manager protocol for self closing.
       :param bool expect100: Expect 100-continue response from server.
                              ``False`` by default (optional).
 
-      :param bool raise_for_status: Automatically call :meth:`ClientResponse.raise_for_status()` for
-                                    response if set to ``True``.
-                                    If set to ``None`` value from ``ClientSession`` will be used.
-                                    ``None`` by default (optional).
+      :param ~typing.Union[bool, callable] raise_for_status:
 
-          .. versionadded:: 3.4
+         Automatically apply a check for failed status codes (usually a code
+         that is greater than or equal to ``400``).
+
+         ``None`` (default) means that ``raise_for_status`` argument of
+         :class:`ClientSession` constructor controls this behavior.
+
+         Set the parameter to ``True`` if you need to enforce
+         :meth:`ClientResponse.raise_for_status` call.
+
+         Set the argument to ``False`` to suppress a HTTP status checker even if
+         :class:`ClientSession` enables it.
+
+         Use an *async callback* to call user code that accepts a
+         :class:`ClientResponse` and raises an exception to prevent future
+         processing.
+
+         The following callback example is a functional equivalent of
+         ``raise_for_status=True``::
+
+             async def custom_check(response):
+                 if 400 <= response.status:
+                     raise aiohttp.ClientResponseError(
+                     response.request_info,
+                     response.history,
+                     status=response.status,
+                     message=response.reason,
+                     headers=response.headers)
+
+             client_session = aiohttp.ClientSession(raise_for_status=custom_check)
+             ...
+
+         .. versionchanged:: 4.0
 
       :param bool read_until_eof: Read response until EOF if response
                                   does not have Content-Length header.
@@ -344,7 +430,7 @@ The client session supports the context manager protocol for self closing.
             :class:`float` is still supported for sake of backward
             compatibility.
 
-            If :class:`float` is passed it is a *total* timeout.
+            If :class:`float` is passed it is a *total* timeout (in seconds).
 
       :param ssl: SSL validation mode. ``None`` for default SSL check
                   (:func:`ssl.create_default_context` is used),
@@ -500,8 +586,8 @@ The client session supports the context manager protocol for self closing.
                               <ClientResponse>` object.
 
    .. comethod:: ws_connect(url, *, method='GET', \
-                            protocols=(), timeout=10.0,\
-                            receive_timeout=None,\
+                            protocols=(), \
+                            timeout=sentinel,\
                             auth=None,\
                             autoclose=True,\
                             autoping=True,\
@@ -521,12 +607,11 @@ The client session supports the context manager protocol for self closing.
 
       :param tuple protocols: Websocket protocols
 
-      :param float timeout: Timeout for websocket to close. ``10`` seconds
-                            by default
-
-      :param float receive_timeout: Timeout for websocket to receive
-                                    complete message.  ``None`` (unlimited)
-                                    seconds by default
+      :param timeout: a :class:`ClientWSTimeout` timeout for websocket.
+                      By default, the value
+                      `ClientWSTimeout(ws_receive=None, ws_close=10.0)` is used
+                      (``10.0`` seconds for the websocket to close).
+                      ``None`` means no timeout will be used.
 
       :param aiohttp.BasicAuth auth: an object that represents HTTP
                                      Basic Authorization (optional)
@@ -619,7 +704,7 @@ certification chaining.
                         encoding='utf-8', \
                         version=HttpVersion(major=1, minor=1), \
                         compress=None, chunked=None, expect100=False, raise_for_status=False, \
-                        connector=None, loop=None,\
+                        connector=None, \
                         read_until_eof=True, timeout=sentinel)
 
    :async-with:
@@ -674,24 +759,16 @@ certification chaining.
 
       .. versionadded:: 3.4
 
-   :param aiohttp.connector.BaseConnector connector: BaseConnector sub-class
+   :param aiohttp.BaseConnector connector: BaseConnector sub-class
       instance to support connection pooling.
 
    :param bool read_until_eof: Read response until EOF if response
                                does not have Content-Length header.
                                ``True`` by default (optional).
 
-   :param timeout: a :class:`ClientTimeout` settings structure, 5min
+   :param timeout: a :class:`ClientTimeout` settings structure, 300 seconds (5min)
         total timeout by default.
 
-   :param loop: :ref:`event loop<asyncio-event-loop>`
-                used for processing HTTP requests.
-                If param is ``None``, :func:`asyncio.get_event_loop`
-                is used for getting default event loop.
-
-      .. deprecated:: 2.0
-
-   :return ClientResponse: a :class:`client response <ClientResponse>` object.
 
    Usage::
 
@@ -729,7 +806,7 @@ BaseConnector
 
 .. class:: BaseConnector(*, keepalive_timeout=15, \
                          force_close=False, limit=100, limit_per_host=0, \
-                         enable_cleanup_closed=False, loop=None)
+                         enable_cleanup_closed=False)
 
    Base class for all connectors.
 
@@ -754,14 +831,6 @@ BaseConnector
       SSL shutdown process, in that case asyncio leaks ssl connections.
       If this parameter is set to True, aiohttp additionally aborts underlining
       transport after 2 seconds. It is off by default.
-
-
-   :param loop: :ref:`event loop<asyncio-event-loop>`
-      used for handling connections.
-      If param is ``None``, :func:`asyncio.get_event_loop`
-      is used for getting default event loop.
-
-      .. deprecated:: 2.0
 
    .. attribute:: closed
 
@@ -791,7 +860,7 @@ BaseConnector
 
    .. comethod:: close()
 
-      Close all opened connections.
+      Close all open connections (and await them to close).
 
    .. comethod:: connect(request)
 
@@ -823,7 +892,7 @@ TCPConnector
                  family=0, local_addr=None, \
                  resolver=None, keepalive_timeout=sentinel, \
                  force_close=False, limit=100, limit_per_host=0, \
-                 enable_cleanup_closed=False, loop=None)
+                 enable_cleanup_closed=False)
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
@@ -852,12 +921,11 @@ TCPConnector
       *side effects* also.
 
    :param int ttl_dns_cache: expire after some seconds the DNS entries, ``None``
-      means cached forever. By default 10 seconds.
+      means cached forever. By default 10 seconds (optional).
 
-      By default DNS entries are cached forever, in some environments the IP
-      addresses related to a specific HOST can change after a specific time. Use
-      this option to keep the DNS cache updated refreshing each entry after N
-      seconds.
+      In some environments the IP addresses related to a specific HOST can
+      change after a specific time. Use this option to keep the DNS cache
+      updated refreshing each entry after N seconds.
 
    :param int limit: total number simultaneous connections. If *limit* is
                      ``None`` the connector has no limit (default: 100).
@@ -930,7 +998,7 @@ UnixConnector
 
 .. class:: UnixConnector(path, *, conn_timeout=None, \
                          keepalive_timeout=30, limit=100, \
-                         force_close=False, loop=None)
+                         force_close=False)
 
    Unix socket connector.
 
@@ -974,12 +1042,6 @@ Connection
 
       :class:`bool` read-only property, ``True`` if connection was
       closed, released or detached.
-
-   .. attribute:: loop
-
-      Event loop used for connection
-
-      .. deprecated:: 3.5
 
    .. attribute:: transport
 
@@ -1153,7 +1215,7 @@ Response object
 
       Do nothing for success responses (less than 400).
 
-   .. comethod:: text(encoding=None)
+   .. comethod:: text(encoding=None, errors='strict')
 
       Read response's body and return decoded :class:`str` using
       specified *encoding* parameter.
@@ -1171,6 +1233,9 @@ Response object
       :param str encoding: text encoding used for *BODY* decoding, or
                            ``None`` for encoding autodetection
                            (default).
+
+      :param str errors: error handling scheme, see :ref:`error-handlers` for
+                         more details.  ``'strict'`` by default.
 
       :return str: decoded *BODY*
 
@@ -1239,6 +1304,9 @@ Response object
       Beware that it is not always safe to use the result of this function to
       decode a response. Some encodings detected by cchardet are not known by
       Python (e.g. VISCII).
+
+      :raise RuntimeError: if called before the body has been read,
+                           for :term:`cchardet` usage
 
       .. versionadded:: 3.0
 
@@ -1369,7 +1437,7 @@ manually.
 
       :param int code: closing code
 
-      :param message: optional payload of *pong* message,
+      :param message: optional payload of *close* message,
          :class:`str` (converted to *UTF-8* encoded bytes) or :class:`bytes`.
 
    .. comethod:: receive()
@@ -1439,13 +1507,13 @@ ClientTimeout
 
    .. attribute:: total
 
-      Total timeout for the whole request.
+      Total number of seconds for the whole request.
 
       :class:`float`, ``None`` by default.
 
    .. attribute:: connect
 
-      Total timeout for acquiring a connection from pool.  The time
+      Maximal number of seconds for acquiring a connection from pool.  The time
       consists connection establishment for a new connection or
       waiting for a free connection from a pool if pool connection
       limits are exceeded.
@@ -1457,18 +1525,35 @@ ClientTimeout
 
    .. attribute:: sock_connect
 
-      A timeout for connecting to a peer for a new connection, not
+      Maximal number of seconds for connecting to a peer for a new connection, not
       given from a pool.  See also :attr:`connect`.
 
       :class:`float`, ``None`` by default.
 
    .. attribute:: sock_read
 
-      A timeout for reading a portion of data from a peer.
+      Maximal number of seconds for reading a portion of data from a peer.
 
       :class:`float`, ``None`` by default.
 
-   .. versionadded:: 3.3
+
+.. class:: ClientWSTimeout(*, ws_receive=None, ws_close=None)
+
+   A data class for websocket client timeout settings.
+
+   .. attribute:: ws_receive
+
+      A timeout for websocket to receive a complete message.
+
+      :class:`float`, ``None`` by default.
+
+   .. attribute:: ws_close
+
+      A timeout for the websocket to close.
+
+      :class:`float`, ``10.0`` by default.
+
+   .. versionadded:: 4.0
 
 RequestInfo
 ^^^^^^^^^^^
@@ -1543,7 +1628,7 @@ BasicAuth
 CookieJar
 ^^^^^^^^^
 
-.. class:: CookieJar(*, unsafe=False, loop=None)
+.. class:: CookieJar(*, unsafe=False)
 
    The cookie jar instance is available as :attr:`ClientSession.cookie_jar`.
 
@@ -1567,11 +1652,6 @@ CookieJar
    Implements cookie storage adhering to RFC 6265.
 
    :param bool unsafe: (optional) Whether to accept cookies from IPs.
-
-   :param bool loop: an :ref:`event loop<asyncio-event-loop>` instance.
-      See :class:`aiohttp.abc.AbstractCookieJar`
-
-      .. deprecated:: 2.0
 
    .. method:: update_cookies(cookies, response_url=None)
 
@@ -1615,7 +1695,7 @@ CookieJar
 
 
 
-.. class:: DummyCookieJar(*, loop=None)
+.. class:: DummyCookieJar()
 
    Dummy cookie jar which does not store cookies but ignores them.
 

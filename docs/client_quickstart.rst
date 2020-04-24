@@ -1,10 +1,10 @@
+.. currentmodule:: aiohttp
+
 .. _aiohttp-client-quickstart:
 
 ===================
  Client Quickstart
 ===================
-
-.. currentmodule:: aiohttp
 
 Eager to get started? This page gives a good introduction in how to
 get started with aiohttp client API.
@@ -171,13 +171,13 @@ The ``gzip`` and ``deflate`` transfer-encodings are automatically
 decoded for you.
 
 You can enable ``brotli`` transfer-encodings support,
-just install  `brotlipy <https://github.com/python-hyper/brotlipy>`_.
+just install  `Brotli <https://pypi.org/project/Brotli>`_.
 
 JSON Request
 ============
 
 Any of session's request methods like :func:`request`,
-:meth:`ClientSession.get`, :meth:`ClientSesssion.post` etc. accept
+:meth:`ClientSession.get`, :meth:`ClientSession.post` etc. accept
 `json` parameter::
 
   async with aiohttp.ClientSession() as session:
@@ -285,7 +285,7 @@ If you want to send JSON data::
     async with session.post(url, json={'example': 'test'}) as resp:
         ...
 
-To send text with appropriate content-type just use ``text`` attribute ::
+To send text with appropriate content-type just use ``data`` argument::
 
     async with session.post(url, data='Тест') as resp:
         ...
@@ -354,12 +354,6 @@ can chain get and post requests together::
    await session.post('http://httpbin.org/post',
                       data=resp.content)
 
-.. note::
-
-   Python 3.5 has no native support for asynchronous generators, use
-   ``async_generator`` library as workaround.
-
-
 .. _aiohttp-client-websockets:
 
 
@@ -397,12 +391,12 @@ multiple writer tasks which can only send data asynchronously (by
 Timeouts
 ========
 
-Timeout settings a stored in :class:`ClientTimeout` data structure.
+Timeout settings are stored in :class:`ClientTimeout` data structure.
 
-By default *aiohttp* uses a *total* 5min timeout, it means that the
+By default *aiohttp* uses a *total* 300 seconds (5min) timeout, it means that the
 whole operation should finish in 5 minutes.
 
-The value could be overridden by *timeout* parameter for the session::
+The value could be overridden by *timeout* parameter for the session (specified in seconds)::
 
     timeout = aiohttp.ClientTimeout(total=60)
     async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -417,24 +411,24 @@ Supported :class:`ClientTimeout` fields are:
 
    ``total``
 
-      The whole operation time including connection
+      The maximal number of seconds for the whole operation including connection
       establishment, request sending and response reading.
 
    ``connect``
 
-      The time
-      consists connection establishment for a new connection or
-      waiting for a free connection from a pool if pool connection
+      The maximal number of seconds for
+      connection establishment of a new connection or
+      for waiting for a free connection from a pool if pool connection
       limits are exceeded.
 
    ``sock_connect``
 
-      A timeout for connecting to a peer for a new connection, not
+      The maximal number of seconds for connecting to a peer for a new connection, not
       given from a pool.
 
    ``sock_read``
 
-      The maximum allowed timeout for period between reading a new
+      The maximal number of seconds allowed for period between reading a new
       data portion from a peer.
 
 All fields are floats, ``None`` or ``0`` disables a particular timeout check, see the

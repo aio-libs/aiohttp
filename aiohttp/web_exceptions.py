@@ -1,6 +1,6 @@
 import warnings
 from http import HTTPStatus
-from typing import Any, Dict, Iterable, List, Optional, Set, Type, cast  # noqa
+from typing import Any, Iterable, Optional, Set, Tuple
 
 from multidict import CIMultiDict
 from yarl import URL
@@ -97,7 +97,7 @@ class HTTPException(Exception):
             if self.empty_body:
                 warnings.warn(
                     "text argument is deprecated for HTTP status {} "
-                    "in aiohttp 4.0 (#3462),"
+                    "since 4.0 and scheduled for removal in 5.0 (#3462),"
                     "the response should be provided without a body".format(
                         self.status_code),
                     DeprecationWarning,
@@ -111,17 +111,18 @@ class HTTPException(Exception):
         if content_type is not None:
             if not text:
                 warnings.warn("content_type without text is deprecated "
-                              "in aiohttp 4.0 (#3462)",
+                              "since 4.0 and scheduled for removal in 5.0 "
+                              "(#3462)",
                               DeprecationWarning,
                               stacklevel=2)
             real_headers[hdrs.CONTENT_TYPE] = content_type
         elif hdrs.CONTENT_TYPE not in real_headers and text:
             real_headers[hdrs.CONTENT_TYPE] = 'text/plain'
 
-        super().__init__(reason)
-
+        self._reason = reason
         self._text = text
         self._headers = real_headers
+        self.args = ()
 
     def __bool__(self) -> bool:
         return True
@@ -132,7 +133,7 @@ class HTTPException(Exception):
 
     @property
     def reason(self) -> str:
-        return self.args[0]
+        return self._reason
 
     @property
     def text(self) -> Optional[str]:
@@ -141,6 +142,17 @@ class HTTPException(Exception):
     @property
     def headers(self) -> 'CIMultiDict[str]':
         return self._headers
+
+    def __str__(self) -> str:
+        return self.reason
+
+    def __repr__(self) -> str:
+        return "<%s: %s>" % (self.__class__.__name__, self.reason)
+
+    __reduce__ = object.__reduce__
+
+    def __getnewargs__(self) -> Tuple[Any, ...]:
+        return self.args
 
 
 class HTTPError(HTTPException):
@@ -470,11 +482,10 @@ class HTTPNetworkAuthenticationRequired(HTTPServerError):
 def _initialize_default_reason() -> None:
     for obj in globals().values():
         if isinstance(obj, type) and issubclass(obj, HTTPException):
-            exc = cast(Type[HTTPException], obj)
-            if exc.status_code >= 0:
+            if obj.status_code >= 0:
                 try:
-                    status = HTTPStatus(exc.status_code)
-                    exc.default_reason = status.phrase
+                    status = HTTPStatus(obj.status_code)
+                    obj.default_reason = status.phrase
                 except ValueError:
                     pass
 

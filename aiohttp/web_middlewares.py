@@ -2,7 +2,7 @@ import re
 import warnings
 from typing import TYPE_CHECKING, Awaitable, Callable, Tuple, Type, TypeVar
 
-from .web_exceptions import HTTPMove, HTTPMovedPermanently
+from .web_exceptions import HTTPMove, HTTPPermanentRedirect
 from .web_request import Request
 from .web_response import StreamResponse
 from .web_urldispatcher import SystemRoute
@@ -33,8 +33,11 @@ async def _check_request_resolves(request: Request,
 
 def middleware(f: _Func) -> _Func:
     warnings.warn(
-        'Middleware decorator is deprecated and its behaviour is default, '
-        'you can simply remove this decorator.', DeprecationWarning)
+        'Middleware decorator is deprecated since 4.0 '
+        'and its behaviour is default, '
+        'you can simply remove this decorator.',
+        DeprecationWarning,
+        stacklevel=2)
     return f
 
 
@@ -45,7 +48,7 @@ _Middleware = Callable[[Request, _Handler], Awaitable[StreamResponse]]
 def normalize_path_middleware(
         *, append_slash: bool=True, remove_slash: bool=False,
         merge_slashes: bool=True,
-        redirect_class: Type[HTTPMove]=HTTPMovedPermanently) -> _Middleware:
+        redirect_class: Type[HTTPMove]=HTTPPermanentRedirect) -> _Middleware:
     """
     Middleware factory which produces a middleware that normalizes
     the path of a request. By normalizing it means:

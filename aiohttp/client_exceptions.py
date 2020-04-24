@@ -1,7 +1,6 @@
 """HTTP related errors."""
 
 import asyncio
-import warnings
 from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
 
 from .typedefs import _CIMultiDict
@@ -50,44 +49,32 @@ class ClientResponseError(ClientError):
 
     def __init__(self, request_info: RequestInfo,
                  history: Tuple[ClientResponse, ...], *,
-                 code: Optional[int]=None,
                  status: Optional[int]=None,
                  message: str='',
                  headers: Optional[_CIMultiDict]=None) -> None:
         self.request_info = request_info
-        if code is not None:
-            if status is not None:
-                raise ValueError(
-                    "Both code and status arguments are provided; "
-                    "code is deprecated, use status instead")
-            warnings.warn("code argument is deprecated, use status instead",
-                          DeprecationWarning,
-                          stacklevel=2)
         if status is not None:
             self.status = status
-        elif code is not None:
-            self.status = code
         else:
             self.status = 0
         self.message = message
         self.headers = headers
         self.history = history
+        self.args = (request_info, history)
 
-        super().__init__("%s, message='%s'" % (self.status, message))
+    def __str__(self) -> str:
+        return ("%s, message=%r, url=%r" %
+                (self.status, self.message, self.request_info.real_url))
 
-    @property
-    def code(self) -> int:
-        warnings.warn("code property is deprecated, use status instead",
-                      DeprecationWarning,
-                      stacklevel=2)
-        return self.status
-
-    @code.setter
-    def code(self, value: int) -> None:
-        warnings.warn("code property is deprecated, use status instead",
-                      DeprecationWarning,
-                      stacklevel=2)
-        self.status = value
+    def __repr__(self) -> str:
+        args = "%r, %r" % (self.request_info, self.history)
+        if self.status != 0:
+            args += ", status=%r" % (self.status,)
+        if self.message != '':
+            args += ", message=%r" % (self.message,)
+        if self.headers is not None:
+            args += ", headers=%r" % (self.headers,)
+        return "%s(%s)" % (type(self).__name__, args)
 
 
 class ContentTypeError(ClientResponseError):
@@ -130,6 +117,7 @@ class ClientConnectorError(ClientOSError):
         self._conn_key = connection_key
         self._os_error = os_error
         super().__init__(os_error.errno, os_error.strerror)
+        self.args = (connection_key, os_error)
 
     @property
     def os_error(self) -> OSError:
@@ -148,8 +136,12 @@ class ClientConnectorError(ClientOSError):
         return self._conn_key.ssl
 
     def __str__(self) -> str:
-        return ('Cannot connect to host {0.host}:{0.port} ssl:{0.ssl} [{1}]'
-                .format(self, self.strerror))
+        return ('Cannot connect to host {0.host}:{0.port} ssl:{1} [{2}]'
+                .format(self, self.ssl if self.ssl is not None else 'default',
+                        self.strerror))
+
+    # OSError.__reduce__ does too much black magick
+    __reduce__ = BaseException.__reduce__
 
 
 class ClientProxyConnectionError(ClientConnectorError):
@@ -168,6 +160,10 @@ class ServerDisconnectedError(ServerConnectionError):
     """Server disconnected."""
 
     def __init__(self, message: Optional[str]=None) -> None:
+        if message is None:
+            message = 'Server disconnected'
+
+        self.args = (message,)
         self.message = message
 
 
@@ -184,9 +180,10 @@ class ServerFingerprintMismatch(ServerConnectionError):
         self.got = got
         self.host = host
         self.port = port
+        self.args = (expected, got, host, port)
 
     def __repr__(self) -> str:
-        return '<{} expected={} got={} host={} port={}>'.format(
+        return '<{} expected={!r} got={!r} host={!r} port={!r}>'.format(
             self.__class__.__name__, self.expected, self.got,
             self.host, self.port)
 
@@ -245,6 +242,7 @@ class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore
                  ConnectionKey, certificate_error: Exception) -> None:
         self._conn_key = connection_key
         self._certificate_error = certificate_error
+        self.args = (connection_key, certificate_error)
 
     @property
     def certificate_error(self) -> Exception:

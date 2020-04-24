@@ -9,7 +9,6 @@ import pytest
 import aiohttp
 from aiohttp import client, hdrs
 from aiohttp.http import WS_KEY
-from aiohttp.log import ws_logger
 from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro
 
@@ -44,7 +43,7 @@ async def test_ws_connect(ws_key, loop, key_data) -> None:
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
 
-            res = await aiohttp.ClientSession(loop=loop).ws_connect(
+            res = await aiohttp.ClientSession().ws_connect(
                 'http://test.org',
                 protocols=('t1', 't2', 'chat'))
 
@@ -64,7 +63,7 @@ async def test_ws_connect_with_origin(key_data, loop) -> None:
 
             origin = 'https://example.org/page.html'
             with pytest.raises(client.WSServerHandshakeError):
-                await aiohttp.ClientSession(loop=loop).ws_connect(
+                await aiohttp.ClientSession().ws_connect(
                     'http://test.org', origin=origin)
 
     assert hdrs.ORIGIN in m_req.call_args[1]["headers"]
@@ -91,7 +90,7 @@ async def test_ws_connect_custom_response(loop, ws_key, key_data) -> None:
             m_req.return_value.set_result(resp)
 
             res = await aiohttp.ClientSession(
-                ws_response_class=CustomResponse, loop=loop).ws_connect(
+                ws_response_class=CustomResponse).ws_connect(
                     'http://test.org')
 
     assert res.read() == 'customized!'
@@ -112,7 +111,7 @@ async def test_ws_connect_err_status(loop, ws_key, key_data) -> None:
             m_req.return_value.set_result(resp)
 
             with pytest.raises(client.WSServerHandshakeError) as ctx:
-                await aiohttp.ClientSession(loop=loop).ws_connect(
+                await aiohttp.ClientSession().ws_connect(
                     'http://test.org',
                     protocols=('t1', 't2', 'chat'))
 
@@ -134,7 +133,7 @@ async def test_ws_connect_err_upgrade(loop, ws_key, key_data) -> None:
             m_req.return_value.set_result(resp)
 
             with pytest.raises(client.WSServerHandshakeError) as ctx:
-                await aiohttp.ClientSession(loop=loop).ws_connect(
+                await aiohttp.ClientSession().ws_connect(
                     'http://test.org',
                     protocols=('t1', 't2', 'chat'))
 
@@ -156,7 +155,7 @@ async def test_ws_connect_err_conn(loop, ws_key, key_data) -> None:
             m_req.return_value.set_result(resp)
 
             with pytest.raises(client.WSServerHandshakeError) as ctx:
-                await aiohttp.ClientSession(loop=loop).ws_connect(
+                await aiohttp.ClientSession().ws_connect(
                     'http://test.org',
                     protocols=('t1', 't2', 'chat'))
 
@@ -178,7 +177,7 @@ async def test_ws_connect_err_challenge(loop, ws_key, key_data) -> None:
             m_req.return_value.set_result(resp)
 
             with pytest.raises(client.WSServerHandshakeError) as ctx:
-                await aiohttp.ClientSession(loop=loop).ws_connect(
+                await aiohttp.ClientSession().ws_connect(
                     'http://test.org',
                     protocols=('t1', 't2', 'chat'))
 
@@ -186,11 +185,10 @@ async def test_ws_connect_err_challenge(loop, ws_key, key_data) -> None:
 
 
 async def test_ws_connect_common_headers(ws_key, loop, key_data) -> None:
-    """Emulate a headers dict being reused for a second ws_connect.
+    # Emulate a headers dict being reused for a second ws_connect.
 
-    In this scenario, we need to ensure that the newly generated secret key
-    is sent to the server, not the stale key.
-    """
+    # In this scenario, we need to ensure that the newly generated secret key
+    # is sent to the server, not the stale key.
     headers = {}
 
     async def test_connection() -> None:
@@ -214,7 +212,7 @@ async def test_ws_connect_common_headers(ws_key, loop, key_data) -> None:
                             side_effect=mock_get) as m_req:
                 m_os.urandom.return_value = key_data
 
-                res = await aiohttp.ClientSession(loop=loop).ws_connect(
+                res = await aiohttp.ClientSession().ws_connect(
                     'http://test.org',
                     protocols=('t1', 't2', 'chat'),
                     headers=headers)
@@ -247,7 +245,7 @@ async def test_close(loop, ws_key, key_data) -> None:
                 WebSocketWriter.return_value = writer
                 writer.close = make_mocked_coro()
 
-                session = aiohttp.ClientSession(loop=loop)
+                session = aiohttp.ClientSession()
                 resp = await session.ws_connect(
                     'http://test.org')
                 assert not resp.closed
@@ -285,7 +283,7 @@ async def test_close_eofstream(loop, ws_key, key_data) -> None:
                 m_req.return_value.set_result(resp)
                 writer = WebSocketWriter.return_value = mock.Mock()
 
-                session = aiohttp.ClientSession(loop=loop)
+                session = aiohttp.ClientSession()
                 resp = await session.ws_connect('http://test.org')
                 assert not resp.closed
 
@@ -317,7 +315,7 @@ async def test_close_exc(loop, ws_key, key_data) -> None:
                 WebSocketWriter.return_value = writer
                 writer.close = make_mocked_coro()
 
-                session = aiohttp.ClientSession(loop=loop)
+                session = aiohttp.ClientSession()
                 resp = await session.ws_connect('http://test.org')
                 assert not resp.closed
 
@@ -347,7 +345,7 @@ async def test_close_exc2(loop, ws_key, key_data) -> None:
                 m_req.return_value.set_result(resp)
                 writer = WebSocketWriter.return_value = mock.Mock()
 
-                resp = await aiohttp.ClientSession(loop=loop).ws_connect(
+                resp = await aiohttp.ClientSession().ws_connect(
                     'http://test.org')
                 assert not resp.closed
 
@@ -364,7 +362,7 @@ async def test_close_exc2(loop, ws_key, key_data) -> None:
                     await resp.close()
 
 
-async def test_send_data_after_close(ws_key, key_data, loop, mocker) -> None:
+async def test_send_data_after_close(ws_key, key_data, loop) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -378,20 +376,17 @@ async def test_send_data_after_close(ws_key, key_data, loop, mocker) -> None:
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
 
-            resp = await aiohttp.ClientSession(loop=loop).ws_connect(
+            resp = await aiohttp.ClientSession().ws_connect(
                 'http://test.org')
             resp._writer._closing = True
-
-            mocker.spy(ws_logger, 'warning')
 
             for meth, args in ((resp.ping, ()),
                                (resp.pong, ()),
                                (resp.send_str, ('s',)),
                                (resp.send_bytes, (b'b',)),
                                (resp.send_json, ({},))):
-                await meth(*args)
-                assert ws_logger.warning.called
-                ws_logger.warning.reset_mock()
+                with pytest.raises(ConnectionResetError):
+                    await meth(*args)
 
 
 async def test_send_data_type_errors(ws_key, key_data, loop) -> None:
@@ -410,7 +405,7 @@ async def test_send_data_type_errors(ws_key, key_data, loop) -> None:
                 m_req.return_value.set_result(resp)
                 WebSocketWriter.return_value = mock.Mock()
 
-                resp = await aiohttp.ClientSession(loop=loop).ws_connect(
+                resp = await aiohttp.ClientSession().ws_connect(
                     'http://test.org')
 
                 with pytest.raises(TypeError):
@@ -440,7 +435,7 @@ async def test_reader_read_exception(ws_key, key_data, loop) -> None:
                 WebSocketWriter.return_value = writer
                 writer.close = make_mocked_coro()
 
-                session = aiohttp.ClientSession(loop=loop)
+                session = aiohttp.ClientSession()
                 resp = await session.ws_connect('http://test.org')
 
                 exc = ValueError()
@@ -478,7 +473,7 @@ async def test_ws_connect_close_resp_on_err(loop, ws_key, key_data) -> None:
             m_req.return_value.set_result(resp)
 
             with pytest.raises(client.WSServerHandshakeError):
-                await aiohttp.ClientSession(loop=loop).ws_connect(
+                await aiohttp.ClientSession().ws_connect(
                     'http://test.org',
                     protocols=('t1', 't2', 'chat'))
             resp.close.assert_called_with()
@@ -500,7 +495,7 @@ async def test_ws_connect_non_overlapped_protocols(ws_key,
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
 
-            res = await aiohttp.ClientSession(loop=loop).ws_connect(
+            res = await aiohttp.ClientSession().ws_connect(
                 'http://test.org',
                 protocols=('t1', 't2', 'chat'))
 
@@ -523,9 +518,9 @@ async def test_ws_connect_non_overlapped_protocols_2(ws_key,
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
 
-            connector = aiohttp.TCPConnector(loop=loop, force_close=True)
+            connector = aiohttp.TCPConnector(force_close=True)
             res = await aiohttp.ClientSession(
-                connector=connector, loop=loop).ws_connect(
+                connector=connector).ws_connect(
                 'http://test.org',
                 protocols=('t1', 't2', 'chat'))
 
@@ -548,7 +543,7 @@ async def test_ws_connect_deflate(loop, ws_key, key_data) -> None:
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
 
-            res = await aiohttp.ClientSession(loop=loop).ws_connect(
+            res = await aiohttp.ClientSession().ws_connect(
                 'http://test.org', compress=15)
 
     assert res.compress == 15
@@ -573,7 +568,7 @@ async def test_ws_connect_deflate_per_message(loop, ws_key, key_data) -> None:
                 writer = WebSocketWriter.return_value = mock.Mock()
                 send = writer.send = make_mocked_coro()
 
-                session = aiohttp.ClientSession(loop=loop)
+                session = aiohttp.ClientSession()
                 resp = await session.ws_connect('http://test.org')
 
                 await resp.send_str('string', compress=-1)
@@ -603,7 +598,7 @@ async def test_ws_connect_deflate_server_not_support(loop,
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
 
-            res = await aiohttp.ClientSession(loop=loop).ws_connect(
+            res = await aiohttp.ClientSession().ws_connect(
                 'http://test.org', compress=15)
 
     assert res.compress == 0
@@ -626,7 +621,7 @@ async def test_ws_connect_deflate_notakeover(loop, ws_key, key_data) -> None:
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
 
-            res = await aiohttp.ClientSession(loop=loop).ws_connect(
+            res = await aiohttp.ClientSession().ws_connect(
                 'http://test.org', compress=15)
 
     assert res.compress == 15
@@ -649,7 +644,7 @@ async def test_ws_connect_deflate_client_wbits(loop, ws_key, key_data) -> None:
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
 
-            res = await aiohttp.ClientSession(loop=loop).ws_connect(
+            res = await aiohttp.ClientSession().ws_connect(
                 'http://test.org', compress=15)
 
     assert res.compress == 10
@@ -674,7 +669,7 @@ async def test_ws_connect_deflate_client_wbits_bad(loop,
             m_req.return_value.set_result(resp)
 
             with pytest.raises(client.WSServerHandshakeError):
-                await aiohttp.ClientSession(loop=loop).ws_connect(
+                await aiohttp.ClientSession().ws_connect(
                     'http://test.org', compress=15)
 
 
@@ -695,5 +690,5 @@ async def test_ws_connect_deflate_server_ext_bad(loop,
             m_req.return_value.set_result(resp)
 
             with pytest.raises(client.WSServerHandshakeError):
-                await aiohttp.ClientSession(loop=loop).ws_connect(
+                await aiohttp.ClientSession().ws_connect(
                     'http://test.org', compress=15)

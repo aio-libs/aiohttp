@@ -3,7 +3,7 @@ import base64
 import gc
 import os
 import platform
-import tempfile
+from math import modf
 from unittest import mock
 
 import pytest
@@ -11,6 +11,7 @@ from multidict import MultiDict
 from yarl import URL
 
 from aiohttp import helpers
+from aiohttp.helpers import is_expected_content_type
 
 IS_PYPY = platform.python_implementation() == 'PyPy'
 
@@ -45,9 +46,19 @@ def test_parse_mimetype(mimetype, expected) -> None:
 
 # ------------------- guess_filename ----------------------------------
 
-def test_guess_filename_with_tempfile() -> None:
-    with tempfile.TemporaryFile() as fp:
+def test_guess_filename_with_file_object(tmp_path) -> None:
+    file_path = tmp_path / 'test_guess_filename'
+    with file_path.open('w+b') as fp:
         assert (helpers.guess_filename(fp, 'no-throw') is not None)
+
+
+def test_guess_filename_with_path(tmp_path) -> None:
+    file_path = tmp_path / 'test_guess_filename'
+    assert (helpers.guess_filename(file_path, 'no-throw') is not None)
+
+
+def test_guess_filename_with_default() -> None:
+    assert (helpers.guess_filename(None, 'no-throw') == 'no-throw')
 
 
 # ------------------- BasicAuth -----------------------------------
@@ -193,7 +204,7 @@ class TestPyReify(ReifyMixin):
     reify = helpers.reify_py
 
 
-if not helpers.NO_EXTENSIONS and not IS_PYPY:
+if not helpers.NO_EXTENSIONS and not IS_PYPY and hasattr(helpers, 'reify_c'):
     class TestCReify(ReifyMixin):
         reify = helpers.reify_c
 
@@ -328,13 +339,10 @@ def test_timer_context_no_task(loop) -> None:
             pass
 
 
-# -------------------------------- CeilTimeout --------------------------
-
-
 async def test_weakref_handle(loop) -> None:
     cb = mock.Mock()
     helpers.weakref_handle(cb, 'test', 0.01, loop, False)
-    await asyncio.sleep(0.1, loop=loop)
+    await asyncio.sleep(0.1)
     assert cb.test.called
 
 
@@ -343,7 +351,9 @@ async def test_weakref_handle_weak(loop) -> None:
     helpers.weakref_handle(cb, 'test', 0.01, loop, False)
     del cb
     gc.collect()
-    await asyncio.sleep(0.1, loop=loop)
+    await asyncio.sleep(0.1)
+
+# -------------------- ceil math -------------------------
 
 
 def test_ceil_call_later() -> None:
@@ -361,16 +371,15 @@ def test_ceil_call_later_no_timeout() -> None:
     assert not loop.call_at.called
 
 
-async def test_ceil_timeout(loop) -> None:
-    with helpers.CeilTimeout(None, loop=loop) as timeout:
-        assert timeout._timeout is None
-        assert timeout._cancel_handler is None
+async def test_ceil_timeout_none(loop) -> None:
+    async with helpers.ceil_timeout(None) as cm:
+        assert cm.deadline is None
 
 
-def test_ceil_timeout_no_task(loop) -> None:
-    with pytest.raises(RuntimeError):
-        with helpers.CeilTimeout(10, loop=loop):
-            pass
+async def test_ceil_timeout_round(loop) -> None:
+    async with helpers.ceil_timeout(1.5) as cm:
+        frac, integer = modf(cm.deadline)
+        assert frac == 0
 
 
 # -------------------------------- ContentDisposition -------------------
@@ -405,31 +414,27 @@ def test_set_content_disposition_bad_param() -> None:
 
 # --------------------- proxies_from_env ------------------------------
 
-def test_proxies_from_env_http(mocker) -> None:
+@pytest.mark.parametrize('protocol', ['http', 'https', 'ws', 'wss'])
+def test_proxies_from_env(monkeypatch, protocol) -> None:
     url = URL('http://aiohttp.io/path')
-    mocker.patch.dict(os.environ, {'http_proxy': str(url)})
+    monkeypatch.setenv(protocol + '_proxy', str(url))
     ret = helpers.proxies_from_env()
-    assert ret.keys() == {'http'}
-    assert ret['http'].proxy == url
-    assert ret['http'].proxy_auth is None
+    assert ret.keys() == {protocol}
+    assert ret[protocol].proxy == url
+    assert ret[protocol].proxy_auth is None
 
 
-def test_proxies_from_env_http_proxy_for_https_proto(mocker) -> None:
-    url = URL('http://aiohttp.io/path')
-    mocker.patch.dict(os.environ, {'https_proxy': str(url)})
-    ret = helpers.proxies_from_env()
-    assert ret.keys() == {'https'}
-    assert ret['https'].proxy == url
-    assert ret['https'].proxy_auth is None
-
-
-def test_proxies_from_env_https_proxy_skipped(mocker) -> None:
-    url = URL('https://aiohttp.io/path')
-    mocker.patch.dict(os.environ, {'https_proxy': str(url)})
-    log = mocker.patch('aiohttp.log.client_logger.warning')
+@pytest.mark.parametrize('protocol', ['https', 'wss'])
+def test_proxies_from_env_skipped(monkeypatch, caplog, protocol) -> None:
+    url = URL(protocol + '://aiohttp.io/path')
+    monkeypatch.setenv(protocol + '_proxy', str(url))
     assert helpers.proxies_from_env() == {}
-    log.assert_called_with('HTTPS proxies %s are not supported, ignoring',
-                           URL('https://aiohttp.io/path'))
+    assert len(caplog.records) == 1
+    log_message = (
+        '{proto!s} proxies {url!s} are not supported, ignoring'.
+        format(proto=protocol.upper(), url=url)
+    )
+    assert caplog.record_tuples == [('aiohttp.client', 30, log_message)]
 
 
 def test_proxies_from_env_http_with_auth(mocker) -> None:
@@ -449,7 +454,7 @@ def test_proxies_from_env_http_with_auth(mocker) -> None:
 def test_get_running_loop_not_running(loop) -> None:
     with pytest.raises(
             RuntimeError,
-            match="The object should be created from async function"):
+            match="The object should be created within an async function"):
         helpers.get_running_loop()
 
 
@@ -563,3 +568,31 @@ class TestChainMapProxy:
         cp = helpers.ChainMapProxy([d1, d2])
         expected = "ChainMapProxy({!r}, {!r})".format(d1, d2)
         assert expected == repr(cp)
+
+
+def test_is_expected_content_type_json_match_exact():
+    expected_ct = 'application/json'
+    response_ct = 'application/json'
+    assert is_expected_content_type(response_content_type=response_ct,
+                                    expected_content_type=expected_ct)
+
+
+def test_is_expected_content_type_json_match_partially():
+    expected_ct = 'application/json'
+    response_ct = 'application/alto-costmap+json'  # mime-type from rfc7285
+    assert is_expected_content_type(response_content_type=response_ct,
+                                    expected_content_type=expected_ct)
+
+
+def test_is_expected_content_type_non_json_match_exact():
+    expected_ct = 'text/javascript'
+    response_ct = 'text/javascript'
+    assert is_expected_content_type(response_content_type=response_ct,
+                                    expected_content_type=expected_ct)
+
+
+def test_is_expected_content_type_non_json_not_match():
+    expected_ct = 'application/json'
+    response_ct = 'text/plain'
+    assert not is_expected_content_type(response_content_type=response_ct,
+                                        expected_content_type=expected_ct)

@@ -1,9 +1,9 @@
+.. module:: aiohttp.test_utils
+
 .. _aiohttp-testing:
 
 Testing
 =======
-
-.. currentmodule:: aiohttp.test_utils
 
 Testing aiohttp web servers
 ---------------------------
@@ -71,6 +71,8 @@ proxy methods to the client for common operations such as
 Pytest
 ~~~~~~
 
+.. currentmodule:: pytest_aiohttp
+
 The :data:`aiohttp_client` fixture available from pytest-aiohttp_ plugin
 allows you to create a client to make requests to test your app.
 
@@ -81,7 +83,7 @@ A simple would be::
     async def hello(request):
         return web.Response(text='Hello, world')
 
-    async def test_hello(aiohttp_client, loop):
+    async def test_hello(aiohttp_client):
         app = web.Application()
         app.router.add_get('/', hello)
         client = await aiohttp_client(app)
@@ -150,7 +152,7 @@ Pytest tooling has the following fixtures:
    .. versionadded:: 3.0
 
    *kwargs* are parameters passed to
-                  :meth:`aiohttp.web.Application.make_handler`
+                  :meth:`aiohttp.web.AppRunner`
 
    .. versionchanged:: 3.0
    .. deprecated:: 3.2
@@ -234,6 +236,9 @@ Pytest tooling has the following fixtures:
 
 Unittest
 ~~~~~~~~
+
+.. currentmodule:: aiohttp.test_utils
+
 
 To test applications with the standard library's unittest or unittest-based
 functionality, the AioHTTPTestCase is provided::
@@ -376,6 +381,70 @@ functionality, the AioHTTPTestCase is provided::
    Handles executing an asynchronous function, using
    the :attr:`AioHTTPTestCase.loop` of the :class:`AioHTTPTestCase`.
 
+Patching unittest test cases
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Patching test cases is tricky, when using python older than 3.8  :py:func:`~unittest.mock.patch` does not behave as it has to.
+We recommend using :py:mod:`asynctest` that provides :py:func:`~asynctest.patch` that is capable of creating
+a magic mock that supports async. It can be used with a decorator as well as with a context manager:
+
+.. code-block:: python
+   :emphasize-lines: 1,37,46
+
+    from asynctest.mock import patch as async_patch
+
+    from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+    from aiohttp.web_app import Application
+    from aiohttp.web_request import Request
+    from aiohttp.web_response import Response
+    from aiohttp.web_routedef import get
+
+
+    async def do_something():
+        print('something')
+
+
+    async def ping(request: Request) -> Response:
+        await do_something()
+        return Response(text='pong')
+
+
+    class TestApplication(AioHTTPTestCase):
+        def get_app(self) -> Application:
+            app = Application()
+            app.router.add_routes([
+                get('/ping/', ping)
+            ])
+
+            return app
+
+        @unittest_run_loop
+        async def test_ping(self):
+            resp = await self.client.get('/ping/')
+
+            self.assertEqual(resp.status, 200)
+            self.assertEqual(await resp.text(), 'pong')
+
+        @unittest_run_loop
+        async def test_ping_mocked_do_something(self):
+            with async_patch('tests.do_something') as do_something_patch:
+                resp = await self.client.get('/ping/')
+
+                self.assertEqual(resp.status, 200)
+                self.assertEqual(await resp.text(), 'pong')
+
+                self.assertTrue(do_something_patch.called)
+
+        @unittest_run_loop
+        @async_patch('tests.do_something')
+        async def test_ping_mocked_do_something_decorated(self, do_something_patch):
+            resp = await self.client.get('/ping/')
+
+            self.assertEqual(resp.status, 200)
+            self.assertEqual(await resp.text(), 'pong')
+
+            self.assertTrue(do_something_patch.called)
+
 
 Faking request object
 ---------------------
@@ -507,7 +576,7 @@ basis, the TestClient object can be used directly::
 
     with loop_context() as loop:
         app = _create_example_app()
-        client = TestClient(TestSever(app), loop=loop)
+        client = TestClient(TestServer(app), loop=loop)
         loop.run_until_complete(client.start_server())
         root = "http://127.0.0.1:{}".format(port)
 
@@ -577,10 +646,7 @@ for accessing to the server.
 
       :class:`asyncio.AbstractServer` used for managing accepted connections.
 
-   .. comethod:: start_server(loop=None, **kwargs)
-
-      :param loop: the event_loop to use
-      :type loop: asyncio.AbstractEventLoop
+   .. comethod:: start_server(**kwargs)
 
       Start a test server.
 
@@ -644,7 +710,7 @@ for accessing to the server.
 Test Client
 ~~~~~~~~~~~
 
-.. class:: TestClient(app_or_server, *, loop=None, \
+.. class:: TestClient(app_or_server, *, \
                       scheme='http', host='127.0.0.1', \
                       cookie_jar=None, **kwargs)
 
@@ -653,7 +719,7 @@ Test Client
    :param app_or_server: :class:`BaseTestServer` instance for making
                          client requests to it.
 
-                         In order to pass a :class:`aiohttp.web.Application`
+                         In order to pass an :class:`aiohttp.web.Application`
                          you need to convert it first to :class:`TestServer`
                          first with ``TestServer(app)``.
 
@@ -662,8 +728,6 @@ Test Client
                       option.
 
    :param str scheme: HTTP scheme, non-protected ``"http"`` by default.
-
-   :param asyncio.AbstractEventLoop loop: the event_loop to use
 
    :param str host: a host for TCP socket, IPv4 *local host*
       (``'127.0.0.1'``) by default.

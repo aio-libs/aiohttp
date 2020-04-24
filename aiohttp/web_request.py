@@ -6,7 +6,6 @@ import socket
 import string
 import tempfile
 import types
-import warnings
 from email.utils import parsedate
 from http.cookies import SimpleCookie
 from types import MappingProxyType
@@ -18,6 +17,7 @@ from typing import (  # noqa
     Mapping,
     MutableMapping,
     Optional,
+    Set,
     Tuple,
     Union,
     cast,
@@ -30,9 +30,16 @@ from yarl import URL
 
 from . import hdrs
 from .abc import AbstractStreamWriter
-from .helpers import DEBUG, ChainMapProxy, HeadersMixin, reify, sentinel
+from .helpers import (
+    ChainMapProxy,
+    HeadersMixin,
+    is_expected_content_type,
+    reify,
+    sentinel,
+    set_result,
+)
 from .http_parser import RawRequestMessage
-from .multipart import MultipartReader
+from .multipart import BodyPartReader, MultipartReader
 from .streams import EmptyStreamReader, StreamReader
 from .typedefs import (
     DEFAULT_JSON_DECODER,
@@ -41,7 +48,11 @@ from .typedefs import (
     RawHeaders,
     StrOrURL,
 )
-from .web_exceptions import HTTPRequestEntityTooLarge, HTTPUnsupportedMediaType
+from .web_exceptions import (
+    HTTPBadRequest,
+    HTTPRequestEntityTooLarge,
+    HTTPUnsupportedMediaType,
+)
 from .web_response import StreamResponse
 
 __all__ = ('BaseRequest', 'FileField', 'Request')
@@ -97,11 +108,13 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
-    ATTRS = HeadersMixin.ATTRS | frozenset([
+    __slots__ = (
         '_message', '_protocol', '_payload_writer', '_payload', '_headers',
         '_method', '_version', '_rel_url', '_post', '_read_bytes',
         '_state', '_cache', '_task', '_client_max_size', '_loop',
-        '_transport_sslcontext', '_transport_peername'])
+        '_transport_sslcontext', '_transport_peername',
+        '_disconnection_waiters', '__weakref__'
+    )
 
     def __init__(self, message: RawRequestMessage,
                  payload: StreamReader, protocol: 'RequestHandler',
@@ -113,6 +126,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
                  scheme: Optional[str]=None,
                  host: Optional[str]=None,
                  remote: Optional[str]=None) -> None:
+        super().__init__()
         if state is None:
             state = {}
         self._message = message
@@ -132,6 +146,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self._task = task
         self._client_max_size = client_max_size
         self._loop = loop
+        self._disconnection_waiters = set()  # type: Set[asyncio.Future[None]]
 
         transport = self._protocol.transport
         assert transport is not None
@@ -214,22 +229,8 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._payload_writer
 
     @reify
-    def message(self) -> RawRequestMessage:
-        warnings.warn("Request.message is deprecated",
-                      DeprecationWarning,
-                      stacklevel=3)
-        return self._message
-
-    @reify
     def rel_url(self) -> URL:
         return self._rel_url
-
-    @reify
-    def loop(self) -> asyncio.AbstractEventLoop:
-        warnings.warn("request.loop property is deprecated",
-                      DeprecationWarning,
-                      stacklevel=2)
-        return self._loop
 
     # MutableMapping API
 
@@ -479,7 +480,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         A read-only dictionary-like object.
         """
         raw = self.headers.get(hdrs.COOKIE, '')
-        parsed = SimpleCookie(raw)
+        parsed = SimpleCookie(raw)  # type: SimpleCookie[str]
         return MappingProxyType(
             {key: val.value for key, val in parsed.items()})
 
@@ -525,14 +526,6 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._payload
 
     @property
-    def has_body(self) -> bool:
-        """Return True if request's HTTP BODY can be read, False otherwise."""
-        warnings.warn(
-            "Deprecated, use .can_read_body #2005",
-            DeprecationWarning, stacklevel=2)
-        return not self._payload.at_eof()
-
-    @property
     def can_read_body(self) -> bool:
         """Return True if request's HTTP BODY can be read, False otherwise."""
         return not self._payload.at_eof()
@@ -562,7 +555,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
                 body.extend(chunk)
                 if self._client_max_size:
                     body_size = len(body)
-                    if body_size >= self._client_max_size:
+                    if body_size > self._client_max_size:
                         raise HTTPRequestEntityTooLarge(
                             max_size=self._client_max_size,
                             actual_size=body_size
@@ -581,9 +574,17 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         except LookupError:
             raise HTTPUnsupportedMediaType()
 
-    async def json(self, *, loads: JSONDecoder=DEFAULT_JSON_DECODER) -> Any:
+    async def json(self, *,
+                   loads: JSONDecoder=DEFAULT_JSON_DECODER,
+                   content_type: Optional[str]='application/json') -> Any:
         """Return BODY as JSON."""
         body = await self.text()
+        if content_type:
+            ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
+            if not is_expected_content_type(ctype, content_type):
+                raise HTTPBadRequest(text=('Attempt to decode JSON with '
+                                           'unexpected mimetype: %s' % ctype))
+
         return loads(body)
 
     async def multipart(self) -> MultipartReader:
@@ -614,41 +615,49 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             field = await multipart.next()
             while field is not None:
                 size = 0
-                content_type = field.headers.get(hdrs.CONTENT_TYPE)
+                field_ct = field.headers.get(hdrs.CONTENT_TYPE)
 
-                if field.filename:
-                    # store file in temp file
-                    tmp = tempfile.TemporaryFile()
-                    chunk = await field.read_chunk(size=2**16)
-                    while chunk:
-                        chunk = field.decode(chunk)
-                        tmp.write(chunk)
-                        size += len(chunk)
+                if isinstance(field, BodyPartReader):
+                    if field.filename and field_ct:
+                        # store file in temp file
+                        tmp = tempfile.TemporaryFile()
+                        chunk = await field.read_chunk(size=2**16)
+                        while chunk:
+                            chunk = field.decode(chunk)
+                            tmp.write(chunk)
+                            size += len(chunk)
+                            if 0 < max_size < size:
+                                raise HTTPRequestEntityTooLarge(
+                                    max_size=max_size,
+                                    actual_size=size
+                                )
+                            chunk = await field.read_chunk(size=2**16)
+                        tmp.seek(0)
+
+                        ff = FileField(field.name, field.filename,
+                                       cast(io.BufferedReader, tmp),
+                                       field_ct, field.headers)
+                        out.add(field.name, ff)
+                    else:
+                        # deal with ordinary data
+                        value = await field.read(decode=True)
+                        if field_ct is None or \
+                                field_ct.startswith('text/'):
+                            charset = field.get_charset(default='utf-8')
+                            out.add(field.name, value.decode(charset))
+                        else:
+                            out.add(field.name, value)
+                        size += len(value)
                         if 0 < max_size < size:
                             raise HTTPRequestEntityTooLarge(
                                 max_size=max_size,
                                 actual_size=size
                             )
-                        chunk = await field.read_chunk(size=2**16)
-                    tmp.seek(0)
-
-                    ff = FileField(field.name, field.filename,
-                                   cast(io.BufferedReader, tmp),
-                                   content_type, field.headers)
-                    out.add(field.name, ff)
                 else:
-                    value = await field.read(decode=True)
-                    if content_type is None or \
-                            content_type.startswith('text/'):
-                        charset = field.get_charset(default='utf-8')
-                        value = value.decode(charset)
-                    out.add(field.name, value)
-                    size += len(value)
-                    if 0 < max_size < size:
-                        raise HTTPRequestEntityTooLarge(
-                            max_size=max_size,
-                            actual_size=size
-                        )
+                    raise ValueError(
+                        'To decode nested multipart you need '
+                        'to use custom reader',
+                    )
 
                 field = await multipart.next()
         else:
@@ -669,6 +678,18 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self._post = MultiDictProxy(out)
         return self._post
 
+    def get_extra_info(self, name: str, default: Any = None) -> Any:
+        """Extra info from protocol transport"""
+        protocol = self._protocol
+        if protocol is None:
+            return default
+
+        transport = protocol.transport
+        if transport is None:
+            return default
+
+        return transport.get_extra_info(name, default)
+
     def __repr__(self) -> str:
         ascii_encodable_path = self.path.encode('ascii', 'backslashreplace') \
             .decode('ascii')
@@ -678,13 +699,34 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
     def __eq__(self, other: object) -> bool:
         return id(self) == id(other)
 
+    def __bool__(self) -> bool:
+        return True
+
     async def _prepare_hook(self, response: StreamResponse) -> None:
         return
+
+    def _cancel(self, exc: BaseException) -> None:
+        self._payload.set_exception(exc)
+        for fut in self._disconnection_waiters:
+            set_result(fut, None)
+
+    def _finish(self) -> None:
+        for fut in self._disconnection_waiters:
+            fut.cancel()
+
+    async def wait_for_disconnection(self) -> None:
+        loop = asyncio.get_event_loop()
+        fut = loop.create_future()  # type: asyncio.Future[None]
+        self._disconnection_waiters.add(fut)
+        try:
+            await fut
+        finally:
+            self._disconnection_waiters.remove(fut)
 
 
 class Request(BaseRequest):
 
-    ATTRS = BaseRequest.ATTRS | frozenset(['_match_info'])
+    __slots__ = ('_match_info',)
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -694,16 +736,6 @@ class Request(BaseRequest):
 
         # initialized after route resolving
         self._match_info = None  # type: Optional[UrlMappingMatchInfo]
-
-    if DEBUG:
-        def __setattr__(self, name: str, val: Any) -> None:
-            if name not in self.ATTRS:
-                warnings.warn("Setting custom {}.{} attribute "
-                              "is discouraged".format(self.__class__.__name__,
-                                                      name),
-                              DeprecationWarning,
-                              stacklevel=2)
-            super().__setattr__(name, val)
 
     def clone(self, *, method: str=sentinel, rel_url:
               StrOrURL=sentinel, headers: LooseHeaders=sentinel,

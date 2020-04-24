@@ -1,6 +1,5 @@
-import asyncio
 import socket
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from .abc import AbstractResolver
 from .helpers import get_running_loop
@@ -21,8 +20,8 @@ class ThreadedResolver(AbstractResolver):
     concurrent.futures.ThreadPoolExecutor.
     """
 
-    def __init__(self, loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
-        self._loop = get_running_loop(loop)
+    def __init__(self) -> None:
+        self._loop = get_running_loop()
 
     async def resolve(self, host: str, port: int=0,
                       family: int=socket.AF_INET) -> List[Dict[str, Any]]:
@@ -46,17 +45,12 @@ class ThreadedResolver(AbstractResolver):
 class AsyncResolver(AbstractResolver):
     """Use the `aiodns` package to make asynchronous DNS lookups"""
 
-    def __init__(self, loop: Optional[asyncio.AbstractEventLoop]=None,
-                 *args: Any, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         if aiodns is None:
             raise RuntimeError("Resolver requires aiodns library")
 
-        self._loop = get_running_loop(loop)
-        self._resolver = aiodns.DNSResolver(*args, loop=loop, **kwargs)
-
-        if not hasattr(self._resolver, 'gethostbyname'):
-            # aiodns 1.1 is not available, fallback to DNSResolver.query
-            self.resolve = self._resolve_with_query  # type: ignore
+        self._loop = get_running_loop()
+        self._resolver = aiodns.DNSResolver(*args, loop=self._loop, **kwargs)
 
     async def resolve(self, host: str, port: int=0,
                       family: int=socket.AF_INET) -> List[Dict[str, Any]]:
@@ -70,33 +64,6 @@ class AsyncResolver(AbstractResolver):
             hosts.append(
                 {'hostname': host,
                  'host': address, 'port': port,
-                 'family': family, 'proto': 0,
-                 'flags': socket.AI_NUMERICHOST})
-
-        if not hosts:
-            raise OSError("DNS lookup failed")
-
-        return hosts
-
-    async def _resolve_with_query(
-            self, host: str, port: int=0,
-            family: int=socket.AF_INET) -> List[Dict[str, Any]]:
-        if family == socket.AF_INET6:
-            qtype = 'AAAA'
-        else:
-            qtype = 'A'
-
-        try:
-            resp = await self._resolver.query(host, qtype)
-        except aiodns.error.DNSError as exc:
-            msg = exc.args[1] if len(exc.args) >= 1 else "DNS lookup failed"
-            raise OSError(msg) from exc
-
-        hosts = []
-        for rr in resp:
-            hosts.append(
-                {'hostname': host,
-                 'host': rr.host, 'port': port,
                  'family': family, 'proto': 0,
                  'flags': socket.AI_NUMERICHOST})
 
