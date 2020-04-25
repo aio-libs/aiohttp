@@ -2203,9 +2203,18 @@ async def test_redirect_without_location_header(aiohttp_client) -> None:
 
 
 @pytest.mark.parametrize(
-    "status", [200, 201, 301, 400, 403, 500], ids=lambda x: f"status_code: {x}"
+    ("status", "expected_ok"),
+    (
+        (200, True),
+        (201, True),
+        (301, True),
+        (400, False),
+        (403, False),
+        (500, False),
+    ),
+    ids=lambda c, y: f"HTTP status code {c} is{' ' if o else ' not'} ok",
 )
-async def test_ok_from_status(aiohttp_client, status) -> None:
+async def test_ok_from_status(aiohttp_client, status, expected_ok) -> None:
 
     async def handler(request):
         return web.Response(status=status, body=b'')
@@ -2215,10 +2224,7 @@ async def test_ok_from_status(aiohttp_client, status) -> None:
     client = await aiohttp_client(app, raise_for_status=False)
     resp = await client.get('/endpoint')
 
-    if resp.status < 400:
-        assert resp.ok
-    else:
-        assert not resp.ok
+    assert resp.ok is expected_ok
 
 async def test_raise_for_status(aiohttp_client) -> None:
 
