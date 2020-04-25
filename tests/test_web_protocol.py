@@ -252,21 +252,6 @@ async def test_bad_method(srv, buf) -> None:
     assert buf.startswith(b'HTTP/1.0 400 Bad Request\r\n')
 
 
-async def test_data_received_error(srv, buf) -> None:
-    transport = srv.transport
-    srv._request_parser = mock.Mock()
-    srv._request_parser.feed_data.side_effect = TypeError
-
-    srv.data_received(
-        b'!@#$ / HTTP/1.0\r\n'
-        b'Host: example.com\r\n\r\n')
-
-    await asyncio.sleep(0)
-    assert buf.startswith(b'HTTP/1.0 500 Internal Server Error\r\n')
-    assert transport.close.called
-    assert srv._error_handler is None
-
-
 async def test_line_too_long(srv, buf) -> None:
     srv.data_received(b''.join([b'a' for _ in range(10000)]) + b'\r\n\r\n')
 
