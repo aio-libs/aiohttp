@@ -2212,7 +2212,7 @@ async def test_redirect_without_location_header(aiohttp_client) -> None:
         (403, False),
         (500, False),
     ),
-    ids=lambda c, y: f"HTTP status code {c} is{' ' if o else ' not'} ok",
+    ids=lambda c, o: f"HTTP status code {c} is{' ' if o else ' not'} ok",
 )
 async def test_ok_from_status(aiohttp_client, status, expected_ok) -> None:
 
