@@ -23,15 +23,10 @@ def print_warnings(message, category, filename, lineno, file=None, line=None):
 
 
 @pytest.fixture()
-def warning_setup():
+def warning_setup(monkeypatch):
     # setup warning
-    old_func = warnings.showwarning
-    warnings.showwarning = print_warnings
+    monkeypatch.setattr(warnings, 'showwarning', print_warnings)
     warnings.simplefilter('default')
-
-    yield
-
-    warnings.showwarning = old_func
 
 
 async def _test_warning():
@@ -61,21 +56,14 @@ async def _test_warning():
 
         await asyncio.sleep(1)
         if last_warning:
-            await client.close()
-            raise ResourceWarning(last_warning)
+            break
 
     await client.close()
+
+    assert last_warning is None, last_warning
     return None
 
 
-def test_ressource_warning(warning_setup):
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(_test_warning())
-
-
-if __name__ == '__main__':
-    warnings.showwarning = print_warnings
-    warnings.simplefilter('default')
-
+async def test_resource_warning(warning_setup):
     loop = asyncio.get_event_loop()
     loop.run_until_complete(_test_warning())
