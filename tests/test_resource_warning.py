@@ -1,8 +1,8 @@
 import asyncio
-import datetime
 import time
 import typing
 import warnings
+from datetime import datetime
 
 import pytest
 
@@ -13,7 +13,7 @@ last_warning: typing.Optional[str] = None
 
 def print_warnings(message, category, filename, lineno, file=None, line=None):
     global last_warning
-    text = f'{datetime.datetime.now()} | {filename}:{lineno} {category.__name__:s}:{message}'
+    text = f'{datetime.now()} | {filename}:{lineno} {category.__name__:s}:{message}'
     print(text)
     # These are warnings in the 4.0a and prevent execution of the test
     if "RuntimeWarning:coroutine 'noop' was never awaited" in text:
@@ -55,7 +55,7 @@ async def _test_warning():
 
             request_interval += request_increase
             next_request = now + request_interval
-            print(f'{datetime.datetime.now()} | '
+            print(f'{datetime.now()} | '
                   f'Status: {status}, next request in {request_interval}s')
 
         await asyncio.sleep(1)
