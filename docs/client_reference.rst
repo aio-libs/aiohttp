@@ -1242,6 +1242,11 @@ Response object
 
       HTTP status reason of response (:class:`str`), e.g. ``"OK"``.
 
+   .. attribute:: ok
+
+      Boolean representation of HTTP status code (:class:`bool`).
+      ``True`` if ``status`` is less than ``400``; otherwise, ``False``.
+
    .. attribute:: method
 
       Request's method (:class:`str`).
