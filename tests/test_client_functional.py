@@ -2203,7 +2203,7 @@ async def test_redirect_without_location_header(aiohttp_client) -> None:
 
 
 @pytest.mark.parametrize(
-    ("status", "expected_ok"),
+    "status, expected_ok",
     (
         (200, True),
         (201, True),
@@ -2211,8 +2211,7 @@ async def test_redirect_without_location_header(aiohttp_client) -> None:
         (400, False),
         (403, False),
         (500, False),
-    ),
-    ids=lambda tc: f"HTTP status code {tc[0]} is{' ' if tc[1] else ' not'} ok",
+    )
 )
 async def test_ok_from_status(aiohttp_client, status, expected_ok) -> None:
 
