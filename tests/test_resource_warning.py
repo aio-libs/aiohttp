@@ -29,7 +29,7 @@ def warning_setup(monkeypatch):
     warnings.simplefilter('default')
 
 
-async def _test_warning():
+async def test_resource_warning(warning_setup):
     timeout = 480
 
     client = aiohttp.ClientSession()
@@ -62,8 +62,3 @@ async def _test_warning():
 
     assert last_warning is None, last_warning
     return None
-
-
-async def test_resource_warning(warning_setup):
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(_test_warning())
