@@ -4,8 +4,9 @@ import time
 import typing
 import warnings
 
-import aiohttp
 import pytest
+
+import aiohttp
 
 last_warning: typing.Optional[str] = None
 
@@ -28,7 +29,7 @@ def warning_setup():
     warnings.simplefilter('default')
 
     yield
-    
+
     warnings.showwarning = old_func
 
 
@@ -46,21 +47,22 @@ async def _test_warning():
         now = time.time()
         if now > end:
             break
-        
+
         if now > next_request:
             async with client.get('https://heise.de') as resp:
                 status = resp.status
-                data = await resp.text()
-            
+                await resp.text()
+
             request_interval += request_increase
             next_request = now + request_interval
-            print(f'{datetime.datetime.now()} | Status: {status}, next request in {request_interval}s')
+            print(f'{datetime.datetime.now()} | '
+                  f'Status: {status}, next request in {request_interval}s')
 
         await asyncio.sleep(1)
         if last_warning:
             await client.close()
             raise ResourceWarning(last_warning)
-    
+
     await client.close()
     return None
 
@@ -73,6 +75,6 @@ def test_ressource_warning(warning_setup):
 if __name__ == '__main__':
     warnings.showwarning = print_warnings
     warnings.simplefilter('default')
-    
+
     loop = asyncio.get_event_loop()
     loop.run_until_complete(_test_warning())
