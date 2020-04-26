@@ -13,7 +13,8 @@ last_warning: typing.Optional[str] = None
 
 def print_warnings(message, category, filename, lineno, file=None, line=None):
     global last_warning
-    text = f'{datetime.now()} | {filename}:{lineno} {category.__name__:s}:{message}'
+    text = f'{datetime.now()} | ' \
+           f'{filename}:{lineno} {category.__name__:s}:{message}'
     print(text)
     # These are warnings in the 4.0a and prevent execution of the test
     if "RuntimeWarning:coroutine 'noop' was never awaited" in text:
