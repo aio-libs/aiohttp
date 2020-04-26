@@ -2273,6 +2273,30 @@ async def test_chunked_deprecated(aiohttp_client) -> None:
         await client.post('/', chunked=1024)
 
 
+@pytest.mark.parametrize(
+    ("status", "expected_ok"),
+    (
+        (200, True),
+        (201, True),
+        (301, True),
+        (400, False),
+        (403, False),
+        (500, False),
+    )
+)
+async def test_ok_from_status(aiohttp_client, status, expected_ok) -> None:
+
+    async def handler(request):
+        return web.Response(status=status, body=b'')
+
+    app = web.Application()
+    app.router.add_route('GET', '/endpoint', handler)
+    client = await aiohttp_client(app, raise_for_status=False)
+    resp = await client.get('/endpoint')
+
+    assert resp.ok is expected_ok
+
+
 async def test_raise_for_status(aiohttp_client) -> None:
 
     async def handler_redirect(request):

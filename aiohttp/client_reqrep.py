@@ -938,6 +938,19 @@ class ClientResponse(HeadersMixin):
         self._cleanup_writer()
         return noop()
 
+    @property
+    def ok(self) -> bool:
+        """Returns ``True`` if ``status`` is less than ``400``, ``False`` if not.
+
+        This is **not** a check for ``200 OK`` but a check that the response
+        status is under 400.
+        """
+        try:
+            self.raise_for_status()
+        except ClientResponseError:
+            return False
+        return True
+
     def raise_for_status(self) -> None:
         if 400 <= self.status:
             # reason should always be not None for a started response
