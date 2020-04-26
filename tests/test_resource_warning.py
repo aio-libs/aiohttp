@@ -16,7 +16,7 @@ def print_warnings(message, category, filename, lineno, file=None, line=None):
     text = f'{datetime.now()} | ' \
            f'{filename}:{lineno} {category.__name__:s}:{message}'
     print(text)
-    # These are warnings in the 4.0a and prevent execution of the test
+    # These are warnings in the 4.0a and these prevent execution of the test
     if "RuntimeWarning:coroutine 'noop' was never awaited" in text:
         return None
     last_warning = text
@@ -30,16 +30,16 @@ def warning_setup(monkeypatch):
 
 
 async def test_resource_warning(warning_setup):
-    timeout = 480
+    timeout = 5 * 60
 
     client = aiohttp.ClientSession()
 
-    request_interval = 120
-    request_increase = 5
+    request_interval = 30
+    request_increase = 15
     next_request = 0
 
     end = time.time() + timeout
-    while True:
+    while last_warning is None:
         now = time.time()
         if now > end:
             break
@@ -54,11 +54,7 @@ async def test_resource_warning(warning_setup):
             print(f'{datetime.now()} | '
                   f'Status: {status}, next request in {request_interval}s')
 
-        await asyncio.sleep(1)
-        if last_warning:
-            break
+        await asyncio.sleep(5)
 
     await client.close()
-
     assert last_warning is None, last_warning
-    return None
