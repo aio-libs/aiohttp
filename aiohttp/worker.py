@@ -73,13 +73,7 @@ class GunicornWebWorker(base.Worker):
             raise RuntimeError("wsgi app should be either Application or "
                                "async function returning Application, got {}"
                                .format(self.wsgi))
-        access_log = self.log.access_log if self.cfg.accesslog else None
-        runner = web.AppRunner(app,
-                               logger=self.log,
-                               keepalive_timeout=self.cfg.keepalive,
-                               access_log=access_log,
-                               access_log_format=self._get_valid_log_format(
-                                   self.cfg.access_log_format))
+        runner = self._get_application_runner_instance(app)
         await runner.setup()
 
         ctx = self._create_ssl_context(self.cfg) if self.cfg.is_ssl else None
@@ -206,6 +200,17 @@ class GunicornWebWorker(base.Worker):
             )
         else:
             return source_format
+
+    def _get_application_runner_instance(self, app, **kwargs):
+        access_log = self.log.access_log if self.cfg.accesslog else None
+        runner = web.AppRunner(app,
+                               logger=self.log,
+                               keepalive_timeout=self.cfg.keepalive,
+                               access_log=access_log,
+                               access_log_format=self._get_valid_log_format(
+                                   self.cfg.access_log_format),
+                               **kwargs)
+        return runner
 
 
 class GunicornUVLoopWebWorker(GunicornWebWorker):
