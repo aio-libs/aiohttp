@@ -32,32 +32,29 @@ def warning_setup(monkeypatch):
 async def _resource_warning():
     timeout = 3 * 60
 
-    client = aiohttp.ClientSession()
-
     request_interval = 30
     request_increase = 15
     next_request = 0
 
-    end = time.time() + timeout
-    while last_warning is None:
-        now = time.time()
-        if now > end:
-            break
+    async with aiohttp.ClientSession() as client:
 
-        if now > next_request:
-            async with client.get('https://heise.de') as resp:
-                status = resp.status
-                await resp.text()
+        end = time.time() + timeout
+        while last_warning is None:
+            now = time.time()
+            if now > end:
+                break
 
-            request_interval += request_increase
-            next_request = now + request_interval
-            print(f'{datetime.now()} | '
-                  f'Status: {status}, next request in {request_interval}s')
+            if now > next_request:
+                async with client.get('https://heise.de') as resp:
+                    status = resp.status
+                    await resp.text()
 
-        await asyncio.sleep(5)
+                request_interval += request_increase
+                next_request = now + request_interval
+                print(f'{datetime.now()} | '
+                      f'Status: {status}, next request in {request_interval}s')
 
-    await client.close()
-    assert last_warning is None, last_warning
+            await asyncio.sleep(5)
 
 
 def test_resource_warning(warning_setup):
@@ -66,3 +63,5 @@ def test_resource_warning(warning_setup):
     loop = asyncio.new_event_loop()
     loop.run_until_complete(_resource_warning())
     loop.close()
+
+    assert last_warning is None
