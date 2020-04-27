@@ -42,5 +42,6 @@ def test_resource_warning(recwarn):
     # the future has to be run like this because with the pytest async runner
     # the warnings appear only after the test
     loop = asyncio.new_event_loop()
+    loop.set_debug(True)
     loop.run_until_complete(_resource_warning(recwarn))
     loop.close()
