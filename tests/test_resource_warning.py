@@ -1,35 +1,11 @@
 import asyncio
 import time
-import typing
-import warnings
 from datetime import datetime
-
-import pytest
 
 import aiohttp
 
-last_warning: typing.Optional[str] = None
 
-
-def print_warnings(message, category, filename, lineno, file=None, line=None):
-    global last_warning
-    text = f'{datetime.now()} | ' \
-           f'{filename}:{lineno} {category.__name__:s}:{message}'
-    print(text)
-    # These are warnings in the 4.0a and these prevent execution of the test
-    if "RuntimeWarning:coroutine 'noop' was never awaited" in text:
-        return None
-    last_warning = text
-
-
-@pytest.fixture()
-def warning_setup(monkeypatch):
-    # setup warning
-    monkeypatch.setattr(warnings, 'showwarning', print_warnings)
-    warnings.simplefilter('default')
-
-
-async def _resource_warning():
+async def _resource_warning(recwarn):
     timeout = 3 * 60
 
     request_interval = 30
@@ -39,7 +15,7 @@ async def _resource_warning():
     async with aiohttp.ClientSession() as client:
 
         end = time.time() + timeout
-        while last_warning is None:
+        while True:
             now = time.time()
             if now > end:
                 break
@@ -56,12 +32,13 @@ async def _resource_warning():
 
             await asyncio.sleep(5)
 
+            for warn in recwarn:
+                assert 'unclosed transport' not in str(warn.message)
 
-def test_resource_warning(warning_setup):
+
+def test_resource_warning(recwarn):
     # the future has to be run like this, with the pytest async runner
     # the warnings appear only after the test
     loop = asyncio.new_event_loop()
-    loop.run_until_complete(_resource_warning())
+    loop.run_until_complete(_resource_warning(recwarn))
     loop.close()
-
-    assert last_warning is None
