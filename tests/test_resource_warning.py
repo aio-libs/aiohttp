@@ -12,7 +12,16 @@ async def _resource_warning(recwarn, ssl_ctx, client_ssl_ctx):
     request_increase = 30
     next_request = 0
 
-    async with aiohttp.ClientSession() as client:
+    async def handler_coro(_request):
+        return aiohttp.web.Response(text='Test TLS response')
+    http_server = aiohttp.test_utils.RawTestServer(handler_coro, ssl=ssl_ctx)
+    await http_server.start_server()
+
+    url = http_server.make_url('/')
+
+    async with aiohttp.ClientSession(
+        connector=aiohttp.TCPConnector(ssl=client_ssl_ctx),
+    ) as client:
 
         end = time.time() + timeout
         while True:
