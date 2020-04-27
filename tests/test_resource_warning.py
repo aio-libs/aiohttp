@@ -5,7 +5,7 @@ from datetime import datetime
 import aiohttp
 
 
-async def _resource_warning(recwarn):
+async def _resource_warning(recwarn, ssl_ctx, client_ssl_ctx):
     timeout = 3 * 60
 
     request_interval = 60
