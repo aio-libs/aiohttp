@@ -30,7 +30,7 @@ async def _resource_warning(recwarn, ssl_ctx, client_ssl_ctx):
                 break
 
             if now > next_request:
-                async with client.get('https://heise.de') as resp:
+                async with client.get(url) as resp:
                     status = resp.status
                     await resp.text()
 
