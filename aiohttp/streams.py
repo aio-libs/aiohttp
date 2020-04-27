@@ -606,7 +606,7 @@ class FlowControlDataQueue(DataQueue[_T]):
         super().__init__(loop=loop)
 
         self._protocol = protocol
-        self._limit = limit * 2 if limit is not None else DEFAULT_LIMIT * 2
+        self._limit = 2 * (limit if limit is not None else DEFAULT_LIMIT)
 
     def feed_data(self, data: _T, size: int=0) -> None:
         super().feed_data(data, size)
