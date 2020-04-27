@@ -43,5 +43,5 @@ def test_resource_warning(recwarn):
     # the warnings appear only after the test
     loop = asyncio.new_event_loop()
     loop.set_debug(True)
-    loop.run_until_complete(_resource_warning(recwarn))
+    loop.run_until_complete(_resource_warning(recwarn, ssl_ctx, client_ssl_ctx))
     loop.close()
