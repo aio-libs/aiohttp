@@ -32,8 +32,10 @@ async def _resource_warning(recwarn):
 
             await asyncio.sleep(5)
 
-            assert not any('unclosed transport' in str(w.message) for w in recwarn)
-            recwarn.clear()
+            assert not any('unclosed transport' in
+                           str(w.message) for w in recwarn)
+
+        recwarn.clear()
 
 
 def test_resource_warning(recwarn):
