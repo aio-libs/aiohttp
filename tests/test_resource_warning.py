@@ -8,8 +8,8 @@ import aiohttp
 async def _resource_warning(recwarn):
     timeout = 3 * 60
 
-    request_interval = 30
-    request_increase = 15
+    request_interval = 60
+    request_increase = 30
     next_request = 0
 
     async with aiohttp.ClientSession() as client:
@@ -37,7 +37,7 @@ async def _resource_warning(recwarn):
 
 
 def test_resource_warning(recwarn):
-    # the future has to be run like this, with the pytest async runner
+    # the future has to be run like this because with the pytest async runner
     # the warnings appear only after the test
     loop = asyncio.new_event_loop()
     loop.run_until_complete(_resource_warning(recwarn))
