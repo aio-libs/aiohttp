@@ -29,8 +29,8 @@ def warning_setup(monkeypatch):
     warnings.simplefilter('default')
 
 
-async def test_resource_warning(warning_setup):
-    timeout = 5 * 60
+async def _resource_warning():
+    timeout = 3 * 60
 
     client = aiohttp.ClientSession()
 
@@ -58,3 +58,11 @@ async def test_resource_warning(warning_setup):
 
     await client.close()
     assert last_warning is None, last_warning
+
+
+def test_resource_warning(warning_setup):
+    # the future has to be run like this, with the pytest async runner
+    # the warnings appear only after the test
+    loop = asyncio.new_event_loop()
+    loop.run_until_complete(_resource_warning())
+    loop.close()
