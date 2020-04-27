@@ -47,7 +47,7 @@ async def _resource_warning(recwarn, ssl_ctx, client_ssl_ctx):
         recwarn.clear()
 
 
-def test_resource_warning(recwarn):
+def test_resource_warning(recwarn, ssl_ctx, client_ssl_ctx):
     # the future has to be run like this because with the pytest async runner
     # the warnings appear only after the test
     loop = asyncio.new_event_loop()
