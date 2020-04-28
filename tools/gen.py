@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 
-import io
-import pathlib
-from collections import defaultdict
-
-import multidict
-
 import aiohttp
+import pathlib
 import aiohttp.hdrs
+import multidict
+from collections import defaultdict
+import io
 
 headers = [getattr(aiohttp.hdrs, name)
            for name in dir(aiohttp.hdrs)
