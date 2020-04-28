@@ -255,3 +255,29 @@ def test_warnings_propagated(recwarn):
     message = recwarn[0].message
     assert isinstance(message, UserWarning)
     assert message.args == ('test warning is propagated',)
+
+
+def test_aiohttp_client_cls_fixture_custom_client_used(testdir) -> None:
+    testdir.makepyfile("""
+import pytest
+from aiohttp.web import Application
+from aiohttp.test_utils import TestClient
+
+
+class CustomClient(TestClient):
+    pass
+
+
+@pytest.fixture
+def aiohttp_client_cls():
+    return CustomClient
+
+
+async def test_hello(aiohttp_client) -> None:
+    client = await aiohttp_client(Application())
+    assert isinstance(client, CustomClient)
+
+""")
+    testdir.makeconftest(CONFTEST)
+    result = testdir.runpytest()
+    result.assert_outcomes(passed=1)
