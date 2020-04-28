@@ -424,4 +424,3 @@ def test_register_resource(aiohttp_client) -> None:
     resource = PlainResource(url.raw_path, name=wrong_name)
     with pytest.raises(ValueError):
         router.register_resource(resource)
-
