@@ -412,10 +412,20 @@ async def test_static_absolute_url(aiohttp_client, tmp_path) -> None:
 def test_register_resource(aiohttp_client) -> None:
     router = UrlDispatcher()
     path = "/result/"
-    name = "check-for-result"
     url = URL.build(path=path)
-    resource = PlainResource(url.raw_path, name=name)
-    try:
+
+    correct_name = "check-for-result"
+    resource = PlainResource(url.raw_path, name=correct_name)
+    router.register_resource(resource)
+
+    assert resource == router._named_resources[correct_name]
+
+    wrong_name = "for"
+    resource = PlainResource(url.raw_path, name=wrong_name)
+    with pytest.raises(
+            ValueError,
+            match="^Incorrect route name 'for', "
+            'python keywords cannot be used for route name$',
+    ):
         router.register_resource(resource)
-    except ValueError:
-        pytest.fail()
+
