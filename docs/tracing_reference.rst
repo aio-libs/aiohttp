@@ -304,10 +304,10 @@ TraceRequestChunkSentParams
        Bytes of chunk sent
 
 
-TraceResponseChunkSentParams
+TraceResponseChunkReceivedParams
 ----------------------------
 
-.. class:: TraceResponseChunkSentParams
+.. class:: TraceResponseChunkReceivedParams
 
    .. versionadded:: 3.1
 
