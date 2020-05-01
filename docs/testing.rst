@@ -229,6 +229,53 @@ Pytest tooling has the following fixtures:
 
       The fixture was renamed from ``unused_port`` to ``aiohttp_unused_port``.
 
+.. data:: aiohttp_client_cls
+
+   A fixture for passing custom :class:`~aiohttp.test_utils.TestClient` implementations::
+
+      class MyClient(TestClient):
+          async def login(self, *, user, pw):
+              payload = {"username": user, "password": pw}
+              return await self.post("/login", json=payload)
+
+      @pytest.fixture
+      def aiohttp_client_cls():
+          return MyClient
+
+      def test_login(aiohttp_client):
+          app = web.Application()
+          client = await aiohttp_client(app)
+          await client.login(user="admin", pw="s3cr3t")
+
+   If you want to switch between different clients in tests, you can use
+   the usual ``pytest`` machinery. Example with using test markers::
+
+      class RESTfulClient(TestClient):
+          ...
+
+      class GraphQLClient(TestClient):
+          ...
+
+      @pytest.fixture
+      def aiohttp_client_cls(request):
+          if request.node.get_closest_marker('rest') is not None:
+              return RESTfulClient
+          if request.node.get_closest_marker('graphql') is not None:
+              return GraphQLClient
+          return TestClient
+
+
+      @pytest.mark.rest
+      async def test_rest(aiohttp_client) -> None:
+          client: RESTfulClient = await aiohttp_client(Application())
+          ...
+
+
+      @pytest.mark.graphql
+      async def test_graphql(aiohttp_client) -> None:
+          client: GraphQLClient = await aiohttp_client(Application())
+          ...
+
 
 .. _aiohttp-testing-unittest-example:
 
