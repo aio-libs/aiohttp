@@ -99,6 +99,7 @@ args = dict(
         'Docs: RTD': 'https://docs.aiohttp.org',
         'GitHub: issues': 'https://github.com/aio-libs/aiohttp/issues',
         'GitHub: repo': 'https://github.com/aio-libs/aiohttp',
+        'Changelog': 'https://docs.aiohttp.org/en/stable/changes.html',
     },
     license='Apache 2',
     packages=['aiohttp'],
