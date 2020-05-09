@@ -45,9 +45,9 @@ else:
     SSLContext = None
 
 if PY_38:
-    from unittest import IsolatedAsyncioTestCase as TestCase
+    from unittest import IsolatedAsyncioTestCase as TestCase  # type: ignore
 else:
-    from asynctest import TestCase  # type: ignore
+    from asynctest import TestCase
 
 REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
 
