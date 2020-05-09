@@ -1,0 +1,1 @@
+AioHTTPTestCase more async friendly
