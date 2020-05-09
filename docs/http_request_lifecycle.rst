@@ -38,7 +38,7 @@ So why is the aiohttp snippet so verbose?
 Because aiohttp is asynchronous, its API is designed to make the most out of non-blocking network operations. In a code like this, requests will block three times, and does it transparently, while aiohttp gives the event loop three opportunities to switch context:
 
 
-- When doing the ``.get()``, both libraries send a GET request to the remote server. For aiohttp, this means asynchronous I/O, which is here marked with an ``async with`` that gives you the guaranty that not only it doesn't block, but that it's cleanly finalized.
+- When doing the ``.get()``, both libraries send a GET request to the remote server. For aiohttp, this means asynchronous I/O, which is here marked with an ``async with`` that gives you the guarantee that not only it doesn't block, but that it's cleanly finalized.
 - When doing ``response.text`` in requests, you just read an attribute. The call to ``.get()`` already preloaded and decoded the entire response payload, in a blocking manner. aiohttp loads only the headers when ``.get()`` is executed, letting you decide to pay the cost of loading the body afterward, in a second asynchronous operation. Hence the ``await response.text()``.
 - ``async with aiohttp.ClientSession()`` does not perform I/O when entering the block, but at the end of it, it will ensure all remaining resources are closed correctly. Again, this is done asynchronously and must be marked as such. The session is also a performance tool, as it manages a pool of connections for you, allowing you to reuse them instead of opening and closing a new one at each request. You can even `manage the pool size by passing a connector object <client_advanced.html#limiting-connection-pool-size>`_.
 
