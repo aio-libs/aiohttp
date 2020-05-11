@@ -93,12 +93,17 @@ following code::
 
 You can see that the URL has been correctly encoded by printing the URL.
 
-For sending data with multiple values for the same key
-:class:`MultiDict` may be used as well.
+Starting with :mod:`yarl` 1.4.3, you can use a :class:`dict` with
+:class:`list` values to represent a key will be present multiple times::
 
+    params = {'key': ['value1', 'value2']}
+    async with session.get('http://httpbin.org/get',
+                           params=params) as r:
+        expect = 'http://httpbin.org/get?key=value2&key=value1'
+        assert str(r.url) == expect
 
-It is also possible to pass a list of 2 item tuples as parameters, in
-that case you can specify multiple values for each key::
+With older versions of :mod:`yarl`, you can instead use a :class:`MultiDict`
+instance or pass a list of 2-item tuples as parameters::
 
     params = [('key', 'value1'), ('key', 'value2')]
     async with session.get('http://httpbin.org/get',
