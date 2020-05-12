@@ -67,6 +67,11 @@ try:
 except ImportError:
     from typing_extensions import ContextManager
 
+if PY_38:
+    from typing import Protocol
+else:
+    from typing_extensions import Protocol  # type: ignore
+
 
 def all_tasks(
         loop: Optional[asyncio.AbstractEventLoop] = None
@@ -384,6 +389,10 @@ def is_expected_content_type(response_content_type: str,
     return expected_content_type in response_content_type
 
 
+class _TSelf(Protocol):
+    _cache: Dict[str, Any]
+
+
 class reify(Generic[_T]):
     """Use as a class method decorator.  It operates almost exactly like
     the Python `@property` decorator, but it puts the result of the
@@ -398,7 +407,7 @@ class reify(Generic[_T]):
         self.__doc__ = wrapped.__doc__
         self.name = wrapped.__name__
 
-    def __get__(self, inst: _S, owner: Optional[Type[Any]] = None) -> _T:
+    def __get__(self, inst: _TSelf, owner: Optional[Type[Any]] = None) -> _T:
         try:
             try:
                 return inst._cache[self.name]
@@ -411,7 +420,7 @@ class reify(Generic[_T]):
                 return self
             raise
 
-    def __set__(self, inst: _S, value: _T) -> None:
+    def __set__(self, inst: _TSelf, value: _T) -> None:
         raise AttributeError("reified property is read-only")
 
 
