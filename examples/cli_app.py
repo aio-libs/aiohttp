@@ -16,9 +16,10 @@ arguments to the `cli_app:init` function for processing.
 from argparse import ArgumentParser
 
 from aiohttp import web
+from aiohttp.web_request import Request
 
 
-def display_message(req):
+def display_message(req: Request) -> web.Response:
     args = req.app["args"]
     text = "\n".join([args.message] * args.repeat)
     return web.Response(text=text)
