@@ -6,12 +6,11 @@ import os
 from typing import Union
 
 from aiohttp import web
-from aiohttp.web_request import Request
 
 WS_FILE = os.path.join(os.path.dirname(__file__), "websocket.html")
 
 
-async def wshandler(request: Request) -> Union[web.WebSocketResponse, web.Response]:
+async def wshandler(request: web.Request) -> Union[web.WebSocketResponse, web.Response]:
     resp = web.WebSocketResponse()
     available = resp.can_prepare(request)
     if not available:

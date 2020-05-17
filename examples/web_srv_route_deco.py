@@ -6,13 +6,12 @@ with decorator definition for routes
 import textwrap
 
 from aiohttp import web
-from aiohttp.web_request import Request
 
 routes = web.RouteTableDef()
 
 
 @routes.get("/")
-async def intro(request: Request) -> web.StreamResponse:
+async def intro(request: web.Request) -> web.StreamResponse:
     txt = textwrap.dedent(
         """\
         Type {url}/hello/John  {url}/simple or {url}/change_body
@@ -29,12 +28,13 @@ async def intro(request: Request) -> web.StreamResponse:
 
 
 @routes.get("/simple")
-async def simple(request: Request) -> web.StreamResponse:
+async def simple(request: web.Request) -> web.StreamResponse:
     return web.Response(text="Simple answer")
 
 
+@routes.get('/change_body')
 @routes.get("/change_body")
-async def change_body(request: Request) -> web.StreamResponse:
+async def change_body(request: web.Request) -> web.StreamResponse:
     resp = web.Response()
     resp.body = b"Body changed"
     resp.content_type = "text/plain"
@@ -42,7 +42,7 @@ async def change_body(request: Request) -> web.StreamResponse:
 
 
 @routes.get("/hello")
-async def hello(request: Request) -> web.StreamResponse:
+async def hello(request: web.Request) -> web.StreamResponse:
     resp = web.StreamResponse()
     name = request.match_info.get("name", "Anonymous")
     answer = ("Hello, " + name).encode("utf8")

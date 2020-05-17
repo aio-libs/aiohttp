@@ -6,7 +6,6 @@ import functools
 import json
 
 from aiohttp import web
-from aiohttp.web_request import Request
 
 
 class MyView(web.View):
@@ -33,7 +32,7 @@ class MyView(web.View):
         )
 
 
-async def index(request: Request) -> web.StreamResponse:
+async def index(request: web.Request) -> web.StreamResponse:
     txt = """
       <html>
         <head>

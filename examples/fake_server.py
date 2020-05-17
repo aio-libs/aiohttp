@@ -10,7 +10,6 @@ from aiohttp import web
 from aiohttp.abc import AbstractResolver
 from aiohttp.resolver import DefaultResolver
 from aiohttp.test_utils import unused_port
-from aiohttp.web_request import Request
 
 
 class FakeResolver:
@@ -73,10 +72,10 @@ class FakeFacebook:
     async def stop(self) -> None:
         await self.runner.cleanup()
 
-    async def on_me(self, request: Request) -> web.StreamResponse:
+    async def on_me(self, request: web.Request) -> web.StreamResponse:
         return web.json_response({"name": "John Doe", "id": "12345678901234567"})
 
-    async def on_my_friends(self, request: Request) -> web.StreamResponse:
+    async def on_my_friends(self, request: web.Request) -> web.StreamResponse:
         return web.json_response(
             {
                 "data": [

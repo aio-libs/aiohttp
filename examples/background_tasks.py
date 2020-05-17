@@ -5,10 +5,9 @@ import asyncio
 import aioredis  # type: ignore
 
 from aiohttp import web
-from aiohttp.web_request import Request
 
 
-async def websocket_handler(request: Request) -> web.StreamResponse:
+async def websocket_handler(request: web.Request) -> web.StreamResponse:
     ws = web.WebSocketResponse()
     await ws.prepare(request)
     request.app["websockets"].append(ws)

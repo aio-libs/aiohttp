@@ -17,10 +17,9 @@ from argparse import ArgumentParser
 from typing import Optional, Sequence
 
 from aiohttp import web
-from aiohttp.web_request import Request
 
 
-async def display_message(req: Request) -> web.StreamResponse:
+async def display_message(req: web.Request) -> web.StreamResponse:
     args = req.app["args"]
     text = "\n".join([args.message] * args.repeat)
     return web.Response(text=text)

@@ -5,7 +5,6 @@
 from pprint import pformat
 
 from aiohttp import web
-from aiohttp.web_request import Request
 
 tmpl = """\
 <html>
@@ -17,19 +16,19 @@ tmpl = """\
 </html>"""
 
 
-async def root(request: Request) -> web.StreamResponse:
+async def root(request: web.Request) -> web.StreamResponse:
     resp = web.Response(content_type="text/html")
     resp.text = tmpl.format(pformat(request.cookies))
     return resp
 
 
-async def login(request: Request) -> None:
+async def login(request: web.Request) -> None:
     exc = web.HTTPFound(location="/")
     exc.set_cookie("AUTH", "secret")
     raise exc
 
 
-async def logout(request: Request) -> None:
+async def logout(request: web.Request) -> None:
     exc = web.HTTPFound(location="/")
     exc.del_cookie("AUTH")
     raise exc

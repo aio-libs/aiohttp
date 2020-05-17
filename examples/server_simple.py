@@ -1,15 +1,14 @@
 # server_simple.py
 from aiohttp import web
-from aiohttp.web_request import Request
 
 
-async def handle(request: Request) -> web.StreamResponse:
+async def handle(request: web.Request) -> web.StreamResponse:
     name = request.match_info.get("name", "Anonymous")
     text = "Hello, " + name
     return web.Response(text=text)
 
 
-async def wshandle(request: Request) -> web.StreamResponse:
+async def wshandle(request: web.Request) -> web.StreamResponse:
     ws = web.WebSocketResponse()
     await ws.prepare(request)
 
