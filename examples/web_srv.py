@@ -5,9 +5,10 @@
 import textwrap
 
 from aiohttp import web
+from aiohttp.web_request import Request
 
 
-async def intro(request):
+async def intro(request: Request) -> web.StreamResponse:
     txt = textwrap.dedent(
         """\
         Type {url}/hello/John  {url}/simple or {url}/change_body
@@ -23,18 +24,18 @@ async def intro(request):
     return resp
 
 
-async def simple(request):
+async def simple(request: Request) -> web.StreamResponse:
     return web.Response(text="Simple answer")
 
 
-async def change_body(request):
+async def change_body(request: Request) -> web.StreamResponse:
     resp = web.Response()
     resp.body = b"Body changed"
     resp.content_type = "text/plain"
     return resp
 
 
-async def hello(request):
+async def hello(request: Request) -> web.StreamResponse:
     resp = web.StreamResponse()
     name = request.match_info.get("name", "Anonymous")
     answer = ("Hello, " + name).encode("utf8")
@@ -46,7 +47,7 @@ async def hello(request):
     return resp
 
 
-def init():
+def init() -> web.Application:
     app = web.Application()
     app.router.add_get("/", intro)
     app.router.add_get("/simple", simple)
