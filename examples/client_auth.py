@@ -4,7 +4,7 @@ import asyncio
 import aiohttp
 
 
-async def fetch(session) -> None:
+async def fetch(session: aiohttp.ClientSession) -> None:
     print("Query http://httpbin.org/basic-auth/andrew/password")
     async with session.get("http://httpbin.org/basic-auth/andrew/password") as resp:
         print(resp.status)
