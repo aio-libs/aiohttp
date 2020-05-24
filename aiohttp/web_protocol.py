@@ -114,7 +114,8 @@ class RequestHandler(BaseProtocol):
                  '_waiter', '_error_handler', '_task_handler',
                  '_upgrade', '_payload_parser', '_request_parser',
                  '_reading_paused', 'logger', 'debug', 'access_log',
-                 'access_logger', '_close', '_force_close')
+                 'access_logger', '_close', '_force_close',
+                 '_current_request')
 
     def __init__(self, manager: 'Server', *,
                  loop: asyncio.AbstractEventLoop,
@@ -134,6 +135,7 @@ class RequestHandler(BaseProtocol):
 
         self._request_count = 0
         self._keepalive = False
+        self._current_request = None  # type: Optional[BaseRequest]
         self._manager = manager  # type: Optional[Server]
         self._request_handler = manager.request_handler  # type: Optional[_RequestHandler]  # noqa
         self._request_factory = manager.request_factory  # type: Optional[_RequestFactory]  # noqa
@@ -201,6 +203,9 @@ class RequestHandler(BaseProtocol):
                         not self._error_handler.done()):
                     await self._error_handler
 
+                if self._current_request is not None:
+                    self._current_request._cancel(asyncio.CancelledError())
+
                 if (self._task_handler is not None and
                         not self._task_handler.done()):
                     await self._task_handler
@@ -240,8 +245,10 @@ class RequestHandler(BaseProtocol):
         if self._keepalive_handle is not None:
             self._keepalive_handle.cancel()
 
-        if self._task_handler is not None:
-            self._task_handler.cancel()
+        if self._current_request is not None:
+            if exc is None:
+                exc = ConnectionResetError("Connetion lost")
+            self._current_request._cancel(exc)
 
         if self._error_handler is not None:
             self._error_handler.cancel()
@@ -415,7 +422,11 @@ class RequestHandler(BaseProtocol):
                 task = self._loop.create_task(
                     self._request_handler(request))
                 try:
-                    resp = await task
+                    try:
+                        self._current_request = request
+                        resp = await task
+                    finally:
+                        self._current_request = None
                 except HTTPException as exc:
                     resp = exc
                 except (asyncio.CancelledError, ConnectionError):
