@@ -181,6 +181,9 @@ period ask to raise the status.
 - `gidgethub <https://github.com/brettcannon/gidgethub>`_ An async
   GitHub API library for Python.
 
+- `aiohttp-rpc <https://github.com/expert-m/aiohttp-rpc>`_ A simple
+  JSON-RPC for aiohttp.
+
 - `aiohttp_jrpc <https://github.com/zloidemon/aiohttp_jrpc>`_ aiohttp
   JSON-RPC service.
 
