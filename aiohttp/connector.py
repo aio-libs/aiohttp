@@ -932,18 +932,27 @@ class TCPConnector(BaseConnector):
         sslcontext = self._get_ssl_context(req)
         fingerprint = self._get_fingerprint(req)
 
+        host = req.url.raw_host
+        assert host is not None
+        port = req.port
+        assert port is not None
+        host_resolved = asyncio.ensure_future(self._resolve_host(
+            host,
+            port,
+            traces=traces), loop=self._loop)
         try:
             # Cancelling this lookup should not cancel the underlying lookup
             #  or else the cancel event will get broadcast to all the waiters
             #  across all connections.
-            host = req.url.raw_host
-            assert host is not None
-            port = req.port
-            assert port is not None
-            hosts = await asyncio.shield(self._resolve_host(
-                host,
-                port,
-                traces=traces))
+            hosts = await asyncio.shield(host_resolved)
+        except asyncio.CancelledError:
+            def drop_exception(
+                    fut: 'asyncio.Future[List[Dict[str, Any]]]'
+            ) -> None:
+                with suppress(Exception, asyncio.CancelledError):
+                    fut.result()
+            host_resolved.add_done_callback(drop_exception)
+            raise
         except OSError as exc:
             # in case of proxy it is not ClientProxyConnectionError
             # it is problem of resolving proxy ip itself
