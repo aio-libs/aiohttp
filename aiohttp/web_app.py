@@ -302,7 +302,9 @@ class Application(MutableMapping[str, Any]):
 
         Should be called after shutdown()
         """
-        await self.on_cleanup.send(self)
+        # Avoid send() as we want to ensure cleanup is run even if not frozen.
+        for receiver in self.on_cleanup:
+            await receiver(self)
 
     def _prepare_middleware(self) -> Iterator[_Middleware]:
         yield from reversed(self._middlewares)
