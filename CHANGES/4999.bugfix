@@ -1,0 +1,1 @@
+Ensure cleanup context is run even when an exception occurs during startup.
