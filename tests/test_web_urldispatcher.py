@@ -263,7 +263,6 @@ async def test_static_head(tmp_path, aiohttp_client) -> None:
         pass
     content = await reader.read()
     writer.close()
-    await writer.wait_closed()
     assert content == b''
 
 
