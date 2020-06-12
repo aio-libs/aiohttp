@@ -12,6 +12,9 @@ I hope everybody knows how to work with git and github nowadays :)
 
 Workflow is pretty straightforward:
 
+  0. Make sure you are reading the latest version of this document.
+     It can be found in the GitHub_ repo in the ``docs`` subdirectory.
+
   1. Clone the GitHub_ repo using the ``--recurse-submodules`` argument
 
   2. Setup your machine with the required dev environment
@@ -20,7 +23,7 @@ Workflow is pretty straightforward:
 
   4. Make sure all tests passed
 
-  5. Add a file into ``CHANGES`` folder (see `Changelog update`_ for how).
+  5. Add a file into the ``CHANGES`` folder (see `Changelog update`_ for how).
 
   6. Commit changes to your own aiohttp clone
 
