@@ -23,7 +23,7 @@ Workflow is pretty straightforward:
 
   4. Make sure all tests passed
 
-  5. Add a file into ``CHANGES`` folder (see `Changelog update`_ for how).
+  5. Add a file into the ``CHANGES`` folder (see `Changelog update`_ for how).
 
   6. Commit changes to your own aiohttp clone
 
