@@ -134,7 +134,7 @@ Use:
 
 .. code-block:: shell
 
-   $ make cov
+   $ make cov-dev
 
 to run test suite and collect coverage information. Once the command
 has finished check your coverage at the file that appears in the last
