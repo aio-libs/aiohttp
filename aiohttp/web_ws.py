@@ -3,7 +3,7 @@ import base64
 import binascii
 import hashlib
 import json
-from typing import Any, Iterable, Optional, Tuple, Union
+from typing import Any, Iterable, Optional, Tuple
 
 import async_timeout
 import attr
@@ -294,8 +294,8 @@ class WebSocketResponse(StreamResponse):
                             type(data))
         await self._writer.send(data, binary=True, compress=compress)
 
-    async def send_json(self, data: Any, compress: Optional[bool] = None, *,
-                        dumps: JSONEncoder = json.dumps) -> None:
+    async def send_json(self, data: Any, compress: Optional[bool]=None, *,
+                        dumps: JSONEncoder=json.dumps) -> None:
         await self.send_str(dumps(data), compress=compress)
 
     async def write_eof(self) -> None:  # type: ignore
