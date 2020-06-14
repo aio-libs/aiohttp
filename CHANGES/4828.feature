@@ -1,1 +1,1 @@
-Allow to send JSON as bytestring by WebSocketResponse.send_json
+Allow to send a bytestring by WebSocketResponse.send_str

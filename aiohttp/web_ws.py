@@ -281,8 +281,8 @@ class WebSocketResponse(StreamResponse):
     async def send_str(self, data: str, compress: Optional[bool]=None) -> None:
         if self._writer is None:
             raise RuntimeError('Call .prepare() first')
-        if not isinstance(data, str):
-            raise TypeError('data argument must be str (%r)' % type(data))
+        if not isinstance(data, (str, bytes, bytearray)):
+            raise TypeError('data argument must be str or byte-ish (%r)' % type(data))
         await self._writer.send(data, binary=False, compress=compress)
 
     async def send_bytes(self, data: bytes,
@@ -294,15 +294,9 @@ class WebSocketResponse(StreamResponse):
                             type(data))
         await self._writer.send(data, binary=True, compress=compress)
 
-    async def send_json(self, data: Any, compress: Optional[bool]=None, *,
-                        dumps: JSONEncoder=json.dumps) -> None:
-        if self._writer is None:
-            raise RuntimeError('Call .prepare() first')
-        data: Union[str, bytes] = dumps(data)
-        if not isinstance(data, (str, bytes)):
-            raise TypeError('JSON-encoded message must be byte-ish or str (%r)' %
-                            type(data))
-        await self._writer.send(data, binary=False, compress=compress)
+    async def send_json(self, data: Any, compress: Optional[bool] = None, *,
+                        dumps: JSONEncoder = json.dumps) -> None:
+        await self.send_str(dumps(data), compress=compress)
 
     async def write_eof(self) -> None:  # type: ignore
         if self._eof_sent:
