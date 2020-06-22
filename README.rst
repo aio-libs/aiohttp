@@ -79,7 +79,7 @@ This prints:
     Content-type: text/html; charset=utf-8
     Body: <!doctype html> ...
 
-Comming from `requests <https://requests.readthedocs.io/>`_ ? Read `why we need so many lines <https://aiohttp.readthedocs.io/en/latest/http_request_lifecycle.html>`_.
+Coming from `requests <https://requests.readthedocs.io/>`_? Read `why we need so many lines <https://aiohttp.readthedocs.io/en/latest/http_request_lifecycle.html>`_.
 
 Server
 ------
