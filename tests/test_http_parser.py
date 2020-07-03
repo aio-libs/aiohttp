@@ -8,7 +8,7 @@ from multidict import CIMultiDict
 from yarl import URL
 
 import aiohttp
-from aiohttp import helpers, http_exceptions, streams
+from aiohttp import http_exceptions, streams
 from aiohttp.http_parser import (
     DeflateBuffer,
     HttpPayloadParser,
@@ -45,14 +45,6 @@ def parser(loop, protocol, request):
                          max_line_size=8190,
                          max_headers=32768,
                          max_field_size=8190)
-
-
-@pytest.fixture
-def parser_c(loop, protocol):
-    return HttpRequestParserC(protocol, loop,
-                              max_line_size=8190,
-                              max_headers=32768,
-                              max_field_size=8190)
 
 
 @pytest.fixture(params=REQUEST_PARSERS)
@@ -795,13 +787,17 @@ def test_url_parse_non_strict_mode(parser) -> None:
     assert payload.is_eof()
 
 
-@pytest.mark.skipif(helpers.NO_EXTENSIONS,
+@pytest.mark.skipif('HttpRequestParserC' not in dir(aiohttp.http_parser),
                     reason="C based HTTP parser not available")
-def test_parse_bad_method_for_c_parser_raises(parser_c):
+def test_parse_bad_method_for_c_parser_raises(loop, protocol):
     payload = 'GET1 /test HTTP/1.1\r\n\r\n'.encode('utf-8')
+    parser = HttpRequestParserC(protocol, loop,
+                                max_line_size=8190,
+                                max_headers=32768,
+                                max_field_size=8190)
 
     with pytest.raises(aiohttp.http_exceptions.BadStatusLine):
-        messages, upgrade, tail = parser_c.feed_data(payload)
+        messages, upgrade, tail = parser.feed_data(payload)
 
 
 class TestParsePayload:

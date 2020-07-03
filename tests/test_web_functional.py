@@ -16,7 +16,6 @@ from aiohttp import (
     HttpVersion10,
     HttpVersion11,
     TraceConfig,
-    helpers,
     multipart,
     web,
 )
@@ -1926,7 +1925,7 @@ async def test_signal_on_error_handler(aiohttp_client) -> None:
     assert resp.headers['X-Custom'] == 'val'
 
 
-@pytest.mark.skipif(helpers.NO_EXTENSIONS,
+@pytest.mark.skipif('HttpRequestParserC' not in dir(aiohttp.http_parser),
                     reason="C based HTTP parser not available")
 async def test_bad_method_for_c_http_parser_not_hangs(aiohttp_client) -> None:
     app = web.Application()
