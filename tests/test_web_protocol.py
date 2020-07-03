@@ -246,10 +246,12 @@ async def test_simple(srv, buf) -> None:
     assert buf.startswith(b'HTTP/1.1 200 OK\r\n')
 
 
-async def test_bad_method(srv, buf) -> None:
+@pytest.mark.parametrize("method", [b':BAD;', b'GET1'])
+async def test_bad_method(method, srv, buf) -> None:
     srv.data_received(
-        b':BAD; / HTTP/1.0\r\n'
-        b'Host: example.com\r\n\r\n')
+        method + (
+            b' / HTTP/1.0\r\n'
+            b'Host: example.com\r\n\r\n'))
 
     await asyncio.sleep(0)
     assert buf.startswith(b'HTTP/1.0 400 Bad Request\r\n')

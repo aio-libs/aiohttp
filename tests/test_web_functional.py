@@ -1923,3 +1923,10 @@ async def test_signal_on_error_handler(aiohttp_client) -> None:
     resp = await client.get('/')
     assert resp.status == 404
     assert resp.headers['X-Custom'] == 'val'
+
+
+async def test_bad_method(aiohttp_client) -> None:
+    app = web.Application()
+    client = await aiohttp_client(app)
+    resp = await client.request('GET1', '/')
+    assert 400 == resp.status

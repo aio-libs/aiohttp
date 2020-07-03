@@ -80,6 +80,7 @@ Dimitar Dimitrov
 Diogo Dutra da Mata
 Dmitriy Safonov
 Dmitry Doroshev
+Dmitry Erlikh
 Dmitry Lukashin
 Dmitry Marakasov
 Dmitry Shamov
