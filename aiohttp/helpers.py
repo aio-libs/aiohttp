@@ -16,7 +16,7 @@ import time
 import weakref
 from collections import namedtuple
 from contextlib import suppress
-from math import ceil, trunc
+from math import ceil
 from pathlib import Path
 from types import TracebackType
 from typing import (  # noqa
