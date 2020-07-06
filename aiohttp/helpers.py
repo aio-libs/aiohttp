@@ -16,7 +16,7 @@ import time
 import weakref
 from collections import namedtuple
 from contextlib import suppress
-from math import ceil
+from math import ceil, trunc
 from pathlib import Path
 from types import TracebackType
 from typing import (  # noqa
@@ -539,7 +539,7 @@ class TimeoutHandle:
 
     def start(self) -> Optional[asyncio.Handle]:
         if self._timeout is not None and self._timeout > 0:
-            at = ceil(self._loop.time() + self._timeout)
+            at = round(self._loop.time() + self._timeout, 3)
             return self._loop.call_at(at, self.__call__)
         else:
             return None

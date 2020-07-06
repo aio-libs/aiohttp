@@ -306,6 +306,18 @@ def test_timeout_handle(loop) -> None:
     assert not handle._callbacks
 
 
+def test_when_timeout_smaller_second(loop) -> None:
+    timeout = 0.1
+    timer = round(loop.time() + timeout, 3)
+
+    handle = helpers.TimeoutHandle(loop, timeout)
+    when = handle.start().when()
+    handle.close()
+
+    assert isinstance(when, float)
+    assert when == timer
+
+
 def test_timeout_handle_cb_exc(loop) -> None:
     handle = helpers.TimeoutHandle(loop, 10.2)
     cb = mock.Mock()
