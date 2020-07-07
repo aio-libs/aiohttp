@@ -539,7 +539,7 @@ class TimeoutHandle:
 
     def start(self) -> Optional[asyncio.Handle]:
         if self._timeout is not None and self._timeout > 0:
-            at = round(self._loop.time() + self._timeout, 3)
+            at = self._loop.time() + self._timeout
             return self._loop.call_at(at, self.__call__)
         else:
             return None

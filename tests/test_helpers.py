@@ -308,14 +308,14 @@ def test_timeout_handle(loop) -> None:
 
 def test_when_timeout_smaller_second(loop) -> None:
     timeout = 0.1
-    timer = round(loop.time() + timeout, 3)
+    timer = loop.time() + timeout
 
     handle = helpers.TimeoutHandle(loop, timeout)
-    when = handle.start().when()
+    when = handle.start()._when
     handle.close()
 
     assert isinstance(when, float)
-    assert when == timer
+    assert f"{when:.3f}" == f"{timer:.3f}"
 
 
 def test_timeout_handle_cb_exc(loop) -> None:
