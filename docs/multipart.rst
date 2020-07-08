@@ -55,7 +55,7 @@ body part headers: this allows you to filter parts by their attributes::
         metadata = await part.json()
         continue
 
-Nor :class:`BodyPartReader` or :class:`MultipartReader` instances does not
+Nor :class:`BodyPartReader` or :class:`MultipartReader` instances
 read the whole body part data without explicitly asking for.
 :class:`BodyPartReader` provides a set of helpers methods
 to fetch popular content types in friendly way:
