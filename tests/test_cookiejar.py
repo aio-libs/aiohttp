@@ -294,6 +294,36 @@ async def test_preserving_quoted_cookies(loop) -> None:
     assert cookies_sent == 'Cookie: ip-cookie=\"second\"'
 
 
+async def test_quotes_special_char_strings(loop) -> None:
+    jar = CookieJar(unsafe=True)
+    jar.update_cookies(SimpleCookie(
+        "custom-cookie=value/one;"
+    ))
+    cookies_sent = jar.filter_cookies(URL("http://127.0.0.1/")).output(
+        header='Cookie:')
+    assert cookies_sent == 'Cookie: custom-cookie="value/one"'
+
+
+async def test_does_not_quote_alphanumeric_strings(loop) -> None:
+    jar = CookieJar(unsafe=True)
+    jar.update_cookies(SimpleCookie(
+        "custom-cookie=value1;"
+    ))
+    cookies_sent = jar.filter_cookies(URL("http://127.0.0.1/")).output(
+        header='Cookie:')
+    assert cookies_sent == 'Cookie: custom-cookie=value1'
+
+
+async def test_skip_quote_string_on_special_char_strings(loop) -> None:
+    jar = CookieJar(unsafe=True, quote_cookie=False)
+    jar.update_cookies(SimpleCookie(
+        "custom-cookie=value/one;"
+    ))
+    cookies_sent = jar.filter_cookies(URL("http://127.0.0.1/")).output(
+        header='Cookie:')
+    assert cookies_sent == 'Cookie: custom-cookie=value/one'
+
+
 async def test_ignore_domain_ending_with_dot(loop) -> None:
     jar = CookieJar(unsafe=True)
     jar.update_cookies(SimpleCookie("cookie=val; Domain=example.com.;"),

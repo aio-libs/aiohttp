@@ -50,11 +50,12 @@ class CookieJar(AbstractCookieJar):
     MAX_TIME = datetime.datetime.max.replace(
         tzinfo=datetime.timezone.utc)
 
-    def __init__(self, *, unsafe: bool=False) -> None:
+    def __init__(self, *, unsafe: bool=False, quote_cookie: bool=True) -> None:
         self._loop = get_running_loop()
         self._cookies = defaultdict(SimpleCookie)  #type: DefaultDict[str, SimpleCookie[str]]  # noqa
         self._host_only_cookies = set()  # type: Set[Tuple[str, str]]
         self._unsafe = unsafe
+        self._quote_cookie = quote_cookie
         self._next_expiration = next_whole_second()
         self._expirations = {}  # type: Dict[Tuple[str, str], datetime.datetime]  # noqa: E501
 
@@ -202,7 +203,10 @@ class CookieJar(AbstractCookieJar):
                           .format(type(request_url)),
                           DeprecationWarning)
             request_url = URL(request_url)
-        filtered = SimpleCookie()  # type: SimpleCookie[str]
+        if self._quote_cookie:
+            filtered = SimpleCookie()  # type: SimpleCookie[str]
+        else:
+            filtered = BaseCookie()  # type: BaseCookie[str]
         hostname = request_url.raw_host or ""
         is_not_secure = request_url.scheme not in ("https", "wss")
 
