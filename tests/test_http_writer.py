@@ -179,9 +179,10 @@ async def test_write_payload_short_ints_memoryview(
         loop):
     msg = http.StreamWriter(protocol, loop)
     msg.enable_chunking()
-    mv = memoryview(array.array("H", [65, 66, 67]))
 
-    await msg.write(mv)
+    payload = memoryview(array.array("H", [65, 66, 67]))
+
+    await msg.write(payload)
     await msg.write_eof()
 
     endians = (
@@ -196,7 +197,6 @@ async def test_write_payload_short_ints_memoryview(
             b"0\r\n\r\n"
         )
     )
-
     assert buf in endians
 
 
@@ -209,15 +209,34 @@ async def test_write_payload_2d_shape_memoryview(
     msg.enable_chunking()
 
     mv = memoryview(b"ABCDEF")
-    reshaped = mv.cast("c", [3, 2])
+    payload = mv.cast("c", [3, 2])
 
-    await msg.write(reshaped)
+    await msg.write(payload)
     await msg.write_eof()
 
     thing = (
         b"6\r\n"
         b"ABCDEF\r\n"
         b"0\r\n\r\n"
+    )
+    assert thing == buf
+
+async def test_write_payload_slicing_long_memoryview(
+        buf,
+        protocol,
+        transport,
+        loop):
+    msg = http.StreamWriter(protocol, loop)
+    msg.length = 4
+
+    mv = memoryview(b"ABCDEF")
+    payload = mv.cast("c", [3, 2])
+
+    await msg.write(payload)
+    await msg.write_eof()
+
+    thing = (
+        b"ABCD"
     )
     assert thing == buf
 
