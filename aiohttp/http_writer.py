@@ -78,6 +78,12 @@ class StreamWriter(AbstractStreamWriter):
         if self._on_chunk_sent is not None:
             await self._on_chunk_sent(chunk)
 
+        if isinstance(chunk, memoryview):
+            if chunk.shape is None:
+                return
+            if len(chunk.shape) != 1 or chunk.itemsize != 1:
+                chunk = chunk.cast('c')
+
         if self._compress is not None:
             chunk = self._compress.compress(chunk)
             if not chunk:
