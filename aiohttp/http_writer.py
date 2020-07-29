@@ -79,9 +79,10 @@ class StreamWriter(AbstractStreamWriter):
             await self._on_chunk_sent(chunk)
 
         if isinstance(chunk, memoryview):
-            if chunk.shape is None:
+            if chunk.shape is None:  # empty view
                 return
-            if len(chunk.shape) != 1 or chunk.itemsize != 1:
+            if len(chunk.shape) != 1 or chunk.itemsize != 1:  # complex case
+                # just reshape it
                 chunk = chunk.cast('c')
 
         if self._compress is not None:
