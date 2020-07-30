@@ -166,9 +166,7 @@ async def test_write_payload_bytes_memoryview(
     await msg.write(mv)
     await msg.write_eof()
 
-    thing = (
-        b"abcd"
-    )
+    thing = b"abcd"
     assert thing == buf
 
 
@@ -235,9 +233,7 @@ async def test_write_payload_slicing_long_memoryview(
     await msg.write(payload)
     await msg.write_eof()
 
-    thing = (
-        b"ABCD"
-    )
+    thing = b"ABCD"
     assert thing == buf
 
 async def test_write_drain(protocol, transport, loop) -> None:
