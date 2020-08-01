@@ -745,7 +745,7 @@ class DeflateBuffer:
         if not self._started_decoding and self.encoding == 'deflate' \
                 and chunk[0] & 0xf != 8:
             # Change the decoder to decompress incorrectly compressed data
-            # Actually we should issue a warning about non-RFC-compilant data.
+            # Actually we should issue a warning about non-RFC-compliant data.
             self.decompressor = zlib.decompressobj(wbits=-zlib.MAX_WBITS)
 
         try:
