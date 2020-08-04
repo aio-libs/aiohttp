@@ -46,6 +46,7 @@ Ben Bader
 Ben Timby
 Benedikt Reinartz
 Boris Feld
+Borys Vorona
 Boyi Chen
 Brett Cannon
 Brian C. Lane
@@ -99,6 +100,7 @@ Eugene Ershov
 Eugene Naydenov
 Eugene Nikolaiev
 Eugene Tolmachev
+Evan Kepner
 Evert Lammerts
 Felix Yan
 Fernanda Guimarães
@@ -144,6 +146,7 @@ Jinkyu Yi
 Joel Watts
 Jon Nabozny
 Jonas Obrist
+Jonny Tan
 Joongi Kim
 Josep Cugat
 Joshu Coats
@@ -174,6 +177,7 @@ Manuel Miranda
 Marat Sharafutdinov
 Marco Paolini
 Mariano Anaya
+Mariusz Masztalerczuk
 Martijn Pieters
 Martin Melka
 Martin Richard
@@ -182,6 +186,7 @@ Mathieu Dugré
 Matt VanEseltine
 Matthieu Hauglustaine
 Matthieu Rigal
+Meet Mangukiya
 Michael Ihnatenko
 Mikhail Burshteyn
 Mikhail Kashkin
@@ -198,6 +203,7 @@ Nikolay Kim
 Nikolay Novik
 Oisin Aylward
 Olaf Conradi
+Oleg Höfling
 Pahaz Blinov
 Panagiotis Kolokotronis
 Pankaj Pandey
@@ -259,6 +265,7 @@ Vasiliy Faronov
 Vasyl Baran
 Victor Collod
 Victor Kovtun
+Victor Makarov
 Vikas Kawadia
 Viktor Danyliuk
 Ville Skyttä

@@ -150,10 +150,10 @@ the :attr:`~ClientResponse.history` attribute::
 
     resp = await session.get('http://example.com/some/redirect/')
     assert resp.status == 200
-    assert resp.url = URL('http://example.com/some/other/url/')
+    assert resp.url == URL('http://example.com/some/other/url/')
     assert len(resp.history) == 1
     assert resp.history[0].status == 301
-    assert resp.history[0].url = URL(
+    assert resp.history[0].url == URL(
         'http://example.com/some/redirect/')
 
 If no redirects occurred or ``allow_redirects`` is set to ``False``,
@@ -527,8 +527,8 @@ Contrary to the ``requests`` library, it won't read environment
 variables by default. But you can do so by passing
 ``trust_env=True`` into :class:`aiohttp.ClientSession`
 constructor for extracting proxy configuration from
-*HTTP_PROXY* or *HTTPS_PROXY* *environment variables* (both are case
-insensitive)::
+*HTTP_PROXY*, *HTTPS_PROXY*, *WS_PROXY* or *WSS_PROXY* *environment 
+variables* (all are case insensitive)::
 
    async with aiohttp.ClientSession(trust_env=True) as session:
        async with session.get("http://python.org") as resp:

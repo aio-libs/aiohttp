@@ -96,6 +96,7 @@ args = dict(
         'Chat: Gitter': 'https://gitter.im/aio-libs/Lobby',
         'CI: Azure Pipelines': 'https://dev.azure.com/aio-libs/aiohttp/_build',
         'Coverage: codecov': 'https://codecov.io/github/aio-libs/aiohttp',
+        'Docs: Changelog': 'https://docs.aiohttp.org/en/stable/changes.html',
         'Docs: RTD': 'https://docs.aiohttp.org',
         'GitHub: issues': 'https://github.com/aio-libs/aiohttp/issues',
         'GitHub: repo': 'https://github.com/aio-libs/aiohttp',

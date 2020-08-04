@@ -1,8 +1,11 @@
 import os
 import platform
 import sys
+import warnings
 
 import pytest
+
+from aiohttp import pytest_plugin
 
 pytest_plugins = 'pytester'
 
@@ -242,4 +245,86 @@ def test_finalized() -> None:
 """)
     testdir.makeconftest(CONFTEST)
     result = testdir.runpytest('-p', 'no:sugar', '--aiohttp-loop=pyloop')
+    result.assert_outcomes(passed=2)
+
+
+def test_warnings_propagated(recwarn):
+    with pytest_plugin._runtime_warning_context():
+        warnings.warn('test warning is propagated')
+    assert len(recwarn) == 1
+    message = recwarn[0].message
+    assert isinstance(message, UserWarning)
+    assert message.args == ('test warning is propagated',)
+
+
+def test_aiohttp_client_cls_fixture_custom_client_used(testdir) -> None:
+    testdir.makepyfile("""
+import pytest
+from aiohttp.web import Application
+from aiohttp.test_utils import TestClient
+
+
+class CustomClient(TestClient):
+    pass
+
+
+@pytest.fixture
+def aiohttp_client_cls():
+    return CustomClient
+
+
+async def test_hello(aiohttp_client) -> None:
+    client = await aiohttp_client(Application())
+    assert isinstance(client, CustomClient)
+
+""")
+    testdir.makeconftest(CONFTEST)
+    result = testdir.runpytest()
+    result.assert_outcomes(passed=1)
+
+
+def test_aiohttp_client_cls_fixture_factory(testdir) -> None:
+    testdir.makeconftest(CONFTEST + """
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "rest: RESTful API tests")
+    config.addinivalue_line("markers", "graphql: GraphQL API tests")
+
+""")
+    testdir.makepyfile("""
+import pytest
+from aiohttp.web import Application
+from aiohttp.test_utils import TestClient
+
+
+class RESTfulClient(TestClient):
+    pass
+
+
+class GraphQLClient(TestClient):
+    pass
+
+
+@pytest.fixture
+def aiohttp_client_cls(request):
+    if request.node.get_closest_marker('rest') is not None:
+        return RESTfulClient
+    elif request.node.get_closest_marker('graphql') is not None:
+        return GraphQLClient
+    return TestClient
+
+
+@pytest.mark.rest
+async def test_rest(aiohttp_client) -> None:
+    client = await aiohttp_client(Application())
+    assert isinstance(client, RESTfulClient)
+
+
+@pytest.mark.graphql
+async def test_graphql(aiohttp_client) -> None:
+    client = await aiohttp_client(Application())
+    assert isinstance(client, GraphQLClient)
+
+""")
+    result = testdir.runpytest()
     result.assert_outcomes(passed=2)
