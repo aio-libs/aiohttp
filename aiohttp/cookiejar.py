@@ -198,7 +198,7 @@ class CookieJar(AbstractCookieJar):
     def filter_cookies(self,
                        request_url:
                        URL=URL()
-                       ) -> Union['BaseCookie[str]', SimpleCookie[str]]:
+                       ) -> Union['BaseCookie[str]', 'SimpleCookie[str]']:
         """Returns this jar's cookies filtered by their attributes."""
         self._do_expiration()
         if not isinstance(request_url, URL):
