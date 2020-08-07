@@ -192,12 +192,12 @@ conform to the RFC2109, which in turn references the character definitions
 from RFC2068. They provide a two-way quoting algorithm where any non-text
 character is translated into a 4 character sequence: a forward-slash
 followed by the three-digit octal equivalent of the character.
-Any ``\` or ``"`` is quoted with a preceding ``\`` slash.
+Any ``\`` or ``"`` is quoted with a preceding ``\`` slash.
 Because of the way browsers really handle cookies (as opposed to what the RFC
 says) we also encode ``,`` and ``;``.
 
 Some backend systems does not support quoted cookies. You can skip this
-quotation routine by passing `quote_cookie=False` to the
+quotation routine by passing ``quote_cookie=False`` to the
 :class:`aiohttp.CookieJar` constructor::
 
    jar = aiohttp.CookieJar(quote_cookie=False)
