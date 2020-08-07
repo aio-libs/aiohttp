@@ -195,7 +195,10 @@ class CookieJar(AbstractCookieJar):
 
         self._do_expiration()
 
-    def filter_cookies(self, request_url: URL=URL()) -> 'BaseCookie[str]':
+    def filter_cookies(self,
+                       request_url:
+                       URL=URL()
+                       ) -> Union['BaseCookie[str]', SimpleCookie[str]]:
         """Returns this jar's cookies filtered by their attributes."""
         self._do_expiration()
         if not isinstance(request_url, URL):
@@ -203,10 +206,7 @@ class CookieJar(AbstractCookieJar):
                           .format(type(request_url)),
                           DeprecationWarning)
             request_url = URL(request_url)
-        if self._quote_cookie:
-            filtered = SimpleCookie()  # type: SimpleCookie[str]
-        else:
-            filtered = BaseCookie()  # type: BaseCookie[str]
+        filtered = SimpleCookie() if self._quote_cookie else BaseCookie()  # type: Union[SimpleCookie[str], BaseCookie[str]] # noqa: E501
         hostname = request_url.raw_host or ""
         is_not_secure = request_url.scheme not in ("https", "wss")
 
