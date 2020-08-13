@@ -13,13 +13,13 @@ if TYPE_CHECKING:  # pragma: no cover
 
     from .client import ClientSession  # noqa
 
-    _ParamT = TypeVar('_ParamT')
+    _ParamT_contra = TypeVar('_ParamT_contra', contravariant=True)
 
-    class _SignalCallback(Protocol[_ParamT]):
+    class _SignalCallback(Protocol[_ParamT_contra]):
         def __call__(self,
                      __client_session: ClientSession,
                      __trace_config_ctx: SimpleNamespace,
-                     __params: _ParamT) -> Awaitable[None]: ...
+                     __params: _ParamT_contra) -> Awaitable[None]: ...
 
 
 __all__ = (
