@@ -9,7 +9,7 @@ coverage==5.1
 gunicorn==20.0.4
 multidict==4.7.6
 pytest==5.4.2
-pytest-cov==2.8.1
+pytest-cov==2.10.1
 pytest-mock==3.1.0
 typing_extensions==3.7.4.2
 yarl==1.4.2
