@@ -1663,6 +1663,7 @@ async def test_connect_with_capacity_release_waiters(loop) -> None:
     check_with_exc(asyncio.TimeoutError())
 
 
+@pytest.mark.xfail
 async def test_connect_with_limit_concurrent(loop) -> None:
     proto = create_mocked_conn(loop)
     proto.should_close = False
