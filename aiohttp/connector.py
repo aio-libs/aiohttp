@@ -298,6 +298,8 @@ class BaseConnector:
         """Cleanup unused transports."""
         if self._cleanup_handle:
             self._cleanup_handle.cancel()
+            # _cleanup_handle should be unset, otherwise _release() will not recreate it ever!
+            self._cleanup_handle = None
 
         now = self._loop.time()
         timeout = self._keepalive_timeout
