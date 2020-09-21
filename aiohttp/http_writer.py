@@ -157,7 +157,9 @@ class StreamWriter(AbstractStreamWriter):
 def _py_serialize_headers(status_line: str,
                           headers: 'CIMultiDict[str]') -> bytes:
     line = status_line + '\r\n' + ''.join(
-        [k + ': ' + v + '\r\n' for k, v in headers.items()])
+        [k + ': ' + (str(v) if type(v) is int else v) + '\r\n'  # no subclasses like bool
+         for k, v in headers.items()]
+    )
     return line.encode('utf-8') + b'\r\n'
 
 
