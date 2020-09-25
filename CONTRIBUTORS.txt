@@ -235,6 +235,7 @@ SeongSoo Cho
 Sergey Ninua
 Sergey Skripnick
 Serhii Kostel
+Serhiy Storchaka
 Simon Kennedy
 Sin-Woo Bang
 Stanislas Plum

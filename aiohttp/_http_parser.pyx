@@ -851,7 +851,7 @@ cdef _parse_url(char* buf_data, size_t length):
 
             return URL_build(scheme=schema,
                              user=user, password=password, host=host, port=port,
-                             path=path, query=query, fragment=fragment)
+                             path=path, query_string=query, fragment=fragment, encoded=True)
         else:
             raise InvalidURLError("invalid url {!r}".format(buf_data))
     finally:
