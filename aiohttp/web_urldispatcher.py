@@ -1126,4 +1126,7 @@ def _unquote_path(value: str) -> str:
 
 
 def _requote_path(value: str) -> str:
-    return _quote_path(value).replace('%25', '%')
+    result = _quote_path(value)
+    if '%' in value:
+        result = result.replace('%25', '%')
+    return result
