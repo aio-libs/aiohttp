@@ -400,9 +400,9 @@ class DynamicResource(Resource):
             if '{' in part or '}' in part:
                 raise ValueError("Invalid path '{}'['{}']".format(path, part))
 
-            path = URL.build(path=part).raw_path
-            formatter += path
-            pattern += re.escape(path)
+            part = _requote_path(part)
+            formatter += part
+            pattern += re.escape(part)
 
         try:
             compiled = re.compile(pattern)
@@ -430,7 +430,7 @@ class DynamicResource(Resource):
         if match is None:
             return None
         else:
-            return {key: URL.build(path=value, encoded=True).path
+            return {key: _unquote_path(value)
                     for key, value in match.groupdict().items()}
 
     def raw_match(self, path: str) -> bool:
@@ -441,9 +441,9 @@ class DynamicResource(Resource):
                 'pattern': self._pattern}
 
     def url_for(self, **parts: str) -> URL:
-        url = self._formatter.format_map({k: URL.build(path=v).raw_path
+        url = self._formatter.format_map({k: _quote_path(v)
                                           for k, v in parts.items()})
-        return URL.build(path=url)
+        return URL.build(path=url, encoded=True)
 
     def __repr__(self) -> str:
         name = "'" + self.name + "' " if self.name is not None else ""
@@ -457,7 +457,7 @@ class PrefixResource(AbstractResource):
         assert not prefix or prefix.startswith('/'), prefix
         assert prefix in ('', '/') or not prefix.endswith('/'), prefix
         super().__init__(name=name)
-        self._prefix = URL.build(path=prefix).raw_path
+        self._prefix = _requote_path(prefix)
 
     @property
     def canonical(self) -> str:
@@ -514,17 +514,13 @@ class StaticResource(PrefixResource):
             append_version = self._append_version
         if isinstance(filename, Path):
             filename = str(filename)
-        while filename.startswith('/'):
-            filename = filename[1:]
-        filename = '/' + filename
+        filename = filename.lstrip('/')
 
         # filename is not encoded
-        url = URL.build(path=self._prefix + filename)
+        url = URL.build(path=self._prefix, encoded=True) / filename
 
         if append_version:
             try:
-                if filename.startswith('/'):
-                    filename = filename[1:]
                 filepath = self._directory.joinpath(filename).resolve()
                 if not self._follow_symlinks:
                     filepath.relative_to(self._directory)
@@ -571,8 +567,7 @@ class StaticResource(PrefixResource):
         if method not in allowed_methods:
             return None, allowed_methods
 
-        match_dict = {'filename': URL.build(path=path[len(self._prefix)+1:],
-                                            encoded=True).path}
+        match_dict = {'filename': _unquote_path(path[len(self._prefix)+1:])}
         return (UrlMappingMatchInfo(match_dict, self._routes[method]),
                 allowed_methods)
 
@@ -1001,8 +996,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
             if resource.name == name and resource.raw_match(path):
                 return cast(Resource, resource)
         if not ('{' in path or '}' in path or ROUTE_RE.search(path)):
-            url = URL.build(path=path)
-            resource = PlainResource(url.raw_path, name=name)
+            resource = PlainResource(_requote_path(path), name=name)
             self.register_resource(resource)
             return resource
         resource = DynamicResource(path, name=name)
@@ -1121,3 +1115,15 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         for route_def in routes:
             registered_routes.extend(route_def.register(self))
         return registered_routes
+
+
+def _quote_path(value: str) -> str:
+    return URL.build(path=value).raw_path
+
+
+def _unquote_path(value: str) -> str:
+    return URL.build(path=value, encoded=True).path
+
+
+def _requote_path(value: str) -> str:
+    return _quote_path(value).replace('%25', '%')
