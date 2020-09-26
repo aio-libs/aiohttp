@@ -789,7 +789,7 @@ def test_url_parse_non_strict_mode(parser) -> None:
 
 
 @pytest.mark.parametrize(
-    'uri,path,query,fragment',
+    ('uri', 'path', 'query', 'fragment'),
     [
         ('/path%23frag', '/path#frag', {}, ''),
         ('/path%2523frag', '/path%23frag', {}, ''),
