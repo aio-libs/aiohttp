@@ -1965,6 +1965,10 @@ Connection errors
 
    Derived from :exc:`ClientConnectorError`
 
+.. class:: UnixClientConnectorError
+
+   Derived from :exc:`ClientConnectorError`
+
 .. class:: ServerConnectionError
 
    Derived from :exc:`ClientConnectionError`
