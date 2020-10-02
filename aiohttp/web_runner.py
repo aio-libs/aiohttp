@@ -197,13 +197,17 @@ class SockSite(BaseSite):
 
 
 class BaseRunner(ABC):
-    __slots__ = ('_handle_signals', '_kwargs', '_server', '_sites')
+    __slots__ = (
+        '_handle_signals', '_kwargs', '_server', '_sites',
+        '_serving_forever_fut',
+    )
 
     def __init__(self, *, handle_signals: bool=False, **kwargs: Any) -> None:
         self._handle_signals = handle_signals
         self._kwargs = kwargs
         self._server = None  # type: Optional[Server]
         self._sites = []  # type: List[BaseSite]
+        self._serving_forever_fut = None  # type: Optional[asyncio.Future[None]]  # noqa: E501 line too long
 
     @property
     def server(self) -> Optional[Server]:
@@ -237,6 +241,24 @@ class BaseRunner(ABC):
                 pass
 
         self._server = await self._make_server()
+
+    async def serve_forever(self) -> None:
+        if self._serving_forever_fut is not None:
+            raise RuntimeError(
+                'Concurrent calls to serve_forever() are not allowed'
+            )
+        if self._server is None:
+            raise RuntimeError('Call setup() first')
+
+        loop = asyncio.get_event_loop()
+        self._serving_forever_fut = loop.create_future()
+        try:
+            await self._serving_forever_fut
+        except asyncio.CancelledError:
+            await self.cleanup()
+            raise
+        finally:
+            self._serving_forever_fut = None
 
     @abstractmethod
     async def shutdown(self) -> None:

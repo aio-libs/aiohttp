@@ -1,6 +1,7 @@
 import asyncio
 import platform
 import signal
+from typing import Optional
 
 import pytest
 
@@ -19,8 +20,8 @@ def make_runner(loop, app):
     asyncio.set_event_loop(loop)
     runners = []
 
-    def go(**kwargs):
-        runner = web.AppRunner(app, **kwargs)
+    def go(app_param: Optional[web.AppRunner] = None, **kwargs):
+        runner = web.AppRunner(app_param or app, **kwargs)
         runners.append(runner)
         return runner
     yield go
@@ -190,3 +191,55 @@ async def test_named_pipe_runner_proactor_loop(
     pipe = web.NamedPipeSite(runner, pipe_name)
     await pipe.start()
     await runner.cleanup()
+
+
+async def test_app_runner_serve_forever_uninitialized(
+        make_runner, loop) -> None:
+    runner = make_runner()
+    with pytest.raises(RuntimeError):
+        await runner.serve_forever()
+
+
+async def test_app_runner_serve_forever_concurrent_call(
+        make_runner, loop) -> None:
+    runner = make_runner()
+    task = loop.create_task(runner.serve_forever())
+    await asyncio.sleep(0.01)
+    with pytest.raises(RuntimeError):
+        await runner.serve_forever()
+    task.cancel()
+
+
+async def test_app_runner_serve_forever_multiple_times(
+        make_runner, loop) -> None:
+    runner = make_runner()
+    for i in range(3):
+        await runner.setup()
+        task = loop.create_task(runner.serve_forever())
+        await asyncio.sleep(0.01)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+async def test_app_runner_serve_forever_cleanup_called(
+        make_runner, app, loop) -> None:
+
+    called = False
+
+    async def on_cleanup(app_param):
+        nonlocal called
+        assert app is app_param
+        called = True
+
+    app.on_cleanup.append(on_cleanup)
+    app.freeze()
+    runner = make_runner(app)
+    await runner.setup()
+
+    task = loop.create_task(runner.serve_forever())
+    await asyncio.sleep(0.01)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert called
