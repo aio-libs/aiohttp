@@ -77,34 +77,34 @@ stages:
       env:
         AIOHTTP_NO_EXTENSIONS: 1
 
-    - script: |
-        make mypy
-      displayName: 'Run black checker'
+    # - script: |
+    #     make mypy
+    #   displayName: 'Run black checker'
 
-  - job: 'docs'
-    pool:
-      vmImage: 'ubuntu-latest'
+  # - job: 'docs'
+  #   pool:
+  #     vmImage: 'ubuntu-latest'
 
-    steps:
-    - checkout: self
-      submodules: true
-      clean: true
+  #   steps:
+  #   - checkout: self
+  #     submodules: true
+  #     clean: true
 
-    - task: UsePythonVersion@0
-      inputs:
-        versionSpec: '3.7'
-        architecture: 'x64'
+  #   - task: UsePythonVersion@0
+  #     inputs:
+  #       versionSpec: '3.7'
+  #       architecture: 'x64'
 
-    - script: |
-        apt install libenchant-dev
-        pip install -r requirements/doc-spelling.txt
-      displayName: 'Install deps'
+  #   - script: |
+  #       apt install libenchant-dev
+  #       pip install -r requirements/doc-spelling.txt
+  #     displayName: 'Install deps'
 
-    - script: |
-        make doc
-      displayName: 'Run docs checker'
-      env:
-        AIOHTTP_NO_EXTENSIONS: 1
+  #   - script: |
+  #       make doc
+  #     displayName: 'Run docs checker'
+  #     env:
+  #       AIOHTTP_NO_EXTENSIONS: 1
 
   - job: 'twine'
     pool:
