@@ -1118,7 +1118,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
 
 def _quote_path(value: str) -> str:
-    return URL.build(path=value).raw_path
+    return URL.build(path=value, encoded=False).raw_path
 
 
 def _unquote_path(value: str) -> str:
@@ -1126,6 +1126,8 @@ def _unquote_path(value: str) -> str:
 
 
 def _requote_path(value: str) -> str:
+    # Quote non-ascii characters and other characters which must be quoted,
+    # but preserve existing %-sequences.
     result = _quote_path(value)
     if '%' in value:
         result = result.replace('%25', '%')
