@@ -299,7 +299,11 @@ async def test_domain_filter_ip_cookie_receive(cookies_to_receive) -> None:
         'unquoted cookie with special char',
     ),
 )
-async def test_quotes_correctly_based_on_input(loop, cookies, expected, quote_bool) -> None:
+async def test_quotes_correctly_based_on_input(loop,
+                                               cookies,
+                                               expected,
+                                               quote_bool
+                                               ) -> None:
     jar = CookieJar(unsafe=True, quote_cookie=quote_bool)
     jar.update_cookies(SimpleCookie(
         cookies
