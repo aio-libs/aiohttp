@@ -205,11 +205,10 @@ class CookieJar(AbstractCookieJar):
                           .format(type(request_url)),
                           DeprecationWarning)
             request_url = URL(request_url)
-        filtered: Union[SimpleCookie[str], BaseCookie[str]]
-        if self._quote_cookie:
-            filtered = SimpleCookie()
-        else:
-            filtered = BaseCookie()
+        filtered: Union['SimpleCookie[str]', 'BaseCookie[str]'] = (
+            SimpleCookie() if self._quote_cookie
+            else BaseCookie()
+        )
         hostname = request_url.raw_host or ""
         is_not_secure = request_url.scheme not in ("https", "wss")
 

@@ -273,7 +273,7 @@ async def test_domain_filter_ip_cookie_receive(cookies_to_receive) -> None:
 
 
 @pytest.mark.parametrize(
-    'cookies,expected,quote_bool', [
+    ('cookies', 'expected', ' quote_bool'), [
         ("shared-cookie=first; ip-cookie=second; Domain=127.0.0.1;",
          'Cookie: ip-cookie=second\r\nCookie: shared-cookie=first', True),
         ("ip-cookie=\"second\"; Domain=127.0.0.1;", 'Cookie: ip-cookie=\"second\"', True),
