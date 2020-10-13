@@ -188,8 +188,8 @@ Cookie Quoting Routine
 ^^^^^^^^^^^^^^^^^^^^^^
 
 The client uses the :class:`~aiohttp.SimpleCookie` quoting routines
-conform to the RFC2109, which in turn references the character definitions
-from RFC2068. They provide a two-way quoting algorithm where any non-text
+conform to the :rfc:`2109`, which in turn references the character definitions
+from :rfc:`2068`. They provide a two-way quoting algorithm where any non-text
 character is translated into a 4 character sequence: a forward-slash
 followed by the three-digit octal equivalent of the character.
 Any ``\`` or ``"`` is quoted with a preceding ``\`` slash.
