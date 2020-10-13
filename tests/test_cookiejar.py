@@ -272,56 +272,32 @@ async def test_domain_filter_ip_cookie_receive(cookies_to_receive) -> None:
     assert len(jar) == 0
 
 
-async def test_preserving_ip_domain_cookies(loop) -> None:
-    jar = CookieJar(unsafe=True)
+@pytest.mark.parametrize(
+    'cookies,expected,quote_bool', [
+        ("shared-cookie=first; ip-cookie=second; Domain=127.0.0.1;",
+         'Cookie: ip-cookie=second\r\nCookie: shared-cookie=first', True),
+        ("ip-cookie=\"second\"; Domain=127.0.0.1;", 'Cookie: ip-cookie=\"second\"', True),
+        ("custom-cookie=value/one;", 'Cookie: custom-cookie="value/one"', True),
+        ("custom-cookie=value1;", 'Cookie: custom-cookie=value1', True),
+        ("custom-cookie=value/one;", 'Cookie: custom-cookie=value/one', False),
+    ]
+)
+async def test_quotes_correctly_based_on_input(loop, cookies, expected, quote_bool) -> None:
+    """
+    Tests the following scenarios:
+     - Preserving IP domain cookies
+     - Preserving quoted cookies
+     - Quoting strings with special chars
+     - Does not quote strings with only alphanumeric chars
+     - Setting quote_cookie=False with special chars skips quotation
+    """
+    jar = CookieJar(unsafe=True, quote_cookie=quote_bool)
     jar.update_cookies(SimpleCookie(
-        "shared-cookie=first; "
-        "ip-cookie=second; Domain=127.0.0.1;"
+        cookies
     ))
     cookies_sent = jar.filter_cookies(URL("http://127.0.0.1/")).output(
         header='Cookie:')
-    assert cookies_sent == ('Cookie: ip-cookie=second\r\n'
-                            'Cookie: shared-cookie=first')
-
-
-async def test_preserving_quoted_cookies(loop) -> None:
-    jar = CookieJar(unsafe=True)
-    jar.update_cookies(SimpleCookie(
-        "ip-cookie=\"second\"; Domain=127.0.0.1;"
-    ))
-    cookies_sent = jar.filter_cookies(URL("http://127.0.0.1/")).output(
-        header='Cookie:')
-    assert cookies_sent == 'Cookie: ip-cookie=\"second\"'
-
-
-async def test_quotes_special_char_strings(loop) -> None:
-    jar = CookieJar(unsafe=True)
-    jar.update_cookies(SimpleCookie(
-        "custom-cookie=value/one;"
-    ))
-    cookies_sent = jar.filter_cookies(URL("http://127.0.0.1/")).output(
-        header='Cookie:')
-    assert cookies_sent == 'Cookie: custom-cookie="value/one"'
-
-
-async def test_does_not_quote_alphanumeric_strings(loop) -> None:
-    jar = CookieJar(unsafe=True)
-    jar.update_cookies(SimpleCookie(
-        "custom-cookie=value1;"
-    ))
-    cookies_sent = jar.filter_cookies(URL("http://127.0.0.1/")).output(
-        header='Cookie:')
-    assert cookies_sent == 'Cookie: custom-cookie=value1'
-
-
-async def test_skip_quote_string_on_special_char_strings(loop) -> None:
-    jar = CookieJar(unsafe=True, quote_cookie=False)
-    jar.update_cookies(SimpleCookie(
-        "custom-cookie=value/one;"
-    ))
-    cookies_sent = jar.filter_cookies(URL("http://127.0.0.1/")).output(
-        header='Cookie:')
-    assert cookies_sent == 'Cookie: custom-cookie=value/one'
+    assert cookies_sent == expected
 
 
 async def test_ignore_domain_ending_with_dot(loop) -> None:
