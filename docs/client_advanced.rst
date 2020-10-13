@@ -198,7 +198,7 @@ says) we also encode ``,`` and ``;``.
 
 Some backend systems does not support quoted cookies. You can skip this
 quotation routine by passing ``quote_cookie=False`` to the
-:class:`aiohttp.CookieJar` constructor::
+:class:`~aiohttp.CookieJar` constructor::
 
    jar = aiohttp.CookieJar(quote_cookie=False)
    session = aiohttp.ClientSession(cookie_jar=jar)
