@@ -26,6 +26,7 @@ jobs:
   autosquash:
     name: Autosquash
     runs-on: ubuntu-18.04
+    if: false
     steps:
       - uses: tibdex/autosquash@v2
         with:
