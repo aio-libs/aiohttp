@@ -273,13 +273,23 @@ async def test_domain_filter_ip_cookie_receive(cookies_to_receive) -> None:
 
 
 @pytest.mark.parametrize(
-    ('cookies', 'expected', 'quote_bool'), [
+    ('cookies', 'expected', 'quote_bool'),
+    [
         ("shared-cookie=first; ip-cookie=second; Domain=127.0.0.1;",
-         'Cookie: ip-cookie=second\r\nCookie: shared-cookie=first', True),
-        ("ip-cookie=\"second\"; Domain=127.0.0.1;", 'Cookie: ip-cookie=\"second\"', True),
-        ("custom-cookie=value/one;", 'Cookie: custom-cookie="value/one"', True),
-        ("custom-cookie=value1;", 'Cookie: custom-cookie=value1', True),
-        ("custom-cookie=value/one;", 'Cookie: custom-cookie=value/one', False),
+         'Cookie: ip-cookie=second\r\nCookie: shared-cookie=first',
+         True),
+        ("ip-cookie=\"second\"; Domain=127.0.0.1;",
+         'Cookie: ip-cookie=\"second\"',
+         True),
+        ("custom-cookie=value/one;",
+         'Cookie: custom-cookie="value/one"',
+         True),
+        ("custom-cookie=value1;",
+         'Cookie: custom-cookie=value1',
+         True),
+        ("custom-cookie=value/one;",
+         'Cookie: custom-cookie=value/one',
+         False),
     ],
     ids=(
         'IP domain preserved',
@@ -290,14 +300,6 @@ async def test_domain_filter_ip_cookie_receive(cookies_to_receive) -> None:
     ),
 )
 async def test_quotes_correctly_based_on_input(loop, cookies, expected, quote_bool) -> None:
-    """
-    Tests the following scenarios:
-     - Preserving IP domain cookies
-     - Preserving quoted cookies
-     - Quoting strings with special chars
-     - Does not quote strings with only alphanumeric chars
-     - Setting quote_cookie=False with special chars skips quotation
-    """
     jar = CookieJar(unsafe=True, quote_cookie=quote_bool)
     jar.update_cookies(SimpleCookie(
         cookies
