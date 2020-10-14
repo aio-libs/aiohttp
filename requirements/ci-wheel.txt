@@ -1,7 +1,7 @@
 -r flake.txt
 attrs==19.3.0
 async-timeout==4.0.0a2
-Brotli==1.0.7
+Brotli==1.0.9
 cchardet==2.1.6
 chardet==3.0.4
 coverage==5.1
