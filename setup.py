@@ -11,7 +11,7 @@ from distutils.errors import (
 from setuptools import Extension, setup
 
 if sys.version_info < (3, 6):
-    raise RuntimeError("aiohttp requires Python 3.6+")
+    raise RuntimeError("aiohttp 3.7+ requires Python 3.6+")
 
 here = pathlib.Path(__file__).parent
 
