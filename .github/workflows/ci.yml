@@ -57,7 +57,7 @@ jobs:
         pip install -r requirements/towncrier.txt
     - name: Run docs spelling
       run: |
-        towncrier --yes
+        # towncrier --yes  # uncomment me after publishing a release
         make doc-spelling
     - name: Prepare twine checker
       run: |
