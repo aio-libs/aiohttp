@@ -10,8 +10,8 @@ from distutils.errors import (
 
 from setuptools import Extension, setup
 
-if sys.version_info < (3, 5, 3):
-    raise RuntimeError("aiohttp 3.x requires Python 3.5.3+")
+if sys.version_info < (3, 6):
+    raise RuntimeError("aiohttp requires Python 3.6+")
 
 here = pathlib.Path(__file__).parent
 
@@ -106,9 +106,10 @@ args = dict(
         'Intended Audience :: Developers',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Development Status :: 5 - Production/Stable',
         'Operating System :: POSIX',
         'Operating System :: MacOS :: MacOS X',
@@ -132,7 +133,7 @@ args = dict(
     },
     license='Apache 2',
     packages=['aiohttp'],
-    python_requires='>=3.5.3',
+    python_requires='>=3.6',
     install_requires=install_requires,
     extras_require={
         'speedups': [
