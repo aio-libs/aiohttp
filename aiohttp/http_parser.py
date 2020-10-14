@@ -230,7 +230,8 @@ class HttpParser(abc.ABC):
             EMPTY: bytes=b'',
             CONTENT_LENGTH: istr=hdrs.CONTENT_LENGTH,
             METH_CONNECT: str=hdrs.METH_CONNECT,
-            SEC_WEBSOCKET_KEY1: istr=hdrs.SEC_WEBSOCKET_KEY1
+            SEC_WEBSOCKET_KEY1: istr=hdrs.SEC_WEBSOCKET_KEY1,
+            METH_HEAD: str=hdrs.METH_HEAD
     ) -> Tuple[List[Any], bool, bytes]:
 
         messages = []
@@ -308,7 +309,8 @@ class HttpParser(abc.ABC):
                                 auto_decompress=self._auto_decompress)
                         else:
                             if (getattr(msg, 'code', 100) >= 199 and
-                                    length is None and self.read_until_eof):
+                                    length is None and self.read_until_eof and
+                                    method != METH_HEAD):
                                 payload = StreamReader(
                                     self.protocol, timer=self.timer, loop=loop)
                                 payload_parser = HttpPayloadParser(
