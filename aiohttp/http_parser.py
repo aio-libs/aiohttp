@@ -783,10 +783,12 @@ RawResponseMessagePy = RawResponseMessage
 
 try:
     if not NO_EXTENSIONS:
-        from ._http_parser import (HttpRequestParser,  # type: ignore  # noqa
-                                   HttpResponseParser,
-                                   RawRequestMessage,
-                                   RawResponseMessage)
+        from ._http_parser import (  # type: ignore  # noqa
+            HttpRequestParser,
+            HttpResponseParser,
+            RawRequestMessage,
+            RawResponseMessage,
+        )
         HttpRequestParserC = HttpRequestParser
         HttpResponseParserC = HttpResponseParser
         RawRequestMessageC = RawRequestMessage

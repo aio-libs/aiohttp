@@ -1,10 +1,9 @@
+from cpython.bytes cimport PyBytes_FromStringAndSize
+from cpython.exc cimport PyErr_NoMemory
+from cpython.mem cimport PyMem_Free, PyMem_Malloc, PyMem_Realloc
+from cpython.object cimport PyObject_Str
 from libc.stdint cimport uint8_t, uint64_t
 from libc.string cimport memcpy
-from cpython.exc cimport PyErr_NoMemory
-from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
-
-from cpython.bytes cimport PyBytes_FromStringAndSize
-from cpython.object cimport PyObject_Str
 
 from multidict import istr
 

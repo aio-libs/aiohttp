@@ -22,7 +22,7 @@ lint: flake8 mypy isort-check
 
 
 isort:
-	isort -rc $(SRC)
+	isort $(SRC)
 
 flake: .flake
 
@@ -30,9 +30,9 @@ flake: .flake
                       $(shell find tests -type f) \
                       $(shell find examples -type f)
 	flake8 aiohttp examples tests
-	@if ! isort -c -rc aiohttp tests examples; then \
+	@if ! isort -c aiohttp tests examples; then \
             echo "Import sort errors, run 'make isort' to fix them!!!"; \
-            isort --diff -rc aiohttp tests examples; \
+            isort --diff aiohttp tests examples; \
             false; \
 	fi
 	@if ! LC_ALL=C sort -c CONTRIBUTORS.txt; then \
@@ -48,9 +48,9 @@ mypy: .flake
 	mypy aiohttp
 
 isort-check:
-	@if ! isort -rc --check-only $(SRC); then \
+	@if ! isort --check-only $(SRC); then \
             echo "Import sort errors, run 'make isort' to fix them!!!"; \
-            isort --diff -rc $(SRC); \
+            isort --diff $(SRC); \
             false; \
 	fi
 

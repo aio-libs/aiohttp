@@ -21,10 +21,10 @@ from yarl import URL
 from .typedefs import LooseCookies
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .web_request import BaseRequest, Request
-    from .web_response import StreamResponse
     from .web_app import Application
     from .web_exceptions import HTTPException
+    from .web_request import BaseRequest, Request
+    from .web_response import StreamResponse
 else:
     BaseRequest = Request = Application = StreamResponse = None
     HTTPException = None

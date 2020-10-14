@@ -218,7 +218,7 @@ __all__ = (
 )  # type: Tuple[str, ...]
 
 try:
-    from .worker import GunicornWebWorker, GunicornUVLoopWebWorker  # noqa
+    from .worker import GunicornUVLoopWebWorker, GunicornWebWorker  # noqa
     __all__ += ('GunicornWebWorker', 'GunicornUVLoopWebWorker')
 except ImportError:  # pragma: no cover
     pass
