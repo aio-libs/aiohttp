@@ -2,5 +2,6 @@ chronographer:
   exclude:
     bots:
     - dependabot-preview
+    - dependencies
     humans:
     - pyup-bot
