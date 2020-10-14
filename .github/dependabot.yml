@@ -25,7 +25,7 @@ updates:
     labels:
       - dependencies
       - autosquash
-    target-branch: 3.7
+    target-branch: "3.7"
     schedule:
       interval: "daily"
 
@@ -35,6 +35,6 @@ updates:
     labels:
       - dependencies
       - autosquash
-    target-branch: 3.7
+    target-branch: "3.7"
     schedule:
       interval: "daily"
