@@ -242,9 +242,11 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
     return ret
 
 
-def current_task(loop: Optional[asyncio.AbstractEventLoop]=None) -> asyncio.Task:  # type: ignore  # noqa  # Return type is intentionally Generic here
+def current_task(
+        loop: Optional[asyncio.AbstractEventLoop]=None
+) -> 'Optional[asyncio.Task[Any]]':
     if PY_37:
-        return asyncio.current_task(loop=loop)  # type: ignore
+        return asyncio.current_task(loop=loop)
     else:
         return asyncio.Task.current_task(loop=loop)
 
