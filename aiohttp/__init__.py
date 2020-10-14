@@ -1,6 +1,6 @@
 __version__ = '3.6.3'
 
-from typing import Tuple  # noqa
+from typing import Tuple
 
 from . import hdrs as hdrs
 from .client import BaseConnector as BaseConnector
@@ -115,7 +115,7 @@ from .tracing import (
     TraceResponseChunkReceivedParams as TraceResponseChunkReceivedParams,
 )
 
-__all__ = (
+__all__: Tuple[str, ...] = (
     'hdrs',
     # client
     'BaseConnector',
@@ -217,7 +217,7 @@ __all__ = (
     'TraceRequestRedirectParams',
     'TraceRequestStartParams',
     'TraceResponseChunkReceivedParams',
-)  # type: Tuple[str, ...]
+)
 
 try:
     from .worker import GunicornUVLoopWebWorker, GunicornWebWorker  # noqa

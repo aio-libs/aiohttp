@@ -610,11 +610,13 @@ class RequestHandler(BaseProtocol):
                                  status: int,
                                  exc: Optional[BaseException]=None,
                                  message: Optional[str]=None) -> None:
+        task = current_task()
+        assert task is not None
         request = BaseRequest(
             ERROR,
             EMPTY_PAYLOAD,  # type: ignore
             self, writer,
-            current_task(),
+            task,
             self._loop)
 
         resp = self.handle_error(request, status, exc, message)

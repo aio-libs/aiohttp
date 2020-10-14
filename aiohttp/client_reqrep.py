@@ -68,7 +68,7 @@ except ImportError:  # pragma: no cover
 try:
     import cchardet as chardet
 except ImportError:  # pragma: no cover
-    import chardet
+    import chardet  # type: ignore
 
 
 __all__ = ('ClientRequest', 'ClientResponse', 'RequestInfo', 'Fingerprint')
@@ -374,7 +374,7 @@ class ClientRequest:
             if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
                 headers = headers.items()  # type: ignore
 
-            for key, value in headers:
+            for key, value in headers:  # type: ignore
                 # A special case for Host header
                 if key.lower() == 'host':
                     self.headers[key] = value
