@@ -92,7 +92,7 @@ This prints:
     Content-type: text/html; charset=utf-8
     Body: <!doctype html> ...
 
-Comming from :term:`requests` ? Read :ref:`why we need so many lines <aiohttp-request-lifecycle>`.
+Coming from :term:`requests` ? Read :ref:`why we need so many lines <aiohttp-request-lifecycle>`.
 
 Server example:
 ----------------
