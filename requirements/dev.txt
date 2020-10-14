@@ -1,3 +1,4 @@
 -r ci.txt
+-r doc.txt
 -r towncrier.txt
 cherry_picker==1.3.2; python_version>="3.6"
