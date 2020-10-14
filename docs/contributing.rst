@@ -44,7 +44,7 @@ Workflow is pretty straightforward:
    <https://github.com/aio-libs/aiohttp/issues/new>`_ for related bugs.
 
    If you feel like there are important points in the locked discussions,
-   please include those exceprts into that new issue.
+   please include those excerpts into that new issue.
 
 
 Preconditions for running aiohttp test suite
