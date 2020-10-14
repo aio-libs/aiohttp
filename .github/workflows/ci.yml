@@ -23,6 +23,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
+      with:
+        submodules: true
     - name: Setup Python 3.8
       uses: actions/setup-python@v2
       with:
@@ -93,6 +95,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
+      with:
+        submodules: true
     - name: Setup Python ${{ matrix.pyver }}
       uses: actions/setup-python@v2
       with:
@@ -156,6 +160,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
+      with:
+        submodules: true
     - name: Setup Python 3.8
       uses: actions/setup-python@v2
       with:
@@ -191,6 +197,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
+      with:
+        submodules: true
     - name: Set up QEMU
       id: qemu
       uses: docker/setup-qemu-action@v1
@@ -239,6 +247,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
+      with:
+        submodules: true
     - name: Setup Python 3.8
       uses: actions/setup-python@v2
       with:
