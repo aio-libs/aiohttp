@@ -254,6 +254,7 @@ shourtcuts
 skipuntil
 Skyscanner
 SocketSocketTransport
+softwares
 ssl
 SSLContext
 startup
