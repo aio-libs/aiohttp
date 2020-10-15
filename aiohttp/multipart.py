@@ -162,7 +162,7 @@ def parse_content_disposition(header: Optional[str]) -> Tuple[Optional[str],
 
 
 def content_disposition_filename(params: Mapping[str, str],
-                                 name: str='filename') -> Optional[str]:
+                                 name: str = 'filename') -> Optional[str]:
     name_suf = '%s*' % name
     if not params:
         return None
@@ -265,8 +265,8 @@ class BodyPartReader:
         self._content_eof = 0
         self._cache = {}  # type: Dict[str, Any]
 
-    def __aiter__(self) -> 'BodyPartReader':
-        return self
+    def __aiter__(self) -> Iterator['BodyPartReader']:
+        return self  # type: ignore
 
     async def __anext__(self) -> bytes:
         part = await self.next()
@@ -280,7 +280,7 @@ class BodyPartReader:
             return None
         return item
 
-    async def read(self, *, decode: bool=False) -> bytes:
+    async def read(self, *, decode: bool = False) -> bytes:
         """Reads body part data.
 
         decode: Decodes data following by encoding
@@ -296,7 +296,7 @@ class BodyPartReader:
             return self.decode(data)
         return data
 
-    async def read_chunk(self, size: int=chunk_size) -> bytes:
+    async def read_chunk(self, size: int = chunk_size) -> bytes:
         """Reads body part content chunk of the specified size.
 
         size: chunk size
@@ -577,12 +577,14 @@ class MultipartReader:
         self._at_bof = True
         self._unread = []  # type: List[bytes]
 
-    def __aiter__(self) -> 'MultipartReader':
-        return self
+    def __aiter__(
+        self,
+    ) -> Iterator['BodyPartReader']:
+        return self  # type: ignore
 
     async def __anext__(
         self,
-    ) -> Union['MultipartReader', BodyPartReader]:
+    ) -> Optional[Union['MultipartReader', BodyPartReader]]:
         part = await self.next()
         if part is None:
             raise StopAsyncIteration  # NOQA
