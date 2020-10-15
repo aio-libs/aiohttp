@@ -14,6 +14,15 @@ Changelog
 
 .. towncrier release notes start
 
+3.6.3 (2020-10-12)
+==================
+
+Bugfixes
+--------
+
+- Pin yarl to ``<1.6.0`` to avoid buggy behavior that will be fixed by the next aiohttp
+  release.
+
 3.6.2 (2019-10-09)
 ==================
 
