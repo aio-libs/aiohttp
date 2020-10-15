@@ -25,6 +25,7 @@ from typing import (  # noqa
     Callable,
     Dict,
     Generator,
+    Generic,
     Iterable,
     Iterator,
     List,
@@ -65,6 +66,11 @@ try:
 except ImportError:
     from typing_extensions import ContextManager
 
+if PY_38:
+    from typing import Protocol
+else:
+    from typing_extensions import Protocol  # type: ignore
+
 
 def all_tasks(
         loop: Optional[asyncio.AbstractEventLoop] = None
@@ -78,6 +84,7 @@ if PY_37:
 
 
 _T = TypeVar('_T')
+_S = TypeVar('_S')
 
 
 sentinel = object()  # type: Any
@@ -360,7 +367,11 @@ def content_disposition_header(disptype: str,
     return value
 
 
-class reify:
+class _TSelf(Protocol):
+    _cache: Dict[str, Any]
+
+
+class reify(Generic[_T]):
     """Use as a class method decorator.  It operates almost exactly like
     the Python `@property` decorator, but it puts the result of the
     method it decorates into the instance dict after the first call,
@@ -369,12 +380,12 @@ class reify:
 
     """
 
-    def __init__(self, wrapped: Callable[..., Any]) -> None:
+    def __init__(self, wrapped: Callable[..., _T]) -> None:
         self.wrapped = wrapped
         self.__doc__ = wrapped.__doc__
         self.name = wrapped.__name__
 
-    def __get__(self, inst: Any, owner: Any) -> Any:
+    def __get__(self, inst: _TSelf, owner: Optional[Type[Any]] = None) -> _T:
         try:
             try:
                 return inst._cache[self.name]
@@ -387,7 +398,7 @@ class reify:
                 return self
             raise
 
-    def __set__(self, inst: Any, value: Any) -> None:
+    def __set__(self, inst: _TSelf, value: _T) -> None:
         raise AttributeError("reified property is read-only")
 
 

@@ -4,7 +4,7 @@ import asyncio
 import warnings
 from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
 
-from .typedefs import _CIMultiDict
+from .typedefs import LooseHeaders
 
 try:
     import ssl
@@ -22,7 +22,6 @@ if TYPE_CHECKING:  # pragma: no cover
     )
 else:
     RequestInfo = ClientResponse = ConnectionKey = None
-
 
 __all__ = (
     'ClientError',
@@ -57,7 +56,7 @@ class ClientResponseError(ClientError):
                  code: Optional[int]=None,
                  status: Optional[int]=None,
                  message: str='',
-                 headers: Optional[_CIMultiDict]=None) -> None:
+                 headers: Optional[LooseHeaders]=None) -> None:
         self.request_info = request_info
         if code is not None:
             if status is not None:
