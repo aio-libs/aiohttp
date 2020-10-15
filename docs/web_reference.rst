@@ -207,7 +207,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
    .. attribute:: transport
 
-      An :ref:`transport<asyncio-transport>` used to process request,
+      A :ref:`transport<asyncio-transport>` used to process request.
       Read-only property.
 
       The property can be used, for example, for getting IP address of

@@ -1002,6 +1002,6 @@ class ClientResponse(HeadersMixin):
                         exc_val: Optional[BaseException],
                         exc_tb: Optional[TracebackType]) -> None:
         # similar to _RequestContextManager, we do not need to check
-        # for exceptions, response object can closes connection
-        # is state is broken
+        # for exceptions, response object can close connection
+        # if state is broken
         self.release()

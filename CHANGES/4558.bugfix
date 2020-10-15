@@ -1,1 +1,1 @@
-Fixed body_size comparision to client_max_size for web request.
+Fixed body_size comparison to client_max_size for web request.
