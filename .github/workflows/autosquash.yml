@@ -26,6 +26,7 @@ jobs:
   autosquash:
     name: Autosquash
     runs-on: ubuntu-latest
+    if: ${{ secrets.BOT_APP_ID }}  # not awailable for forks, skip the workflow
     steps:
       - id: generate_token
         uses: tibdex/github-app-token@v1
