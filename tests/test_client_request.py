@@ -454,6 +454,14 @@ def test_cookies(make_request) -> None:
     assert 'cookie1=val1' == req.headers['COOKIE']
 
 
+def test_cookies_is_quoted_with_special_characters(make_request) -> None:
+    req = make_request('get', 'http://test.com/path',
+                       cookies={'cookie1': 'val/one'})
+
+    assert 'COOKIE' in req.headers
+    assert 'cookie1="val/one"' == req.headers['COOKIE']
+
+
 def test_cookies_merge_with_headers(make_request) -> None:
     req = make_request('get', 'http://test.com/path',
                        headers={'cookie': 'cookie1=val1'},
