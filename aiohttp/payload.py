@@ -394,7 +394,7 @@ class JsonPayload(BytesPayload):
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import AsyncIterator, AsyncIterable
+    from typing import AsyncIterable, AsyncIterator
 
     _AsyncIterator = AsyncIterator[bytes]
     _AsyncIterable = AsyncIterable[bytes]
