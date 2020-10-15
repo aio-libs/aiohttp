@@ -257,9 +257,9 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
 
 def current_task(
         loop: Optional[asyncio.AbstractEventLoop]=None
-) -> 'asyncio.Task[Any]':
+) -> 'Optional[asyncio.Task[Any]]':
     if PY_37:
-        return asyncio.current_task(loop=loop)  # type: ignore
+        return asyncio.current_task(loop=loop)
     else:
         return asyncio.Task.current_task(loop=loop)
 
