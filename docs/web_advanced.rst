@@ -1074,10 +1074,10 @@ Install with ``pip``:
 
     $ pip install aiohttp-devtools
 
-   * ``runserver`` provides a development server with auto-reload,
+* ``runserver`` provides a development server with auto-reload,
   live-reload, static file serving and aiohttp_debugtoolbar_
   integration.
-   * ``start`` is a `cookiecutter command which does the donkey work
+* ``start`` is a `cookiecutter command which does the donkey work
   of creating new :mod:`aiohttp.web` Applications.
 
 Documentation and a complete tutorial of creating and running an app
