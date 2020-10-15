@@ -982,11 +982,10 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
             parts = self.NAME_SPLIT_RE.split(name)
             for part in parts:
                 if keyword.iskeyword(part):
-                    raise ValueError('Incorrect route name {!r}, '
-                                     'the name should be a sequence of '
-                                     'python identifiers separated '
-                                     'by dash, dot or column'.format(name))
-                if part.isidentifier():
+                    raise ValueError(f'Incorrect route name {name!r}, '
+                                     'python keywords cannot be used '
+                                     'for route name')
+                if not part.isidentifier():
                     raise ValueError('Incorrect route name {!r}, '
                                      'the name should be a sequence of '
                                      'python identifiers separated '
