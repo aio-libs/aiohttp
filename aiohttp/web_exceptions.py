@@ -18,7 +18,6 @@ __all__ = (
     'HTTPNoContent',
     'HTTPResetContent',
     'HTTPPartialContent',
-    'HTTPMove',
     'HTTPMultipleChoices',
     'HTTPMovedPermanently',
     'HTTPFound',
