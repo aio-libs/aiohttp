@@ -545,7 +545,7 @@ block (or through a direct :meth:`ClientSession.close()` call), the
 underlying connection remains open due to asyncio internal details. In
 practice, the underlying connection will close after a short
 while. However, if the event loop is stopped before the underlying
-connection is closed, an ``ResourceWarning: unclosed transport``
+connection is closed, a ``ResourceWarning: unclosed transport``
 warning is emitted (when warnings are enabled).
 
 To avoid this situation, a small delay must be added before closing
