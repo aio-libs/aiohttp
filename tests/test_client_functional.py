@@ -62,6 +62,7 @@ async def test_keepalive_after_head_requests_success(
         return web.Response(body=b'OK')
 
     cnt_conn_reuse = 0
+
     async def on_reuseconn(session, ctx, params):
         nonlocal cnt_conn_reuse
         cnt_conn_reuse += 1
