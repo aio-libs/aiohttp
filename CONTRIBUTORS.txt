@@ -40,6 +40,8 @@ Andrii Soldatenko
 Antoine Pietri
 Anton Kasyanov
 Anton Zhdan-Pushkin
+Arseny Timoniq
+Artem Yushkovskiy
 Arthur Darcet
 Ben Bader
 Ben Timby
