@@ -1699,7 +1699,7 @@ async def test_connect_with_limit_concurrent(loop) -> None:
     # with multiple concurrent requests and stops when it hits a
     # predefined maximum number of requests.
 
-    max_requests = 10
+    max_requests = 50
     num_requests = 0
     start_requests = max_connections + 1
 
@@ -1712,6 +1712,7 @@ async def test_connect_with_limit_concurrent(loop) -> None:
             connection = await conn.connect(req, None, ClientTimeout())
             await asyncio.sleep(0)
             connection.release()
+            await asyncio.sleep(0)
         tasks = [
             loop.create_task(f(start=False))
             for i in range(start_requests)
