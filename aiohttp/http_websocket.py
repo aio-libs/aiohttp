@@ -162,7 +162,8 @@ _WS_EXT_RE = re.compile(r'^(?:;\s*(?:'
 _WS_EXT_RE_SPLIT = re.compile(r'permessage-deflate([^,]+)?')
 
 
-def ws_ext_parse(extstr: str, isserver: bool=False) -> Tuple[int, bool]:
+def ws_ext_parse(extstr: Optional[str],
+                 isserver: bool=False) -> Tuple[int, bool]:
     if not extstr:
         return 0, False
 
