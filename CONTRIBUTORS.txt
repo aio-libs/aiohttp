@@ -164,6 +164,7 @@ Kirill Klenov
 Kirill Malovitsa
 Konstantin Valetov
 Kyrylo Perevozchikov
+Kyungmin Lee
 Lars P. Søndergaard
 Louis-Philippe Huberdeau
 Loïc Lajeanne

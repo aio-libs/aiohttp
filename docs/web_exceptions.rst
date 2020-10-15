@@ -33,14 +33,15 @@ HTTP Exception hierarchy chart::
          * 205 - HTTPResetContent
          * 206 - HTTPPartialContent
        HTTPRedirection
-         * 300 - HTTPMultipleChoices
-         * 301 - HTTPMovedPermanently
-         * 302 - HTTPFound
-         * 303 - HTTPSeeOther
          * 304 - HTTPNotModified
-         * 305 - HTTPUseProxy
-         * 307 - HTTPTemporaryRedirect
-         * 308 - HTTPPermanentRedirect
+         HTTPMove
+           * 300 - HTTPMultipleChoices
+           * 301 - HTTPMovedPermanently
+           * 302 - HTTPFound
+           * 303 - HTTPSeeOther
+           * 305 - HTTPUseProxy
+           * 307 - HTTPTemporaryRedirect
+           * 308 - HTTPPermanentRedirect
        HTTPError
          HTTPClientError
            * 400 - HTTPBadRequest
