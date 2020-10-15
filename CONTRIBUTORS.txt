@@ -156,6 +156,7 @@ Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
 Kyrylo Perevozchikov
+Kyungmin Lee
 Lars P. Søndergaard
 Louis-Philippe Huberdeau
 Loïc Lajeanne
