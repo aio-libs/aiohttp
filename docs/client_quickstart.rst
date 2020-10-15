@@ -99,9 +99,9 @@ following code::
 
 You can see that the URL has been correctly encoded by printing the URL.
 
-For sending data with multiple values for the same key
-:class:`MultiDict` may be used as well.
-
+For sending data with multiple values for the same key :class:`MultiDict` may be
+used; the library support nested lists (``{'key': ['value1', 'value2']}``)
+alternative as well.
 
 It is also possible to pass a list of 2 item tuples as parameters, in
 that case you can specify multiple values for each key::
