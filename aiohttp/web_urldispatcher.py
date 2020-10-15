@@ -282,7 +282,7 @@ async def _default_expect_handler(request: Request) -> None:
     Just send "100 Continue" to client.
     raise HTTPExpectationFailed if value of header is not "100-continue"
     """
-    expect = request.headers.get(hdrs.EXPECT)
+    expect = request.headers.get(hdrs.EXPECT, "")
     if request.version == HttpVersion11:
         if expect.lower() == "100-continue":
             await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
@@ -767,7 +767,9 @@ class Domain(AbstractRuleMatching):
 
     async def match(self, request: Request) -> bool:
         host = request.headers.get(hdrs.HOST)
-        return host and self.match_domain(host)
+        if not host:
+            return False
+        return self.match_domain(host)
 
     def match_domain(self, host: str) -> bool:
         return host.lower() == self._domain
@@ -997,7 +999,11 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         if name is not None:
             parts = self.NAME_SPLIT_RE.split(name)
             for part in parts:
-                if not part.isidentifier() or keyword.iskeyword(part):
+                if keyword.iskeyword(part):
+                    raise ValueError(f'Incorrect route name {name!r}, '
+                                     'python keywords cannot be used '
+                                     'for route name')
+                if not part.isidentifier():
                     raise ValueError('Incorrect route name {!r}, '
                                      'the name should be a sequence of '
                                      'python identifiers separated '

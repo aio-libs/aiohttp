@@ -171,14 +171,36 @@ Cookie Safety
 By default :class:`~aiohttp.ClientSession` uses strict version of
 :class:`aiohttp.CookieJar`. :rfc:`2109` explicitly forbids cookie
 accepting from URLs with IP address instead of DNS name
-(e.g. `http://127.0.0.1:80/cookie`).
+(e.g. ``http://127.0.0.1:80/cookie``).
 
 It's good but sometimes for testing we need to enable support for such
-cookies. It should be done by passing `unsafe=True` to
+cookies. It should be done by passing ``unsafe=True`` to
 :class:`aiohttp.CookieJar` constructor::
 
 
    jar = aiohttp.CookieJar(unsafe=True)
+   session = aiohttp.ClientSession(cookie_jar=jar)
+
+
+.. _aiohttp-client-cookie-quoting-routine:
+
+Cookie Quoting Routine
+^^^^^^^^^^^^^^^^^^^^^^
+
+The client uses the :class:`~aiohttp.SimpleCookie` quoting routines
+conform to the :rfc:`2109`, which in turn references the character definitions
+from :rfc:`2068`. They provide a two-way quoting algorithm where any non-text
+character is translated into a 4 character sequence: a forward-slash
+followed by the three-digit octal equivalent of the character.
+Any ``\`` or ``"`` is quoted with a preceding ``\`` slash.
+Because of the way browsers really handle cookies (as opposed to what the RFC
+says) we also encode ``,`` and ``;``.
+
+Some backend systems does not support quoted cookies. You can skip this
+quotation routine by passing ``quote_cookie=False`` to the
+:class:`~aiohttp.CookieJar` constructor::
+
+   jar = aiohttp.CookieJar(quote_cookie=False)
    session = aiohttp.ClientSession(cookie_jar=jar)
 
 
@@ -545,7 +567,7 @@ block (or through a direct :meth:`ClientSession.close()` call), the
 underlying connection remains open due to asyncio internal details. In
 practice, the underlying connection will close after a short
 while. However, if the event loop is stopped before the underlying
-connection is closed, an ``ResourceWarning: unclosed transport``
+connection is closed, a ``ResourceWarning: unclosed transport``
 warning is emitted (when warnings are enabled).
 
 To avoid this situation, a small delay must be added before closing

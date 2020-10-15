@@ -330,6 +330,7 @@ The client session supports the context manager protocol for self closing.
                          ssl_context=None, proxy_headers=None)
       :async-with:
       :coroutine:
+      :noindex:
 
       Performs an asynchronous HTTP request. Returns a response object.
 
@@ -785,7 +786,6 @@ certification chaining.
                         compress=None, chunked=None, expect100=False, raise_for_status=False, \
                         connector=None, loop=None,\
                         read_until_eof=True, timeout=sentinel)
-
    :async-with:
 
    Asynchronous context manager for performing an asynchronous HTTP
@@ -1195,7 +1195,7 @@ Response object
 
 .. class:: ClientResponse
 
-   Client response returned be :meth:`ClientSession.request` and family.
+   Client response returned by :meth:`ClientSession.request` and family.
 
    User never creates the instance of ClientResponse class but gets it
    from API calls.
@@ -1626,7 +1626,7 @@ ClientTimeout
 ^^^^^^^^^^^^^
 
 .. class:: ClientTimeout(*, total=None, connect=None, \
-                         sock_connect, sock_read=None)
+                         sock_connect=None, sock_read=None)
 
    A data class for client timeout settings.
 
@@ -1738,7 +1738,7 @@ BasicAuth
 CookieJar
 ^^^^^^^^^
 
-.. class:: CookieJar(*, unsafe=False, loop=None)
+.. class:: CookieJar(*, unsafe=False, quote_cookie=True, loop=None)
 
    The cookie jar instance is available as :attr:`ClientSession.cookie_jar`.
 
@@ -1763,10 +1763,18 @@ CookieJar
 
    :param bool unsafe: (optional) Whether to accept cookies from IPs.
 
+   :param bool quote_cookie: (optional) Whether to quote cookies according to
+                             :rfc:`2109`.  Some backend systems
+                             (not compatible with RFC mentioned above)
+                             does not support quoted cookies.
+
+      .. versionadded:: 3.7
+
    :param bool loop: an :ref:`event loop<asyncio-event-loop>` instance.
       See :class:`aiohttp.abc.AbstractCookieJar`
 
       .. deprecated:: 2.0
+
 
    .. method:: update_cookies(cookies, response_url=None)
 
@@ -1807,7 +1815,6 @@ CookieJar
 
       :param file_path: Path to file from where cookies will be
            imported, :class:`str` or :class:`pathlib.Path` instance.
-
 
 
 .. class:: DummyCookieJar(*, loop=None)

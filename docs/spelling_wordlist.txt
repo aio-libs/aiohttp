@@ -37,6 +37,8 @@ bugfix
 Bugfixes
 builtin
 BytesIO
+cancelled
+canonicalization
 cchardet
 cChardet
 Changelog
@@ -76,6 +78,7 @@ deduplicate
 deprecations
 DER
 Dev
+dev
 dict
 Dict
 Discord
@@ -136,6 +139,7 @@ keepalives
 keepaliving
 kwarg
 latin
+lifecycle
 linux
 localhost
 Locator
@@ -168,6 +172,7 @@ Nagle’s
 namedtuple
 nameservers
 namespace
+netrc
 nginx
 Nginx
 Nikolay
@@ -184,6 +189,7 @@ param
 params
 pathlib
 peername
+performant
 pickleable
 ping
 pipelining
@@ -193,6 +199,7 @@ poller
 pong
 Postgres
 pre
+preloaded
 proactor
 programmatically
 proxied
@@ -239,15 +246,18 @@ Satisfiable
 schemas
 sendfile
 serializable
+serializer
 shourtcuts
 skipuntil
 Skyscanner
 SocketSocketTransport
+softwares
 ssl
 SSLContext
 startup
 subapplication
 subclasses
+subdirectory
 submodules
 subpackage
 subprotocol
