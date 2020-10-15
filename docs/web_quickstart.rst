@@ -269,7 +269,7 @@ application developers can organize handlers in classes if they so wish::
 
    handler = Handler()
    app.add_routes([web.get('/intro', handler.handle_intro),
-                   web.get('/greet/{name}', handler.handle_greeting)]
+                   web.get('/greet/{name}', handler.handle_greeting)])
 
 
 .. _aiohttp-web-class-based-views:
