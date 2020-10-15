@@ -305,7 +305,7 @@ TraceRequestChunkSentParams
 
 
 TraceResponseChunkReceivedParams
-----------------------------
+--------------------------------
 
 .. class:: TraceResponseChunkReceivedParams
 
