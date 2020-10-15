@@ -747,7 +747,7 @@ class DeflateBuffer:
         if not self._started_decoding and self.encoding == 'deflate' \
                 and chunk[0] & 0xf != 8:
             # Change the decoder to decompress incorrectly compressed data
-            # Actually we should issue a warning about non-RFC-compilant data.
+            # Actually we should issue a warning about non-RFC-compliant data.
             self.decompressor = zlib.decompressobj(wbits=-zlib.MAX_WBITS)
 
         try:
@@ -785,10 +785,12 @@ RawResponseMessagePy = RawResponseMessage
 
 try:
     if not NO_EXTENSIONS:
-        from ._http_parser import (HttpRequestParser,  # type: ignore  # noqa
-                                   HttpResponseParser,
-                                   RawRequestMessage,
-                                   RawResponseMessage)
+        from ._http_parser import (  # type: ignore  # noqa
+            HttpRequestParser,
+            HttpResponseParser,
+            RawRequestMessage,
+            RawResponseMessage,
+        )
         HttpRequestParserC = HttpRequestParser
         HttpResponseParserC = HttpResponseParser
         RawRequestMessageC = RawRequestMessage

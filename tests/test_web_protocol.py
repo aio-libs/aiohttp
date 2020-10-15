@@ -622,41 +622,6 @@ def test_rudimentary_transport(srv) -> None:
     assert not srv._reading_paused
 
 
-async def test_close(srv, transport) -> None:
-    transport.close.side_effect = partial(srv.connection_lost, None)
-    srv.connection_made(transport)
-    await asyncio.sleep(0)
-
-    handle_request = mock.Mock()
-    handle_request.side_effect = helpers.noop
-    with mock.patch.object(
-        web.RequestHandler,
-        'handle_request',
-        create=True,
-        new=handle_request
-    ):
-        assert transport is srv.transport
-
-        srv._keepalive = True
-        srv.data_received(
-            b'GET / HTTP/1.1\r\n'
-            b'Host: example.com\r\n'
-            b'Content-Length: 0\r\n\r\n'
-            b'GET / HTTP/1.1\r\n'
-            b'Host: example.com\r\n'
-            b'Content-Length: 0\r\n\r\n')
-
-        await asyncio.sleep(0.1)
-        assert srv._task_handler
-        assert srv._waiter
-
-        srv.close()
-        await asyncio.sleep(0)
-        assert srv._task_handler is None
-        assert srv.transport is None
-        assert transport.close.called
-
-
 async def test_pipeline_multiple_messages(
     srv, transport, request_handler
 ):
