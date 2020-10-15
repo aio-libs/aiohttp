@@ -1663,9 +1663,7 @@ CookieJar
                              (not compatible with RFC mentioned above)
                              does not support quoted cookies.
 
-   .. versionadded:: 3.7
-
-      *quote_cookie* argument.
+      .. versionadded:: 3.7
 
    .. method:: update_cookies(cookies, response_url=None)
 
