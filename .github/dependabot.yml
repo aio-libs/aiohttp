@@ -18,6 +18,7 @@ updates:
       - autosquash
     schedule:
       interval: "daily"
+    open-pull-requests-limit: 10
 
   # Maintain dependencies for GitHub Actions aiohttp 3.7
   - package-ecosystem: "github-actions"
@@ -38,3 +39,4 @@ updates:
     target-branch: "3.7"
     schedule:
       interval: "daily"
+    open-pull-requests-limit: 10
