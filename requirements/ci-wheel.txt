@@ -7,7 +7,7 @@ chardet==3.0.4
 coverage==5.3
 gunicorn==20.0.4
 multidict==5.0.0
-pytest==5.4.2
+pytest==6.1.1
 pytest-cov==2.10.1
 pytest-mock==3.3.1
 typing_extensions==3.7.4.3
