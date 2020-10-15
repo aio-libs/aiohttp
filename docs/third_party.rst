@@ -214,7 +214,7 @@ period ask to raise the status.
 
 - `aiogram <https://github.com/aiogram/aiogram>`_
   A fully asynchronous library for Telegram Bot API written with asyncio and aiohttp.
-  
+
 - `vk.py <https://github.com/prostomarkeloff/vk.py>`_
   Extremely-fast Python 3.6+ toolkit for create applications work`s with VKAPI.
 
@@ -245,7 +245,7 @@ period ask to raise the status.
 - `eider-py <https://github.com/eider-rpc/eider-py>`_ Python implementation of
   the `Eider RPC protocol <http://eider.readthedocs.io/>`_.
 
-- `asynapplicationinsights <https://github.com/RobertoPrevato/asynapplicationinsights>`_ A client 
+- `asynapplicationinsights <https://github.com/RobertoPrevato/asynapplicationinsights>`_ A client
   for `Azure Application Insights <https://azure.microsoft.com/en-us/services/application-insights/>`_
   implemented using ``aiohttp`` client, including a middleware for ``aiohttp`` servers to collect web apps
   telemetry.
@@ -255,3 +255,15 @@ period ask to raise the status.
 
 - `DBGR <https://github.com/JakubTesarek/dbgr>`_
   Terminal based tool to test and debug HTTP APIs with ``aiohttp``.
+
+- `rororo <https://github.com/playpauseandstop/rororo>`_
+  Implement ``aiohtp.web`` OpenAPI 3 server applications with schema first
+  approach. Python 3.6+ required.
+
+- `aiohttp-middlewares <https://github.com/playpauseandstop/aiohttp-middlewares>`_
+  Collection of useful middlewares for ``aiohttp.web`` applications. Python
+  3.6+ required.
+
+- `aiohttp-tus <https://github.com/pylotcode/aiohttp-tus>`_
+  `tus.io <https://tus.io>`_ protocol implementation for ``aiohttp.web``
+  applications. Python 3.6+ required.

@@ -1,0 +1,1 @@
+Fixed the type annotations in the ``tracing`` module.

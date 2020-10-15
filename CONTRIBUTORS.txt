@@ -40,6 +40,7 @@ Andrii Soldatenko
 Antoine Pietri
 Anton Kasyanov
 Anton Zhdan-Pushkin
+Arseny Timoniq
 Artem Yushkovskiy
 Arthur Darcet
 Ben Bader
@@ -163,6 +164,7 @@ Kirill Klenov
 Kirill Malovitsa
 Konstantin Valetov
 Kyrylo Perevozchikov
+Kyungmin Lee
 Lars P. Søndergaard
 Louis-Philippe Huberdeau
 Loïc Lajeanne
