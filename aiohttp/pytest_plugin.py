@@ -132,7 +132,7 @@ def _runtime_warning_context():  # type: ignore
     # Propagate warnings to pytest
     for msg in _warnings:
         warnings.showwarning(
-            msg.message,   # type: ignore
+            msg.message,
             msg.category, msg.filename, msg.lineno, msg.file, msg.line
         )
 
