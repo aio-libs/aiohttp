@@ -51,6 +51,7 @@ Boyi Chen
 Brett Cannon
 Brian C. Lane
 Brian Muller
+Bruce Merry
 Bryan Kok
 Bryce Drennan
 Carl George

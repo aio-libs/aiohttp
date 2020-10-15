@@ -1,3 +1,4 @@
+import asyncio
 import functools
 import os
 import pathlib
@@ -292,6 +293,33 @@ async def test_partially_applied_handler(aiohttp_client) -> None:
     r = await client.get('/')
     data = (await r.read())
     assert data == b'hello'
+
+
+async def test_static_head(tmp_path, aiohttp_client) -> None:
+    # Test HEAD on static route
+    my_file_path = tmp_path / 'test.txt'
+    with my_file_path.open('wb') as fw:
+        fw.write(b'should_not_see_this\n')
+
+    app = web.Application()
+    app.router.add_static('/', str(tmp_path))
+    client = await aiohttp_client(app)
+
+    r = await client.head('/test.txt')
+    assert r.status == 200
+
+    # Check that there is no content sent (see #4809). This can't easily be
+    # done with aiohttp_client because the buffering can consume the content.
+    reader, writer = await asyncio.open_connection(client.host, client.port)
+    writer.write(b'HEAD /test.txt HTTP/1.1\r\n')
+    writer.write(b'Host: localhost\r\n')
+    writer.write(b'Connection: close\r\n')
+    writer.write(b'\r\n')
+    while await reader.readline() != b'\r\n':
+        pass
+    content = await reader.read()
+    writer.close()
+    assert content == b''
 
 
 def test_system_route() -> None:
