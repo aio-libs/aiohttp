@@ -1195,7 +1195,7 @@ Response object
 
 .. class:: ClientResponse
 
-   Client response returned be :meth:`ClientSession.request` and family.
+   Client response returned by :meth:`ClientSession.request` and family.
 
    User never creates the instance of ClientResponse class but gets it
    from API calls.
