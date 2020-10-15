@@ -578,10 +578,16 @@ class WebSocketWriter:
         if (compress or self.compress) and opcode < 8:
             if compress:
                 # Do not set self._compress if compressing is for this frame
-                compressobj = zlib.compressobj(wbits=-compress)
+                compressobj = zlib.compressobj(
+                    level=zlib.Z_BEST_SPEED,
+                    wbits=-compress
+                )
             else:  # self.compress
                 if not self._compressobj:
-                    self._compressobj = zlib.compressobj(wbits=-self.compress)
+                    self._compressobj = zlib.compressobj(
+                        level=zlib.Z_BEST_SPEED,
+                        wbits=-self.compress
+                    )
                 compressobj = self._compressobj
 
             message = compressobj.compress(message)
