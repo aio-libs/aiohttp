@@ -10,6 +10,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 from yarl import URL
 
 from aiohttp import HttpVersion, web
+from aiohttp.client_exceptions import ServerDisconnectedError
 from aiohttp.helpers import DEBUG
 from aiohttp.http_parser import RawRequestMessage
 from aiohttp.streams import StreamReader
@@ -581,6 +582,17 @@ async def test_request_with_wrong_content_type_encoding(protocol) -> None:
     assert err.value.status_code == 415
 
 
+async def test_make_too_big_request_same_size_to_max(protocol) -> None:
+    payload = StreamReader(protocol, loop=asyncio.get_event_loop())
+    large_file = 1024 ** 2 * b'x'
+    payload.feed_data(large_file)
+    payload.feed_eof()
+    req = make_mocked_request('POST', '/', payload=payload)
+    resp_text = await req.read()
+
+    assert resp_text == large_file
+
+
 async def test_make_too_big_request_adjust_limit(protocol) -> None:
     payload = StreamReader(protocol, loop=asyncio.get_event_loop())
     large_file = 1024 ** 2 * b'x'
@@ -771,3 +783,19 @@ async def test_json_invalid_content_type(aiohttp_client) -> None:
 def test_weakref_creation() -> None:
     req = make_mocked_request('GET', '/')
     weakref.ref(req)
+
+
+@pytest.mark.xfail(
+    raises=ServerDisconnectedError,
+    reason="see https://github.com/aio-libs/aiohttp/issues/4572"
+)
+async def test_handler_return_type(aiohttp_client) -> None:
+    async def invalid_handler_1(request):
+        return 1
+
+    app = web.Application()
+    app.router.add_get('/1', invalid_handler_1)
+    client = await aiohttp_client(app)
+
+    async with client.get('/1') as resp:
+        assert 500 == resp.status

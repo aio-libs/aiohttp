@@ -40,16 +40,19 @@ Andrii Soldatenko
 Antoine Pietri
 Anton Kasyanov
 Anton Zhdan-Pushkin
+Arseny Timoniq
 Artem Yushkovskiy
 Arthur Darcet
 Ben Bader
 Ben Timby
 Benedikt Reinartz
 Boris Feld
+Borys Vorona
 Boyi Chen
 Brett Cannon
 Brian C. Lane
 Brian Muller
+Bruce Merry
 Bryan Kok
 Bryce Drennan
 Carl George
@@ -99,6 +102,7 @@ Eugene Ershov
 Eugene Naydenov
 Eugene Nikolaiev
 Eugene Tolmachev
+Evan Kepner
 Evert Lammerts
 Felix Yan
 Fernanda Guimarães
@@ -142,7 +146,9 @@ Jian Zeng
 Jinkyu Yi
 Joel Watts
 Jon Nabozny
+Jonas Krüger Svensson
 Jonas Obrist
+Jonny Tan
 Joongi Kim
 Josep Cugat
 Joshu Coats
@@ -160,6 +166,7 @@ Kirill Klenov
 Kirill Malovitsa
 Konstantin Valetov
 Kyrylo Perevozchikov
+Kyungmin Lee
 Lars P. Søndergaard
 Louis-Philippe Huberdeau
 Loïc Lajeanne
@@ -173,6 +180,7 @@ Manuel Miranda
 Marat Sharafutdinov
 Marco Paolini
 Mariano Anaya
+Mariusz Masztalerczuk
 Martijn Pieters
 Martin Melka
 Martin Richard
@@ -181,6 +189,7 @@ Mathieu Dugré
 Matt VanEseltine
 Matthieu Hauglustaine
 Matthieu Rigal
+Meet Mangukiya
 Michael Ihnatenko
 Mikhail Burshteyn
 Mikhail Kashkin
@@ -197,6 +206,7 @@ Nikolay Kim
 Nikolay Novik
 Oisin Aylward
 Olaf Conradi
+Oleg Höfling
 Pahaz Blinov
 Panagiotis Kolokotronis
 Pankaj Pandey
@@ -228,6 +238,7 @@ Sebastien Geffroy
 SeongSoo Cho
 Sergey Ninua
 Sergey Skripnick
+Serhii Charykov
 Serhii Kostel
 Simon Kennedy
 Sin-Woo Bang
@@ -250,6 +261,7 @@ Thomas Forbes
 Thomas Grainger
 Tolga Tezel
 Tomasz Trebski
+Toshiaki Tanaka
 Trinh Hoang Nhu
 Vadim Suharnikov
 Vaibhav Sagar
@@ -258,6 +270,7 @@ Vasiliy Faronov
 Vasyl Baran
 Victor Collod
 Victor Kovtun
+Victor Makarov
 Vikas Kawadia
 Viktor Danyliuk
 Ville Skyttä
@@ -277,6 +290,7 @@ Weiwei Wang
 Will McGugan
 Willem de Groot
 William Grzybowski
+William S.
 Wilson Ong
 Yang Zhou
 Yannick Koechlin
