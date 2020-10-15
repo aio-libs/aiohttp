@@ -1633,7 +1633,7 @@ BasicAuth
 CookieJar
 ^^^^^^^^^
 
-.. class:: CookieJar(*, unsafe=False)
+.. class:: CookieJar(*, unsafe=False, quote_cookie=True)
 
    The cookie jar instance is available as :attr:`ClientSession.cookie_jar`.
 
@@ -1657,6 +1657,13 @@ CookieJar
    Implements cookie storage adhering to RFC 6265.
 
    :param bool unsafe: (optional) Whether to accept cookies from IPs.
+
+   :param bool quote_cookie: (optional) Whether to quote cookies according to
+                             :rfc:`2109`.  Some backend systems
+                             (not compatible with RFC mentioned above)
+                             does not support quoted cookies.
+
+      .. versionadded:: 3.7
 
    .. method:: update_cookies(cookies, response_url=None)
 
@@ -1697,7 +1704,6 @@ CookieJar
 
       :param file_path: Path to file from where cookies will be
            imported, :class:`str` or :class:`pathlib.Path` instance.
-
 
 
 .. class:: DummyCookieJar()

@@ -770,6 +770,50 @@ async def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
             await f
 
 
+@pytest.fixture
+def dns_response_error(loop):
+    async def coro():
+        # simulates a network operation
+        await asyncio.sleep(0)
+        raise socket.gaierror(-3, 'Temporary failure in name resolution')
+    return coro
+
+
+async def test_tcp_connector_cancel_dns_error_captured(
+        loop,
+        dns_response_error) -> None:
+
+    exception_handler_called = False
+
+    def exception_handler(loop, context):
+        nonlocal exception_handler_called
+        exception_handler_called = True
+
+    loop.set_exception_handler(mock.Mock(side_effect=exception_handler))
+
+    with mock.patch('aiohttp.connector.DefaultResolver') as m_resolver:
+        req = ClientRequest(
+            method='GET',
+            url=URL('http://temporary-failure:80'),
+            loop=loop
+        )
+        conn = aiohttp.TCPConnector(
+            use_dns_cache=False,
+        )
+        m_resolver().resolve.return_value = dns_response_error()
+        f = loop.create_task(
+            conn._create_direct_connection(req, [], ClientTimeout(0))
+        )
+
+        await asyncio.sleep(0)
+        f.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await f
+
+        gc.collect()
+        assert exception_handler_called is False
+
+
 async def test_tcp_connector_dns_tracing(loop, dns_response) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
@@ -1731,7 +1775,7 @@ async def test_connect_with_limit_concurrent(loop) -> None:
     # with multiple concurrent requests and stops when it hits a
     # predefined maximum number of requests.
 
-    max_requests = 10
+    max_requests = 50
     num_requests = 0
     start_requests = max_connections + 1
 
@@ -1744,6 +1788,7 @@ async def test_connect_with_limit_concurrent(loop) -> None:
             connection = await conn.connect(req, None, ClientTimeout())
             await asyncio.sleep(0)
             connection.release()
+            await asyncio.sleep(0)
         tasks = [
             loop.create_task(f(start=False))
             for i in range(start_requests)

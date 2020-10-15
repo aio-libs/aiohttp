@@ -26,6 +26,7 @@ jobs:
   autosquash:
     name: Autosquash
     runs-on: ubuntu-latest
+    if: ${{ github.repository == 'aio-libs/aiohttp' }}  # not awailable for forks, skip the workflow
     steps:
       - id: generate_token
         uses: tibdex/github-app-token@v1
