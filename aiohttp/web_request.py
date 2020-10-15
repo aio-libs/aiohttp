@@ -61,8 +61,8 @@ __all__ = ('BaseRequest', 'FileField', 'Request')
 
 if TYPE_CHECKING:  # pragma: no cover
     from .web_app import Application  # noqa
-    from .web_urldispatcher import UrlMappingMatchInfo  # noqa
     from .web_protocol import RequestHandler  # noqa
+    from .web_urldispatcher import UrlMappingMatchInfo  # noqa
 
 
 @attr.s(frozen=True, slots=True)

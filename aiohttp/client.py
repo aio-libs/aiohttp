@@ -1011,7 +1011,7 @@ class _BaseRequestContextManager(Coroutine[Any,
         return self._coro.send(arg)
 
     def throw(self, arg: BaseException) -> None:  # type: ignore
-        self._coro.throw(arg)  # type: ignore
+        self._coro.throw(arg)
 
     def close(self) -> None:
         return self._coro.close()

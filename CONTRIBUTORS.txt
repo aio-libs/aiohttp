@@ -40,6 +40,7 @@ Andrii Soldatenko
 Antoine Pietri
 Anton Kasyanov
 Anton Zhdan-Pushkin
+Arseny Timoniq
 Artem Yushkovskiy
 Arthur Darcet
 Ben Bader
@@ -51,6 +52,7 @@ Boyi Chen
 Brett Cannon
 Brian C. Lane
 Brian Muller
+Bruce Merry
 Bryan Kok
 Bryce Drennan
 Carl George
@@ -144,6 +146,7 @@ Jian Zeng
 Jinkyu Yi
 Joel Watts
 Jon Nabozny
+Jonas Krüger Svensson
 Jonas Obrist
 Jonny Tan
 Joongi Kim
@@ -163,6 +166,7 @@ Kirill Klenov
 Kirill Malovitsa
 Konstantin Valetov
 Kyrylo Perevozchikov
+Kyungmin Lee
 Lars P. Søndergaard
 Louis-Philippe Huberdeau
 Loïc Lajeanne
@@ -284,6 +288,7 @@ Weiwei Wang
 Will McGugan
 Willem de Groot
 William Grzybowski
+William S.
 Wilson Ong
 Yang Zhou
 Yannick Koechlin
