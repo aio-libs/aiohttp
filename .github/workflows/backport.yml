@@ -41,4 +41,4 @@ jobs:
 
           # Optional
           # If no labels match the `backport_label_pattern` the backport check will fail. Enabling this will bypass the check for all PRs
-          # skip_backport_check: false
+          skip_backport_check: true
