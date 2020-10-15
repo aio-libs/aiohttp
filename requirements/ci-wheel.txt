@@ -11,7 +11,7 @@ pytest==6.1.1
 pytest-cov==2.10.1
 pytest-mock==3.3.1
 typing_extensions==3.7.4.3
-yarl==1.4.2
+yarl==1.6.2
 
 # Using PEP 508 env markers to control dependency on runtimes:
 
