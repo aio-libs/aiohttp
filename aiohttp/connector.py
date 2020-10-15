@@ -474,8 +474,9 @@ class BaseConnector:
         key = req.connection_key
         available = self._available_connections(key)
 
-        # Wait if there are no available connections.
-        if available <= 0:
+        # Wait if there are no available connections or if there are/were
+        # waiters (i.e. don't steal connection from a waiter about to wake up)
+        if available <= 0 or key in self._waiters:
             fut = self._loop.create_future()
 
             # This connection will now count towards the limit.
