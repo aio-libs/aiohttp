@@ -1504,7 +1504,7 @@ ClientTimeout
 ^^^^^^^^^^^^^
 
 .. class:: ClientTimeout(*, total=None, connect=None, \
-                         sock_connect, sock_read=None)
+                         sock_connect=None, sock_read=None)
 
    A data class for client timeout settings.
 
