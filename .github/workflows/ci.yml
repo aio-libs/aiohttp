@@ -83,6 +83,10 @@ jobs:
         exclude:
           - os: macos
             no-extensions: 'Y'
+          - os: macos
+            pyver: 3.7
+          - os: macos
+            pyver: 3.8
           - os: windows
             no-extensions: 'Y'
         include:
