@@ -1,3 +1,4 @@
+import array
 import asyncio
 from io import StringIO
 from unittest import mock
@@ -66,6 +67,12 @@ def test_bytes_payload_explicit_content_type() -> None:
 def test_bytes_payload_bad_type() -> None:
     with pytest.raises(TypeError):
         payload.BytesPayload(object())
+
+
+def test_bytes_payload_memoryview_correct_size() -> None:
+    mv = memoryview(array.array("H", [1, 2, 3]))
+    p = payload.BytesPayload(mv)
+    assert p.size == 6
 
 
 def test_string_payload() -> None:
