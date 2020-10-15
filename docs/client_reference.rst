@@ -301,6 +301,7 @@ The client session supports the context manager protocol for self closing.
                          proxy_headers=None)
       :async-with:
       :coroutine:
+      :noindex:
 
       Performs an asynchronous HTTP request. Returns a response object.
 
@@ -706,7 +707,6 @@ certification chaining.
                         compress=None, chunked=None, expect100=False, raise_for_status=False, \
                         connector=None, \
                         read_until_eof=True, timeout=sentinel)
-
    :async-with:
 
    Asynchronous context manager for performing an asynchronous HTTP
@@ -1065,7 +1065,7 @@ Response object
 
 .. class:: ClientResponse
 
-   Client response returned be :meth:`ClientSession.request` and family.
+   Client response returned by :meth:`ClientSession.request` and family.
 
    User never creates the instance of ClientResponse class but gets it
    from API calls.
@@ -1504,7 +1504,7 @@ ClientTimeout
 ^^^^^^^^^^^^^
 
 .. class:: ClientTimeout(*, total=None, connect=None, \
-                         sock_connect, sock_read=None)
+                         sock_connect=None, sock_read=None)
 
    A data class for client timeout settings.
 
