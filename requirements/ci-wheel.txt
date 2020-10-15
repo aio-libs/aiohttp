@@ -4,7 +4,7 @@ async-timeout==4.0.0a2
 Brotli==1.0.9
 cchardet==2.1.6
 chardet==3.0.4
-coverage==5.1
+coverage==5.3
 gunicorn==20.0.4
 multidict==4.7.6
 pytest==5.4.2
