@@ -238,6 +238,7 @@ Sebastien Geffroy
 SeongSoo Cho
 Sergey Ninua
 Sergey Skripnick
+Serhii Charykov
 Serhii Kostel
 Simon Kennedy
 Sin-Woo Bang
