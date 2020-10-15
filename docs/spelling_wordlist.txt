@@ -257,6 +257,7 @@ SSLContext
 startup
 subapplication
 subclasses
+subdirectory
 submodules
 subpackage
 subprotocol
