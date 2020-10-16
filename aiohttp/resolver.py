@@ -31,7 +31,7 @@ class ThreadedResolver(AbstractResolver):
 
         hosts = []
         for family, _, proto, _, address in infos:
-            if family == socket.AF_INET6 and address[3]:
+            if family == socket.AF_INET6 and address[3]:  # type: ignore
                 # This is essential for link-local IPv6 addresses.
                 # LL IPv6 is a VERY rare case. Strictly speaking, we should use
                 # getnameinfo() unconditionally, but performance makes sense.
