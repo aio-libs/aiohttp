@@ -826,9 +826,6 @@ class TestParsePayload:
         assert isinstance(out.exception(),
                           http_exceptions.TransferEncodingError)
 
-    @pytest.mark.xfail(
-        reason="see https://github.com/aio-libs/aiohttp/issues/4630"
-    )
     async def test_parse_chunked_payload_split_end(self, protocol) -> None:
         out = aiohttp.StreamReader(protocol, loop=None)
         p = HttpPayloadParser(out, chunked=True)
@@ -838,9 +835,6 @@ class TestParsePayload:
         assert out.is_eof()
         assert b'asdf' == b''.join(out._buffer)
 
-    @pytest.mark.xfail(
-        reason="see https://github.com/aio-libs/aiohttp/issues/4630"
-    )
     async def test_parse_chunked_payload_split_end2(self, protocol) -> None:
         out = aiohttp.StreamReader(protocol, loop=None)
         p = HttpPayloadParser(out, chunked=True)
@@ -861,9 +855,6 @@ class TestParsePayload:
         assert out.is_eof()
         assert b'asdf' == b''.join(out._buffer)
 
-    @pytest.mark.xfail(
-        reason="see https://github.com/aio-libs/aiohttp/issues/4630"
-    )
     async def test_parse_chunked_payload_split_end_trailers2(self,
                                                              protocol) -> None:
         out = aiohttp.StreamReader(protocol, loop=None)
@@ -871,6 +862,27 @@ class TestParsePayload:
         p.feed_data(b'4\r\nasdf\r\n0\r\n')
         p.feed_data(b'Content-MD5: 912ec803b2ce49e4a541068d495ab570\r\n\r')
         p.feed_data(b'\n')
+
+        assert out.is_eof()
+        assert b'asdf' == b''.join(out._buffer)
+
+    async def test_parse_chunked_payload_split_end_trailers3(self,
+                                                             protocol) -> None:
+        out = aiohttp.StreamReader(protocol, loop=None)
+        p = HttpPayloadParser(out, chunked=True)
+        p.feed_data(b'4\r\nasdf\r\n0\r\nContent-MD5: ')
+        p.feed_data(b'912ec803b2ce49e4a541068d495ab570\r\n\r\n')
+
+        assert out.is_eof()
+        assert b'asdf' == b''.join(out._buffer)
+
+    async def test_parse_chunked_payload_split_end_trailers4(self,
+                                                             protocol) -> None:
+        out = aiohttp.StreamReader(protocol, loop=None)
+        p = HttpPayloadParser(out, chunked=True)
+        p.feed_data(b'4\r\nasdf\r\n0\r\n'
+                    b'C')
+        p.feed_data(b'ontent-MD5: 912ec803b2ce49e4a541068d495ab570\r\n\r\n')
 
         assert out.is_eof()
         assert b'asdf' == b''.join(out._buffer)
