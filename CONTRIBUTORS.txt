@@ -161,6 +161,7 @@ Kirill Malovitsa
 Kyrylo Perevozchikov
 Kyungmin Lee
 Lars P. Søndergaard
+Liu Hua
 Louis-Philippe Huberdeau
 Loïc Lajeanne
 Lu Gong
