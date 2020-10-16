@@ -1092,6 +1092,31 @@ def test_response_with_immutable_headers() -> None:
                             'Content-Type': 'text/plain; charset=utf-8'}
 
 
+async def test_response_prepared_after_header_preparation() -> None:
+    req = make_request('GET', '/')
+    resp = StreamResponse()
+    await resp.prepare(req)
+
+    assert type(resp.headers['Server']) is str
+
+    async def _strip_server(req, res):
+        assert 'Server' in res.headers
+
+        if 'Server' in res.headers:
+            del res.headers['Server']
+
+    app = mock.Mock()
+    sig = signals.Signal(app)
+    sig.append(_strip_server)
+
+    req = make_request(
+        'GET', '/', on_response_prepare=sig, app=app)
+    resp = StreamResponse()
+    await resp.prepare(req)
+
+    assert 'Server' not in resp.headers
+
+
 def test_weakref_creation() -> None:
     resp = Response()
     weakref.ref(resp)
