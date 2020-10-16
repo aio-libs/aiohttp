@@ -614,7 +614,8 @@ For example, a middleware can only change HTTP headers for *unprepared*
 responses (see :meth:`StreamResponse.prepare`), but sometimes we
 need a hook for changing HTTP headers for streamed responses and WebSockets.
 This can be accomplished by subscribing to the
-:attr:`Application.on_response_prepare` signal::
+:attr:`Application.on_response_prepare` signal, which is called after default
+headers have been computed and directly before headers are sent::
 
     async def on_prepare(request, response):
         response.headers['My-Header'] = 'value'
