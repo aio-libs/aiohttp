@@ -200,6 +200,7 @@ async def test_tcpsite_default_host(make_runner):
     assert site.name == "http://0.0.0.0:8080"
 
     calls = []
+
     async def mock_create_server(*args, **kwargs):
         calls.append((args, kwargs))
 
