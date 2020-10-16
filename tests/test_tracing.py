@@ -73,12 +73,12 @@ class TestTrace:
         ),
         (
             'request_chunk_sent',
-            (Mock(), ),
+            (Mock(), Mock(), Mock()),
             TraceRequestChunkSentParams
         ),
         (
             'response_chunk_received',
-            (Mock(), ),
+            (Mock(), Mock(), Mock()),
             TraceResponseChunkReceivedParams
         ),
         (
