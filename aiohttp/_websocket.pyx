@@ -1,10 +1,12 @@
 from cpython cimport PyBytes_AsString
 
+
 #from cpython cimport PyByteArray_AsString # cython still not exports that
 cdef extern from "Python.h":
     char* PyByteArray_AsString(bytearray ba) except NULL
 
 from libc.stdint cimport uint32_t, uint64_t, uintmax_t
+
 
 def _websocket_mask_cython(object mask, object data):
     """Note, this function mutates its `data` argument
