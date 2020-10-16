@@ -207,7 +207,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
    .. attribute:: transport
 
-      An :ref:`transport<asyncio-transport>` used to process request,
+      A :ref:`transport<asyncio-transport>` used to process request.
       Read-only property.
 
       The property can be used, for example, for getting IP address of
@@ -2611,7 +2611,7 @@ application on specific TCP or Unix socket, e.g.::
 
    :param runner: a runner to serve.
 
-   :param str host: HOST to listen on, ``'0.0.0.0'`` if ``None`` (default).
+   :param str host: HOST to listen on, all interfaces if ``None`` (default).
 
    :param int port: PORT to listed on, ``8080`` if ``None`` (default).
 
@@ -2727,8 +2727,8 @@ Utilities
    .. seealso:: :ref:`aiohttp-web-file-upload`
 
 
-.. function:: run_app(app, *, host=None, port=None, path=None, \
-                      sock=None, shutdown_timeout=60.0, \
+.. function:: run_app(app, *, debug=False, host=None, port=None, \
+                      path=None, sock=None, shutdown_timeout=60.0, \
                       ssl_context=None, print=print, backlog=128, \
                       access_log_class=aiohttp.helpers.AccessLogger, \
                       access_log_format=aiohttp.helpers.AccessLogger.LOG_FORMAT, \
@@ -2756,6 +2756,8 @@ Utilities
 
    :param app: :class:`Application` instance to run or a *coroutine*
                that returns an application.
+
+   :param bool debug: enable :ref:`asyncio debug mode <asyncio-debug-mode>` if ``True``.
 
    :param str host: TCP/IP host or a sequence of hosts for HTTP server.
                     Default is ``'0.0.0.0'`` if *port* has been specified

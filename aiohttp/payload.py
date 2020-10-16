@@ -215,7 +215,10 @@ class BytesPayload(Payload):
 
         super().__init__(value, *args, **kwargs)
 
-        self._size = len(value)
+        if isinstance(value, memoryview):
+            self._size = value.nbytes
+        else:
+            self._size = len(value)
 
         if self._size > TOO_LARGE_BYTES_BODY:
             if PY_36:
@@ -391,7 +394,7 @@ class JsonPayload(BytesPayload):
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import AsyncIterator, AsyncIterable
+    from typing import AsyncIterable, AsyncIterator
 
     _AsyncIterator = AsyncIterator[bytes]
     _AsyncIterable = AsyncIterable[bytes]

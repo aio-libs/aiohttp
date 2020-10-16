@@ -54,6 +54,37 @@ async def test_keepalive_two_requests_success(
     assert 1 == len(client._session.connector._conns)
 
 
+async def test_keepalive_after_head_requests_success(
+        aiohttp_client) -> None:
+    async def handler(request):
+        body = await request.read()
+        assert b'' == body
+        return web.Response(body=b'OK')
+
+    cnt_conn_reuse = 0
+
+    async def on_reuseconn(session, ctx, params):
+        nonlocal cnt_conn_reuse
+        cnt_conn_reuse += 1
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config._on_connection_reuseconn.append(on_reuseconn)
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+
+    connector = aiohttp.TCPConnector(limit=1)
+    client = await aiohttp_client(app, connector=connector,
+                                  trace_configs=[trace_config])
+
+    resp1 = await client.head('/')
+    await resp1.read()
+    resp2 = await client.get('/')
+    await resp2.read()
+
+    assert 1 == cnt_conn_reuse
+
+
 async def test_keepalive_response_released(aiohttp_client) -> None:
     async def handler(request):
         body = await request.read()
@@ -2201,6 +2232,29 @@ async def test_redirect_without_location_header(aiohttp_client) -> None:
     data = await resp.read()
     assert data == body
 
+
+@pytest.mark.parametrize(
+    ("status", "expected_ok"),
+    (
+        (200, True),
+        (201, True),
+        (301, True),
+        (400, False),
+        (403, False),
+        (500, False),
+    )
+)
+async def test_ok_from_status(aiohttp_client, status, expected_ok) -> None:
+
+    async def handler(request):
+        return web.Response(status=status, body=b'')
+
+    app = web.Application()
+    app.router.add_route('GET', '/endpoint', handler)
+    client = await aiohttp_client(app, raise_for_status=False)
+    resp = await client.get('/endpoint')
+
+    assert resp.ok is expected_ok
 
 async def test_raise_for_status(aiohttp_client) -> None:
 

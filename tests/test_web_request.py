@@ -582,6 +582,17 @@ async def test_request_with_wrong_content_type_encoding(protocol) -> None:
     assert err.value.status_code == 415
 
 
+async def test_make_too_big_request_same_size_to_max(protocol) -> None:
+    payload = StreamReader(protocol, loop=asyncio.get_event_loop())
+    large_file = 1024 ** 2 * b'x'
+    payload.feed_data(large_file)
+    payload.feed_eof()
+    req = make_mocked_request('POST', '/', payload=payload)
+    resp_text = await req.read()
+
+    assert resp_text == large_file
+
+
 async def test_make_too_big_request_adjust_limit(protocol) -> None:
     payload = StreamReader(protocol, loop=asyncio.get_event_loop())
     large_file = 1024 ** 2 * b'x'
