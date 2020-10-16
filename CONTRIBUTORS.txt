@@ -134,6 +134,7 @@ Jakob Ackermann
 Jakub Wilk
 Jashandeep Sohi
 Jens Steinhauser
+Jeonghun Lee
 Jeongkyu Shin
 Jeroen van der Heijden
 Jesus Cea
