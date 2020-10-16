@@ -207,7 +207,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
    .. attribute:: transport
 
-      An :ref:`transport<asyncio-transport>` used to process request,
+      A :ref:`transport<asyncio-transport>` used to process request.
       Read-only property.
 
       The property can be used, for example, for getting IP address of
@@ -2611,7 +2611,7 @@ application on specific TCP or Unix socket, e.g.::
 
    :param runner: a runner to serve.
 
-   :param str host: HOST to listen on, ``'0.0.0.0'`` if ``None`` (default).
+   :param str host: HOST to listen on, all interfaces if ``None`` (default).
 
    :param int port: PORT to listed on, ``8080`` if ``None`` (default).
 
