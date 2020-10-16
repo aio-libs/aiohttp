@@ -992,7 +992,10 @@ class ClientResponse(HeadersMixin):
             except LookupError:
                 encoding = None
         if not encoding:
-            if mimetype.type == 'application' and (mimetype.subtype == 'json' or mimetype.subtype == 'rdap'):
+            if (
+                mimetype.type == 'application' and
+                (mimetype.subtype == 'json' or mimetype.subtype == 'rdap')
+            ):
                 # RFC 7159 states that the default encoding is UTF-8.
                 # RFC 7483 defines application/rdap+json
                 encoding = 'utf-8'
