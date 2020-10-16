@@ -182,6 +182,7 @@ Mathieu Dugré
 Matthieu Hauglustaine
 Matthieu Rigal
 Michael Ihnatenko
+Michał Górny
 Mikhail Burshteyn
 Mikhail Kashkin
 Mikhail Lukyanchenko
