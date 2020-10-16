@@ -358,19 +358,29 @@ class StreamResponse(BaseClass, HeadersMixin):
         if self._payload_writer is not None:
             return self._payload_writer
 
-        await request._prepare_hook(self)
         return await self._start(request)
 
     async def _start(self, request: 'BaseRequest') -> AbstractStreamWriter:
         self._req = request
+        writer = self._payload_writer = request._payload_writer
 
+        await self._prepare_headers()
+        await request._prepare_hook(self)
+        await self._write_headers()
+
+        return writer
+
+    async def _prepare_headers(self) -> None:
+        request = self._req
+        assert request is not None
+        writer = self._payload_writer
+        assert writer is not None
         keep_alive = self._keep_alive
         if keep_alive is None:
             keep_alive = request.keep_alive
         self._keep_alive = keep_alive
 
         version = request.version
-        writer = self._payload_writer = request._payload_writer
 
         headers = self._headers
         for cookie in self._cookies.values():
@@ -413,12 +423,16 @@ class StreamResponse(BaseClass, HeadersMixin):
                 if version == HttpVersion11:
                     headers[hdrs.CONNECTION] = 'close'
 
+    async def _write_headers(self) -> None:
+        request = self._req
+        assert request is not None
+        writer = self._payload_writer
+        assert writer is not None
         # status line
+        version = request.version
         status_line = 'HTTP/{}.{} {} {}'.format(
             version[0], version[1], self._status, self._reason)
-        await writer.write_headers(status_line, headers)
-
-        return writer
+        await writer.write_headers(status_line, self._headers)
 
     async def write(self, data: bytes) -> None:
         assert isinstance(data, (bytes, bytearray, memoryview)), \
