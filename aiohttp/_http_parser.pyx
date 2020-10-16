@@ -451,8 +451,7 @@ cdef class HttpParser:
                 self._cparser.method == 5 or  # CONNECT: 5
                 (self._cparser.status_code >= 199 and
                  self._cparser.content_length == ULLONG_MAX and
-                 self._read_until_eof) and
-                self._cparser.method != 2  # HEAD: 2
+                 self._read_until_eof)
         ):
             payload = StreamReader(
                 self._protocol, timer=self._timer, loop=self._loop)
