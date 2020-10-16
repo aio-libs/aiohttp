@@ -96,7 +96,7 @@ def test_run_app_http(patched_loop) -> None:
 
     web.run_app(app, print=stopper(patched_loop))
 
-    patched_loop.create_server.assert_called_with(mock.ANY, '0.0.0.0', 8080,
+    patched_loop.create_server.assert_called_with(mock.ANY, None, 8080,
                                                   ssl=None, backlog=128,
                                                   reuse_address=None,
                                                   reuse_port=None)
@@ -108,7 +108,7 @@ def test_run_app_close_loop(patched_loop) -> None:
     app = web.Application()
     web.run_app(app, print=stopper(patched_loop))
 
-    patched_loop.create_server.assert_called_with(mock.ANY, '0.0.0.0', 8080,
+    patched_loop.create_server.assert_called_with(mock.ANY, None, 8080,
                                                   ssl=None, backlog=128,
                                                   reuse_address=None,
                                                   reuse_port=None)
@@ -133,7 +133,7 @@ mock_server_multi = [
               backlog=128, reuse_address=None, reuse_port=None),
 ]
 mock_server_default_8989 = [
-    mock.call(mock.ANY, '0.0.0.0', 8989, ssl=None, backlog=128,
+    mock.call(mock.ANY, None, 8989, ssl=None, backlog=128,
               reuse_address=None, reuse_port=None)
 ]
 mock_socket = mock.Mock(getsockname=lambda: ('mock-socket', 123))
@@ -141,7 +141,7 @@ mixed_bindings_tests = (
     (  # type: ignore
         "Nothing Specified",
         {},
-        [mock.call(mock.ANY, '0.0.0.0', 8080, ssl=None, backlog=128,
+        [mock.call(mock.ANY, None, 8080, ssl=None, backlog=128,
                    reuse_address=None, reuse_port=None)],
         []
     ),
@@ -214,7 +214,7 @@ mixed_bindings_tests = (
     (
         "Socket, port",
         {"sock": [mock_socket], "port": 8765},
-        [mock.call(mock.ANY, '0.0.0.0', 8765, ssl=None, backlog=128,
+        [mock.call(mock.ANY, None, 8765, ssl=None, backlog=128,
                    reuse_address=None, reuse_port=None),
          mock.call(mock.ANY, sock=mock_socket, ssl=None, backlog=128)],
         [],
@@ -230,28 +230,28 @@ mixed_bindings_tests = (
     (
         "reuse_port",
         {"reuse_port": True},
-        [mock.call(mock.ANY, '0.0.0.0', 8080, ssl=None, backlog=128,
+        [mock.call(mock.ANY, None, 8080, ssl=None, backlog=128,
                    reuse_address=None, reuse_port=True)],
         []
     ),
     (
         "reuse_address",
         {"reuse_address": False},
-        [mock.call(mock.ANY, '0.0.0.0', 8080, ssl=None, backlog=128,
+        [mock.call(mock.ANY, None, 8080, ssl=None, backlog=128,
                    reuse_address=False, reuse_port=None)],
         []
     ),
     (
         "reuse_port, reuse_address",
         {"reuse_address": True, "reuse_port": True},
-        [mock.call(mock.ANY, '0.0.0.0', 8080, ssl=None, backlog=128,
+        [mock.call(mock.ANY, None, 8080, ssl=None, backlog=128,
                    reuse_address=True, reuse_port=True)],
         []
     ),
     (
         "Port, reuse_port",
         {'port': 8989, "reuse_port": True},
-        [mock.call(mock.ANY, '0.0.0.0', 8989, ssl=None, backlog=128,
+        [mock.call(mock.ANY, None, 8989, ssl=None, backlog=128,
                    reuse_address=None, reuse_port=True)],
         []
     ),
@@ -271,7 +271,7 @@ mixed_bindings_tests = (
         {'path': ('/tmp/testsock1.sock', '/tmp/testsock2.sock'),
          'port': 8989,
          'reuse_address': False},
-        [mock.call(mock.ANY, '0.0.0.0', 8989, ssl=None, backlog=128,
+        [mock.call(mock.ANY, None, 8989, ssl=None, backlog=128,
                    reuse_address=False, reuse_port=None)],
         mock_unix_server_multi,
     ),
@@ -316,7 +316,7 @@ def test_run_app_https(patched_loop) -> None:
     web.run_app(app, ssl_context=ssl_context, print=stopper(patched_loop))
 
     patched_loop.create_server.assert_called_with(
-        mock.ANY, '0.0.0.0', 8443, ssl=ssl_context, backlog=128,
+        mock.ANY, None, 8443, ssl=ssl_context, backlog=128,
         reuse_address=None, reuse_port=None)
 
 
@@ -339,7 +339,7 @@ def test_run_app_custom_backlog(patched_loop) -> None:
     web.run_app(app, backlog=10, print=stopper(patched_loop))
 
     patched_loop.create_server.assert_called_with(
-        mock.ANY, '0.0.0.0', 8080, ssl=None, backlog=10,
+        mock.ANY, None, 8080, ssl=None, backlog=10,
         reuse_address=None, reuse_port=None)
 
 
@@ -534,7 +534,7 @@ def test_run_app_coro(patched_loop) -> None:
 
     web.run_app(make_app(), print=stopper(patched_loop))
 
-    patched_loop.create_server.assert_called_with(mock.ANY, '0.0.0.0', 8080,
+    patched_loop.create_server.assert_called_with(mock.ANY, None, 8080,
                                                   ssl=None, backlog=128,
                                                   reuse_address=None,
                                                   reuse_port=None)
