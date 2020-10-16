@@ -601,7 +601,7 @@ class TestCookieJarSafe(TestCookieJarBase):
             1975, 1, 1, tzinfo=datetime.timezone.utc).timestamp()
 
         ts_after = datetime.datetime(
-            2115, 1, 1, tzinfo=datetime.timezone.utc).timestamp()
+            2030, 1, 1, tzinfo=datetime.timezone.utc).timestamp()
 
         cookies_sent = self.timed_request(
             "http://expirestest.com/", ts_before, ts_before)
