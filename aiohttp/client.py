@@ -522,25 +522,25 @@ class ClientSession:
                             resp.release()
 
                         try:
-                            r_url = URL(
+                            parsed_url = URL(
                                 r_url, encoded=not self._requote_redirect_url)
 
                         except ValueError:
                             raise InvalidURL(r_url)
 
-                        scheme = r_url.scheme
+                        scheme = parsed_url.scheme
                         if scheme not in ('http', 'https', ''):
                             resp.close()
                             raise ValueError(
                                 'Can redirect only to http or https')
                         elif not scheme:
-                            r_url = url.join(r_url)
+                            parsed_url = url.join(parsed_url)
 
-                        if url.origin() != r_url.origin():
+                        if url.origin() != parsed_url.origin():
                             auth = None
                             headers.pop(hdrs.AUTHORIZATION, None)
 
-                        url = r_url
+                        url = parsed_url
                         params = None
                         resp.release()
                         continue
@@ -737,10 +737,10 @@ class ClientSession:
                     headers=resp.headers)
 
             # key calculation
-            key = resp.headers.get(hdrs.SEC_WEBSOCKET_ACCEPT, '')
+            r_key = resp.headers.get(hdrs.SEC_WEBSOCKET_ACCEPT, '')
             match = base64.b64encode(
                 hashlib.sha1(sec_key + WS_KEY).digest()).decode()
-            if key != match:
+            if r_key != match:
                 raise WSServerHandshakeError(
                     resp.request_info,
                     resp.history,
@@ -780,15 +780,16 @@ class ClientSession:
 
             conn = resp.connection
             assert conn is not None
-            proto = conn.protocol
-            assert proto is not None
+            conn_proto = conn.protocol
+            assert conn_proto is not None
             transport = conn.transport
             assert transport is not None
             reader = FlowControlDataQueue(
-                proto, limit=2 ** 16, loop=self._loop)  # type: FlowControlDataQueue[WSMessage]  # noqa
-            proto.set_parser(WebSocketReader(reader, max_msg_size), reader)
+                conn_proto, limit=2 ** 16, loop=self._loop)  # type: FlowControlDataQueue[WSMessage]  # noqa
+            conn_proto.set_parser(
+                WebSocketReader(reader, max_msg_size), reader)
             writer = WebSocketWriter(
-                proto, transport, use_mask=True,
+                conn_proto, transport, use_mask=True,
                 compress=compress, notakeover=notakeover)
         except BaseException:
             resp.close()
@@ -1010,7 +1011,7 @@ class _BaseRequestContextManager(Coroutine[Any,
         return self._coro.send(arg)
 
     def throw(self, arg: BaseException) -> None:  # type: ignore
-        self._coro.throw(arg)  # type: ignore
+        self._coro.throw(arg)
 
     def close(self) -> None:
         return self._coro.close()
@@ -1130,10 +1131,10 @@ def request(
        total timeout by default.
     Usage::
       >>> import aiohttp
-      >>> resp = await aiohttp.request('GET', 'http://python.org/')
-      >>> resp
-      <ClientResponse(python.org/) [200]>
-      >>> data = await resp.read()
+      >>> async with aiohttp.request('GET', 'http://python.org/') as resp:
+      ...    print(resp)
+      ...    data = await resp.read()
+      <ClientResponse(https://www.python.org/) [200 OK]>
     """
     connector_owner = False
     if connector is None:

@@ -39,6 +39,7 @@ from .helpers import (
     set_result,
 )
 from .http_parser import RawRequestMessage
+from .http_writer import HttpVersion
 from .multipart import BodyPartReader, MultipartReader
 from .streams import EmptyStreamReader, StreamReader
 from .typedefs import (
@@ -60,8 +61,8 @@ __all__ = ('BaseRequest', 'FileField', 'Request')
 
 if TYPE_CHECKING:  # pragma: no cover
     from .web_app import Application  # noqa
-    from .web_urldispatcher import UrlMappingMatchInfo  # noqa
     from .web_protocol import RequestHandler  # noqa
+    from .web_urldispatcher import UrlMappingMatchInfo  # noqa
 
 
 @attr.s(frozen=True, slots=True)
@@ -343,7 +344,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._method
 
     @reify
-    def version(self) -> Tuple[int, int]:
+    def version(self) -> HttpVersion:
         """Read only property for getting HTTP version of request.
 
         Returns aiohttp.protocol.HttpVersion instance.
@@ -434,7 +435,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._message.raw_headers
 
     @staticmethod
-    def _http_date(_date_str: str) -> Optional[datetime.datetime]:
+    def _http_date(_date_str: Optional[str]) -> Optional[datetime.datetime]:
         """Process a date string, return a datetime object
         """
         if _date_str is not None:
@@ -555,7 +556,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
                 body.extend(chunk)
                 if self._client_max_size:
                     body_size = len(body)
-                    if body_size >= self._client_max_size:
+                    if body_size > self._client_max_size:
                         raise HTTPRequestEntityTooLarge(
                             max_size=self._client_max_size,
                             actual_size=body_size
@@ -618,6 +619,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
                 field_ct = field.headers.get(hdrs.CONTENT_TYPE)
 
                 if isinstance(field, BodyPartReader):
+                    assert field.name is not None
                     if field.filename and field_ct:
                         # store file in temp file
                         tmp = tempfile.TemporaryFile()

@@ -668,12 +668,23 @@ class HttpPayloadParser:
                 # we should get another \r\n otherwise
                 # trailers needs to be skiped until \r\n\r\n
                 if self._chunk == ChunkState.PARSE_MAYBE_TRAILERS:
-                    if chunk[:2] == SEP:
+                    head = chunk[:2]
+                    if head == SEP:
                         # end of stream
                         self.payload.feed_eof()
                         return True, chunk[2:]
-                    else:
-                        self._chunk = ChunkState.PARSE_TRAILERS
+                    # Both CR and LF, or only LF may not be received yet. It is
+                    # expected that CRLF or LF will be shown at the very first
+                    # byte next time, otherwise trailers should come. The last
+                    # CRLF which marks the end of response might not be
+                    # contained in the same TCP segment which delivered the
+                    # size indicator.
+                    if not head:
+                        return False, b''
+                    if head == SEP[:1]:
+                        self._chunk_tail = head
+                        return False, b''
+                    self._chunk = ChunkState.PARSE_TRAILERS
 
                 # read and discard trailer up to the CRLF terminator
                 if self._chunk == ChunkState.PARSE_TRAILERS:
@@ -745,7 +756,7 @@ class DeflateBuffer:
         if not self._started_decoding and self.encoding == 'deflate' \
                 and chunk[0] & 0xf != 8:
             # Change the decoder to decompress incorrectly compressed data
-            # Actually we should issue a warning about non-RFC-compilant data.
+            # Actually we should issue a warning about non-RFC-compliant data.
             self.decompressor = zlib.decompressobj(wbits=-zlib.MAX_WBITS)
 
         try:
@@ -783,10 +794,12 @@ RawResponseMessagePy = RawResponseMessage
 
 try:
     if not NO_EXTENSIONS:
-        from ._http_parser import (HttpRequestParser,  # type: ignore  # noqa
-                                   HttpResponseParser,
-                                   RawRequestMessage,
-                                   RawResponseMessage)
+        from ._http_parser import (  # type: ignore  # noqa
+            HttpRequestParser,
+            HttpResponseParser,
+            RawRequestMessage,
+            RawResponseMessage,
+        )
         HttpRequestParserC = HttpRequestParser
         HttpResponseParserC = HttpResponseParser
         RawRequestMessageC = RawRequestMessage

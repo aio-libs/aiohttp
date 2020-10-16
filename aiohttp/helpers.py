@@ -25,6 +25,7 @@ from typing import (  # noqa
     Callable,
     Dict,
     Generator,
+    Generic,
     Iterable,
     Iterator,
     List,
@@ -66,6 +67,11 @@ try:
 except ImportError:
     from typing_extensions import ContextManager
 
+if PY_38:
+    from typing import Protocol
+else:
+    from typing_extensions import Protocol  # type: ignore
+
 
 def all_tasks(
         loop: Optional[asyncio.AbstractEventLoop] = None
@@ -79,6 +85,7 @@ if PY_37:
 
 
 _T = TypeVar('_T')
+_S = TypeVar('_S')
 
 
 sentinel = object()  # type: Any
@@ -229,15 +236,16 @@ class ProxyInfo:
 
 def proxies_from_env() -> Dict[str, ProxyInfo]:
     proxy_urls = {k: URL(v) for k, v in getproxies().items()
-                  if k in ('http', 'https')}
+                  if k in ('http', 'https', 'ws', 'wss')}
     netrc_obj = netrc_from_env()
     stripped = {k: strip_auth_from_url(v) for k, v in proxy_urls.items()}
     ret = {}
     for proto, val in stripped.items():
         proxy, auth = val
-        if proxy.scheme == 'https':
+        if proxy.scheme in ('https', 'wss'):
             client_logger.warning(
-                "HTTPS proxies %s are not supported, ignoring", proxy)
+                "%s proxies %s are not supported, ignoring",
+                proxy.scheme.upper(), proxy)
             continue
         if netrc_obj and auth is None:
             auth_from_netrc = None
@@ -256,9 +264,9 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
 
 def current_task(
         loop: Optional[asyncio.AbstractEventLoop]=None
-) -> 'asyncio.Task[Any]':
+) -> 'Optional[asyncio.Task[Any]]':
     if PY_37:
-        return asyncio.current_task(loop=loop)  # type: ignore
+        return asyncio.current_task(loop=loop)
     else:
         return asyncio.Task.current_task(loop=loop)
 
@@ -381,7 +389,11 @@ def is_expected_content_type(response_content_type: str,
     return expected_content_type in response_content_type
 
 
-class reify:
+class _TSelf(Protocol):
+    _cache: Dict[str, Any]
+
+
+class reify(Generic[_T]):
     """Use as a class method decorator.  It operates almost exactly like
     the Python `@property` decorator, but it puts the result of the
     method it decorates into the instance dict after the first call,
@@ -390,12 +402,12 @@ class reify:
 
     """
 
-    def __init__(self, wrapped: Callable[..., Any]) -> None:
+    def __init__(self, wrapped: Callable[..., _T]) -> None:
         self.wrapped = wrapped
         self.__doc__ = wrapped.__doc__
         self.name = wrapped.__name__
 
-    def __get__(self, inst: Any, owner: Any) -> Any:
+    def __get__(self, inst: _TSelf, owner: Optional[Type[Any]] = None) -> _T:
         try:
             try:
                 return inst._cache[self.name]
@@ -408,7 +420,7 @@ class reify:
                 return self
             raise
 
-    def __set__(self, inst: Any, value: Any) -> None:
+    def __set__(self, inst: _TSelf, value: _T) -> None:
         raise AttributeError("reified property is read-only")
 
 
