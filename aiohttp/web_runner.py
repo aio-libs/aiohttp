@@ -78,8 +78,6 @@ class TCPSite(BaseSite):
                  reuse_port: Optional[bool]=None) -> None:
         super().__init__(runner, shutdown_timeout=shutdown_timeout,
                          ssl_context=ssl_context, backlog=backlog)
-        if host is None:
-            host = "0.0.0.0"
         self._host = host
         if port is None:
             port = 8443 if self._ssl_context else 8080
@@ -90,7 +88,8 @@ class TCPSite(BaseSite):
     @property
     def name(self) -> str:
         scheme = 'https' if self._ssl_context else 'http'
-        return str(URL.build(scheme=scheme, host=self._host, port=self._port))
+        host = "0.0.0.0" if self._host is None else self._host
+        return str(URL.build(scheme=scheme, host=host, port=self._port))
 
     async def start(self) -> None:
         await super().start()
