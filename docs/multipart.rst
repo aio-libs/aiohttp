@@ -6,7 +6,7 @@ Working with Multipart
 ======================
 
 ``aiohttp`` supports a full featured multipart reader and writer. Both
-are designed with steaming processing in mind to avoid unwanted
+are designed with streaming processing in mind to avoid unwanted
 footprint which may be significant if you're dealing with large
 payloads, but this also means that most I/O operation are only
 possible to be executed a single time.
@@ -55,7 +55,7 @@ body part headers: this allows you to filter parts by their attributes::
         metadata = await part.json()
         continue
 
-Nor :class:`BodyPartReader` or :class:`MultipartReader` instances does not
+Neither :class:`BodyPartReader` nor :class:`MultipartReader` instances
 read the whole body part data without explicitly asking for.
 :class:`BodyPartReader` provides a set of helpers methods
 to fetch popular content types in friendly way:
