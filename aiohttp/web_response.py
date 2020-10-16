@@ -352,15 +352,17 @@ class StreamResponse(BaseClass, HeadersMixin):
         self._req = request
         writer = self._payload_writer = request._payload_writer
 
-        await self._prepare_headers(request, writer)
+        await self._prepare_headers()
         await request._prepare_hook(self)
-        await self._write_headers(request, writer)
+        await self._write_headers()
 
         return writer
 
-    async def _prepare_headers(
-        self, request: 'BaseRequest', writer: AbstractStreamWriter
-    ) -> None:
+    async def _prepare_headers(self) -> None:
+        request = self._req
+        assert request is not None
+        writer = self._payload_writer
+        assert writer is not None
         keep_alive = self._keep_alive
         if keep_alive is None:
             keep_alive = request.keep_alive
@@ -409,9 +411,11 @@ class StreamResponse(BaseClass, HeadersMixin):
                 if version == HttpVersion11:
                     headers[hdrs.CONNECTION] = 'close'
 
-    async def _write_headers(
-        self, request: 'BaseRequest', writer: AbstractStreamWriter
-    ) -> None:
+    async def _write_headers(self) -> None:
+        request = self._req
+        assert request is not None
+        writer = self._payload_writer
+        assert writer is not None
         # status line
         version = request.version
         status_line = 'HTTP/{}.{} {} {}'.format(
