@@ -50,11 +50,12 @@ class CookieJar(AbstractCookieJar):
     MAX_TIME = datetime.datetime.max.replace(
         tzinfo=datetime.timezone.utc)
 
-    def __init__(self, *, unsafe: bool=False) -> None:
+    def __init__(self, *, unsafe: bool=False, quote_cookie: bool=True) -> None:
         self._loop = get_running_loop()
         self._cookies = defaultdict(SimpleCookie)  #type: DefaultDict[str, SimpleCookie[str]]  # noqa
         self._host_only_cookies = set()  # type: Set[Tuple[str, str]]
         self._unsafe = unsafe
+        self._quote_cookie = quote_cookie
         self._next_expiration = next_whole_second()
         self._expirations = {}  # type: Dict[Tuple[str, str], datetime.datetime]  # noqa: E501
 
@@ -194,7 +195,9 @@ class CookieJar(AbstractCookieJar):
 
         self._do_expiration()
 
-    def filter_cookies(self, request_url: URL=URL()) -> 'BaseCookie[str]':
+    def filter_cookies(self,
+                       request_url: URL=URL()
+                       ) -> Union['BaseCookie[str]', 'SimpleCookie[str]']:
         """Returns this jar's cookies filtered by their attributes."""
         self._do_expiration()
         if not isinstance(request_url, URL):
@@ -202,7 +205,10 @@ class CookieJar(AbstractCookieJar):
                           .format(type(request_url)),
                           DeprecationWarning)
             request_url = URL(request_url)
-        filtered = SimpleCookie()  # type: SimpleCookie[str]
+        filtered: Union['SimpleCookie[str]', 'BaseCookie[str]'] = (
+            SimpleCookie() if self._quote_cookie
+            else BaseCookie()
+        )
         hostname = request_url.raw_host or ""
         is_not_secure = request_url.scheme not in ("https", "wss")
 
