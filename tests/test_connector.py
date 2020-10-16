@@ -273,6 +273,38 @@ async def test_get(loop) -> None:
     await conn.close()
 
 
+async def test_get_unconnected_proto(loop) -> None:
+    conn = aiohttp.BaseConnector()
+    key = ConnectionKey('localhost', 80, False, None, None, None, None)
+    assert conn._get(key) is None
+
+    proto = create_mocked_conn(loop)
+    conn._conns[key] = [(proto, loop.time())]
+    assert conn._get(key) == proto
+
+    assert conn._get(key) is None
+    conn._conns[key] = [(proto, loop.time())]
+    proto.is_connected = lambda *args: False
+    assert conn._get(key) is None
+    await conn.close()
+
+
+async def test_get_unconnected_proto_ssl(loop) -> None:
+    conn = aiohttp.BaseConnector()
+    key = ConnectionKey('localhost', 80, True, None, None, None, None)
+    assert conn._get(key) is None
+
+    proto = create_mocked_conn(loop)
+    conn._conns[key] = [(proto, loop.time())]
+    assert conn._get(key) == proto
+
+    assert conn._get(key) is None
+    conn._conns[key] = [(proto, loop.time())]
+    proto.is_connected = lambda *args: False
+    assert conn._get(key) is None
+    await conn.close()
+
+
 async def test_get_expired(loop) -> None:
     conn = aiohttp.BaseConnector()
     key = ConnectionKey('localhost', 80, False, None, None, None, None)

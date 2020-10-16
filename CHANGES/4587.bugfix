@@ -1,0 +1,10 @@
+Always make sure transport is not closing before reuse a connection.
+
+Reuse a protocol based on keepalive in headers is unreliable.
+For example, uWSGI will not support keepalive even it serves a
+http1.1 request, except explicitly configure uWSGI with a
+`--http-keepalive` option.
+
+Servers designed like uWSGI could cause aiohttp intermittently
+raise a ConnectionResetException when the protocol poll runs
+out and some protocol is reused.
