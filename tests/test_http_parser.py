@@ -837,21 +837,6 @@ def test_parse_uri_utf8_percent_encoded(parser) -> None:
     assert msg.url.fragment == 'фраг'
 
 
-def test_parse_uri_non_utf8(parser) -> None:
-    text = ('GET /путь?ключ=знач#фраг HTTP/1.1\r\n\r\n').encode('cp1251')
-    messages, upgrade, tail = parser.feed_data(text)
-    msg = messages[0][0]
-
-    def recode(s):
-        return s.encode('cp1251').decode('utf-8', 'surrogateescape')
-
-    assert msg.path == recode('/путь?ключ=знач#фраг')
-    assert msg.url == URL(msg.path)
-    assert msg.url.path == recode('/путь')
-    assert msg.url.query == {recode('ключ'): recode('знач')}
-    assert msg.url.fragment == recode('фраг')
-
-
 class TestParsePayload:
 
     async def test_parse_eof_payload(self, stream) -> None:
