@@ -266,26 +266,45 @@ async def test_domain_filter_ip_cookie_receive(cookies_to_receive) -> None:
     assert len(jar) == 0
 
 
-async def test_preserving_ip_domain_cookies(loop) -> None:
-    jar = CookieJar(loop=loop, unsafe=True)
+@pytest.mark.parametrize(
+    ('cookies', 'expected', 'quote_bool'),
+    [
+        ("shared-cookie=first; ip-cookie=second; Domain=127.0.0.1;",
+         'Cookie: ip-cookie=second\r\nCookie: shared-cookie=first',
+         True),
+        ("ip-cookie=\"second\"; Domain=127.0.0.1;",
+         'Cookie: ip-cookie=\"second\"',
+         True),
+        ("custom-cookie=value/one;",
+         'Cookie: custom-cookie="value/one"',
+         True),
+        ("custom-cookie=value1;",
+         'Cookie: custom-cookie=value1',
+         True),
+        ("custom-cookie=value/one;",
+         'Cookie: custom-cookie=value/one',
+         False),
+    ],
+    ids=(
+        'IP domain preserved',
+        'no shared cookie',
+        'quoted cookie with special char',
+        'quoted cookie w/o special char',
+        'unquoted cookie with special char',
+    ),
+)
+async def test_quotes_correctly_based_on_input(loop,
+                                               cookies,
+                                               expected,
+                                               quote_bool
+                                               ) -> None:
+    jar = CookieJar(unsafe=True, quote_cookie=quote_bool)
     jar.update_cookies(SimpleCookie(
-        "shared-cookie=first; "
-        "ip-cookie=second; Domain=127.0.0.1;"
+        cookies
     ))
     cookies_sent = jar.filter_cookies(URL("http://127.0.0.1/")).output(
         header='Cookie:')
-    assert cookies_sent == ('Cookie: ip-cookie=second\r\n'
-                            'Cookie: shared-cookie=first')
-
-
-async def test_preserving_quoted_cookies(loop) -> None:
-    jar = CookieJar(loop=loop, unsafe=True)
-    jar.update_cookies(SimpleCookie(
-        "ip-cookie=\"second\"; Domain=127.0.0.1;"
-    ))
-    cookies_sent = jar.filter_cookies(URL("http://127.0.0.1/")).output(
-        header='Cookie:')
-    assert cookies_sent == 'Cookie: ip-cookie=\"second\"'
+    assert cookies_sent == expected
 
 
 async def test_ignore_domain_ending_with_dot(loop) -> None:
@@ -576,7 +595,7 @@ class TestCookieJarSafe(TestCookieJarBase):
             1975, 1, 1, tzinfo=datetime.timezone.utc).timestamp()
 
         ts_after = datetime.datetime(
-            2115, 1, 1, tzinfo=datetime.timezone.utc).timestamp()
+            2030, 1, 1, tzinfo=datetime.timezone.utc).timestamp()
 
         cookies_sent = self.timed_request(
             "http://expirestest.com/", ts_before, ts_before)

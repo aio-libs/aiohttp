@@ -474,10 +474,6 @@ class RequestHandler(BaseProtocol):
                 # notify server about keep-alive
                 self._keepalive = bool(resp.keep_alive)
 
-                # log access
-                if self.access_log:
-                    self.log_access(request, resp, loop.time() - start)
-
                 # check payload
                 if not payload.is_eof():
                     lingering_time = self._lingering_time
@@ -625,11 +621,13 @@ class RequestHandler(BaseProtocol):
                                  status: int,
                                  exc: Optional[BaseException]=None,
                                  message: Optional[str]=None) -> None:
+        task = current_task()
+        assert task is not None
         request = BaseRequest(
             ERROR,
             EMPTY_PAYLOAD,  # type: ignore
             self, writer,
-            current_task(),
+            task,
             self._loop)
 
         resp = self.handle_error(request, status, exc, message)

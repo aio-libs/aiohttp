@@ -187,15 +187,15 @@ async def hello(request):
     return web.Response(body=b'Hello, world')
 
 
-def create_app(loop):
+def create_app():
     app = web.Application()
     app.router.add_route('GET', '/', hello)
     return app
 
 
 @pytest.fixture
-async def cli(aiohttp_client):
-    client = await aiohttp_client(create_app)
+async def cli(aiohttp_client, loop):
+    client = await aiohttp_client(create_app())
     return client
 
 
@@ -210,7 +210,7 @@ async def bar(request):
     return request.function
 
 
-async def test_hello(cli) -> None:
+async def test_hello(cli, loop) -> None:
     resp = await cli.get('/')
     assert resp.status == 200
 
@@ -229,7 +229,7 @@ def test_bar(loop, bar) -> None:
 """)
     testdir.makeconftest(CONFTEST)
     result = testdir.runpytest('-p', 'no:sugar', '--aiohttp-loop=pyloop')
-    result.assert_outcomes(passed=3, error=1)
+    result.assert_outcomes(passed=3, errors=1)
     result.stdout.fnmatch_lines(
         "*Asynchronous fixtures must depend on the 'loop' fixture "
         "or be used in tests depending from it."

@@ -50,14 +50,24 @@ class CookieJar(AbstractCookieJar):
     MAX_TIME = datetime.datetime.max.replace(
         tzinfo=datetime.timezone.utc)
 
-    def __init__(self, *, unsafe: bool=False,
+    MAX_32BIT_TIME = datetime.datetime.utcfromtimestamp(
+        2**31 - 1)
+
+    def __init__(self, *, unsafe: bool=False, quote_cookie: bool=True,
                  loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
         super().__init__(loop=loop)
         self._cookies = defaultdict(SimpleCookie)  #type: DefaultDict[str, SimpleCookie[str]]  # noqa
         self._host_only_cookies = set()  # type: Set[Tuple[str, str]]
         self._unsafe = unsafe
+        self._quote_cookie = quote_cookie
         self._next_expiration = next_whole_second()
         self._expirations = {}  # type: Dict[Tuple[str, str], datetime.datetime]  # noqa: E501
+        # #4515: datetime.max may not be representable on 32-bit platforms
+        self._max_time = self.MAX_TIME
+        try:
+            self._max_time.timestamp()
+        except OverflowError:
+            self._max_time = self.MAX_32BIT_TIME
 
     def save(self, file_path: PathLike) -> None:
         file_path = pathlib.Path(file_path)
@@ -89,7 +99,7 @@ class CookieJar(AbstractCookieJar):
             return
         if not self._expirations:
             return
-        next_expiration = self.MAX_TIME
+        next_expiration = self._max_time
         to_del = []
         cookies = self._cookies
         expirations = self._expirations
@@ -107,7 +117,7 @@ class CookieJar(AbstractCookieJar):
             self._next_expiration = (next_expiration.replace(microsecond=0) +
                                      datetime.timedelta(seconds=1))
         except OverflowError:
-            self._next_expiration = self.MAX_TIME
+            self._next_expiration = self._max_time
 
     def _expire_cookie(self, when: datetime.datetime, domain: str, name: str
                        ) -> None:
@@ -175,7 +185,7 @@ class CookieJar(AbstractCookieJar):
                             datetime.datetime.now(datetime.timezone.utc) +
                             datetime.timedelta(seconds=delta_seconds))
                     except OverflowError:
-                        max_age_expiration = self.MAX_TIME
+                        max_age_expiration = self._max_time
                     self._expire_cookie(max_age_expiration,
                                         domain, name)
                 except ValueError:
@@ -195,11 +205,16 @@ class CookieJar(AbstractCookieJar):
 
         self._do_expiration()
 
-    def filter_cookies(self, request_url: URL=URL()) -> 'BaseCookie[str]':
+    def filter_cookies(self,
+                       request_url: URL=URL()
+                       ) -> Union['BaseCookie[str]', 'SimpleCookie[str]']:
         """Returns this jar's cookies filtered by their attributes."""
         self._do_expiration()
         request_url = URL(request_url)
-        filtered = SimpleCookie()  # type: SimpleCookie[str]
+        filtered: Union['SimpleCookie[str]', 'BaseCookie[str]'] = (
+            SimpleCookie() if self._quote_cookie
+            else BaseCookie()
+        )
         hostname = request_url.raw_host or ""
         is_not_secure = request_url.scheme not in ("https", "wss")
 

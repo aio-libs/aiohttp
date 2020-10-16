@@ -349,6 +349,11 @@ class BaseConnector:
                                     transport)
                         else:
                             alive.append((proto, use_time))
+                    else:
+                        transport = proto.transport
+                        proto.close()
+                        if key.is_ssl and not self._cleanup_closed_disabled:
+                            self._cleanup_closed_transports.append(transport)
 
                 if alive:
                     connections[key] = alive
@@ -474,8 +479,9 @@ class BaseConnector:
         key = req.connection_key
         available = self._available_connections(key)
 
-        # Wait if there are no available connections.
-        if available <= 0:
+        # Wait if there are no available connections or if there are/were
+        # waiters (i.e. don't steal connection from a waiter about to wake up)
+        if available <= 0 or key in self._waiters:
             fut = self._loop.create_future()
 
             # This connection will now count towards the limit.
@@ -568,6 +574,11 @@ class BaseConnector:
                         # The very last connection was reclaimed: drop the key
                         del self._conns[key]
                     return proto
+            else:
+                transport = proto.transport
+                proto.close()
+                if key.is_ssl and not self._cleanup_closed_disabled:
+                    self._cleanup_closed_transports.append(transport)
 
         # No more connections: drop the key
         del self._conns[key]
@@ -953,18 +964,27 @@ class TCPConnector(BaseConnector):
         sslcontext = self._get_ssl_context(req)
         fingerprint = self._get_fingerprint(req)
 
+        host = req.url.raw_host
+        assert host is not None
+        port = req.port
+        assert port is not None
+        host_resolved = asyncio.ensure_future(self._resolve_host(
+            host,
+            port,
+            traces=traces), loop=self._loop)
         try:
             # Cancelling this lookup should not cancel the underlying lookup
             #  or else the cancel event will get broadcast to all the waiters
             #  across all connections.
-            host = req.url.raw_host
-            assert host is not None
-            port = req.port
-            assert port is not None
-            hosts = await asyncio.shield(self._resolve_host(
-                host,
-                port,
-                traces=traces))
+            hosts = await asyncio.shield(host_resolved)
+        except asyncio.CancelledError:
+            def drop_exception(
+                    fut: 'asyncio.Future[List[Dict[str, Any]]]'
+            ) -> None:
+                with suppress(Exception, asyncio.CancelledError):
+                    fut.result()
+            host_resolved.add_done_callback(drop_exception)
+            raise
         except OSError as exc:
             # in case of proxy it is not ClientProxyConnectionError
             # it is problem of resolving proxy ip itself
