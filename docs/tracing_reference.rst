@@ -312,10 +312,10 @@ TraceRequestChunkSentParams
        Bytes of chunk sent
 
 
-TraceResponseChunkSentParams
-----------------------------
+TraceResponseChunkReceivedParams
+--------------------------------
 
-.. class:: TraceResponseChunkSentParams
+.. class:: TraceResponseChunkReceivedParams
 
    .. versionadded:: 3.1
 
@@ -456,7 +456,7 @@ TraceDnsResolveHostStartParams
 
    See :attr:`TraceConfig.on_dns_resolvehost_start` for details.
 
-   .. attribute:: Host
+   .. attribute:: host
 
        Host that will be resolved.
 
@@ -467,7 +467,7 @@ TraceDnsResolveHostEndParams
 
    See :attr:`TraceConfig.on_dns_resolvehost_end` for details.
 
-   .. attribute:: Host
+   .. attribute:: host
 
        Host that has been resolved.
 
@@ -478,7 +478,7 @@ TraceDnsCacheHitParams
 
    See :attr:`TraceConfig.on_dns_cache_hit` for details.
 
-   .. attribute:: Host
+   .. attribute:: host
 
        Host found in the cache.
 
@@ -489,6 +489,6 @@ TraceDnsCacheMissParams
 
    See :attr:`TraceConfig.on_dns_cache_miss` for details.
 
-   .. attribute:: Host
+   .. attribute:: host
 
        Host didn't find the cache.
