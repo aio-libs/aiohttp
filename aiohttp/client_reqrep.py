@@ -69,7 +69,7 @@ except ImportError:  # pragma: no cover
 try:
     import cchardet as chardet
 except ImportError:  # pragma: no cover
-    import chardet
+    import chardet  # type: ignore
 
 
 __all__ = ('ClientRequest', 'ClientResponse', 'RequestInfo', 'Fingerprint')
@@ -297,7 +297,7 @@ class ClientRequest:
         parser HTTP version '1.1' => (1, 1)
         """
         if isinstance(version, str):
-            v = [l.strip() for l in version.split('.', 1)]
+            v = [part.strip() for part in version.split('.', 1)]
             try:
                 version = http.HttpVersion(int(v[0]), int(v[1]))
             except ValueError:
@@ -322,7 +322,7 @@ class ClientRequest:
             if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
                 headers = headers.items()  # type: ignore
 
-            for key, value in headers:
+            for key, value in headers:  # type: ignore
                 # A special case for Host header
                 if key.lower() == 'host':
                     self.headers[key] = value
@@ -1003,6 +1003,6 @@ class ClientResponse(HeadersMixin):
                         exc_val: Optional[BaseException],
                         exc_tb: Optional[TracebackType]) -> None:
         # similar to _RequestContextManager, we do not need to check
-        # for exceptions, response object can closes connection
-        # is state is broken
+        # for exceptions, response object can close connection
+        # if state is broken
         self.release()
