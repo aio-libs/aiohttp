@@ -318,6 +318,11 @@ class BaseConnector:
                                     transport)
                         else:
                             alive.append((proto, use_time))
+                    else:
+                        transport = proto.transport
+                        proto.close()
+                        if key.is_ssl and not self._cleanup_closed_disabled:
+                            self._cleanup_closed_transports.append(transport)
 
                 if alive:
                     connections[key] = alive
@@ -552,6 +557,11 @@ class BaseConnector:
                         # The very last connection was reclaimed: drop the key
                         del self._conns[key]
                     return proto
+            else:
+                transport = proto.transport
+                proto.close()
+                if key.is_ssl and not self._cleanup_closed_disabled:
+                    self._cleanup_closed_transports.append(transport)
 
         # No more connections: drop the key
         del self._conns[key]
