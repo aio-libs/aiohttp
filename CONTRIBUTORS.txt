@@ -115,6 +115,7 @@ Gennady Andreyev
 Georges Dubus
 Greg Holt
 Gregory Haynes
+Grigory Kirillov
 Gus Goulart
 Gustavo Carneiro
 Günther Jena

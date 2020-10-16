@@ -672,6 +672,9 @@ class HttpPayloadParser:
                         # end of stream
                         self.payload.feed_eof()
                         return True, chunk[2:]
+                    elif len(chunk) < 2:
+                        self._chunk_tail = chunk
+                        return False, b''
                     else:
                         self._chunk = ChunkState.PARSE_TRAILERS
 
