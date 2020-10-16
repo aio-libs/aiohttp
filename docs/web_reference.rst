@@ -2674,7 +2674,7 @@ application on specific TCP or Unix socket, e.g.::
 
    :param runner: a runner to serve.
 
-   :param str host: HOST to listen on, ``'0.0.0.0'`` if ``None`` (default).
+   :param str host: HOST to listen on, all interfaces if ``None`` (default).
 
    :param int port: PORT to listed on, ``8080`` if ``None`` (default).
 
