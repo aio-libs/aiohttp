@@ -65,7 +65,7 @@ class ResponseHandler(BaseProtocol,
             self._drop_timeout()
 
     def is_connected(self) -> bool:
-        return self.transport is not None
+        return self.transport is not None and not self.transport.is_closing()
 
     def connection_lost(self, exc: Optional[BaseException]) -> None:
         self._drop_timeout()
