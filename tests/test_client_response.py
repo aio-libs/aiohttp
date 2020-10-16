@@ -970,10 +970,12 @@ def test_redirect_history_in_exception() -> None:
 async def test_response_read_triggers_callback(loop, session) -> None:
     trace = mock.Mock()
     trace.send_response_chunk_received = make_mocked_coro()
+    response_method = 'get'
+    response_url = URL('http://def-cl-resp.org')
     response_body = b'This is response'
 
     response = ClientResponse(
-        'get', URL('http://def-cl-resp.org'),
+        response_method, response_url,
         request_info=mock.Mock,
         writer=mock.Mock(),
         continue100=None,
@@ -1000,7 +1002,7 @@ async def test_response_read_triggers_callback(loop, session) -> None:
     assert trace.send_response_chunk_received.called
     assert (
         trace.send_response_chunk_received.call_args ==
-        mock.call(response_body)
+        mock.call(response_method, response_url, response_body)
     )
 
 
