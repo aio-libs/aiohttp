@@ -1,5 +1,6 @@
 import asyncio
 import codecs
+import functools
 import io
 import re
 import sys
@@ -595,7 +596,8 @@ class ClientRequest:
         assert protocol is not None
         writer = StreamWriter(
             protocol, self.loop,
-            on_chunk_sent=self._on_chunk_request_sent
+            on_chunk_sent=functools.partial(self._on_chunk_request_sent,
+                                            self.method, self.url)
         )
 
         if self.compress:
@@ -655,9 +657,12 @@ class ClientRequest:
                 self._writer.cancel()
             self._writer = None
 
-    async def _on_chunk_request_sent(self, chunk: bytes) -> None:
+    async def _on_chunk_request_sent(self,
+                                     method: str,
+                                     url: URL,
+                                     chunk: bytes) -> None:
         for trace in self._traces:
-            await trace.send_request_chunk_sent(chunk)
+            await trace.send_request_chunk_sent(method, url, chunk)
 
 
 class ClientResponse(HeadersMixin):
@@ -972,7 +977,9 @@ class ClientResponse(HeadersMixin):
             try:
                 self._body = await self.content.read()
                 for trace in self._traces:
-                    await trace.send_response_chunk_received(self._body)
+                    await trace.send_response_chunk_received(self.method,
+                                                             self.url,
+                                                             self._body)
             except BaseException:
                 self.close()
                 raise
