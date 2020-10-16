@@ -652,7 +652,7 @@ async def test_tcp_connector_resolve_host(loop) -> None:
     for rec in res:
         if rec['family'] == socket.AF_INET:
             assert rec['host'] == '127.0.0.1'
-            assert rec['hostname'] == 'localhost'
+            assert rec['hostname'] == '127.0.0.1'
             assert rec['port'] == 8080
         elif rec['family'] == socket.AF_INET6:
             assert rec['hostname'] == 'localhost'
