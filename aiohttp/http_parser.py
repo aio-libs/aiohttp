@@ -178,7 +178,8 @@ class HttpParser(abc.ABC):
                  payload_exception: Optional[Type[BaseException]]=None,
                  response_with_body: bool=True,
                  read_until_eof: bool=False,
-                 auto_decompress: bool=True) -> None:
+                 auto_decompress: bool=True,
+                 limit: int=2**16) -> None:
         self.protocol = protocol
         self.loop = loop
         self.max_line_size = max_line_size
@@ -198,6 +199,7 @@ class HttpParser(abc.ABC):
         self._payload = None
         self._payload_parser = None  # type: Optional[HttpPayloadParser]
         self._auto_decompress = auto_decompress
+        self._limit = limit
         self._headers_parser = HeadersParser(max_line_size,
                                              max_headers,
                                              max_field_size)
@@ -288,7 +290,8 @@ class HttpParser(abc.ABC):
                         if ((length is not None and length > 0) or
                                 msg.chunked and not msg.upgrade):
                             payload = StreamReader(
-                                self.protocol, timer=self.timer, loop=loop)
+                                self.protocol, timer=self.timer, loop=loop,
+                                limit=self._limit)
                             payload_parser = HttpPayloadParser(
                                 payload, length=length,
                                 chunked=msg.chunked, method=method,
@@ -300,7 +303,8 @@ class HttpParser(abc.ABC):
                                 self._payload_parser = payload_parser
                         elif method == METH_CONNECT:
                             payload = StreamReader(
-                                self.protocol, timer=self.timer, loop=loop)
+                                self.protocol, timer=self.timer, loop=loop,
+                                limit=self._limit)
                             self._upgraded = True
                             self._payload_parser = HttpPayloadParser(
                                 payload, method=msg.method,
@@ -310,7 +314,8 @@ class HttpParser(abc.ABC):
                             if (getattr(msg, 'code', 100) >= 199 and
                                     length is None and self.read_until_eof):
                                 payload = StreamReader(
-                                    self.protocol, timer=self.timer, loop=loop)
+                                    self.protocol, timer=self.timer, loop=loop,
+                                    limit=self._limit)
                                 payload_parser = HttpPayloadParser(
                                     payload, length=length,
                                     chunked=msg.chunked, method=method,
