@@ -138,6 +138,9 @@ class StreamReader(AsyncStreamReaderMixin):
             info.append('e=%r' % self._exception)
         return '<%s>' % ' '.join(info)
 
+    def get_read_buffer_limits(self) -> Tuple[int, int]:
+        return (self._low_water, self._high_water)
+
     def exception(self) -> Optional[BaseException]:
         return self._exception
 
