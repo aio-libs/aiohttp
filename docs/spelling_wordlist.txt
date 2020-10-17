@@ -138,6 +138,8 @@ keepalive
 keepalived
 keepalives
 keepaliving
+KiB
+kib
 kwarg
 latin
 lifecycle
