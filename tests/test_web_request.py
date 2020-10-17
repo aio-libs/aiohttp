@@ -13,11 +13,7 @@ from aiohttp.helpers import DEBUG
 from aiohttp.http_parser import RawRequestMessage
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
-from aiohttp.web import (
-    BaseRequest,
-    HTTPRequestEntityTooLarge,
-    HTTPUnsupportedMediaType,
-)
+from aiohttp.web import BaseRequest, HTTPRequestEntityTooLarge
 
 
 @pytest.fixture
@@ -572,29 +568,6 @@ async def test_make_too_big_request(protocol) -> None:
         await req.read()
 
     assert err.value.status_code == 413
-
-
-async def test_request_with_wrong_content_type_encoding(protocol) -> None:
-    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
-    payload.feed_data(b'{}')
-    payload.feed_eof()
-    headers = {'Content-Type': 'text/html; charset=test'}
-    req = make_mocked_request('POST', '/', payload=payload, headers=headers)
-
-    with pytest.raises(HTTPUnsupportedMediaType) as err:
-        await req.text()
-    assert err.value.status_code == 415
-
-
-async def test_make_too_big_request_same_size_to_max(protocol) -> None:
-    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
-    large_file = 1024 ** 2 * b'x'
-    payload.feed_data(large_file)
-    payload.feed_eof()
-    req = make_mocked_request('POST', '/', payload=payload)
-    resp_text = await req.read()
-
-    assert resp_text == large_file
 
 
 async def test_make_too_big_request_adjust_limit(protocol) -> None:
