@@ -56,8 +56,7 @@ class GunicornWebWorker(base.Worker):
             self.loop.run_until_complete(self._task)
         except Exception:
             self.log.exception("Exception in gunicorn worker")
-        if sys.version_info >= (3, 6):
-            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+        self.loop.run_until_complete(self.loop.shutdown_asyncgens())
         self.loop.close()
 
         sys.exit(self.exit_code)

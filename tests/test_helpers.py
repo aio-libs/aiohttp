@@ -499,8 +499,6 @@ async def test_set_exception_cancelled(loop) -> None:
 # ----------- ChainMapProxy --------------------------
 
 class TestChainMapProxy:
-    @pytest.mark.skipif(not helpers.PY_36,
-                        reason="Requires Python 3.6+")
     def test_inheritance(self) -> None:
         with pytest.raises(TypeError):
             class A(helpers.ChainMapProxy):

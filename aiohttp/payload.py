@@ -27,7 +27,6 @@ from multidict import CIMultiDict
 from . import hdrs
 from .abc import AbstractStreamWriter
 from .helpers import (
-    PY_36,
     content_disposition_header,
     guess_filename,
     parse_mimetype,
@@ -221,14 +220,10 @@ class BytesPayload(Payload):
             self._size = len(value)
 
         if self._size > TOO_LARGE_BYTES_BODY:
-            if PY_36:
-                kwargs = {'source': self}
-            else:
-                kwargs = {}
             warnings.warn("Sending a large body directly with raw bytes might"
                           " lock the event loop. You should probably pass an "
                           "io.BytesIO object instead", ResourceWarning,
-                          **kwargs)
+                          source=self)
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         await writer.write(self._value)

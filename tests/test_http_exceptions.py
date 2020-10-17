@@ -132,12 +132,12 @@ class TestBadStatusLine:
     def test_ctor(self) -> None:
         err = http_exceptions.BadStatusLine('Test')
         assert err.line == 'Test'
-        assert str(err) == 'Test'
+        assert str(err) == '400, message="Bad status line \'Test\'"'
 
     def test_ctor2(self) -> None:
         err = http_exceptions.BadStatusLine(b'')
         assert err.line == "b''"
-        assert str(err) == "b''"
+        assert str(err) == '400, message=\'Bad status line "b\\\'\\\'"\''
 
     def test_pickle(self) -> None:
         err = http_exceptions.BadStatusLine('Test')

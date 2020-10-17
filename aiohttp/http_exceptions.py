@@ -97,11 +97,9 @@ class BadStatusLine(BadHttpMessage):
     def __init__(self, line: str='') -> None:
         if not isinstance(line, str):
             line = repr(line)
+        super().__init__(f'Bad status line {line!r}')
         self.args = (line,)
         self.line = line
-
-    __str__ = Exception.__str__
-    __repr__ = Exception.__repr__
 
 
 class InvalidURLError(BadHttpMessage):
