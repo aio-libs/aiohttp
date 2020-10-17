@@ -41,7 +41,7 @@ def protocol():
 @pytest.fixture(params=REQUEST_PARSERS)
 def parser(loop, protocol, request):
     # Parser implementations
-    return request.param(protocol, loop,
+    return request.param(protocol, loop, 2 ** 16,
                          max_line_size=8190,
                          max_headers=32768,
                          max_field_size=8190)
@@ -56,7 +56,7 @@ def request_cls(request):
 @pytest.fixture(params=RESPONSE_PARSERS)
 def response(loop, protocol, request):
     # Parser implementations
-    return request.param(protocol, loop,
+    return request.param(protocol, loop, 2 ** 16,
                          max_line_size=8190,
                          max_headers=32768,
                          max_field_size=8190)
@@ -732,7 +732,7 @@ def _test_parse_no_length_or_te_on_post(loop, protocol, request_cls):
 
 def test_parse_payload_response_without_body(loop, protocol,
                                              response_cls) -> None:
-    parser = response_cls(protocol, loop, response_with_body=False)
+    parser = response_cls(protocol, loop, 2 ** 16, response_with_body=False)
     text = (b'HTTP/1.1 200 Ok\r\n'
             b'content-length: 10\r\n\r\n')
     msg, payload = parser.feed_data(text)[0][0]

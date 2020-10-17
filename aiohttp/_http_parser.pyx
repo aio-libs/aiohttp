@@ -567,11 +567,10 @@ cdef class HttpParser:
 
 cdef class HttpRequestParser(HttpParser):
 
-    def __init__(self, protocol, loop, timer=None,
+    def __init__(self, protocol, loop, int limit, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,
                  size_t max_field_size=8190, payload_exception=None,
                  bint response_with_body=True, bint read_until_eof=False,
-                 int limit=2**16,
     ):
          self._init(cparser.HTTP_REQUEST, protocol, loop, limit, timer,
                     max_line_size, max_headers, max_field_size,
@@ -596,11 +595,11 @@ cdef class HttpRequestParser(HttpParser):
 
 cdef class HttpResponseParser(HttpParser):
 
-    def __init__(self, protocol, loop, timer=None,
+    def __init__(self, protocol, loop, int limit, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,
                  size_t max_field_size=8190, payload_exception=None,
                  bint response_with_body=True, bint read_until_eof=False,
-                 bint auto_decompress=True, int limit=2**16
+                 bint auto_decompress=True
     ):
         self._init(cparser.HTTP_RESPONSE, protocol, loop, limit, timer,
                    max_line_size, max_headers, max_field_size,

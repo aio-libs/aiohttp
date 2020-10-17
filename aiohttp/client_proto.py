@@ -151,7 +151,7 @@ class ResponseHandler(BaseProtocol,
         self._reschedule_timeout()
 
         self._parser = HttpResponseParser(
-            self, self._loop, timer=timer,
+            self, self._loop, 2 ** 16, timer=timer,
             payload_exception=ClientPayloadError,
             response_with_body=not skip_payload,
             read_until_eof=read_until_eof,

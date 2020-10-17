@@ -179,7 +179,7 @@ class RequestHandler(BaseProtocol):
         self._upgrade = False
         self._payload_parser = None  # type: Any
         self._request_parser = HttpRequestParser(
-            self, loop,
+            self, loop, 2 ** 16,
             max_line_size=max_line_size,
             max_field_size=max_field_size,
             max_headers=max_headers,

@@ -168,6 +168,7 @@ class HttpParser(abc.ABC):
 
     def __init__(self, protocol: BaseProtocol,
                  loop: asyncio.AbstractEventLoop,
+                 limit: int,
                  max_line_size: int=8190,
                  max_headers: int=32768,
                  max_field_size: int=8190,
@@ -178,8 +179,7 @@ class HttpParser(abc.ABC):
                  payload_exception: Optional[Type[BaseException]]=None,
                  response_with_body: bool=True,
                  read_until_eof: bool=False,
-                 auto_decompress: bool=True,
-                 limit: int=2**16) -> None:
+                 auto_decompress: bool=True) -> None:
         self.protocol = protocol
         self.loop = loop
         self.max_line_size = max_line_size
