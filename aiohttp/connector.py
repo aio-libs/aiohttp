@@ -453,8 +453,7 @@ class BaseConnector:
             fut = self._loop.create_future()
 
             # This connection will now count towards the limit.
-            waiters = self._waiters[key]
-            waiters.append(fut)
+            self._waiters[key].append(fut)
 
             if traces:
                 for trace in traces:
@@ -463,21 +462,18 @@ class BaseConnector:
             try:
                 await fut
             except BaseException as e:
-                # remove a waiter even if it was cancelled, normally it's
-                #  removed when it's notified
-                try:
-                    waiters.remove(fut)
-                except ValueError:  # fut may no longer be in list
-                    pass
+                if key in self._waiters:
+                    # remove a waiter even if it was cancelled, normally it's
+                    #  removed when it's notified
+                    try:
+                        self._waiters[key].remove(fut)
+                    except ValueError:  # fut may no longer be in list
+                        pass
 
                 raise e
             finally:
-                if not waiters:
-                    try:
-                        del self._waiters[key]
-                    except KeyError:
-                        # the key was evicted before.
-                        pass
+                if key in self._waiters and not self._waiters[key]:
+                    del self._waiters[key]
 
             if traces:
                 for trace in traces:
