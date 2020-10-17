@@ -2986,3 +2986,29 @@ async def test_read_timeout_on_prepared_response(aiohttp_client) -> None:
     with pytest.raises(aiohttp.ServerTimeoutError):
         async with await client.get('/') as resp:
             await resp.read()
+
+
+async def test_read_bufsize_session_default(aiohttp_client) -> None:
+    async def handler(request):
+        return web.Response(body=b'1234567')
+
+    app = web.Application()
+    app.add_routes([web.get('/', handler)])
+
+    client = await aiohttp_client(app, read_bufsize=2)
+
+    async with await client.get('/') as resp:
+        assert resp.content.get_read_buffer_limits() == (2, 4)
+
+
+async def test_read_bufsize_explicit(aiohttp_client) -> None:
+    async def handler(request):
+        return web.Response(body=b'1234567')
+
+    app = web.Application()
+    app.add_routes([web.get('/', handler)])
+
+    client = await aiohttp_client(app)
+
+    async with await client.get('/', read_bufsize=4) as resp:
+        assert resp.content.get_read_buffer_limits() == (4, 8)

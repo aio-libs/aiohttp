@@ -33,7 +33,7 @@ from .helpers import (
     parse_mimetype,
     sentinel,
 )
-from .streams import DEFAULT_LIMIT, StreamReader
+from .streams import StreamReader
 from .typedefs import JSONEncoder, _CIMultiDict
 
 __all__ = ('PAYLOAD_REGISTRY', 'get_payload', 'payload_type', 'Payload',
@@ -295,12 +295,12 @@ class IOBasePayload(Payload):
         loop = asyncio.get_event_loop()
         try:
             chunk = await loop.run_in_executor(
-                None, self._value.read, DEFAULT_LIMIT
+                None, self._value.read, 2**16
             )
             while chunk:
                 await writer.write(chunk)
                 chunk = await loop.run_in_executor(
-                    None, self._value.read, DEFAULT_LIMIT
+                    None, self._value.read, 2**16
                 )
         finally:
             await loop.run_in_executor(None, self._value.close)
@@ -345,12 +345,12 @@ class TextIOPayload(IOBasePayload):
         loop = asyncio.get_event_loop()
         try:
             chunk = await loop.run_in_executor(
-                None, self._value.read, DEFAULT_LIMIT
+                None, self._value.read, 2**16
             )
             while chunk:
                 await writer.write(chunk.encode(self._encoding))
                 chunk = await loop.run_in_executor(
-                    None, self._value.read, DEFAULT_LIMIT
+                    None, self._value.read, 2**16
                 )
         finally:
             await loop.run_in_executor(None, self._value.close)

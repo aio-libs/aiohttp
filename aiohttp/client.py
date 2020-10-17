@@ -180,7 +180,8 @@ class ClientSession:
         '_timeout', '_raise_for_status', '_auto_decompress',
         '_trust_env', '_default_headers', '_skip_auto_headers',
         '_request_class', '_response_class',
-        '_ws_response_class', '_trace_configs'])
+        '_ws_response_class', '_trace_configs',
+        '_read_bufsize'])
 
     _source_traceback = None
 
@@ -204,7 +205,8 @@ class ClientSession:
                  auto_decompress: bool=True,
                  trust_env: bool=False,
                  requote_redirect_url: bool=True,
-                 trace_configs: Optional[List[TraceConfig]]=None) -> None:
+                 trace_configs: Optional[List[TraceConfig]]=None,
+                 read_bufsize: int=2**16) -> None:
 
         if loop is None:
             if connector is not None:
@@ -265,6 +267,7 @@ class ClientSession:
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
         self._requote_redirect_url = requote_redirect_url
+        self._read_bufsize = read_bufsize
 
         # Convert to list of tuples
         if headers:
@@ -349,7 +352,8 @@ class ClientSession:
             ssl_context: Optional[SSLContext]=None,
             ssl: Optional[Union[SSLContext, bool, Fingerprint]]=None,
             proxy_headers: Optional[LooseHeaders]=None,
-            trace_request_ctx: Optional[SimpleNamespace]=None
+            trace_request_ctx: Optional[SimpleNamespace]=None,
+            read_bufsize: Optional[int] = None
     ) -> ClientResponse:
 
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
@@ -406,6 +410,9 @@ class ClientSession:
         # (request, redirects, responses, data consuming)
         tm = TimeoutHandle(self._loop, real_timeout.total)
         handle = tm.start()
+
+        if read_bufsize is None:
+            read_bufsize = self._read_bufsize
 
         traces = [
             Trace(
@@ -498,7 +505,8 @@ class ClientSession:
                         skip_payload=method.upper() == 'HEAD',
                         read_until_eof=read_until_eof,
                         auto_decompress=self._auto_decompress,
-                        read_timeout=real_timeout.sock_read)
+                        read_timeout=real_timeout.sock_read,
+                        read_bufsize=read_bufsize)
 
                     try:
                         try:
@@ -805,7 +813,7 @@ class ClientSession:
             transport = conn.transport
             assert transport is not None
             reader = FlowControlDataQueue(
-                conn_proto, limit=2 ** 16, loop=self._loop)  # type: FlowControlDataQueue[WSMessage]  # noqa
+                conn_proto, 2 ** 16, loop=self._loop)  # type: FlowControlDataQueue[WSMessage]  # noqa
             conn_proto.set_parser(
                 WebSocketReader(reader, max_msg_size), reader)
             writer = WebSocketWriter(
@@ -1149,6 +1157,7 @@ def request(
         cookies: Optional[LooseCookies]=None,
         version: HttpVersion=http.HttpVersion11,
         connector: Optional[BaseConnector]=None,
+        read_bufsize: Optional[int] = None,
         loop: Optional[asyncio.AbstractEventLoop]=None
 ) -> _SessionRequestContextManager:
     """Constructs and sends a request. Returns response object.
@@ -1210,5 +1219,7 @@ def request(
                          raise_for_status=raise_for_status,
                          read_until_eof=read_until_eof,
                          proxy=proxy,
-                         proxy_auth=proxy_auth,),
-        session)
+                         proxy_auth=proxy_auth,
+                         read_bufsize=read_bufsize),
+        session
+    )
