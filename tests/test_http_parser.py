@@ -791,7 +791,7 @@ def test_url_parse_non_strict_mode(parser) -> None:
                     reason="C based HTTP parser not available")
 def test_parse_bad_method_for_c_parser_raises(loop, protocol):
     payload = 'GET1 /test HTTP/1.1\r\n\r\n'.encode('utf-8')
-    parser = HttpRequestParserC(protocol, 2 ** 16, loop,
+    parser = HttpRequestParserC(protocol, loop, 2 ** 16,
                                 max_line_size=8190,
                                 max_headers=32768,
                                 max_field_size=8190)
