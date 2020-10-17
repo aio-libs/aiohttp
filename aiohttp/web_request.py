@@ -698,6 +698,9 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
     async def _prepare_hook(self, response: StreamResponse) -> None:
         return
 
+    def _cancel(self, exc: BaseException) -> None:
+        self._payload.set_exception(exc)
+
 
 class Request(BaseRequest):
 
