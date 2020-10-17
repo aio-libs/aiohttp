@@ -2544,6 +2544,12 @@ application on specific TCP or Unix socket, e.g.::
         reads and ignores additional data coming from the client when
         lingering close is on.  Use ``0`` to disable lingering on
         server channel closing.
+   :param int read_bufsize: Size of the read buffer (:attr:`BaseRequest.content`).
+                            ``None`` by default,
+                            it means that the session global value is used.
+
+      .. versionadded:: 3.7
+
 
 
    .. attribute:: app

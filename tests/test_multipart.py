@@ -18,7 +18,6 @@ from aiohttp.hdrs import (
 )
 from aiohttp.helpers import parse_mimetype
 from aiohttp.multipart import MultipartResponseWrapper
-from aiohttp.streams import DEFAULT_LIMIT as stream_reader_default_limit
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_coro
 
@@ -652,9 +651,9 @@ class TestPartReader:
         assert 'foo.html' == part.filename
 
     async def test_reading_long_part(self, newline) -> None:
-        size = 2 * stream_reader_default_limit
+        size = 2 * 2 ** 16
         protocol = mock.Mock(_reading_paused=False)
-        stream = StreamReader(protocol, loop=asyncio.get_event_loop())
+        stream = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
         stream.feed_data(b'0' * size + b'%s--:--' % newline)
         stream.feed_eof()
         obj = aiohttp.BodyPartReader(BOUNDARY, {}, stream, _newline=newline)
