@@ -1,6 +1,5 @@
 import json
 import os  # noqa
-import pathlib  # noqa
 from typing import (
     TYPE_CHECKING,
     Any,
