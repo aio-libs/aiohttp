@@ -16,7 +16,9 @@ def protocol():
 
 @pytest.fixture
 def transport():
-    return mock.Mock()
+    ret = mock.Mock()
+    ret.is_closing.return_value = False
+    return ret
 
 
 @pytest.fixture
