@@ -45,13 +45,7 @@ from .client_exceptions import (
 )
 from .client_proto import ResponseHandler
 from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
-from .helpers import (
-    PY_36,
-    ceil_timeout,
-    get_running_loop,
-    is_ip_address,
-    sentinel,
-)
+from .helpers import ceil_timeout, get_running_loop, is_ip_address, sentinel
 from .http import RESPONSES
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
@@ -97,13 +91,9 @@ class Connection:
 
     def __del__(self, _warnings: Any=warnings) -> None:
         if self._protocol is not None:
-            if PY_36:
-                kwargs = {'source': self}
-            else:
-                kwargs = {}
             _warnings.warn('Unclosed connection {!r}'.format(self),
                            ResourceWarning,
-                           **kwargs)
+                           source=self)
             if self._loop.is_closed():
                 return
 
@@ -245,13 +235,9 @@ class BaseConnector:
 
         self._close_immediately()
 
-        if PY_36:
-            kwargs = {'source': self}
-        else:
-            kwargs = {}
         _warnings.warn("Unclosed connector {!r}".format(self),
                        ResourceWarning,
-                       **kwargs)
+                       source=self)
         context = {'connector': self,
                    'connections': conns,
                    'message': 'Unclosed connector'}

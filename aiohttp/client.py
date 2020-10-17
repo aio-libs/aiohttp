@@ -78,7 +78,6 @@ from .connector import TCPConnector as TCPConnector
 from .connector import UnixConnector as UnixConnector
 from .cookiejar import CookieJar
 from .helpers import (
-    PY_36,
     BasicAuth,
     TimeoutHandle,
     ceil_timeout,
@@ -268,13 +267,9 @@ class ClientSession:
     def __del__(self, _warnings: Any=warnings) -> None:
         try:
             if not self.closed:
-                if PY_36:
-                    kwargs = {'source': self}
-                else:
-                    kwargs = {}
                 _warnings.warn("Unclosed client session {!r}".format(self),
                                ResourceWarning,
-                               **kwargs)
+                               source=self)
                 context = {'client_session': self,
                            'message': 'Unclosed client session'}
                 if self._source_traceback is not None:
