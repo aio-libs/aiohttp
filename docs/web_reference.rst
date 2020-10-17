@@ -207,7 +207,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
    .. attribute:: transport
 
-      An :ref:`transport<asyncio-transport>` used to process request,
+      A :ref:`transport<asyncio-transport>` used to process request.
       Read-only property.
 
       The property can be used, for example, for getting IP address of
@@ -783,7 +783,8 @@ StreamResponse
       calling this method.
 
       The coroutine calls :attr:`~aiohttp.web.Application.on_response_prepare`
-      signal handlers.
+      signal handlers after default headers have been computed and directly
+      before headers are sent.
 
    .. comethod:: write(data)
 
@@ -1337,10 +1338,11 @@ duplicated like one using :meth:`Application.copy`.
 
    .. attribute:: on_response_prepare
 
-      A :class:`~aiohttp.Signal` that is fired at the beginning
+      A :class:`~aiohttp.Signal` that is fired near the end
       of :meth:`StreamResponse.prepare` with parameters *request* and
       *response*. It can be used, for example, to add custom headers to each
-      response before sending.
+      response, or to modify the default headers computed by the application,
+      directly before sending the headers to the client.
 
       Signal handlers should have the following signature::
 
@@ -2542,6 +2544,12 @@ application on specific TCP or Unix socket, e.g.::
         reads and ignores additional data coming from the client when
         lingering close is on.  Use ``0`` to disable lingering on
         server channel closing.
+   :param int read_bufsize: Size of the read buffer (:attr:`BaseRequest.content`).
+                            ``None`` by default,
+                            it means that the session global value is used.
+
+      .. versionadded:: 3.7
+
 
 
    .. attribute:: app
@@ -2611,7 +2619,7 @@ application on specific TCP or Unix socket, e.g.::
 
    :param runner: a runner to serve.
 
-   :param str host: HOST to listen on, ``'0.0.0.0'`` if ``None`` (default).
+   :param str host: HOST to listen on, all interfaces if ``None`` (default).
 
    :param int port: PORT to listed on, ``8080`` if ``None`` (default).
 

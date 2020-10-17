@@ -1933,3 +1933,19 @@ async def test_bad_method_for_c_http_parser_not_hangs(aiohttp_client) -> None:
     client = await aiohttp_client(app, timeout=timeout)
     resp = await client.request('GET1', '/')
     assert 400 == resp.status
+
+
+async def test_read_bufsize(aiohttp_client) -> None:
+
+    async def handler(request):
+        ret = request.content.get_read_buffer_limits()
+        data = await request.text()  # read posted data
+        return web.Response(text=f"{data} {ret!r}")
+
+    app = web.Application(handler_args={"read_bufsize": 2})
+    app.router.add_post('/', handler)
+
+    client = await aiohttp_client(app)
+    resp = await client.post('/', data=b'data')
+    assert resp.status == 200
+    assert await resp.text() == "data (2, 4)"

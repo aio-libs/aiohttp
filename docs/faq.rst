@@ -266,7 +266,7 @@ Sessions save cookies internally. If you don't need cookie processing,
 use :class:`aiohttp.DummyCookieJar`. If you need separate cookies
 for different http calls but process them in logical chains, use a single
 :class:`aiohttp.TCPConnector` with separate
-client sessions and ``own_connector=False``.
+client sessions and ``connector_owner=False``.
 
 
 How do I access database connections from a subapplication?
