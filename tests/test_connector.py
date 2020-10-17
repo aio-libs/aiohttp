@@ -376,6 +376,7 @@ async def test_release(loop, key) -> None:
 
     conn._release(key, proto)
     assert conn._release_waiter.called
+    assert conn._cleanup_handle is not None
     assert conn._conns[key][0][0] == proto
     assert conn._conns[key][0][1] == pytest.approx(loop.time(), abs=0.1)
     assert not conn._cleanup_closed_transports
@@ -1198,7 +1199,7 @@ async def test_cleanup(key) -> None:
     conn._cleanup()
     assert existing_handle.cancel.called
     assert conn._conns == {}
-    assert conn._cleanup_handle is not None
+    assert conn._cleanup_handle is None
 
 
 async def test_cleanup_close_ssl_transport(loop, ssl_key) -> None:
