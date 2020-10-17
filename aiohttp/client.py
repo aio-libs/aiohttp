@@ -794,7 +794,7 @@ class ClientSession:
             transport = conn.transport
             assert transport is not None
             reader = FlowControlDataQueue(
-                conn_proto, limit=2 ** 16, loop=self._loop)  # type: FlowControlDataQueue[WSMessage]  # noqa
+                conn_proto, 2 ** 16, loop=self._loop)  # type: FlowControlDataQueue[WSMessage]  # noqa
             conn_proto.set_parser(
                 WebSocketReader(reader, max_msg_size), reader)
             writer = WebSocketWriter(

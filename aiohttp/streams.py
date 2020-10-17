@@ -597,8 +597,8 @@ class FlowControlDataQueue(DataQueue[_T]):
 
     It is a destination for parsed data."""
 
-    def __init__(self, protocol: BaseProtocol, *,
-                 limit: int=2**16,
+    def __init__(self, protocol: BaseProtocol,
+                 limit: int, *,
                  loop: asyncio.AbstractEventLoop) -> None:
         super().__init__(loop=loop)
 
