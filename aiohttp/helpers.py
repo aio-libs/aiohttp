@@ -54,7 +54,6 @@ from .typedefs import PathLike  # noqa
 
 __all__ = ('BasicAuth', 'ChainMapProxy')
 
-PY_36 = sys.version_info >= (3, 6)
 PY_37 = sys.version_info >= (3, 7)
 PY_38 = sys.version_info >= (3, 8)
 

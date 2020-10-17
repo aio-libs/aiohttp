@@ -1,7 +1,6 @@
 import json
 import os  # noqa
 import pathlib  # noqa
-import sys
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -57,7 +56,4 @@ LooseCookies = Union[
 ]
 
 
-if sys.version_info >= (3, 6):
-    PathLike = Union[str, 'os.PathLike[str]']
-else:
-    PathLike = Union[str, pathlib.PurePath]
+PathLike = Union[str, 'os.PathLike[str]']

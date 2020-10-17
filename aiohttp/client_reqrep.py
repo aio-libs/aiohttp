@@ -39,7 +39,6 @@ from .client_exceptions import (
 )
 from .formdata import FormData
 from .helpers import (  # noqa
-    PY_36,
     BaseTimerContext,
     BasicAuth,
     HeadersMixin,
@@ -706,13 +705,9 @@ class ClientResponse(HeadersMixin):
             self._cleanup_writer()
 
             if self._loop.get_debug():
-                if PY_36:
-                    kwargs = {'source': self}
-                else:
-                    kwargs = {}
                 _warnings.warn("Unclosed response {!r}".format(self),
                                ResourceWarning,
-                               **kwargs)
+                               source=self)
                 context = {'client_response': self,
                            'message': 'Unclosed response'}
                 if self._source_traceback:
