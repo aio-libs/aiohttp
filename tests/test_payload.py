@@ -126,7 +126,7 @@ async def test_stream_reader_long_lines() -> None:
     loop = asyncio.get_event_loop()
     DATA = b'0' * 1024 ** 3
 
-    stream = streams.StreamReader(mock.Mock(), loop=loop)
+    stream = streams.StreamReader(mock.Mock(), 2 ** 16, loop=loop)
     stream.feed_data(DATA)
     stream.feed_eof()
     body = payload.get_payload(stream)

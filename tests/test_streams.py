@@ -86,7 +86,8 @@ class TestStreamReader:
     def test_ctor_global_loop(self) -> None:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        stream = streams.StreamReader(mock.Mock(_reading_paused=False))
+        stream = streams.StreamReader(mock.Mock(_reading_paused=False),
+                                      2 ** 16)
 
         assert stream._loop is loop
 
