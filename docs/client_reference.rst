@@ -48,6 +48,7 @@ The client session supports the context manager protocol for self closing.
                          raise_for_status=False, \
                          connector_owner=True, \
                          auto_decompress=True, \
+                         read_bufsize=2**16, \
                          requote_redirect_url=False, \
                          trust_env=False, \
                          trace_configs=None)
@@ -164,6 +165,11 @@ The client session supports the context manager protocol for self closing.
        ``True`` by default
 
       .. versionadded:: 2.3
+
+   :param int read_bufsize: Size of the read buffer (:attr:`ClientResponse.content`).
+                            64 KiB by default.
+
+      .. versionadded:: 3.7
 
    :param bool trust_env: Get proxies information from *HTTP_PROXY* /
       *HTTPS_PROXY* environment variables if the parameter is ``True``
@@ -324,7 +330,9 @@ The client session supports the context manager protocol for self closing.
                          auth=None, allow_redirects=True,\
                          max_redirects=10,\
                          compress=None, chunked=None, expect100=False, raise_for_status=None,\
-                         read_until_eof=True, proxy=None, proxy_auth=None,\
+                         read_until_eof=True, \
+                         read_bufsize=None, \
+                         proxy=None, proxy_auth=None,\
                          timeout=sentinel, ssl=None, \
                          verify_ssl=None, fingerprint=None, \
                          ssl_context=None, proxy_headers=None)
@@ -418,6 +426,12 @@ The client session supports the context manager protocol for self closing.
       :param bool read_until_eof: Read response until EOF if response
                                   does not have Content-Length header.
                                   ``True`` by default (optional).
+
+      :param int read_bufsize: Size of the read buffer (:attr:`ClientResponse.content`).
+                              ``None`` by default,
+                              it means that the session global value is used.
+
+          .. versionadded:: 3.7
 
       :param proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
 
@@ -784,6 +798,7 @@ certification chaining.
                         encoding='utf-8', \
                         version=HttpVersion(major=1, minor=1), \
                         compress=None, chunked=None, expect100=False, raise_for_status=False, \
+                        read_bufsize=None, \
                         connector=None, loop=None,\
                         read_until_eof=True, timeout=sentinel)
    :async-with:
@@ -844,6 +859,12 @@ certification chaining.
    :param bool read_until_eof: Read response until EOF if response
                                does not have Content-Length header.
                                ``True`` by default (optional).
+
+   :param int read_bufsize: Size of the read buffer (:attr:`ClientResponse.content`).
+                            ``None`` by default,
+                            it means that the session global value is used.
+
+      .. versionadded:: 3.7
 
    :param timeout: a :class:`ClientTimeout` settings structure, 300 seconds (5min)
         total timeout by default.

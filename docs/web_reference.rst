@@ -2609,6 +2609,37 @@ application on specific TCP or Unix socket, e.g.::
    :param kwargs: named parameters to pass into
                   web protocol.
 
+   Supported *kwargs*:
+
+   :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
+   :param int keepalive_timeout: Number of seconds before closing Keep-Alive
+        connection. Default: ``75`` seconds (NGINX's default value).
+   :param logger: Custom logger object. Default:
+        :data:`aiohttp.log.server_logger`.
+   :param access_log: Custom logging object. Default:
+        :data:`aiohttp.log.access_logger`.
+   :param access_log_class: Class for `access_logger`. Default:
+        :data:`aiohttp.helpers.AccessLogger`.
+        Must to be a subclass of :class:`aiohttp.abc.AbstractAccessLogger`.
+   :param str access_log_format: Access log format string. Default:
+        :attr:`helpers.AccessLogger.LOG_FORMAT`.
+   :param int max_line_size: Optional maximum header line size. Default:
+        ``8190``.
+   :param int max_headers: Optional maximum header size. Default: ``32768``.
+   :param int max_field_size: Optional maximum header field size. Default:
+        ``8190``.
+
+   :param float lingering_time: Maximum time during which the server
+        reads and ignores additional data coming from the client when
+        lingering close is on.  Use ``0`` to disable lingering on
+        server channel closing.
+   :param int read_bufsize: Size of the read buffer (:attr:`BaseRequest.content`).
+                            ``None`` by default,
+                            it means that the session global value is used.
+
+      .. versionadded:: 3.7
+
+
    .. attribute:: app
 
       Read-only attribute for accessing to :class:`Application` served

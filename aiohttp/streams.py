@@ -17,8 +17,6 @@ __all__ = (
     'EMPTY_PAYLOAD', 'EofStream', 'StreamReader', 'DataQueue',
     'FlowControlDataQueue')
 
-DEFAULT_LIMIT = 2 ** 16
-
 _T = TypeVar('_T')
 
 
@@ -105,8 +103,7 @@ class StreamReader(AsyncStreamReaderMixin):
 
     total_bytes = 0
 
-    def __init__(self, protocol: BaseProtocol,
-                 *, limit: int=DEFAULT_LIMIT,
+    def __init__(self, protocol: BaseProtocol, limit: int, *,
                  timer: Optional[BaseTimerContext]=None,
                  loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
         self._protocol = protocol
@@ -133,13 +130,16 @@ class StreamReader(AsyncStreamReaderMixin):
             info.append('%d bytes' % self._size)
         if self._eof:
             info.append('eof')
-        if self._low_water != DEFAULT_LIMIT:
+        if self._low_water != 2 ** 16:  # default limit
             info.append('low=%d high=%d' % (self._low_water, self._high_water))
         if self._waiter:
             info.append('w=%r' % self._waiter)
         if self._exception:
             info.append('e=%r' % self._exception)
         return '<%s>' % ' '.join(info)
+
+    def get_read_buffer_limits(self) -> Tuple[int, int]:
+        return (self._low_water, self._high_water)
 
     def exception(self) -> Optional[BaseException]:
         return self._exception
@@ -612,8 +612,8 @@ class FlowControlDataQueue(DataQueue[_T]):
 
     It is a destination for parsed data."""
 
-    def __init__(self, protocol: BaseProtocol, *,
-                 limit: int=DEFAULT_LIMIT,
+    def __init__(self, protocol: BaseProtocol,
+                 limit: int, *,
                  loop: asyncio.AbstractEventLoop) -> None:
         super().__init__(loop=loop)
 

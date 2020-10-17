@@ -13,7 +13,11 @@ from aiohttp.helpers import DEBUG
 from aiohttp.http_parser import RawRequestMessage
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
-from aiohttp.web import BaseRequest, HTTPRequestEntityTooLarge
+from aiohttp.web import (
+    BaseRequest,
+    HTTPRequestEntityTooLarge,
+    HTTPUnsupportedMediaType,
+)
 
 
 @pytest.fixture
@@ -548,7 +552,7 @@ def test_clone_headers_dict() -> None:
 
 
 async def test_cannot_clone_after_read(protocol) -> None:
-    payload = StreamReader(protocol)
+    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
     payload.feed_data(b'data')
     payload.feed_eof()
     req = make_mocked_request('GET', '/path', payload=payload)
@@ -558,7 +562,7 @@ async def test_cannot_clone_after_read(protocol) -> None:
 
 
 async def test_make_too_big_request(protocol) -> None:
-    payload = StreamReader(protocol)
+    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
     large_file = 1024 ** 2 * b'x'
     too_large_file = large_file + b'x'
     payload.feed_data(too_large_file)
@@ -570,8 +574,31 @@ async def test_make_too_big_request(protocol) -> None:
     assert err.value.status_code == 413
 
 
+async def test_request_with_wrong_content_type_encoding(protocol) -> None:
+    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
+    payload.feed_data(b'{}')
+    payload.feed_eof()
+    headers = {'Content-Type': 'text/html; charset=test'}
+    req = make_mocked_request('POST', '/', payload=payload, headers=headers)
+
+    with pytest.raises(HTTPUnsupportedMediaType) as err:
+        await req.text()
+    assert err.value.status_code == 415
+
+
+async def test_make_too_big_request_same_size_to_max(protocol) -> None:
+    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
+    large_file = 1024 ** 2 * b'x'
+    payload.feed_data(large_file)
+    payload.feed_eof()
+    req = make_mocked_request('POST', '/', payload=payload)
+    resp_text = await req.read()
+
+    assert resp_text == large_file
+
+
 async def test_make_too_big_request_adjust_limit(protocol) -> None:
-    payload = StreamReader(protocol)
+    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
     large_file = 1024 ** 2 * b'x'
     too_large_file = large_file + b'x'
     payload.feed_data(too_large_file)
@@ -584,7 +611,7 @@ async def test_make_too_big_request_adjust_limit(protocol) -> None:
 
 
 async def test_multipart_formdata(protocol) -> None:
-    payload = StreamReader(protocol)
+    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
     payload.feed_data(b"""-----------------------------326931944431359\r
 Content-Disposition: form-data; name="a"\r
 \r
@@ -605,7 +632,7 @@ d\r
 
 
 async def test_make_too_big_request_limit_None(protocol) -> None:
-    payload = StreamReader(protocol)
+    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
     large_file = 1024 ** 2 * b'x'
     too_large_file = large_file + b'x'
     payload.feed_data(too_large_file)
