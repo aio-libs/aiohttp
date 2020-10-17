@@ -3,7 +3,7 @@
 import asyncio
 from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
 
-from .typedefs import _CIMultiDict
+from .typedefs import LooseHeaders
 
 try:
     import ssl
@@ -13,11 +13,14 @@ except ImportError:  # pragma: no cover
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .client_reqrep import (RequestInfo, ClientResponse, ConnectionKey,  # noqa
-                                Fingerprint)
+    from .client_reqrep import (  # noqa
+        ClientResponse,
+        ConnectionKey,
+        Fingerprint,
+        RequestInfo,
+    )
 else:
     RequestInfo = ClientResponse = ConnectionKey = None
-
 
 __all__ = (
     'ClientError',
@@ -51,7 +54,7 @@ class ClientResponseError(ClientError):
                  history: Tuple[ClientResponse, ...], *,
                  status: Optional[int]=None,
                  message: str='',
-                 headers: Optional[_CIMultiDict]=None) -> None:
+                 headers: Optional[LooseHeaders]=None) -> None:
         self.request_info = request_info
         if status is not None:
             self.status = status

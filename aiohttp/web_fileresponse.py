@@ -360,6 +360,9 @@ class FileResponse(StreamResponse):
             self.headers[hdrs.CONTENT_RANGE] = 'bytes {0}-{1}/{2}'.format(
                 real_start, real_start + count - 1, file_size)
 
+        if request.method == hdrs.METH_HEAD or self.status in [204, 304]:
+            return await super().prepare(request)
+
         fobj = await loop.run_in_executor(None, filepath.open, 'rb')
         if start:  # be aware that start could be None or int=0 here.
             offset = start

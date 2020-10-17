@@ -4,6 +4,7 @@ A. Jesse Jiryu Davis
 Adam Bannister
 Adam Cooper
 Adam Mills
+Adrian Krupa
 Adrián Chaves
 Alan Tse
 Alec Hanefeld
@@ -40,6 +41,7 @@ Andrii Soldatenko
 Antoine Pietri
 Anton Kasyanov
 Anton Zhdan-Pushkin
+Arseny Timoniq
 Artem Yushkovskiy
 Arthur Darcet
 Ben Bader
@@ -51,6 +53,7 @@ Boyi Chen
 Brett Cannon
 Brian C. Lane
 Brian Muller
+Bruce Merry
 Bryan Kok
 Bryce Drennan
 Carl George
@@ -127,7 +130,9 @@ Igor Alexandrov
 Igor Davydenko
 Igor Mozharovsky
 Igor Pavlov
+Illia Volochii
 Ilya Chichak
+Ilya Gruzinov
 Ingmar Steen
 Ivan Larin
 Jacob Champion
@@ -137,6 +142,7 @@ Jakob Ackermann
 Jakub Wilk
 Jashandeep Sohi
 Jens Steinhauser
+Jeonghun Lee
 Jeongkyu Shin
 Jeroen van der Heijden
 Jesus Cea
@@ -144,15 +150,19 @@ Jian Zeng
 Jinkyu Yi
 Joel Watts
 Jon Nabozny
+Jonas Krüger Svensson
 Jonas Obrist
+Jonathan Wright
 Jonny Tan
 Joongi Kim
 Josep Cugat
+Josh Junon
 Joshu Coats
 Julia Tsemusheva
 Julien Duponchelle
 Jungkook Park
 Junjie Tao
+Junyeong Jeong
 Justas Trimailovas
 Justin Foo
 Justin Turner Arthur
@@ -163,7 +173,9 @@ Kirill Klenov
 Kirill Malovitsa
 Konstantin Valetov
 Kyrylo Perevozchikov
+Kyungmin Lee
 Lars P. Søndergaard
+Liu Hua
 Louis-Philippe Huberdeau
 Loïc Lajeanne
 Lu Gong
@@ -187,6 +199,7 @@ Matthieu Hauglustaine
 Matthieu Rigal
 Meet Mangukiya
 Michael Ihnatenko
+Michał Górny
 Mikhail Burshteyn
 Mikhail Kashkin
 Mikhail Lukyanchenko
@@ -234,6 +247,7 @@ Sebastien Geffroy
 SeongSoo Cho
 Sergey Ninua
 Sergey Skripnick
+Serhii Charykov
 Serhii Kostel
 Simon Kennedy
 Sin-Woo Bang
@@ -256,6 +270,7 @@ Thomas Forbes
 Thomas Grainger
 Tolga Tezel
 Tomasz Trebski
+Toshiaki Tanaka
 Trinh Hoang Nhu
 Vadim Suharnikov
 Vaibhav Sagar
@@ -285,6 +300,7 @@ Weiwei Wang
 Will McGugan
 Willem de Groot
 William Grzybowski
+William S.
 Wilson Ong
 Yang Zhou
 Yannick Koechlin
