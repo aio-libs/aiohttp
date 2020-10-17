@@ -1,0 +1,10 @@
+Fix keepalive connections not being closed in time
+
+Refactoring in 964921d4e97e7c84bcfda6772ed458549aea0b09 introduced a
+regression so that `_cleanup()` could be called only once or few times.
+`_release()` expects `self._cleanup_handle` to be None to add new
+`weakref_handle`. But when `_cleanup()` called and there are no
+remaining connections, `self._cleanup_handle` will remain as
+`<TimerHandle cancelled when=5853434>`, so `_release()` will not have a
+chance to schedule `_cleanup()` call again.
+
