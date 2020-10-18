@@ -4,13 +4,11 @@ import asyncio
 import hashlib
 import io
 import pathlib
-import urllib.parse
 import zlib
-from http.cookies import SimpleCookie
+from http.cookies import BaseCookie, Morsel, SimpleCookie
 from unittest import mock
 
 import pytest
-from async_generator import async_generator, yield_
 from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
 
@@ -443,38 +441,20 @@ def test_cookies(make_request) -> None:
     assert 'cookie1=val1' == req.headers['COOKIE']
 
 
+def test_cookies_is_quoted_with_special_characters(make_request) -> None:
+    req = make_request('get', 'http://test.com/path',
+                       cookies={'cookie1': 'val/one'})
+
+    assert 'COOKIE' in req.headers
+    assert 'cookie1="val/one"' == req.headers['COOKIE']
+
+
 def test_cookies_merge_with_headers(make_request) -> None:
     req = make_request('get', 'http://test.com/path',
                        headers={'cookie': 'cookie1=val1'},
                        cookies={'cookie2': 'val2'})
 
     assert 'cookie1=val1; cookie2=val2' == req.headers['COOKIE']
-
-
-def test_unicode_get1(make_request) -> None:
-    req = make_request('get', 'http://python.org',
-                       params={'foo': 'f\xf8\xf8'})
-    assert 'http://python.org/?foo=f%C3%B8%C3%B8' == str(req.url)
-
-
-def test_unicode_get2(make_request) -> None:
-    req = make_request('', 'http://python.org',
-                       params={'f\xf8\xf8': 'f\xf8\xf8'})
-
-    assert 'http://python.org/?f%C3%B8%C3%B8=f%C3%B8%C3%B8' == str(req.url)
-
-
-def test_unicode_get3(make_request) -> None:
-    req = make_request('', 'http://python.org', params={'foo': 'foo'})
-    assert 'http://python.org/?foo=foo' == str(req.url)
-
-
-def test_unicode_get4(make_request) -> None:
-    def join(*suffix):
-        return urllib.parse.urljoin('http://python.org/', '/'.join(suffix))
-
-    req = make_request('', join('\xf8'), params={'foo': 'foo'})
-    assert 'http://python.org/%C3%B8?foo=foo' == str(req.url)
 
 
 def test_query_multivalued_param(make_request) -> None:
@@ -866,10 +846,9 @@ async def test_expect_100_continue_header(loop, conn) -> None:
 
 
 async def test_data_stream(loop, buf, conn) -> None:
-    @async_generator
     async def gen():
-        await yield_(b'binary data')
-        await yield_(b' result')
+        yield b'binary data'
+        yield b' result'
 
     req = ClientRequest(
         'POST', URL('http://python.org/'), data=gen(), loop=loop)
@@ -906,9 +885,8 @@ async def test_data_file(loop, buf, conn) -> None:
 async def test_data_stream_exc(loop, conn) -> None:
     fut = loop.create_future()
 
-    @async_generator
     async def gen():
-        await yield_(b'binary data')
+        yield b'binary data'
         await fut
 
     req = ClientRequest(
@@ -932,9 +910,10 @@ async def test_data_stream_exc(loop, conn) -> None:
 async def test_data_stream_exc_chain(loop, conn) -> None:
     fut = loop.create_future()
 
-    @async_generator
     async def gen():
         await fut
+        return
+        yield
 
     req = ClientRequest('POST', URL('http://python.org/'),
                         data=gen(), loop=loop)
@@ -959,10 +938,9 @@ async def test_data_stream_exc_chain(loop, conn) -> None:
 
 
 async def test_data_stream_continue(loop, buf, conn) -> None:
-    @async_generator
     async def gen():
-        await yield_(b'binary data')
-        await yield_(b' result')
+        yield b'binary data'
+        yield b' result'
 
     req = ClientRequest(
         'POST', URL('http://python.org/'), data=gen(),
@@ -1003,10 +981,9 @@ async def test_data_continue(loop, buf, conn) -> None:
 
 
 async def test_close(loop, buf, conn) -> None:
-    @async_generator
     async def gen():
         await asyncio.sleep(0.00001)
-        await yield_(b'result')
+        yield b'result'
 
     req = ClientRequest(
         'POST', URL('http://python.org/'), data=gen(), loop=loop)
@@ -1152,3 +1129,22 @@ def test_insecure_fingerprint_md5(loop) -> None:
 def test_insecure_fingerprint_sha1(loop) -> None:
     with pytest.raises(ValueError):
         Fingerprint(hashlib.sha1(b"foo").digest())
+
+
+def test_loose_cookies_types(loop) -> None:
+    req = ClientRequest('get', URL('http://python.org'), loop=loop)
+    morsel = Morsel()
+    morsel.set(key='string', val='Another string', coded_val='really')
+
+    accepted_types = [
+        [('str', BaseCookie())],
+        [('str', morsel)],
+        [('str', 'str'), ],
+        {'str': BaseCookie()},
+        {'str': morsel},
+        {'str': 'str'},
+        SimpleCookie(),
+    ]
+
+    for loose_cookies_type in accepted_types:
+        req.update_cookies(cookies=loose_cookies_type)

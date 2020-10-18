@@ -322,9 +322,9 @@ async def test_static_file_huge(aiohttp_client, tmp_path) -> None:
     file_path = tmp_path / 'huge_data.unknown_mime_type'
 
     # fill 20MB file
-    with file_path.open('w') as f:
+    with file_path.open('wb') as f:
         for i in range(1024*20):
-            f.write(chr(i % 64 + 0x20) * 1024)
+            f.write((chr(i % 64 + 0x20) * 1024).encode())
 
     file_st = file_path.stat()
 
@@ -742,7 +742,7 @@ async def test_static_file_compression(aiohttp_client, sender) -> None:
 
     resp = await client.get('/')
     assert resp.status == 200
-    zcomp = zlib.compressobj(wbits=-zlib.MAX_WBITS)
+    zcomp = zlib.compressobj(wbits=zlib.MAX_WBITS)
     expected_body = zcomp.compress(b'file content\n') + zcomp.flush()
     assert expected_body == await resp.read()
     assert 'application/octet-stream' == resp.headers['Content-Type']
@@ -754,9 +754,9 @@ async def test_static_file_huge_cancel(aiohttp_client, tmp_path) -> None:
     file_path = tmp_path / 'huge_data.unknown_mime_type'
 
     # fill 100MB file
-    with file_path.open('w') as f:
+    with file_path.open('wb') as f:
         for i in range(1024*20):
-            f.write(chr(i % 64 + 0x20) * 1024)
+            f.write((chr(i % 64 + 0x20) * 1024).encode())
 
     task = None
 

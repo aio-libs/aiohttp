@@ -76,10 +76,8 @@ def test_client(loop, app) -> None:
 
 
 async def test_aiohttp_client_close_is_idempotent() -> None:
-    """
-    a test client, called multiple times, should
-    not attempt to close the server again.
-    """
+    # a test client, called multiple times, should
+    # not attempt to close the server again.
     app = _create_example_app()
     client = _TestClient(_TestServer(app))
     await client.close()
@@ -307,3 +305,15 @@ async def test_custom_port(loop, app, aiohttp_unused_port) -> None:
     assert _hello_world_str == text
 
     await client.close()
+
+
+@pytest.mark.parametrize(("hostname", "expected_host"),
+                         [("127.0.0.1", "127.0.0.1"),
+                          ("localhost", "127.0.0.1"),
+                          ("::1", "::1")])
+async def test_test_server_hostnames(hostname, expected_host, loop) -> None:
+    app = _create_example_app()
+    server = _TestServer(app, host=hostname, loop=loop)
+    async with server:
+        pass
+    assert server.host == expected_host

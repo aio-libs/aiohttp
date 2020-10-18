@@ -168,6 +168,7 @@ class HttpParser(abc.ABC):
 
     def __init__(self, protocol: BaseProtocol,
                  loop: asyncio.AbstractEventLoop,
+                 limit: int,
                  max_line_size: int=8190,
                  max_headers: int=32768,
                  max_field_size: int=8190,
@@ -198,6 +199,7 @@ class HttpParser(abc.ABC):
         self._payload = None
         self._payload_parser = None  # type: Optional[HttpPayloadParser]
         self._auto_decompress = auto_decompress
+        self._limit = limit
         self._headers_parser = HeadersParser(max_line_size,
                                              max_headers,
                                              max_field_size)
@@ -288,7 +290,8 @@ class HttpParser(abc.ABC):
                         if ((length is not None and length > 0) or
                                 msg.chunked and not msg.upgrade):
                             payload = StreamReader(
-                                self.protocol, timer=self.timer, loop=loop)
+                                self.protocol, timer=self.timer, loop=loop,
+                                limit=self._limit)
                             payload_parser = HttpPayloadParser(
                                 payload, length=length,
                                 chunked=msg.chunked, method=method,
@@ -300,7 +303,8 @@ class HttpParser(abc.ABC):
                                 self._payload_parser = payload_parser
                         elif method == METH_CONNECT:
                             payload = StreamReader(
-                                self.protocol, timer=self.timer, loop=loop)
+                                self.protocol, timer=self.timer, loop=loop,
+                                limit=self._limit)
                             self._upgraded = True
                             self._payload_parser = HttpPayloadParser(
                                 payload, method=msg.method,
@@ -310,7 +314,8 @@ class HttpParser(abc.ABC):
                             if (getattr(msg, 'code', 100) >= 199 and
                                     length is None and self.read_until_eof):
                                 payload = StreamReader(
-                                    self.protocol, timer=self.timer, loop=loop)
+                                    self.protocol, timer=self.timer, loop=loop,
+                                    limit=self._limit)
                                 payload_parser = HttpPayloadParser(
                                     payload, length=length,
                                     chunked=msg.chunked, method=method,
@@ -668,12 +673,23 @@ class HttpPayloadParser:
                 # we should get another \r\n otherwise
                 # trailers needs to be skiped until \r\n\r\n
                 if self._chunk == ChunkState.PARSE_MAYBE_TRAILERS:
-                    if chunk[:2] == SEP:
+                    head = chunk[:2]
+                    if head == SEP:
                         # end of stream
                         self.payload.feed_eof()
                         return True, chunk[2:]
-                    else:
-                        self._chunk = ChunkState.PARSE_TRAILERS
+                    # Both CR and LF, or only LF may not be received yet. It is
+                    # expected that CRLF or LF will be shown at the very first
+                    # byte next time, otherwise trailers should come. The last
+                    # CRLF which marks the end of response might not be
+                    # contained in the same TCP segment which delivered the
+                    # size indicator.
+                    if not head:
+                        return False, b''
+                    if head == SEP[:1]:
+                        self._chunk_tail = head
+                        return False, b''
+                    self._chunk = ChunkState.PARSE_TRAILERS
 
                 # read and discard trailer up to the CRLF terminator
                 if self._chunk == ChunkState.PARSE_TRAILERS:
@@ -727,30 +743,36 @@ class DeflateBuffer:
             self.decompressor = BrotliDecoder()  # type: Any
         else:
             zlib_mode = (16 + zlib.MAX_WBITS
-                         if encoding == 'gzip' else -zlib.MAX_WBITS)
+                         if encoding == 'gzip' else zlib.MAX_WBITS)
             self.decompressor = zlib.decompressobj(wbits=zlib_mode)
 
     def set_exception(self, exc: BaseException) -> None:
         self.out.set_exception(exc)
 
     def feed_data(self, chunk: bytes, size: int) -> None:
+        if not size:
+            return
+
         self.size += size
+
+        # RFC1950
+        # bits 0..3 = CM = 0b1000 = 8 = "deflate"
+        # bits 4..7 = CINFO = 1..7 = windows size.
+        if not self._started_decoding and self.encoding == 'deflate' \
+                and chunk[0] & 0xf != 8:
+            # Change the decoder to decompress incorrectly compressed data
+            # Actually we should issue a warning about non-RFC-compliant data.
+            self.decompressor = zlib.decompressobj(wbits=-zlib.MAX_WBITS)
+
         try:
             chunk = self.decompressor.decompress(chunk)
         except Exception:
-            if not self._started_decoding and self.encoding == 'deflate':
-                self.decompressor = zlib.decompressobj()
-                try:
-                    chunk = self.decompressor.decompress(chunk)
-                except Exception:
-                    raise ContentEncodingError(
-                        'Can not decode content-encoding: %s' % self.encoding)
-            else:
-                raise ContentEncodingError(
-                    'Can not decode content-encoding: %s' % self.encoding)
+            raise ContentEncodingError(
+                'Can not decode content-encoding: %s' % self.encoding)
+
+        self._started_decoding = True
 
         if chunk:
-            self._started_decoding = True
             self.out.feed_data(chunk, len(chunk))
 
     def feed_eof(self) -> None:
@@ -777,10 +799,12 @@ RawResponseMessagePy = RawResponseMessage
 
 try:
     if not NO_EXTENSIONS:
-        from ._http_parser import (HttpRequestParser,  # type: ignore  # noqa
-                                   HttpResponseParser,
-                                   RawRequestMessage,
-                                   RawResponseMessage)
+        from ._http_parser import (  # type: ignore  # noqa
+            HttpRequestParser,
+            HttpResponseParser,
+            RawRequestMessage,
+            RawResponseMessage,
+        )
         HttpRequestParserC = HttpRequestParser
         HttpResponseParserC = HttpResponseParser
         RawRequestMessageC = RawRequestMessage

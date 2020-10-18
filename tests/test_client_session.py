@@ -3,6 +3,7 @@ import contextlib
 import gc
 import json
 import re
+import sys
 from http.cookies import SimpleCookie
 from io import BytesIO
 from unittest import mock
@@ -16,7 +17,6 @@ from aiohttp import client, hdrs, web
 from aiohttp.client import ClientSession
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import BaseConnector, TCPConnector
-from aiohttp.helpers import PY_36
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -70,7 +70,7 @@ async def test_close_coro(create_session) -> None:
 async def test_init_headers_simple_dict(create_session) -> None:
     session = await create_session(headers={"h1": "header1",
                                             "h2": "header2"})
-    assert (sorted(session._default_headers.items()) ==
+    assert (sorted(session.headers.items()) ==
             ([("h1", "header1"), ("h2", "header2")]))
 
 
@@ -78,7 +78,7 @@ async def test_init_headers_list_of_tuples(create_session) -> None:
     session = await create_session(headers=[("h1", "header1"),
                                             ("h2", "header2"),
                                             ("h3", "header3")])
-    assert (session._default_headers ==
+    assert (session.headers ==
             CIMultiDict([("h1", "header1"),
                          ("h2", "header2"),
                          ("h3", "header3")]))
@@ -88,7 +88,7 @@ async def test_init_headers_MultiDict(create_session) -> None:
     session = await create_session(headers=MultiDict([("h1", "header1"),
                                                       ("h2", "header2"),
                                                       ("h3", "header3")]))
-    assert (session._default_headers ==
+    assert (session.headers ==
             CIMultiDict([("H1", "header1"),
                          ("H2", "header2"),
                          ("H3", "header3")]))
@@ -99,7 +99,7 @@ async def test_init_headers_list_of_tuples_with_duplicates(
     session = await create_session(headers=[("h1", "header11"),
                                             ("h2", "header21"),
                                             ("h1", "header12")])
-    assert (session._default_headers ==
+    assert (session.headers ==
             CIMultiDict([("H1", "header11"),
                          ("H2", "header21"),
                          ("H1", "header12")]))
@@ -593,7 +593,7 @@ async def test_request_tracing(loop, aiohttp_client) -> None:
             {'ok': True}).encode('utf8')
 
 
-async def test_request_tracing_exception(loop) -> None:
+async def test_request_tracing_exception() -> None:
     on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
     on_request_exception = mock.Mock(
         side_effect=make_mocked_coro(mock.Mock())
@@ -605,9 +605,13 @@ async def test_request_tracing_exception(loop) -> None:
 
     with mock.patch("aiohttp.client.TCPConnector.connect") as connect_patched:
         error = Exception()
-        f = loop.create_future()
-        f.set_exception(error)
-        connect_patched.return_value = f
+        if sys.version_info >= (3, 8, 1):
+            connect_patched.side_effect = error
+        else:
+            loop = asyncio.get_event_loop()
+            f = loop.create_future()
+            f.set_exception(error)
+            connect_patched.return_value = f
 
         session = aiohttp.ClientSession(
             trace_configs=[trace_config]
@@ -665,8 +669,6 @@ async def test_request_tracing_interpose_headers(loop, aiohttp_client) -> None:
     assert MyClientRequest.headers['foo'] == 'bar'
 
 
-@pytest.mark.skipif(not PY_36,
-                    reason="Python 3.6+ required")
 def test_client_session_inheritance() -> None:
     with pytest.raises(TypeError):
         class A(ClientSession):
@@ -679,10 +681,13 @@ async def test_client_session_custom_attr() -> None:
         session.custom = None
 
 
-async def test_client_session_timeout_args(loop) -> None:
+async def test_client_session_timeout_default_args(loop) -> None:
     session1 = ClientSession()
-    assert session1._timeout == client.DEFAULT_TIMEOUT
+    assert session1.timeout == client.DEFAULT_TIMEOUT
 
+async def test_client_session_timeout_argument() -> None:
+    session = ClientSession(timeout=500)
+    assert session.timeout == 500
 
 async def test_requote_redirect_url_default() -> None:
     session = ClientSession()

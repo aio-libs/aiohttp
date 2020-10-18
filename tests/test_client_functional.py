@@ -1,6 +1,7 @@
-"""HTTP client functional tests against aiohttp.web server"""
+# HTTP client functional tests against aiohttp.web server
 
 import asyncio
+import datetime
 import http.cookies
 import io
 import json
@@ -9,7 +10,6 @@ import socket
 from unittest import mock
 
 import pytest
-from async_generator import async_generator, yield_
 from multidict import MultiDict
 
 import aiohttp
@@ -52,6 +52,37 @@ async def test_keepalive_two_requests_success(
     await resp2.read()
 
     assert 1 == len(client._session.connector._conns)
+
+
+async def test_keepalive_after_head_requests_success(
+        aiohttp_client) -> None:
+    async def handler(request):
+        body = await request.read()
+        assert b'' == body
+        return web.Response(body=b'OK')
+
+    cnt_conn_reuse = 0
+
+    async def on_reuseconn(session, ctx, params):
+        nonlocal cnt_conn_reuse
+        cnt_conn_reuse += 1
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config._on_connection_reuseconn.append(on_reuseconn)
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+
+    connector = aiohttp.TCPConnector(limit=1)
+    client = await aiohttp_client(app, connector=connector,
+                                  trace_configs=[trace_config])
+
+    resp1 = await client.head('/')
+    await resp1.read()
+    resp2 = await client.get('/')
+    await resp2.read()
+
+    assert 1 == cnt_conn_reuse
 
 
 async def test_keepalive_response_released(aiohttp_client) -> None:
@@ -593,6 +624,56 @@ async def test_timeout_on_session_read_timeout(aiohttp_client, mocker) -> None:
 
     with pytest.raises(asyncio.TimeoutError):
         await client.get('/')
+
+
+async def test_read_timeout_between_chunks(aiohttp_client, mocker) -> None:
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
+
+    async def handler(request):
+        resp = aiohttp.web.StreamResponse()
+        await resp.prepare(request)
+        # write data 4 times, with pauses. Total time 2 seconds.
+        for _ in range(4):
+            await asyncio.sleep(0.5)
+            await resp.write(b'data\n')
+        return resp
+
+    app = web.Application()
+    app.add_routes([web.get('/', handler)])
+
+    # A timeout of 0.2 seconds should apply per read.
+    timeout = aiohttp.ClientTimeout(sock_read=1)
+    client = await aiohttp_client(app, timeout=timeout)
+
+    res = b''
+    async with await client.get('/') as resp:
+        res += await resp.read()
+
+    assert res == b'data\n' * 4
+
+
+async def test_read_timeout_on_reading_chunks(aiohttp_client, mocker) -> None:
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
+
+    async def handler(request):
+        resp = aiohttp.web.StreamResponse()
+        await resp.prepare(request)
+        await resp.write(b'data\n')
+        await asyncio.sleep(1)
+        await resp.write(b'data\n')
+        return resp
+
+    app = web.Application()
+    app.add_routes([web.get('/', handler)])
+
+    # A timeout of 0.2 seconds should apply per read.
+    timeout = aiohttp.ClientTimeout(sock_read=0.2)
+    client = await aiohttp_client(app, timeout=timeout)
+
+    async with await client.get('/') as resp:
+        assert (await resp.content.read(5)) == b'data\n'
+        with pytest.raises(asyncio.TimeoutError):
+            await resp.content.read()
 
 
 async def test_timeout_on_reading_data(aiohttp_client, mocker) -> None:
@@ -1198,7 +1279,7 @@ async def test_POST_FILES(aiohttp_client, fname) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with fname.open() as f:
+    with fname.open('rb') as f:
         resp = await client.post(
             '/', data={'some': f, 'test': b'data'}, chunked=True)
         assert 200 == resp.status
@@ -1220,7 +1301,7 @@ async def test_POST_FILES_DEFLATE(aiohttp_client, fname) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with fname.open() as f:
+    with fname.open('rb') as f:
         resp = await client.post(
             '/',
             data={'some': f},
@@ -1271,8 +1352,8 @@ async def test_POST_FILES_STR(aiohttp_client, fname) -> None:
 
     async def handler(request):
         data = await request.post()
-        with fname.open() as f:
-            content1 = f.read()
+        with fname.open('rb') as f:
+            content1 = f.read().decode()
         content2 = data['some']
         assert content1 == content2
         return web.Response()
@@ -1281,8 +1362,8 @@ async def test_POST_FILES_STR(aiohttp_client, fname) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with fname.open() as f:
-        resp = await client.post('/', data={'some': f.read()})
+    with fname.open('rb') as f:
+        resp = await client.post('/', data={'some': f.read().decode()})
         assert 200 == resp.status
         resp.close()
 
@@ -1300,7 +1381,7 @@ async def test_POST_FILES_STR_SIMPLE(aiohttp_client, fname) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with fname.open() as f:
+    with fname.open('rb') as f:
         resp = await client.post('/', data=f.read())
         assert 200 == resp.status
         resp.close()
@@ -1320,7 +1401,7 @@ async def test_POST_FILES_LIST(aiohttp_client, fname) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with fname.open() as f:
+    with fname.open('rb') as f:
         resp = await client.post('/', data=[('some', f)])
         assert 200 == resp.status
         resp.close()
@@ -1341,7 +1422,7 @@ async def test_POST_FILES_CT(aiohttp_client, fname) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with fname.open() as f:
+    with fname.open('rb') as f:
         form = aiohttp.FormData()
         form.add_field('some', f, content_type='text/plain')
         resp = await client.post('/', data=form)
@@ -1353,14 +1434,14 @@ async def test_POST_FILES_SINGLE(aiohttp_client, fname) -> None:
 
     async def handler(request):
         data = await request.text()
-        with fname.open('r') as f:
-            content = f.read()
+        with fname.open('rb') as f:
+            content = f.read().decode()
             assert content == data
-            # if system cannot determine 'application/pgp-keys' MIME type
-            # then use 'application/octet-stream' default
-        assert request.content_type in ['application/pgp-keys',
-                                        'text/plain',
-                                        'application/octet-stream']
+        # if system cannot determine 'text/x-python' MIME type
+        # then use 'application/octet-stream' default
+        assert request.content_type in ['text/plain',
+                                        'application/octet-stream',
+                                        'text/x-python']
         assert 'content-disposition' not in request.headers
 
         return web.Response()
@@ -1369,7 +1450,7 @@ async def test_POST_FILES_SINGLE(aiohttp_client, fname) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with fname.open() as f:
+    with fname.open('rb') as f:
         resp = await client.post('/', data=f)
         assert 200 == resp.status
         resp.close()
@@ -1380,14 +1461,14 @@ async def test_POST_FILES_SINGLE_content_disposition(
 
     async def handler(request):
         data = await request.text()
-        with fname.open('r') as f:
-            content = f.read()
+        with fname.open('rb') as f:
+            content = f.read().decode()
             assert content == data
-            # if system cannot determine 'application/pgp-keys' MIME type
-            # then use 'application/octet-stream' default
-        assert request.content_type in ['application/pgp-keys',
-                                        'text/plain',
-                                        'application/octet-stream']
+        # if system cannot determine 'application/pgp-keys' MIME type
+        # then use 'application/octet-stream' default
+        assert request.content_type in ['text/plain',
+                                        'application/octet-stream',
+                                        'text/x-python']
         assert request.headers['content-disposition'] == (
             "inline; filename=\"conftest.py\"; filename*=utf-8''conftest.py")
 
@@ -1397,7 +1478,7 @@ async def test_POST_FILES_SINGLE_content_disposition(
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with fname.open() as f:
+    with fname.open('rb') as f:
         resp = await client.post(
             '/', data=aiohttp.get_payload(f, disposition='inline'))
         assert 200 == resp.status
@@ -1479,8 +1560,8 @@ async def test_POST_FILES_WITH_DATA(aiohttp_client, fname) -> None:
     async def handler(request):
         data = await request.post()
         assert data['test'] == 'true'
-        assert data['some'].content_type in ['application/pgp-keys',
-                                             'text/plain; charset=utf-8',
+        assert data['some'].content_type in ['text/x-python',
+                                             'text/plain',
                                              'application/octet-stream']
         assert data['some'].filename == fname.name
         with fname.open('rb') as f:
@@ -1492,7 +1573,7 @@ async def test_POST_FILES_WITH_DATA(aiohttp_client, fname) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with fname.open() as f:
+    with fname.open('rb') as f:
         resp = await client.post('/', data={'test': 'true', 'some': f})
         assert 200 == resp.status
         resp.close()
@@ -1517,12 +1598,11 @@ async def test_POST_STREAM_DATA(aiohttp_client, fname) -> None:
     with fname.open('rb') as f:
         data_size = len(f.read())
 
-    @async_generator
     async def gen(fname):
         with fname.open('rb') as f:
             data = f.read(100)
             while data:
-                await yield_(data)
+                yield data
                 data = f.read(100)
 
     resp = await client.post(
@@ -1983,6 +2063,86 @@ async def test_set_cookies(aiohttp_client) -> None:
                                          mock.ANY)
 
 
+async def test_set_cookies_expired(aiohttp_client) -> None:
+
+    async def handler(request):
+        ret = web.Response()
+        ret.set_cookie('c1', 'cookie1')
+        ret.set_cookie('c2', 'cookie2')
+        ret.headers.add('Set-Cookie',
+                        'c3=cookie3; '
+                        'HttpOnly; Path=/'
+                        " Expires=Tue, 1 Jan 1980 12:00:00 GMT; ")
+        return ret
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get('/')
+    assert 200 == resp.status
+    cookie_names = {c.key for c in client.session.cookie_jar}
+    assert cookie_names == {'c1', 'c2'}
+    resp.close()
+
+
+async def test_set_cookies_max_age(aiohttp_client) -> None:
+
+    async def handler(request):
+        ret = web.Response()
+        ret.set_cookie('c1', 'cookie1')
+        ret.set_cookie('c2', 'cookie2')
+        ret.headers.add('Set-Cookie',
+                        'c3=cookie3; '
+                        'HttpOnly; Path=/'
+                        " Max-Age=1; ")
+        return ret
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get('/')
+    assert 200 == resp.status
+    cookie_names = {c.key for c in client.session.cookie_jar}
+    assert cookie_names == {'c1', 'c2', 'c3'}
+    await asyncio.sleep(2)
+    cookie_names = {c.key for c in client.session.cookie_jar}
+    assert cookie_names == {'c1', 'c2'}
+    resp.close()
+
+
+async def test_set_cookies_max_age_overflow(aiohttp_client) -> None:
+
+    async def handler(request):
+        ret = web.Response()
+        ret.headers.add('Set-Cookie',
+                        'overflow=overflow; '
+                        'HttpOnly; Path=/'
+                        " Max-Age=" + str(overflow) + "; ")
+        return ret
+
+    overflow = int(datetime.datetime.max.replace(
+        tzinfo=datetime.timezone.utc).timestamp())
+    empty = None
+    try:
+        empty = (datetime.datetime.now(datetime.timezone.utc) +
+                 datetime.timedelta(seconds=overflow))
+    except OverflowError as ex:
+        assert isinstance(ex, OverflowError)
+    assert not isinstance(empty, datetime.datetime)
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get('/')
+    assert 200 == resp.status
+    for cookie in client.session.cookie_jar:
+        if cookie.key == 'overflow':
+            assert int(cookie['max-age']) == int(overflow)
+    resp.close()
+
+
 async def test_request_conn_error() -> None:
     client = aiohttp.ClientSession()
     with pytest.raises(aiohttp.ClientConnectionError):
@@ -2072,6 +2232,29 @@ async def test_redirect_without_location_header(aiohttp_client) -> None:
     data = await resp.read()
     assert data == body
 
+
+@pytest.mark.parametrize(
+    ("status", "expected_ok"),
+    (
+        (200, True),
+        (201, True),
+        (301, True),
+        (400, False),
+        (403, False),
+        (500, False),
+    )
+)
+async def test_ok_from_status(aiohttp_client, status, expected_ok) -> None:
+
+    async def handler(request):
+        return web.Response(status=status, body=b'')
+
+    app = web.Application()
+    app.router.add_route('GET', '/endpoint', handler)
+    client = await aiohttp_client(app, raise_for_status=False)
+    resp = await client.get('/endpoint')
+
+    assert resp.ok is expected_ok
 
 async def test_raise_for_status(aiohttp_client) -> None:
 
@@ -2551,9 +2734,11 @@ async def test_request_conn_closed(aiohttp_client) -> None:
     app.router.add_get('/', handler)
 
     client = await aiohttp_client(app)
-    with pytest.raises(aiohttp.ServerDisconnectedError):
+    with pytest.raises(aiohttp.ServerDisconnectedError) as excinfo:
         resp = await client.get('/')
         await resp.read()
+
+    assert str(excinfo.value) != ''
 
 
 async def test_dont_close_explicit_connector(aiohttp_client) -> None:
@@ -2732,10 +2917,9 @@ async def test_async_payload_generator(aiohttp_client) -> None:
 
     client = await aiohttp_client(app)
 
-    @async_generator
     async def gen():
         for i in range(100):
-            await yield_(b'1234567890')
+            yield b'1234567890'
 
     resp = await client.post('/', data=gen())
     assert resp.status == 200
@@ -2822,3 +3006,29 @@ async def test_read_timeout_on_prepared_response(aiohttp_client) -> None:
     with pytest.raises(aiohttp.ServerTimeoutError):
         async with await client.get('/') as resp:
             await resp.read()
+
+
+async def test_read_bufsize_session_default(aiohttp_client) -> None:
+    async def handler(request):
+        return web.Response(body=b'1234567')
+
+    app = web.Application()
+    app.add_routes([web.get('/', handler)])
+
+    client = await aiohttp_client(app, read_bufsize=2)
+
+    async with await client.get('/') as resp:
+        assert resp.content.get_read_buffer_limits() == (2, 4)
+
+
+async def test_read_bufsize_explicit(aiohttp_client) -> None:
+    async def handler(request):
+        return web.Response(body=b'1234567')
+
+    app = web.Application()
+    app.add_routes([web.get('/', handler)])
+
+    client = await aiohttp_client(app)
+
+    async with await client.get('/', read_bufsize=4) as resp:
+        assert resp.content.get_read_buffer_limits() == (4, 8)

@@ -487,7 +487,8 @@ async def test_recv_protocol_error(aiohttp_client) -> None:
     msg = await resp.receive()
     assert msg.type == aiohttp.WSMsgType.ERROR
     assert type(msg.data) is aiohttp.WebSocketError
-    assert msg.data.args[0] == 'Received frame with non-zero reserved bits'
+    assert msg.data.code == aiohttp.WSCloseCode.PROTOCOL_ERROR
+    assert str(msg.data) == 'Received frame with non-zero reserved bits'
     assert msg.extra is None
     await resp.close()
 
@@ -512,7 +513,7 @@ async def test_recv_timeout(aiohttp_client) -> None:
     await resp.send_str('ask')
 
     with pytest.raises(asyncio.TimeoutError):
-        with async_timeout.timeout(0.01):
+        async with async_timeout.timeout(0.01):
             await resp.receive()
 
     await resp.close()

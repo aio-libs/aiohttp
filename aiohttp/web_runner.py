@@ -85,8 +85,6 @@ class TCPSite(BaseSite):
                  reuse_port: Optional[bool]=None) -> None:
         super().__init__(runner, shutdown_timeout=shutdown_timeout,
                          ssl_context=ssl_context, backlog=backlog)
-        if host is None:
-            host = "0.0.0.0"
         self._host = host
         if port is None:
             port = 8443 if self._ssl_context else 8080
@@ -97,14 +95,15 @@ class TCPSite(BaseSite):
     @property
     def name(self) -> str:
         scheme = 'https' if self._ssl_context else 'http'
-        return str(URL.build(scheme=scheme, host=self._host, port=self._port))
+        host = "0.0.0.0" if self._host is None else self._host
+        return str(URL.build(scheme=scheme, host=host, port=self._port))
 
     async def start(self) -> None:
         await super().start()
         loop = asyncio.get_event_loop()
         server = self._runner.server
         assert server is not None
-        self._server = await loop.create_server(  # type: ignore
+        self._server = await loop.create_server(
             server, self._host, self._port,
             ssl=self._ssl_context, backlog=self._backlog,
             reuse_address=self._reuse_address,
@@ -191,7 +190,7 @@ class SockSite(BaseSite):
         loop = asyncio.get_event_loop()
         server = self._runner.server
         assert server is not None
-        self._server = await loop.create_server(  # type: ignore
+        self._server = await loop.create_server(
             server, sock=self._sock,
             ssl=self._ssl_context, backlog=self._backlog)
 

@@ -1,7 +1,5 @@
 import json
 import os  # noqa
-import pathlib  # noqa
-import sys
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -29,7 +27,7 @@ if TYPE_CHECKING:  # pragma: no cover
     _CIMultiDictProxy = CIMultiDictProxy[str]
     _MultiDict = MultiDict[str]
     _MultiDictProxy = MultiDictProxy[str]
-    from http.cookies import BaseCookie  # noqa
+    from http.cookies import BaseCookie, Morsel  # noqa
 else:
     _CIMultiDict = CIMultiDict
     _CIMultiDictProxy = CIMultiDictProxy
@@ -43,11 +41,18 @@ LooseHeaders = Union[Mapping[Union[str, istr], str], _CIMultiDict,
                      _CIMultiDictProxy]
 RawHeaders = Tuple[Tuple[bytes, bytes], ...]
 StrOrURL = Union[str, URL]
-LooseCookies = Union[Iterable[Tuple[str, 'BaseCookie[str]']],
-                     Mapping[str, 'BaseCookie[str]'], 'BaseCookie[str]']
+
+LooseCookiesMappings = Mapping[
+    str, Union[str, 'BaseCookie[str]', 'Morsel[Any]']
+]
+LooseCookiesIterables = Iterable[
+    Tuple[str, Union[str, 'BaseCookie[str]', 'Morsel[Any]']]
+]
+LooseCookies = Union[
+    LooseCookiesMappings,
+    LooseCookiesIterables,
+    'BaseCookie[str]',
+]
 
 
-if sys.version_info >= (3, 6):
-    PathLike = Union[str, 'os.PathLike[str]']
-else:
-    PathLike = Union[str, pathlib.PurePath]
+PathLike = Union[str, 'os.PathLike[str]']

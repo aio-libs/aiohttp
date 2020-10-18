@@ -17,6 +17,7 @@ from typing import (  # noqa
     Mapping,
     MutableMapping,
     Optional,
+    Set,
     Tuple,
     Union,
     cast,
@@ -35,8 +36,10 @@ from .helpers import (
     is_expected_content_type,
     reify,
     sentinel,
+    set_result,
 )
 from .http_parser import RawRequestMessage
+from .http_writer import HttpVersion
 from .multipart import BodyPartReader, MultipartReader
 from .streams import EmptyStreamReader, StreamReader
 from .typedefs import (
@@ -58,8 +61,8 @@ __all__ = ('BaseRequest', 'FileField', 'Request')
 
 if TYPE_CHECKING:  # pragma: no cover
     from .web_app import Application  # noqa
-    from .web_urldispatcher import UrlMappingMatchInfo  # noqa
     from .web_protocol import RequestHandler  # noqa
+    from .web_urldispatcher import UrlMappingMatchInfo  # noqa
 
 
 @attr.s(frozen=True, slots=True)
@@ -110,7 +113,9 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         '_message', '_protocol', '_payload_writer', '_payload', '_headers',
         '_method', '_version', '_rel_url', '_post', '_read_bytes',
         '_state', '_cache', '_task', '_client_max_size', '_loop',
-        '_transport_sslcontext', '_transport_peername')
+        '_transport_sslcontext', '_transport_peername',
+        '_disconnection_waiters', '__weakref__'
+    )
 
     def __init__(self, message: RawRequestMessage,
                  payload: StreamReader, protocol: 'RequestHandler',
@@ -142,6 +147,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self._task = task
         self._client_max_size = client_max_size
         self._loop = loop
+        self._disconnection_waiters = set()  # type: Set[asyncio.Future[None]]
 
         transport = self._protocol.transport
         assert transport is not None
@@ -338,7 +344,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._method
 
     @reify
-    def version(self) -> Tuple[int, int]:
+    def version(self) -> HttpVersion:
         """Read only property for getting HTTP version of request.
 
         Returns aiohttp.protocol.HttpVersion instance.
@@ -429,7 +435,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._message.raw_headers
 
     @staticmethod
-    def _http_date(_date_str: str) -> Optional[datetime.datetime]:
+    def _http_date(_date_str: Optional[str]) -> Optional[datetime.datetime]:
         """Process a date string, return a datetime object
         """
         if _date_str is not None:
@@ -475,7 +481,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         A read-only dictionary-like object.
         """
         raw = self.headers.get(hdrs.COOKIE, '')
-        parsed = SimpleCookie(raw)
+        parsed = SimpleCookie(raw)  # type: SimpleCookie[str]
         return MappingProxyType(
             {key: val.value for key, val in parsed.items()})
 
@@ -550,7 +556,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
                 body.extend(chunk)
                 if self._client_max_size:
                     body_size = len(body)
-                    if body_size >= self._client_max_size:
+                    if body_size > self._client_max_size:
                         raise HTTPRequestEntityTooLarge(
                             max_size=self._client_max_size,
                             actual_size=body_size
@@ -635,7 +641,8 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
                         ff = FileField(field.name, field.filename,
                                        cast(io.BufferedReader, tmp),
-                                       field_ct, field.headers)
+                                       field_ct or 'application/octet-stream',
+                                       field.headers)
                         out.add(field.name, ff)
                     else:
                         # deal with ordinary data
@@ -677,6 +684,18 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self._post = MultiDictProxy(out)
         return self._post
 
+    def get_extra_info(self, name: str, default: Any = None) -> Any:
+        """Extra info from protocol transport"""
+        protocol = self._protocol
+        if protocol is None:
+            return default
+
+        transport = protocol.transport
+        if transport is None:
+            return default
+
+        return transport.get_extra_info(name, default)
+
     def __repr__(self) -> str:
         ascii_encodable_path = self.path.encode('ascii', 'backslashreplace') \
             .decode('ascii')
@@ -686,8 +705,29 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
     def __eq__(self, other: object) -> bool:
         return id(self) == id(other)
 
+    def __bool__(self) -> bool:
+        return True
+
     async def _prepare_hook(self, response: StreamResponse) -> None:
         return
+
+    def _cancel(self, exc: BaseException) -> None:
+        self._payload.set_exception(exc)
+        for fut in self._disconnection_waiters:
+            set_result(fut, None)
+
+    def _finish(self) -> None:
+        for fut in self._disconnection_waiters:
+            fut.cancel()
+
+    async def wait_for_disconnection(self) -> None:
+        loop = asyncio.get_event_loop()
+        fut = loop.create_future()  # type: asyncio.Future[None]
+        self._disconnection_waiters.add(fut)
+        try:
+            await fut
+        finally:
+            self._disconnection_waiters.remove(fut)
 
 
 class Request(BaseRequest):

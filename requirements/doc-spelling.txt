@@ -1,1 +1,2 @@
-sphinxcontrib-spelling==4.3.0; platform_system!="Windows"  # We only use it in Travis CI
+-r doc.txt
+sphinxcontrib-spelling==5.4.0; platform_system!="Windows"  # We only use it in Travis CI

@@ -1,4 +1,4 @@
-"""Tests of custom aiohttp locks implementations"""
+# Tests of custom aiohttp locks implementations
 import asyncio
 
 import pytest

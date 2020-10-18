@@ -2,6 +2,7 @@ import asyncio
 import io
 import json
 import pathlib
+import sys
 import zlib
 from unittest import mock
 
@@ -17,7 +18,6 @@ from aiohttp.hdrs import (
 )
 from aiohttp.helpers import parse_mimetype
 from aiohttp.multipart import MultipartResponseWrapper
-from aiohttp.streams import DEFAULT_LIMIT as stream_reader_default_limit
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_coro
 
@@ -171,13 +171,15 @@ class TestPartReader:
         assert c3 == b''
 
     async def test_read_incomplete_chunk(self, newline) -> None:
-        loop = asyncio.get_event_loop()
         stream = Stream(b'')
 
-        def prepare(data):
-            f = loop.create_future()
-            f.set_result(data)
-            return f
+        if sys.version_info >= (3, 8, 1):
+            # Workaround for a weird behavior of patch.object
+            def prepare(data):
+                return data
+        else:
+            async def prepare(data):
+                return data
 
         with mock.patch.object(stream, 'read', side_effect=[
             prepare(b'Hello, '),
@@ -218,13 +220,15 @@ class TestPartReader:
         assert data == result
 
     async def test_read_boundary_with_incomplete_chunk(self, newline) -> None:
-        loop = asyncio.get_event_loop()
         stream = Stream(b'')
 
-        def prepare(data):
-            f = loop.create_future()
-            f.set_result(data)
-            return f
+        if sys.version_info >= (3, 8, 1):
+            # Workaround for weird 3.8.1 patch.object() behavior
+            def prepare(data):
+                return data
+        else:
+            async def prepare(data):
+                return data
 
         with mock.patch.object(stream, 'read', side_effect=[
             prepare(b'Hello, World'),
@@ -647,9 +651,9 @@ class TestPartReader:
         assert 'foo.html' == part.filename
 
     async def test_reading_long_part(self, newline) -> None:
-        size = 2 * stream_reader_default_limit
+        size = 2 * 2 ** 16
         protocol = mock.Mock(_reading_paused=False)
-        stream = StreamReader(protocol, loop=asyncio.get_event_loop())
+        stream = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
         stream.feed_data(b'0' * size + b'%s--:--' % newline)
         stream.feed_eof()
         obj = aiohttp.BodyPartReader(BOUNDARY, {}, stream, _newline=newline)
@@ -1264,9 +1268,7 @@ class TestMultipartWriter:
         assert message == b'foo\r\n--:--\r\n'
 
     async def test_preserve_content_disposition_header(self, buf, stream):
-        """
-        https://github.com/aio-libs/aiohttp/pull/3475#issuecomment-451072381
-        """
+        # https://github.com/aio-libs/aiohttp/pull/3475#issuecomment-451072381
         with pathlib.Path(__file__).open('rb') as fobj:
             with aiohttp.MultipartWriter('form-data', boundary=':') as writer:
                 part = writer.append(
@@ -1295,9 +1297,7 @@ class TestMultipartWriter:
         )
 
     async def test_set_content_disposition_override(self, buf, stream):
-        """
-        https://github.com/aio-libs/aiohttp/pull/3475#issuecomment-451072381
-        """
+        # https://github.com/aio-libs/aiohttp/pull/3475#issuecomment-451072381
         with pathlib.Path(__file__).open('rb') as fobj:
             with aiohttp.MultipartWriter('form-data', boundary=':') as writer:
                 part = writer.append(
@@ -1326,9 +1326,7 @@ class TestMultipartWriter:
         )
 
     async def test_reset_content_disposition_header(self, buf, stream):
-        """
-        https://github.com/aio-libs/aiohttp/pull/3475#issuecomment-451072381
-        """
+        # https://github.com/aio-libs/aiohttp/pull/3475#issuecomment-451072381
         with pathlib.Path(__file__).open('rb') as fobj:
             with aiohttp.MultipartWriter('form-data', boundary=':') as writer:
                 part = writer.append(

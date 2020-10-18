@@ -1,3 +1,4 @@
+import asyncio
 import pathlib
 from unittest import mock
 from unittest.mock import MagicMock
@@ -31,12 +32,10 @@ async def test_access_root_of_static_handler(tmp_path,
                                              status,
                                              prefix,
                                              data) -> None:
-    """
-    Tests the operation of static file server.
-    Try to access the root of static file server, and make
-    sure that correct HTTP statuses are returned depending if we directory
-    index should be shown or not.
-    """
+    # Tests the operation of static file server.
+    # Try to access the root of static file server, and make
+    # sure that correct HTTP statuses are returned depending if we directory
+    # index should be shown or not.
     my_file = tmp_path / 'my_file'
     my_dir = tmp_path / 'my_dir'
     my_dir.mkdir()
@@ -65,9 +64,7 @@ async def test_access_root_of_static_handler(tmp_path,
 
 
 async def test_follow_symlink(tmp_path, aiohttp_client) -> None:
-    """
-    Tests the access to a symlink, in static folder
-    """
+    # Tests the access to a symlink, in static folder
     data = 'hello world'
 
     my_dir_path = tmp_path / 'my_dir'
@@ -98,9 +95,7 @@ async def test_follow_symlink(tmp_path, aiohttp_client) -> None:
 ])
 async def test_access_to_the_file_with_spaces(tmp_path, aiohttp_client,
                                               dir_name, filename, data):
-    """
-    Checks operation of static files with spaces
-    """
+    # Checks operation of static files with spaces
 
     my_dir_path = tmp_path / dir_name
     if my_dir_path != tmp_path:
@@ -124,11 +119,9 @@ async def test_access_to_the_file_with_spaces(tmp_path, aiohttp_client,
 
 async def test_access_non_existing_resource(tmp_path,
                                             aiohttp_client) -> None:
-    """
-    Tests accessing non-existing resource
-    Try to access a non-exiting resource and make sure that 404 HTTP status
-    returned.
-    """
+    # Tests accessing non-existing resource
+    # Try to access a non-exiting resource and make sure that 404 HTTP status
+    # returned.
     app = web.Application()
 
     # Register global static route:
@@ -148,9 +141,7 @@ async def test_access_non_existing_resource(tmp_path,
 async def test_url_escaping(aiohttp_client,
                             registered_path,
                             request_url) -> None:
-    """
-    Tests accessing a resource with
-    """
+    # Tests accessing a resource with
     app = web.Application()
 
     async def handler(request):
@@ -180,11 +171,9 @@ async def test_handler_metadata_persistence() -> None:
 
 async def test_unauthorized_folder_access(tmp_path,
                                           aiohttp_client) -> None:
-    """
-    Tests the unauthorized access to a folder of static file server.
-    Try to list a folder content of static file server when server does not
-    have permissions to do so for the folder.
-    """
+    # Tests the unauthorized access to a folder of static file server.
+    # Try to list a folder content of static file server when server does not
+    # have permissions to do so for the folder.
     my_dir = tmp_path / 'my_dir'
     my_dir.mkdir()
 
@@ -207,9 +196,7 @@ async def test_unauthorized_folder_access(tmp_path,
 
 
 async def test_access_symlink_loop(tmp_path, aiohttp_client) -> None:
-    """
-    Tests the access to a looped symlink, which could not be resolved.
-    """
+    # Tests the access to a looped symlink, which could not be resolved.
     my_dir_path = tmp_path / 'my_symlink'
     pathlib.Path(str(my_dir_path)).symlink_to(str(my_dir_path), True)
 
@@ -225,11 +212,9 @@ async def test_access_symlink_loop(tmp_path, aiohttp_client) -> None:
 
 
 async def test_access_special_resource(tmp_path, aiohttp_client) -> None:
-    """
-    Tests the access to a resource that is neither a file nor a directory.
-    Checks that if a special resource is accessed (f.e. named pipe or UNIX
-    domain socket) then 404 HTTP status returned.
-    """
+    # Tests the access to a resource that is neither a file nor a directory.
+    # Checks that if a special resource is accessed (f.e. named pipe or UNIX
+    # domain socket) then 404 HTTP status returned.
     app = web.Application()
 
     with mock.patch('pathlib.Path.__new__') as path_constructor:
@@ -254,6 +239,33 @@ async def test_access_special_resource(tmp_path, aiohttp_client) -> None:
         assert r.status == 403
 
 
+async def test_static_head(tmp_path, aiohttp_client) -> None:
+    # Test HEAD on static route
+    my_file_path = tmp_path / 'test.txt'
+    with my_file_path.open('wb') as fw:
+        fw.write(b'should_not_see_this\n')
+
+    app = web.Application()
+    app.router.add_static('/', str(tmp_path))
+    client = await aiohttp_client(app)
+
+    r = await client.head('/test.txt')
+    assert r.status == 200
+
+    # Check that there is no content sent (see #4809). This can't easily be
+    # done with aiohttp_client because the buffering can consume the content.
+    reader, writer = await asyncio.open_connection(client.host, client.port)
+    writer.write(b'HEAD /test.txt HTTP/1.1\r\n')
+    writer.write(b'Host: localhost\r\n')
+    writer.write(b'Connection: close\r\n')
+    writer.write(b'\r\n')
+    while await reader.readline() != b'\r\n':
+        pass
+    content = await reader.read()
+    writer.close()
+    assert content == b''
+
+
 def test_system_route() -> None:
     route = SystemRoute(web.HTTPCreated(reason='test'))
     with pytest.raises(RuntimeError):
@@ -266,9 +278,7 @@ def test_system_route() -> None:
 
 
 async def test_allow_head(aiohttp_client) -> None:
-    """
-    Test allow_head on routes.
-    """
+    # Test allow_head on routes.
     app = web.Application()
 
     async def handler(_):
@@ -299,10 +309,8 @@ async def test_allow_head(aiohttp_client) -> None:
     '/{a}',
 ])
 def test_reuse_last_added_resource(path) -> None:
-    """
-    Test that adding a route with the same name and path of the last added
-    resource doesn't create a new resource.
-    """
+    # Test that adding a route with the same name and path of the last added
+    # resource doesn't create a new resource.
     app = web.Application()
 
     async def handler(request):

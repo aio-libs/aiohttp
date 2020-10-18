@@ -22,11 +22,11 @@ from .abc import AbstractView
 from .typedefs import PathLike
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .web_urldispatcher import UrlDispatcher
     from .web_request import Request
     from .web_response import StreamResponse
+    from .web_urldispatcher import AbstractRoute, UrlDispatcher
 else:
-    Request = StreamResponse = UrlDispatcher = None
+    Request = StreamResponse = UrlDispatcher = AbstractRoute = None
 
 
 __all__ = ('AbstractRouteDef', 'RouteDef', 'StaticDef', 'RouteTableDef',
@@ -36,7 +36,7 @@ __all__ = ('AbstractRouteDef', 'RouteDef', 'StaticDef', 'RouteTableDef',
 
 class AbstractRouteDef(abc.ABC):
     @abc.abstractmethod
-    def register(self, router: UrlDispatcher) -> None:
+    def register(self, router: UrlDispatcher) -> List[AbstractRoute]:
         pass  # pragma: no cover
 
 
@@ -59,13 +59,13 @@ class RouteDef(AbstractRouteDef):
                 "{info}>".format(method=self.method, path=self.path,
                                  handler=self.handler, info=''.join(info)))
 
-    def register(self, router: UrlDispatcher) -> None:
+    def register(self, router: UrlDispatcher) -> List[AbstractRoute]:
         if self.method in hdrs.METH_ALL:
             reg = getattr(router, 'add_'+self.method.lower())
-            reg(self.path, self.handler, **self.kwargs)
+            return [reg(self.path, self.handler, **self.kwargs)]
         else:
-            router.add_route(self.method, self.path, self.handler,
-                             **self.kwargs)
+            return [router.add_route(self.method, self.path, self.handler,
+                    **self.kwargs)]
 
 
 @attr.s(frozen=True, repr=False, slots=True)
@@ -82,8 +82,10 @@ class StaticDef(AbstractRouteDef):
                 "{info}>".format(prefix=self.prefix, path=self.path,
                                  info=''.join(info)))
 
-    def register(self, router: UrlDispatcher) -> None:
-        router.add_static(self.prefix, self.path, **self.kwargs)
+    def register(self, router: UrlDispatcher) -> List[AbstractRoute]:
+        resource = router.add_static(self.prefix, self.path, **self.kwargs)
+        routes = resource.get_info().get('routes', {})
+        return routes.values()
 
 
 def route(method: str, path: str, handler: _HandlerType,
@@ -185,6 +187,9 @@ class RouteTableDef(Sequence[AbstractRouteDef]):
 
     def delete(self, path: str, **kwargs: Any) -> _Deco:
         return self.route(hdrs.METH_DELETE, path, **kwargs)
+
+    def options(self, path: str, **kwargs: Any) -> _Deco:
+        return self.route(hdrs.METH_OPTIONS, path, **kwargs)
 
     def view(self, path: str, **kwargs: Any) -> _Deco:
         return self.route(hdrs.METH_ANY, path, **kwargs)

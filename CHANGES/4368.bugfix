@@ -1,0 +1,1 @@
+Make `web.BaseRequest`, `web.Request`, `web.StreamResponse`, `web.Response` and `web.WebSocketResponse` weak referenceable again.

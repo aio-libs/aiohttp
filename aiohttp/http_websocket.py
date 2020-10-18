@@ -13,7 +13,6 @@ from typing import Any, Callable, List, Optional, Tuple, Union
 
 from .base_protocol import BaseProtocol
 from .helpers import NO_EXTENSIONS
-from .log import ws_logger
 from .streams import DataQueue
 
 __all__ = ('WS_CLOSED_MESSAGE', 'WS_CLOSING_MESSAGE', 'WS_KEY',
@@ -91,7 +90,10 @@ class WebSocketError(Exception):
 
     def __init__(self, code: int, message: str) -> None:
         self.code = code
-        super().__init__(message)
+        super().__init__(code, message)
+
+    def __str__(self) -> str:
+        return self.args[1]
 
 
 class WSHandshakeError(Exception):
@@ -150,7 +152,8 @@ _WS_EXT_RE = re.compile(r'^(?:;\s*(?:'
 _WS_EXT_RE_SPLIT = re.compile(r'permessage-deflate([^,]+)?')
 
 
-def ws_ext_parse(extstr: str, isserver: bool=False) -> Tuple[int, bool]:
+def ws_ext_parse(extstr: Optional[str],
+                 isserver: bool=False) -> Tuple[int, bool]:
     if not extstr:
         return 0, False
 
@@ -555,8 +558,8 @@ class WebSocketWriter:
     async def _send_frame(self, message: bytes, opcode: int,
                           compress: Optional[int]=None) -> None:
         """Send a frame over the websocket with message as its payload."""
-        if self._closing:
-            ws_logger.warning('websocket connection is closing.')
+        if self._closing and not (opcode & WSMsgType.CLOSE):
+            raise ConnectionResetError('Cannot write to closing transport')
 
         rsv = 0
 
@@ -566,10 +569,16 @@ class WebSocketWriter:
         if (compress or self.compress) and opcode < 8:
             if compress:
                 # Do not set self._compress if compressing is for this frame
-                compressobj = zlib.compressobj(wbits=-compress)
+                compressobj = zlib.compressobj(
+                    level=zlib.Z_BEST_SPEED,
+                    wbits=-compress
+                )
             else:  # self.compress
                 if not self._compressobj:
-                    self._compressobj = zlib.compressobj(wbits=-self.compress)
+                    self._compressobj = zlib.compressobj(
+                        level=zlib.Z_BEST_SPEED,
+                        wbits=-self.compress
+                    )
                 compressobj = self._compressobj
 
             message = compressobj.compress(message)
@@ -598,20 +607,25 @@ class WebSocketWriter:
             mask = mask.to_bytes(4, 'big')
             message = bytearray(message)
             _websocket_mask(mask, message)
-            self.transport.write(header + mask + message)
+            self._write(header + mask + message)
             self._output_size += len(header) + len(mask) + len(message)
         else:
             if len(message) > MSG_SIZE:
-                self.transport.write(header)
-                self.transport.write(message)
+                self._write(header)
+                self._write(message)
             else:
-                self.transport.write(header + message)
+                self._write(header + message)
 
             self._output_size += len(header) + len(message)
 
         if self._output_size > self._limit:
             self._output_size = 0
             await self.protocol._drain_helper()
+
+    def _write(self, data: bytes) -> None:
+        if self.transport is None or self.transport.is_closing():
+            raise ConnectionResetError('Cannot write to closing transport')
+        self.transport.write(data)
 
     async def pong(self, message: bytes=b'') -> None:
         """Send pong message."""

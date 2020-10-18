@@ -1,7 +1,7 @@
+import array
 from io import StringIO
 
 import pytest
-from async_generator import async_generator
 
 from aiohttp import payload
 
@@ -66,6 +66,12 @@ def test_bytes_payload_bad_type() -> None:
         payload.BytesPayload(object())
 
 
+def test_bytes_payload_memoryview_correct_size() -> None:
+    mv = memoryview(array.array("H", [1, 2, 3]))
+    p = payload.BytesPayload(mv)
+    assert p.size == 6
+
+
 def test_string_payload() -> None:
     p = payload.StringPayload('test')
     assert p.encoding == 'utf-8'
@@ -90,18 +96,18 @@ def test_string_io_payload() -> None:
 
 
 def test_async_iterable_payload_default_content_type() -> None:
-    @async_generator
     async def gen():
-        pass
+        return
+        yield
 
     p = payload.AsyncIterablePayload(gen())
     assert p.content_type == 'application/octet-stream'
 
 
 def test_async_iterable_payload_explicit_content_type() -> None:
-    @async_generator
     async def gen():
-        pass
+        return
+        yield
 
     p = payload.AsyncIterablePayload(gen(), content_type='application/custom')
     assert p.content_type == 'application/custom'

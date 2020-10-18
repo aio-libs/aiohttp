@@ -7,7 +7,6 @@ import zlib
 from unittest import mock
 
 import pytest
-from async_generator import async_generator, yield_
 from multidict import CIMultiDictProxy, MultiDict
 from yarl import URL
 
@@ -36,6 +35,13 @@ def here():
 @pytest.fixture
 def fname(here):
     return here / 'conftest.py'
+
+
+def new_dummy_form():
+    form = FormData()
+    form.add_field('name', b'123',
+                   content_transfer_encoding='base64')
+    return form
 
 
 async def test_simple_get(aiohttp_client) -> None:
@@ -261,7 +267,7 @@ async def test_multipart_empty(aiohttp_client) -> None:
 
 
 async def test_multipart_content_transfer_encoding(aiohttp_client) -> None:
-    """For issue #1168"""
+    # For issue #1168
     with multipart.MultipartWriter() as writer:
         writer.append(b'\x00' * 10,
                       headers={'Content-Transfer-Encoding': 'binary'})
@@ -312,8 +318,8 @@ async def test_post_single_file(aiohttp_client) -> None:
 
     def check_file(fs):
         fullname = here / fs.filename
-        with fullname.open() as f:
-            test_data = f.read().encode()
+        with fullname.open('rb') as f:
+            test_data = f.read()
             data = fs.file.read()
             assert test_data == data
 
@@ -332,7 +338,7 @@ async def test_post_single_file(aiohttp_client) -> None:
 
     fname = here / 'data.unknown_mime_type'
 
-    resp = await client.post('/', data=[fname.open()])
+    resp = await client.post('/', data=[fname.open('rb')])
     assert 200 == resp.status
 
 
@@ -375,8 +381,8 @@ async def test_post_files(aiohttp_client) -> None:
 
     def check_file(fs):
         fullname = here / fs.filename
-        with fullname.open() as f:
-            test_data = f.read().encode()
+        with fullname.open('rb') as f:
+            test_data = f.read()
             data = fs.file.read()
             assert test_data == data
 
@@ -393,8 +399,8 @@ async def test_post_files(aiohttp_client) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with (here / 'data.unknown_mime_type').open() as f1:
-        with (here / 'conftest.py').open() as f2:
+    with (here / 'data.unknown_mime_type').open('rb') as f1:
+        with (here / 'conftest.py').open('rb') as f2:
             resp = await client.post('/', data=[f1, f2])
             assert 200 == resp.status
 
@@ -457,17 +463,16 @@ def test_repr_for_application() -> None:
 
 
 async def test_expect_default_handler_unknown(aiohttp_client) -> None:
-    """Test default Expect handler for unknown Expect value.
+    # Test default Expect handler for unknown Expect value.
 
-    A server that does not understand or is unable to comply with any of
-    the expectation values in the Expect field of a request MUST respond
-    with appropriate error status. The server MUST respond with a 417
-    (Expectation Failed) status if any of the expectations cannot be met
-    or, if there are other problems with the request, some other 4xx
-    status.
+    # A server that does not understand or is unable to comply with any of
+    # the expectation values in the Expect field of a request MUST respond
+    # with appropriate error status. The server MUST respond with a 417
+    # (Expectation Failed) status if any of the expectations cannot be met
+    # or, if there are other problems with the request, some other 4xx
+    # status.
 
-    http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.20
-    """
+    # http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.20
     async def handler(request):
         await request.post()
         pytest.xfail('Handler should not proceed to this point in case of '
@@ -515,15 +520,11 @@ async def test_100_continue_custom(aiohttp_client) -> None:
         if request.version == HttpVersion11:
             await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
 
-    form = FormData()
-    form.add_field('name', b'123',
-                   content_transfer_encoding='base64')
-
     app = web.Application()
     app.router.add_post('/', handler, expect_handler=expect_handler)
     client = await aiohttp_client(app)
 
-    resp = await client.post('/', data=form, expect100=True)
+    resp = await client.post('/', data=new_dummy_form(), expect100=True)
     assert 200 == resp.status
     assert expect_received
 
@@ -542,20 +543,16 @@ async def test_100_continue_custom_response(aiohttp_client) -> None:
 
             await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
 
-    form = FormData()
-    form.add_field('name', b'123',
-                   content_transfer_encoding='base64')
-
     app = web.Application()
     app.router.add_post('/', handler, expect_handler=expect_handler)
     client = await aiohttp_client(app)
 
     auth_err = False
-    resp = await client.post('/', data=form, expect100=True)
+    resp = await client.post('/', data=new_dummy_form(), expect100=True)
     assert 200 == resp.status
 
     auth_err = True
-    resp = await client.post('/', data=form, expect100=True)
+    resp = await client.post('/', data=new_dummy_form(), expect100=True)
     assert 403 == resp.status
 
 
@@ -688,7 +685,11 @@ async def test_upload_file_object(aiohttp_client) -> None:
         assert 200 == resp.status
 
 
-async def test_empty_content_for_query_without_body(aiohttp_client) -> None:
+@pytest.mark.parametrize("method", [
+    "get", "post", "options", "post", "put", "patch", "delete"
+])
+async def test_empty_content_for_query_without_body(
+        method, aiohttp_client) -> None:
 
     async def handler(request):
         assert not request.body_exists
@@ -696,10 +697,10 @@ async def test_empty_content_for_query_without_body(aiohttp_client) -> None:
         return web.Response()
 
     app = web.Application()
-    app.router.add_post('/', handler)
+    app.router.add_route(method, '/', handler)
     client = await aiohttp_client(app)
 
-    resp = await client.post('/')
+    resp = await client.request(method, '/')
     assert 200 == resp.status
 
 
@@ -785,12 +786,11 @@ async def test_response_with_async_gen(aiohttp_client, fname) -> None:
 
     data_size = len(data)
 
-    @async_generator
     async def stream(f_name):
         with f_name.open('rb') as f:
             data = f.read(100)
             while data:
-                await yield_(data)
+                yield data
                 data = f.read(100)
 
     async def handler(request):
@@ -816,12 +816,11 @@ async def test_response_with_async_gen_no_params(aiohttp_client,
 
     data_size = len(data)
 
-    @async_generator
     async def stream():
         with fname.open('rb') as f:
             data = f.read(100)
             while data:
-                await yield_(data)
+                yield data
                 data = f.read(100)
 
     async def handler(request):
@@ -958,6 +957,28 @@ async def test_response_with_precompressed_body_deflate(
 
     async def handler(request):
         headers = {'Content-Encoding': 'deflate'}
+        zcomp = zlib.compressobj(wbits=zlib.MAX_WBITS)
+        data = zcomp.compress(b'mydata') + zcomp.flush()
+        return web.Response(body=data, headers=headers)
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get('/')
+    assert 200 == resp.status
+    data = await resp.read()
+    assert b'mydata' == data
+    assert resp.headers.get('Content-Encoding') == 'deflate'
+
+
+async def test_response_with_precompressed_body_deflate_no_hdrs(
+        aiohttp_client) -> None:
+
+    async def handler(request):
+        headers = {'Content-Encoding': 'deflate'}
+        # Actually, wrong compression format, but
+        # should be supported for some legacy cases.
         zcomp = zlib.compressobj(wbits=-zlib.MAX_WBITS)
         data = zcomp.compress(b'mydata') + zcomp.flush()
         return web.Response(body=data, headers=headers)
@@ -1448,7 +1469,10 @@ async def test_app_max_client_size(aiohttp_client) -> None:
     assert 413 == resp.status
     resp_text = await resp.text()
     assert 'Maximum request body size 1048576 exceeded, ' \
-           'actual body size 1048591' in resp_text
+           'actual body size' in resp_text
+    # Maximum request body size X exceeded, actual body size X
+    body_size = int(resp_text.split()[-1])
+    assert body_size >= max_size
 
 
 async def test_app_max_client_size_adjusted(aiohttp_client) -> None:
@@ -1474,7 +1498,10 @@ async def test_app_max_client_size_adjusted(aiohttp_client) -> None:
     assert 413 == resp.status
     resp_text = await resp.text()
     assert 'Maximum request body size 2097152 exceeded, ' \
-           'actual body size 2097166' in resp_text
+           'actual body size' in resp_text
+    # Maximum request body size X exceeded, actual body size X
+    body_size = int(resp_text.split()[-1])
+    assert body_size >= custom_max_size
 
 
 async def test_app_max_client_size_none(aiohttp_client) -> None:
@@ -1795,7 +1822,7 @@ async def test_request_tracing(aiohttp_server) -> None:
                        socket.AF_INET: '127.0.0.1'}
 
         def __init__(self, fakes):
-            """fakes -- dns -> port dict"""
+            # fakes -- dns -> port dict
             self._fakes = fakes
             self._resolver = aiohttp.DefaultResolver()
 
@@ -1896,3 +1923,29 @@ async def test_signal_on_error_handler(aiohttp_client) -> None:
     resp = await client.get('/')
     assert resp.status == 404
     assert resp.headers['X-Custom'] == 'val'
+
+
+@pytest.mark.skipif('HttpRequestParserC' not in dir(aiohttp.http_parser),
+                    reason="C based HTTP parser not available")
+async def test_bad_method_for_c_http_parser_not_hangs(aiohttp_client) -> None:
+    app = web.Application()
+    timeout = aiohttp.ClientTimeout(sock_read=0.2)
+    client = await aiohttp_client(app, timeout=timeout)
+    resp = await client.request('GET1', '/')
+    assert 400 == resp.status
+
+
+async def test_read_bufsize(aiohttp_client) -> None:
+
+    async def handler(request):
+        ret = request.content.get_read_buffer_limits()
+        data = await request.text()  # read posted data
+        return web.Response(text=f"{data} {ret!r}")
+
+    app = web.Application(handler_args={"read_bufsize": 2})
+    app.router.add_post('/', handler)
+
+    client = await aiohttp_client(app)
+    resp = await client.post('/', data=b'data')
+    assert resp.status == 200
+    assert await resp.text() == "data (2, 4)"

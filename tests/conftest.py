@@ -1,3 +1,4 @@
+import asyncio
 import os
 import socket
 import ssl
@@ -10,6 +11,8 @@ from uuid import uuid4
 
 import pytest
 
+from aiohttp.test_utils import loop_context
+
 try:
     import trustme
     TRUSTME = True
@@ -19,11 +22,11 @@ except ImportError:
 pytest_plugins = ['aiohttp.pytest_plugin', 'pytester']
 
 IS_HPUX = sys.platform.startswith('hp-ux')
-"""Specifies whether the current runtime is HP-UX."""
+# Specifies whether the current runtime is HP-UX.
 IS_LINUX = sys.platform.startswith('linux')
-"""Specifies whether the current runtime is HP-UX."""
+# Specifies whether the current runtime is HP-UX.
 IS_UNIX = hasattr(socket, 'AF_UNIX')
-"""Specifies whether the current runtime is *NIX."""
+# Specifies whether the current runtime is *NIX.
 
 needs_unix = pytest.mark.skipif(not IS_UNIX, reason='requires UNIX sockets')
 
@@ -100,23 +103,20 @@ def create_mocked_conn(loop):
 
 @pytest.fixture
 def unix_sockname(tmp_path, tmp_path_factory):
-    """Generate an fs path to the UNIX domain socket for testing.
+    # Generate an fs path to the UNIX domain socket for testing.
 
-    N.B. Different OS kernels have different fs path length limitations
-    for it. For Linux, it's 108, for HP-UX it's 92 (or higher) depending
-    on its version. For for most of the BSDs (Open, Free, macOS) it's
-    mostly 104 but sometimes it can be down to 100.
+    # N.B. Different OS kernels have different fs path length limitations
+    # for it. For Linux, it's 108, for HP-UX it's 92 (or higher) depending
+    # on its version. For most of the BSDs (Open, Free, macOS) it's
+    # mostly 104 but sometimes it can be down to 100.
 
-    Ref: https://github.com/aio-libs/aiohttp/issues/3572
-    """
+    # Ref: https://github.com/aio-libs/aiohttp/issues/3572
     if not IS_UNIX:
         pytest.skip('requires UNIX sockets')
 
     max_sock_len = 92 if IS_HPUX else 108 if IS_LINUX else 100
-    """Amount of bytes allocated for the UNIX socket path by OS kernel.
-
-    Ref: https://unix.stackexchange.com/a/367012/27133
-    """
+    # Amount of bytes allocated for the UNIX socket path by OS kernel.
+    # Ref: https://unix.stackexchange.com/a/367012/27133
 
     sock_file_name = 'unix.sock'
     unique_prefix = '{!s}-'.format(uuid4())
@@ -177,3 +177,20 @@ def unix_sockname(tmp_path, tmp_path_factory):
                     assert_sock_fits(sock_path)
                 yield sock_path
                 return
+
+
+@pytest.fixture
+def selector_loop():
+    if sys.version_info < (3, 7):
+        policy = asyncio.get_event_loop_policy()
+        policy._loop_factory = asyncio.SelectorEventLoop  # type: ignore
+    else:
+        if sys.version_info >= (3, 8):
+            policy = asyncio.WindowsSelectorEventLoopPolicy()  # type: ignore
+        else:
+            policy = asyncio.DefaultEventLoopPolicy()
+        asyncio.set_event_loop_policy(policy)
+
+    with loop_context(policy.new_event_loop) as _loop:
+        asyncio.set_event_loop(_loop)
+        yield _loop
