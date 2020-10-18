@@ -125,7 +125,10 @@ class GunicornWebWorker(base.Worker):
 
         return waiter
 
-    def _notify_waiter_done(self, waiter: 'asyncio.Future[bool]'=None) -> None:
+    def _notify_waiter_done(
+        self,
+        waiter: Optional['asyncio.Future[bool]']=None
+    ) -> None:
         if waiter is None:
             waiter = self._notify_waiter
         if waiter is not None:
