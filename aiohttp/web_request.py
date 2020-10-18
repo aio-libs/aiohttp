@@ -616,7 +616,12 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
                 if isinstance(field, BodyPartReader):
                     assert field.name is not None
-                    if field.filename and field_ct:
+
+                    # Note that according to RFC 7578, the Content-Type header
+                    # is optional, even for files, so we can't assume it's
+                    # present.
+                    # https://tools.ietf.org/html/rfc7578#section-4.4
+                    if field.filename:
                         # store file in temp file
                         tmp = tempfile.TemporaryFile()
                         chunk = await field.read_chunk(size=2**16)
@@ -631,6 +636,9 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
                                 )
                             chunk = await field.read_chunk(size=2**16)
                         tmp.seek(0)
+
+                        if field_ct is None:
+                            field_ct = 'application/octet-stream'
 
                         ff = FileField(field.name, field.filename,
                                        cast(io.BufferedReader, tmp),
