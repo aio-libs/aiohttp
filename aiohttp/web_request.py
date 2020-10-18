@@ -646,8 +646,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
                         ff = FileField(field.name, field.filename,
                                        cast(io.BufferedReader, tmp),
-                                       field_ct,
-                                       field.headers)
+                                       field_ct, field.headers)
                         out.add(field.name, ff)
                     else:
                         # deal with ordinary data
