@@ -1991,6 +1991,16 @@ async def test_signal_on_error_handler(aiohttp_client) -> None:
     assert resp.headers['X-Custom'] == 'val'
 
 
+@pytest.mark.skipif('HttpRequestParserC' not in dir(aiohttp.http_parser),
+                    reason="C based HTTP parser not available")
+async def test_bad_method_for_c_http_parser_not_hangs(aiohttp_client) -> None:
+    app = web.Application()
+    timeout = aiohttp.ClientTimeout(sock_read=0.2)
+    client = await aiohttp_client(app, timeout=timeout)
+    resp = await client.request('GET1', '/')
+    assert 400 == resp.status
+
+
 async def test_read_bufsize(aiohttp_client) -> None:
 
     async def handler(request):

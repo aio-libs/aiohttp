@@ -534,12 +534,7 @@ cdef class HttpParser:
 
         PyBuffer_Release(&self.py_buf)
 
-        # i am not sure about cparser.HPE_INVALID_METHOD,
-        #  seems get err for valid request
-        # test_client_functional.py::test_post_data_with_bytesio_file
-        if (self._cparser.http_errno != cparser.HPE_OK and
-                (self._cparser.http_errno != cparser.HPE_INVALID_METHOD or
-                 self._cparser.method == 0)):
+        if (self._cparser.http_errno != cparser.HPE_OK):
             if self._payload_error == 0:
                 if self._last_error is not None:
                     ex = self._last_error
