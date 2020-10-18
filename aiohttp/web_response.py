@@ -514,7 +514,7 @@ class Response(StreamResponse):
                  content_type: Optional[str]=None,
                  charset: Optional[str]=None,
                  zlib_executor_size: Optional[int]=None,
-                 zlib_executor: Executor=None) -> None:
+                 zlib_executor: Optional[Executor]=None) -> None:
         if body is not None and text is not None:
             raise ValueError("body and text are not allowed together")
 
@@ -723,11 +723,11 @@ class Response(StreamResponse):
 
 
 def json_response(data: Any=sentinel, *,
-                  text: str=None,
-                  body: bytes=None,
+                  text: Optional[str]=None,
+                  body: Optional[bytes]=None,
                   status: int=200,
                   reason: Optional[str]=None,
-                  headers: LooseHeaders=None,
+                  headers: Optional[LooseHeaders]=None,
                   content_type: str='application/json',
                   dumps: JSONEncoder=json.dumps) -> Response:
     if data is not sentinel:

@@ -71,7 +71,7 @@ class TCPSite(BaseSite):
     __slots__ = ('_host', '_port', '_reuse_address', '_reuse_port')
 
     def __init__(self, runner: 'BaseRunner',
-                 host: str=None, port: int=None, *,
+                 host: Optional[str]=None, port: Optional[int]=None, *,
                  shutdown_timeout: float=60.0,
                  ssl_context: Optional[SSLContext]=None,
                  backlog: int=128, reuse_address: Optional[bool]=None,
