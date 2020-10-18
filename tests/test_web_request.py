@@ -633,7 +633,7 @@ async def test_multipart_formdata(protocol) -> None:
 
 async def test_multipart_formdata_file(protocol) -> None:
     # Make sure file uploads work, even without a content type
-    payload = StreamReader(protocol, loop=asyncio.get_event_loop())
+    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
     payload.feed_data(
         b'-----------------------------326931944431359\r\n'
         b'Content-Disposition: form-data; name="a_file"; filename="binary"\r\n'

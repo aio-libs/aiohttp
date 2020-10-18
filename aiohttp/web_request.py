@@ -70,7 +70,7 @@ class FileField:
     name = attr.ib(type=str)
     filename = attr.ib(type=str)
     file = attr.ib(type=io.BufferedReader)
-    content_type = attr.ib(type=Optional[str])
+    content_type = attr.ib(type=str)
     headers = attr.ib(type=CIMultiDictProxy)  # type: CIMultiDictProxy[str]
 
 
@@ -623,6 +623,8 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
                     # is optional, even for files, so we can't assume it's
                     # present.
                     # https://tools.ietf.org/html/rfc7578#section-4.4
+                    assert field.name is not None
+
                     if field.filename:
                         # store file in temp file
                         tmp = tempfile.TemporaryFile()
@@ -639,9 +641,12 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
                             chunk = await field.read_chunk(size=2**16)
                         tmp.seek(0)
 
+                        if field_ct is None:
+                            field_ct = 'application/octet-stream'
+
                         ff = FileField(field.name, field.filename,
                                        cast(io.BufferedReader, tmp),
-                                       field_ct or 'application/octet-stream',
+                                       field_ct,
                                        field.headers)
                         out.add(field.name, ff)
                     else:
