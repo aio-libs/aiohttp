@@ -77,7 +77,7 @@ class Application(MutableMapping[str, Any]):
     def __init__(self, *,
                  logger: logging.Logger=web_logger,
                  middlewares: Iterable[_Middleware]=(),
-                 handler_args: Mapping[str, Any]=None,
+                 handler_args: Optional[Mapping[str, Any]]=None,
                  client_max_size: int=1024**2,
                  debug: Any=...  # mypy doesn't support ellipsis
                  ) -> None:

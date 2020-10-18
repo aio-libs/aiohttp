@@ -140,7 +140,7 @@ class ResponseHandler(BaseProtocol,
             data, self._tail = self._tail, b''
             self.data_received(data)
 
-    def set_response_params(self, *, timer: BaseTimerContext=None,
+    def set_response_params(self, *, timer: Optional[BaseTimerContext]=None,
                             skip_payload: bool=False,
                             read_until_eof: bool=False,
                             auto_decompress: bool=True,

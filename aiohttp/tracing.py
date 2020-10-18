@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Awaitable, Type, TypeVar
+from typing import TYPE_CHECKING, Awaitable, Optional, Type, TypeVar
 
 import attr
 from multidict import CIMultiDict  # noqa
@@ -92,7 +92,7 @@ class TraceConfig:
 
     def trace_config_ctx(
         self,
-        trace_request_ctx: SimpleNamespace=None
+        trace_request_ctx: Optional[SimpleNamespace]=None
     ) -> SimpleNamespace:  # noqa
         """ Return a new trace_config_ctx instance """
         return self._trace_config_ctx_factory(

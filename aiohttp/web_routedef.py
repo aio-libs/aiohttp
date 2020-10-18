@@ -85,7 +85,7 @@ class StaticDef(AbstractRouteDef):
     def register(self, router: UrlDispatcher) -> List[AbstractRoute]:
         resource = router.add_static(self.prefix, self.path, **self.kwargs)
         routes = resource.get_info().get('routes', {})
-        return routes.values()
+        return list(routes.values())
 
 
 def route(method: str, path: str, handler: _HandlerType,

@@ -978,7 +978,7 @@ class ClientResponse(HeadersMixin):
 
         return self._body.decode(encoding, errors=errors)  # type: ignore
 
-    async def json(self, *, encoding: str=None,
+    async def json(self, *, encoding: Optional[str]=None,
                    loads: JSONDecoder=DEFAULT_JSON_DECODER,
                    content_type: Optional[str]='application/json') -> Any:
         """Read and decodes JSON response."""
