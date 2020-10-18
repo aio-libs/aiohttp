@@ -17,7 +17,6 @@ from aiohttp import client, hdrs, web
 from aiohttp.client import ClientSession
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import BaseConnector, TCPConnector
-from aiohttp.helpers import PY_36
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -670,8 +669,6 @@ async def test_request_tracing_interpose_headers(loop, aiohttp_client) -> None:
     assert MyClientRequest.headers['foo'] == 'bar'
 
 
-@pytest.mark.skipif(not PY_36,
-                    reason="Python 3.6+ required")
 def test_client_session_inheritance() -> None:
     with pytest.raises(TypeError):
         class A(ClientSession):

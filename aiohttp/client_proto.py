@@ -67,7 +67,7 @@ class ResponseHandler(BaseProtocol,
             self._drop_timeout()
 
     def is_connected(self) -> bool:
-        return self.transport is not None
+        return self.transport is not None and not self.transport.is_closing()
 
     def connection_lost(self, exc: Optional[BaseException]) -> None:
         self._drop_timeout()
@@ -144,15 +144,17 @@ class ResponseHandler(BaseProtocol,
                             skip_payload: bool=False,
                             read_until_eof: bool=False,
                             auto_decompress: bool=True,
-                            read_timeout: Optional[float]=None) -> None:
+                            read_timeout: Optional[float]=None,
+                            read_bufsize: int = 2 ** 16) -> None:
         self._skip_payload = skip_payload
 
         self._read_timeout = read_timeout
         self._reschedule_timeout()
 
         self._parser = HttpResponseParser(
-            self, self._loop, timer=timer,
+            self, self._loop, read_bufsize, timer=timer,
             payload_exception=ClientPayloadError,
+            response_with_body=not skip_payload,
             read_until_eof=read_until_eof,
             auto_decompress=auto_decompress)
 

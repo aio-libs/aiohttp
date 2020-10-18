@@ -450,8 +450,7 @@ def run_app(app: Union[Application, Awaitable[Application]], *,
     finally:
         _cancel_tasks({main_task}, loop)
         _cancel_tasks(all_tasks(loop), loop)
-        if sys.version_info >= (3, 6):  # don't use PY_36 to pass mypy
-            loop.run_until_complete(loop.shutdown_asyncgens())
+        loop.run_until_complete(loop.shutdown_asyncgens())
         loop.close()
         asyncio.set_event_loop(None)
 
