@@ -1,24 +1,24 @@
 -r flake.txt
-attrs==19.3.0
+attrs==20.2.0
 async-timeout==4.0.0a2
-Brotli==1.0.7
-cchardet==2.1.5
+Brotli==1.0.9
+cchardet==2.1.6
 chardet==3.0.4
-coverage==4.5.4
+coverage==5.3
 gunicorn==20.0.4
-multidict==4.6.1
-pytest==5.3.1
-pytest-cov==2.8.1
-pytest-mock==1.12.1
-typing_extensions==3.7.4.1
-yarl==1.4.1
+multidict==5.0.0
+pytest==6.1.1
+pytest-cov==2.10.1
+pytest-mock==3.3.1
+typing_extensions==3.7.4.3
+yarl==1.4.2
 
 # Using PEP 508 env markers to control dependency on runtimes:
 
 # required c-ares will not build on windows and has build problems on Macos Python<3.7
 aiodns==2.0.0; sys_platform=="linux" or sys_platform=="darwin" and python_version>="3.7"
-cryptography==2.8; platform_machine!="i686" # no 32-bit wheels
-trustme==0.5.3; platform_machine!="i686"    # no 32-bit wheels
-codecov==2.0.15
+cryptography==2.9.2; platform_machine!="i686" and python_version<"3.8" # no 32-bit wheels; no python 3.9 wheels yet
+trustme==0.6.0; platform_machine!="i686"    # no 32-bit wheels
+codecov==2.1.10
 uvloop==0.12.1; platform_system!="Windows" and implementation_name=="cpython" and python_version<"3.7" # MagicStack/uvloop#14
 idna-ssl==1.1.0; python_version<"3.7"

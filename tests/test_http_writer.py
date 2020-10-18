@@ -1,5 +1,5 @@
 # Tests for aiohttp/http_writer.py
-import zlib
+import array
 from unittest import mock
 
 import pytest
@@ -117,12 +117,10 @@ async def test_write_payload_chunked_filter_mutiple_chunks(
         b'2\r\na2\r\n0\r\n\r\n')
 
 
-compressor = zlib.compressobj(wbits=-zlib.MAX_WBITS)
-COMPRESSED = b''.join([compressor.compress(b'data'), compressor.flush()])
-
-
 async def test_write_payload_deflate_compression(protocol,
                                                  transport, loop) -> None:
+
+    COMPRESSED = b'x\x9cKI,I\x04\x00\x04\x00\x01\x9b'
     write = transport.write = mock.Mock()
     msg = http.StreamWriter(protocol, loop)
     msg.enable_compression('deflate')
@@ -148,8 +146,95 @@ async def test_write_payload_deflate_and_chunked(
     await msg.write(b'ta')
     await msg.write_eof()
 
-    assert b'6\r\nKI,I\x04\x00\r\n0\r\n\r\n' == buf
+    thing = (
+        b'2\r\nx\x9c\r\n'
+        b'a\r\nKI,I\x04\x00\x04\x00\x01\x9b\r\n'
+        b'0\r\n\r\n'
+    )
+    assert thing == buf
 
+async def test_write_payload_bytes_memoryview(
+        buf,
+        protocol,
+        transport,
+        loop):
+
+    msg = http.StreamWriter(protocol, loop)
+
+    mv = memoryview(b"abcd")
+
+    await msg.write(mv)
+    await msg.write_eof()
+
+    thing = b"abcd"
+    assert thing == buf
+
+
+async def test_write_payload_short_ints_memoryview(
+        buf,
+        protocol,
+        transport,
+        loop):
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_chunking()
+
+    payload = memoryview(array.array("H", [65, 66, 67]))
+
+    await msg.write(payload)
+    await msg.write_eof()
+
+    endians = (
+        (
+            b"6\r\n"
+            b"\x00A\x00B\x00C\r\n"
+            b'0\r\n\r\n'
+        ),
+        (
+            b"6\r\n"
+            b"A\x00B\x00C\x00\r\n"
+            b"0\r\n\r\n"
+        )
+    )
+    assert buf in endians
+
+
+async def test_write_payload_2d_shape_memoryview(
+        buf,
+        protocol,
+        transport,
+        loop):
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_chunking()
+
+    mv = memoryview(b"ABCDEF")
+    payload = mv.cast("c", [3, 2])
+
+    await msg.write(payload)
+    await msg.write_eof()
+
+    thing = (
+        b"6\r\n"
+        b"ABCDEF\r\n"
+        b"0\r\n\r\n"
+    )
+    assert thing == buf
+
+async def test_write_payload_slicing_long_memoryview(
+        buf,
+        protocol,
+        transport,
+        loop):
+    msg = http.StreamWriter(protocol, loop)
+    msg.length = 4
+
+    mv = memoryview(b"ABCDEF")
+    payload = mv.cast("c", [3, 2])
+
+    await msg.write(payload)
+    await msg.write_eof()
+
+    thing = b"ABCD"
+    assert thing == buf
 
 async def test_write_drain(protocol, transport, loop) -> None:
     msg = http.StreamWriter(protocol, loop)

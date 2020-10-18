@@ -19,17 +19,23 @@ Let's get started with some simple examples.
 Make a Request
 ==============
 
-Begin by importing the aiohttp module::
+Begin by importing the aiohttp module, and asyncio::
 
     import aiohttp
+    import asyncio
 
 Now, let's try to get a web-page. For example let's query
 ``http://httpbin.org/get``::
 
-    async with aiohttp.ClientSession() as session:
-        async with session.get('http://httpbin.org/get') as resp:
-            print(resp.status)
-            print(await resp.text())
+    async def main():
+        async with aiohttp.ClientSession() as session:
+            async with session.get('http://httpbin.org/get') as resp:
+                print(resp.status)
+                print(await resp.text())
+
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
 
 Now, we have a :class:`ClientSession` called ``session`` and a
 :class:`ClientResponse` object called ``resp``. We can get all the
@@ -88,14 +94,14 @@ following code::
     params = {'key1': 'value1', 'key2': 'value2'}
     async with session.get('http://httpbin.org/get',
                            params=params) as resp:
-        expect = 'http://httpbin.org/get?key2=value2&key1=value1'
+        expect = 'http://httpbin.org/get?key1=value1&key2=value2'
         assert str(resp.url) == expect
 
 You can see that the URL has been correctly encoded by printing the URL.
 
-For sending data with multiple values for the same key
-:class:`MultiDict` may be used as well.
-
+For sending data with multiple values for the same key :class:`MultiDict` may be
+used; the library support nested lists (``{'key': ['value1', 'value2']}``)
+alternative as well.
 
 It is also possible to pass a list of 2 item tuples as parameters, in
 that case you can specify multiple values for each key::
@@ -115,18 +121,18 @@ is not encoded by library. Note that ``+`` is not encoded::
 
 .. note::
 
-   *aiohttp* internally performs URL canonization before sending request.
+   *aiohttp* internally performs URL canonicalization before sending request.
 
-   Canonization encodes *host* part by :term:`IDNA` codec and applies
+   Canonicalization encodes *host* part by :term:`IDNA` codec and applies
    :term:`requoting` to *path* and *query* parts.
 
    For example ``URL('http://example.com/путь/%30?a=%31')`` is converted to
    ``URL('http://example.com/%D0%BF%D1%83%D1%82%D1%8C/0?a=1')``.
 
-   Sometimes canonization is not desirable if server accepts exact
+   Sometimes canonicalization is not desirable if server accepts exact
    representation and does not requote URL itself.
 
-   To disable canonization use ``encoded=True`` parameter for URL construction::
+   To disable canonicalization use ``encoded=True`` parameter for URL construction::
 
       await session.get(
           URL('http://example.com/%30', encoded=True))
@@ -177,7 +183,7 @@ JSON Request
 ============
 
 Any of session's request methods like :func:`request`,
-:meth:`ClientSession.get`, :meth:`ClientSesssion.post` etc. accept
+:meth:`ClientSession.get`, :meth:`ClientSession.post` etc. accept
 `json` parameter::
 
   async with aiohttp.ClientSession() as session:

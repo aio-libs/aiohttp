@@ -27,13 +27,12 @@ from multidict import CIMultiDict
 from . import hdrs
 from .abc import AbstractStreamWriter
 from .helpers import (
-    PY_36,
     content_disposition_header,
     guess_filename,
     parse_mimetype,
     sentinel,
 )
-from .streams import DEFAULT_LIMIT, StreamReader
+from .streams import StreamReader
 from .typedefs import JSONEncoder, _CIMultiDict
 
 __all__ = ('PAYLOAD_REGISTRY', 'get_payload', 'payload_type', 'Payload',
@@ -215,17 +214,16 @@ class BytesPayload(Payload):
 
         super().__init__(value, *args, **kwargs)
 
-        self._size = len(value)
+        if isinstance(value, memoryview):
+            self._size = value.nbytes
+        else:
+            self._size = len(value)
 
         if self._size > TOO_LARGE_BYTES_BODY:
-            if PY_36:
-                kwargs = {'source': self}
-            else:
-                kwargs = {}
             warnings.warn("Sending a large body directly with raw bytes might"
                           " lock the event loop. You should probably pass an "
                           "io.BytesIO object instead", ResourceWarning,
-                          **kwargs)
+                          source=self)
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         await writer.write(self._value)
@@ -292,12 +290,12 @@ class IOBasePayload(Payload):
         loop = asyncio.get_event_loop()
         try:
             chunk = await loop.run_in_executor(
-                None, self._value.read, DEFAULT_LIMIT
+                None, self._value.read, 2**16
             )
             while chunk:
                 await writer.write(chunk)
                 chunk = await loop.run_in_executor(
-                    None, self._value.read, DEFAULT_LIMIT
+                    None, self._value.read, 2**16
                 )
         finally:
             await loop.run_in_executor(None, self._value.close)
@@ -342,12 +340,12 @@ class TextIOPayload(IOBasePayload):
         loop = asyncio.get_event_loop()
         try:
             chunk = await loop.run_in_executor(
-                None, self._value.read, DEFAULT_LIMIT
+                None, self._value.read, 2**16
             )
             while chunk:
                 await writer.write(chunk.encode(self._encoding))
                 chunk = await loop.run_in_executor(
-                    None, self._value.read, DEFAULT_LIMIT
+                    None, self._value.read, 2**16
                 )
         finally:
             await loop.run_in_executor(None, self._value.close)
@@ -391,7 +389,7 @@ class JsonPayload(BytesPayload):
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import AsyncIterator, AsyncIterable
+    from typing import AsyncIterable, AsyncIterator
 
     _AsyncIterator = AsyncIterator[bytes]
     _AsyncIterable = AsyncIterable[bytes]

@@ -48,13 +48,14 @@ class SendfileStreamWriter(StreamWriter):
                  protocol: BaseProtocol,
                  loop: asyncio.AbstractEventLoop,
                  fobj: IO[Any],
+                 offset: int,
                  count: int,
                  on_chunk_sent: _T_OnChunkSent=None) -> None:
         super().__init__(protocol, loop, on_chunk_sent)
         self._sendfile_buffer = []  # type: List[bytes]
         self._fobj = fobj
         self._count = count
-        self._offset = fobj.tell()
+        self._offset = offset
         self._in_fd = fobj.fileno()
 
     def _write(self, chunk: bytes) -> None:
@@ -94,12 +95,25 @@ class SendfileStreamWriter(StreamWriter):
 
     async def sendfile(self) -> None:
         assert self.transport is not None
+        loop = self.loop
+        data = b''.join(self._sendfile_buffer)
+        if hasattr(loop, "sendfile"):
+            # Python 3.7+
+            self.transport.write(data)
+            await loop.sendfile(
+                self.transport,
+                self._fobj,
+                self._offset,
+                self._count
+            )
+            await super().write_eof()
+            return
+
+        self._fobj.seek(self._offset)
         out_socket = self.transport.get_extra_info('socket').dup()
         out_socket.setblocking(False)
         out_fd = out_socket.fileno()
 
-        loop = self.loop
-        data = b''.join(self._sendfile_buffer)
         try:
             await loop.sock_sendall(out_socket, data)
             if not self._do_sendfile(out_fd):
@@ -139,6 +153,7 @@ class FileResponse(StreamResponse):
 
     async def _sendfile_system(self, request: 'BaseRequest',
                                fobj: IO[Any],
+                               offset: int,
                                count: int) -> AbstractStreamWriter:
         # Write count bytes of fobj to resp using
         # the os.sendfile system call.
@@ -156,12 +171,18 @@ class FileResponse(StreamResponse):
         if (transport.get_extra_info("sslcontext") or
                 transport.get_extra_info("socket") is None or
                 self.compression):
-            writer = await self._sendfile_fallback(request, fobj, count)
+            writer = await self._sendfile_fallback(
+                request,
+                fobj,
+                offset,
+                count
+            )
         else:
             writer = SendfileStreamWriter(
                 request.protocol,
                 request._loop,
                 fobj,
+                offset,
                 count
             )
             request._payload_writer = writer
@@ -173,6 +194,7 @@ class FileResponse(StreamResponse):
 
     async def _sendfile_fallback(self, request: 'BaseRequest',
                                  fobj: IO[Any],
+                                 offset: int,
                                  count: int) -> AbstractStreamWriter:
         # Mimic the _sendfile_system() method, but without using the
         # os.sendfile() system call. This should be used on systems
@@ -186,6 +208,8 @@ class FileResponse(StreamResponse):
 
         chunk_size = self._chunk_size
         loop = asyncio.get_event_loop()
+
+        await loop.run_in_executor(None, fobj.seek, offset)
 
         chunk = await loop.run_in_executor(None, fobj.read, chunk_size)
         while chunk:
@@ -336,11 +360,16 @@ class FileResponse(StreamResponse):
             self.headers[hdrs.CONTENT_RANGE] = 'bytes {0}-{1}/{2}'.format(
                 real_start, real_start + count - 1, file_size)
 
+        if request.method == hdrs.METH_HEAD or self.status in [204, 304]:
+            return await super().prepare(request)
+
         fobj = await loop.run_in_executor(None, filepath.open, 'rb')
         if start:  # be aware that start could be None or int=0 here.
-            await loop.run_in_executor(None, fobj.seek, start)
+            offset = start
+        else:
+            offset = 0
 
         try:
-            return await self._sendfile(request, fobj, count)
+            return await self._sendfile(request, fobj, offset, count)
         finally:
             await loop.run_in_executor(None, fobj.close)

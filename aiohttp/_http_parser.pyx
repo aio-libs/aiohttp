@@ -3,27 +3,44 @@
 # Based on https://github.com/MagicStack/httptools
 #
 from __future__ import absolute_import, print_function
-from cpython.mem cimport PyMem_Malloc, PyMem_Free
-from libc.string cimport memcpy
-from cpython cimport (PyObject_GetBuffer, PyBuffer_Release, PyBUF_SIMPLE,
-                      Py_buffer, PyBytes_AsString, PyBytes_AsStringAndSize)
 
-from multidict import (CIMultiDict as _CIMultiDict,
-                       CIMultiDictProxy as _CIMultiDictProxy)
+from cpython cimport (
+    Py_buffer,
+    PyBUF_SIMPLE,
+    PyBuffer_Release,
+    PyBytes_AsString,
+    PyBytes_AsStringAndSize,
+    PyObject_GetBuffer,
+)
+from cpython.mem cimport PyMem_Free, PyMem_Malloc
+from libc.limits cimport ULLONG_MAX
+from libc.string cimport memcpy
+
+from multidict import CIMultiDict as _CIMultiDict
+from multidict import CIMultiDictProxy as _CIMultiDictProxy
 from yarl import URL as _URL
 
 from aiohttp import hdrs
+
 from .http_exceptions import (
-    BadHttpMessage, BadStatusLine, InvalidHeader, LineTooLong, InvalidURLError,
-    PayloadEncodingError, ContentLengthError, TransferEncodingError)
-from .http_writer import (HttpVersion as _HttpVersion,
-                          HttpVersion10 as _HttpVersion10,
-                          HttpVersion11 as _HttpVersion11)
+    BadHttpMessage,
+    BadStatusLine,
+    ContentLengthError,
+    InvalidHeader,
+    InvalidURLError,
+    LineTooLong,
+    PayloadEncodingError,
+    TransferEncodingError,
+)
 from .http_parser import DeflateBuffer as _DeflateBuffer
-from .streams import (EMPTY_PAYLOAD as _EMPTY_PAYLOAD,
-                      StreamReader as _StreamReader)
+from .http_writer import HttpVersion as _HttpVersion
+from .http_writer import HttpVersion10 as _HttpVersion10
+from .http_writer import HttpVersion11 as _HttpVersion11
+from .streams import EMPTY_PAYLOAD as _EMPTY_PAYLOAD
+from .streams import StreamReader as _StreamReader
 
 cimport cython
+
 from aiohttp cimport _cparser as cparser
 
 include "_headers.pxi"
@@ -270,6 +287,7 @@ cdef class HttpParser:
         size_t _max_field_size
         size_t _max_headers
         bint _response_with_body
+        bint _read_until_eof
 
         bint    _started
         object  _url
@@ -285,6 +303,7 @@ cdef class HttpParser:
         object  _payload_exception
         object  _last_error
         bint    _auto_decompress
+        int     _limit
 
         str     _content_encoding
 
@@ -306,10 +325,12 @@ cdef class HttpParser:
         PyMem_Free(self._csettings)
 
     cdef _init(self, cparser.http_parser_type mode,
-                   object protocol, object loop, object timer=None,
+                   object protocol, object loop, int limit,
+                   object timer=None,
                    size_t max_line_size=8190, size_t max_headers=32768,
                    size_t max_field_size=8190, payload_exception=None,
-                   bint response_with_body=True, bint auto_decompress=True):
+                   bint response_with_body=True, bint read_until_eof=False,
+                   bint auto_decompress=True):
         cparser.http_parser_init(self._cparser, mode)
         self._cparser.data = <void*>self
         self._cparser.content_length = 0
@@ -334,6 +355,7 @@ cdef class HttpParser:
         self._max_headers = max_headers
         self._max_field_size = max_field_size
         self._response_with_body = response_with_body
+        self._read_until_eof = read_until_eof
         self._upgraded = False
         self._auto_decompress = auto_decompress
         self._content_encoding = None
@@ -350,6 +372,7 @@ cdef class HttpParser:
         self._csettings.on_chunk_complete = cb_on_chunk_complete
 
         self._last_error = None
+        self._limit = limit
 
     cdef _process_header(self):
         if self._raw_name:
@@ -427,10 +450,15 @@ cdef class HttpParser:
                 headers, raw_headers, should_close, encoding,
                 upgrade, chunked)
 
-        if (self._cparser.content_length > 0 or chunked or
-                self._cparser.method == 5):  # CONNECT: 5
+        if (ULLONG_MAX > self._cparser.content_length > 0 or chunked or
+                self._cparser.method == 5 or  # CONNECT: 5
+                (self._cparser.status_code >= 199 and
+                 self._cparser.content_length == ULLONG_MAX and
+                 self._read_until_eof)
+        ):
             payload = StreamReader(
-                self._protocol, timer=self._timer, loop=self._loop)
+                self._protocol, timer=self._timer, loop=self._loop,
+                limit=self._limit)
         else:
             payload = EMPTY_PAYLOAD
 
@@ -506,12 +534,7 @@ cdef class HttpParser:
 
         PyBuffer_Release(&self.py_buf)
 
-        # i am not sure about cparser.HPE_INVALID_METHOD,
-        #  seems get err for valid request
-        # test_client_functional.py::test_post_data_with_bytesio_file
-        if (self._cparser.http_errno != cparser.HPE_OK and
-                (self._cparser.http_errno != cparser.HPE_INVALID_METHOD or
-                 self._cparser.method == 0)):
+        if (self._cparser.http_errno != cparser.HPE_OK):
             if self._payload_error == 0:
                 if self._last_error is not None:
                     ex = self._last_error
@@ -539,13 +562,14 @@ cdef class HttpParser:
 
 cdef class HttpRequestParser(HttpParser):
 
-    def __init__(self, protocol, loop, timer=None,
+    def __init__(self, protocol, loop, int limit, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,
                  size_t max_field_size=8190, payload_exception=None,
-                 bint response_with_body=True, bint read_until_eof=False):
-         self._init(cparser.HTTP_REQUEST, protocol, loop, timer,
+                 bint response_with_body=True, bint read_until_eof=False,
+    ):
+         self._init(cparser.HTTP_REQUEST, protocol, loop, limit, timer,
                     max_line_size, max_headers, max_field_size,
-                    payload_exception, response_with_body)
+                    payload_exception, response_with_body, read_until_eof)
 
     cdef object _on_status_complete(self):
          cdef Py_buffer py_buf
@@ -566,14 +590,16 @@ cdef class HttpRequestParser(HttpParser):
 
 cdef class HttpResponseParser(HttpParser):
 
-    def __init__(self, protocol, loop, timer=None,
+    def __init__(self, protocol, loop, int limit, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,
                  size_t max_field_size=8190, payload_exception=None,
                  bint response_with_body=True, bint read_until_eof=False,
-                 bint auto_decompress=True):
-        self._init(cparser.HTTP_RESPONSE, protocol, loop, timer,
+                 bint auto_decompress=True
+    ):
+        self._init(cparser.HTTP_RESPONSE, protocol, loop, limit, timer,
                    max_line_size, max_headers, max_field_size,
-                   payload_exception, response_with_body, auto_decompress)
+                   payload_exception, response_with_body, read_until_eof,
+                   auto_decompress)
 
     cdef object _on_status_complete(self):
         if self._buf:

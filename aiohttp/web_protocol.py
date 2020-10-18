@@ -151,7 +151,8 @@ class RequestHandler(BaseProtocol):
                  max_line_size: int=8190,
                  max_headers: int=32768,
                  max_field_size: int=8190,
-                 lingering_time: float=10.0):
+                 lingering_time: float=10.0,
+                 read_bufsize: int=2 ** 16):
 
         super().__init__(loop)
 
@@ -179,7 +180,7 @@ class RequestHandler(BaseProtocol):
         self._upgrade = False
         self._payload_parser = None  # type: Any
         self._request_parser = HttpRequestParser(
-            self, loop,
+            self, loop, read_bufsize,
             max_line_size=max_line_size,
             max_field_size=max_field_size,
             max_headers=max_headers,
@@ -643,11 +644,13 @@ class RequestHandler(BaseProtocol):
                                  status: int,
                                  exc: Optional[BaseException]=None,
                                  message: Optional[str]=None) -> None:
+        task = current_task()
+        assert task is not None
         request = BaseRequest(
             ERROR,
             EMPTY_PAYLOAD,  # type: ignore
             self, writer,
-            current_task(),
+            task,
             self._loop)
 
         resp = self.handle_error(request, status, exc, message)

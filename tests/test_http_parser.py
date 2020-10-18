@@ -1,7 +1,6 @@
 # Tests for aiohttp/protocol.py
 
 import asyncio
-import zlib
 from unittest import mock
 
 import pytest
@@ -42,7 +41,7 @@ def protocol():
 @pytest.fixture(params=REQUEST_PARSERS)
 def parser(loop, protocol, request):
     # Parser implementations
-    return request.param(protocol, loop,
+    return request.param(protocol, loop, 2 ** 16,
                          max_line_size=8190,
                          max_headers=32768,
                          max_field_size=8190)
@@ -57,7 +56,7 @@ def request_cls(request):
 @pytest.fixture(params=RESPONSE_PARSERS)
 def response(loop, protocol, request):
     # Parser implementations
-    return request.param(protocol, loop,
+    return request.param(protocol, loop, 2 ** 16,
                          max_line_size=8190,
                          max_headers=32768,
                          max_field_size=8190)
@@ -733,7 +732,7 @@ def _test_parse_no_length_or_te_on_post(loop, protocol, request_cls):
 
 def test_parse_payload_response_without_body(loop, protocol,
                                              response_cls) -> None:
-    parser = response_cls(protocol, loop, response_with_body=False)
+    parser = response_cls(protocol, loop, 2 ** 16, response_with_body=False)
     text = (b'HTTP/1.1 200 Ok\r\n'
             b'content-length: 10\r\n\r\n')
     msg, payload = parser.feed_data(text)[0][0]
@@ -788,10 +787,24 @@ def test_url_parse_non_strict_mode(parser) -> None:
     assert payload.is_eof()
 
 
+@pytest.mark.skipif('HttpRequestParserC' not in dir(aiohttp.http_parser),
+                    reason="C based HTTP parser not available")
+def test_parse_bad_method_for_c_parser_raises(loop, protocol):
+    payload = 'GET1 /test HTTP/1.1\r\n\r\n'.encode('utf-8')
+    parser = HttpRequestParserC(protocol, loop, 2 ** 16,
+                                max_line_size=8190,
+                                max_headers=32768,
+                                max_field_size=8190)
+
+    with pytest.raises(aiohttp.http_exceptions.BadStatusLine):
+        messages, upgrade, tail = parser.feed_data(payload)
+
+
 class TestParsePayload:
 
     async def test_parse_eof_payload(self, stream) -> None:
         out = aiohttp.FlowControlDataQueue(stream,
+                                           2 ** 16,
                                            loop=asyncio.get_event_loop())
         p = HttpPayloadParser(out, readall=True)
         p.feed_data(b'data')
@@ -802,6 +815,7 @@ class TestParsePayload:
 
     async def test_parse_no_body(self, stream) -> None:
         out = aiohttp.FlowControlDataQueue(stream,
+                                           2 ** 16,
                                            loop=asyncio.get_event_loop())
         p = HttpPayloadParser(out, method='PUT')
 
@@ -810,6 +824,7 @@ class TestParsePayload:
 
     async def test_parse_length_payload_eof(self, stream) -> None:
         out = aiohttp.FlowControlDataQueue(stream,
+                                           2 ** 16,
                                            loop=asyncio.get_event_loop())
 
         p = HttpPayloadParser(out, length=4)
@@ -820,6 +835,7 @@ class TestParsePayload:
 
     async def test_parse_chunked_payload_size_error(self, stream) -> None:
         out = aiohttp.FlowControlDataQueue(stream,
+                                           2 ** 16,
                                            loop=asyncio.get_event_loop())
         p = HttpPayloadParser(out, chunked=True)
         with pytest.raises(http_exceptions.TransferEncodingError):
@@ -827,8 +843,70 @@ class TestParsePayload:
         assert isinstance(out.exception(),
                           http_exceptions.TransferEncodingError)
 
+    async def test_parse_chunked_payload_split_end(self, protocol) -> None:
+        out = aiohttp.StreamReader(protocol, 2 ** 16, loop=None)
+        p = HttpPayloadParser(out, chunked=True)
+        p.feed_data(b'4\r\nasdf\r\n0\r\n')
+        p.feed_data(b'\r\n')
+
+        assert out.is_eof()
+        assert b'asdf' == b''.join(out._buffer)
+
+    async def test_parse_chunked_payload_split_end2(self, protocol) -> None:
+        out = aiohttp.StreamReader(protocol, 2 ** 16, loop=None)
+        p = HttpPayloadParser(out, chunked=True)
+        p.feed_data(b'4\r\nasdf\r\n0\r\n\r')
+        p.feed_data(b'\n')
+
+        assert out.is_eof()
+        assert b'asdf' == b''.join(out._buffer)
+
+    async def test_parse_chunked_payload_split_end_trailers(self,
+                                                            protocol) -> None:
+        out = aiohttp.StreamReader(protocol, 2 ** 16, loop=None)
+        p = HttpPayloadParser(out, chunked=True)
+        p.feed_data(b'4\r\nasdf\r\n0\r\n')
+        p.feed_data(b'Content-MD5: 912ec803b2ce49e4a541068d495ab570\r\n')
+        p.feed_data(b'\r\n')
+
+        assert out.is_eof()
+        assert b'asdf' == b''.join(out._buffer)
+
+    async def test_parse_chunked_payload_split_end_trailers2(self,
+                                                             protocol) -> None:
+        out = aiohttp.StreamReader(protocol, 2 ** 16, loop=None)
+        p = HttpPayloadParser(out, chunked=True)
+        p.feed_data(b'4\r\nasdf\r\n0\r\n')
+        p.feed_data(b'Content-MD5: 912ec803b2ce49e4a541068d495ab570\r\n\r')
+        p.feed_data(b'\n')
+
+        assert out.is_eof()
+        assert b'asdf' == b''.join(out._buffer)
+
+    async def test_parse_chunked_payload_split_end_trailers3(self,
+                                                             protocol) -> None:
+        out = aiohttp.StreamReader(protocol, 2 ** 16, loop=None)
+        p = HttpPayloadParser(out, chunked=True)
+        p.feed_data(b'4\r\nasdf\r\n0\r\nContent-MD5: ')
+        p.feed_data(b'912ec803b2ce49e4a541068d495ab570\r\n\r\n')
+
+        assert out.is_eof()
+        assert b'asdf' == b''.join(out._buffer)
+
+    async def test_parse_chunked_payload_split_end_trailers4(self,
+                                                             protocol) -> None:
+        out = aiohttp.StreamReader(protocol, 2 ** 16, loop=None)
+        p = HttpPayloadParser(out, chunked=True)
+        p.feed_data(b'4\r\nasdf\r\n0\r\n'
+                    b'C')
+        p.feed_data(b'ontent-MD5: 912ec803b2ce49e4a541068d495ab570\r\n\r\n')
+
+        assert out.is_eof()
+        assert b'asdf' == b''.join(out._buffer)
+
     async def test_http_payload_parser_length(self, stream) -> None:
         out = aiohttp.FlowControlDataQueue(stream,
+                                           2 ** 16,
                                            loop=asyncio.get_event_loop())
         p = HttpPayloadParser(out, length=2)
         eof, tail = p.feed_data(b'1245')
@@ -837,34 +915,74 @@ class TestParsePayload:
         assert b'12' == b''.join(d for d, _ in out._buffer)
         assert b'45' == tail
 
-    _comp = zlib.compressobj(wbits=-zlib.MAX_WBITS)
-    _COMPRESSED = b''.join([_comp.compress(b'data'), _comp.flush()])
-
     async def test_http_payload_parser_deflate(self, stream) -> None:
-        length = len(self._COMPRESSED)
-        out = aiohttp.FlowControlDataQueue(stream,
-                                           loop=asyncio.get_event_loop())
-        p = HttpPayloadParser(
-            out, length=length, compression='deflate')
-        p.feed_data(self._COMPRESSED)
-        assert b'data' == b''.join(d for d, _ in out._buffer)
-        assert out.is_eof()
-
-    async def test_http_payload_parser_deflate_no_wbits(self, stream) -> None:
-        comp = zlib.compressobj()
-        COMPRESSED = b''.join([comp.compress(b'data'), comp.flush()])
+        # c=compressobj(wbits=15); b''.join([c.compress(b'data'), c.flush()])
+        COMPRESSED = b'x\x9cKI,I\x04\x00\x04\x00\x01\x9b'
 
         length = len(COMPRESSED)
         out = aiohttp.FlowControlDataQueue(stream,
+                                           2 ** 16,
                                            loop=asyncio.get_event_loop())
-        p = HttpPayloadParser(
-            out, length=length, compression='deflate')
+        p = HttpPayloadParser(out, length=length, compression='deflate')
         p.feed_data(COMPRESSED)
         assert b'data' == b''.join(d for d, _ in out._buffer)
         assert out.is_eof()
 
+    async def test_http_payload_parser_deflate_no_hdrs(self, stream) -> None:
+        """Tests incorrectly formed data (no zlib headers) """
+
+        # c=compressobj(wbits=-15); b''.join([c.compress(b'data'), c.flush()])
+        COMPRESSED = b'KI,I\x04\x00'
+
+        length = len(COMPRESSED)
+        out = aiohttp.FlowControlDataQueue(stream,
+                                           2 ** 16,
+                                           loop=asyncio.get_event_loop())
+        p = HttpPayloadParser(out, length=length, compression='deflate')
+        p.feed_data(COMPRESSED)
+        assert b'data' == b''.join(d for d, _ in out._buffer)
+        assert out.is_eof()
+
+    async def test_http_payload_parser_deflate_light(self, stream) -> None:
+        # c=compressobj(wbits=9); b''.join([c.compress(b'data'), c.flush()])
+        COMPRESSED = b'\x18\x95KI,I\x04\x00\x04\x00\x01\x9b'
+
+        length = len(COMPRESSED)
+        out = aiohttp.FlowControlDataQueue(stream,
+                                           2 ** 16,
+                                           loop=asyncio.get_event_loop())
+        p = HttpPayloadParser(out, length=length, compression='deflate')
+        p.feed_data(COMPRESSED)
+        assert b'data' == b''.join(d for d, _ in out._buffer)
+        assert out.is_eof()
+
+    async def test_http_payload_parser_deflate_split(self, stream) -> None:
+        out = aiohttp.FlowControlDataQueue(stream,
+                                           2 ** 16,
+                                           loop=asyncio.get_event_loop())
+        p = HttpPayloadParser(out, compression='deflate', readall=True)
+        # Feeding one correct byte should be enough to choose exact
+        # deflate decompressor
+        p.feed_data(b'x', 1)
+        p.feed_data(b'\x9cKI,I\x04\x00\x04\x00\x01\x9b', 11)
+        p.feed_eof()
+        assert b'data' == b''.join(d for d, _ in out._buffer)
+
+    async def test_http_payload_parser_deflate_split_err(self, stream) -> None:
+        out = aiohttp.FlowControlDataQueue(stream,
+                                           2 ** 16,
+                                           loop=asyncio.get_event_loop())
+        p = HttpPayloadParser(out, compression='deflate', readall=True)
+        # Feeding one wrong byte should be enough to choose exact
+        # deflate decompressor
+        p.feed_data(b'K', 1)
+        p.feed_data(b'I,I\x04\x00', 5)
+        p.feed_eof()
+        assert b'data' == b''.join(d for d, _ in out._buffer)
+
     async def test_http_payload_parser_length_zero(self, stream) -> None:
         out = aiohttp.FlowControlDataQueue(stream,
+                                           2 ** 16,
                                            loop=asyncio.get_event_loop())
         p = HttpPayloadParser(out, length=0)
         assert p.done
@@ -874,6 +992,7 @@ class TestParsePayload:
     async def test_http_payload_brotli(self, stream) -> None:
         compressed = brotli.compress(b'brotli data')
         out = aiohttp.FlowControlDataQueue(stream,
+                                           2 ** 16,
                                            loop=asyncio.get_event_loop())
         p = HttpPayloadParser(
             out, length=len(compressed), compression='br')
@@ -886,17 +1005,20 @@ class TestDeflateBuffer:
 
     async def test_feed_data(self, stream) -> None:
         buf = aiohttp.FlowControlDataQueue(stream,
+                                           2 ** 16,
                                            loop=asyncio.get_event_loop())
         dbuf = DeflateBuffer(buf, 'deflate')
 
         dbuf.decompressor = mock.Mock()
         dbuf.decompressor.decompress.return_value = b'line'
 
-        dbuf.feed_data(b'data', 4)
+        # First byte should be b'x' in order code not to change the decoder.
+        dbuf.feed_data(b'xxxx', 4)
         assert [b'line'] == list(d for d, _ in buf._buffer)
 
     async def test_feed_data_err(self, stream) -> None:
         buf = aiohttp.FlowControlDataQueue(stream,
+                                           2 ** 16,
                                            loop=asyncio.get_event_loop())
         dbuf = DeflateBuffer(buf, 'deflate')
 
@@ -905,10 +1027,13 @@ class TestDeflateBuffer:
         dbuf.decompressor.decompress.side_effect = exc
 
         with pytest.raises(http_exceptions.ContentEncodingError):
-            dbuf.feed_data(b'data', 4)
+            # Should be more than 4 bytes to trigger deflate FSM error.
+            # Should start with b'x', otherwise code switch mocked decoder.
+            dbuf.feed_data(b'xsomedata', 9)
 
     async def test_feed_eof(self, stream) -> None:
         buf = aiohttp.FlowControlDataQueue(stream,
+                                           2 ** 16,
                                            loop=asyncio.get_event_loop())
         dbuf = DeflateBuffer(buf, 'deflate')
 
@@ -921,6 +1046,7 @@ class TestDeflateBuffer:
 
     async def test_feed_eof_err_deflate(self, stream) -> None:
         buf = aiohttp.FlowControlDataQueue(stream,
+                                           2 ** 16,
                                            loop=asyncio.get_event_loop())
         dbuf = DeflateBuffer(buf, 'deflate')
 
@@ -933,6 +1059,7 @@ class TestDeflateBuffer:
 
     async def test_feed_eof_no_err_gzip(self, stream) -> None:
         buf = aiohttp.FlowControlDataQueue(stream,
+                                           2 ** 16,
                                            loop=asyncio.get_event_loop())
         dbuf = DeflateBuffer(buf, 'gzip')
 
@@ -945,6 +1072,7 @@ class TestDeflateBuffer:
 
     async def test_feed_eof_no_err_brotli(self, stream) -> None:
         buf = aiohttp.FlowControlDataQueue(stream,
+                                           2 ** 16,
                                            loop=asyncio.get_event_loop())
         dbuf = DeflateBuffer(buf, 'br')
 
@@ -957,6 +1085,7 @@ class TestDeflateBuffer:
 
     async def test_empty_body(self, stream) -> None:
         buf = aiohttp.FlowControlDataQueue(stream,
+                                           2 ** 16,
                                            loop=asyncio.get_event_loop())
         dbuf = DeflateBuffer(buf, 'deflate')
         dbuf.feed_eof()
