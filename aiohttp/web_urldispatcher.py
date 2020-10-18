@@ -142,8 +142,8 @@ class AbstractRoute(abc.ABC):
 
     def __init__(self, method: str,
                  handler: Union[_WebHandler, Type[AbstractView]], *,
-                 expect_handler: _ExpectHandler=None,
-                 resource: AbstractResource=None) -> None:
+                 expect_handler: Optional[_ExpectHandler]=None,
+                 resource: Optional[AbstractResource]=None) -> None:
 
         if expect_handler is None:
             expect_handler = _default_expect_handler
@@ -846,14 +846,18 @@ class ResourceRoute(AbstractRoute):
 
     @property
     def name(self) -> Optional[str]:
-        return self._resource.name  # type: ignore
+        if self._resource is None:
+            return None
+        return self._resource.name
 
     def url_for(self, *args: str, **kwargs: str) -> URL:
         """Construct url for route with additional params."""
-        return self._resource.url_for(*args, **kwargs)  # type: ignore
+        assert self._resource is not None
+        return self._resource.url_for(*args, **kwargs)
 
     def get_info(self) -> _InfoDict:
-        return self._resource.get_info()  # type: ignore
+        assert self._resource is not None
+        return self._resource.get_info()
 
 
 class SystemRoute(AbstractRoute):
