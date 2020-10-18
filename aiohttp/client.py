@@ -345,8 +345,8 @@ class ClientSession:
 
         try:
             url = URL(str_or_url)
-        except ValueError:
-            raise InvalidURL(str_or_url)
+        except ValueError as e:
+            raise InvalidURL(str_or_url) from e
 
         skip_headers = set(self._skip_auto_headers)
         if skip_auto_headers is not None:
@@ -356,8 +356,8 @@ class ClientSession:
         if proxy is not None:
             try:
                 proxy = URL(proxy)
-            except ValueError:
-                raise InvalidURL(proxy)
+            except ValueError as e:
+                raise InvalidURL(proxy) from e
 
         if timeout is sentinel:
             real_timeout = self._timeout  # type: ClientTimeout
@@ -529,8 +529,8 @@ class ClientSession:
                             parsed_url = URL(
                                 r_url, encoded=not self._requote_redirect_url)
 
-                        except ValueError:
-                            raise InvalidURL(r_url)
+                        except ValueError as e:
+                            raise InvalidURL(r_url) from e
 
                         scheme = parsed_url.scheme
                         if scheme not in ('http', 'https', ''):
@@ -777,7 +777,7 @@ class ClientSession:
                             resp.history,
                             message=exc.args[0],
                             status=resp.status,
-                            headers=resp.headers)
+                            headers=resp.headers) from exc
                 else:
                     compress = 0
                     notakeover = False
