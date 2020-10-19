@@ -202,8 +202,8 @@ class BaseRunner(ABC):
         return self._server
 
     @property
-    def addresses(self) -> List[str]:
-        ret = []  # type: List[str]
+    def addresses(self) -> List[Any]:
+        ret = []  # type: List[Any]
         for site in self._sites:
             server = site._server
             if server is not None:
