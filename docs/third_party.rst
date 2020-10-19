@@ -245,10 +245,12 @@ period ask to raise the status.
 - `eider-py <https://github.com/eider-rpc/eider-py>`_ Python implementation of
   the `Eider RPC protocol <http://eider.readthedocs.io/>`_.
 
-- `asynapplicationinsights <https://github.com/RobertoPrevato/asynapplicationinsights>`_ A client
-  for `Azure Application Insights <https://azure.microsoft.com/en-us/services/application-insights/>`_
-  implemented using ``aiohttp`` client, including a middleware for ``aiohttp`` servers to collect web apps
-  telemetry.
+- `asynapplicationinsights
+  <https://github.com/RobertoPrevato/asynapplicationinsights>`_ A client for
+  `Azure Application Insights
+  <https://azure.microsoft.com/en-us/services/application-insights/>`_
+  implemented using ``aiohttp`` client, including a middleware for ``aiohttp``
+  servers to collect web apps telemetry.
 
 - `aiogmaps <https://github.com/hzlmn/aiogmaps>`_
   Asynchronous client for Google Maps API Web Services. Python 3.6+ required.
@@ -267,3 +269,6 @@ period ask to raise the status.
 - `aiohttp-tus <https://github.com/pylotcode/aiohttp-tus>`_
   `tus.io <https://tus.io>`_ protocol implementation for ``aiohttp.web``
   applications. Python 3.6+ required.
+
+- `aiohttp-sse-client <https://github.com/rtfol/aiohttp-sse-client>`_
+  A Server-Sent Event python client base on aiohttp. Python 3.6+ required.

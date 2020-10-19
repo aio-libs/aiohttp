@@ -25,6 +25,7 @@ from typing import (  # noqa
     Callable,
     Dict,
     Generator,
+    Generic,
     Iterable,
     Iterator,
     List,
@@ -53,7 +54,6 @@ from .typedefs import PathLike  # noqa
 
 __all__ = ('BasicAuth', 'ChainMapProxy')
 
-PY_36 = sys.version_info >= (3, 6)
 PY_37 = sys.version_info >= (3, 7)
 PY_38 = sys.version_info >= (3, 8)
 
@@ -65,6 +65,11 @@ try:
     from typing import ContextManager
 except ImportError:
     from typing_extensions import ContextManager
+
+if PY_38:
+    from typing import Protocol
+else:
+    from typing_extensions import Protocol  # type: ignore
 
 
 def all_tasks(
@@ -79,6 +84,7 @@ if PY_37:
 
 
 _T = TypeVar('_T')
+_S = TypeVar('_S')
 
 
 sentinel = object()  # type: Any
@@ -382,7 +388,11 @@ def is_expected_content_type(response_content_type: str,
     return expected_content_type in response_content_type
 
 
-class reify:
+class _TSelf(Protocol):
+    _cache: Dict[str, Any]
+
+
+class reify(Generic[_T]):
     """Use as a class method decorator.  It operates almost exactly like
     the Python `@property` decorator, but it puts the result of the
     method it decorates into the instance dict after the first call,
@@ -391,12 +401,12 @@ class reify:
 
     """
 
-    def __init__(self, wrapped: Callable[..., Any]) -> None:
+    def __init__(self, wrapped: Callable[..., _T]) -> None:
         self.wrapped = wrapped
         self.__doc__ = wrapped.__doc__
         self.name = wrapped.__name__
 
-    def __get__(self, inst: Any, owner: Any) -> Any:
+    def __get__(self, inst: _TSelf, owner: Optional[Type[Any]] = None) -> _T:
         try:
             try:
                 return inst._cache[self.name]
@@ -409,7 +419,7 @@ class reify:
                 return self
             raise
 
-    def __set__(self, inst: Any, value: Any) -> None:
+    def __set__(self, inst: _TSelf, value: _T) -> None:
         raise AttributeError("reified property is read-only")
 
 

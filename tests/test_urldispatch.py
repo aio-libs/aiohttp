@@ -1168,6 +1168,11 @@ def test_invalid_route_name(router) -> None:
         router.add_get('/', make_handler(), name='invalid name')
 
 
+def test_invalid_route_name(router) -> None:
+    with pytest.raises(ValueError):
+        router.add_get('/', make_handler(), name='class')  # identifier
+
+
 def test_frozen_router(router) -> None:
     router.freeze()
     with pytest.raises(RuntimeError):

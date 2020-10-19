@@ -78,15 +78,13 @@ class TCPSite(BaseSite):
     __slots__ = ('_host', '_port', '_reuse_address', '_reuse_port')
 
     def __init__(self, runner: 'BaseRunner',
-                 host: str=None, port: int=None, *,
+                 host: Optional[str]=None, port: Optional[int]=None, *,
                  shutdown_timeout: float=60.0,
                  ssl_context: Optional[SSLContext]=None,
                  backlog: int=128, reuse_address: Optional[bool]=None,
                  reuse_port: Optional[bool]=None) -> None:
         super().__init__(runner, shutdown_timeout=shutdown_timeout,
                          ssl_context=ssl_context, backlog=backlog)
-        if host is None:
-            host = "0.0.0.0"
         self._host = host
         if port is None:
             port = 8443 if self._ssl_context else 8080
@@ -97,7 +95,8 @@ class TCPSite(BaseSite):
     @property
     def name(self) -> str:
         scheme = 'https' if self._ssl_context else 'http'
-        return str(URL.build(scheme=scheme, host=self._host, port=self._port))
+        host = "0.0.0.0" if self._host is None else self._host
+        return str(URL.build(scheme=scheme, host=host, port=self._port))
 
     async def start(self) -> None:
         await super().start()

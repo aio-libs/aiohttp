@@ -273,6 +273,38 @@ async def test_get(loop) -> None:
     await conn.close()
 
 
+async def test_get_unconnected_proto(loop) -> None:
+    conn = aiohttp.BaseConnector()
+    key = ConnectionKey('localhost', 80, False, None, None, None, None)
+    assert conn._get(key) is None
+
+    proto = create_mocked_conn(loop)
+    conn._conns[key] = [(proto, loop.time())]
+    assert conn._get(key) == proto
+
+    assert conn._get(key) is None
+    conn._conns[key] = [(proto, loop.time())]
+    proto.is_connected = lambda *args: False
+    assert conn._get(key) is None
+    await conn.close()
+
+
+async def test_get_unconnected_proto_ssl(loop) -> None:
+    conn = aiohttp.BaseConnector()
+    key = ConnectionKey('localhost', 80, True, None, None, None, None)
+    assert conn._get(key) is None
+
+    proto = create_mocked_conn(loop)
+    conn._conns[key] = [(proto, loop.time())]
+    assert conn._get(key) == proto
+
+    assert conn._get(key) is None
+    conn._conns[key] = [(proto, loop.time())]
+    proto.is_connected = lambda *args: False
+    assert conn._get(key) is None
+    await conn.close()
+
+
 async def test_get_expired(loop) -> None:
     conn = aiohttp.BaseConnector()
     key = ConnectionKey('localhost', 80, False, None, None, None, None)
@@ -344,6 +376,7 @@ async def test_release(loop, key) -> None:
 
     conn._release(key, proto)
     assert conn._release_waiter.called
+    assert conn._cleanup_handle is not None
     assert conn._conns[key][0][0] == proto
     assert conn._conns[key][0][1] == pytest.approx(loop.time(), abs=0.1)
     assert not conn._cleanup_closed_transports
@@ -620,10 +653,10 @@ async def test_tcp_connector_resolve_host(loop) -> None:
     for rec in res:
         if rec['family'] == socket.AF_INET:
             assert rec['host'] == '127.0.0.1'
-            assert rec['hostname'] == 'localhost'
+            assert rec['hostname'] == '127.0.0.1'
             assert rec['port'] == 8080
         elif rec['family'] == socket.AF_INET6:
-            assert rec['hostname'] == 'localhost'
+            assert rec['hostname'] == '::1'
             assert rec['port'] == 8080
             if platform.system() == 'Darwin':
                 assert rec['host'] in ('::1', 'fe80::1', 'fe80::1%lo0')
@@ -736,6 +769,50 @@ async def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
 
         with pytest.raises(asyncio.CancelledError):
             await f
+
+
+@pytest.fixture
+def dns_response_error(loop):
+    async def coro():
+        # simulates a network operation
+        await asyncio.sleep(0)
+        raise socket.gaierror(-3, 'Temporary failure in name resolution')
+    return coro
+
+
+async def test_tcp_connector_cancel_dns_error_captured(
+        loop,
+        dns_response_error) -> None:
+
+    exception_handler_called = False
+
+    def exception_handler(loop, context):
+        nonlocal exception_handler_called
+        exception_handler_called = True
+
+    loop.set_exception_handler(mock.Mock(side_effect=exception_handler))
+
+    with mock.patch('aiohttp.connector.DefaultResolver') as m_resolver:
+        req = ClientRequest(
+            method='GET',
+            url=URL('http://temporary-failure:80'),
+            loop=loop
+        )
+        conn = aiohttp.TCPConnector(
+            use_dns_cache=False,
+        )
+        m_resolver().resolve.return_value = dns_response_error()
+        f = loop.create_task(
+            conn._create_direct_connection(req, [], ClientTimeout(0))
+        )
+
+        await asyncio.sleep(0)
+        f.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await f
+
+        gc.collect()
+        assert exception_handler_called is False
 
 
 async def test_tcp_connector_dns_tracing(loop, dns_response) -> None:
@@ -1122,7 +1199,7 @@ async def test_cleanup(key) -> None:
     conn._cleanup()
     assert existing_handle.cancel.called
     assert conn._conns == {}
-    assert conn._cleanup_handle is not None
+    assert conn._cleanup_handle is None
 
 
 async def test_cleanup_close_ssl_transport(loop, ssl_key) -> None:
@@ -1699,7 +1776,7 @@ async def test_connect_with_limit_concurrent(loop) -> None:
     # with multiple concurrent requests and stops when it hits a
     # predefined maximum number of requests.
 
-    max_requests = 10
+    max_requests = 50
     num_requests = 0
     start_requests = max_connections + 1
 
@@ -1712,6 +1789,7 @@ async def test_connect_with_limit_concurrent(loop) -> None:
             connection = await conn.connect(req, None, ClientTimeout())
             await asyncio.sleep(0)
             connection.release()
+            await asyncio.sleep(0)
         tasks = [
             loop.create_task(f(start=False))
             for i in range(start_requests)
@@ -2290,3 +2368,42 @@ async def test_connector_throttle_trace_race(loop):
     connector._throttle_dns_events[key] = EventResultOrError(loop)
     traces = [DummyTracer()]
     assert await connector._resolve_host("", 0, traces) == [token]
+
+
+async def test_connector_does_not_remove_needed_waiters(loop, key) -> None:
+    proto = create_mocked_conn(loop)
+    proto.is_connected.return_value = True
+
+    req = ClientRequest('GET', URL('https://localhost:80'), loop=loop)
+    connection_key = req.connection_key
+
+    connector = aiohttp.BaseConnector()
+    connector._available_connections = mock.Mock(return_value=0)
+    connector._conns[key] = [(proto, loop.time())]
+    connector._create_connection = create_mocked_conn(loop)
+    connector._create_connection.return_value = loop.create_future()
+    connector._create_connection.return_value.set_result(proto)
+
+    dummy_waiter = loop.create_future()
+
+    async def await_connection_and_check_waiters():
+        connection = await connector.connect(req, [], ClientTimeout())
+        try:
+            assert connection_key in connector._waiters
+            assert dummy_waiter in connector._waiters[connection_key]
+        finally:
+            connection.close()
+
+    async def allow_connection_and_add_dummy_waiter():
+        # `asyncio.gather` may execute coroutines not in order.
+        # Skip one event loop run cycle in such a case.
+        if connection_key not in connector._waiters:
+            await asyncio.sleep(0)
+        connector._waiters[connection_key].popleft().set_result(None)
+        del connector._waiters[connection_key]
+        connector._waiters[connection_key].append(dummy_waiter)
+
+    await asyncio.gather(
+        await_connection_and_check_waiters(),
+        allow_connection_and_add_dummy_waiter(),
+    )

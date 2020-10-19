@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Awaitable, Type, TypeVar
+from typing import TYPE_CHECKING, Awaitable, Optional, Type, TypeVar
 
 import attr
 from multidict import CIMultiDict  # noqa
@@ -92,7 +92,7 @@ class TraceConfig:
 
     def trace_config_ctx(
         self,
-        trace_request_ctx: SimpleNamespace=None
+        trace_request_ctx: Optional[SimpleNamespace]=None
     ) -> SimpleNamespace:  # noqa
         """ Return a new trace_config_ctx instance """
         return self._trace_config_ctx_factory(
@@ -217,12 +217,16 @@ class TraceRequestStartParams:
 @attr.s(frozen=True, slots=True)
 class TraceRequestChunkSentParams:
     """ Parameters sent by the `on_request_chunk_sent` signal"""
+    method = attr.ib(type=str)
+    url = attr.ib(type=URL)
     chunk = attr.ib(type=bytes)
 
 
 @attr.s(frozen=True, slots=True)
 class TraceResponseChunkReceivedParams:
     """ Parameters sent by the `on_response_chunk_received` signal"""
+    method = attr.ib(type=str)
+    url = attr.ib(type=URL)
     chunk = attr.ib(type=bytes)
 
 
@@ -324,18 +328,24 @@ class Trace:
             TraceRequestStartParams(method, url, headers)
         )
 
-    async def send_request_chunk_sent(self, chunk: bytes) -> None:
+    async def send_request_chunk_sent(self,
+                                      method: str,
+                                      url: URL,
+                                      chunk: bytes) -> None:
         return await self._trace_config.on_request_chunk_sent.send(
             self._session,
             self._trace_config_ctx,
-            TraceRequestChunkSentParams(chunk)
+            TraceRequestChunkSentParams(method, url, chunk)
         )
 
-    async def send_response_chunk_received(self, chunk: bytes) -> None:
+    async def send_response_chunk_received(self,
+                                           method: str,
+                                           url: URL,
+                                           chunk: bytes) -> None:
         return await self._trace_config.on_response_chunk_received.send(
             self._session,
             self._trace_config_ctx,
-            TraceResponseChunkReceivedParams(chunk)
+            TraceResponseChunkReceivedParams(method, url, chunk)
         )
 
     async def send_request_end(self,

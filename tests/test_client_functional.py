@@ -54,6 +54,37 @@ async def test_keepalive_two_requests_success(
     assert 1 == len(client._session.connector._conns)
 
 
+async def test_keepalive_after_head_requests_success(
+        aiohttp_client) -> None:
+    async def handler(request):
+        body = await request.read()
+        assert b'' == body
+        return web.Response(body=b'OK')
+
+    cnt_conn_reuse = 0
+
+    async def on_reuseconn(session, ctx, params):
+        nonlocal cnt_conn_reuse
+        cnt_conn_reuse += 1
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config._on_connection_reuseconn.append(on_reuseconn)
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+
+    connector = aiohttp.TCPConnector(limit=1)
+    client = await aiohttp_client(app, connector=connector,
+                                  trace_configs=[trace_config])
+
+    resp1 = await client.head('/')
+    await resp1.read()
+    resp2 = await client.get('/')
+    await resp2.read()
+
+    assert 1 == cnt_conn_reuse
+
+
 async def test_keepalive_response_released(aiohttp_client) -> None:
     async def handler(request):
         body = await request.read()
@@ -2975,3 +3006,29 @@ async def test_read_timeout_on_prepared_response(aiohttp_client) -> None:
     with pytest.raises(aiohttp.ServerTimeoutError):
         async with await client.get('/') as resp:
             await resp.read()
+
+
+async def test_read_bufsize_session_default(aiohttp_client) -> None:
+    async def handler(request):
+        return web.Response(body=b'1234567')
+
+    app = web.Application()
+    app.add_routes([web.get('/', handler)])
+
+    client = await aiohttp_client(app, read_bufsize=2)
+
+    async with await client.get('/') as resp:
+        assert resp.content.get_read_buffer_limits() == (2, 4)
+
+
+async def test_read_bufsize_explicit(aiohttp_client) -> None:
+    async def handler(request):
+        return web.Response(body=b'1234567')
+
+    app = web.Application()
+    app.add_routes([web.get('/', handler)])
+
+    client = await aiohttp_client(app)
+
+    async with await client.get('/', read_bufsize=4) as resp:
+        assert resp.content.get_read_buffer_limits() == (4, 8)
