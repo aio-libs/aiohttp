@@ -256,3 +256,6 @@ period ask to raise the status.
 - `aiohttp-tus <https://github.com/pylotcode/aiohttp-tus>`_
   `tus.io <https://tus.io>`_ protocol implementation for ``aiohttp.web``
   applications. Python 3.6+ required.
+
+- `aiohttp-sse-client <https://github.com/rtfol/aiohttp-sse-client>`_
+  A Server-Sent Event python client base on aiohttp. Python 3.6+ required.
