@@ -829,7 +829,7 @@ Host: localhost:{port}\r
     writer.write(b"x")
     writer.close()
     await asyncio.sleep(0.1)
-    logger.debug.assert_called_with('Ignored premature client disconnection.')
+    logger.debug.assert_called_with('Ignored premature client disconnection')
     assert disconnected_notified
 
 
