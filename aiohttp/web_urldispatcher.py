@@ -31,6 +31,7 @@ from typing import (  # noqa
 
 from typing_extensions import TypedDict
 from yarl import URL
+from yarl import __version__ as yarl_version  # type: ignore
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
@@ -60,6 +61,8 @@ if TYPE_CHECKING:  # pragma: no cover
     BaseDict = Dict[str, str]
 else:
     BaseDict = dict
+
+YARL_VERSION = tuple(map(int, yarl_version.split('.')[:2]))
 
 HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
 ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
@@ -537,8 +540,12 @@ class StaticResource(PrefixResource):
             filename = str(filename)
         filename = filename.lstrip('/')
 
+        url = URL.build(path=self._prefix, encoded=True)
         # filename is not encoded
-        url = URL.build(path=self._prefix, encoded=True) / filename
+        if YARL_VERSION < (1, 6):
+            url = url / filename.replace('%', '%25')
+        else:
+            url = url / filename
 
         if append_version:
             try:
@@ -1149,6 +1156,8 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
 
 def _quote_path(value: str) -> str:
+    if YARL_VERSION < (1, 6):
+        value = value.replace('%', '%25')
     return URL.build(path=value, encoded=False).raw_path
 
 

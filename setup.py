@@ -55,7 +55,7 @@ install_requires = [
     'chardet>=2.0,<4.0',
     'multidict>=4.5,<7.0',
     'async_timeout>=4.0a2,<5.0',
-    'yarl>=1.6,<2.0',
+    'yarl>=1.0,<2.0',
     'idna-ssl>=1.0; python_version<"3.7"',
     'typing_extensions>=3.6.5',
 ]

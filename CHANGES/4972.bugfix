@@ -1,1 +1,1 @@
-Fix inconsistency between Python and C http request parsers in parsing pct-encoded URL. Yarl >=1.6 is now required.
+Fix inconsistency between Python and C http request parsers in parsing pct-encoded URL.
