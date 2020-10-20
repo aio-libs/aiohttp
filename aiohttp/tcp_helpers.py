@@ -5,15 +5,7 @@ import socket
 from contextlib import suppress
 from typing import Optional  # noqa
 
-__all__ = ('tcp_keepalive', 'tcp_nodelay', 'tcp_cork')
-
-
-if hasattr(socket, 'TCP_CORK'):  # pragma: no cover
-    CORK = socket.TCP_CORK  # type: Optional[int]
-elif hasattr(socket, 'TCP_NOPUSH'):  # pragma: no cover
-    CORK = socket.TCP_NOPUSH  # type: ignore
-else:  # pragma: no cover
-    CORK = None
+__all__ = ('tcp_keepalive', 'tcp_nodelay')
 
 
 if hasattr(socket, 'SO_KEEPALIVE'):
@@ -42,22 +34,3 @@ def tcp_nodelay(transport: asyncio.Transport, value: bool) -> None:
     with suppress(OSError):
         sock.setsockopt(
             socket.IPPROTO_TCP, socket.TCP_NODELAY, value)
-
-
-def tcp_cork(transport: asyncio.Transport, value: bool) -> None:
-    sock = transport.get_extra_info('socket')
-
-    if CORK is None:
-        return
-
-    if sock is None:
-        return
-
-    if sock.family not in (socket.AF_INET, socket.AF_INET6):
-        return
-
-    value = bool(value)
-
-    with suppress(OSError):
-        sock.setsockopt(
-            socket.IPPROTO_TCP, CORK, value)
