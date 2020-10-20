@@ -688,13 +688,19 @@ def test_run_app_cancels_failed_tasks(patched_loop):
 
 def test_run_app_keepalive_timeout(patched_loop):
     new_timeout = 1234
-    mock_runner_init = mock.Mock(BaseRunner.__init__)
+    base_runner_init_mock = mock.MagicMock()
+    base_runner_init_orig = BaseRunner.__init__
 
-    with mock.patch.object(BaseRunner, "__init__", mock_runner_init):
+    def base_runner_init_spy(self, *args, **kwargs):
+        base_runner_init_mock(*args, **kwargs)
+        base_runner_init_orig(self, *args, **kwargs)
+
+    with mock.patch.object(BaseRunner, "__init__", base_runner_init_spy):
         app = web.Application()
-        web.run_app(app, keepalive_timeout=new_timeout)
+        web.run_app(app, keepalive_timeout=new_timeout,
+                    print=stopper(patched_loop))
 
-    assert (mock_runner_init.call_args.kwargs["keepalive_timeout"] ==
+    assert (base_runner_init_mock.call_args.kwargs["keepalive_timeout"] ==
             new_timeout)
 
 
