@@ -694,7 +694,8 @@ def test_run_app_keepalive_timeout(patched_loop):
         app = web.Application()
         web.run_app(app, keepalive_timeout=new_timeout)
 
-    assert mock_runner_init.call_args.kwargs["keepalive_timeout"] == new_timeout
+    assert (mock_runner_init.call_args.kwargs["keepalive_timeout"] ==
+            new_timeout)
 
 
 @pytest.mark.skipif(not PY_37,
