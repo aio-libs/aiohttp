@@ -2737,7 +2737,8 @@ Utilities
 
 .. function:: run_app(app, *, debug=False, host=None, port=None, \
                       path=None, sock=None, shutdown_timeout=60.0, \
-                      ssl_context=None, print=print, backlog=128, \
+                      keepalive_timeout=75.0, ssl_context=None, \
+                      print=print, backlog=128, \
                       access_log_class=aiohttp.helpers.AccessLogger, \
                       access_log_format=aiohttp.helpers.AccessLogger.LOG_FORMAT, \
                       access_log=aiohttp.log.access_logger, \
@@ -2792,6 +2793,10 @@ Utilities
                                 implemented never waits for this
                                 timeout but closes a server in a few
                                 milliseconds.
+
+   :param float keepalive_timeout: a delay before a TCP connection is
+                                   closed after a HTTP request. The delay
+                                   allows for reuse of a TCP connection.
 
    :param ssl_context: :class:`ssl.SSLContext` for HTTPS server,
                        ``None`` for HTTP connection.
