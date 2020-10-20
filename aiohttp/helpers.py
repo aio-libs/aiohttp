@@ -494,10 +494,10 @@ def _weakref_handle(info):  # type: ignore
             getattr(ob, name)()
 
 
-def weakref_handle(ob, name, timeout, loop, ceil_timeout=True):  # type: ignore
+def weakref_handle(ob, name, timeout, loop):  # type: ignore
     if timeout is not None and timeout > 0:
         when = loop.time() + timeout
-        if ceil_timeout:
+        if timeout >= 5:
             when = ceil(when)
 
         return loop.call_at(when, _weakref_handle, (weakref.ref(ob), name))
@@ -505,7 +505,9 @@ def weakref_handle(ob, name, timeout, loop, ceil_timeout=True):  # type: ignore
 
 def call_later(cb, timeout, loop):  # type: ignore
     if timeout is not None and timeout > 0:
-        when = ceil(loop.time() + timeout)
+        when = loop.time() + timeout
+        if timeout > 5:
+            when = ceil(when)
         return loop.call_at(when, cb)
 
 
@@ -527,9 +529,12 @@ class TimeoutHandle:
         self._callbacks.clear()
 
     def start(self) -> Optional[asyncio.Handle]:
-        if self._timeout is not None and self._timeout > 0:
-            at = ceil(self._loop.time() + self._timeout)
-            return self._loop.call_at(at, self.__call__)
+        timeout = self._timeout
+        if timeout is not None and timeout > 0:
+            when = self._loop.time() + timeout
+            if timeout >= 5:
+                when = ceil(when)
+            return self._loop.call_at(when, self.__call__)
         else:
             return None
 
@@ -612,8 +617,13 @@ class CeilTimeout(async_timeout.timeout):
             if self._task is None:
                 raise RuntimeError(
                     'Timeout context manager should be used inside a task')
+            now = self._loop.time()
+            delay = self._timeout
+            when = now + delay
+            if delay > 5:
+                when = ceil(when)
             self._cancel_handler = self._loop.call_at(
-                ceil(self._loop.time() + self._timeout), self._cancel_task)
+                when, self._cancel_task)
         return self
 
 

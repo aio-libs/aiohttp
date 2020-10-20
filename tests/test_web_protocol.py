@@ -97,14 +97,6 @@ def transport(buf):
     return transport
 
 
-@pytest.fixture
-def ceil(mocker):
-    def ceil(val):
-        return val
-
-    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
-
-
 async def test_shutdown(srv, transport) -> None:
     loop = asyncio.get_event_loop()
     assert transport is srv.transport
@@ -427,7 +419,7 @@ async def test_lingering_disabled(make_srv,
 
 
 async def test_lingering_timeout(
-    make_srv, transport, ceil, request_handler
+    make_srv, transport, request_handler
 ):
 
     async def handle_request(request):
@@ -516,7 +508,7 @@ async def test_handle_400(srv, buf, transport) -> None:
     assert b'400 Bad Request' in buf
 
 
-async def test_keep_alive(make_srv, transport, ceil) -> None:
+async def test_keep_alive(make_srv, transport) -> None:
     loop = asyncio.get_event_loop()
     srv = make_srv(keepalive_timeout=0.05)
     future = loop.create_future()

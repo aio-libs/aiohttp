@@ -30,10 +30,6 @@ def fname(here):
     return here / 'conftest.py'
 
 
-def ceil(val):
-    return val
-
-
 async def test_keepalive_two_requests_success(
         aiohttp_client) -> None:
     async def handler(request):
@@ -570,7 +566,6 @@ async def test_204_with_gzipped_content_encoding(aiohttp_client) -> None:
 
 
 async def test_timeout_on_reading_headers(aiohttp_client, mocker) -> None:
-    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
 
     async def handler(request):
         resp = web.StreamResponse()
@@ -589,8 +584,6 @@ async def test_timeout_on_reading_headers(aiohttp_client, mocker) -> None:
 async def test_timeout_on_conn_reading_headers(aiohttp_client, mocker) -> None:
     # tests case where user did not set a connection timeout
 
-    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
-
     async def handler(request):
         resp = web.StreamResponse()
         await asyncio.sleep(0.1)
@@ -608,7 +601,6 @@ async def test_timeout_on_conn_reading_headers(aiohttp_client, mocker) -> None:
 
 
 async def test_timeout_on_session_read_timeout(aiohttp_client, mocker) -> None:
-    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
 
     async def handler(request):
         resp = web.StreamResponse()
@@ -630,7 +622,6 @@ async def test_timeout_on_session_read_timeout(aiohttp_client, mocker) -> None:
 
 
 async def test_read_timeout_between_chunks(aiohttp_client, mocker) -> None:
-    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
 
     async def handler(request):
         resp = aiohttp.web.StreamResponse()
@@ -656,7 +647,6 @@ async def test_read_timeout_between_chunks(aiohttp_client, mocker) -> None:
 
 
 async def test_read_timeout_on_reading_chunks(aiohttp_client, mocker) -> None:
-    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
 
     async def handler(request):
         resp = aiohttp.web.StreamResponse()
@@ -682,7 +672,6 @@ async def test_read_timeout_on_reading_chunks(aiohttp_client, mocker) -> None:
 async def test_timeout_on_reading_data(aiohttp_client, mocker) -> None:
     loop = asyncio.get_event_loop()
 
-    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
     fut = loop.create_future()
 
     async def handler(request):
@@ -704,7 +693,6 @@ async def test_timeout_on_reading_data(aiohttp_client, mocker) -> None:
 
 
 async def test_timeout_none(aiohttp_client, mocker) -> None:
-    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
 
     async def handler(request):
         resp = web.StreamResponse()

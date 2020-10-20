@@ -309,6 +309,8 @@ utils
 uvloop
 vcvarsall
 waituntil
+wakeup
+wakeups
 webapp
 websocket
 websocket’s

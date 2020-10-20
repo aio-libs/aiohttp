@@ -4,6 +4,7 @@ import gc
 import os
 import platform
 import tempfile
+from math import modf
 from unittest import mock
 
 import pytest
@@ -295,6 +296,18 @@ def test_timeout_handle(loop) -> None:
     assert not handle._callbacks
 
 
+def test_when_timeout_smaller_second(loop) -> None:
+    timeout = 0.1
+    timer = loop.time() + timeout
+
+    handle = helpers.TimeoutHandle(loop, timeout)
+    when = handle.start()._when
+    handle.close()
+
+    assert isinstance(when, float)
+    assert f"{when:.3f}" == f"{timer:.3f}"
+
+
 def test_timeout_handle_cb_exc(loop) -> None:
     handle = helpers.TimeoutHandle(loop, 10.2)
     cb = mock.Mock()
@@ -333,14 +346,14 @@ def test_timer_context_no_task(loop) -> None:
 
 async def test_weakref_handle(loop) -> None:
     cb = mock.Mock()
-    helpers.weakref_handle(cb, 'test', 0.01, loop, False)
+    helpers.weakref_handle(cb, 'test', 0.01, loop)
     await asyncio.sleep(0.1)
     assert cb.test.called
 
 
 async def test_weakref_handle_weak(loop) -> None:
     cb = mock.Mock()
-    helpers.weakref_handle(cb, 'test', 0.01, loop, False)
+    helpers.weakref_handle(cb, 'test', 0.01, loop)
     del cb
     gc.collect()
     await asyncio.sleep(0.1)
@@ -371,6 +384,19 @@ def test_ceil_timeout_no_task(loop) -> None:
     with pytest.raises(RuntimeError):
         with helpers.CeilTimeout(10, loop=loop):
             pass
+
+
+async def test_ceil_timeout_round(loop) -> None:
+    with helpers.CeilTimeout(7.5, loop=loop) as cm:
+        frac, integer = modf(cm._cancel_handler.when())
+        assert frac == 0
+
+
+async def test_ceil_timeout_small(loop) -> None:
+    with helpers.CeilTimeout(1.1, loop=loop) as cm:
+        frac, integer = modf(cm._cancel_handler.when())
+        # a chance for exact integer with zero fraction is negligible
+        assert frac != 0
 
 
 # -------------------------------- ContentDisposition -------------------
