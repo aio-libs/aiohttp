@@ -53,7 +53,7 @@ except IndexError:
 install_requires = [
     'attrs>=17.3.0',
     'chardet>=2.0,<4.0',
-    'multidict>=4.5,<5.0',
+    'multidict>=4.5,<7.0',
     'async_timeout>=4.0a2,<5.0',
     'yarl>=1.0,<2.0',
     'idna-ssl>=1.0; python_version<"3.7"',
@@ -79,6 +79,7 @@ args = dict(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Development Status :: 5 - Production/Stable',
         'Operating System :: POSIX',
         'Operating System :: MacOS :: MacOS X',
