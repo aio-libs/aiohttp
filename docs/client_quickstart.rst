@@ -457,7 +457,7 @@ Thus the default timeout is::
 
    The optimization shifts absolute wakeup times by scheduling them to exactly
    the same time as other neighbors, the loop wakes up once-per-second for
-   timeout expirations.
+   timeout expiration.
 
    Smaller timeouts are not rounded to help testing; in the real life network
    timeouts usually greater than tens of seconds.
