@@ -16,6 +16,7 @@ import pytest
 from aiohttp import web
 from aiohttp.helpers import PY_37
 from aiohttp.test_utils import make_mocked_coro
+from aiohttp.web_runner import BaseRunner
 
 # Test for features of OS' socket support
 _has_unix_domain_socks = hasattr(socket, 'AF_UNIX')
@@ -683,6 +684,17 @@ def test_run_app_cancels_failed_tasks(patched_loop):
         'task': task,
     }
     exc_handler.assert_called_with(patched_loop, msg)
+
+
+def test_run_app_keepalive_timeout(patched_loop):
+    new_timeout = 1234
+    mock_runner_init = mock.Mock(BaseRunner.__init__)
+
+    with mock.patch.object(BaseRunner, "__init__", mock_runner_init):
+        app = web.Application()
+        web.run_app(app, keepalive_timeout=new_timeout)
+
+    assert mock_runner_init.call_args.kwargs["keepalive_timeout"] == new_timeout
 
 
 @pytest.mark.skipif(not PY_37,
