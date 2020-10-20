@@ -444,3 +444,20 @@ Thus the default timeout is::
 
    aiohttp.ClientTimeout(total=5*60, connect=None,
                          sock_connect=None, sock_read=None)
+
+.. note::
+
+   *aiohttp* **ceils** timeout if the value is equal or greater than 5
+   seconds. The timeout expires at the next integer second greater than
+   ``current_time + timeout``.
+
+   The ceiling is done for the sake of optimization, when many concurrent tasks
+   are scheduled to wake-up at the almost same but different absolute times. It
+   leads to very many event loop wakeups, which kills performance.
+
+   The optimization shifts absolute wakeup times by scheduling them to exactly
+   the same time as other neighbors, the loop wakes up once-per-second for
+   timeout expirations.
+
+   Smaller timeouts are not rounded to help testing; in the real life network
+   timeouts usually greater than tens of seconds.

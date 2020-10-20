@@ -515,10 +515,10 @@ def _weakref_handle(info):  # type: ignore
             getattr(ob, name)()
 
 
-def weakref_handle(ob, name, timeout, loop, ceil_timeout=True):  # type: ignore
+def weakref_handle(ob, name, timeout, loop):  # type: ignore
     if timeout is not None and timeout > 0:
         when = loop.time() + timeout
-        if ceil_timeout:
+        if timeout >= 5:
             when = ceil(when)
 
         return loop.call_at(when, _weakref_handle, (weakref.ref(ob), name))
@@ -526,7 +526,9 @@ def weakref_handle(ob, name, timeout, loop, ceil_timeout=True):  # type: ignore
 
 def call_later(cb, timeout, loop):  # type: ignore
     if timeout is not None and timeout > 0:
-        when = ceil(loop.time() + timeout)
+        when = loop.time() + timeout
+        if timeout > 5:
+            when = ceil(when)
         return loop.call_at(when, cb)
 
 
@@ -548,9 +550,12 @@ class TimeoutHandle:
         self._callbacks.clear()
 
     def start(self) -> Optional[asyncio.Handle]:
-        if self._timeout is not None and self._timeout > 0:
-            at = ceil(self._loop.time() + self._timeout)
-            return self._loop.call_at(at, self.__call__)
+        timeout = self._timeout
+        if timeout is not None and timeout > 0:
+            when = self._loop.time() + timeout
+            if timeout >= 5:
+                when = ceil(when)
+            return self._loop.call_at(when, self.__call__)
         else:
             return None
 
@@ -626,10 +631,13 @@ class TimerContext(BaseTimerContext):
 
 
 def ceil_timeout(delay: Optional[float]) -> async_timeout.Timeout:
-    if delay is not None:
+    if delay is not None and delay > 0:
         loop = get_running_loop()
         now = loop.time()
-        return async_timeout.timeout_at(ceil(now + delay))
+        when = now + delay
+        if delay > 5:
+            when = ceil(when)
+        return async_timeout.timeout_at(when)
     else:
         return async_timeout.timeout(None)
 
