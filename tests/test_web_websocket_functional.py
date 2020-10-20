@@ -9,14 +9,6 @@ from aiohttp import WSServerHandshakeError, web
 from aiohttp.http import WSMsgType
 
 
-@pytest.fixture
-def ceil(mocker):
-    def ceil(val):
-        return val
-
-    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
-
-
 async def test_websocket_can_prepare(loop, aiohttp_client) -> None:
 
     async def handler(request):
@@ -516,7 +508,7 @@ async def test_server_close_handshake(loop, aiohttp_client) -> None:
     await closed
 
 
-async def aiohttp_client_close_handshake(loop, aiohttp_client, ceil):
+async def aiohttp_client_close_handshake(loop, aiohttp_client):
 
     closed = loop.create_future()
 
@@ -633,7 +625,7 @@ async def test_custom_receive_timeout(loop, aiohttp_client) -> None:
     assert raised
 
 
-async def test_heartbeat(loop, aiohttp_client, ceil) -> None:
+async def test_heartbeat(loop, aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse(heartbeat=0.05)
@@ -654,7 +646,7 @@ async def test_heartbeat(loop, aiohttp_client, ceil) -> None:
     await ws.close()
 
 
-async def test_heartbeat_no_pong(loop, aiohttp_client, ceil) -> None:
+async def test_heartbeat_no_pong(loop, aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse(heartbeat=0.05)
