@@ -2,6 +2,7 @@
 
 import asyncio
 from unittest import mock
+from urllib.parse import quote
 
 import pytest
 from multidict import CIMultiDict
@@ -785,6 +786,55 @@ def test_url_parse_non_strict_mode(parser) -> None:
     assert msg.path == '/test/тест'
     assert msg.version == (1, 1)
     assert payload.is_eof()
+
+
+@pytest.mark.parametrize(
+    ('uri', 'path', 'query', 'fragment'),
+    [
+        ('/path%23frag', '/path#frag', {}, ''),
+        ('/path%2523frag', '/path%23frag', {}, ''),
+        ('/path?key=value%23frag', '/path', {'key': 'value#frag'}, ''),
+        ('/path?key=value%2523frag', '/path', {'key': 'value%23frag'}, ''),
+        ('/path#frag%20', '/path', {}, 'frag '),
+        ('/path#frag%2520', '/path', {}, 'frag%20'),
+    ]
+)
+def test_parse_uri_percent_encoded(parser, uri, path, query, fragment) -> None:
+    text = ('GET %s HTTP/1.1\r\n\r\n' % (uri,)).encode()
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+
+    assert msg.path == uri
+    assert msg.url == URL(uri)
+    assert msg.url.path == path
+    assert msg.url.query == query
+    assert msg.url.fragment == fragment
+
+
+def test_parse_uri_utf8(parser) -> None:
+    text = ('GET /путь?ключ=знач#фраг HTTP/1.1\r\n\r\n').encode()
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+
+    assert msg.path == '/путь?ключ=знач#фраг'
+    assert msg.url.path == '/путь'
+    assert msg.url.query == {'ключ': 'знач'}
+    assert msg.url.fragment == 'фраг'
+
+
+def test_parse_uri_utf8_percent_encoded(parser) -> None:
+    text = (
+        'GET %s HTTP/1.1\r\n\r\n' %
+        quote('/путь?ключ=знач#фраг', safe='/?=#')
+    ).encode()
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+
+    assert msg.path == quote('/путь?ключ=знач#фраг', safe='/?=#')
+    assert msg.url == URL('/путь?ключ=знач#фраг')
+    assert msg.url.path == '/путь'
+    assert msg.url.query == {'ключ': 'знач'}
+    assert msg.url.fragment == 'фраг'
 
 
 @pytest.mark.skipif('HttpRequestParserC' not in dir(aiohttp.http_parser),
