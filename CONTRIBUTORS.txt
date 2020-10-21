@@ -250,6 +250,7 @@ Sergey Ninua
 Sergey Skripnick
 Serhii Charykov
 Serhii Kostel
+Serhiy Storchaka
 Simon Kennedy
 Sin-Woo Bang
 Stanislas Plum
