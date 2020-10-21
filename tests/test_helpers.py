@@ -306,7 +306,7 @@ def test_when_timeout_smaller_second(loop) -> None:
     handle.close()
 
     assert isinstance(when, float)
-    assert f"{when:.3f}" == f"{timer:.3f}"
+    assert abs(when - timer) < 0.01
 
 
 def test_timeout_handle_cb_exc(loop) -> None:
