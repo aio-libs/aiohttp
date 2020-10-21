@@ -386,12 +386,16 @@ def test_ceil_timeout_no_task(loop) -> None:
             pass
 
 
+@pytest.skipif(sys.version < (3, 7),
+               reason="TimerHandle.when() doesn't exist")
 async def test_ceil_timeout_round(loop) -> None:
     with helpers.CeilTimeout(7.5, loop=loop) as cm:
         frac, integer = modf(cm._cancel_handler.when())
         assert frac == 0
 
 
+@pytest.skipif(sys.version < (3, 7),
+               reason="TimerHandle.when() doesn't exist")
 async def test_ceil_timeout_small(loop) -> None:
     with helpers.CeilTimeout(1.1, loop=loop) as cm:
         frac, integer = modf(cm._cancel_handler.when())
