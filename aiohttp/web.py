@@ -401,6 +401,7 @@ def _cancel_tasks(to_cancel: Set['asyncio.Task[Any]'],
 
 
 def run_app(app: Union[Application, Awaitable[Application]], *,
+            debug: bool=False,
             host: Optional[str]=None,
             port: Optional[int]=None,
             path: Optional[str]=None,
@@ -417,6 +418,7 @@ def run_app(app: Union[Application, Awaitable[Application]], *,
             reuse_port: Optional[bool]=None) -> None:
     """Run an app locally"""
     loop = asyncio.get_event_loop()
+    loop.set_debug(debug)
 
     # Configure if and only if in debugging mode and using the default logger
     if loop.get_debug() and access_log and access_log.name == 'aiohttp.access':
@@ -448,9 +450,9 @@ def run_app(app: Union[Application, Awaitable[Application]], *,
     finally:
         _cancel_tasks({main_task}, loop)
         _cancel_tasks(all_tasks(loop), loop)
-        if sys.version_info >= (3, 6):  # don't use PY_36 to pass mypy
-            loop.run_until_complete(loop.shutdown_asyncgens())
+        loop.run_until_complete(loop.shutdown_asyncgens())
         loop.close()
+        asyncio.set_event_loop(None)
 
 
 def main(argv: List[str]) -> None:

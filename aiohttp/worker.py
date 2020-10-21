@@ -56,8 +56,7 @@ class GunicornWebWorker(base.Worker):
             self.loop.run_until_complete(self._task)
         except Exception:
             self.log.exception("Exception in gunicorn worker")
-        if sys.version_info >= (3, 6):
-            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+        self.loop.run_until_complete(self.loop.shutdown_asyncgens())
         self.loop.close()
 
         sys.exit(self.exit_code)
@@ -122,7 +121,10 @@ class GunicornWebWorker(base.Worker):
 
         return waiter
 
-    def _notify_waiter_done(self, waiter: 'asyncio.Future[bool]'=None) -> None:
+    def _notify_waiter_done(
+        self,
+        waiter: Optional['asyncio.Future[bool]']=None
+    ) -> None:
         if waiter is None:
             waiter = self._notify_waiter
         if waiter is not None:
