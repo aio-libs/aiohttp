@@ -20,6 +20,7 @@ from typing import (  # noqa
     List,
     Mapping,
     Optional,
+    Pattern,
     Set,
     Sized,
     Tuple,
@@ -28,7 +29,9 @@ from typing import (  # noqa
     cast,
 )
 
+from typing_extensions import TypedDict
 from yarl import URL
+from yarl import __version__ as yarl_version  # type: ignore
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
@@ -59,6 +62,8 @@ if TYPE_CHECKING:  # pragma: no cover
 else:
     BaseDict = dict
 
+YARL_VERSION = tuple(map(int, yarl_version.split('.')[:2]))
+
 HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
 ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
 PATH_SEP = re.escape('/')
@@ -67,6 +72,25 @@ PATH_SEP = re.escape('/')
 _WebHandler = Callable[[Request], Awaitable[StreamResponse]]
 _ExpectHandler = Callable[[Request], Awaitable[None]]
 _Resolve = Tuple[Optional[AbstractMatchInfo], Set[str]]
+
+
+class _InfoDict(TypedDict, total=False):
+    path: str
+
+    formatter: str
+    pattern: Pattern[str]
+
+    directory: Path
+    prefix: str
+    routes: Mapping[str, 'AbstractRoute']
+
+    app: 'Application'
+
+    domain: str
+
+    rule: 'AbstractRuleMatching'
+
+    http_exception: HTTPException
 
 
 class AbstractResource(Sized, Iterable['AbstractRoute']):
@@ -106,7 +130,7 @@ class AbstractResource(Sized, Iterable['AbstractRoute']):
         """
 
     @abc.abstractmethod
-    def get_info(self) -> Dict[str, Any]:
+    def get_info(self) -> _InfoDict:
         """Return a dict with additional info useful for introspection"""
 
     def freeze(self) -> None:
@@ -121,8 +145,8 @@ class AbstractRoute(abc.ABC):
 
     def __init__(self, method: str,
                  handler: Union[_WebHandler, Type[AbstractView]], *,
-                 expect_handler: _ExpectHandler=None,
-                 resource: AbstractResource=None) -> None:
+                 expect_handler: Optional[_ExpectHandler]=None,
+                 resource: Optional[AbstractResource]=None) -> None:
 
         if expect_handler is None:
             expect_handler = _default_expect_handler
@@ -165,7 +189,7 @@ class AbstractRoute(abc.ABC):
         return self._resource
 
     @abc.abstractmethod
-    def get_info(self) -> Dict[str, Any]:
+    def get_info(self) -> _InfoDict:
         """Return a dict with additional info useful for introspection"""
 
     @abc.abstractmethod  # pragma: no branch
@@ -201,7 +225,7 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
     def http_exception(self) -> Optional[HTTPException]:
         return None
 
-    def get_info(self) -> Dict[str, str]:
+    def get_info(self) -> _InfoDict:  # type: ignore
         return self._route.get_info()
 
     @property
@@ -361,7 +385,7 @@ class PlainResource(Resource):
     def raw_match(self, path: str) -> bool:
         return self._path == path
 
-    def get_info(self) -> Dict[str, Any]:
+    def get_info(self) -> _InfoDict:
         return {'path': self._path}
 
     def url_for(self) -> URL:  # type: ignore
@@ -400,9 +424,9 @@ class DynamicResource(Resource):
             if '{' in part or '}' in part:
                 raise ValueError("Invalid path '{}'['{}']".format(path, part))
 
-            path = URL.build(path=part).raw_path
-            formatter += path
-            pattern += re.escape(path)
+            part = _requote_path(part)
+            formatter += part
+            pattern += re.escape(part)
 
         try:
             compiled = re.compile(pattern)
@@ -430,20 +454,20 @@ class DynamicResource(Resource):
         if match is None:
             return None
         else:
-            return {key: URL.build(path=value, encoded=True).path
+            return {key: _unquote_path(value)
                     for key, value in match.groupdict().items()}
 
     def raw_match(self, path: str) -> bool:
         return self._formatter == path
 
-    def get_info(self) -> Dict[str, Any]:
+    def get_info(self) -> _InfoDict:
         return {'formatter': self._formatter,
                 'pattern': self._pattern}
 
     def url_for(self, **parts: str) -> URL:
-        url = self._formatter.format_map({k: URL.build(path=v).raw_path
+        url = self._formatter.format_map({k: _quote_path(v)
                                           for k, v in parts.items()})
-        return URL.build(path=url)
+        return URL.build(path=url, encoded=True)
 
     def __repr__(self) -> str:
         name = "'" + self.name + "' " if self.name is not None else ""
@@ -457,7 +481,7 @@ class PrefixResource(AbstractResource):
         assert not prefix or prefix.startswith('/'), prefix
         assert prefix in ('', '/') or not prefix.endswith('/'), prefix
         super().__init__(name=name)
-        self._prefix = URL.build(path=prefix).raw_path
+        self._prefix = _requote_path(prefix)
 
     @property
     def canonical(self) -> str:
@@ -514,17 +538,17 @@ class StaticResource(PrefixResource):
             append_version = self._append_version
         if isinstance(filename, Path):
             filename = str(filename)
-        while filename.startswith('/'):
-            filename = filename[1:]
-        filename = '/' + filename
+        filename = filename.lstrip('/')
 
+        url = URL.build(path=self._prefix, encoded=True)
         # filename is not encoded
-        url = URL.build(path=self._prefix + filename)
+        if YARL_VERSION < (1, 6):
+            url = url / filename.replace('%', '%25')
+        else:
+            url = url / filename
 
         if append_version:
             try:
-                if filename.startswith('/'):
-                    filename = filename[1:]
                 filepath = self._directory.joinpath(filename).resolve()
                 if not self._follow_symlinks:
                     filepath.relative_to(self._directory)
@@ -549,7 +573,7 @@ class StaticResource(PrefixResource):
         b64 = base64.urlsafe_b64encode(m.digest())
         return b64.decode('ascii')
 
-    def get_info(self) -> Dict[str, Any]:
+    def get_info(self) -> _InfoDict:
         return {'directory': self._directory,
                 'prefix': self._prefix,
                 'routes': self._routes}
@@ -571,8 +595,7 @@ class StaticResource(PrefixResource):
         if method not in allowed_methods:
             return None, allowed_methods
 
-        match_dict = {'filename': URL.build(path=path[len(self._prefix)+1:],
-                                            encoded=True).path}
+        match_dict = {'filename': _unquote_path(path[len(self._prefix)+1:])}
         return (UrlMappingMatchInfo(match_dict, self._routes[method]),
                 allowed_methods)
 
@@ -677,7 +700,7 @@ class PrefixedSubAppResource(PrefixResource):
         raise RuntimeError(".url_for() is not supported "
                            "by sub-application root")
 
-    def get_info(self) -> Dict[str, Any]:
+    def get_info(self) -> _InfoDict:
         return {'app': self._app,
                 'prefix': self._prefix}
 
@@ -710,7 +733,7 @@ class AbstractRuleMatching(abc.ABC):
         """Return bool if the request satisfies the criteria"""
 
     @abc.abstractmethod  # pragma: no branch
-    def get_info(self) -> Dict[str, Any]:
+    def get_info(self) -> _InfoDict:
         """Return a dict with additional info useful for introspection"""
 
     @property
@@ -756,7 +779,7 @@ class Domain(AbstractRuleMatching):
     def match_domain(self, host: str) -> bool:
         return host.lower() == self._domain
 
-    def get_info(self) -> Dict[str, Any]:
+    def get_info(self) -> _InfoDict:
         return {'domain': self._domain}
 
 
@@ -788,7 +811,7 @@ class MatchedSubAppResource(PrefixedSubAppResource):
     def canonical(self) -> str:
         return self._rule.canonical
 
-    def get_info(self) -> Dict[str, Any]:
+    def get_info(self) -> _InfoDict:
         return {'app': self._app,
                 'rule': self._rule}
 
@@ -825,14 +848,18 @@ class ResourceRoute(AbstractRoute):
 
     @property
     def name(self) -> Optional[str]:
-        return self._resource.name  # type: ignore
+        if self._resource is None:
+            return None
+        return self._resource.name
 
     def url_for(self, *args: str, **kwargs: str) -> URL:
         """Construct url for route with additional params."""
-        return self._resource.url_for(*args, **kwargs)  # type: ignore
+        assert self._resource is not None
+        return self._resource.url_for(*args, **kwargs)
 
-    def get_info(self) -> Dict[str, Any]:
-        return self._resource.get_info()  # type: ignore
+    def get_info(self) -> _InfoDict:
+        assert self._resource is not None
+        return self._resource.get_info()
 
 
 class SystemRoute(AbstractRoute):
@@ -848,7 +875,7 @@ class SystemRoute(AbstractRoute):
     def name(self) -> Optional[str]:
         return None
 
-    def get_info(self) -> Dict[str, Any]:
+    def get_info(self) -> _InfoDict:
         return {'http_exception': self._http_exception}
 
     async def _handle(self, request: Request) -> StreamResponse:
@@ -1007,8 +1034,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
             if resource.name == name and resource.raw_match(path):
                 return cast(Resource, resource)
         if not ('{' in path or '}' in path or ROUTE_RE.search(path)):
-            url = URL.build(path=path)
-            resource = PlainResource(url.raw_path, name=name)
+            resource = PlainResource(_requote_path(path), name=name)
             self.register_resource(resource)
             return resource
         resource = DynamicResource(path, name=name)
@@ -1127,3 +1153,22 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         for route_def in routes:
             registered_routes.extend(route_def.register(self))
         return registered_routes
+
+
+def _quote_path(value: str) -> str:
+    if YARL_VERSION < (1, 6):
+        value = value.replace('%', '%25')
+    return URL.build(path=value, encoded=False).raw_path
+
+
+def _unquote_path(value: str) -> str:
+    return URL.build(path=value, encoded=True).path
+
+
+def _requote_path(value: str) -> str:
+    # Quote non-ascii characters and other characters which must be quoted,
+    # but preserve existing %-sequences.
+    result = _quote_path(value)
+    if '%' in value:
+        result = result.replace('%25', '%')
+    return result

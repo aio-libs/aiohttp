@@ -8,14 +8,6 @@ from aiohttp import hdrs, web
 from aiohttp.client_ws import ClientWSTimeout
 
 
-@pytest.fixture
-def ceil(mocker):
-    def ceil(val):
-        return val
-
-    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
-
-
 async def test_send_recv_text(aiohttp_client) -> None:
 
     async def handler(request):
@@ -589,7 +581,7 @@ async def test_custom_receive_timeout(aiohttp_client) -> None:
     await resp.close()
 
 
-async def test_heartbeat(aiohttp_client, ceil) -> None:
+async def test_heartbeat(aiohttp_client) -> None:
     ping_received = False
 
     async def handler(request):
@@ -614,7 +606,7 @@ async def test_heartbeat(aiohttp_client, ceil) -> None:
     assert ping_received
 
 
-async def test_heartbeat_no_pong(aiohttp_client, ceil) -> None:
+async def test_heartbeat_no_pong(aiohttp_client) -> None:
     ping_received = False
 
     async def handler(request):
