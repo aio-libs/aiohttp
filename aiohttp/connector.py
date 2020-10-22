@@ -1,5 +1,4 @@
 import asyncio
-import contextlib
 import functools
 import logging
 import random
@@ -10,6 +9,7 @@ from collections import defaultdict, deque
 from contextlib import suppress
 from http.cookies import SimpleCookie
 from itertools import cycle, islice
+from math import ceil
 from time import monotonic
 from types import TracebackType
 from typing import (  # noqa
@@ -30,6 +30,7 @@ from typing import (  # noqa
 )
 
 import attr
+from async_timeout import timeout_at
 
 from . import hdrs
 from .abc import AbstractResolver
@@ -73,6 +74,9 @@ if TYPE_CHECKING:  # pragma: no cover
     from .client import ClientTimeout  # noqa
     from .client_reqrep import ConnectionKey  # noqa
     from .tracing import Trace  # noqa
+
+
+log = logging.getLogger(__name__)
 
 
 class Connection:
@@ -138,15 +142,18 @@ class Connection:
         self._notify_release()
 
         if self._protocol is not None:
-            await self._connector._release(
+            # schedule cleanup if needed
+            self._connector._release(
                 self._key, self._protocol, should_close=True)
+            # do actual closing, proto.close() supports reentrancy
+            await self._protocol.close()
             self._protocol = None
 
-    async def release(self) -> None:
+    def release(self) -> None:
         self._notify_release()
 
         if self._protocol is not None:
-            await self._connector._release(
+            self._connector._release(
                 self._key, self._protocol,
                 should_close=self._protocol.should_close)
             self._protocol = None
@@ -198,6 +205,7 @@ class BaseConnector:
         loop = get_running_loop()
 
         self._closed = False
+        self._wakeup = asyncio.Event()
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
@@ -218,7 +226,7 @@ class BaseConnector:
         self.cookies = SimpleCookie()  # type: SimpleCookie[str]
 
         # start keep-alive connection cleanup task
-        self._cleanup_handle = create_task(self._cleanup())
+        self._cleanup_task = create_task(self._cleanup())
 
     def __del__(self, _warnings: Any=warnings) -> None:
         if self._closed:
@@ -226,15 +234,11 @@ class BaseConnector:
         if not self._conns:
             return
 
-        conns = [repr(c) for c in self._conns.values()]
-
-        self._close_immediately()
-
         _warnings.warn("Unclosed connector {!r}".format(self),
                        ResourceWarning,
                        source=self)
         context = {'connector': self,
-                   'connections': conns,
+                   'connections': self._conns,
                    'message': 'Unclosed connector'}
         if self._source_traceback is not None:
             context['source_traceback'] = self._source_traceback
@@ -277,14 +281,27 @@ class BaseConnector:
 
     async def _cleanup(self) -> None:
         """Cleanup unused transports."""
-        while True:
+        while not self._closed:
             now = self._loop.time()
-            timeout = self._keepalive_timeout
+            delay = self._keepalive_timeout
+
+            when = now + delay
+            if delay >= 5:
+                when = ceil(when)
+
+            try:
+                async with timeout_at(when):
+                    await self._wakeup.wait()
+            except asyncio.TimeoutError:
+                pass
+            self._wakeup.clear()
+
+            now = self._loop.time()
 
             if self._conns:
                 to_close = []
                 connections = {}
-                deadline = now - timeout
+                deadline = now - delay
                 for key, conns in self._conns.items():
                     alive = []
                     for proto, use_time in conns:
@@ -298,9 +315,12 @@ class BaseConnector:
                         connections[key] = alive
 
                 self._conns = connections
-                await asyncio.gather(*to_close)
-
-            await asyncio.sleep(timeout)
+                results = await asyncio.gather(*to_close,
+                                               return_exceptions=True)
+                for res in results:
+                    if isinstance(res, BaseException):
+                        log.error("Error while cleaning up connection:",
+                                  exc_info=res)
 
     def _drop_acquired_per_host(self, key: 'ConnectionKey',
                                 val: ResponseHandler) -> None:
@@ -314,47 +334,11 @@ class BaseConnector:
 
     async def close(self) -> None:
         """Close all opened transports."""
-        self._cleanup_handle.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await self._cleanup_handle
-
-        waiters = self._close_immediately()
-        if waiters:
-            results = await asyncio.gather(*waiters,
-                                           return_exceptions=True)
-            for res in results:
-                if isinstance(res, Exception):
-                    err_msg = "Error while closing connector: " + repr(res)
-                    logging.error(err_msg)
-
-    def _close_immediately(self) -> List['Awaitable[None]']:
-        waiters = []  # type: List['Awaitable[None]']
-
         if self._closed:
-            return waiters
-
+            return
         self._closed = True
-
-        try:
-            if self._loop.is_closed():
-                return waiters
-
-            # cancel cleanup task
-            self._cleanup_handle.cancel()
-
-            for data in self._conns.values():
-                for proto, t0 in data:
-                    waiters.append(proto.close())
-
-            for proto in self._acquired:
-                waiters.append(proto.close())
-
-            return waiters
-
-        finally:
-            self._conns.clear()
-            self._acquired.clear()
-            self._waiters.clear()
+        self._wakeup.set()
+        await self._cleanup_task
 
     @property
     def closed(self) -> bool:
@@ -536,8 +520,8 @@ class BaseConnector:
         else:
             self._release_waiter()
 
-    async def _release(self, key: 'ConnectionKey', protocol: ResponseHandler,
-                       *, should_close: bool=False) -> None:
+    def _release(self, key: 'ConnectionKey', protocol: ResponseHandler,
+                 *, should_close: bool=False) -> None:
         if self._closed:
             # acquired connection is already released on connector closing
             return
@@ -548,7 +532,7 @@ class BaseConnector:
             should_close = True
 
         if should_close or protocol.should_close:
-            await protocol.close()
+            self._wakeup.set()
         else:
             conns = self._conns.get(key)
             if conns is None:
@@ -650,11 +634,6 @@ class TCPConnector(BaseConnector):
         self._throttle_dns_events = {}  # type: Dict[Tuple[str, int], EventResultOrError]  # noqa
         self._family = family
         self._local_addr = local_addr
-
-    def _close_immediately(self) -> List['Awaitable[None]']:
-        for ev in self._throttle_dns_events.values():
-            ev.cancel()
-        return super()._close_immediately()
 
     @property
     def family(self) -> int:

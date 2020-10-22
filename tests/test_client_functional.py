@@ -735,9 +735,7 @@ async def test_readline_error_on_conn_close(aiohttp_client) -> None:
                     break
                 assert data == b'data'
                 if not timer_started:
-                    def do_release():
-                        loop.create_task(resp.release())
-                    loop.call_later(1.0, do_release)
+                    loop.call_later(1.0, resp.release)
                     timer_started = True
     finally:
         await session.close()
