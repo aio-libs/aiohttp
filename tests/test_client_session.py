@@ -430,43 +430,6 @@ async def test_reraise_os_error(create_session, create_mocked_conn) -> None:
     assert e.strerror == err.strerror
 
 
-async def test_close_conn_on_error(create_session, create_mocked_conn) -> None:
-    class UnexpectedException(BaseException):
-        pass
-
-    err = UnexpectedException("permission error")
-    req = mock.Mock()
-    req_factory = mock.Mock(return_value=req)
-    req.send = mock.Mock(side_effect=err)
-    session = await create_session(request_class=req_factory)
-
-    connections = []
-    original_connect = session._connector.connect
-
-    async def connect(req, traces, timeout):
-        conn = await original_connect(req, traces, timeout)
-        connections.append(conn)
-        return conn
-
-    async def create_connection(req, traces, timeout):
-        # return self.transport, self.protocol
-        conn = create_mocked_conn()
-        return conn
-
-    session._connector.connect = connect
-    session._connector._create_connection = create_connection
-    session._connector._release = mock.Mock()
-
-    with pytest.raises(UnexpectedException):
-        async with session.request('get', 'http://example.com') as resp:
-            await resp.text()
-
-    # normally called during garbage collection.  triggers an exception
-    # if the connection wasn't already closed
-    for c in connections:
-        c.__del__()
-
-
 async def test_cookie_jar_usage(loop, aiohttp_client) -> None:
     req_url = None
 

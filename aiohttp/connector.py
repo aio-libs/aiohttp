@@ -284,6 +284,10 @@ class BaseConnector:
         while not self._closed:
             now = self._loop.time()
             delay = self._keepalive_timeout
+            if delay is sentinel:
+                # force_close mode,
+                # self._wakeup.set() is called after every request
+                delay = 3600  # sane very long value
 
             when = now + delay
             if delay >= 5:
