@@ -6,7 +6,6 @@ from contextlib import suppress
 from html import escape as html_escape
 from http import HTTPStatus
 from logging import Logger
-from time import monotonic
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -81,15 +80,24 @@ class AccessLoggerWrapper(AbstractAsyncAccessLogger):
     Wraps an AbstractAccessLogger so it behaves
     like an AbstractAsyncAccessLogger.
     """
-    def __init__(self, access_logger: AbstractAccessLogger):
+    def __init__(
+            self,
+            access_logger: AbstractAccessLogger,
+            loop: asyncio.AbstractEventLoop
+    ) -> None:
         self.access_logger = access_logger
+        self._loop = loop
         super().__init__()
 
     async def log(self,
                   request: BaseRequest,
                   response: StreamResponse,
                   request_start: float) -> None:
-        self.access_logger.log(request, response, monotonic() - request_start)
+        self.access_logger.log(
+            request,
+            response,
+            self._loop.time() - request_start
+        )
 
 
 class RequestHandler(BaseProtocol):
@@ -194,7 +202,10 @@ class RequestHandler(BaseProtocol):
                 self.access_logger = access_log_class()  # type: Optional[AbstractAsyncAccessLogger]  # noqa
             else:
                 access_logger = access_log_class(access_log, access_log_format)
-                self.access_logger = AccessLoggerWrapper(access_logger)
+                self.access_logger = AccessLoggerWrapper(
+                    access_logger,
+                    self._loop,
+                )
         else:
             self.access_logger = None
 
@@ -472,7 +483,7 @@ class RequestHandler(BaseProtocol):
 
             message, payload = self._messages.popleft()
 
-            start = monotonic()
+            start = loop.time()
 
             manager.requests_count += 1
             writer = StreamWriter(self, loop)
