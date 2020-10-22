@@ -6,6 +6,7 @@ from contextlib import suppress
 from html import escape as html_escape
 from http import HTTPStatus
 from logging import Logger
+from time import monotonic
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -88,7 +89,7 @@ class AccessLoggerWrapper(AbstractAsyncAccessLogger):
                   request: BaseRequest,
                   response: StreamResponse,
                   request_start: float) -> None:
-        self.access_logger.log(request, response, request_start)
+        self.access_logger.log(request, response, monotonic() - request_start)
 
 
 class RequestHandler(BaseProtocol):
@@ -382,7 +383,7 @@ class RequestHandler(BaseProtocol):
                          request_start: float) -> None:
         if self.access_logger is not None:
             await self.access_logger.log(request, response,
-                                         self._loop.time() - request_start)
+                                         request_start)
 
     def log_debug(self, *args: Any, **kw: Any) -> None:
         if self._loop.get_debug():
@@ -471,7 +472,7 @@ class RequestHandler(BaseProtocol):
 
             message, payload = self._messages.popleft()
 
-            start = loop.time()
+            start = monotonic()
 
             manager.requests_count += 1
             writer = StreamWriter(self, loop)
