@@ -1341,26 +1341,6 @@ async def test_close_twice(loop) -> None:
     assert conn.closed
 
 
-async def test_close_cancels_cleanup_handle(loop) -> None:
-    conn = aiohttp.BaseConnector()
-    conn._release(1, create_mocked_conn(should_close=False))
-    assert conn._cleanup_handle is not None
-    await conn.close()
-    assert conn._cleanup_handle is None
-
-
-async def test_close_abort_closed_transports(loop) -> None:
-    tr = mock.Mock()
-
-    conn = aiohttp.BaseConnector()
-    conn._cleanup_closed_transports.append(tr)
-    await conn.close()
-
-    assert not conn._cleanup_closed_transports
-    assert tr.abort.called
-    assert conn.closed
-
-
 async def test_ctor_with_default_loop(loop) -> None:
     conn = aiohttp.BaseConnector()
     assert loop is conn._loop

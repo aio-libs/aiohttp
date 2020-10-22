@@ -321,7 +321,7 @@ class BaseConnector:
                     alive = []
                     for proto, use_time in conns:
                         if proto.is_connected():
-                            if use_time - deadline < 0:
+                            if use_time - deadline < 0 or self._closed:
                                 to_close.append(proto.close())
                             else:
                                 alive.append((proto, use_time))
