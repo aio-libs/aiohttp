@@ -26,13 +26,13 @@ def protocol():
     return mock.Mock(should_close=False)
 
 
-def test_ctor(connector, key, protocol, loop) -> None:
+async def test_ctor(connector, key, protocol, loop) -> None:
     conn = Connection(connector, key, protocol, loop)
     assert conn.protocol is protocol
-    conn.close()
+    await conn.close()
 
 
-def test_callbacks_on_close(connector, key, protocol, loop) -> None:
+async def test_callbacks_on_close(connector, key, protocol, loop) -> None:
     conn = Connection(connector, key, protocol, loop)
     notified = False
 
@@ -41,11 +41,11 @@ def test_callbacks_on_close(connector, key, protocol, loop) -> None:
         notified = True
 
     conn.add_callback(cb)
-    conn.close()
+    await conn.close()
     assert notified
 
 
-def test_callbacks_on_release(connector, key, protocol, loop) -> None:
+async def test_callbacks_on_release(connector, key, protocol, loop) -> None:
     conn = Connection(connector, key, protocol, loop)
     notified = False
 
@@ -54,11 +54,11 @@ def test_callbacks_on_release(connector, key, protocol, loop) -> None:
         notified = True
 
     conn.add_callback(cb)
-    conn.release()
+    await conn.release()
     assert notified
 
 
-def test_callbacks_exception(connector, key, protocol, loop) -> None:
+async def test_callbacks_exception(connector, key, protocol, loop) -> None:
     conn = Connection(connector, key, protocol, loop)
     notified = False
 
@@ -71,7 +71,7 @@ def test_callbacks_exception(connector, key, protocol, loop) -> None:
 
     conn.add_callback(cb1)
     conn.add_callback(cb2)
-    conn.close()
+    await conn.close()
     assert notified
 
 
@@ -93,41 +93,46 @@ def test_del(connector, key, protocol, loop) -> None:
     loop.call_exception_handler.assert_called_with(msg)
 
 
-def test_close(connector, key, protocol, loop) -> None:
+async def test_close(connector, key, protocol, loop) -> None:
     conn = Connection(connector, key, protocol, loop)
     assert not conn.closed
-    conn.close()
+    await conn.close()
     assert conn._protocol is None
     connector._release.assert_called_with(key, protocol, should_close=True)
     assert conn.closed
 
 
-def test_release(connector, key, protocol, loop) -> None:
+async def test_release(connector, key, protocol, loop) -> None:
     conn = Connection(connector, key, protocol, loop)
     assert not conn.closed
-    conn.release()
+    await conn.release()
     assert not protocol.transport.close.called
     assert conn._protocol is None
     connector._release.assert_called_with(key, protocol, should_close=False)
     assert conn.closed
 
 
-def test_release_proto_should_close(connector, key, protocol, loop) -> None:
+async def test_release_proto_should_close(
+        connector,
+        key,
+        protocol,
+        loop
+) -> None:
     protocol.should_close = True
     conn = Connection(connector, key, protocol, loop)
     assert not conn.closed
-    conn.release()
+    await conn.release()
     assert not protocol.transport.close.called
     assert conn._protocol is None
     connector._release.assert_called_with(key, protocol, should_close=True)
     assert conn.closed
 
 
-def test_release_released(connector, key, protocol, loop) -> None:
+async def test_release_released(connector, key, protocol, loop) -> None:
     conn = Connection(connector, key, protocol, loop)
-    conn.release()
+    await conn.release()
     connector._release.reset_mock()
-    conn.release()
+    await conn.release()
     assert not protocol.transport.close.called
     assert conn._protocol is None
     assert not connector._release.called
