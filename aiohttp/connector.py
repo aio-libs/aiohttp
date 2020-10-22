@@ -191,7 +191,8 @@ class BaseConnector:
     def __init__(self, *,
                  keepalive_timeout: Union[object, None, float]=sentinel,
                  force_close: bool=False,
-                 limit: int=100, limit_per_host: int=0) -> None:
+                 limit: int=100, limit_per_host: int=0,
+                 enable_cleanup_closed: bool=False) -> None:
 
         if force_close:
             if keepalive_timeout is not None and \
@@ -201,6 +202,16 @@ class BaseConnector:
         else:
             if keepalive_timeout is sentinel:
                 keepalive_timeout = 15.0
+
+        if enable_cleanup_closed:
+            warnings.warn(
+                'enable_cleanup_closed argument is deperated '
+                'starting from aoihttp 4.0 '
+                'and scheduled for removal in aiohttp 5.0. '
+                'In aiohttp 4.x it does nothing.',
+                DeprecationWarning,
+                stacklevel=2
+            )
 
         loop = get_running_loop()
 
@@ -620,10 +631,12 @@ class TCPConnector(BaseConnector):
                  resolver: Optional[AbstractResolver]=None,
                  keepalive_timeout: Union[None, float, object]=sentinel,
                  force_close: bool=False,
-                 limit: int=100, limit_per_host: int=0) -> None:
+                 limit: int=100, limit_per_host: int=0,
+                 enable_cleanup_closed: bool=False) -> None:
         super().__init__(keepalive_timeout=keepalive_timeout,
                          force_close=force_close,
-                         limit=limit, limit_per_host=limit_per_host)
+                         limit=limit, limit_per_host=limit_per_host,
+                         enable_cleanup_closed=enable_cleanup_closed)
 
         if not isinstance(ssl, SSL_ALLOWED_TYPES):
             raise TypeError("ssl should be SSLContext, bool, Fingerprint, "
