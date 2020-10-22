@@ -5,7 +5,17 @@ import sys
 from argparse import ArgumentParser
 from collections.abc import Iterable
 from importlib import import_module
-from typing import Any, Awaitable, Callable, List, Optional, Type, Union, cast
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    List,
+    Optional,
+    Set,
+    Type,
+    Union,
+    cast,
+)
 
 from .abc import AbstractAccessLogger
 from .helpers import all_tasks
@@ -362,14 +372,23 @@ async def _run_app(app: Union[Application, Awaitable[Application]], *,
             names = sorted(str(s.name) for s in runner.sites)
             print("======== Running on {} ========\n"
                   "(Press CTRL+C to quit)".format(', '.join(names)))
+
+        # sleep forever by 1 hour intervals,
+        # on Windows before Python 3.8 wake up every 1 second to handle
+        # Ctrl+C smoothly
+        if sys.platform == "win32" and sys.version_info < 3.8:
+            delay = 1
+        else:
+            delay = 3600
+
         while True:
-            await asyncio.sleep(3600)  # sleep forever by 1 hour intervals
+            await asyncio.sleep(delay)
     finally:
         await runner.cleanup()
 
 
-def _cancel_all_tasks(loop: asyncio.AbstractEventLoop) -> None:
-    to_cancel = all_tasks(loop)
+def _cancel_tasks(to_cancel: Set['asyncio.Task[Any]'],
+                  loop: asyncio.AbstractEventLoop) -> None:
     if not to_cancel:
         return
 
@@ -391,6 +410,7 @@ def _cancel_all_tasks(loop: asyncio.AbstractEventLoop) -> None:
 
 
 def run_app(app: Union[Application, Awaitable[Application]], *,
+            debug: bool=False,
             host: Optional[str]=None,
             port: Optional[int]=None,
             path: Optional[str]=None,
@@ -407,6 +427,7 @@ def run_app(app: Union[Application, Awaitable[Application]], *,
             reuse_port: Optional[bool]=None) -> None:
     """Run an app locally"""
     loop = asyncio.get_event_loop()
+    loop.set_debug(debug)
 
     # Configure if and only if in debugging mode and using the default logger
     if loop.get_debug() and access_log and access_log.name == 'aiohttp.access':
@@ -416,28 +437,31 @@ def run_app(app: Union[Application, Awaitable[Application]], *,
             access_log.addHandler(logging.StreamHandler())
 
     try:
-        loop.run_until_complete(_run_app(app,
-                                         host=host,
-                                         port=port,
-                                         path=path,
-                                         sock=sock,
-                                         shutdown_timeout=shutdown_timeout,
-                                         ssl_context=ssl_context,
-                                         print=print,
-                                         backlog=backlog,
-                                         access_log_class=access_log_class,
-                                         access_log_format=access_log_format,
-                                         access_log=access_log,
-                                         handle_signals=handle_signals,
-                                         reuse_address=reuse_address,
-                                         reuse_port=reuse_port))
+        main_task = loop.create_task(_run_app(
+            app,
+            host=host,
+            port=port,
+            path=path,
+            sock=sock,
+            shutdown_timeout=shutdown_timeout,
+            ssl_context=ssl_context,
+            print=print,
+            backlog=backlog,
+            access_log_class=access_log_class,
+            access_log_format=access_log_format,
+            access_log=access_log,
+            handle_signals=handle_signals,
+            reuse_address=reuse_address,
+            reuse_port=reuse_port))
+        loop.run_until_complete(main_task)
     except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
         pass
     finally:
-        _cancel_all_tasks(loop)
-        if sys.version_info >= (3, 6):  # don't use PY_36 to pass mypy
-            loop.run_until_complete(loop.shutdown_asyncgens())
+        _cancel_tasks({main_task}, loop)
+        _cancel_tasks(all_tasks(loop), loop)
+        loop.run_until_complete(loop.shutdown_asyncgens())
         loop.close()
+        asyncio.set_event_loop(None)
 
 
 def main(argv: List[str]) -> None:

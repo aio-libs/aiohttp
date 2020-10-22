@@ -47,7 +47,6 @@ from .client_exceptions import (
 from .client_proto import ResponseHandler
 from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
 from .helpers import (
-    PY_36,
     ceil_timeout,
     create_task,
     get_running_loop,
@@ -99,13 +98,9 @@ class Connection:
 
     def __del__(self, _warnings: Any=warnings) -> None:
         if self._protocol is not None:
-            if PY_36:
-                kwargs = {'source': self}
-            else:
-                kwargs = {}
             _warnings.warn('Unclosed connection {!r}'.format(self),
                            ResourceWarning,
-                           **kwargs)
+                           source=self)
             if self._loop.is_closed():
                 return
 
@@ -235,13 +230,9 @@ class BaseConnector:
 
         self._close_immediately()
 
-        if PY_36:
-            kwargs = {'source': self}
-        else:
-            kwargs = {}
         _warnings.warn("Unclosed connector {!r}".format(self),
                        ResourceWarning,
-                       **kwargs)
+                       source=self)
         context = {'connector': self,
                    'connections': conns,
                    'message': 'Unclosed connector'}
@@ -410,13 +401,13 @@ class BaseConnector:
         key = req.connection_key
         available = self._available_connections(key)
 
-        # Wait if there are no available connections.
-        if available <= 0:
+        # Wait if there are no available connections or if there are/were
+        # waiters (i.e. don't steal connection from a waiter about to wake up)
+        if available <= 0 or key in self._waiters:
             fut = self._loop.create_future()
 
             # This connection will now count towards the limit.
-            waiters = self._waiters[key]
-            waiters.append(fut)
+            self._waiters[key].append(fut)
 
             if traces:
                 for trace in traces:
@@ -425,21 +416,18 @@ class BaseConnector:
             try:
                 await fut
             except BaseException as e:
-                # remove a waiter even if it was cancelled, normally it's
-                #  removed when it's notified
-                try:
-                    waiters.remove(fut)
-                except ValueError:  # fut may no longer be in list
-                    pass
+                if key in self._waiters:
+                    # remove a waiter even if it was cancelled, normally it's
+                    #  removed when it's notified
+                    try:
+                        self._waiters[key].remove(fut)
+                    except ValueError:  # fut may no longer be in list
+                        pass
 
                 raise e
             finally:
-                if not waiters:
-                    try:
-                        del self._waiters[key]
-                    except KeyError:
-                        # the key was evicted before.
-                        pass
+                if key in self._waiters and not self._waiters[key]:
+                    del self._waiters[key]
 
             if traces:
                 for trace in traces:
@@ -501,6 +489,8 @@ class BaseConnector:
                         # The very last connection was reclaimed: drop the key
                         del self._conns[key]
                     return proto
+            else:
+                await proto.close()
 
         # No more connections: drop the key
         del self._conns[key]
@@ -870,18 +860,27 @@ class TCPConnector(BaseConnector):
         sslcontext = self._get_ssl_context(req)
         fingerprint = self._get_fingerprint(req)
 
+        host = req.url.raw_host
+        assert host is not None
+        port = req.port
+        assert port is not None
+        host_resolved = asyncio.ensure_future(self._resolve_host(
+            host,
+            port,
+            traces=traces), loop=self._loop)
         try:
             # Cancelling this lookup should not cancel the underlying lookup
             #  or else the cancel event will get broadcast to all the waiters
             #  across all connections.
-            host = req.url.raw_host
-            assert host is not None
-            port = req.port
-            assert port is not None
-            hosts = await asyncio.shield(self._resolve_host(
-                host,
-                port,
-                traces=traces))
+            hosts = await asyncio.shield(host_resolved)
+        except asyncio.CancelledError:
+            def drop_exception(
+                    fut: 'asyncio.Future[List[Dict[str, Any]]]'
+            ) -> None:
+                with suppress(Exception, asyncio.CancelledError):
+                    fut.result()
+            host_resolved.add_done_callback(drop_exception)
+            raise
         except OSError as exc:
             # in case of proxy it is not ClientProxyConnectionError
             # it is problem of resolving proxy ip itself

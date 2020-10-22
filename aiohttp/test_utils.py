@@ -5,6 +5,8 @@ import contextlib
 import functools
 import gc
 import inspect
+import ipaddress
+import os
 import socket
 import sys
 import unittest
@@ -57,12 +59,25 @@ else:
     SSLContext = None
 
 
-def get_unused_port_socket(host: str) -> socket.socket:
-    return get_port_socket(host, 0)
+REUSE_ADDRESS = os.name == 'posix' and sys.platform != 'cygwin'
 
 
-def get_port_socket(host: str, port: int) -> socket.socket:
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+def get_unused_port_socket(
+        host: str,
+        family: socket.AddressFamily = socket.AF_INET) -> socket.socket:
+    return get_port_socket(host, 0, family)
+
+
+def get_port_socket(
+        host: str,
+        port: int,
+        family: socket.AddressFamily = socket.AF_INET) -> socket.socket:
+    s = socket.socket(family, socket.SOCK_STREAM)
+    if REUSE_ADDRESS:
+        # Windows has different semantics for SO_REUSEADDR,
+        # so don't set it. Ref:
+        # https://docs.microsoft.com/en-us/windows/win32/winsock/using-so-reuseaddr-and-so-exclusiveaddruse
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind((host, port))
     return s
 
@@ -101,7 +116,15 @@ class BaseTestServer(ABC):
         await self.runner.setup()
         if not self.port:
             self.port = 0
-        _sock = get_port_socket(self.host, self.port)
+        absolute_host = self.host
+        try:
+            version = ipaddress.ip_address(self.host).version
+        except ValueError:
+            version = 4
+        if version == 6:
+            absolute_host = f"[{self.host}]"
+        family = socket.AF_INET6 if version == 6 else socket.AF_INET
+        _sock = get_port_socket(self.host, self.port, family=family)
         self.host, self.port = _sock.getsockname()[:2]
         site = SockSite(self.runner, sock=_sock, ssl_context=self._ssl)
         await site.start()
@@ -117,7 +140,7 @@ class BaseTestServer(ABC):
                 scheme = 'http'
             self.scheme = scheme
         self._root = URL('{}://{}:{}'.format(self.scheme,
-                                             self.host,
+                                             absolute_host,
                                              self.port))
 
     @abstractmethod  # pragma: no cover
@@ -500,7 +523,7 @@ def setup_test_loop(
     asyncio.set_event_loop(loop)
     if sys.platform != "win32" and not skip_watcher:
         policy = asyncio.get_event_loop_policy()
-        watcher = asyncio.SafeChildWatcher()  # type: ignore
+        watcher = asyncio.SafeChildWatcher()
         watcher.attach_loop(loop)
         with contextlib.suppress(NotImplementedError):
             policy.set_child_watcher(watcher)

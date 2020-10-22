@@ -1,6 +1,7 @@
 import asyncio
 import platform
 import signal
+from unittest.mock import patch
 
 import pytest
 
@@ -167,7 +168,11 @@ async def test_addresses(make_runner, unix_sockname) -> None:
 
 @pytest.mark.skipif(platform.system() != "Windows",
                     reason="Proactor Event loop present only in Windows")
-async def test_named_pipe_runner_wrong_loop(app, pipe_name) -> None:
+async def test_named_pipe_runner_wrong_loop(
+    app,
+    selector_loop,
+    pipe_name
+) -> None:
     runner = web.AppRunner(app)
     await runner.setup()
     with pytest.raises(RuntimeError):
@@ -186,3 +191,25 @@ async def test_named_pipe_runner_proactor_loop(
     pipe = web.NamedPipeSite(runner, pipe_name)
     await pipe.start()
     await runner.cleanup()
+
+
+async def test_tcpsite_default_host(make_runner):
+    runner = make_runner()
+    await runner.setup()
+    site = web.TCPSite(runner)
+    assert site.name == "http://0.0.0.0:8080"
+
+    calls = []
+
+    async def mock_create_server(*args, **kwargs):
+        calls.append((args, kwargs))
+
+    with patch('asyncio.get_event_loop') as mock_get_loop:
+        mock_get_loop.return_value.create_server = mock_create_server
+        await site.start()
+
+    assert len(calls) == 1
+    server, host, port = calls[0][0]
+    assert server is runner.server
+    assert host is None
+    assert port == 8080

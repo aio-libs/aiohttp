@@ -46,6 +46,7 @@ The client session supports the context manager protocol for self closing.
                          raise_for_status=False, \
                          connector_owner=True, \
                          auto_decompress=True, \
+                         read_bufsize=2**16, \
                          requote_redirect_url=False, \
                          trust_env=False, \
                          trace_configs=None)
@@ -152,6 +153,11 @@ The client session supports the context manager protocol for self closing.
        ``True`` by default
 
       .. versionadded:: 2.3
+
+   :param int read_bufsize: Size of the read buffer (:attr:`ClientResponse.content`).
+                            64 KiB by default.
+
+      .. versionadded:: 3.7
 
    :param bool trust_env: Get proxies information from *HTTP_PROXY* /
       *HTTPS_PROXY* environment variables if the parameter is ``True``
@@ -296,11 +302,14 @@ The client session supports the context manager protocol for self closing.
                          auth=None, allow_redirects=True,\
                          max_redirects=10,\
                          compress=None, chunked=None, expect100=False, raise_for_status=None,\
-                         read_until_eof=True, proxy=None, proxy_auth=None,\
+                         read_until_eof=True, \
+                         read_bufsize=None, \
+                         proxy=None, proxy_auth=None,\
                          timeout=sentinel, ssl=None, \
                          proxy_headers=None)
       :async-with:
       :coroutine:
+      :noindex:
 
       Performs an asynchronous HTTP request. Returns a response object.
 
@@ -416,6 +425,12 @@ The client session supports the context manager protocol for self closing.
       :param bool read_until_eof: Read response until EOF if response
                                   does not have Content-Length header.
                                   ``True`` by default (optional).
+
+      :param int read_bufsize: Size of the read buffer (:attr:`ClientResponse.content`).
+                              ``None`` by default,
+                              it means that the session global value is used.
+
+          .. versionadded:: 3.7
 
       :param proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
 
@@ -704,9 +719,9 @@ certification chaining.
                         encoding='utf-8', \
                         version=HttpVersion(major=1, minor=1), \
                         compress=None, chunked=None, expect100=False, raise_for_status=False, \
+                        read_bufsize=None, \
                         connector=None, \
                         read_until_eof=True, timeout=sentinel)
-
    :async-with:
 
    Asynchronous context manager for performing an asynchronous HTTP
@@ -765,6 +780,12 @@ certification chaining.
    :param bool read_until_eof: Read response until EOF if response
                                does not have Content-Length header.
                                ``True`` by default (optional).
+
+   :param int read_bufsize: Size of the read buffer (:attr:`ClientResponse.content`).
+                            ``None`` by default,
+                            it means that the session global value is used.
+
+      .. versionadded:: 3.7
 
    :param timeout: a :class:`ClientTimeout` settings structure, 300 seconds (5min)
         total timeout by default.
@@ -1061,7 +1082,7 @@ Response object
 
 .. class:: ClientResponse
 
-   Client response returned be :meth:`ClientSession.request` and family.
+   Client response returned by :meth:`ClientSession.request` and family.
 
    User never creates the instance of ClientResponse class but gets it
    from API calls.
@@ -1086,6 +1107,11 @@ Response object
    .. attribute:: reason
 
       HTTP status reason of response (:class:`str`), e.g. ``"OK"``.
+
+   .. attribute:: ok
+
+      Boolean representation of HTTP status code (:class:`bool`).
+      ``True`` if ``status`` is less than ``400``; otherwise, ``False``.
 
    .. attribute:: method
 
@@ -1301,6 +1327,9 @@ Response object
       decode a response. Some encodings detected by cchardet are not known by
       Python (e.g. VISCII).
 
+      :raise RuntimeError: if called before the body has been read,
+                           for :term:`cchardet` usage
+
       .. versionadded:: 3.0
 
 
@@ -1430,7 +1459,7 @@ manually.
 
       :param int code: closing code
 
-      :param message: optional payload of *pong* message,
+      :param message: optional payload of *close* message,
          :class:`str` (converted to *UTF-8* encoded bytes) or :class:`bytes`.
 
    .. comethod:: receive()
@@ -1492,7 +1521,7 @@ ClientTimeout
 ^^^^^^^^^^^^^
 
 .. class:: ClientTimeout(*, total=None, connect=None, \
-                         sock_connect, sock_read=None)
+                         sock_connect=None, sock_read=None)
 
    A data class for client timeout settings.
 
@@ -1621,7 +1650,7 @@ BasicAuth
 CookieJar
 ^^^^^^^^^
 
-.. class:: CookieJar(*, unsafe=False)
+.. class:: CookieJar(*, unsafe=False, quote_cookie=True)
 
    The cookie jar instance is available as :attr:`ClientSession.cookie_jar`.
 
@@ -1645,6 +1674,13 @@ CookieJar
    Implements cookie storage adhering to RFC 6265.
 
    :param bool unsafe: (optional) Whether to accept cookies from IPs.
+
+   :param bool quote_cookie: (optional) Whether to quote cookies according to
+                             :rfc:`2109`.  Some backend systems
+                             (not compatible with RFC mentioned above)
+                             does not support quoted cookies.
+
+      .. versionadded:: 3.7
 
    .. method:: update_cookies(cookies, response_url=None)
 
@@ -1685,7 +1721,6 @@ CookieJar
 
       :param file_path: Path to file from where cookies will be
            imported, :class:`str` or :class:`pathlib.Path` instance.
-
 
 
 .. class:: DummyCookieJar()

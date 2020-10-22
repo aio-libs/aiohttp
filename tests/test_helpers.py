@@ -305,6 +305,18 @@ def test_timeout_handle(loop) -> None:
     assert not handle._callbacks
 
 
+def test_when_timeout_smaller_second(loop) -> None:
+    timeout = 0.1
+    timer = loop.time() + timeout
+
+    handle = helpers.TimeoutHandle(loop, timeout)
+    when = handle.start()._when
+    handle.close()
+
+    assert isinstance(when, float)
+    assert f"{when:.3f}" == f"{timer:.3f}"
+
+
 def test_timeout_handle_cb_exc(loop) -> None:
     handle = helpers.TimeoutHandle(loop, 10.2)
     cb = mock.Mock()
@@ -362,9 +374,16 @@ async def test_ceil_timeout_none(loop) -> None:
 
 
 async def test_ceil_timeout_round(loop) -> None:
-    async with helpers.ceil_timeout(1.5) as cm:
+    async with helpers.ceil_timeout(7.5) as cm:
         frac, integer = modf(cm.deadline)
         assert frac == 0
+
+
+async def test_ceil_timeout_small(loop) -> None:
+    async with helpers.ceil_timeout(1.1) as cm:
+        frac, integer = modf(cm.deadline)
+        # a chance for exact integer with zero fraction is negligible
+        assert frac != 0
 
 
 # -------------------------------- ContentDisposition -------------------
@@ -399,31 +418,27 @@ def test_set_content_disposition_bad_param() -> None:
 
 # --------------------- proxies_from_env ------------------------------
 
-def test_proxies_from_env_http(mocker) -> None:
+@pytest.mark.parametrize('protocol', ['http', 'https', 'ws', 'wss'])
+def test_proxies_from_env(monkeypatch, protocol) -> None:
     url = URL('http://aiohttp.io/path')
-    mocker.patch.dict(os.environ, {'http_proxy': str(url)})
+    monkeypatch.setenv(protocol + '_proxy', str(url))
     ret = helpers.proxies_from_env()
-    assert ret.keys() == {'http'}
-    assert ret['http'].proxy == url
-    assert ret['http'].proxy_auth is None
+    assert ret.keys() == {protocol}
+    assert ret[protocol].proxy == url
+    assert ret[protocol].proxy_auth is None
 
 
-def test_proxies_from_env_http_proxy_for_https_proto(mocker) -> None:
-    url = URL('http://aiohttp.io/path')
-    mocker.patch.dict(os.environ, {'https_proxy': str(url)})
-    ret = helpers.proxies_from_env()
-    assert ret.keys() == {'https'}
-    assert ret['https'].proxy == url
-    assert ret['https'].proxy_auth is None
-
-
-def test_proxies_from_env_https_proxy_skipped(mocker) -> None:
-    url = URL('https://aiohttp.io/path')
-    mocker.patch.dict(os.environ, {'https_proxy': str(url)})
-    log = mocker.patch('aiohttp.log.client_logger.warning')
+@pytest.mark.parametrize('protocol', ['https', 'wss'])
+def test_proxies_from_env_skipped(monkeypatch, caplog, protocol) -> None:
+    url = URL(protocol + '://aiohttp.io/path')
+    monkeypatch.setenv(protocol + '_proxy', str(url))
     assert helpers.proxies_from_env() == {}
-    log.assert_called_with('HTTPS proxies %s are not supported, ignoring',
-                           URL('https://aiohttp.io/path'))
+    assert len(caplog.records) == 1
+    log_message = (
+        '{proto!s} proxies {url!s} are not supported, ignoring'.
+        format(proto=protocol.upper(), url=url)
+    )
+    assert caplog.record_tuples == [('aiohttp.client', 30, log_message)]
 
 
 def test_proxies_from_env_http_with_auth(mocker) -> None:
@@ -443,7 +458,7 @@ def test_proxies_from_env_http_with_auth(mocker) -> None:
 def test_get_running_loop_not_running(loop) -> None:
     with pytest.raises(
             RuntimeError,
-            match="The object should be created from async function"):
+            match="The object should be created within an async function"):
         helpers.get_running_loop()
 
 
@@ -488,8 +503,6 @@ async def test_set_exception_cancelled(loop) -> None:
 # ----------- ChainMapProxy --------------------------
 
 class TestChainMapProxy:
-    @pytest.mark.skipif(not helpers.PY_36,
-                        reason="Requires Python 3.6+")
     def test_inheritance(self) -> None:
         with pytest.raises(TypeError):
             class A(helpers.ChainMapProxy):
