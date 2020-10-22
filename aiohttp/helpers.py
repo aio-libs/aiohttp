@@ -24,6 +24,8 @@ from typing import (  # noqa
     Awaitable,
     Callable,
     Dict,
+    Generator,
+    Generic,
     Iterable,
     Iterator,
     List,
@@ -52,7 +54,6 @@ from .typedefs import PathLike  # noqa
 
 __all__ = ('BasicAuth', 'ChainMapProxy')
 
-PY_36 = sys.version_info >= (3, 6)
 PY_37 = sys.version_info >= (3, 7)
 PY_38 = sys.version_info >= (3, 8)
 
@@ -64,6 +65,11 @@ try:
     from typing import ContextManager
 except ImportError:
     from typing_extensions import ContextManager
+
+if PY_38:
+    from typing import Protocol
+else:
+    from typing_extensions import Protocol  # type: ignore
 
 
 def all_tasks(
@@ -78,6 +84,7 @@ if PY_37:
 
 
 _T = TypeVar('_T')
+_S = TypeVar('_S')
 
 
 sentinel = object()  # type: Any
@@ -97,18 +104,18 @@ SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
 TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 
-coroutines = asyncio.coroutines
-old_debug = coroutines._DEBUG  # type: ignore
-
-# prevent "coroutine noop was never awaited" warning.
-coroutines._DEBUG = False  # type: ignore
+class noop:
+    def __await__(self) -> Generator[None, None, None]:
+        yield
 
 
-async def noop(*args: Any, **kwargs: Any) -> None:
-    return
-
-
-coroutines._DEBUG = old_debug  # type: ignore
+if PY_38:
+    iscoroutinefunction = asyncio.iscoroutinefunction
+else:
+    def iscoroutinefunction(func: Callable[..., Any]) -> bool:
+        while isinstance(func, functools.partial):
+            func = func.func
+        return asyncio.iscoroutinefunction(func)
 
 json_re = re.compile(r'^application/(?:[\w.+-]+?\+)?json')
 
@@ -228,15 +235,16 @@ class ProxyInfo:
 
 def proxies_from_env() -> Dict[str, ProxyInfo]:
     proxy_urls = {k: URL(v) for k, v in getproxies().items()
-                  if k in ('http', 'https')}
+                  if k in ('http', 'https', 'ws', 'wss')}
     netrc_obj = netrc_from_env()
     stripped = {k: strip_auth_from_url(v) for k, v in proxy_urls.items()}
     ret = {}
     for proto, val in stripped.items():
         proxy, auth = val
-        if proxy.scheme == 'https':
+        if proxy.scheme in ('https', 'wss'):
             client_logger.warning(
-                "HTTPS proxies %s are not supported, ignoring", proxy)
+                "%s proxies %s are not supported, ignoring",
+                proxy.scheme.upper(), proxy)
             continue
         if netrc_obj and auth is None:
             auth_from_netrc = None
@@ -255,9 +263,9 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
 
 def current_task(
         loop: Optional[asyncio.AbstractEventLoop]=None
-) -> 'asyncio.Task[Any]':
+) -> 'Optional[asyncio.Task[Any]]':
     if PY_37:
-        return asyncio.current_task(loop=loop)  # type: ignore
+        return asyncio.current_task(loop=loop)
     else:
         return asyncio.Task.current_task(loop=loop)
 
@@ -273,7 +281,9 @@ else:
 def get_running_loop() -> asyncio.AbstractEventLoop:
     loop = asyncio.get_event_loop()
     if not loop.is_running():
-        raise RuntimeError("The object should be created from async function")
+        raise RuntimeError(
+            "The object should be created within an async function"
+        )
     return loop
 
 
@@ -378,7 +388,11 @@ def is_expected_content_type(response_content_type: str,
     return expected_content_type in response_content_type
 
 
-class reify:
+class _TSelf(Protocol):
+    _cache: Dict[str, Any]
+
+
+class reify(Generic[_T]):
     """Use as a class method decorator.  It operates almost exactly like
     the Python `@property` decorator, but it puts the result of the
     method it decorates into the instance dict after the first call,
@@ -387,12 +401,12 @@ class reify:
 
     """
 
-    def __init__(self, wrapped: Callable[..., Any]) -> None:
+    def __init__(self, wrapped: Callable[..., _T]) -> None:
         self.wrapped = wrapped
         self.__doc__ = wrapped.__doc__
         self.name = wrapped.__name__
 
-    def __get__(self, inst: Any, owner: Any) -> Any:
+    def __get__(self, inst: _TSelf, owner: Optional[Type[Any]] = None) -> _T:
         try:
             try:
                 return inst._cache[self.name]
@@ -405,7 +419,7 @@ class reify:
                 return self
             raise
 
-    def __set__(self, inst: Any, value: Any) -> None:
+    def __set__(self, inst: _TSelf, value: _T) -> None:
         raise AttributeError("reified property is read-only")
 
 
@@ -501,10 +515,10 @@ def _weakref_handle(info):  # type: ignore
             getattr(ob, name)()
 
 
-def weakref_handle(ob, name, timeout, loop, ceil_timeout=True):  # type: ignore
+def weakref_handle(ob, name, timeout, loop):  # type: ignore
     if timeout is not None and timeout > 0:
         when = loop.time() + timeout
-        if ceil_timeout:
+        if timeout >= 5:
             when = ceil(when)
 
         return loop.call_at(when, _weakref_handle, (weakref.ref(ob), name))
@@ -512,7 +526,9 @@ def weakref_handle(ob, name, timeout, loop, ceil_timeout=True):  # type: ignore
 
 def call_later(cb, timeout, loop):  # type: ignore
     if timeout is not None and timeout > 0:
-        when = ceil(loop.time() + timeout)
+        when = loop.time() + timeout
+        if timeout > 5:
+            when = ceil(when)
         return loop.call_at(when, cb)
 
 
@@ -534,9 +550,12 @@ class TimeoutHandle:
         self._callbacks.clear()
 
     def start(self) -> Optional[asyncio.Handle]:
-        if self._timeout is not None and self._timeout > 0:
-            at = ceil(self._loop.time() + self._timeout)
-            return self._loop.call_at(at, self.__call__)
+        timeout = self._timeout
+        if timeout is not None and timeout > 0:
+            when = self._loop.time() + timeout
+            if timeout >= 5:
+                when = ceil(when)
+            return self._loop.call_at(when, self.__call__)
         else:
             return None
 
@@ -611,17 +630,16 @@ class TimerContext(BaseTimerContext):
             self._cancelled = True
 
 
-class CeilTimeout(async_timeout.timeout):
-
-    def __enter__(self) -> async_timeout.timeout:
-        if self._timeout is not None:
-            self._task = current_task(loop=self._loop)
-            if self._task is None:
-                raise RuntimeError(
-                    'Timeout context manager should be used inside a task')
-            self._cancel_handler = self._loop.call_at(
-                ceil(self._loop.time() + self._timeout), self._cancel_task)
-        return self
+def ceil_timeout(delay: Optional[float]) -> async_timeout.Timeout:
+    if delay is not None and delay > 0:
+        loop = get_running_loop()
+        now = loop.time()
+        when = now + delay
+        if delay > 5:
+            when = ceil(when)
+        return async_timeout.timeout_at(when)
+    else:
+        return async_timeout.timeout(None)
 
 
 class HeadersMixin:

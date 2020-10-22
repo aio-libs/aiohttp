@@ -209,8 +209,6 @@ class WebSocketResponse(StreamResponse):
         headers, protocol, compress, notakeover = self._handshake(
             request)
 
-        self._reset_heartbeat()
-
         self.set_status(101)
         self.headers.update(headers)
         self.force_close()
@@ -228,10 +226,13 @@ class WebSocketResponse(StreamResponse):
                     protocol: str, writer: WebSocketWriter) -> None:
         self._ws_protocol = protocol
         self._writer = writer
+
+        self._reset_heartbeat()
+
         loop = self._loop
         assert loop is not None
         self._reader = FlowControlDataQueue(
-            request._protocol, limit=2 ** 16, loop=loop)
+            request._protocol, 2 ** 16, loop=loop)
         request.protocol.set_parser(WebSocketReader(
             self._reader, self._max_msg_size, compress=self._compress))
         # disable HTTP keepalive for WebSocket
@@ -341,7 +342,7 @@ class WebSocketResponse(StreamResponse):
             reader = self._reader
             assert reader is not None
             try:
-                with async_timeout.timeout(self._timeout, loop=self._loop):
+                async with async_timeout.timeout(self._timeout):
                     msg = await reader.read()
             except asyncio.CancelledError:
                 self._close_code = 1006
@@ -383,8 +384,8 @@ class WebSocketResponse(StreamResponse):
             try:
                 self._waiting = loop.create_future()
                 try:
-                    with async_timeout.timeout(
-                            timeout or self._receive_timeout, loop=self._loop):
+                    async with async_timeout.timeout(
+                            timeout or self._receive_timeout):
                         msg = await self._reader.read()
                     self._reset_heartbeat()
                 finally:

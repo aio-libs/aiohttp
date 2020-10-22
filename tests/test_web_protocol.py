@@ -97,14 +97,6 @@ def transport(buf):
     return transport
 
 
-@pytest.fixture
-def ceil(mocker):
-    def ceil(val):
-        return val
-
-    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
-
-
 async def test_shutdown(srv, transport) -> None:
     loop = asyncio.get_event_loop()
     assert transport is srv.transport
@@ -255,21 +247,6 @@ async def test_bad_method(srv, buf) -> None:
     assert buf.startswith(b'HTTP/1.0 400 Bad Request\r\n')
 
 
-async def test_data_received_error(srv, buf) -> None:
-    transport = srv.transport
-    srv._request_parser = mock.Mock()
-    srv._request_parser.feed_data.side_effect = TypeError
-
-    srv.data_received(
-        b'!@#$ / HTTP/1.0\r\n'
-        b'Host: example.com\r\n\r\n')
-
-    await asyncio.sleep(0)
-    assert buf.startswith(b'HTTP/1.0 500 Internal Server Error\r\n')
-    assert transport.close.called
-    assert srv._error_handler is None
-
-
 async def test_line_too_long(srv, buf) -> None:
     srv.data_received(b''.join([b'a' for _ in range(10000)]) + b'\r\n\r\n')
 
@@ -348,6 +325,7 @@ async def test_handle_uncompleted(
     IS_MACOS,
     raises=TypeError,
     reason='Intermittently fails on macOS',
+    strict=False,
 )
 async def test_handle_uncompleted_pipe(
         make_srv, transport, request_handler, handle_with_error):
@@ -444,7 +422,7 @@ async def test_lingering_disabled(make_srv,
 
 
 async def test_lingering_timeout(
-    make_srv, transport, ceil, request_handler
+    make_srv, transport, request_handler
 ):
 
     async def handle_request(request):
@@ -537,7 +515,7 @@ async def test_handle_400(srv, buf, transport) -> None:
     assert b'400 Bad Request' in buf
 
 
-async def test_keep_alive(make_srv, transport, ceil) -> None:
+async def test_keep_alive(make_srv, transport) -> None:
     loop = asyncio.get_event_loop()
     srv = make_srv(keepalive_timeout=0.05)
     future = loop.create_future()
@@ -634,41 +612,6 @@ def test_rudimentary_transport(srv) -> None:
 
     srv.resume_reading()
     assert not srv._reading_paused
-
-
-async def test_close(srv, transport) -> None:
-    transport.close.side_effect = partial(srv.connection_lost, None)
-    srv.connection_made(transport)
-    await asyncio.sleep(0)
-
-    handle_request = mock.Mock()
-    handle_request.side_effect = helpers.noop
-    with mock.patch.object(
-        web.RequestHandler,
-        'handle_request',
-        create=True,
-        new=handle_request
-    ):
-        assert transport is srv.transport
-
-        srv._keepalive = True
-        srv.data_received(
-            b'GET / HTTP/1.1\r\n'
-            b'Host: example.com\r\n'
-            b'Content-Length: 0\r\n\r\n'
-            b'GET / HTTP/1.1\r\n'
-            b'Host: example.com\r\n'
-            b'Content-Length: 0\r\n\r\n')
-
-        await asyncio.sleep(0.05)
-        assert srv._task_handler
-        assert srv._waiter
-
-        srv.close()
-        await asyncio.sleep(0)
-        assert srv._task_handler is None
-        assert srv.transport is None
-        assert transport.close.called
 
 
 async def test_pipeline_multiple_messages(
@@ -878,7 +821,7 @@ Host: localhost:{port}\r
     writer.write(b"x")
     writer.close()
     await asyncio.sleep(0.1)
-    logger.debug.assert_called_with('Ignored premature client disconnection.')
+    logger.debug.assert_called_with('Ignored premature client disconnection')
     assert disconnected_notified
 
 

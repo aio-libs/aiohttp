@@ -26,7 +26,7 @@ from .abc import (
     AbstractStreamWriter,
 )
 from .base_protocol import BaseProtocol
-from .helpers import CeilTimeout, current_task
+from .helpers import ceil_timeout, current_task
 from .http import (
     HttpProcessingError,
     HttpRequestParser,
@@ -151,7 +151,8 @@ class RequestHandler(BaseProtocol):
                  max_line_size: int=8190,
                  max_headers: int=32768,
                  max_field_size: int=8190,
-                 lingering_time: float=10.0):
+                 lingering_time: float=10.0,
+                 read_bufsize: int=2 ** 16):
 
         super().__init__(loop)
 
@@ -179,7 +180,7 @@ class RequestHandler(BaseProtocol):
         self._upgrade = False
         self._payload_parser = None  # type: Any
         self._request_parser = HttpRequestParser(
-            self, loop,
+            self, loop, read_bufsize,
             max_line_size=max_line_size,
             max_field_size=max_field_size,
             max_headers=max_headers,
@@ -222,7 +223,7 @@ class RequestHandler(BaseProtocol):
 
         # wait for handlers
         with suppress(asyncio.CancelledError, asyncio.TimeoutError):
-            with CeilTimeout(timeout, loop=self._loop):
+            async with ceil_timeout(timeout):
                 if (self._error_handler is not None and
                         not self._error_handler.done()):
                     await self._error_handler
@@ -271,11 +272,15 @@ class RequestHandler(BaseProtocol):
 
         if self._current_request is not None:
             if exc is None:
-                exc = ConnectionResetError("Connetion lost")
+                exc = ConnectionResetError("Connection lost")
             self._current_request._cancel(exc)
 
         if self._error_handler is not None:
             self._error_handler.cancel()
+        if self._task_handler is not None:
+            self._task_handler.cancel()
+        if self._waiter is not None:
+            self._waiter.cancel()
 
         self._task_handler = None
 
@@ -505,7 +510,7 @@ class RequestHandler(BaseProtocol):
                         with suppress(
                                 asyncio.TimeoutError, asyncio.CancelledError):
                             while not payload.is_eof() and now < end_t:
-                                with CeilTimeout(end_t - now, loop=loop):
+                                async with ceil_timeout(end_t - now):
                                     # read and ignore
                                     await payload.readany()
                                 now = loop.time()
@@ -639,11 +644,13 @@ class RequestHandler(BaseProtocol):
                                  status: int,
                                  exc: Optional[BaseException]=None,
                                  message: Optional[str]=None) -> None:
+        task = current_task()
+        assert task is not None
         request = BaseRequest(
             ERROR,
             EMPTY_PAYLOAD,  # type: ignore
             self, writer,
-            current_task(),
+            task,
             self._loop)
 
         resp = self.handle_error(request, status, exc, message)

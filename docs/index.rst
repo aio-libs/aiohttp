@@ -62,25 +62,42 @@ separate commands anymore!
 Getting Started
 ===============
 
-Client example::
+Client example
+--------------
 
-    import aiohttp
-    import asyncio
+.. code-block:: python
 
-    async def fetch(session, url):
-        async with session.get(url) as response:
-            return await response.text()
+  import aiohttp
+  import asyncio
 
-    async def main():
-        async with aiohttp.ClientSession() as session:
-            html = await fetch(session, 'http://python.org')
-            print(html)
+  async def main():
 
-    if __name__ == '__main__':
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(main())
+      async with aiohttp.ClientSession() as session:
+          async with session.get('http://python.org') as response:
 
-Server example::
+              print("Status:", response.status)
+              print("Content-type:", response.headers['content-type'])
+
+              html = await response.text()
+              print("Body:", html[:15], "...")
+
+  loop = asyncio.get_event_loop()
+  loop.run_until_complete(main())
+
+This prints:
+
+.. code-block:: text
+
+    Status: 200
+    Content-type: text/html; charset=utf-8
+    Body: <!doctype html> ...
+
+Coming from :term:`requests` ? Read :ref:`why we need so many lines <aiohttp-request-lifecycle>`.
+
+Server example:
+----------------
+
+.. code-block:: python
 
     from aiohttp import web
 
@@ -99,7 +116,6 @@ Server example::
 
 For more information please visit :ref:`aiohttp-client` and
 :ref:`aiohttp-web` pages.
-
 
 What's new in aiohttp 3?
 ========================

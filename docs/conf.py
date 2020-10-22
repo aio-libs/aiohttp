@@ -70,6 +70,8 @@ intersphinx_mapping = {
         ('https://aiohttp-session.readthedocs.io/en/stable/', None),
     'aiohttpdemos':
         ('https://aiohttp-demos.readthedocs.io/en/latest/', None),
+    'asynctest':
+        ('https://asynctest.readthedocs.io/en/latest/', None),
 }
 
 # Add any paths that contain templates here, relative to this directory.
@@ -86,7 +88,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'aiohttp'
-copyright = '2013-2018, Aiohttp contributors'
+copyright = '2013-2020, aiohttp maintainers'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

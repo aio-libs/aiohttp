@@ -22,12 +22,9 @@ from .abc import AbstractView
 from .typedefs import PathLike
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .web_urldispatcher import (
-        UrlDispatcher,
-        AbstractRoute
-    )
     from .web_request import Request
     from .web_response import StreamResponse
+    from .web_urldispatcher import AbstractRoute, UrlDispatcher
 else:
     Request = StreamResponse = UrlDispatcher = AbstractRoute = None
 
@@ -88,7 +85,7 @@ class StaticDef(AbstractRouteDef):
     def register(self, router: UrlDispatcher) -> List[AbstractRoute]:
         resource = router.add_static(self.prefix, self.path, **self.kwargs)
         routes = resource.get_info().get('routes', {})
-        return routes.values()
+        return list(routes.values())
 
 
 def route(method: str, path: str, handler: _HandlerType,
@@ -190,6 +187,9 @@ class RouteTableDef(Sequence[AbstractRouteDef]):
 
     def delete(self, path: str, **kwargs: Any) -> _Deco:
         return self.route(hdrs.METH_DELETE, path, **kwargs)
+
+    def options(self, path: str, **kwargs: Any) -> _Deco:
+        return self.route(hdrs.METH_OPTIONS, path, **kwargs)
 
     def view(self, path: str, **kwargs: Any) -> _Deco:
         return self.route(hdrs.METH_ANY, path, **kwargs)

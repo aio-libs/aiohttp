@@ -1,6 +1,7 @@
 import pathlib
 import re
 from collections.abc import Container, Iterable, Mapping, MutableMapping, Sized
+from functools import partial
 from urllib.parse import unquote
 
 import pytest
@@ -32,6 +33,12 @@ def make_handler():
 
     return handler
 
+def make_partial_handler():
+
+    async def handler(a, request):
+        return Response(request)  # pragma: no cover
+
+    return partial(handler, 5)
 
 @pytest.fixture
 def app():
@@ -71,6 +78,10 @@ def test_register_uncommon_http_methods(router) -> None:
     for method in uncommon_http_methods:
         router.add_route(method, '/handler/to/path', make_handler())
 
+
+async def test_add_partial_handler(router) -> None:
+    handler = make_partial_handler()
+    router.add_get('/handler/to/path', handler)
 
 async def test_add_sync_handler(router) -> None:
     def handler(request):
@@ -456,6 +467,20 @@ def test_add_static_append_version_not_follow_symlink(router,
     assert '/st/append_version_symlink/data.unknown_mime_type' == str(url)
 
 
+def test_add_static_quoting(router) -> None:
+    resource = router.add_static('/пре %2Fфикс',
+                                 pathlib.Path(aiohttp.__file__).parent,
+                                 name='static')
+    assert router['static'] is resource
+    url = resource.url_for(filename='/1 2/файл%2F.txt')
+    assert url.path == '/пре /фикс/1 2/файл%2F.txt'
+    assert str(url) == (
+        '/%D0%BF%D1%80%D0%B5%20%2F%D1%84%D0%B8%D0%BA%D1%81'
+        '/1%202/%D1%84%D0%B0%D0%B9%D0%BB%252F.txt'
+    )
+    assert len(resource) == 2
+
+
 def test_plain_not_match(router) -> None:
     handler = make_handler()
     router.add_route('GET', '/get/path', handler, name='name')
@@ -618,10 +643,14 @@ def test_route_dynamic_with_regex(router) -> None:
 
 def test_route_dynamic_quoting(router) -> None:
     handler = make_handler()
-    route = router.add_route('GET', r'/{arg}', handler)
+    route = router.add_route('GET', r'/пре %2Fфикс/{arg}', handler)
 
-    url = route.url_for(arg='1 2/текст')
-    assert '/1%202/%D1%82%D0%B5%D0%BA%D1%81%D1%82' == str(url)
+    url = route.url_for(arg='1 2/текст%2F')
+    assert url.path == '/пре /фикс/1 2/текст%2F'
+    assert str(url) == (
+        '/%D0%BF%D1%80%D0%B5%20%2F%D1%84%D0%B8%D0%BA%D1%81'
+        '/1%202/%D1%82%D0%B5%D0%BA%D1%81%D1%82%252F'
+    )
 
 
 async def test_regular_match_info(router) -> None:
@@ -1137,6 +1166,11 @@ def test_subapp_iter(app) -> None:
 def test_invalid_route_name(router) -> None:
     with pytest.raises(ValueError):
         router.add_get('/', make_handler(), name='invalid name')
+
+
+def test_invalid_route_name(router) -> None:
+    with pytest.raises(ValueError):
+        router.add_get('/', make_handler(), name='class')  # identifier
 
 
 def test_frozen_router(router) -> None:

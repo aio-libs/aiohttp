@@ -1,5 +1,6 @@
 import asyncio
 import codecs
+import functools
 import io
 import re
 import sys
@@ -38,7 +39,6 @@ from .client_exceptions import (
 )
 from .formdata import FormData
 from .helpers import (  # noqa
-    PY_36,
     BaseTimerContext,
     BasicAuth,
     HeadersMixin,
@@ -69,7 +69,7 @@ except ImportError:  # pragma: no cover
 try:
     import cchardet as chardet
 except ImportError:  # pragma: no cover
-    import chardet
+    import chardet  # type: ignore
 
 
 __all__ = ('ClientRequest', 'ClientResponse', 'RequestInfo', 'Fingerprint')
@@ -266,7 +266,7 @@ class ClientRequest:
 
     @property
     def host(self) -> str:
-        ret = self.url.host
+        ret = self.url.raw_host
         assert ret is not None
         return ret
 
@@ -283,7 +283,7 @@ class ClientRequest:
     def update_host(self, url: URL) -> None:
         """Update destination host, port and connection type (ssl)."""
         # get host/port
-        if not url.host:
+        if not url.raw_host:
             raise InvalidURL(url)
 
         # basic auth info
@@ -297,7 +297,7 @@ class ClientRequest:
         parser HTTP version '1.1' => (1, 1)
         """
         if isinstance(version, str):
-            v = [l.strip() for l in version.split('.', 1)]
+            v = [part.strip() for part in version.split('.', 1)]
             try:
                 version = http.HttpVersion(int(v[0]), int(v[1]))
             except ValueError:
@@ -322,7 +322,7 @@ class ClientRequest:
             if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
                 headers = headers.items()  # type: ignore
 
-            for key, value in headers:
+            for key, value in headers:  # type: ignore
                 # A special case for Host header
                 if key.lower() == 'host':
                     self.headers[key] = value
@@ -543,7 +543,8 @@ class ClientRequest:
         assert protocol is not None
         writer = StreamWriter(
             protocol, self.loop,
-            on_chunk_sent=self._on_chunk_request_sent
+            on_chunk_sent=functools.partial(self._on_chunk_request_sent,
+                                            self.method, self.url)
         )
 
         if self.compress:
@@ -603,9 +604,12 @@ class ClientRequest:
                 self._writer.cancel()
             self._writer = None
 
-    async def _on_chunk_request_sent(self, chunk: bytes) -> None:
+    async def _on_chunk_request_sent(self,
+                                     method: str,
+                                     url: URL,
+                                     chunk: bytes) -> None:
         for trace in self._traces:
-            await trace.send_request_chunk_sent(chunk)
+            await trace.send_request_chunk_sent(method, url, chunk)
 
 
 class ClientResponse(HeadersMixin):
@@ -701,13 +705,9 @@ class ClientResponse(HeadersMixin):
             self._cleanup_writer()
 
             if self._loop.get_debug():
-                if PY_36:
-                    kwargs = {'source': self}
-                else:
-                    kwargs = {}
                 _warnings.warn("Unclosed response {!r}".format(self),
                                ResourceWarning,
-                               **kwargs)
+                               source=self)
                 context = {'client_response': self,
                            'message': 'Unclosed response'}
                 if self._source_traceback:
@@ -876,6 +876,19 @@ class ClientResponse(HeadersMixin):
         self._cleanup_writer()
         return noop()
 
+    @property
+    def ok(self) -> bool:
+        """Returns ``True`` if ``status`` is less than ``400``, ``False`` if not.
+
+        This is **not** a check for ``200 OK`` but a check that the response
+        status is under 400.
+        """
+        try:
+            self.raise_for_status()
+        except ClientResponseError:
+            return False
+        return True
+
     def raise_for_status(self) -> None:
         if 400 <= self.status:
             # reason should always be not None for a started response
@@ -915,7 +928,9 @@ class ClientResponse(HeadersMixin):
             try:
                 self._body = await self.content.read()
                 for trace in self._traces:
-                    await trace.send_response_chunk_received(self._body)
+                    await trace.send_response_chunk_received(self.method,
+                                                             self.url,
+                                                             self._body)
             except BaseException:
                 self.close()
                 raise
@@ -935,9 +950,16 @@ class ClientResponse(HeadersMixin):
             except LookupError:
                 encoding = None
         if not encoding:
-            if mimetype.type == 'application' and mimetype.subtype == 'json':
+            if (
+                mimetype.type == 'application' and
+                (mimetype.subtype == 'json' or mimetype.subtype == 'rdap')
+            ):
                 # RFC 7159 states that the default encoding is UTF-8.
+                # RFC 7483 defines application/rdap+json
                 encoding = 'utf-8'
+            elif self._body is None:
+                raise RuntimeError('Cannot guess the encoding of '
+                                   'a not yet read body')
             else:
                 encoding = chardet.detect(self._body)['encoding']
         if not encoding:
@@ -956,7 +978,7 @@ class ClientResponse(HeadersMixin):
 
         return self._body.decode(encoding, errors=errors)  # type: ignore
 
-    async def json(self, *, encoding: str=None,
+    async def json(self, *, encoding: Optional[str]=None,
                    loads: JSONDecoder=DEFAULT_JSON_DECODER,
                    content_type: Optional[str]='application/json') -> Any:
         """Read and decodes JSON response."""
@@ -986,6 +1008,6 @@ class ClientResponse(HeadersMixin):
                         exc_val: Optional[BaseException],
                         exc_tb: Optional[TracebackType]) -> None:
         # similar to _RequestContextManager, we do not need to check
-        # for exceptions, response object can closes connection
-        # is state is broken
+        # for exceptions, response object can close connection
+        # if state is broken
         self.release()

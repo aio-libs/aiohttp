@@ -1,5 +1,6 @@
 import asyncio
 import socket
+import weakref
 from collections.abc import MutableMapping
 from typing import Any
 from unittest import mock
@@ -9,6 +10,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 from yarl import URL
 
 from aiohttp import HttpVersion, web
+from aiohttp.client_exceptions import ServerDisconnectedError
 from aiohttp.helpers import DEBUG
 from aiohttp.http_parser import RawRequestMessage
 from aiohttp.streams import StreamReader
@@ -60,7 +62,8 @@ def test_ctor() -> None:
 
     assert 'GET' == req.method
     assert HttpVersion(1, 1) == req.version
-    assert req.host == socket.getfqdn()
+    # MacOS may return CamelCased host name, need .lower()
+    assert req.host.lower() == socket.getfqdn().lower()
     assert '/path/to?a=1&b=2' == req.path_qs
     assert '/path/to' == req.path
     assert 'a=1&b=2' == req.query_string
@@ -545,7 +548,7 @@ def test_clone_headers_dict() -> None:
 
 
 async def test_cannot_clone_after_read(protocol) -> None:
-    payload = StreamReader(protocol, loop=asyncio.get_event_loop())
+    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
     payload.feed_data(b'data')
     payload.feed_eof()
     req = make_mocked_request('GET', '/path', payload=payload)
@@ -555,7 +558,7 @@ async def test_cannot_clone_after_read(protocol) -> None:
 
 
 async def test_make_too_big_request(protocol) -> None:
-    payload = StreamReader(protocol, loop=asyncio.get_event_loop())
+    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
     large_file = 1024 ** 2 * b'x'
     too_large_file = large_file + b'x'
     payload.feed_data(too_large_file)
@@ -568,7 +571,7 @@ async def test_make_too_big_request(protocol) -> None:
 
 
 async def test_request_with_wrong_content_type_encoding(protocol) -> None:
-    payload = StreamReader(protocol, loop=asyncio.get_event_loop())
+    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
     payload.feed_data(b'{}')
     payload.feed_eof()
     headers = {'Content-Type': 'text/html; charset=test'}
@@ -579,8 +582,19 @@ async def test_request_with_wrong_content_type_encoding(protocol) -> None:
     assert err.value.status_code == 415
 
 
+async def test_make_too_big_request_same_size_to_max(protocol) -> None:
+    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
+    large_file = 1024 ** 2 * b'x'
+    payload.feed_data(large_file)
+    payload.feed_eof()
+    req = make_mocked_request('POST', '/', payload=payload)
+    resp_text = await req.read()
+
+    assert resp_text == large_file
+
+
 async def test_make_too_big_request_adjust_limit(protocol) -> None:
-    payload = StreamReader(protocol, loop=asyncio.get_event_loop())
+    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
     large_file = 1024 ** 2 * b'x'
     too_large_file = large_file + b'x'
     payload.feed_data(too_large_file)
@@ -593,18 +607,22 @@ async def test_make_too_big_request_adjust_limit(protocol) -> None:
 
 
 async def test_multipart_formdata(protocol) -> None:
-    payload = StreamReader(protocol, loop=asyncio.get_event_loop())
-    payload.feed_data(b"""-----------------------------326931944431359\r
-Content-Disposition: form-data; name="a"\r
-\r
-b\r
------------------------------326931944431359\r
-Content-Disposition: form-data; name="c"\r
-\r
-d\r
------------------------------326931944431359--\r\n""")
-    content_type = "multipart/form-data; boundary="\
-                   "---------------------------326931944431359"
+    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
+    payload.feed_data(
+        b'-----------------------------326931944431359\r\n'
+        b'Content-Disposition: form-data; name="a"\r\n'
+        b'\r\n'
+        b'b\r\n'
+        b'-----------------------------326931944431359\r\n'
+        b'Content-Disposition: form-data; name="c"\r\n'
+        b'\r\n'
+        b'd\r\n'
+        b'-----------------------------326931944431359--\r\n'
+    )
+    content_type = (
+        "multipart/form-data; boundary="
+        "---------------------------326931944431359"
+    )
     payload.feed_eof()
     req = make_mocked_request('POST', '/',
                               headers={'CONTENT-TYPE': content_type},
@@ -613,8 +631,32 @@ d\r
     assert dict(result) == {'a': 'b', 'c': 'd'}
 
 
+async def test_multipart_formdata_file(protocol) -> None:
+    # Make sure file uploads work, even without a content type
+    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
+    payload.feed_data(
+        b'-----------------------------326931944431359\r\n'
+        b'Content-Disposition: form-data; name="a_file"; filename="binary"\r\n'
+        b'\r\n'
+        b'\ff\r\n'
+        b'-----------------------------326931944431359--\r\n'
+    )
+    content_type = (
+        "multipart/form-data; boundary="
+        "---------------------------326931944431359"
+    )
+    payload.feed_eof()
+    req = make_mocked_request('POST', '/',
+                              headers={'CONTENT-TYPE': content_type},
+                              payload=payload)
+    result = await req.post()
+    assert hasattr(result['a_file'], 'file')
+    content = result['a_file'].file.read()
+    assert content == b'\ff'
+
+
 async def test_make_too_big_request_limit_None(protocol) -> None:
-    payload = StreamReader(protocol, loop=asyncio.get_event_loop())
+    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
     large_file = 1024 ** 2 * b'x'
     too_large_file = large_file + b'x'
     payload.feed_data(too_large_file)
@@ -764,3 +806,24 @@ async def test_json_invalid_content_type(aiohttp_client) -> None:
         resp_text = await resp.text()
         assert resp_text == ('Attempt to decode JSON with '
                              'unexpected mimetype: text/plain')
+
+
+def test_weakref_creation() -> None:
+    req = make_mocked_request('GET', '/')
+    weakref.ref(req)
+
+
+@pytest.mark.xfail(
+    raises=ServerDisconnectedError,
+    reason="see https://github.com/aio-libs/aiohttp/issues/4572"
+)
+async def test_handler_return_type(aiohttp_client) -> None:
+    async def invalid_handler_1(request):
+        return 1
+
+    app = web.Application()
+    app.router.add_get('/1', invalid_handler_1)
+    client = await aiohttp_client(app)
+
+    async with client.get('/1') as resp:
+        assert 500 == resp.status

@@ -9,7 +9,7 @@ import warnings
 import zlib
 from concurrent.futures import Executor
 from email.utils import parsedate
-from http.cookies import SimpleCookie
+from http.cookies import Morsel, SimpleCookie
 from typing import (  # noqa
     TYPE_CHECKING,
     Any,
@@ -27,7 +27,7 @@ from multidict import CIMultiDict, istr
 
 from . import hdrs, payload
 from .abc import AbstractStreamWriter
-from .helpers import HeadersMixin, rfc822_formatted_time, sentinel
+from .helpers import PY_38, HeadersMixin, rfc822_formatted_time, sentinel
 from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
@@ -40,6 +40,12 @@ if TYPE_CHECKING:  # pragma: no cover
     BaseClass = MutableMapping[str, Any]
 else:
     BaseClass = collections.abc.MutableMapping
+
+
+if not PY_38:
+    # allow samesite to be used in python < 3.8
+    # already permitted in python 3.8, see https://bugs.python.org/issue29613
+    Morsel._reserved['samesite'] = 'SameSite'  # type: ignore
 
 
 class ContentCoding(enum.Enum):
@@ -62,7 +68,7 @@ class StreamResponse(BaseClass, HeadersMixin):
     __slots__ = ('_length_check', '_body', '_keep_alive', '_chunked',
                  '_compression', '_compression_force', '_cookies', '_req',
                  '_payload_writer', '_eof_sent', '_body_length', '_state',
-                 '_headers', '_status', '_reason')
+                 '_headers', '_status', '_reason', '__weakref__')
 
     def __init__(self, *,
                  status: int=200,
@@ -171,7 +177,8 @@ class StreamResponse(BaseClass, HeadersMixin):
                    path: str='/',
                    secure: Optional[bool]=None,
                    httponly: Optional[bool]=None,
-                   version: Optional[str]=None) -> None:
+                   version: Optional[str]=None,
+                   samesite: Optional[str]=None) -> None:
         """Set or update response cookie.
 
         Sets new cookie or updates existent with new value.
@@ -207,6 +214,8 @@ class StreamResponse(BaseClass, HeadersMixin):
             c['httponly'] = httponly
         if version is not None:
             c['version'] = version
+        if samesite is not None:
+            c['samesite'] = samesite
 
     def del_cookie(self, name: str, *,
                    domain: Optional[str]=None,
@@ -337,19 +346,29 @@ class StreamResponse(BaseClass, HeadersMixin):
         if self._payload_writer is not None:
             return self._payload_writer
 
-        await request._prepare_hook(self)
         return await self._start(request)
 
     async def _start(self, request: 'BaseRequest') -> AbstractStreamWriter:
         self._req = request
+        writer = self._payload_writer = request._payload_writer
 
+        await self._prepare_headers()
+        await request._prepare_hook(self)
+        await self._write_headers()
+
+        return writer
+
+    async def _prepare_headers(self) -> None:
+        request = self._req
+        assert request is not None
+        writer = self._payload_writer
+        assert writer is not None
         keep_alive = self._keep_alive
         if keep_alive is None:
             keep_alive = request.keep_alive
         self._keep_alive = keep_alive
 
         version = request.version
-        writer = self._payload_writer = request._payload_writer
 
         headers = self._headers
         for cookie in self._cookies.values():
@@ -392,12 +411,16 @@ class StreamResponse(BaseClass, HeadersMixin):
                 if version == HttpVersion11:
                     headers[hdrs.CONNECTION] = 'close'
 
+    async def _write_headers(self) -> None:
+        request = self._req
+        assert request is not None
+        writer = self._payload_writer
+        assert writer is not None
         # status line
+        version = request.version
         status_line = 'HTTP/{}.{} {} {}'.format(
             version[0], version[1], self._status, self._reason)
-        await writer.write_headers(status_line, headers)
-
-        return writer
+        await writer.write_headers(status_line, self._headers)
 
     async def write(self, data: bytes) -> None:
         assert isinstance(data, (bytes, bytearray, memoryview)), \
@@ -484,7 +507,7 @@ class Response(StreamResponse):
                  content_type: Optional[str]=None,
                  charset: Optional[str]=None,
                  zlib_executor_size: Optional[int]=None,
-                 zlib_executor: Executor=None) -> None:
+                 zlib_executor: Optional[Executor]=None) -> None:
         if body is not None and text is not None:
             raise ValueError("body and text are not allowed together")
 
@@ -660,6 +683,7 @@ class Response(StreamResponse):
         return await super()._start(request)
 
     def _compress_body(self, zlib_mode: int) -> None:
+        assert zlib_mode > 0
         compressobj = zlib.compressobj(wbits=zlib_mode)
         body_in = self._body
         assert body_in is not None
@@ -674,7 +698,7 @@ class Response(StreamResponse):
             # Instead of using _payload_writer.enable_compression,
             # compress the whole body
             zlib_mode = (16 + zlib.MAX_WBITS
-                         if coding == ContentCoding.gzip else -zlib.MAX_WBITS)
+                         if coding == ContentCoding.gzip else zlib.MAX_WBITS)
             body_in = self._body
             assert body_in is not None
             if self._zlib_executor_size is not None and \
@@ -692,11 +716,11 @@ class Response(StreamResponse):
 
 
 def json_response(data: Any=sentinel, *,
-                  text: str=None,
-                  body: bytes=None,
+                  text: Optional[str]=None,
+                  body: Optional[bytes]=None,
                   status: int=200,
                   reason: Optional[str]=None,
-                  headers: LooseHeaders=None,
+                  headers: Optional[LooseHeaders]=None,
                   content_type: str='application/json',
                   dumps: JSONEncoder=json.dumps) -> Response:
     if data is not sentinel:

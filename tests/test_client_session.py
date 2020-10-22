@@ -3,6 +3,7 @@ import contextlib
 import gc
 import json
 import re
+import sys
 from http.cookies import SimpleCookie
 from io import BytesIO
 from unittest import mock
@@ -16,7 +17,6 @@ from aiohttp import client, hdrs, web
 from aiohttp.client import ClientSession
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import BaseConnector, TCPConnector
-from aiohttp.helpers import PY_36
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -593,7 +593,7 @@ async def test_request_tracing(loop, aiohttp_client) -> None:
             {'ok': True}).encode('utf8')
 
 
-async def test_request_tracing_exception(loop) -> None:
+async def test_request_tracing_exception() -> None:
     on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
     on_request_exception = mock.Mock(
         side_effect=make_mocked_coro(mock.Mock())
@@ -605,9 +605,13 @@ async def test_request_tracing_exception(loop) -> None:
 
     with mock.patch("aiohttp.client.TCPConnector.connect") as connect_patched:
         error = Exception()
-        f = loop.create_future()
-        f.set_exception(error)
-        connect_patched.return_value = f
+        if sys.version_info >= (3, 8, 1):
+            connect_patched.side_effect = error
+        else:
+            loop = asyncio.get_event_loop()
+            f = loop.create_future()
+            f.set_exception(error)
+            connect_patched.return_value = f
 
         session = aiohttp.ClientSession(
             trace_configs=[trace_config]
@@ -665,8 +669,6 @@ async def test_request_tracing_interpose_headers(loop, aiohttp_client) -> None:
     assert MyClientRequest.headers['foo'] == 'bar'
 
 
-@pytest.mark.skipif(not PY_36,
-                    reason="Python 3.6+ required")
 def test_client_session_inheritance() -> None:
     with pytest.raises(TypeError):
         class A(ClientSession):
