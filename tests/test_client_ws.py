@@ -189,7 +189,8 @@ async def test_ws_connect_common_headers(ws_key, loop, key_data) -> None:
 
     # In this scenario, we need to ensure that the newly generated secret key
     # is sent to the server, not the stale key.
-    headers = {}
+    custom_header_key = 'Custom-Header-Key'
+    headers = {custom_header_key: 'Custom-Header-Value'}
 
     async def test_connection() -> None:
 
@@ -220,6 +221,7 @@ async def test_ws_connect_common_headers(ws_key, loop, key_data) -> None:
         assert isinstance(res, client.ClientWebSocketResponse)
         assert res.protocol == 'chat'
         assert hdrs.ORIGIN not in m_req.call_args[1]["headers"]
+        assert custom_header_key in res.headers
 
     await test_connection()
     # Generate a new ws key

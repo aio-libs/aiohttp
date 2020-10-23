@@ -23,6 +23,7 @@ from .typedefs import (
     DEFAULT_JSON_ENCODER,
     JSONDecoder,
     JSONEncoder,
+    _CIMultiDict,
 )
 
 
@@ -48,6 +49,7 @@ class ClientWebSocketResponse:
                  loop: asyncio.AbstractEventLoop,
                  *,
                  heartbeat: Optional[float]=None,
+                 headers: Optional[_CIMultiDict]=None,
                  compress: int=0,
                  client_notakeover: bool=False) -> None:
         self._response = response
@@ -63,6 +65,7 @@ class ClientWebSocketResponse:
         self._autoclose = autoclose
         self._autoping = autoping
         self._heartbeat = heartbeat
+        self._headers = headers
         self._heartbeat_cb = None
         if heartbeat is not None:
             self._pong_heartbeat = heartbeat / 2.0
@@ -121,6 +124,10 @@ class ClientWebSocketResponse:
     @property
     def protocol(self) -> Optional[str]:
         return self._protocol
+
+    @property
+    def headers(self) -> Optional[_CIMultiDict]:
+        return self._headers
 
     @property
     def compress(self) -> int:

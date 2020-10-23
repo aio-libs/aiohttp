@@ -883,3 +883,28 @@ async def test_peer_connection_lost_iter(aiohttp_client) -> None:
         assert 'answer' == msg.data
 
     await resp.close()
+
+
+async def test_custom_headers(aiohttp_client) -> None:
+
+    custom_header_key = 'Custom-Header-Key'
+    headers = {custom_header_key: 'Custom-Header-Value'}
+
+    async def handler(request):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        await ws.receive_str()
+        await ws.send_str(request.headers.get(custom_header_key, 'bad-value'))
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect('/', headers=headers)
+    await resp.send_str('test')
+
+    data = await resp.receive_str()
+    assert headers[custom_header_key] == data
+    await resp.close()
