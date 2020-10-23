@@ -89,8 +89,12 @@ class Connection:
                  protocol: ResponseHandler,
                  loop: asyncio.AbstractEventLoop) -> None:
         self._key = key
+        # TODO: store weakref to connector to avoid strong circular refs
+        # Another option is getting rid of checks in __del__,
+        # connections are inteernal objects with very difinitive life-cycle
         self._connector = connector
         self._loop = loop
+        # The same maybe? Does hold the protocol a connection instance?
         self._protocol = protocol  # type: Optional[ResponseHandler]
         self._callbacks = []  # type: List[Callable[[], None]]
 
