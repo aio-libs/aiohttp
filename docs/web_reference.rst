@@ -2373,6 +2373,115 @@ A routes table definition used for describing routes by decorators
       See :meth:`UrlDispatcher.add_route` for information about parameters.
 
 
+.. _aiohttp-web-class-route-table-def:
+
+ClassRouteTableDef
+^^^^^^^^^^^^^^^^^^
+
+A routes table definition used for describing routes by decorators for use in
+classes (Flask style)::
+
+   from aiohttp import web
+
+   routes = web.ClassRouteTableDef()
+
+   class Example:
+       def __init__(self, some_value):
+           self.some_value = some_value
+
+       @routes.get('/some_value')
+       async def handle_get(self, request):
+           return web.Response(text=self.some_value)
+
+   routes.add_class_routes(Example(5))
+   app.router.add_routes(routes)
+
+.. class:: ClassRouteTableDef()
+
+   A sequence of :class:`RouteDef` instances (implements
+   :class:`abc.collections.Sequence` protocol).
+
+   In addition to all standard :class:`list` methods the class
+   provides also methods like ``get()`` and ``post()`` for adding new
+   route definitions.
+
+   None of the routes are added to the route table until
+   :func:`add_class_routes` is called, they are only added to the table whence
+   :func:`add_class_routes` is called. Hence, you **must** call
+   :func:`add_class_routes` for this to work.
+
+
+   .. versionadded:: 4.0
+
+   .. method:: add_class_routes(instance)
+
+      Add a class instance's routing functions to the route table.
+
+      This will work with any object, as long as it has the routes as
+      attributes.
+
+   .. decoratormethod:: get(path, *, allow_head=True, \
+                            name=None, expect_handler=None)
+
+      Add a new :class:`RouteDef` item for registering ``GET`` web-handler.
+
+      See :meth:`UrlDispatcher.add_get` for information about parameters.
+
+   .. decoratormethod:: post(path, *, name=None, expect_handler=None)
+
+      Add a new :class:`RouteDef` item for registering ``POST`` web-handler.
+
+      See :meth:`UrlDispatcher.add_post` for information about parameters.
+
+   .. decoratormethod:: head(path, *, name=None, expect_handler=None)
+
+      Add a new :class:`RouteDef` item for registering ``HEAD`` web-handler.
+
+      See :meth:`UrlDispatcher.add_head` for information about parameters.
+
+   .. decoratormethod:: put(path, *, name=None, expect_handler=None)
+
+      Add a new :class:`RouteDef` item for registering ``PUT`` web-handler.
+
+      See :meth:`UrlDispatcher.add_put` for information about parameters.
+
+   .. decoratormethod:: patch(path, *, name=None, expect_handler=None)
+
+      Add a new :class:`RouteDef` item for registering ``PATCH`` web-handler.
+
+      See :meth:`UrlDispatcher.add_patch` for information about parameters.
+
+   .. decoratormethod:: delete(path, *, name=None, expect_handler=None)
+
+      Add a new :class:`RouteDef` item for registering ``DELETE`` web-handler.
+
+      See :meth:`UrlDispatcher.add_delete` for information about parameters.
+
+   .. decoratormethod:: view(path, *, name=None, expect_handler=None)
+
+      Add a new :class:`RouteDef` item for registering ``ANY`` methods
+      against a class-based view.
+
+      See :meth:`UrlDispatcher.add_view` for information about parameters.
+
+   .. method:: static(prefix, path, *, name=None, expect_handler=None, \
+                      chunk_size=256*1024, \
+                      show_index=False, follow_symlinks=False, \
+                      append_version=False)
+
+
+      Add a new :class:`StaticDef` item for registering static files processor.
+
+      See :meth:`UrlDispatcher.add_static` for information about
+      supported parameters.
+
+   .. decoratormethod:: route(method, path, *, name=None, expect_handler=None)
+
+      Add a new :class:`RouteDef` item for registering a web-handler
+      for arbitrary HTTP method.
+
+      See :meth:`UrlDispatcher.add_route` for information about parameters.
+
 MatchInfo
 ^^^^^^^^^
 

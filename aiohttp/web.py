@@ -89,6 +89,23 @@ from .web_exceptions import HTTPUnauthorized as HTTPUnauthorized
 from .web_exceptions import (
     HTTPUnavailableForLegalReasons as HTTPUnavailableForLegalReasons,
 )
+from .web_routedef import (
+    AbstractRouteDef,
+    ClassRouteTableDef,
+    RouteDef,
+    RouteTableDef,
+    StaticDef,
+    delete,
+    get,
+    head,
+    options,
+    patch,
+    post,
+    put,
+    route,
+    static,
+    view,
+)
 from .web_exceptions import HTTPUnprocessableEntity as HTTPUnprocessableEntity
 from .web_exceptions import (
     HTTPUnsupportedMediaType as HTTPUnsupportedMediaType,
@@ -248,6 +265,7 @@ __all__ = (
     'route',
     'static',
     'view',
+    'ClassRouteTableDef',
     # web_runner
     'AppRunner',
     'BaseRunner',
