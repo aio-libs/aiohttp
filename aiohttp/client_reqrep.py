@@ -81,21 +81,19 @@ if TYPE_CHECKING:  # pragma: no cover
     from .tracing import Trace  # noqa
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class ContentDisposition:
-    type = attr.ib(type=str)  # type: Optional[str]
-    parameters = attr.ib(
-        type=MappingProxyType
-    )  # type: MappingProxyType[str, str]  # noqa
-    filename = attr.ib(type=str)  # type: Optional[str]
+    type: Optional[str]
+    parameters: MappingProxyType[str, str]
+    filename: Optional[str]
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class RequestInfo:
-    url = attr.ib(type=URL)
-    method = attr.ib(type=str)
-    headers = attr.ib(type=CIMultiDictProxy)  # type: CIMultiDictProxy[str]
-    real_url = attr.ib(type=URL)
+    url: URL
+    method: str
+    headers: CIMultiDictProxy[str]
+    real_url: URL = attr.ib()
 
     @real_url.default
     def real_url_default(self) -> URL:
@@ -142,19 +140,17 @@ else:  # pragma: no cover
     SSL_ALLOWED_TYPES = type(None)
 
 
-@attr.s(slots=True, frozen=True)
+@attr.s(auto_attribs=True, slots=True, frozen=True)
 class ConnectionKey:
     # the key should contain an information about used proxy / TLS
     # to prevent reusing wrong connections from a pool
-    host = attr.ib(type=str)
-    port = attr.ib(type=int)  # type: Optional[int]
-    is_ssl = attr.ib(type=bool)
-    ssl = attr.ib()  # type: Union[SSLContext, None, bool, Fingerprint]
-    proxy = attr.ib()  # type: Optional[URL]
-    proxy_auth = attr.ib()  # type: Optional[BasicAuth]
-    proxy_headers_hash = attr.ib(
-        type=int
-    )  # type: Optional[int] # noqa # hash(CIMultiDict)
+    host: str
+    port: Optional[int]
+    is_ssl: bool
+    ssl: Union[SSLContext, None, bool, Fingerprint]
+    proxy: Optional[URL]
+    proxy_auth: Optional[BasicAuth]
+    proxy_headers_hash: Optional[int]  # hash(CIMultiDict)
 
 
 class ClientRequest:

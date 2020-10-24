@@ -248,10 +248,10 @@ def netrc_from_env() -> Optional[netrc.netrc]:
     return None
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class ProxyInfo:
-    proxy = attr.ib(type=URL)
-    proxy_auth = attr.ib(type=Optional[BasicAuth])
+    proxy: URL
+    proxy_auth: Optional[BasicAuth]
 
 
 def proxies_from_env() -> Dict[str, ProxyInfo]:
@@ -318,12 +318,12 @@ def isasyncgenfunction(obj: Any) -> bool:
         return False
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class MimeType:
-    type = attr.ib(type=str)
-    subtype = attr.ib(type=str)
-    suffix = attr.ib(type=str)
-    parameters = attr.ib(type=MultiDictProxy)  # type: MultiDictProxy[str]
+    type: str
+    subtype: str
+    suffix: str
+    parameters: MultiDictProxy[str]
 
 
 @functools.lru_cache(maxsize=56)
