@@ -1,2 +1,0 @@
-Fixed a type error with reified properties caused by the
-conditional import of `Protocol`.
