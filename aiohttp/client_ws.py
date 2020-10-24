@@ -26,10 +26,10 @@ from .typedefs import (
 )
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class ClientWSTimeout:
-    ws_receive = attr.ib(type=Optional[float], default=None)
-    ws_close = attr.ib(type=Optional[float], default=None)
+    ws_receive: Optional[float] = None
+    ws_close: Optional[float] = None
 
 
 DEFAULT_WS_CLIENT_TIMEOUT = ClientWSTimeout(ws_receive=None, ws_close=10.0)

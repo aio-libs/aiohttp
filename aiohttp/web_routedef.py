@@ -57,12 +57,12 @@ _SimpleHandler = Callable[[Request], Awaitable[StreamResponse]]
 _HandlerType = Union[Type[AbstractView], _SimpleHandler]
 
 
-@attr.s(frozen=True, repr=False, slots=True)
+@attr.s(auto_attribs=True, frozen=True, repr=False, slots=True)
 class RouteDef(AbstractRouteDef):
-    method = attr.ib(type=str)
-    path = attr.ib(type=str)
-    handler = attr.ib()  # type: _HandlerType
-    kwargs = attr.ib(type=Dict[str, Any])
+    method: str
+    path: str
+    handler: _HandlerType
+    kwargs: Dict[str, Any]
 
     def __repr__(self) -> str:
         info = []
@@ -82,11 +82,11 @@ class RouteDef(AbstractRouteDef):
             ]
 
 
-@attr.s(frozen=True, repr=False, slots=True)
+@attr.s(auto_attribs=True, frozen=True, repr=False, slots=True)
 class StaticDef(AbstractRouteDef):
-    prefix = attr.ib(type=str)
-    path = attr.ib()  # type: PathLike
-    kwargs = attr.ib(type=Dict[str, Any])
+    prefix: str
+    path: PathLike
+    kwargs: Dict[str, Any]
 
     def __repr__(self) -> str:
         info = []

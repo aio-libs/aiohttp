@@ -141,20 +141,20 @@ except ImportError:  # pragma: no cover
     SSLContext = object  # type: ignore
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class ClientTimeout:
-    total = attr.ib(type=Optional[float], default=None)
-    connect = attr.ib(type=Optional[float], default=None)
-    sock_read = attr.ib(type=Optional[float], default=None)
-    sock_connect = attr.ib(type=Optional[float], default=None)
+    total: Optional[float] = None
+    connect: Optional[float] = None
+    sock_read: Optional[float] = None
+    sock_connect: Optional[float] = None
 
-    # pool_queue_timeout = attr.ib(type=float, default=None)
-    # dns_resolution_timeout = attr.ib(type=float, default=None)
-    # socket_connect_timeout = attr.ib(type=float, default=None)
-    # connection_acquiring_timeout = attr.ib(type=float, default=None)
-    # new_connection_timeout = attr.ib(type=float, default=None)
-    # http_header_timeout = attr.ib(type=float, default=None)
-    # response_body_timeout = attr.ib(type=float, default=None)
+    # pool_queue_timeout: Optional[float] = None
+    # dns_resolution_timeout: Optional[float] = None
+    # socket_connect_timeout: Optional[float] = None
+    # connection_acquiring_timeout: Optional[float] = None
+    # new_connection_timeout: Optional[float] = None
+    # http_header_timeout: Optional[float] = None
+    # response_body_timeout: Optional[float] = None
 
     # to create a timeout specific for a single request, either
     # - create a completely new one to overwrite the default
