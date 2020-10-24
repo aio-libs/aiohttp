@@ -1,4 +1,4 @@
-__version__ = '3.7.0'
+__version__ = '3.7.1a1'
 
 from typing import Tuple
 
