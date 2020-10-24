@@ -35,7 +35,7 @@ Overview
 
      acquire_connection[description="Connection acquiring"];
      headers_received;
-     headers_sent;
+     headers_sent[description="on_request_headers_sent"];
      chunk_sent[description="on_request_chunk_sent"];
      chunk_received[description="on_response_chunk_received"];
 
@@ -269,6 +269,13 @@ TraceConfig
 
       ``params`` is :class:`aiohttp.TraceDnsCacheMissParams` instance.
 
+   .. attribute:: on_request_headers_sent
+
+      Property that gives access to the signals that will be executed
+      when request headers are sent.
+
+      ``params`` is :class:`aiohttp.TraceRequestHeadersSentParams` instance.
+
 
 TraceRequestStartParams
 -----------------------
@@ -492,3 +499,22 @@ TraceDnsCacheMissParams
    .. attribute:: host
 
        Host didn't find the cache.
+
+TraceRequestHeadersSentParams
+-----------------------------
+
+.. class:: TraceRequestHeadersSentParams
+
+   See :attr:`TraceConfig.on_request_headers_sent` for details.
+
+   .. attribute:: method
+
+       Method that will be used to make the request.
+
+   .. attribute:: url
+
+       URL that will be used for the request.
+
+   .. attribute:: headers
+
+       Headers that will be used for the request.
