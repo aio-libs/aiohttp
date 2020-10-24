@@ -5,7 +5,7 @@ from typing import Optional, Union
 
 from .typedefs import _CIMultiDict
 
-__all__ = ('HttpProcessingError',)
+__all__ = ("HttpProcessingError",)
 
 
 class HttpProcessingError(Exception):
@@ -19,13 +19,16 @@ class HttpProcessingError(Exception):
     """
 
     code = 0
-    message = ''
+    message = ""
     headers = None
 
-    def __init__(self, *,
-                 code: Optional[int]=None,
-                 message: str='',
-                 headers: Optional[_CIMultiDict]=None) -> None:
+    def __init__(
+        self,
+        *,
+        code: Optional[int] = None,
+        message: str = "",
+        headers: Optional[_CIMultiDict] = None,
+    ) -> None:
         if code is not None:
             self.code = code
         self.headers = headers
@@ -41,10 +44,9 @@ class HttpProcessingError(Exception):
 class BadHttpMessage(HttpProcessingError):
 
     code = 400
-    message = 'Bad Request'
+    message = "Bad Request"
 
-    def __init__(self, message: str, *,
-                 headers: Optional[_CIMultiDict]=None) -> None:
+    def __init__(self, message: str, *, headers: Optional[_CIMultiDict] = None) -> None:
         super().__init__(message=message, headers=headers)
         self.args = (message,)
 
@@ -52,7 +54,7 @@ class BadHttpMessage(HttpProcessingError):
 class HttpBadRequest(BadHttpMessage):
 
     code = 400
-    message = 'Bad Request'
+    message = "Bad Request"
 
 
 class PayloadEncodingError(BadHttpMessage):
@@ -72,32 +74,29 @@ class ContentLengthError(PayloadEncodingError):
 
 
 class LineTooLong(BadHttpMessage):
-
-    def __init__(self, line: str,
-                 limit: str='Unknown',
-                 actual_size: str='Unknown') -> None:
+    def __init__(
+        self, line: str, limit: str = "Unknown", actual_size: str = "Unknown"
+    ) -> None:
         super().__init__(
-            "Got more than %s bytes (%s) when reading %s." % (
-                limit, actual_size, line))
+            "Got more than %s bytes (%s) when reading %s." % (limit, actual_size, line)
+        )
         self.args = (line, limit, actual_size)
 
 
 class InvalidHeader(BadHttpMessage):
-
     def __init__(self, hdr: Union[bytes, str]) -> None:
         if isinstance(hdr, bytes):
-            hdr = hdr.decode('utf-8', 'surrogateescape')
-        super().__init__('Invalid HTTP Header: {}'.format(hdr))
+            hdr = hdr.decode("utf-8", "surrogateescape")
+        super().__init__("Invalid HTTP Header: {}".format(hdr))
         self.hdr = hdr
         self.args = (hdr,)
 
 
 class BadStatusLine(BadHttpMessage):
-
-    def __init__(self, line: str='') -> None:
+    def __init__(self, line: str = "") -> None:
         if not isinstance(line, str):
             line = repr(line)
-        super().__init__(f'Bad status line {line!r}')
+        super().__init__(f"Bad status line {line!r}")
         self.args = (line,)
         self.line = line
 

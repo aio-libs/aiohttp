@@ -12,10 +12,10 @@ async def test_repr() -> None:
     manager = web.Server(serve)
     handler = manager()
 
-    assert '<RequestHandler disconnected>' == repr(handler)
+    assert "<RequestHandler disconnected>" == repr(handler)
 
     handler.transport = object()
-    assert '<RequestHandler connected>' == repr(handler)
+    assert "<RequestHandler connected>" == repr(handler)
 
 
 async def test_connections() -> None:

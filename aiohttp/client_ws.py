@@ -26,21 +26,22 @@ from .typedefs import (
 
 
 class ClientWebSocketResponse:
-
-    def __init__(self,
-                 reader: 'FlowControlDataQueue[WSMessage]',
-                 writer: WebSocketWriter,
-                 protocol: Optional[str],
-                 response: ClientResponse,
-                 timeout: float,
-                 autoclose: bool,
-                 autoping: bool,
-                 loop: asyncio.AbstractEventLoop,
-                 *,
-                 receive_timeout: Optional[float]=None,
-                 heartbeat: Optional[float]=None,
-                 compress: int=0,
-                 client_notakeover: bool=False) -> None:
+    def __init__(
+        self,
+        reader: "FlowControlDataQueue[WSMessage]",
+        writer: WebSocketWriter,
+        protocol: Optional[str],
+        response: ClientResponse,
+        timeout: float,
+        autoclose: bool,
+        autoping: bool,
+        loop: asyncio.AbstractEventLoop,
+        *,
+        receive_timeout: Optional[float] = None,
+        heartbeat: Optional[float] = None,
+        compress: int = 0,
+        client_notakeover: bool = False
+    ) -> None:
         self._response = response
         self._conn = response.connection
 
@@ -81,7 +82,8 @@ class ClientWebSocketResponse:
 
         if self._heartbeat is not None:
             self._heartbeat_cb = call_later(
-                self._send_heartbeat, self._heartbeat, self._loop)
+                self._send_heartbeat, self._heartbeat, self._loop
+            )
 
     def _send_heartbeat(self) -> None:
         if self._heartbeat is not None and not self._closed:
@@ -93,7 +95,8 @@ class ClientWebSocketResponse:
             if self._pong_response_cb is not None:
                 self._pong_response_cb.cancel()
             self._pong_response_cb = call_later(
-                self._pong_not_received, self._pong_heartbeat, self._loop)
+                self._pong_not_received, self._pong_heartbeat, self._loop
+            )
 
     def _pong_not_received(self) -> None:
         if not self._closed:
@@ -122,7 +125,7 @@ class ClientWebSocketResponse:
     def client_notakeover(self) -> bool:
         return self._client_notakeover
 
-    def get_extra_info(self, name: str, default: Any=None) -> Any:
+    def get_extra_info(self, name: str, default: Any = None) -> Any:
         """extra info from connection transport"""
         conn = self._response.connection
         if conn is None:
@@ -135,31 +138,32 @@ class ClientWebSocketResponse:
     def exception(self) -> Optional[BaseException]:
         return self._exception
 
-    async def ping(self, message: bytes=b'') -> None:
+    async def ping(self, message: bytes = b"") -> None:
         await self._writer.ping(message)
 
-    async def pong(self, message: bytes=b'') -> None:
+    async def pong(self, message: bytes = b"") -> None:
         await self._writer.pong(message)
 
-    async def send_str(self, data: str,
-                       compress: Optional[int]=None) -> None:
+    async def send_str(self, data: str, compress: Optional[int] = None) -> None:
         if not isinstance(data, str):
-            raise TypeError('data argument must be str (%r)' % type(data))
+            raise TypeError("data argument must be str (%r)" % type(data))
         await self._writer.send(data, binary=False, compress=compress)
 
-    async def send_bytes(self, data: bytes,
-                         compress: Optional[int]=None) -> None:
+    async def send_bytes(self, data: bytes, compress: Optional[int] = None) -> None:
         if not isinstance(data, (bytes, bytearray, memoryview)):
-            raise TypeError('data argument must be byte-ish (%r)' %
-                            type(data))
+            raise TypeError("data argument must be byte-ish (%r)" % type(data))
         await self._writer.send(data, binary=True, compress=compress)
 
-    async def send_json(self, data: Any,
-                        compress: Optional[int]=None,
-                        *, dumps: JSONEncoder=DEFAULT_JSON_ENCODER) -> None:
+    async def send_json(
+        self,
+        data: Any,
+        compress: Optional[int] = None,
+        *,
+        dumps: JSONEncoder = DEFAULT_JSON_ENCODER
+    ) -> None:
         await self.send_str(dumps(data), compress=compress)
 
-    async def close(self, *, code: int=1000, message: bytes=b'') -> bool:
+    async def close(self, *, code: int = 1000, message: bytes = b"") -> bool:
         # we need to break `receive()` cycle first,
         # `close()` may be called from different task
         if self._waiting is not None and not self._closed:
@@ -206,11 +210,10 @@ class ClientWebSocketResponse:
         else:
             return False
 
-    async def receive(self, timeout: Optional[float]=None) -> WSMessage:
+    async def receive(self, timeout: Optional[float] = None) -> WSMessage:
         while True:
             if self._waiting is not None:
-                raise RuntimeError(
-                    'Concurrent call to receive() is not allowed')
+                raise RuntimeError("Concurrent call to receive() is not allowed")
 
             if self._closed:
                 return WS_CLOSED_MESSAGE
@@ -222,8 +225,8 @@ class ClientWebSocketResponse:
                 self._waiting = self._loop.create_future()
                 try:
                     with async_timeout.timeout(
-                            timeout or self._receive_timeout,
-                            loop=self._loop):
+                        timeout or self._receive_timeout, loop=self._loop
+                    ):
                         msg = await self._reader.read()
                     self._reset_heartbeat()
                 finally:
@@ -267,35 +270,36 @@ class ClientWebSocketResponse:
 
             return msg
 
-    async def receive_str(self, *, timeout: Optional[float]=None) -> str:
+    async def receive_str(self, *, timeout: Optional[float] = None) -> str:
         msg = await self.receive(timeout)
         if msg.type != WSMsgType.TEXT:
             raise TypeError(
-                "Received message {}:{!r} is not str".format(msg.type,
-                                                             msg.data))
+                "Received message {}:{!r} is not str".format(msg.type, msg.data)
+            )
         return msg.data
 
-    async def receive_bytes(self, *, timeout: Optional[float]=None) -> bytes:
+    async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
         if msg.type != WSMsgType.BINARY:
             raise TypeError(
-                "Received message {}:{!r} is not bytes".format(msg.type,
-                                                               msg.data))
+                "Received message {}:{!r} is not bytes".format(msg.type, msg.data)
+            )
         return msg.data
 
-    async def receive_json(self,
-                           *, loads: JSONDecoder=DEFAULT_JSON_DECODER,
-                           timeout: Optional[float]=None) -> Any:
+    async def receive_json(
+        self,
+        *,
+        loads: JSONDecoder = DEFAULT_JSON_DECODER,
+        timeout: Optional[float] = None
+    ) -> Any:
         data = await self.receive_str(timeout=timeout)
         return loads(data)
 
-    def __aiter__(self) -> 'ClientWebSocketResponse':
+    def __aiter__(self) -> "ClientWebSocketResponse":
         return self
 
     async def __anext__(self) -> WSMessage:
         msg = await self.receive()
-        if msg.type in (WSMsgType.CLOSE,
-                        WSMsgType.CLOSING,
-                        WSMsgType.CLOSED):
+        if msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSING, WSMsgType.CLOSED):
             raise StopAsyncIteration  # NOQA
         return msg

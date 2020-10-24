@@ -28,7 +28,7 @@ async def test_add_signal_handler_not_a_callable(app) -> None:
 
 async def test_function_signal_dispatch(app) -> None:
     signal = Signal(app)
-    kwargs = {'foo': 1, 'bar': 2}
+    kwargs = {"foo": 1, "bar": 2}
 
     callback_mock = mock.Mock()
 
@@ -44,8 +44,8 @@ async def test_function_signal_dispatch(app) -> None:
 
 async def test_function_signal_dispatch2(app) -> None:
     signal = Signal(app)
-    args = {'a', 'b'}
-    kwargs = {'foo': 1, 'bar': 2}
+    args = {"a", "b"}
+    kwargs = {"foo": 1, "bar": 2}
 
     callback_mock = mock.Mock()
 
@@ -68,8 +68,8 @@ async def test_response_prepare(app) -> None:
     app.on_response_prepare.append(cb)
     app.on_response_prepare.freeze()
 
-    request = make_request(app, 'GET', '/')
-    response = Response(body=b'')
+    request = make_request(app, "GET", "/")
+    response = Response(body=b"")
     await response.prepare(request)
 
     callback.assert_called_once_with(request, response)
@@ -77,7 +77,7 @@ async def test_response_prepare(app) -> None:
 
 async def test_non_coroutine(app) -> None:
     signal = Signal(app)
-    kwargs = {'foo': 1, 'bar': 2}
+    kwargs = {"foo": 1, "bar": 2}
 
     callback = mock.Mock()
 
@@ -162,6 +162,7 @@ async def test_repr(app) -> None:
 
     signal.append(callback)
 
-    assert re.match(r"<Signal owner=<Application .+>, frozen=False, "
-                    r"\[<Mock id='\d+'>\]>",
-                    repr(signal))
+    assert re.match(
+        r"<Signal owner=<Application .+>, frozen=False, " r"\[<Mock id='\d+'>\]>",
+        repr(signal),
+    )

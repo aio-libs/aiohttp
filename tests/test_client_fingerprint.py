@@ -6,29 +6,29 @@ import pytest
 import aiohttp
 from aiohttp.client_reqrep import _merge_ssl_params
 
-ssl = pytest.importorskip('ssl')
+ssl = pytest.importorskip("ssl")
 
 
 def test_fingerprint_sha256() -> None:
-    sha256 = hashlib.sha256(b'12345678'*64).digest()
+    sha256 = hashlib.sha256(b"12345678" * 64).digest()
     fp = aiohttp.Fingerprint(sha256)
     assert fp.fingerprint == sha256
 
 
 def test_fingerprint_sha1() -> None:
-    sha1 = hashlib.sha1(b'12345678'*64).digest()
+    sha1 = hashlib.sha1(b"12345678" * 64).digest()
     with pytest.raises(ValueError):
         aiohttp.Fingerprint(sha1)
 
 
 def test_fingerprint_md5() -> None:
-    md5 = hashlib.md5(b'12345678'*64).digest()
+    md5 = hashlib.md5(b"12345678" * 64).digest()
     with pytest.raises(ValueError):
         aiohttp.Fingerprint(md5)
 
 
 def test_fingerprint_check_no_ssl() -> None:
-    sha256 = hashlib.sha256(b'12345678'*64).digest()
+    sha256 = hashlib.sha256(b"12345678" * 64).digest()
     fp = aiohttp.Fingerprint(sha256)
     transport = mock.Mock()
     transport.get_extra_info.return_value = None
@@ -62,14 +62,14 @@ def test__merge_ssl_params_ssl_context_conflict() -> None:
 
 
 def test__merge_ssl_params_fingerprint() -> None:
-    digest = hashlib.sha256(b'123').digest()
+    digest = hashlib.sha256(b"123").digest()
     with pytest.warns(DeprecationWarning):
         ret = _merge_ssl_params(None, None, None, digest)
         assert ret.fingerprint == digest
 
 
 def test__merge_ssl_params_fingerprint_conflict() -> None:
-    fingerprint = aiohttp.Fingerprint(hashlib.sha256(b'123').digest())
+    fingerprint = aiohttp.Fingerprint(hashlib.sha256(b"123").digest())
     ctx = ssl.SSLContext()
     with pytest.warns(DeprecationWarning):
         with pytest.raises(ValueError):
