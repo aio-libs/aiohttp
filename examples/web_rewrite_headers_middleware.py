@@ -17,13 +17,13 @@ async def middleware(request, handler):
     except web.HTTPException as exc:
         raise exc
     if not response.prepared:
-        response.headers['SERVER'] = "Secured Server Software"
+        response.headers["SERVER"] = "Secured Server Software"
     return response
 
 
 def init():
     app = web.Application(middlewares=[middleware])
-    app.router.add_get('/', handler)
+    app.router.add_get("/", handler)
     return app
 
 

@@ -7,7 +7,6 @@ from aiohttp.locks import EventResultOrError
 
 
 class TestEventResultOrError:
-
     async def test_set_exception(self, loop) -> None:
         ev = EventResultOrError(loop=loop)
 

@@ -7,18 +7,17 @@ from .web_response import StreamResponse
 from .web_urldispatcher import SystemRoute
 
 __all__ = (
-    'middleware',
-    'normalize_path_middleware',
+    "middleware",
+    "normalize_path_middleware",
 )
 
 if TYPE_CHECKING:  # pragma: no cover
     from .web_app import Application  # noqa
 
-_Func = TypeVar('_Func')
+_Func = TypeVar("_Func")
 
 
-async def _check_request_resolves(request: Request,
-                                  path: str) -> Tuple[bool, Request]:
+async def _check_request_resolves(request: Request, path: str) -> Tuple[bool, Request]:
     alt_request = request.clone(rel_url=path)
 
     match_info = await request.app.router.resolve(alt_request)
@@ -40,9 +39,12 @@ _Middleware = Callable[[Request, _Handler], Awaitable[StreamResponse]]
 
 
 def normalize_path_middleware(
-        *, append_slash: bool=True, remove_slash: bool=False,
-        merge_slashes: bool=True,
-        redirect_class: Type[_HTTPMove]=HTTPPermanentRedirect) -> _Middleware:
+    *,
+    append_slash: bool = True,
+    remove_slash: bool = False,
+    merge_slashes: bool = True,
+    redirect_class: Type[_HTTPMove] = HTTPPermanentRedirect
+) -> _Middleware:
     """
     Middleware factory which produces a middleware that normalizes
     the path of a request. By normalizing it means:
@@ -80,29 +82,27 @@ def normalize_path_middleware(
     async def impl(request: Request, handler: _Handler) -> StreamResponse:
         if isinstance(request.match_info.route, SystemRoute):
             paths_to_check = []
-            if '?' in request.raw_path:
-                path, query = request.raw_path.split('?', 1)
-                query = '?' + query
+            if "?" in request.raw_path:
+                path, query = request.raw_path.split("?", 1)
+                query = "?" + query
             else:
-                query = ''
+                query = ""
                 path = request.raw_path
 
             if merge_slashes:
-                paths_to_check.append(re.sub('//+', '/', path))
-            if append_slash and not request.path.endswith('/'):
-                paths_to_check.append(path + '/')
-            if remove_slash and request.path.endswith('/'):
+                paths_to_check.append(re.sub("//+", "/", path))
+            if append_slash and not request.path.endswith("/"):
+                paths_to_check.append(path + "/")
+            if remove_slash and request.path.endswith("/"):
                 paths_to_check.append(path[:-1])
             if merge_slashes and append_slash:
-                paths_to_check.append(
-                    re.sub('//+', '/', path + '/'))
+                paths_to_check.append(re.sub("//+", "/", path + "/"))
             if merge_slashes and remove_slash:
-                merged_slashes = re.sub('//+', '/', path)
+                merged_slashes = re.sub("//+", "/", path)
                 paths_to_check.append(merged_slashes[:-1])
 
             for path in paths_to_check:
-                resolves, request = await _check_request_resolves(
-                    request, path)
+                resolves, request = await _check_request_resolves(request, path)
                 if resolves:
                     raise redirect_class(request.raw_path + query)
 
@@ -111,10 +111,10 @@ def normalize_path_middleware(
     return impl
 
 
-def _fix_request_current_app(app: 'Application') -> _Middleware:
-
+def _fix_request_current_app(app: "Application") -> _Middleware:
     @middleware
     async def impl(request: Request, handler: _Handler) -> StreamResponse:
         with request.match_info.set_current_app(app):
             return await handler(request)
+
     return impl

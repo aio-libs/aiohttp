@@ -29,27 +29,22 @@ def init(argv):
     )
 
     # Positional argument
-    arg_parser.add_argument(
-        "message",
-        help="message to print"
-    )
+    arg_parser.add_argument("message", help="message to print")
 
     # Optional argument
     arg_parser.add_argument(
-        "--repeat",
-        help="number of times to repeat message", type=int, default="1"
+        "--repeat", help="number of times to repeat message", type=int, default="1"
     )
 
     # Avoid conflict with -h from `aiohttp.web` CLI parser
     arg_parser.add_argument(
-        "--app-help",
-        help="show this message and exit", action="help"
+        "--app-help", help="show this message and exit", action="help"
     )
 
     args = arg_parser.parse_args(argv)
 
     app = web.Application()
     app["args"] = args
-    app.router.add_get('/', display_message)
+    app.router.add_get("/", display_message)
 
     return app

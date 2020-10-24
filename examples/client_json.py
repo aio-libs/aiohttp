@@ -4,9 +4,8 @@ import aiohttp
 
 
 async def fetch(session):
-    print('Query http://httpbin.org/get')
-    async with session.get(
-            'http://httpbin.org/get') as resp:
+    print("Query http://httpbin.org/get")
+    async with session.get("http://httpbin.org/get") as resp:
         print(resp.status)
         data = await resp.json()
         print(data)

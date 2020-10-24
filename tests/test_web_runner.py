@@ -23,6 +23,7 @@ def make_runner(loop, app):
         runner = web.AppRunner(app, **kwargs)
         runners.append(runner)
         return runner
+
     yield go
     for runner in runners:
         loop.run_until_complete(runner.cleanup())
@@ -35,8 +36,9 @@ async def test_site_for_nonfrozen_app(make_runner) -> None:
     assert len(runner.sites) == 0
 
 
-@pytest.mark.skipif(platform.system() == "Windows",
-                    reason="the test is not valid for Windows")
+@pytest.mark.skipif(
+    platform.system() == "Windows", reason="the test is not valid for Windows"
+)
 async def test_runner_setup_handle_signals(make_runner) -> None:
     runner = make_runner(handle_signals=True)
     await runner.setup()
@@ -45,8 +47,9 @@ async def test_runner_setup_handle_signals(make_runner) -> None:
     assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
 
 
-@pytest.mark.skipif(platform.system() == "Windows",
-                    reason="the test is not valid for Windows")
+@pytest.mark.skipif(
+    platform.system() == "Windows", reason="the test is not valid for Windows"
+)
 async def test_runner_setup_without_signal_handling(make_runner) -> None:
     runner = make_runner(handle_signals=False)
     await runner.setup()
@@ -56,7 +59,7 @@ async def test_runner_setup_without_signal_handling(make_runner) -> None:
 
 
 async def test_site_double_added(make_runner) -> None:
-    _sock = get_unused_port_socket('127.0.0.1')
+    _sock = get_unused_port_socket("127.0.0.1")
     runner = make_runner()
     await runner.setup()
     site = web.SockSite(runner, _sock)
@@ -78,9 +81,9 @@ async def test_site_stop_not_started(make_runner) -> None:
 
 
 async def test_custom_log_format(make_runner) -> None:
-    runner = make_runner(access_log_format='abc')
+    runner = make_runner(access_log_format="abc")
     await runner.setup()
-    assert runner.server._kwargs['access_log_format'] == 'abc'
+    assert runner.server._kwargs["access_log_format"] == "abc"
 
 
 async def test_unreg_site(make_runner) -> None:
@@ -101,15 +104,16 @@ def test_non_app() -> None:
         web.AppRunner(object())
 
 
-@pytest.mark.skipif(platform.system() == "Windows",
-                    reason="Unix socket support is required")
+@pytest.mark.skipif(
+    platform.system() == "Windows", reason="Unix socket support is required"
+)
 async def test_addresses(make_runner, shorttmpdir) -> None:
-    _sock = get_unused_port_socket('127.0.0.1')
+    _sock = get_unused_port_socket("127.0.0.1")
     runner = make_runner()
     await runner.setup()
     tcp = web.SockSite(runner, _sock)
     await tcp.start()
-    path = str(shorttmpdir / 'tmp.sock')
+    path = str(shorttmpdir / "tmp.sock")
     unix = web.UnixSite(runner, path)
     await unix.start()
     actual_addrs = runner.addresses
@@ -117,26 +121,20 @@ async def test_addresses(make_runner, shorttmpdir) -> None:
     assert actual_addrs == [(expected_host, expected_post), path]
 
 
-@pytest.mark.skipif(platform.system() != "Windows",
-                    reason="Proactor Event loop present only in Windows")
-async def test_named_pipe_runner_wrong_loop(
-    app,
-    selector_loop,
-    pipe_name
-) -> None:
+@pytest.mark.skipif(
+    platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
+)
+async def test_named_pipe_runner_wrong_loop(app, selector_loop, pipe_name) -> None:
     runner = web.AppRunner(app)
     await runner.setup()
     with pytest.raises(RuntimeError):
         web.NamedPipeSite(runner, pipe_name)
 
 
-@pytest.mark.skipif(platform.system() != "Windows",
-                    reason="Proactor Event loop present only in Windows")
-async def test_named_pipe_runner_proactor_loop(
-    proactor_loop,
-    app,
-    pipe_name
-) -> None:
+@pytest.mark.skipif(
+    platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
+)
+async def test_named_pipe_runner_proactor_loop(proactor_loop, app, pipe_name) -> None:
     runner = web.AppRunner(app)
     await runner.setup()
     pipe = web.NamedPipeSite(runner, pipe_name)
@@ -155,7 +153,7 @@ async def test_tcpsite_default_host(make_runner):
     async def mock_create_server(*args, **kwargs):
         calls.append((args, kwargs))
 
-    with patch('asyncio.get_event_loop') as mock_get_loop:
+    with patch("asyncio.get_event_loop") as mock_get_loop:
         mock_get_loop.return_value.create_server = mock_create_server
         await site.start()
 

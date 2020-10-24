@@ -26,7 +26,6 @@ from aiohttp.tracing import (
 
 
 class TestTraceConfig:
-
     def test_trace_config_ctx_default(self) -> None:
         trace_config = TraceConfig()
         assert isinstance(trace_config.trace_config_ctx(), SimpleNamespace)
@@ -39,7 +38,8 @@ class TestTraceConfig:
         trace_request_ctx = Mock()
         trace_config = TraceConfig()
         trace_config_ctx = trace_config.trace_config_ctx(
-            trace_request_ctx=trace_request_ctx)
+            trace_request_ctx=trace_request_ctx
+        )
         assert trace_config_ctx.trace_request_ctx is trace_request_ctx
 
     def test_freeze(self) -> None:
@@ -64,84 +64,42 @@ class TestTraceConfig:
 
 
 class TestTrace:
-
-    @pytest.mark.parametrize('signal,params,param_obj', [
-        (
-            'request_start',
-            (Mock(), Mock(), Mock()),
-            TraceRequestStartParams
-        ),
-        (
-            'request_chunk_sent',
-            (Mock(), Mock(), Mock()),
-            TraceRequestChunkSentParams
-        ),
-        (
-            'response_chunk_received',
-            (Mock(), Mock(), Mock()),
-            TraceResponseChunkReceivedParams
-        ),
-        (
-            'request_end',
-            (Mock(), Mock(), Mock(), Mock()),
-            TraceRequestEndParams
-        ),
-        (
-            'request_exception',
-            (Mock(), Mock(), Mock(), Mock()),
-            TraceRequestExceptionParams
-        ),
-        (
-            'request_redirect',
-            (Mock(), Mock(), Mock(), Mock()),
-            TraceRequestRedirectParams
-        ),
-        (
-            'connection_queued_start',
-            (),
-            TraceConnectionQueuedStartParams
-        ),
-        (
-            'connection_queued_end',
-            (),
-            TraceConnectionQueuedEndParams
-        ),
-        (
-            'connection_create_start',
-            (),
-            TraceConnectionCreateStartParams
-        ),
-        (
-            'connection_create_end',
-            (),
-            TraceConnectionCreateEndParams
-        ),
-        (
-            'connection_reuseconn',
-            (),
-            TraceConnectionReuseconnParams
-        ),
-        (
-            'dns_resolvehost_start',
-            (Mock(),),
-            TraceDnsResolveHostStartParams
-        ),
-        (
-            'dns_resolvehost_end',
-            (Mock(),),
-            TraceDnsResolveHostEndParams
-        ),
-        (
-            'dns_cache_hit',
-            (Mock(),),
-            TraceDnsCacheHitParams
-        ),
-        (
-            'dns_cache_miss',
-            (Mock(),),
-            TraceDnsCacheMissParams
-        )
-    ])
+    @pytest.mark.parametrize(
+        "signal,params,param_obj",
+        [
+            ("request_start", (Mock(), Mock(), Mock()), TraceRequestStartParams),
+            (
+                "request_chunk_sent",
+                (Mock(), Mock(), Mock()),
+                TraceRequestChunkSentParams,
+            ),
+            (
+                "response_chunk_received",
+                (Mock(), Mock(), Mock()),
+                TraceResponseChunkReceivedParams,
+            ),
+            ("request_end", (Mock(), Mock(), Mock(), Mock()), TraceRequestEndParams),
+            (
+                "request_exception",
+                (Mock(), Mock(), Mock(), Mock()),
+                TraceRequestExceptionParams,
+            ),
+            (
+                "request_redirect",
+                (Mock(), Mock(), Mock(), Mock()),
+                TraceRequestRedirectParams,
+            ),
+            ("connection_queued_start", (), TraceConnectionQueuedStartParams),
+            ("connection_queued_end", (), TraceConnectionQueuedEndParams),
+            ("connection_create_start", (), TraceConnectionCreateStartParams),
+            ("connection_create_end", (), TraceConnectionCreateEndParams),
+            ("connection_reuseconn", (), TraceConnectionReuseconnParams),
+            ("dns_resolvehost_start", (Mock(),), TraceDnsResolveHostStartParams),
+            ("dns_resolvehost_end", (Mock(),), TraceDnsResolveHostEndParams),
+            ("dns_cache_hit", (Mock(),), TraceDnsCacheHitParams),
+            ("dns_cache_miss", (Mock(),), TraceDnsCacheMissParams),
+        ],
+    )
     async def test_send(self, signal, params, param_obj) -> None:
         session = Mock()
         trace_request_ctx = Mock()
@@ -153,12 +111,12 @@ class TestTrace:
         trace = Trace(
             session,
             trace_config,
-            trace_config.trace_config_ctx(trace_request_ctx=trace_request_ctx)
+            trace_config.trace_config_ctx(trace_request_ctx=trace_request_ctx),
         )
         await getattr(trace, "send_%s" % signal)(*params)
 
         callback.assert_called_once_with(
             session,
             SimpleNamespace(trace_request_ctx=trace_request_ctx),
-            param_obj(*params)
+            param_obj(*params),
         )

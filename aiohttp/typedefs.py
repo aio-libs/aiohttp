@@ -39,25 +39,22 @@ else:
 Byteish = Union[bytes, bytearray, memoryview]
 JSONEncoder = Callable[[Any], str]
 JSONDecoder = Callable[[str], Any]
-LooseHeaders = Union[Mapping[Union[str, istr], str], _CIMultiDict,
-                     _CIMultiDictProxy]
+LooseHeaders = Union[Mapping[Union[str, istr], str], _CIMultiDict, _CIMultiDictProxy]
 RawHeaders = Tuple[Tuple[bytes, bytes], ...]
 StrOrURL = Union[str, URL]
 
-LooseCookiesMappings = Mapping[
-    str, Union[str, 'BaseCookie[str]', 'Morsel[Any]']
-]
+LooseCookiesMappings = Mapping[str, Union[str, "BaseCookie[str]", "Morsel[Any]"]]
 LooseCookiesIterables = Iterable[
-    Tuple[str, Union[str, 'BaseCookie[str]', 'Morsel[Any]']]
+    Tuple[str, Union[str, "BaseCookie[str]", "Morsel[Any]"]]
 ]
 LooseCookies = Union[
     LooseCookiesMappings,
     LooseCookiesIterables,
-    'BaseCookie[str]',
+    "BaseCookie[str]",
 ]
 
 
 if sys.version_info >= (3, 6):
-    PathLike = Union[str, 'os.PathLike[str]']
+    PathLike = Union[str, "os.PathLike[str]"]
 else:
     PathLike = Union[str, pathlib.PurePath]
