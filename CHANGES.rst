@@ -20,8 +20,7 @@ Changelog
 Bugfixes
 --------
 
-- Fixed a type error with reified properties caused by the
-  conditional import of `Protocol`.
+- Fixed a type error caused by the conditional import of `Protocol`.
   `#5111 <https://github.com/aio-libs/aiohttp/issues/5111>`_
 
 
