@@ -84,7 +84,7 @@ if TYPE_CHECKING:  # pragma: no cover
 @attr.s(auto_attribs=True, frozen=True, slots=True)
 class ContentDisposition:
     type: Optional[str]
-    parameters: MappingProxyType[str, str]
+    parameters: "MappingProxyType[str, str]"
     filename: Optional[str]
 
 
