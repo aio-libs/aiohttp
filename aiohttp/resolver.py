@@ -26,10 +26,10 @@ class ThreadedResolver(AbstractResolver):
         self._loop = get_running_loop(loop)
 
     async def resolve(
-        self, host: str, port: int = 0, family: int = socket.AF_INET
+        self, hostname: str, port: int = 0, family: int = socket.AF_INET
     ) -> List[Dict[str, Any]]:
         infos = await self._loop.getaddrinfo(
-            host, port, type=socket.SOCK_STREAM, family=family
+            hostname, port, type=socket.SOCK_STREAM, family=family
         )
 
         hosts = []
@@ -46,7 +46,7 @@ class ThreadedResolver(AbstractResolver):
                 host, port = address[:2]
             hosts.append(
                 {
-                    "hostname": host,
+                    "hostname": hostname,
                     "host": host,
                     "port": port,
                     "family": family,

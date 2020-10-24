@@ -130,6 +130,7 @@ async def test_threaded_resolver_positive_lookup() -> None:
     loop.getaddrinfo = fake_addrinfo(["127.0.0.1"])
     resolver = ThreadedResolver(loop=loop)
     real = await resolver.resolve("www.python.org")
+    assert real[0]["hostname"] == "www.python.org"
     ipaddress.ip_address(real[0]["host"])
 
 
