@@ -6,39 +6,39 @@ from pprint import pformat
 
 from aiohttp import web
 
-tmpl = '''\
+tmpl = """\
 <html>
     <body>
         <a href="/login">Login</a><br/>
         <a href="/logout">Logout</a><br/>
         <pre>{}</pre>
     </body>
-</html>'''
+</html>"""
 
 
 async def root(request):
-    resp = web.Response(content_type='text/html')
+    resp = web.Response(content_type="text/html")
     resp.text = tmpl.format(pformat(request.cookies))
     return resp
 
 
 async def login(request):
-    exc = web.HTTPFound(location='/')
-    exc.set_cookie('AUTH', 'secret')
+    exc = web.HTTPFound(location="/")
+    exc.set_cookie("AUTH", "secret")
     raise exc
 
 
 async def logout(request):
-    exc = web.HTTPFound(location='/')
-    exc.del_cookie('AUTH')
+    exc = web.HTTPFound(location="/")
+    exc.del_cookie("AUTH")
     raise exc
 
 
 def init():
     app = web.Application()
-    app.router.add_get('/', root)
-    app.router.add_get('/login', login)
-    app.router.add_get('/logout', logout)
+    app.router.add_get("/", root)
+    app.router.add_get("/login", login)
+    app.router.add_get("/logout", logout)
     return app
 
 

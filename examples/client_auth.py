@@ -4,9 +4,8 @@ import aiohttp
 
 
 async def fetch(session):
-    print('Query http://httpbin.org/basic-auth/andrew/password')
-    async with session.get(
-            'http://httpbin.org/basic-auth/andrew/password') as resp:
+    print("Query http://httpbin.org/basic-auth/andrew/password")
+    async with session.get("http://httpbin.org/basic-auth/andrew/password") as resp:
         print(resp.status)
         body = await resp.text()
         print(body)
@@ -14,7 +13,8 @@ async def fetch(session):
 
 async def go():
     async with aiohttp.ClientSession(
-            auth=aiohttp.BasicAuth('andrew', 'password')) as session:
+        auth=aiohttp.BasicAuth("andrew", "password")
+    ) as session:
         await fetch(session)
 
 
