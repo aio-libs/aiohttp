@@ -14,6 +14,19 @@ Changelog
 
 .. towncrier release notes start
 
+3.7.1 (2020-10-24)
+==================
+
+Bugfixes
+--------
+
+- Fixed a type error caused by the conditional import of `Protocol`.
+  `#5111 <https://github.com/aio-libs/aiohttp/issues/5111>`_
+
+
+----
+
+
 3.7.0 (2020-10-24)
 ==================
 

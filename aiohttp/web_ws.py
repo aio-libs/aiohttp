@@ -40,10 +40,10 @@ __all__ = (
 THRESHOLD_CONNLOST_ACCESS = 5
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class WebSocketReady:
-    ok = attr.ib(type=bool)
-    protocol = attr.ib(type=Optional[str])
+    ok: bool
+    protocol: Optional[str]
 
     def __bool__(self) -> bool:
         return self.ok

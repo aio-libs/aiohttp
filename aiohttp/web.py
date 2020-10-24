@@ -5,7 +5,18 @@ import sys
 from argparse import ArgumentParser
 from collections.abc import Iterable
 from importlib import import_module
-from typing import Any, Awaitable, Callable, List, Optional, Set, Type, Union, cast
+from typing import (
+    Any as Any,
+    Awaitable as Awaitable,
+    Callable as Callable,
+    Iterable as TypingIterable,
+    List as List,
+    Optional as Optional,
+    Set as Set,
+    Type as Type,
+    Union as Union,
+    cast as cast,
+)
 
 from .abc import AbstractAccessLogger
 from .helpers import all_tasks
@@ -270,11 +281,13 @@ try:
 except ImportError:  # pragma: no cover
     SSLContext = Any  # type: ignore
 
+HostSequence = TypingIterable[str]
+
 
 async def _run_app(
     app: Union[Application, Awaitable[Application]],
     *,
-    host: Optional[str] = None,
+    host: Optional[Union[str, HostSequence]] = None,
     port: Optional[int] = None,
     path: Optional[str] = None,
     sock: Optional[socket.socket] = None,
@@ -448,7 +461,7 @@ def run_app(
     app: Union[Application, Awaitable[Application]],
     *,
     debug: bool = False,
-    host: Optional[str] = None,
+    host: Optional[Union[str, HostSequence]] = None,
     port: Optional[int] = None,
     path: Optional[str] = None,
     sock: Optional[socket.socket] = None,

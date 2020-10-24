@@ -45,7 +45,7 @@ from urllib.request import getproxies
 import async_timeout
 import attr
 from multidict import MultiDict, MultiDictProxy
-from typing_extensions import final
+from typing_extensions import Protocol, final
 from yarl import URL
 
 from . import hdrs
@@ -66,11 +66,6 @@ try:
     from typing import ContextManager
 except ImportError:
     from typing_extensions import ContextManager
-
-if PY_38:
-    from typing import Protocol
-else:
-    from typing_extensions import Protocol  # type: ignore
 
 
 def all_tasks(
@@ -253,10 +248,10 @@ def netrc_from_env() -> Optional[netrc.netrc]:
     return None
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class ProxyInfo:
-    proxy = attr.ib(type=URL)
-    proxy_auth = attr.ib(type=Optional[BasicAuth])
+    proxy: URL
+    proxy_auth: Optional[BasicAuth]
 
 
 def proxies_from_env() -> Dict[str, ProxyInfo]:
@@ -323,12 +318,12 @@ def isasyncgenfunction(obj: Any) -> bool:
         return False
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class MimeType:
-    type = attr.ib(type=str)
-    subtype = attr.ib(type=str)
-    suffix = attr.ib(type=str)
-    parameters = attr.ib(type=MultiDictProxy)  # type: MultiDictProxy[str]
+    type: str
+    subtype: str
+    suffix: str
+    parameters: "MultiDictProxy[str]"
 
 
 @functools.lru_cache(maxsize=56)
