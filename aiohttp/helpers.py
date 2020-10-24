@@ -45,6 +45,7 @@ from urllib.request import getproxies
 import async_timeout
 import attr
 from multidict import MultiDict, MultiDictProxy
+from typing_extensions import Protocol
 from yarl import URL
 
 from . import hdrs
@@ -66,11 +67,6 @@ try:
     from typing import ContextManager
 except ImportError:
     from typing_extensions import ContextManager
-
-if PY_38:
-    from typing import Protocol
-else:
-    from typing_extensions import Protocol  # type: ignore
 
 
 def all_tasks(
