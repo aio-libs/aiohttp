@@ -9,10 +9,10 @@ Async http client/server framework
 
 |
 
-.. image:: https://dev.azure.com/aio-libs/aiohttp/_apis/build/status/CI?branchName=master
-   :target: https://dev.azure.com/aio-libs/aiohttp/_build
+.. image:: https://github.com/aio-libs/aiohttp/workflows/CI/badge.svg
+   :target: https://github.com/aio-libs/aiohttp/actions?query=workflow%3ACI
    :align: right
-   :alt: Azure Pipelines status for master branch
+   :alt: GitHub Actions status for master branch
 
 .. image:: https://codecov.io/gh/aio-libs/aiohttp/branch/master/graph/badge.svg
    :target: https://codecov.io/gh/aio-libs/aiohttp
