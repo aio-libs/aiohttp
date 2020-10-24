@@ -54,13 +54,13 @@ if TYPE_CHECKING:  # pragma: no cover
     from .web_urldispatcher import UrlMappingMatchInfo  # noqa
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class FileField:
-    name = attr.ib(type=str)
-    filename = attr.ib(type=str)
-    file = attr.ib(type=io.BufferedReader)
-    content_type = attr.ib(type=str)
-    headers = attr.ib(type=CIMultiDictProxy)  # type: CIMultiDictProxy[str]
+    name: str
+    filename: str
+    file: io.BufferedReader
+    content_type: str
+    headers: "CIMultiDictProxy[str]"
 
 
 _TCHAR = string.digits + string.ascii_letters + r"!#$%&'*+.^_`|~-"
