@@ -20,11 +20,7 @@ from typing import (
 
 import yarl
 
-from .abc import (
-    AbstractAccessLogger,
-    AbstractAsyncAccessLogger,
-    AbstractStreamWriter,
-)
+from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
 from .base_protocol import BaseProtocol
 from .helpers import ceil_timeout, current_task
 from .http import (

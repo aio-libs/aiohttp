@@ -7,11 +7,11 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import web
-from aiohttp.test_utils import AioHTTPTestCase
-from aiohttp.test_utils import RawTestServer as _RawTestServer
-from aiohttp.test_utils import TestClient as _TestClient
-from aiohttp.test_utils import TestServer as _TestServer
 from aiohttp.test_utils import (
+    AioHTTPTestCase,
+    RawTestServer as _RawTestServer,
+    TestClient as _TestClient,
+    TestServer as _TestServer,
     loop_context,
     make_mocked_request,
     unittest_run_loop,

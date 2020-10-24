@@ -15,8 +15,8 @@ from .test_utils import (
     loop_context,
     setup_test_loop,
     teardown_test_loop,
+    unused_port as _unused_port,
 )
-from .test_utils import unused_port as _unused_port
 
 try:
     import uvloop
