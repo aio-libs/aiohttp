@@ -2,23 +2,9 @@ import json
 import os  # noqa
 import pathlib  # noqa
 import sys
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Iterable,
-    Mapping,
-    Tuple,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Tuple, Union
 
-from multidict import (
-    CIMultiDict,
-    CIMultiDictProxy,
-    MultiDict,
-    MultiDictProxy,
-    istr,
-)
+from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, istr
 from yarl import URL
 
 DEFAULT_JSON_ENCODER = json.dumps
