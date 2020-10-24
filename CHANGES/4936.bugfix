@@ -1,1 +1,0 @@
-Fix for race condition on connections in BaseConnector that leads to exceeding the connection limit.
