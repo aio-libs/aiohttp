@@ -71,7 +71,7 @@ class FileField:
     filename: str
     file: io.BufferedReader
     content_type: str
-    headers: CIMultiDictProxy[str]
+    headers: "CIMultiDictProxy[str]"
 
 
 _TCHAR = string.digits + string.ascii_letters + r"!#$%&'*+.^_`|~-"

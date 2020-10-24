@@ -92,7 +92,7 @@ class ContentDisposition:
 class RequestInfo:
     url: URL
     method: str
-    headers: CIMultiDictProxy[str]
+    headers: "CIMultiDictProxy[str]"
     real_url: URL = attr.ib()
 
     @real_url.default

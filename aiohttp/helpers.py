@@ -323,7 +323,7 @@ class MimeType:
     type: str
     subtype: str
     suffix: str
-    parameters: MultiDictProxy[str]
+    parameters: "MultiDictProxy[str]"
 
 
 @functools.lru_cache(maxsize=56)
