@@ -21,8 +21,12 @@ cythonize: .install-cython $(PYXS:.pyx=.c)
 	@touch .install-deps
 
 .PHONY: lint
-lint: flake8 mypy isort-check
+lint: isort-check black-check flake8 mypy
 
+
+.PHONY: black-check
+black-check:
+	black --check $(SRC)
 
 .PHONY: isort
 isort:
