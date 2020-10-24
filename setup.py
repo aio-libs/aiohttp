@@ -46,7 +46,7 @@ extensions = [
 
 txt = (HERE / "aiohttp" / "__init__.py").read_text("utf-8")
 try:
-    version = re.findall(r"^__version__ = '([^']+)'\r?$", txt, re.M)[0]
+    version = re.findall(r'^__version__ = "([^"]+)"\r?$', txt, re.M)[0]
 except IndexError:
     raise RuntimeError("Unable to determine version.")
 
