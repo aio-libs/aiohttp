@@ -108,7 +108,7 @@ Congratulations, you are ready to run the test suite!
 Run autoformatter
 -----------------
 
-The project uses black + isort formatters to keep the source code style.
+The project uses black_ + isort_ formatters to keep the source code style.
 Please run `make fmt` after every change before starting tests.
 
   .. code-block:: shell
@@ -313,3 +313,7 @@ our team.
 .. _GitHub: https://github.com/aio-libs/aiohttp
 
 .. _ipdb: https://pypi.python.org/pypi/ipdb
+
+.. _black: https://pypi.python.org/pypi/black
+
+.. _isort: https://pypi.python.org/pypi/isort

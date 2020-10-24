@@ -19,6 +19,8 @@ asynctest
 auth
 autocalculated
 autodetection
+autoformatter
+autoformatters
 autogenerates
 autogeneration
 awaitable
