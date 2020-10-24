@@ -1,1 +1,0 @@
-Fix resolver task is not awaited when connector is cancelled

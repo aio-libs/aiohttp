@@ -1,1 +1,0 @@
-Fix tasks cancellation order on exit. The run_app task needs to be cancelled first for cleanup hooks to run with all tasks intact.

@@ -1,1 +1,0 @@
-Raising RuntimeError when trying to get encoding from not read body
