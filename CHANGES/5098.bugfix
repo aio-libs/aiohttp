@@ -1,2 +1,0 @@
-Make `web.run_app()` more responsive to Ctrl+C on Windows for Python < 3.8. It slightly
-increases CPU load as a side effect.

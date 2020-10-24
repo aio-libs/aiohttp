@@ -80,15 +80,24 @@ class AccessLoggerWrapper(AbstractAsyncAccessLogger):
     Wraps an AbstractAccessLogger so it behaves
     like an AbstractAsyncAccessLogger.
     """
-    def __init__(self, access_logger: AbstractAccessLogger):
+    def __init__(
+            self,
+            access_logger: AbstractAccessLogger,
+            loop: asyncio.AbstractEventLoop
+    ) -> None:
         self.access_logger = access_logger
+        self._loop = loop
         super().__init__()
 
     async def log(self,
                   request: BaseRequest,
                   response: StreamResponse,
                   request_start: float) -> None:
-        self.access_logger.log(request, response, request_start)
+        self.access_logger.log(
+            request,
+            response,
+            self._loop.time() - request_start
+        )
 
 
 class RequestHandler(BaseProtocol):
@@ -193,7 +202,10 @@ class RequestHandler(BaseProtocol):
                 self.access_logger = access_log_class()  # type: Optional[AbstractAsyncAccessLogger]  # noqa
             else:
                 access_logger = access_log_class(access_log, access_log_format)
-                self.access_logger = AccessLoggerWrapper(access_logger)
+                self.access_logger = AccessLoggerWrapper(
+                    access_logger,
+                    self._loop,
+                )
         else:
             self.access_logger = None
 
@@ -382,7 +394,7 @@ class RequestHandler(BaseProtocol):
                          request_start: float) -> None:
         if self.access_logger is not None:
             await self.access_logger.log(request, response,
-                                         self._loop.time() - request_start)
+                                         request_start)
 
     def log_debug(self, *args: Any, **kw: Any) -> None:
         if self._loop.get_debug():
