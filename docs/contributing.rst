@@ -98,11 +98,22 @@ After that please install libraries required for development:
 
   .. code-block:: shell
 
-     $ py.test tests -s
+     $ pytest tests -s
 
   in order to run the tests without output capturing.
 
 Congratulations, you are ready to run the test suite!
+
+
+Run autoformatter
+-----------------
+
+The project uses black + isort formatters to keep the source code style.
+Please run `make fmt` after every change before starting tests.
+
+  .. code-block:: shell
+
+     $ make fmt
 
 
 Run aiohttp test suite
@@ -115,10 +126,10 @@ command:
 
    $ make test
 
-The command at first will run the *flake8* tool (sorry, we don't accept
-pull requests with pep8 or pyflakes errors).
+The command at first will run the *linters* (sorry, we don't accept
+pull requests with pyflakes, black, isort, or mypy errors).
 
-On *flake8* success the tests will be run.
+On *lint* success the tests will be run.
 
 Please take a look on the produced output.
 
