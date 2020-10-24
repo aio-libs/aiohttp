@@ -427,6 +427,10 @@ class StreamResponse(BaseClass, HeadersMixin):
                         del headers[hdrs.CONTENT_LENGTH]
                 else:
                     keep_alive = False
+            # HTTP 1.1: https://tools.ietf.org/html/rfc7230#section-3.3.2
+            # HTTP 1.0: https://tools.ietf.org/html/rfc1945#section-10.4
+            elif version >= HttpVersion11 and self.status in (100, 101, 102, 103, 204):
+                del headers[hdrs.CONTENT_LENGTH]
 
         headers.setdefault(hdrs.CONTENT_TYPE, "application/octet-stream")
         headers.setdefault(hdrs.DATE, rfc822_formatted_time())
