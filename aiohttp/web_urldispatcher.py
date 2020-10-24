@@ -34,8 +34,7 @@ from typing import (  # noqa
 )
 
 from typing_extensions import TypedDict
-from yarl import URL
-from yarl import __version__ as yarl_version  # type: ignore
+from yarl import URL, __version__ as yarl_version  # type: ignore
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
@@ -570,10 +569,10 @@ class StaticResource(PrefixResource):
             ),
         }
 
-    def url_for(
+    def url_for(  # type: ignore
         self,
         *,
-        filename: Union[str, Path],  # type: ignore
+        filename: Union[str, Path],
         append_version: Optional[bool] = None,
     ) -> URL:
         if append_version is None:
@@ -808,12 +807,11 @@ class Domain(AbstractRuleMatching):
         elif "://" in domain:
             raise ValueError("Scheme not supported")
         url = URL("http://" + domain)
-        if not all(
-            self.re_part.fullmatch(x) for x in url.raw_host.split(".")
-        ):  # type: ignore
+        assert url.raw_host is not None
+        if not all(self.re_part.fullmatch(x) for x in url.raw_host.split(".")):
             raise ValueError("Domain not valid")
         if url.port == 80:
-            return url.raw_host  # type: ignore
+            return url.raw_host
         return "{}:{}".format(url.raw_host, url.port)
 
     async def match(self, request: Request) -> bool:

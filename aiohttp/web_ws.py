@@ -20,9 +20,10 @@ from .http import (
     WebSocketReader,
     WebSocketWriter,
     WSMessage,
+    WSMsgType as WSMsgType,
+    ws_ext_gen,
+    ws_ext_parse,
 )
-from .http import WSMsgType as WSMsgType
-from .http import ws_ext_gen, ws_ext_parse
 from .log import ws_logger
 from .streams import EofStream, FlowControlDataQueue
 from .typedefs import JSONDecoder, JSONEncoder

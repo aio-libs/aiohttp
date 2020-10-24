@@ -44,14 +44,7 @@ from .client_exceptions import (
 )
 from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest, Fingerprint, _merge_ssl_params
-from .helpers import (
-    PY_36,
-    CeilTimeout,
-    get_running_loop,
-    is_ip_address,
-    noop,
-    sentinel,
-)
+from .helpers import PY_36, CeilTimeout, get_running_loop, is_ip_address, noop, sentinel
 from .http import RESPONSES
 from .locks import EventResultOrError
 from .resolver import DefaultResolver

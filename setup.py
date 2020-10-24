@@ -2,11 +2,7 @@ import pathlib
 import re
 import sys
 from distutils.command.build_ext import build_ext
-from distutils.errors import (
-    CCompilerError,
-    DistutilsExecError,
-    DistutilsPlatformError,
-)
+from distutils.errors import CCompilerError, DistutilsExecError, DistutilsPlatformError
 
 from setuptools import Extension, setup
 
