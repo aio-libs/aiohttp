@@ -3,7 +3,7 @@ import base64
 import gc
 import os
 import platform
-from math import modf
+from math import isclose, modf
 from unittest import mock
 
 import pytest
@@ -346,7 +346,7 @@ def test_when_timeout_smaller_second(loop) -> None:
     handle.close()
 
     assert isinstance(when, float)
-    assert f"{when:.3f}" == f"{timer:.3f}"
+    assert isclose(when, timer)
 
 
 def test_timeout_handle_cb_exc(loop) -> None:
