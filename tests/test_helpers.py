@@ -5,7 +5,7 @@ import os
 import platform
 import sys
 import tempfile
-from math import modf
+from math import isclose, modf
 from unittest import mock
 
 import pytest
@@ -337,7 +337,7 @@ def test_when_timeout_smaller_second(loop) -> None:
     handle.close()
 
     assert isinstance(when, float)
-    assert abs(when - timer) < 0.01
+    assert isclose(when - timer, 0, abs_tol=0.001)
 
 
 def test_timeout_handle_cb_exc(loop) -> None:
