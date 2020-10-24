@@ -1952,7 +1952,8 @@ async def test_read_bufsize(aiohttp_client) -> None:
 
 
 @pytest.mark.parametrize(
-    "status", [101, 204],
+    "status",
+    [101, 204],
 )
 async def test_response_101_204_no_content_length_http11(
     status, aiohttp_client
