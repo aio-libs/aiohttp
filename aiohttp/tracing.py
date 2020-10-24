@@ -206,114 +206,114 @@ class TraceConfig:
         return self._on_dns_cache_miss
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceRequestStartParams:
     """ Parameters sent by the `on_request_start` signal"""
 
-    method = attr.ib(type=str)
-    url = attr.ib(type=URL)
-    headers = attr.ib(type="CIMultiDict[str]")
+    method: str
+    url: URL
+    headers: "CIMultiDict[str]"
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceRequestChunkSentParams:
     """ Parameters sent by the `on_request_chunk_sent` signal"""
 
-    method = attr.ib(type=str)
-    url = attr.ib(type=URL)
-    chunk = attr.ib(type=bytes)
+    method: str
+    url: URL
+    chunk: bytes
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceResponseChunkReceivedParams:
     """ Parameters sent by the `on_response_chunk_received` signal"""
 
-    method = attr.ib(type=str)
-    url = attr.ib(type=URL)
-    chunk = attr.ib(type=bytes)
+    method: str
+    url: URL
+    chunk: bytes
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceRequestEndParams:
     """ Parameters sent by the `on_request_end` signal"""
 
-    method = attr.ib(type=str)
-    url = attr.ib(type=URL)
-    headers = attr.ib(type="CIMultiDict[str]")
-    response = attr.ib(type=ClientResponse)
+    method: str
+    url: URL
+    headers: "CIMultiDict[str]"
+    response: ClientResponse
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceRequestExceptionParams:
     """ Parameters sent by the `on_request_exception` signal"""
 
-    method = attr.ib(type=str)
-    url = attr.ib(type=URL)
-    headers = attr.ib(type="CIMultiDict[str]")
-    exception = attr.ib(type=BaseException)
+    method: str
+    url: URL
+    headers: "CIMultiDict[str]"
+    exception: BaseException
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceRequestRedirectParams:
     """ Parameters sent by the `on_request_redirect` signal"""
 
-    method = attr.ib(type=str)
-    url = attr.ib(type=URL)
-    headers = attr.ib(type="CIMultiDict[str]")
-    response = attr.ib(type=ClientResponse)
+    method: str
+    url: URL
+    headers: "CIMultiDict[str]"
+    response: ClientResponse
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceConnectionQueuedStartParams:
     """ Parameters sent by the `on_connection_queued_start` signal"""
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceConnectionQueuedEndParams:
     """ Parameters sent by the `on_connection_queued_end` signal"""
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceConnectionCreateStartParams:
     """ Parameters sent by the `on_connection_create_start` signal"""
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceConnectionCreateEndParams:
     """ Parameters sent by the `on_connection_create_end` signal"""
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceConnectionReuseconnParams:
     """ Parameters sent by the `on_connection_reuseconn` signal"""
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceDnsResolveHostStartParams:
     """ Parameters sent by the `on_dns_resolvehost_start` signal"""
 
-    host = attr.ib(type=str)
+    host: str
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceDnsResolveHostEndParams:
     """ Parameters sent by the `on_dns_resolvehost_end` signal"""
 
-    host = attr.ib(type=str)
+    host: str
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceDnsCacheHitParams:
     """ Parameters sent by the `on_dns_cache_hit` signal"""
 
-    host = attr.ib(type=str)
+    host: str
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceDnsCacheMissParams:
     """ Parameters sent by the `on_dns_cache_miss` signal"""
 
-    host = attr.ib(type=str)
+    host: str
 
 
 class Trace:
