@@ -12,6 +12,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import FormData, HttpVersion10, HttpVersion11, TraceConfig, multipart, web
+from aiohttp.hdrs import CONTENT_LENGTH, TRANSFER_ENCODING
 from aiohttp.test_utils import make_mocked_coro
 
 try:
@@ -1879,3 +1880,20 @@ async def test_read_bufsize(aiohttp_client) -> None:
     resp = await client.post("/", data=b"data")
     assert resp.status == 200
     assert await resp.text() == "data (2, 4)"
+
+
+@pytest.mark.parametrize(
+    "status", [101, 204],
+)
+async def test_response_101_204_no_content_length_http11(
+    status, aiohttp_client
+) -> None:
+    async def handler(_):
+        return web.Response(status=status)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app, version="1.1")
+    resp = await client.get("/")
+    assert CONTENT_LENGTH not in resp.headers
+    assert TRANSFER_ENCODING not in resp.headers
