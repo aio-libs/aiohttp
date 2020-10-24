@@ -43,6 +43,7 @@ canonicalization
 canonicalize
 cchardet
 cChardet
+ceil
 Changelog
 charset
 charsetdetect
@@ -192,6 +193,7 @@ Overridable
 Paolini
 param
 params
+parsers
 pathlib
 peername
 performant
