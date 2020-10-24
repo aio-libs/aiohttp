@@ -77,7 +77,7 @@ Bugfixes
   `#4089 <https://github.com/aio-libs/aiohttp/issues/4089>`_
 - Preserve view handler function attributes across middlewares
   `#4174 <https://github.com/aio-libs/aiohttp/issues/4174>`_
-- Fix the string representation of `ServerDisconnectedError`.
+- Fix the string representation of ``ServerDisconnectedError``.
   `#4175 <https://github.com/aio-libs/aiohttp/issues/4175>`_
 - Raising RuntimeError when trying to get encoding from not read body
   `#4214 <https://github.com/aio-libs/aiohttp/issues/4214>`_
@@ -85,9 +85,9 @@ Bugfixes
   `#4282 <https://github.com/aio-libs/aiohttp/issues/4282>`_
 - Raise ClientPayloadError if FormData re-processed.
   `#4345 <https://github.com/aio-libs/aiohttp/issues/4345>`_
-- Fix a warning about unfinished task in `web_protocol.py`
+- Fix a warning about unfinished task in ``web_protocol.py``
   `#4408 <https://github.com/aio-libs/aiohttp/issues/4408>`_
-- Fixed 'deflate' compressions. According to RFC 2616 now.
+- Fixed 'deflate' compression. According to RFC 2616 now.
   `#4506 <https://github.com/aio-libs/aiohttp/issues/4506>`_
 - Fixed OverflowError on platforms with 32-bit time_t
   `#4515 <https://github.com/aio-libs/aiohttp/issues/4515>`_
@@ -102,7 +102,7 @@ Bugfixes
   Reuse a protocol based on keepalive in headers is unreliable.
   For example, uWSGI will not support keepalive even it serves a
   HTTP 1.1 request, except explicitly configure uWSGI with a
-  `--http-keepalive` option.
+  ``--http-keepalive`` option.
 
   Servers designed like uWSGI could cause aiohttp intermittently
   raise a ConnectionResetException when the protocol poll runs
@@ -131,13 +131,13 @@ Bugfixes
   `#4931 <https://github.com/aio-libs/aiohttp/issues/4931>`_
 - Fix for race condition on connections in BaseConnector that leads to exceeding the connection limit.
   `#4936 <https://github.com/aio-libs/aiohttp/issues/4936>`_
-- Add forced UTF-8 encoding for `application/rdap+json` responses.
+- Add forced UTF-8 encoding for ``application/rdap+json`` responses.
   `#4938 <https://github.com/aio-libs/aiohttp/issues/4938>`_
 - Fix inconsistency between Python and C http request parsers in parsing pct-encoded URL.
   `#4972 <https://github.com/aio-libs/aiohttp/issues/4972>`_
 - Fix connection closing issue in HEAD request.
   `#5012 <https://github.com/aio-libs/aiohttp/issues/5012>`_
-- Fix type hint on BaseRunner.addresses (from List[str] to List[Any])
+- Fix type hint on BaseRunner.addresses (from ``List[str]`` to ``List[Any]``)
   `#5086 <https://github.com/aio-libs/aiohttp/issues/5086>`_
 - Make `web.run_app()` more responsive to Ctrl+C on Windows for Python < 3.8. It slightly
   increases CPU load as a side effect.
