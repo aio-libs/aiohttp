@@ -5,6 +5,7 @@ import random
 import sys
 import traceback
 import warnings
+import weakref
 from collections import defaultdict, deque
 from contextlib import suppress
 from http.cookies import SimpleCookie
@@ -80,57 +81,30 @@ log = logging.getLogger(__name__)
 
 
 class Connection:
-
-    _source_traceback = None
-    _transport = None
-
     def __init__(
         self,
         connector: "BaseConnector",
         key: "ConnectionKey",
         protocol: ResponseHandler,
-        loop: asyncio.AbstractEventLoop,
     ) -> None:
         self._key = key
-        # TODO: store weakref to connector to avoid strong circular refs
-        # Another option is getting rid of checks in __del__,
-        # connections are inteernal objects with very difinitive life-cycle
-        self._connector = connector
-        self._loop = loop
-        # The same maybe? Does hold the protocol a connection instance?
-        self._protocol = protocol  # type: Optional[ResponseHandler]
-        self._callbacks = []  # type: List[Callable[[], None]]
-
-        if loop.get_debug():
-            self._source_traceback = traceback.extract_stack(sys._getframe(1))
+        self._closed = False
+        self._connector: weakref.ref[BaseConnector] = weakref.ref(connector)
+        self._protocol: weakref.ref[ResponseHandler] = weakref.ref(protocol)
+        self._callbacks: List[Callable[[], None]] = []
 
     def __repr__(self) -> str:
         return "Connection<{}>".format(self._key)
 
-    def __del__(self, _warnings: Any = warnings) -> None:
-        if self._protocol is not None:
-            _warnings.warn(
-                "Unclosed connection {!r}".format(self), ResourceWarning, source=self
-            )
-            if self._loop.is_closed():
-                return
-
-            self._connector._release(self._key, self._protocol, should_close=True)
-
-            context = {"client_connection": self, "message": "Unclosed connection"}
-            if self._source_traceback is not None:
-                context["source_traceback"] = self._source_traceback
-            self._loop.call_exception_handler(context)
-
     @property
     def transport(self) -> Optional[asyncio.Transport]:
-        if self._protocol is None:
-            return None
-        return self._protocol.transport
+        return self.protocol.transport
 
     @property
-    def protocol(self) -> Optional[ResponseHandler]:
-        return self._protocol
+    def protocol(self) -> ResponseHandler:
+        ret = self._protocol()
+        assert ret is not None
+        return ret
 
     def add_callback(self, callback: Callable[[], None]) -> None:
         if callback is not None:
@@ -146,25 +120,29 @@ class Connection:
     async def close(self) -> None:
         self._notify_release()
 
-        if self._protocol is not None:
+        if not self._closed:
+            proto = self.protocol
+            connector = self._connector()
+            assert connector is not None
             # schedule cleanup if needed
-            self._connector._release(self._key, self._protocol, should_close=True)
+            connector._release(self._key, proto, should_close=True)
             # do actual closing, proto.close() supports reentrancy
-            await self._protocol.close()
-            self._protocol = None
+            await proto.close()
+            self._closed = True
 
     def release(self) -> None:
         self._notify_release()
 
-        if self._protocol is not None:
-            self._connector._release(
-                self._key, self._protocol, should_close=self._protocol.should_close
-            )
-            self._protocol = None
+        if not self._closed:
+            proto = self.protocol
+            connector = self._connector()
+            assert connector is not None
+            connector._release(self._key, proto, should_close=proto.should_close)
+            self._closed = True
 
     @property
     def closed(self) -> bool:
-        return self._protocol is None or not self._protocol.is_connected()
+        return self._closed or not self.protocol.is_connected()
 
 
 class _TransportPlaceholder:
@@ -486,7 +464,7 @@ class BaseConnector:
 
         self._acquired.add(proto)
         self._acquired_per_host[key].add(proto)
-        return Connection(self, key, proto, self._loop)
+        return Connection(self, key, proto)
 
     async def _get(self, key: "ConnectionKey") -> Optional[ResponseHandler]:
         try:
@@ -1003,11 +981,10 @@ class TCPConnector(BaseConnector):
             key = attr.evolve(
                 req.connection_key, proxy=None, proxy_auth=None, proxy_headers_hash=None
             )
-            conn = Connection(self, key, proto, self._loop)
+            conn = Connection(self, key, proto)
             proxy_resp = await proxy_req.send(conn)
             try:
-                protocol = conn._protocol
-                assert protocol is not None
+                protocol = conn.protocol
                 protocol.set_response_params()
                 resp = await proxy_resp.start(conn)
             except BaseException:
@@ -1015,8 +992,7 @@ class TCPConnector(BaseConnector):
                 conn.close()
                 raise
             else:
-                conn._protocol = None
-                conn._transport = None
+                # Forget about connection object, reuse the socket
                 try:
                     if resp.status != 200:
                         message = resp.reason

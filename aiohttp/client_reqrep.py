@@ -814,7 +814,7 @@ class ClientResponse(HeadersMixin):
             while True:
                 # read response
                 try:
-                    message, payload = await self._protocol.read()  # type: ignore  # noqa
+                    message, payload = await self._protocol.read()
                 except http.HttpProcessingError as exc:
                     raise ClientResponseError(
                         self.request_info,
