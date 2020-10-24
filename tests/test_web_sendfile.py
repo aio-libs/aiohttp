@@ -7,9 +7,7 @@ from aiohttp.web_fileresponse import FileResponse
 
 def test_using_gzip_if_header_present_and_file_available(loop) -> None:
     request = make_mocked_request(
-        'GET', 'http://python.org/logo.png', headers={
-            hdrs.ACCEPT_ENCODING: 'gzip'
-        }
+        "GET", "http://python.org/logo.png", headers={hdrs.ACCEPT_ENCODING: "gzip"}
     )
 
     gz_filepath = mock.Mock()
@@ -19,7 +17,7 @@ def test_using_gzip_if_header_present_and_file_available(loop) -> None:
     gz_filepath.stat.st_size = 1024
 
     filepath = mock.Mock()
-    filepath.name = 'logo.png'
+    filepath.name = "logo.png"
     filepath.open = mock.mock_open()
     filepath.with_name.return_value = gz_filepath
 
@@ -33,17 +31,14 @@ def test_using_gzip_if_header_present_and_file_available(loop) -> None:
 
 
 def test_gzip_if_header_not_present_and_file_available(loop) -> None:
-    request = make_mocked_request(
-        'GET', 'http://python.org/logo.png', headers={
-        }
-    )
+    request = make_mocked_request("GET", "http://python.org/logo.png", headers={})
 
     gz_filepath = mock.Mock()
     gz_filepath.open = mock.mock_open()
     gz_filepath.is_file.return_value = True
 
     filepath = mock.Mock()
-    filepath.name = 'logo.png'
+    filepath.name = "logo.png"
     filepath.open = mock.mock_open()
     filepath.with_name.return_value = gz_filepath
     filepath.stat.return_value = mock.MagicMock()
@@ -59,17 +54,14 @@ def test_gzip_if_header_not_present_and_file_available(loop) -> None:
 
 
 def test_gzip_if_header_not_present_and_file_not_available(loop) -> None:
-    request = make_mocked_request(
-        'GET', 'http://python.org/logo.png', headers={
-        }
-    )
+    request = make_mocked_request("GET", "http://python.org/logo.png", headers={})
 
     gz_filepath = mock.Mock()
     gz_filepath.open = mock.mock_open()
     gz_filepath.is_file.return_value = False
 
     filepath = mock.Mock()
-    filepath.name = 'logo.png'
+    filepath.name = "logo.png"
     filepath.open = mock.mock_open()
     filepath.with_name.return_value = gz_filepath
     filepath.stat.return_value = mock.MagicMock()
@@ -86,9 +78,7 @@ def test_gzip_if_header_not_present_and_file_not_available(loop) -> None:
 
 def test_gzip_if_header_present_and_file_not_available(loop) -> None:
     request = make_mocked_request(
-        'GET', 'http://python.org/logo.png', headers={
-            hdrs.ACCEPT_ENCODING: 'gzip'
-        }
+        "GET", "http://python.org/logo.png", headers={hdrs.ACCEPT_ENCODING: "gzip"}
     )
 
     gz_filepath = mock.Mock()
@@ -96,7 +86,7 @@ def test_gzip_if_header_present_and_file_not_available(loop) -> None:
     gz_filepath.is_file.return_value = False
 
     filepath = mock.Mock()
-    filepath.name = 'logo.png'
+    filepath.name = "logo.png"
     filepath.open = mock.mock_open()
     filepath.with_name.return_value = gz_filepath
     filepath.stat.return_value = mock.MagicMock()
@@ -112,13 +102,10 @@ def test_gzip_if_header_present_and_file_not_available(loop) -> None:
 
 
 def test_status_controlled_by_user(loop) -> None:
-    request = make_mocked_request(
-        'GET', 'http://python.org/logo.png', headers={
-        }
-    )
+    request = make_mocked_request("GET", "http://python.org/logo.png", headers={})
 
     filepath = mock.Mock()
-    filepath.name = 'logo.png'
+    filepath.name = "logo.png"
     filepath.open = mock.mock_open()
     filepath.stat.return_value = mock.MagicMock()
     filepath.stat.st_size = 1024

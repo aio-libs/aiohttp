@@ -86,10 +86,12 @@ def test_del(connector, key, protocol, loop) -> None:
         gc.collect()
 
     connector._release.assert_called_with(key, protocol, should_close=True)
-    msg = {'client_connection': mock.ANY,  # conn was deleted
-           'message': 'Unclosed connection'}
+    msg = {
+        "client_connection": mock.ANY,  # conn was deleted
+        "message": "Unclosed connection",
+    }
     if loop.get_debug():
-        msg['source_traceback'] = mock.ANY
+        msg["source_traceback"] = mock.ANY
     loop.call_exception_handler.assert_called_with(msg)
 
 
@@ -112,12 +114,7 @@ async def test_release(connector, key, protocol, loop) -> None:
     assert conn.closed
 
 
-async def test_release_proto_should_close(
-        connector,
-        key,
-        protocol,
-        loop
-) -> None:
+async def test_release_proto_should_close(connector, key, protocol, loop) -> None:
     protocol.should_close = True
     conn = Connection(connector, key, protocol, loop)
     assert not conn.closed
