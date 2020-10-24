@@ -1,2 +1,0 @@
-Improve typing annotations for ``web.Request``, ``aiohttp.ClientResponse`` and
-``multipart`` module.

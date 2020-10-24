@@ -1,1 +1,0 @@
-Fix the register_resource function to validate route name before splitting it so that route name can include python keywords.

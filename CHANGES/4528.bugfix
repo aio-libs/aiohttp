@@ -1,1 +1,0 @@
-Fixed request.body_exists returns wrong value for methods without body.
