@@ -17,7 +17,7 @@ try:
 except ImportError:
     ContextVar = None
 
-IS_PYPY = platform.python_implementation() == 'PyPy'
+IS_PYPY = platform.python_implementation() == "PyPy"
 
 
 def test_access_logger_format() -> None:
@@ -52,46 +52,52 @@ def test_access_logger_format() -> None:
     """,  # noqa: E501
 )
 @pytest.mark.parametrize(
-    'log_format,expected,extra',
+    "log_format,expected,extra",
     [
-        ('%t',
-         '[01/Jan/1843:00:29:56 +0800]',
-         {
-             'request_start_time': '[01/Jan/1843:00:29:56 +0800]'
-         }
-         ),
-        ('%a %t %P %r %s %b %T %Tf %D "%{H1}i" "%{H2}i"',
-         ('127.0.0.2 [01/Jan/1843:00:29:56 +0800] <42> '
-          'GET /path HTTP/1.1 200 42 3 3.141593 3141593 "a" "b"'),
-         {
-             'first_request_line': 'GET /path HTTP/1.1',
-             'process_id': '<42>',
-             'remote_address': '127.0.0.2',
-             'request_start_time': '[01/Jan/1843:00:29:56 +0800]',
-             'request_time': '3',
-             'request_time_frac': '3.141593',
-             'request_time_micro': '3141593',
-             'response_size': 42,
-             'response_status': 200,
-             'request_header': {'H1': 'a', 'H2': 'b'},
-         }
-         )
-    ]
+        (
+            "%t",
+            "[01/Jan/1843:00:29:56 +0800]",
+            {"request_start_time": "[01/Jan/1843:00:29:56 +0800]"},
+        ),
+        (
+            '%a %t %P %r %s %b %T %Tf %D "%{H1}i" "%{H2}i"',
+            (
+                "127.0.0.2 [01/Jan/1843:00:29:56 +0800] <42> "
+                'GET /path HTTP/1.1 200 42 3 3.141593 3141593 "a" "b"'
+            ),
+            {
+                "first_request_line": "GET /path HTTP/1.1",
+                "process_id": "<42>",
+                "remote_address": "127.0.0.2",
+                "request_start_time": "[01/Jan/1843:00:29:56 +0800]",
+                "request_time": "3",
+                "request_time_frac": "3.141593",
+                "request_time_micro": "3141593",
+                "response_size": 42,
+                "response_status": 200,
+                "request_header": {"H1": "a", "H2": "b"},
+            },
+        ),
+    ],
 )
 def test_access_logger_atoms(monkeypatch, log_format, expected, extra) -> None:
     class PatchedDatetime(datetime.datetime):
         @staticmethod
         def now(tz):
             return datetime.datetime(1843, 1, 1, 0, 30, tzinfo=tz)
+
     monkeypatch.setattr("datetime.datetime", PatchedDatetime)
     monkeypatch.setattr("time.timezone", -28800)
     monkeypatch.setattr("os.getpid", lambda: 42)
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, log_format)
-    request = mock.Mock(headers={'H1': 'a', 'H2': 'b'},
-                        method="GET", path_qs="/path",
-                        version=aiohttp.HttpVersion(1, 1),
-                        remote="127.0.0.2")
+    request = mock.Mock(
+        headers={"H1": "a", "H2": "b"},
+        method="GET",
+        path_qs="/path",
+        version=aiohttp.HttpVersion(1, 1),
+        remote="127.0.0.2",
+    )
     response = mock.Mock(headers={}, body_length=42, status=200)
     access_logger.log(request, response, 3.1415926)
     assert not mock_logger.exception.called, mock_logger.exception.call_args
@@ -100,43 +106,42 @@ def test_access_logger_atoms(monkeypatch, log_format, expected, extra) -> None:
 
 
 def test_access_logger_dicts() -> None:
-    log_format = '%{User-Agent}i %{Content-Length}o %{None}i'
+    log_format = "%{User-Agent}i %{Content-Length}o %{None}i"
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, log_format)
-    request = mock.Mock(headers={"User-Agent": "Mock/1.0"}, version=(1, 1),
-                        remote="127.0.0.2")
+    request = mock.Mock(
+        headers={"User-Agent": "Mock/1.0"}, version=(1, 1), remote="127.0.0.2"
+    )
     response = mock.Mock(headers={"Content-Length": 123})
     access_logger.log(request, response, 0.0)
     assert not mock_logger.error.called
-    expected = 'Mock/1.0 123 -'
+    expected = "Mock/1.0 123 -"
     extra = {
-        'request_header': {"User-Agent": "Mock/1.0", 'None': '-'},
-        'response_header': {'Content-Length': 123}
+        "request_header": {"User-Agent": "Mock/1.0", "None": "-"},
+        "response_header": {"Content-Length": 123},
     }
 
     mock_logger.info.assert_called_with(expected, extra=extra)
 
 
 def test_access_logger_unix_socket() -> None:
-    log_format = '|%a|'
+    log_format = "|%a|"
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, log_format)
-    request = mock.Mock(headers={"User-Agent": "Mock/1.0"}, version=(1, 1),
-                        remote="")
+    request = mock.Mock(headers={"User-Agent": "Mock/1.0"}, version=(1, 1), remote="")
     response = mock.Mock()
     access_logger.log(request, response, 0.0)
     assert not mock_logger.error.called
-    expected = '||'
-    mock_logger.info.assert_called_with(expected, extra={'remote_address': ''})
+    expected = "||"
+    mock_logger.info.assert_called_with(expected, extra={"remote_address": ""})
 
 
 def test_logger_no_message() -> None:
     mock_logger = mock.Mock()
-    access_logger = AccessLogger(mock_logger,
-                                 "%r %{content-type}i")
+    access_logger = AccessLogger(mock_logger, "%r %{content-type}i")
     extra_dict = {
-        'first_request_line': '-',
-        'request_header': {'content-type': '(no headers)'}
+        "first_request_line": "-",
+        "request_header": {"content-type": "(no headers)"},
     }
 
     access_logger.log(None, None, 0.0)
@@ -146,7 +151,7 @@ def test_logger_no_message() -> None:
 def test_logger_internal_error() -> None:
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, "%D")
-    access_logger.log(None, None, 'invalid')
+    access_logger.log(None, None, "invalid")
     mock_logger.exception.assert_called_with("Error in logging")
 
 
@@ -154,7 +159,7 @@ def test_logger_no_transport() -> None:
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, "%a")
     access_logger.log(None, None, 0)
-    mock_logger.info.assert_called_with("-", extra={'remote_address': '-'})
+    mock_logger.info.assert_called_with("-", extra={"remote_address": "-"})
 
 
 def test_logger_abc() -> None:
@@ -170,16 +175,14 @@ def test_logger_abc() -> None:
 
     class Logger(AbstractAccessLogger):
         def log(self, request, response, time):
-            self.logger.info(self.log_format.format(
-                request=request,
-                response=response,
-                time=time
-            ))
+            self.logger.info(
+                self.log_format.format(request=request, response=response, time=time)
+            )
 
     mock_logger = mock.Mock()
-    access_logger = Logger(mock_logger, '{request} {response} {time}')
-    access_logger.log('request', 'response', 1)
-    mock_logger.info.assert_called_with('request response 1')
+    access_logger = Logger(mock_logger, "{request} {response} {time}")
+    access_logger.log("request", "response", 1)
+    mock_logger.info.assert_called_with("request response 1")
 
 
 async def test_exc_info_context(aiohttp_raw_server, aiohttp_client):
@@ -188,19 +191,17 @@ async def test_exc_info_context(aiohttp_raw_server, aiohttp_client):
     class Logger(AbstractAccessLogger):
         def log(self, request, response, time):
             nonlocal exc_msg
-            exc_msg = '{0.__name__}: {1}'.format(*sys.exc_info())
+            exc_msg = "{0.__name__}: {1}".format(*sys.exc_info())
 
     async def handler(request):
-        raise RuntimeError('intentional runtime error')
+        raise RuntimeError("intentional runtime error")
 
     logger = mock.Mock()
-    server = await aiohttp_raw_server(handler,
-                                      access_log_class=Logger,
-                                      logger=logger)
+    server = await aiohttp_raw_server(handler, access_log_class=Logger, logger=logger)
     cli = await aiohttp_client(server)
-    resp = await cli.get('/path/to', headers={'Accept': 'text/html'})
+    resp = await cli.get("/path/to", headers={"Accept": "text/html"})
     assert resp.status == 500
-    assert exc_msg == 'RuntimeError: intentional runtime error'
+    assert exc_msg == "RuntimeError: intentional runtime error"
 
 
 async def test_async_logger(aiohttp_raw_server, aiohttp_client):
@@ -209,25 +210,22 @@ async def test_async_logger(aiohttp_raw_server, aiohttp_client):
     class Logger(AbstractAsyncAccessLogger):
         async def log(self, request, response, time):
             nonlocal msg
-            msg = '{}: {}'.format(request.path, response.status)
+            msg = "{}: {}".format(request.path, response.status)
 
     async def handler(request):
-        return Response(text='ok')
+        return Response(text="ok")
 
     logger = mock.Mock()
-    server = await aiohttp_raw_server(handler,
-                                      access_log_class=Logger,
-                                      logger=logger)
+    server = await aiohttp_raw_server(handler, access_log_class=Logger, logger=logger)
     cli = await aiohttp_client(server)
-    resp = await cli.get('/path/to', headers={'Accept': 'text/html'})
+    resp = await cli.get("/path/to", headers={"Accept": "text/html"})
     assert resp.status == 200
-    assert msg == '/path/to: 200'
+    assert msg == "/path/to: 200"
 
 
-@pytest.mark.skipif(not PY_37,
-                    reason="contextvars support is required")
+@pytest.mark.skipif(not PY_37, reason="contextvars support is required")
 async def test_contextvars_logger(aiohttp_server, aiohttp_client):
-    VAR = ContextVar('VAR')
+    VAR = ContextVar("VAR")
 
     async def handler(request):
         return web.Response()
@@ -241,12 +239,12 @@ async def test_contextvars_logger(aiohttp_server, aiohttp_client):
     class Logger(AbstractAccessLogger):
         def log(self, request, response, time):
             nonlocal msg
-            msg = 'contextvars: {}'.format(VAR.get())
+            msg = "contextvars: {}".format(VAR.get())
 
     app = web.Application(middlewares=[middleware])
-    app.router.add_get('/', handler)
+    app.router.add_get("/", handler)
     server = await aiohttp_server(app, access_log_class=Logger)
     client = await aiohttp_client(server)
-    resp = await client.get('/')
+    resp = await client.get("/")
     assert 200 == resp.status
-    assert msg == 'contextvars: uuid'
+    assert msg == "contextvars: uuid"

@@ -18,6 +18,7 @@ if has_ipv6:
 
 # nodelay
 
+
 def test_tcp_nodelay_exception() -> None:
     transport = mock.Mock()
     s = mock.Mock()
@@ -26,11 +27,7 @@ def test_tcp_nodelay_exception() -> None:
     s.setsockopt.side_effect = OSError
     transport.get_extra_info.return_value = s
     tcp_nodelay(transport, True)
-    s.setsockopt.assert_called_with(
-        socket.IPPROTO_TCP,
-        socket.TCP_NODELAY,
-        True
-    )
+    s.setsockopt.assert_called_with(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
 
 
 def test_tcp_nodelay_enable() -> None:
@@ -60,8 +57,7 @@ def test_tcp_nodelay_enable_ipv6() -> None:
         assert s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
 
 
-@pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
-                    reason="requires unix sockets")
+@pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires unix sockets")
 def test_tcp_nodelay_enable_unix() -> None:
     # do not set nodelay for unix socket
     transport = mock.Mock()

@@ -31,7 +31,6 @@ else:
 
 
 class AbstractRouter(ABC):
-
     def __init__(self) -> None:
         self._frozen = False
 
@@ -52,12 +51,11 @@ class AbstractRouter(ABC):
         self._frozen = True
 
     @abstractmethod
-    async def resolve(self, request: Request) -> 'AbstractMatchInfo':
+    async def resolve(self, request: Request) -> "AbstractMatchInfo":
         """Return MATCH_INFO for given request"""
 
 
 class AbstractMatchInfo(ABC):
-
     @property  # pragma: no branch
     @abstractmethod
     def handler(self) -> Callable[[Request], Awaitable[StreamResponse]]:
@@ -121,8 +119,7 @@ class AbstractResolver(ABC):
     """Abstract DNS resolver."""
 
     @abstractmethod
-    async def resolve(self, host: str,
-                      port: int, family: int) -> List[Dict[str, Any]]:
+    async def resolve(self, host: str, port: int, family: int) -> List[Dict[str, Any]]:
         """Return IP address for given hostname"""
 
     @abstractmethod
@@ -144,13 +141,11 @@ class AbstractCookieJar(Sized, IterableBase):
         """Clear all cookies."""
 
     @abstractmethod
-    def update_cookies(self,
-                       cookies: LooseCookies,
-                       response_url: URL=URL()) -> None:
+    def update_cookies(self, cookies: LooseCookies, response_url: URL = URL()) -> None:
         """Update cookies."""
 
     @abstractmethod
-    def filter_cookies(self, request_url: URL) -> 'BaseCookie[str]':
+    def filter_cookies(self, request_url: URL) -> "BaseCookie[str]":
         """Return the jar's cookies filtered by their attributes."""
 
 
@@ -166,7 +161,7 @@ class AbstractStreamWriter(ABC):
         """Write chunk into stream."""
 
     @abstractmethod
-    async def write_eof(self, chunk: bytes=b'') -> None:
+    async def write_eof(self, chunk: bytes = b"") -> None:
         """Write last chunk."""
 
     @abstractmethod
@@ -174,7 +169,7 @@ class AbstractStreamWriter(ABC):
         """Flush the write buffer."""
 
     @abstractmethod
-    def enable_compression(self, encoding: str='deflate') -> None:
+    def enable_compression(self, encoding: str = "deflate") -> None:
         """Enable HTTP body compression"""
 
     @abstractmethod
@@ -182,8 +177,9 @@ class AbstractStreamWriter(ABC):
         """Enable HTTP chunked mode"""
 
     @abstractmethod
-    async def write_headers(self, status_line: str,
-                            headers: 'CIMultiDict[str]') -> None:
+    async def write_headers(
+        self, status_line: str, headers: "CIMultiDict[str]"
+    ) -> None:
         """Write HTTP headers"""
 
 
@@ -195,10 +191,7 @@ class AbstractAccessLogger(ABC):
         self.log_format = log_format
 
     @abstractmethod
-    def log(self,
-            request: BaseRequest,
-            response: StreamResponse,
-            time: float) -> None:
+    def log(self, request: BaseRequest, response: StreamResponse, time: float) -> None:
         """Emit log to logger."""
 
 
@@ -206,8 +199,7 @@ class AbstractAsyncAccessLogger(ABC):
     """Abstract asynchronous writer to access log."""
 
     @abstractmethod
-    async def log(self,
-                  request: BaseRequest,
-                  response: StreamResponse,
-                  request_start: float) -> None:
+    async def log(
+        self, request: BaseRequest, response: StreamResponse, request_start: float
+    ) -> None:
         """Emit log to logger."""

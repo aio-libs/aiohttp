@@ -24,8 +24,8 @@ async def wshandle(request):
 
 
 app = web.Application()
-app.add_routes([web.get("/", handle),
-                web.get("/echo", wshandle),
-                web.get("/{name}", handle)])
+app.add_routes(
+    [web.get("/", handle), web.get("/echo", wshandle), web.get("/{name}", handle)]
+)
 
 web.run_app(app)

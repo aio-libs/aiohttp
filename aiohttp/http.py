@@ -27,24 +27,40 @@ from .http_writer import HttpVersion11 as HttpVersion11
 from .http_writer import StreamWriter as StreamWriter
 
 __all__ = (
-    'HttpProcessingError', 'RESPONSES', 'SERVER_SOFTWARE',
-
+    "HttpProcessingError",
+    "RESPONSES",
+    "SERVER_SOFTWARE",
     # .http_writer
-    'StreamWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11',
-
+    "StreamWriter",
+    "HttpVersion",
+    "HttpVersion10",
+    "HttpVersion11",
     # .http_parser
-    'HeadersParser', 'HttpParser',
-    'HttpRequestParser', 'HttpResponseParser',
-    'RawRequestMessage', 'RawResponseMessage',
-
+    "HeadersParser",
+    "HttpParser",
+    "HttpRequestParser",
+    "HttpResponseParser",
+    "RawRequestMessage",
+    "RawResponseMessage",
     # .http_websocket
-    'WS_CLOSED_MESSAGE', 'WS_CLOSING_MESSAGE', 'WS_KEY',
-    'WebSocketReader', 'WebSocketWriter', 'ws_ext_gen', 'ws_ext_parse',
-    'WSMessage', 'WebSocketError', 'WSMsgType', 'WSCloseCode',
+    "WS_CLOSED_MESSAGE",
+    "WS_CLOSING_MESSAGE",
+    "WS_KEY",
+    "WebSocketReader",
+    "WebSocketWriter",
+    "ws_ext_gen",
+    "ws_ext_parse",
+    "WSMessage",
+    "WebSocketError",
+    "WSMsgType",
+    "WSCloseCode",
 )
 
 
-SERVER_SOFTWARE = 'Python/{0[0]}.{0[1]} aiohttp/{1}'.format(
-    sys.version_info, __version__)  # type: str
+SERVER_SOFTWARE = "Python/{0[0]}.{0[1]} aiohttp/{1}".format(
+    sys.version_info, __version__
+)  # type: str
 
-RESPONSES = http.server.BaseHTTPRequestHandler.responses  # type: Mapping[int, Tuple[str, str]]  # noqa
+RESPONSES = (
+    http.server.BaseHTTPRequestHandler.responses
+)  # type: Mapping[int, Tuple[str, str]]  # noqa

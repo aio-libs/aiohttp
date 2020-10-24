@@ -11,9 +11,9 @@ from .abc import AbstractStreamWriter
 from .base_protocol import BaseProtocol
 from .helpers import NO_EXTENSIONS
 
-__all__ = ('StreamWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11')
+__all__ = ("StreamWriter", "HttpVersion", "HttpVersion10", "HttpVersion11")
 
-HttpVersion = collections.namedtuple('HttpVersion', ['major', 'minor'])
+HttpVersion = collections.namedtuple("HttpVersion", ["major", "minor"])
 HttpVersion10 = HttpVersion(1, 0)
 HttpVersion11 = HttpVersion(1, 1)
 
@@ -22,11 +22,12 @@ _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
 
 
 class StreamWriter(AbstractStreamWriter):
-
-    def __init__(self,
-                 protocol: BaseProtocol,
-                 loop: asyncio.AbstractEventLoop,
-                 on_chunk_sent: _T_OnChunkSent = None) -> None:
+    def __init__(
+        self,
+        protocol: BaseProtocol,
+        loop: asyncio.AbstractEventLoop,
+        on_chunk_sent: _T_OnChunkSent = None,
+    ) -> None:
         self._protocol = protocol
         self._transport = protocol.transport
 
@@ -53,9 +54,8 @@ class StreamWriter(AbstractStreamWriter):
     def enable_chunking(self) -> None:
         self.chunked = True
 
-    def enable_compression(self, encoding: str='deflate') -> None:
-        zlib_mode = (16 + zlib.MAX_WBITS
-                     if encoding == 'gzip' else zlib.MAX_WBITS)
+    def enable_compression(self, encoding: str = "deflate") -> None:
+        zlib_mode = 16 + zlib.MAX_WBITS if encoding == "gzip" else zlib.MAX_WBITS
         self._compress = zlib.compressobj(wbits=zlib_mode)
 
     def _write(self, chunk: bytes) -> None:
@@ -64,11 +64,12 @@ class StreamWriter(AbstractStreamWriter):
         self.output_size += size
 
         if self._transport is None or self._transport.is_closing():
-            raise ConnectionResetError('Cannot write to closing transport')
+            raise ConnectionResetError("Cannot write to closing transport")
         self._transport.write(chunk)
 
-    async def write(self, chunk: bytes,
-                    *, drain: bool=True, LIMIT: int=0x10000) -> None:
+    async def write(
+        self, chunk: bytes, *, drain: bool = True, LIMIT: int = 0x10000
+    ) -> None:
         """Writes chunk of data to a stream.
 
         write_eof() indicates end of stream.
@@ -81,7 +82,7 @@ class StreamWriter(AbstractStreamWriter):
         if isinstance(chunk, memoryview):
             if chunk.nbytes != len(chunk):
                 # just reshape it
-                chunk = chunk.cast('c')
+                chunk = chunk.cast("c")
 
         if self._compress is not None:
             chunk = self._compress.compress(chunk)
@@ -93,15 +94,15 @@ class StreamWriter(AbstractStreamWriter):
             if self.length >= chunk_len:
                 self.length = self.length - chunk_len
             else:
-                chunk = chunk[:self.length]
+                chunk = chunk[: self.length]
                 self.length = 0
                 if not chunk:
                     return
 
         if chunk:
             if self.chunked:
-                chunk_len_pre = ('%x\r\n' % len(chunk)).encode('ascii')
-                chunk = chunk_len_pre + chunk + b'\r\n'
+                chunk_len_pre = ("%x\r\n" % len(chunk)).encode("ascii")
+                chunk = chunk_len_pre + chunk + b"\r\n"
 
             self._write(chunk)
 
@@ -109,14 +110,15 @@ class StreamWriter(AbstractStreamWriter):
                 self.buffer_size = 0
                 await self.drain()
 
-    async def write_headers(self, status_line: str,
-                            headers: 'CIMultiDict[str]') -> None:
+    async def write_headers(
+        self, status_line: str, headers: "CIMultiDict[str]"
+    ) -> None:
         """Write request/response status and headers."""
         # status + headers
         buf = _serialize_headers(status_line, headers)
         self._write(buf)
 
-    async def write_eof(self, chunk: bytes=b'') -> None:
+    async def write_eof(self, chunk: bytes = b"") -> None:
         if self._eof:
             return
 
@@ -129,15 +131,15 @@ class StreamWriter(AbstractStreamWriter):
 
             chunk = chunk + self._compress.flush()
             if chunk and self.chunked:
-                chunk_len = ('%x\r\n' % len(chunk)).encode('ascii')
-                chunk = chunk_len + chunk + b'\r\n0\r\n\r\n'
+                chunk_len = ("%x\r\n" % len(chunk)).encode("ascii")
+                chunk = chunk_len + chunk + b"\r\n0\r\n\r\n"
         else:
             if self.chunked:
                 if chunk:
-                    chunk_len = ('%x\r\n' % len(chunk)).encode('ascii')
-                    chunk = chunk_len + chunk + b'\r\n0\r\n\r\n'
+                    chunk_len = ("%x\r\n" % len(chunk)).encode("ascii")
+                    chunk = chunk_len + chunk + b"\r\n0\r\n\r\n"
                 else:
-                    chunk = b'0\r\n\r\n'
+                    chunk = b"0\r\n\r\n"
 
         if chunk:
             self._write(chunk)
@@ -159,17 +161,20 @@ class StreamWriter(AbstractStreamWriter):
             await self._protocol._drain_helper()
 
 
-def _py_serialize_headers(status_line: str,
-                          headers: 'CIMultiDict[str]') -> bytes:
-    line = status_line + '\r\n' + ''.join(
-        [k + ': ' + v + '\r\n' for k, v in headers.items()])
-    return line.encode('utf-8') + b'\r\n'
+def _py_serialize_headers(status_line: str, headers: "CIMultiDict[str]") -> bytes:
+    line = (
+        status_line
+        + "\r\n"
+        + "".join([k + ": " + v + "\r\n" for k, v in headers.items()])
+    )
+    return line.encode("utf-8") + b"\r\n"
 
 
 _serialize_headers = _py_serialize_headers
 
 try:
     import aiohttp._http_writer as _http_writer  # type: ignore
+
     _c_serialize_headers = _http_writer._serialize_headers
     if not NO_EXTENSIONS:
         _serialize_headers = _c_serialize_headers

@@ -14,7 +14,7 @@ async def main(loop):
 
     # pause here for very long time by serving HTTP requests and
     # waiting for keyboard interruption
-    await asyncio.sleep(100*3600)
+    await asyncio.sleep(100 * 3600)
 
 
 loop = asyncio.get_event_loop()
