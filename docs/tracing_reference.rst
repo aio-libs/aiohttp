@@ -276,6 +276,7 @@ TraceConfig
 
       ``params`` is :class:`aiohttp.TraceRequestHeadersSentParams` instance.
 
+      .. versionadded:: 3.8
 
 TraceRequestStartParams
 -----------------------
@@ -504,6 +505,8 @@ TraceRequestHeadersSentParams
 -----------------------------
 
 .. class:: TraceRequestHeadersSentParams
+
+   .. versionadded:: 3.8
 
    See :attr:`TraceConfig.on_request_headers_sent` for details.
 
