@@ -1,0 +1,1 @@
+Remove Transfer-Encoding and Content-Type headers for 204 in StreamResponse
