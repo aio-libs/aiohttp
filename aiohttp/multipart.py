@@ -90,7 +90,7 @@ def parse_content_disposition(
         return substring.isdigit()
 
     def unescape(text: str, *, chars: str = "".join(map(re.escape, CHAR))) -> str:
-        return re.sub("\\\\([{}])".format(chars), "\\1", text)
+        return re.sub(f"\\\\([{chars}])", "\\1", text)
 
     if not header:
         return None, {}
@@ -151,7 +151,7 @@ def parse_content_disposition(
             elif parts:
                 # maybe just ; in filename, in any case this is just
                 # one case fix, for proper fix we need to redesign parser
-                _value = "%s;%s" % (value, parts[0])
+                _value = "{};{}".format(value, parts[0])
                 if is_quoted(_value):
                     parts.pop(0)
                     value = unescape(_value[1:-1].lstrip("\\/"))
@@ -291,7 +291,7 @@ class BodyPartReader:
             return b""
         data = bytearray()
         while not self._at_eof:
-            data.extend((await self.read_chunk(self.chunk_size)))
+            data.extend(await self.read_chunk(self.chunk_size))
         if decode:
             return self.decode(data)
         return data
@@ -453,7 +453,7 @@ class BodyPartReader:
         elif encoding == "identity":
             return data
         else:
-            raise RuntimeError("unknown content encoding: {}".format(encoding))
+            raise RuntimeError(f"unknown content encoding: {encoding}")
 
     def _decode_content_transfer(self, data: bytes) -> bytes:
         encoding = self.headers.get(CONTENT_TRANSFER_ENCODING, "").lower()
@@ -678,9 +678,7 @@ class MultipartReader:
             else:
                 self._unread.extend([next_line, epilogue])
         else:
-            raise ValueError(
-                "Invalid boundary %r, expected %r" % (chunk, self._boundary)
-            )
+            raise ValueError(f"Invalid boundary {chunk!r}, expected {self._boundary!r}")
 
     async def _read_headers(self) -> "CIMultiDictProxy[str]":
         lines = [b""]
@@ -720,7 +718,7 @@ class MultipartWriter(Payload):
             self._boundary = boundary.encode("ascii")
         except UnicodeEncodeError:
             raise ValueError("boundary should contain ASCII only chars") from None
-        ctype = "multipart/{}; boundary={}".format(subtype, self._boundary_value)
+        ctype = f"multipart/{subtype}; boundary={self._boundary_value}"
 
         super().__init__(None, content_type=ctype)
 
@@ -808,7 +806,7 @@ class MultipartWriter(Payload):
             "",
         ).lower()  # type: Optional[str]
         if encoding and encoding not in ("deflate", "gzip", "identity"):
-            raise RuntimeError("unknown content encoding: {}".format(encoding))
+            raise RuntimeError(f"unknown content encoding: {encoding}")
         if encoding == "identity":
             encoding = None
 

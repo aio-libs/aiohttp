@@ -167,11 +167,11 @@ class AbstractRoute(abc.ABC):
 
         assert asyncio.iscoroutinefunction(
             expect_handler
-        ), "Coroutine is expected, got {!r}".format(expect_handler)
+        ), f"Coroutine is expected, got {expect_handler!r}"
 
         method = method.upper()
         if not HTTP_METHOD_RE.match(method):
-            raise ValueError("{} is not allowed HTTP method".format(method))
+            raise ValueError(f"{method} is not allowed HTTP method")
 
         assert callable(handler), handler
         if asyncio.iscoroutinefunction(handler):
@@ -296,7 +296,7 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
         self._frozen = True
 
     def __repr__(self) -> str:
-        return "<MatchInfo {}: {}>".format(super().__repr__(), self._route)
+        return f"<MatchInfo {super().__repr__()}: {self._route}>"
 
 
 class MatchInfoError(UrlMappingMatchInfo):
@@ -356,7 +356,7 @@ class Resource(AbstractResource):
     def register_route(self, route: "ResourceRoute") -> None:
         assert isinstance(
             route, ResourceRoute
-        ), "Instance of Route class is required, got {!r}".format(route)
+        ), f"Instance of Route class is required, got {route!r}"
         self._routes.append(route)
 
     async def resolve(self, request: Request) -> _Resolve:
@@ -426,7 +426,7 @@ class PlainResource(Resource):
 
     def __repr__(self) -> str:
         name = "'" + self.name + "' " if self.name is not None else ""
-        return "<PlainResource {name} {path}>".format(name=name, path=self._path)
+        return f"<PlainResource {name} {self._path}>"
 
 
 class DynamicResource(Resource):
@@ -453,7 +453,7 @@ class DynamicResource(Resource):
                 continue
 
             if "{" in part or "}" in part:
-                raise ValueError("Invalid path '{}'['{}']".format(path, part))
+                raise ValueError(f"Invalid path '{path}'['{part}']")
 
             part = _requote_path(part)
             formatter += part
@@ -462,7 +462,7 @@ class DynamicResource(Resource):
         try:
             compiled = re.compile(pattern)
         except re.error as exc:
-            raise ValueError("Bad pattern '{}': {}".format(pattern, exc)) from None
+            raise ValueError(f"Bad pattern '{pattern}': {exc}") from None
         assert compiled.pattern.startswith(PATH_SEP)
         assert formatter.startswith("/")
         self._pattern = compiled
@@ -552,7 +552,7 @@ class StaticResource(PrefixResource):
             if not directory.is_dir():
                 raise ValueError("Not a directory")
         except (FileNotFoundError, ValueError) as error:
-            raise ValueError("No directory exists at '{}'".format(directory)) from error
+            raise ValueError(f"No directory exists at '{directory}'") from error
         self._directory = directory
         self._show_index = show_index
         self._chunk_size = chunk_size
@@ -692,8 +692,8 @@ class StaticResource(PrefixResource):
         assert filepath.is_dir()
 
         relative_path_to_dir = filepath.relative_to(self._directory).as_posix()
-        index_of = "Index of /{}".format(relative_path_to_dir)
-        h1 = "<h1>{}</h1>".format(index_of)
+        index_of = f"Index of /{relative_path_to_dir}"
+        h1 = f"<h1>{index_of}</h1>"
 
         index_list = []
         dir_index = filepath.iterdir()
@@ -704,7 +704,7 @@ class StaticResource(PrefixResource):
 
             # if file is a directory, add '/' to the end of the name
             if _file.is_dir():
-                file_name = "{}/".format(_file.name)
+                file_name = f"{_file.name}/"
             else:
                 file_name = _file.name
 
@@ -714,10 +714,10 @@ class StaticResource(PrefixResource):
                 )
             )
         ul = "<ul>\n{}\n</ul>".format("\n".join(index_list))
-        body = "<body>\n{}\n{}\n</body>".format(h1, ul)
+        body = f"<body>\n{h1}\n{ul}\n</body>"
 
-        head_str = "<head>\n<title>{}</title>\n</head>".format(index_of)
-        html = "<html>\n{}\n{}\n</html>".format(head_str, body)
+        head_str = f"<head>\n<title>{index_of}</title>\n</head>"
+        html = f"<html>\n{head_str}\n{body}\n</html>"
 
         return html
 
@@ -812,7 +812,7 @@ class Domain(AbstractRuleMatching):
             raise ValueError("Domain not valid")
         if url.port == 80:
             return url.raw_host
-        return "{}:{}".format(url.raw_host, url.port)
+        return f"{url.raw_host}:{url.port}"
 
     async def match(self, request: Request) -> bool:
         host = request.headers.get(hdrs.HOST)
@@ -1036,7 +1036,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
     def register_resource(self, resource: AbstractResource) -> None:
         assert isinstance(
             resource, AbstractResource
-        ), "Instance of AbstractResource class is required, got {!r}".format(resource)
+        ), f"Instance of AbstractResource class is required, got {resource!r}"
         if self.frozen:
             raise RuntimeError("Cannot register a resource into frozen router.")
 
