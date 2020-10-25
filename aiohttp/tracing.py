@@ -42,6 +42,7 @@ __all__ = (
     "TraceRequestRedirectParams",
     "TraceRequestChunkSentParams",
     "TraceResponseChunkReceivedParams",
+    "TraceRequestHeadersSentParams",
 )
 
 
@@ -97,6 +98,9 @@ class TraceConfig:
         self._on_dns_cache_miss = Signal(
             self
         )  # type: Signal[_SignalCallback[TraceDnsCacheMissParams]]
+        self._on_request_headers_sent = Signal(
+            self
+        )  # type: Signal[_SignalCallback[TraceRequestHeadersSentParams]]
 
         self._trace_config_ctx_factory = trace_config_ctx_factory
 
@@ -122,6 +126,7 @@ class TraceConfig:
         self._on_dns_resolvehost_end.freeze()
         self._on_dns_cache_hit.freeze()
         self._on_dns_cache_miss.freeze()
+        self._on_request_headers_sent.freeze()
 
     @property
     def on_request_start(self) -> "Signal[_SignalCallback[TraceRequestStartParams]]":
@@ -204,6 +209,12 @@ class TraceConfig:
     @property
     def on_dns_cache_miss(self) -> "Signal[_SignalCallback[TraceDnsCacheMissParams]]":
         return self._on_dns_cache_miss
+
+    @property
+    def on_request_headers_sent(
+        self,
+    ) -> "Signal[_SignalCallback[TraceRequestHeadersSentParams]]":
+        return self._on_request_headers_sent
 
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
@@ -314,6 +325,15 @@ class TraceDnsCacheMissParams:
     """ Parameters sent by the `on_dns_cache_miss` signal"""
 
     host: str
+
+
+@attr.s(auto_attribs=True, frozen=True, slots=True)
+class TraceRequestHeadersSentParams:
+    """ Parameters sent by the `on_request_headers_sent` signal"""
+
+    method: str
+    url: URL
+    headers: "CIMultiDict[str]"
 
 
 class Trace:
@@ -439,4 +459,13 @@ class Trace:
     async def send_dns_cache_miss(self, host: str) -> None:
         return await self._trace_config.on_dns_cache_miss.send(
             self._session, self._trace_config_ctx, TraceDnsCacheMissParams(host)
+        )
+
+    async def send_request_headers(
+        self, method: str, url: URL, headers: "CIMultiDict[str]"
+    ) -> None:
+        return await self._trace_config._on_request_headers_sent.send(
+            self._session,
+            self._trace_config_ctx,
+            TraceRequestHeadersSentParams(method, url, headers),
         )
