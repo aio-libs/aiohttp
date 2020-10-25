@@ -350,7 +350,7 @@ def test_single_forwarded_header() -> None:
     ],
 )
 def test_forwarded_node_identifier(forward_for_in, forward_for_out) -> None:
-    header = "for={}".format(forward_for_in)
+    header = f"for={forward_for_in}"
     req = make_mocked_request("GET", "/", headers=CIMultiDict({"Forwarded": header}))
     assert req.forwarded == ({"for": forward_for_out},)
 

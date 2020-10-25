@@ -719,7 +719,7 @@ async def test_dynamic_match_unquoted_path(router) -> None:
     handler = make_handler()
     router.add_route("GET", "/{path}/{subpath}", handler)
     resource_id = "my%2Fpath%7Cwith%21some%25strange%24characters"
-    req = make_mocked_request("GET", "/path/{0}".format(resource_id))
+    req = make_mocked_request("GET", f"/path/{resource_id}")
     match_info = await router.resolve(req)
     assert match_info == {"path": "path", "subpath": unquote(resource_id)}
 

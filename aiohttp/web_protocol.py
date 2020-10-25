@@ -149,7 +149,7 @@ class RequestHandler(BaseProtocol):
         max_headers: int = 32768,
         max_field_size: int = 8190,
         lingering_time: float = 10.0,
-        read_bufsize: int = 2 ** 16
+        read_bufsize: int = 2 ** 16,
     ):
 
         super().__init__(loop)
@@ -622,7 +622,7 @@ class RequestHandler(BaseProtocol):
             if "text/html" in request.headers.get("Accept", ""):
                 if tb:
                     tb = html_escape(tb)
-                    msg = "<h2>Traceback:</h2>\n<pre>{}</pre>".format(tb)
+                    msg = f"<h2>Traceback:</h2>\n<pre>{tb}</pre>"
                 message = (
                     "<html><head>"
                     "<title>{title}</title>"

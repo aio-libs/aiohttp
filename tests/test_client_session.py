@@ -644,7 +644,7 @@ async def test_request_tracing_interpose_headers(loop, aiohttp_client) -> None:
         headers = None
 
         def __init__(self, *args, **kwargs):
-            super(MyClientRequest, self).__init__(*args, **kwargs)
+            super().__init__(*args, **kwargs)
             MyClientRequest.headers = self.headers
 
     async def new_headers(session, trace_config_ctx, data):

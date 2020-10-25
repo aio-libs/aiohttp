@@ -154,7 +154,7 @@ class AccessLogger(AbstractAccessLogger):
     def _format_r(request: BaseRequest, response: StreamResponse, time: float) -> str:
         if request is None:
             return "-"
-        return "%s %s HTTP/%s.%s" % (
+        return "{} {} HTTP/{}.{}".format(
             request.method,
             request.path_qs,
             request.version.major,

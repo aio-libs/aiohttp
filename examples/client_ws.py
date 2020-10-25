@@ -64,7 +64,7 @@ if __name__ == "__main__":
         args.host, port = args.host.split(":", 1)
         args.port = int(port)
 
-    url = "http://{}:{}".format(args.host, args.port)
+    url = f"http://{args.host}:{args.port}"
 
     loop = asyncio.get_event_loop()
 

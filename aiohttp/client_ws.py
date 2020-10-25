@@ -40,7 +40,7 @@ class ClientWebSocketResponse:
         receive_timeout: Optional[float] = None,
         heartbeat: Optional[float] = None,
         compress: int = 0,
-        client_notakeover: bool = False
+        client_notakeover: bool = False,
     ) -> None:
         self._response = response
         self._conn = response.connection
@@ -159,7 +159,7 @@ class ClientWebSocketResponse:
         data: Any,
         compress: Optional[int] = None,
         *,
-        dumps: JSONEncoder = DEFAULT_JSON_ENCODER
+        dumps: JSONEncoder = DEFAULT_JSON_ENCODER,
     ) -> None:
         await self.send_str(dumps(data), compress=compress)
 
@@ -273,24 +273,20 @@ class ClientWebSocketResponse:
     async def receive_str(self, *, timeout: Optional[float] = None) -> str:
         msg = await self.receive(timeout)
         if msg.type != WSMsgType.TEXT:
-            raise TypeError(
-                "Received message {}:{!r} is not str".format(msg.type, msg.data)
-            )
+            raise TypeError(f"Received message {msg.type}:{msg.data!r} is not str")
         return msg.data
 
     async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
         if msg.type != WSMsgType.BINARY:
-            raise TypeError(
-                "Received message {}:{!r} is not bytes".format(msg.type, msg.data)
-            )
+            raise TypeError(f"Received message {msg.type}:{msg.data!r} is not bytes")
         return msg.data
 
     async def receive_json(
         self,
         *,
         loads: JSONDecoder = DEFAULT_JSON_DECODER,
-        timeout: Optional[float] = None
+        timeout: Optional[float] = None,
     ) -> Any:
         data = await self.receive_str(timeout=timeout)
         return loads(data)

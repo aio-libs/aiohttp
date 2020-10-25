@@ -186,7 +186,7 @@ async def test_contextvars_logger(aiohttp_server, aiohttp_client):
     class Logger(AbstractAccessLogger):
         def log(self, request, response, time):
             nonlocal msg
-            msg = "contextvars: {}".format(VAR.get())
+            msg = f"contextvars: {VAR.get()}"
 
     app = web.Application(middlewares=[middleware])
     app.router.add_get("/", handler)

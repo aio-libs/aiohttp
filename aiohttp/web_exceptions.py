@@ -89,7 +89,7 @@ class HTTPException(Response, Exception):
         reason: Optional[str] = None,
         body: Any = None,
         text: Optional[str] = None,
-        content_type: Optional[str] = None
+        content_type: Optional[str] = None,
     ) -> None:
         if body is not None:
             warnings.warn(
@@ -107,7 +107,7 @@ class HTTPException(Response, Exception):
         )
         Exception.__init__(self, self.reason)
         if self.body is None and not self.empty_body:
-            self.text = "{}: {}".format(self.status, self.reason)
+            self.text = f"{self.status}: {self.reason}"
 
     def __bool__(self) -> bool:
         return True
@@ -169,7 +169,7 @@ class _HTTPMove(HTTPRedirection):
         reason: Optional[str] = None,
         body: Any = None,
         text: Optional[str] = None,
-        content_type: Optional[str] = None
+        content_type: Optional[str] = None,
     ) -> None:
         if not location:
             raise ValueError("HTTP redirects need a location to redirect to.")
@@ -262,7 +262,7 @@ class HTTPMethodNotAllowed(HTTPClientError):
         reason: Optional[str] = None,
         body: Any = None,
         text: Optional[str] = None,
-        content_type: Optional[str] = None
+        content_type: Optional[str] = None,
     ) -> None:
         allow = ",".join(sorted(allowed_methods))
         super().__init__(
@@ -372,7 +372,7 @@ class HTTPUnavailableForLegalReasons(HTTPClientError):
         reason: Optional[str] = None,
         body: Any = None,
         text: Optional[str] = None,
-        content_type: Optional[str] = None
+        content_type: Optional[str] = None,
     ) -> None:
         super().__init__(
             headers=headers,

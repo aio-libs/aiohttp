@@ -298,7 +298,7 @@ class WebSocketReader:
                     if close_code < 3000 and close_code not in ALLOWED_CLOSE_CODES:
                         raise WebSocketError(
                             WSCloseCode.PROTOCOL_ERROR,
-                            "Invalid close code: {}".format(close_code),
+                            f"Invalid close code: {close_code}",
                         )
                     try:
                         close_message = payload[2:].decode("utf-8")
@@ -310,7 +310,7 @@ class WebSocketReader:
                 elif payload:
                     raise WebSocketError(
                         WSCloseCode.PROTOCOL_ERROR,
-                        "Invalid close frame: {} {} {!r}".format(fin, opcode, payload),
+                        f"Invalid close frame: {fin} {opcode} {payload!r}",
                     )
                 else:
                     msg = WSMessage(WSMsgType.CLOSE, 0, "")
@@ -332,7 +332,7 @@ class WebSocketReader:
                 and self._opcode is None
             ):
                 raise WebSocketError(
-                    WSCloseCode.PROTOCOL_ERROR, "Unexpected opcode={!r}".format(opcode)
+                    WSCloseCode.PROTOCOL_ERROR, f"Unexpected opcode={opcode!r}"
                 )
             else:
                 # load text/binary
@@ -577,7 +577,7 @@ class WebSocketWriter:
         limit: int = DEFAULT_LIMIT,
         random: Any = random.Random(),
         compress: int = 0,
-        notakeover: bool = False
+        notakeover: bool = False,
     ) -> None:
         self.protocol = protocol
         self.transport = transport

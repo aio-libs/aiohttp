@@ -35,10 +35,10 @@ class HttpProcessingError(Exception):
         self.message = message
 
     def __str__(self) -> str:
-        return "%s, message=%r" % (self.code, self.message)
+        return f"{self.code}, message={self.message!r}"
 
     def __repr__(self) -> str:
-        return "<%s: %s>" % (self.__class__.__name__, self)
+        return f"<{self.__class__.__name__}: {self}>"
 
 
 class BadHttpMessage(HttpProcessingError):
@@ -78,7 +78,7 @@ class LineTooLong(BadHttpMessage):
         self, line: str, limit: str = "Unknown", actual_size: str = "Unknown"
     ) -> None:
         super().__init__(
-            "Got more than %s bytes (%s) when reading %s." % (limit, actual_size, line)
+            f"Got more than {limit} bytes ({actual_size}) when reading {line}."
         )
         self.args = (line, limit, actual_size)
 
@@ -87,7 +87,7 @@ class InvalidHeader(BadHttpMessage):
     def __init__(self, hdr: Union[bytes, str]) -> None:
         if isinstance(hdr, bytes):
             hdr = hdr.decode("utf-8", "surrogateescape")
-        super().__init__("Invalid HTTP Header: {}".format(hdr))
+        super().__init__(f"Invalid HTTP Header: {hdr}")
         self.hdr = hdr
         self.args = (hdr,)
 
