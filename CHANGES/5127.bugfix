@@ -1,0 +1,1 @@
+Fix a bug in ``web.run_app()`` about Python version checking on Windows
