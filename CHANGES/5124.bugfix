@@ -1,0 +1,1 @@
+Ensure sending a zero byte file does not throw an exception
