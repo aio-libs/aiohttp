@@ -45,7 +45,7 @@ class BaseSite(ABC):
         *,
         shutdown_timeout: float = 60.0,
         ssl_context: Optional[SSLContext] = None,
-        backlog: int = 128
+        backlog: int = 128,
     ) -> None:
         if runner.server is None:
             raise RuntimeError("Call runner.setup() before making a site")
@@ -92,7 +92,7 @@ class TCPSite(BaseSite):
         ssl_context: Optional[SSLContext] = None,
         backlog: int = 128,
         reuse_address: Optional[bool] = None,
-        reuse_port: Optional[bool] = None
+        reuse_port: Optional[bool] = None,
     ) -> None:
         super().__init__(
             runner,
@@ -139,7 +139,7 @@ class UnixSite(BaseSite):
         *,
         shutdown_timeout: float = 60.0,
         ssl_context: Optional[SSLContext] = None,
-        backlog: int = 128
+        backlog: int = 128,
     ) -> None:
         super().__init__(
             runner,
@@ -152,7 +152,7 @@ class UnixSite(BaseSite):
     @property
     def name(self) -> str:
         scheme = "https" if self._ssl_context else "http"
-        return "{}://unix:{}:".format(scheme, self._path)
+        return f"{scheme}://unix:{self._path}:"
 
     async def start(self) -> None:
         await super().start()
@@ -201,7 +201,7 @@ class SockSite(BaseSite):
         *,
         shutdown_timeout: float = 60.0,
         ssl_context: Optional[SSLContext] = None,
-        backlog: int = 128
+        backlog: int = 128,
     ) -> None:
         super().__init__(
             runner,
@@ -212,7 +212,7 @@ class SockSite(BaseSite):
         self._sock = sock
         scheme = "https" if self._ssl_context else "http"
         if hasattr(socket, "AF_UNIX") and sock.family == socket.AF_UNIX:
-            name = "{}://unix:{}:".format(scheme, sock.getsockname())
+            name = f"{scheme}://unix:{sock.getsockname()}:"
         else:
             host, port = sock.getsockname()[:2]
             name = str(URL.build(scheme=scheme, host=host, port=port))
@@ -311,22 +311,16 @@ class BaseRunner(ABC):
 
     def _reg_site(self, site: BaseSite) -> None:
         if site in self._sites:
-            raise RuntimeError(
-                "Site {} is already registered in runner {}".format(site, self)
-            )
+            raise RuntimeError(f"Site {site} is already registered in runner {self}")
         self._sites.append(site)
 
     def _check_site(self, site: BaseSite) -> None:
         if site not in self._sites:
-            raise RuntimeError(
-                "Site {} is not registered in runner {}".format(site, self)
-            )
+            raise RuntimeError(f"Site {site} is not registered in runner {self}")
 
     def _unreg_site(self, site: BaseSite) -> None:
         if site not in self._sites:
-            raise RuntimeError(
-                "Site {} is not registered in runner {}".format(site, self)
-            )
+            raise RuntimeError(f"Site {site} is not registered in runner {self}")
         self._sites.remove(site)
 
 

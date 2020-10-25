@@ -629,5 +629,5 @@ class TestChainMapProxy:
         d1 = {"a": 2, "b": 3}
         d2 = {"a": 1}
         cp = helpers.ChainMapProxy([d1, d2])
-        expected = "ChainMapProxy({!r}, {!r})".format(d1, d2)
+        expected = f"ChainMapProxy({d1!r}, {d2!r})"
         assert expected == repr(cp)

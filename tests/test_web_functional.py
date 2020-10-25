@@ -242,7 +242,7 @@ async def test_multipart_empty(aiohttp_client) -> None:
         reader = await request.multipart()
         assert isinstance(reader, multipart.MultipartReader)
         async for part in reader:
-            assert False, "Unexpected part found in reader: {!r}".format(part)
+            assert False, f"Unexpected part found in reader: {part!r}"
         return web.Response()
 
     app = web.Application()

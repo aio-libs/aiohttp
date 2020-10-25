@@ -63,7 +63,7 @@ class WebSocketResponse(StreamResponse):
         heartbeat: Optional[float] = None,
         protocols: Iterable[str] = (),
         compress: bool = True,
-        max_msg_size: int = 4 * 1024 * 1024
+        max_msg_size: int = 4 * 1024 * 1024,
     ) -> None:
         super().__init__(status=101)
         self._protocols = protocols
@@ -180,15 +180,15 @@ class WebSocketResponse(StreamResponse):
         # check supported version
         version = headers.get(hdrs.SEC_WEBSOCKET_VERSION, "")
         if version not in ("13", "8", "7"):
-            raise HTTPBadRequest(text="Unsupported version: {}".format(version))
+            raise HTTPBadRequest(text=f"Unsupported version: {version}")
 
         # check client handshake for validity
         key = headers.get(hdrs.SEC_WEBSOCKET_KEY)
         try:
             if not key or len(base64.b64decode(key)) != 16:
-                raise HTTPBadRequest(text="Handshake error: {!r}".format(key))
+                raise HTTPBadRequest(text=f"Handshake error: {key!r}")
         except binascii.Error:
-            raise HTTPBadRequest(text="Handshake error: {!r}".format(key)) from None
+            raise HTTPBadRequest(text=f"Handshake error: {key!r}") from None
 
         accept_val = base64.b64encode(
             hashlib.sha1(key.encode() + WS_KEY).digest()
@@ -311,7 +311,7 @@ class WebSocketResponse(StreamResponse):
         data: Any,
         compress: Optional[bool] = None,
         *,
-        dumps: JSONEncoder = json.dumps
+        dumps: JSONEncoder = json.dumps,
     ) -> None:
         await self.send_str(dumps(data), compress=compress)
 
@@ -455,9 +455,7 @@ class WebSocketResponse(StreamResponse):
     async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
         if msg.type != WSMsgType.BINARY:
-            raise TypeError(
-                "Received message {}:{!r} is not bytes".format(msg.type, msg.data)
-            )
+            raise TypeError(f"Received message {msg.type}:{msg.data!r} is not bytes")
         return msg.data
 
     async def receive_json(

@@ -14,7 +14,7 @@ async def wshandle(request):
 
     async for msg in ws:
         if msg.type == web.WSMsgType.text:
-            await ws.send_str("Hello, {}".format(msg.data))
+            await ws.send_str(f"Hello, {msg.data}")
         elif msg.type == web.WSMsgType.binary:
             await ws.send_bytes(msg.data)
         elif msg.type == web.WSMsgType.close:
