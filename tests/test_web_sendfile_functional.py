@@ -44,6 +44,25 @@ async def test_static_file_ok(aiohttp_client, sender) -> None:
     await resp.release()
 
 
+async def test_zero_bytes_file_ok(aiohttp_client, sender) -> None:
+    filepath = pathlib.Path(__file__).parent / "data.zero_bytes"
+
+    async def handler(request):
+        return sender(filepath)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/")
+    assert resp.status == 200
+    txt = await resp.text()
+    assert "" == txt.rstrip()
+    assert "application/octet-stream" == resp.headers["Content-Type"]
+    assert resp.headers.get("Content-Encoding") is None
+    await resp.release()
+
+
 async def test_static_file_ok_string_path(aiohttp_client, sender) -> None:
     filepath = pathlib.Path(__file__).parent / "data.unknown_mime_type"
 
