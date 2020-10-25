@@ -56,7 +56,7 @@ class TestClientResponseError:
 
     def test_repr(self) -> None:
         err = client.ClientResponseError(request_info=self.request_info, history=())
-        assert repr(err) == ("ClientResponseError(%r, ())" % (self.request_info,))
+        assert repr(err) == (f"ClientResponseError({self.request_info!r}, ())")
 
         err = client.ClientResponseError(
             request_info=self.request_info,
@@ -131,7 +131,7 @@ class TestClientConnectorError:
             connection_key=self.connection_key, os_error=os_error
         )
         assert repr(err) == (
-            "ClientConnectorError(%r, %r)" % (self.connection_key, os_error)
+            f"ClientConnectorError({self.connection_key!r}, {os_error!r})"
         )
 
     def test_str(self) -> None:

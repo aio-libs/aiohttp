@@ -120,7 +120,7 @@ class PayloadRegistry:
         elif order is Order.try_last:
             self._last.append((factory, type))
         else:
-            raise ValueError("Unsupported order {!r}".format(order))
+            raise ValueError(f"Unsupported order {order!r}")
 
 
 class Payload(ABC):
@@ -137,7 +137,7 @@ class Payload(ABC):
         content_type: Optional[str] = sentinel,
         filename: Optional[str] = None,
         encoding: Optional[str] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         self._encoding = encoding
         self._filename = filename
@@ -241,7 +241,7 @@ class StringPayload(BytesPayload):
         *args: Any,
         encoding: Optional[str] = None,
         content_type: Optional[str] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
 
         if encoding is None:
@@ -301,7 +301,7 @@ class TextIOPayload(IOBasePayload):
         *args: Any,
         encoding: Optional[str] = None,
         content_type: Optional[str] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
 
         if encoding is None:
@@ -369,7 +369,7 @@ class JsonPayload(BytesPayload):
         content_type: str = "application/json",
         dumps: JSONEncoder = json.dumps,
         *args: Any,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
 
         super().__init__(

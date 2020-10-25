@@ -90,7 +90,7 @@ class StreamResponse(BaseClass, HeadersMixin):
         *,
         status: int = 200,
         reason: Optional[str] = None,
-        headers: Optional[LooseHeaders] = None
+        headers: Optional[LooseHeaders] = None,
     ) -> None:
         super().__init__()
         self._length_check = True
@@ -201,7 +201,7 @@ class StreamResponse(BaseClass, HeadersMixin):
         secure: Optional[bool] = None,
         httponly: Optional[bool] = None,
         version: Optional[str] = None,
-        samesite: Optional[str] = None
+        samesite: Optional[str] = None,
     ) -> None:
         """Set or update response cookie.
 
@@ -342,7 +342,7 @@ class StreamResponse(BaseClass, HeadersMixin):
     ) -> None:
         assert self._content_dict is not None
         assert self._content_type is not None
-        params = "; ".join("{}={}".format(k, v) for k, v in self._content_dict.items())
+        params = "; ".join(f"{k}={v}" for k, v in self._content_dict.items())
         if params:
             ctype = self._content_type + "; " + params
         else:
@@ -499,10 +499,10 @@ class StreamResponse(BaseClass, HeadersMixin):
             info = "eof"
         elif self.prepared:
             assert self._req is not None
-            info = "{} {} ".format(self._req.method, self._req.path)
+            info = f"{self._req.method} {self._req.path} "
         else:
             info = "not prepared"
-        return "<{} {} {}>".format(self.__class__.__name__, self.reason, info)
+        return f"<{self.__class__.__name__} {self.reason} {info}>"
 
     def __getitem__(self, key: str) -> Any:
         return self._state[key]
@@ -546,7 +546,7 @@ class Response(StreamResponse):
         content_type: Optional[str] = None,
         charset: Optional[str] = None,
         zlib_executor_size: Optional[int] = None,
-        zlib_executor: Optional[Executor] = None
+        zlib_executor: Optional[Executor] = None,
     ) -> None:
         if body is not None and text is not None:
             raise ValueError("body and text are not allowed together")
@@ -701,7 +701,7 @@ class Response(StreamResponse):
             body = self._body  # type: Optional[Union[bytes, Payload]]
         else:
             body = self._compressed_body
-        assert not data, "data arg is not supported, got {!r}".format(data)
+        assert not data, f"data arg is not supported, got {data!r}"
         assert self._req is not None
         assert self._payload_writer is not None
         if body is not None:
@@ -771,7 +771,7 @@ def json_response(
     reason: Optional[str] = None,
     headers: Optional[LooseHeaders] = None,
     content_type: str = "application/json",
-    dumps: JSONEncoder = json.dumps
+    dumps: JSONEncoder = json.dumps,
 ) -> Response:
     if data is not sentinel:
         if text or body:

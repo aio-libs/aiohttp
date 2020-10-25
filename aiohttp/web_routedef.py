@@ -67,7 +67,7 @@ class RouteDef(AbstractRouteDef):
     def __repr__(self) -> str:
         info = []
         for name, value in sorted(self.kwargs.items()):
-            info.append(", {}={!r}".format(name, value))
+            info.append(f", {name}={value!r}")
         return "<RouteDef {method} {path} -> {handler.__name__!r}" "{info}>".format(
             method=self.method, path=self.path, handler=self.handler, info="".join(info)
         )
@@ -91,7 +91,7 @@ class StaticDef(AbstractRouteDef):
     def __repr__(self) -> str:
         info = []
         for name, value in sorted(self.kwargs.items()):
-            info.append(", {}={!r}".format(name, value))
+            info.append(f", {name}={value!r}")
         return "<StaticDef {prefix} -> {path}" "{info}>".format(
             prefix=self.prefix, path=self.path, info="".join(info)
         )
@@ -120,7 +120,7 @@ def get(
     *,
     name: Optional[str] = None,
     allow_head: bool = True,
-    **kwargs: Any
+    **kwargs: Any,
 ) -> RouteDef:
     return route(
         hdrs.METH_GET, path, handler, name=name, allow_head=allow_head, **kwargs

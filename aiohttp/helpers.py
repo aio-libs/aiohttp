@@ -93,8 +93,8 @@ DEBUG = getattr(sys.flags, "dev_mode", False) or (
 )  # type: bool
 
 
-CHAR = set(chr(i) for i in range(0, 128))
-CTL = set(chr(i) for i in range(0, 32)) | {
+CHAR = {chr(i) for i in range(0, 128)}
+CTL = {chr(i) for i in range(0, 32)} | {
     chr(127),
 }
 SEPARATORS = {
@@ -196,7 +196,7 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
 
     def encode(self) -> str:
         """Encode credentials."""
-        creds = ("%s:%s" % (self.login, self.password)).encode(self.encoding)
+        creds = (f"{self.login}:{self.password}").encode(self.encoding)
         return "Basic %s" % base64.b64encode(creds).decode(self.encoding)
 
 
@@ -798,4 +798,4 @@ class ChainMapProxy(Mapping[str, Any]):
 
     def __repr__(self) -> str:
         content = ", ".join(map(repr, self._maps))
-        return "ChainMapProxy({})".format(content)
+        return f"ChainMapProxy({content})"

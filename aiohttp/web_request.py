@@ -77,7 +77,7 @@ class FileField:
 _TCHAR = string.digits + string.ascii_letters + r"!#$%&'*+.^_`|~-"
 # '-' at the end to prevent interpretation as range in a char class
 
-_TOKEN = r"[{tchar}]+".format(tchar=_TCHAR)
+_TOKEN = fr"[{_TCHAR}]+"
 
 _QDTEXT = r"[{}]".format(
     r"".join(chr(c) for c in (0x09, 0x20, 0x21) + tuple(range(0x23, 0x7F)))
@@ -150,7 +150,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         state: Optional[Dict[str, Any]] = None,
         scheme: Optional[str] = None,
         host: Optional[str] = None,
-        remote: Optional[str] = None
+        remote: Optional[str] = None,
     ) -> None:
         super().__init__()
         if state is None:
@@ -196,7 +196,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         headers: LooseHeaders = sentinel,
         scheme: str = sentinel,
         host: str = sentinel,
-        remote: str = sentinel
+        remote: str = sentinel,
     ) -> "BaseRequest":
         """Clone itself with replacement some attributes.
 
@@ -242,7 +242,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             self._loop,
             client_max_size=self._client_max_size,
             state=self._state.copy(),
-            **kwargs
+            **kwargs,
         )
 
     @property
@@ -608,7 +608,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self,
         *,
         loads: JSONDecoder = DEFAULT_JSON_DECODER,
-        content_type: Optional[str] = "application/json"
+        content_type: Optional[str] = "application/json",
     ) -> Any:
         """Return BODY as JSON."""
         body = await self.text()
@@ -792,7 +792,7 @@ class Request(BaseRequest):
         headers: LooseHeaders = sentinel,
         scheme: str = sentinel,
         host: str = sentinel,
-        remote: str = sentinel
+        remote: str = sentinel,
     ) -> "Request":
         ret = super().clone(
             method=method,

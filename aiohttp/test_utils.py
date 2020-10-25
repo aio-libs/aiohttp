@@ -139,7 +139,7 @@ class BaseTestServer(ABC):
             else:
                 scheme = "http"
             self.scheme = scheme
-        self._root = URL("{}://{}:{}".format(self.scheme, absolute_host, self.port))
+        self._root = URL(f"{self.scheme}://{absolute_host}:{self.port}")
 
     @abstractmethod  # pragma: no cover
     async def _make_runner(self, **kwargs: Any) -> BaseRunner:

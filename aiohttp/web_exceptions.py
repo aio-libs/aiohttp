@@ -90,14 +90,14 @@ class HTTPException(Exception):
         headers: Optional[LooseHeaders] = None,
         reason: Optional[str] = None,
         text: Optional[str] = None,
-        content_type: Optional[str] = None
+        content_type: Optional[str] = None,
     ) -> None:
         if reason is None:
             reason = self.default_reason
 
         if text is None:
             if not self.empty_body:
-                text = "{}: {}".format(self.status_code, reason)
+                text = f"{self.status_code}: {reason}"
         else:
             if self.empty_body:
                 warnings.warn(
@@ -156,7 +156,7 @@ class HTTPException(Exception):
         return self.reason
 
     def __repr__(self) -> str:
-        return "<%s: %s>" % (self.__class__.__name__, self.reason)
+        return f"<{self.__class__.__name__}: {self.reason}>"
 
     __reduce__ = object.__reduce__
 
@@ -219,7 +219,7 @@ class HTTPMove(HTTPRedirection):
         headers: Optional[LooseHeaders] = None,
         reason: Optional[str] = None,
         text: Optional[str] = None,
-        content_type: Optional[str] = None
+        content_type: Optional[str] = None,
     ) -> None:
         if not location:
             raise ValueError("HTTP redirects need a location to redirect to.")
@@ -311,7 +311,7 @@ class HTTPMethodNotAllowed(HTTPClientError):
         headers: Optional[LooseHeaders] = None,
         reason: Optional[str] = None,
         text: Optional[str] = None,
-        content_type: Optional[str] = None
+        content_type: Optional[str] = None,
     ) -> None:
         allow = ",".join(sorted(allowed_methods))
         super().__init__(
@@ -424,7 +424,7 @@ class HTTPUnavailableForLegalReasons(HTTPClientError):
         headers: Optional[LooseHeaders] = None,
         reason: Optional[str] = None,
         text: Optional[str] = None,
-        content_type: Optional[str] = None
+        content_type: Optional[str] = None,
     ) -> None:
         super().__init__(
             headers=headers, reason=reason, text=text, content_type=content_type

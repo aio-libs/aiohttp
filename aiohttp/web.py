@@ -300,7 +300,7 @@ async def _run_app(
     access_log: Optional[logging.Logger] = access_logger,
     handle_signals: bool = True,
     reuse_address: Optional[bool] = None,
-    reuse_port: Optional[bool] = None
+    reuse_port: Optional[bool] = None,
 ) -> None:
     # An internal function to actually do all dirty job for application running
     if asyncio.iscoroutine(app):
@@ -474,7 +474,7 @@ def run_app(
     access_log: Optional[logging.Logger] = access_logger,
     handle_signals: bool = True,
     reuse_address: Optional[bool] = None,
-    reuse_port: Optional[bool] = None
+    reuse_port: Optional[bool] = None,
 ) -> None:
     """Run an app locally"""
     loop = asyncio.get_event_loop()
@@ -560,11 +560,11 @@ def main(argv: List[str]) -> None:
     try:
         module = import_module(mod_str)
     except ImportError as ex:
-        arg_parser.error("unable to import %s: %s" % (mod_str, ex))
+        arg_parser.error(f"unable to import {mod_str}: {ex}")
     try:
         func = getattr(module, func_str)
     except AttributeError:
-        arg_parser.error("module %r has no attribute %r" % (mod_str, func_str))
+        arg_parser.error(f"module {mod_str!r} has no attribute {func_str!r}")
 
     # Compatibility logic
     if args.path is not None and not hasattr(socket, "AF_UNIX"):

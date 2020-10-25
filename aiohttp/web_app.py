@@ -94,7 +94,7 @@ class Application(MutableMapping[str, Any]):
         middlewares: Iterable[_Middleware] = (),
         handler_args: Optional[Mapping[str, Any]] = None,
         client_max_size: int = 1024 ** 2,
-        debug: Any = ...  # mypy doesn't support ellipsis
+        debug: Any = ...,  # mypy doesn't support ellipsis
     ) -> None:
 
         if debug is not ...:
@@ -393,7 +393,7 @@ class CleanupContext(_CleanupContextBase):
             except Exception as exc:
                 errors.append(exc)
             else:
-                errors.append(RuntimeError("{!r} has more than one 'yield'".format(it)))
+                errors.append(RuntimeError(f"{it!r} has more than one 'yield'"))
         if errors:
             if len(errors) == 1:
                 raise errors[0]

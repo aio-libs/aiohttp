@@ -291,7 +291,7 @@ class ClientSession:
         try:
             if not self.closed:
                 _warnings.warn(
-                    "Unclosed client session {!r}".format(self),
+                    f"Unclosed client session {self!r}",
                     ResourceWarning,
                     source=self,
                 )
@@ -490,7 +490,7 @@ class ClientSession:
                             )
                     except asyncio.TimeoutError as exc:
                         raise ServerTimeoutError(
-                            "Connection timeout " "to host {0}".format(url)
+                            f"Connection timeout to host {url}"
                         ) from exc
 
                     assert conn.transport is not None
