@@ -139,10 +139,10 @@ class StreamReader(AsyncStreamReaderMixin):
         if self._low_water != 2 ** 16:  # default limit
             info.append("low=%d high=%d" % (self._low_water, self._high_water))
         if self._waiter:
-            info.append("w=%r" % self._waiter)
+            info.append(f"w={self._waiter!r}")
         if self._exception:
-            info.append("e=%r" % self._exception)
-        return "<%s>" % " ".join(info)
+            info.append(f"e={self._exception!r}")
+        return f"<{' '.join(info)}>"
 
     def get_read_buffer_limits(self) -> Tuple[int, int]:
         return (self._low_water, self._high_water)

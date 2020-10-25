@@ -108,7 +108,7 @@ class StreamWriter(AbstractStreamWriter):
 
         if chunk:
             if self.chunked:
-                chunk_len_pre = ("%x\r\n" % len(chunk)).encode("ascii")
+                chunk_len_pre = f"{len(chunk):x}\r\n".encode("ascii")
                 chunk = chunk_len_pre + chunk + b"\r\n"
 
             self._write(chunk)
@@ -141,12 +141,12 @@ class StreamWriter(AbstractStreamWriter):
 
             chunk = chunk + self._compress.flush()
             if chunk and self.chunked:
-                chunk_len = ("%x\r\n" % len(chunk)).encode("ascii")
+                chunk_len = f"{len(chunk):x}\r\n".encode("ascii")
                 chunk = chunk_len + chunk + b"\r\n0\r\n\r\n"
         else:
             if self.chunked:
                 if chunk:
-                    chunk_len = ("%x\r\n" % len(chunk)).encode("ascii")
+                    chunk_len = f"{len(chunk):x}\r\n".encode("ascii")
                     chunk = chunk_len + chunk + b"\r\n0\r\n\r\n"
                 else:
                     chunk = b"0\r\n\r\n"

@@ -532,10 +532,7 @@ async def test_proxy_from_env_http_with_auth_from_netrc(
     proxy = await proxy_test_server()
     auth = aiohttp.BasicAuth("user", "pass")
     netrc_file = tmp_path / "test_netrc"
-    netrc_file_data = "machine 127.0.0.1 login {} password {}".format(
-        auth.login,
-        auth.password,
-    )
+    netrc_file_data = f"machine 127.0.0.1 login {auth.login} password {auth.password}"
     with netrc_file.open("w") as f:
         f.write(netrc_file_data)
     mocker.patch.dict(
@@ -558,10 +555,7 @@ async def test_proxy_from_env_http_without_auth_from_netrc(
     proxy = await proxy_test_server()
     auth = aiohttp.BasicAuth("user", "pass")
     netrc_file = tmp_path / "test_netrc"
-    netrc_file_data = "machine 127.0.0.2 login {} password {}".format(
-        auth.login,
-        auth.password,
-    )
+    netrc_file_data = f"machine 127.0.0.2 login {auth.login} password {auth.password}"
     with netrc_file.open("w") as f:
         f.write(netrc_file_data)
     mocker.patch.dict(

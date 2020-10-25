@@ -438,7 +438,7 @@ async def test_post_form_with_duplicate_keys(aiohttp_client) -> None:
 
 def test_repr_for_application() -> None:
     app = web.Application()
-    assert "<Application 0x{:x}>".format(id(app)) == repr(app)
+    assert f"<Application 0x{id(app):x}>" == repr(app)
 
 
 async def test_expect_default_handler_unknown(aiohttp_client) -> None:
@@ -1344,14 +1344,14 @@ async def test_subapp_middleware_context(aiohttp_client, route, expected, middle
 
     def show_app_context(appname):
         async def middleware(request, handler):
-            values.append("{}: {}".format(appname, request.app["my_value"]))
+            values.append(f"{appname}: {request.app['my_value']}")
             return await handler(request)
 
         return middleware
 
     def make_handler(appname):
         async def handler(request):
-            values.append("{}: {}".format(appname, request.app["my_value"]))
+            values.append(f"{appname}: {request.app['my_value']}")
             return web.Response(text="Ok")
 
         return handler

@@ -165,7 +165,7 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
             raise ValueError("Could not parse authorization header.")
 
         if auth_type.lower() != "basic":
-            raise ValueError("Unknown authorization method %s" % auth_type)
+            raise ValueError(f"Unknown authorization method {auth_type}")
 
         try:
             decoded = base64.b64decode(
@@ -196,8 +196,8 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
 
     def encode(self) -> str:
         """Encode credentials."""
-        creds = (f"{self.login}:{self.password}").encode(self.encoding)
-        return "Basic %s" % base64.b64encode(creds).decode(self.encoding)
+        creds = f"{self.login}:{self.password}".encode(self.encoding)
+        return f"Basic {base64.b64encode(creds).decode(self.encoding)}"
 
 
 def strip_auth_from_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
@@ -392,7 +392,7 @@ def content_disposition_header(
     params is a dict with disposition params.
     """
     if not disptype or not (TOKEN > set(disptype)):
-        raise ValueError("bad content disposition type {!r}" "".format(disptype))
+        raise ValueError(f"bad content disposition type {disptype!r}")
 
     value = disptype
     if params:
@@ -400,10 +400,10 @@ def content_disposition_header(
         for key, val in params.items():
             if not key or not (TOKEN > set(key)):
                 raise ValueError(
-                    "bad content disposition parameter" " {!r}={!r}".format(key, val)
+                    f"bad content disposition parameter {key!r}={val!r}"
                 )
             qval = quote(val, "") if quote_fields else val
-            lparams.append((key, '"%s"' % qval))
+            lparams.append((key, f'"{qval}"'))
             if key == "filename":
                 lparams.append(("filename*", "utf-8''" + qval))
         sparams = "; ".join("=".join(pair) for pair in lparams)
@@ -494,7 +494,7 @@ def _is_ip_address(
     elif isinstance(host, (bytes, bytearray, memoryview)):
         return bool(regexb.match(host))
     else:
-        raise TypeError("{} [{}] is not a str or bytes".format(host, type(host)))
+        raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
 
 
 is_ipv4_address = functools.partial(_is_ip_address, _ipv4_regex, _ipv4_regexb)
@@ -764,8 +764,7 @@ class ChainMapProxy(Mapping[str, Any]):
 
     def __init_subclass__(cls) -> None:
         raise TypeError(
-            "Inheritance class {} from ChainMapProxy "
-            "is forbidden".format(cls.__name__)
+            f"Inheritance class {cls.__name__} from ChainMapProxy is forbidden"
         )
 
     def __getitem__(self, key: str) -> Any:

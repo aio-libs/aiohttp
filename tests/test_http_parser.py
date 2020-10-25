@@ -808,7 +808,7 @@ def test_parse_uri_utf8(parser) -> None:
 
 def test_parse_uri_utf8_percent_encoded(parser) -> None:
     text = (
-        "GET %s HTTP/1.1\r\n\r\n" % quote("/путь?ключ=знач#фраг", safe="/?=#")
+        f"GET {quote('/путь?ключ=знач#фраг', safe='/?=#')} HTTP/1.1\r\n\r\n"
     ).encode()
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]

@@ -19,9 +19,7 @@ class Signal(FrozenList):
         self._owner = owner
 
     def __repr__(self):
-        return "<Signal owner={}, frozen={}, {!r}>".format(
-            self._owner, self.frozen, list(self)
-        )
+        return f"<Signal owner={self._owner}, frozen={self.frozen}, {list(self)!r}>"
 
     async def send(self, *args, **kwargs):
         """

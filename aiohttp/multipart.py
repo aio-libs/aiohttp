@@ -151,7 +151,7 @@ def parse_content_disposition(
             elif parts:
                 # maybe just ; in filename, in any case this is just
                 # one case fix, for proper fix we need to redesign parser
-                _value = "{};{}".format(value, parts[0])
+                _value = f"{value};{parts[0]}"
                 if is_quoted(_value):
                     parts.pop(0)
                     value = unescape(_value[1:-1].lstrip("\\/"))
@@ -169,7 +169,7 @@ def parse_content_disposition(
 def content_disposition_filename(
     params: Mapping[str, str], name: str = "filename"
 ) -> Optional[str]:
-    name_suf = "%s*" % name
+    name_suf = f"{name}*"
     if not params:
         return None
     elif name_suf in params:
@@ -503,7 +503,7 @@ class BodyPartReader:
             return data
         else:
             raise RuntimeError(
-                "unknown content transfer encoding: {}" "".format(encoding)
+                f"unknown content transfer encoding: {encoding}"
             )
 
     def get_charset(self, default: str) -> str:
@@ -677,12 +677,12 @@ class MultipartReader:
 
         if "boundary" not in mimetype.parameters:
             raise ValueError(
-                "boundary missed for Content-Type: %s" % self.headers[CONTENT_TYPE]
+                f"boundary missed for Content-Type: {self.headers[CONTENT_TYPE]}"
             )
 
         boundary = mimetype.parameters["boundary"]
         if len(boundary) > 70:
-            raise ValueError("boundary %r is too long (70 chars max)" % boundary)
+            raise ValueError(f"boundary {boundary!r} is too long (70 chars max)")
 
         return boundary
 
@@ -696,7 +696,7 @@ class MultipartReader:
             chunk = await self._readline()
             if chunk == b"":
                 raise ValueError(
-                    "Could not find starting boundary %r" % (self._boundary)
+                    f"Could not find starting boundary {self._boundary!r}"
                 )
             newline = None
             end_boundary = self._boundary + b"--"
@@ -852,7 +852,7 @@ class MultipartWriter(Payload):
             try:
                 payload = get_payload(obj, headers=headers)
             except LookupError:
-                raise TypeError("Cannot create payload from %r" % obj)
+                raise TypeError(f"Cannot create payload from {obj!r}")
             else:
                 return self.append_payload(payload)
 
@@ -875,7 +875,7 @@ class MultipartWriter(Payload):
         ).lower()  # type: Optional[str]
         if te_encoding not in ("", "base64", "quoted-printable", "binary"):
             raise RuntimeError(
-                "unknown content transfer encoding: {}" "".format(te_encoding)
+                f"unknown content transfer encoding: {te_encoding}"
             )
         if te_encoding == "binary":
             te_encoding = None

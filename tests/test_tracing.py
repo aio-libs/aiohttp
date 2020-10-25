@@ -107,14 +107,14 @@ class TestTrace:
         callback = Mock(side_effect=make_mocked_coro(Mock()))
 
         trace_config = TraceConfig()
-        getattr(trace_config, "on_%s" % signal).append(callback)
+        getattr(trace_config, f"on_{signal}").append(callback)
         trace_config.freeze()
         trace = Trace(
             session,
             trace_config,
             trace_config.trace_config_ctx(trace_request_ctx=trace_request_ctx),
         )
-        await getattr(trace, "send_%s" % signal)(*params)
+        await getattr(trace, f"send_{signal}")(*params)
 
         callback.assert_called_once_with(
             session,

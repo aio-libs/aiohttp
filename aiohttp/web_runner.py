@@ -368,8 +368,7 @@ class AppRunner(BaseRunner):
 
         if not isinstance(app, Application):
             raise TypeError(
-                "The first argument should be web.Application "
-                "instance, got {!r}".format(app)
+                f"The first argument should be web.Application instance, got {app!r}"
             )
         kwargs["access_log_class"] = access_log_class
 

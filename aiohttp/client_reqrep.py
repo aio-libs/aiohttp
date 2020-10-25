@@ -526,7 +526,7 @@ class ClientRequest:
             await writer.write_eof()
         except OSError as exc:
             new_exc = ClientOSError(
-                exc.errno, "Can not write request body for %s" % self.url
+                exc.errno, f"Can not write request body for {self.url}"
             )
             new_exc.__context__ = exc
             new_exc.__cause__ = exc
@@ -1034,7 +1034,7 @@ class ClientResponse(HeadersMixin):
                     self.request_info,
                     self.history,
                     message=(
-                        "Attempt to decode JSON with " "unexpected mimetype: %s" % ctype
+                        f"Attempt to decode JSON with unexpected mimetype: {ctype}"
                     ),
                     headers=self.headers,
                 )

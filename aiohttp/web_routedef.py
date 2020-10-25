@@ -92,9 +92,7 @@ class StaticDef(AbstractRouteDef):
         info = []
         for name, value in sorted(self.kwargs.items()):
             info.append(f", {name}={value!r}")
-        return "<StaticDef {prefix} -> {path}" "{info}>".format(
-            prefix=self.prefix, path=self.path, info="".join(info)
-        )
+        return f"<StaticDef {self.prefix} -> {self.path}{''.join(info)}>"
 
     def register(self, router: UrlDispatcher) -> List[AbstractRoute]:
         resource = router.add_static(self.prefix, self.path, **self.kwargs)
@@ -161,7 +159,7 @@ class RouteTableDef(Sequence[AbstractRouteDef]):
         self._items = []  # type: List[AbstractRouteDef]
 
     def __repr__(self) -> str:
-        return "<RouteTableDef count={}>".format(len(self._items))
+        return f"<RouteTableDef count={len(self._items)}>"
 
     @overload
     def __getitem__(self, index: int) -> AbstractRouteDef:

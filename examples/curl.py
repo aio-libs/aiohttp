@@ -11,7 +11,7 @@ async def curl(url):
         async with session.request("GET", url) as response:
             print(repr(response))
             chunk = await response.content.read()
-            print("Downloaded: %s" % len(chunk))
+            print(f"Downloaded: {len(chunk)}")
 
 
 if __name__ == "__main__":

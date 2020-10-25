@@ -104,11 +104,11 @@ class AccessLogger(AbstractAccessLogger):
         for atom in self.FORMAT_RE.findall(log_format):
             if atom[1] == "":
                 format_key1 = self.LOG_FORMAT_MAP[atom[0]]
-                m = getattr(AccessLogger, "_format_%s" % atom[0])
+                m = getattr(AccessLogger, f"_format_{atom[0]}")
                 key_method = KeyMethod(format_key1, m)
             else:
                 format_key2 = (self.LOG_FORMAT_MAP[atom[2]], atom[1])
-                m = getattr(AccessLogger, "_format_%s" % atom[2])
+                m = getattr(AccessLogger, f"_format_{atom[2]}")
                 key_method = KeyMethod(format_key2, functools.partial(m, atom[1]))
 
             methods.append(key_method)
@@ -150,7 +150,7 @@ class AccessLogger(AbstractAccessLogger):
 
     @staticmethod
     def _format_P(request: BaseRequest, response: StreamResponse, time: float) -> str:
-        return "<%s>" % os.getpid()
+        return f"<{os.getpid()}>"
 
     @staticmethod
     def _format_r(request: BaseRequest, response: StreamResponse, time: float) -> str:
@@ -177,7 +177,7 @@ class AccessLogger(AbstractAccessLogger):
 
     @staticmethod
     def _format_Tf(request: BaseRequest, response: StreamResponse, time: float) -> str:
-        return "%06f" % time
+        return f"{time:06f}"
 
     @staticmethod
     def _format_D(request: BaseRequest, response: StreamResponse, time: float) -> str:

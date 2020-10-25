@@ -149,7 +149,7 @@ def gen_headers(headers):
     out.write("from . import hdrs\n")
     out.write("cdef tuple headers = (\n")
     for hdr in headers:
-        out.write("    hdrs.{},\n".format(hdr.upper().replace("-", "_")))
+        out.write(f"    hdrs.{hdr.upper().replace('-', '_')},\n")
     out.write(")\n")
     return out
 

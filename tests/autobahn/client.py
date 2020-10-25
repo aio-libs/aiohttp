@@ -28,7 +28,7 @@ async def client(loop, url, name):
             else:
                 break
 
-    url = url + "/updateReports?agent=%s" % name
+    url = url + f"/updateReports?agent={name}"
     ws = await aiohttp.ws_connect(url)
     await ws.close()
 

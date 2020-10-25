@@ -617,7 +617,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             if not is_expected_content_type(ctype, content_type):
                 raise HTTPBadRequest(
                     text=(
-                        "Attempt to decode JSON with " "unexpected mimetype: %s" % ctype
+                        f"Attempt to decode JSON with unexpected mimetype: {ctype}"
                     )
                 )
 
@@ -739,9 +739,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         ascii_encodable_path = self.path.encode("ascii", "backslashreplace").decode(
             "ascii"
         )
-        return "<{} {} {} >".format(
-            self.__class__.__name__, self._method, ascii_encodable_path
-        )
+        return f"<{self.__class__.__name__} {self._method} {ascii_encodable_path} >"
 
     def __eq__(self, other: object) -> bool:
         return id(self) == id(other)

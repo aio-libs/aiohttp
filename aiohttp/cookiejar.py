@@ -212,9 +212,7 @@ class CookieJar(AbstractCookieJar):
         self._do_expiration()
         if not isinstance(request_url, URL):
             warnings.warn(
-                "The method accepts yarl.URL instances only, got {}".format(
-                    type(request_url)
-                ),
+                f"The method accepts yarl.URL instances only, got {type(request_url)}",
                 DeprecationWarning,
             )
             request_url = URL(request_url)

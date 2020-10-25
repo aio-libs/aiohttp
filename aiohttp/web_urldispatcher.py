@@ -175,8 +175,7 @@ class AbstractRoute(abc.ABC):
             pass
         else:
             raise TypeError(
-                "Only async functions are allowed as web-handlers "
-                ", got {!r}".format(handler)
+                f"Only async functions are allowed as web-handlers , got {handler!r}"
             )
 
         self._method = method
@@ -262,9 +261,7 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
         if DEBUG:  # pragma: no cover
             if app not in self._apps:
                 raise RuntimeError(
-                    "Expected one of the following apps {!r}, got {!r}".format(
-                        self._apps, app
-                    )
+                    f"Expected one of the following apps {self._apps!r}, got {app!r}"
                 )
         prev = self._current_app
         self._current_app = app
@@ -290,9 +287,7 @@ class MatchInfoError(UrlMappingMatchInfo):
         return self._exception
 
     def __repr__(self) -> str:
-        return "<MatchInfoError {}: {}>".format(
-            self._exception.status, self._exception.reason
-        )
+        return f"<MatchInfoError {self._exception.status}: {self._exception.reason}>"
 
 
 async def _default_expect_handler(request: Request) -> None:
@@ -306,7 +301,7 @@ async def _default_expect_handler(request: Request) -> None:
         if expect.lower() == "100-continue":
             await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
         else:
-            raise HTTPExpectationFailed(text="Unknown Expect: %s" % expect)
+            raise HTTPExpectationFailed(text=f"Unknown Expect: {expect}")
 
 
 class Resource(AbstractResource):
@@ -423,7 +418,7 @@ class DynamicResource(Resource):
         for part in ROUTE_RE.split(path):
             match = self.DYN.fullmatch(part)
             if match:
-                pattern += "(?P<{}>{})".format(match.group("var"), self.GOOD)
+                pattern += f"(?P<{match.group('var')}>{self.GOOD})"
                 formatter += "{" + match.group("var") + "}"
                 continue
 
@@ -481,9 +476,7 @@ class DynamicResource(Resource):
 
     def __repr__(self) -> str:
         name = "'" + self.name + "' " if self.name is not None else ""
-        return "<DynamicResource {name} {formatter}>".format(
-            name=name, formatter=self._formatter
-        )
+        return f"<DynamicResource {name} {self._formatter}>"
 
 
 class PrefixResource(AbstractResource):
@@ -690,9 +683,7 @@ class StaticResource(PrefixResource):
                 file_name = _file.name
 
             index_list.append(
-                '<li><a href="{url}">{name}</a></li>'.format(
-                    url=file_url, name=file_name
-                )
+                f'<li><a href="{file_url}">{file_name}</a></li>'
             )
         ul = "<ul>\n{}\n</ul>".format("\n".join(index_list))
         body = f"<body>\n{h1}\n{ul}\n</body>"
@@ -704,9 +695,7 @@ class StaticResource(PrefixResource):
 
     def __repr__(self) -> str:
         name = "'" + self.name + "'" if self.name is not None else ""
-        return "<StaticResource {name} {path} -> {directory!r}>".format(
-            name=name, path=self._prefix, directory=self._directory
-        )
+        return f"<StaticResource {name} {self._prefix} -> {self._directory!r}>"
 
 
 class PrefixedSubAppResource(PrefixResource):
@@ -748,9 +737,7 @@ class PrefixedSubAppResource(PrefixResource):
         return iter(self._app.router.routes())
 
     def __repr__(self) -> str:
-        return "<PrefixedSubAppResource {prefix} -> {app!r}>".format(
-            prefix=self._prefix, app=self._app
-        )
+        return f"<PrefixedSubAppResource {self._prefix} -> {self._app!r}>"
 
 
 class AbstractRuleMatching(abc.ABC):
@@ -850,7 +837,7 @@ class MatchedSubAppResource(PrefixedSubAppResource):
         return match_info, methods
 
     def __repr__(self) -> str:
-        return "<MatchedSubAppResource -> {app!r}>" "".format(app=self._app)
+        return f"<MatchedSubAppResource -> {self._app!r}>"
 
 
 class ResourceRoute(AbstractRoute):
@@ -869,9 +856,7 @@ class ResourceRoute(AbstractRoute):
         )
 
     def __repr__(self) -> str:
-        return "<ResourceRoute [{method}] {resource} -> {handler!r}".format(
-            method=self.method, resource=self._resource, handler=self.handler
-        )
+        return f"<ResourceRoute [{self.method}] {self._resource} -> {self.handler!r}"
 
     @property
     def name(self) -> Optional[str]:

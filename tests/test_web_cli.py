@@ -76,7 +76,7 @@ def test_entry_func_non_existent_attribute(mocker) -> None:
         web.main(argv)
 
     error.assert_called_with(
-        "module {!r} has no attribute {!r}".format("alpha.beta", "func")
+        "module alpha.beta has no attribute func"
     )
 
 

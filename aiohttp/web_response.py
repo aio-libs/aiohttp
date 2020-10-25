@@ -452,15 +452,13 @@ class StreamResponse(BaseClass, HeadersMixin):
         assert writer is not None
         # status line
         version = request.version
-        status_line = "HTTP/{}.{} {} {}".format(
-            version[0], version[1], self._status, self._reason
-        )
+        status_line = f"HTTP/{version[0]}.{version[1]} {self._status} {self._reason}"
         await writer.write_headers(status_line, self._headers)
 
     async def write(self, data: bytes) -> None:
         assert isinstance(
             data, (bytes, bytearray, memoryview)
-        ), "data argument must be byte-ish (%r)" % type(data)
+        ), f"data argument must be byte-ish ({type(data)!r})"
 
         if self._eof_sent:
             raise RuntimeError("Cannot call write() after write_eof()")
@@ -482,7 +480,7 @@ class StreamResponse(BaseClass, HeadersMixin):
     async def write_eof(self, data: bytes = b"") -> None:
         assert isinstance(
             data, (bytes, bytearray, memoryview)
-        ), "data argument must be byte-ish (%r)" % type(data)
+        ), f"data argument must be byte-ish ({type(data)!r})"
 
         if self._eof_sent:
             return
@@ -573,7 +571,7 @@ class Response(StreamResponse):
             else:
                 # fast path for filling headers
                 if not isinstance(text, str):
-                    raise TypeError("text argument must be str (%r)" % type(text))
+                    raise TypeError(f"text argument must be str ({type(text)!r})")
                 if content_type is None:
                     content_type = "text/plain"
                 if charset is None:
@@ -627,7 +625,7 @@ class Response(StreamResponse):
             try:
                 self._body = body = payload.PAYLOAD_REGISTRY.get(body)
             except payload.LookupError:
-                raise ValueError("Unsupported body type %r" % type(body))
+                raise ValueError(f"Unsupported body type {type(body)!r}")
 
             self._body_payload = True
 
@@ -661,7 +659,7 @@ class Response(StreamResponse):
     def text(self, text: str) -> None:
         assert text is None or isinstance(
             text, str
-        ), "text argument must be str (%r)" % type(text)
+        ), f"text argument must be str ({type(text)!r})"
 
         if self.content_type == "application/octet-stream":
             self.content_type = "text/plain"

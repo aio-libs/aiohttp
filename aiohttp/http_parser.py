@@ -138,9 +138,7 @@ class HeadersParser:
                 raise InvalidHeader(bname)
             if len(bname) > self.max_field_size:
                 raise LineTooLong(
-                    "request header name {}".format(
-                        bname.decode("utf8", "xmlcharrefreplace")
-                    ),
+                    f"request header name {bname.decode('utf8', 'xmlcharrefreplace')}",
                     str(self.max_field_size),
                     str(len(bname)),
                 )
@@ -861,7 +859,7 @@ class DeflateBuffer:
             chunk = self.decompressor.decompress(chunk)
         except Exception:
             raise ContentEncodingError(
-                "Can not decode content-encoding: %s" % self.encoding
+                f"Can not decode content-encoding: {self.encoding}"
             )
 
         self._started_decoding = True

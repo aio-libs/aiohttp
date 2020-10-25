@@ -214,8 +214,7 @@ def pytest_generate_tests(metafunc):  # type: ignore
         if name not in avail_factories:  # pragma: no cover
             if required:
                 raise ValueError(
-                    "Unknown loop '%s', available loops: %s"
-                    % (name, list(factories.keys()))
+                    f"Unknown loop '{name}', available loops: {list(factories.keys())}"
                 )
             else:
                 continue
@@ -348,7 +347,7 @@ def aiohttp_client(loop, aiohttp_client_cls):  # type: ignore
         elif isinstance(__param, BaseTestServer):
             client = aiohttp_client_cls(__param, **kwargs)
         else:
-            raise ValueError("Unknown argument type: %r" % type(__param))
+            raise ValueError(f"Unknown argument type: {type(__param)!r}")
 
         await client.start_server()
         clients.append(client)

@@ -758,14 +758,12 @@ async def test_client_disconnect(aiohttp_server) -> None:
 
     _, writer = await asyncio.open_connection("127.0.0.1", server.port)
     writer.write(
-        """POST / HTTP/1.1\r
+        f"""POST / HTTP/1.1\r
 Connection: keep-alive\r
 Content-Length: 10\r
-Host: localhost:{port}\r
+Host: localhost:{server.port}\r
 \r
-""".format(
-            port=server.port
-        ).encode(
+""".encode(
             "ascii"
         )
     )

@@ -146,7 +146,7 @@ def test_basic_auth_decode_illegal_chars_base64(header) -> None:
 
 def test_basic_auth_decode_invalid_credentials() -> None:
     with pytest.raises(ValueError, match="Invalid credentials."):
-        header = "Basic {}".format(base64.b64encode(b"username").decode())
+        header = f"Basic {base64.b64encode(b'username').decode()}"
         helpers.BasicAuth.decode(header)
 
 
@@ -169,7 +169,7 @@ def test_basic_auth_decode_invalid_credentials() -> None:
     ),
 )
 def test_basic_auth_decode_blank_username(credentials, expected_auth) -> None:
-    header = "Basic {}".format(base64.b64encode(credentials.encode()).decode())
+    header = f"Basic {base64.b64encode(credentials.encode()).decode()}"
     assert helpers.BasicAuth.decode(header) == expected_auth
 
 
@@ -484,9 +484,7 @@ def test_proxies_from_env_skipped(monkeypatch, caplog, protocol) -> None:
     monkeypatch.setenv(protocol + "_proxy", str(url))
     assert helpers.proxies_from_env() == {}
     assert len(caplog.records) == 1
-    log_message = "{proto!s} proxies {url!s} are not supported, ignoring".format(
-        proto=protocol.upper(), url=url
-    )
+    log_message = f"{protocol.upper()!s} proxies {url!s} are not supported, ignoring"
     assert caplog.record_tuples == [("aiohttp.client", 30, log_message)]
 
 

@@ -470,7 +470,7 @@ async def test_cookie_jar_usage(loop, aiohttp_client) -> None:
 
     async def handler(request):
         nonlocal req_url
-        req_url = "http://%s/" % request.host
+        req_url = f"http://{request.host}/"
 
         resp = web.Response()
         resp.set_cookie("response", "resp_value")

@@ -390,17 +390,17 @@ async def test_static_file_range(aiohttp_client, sender) -> None:
         client.get("/", headers={"Range": "bytes=2000-"}),
     )
     assert len(responses) == 3
-    assert responses[0].status == 206, "failed 'bytes=0-999': %s" % responses[0].reason
+    assert responses[0].status == 206, f"failed 'bytes=0-999': {responses[0].reason}"
     assert responses[0].headers["Content-Range"] == "bytes 0-999/{}".format(
         filesize
     ), "failed: Content-Range Error"
     assert responses[1].status == 206, (
-        "failed 'bytes=1000-1999': %s" % responses[1].reason
+        f"failed 'bytes=1000-1999': {responses[1].reason}"
     )
     assert responses[1].headers["Content-Range"] == "bytes 1000-1999/{}".format(
         filesize
     ), "failed: Content-Range Error"
-    assert responses[2].status == 206, "failed 'bytes=2000-': %s" % responses[2].reason
+    assert responses[2].status == 206, f"failed 'bytes=2000-': {responses[2].reason}"
     assert responses[2].headers["Content-Range"] == "bytes 2000-{}/{}".format(
         filesize - 1, filesize
     ), "failed: Content-Range Error"
@@ -439,7 +439,7 @@ async def test_static_file_range_end_bigger_than_size(aiohttp_client, sender):
         response = await client.get("/", headers={"Range": "bytes=54000-55000"})
 
         assert response.status == 206, (
-            "failed 'bytes=54000-55000': %s" % response.reason
+            f"failed 'bytes=54000-55000': {response.reason}"
         )
         assert (
             response.headers["Content-Range"] == "bytes 54000-54996/54997"
@@ -467,7 +467,7 @@ async def test_static_file_range_beyond_eof(aiohttp_client, sender) -> None:
     response = await client.get("/", headers={"Range": "bytes=1000000-1200000"})
 
     assert response.status == 416, (
-        "failed 'bytes=1000000-1200000': %s" % response.reason
+        f"failed 'bytes=1000000-1200000': {response.reason}"
     )
 
 

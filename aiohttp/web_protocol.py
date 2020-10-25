@@ -610,9 +610,7 @@ class RequestHandler(BaseProtocol):
                 raise RuntimeError("Missing return " "statement on request handler")
             else:
                 raise RuntimeError(
-                    "Web-handler should return "
-                    "a response instance, "
-                    "got {!r}".format(resp)
+                    f"Web-handler should return a response instance, got {resp!r}"
                 )
         try:
             await prepare_meth(request)

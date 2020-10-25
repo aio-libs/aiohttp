@@ -208,7 +208,7 @@ class BytesPayload(Payload):
     def __init__(self, value: ByteString, *args: Any, **kwargs: Any) -> None:
         if not isinstance(value, (bytes, bytearray, memoryview)):
             raise TypeError(
-                "value argument must be byte-ish, not {!r}".format(type(value))
+                f"value argument must be byte-ish, not {type(value)!r}"
             )
 
         if "content_type" not in kwargs:
@@ -253,7 +253,7 @@ class StringPayload(BytesPayload):
                 real_encoding = mimetype.parameters.get("charset", "utf-8")
         else:
             if content_type is None:
-                content_type = "text/plain; charset=%s" % encoding
+                content_type = f"text/plain; charset={encoding}"
             real_encoding = encoding
 
         super().__init__(
@@ -313,7 +313,7 @@ class TextIOPayload(IOBasePayload):
                 encoding = mimetype.parameters.get("charset", "utf-8")
         else:
             if content_type is None:
-                content_type = "text/plain; charset=%s" % encoding
+                content_type = f"text/plain; charset={encoding}"
 
         super().__init__(
             value,

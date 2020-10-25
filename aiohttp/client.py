@@ -283,8 +283,7 @@ class ClientSession:
 
     def __init_subclass__(cls: Type["ClientSession"]) -> None:
         raise TypeError(
-            "Inheritance class {} from ClientSession "
-            "is forbidden".format(cls.__name__)
+            f"Inheritance class {cls.__name__} from ClientSession is forbidden"
         )
 
     def __del__(self, _warnings: Any = warnings) -> None:
