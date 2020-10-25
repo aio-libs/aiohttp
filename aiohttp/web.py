@@ -422,7 +422,6 @@ async def _run_app(
         # Ctrl+C smoothly
         if sys.platform == "win32" and sys.version_info < (3, 8):
             delay = 1
-
         else:
             delay = 3600
 
