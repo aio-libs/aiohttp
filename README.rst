@@ -11,7 +11,6 @@ Async http client/server framework
 
 .. image:: https://github.com/aio-libs/aiohttp/workflows/CI/badge.svg
    :target: https://github.com/aio-libs/aiohttp/actions?query=workflow%3ACI
-   :align: right
    :alt: GitHub Actions status for master branch
 
 .. image:: https://codecov.io/gh/aio-libs/aiohttp/branch/master/graph/badge.svg
