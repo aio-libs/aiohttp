@@ -7,6 +7,8 @@ jobs:
   backport:
     name: Backport Action
     runs-on: ubuntu-latest
+    # not awailable for forks, skip the workflow
+    if: ${{ github.event.pull_request.head.repo.full_name == 'aio-libs/aiohttp' }}
     steps:
       - id: generate_token
         uses: tibdex/github-app-token@v1
