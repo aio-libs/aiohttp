@@ -5,6 +5,7 @@ from collections.abc import Container, Iterable, Mapping, MutableMapping, Sized
 from urllib.parse import unquote
 
 import pytest
+from re_assert import Matches
 from yarl import URL
 
 import aiohttp
@@ -312,7 +313,7 @@ def test_double_add_url_with_the_same_name(router) -> None:
     regexp = "Duplicate 'name', already handled by"
     with pytest.raises(ValueError) as ctx:
         router.add_route("GET", "/get_other", handler2, name="name")
-    assert re.match(regexp, str(ctx.value))
+    assert Matches(regexp) == str(ctx.value)
 
 
 def test_route_plain(router) -> None:
@@ -503,7 +504,7 @@ def test_contains(router) -> None:
 
 def test_static_repr(router) -> None:
     router.add_static("/get", os.path.dirname(aiohttp.__file__), name="name")
-    assert re.match(r"<StaticResource 'name' /get", repr(router["name"]))
+    assert Matches(r"<StaticResource 'name' /get") == repr(router["name"])
 
 
 def test_static_adds_slash(router) -> None:
@@ -625,7 +626,7 @@ async def test_regular_match_info(router) -> None:
     req = make_mocked_request("GET", "/get/john")
     match_info = await router.resolve(req)
     assert {"name": "john"} == match_info
-    assert re.match("<MatchInfo {'name': 'john'}: .+<Dynamic.+>>", repr(match_info))
+    assert Matches("<MatchInfo {'name': 'john'}: .+<Dynamic.+>>") == repr(match_info)
 
 
 async def test_match_info_with_plus(router) -> None:

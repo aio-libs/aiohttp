@@ -11,6 +11,7 @@ multidict==5.0.0
 pytest==6.1.1
 pytest-cov==2.10.1
 pytest-mock==3.3.1
+re-assert==1.1.0
 typing_extensions==3.7.4.3
 yarl==1.6.1
 
