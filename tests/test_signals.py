@@ -1,8 +1,8 @@
-import re
 from unittest import mock
 
 import pytest
 from multidict import CIMultiDict
+from re_assert import Matches
 
 from aiohttp.signals import Signal
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
@@ -162,7 +162,6 @@ async def test_repr(app) -> None:
 
     signal.append(callback)
 
-    assert re.match(
-        r"<Signal owner=<Application .+>, frozen=False, " r"\[<Mock id='\d+'>\]>",
-        repr(signal),
-    )
+    assert Matches(
+        r"<Signal owner=<Application .+>, frozen=False, " r"\[<Mock id='\d+'>\]>"
+    ) == repr(signal)
