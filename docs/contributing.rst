@@ -92,6 +92,12 @@ After that please install libraries required for development:
 
   For now, the development tooling depends on ``make`` and assumes an Unix OS If you wish to contribute to aiohttp from a Windows machine, the easiest way is probably to `configure the WSL <https://docs.microsoft.com/en-us/windows/wsl/install-win10>`_ so you can use the same instructions. If it's not possible for you or if it doesn't work, please contact us so we can find a solution together.
 
+Install pre-commit hooks:
+
+.. code-block:: shell
+
+   $ pre-commit install
+
 .. warning::
 
   If you plan to use temporary ``print()``, ``pdb`` or ``ipdb`` within the test suite, execute it with ``-s``:
