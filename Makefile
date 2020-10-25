@@ -62,7 +62,7 @@ flake8:
 	flake8 $(SRC)
 
 .PHONY: mypy
-mypy: .flake
+mypy:
 	mypy aiohttp
 
 .PHONY: isort-check
