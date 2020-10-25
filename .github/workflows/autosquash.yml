@@ -26,12 +26,9 @@ jobs:
   autosquash:
     name: Autosquash
     runs-on: ubuntu-latest
-    if: ${{ github.repository == 'aio-libs/aiohttp' }}  # not awailable for forks, skip the workflow
+    # not awailable for forks, skip the workflow
+    if: ${{ github.event.pull_request.head.repo.full_name == 'aio-libs/aiohttp' }}
     steps:
-      - name: Dump GitHub context
-        env:
-          GITHUB_CONTEXT: ${{ toJson(github) }}
-        run: echo "$GITHUB_CONTEXT"
       - id: generate_token
         uses: tibdex/github-app-token@v1
         with:

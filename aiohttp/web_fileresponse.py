@@ -98,7 +98,13 @@ class SendfileStreamWriter(StreamWriter):
         if hasattr(loop, "sendfile"):
             # Python 3.7+
             self.transport.write(data)
-            await loop.sendfile(self.transport, self._fobj, self._offset, self._count)
+            if self._count != 0:
+                await loop.sendfile(
+                    self.transport,
+                    self._fobj,
+                    self._offset,
+                    self._count
+                )
             await super().write_eof()
             return
 
