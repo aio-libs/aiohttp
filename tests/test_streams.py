@@ -3,13 +3,13 @@
 import abc
 import asyncio
 import gc
-import re
 import types
 from collections import defaultdict
 from itertools import groupby
 from unittest import mock
 
 import pytest
+from re_assert import Matches
 
 from aiohttp import streams
 
@@ -949,7 +949,7 @@ class TestStreamReader:
         loop = asyncio.get_event_loop()
         stream = self._make_one()
         stream._waiter = loop.create_future()
-        assert re.search(r"<StreamReader w=<Future pending[\S ]*>>", repr(stream))
+        assert Matches(r"<StreamReader w=<Future pending[\S ]*>>") == repr(stream)
         stream._waiter.set_result(None)
         await stream._waiter
         stream._waiter = None

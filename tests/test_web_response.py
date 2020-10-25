@@ -2,12 +2,12 @@ import collections.abc
 import datetime
 import gzip
 import json
-import re
 from concurrent.futures import ThreadPoolExecutor
 from unittest import mock
 
 import pytest
 from multidict import CIMultiDict, CIMultiDictProxy
+from re_assert import Matches
 
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, signals
 from aiohttp.payload import BytesPayload
@@ -314,7 +314,7 @@ async def test_chunked_encoding_forbidden_for_http_10() -> None:
 
     with pytest.raises(RuntimeError) as ctx:
         await resp.prepare(req)
-    assert re.match("Using chunked encoding is forbidden for HTTP/1.0", str(ctx.value))
+    assert Matches("Using chunked encoding is forbidden for HTTP/1.0") == str(ctx.value)
 
 
 async def test_compression_no_accept() -> None:
@@ -689,7 +689,7 @@ def test_response_cookies() -> None:
         'Set-Cookie: name=("")?; '
         "expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; Path=/"
     )
-    assert re.match(expected, str(resp.cookies))
+    assert Matches(expected) == str(resp.cookies)
 
     resp.set_cookie("name", "value", domain="local.host")
     expected = "Set-Cookie: name=value; Domain=local.host; Path=/"
@@ -741,7 +741,7 @@ def test_response_cookie__issue_del_cookie() -> None:
         'Set-Cookie: name=("")?; '
         "expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; Path=/"
     )
-    assert re.match(expected, str(resp.cookies))
+    assert Matches(expected) == str(resp.cookies)
 
 
 def test_cookie_set_after_del() -> None:
@@ -981,13 +981,15 @@ async def test_send_headers_for_empty_body(buf, writer) -> None:
     await resp.prepare(req)
     await resp.write_eof()
     txt = buf.decode("utf8")
-    assert re.match(
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Length: 0\r\n"
-        "Content-Type: application/octet-stream\r\n"
-        "Date: .+\r\n"
-        "Server: .+\r\n\r\n",
-        txt,
+    assert (
+        Matches(
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Length: 0\r\n"
+            "Content-Type: application/octet-stream\r\n"
+            "Date: .+\r\n"
+            "Server: .+\r\n\r\n"
+        )
+        == txt
     )
 
 
@@ -999,14 +1001,16 @@ async def test_render_with_body(buf, writer) -> None:
     await resp.write_eof()
 
     txt = buf.decode("utf8")
-    assert re.match(
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Length: 4\r\n"
-        "Content-Type: application/octet-stream\r\n"
-        "Date: .+\r\n"
-        "Server: .+\r\n\r\n"
-        "data",
-        txt,
+    assert (
+        Matches(
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Length: 4\r\n"
+            "Content-Type: application/octet-stream\r\n"
+            "Date: .+\r\n"
+            "Server: .+\r\n\r\n"
+            "data"
+        )
+        == txt
     )
 
 
@@ -1019,14 +1023,16 @@ async def test_send_set_cookie_header(buf, writer) -> None:
     await resp.write_eof()
 
     txt = buf.decode("utf8")
-    assert re.match(
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Length: 0\r\n"
-        "Set-Cookie: name=value\r\n"
-        "Content-Type: application/octet-stream\r\n"
-        "Date: .+\r\n"
-        "Server: .+\r\n\r\n",
-        txt,
+    assert (
+        Matches(
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Length: 0\r\n"
+            "Set-Cookie: name=value\r\n"
+            "Content-Type: application/octet-stream\r\n"
+            "Date: .+\r\n"
+            "Server: .+\r\n\r\n"
+        )
+        == txt
     )
 
 
