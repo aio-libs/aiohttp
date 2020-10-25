@@ -14,7 +14,7 @@ Changelog
 
 .. towncrier release notes start
 
-3.7.1 (2020-10-24)
+3.7.1 (2020-10-25)
 ==================
 
 Bugfixes
@@ -22,6 +22,24 @@ Bugfixes
 
 - Fixed a type error caused by the conditional import of `Protocol`.
   `#5111 <https://github.com/aio-libs/aiohttp/issues/5111>`_
+- Server doesn't send Content-Length for 1xx or 204
+  `#4901 <https://github.com/aio-libs/aiohttp/issues/4901>`_
+- Fix run_app typing
+  `#4957 <https://github.com/aio-libs/aiohttp/issues/4957>`_
+- Always require ``typing_extensions`` library.
+  `#5107 <https://github.com/aio-libs/aiohttp/issues/5107>`_
+- Fix a variable-shadowing bug causing `ThreadedResolver.resolve` to
+  return the resolved IP as the ``hostname`` in each record, which prevented
+  validation of HTTPS connections.
+  `#5110 <https://github.com/aio-libs/aiohttp/issues/5110>`_
+- Added annotations to all public attributes.
+  `#5115 <https://github.com/aio-libs/aiohttp/issues/5115>`_
+- Fix flaky test_when_timeout_smaller_second
+  `#5116 <https://github.com/aio-libs/aiohttp/issues/5116>`_
+- Ensure sending a zero byte file does not throw an exception
+  `#5124 <https://github.com/aio-libs/aiohttp/issues/5124>`_
+- Fix a bug in ``web.run_app()`` about Python version checking on Windows
+  `#5127 <https://github.com/aio-libs/aiohttp/issues/5127>`_
 
 
 ----
