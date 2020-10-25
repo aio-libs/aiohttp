@@ -391,17 +391,17 @@ async def test_static_file_range(aiohttp_client, sender) -> None:
     )
     assert len(responses) == 3
     assert responses[0].status == 206, "failed 'bytes=0-999': %s" % responses[0].reason
-    assert responses[0].headers["Content-Range"] == "bytes 0-999/{0}".format(
+    assert responses[0].headers["Content-Range"] == "bytes 0-999/{}".format(
         filesize
     ), "failed: Content-Range Error"
     assert responses[1].status == 206, (
         "failed 'bytes=1000-1999': %s" % responses[1].reason
     )
-    assert responses[1].headers["Content-Range"] == "bytes 1000-1999/{0}".format(
+    assert responses[1].headers["Content-Range"] == "bytes 1000-1999/{}".format(
         filesize
     ), "failed: Content-Range Error"
     assert responses[2].status == 206, "failed 'bytes=2000-': %s" % responses[2].reason
-    assert responses[2].headers["Content-Range"] == "bytes 2000-{0}/{1}".format(
+    assert responses[2].headers["Content-Range"] == "bytes 2000-{}/{}".format(
         filesize - 1, filesize
     ), "failed: Content-Range Error"
 

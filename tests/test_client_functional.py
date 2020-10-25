@@ -368,7 +368,7 @@ async def test_format_task_get(aiohttp_server) -> None:
     server = await aiohttp_server(app)
     client = aiohttp.ClientSession()
     task = helpers.create_task(client.get(server.make_url("/")))
-    assert "{}".format(task).startswith("<Task pending")
+    assert f"{task}".startswith("<Task pending")
     resp = await task
     resp.close()
     await client.close()

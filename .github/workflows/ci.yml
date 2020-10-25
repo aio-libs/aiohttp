@@ -40,6 +40,8 @@ jobs:
       uses: py-actions/py-dependency-install@v2
       with:
         path: requirements/lint.txt
+    - name: Pre-Commit hooks
+      uses: pre-commit/action@v2.0.0
     - name: Install itself
       run: |
         python setup.py install
@@ -47,8 +49,6 @@ jobs:
         AIOHTTP_NO_EXTENSIONS: 1
     - name: Run linters
       run: |
-        make flake8
-        make isort-check
         make mypy
     - name: Install spell checker
       run: |
