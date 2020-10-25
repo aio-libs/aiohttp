@@ -12,7 +12,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import FormData, HttpVersion10, HttpVersion11, TraceConfig, multipart, web
-from aiohttp.hdrs import CONTENT_LENGTH, TRANSFER_ENCODING
+from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
 from aiohttp.test_utils import make_mocked_coro
 
 try:
@@ -1897,4 +1897,15 @@ async def test_response_101_204_no_content_length_http11(
     client = await aiohttp_client(app, version="1.1")
     resp = await client.get("/")
     assert CONTENT_LENGTH not in resp.headers
+    assert TRANSFER_ENCODING not in resp.headers
+
+async def test_stream_response_headers_204(aiohttp_client):
+    async def handler(_):
+        return web.StreamResponse(status=204)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.get("/")
+    assert CONTENT_TYPE not in resp.headers
     assert TRANSFER_ENCODING not in resp.headers

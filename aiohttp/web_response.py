@@ -419,7 +419,7 @@ class StreamResponse(BaseClass, HeadersMixin):
         elif self._length_check:
             writer.length = self.content_length
             if writer.length is None:
-                if version >= HttpVersion11:
+                if version >= HttpVersion11 and self.status != 204:
                     writer.enable_chunking()
                     headers[hdrs.TRANSFER_ENCODING] = "chunked"
                     if hdrs.CONTENT_LENGTH in headers:
@@ -431,7 +431,8 @@ class StreamResponse(BaseClass, HeadersMixin):
             elif version >= HttpVersion11 and self.status in (100, 101, 102, 103, 204):
                 del headers[hdrs.CONTENT_LENGTH]
 
-        headers.setdefault(hdrs.CONTENT_TYPE, "application/octet-stream")
+        if self.status != 204:
+            headers.setdefault(hdrs.CONTENT_TYPE, "application/octet-stream")
         headers.setdefault(hdrs.DATE, rfc822_formatted_time())
         headers.setdefault(hdrs.SERVER, SERVER_SOFTWARE)
 
