@@ -1899,6 +1899,7 @@ async def test_response_101_204_no_content_length_http11(
     assert CONTENT_LENGTH not in resp.headers
     assert TRANSFER_ENCODING not in resp.headers
 
+
 async def test_stream_response_headers_204(aiohttp_client):
     async def handler(_):
         return web.StreamResponse(status=204)
