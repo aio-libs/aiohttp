@@ -61,6 +61,7 @@ class TestTraceConfig:
         assert trace_config.on_dns_resolvehost_end.frozen
         assert trace_config.on_dns_cache_hit.frozen
         assert trace_config.on_dns_cache_miss.frozen
+        assert trace_config.on_request_headers_sent.frozen
 
 
 class TestTrace:
