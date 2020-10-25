@@ -1,4 +1,7 @@
 name: Backport
+# on:
+#   pull_request_target:
+#     types: [opened, closed, labeled, unlabeled, synchronize]
 on:
   pull_request_target:
     types: [opened, closed, labeled, unlabeled, synchronize]
@@ -8,20 +11,20 @@ jobs:
     name: Backport Action
     runs-on: ubuntu-latest
     # not awailable for forks, skip the workflow
-    if: ${{ github.event.pull_request.head.repo.full_name == 'aio-libs/aiohttp' }}
+    # if: ${{ github.event.pull_request.head.repo.full_name == 'aio-libs/aiohttp' }}
     steps:
-      - id: generate_token
-        uses: tibdex/github-app-token@v1
-        with:
-          app_id: ${{ secrets.BOT_APP_ID }}
-          private_key: ${{ secrets.BOT_PRIVATE_KEY }}
+      # - id: generate_token
+      #   uses: tibdex/github-app-token@v1
+      #   with:
+      #     app_id: ${{ secrets.BOT_APP_ID }}
+      #     private_key: ${{ secrets.BOT_PRIVATE_KEY }}
       - name: Backport
         uses: sqren/backport-github-action@v1
         with:
           # Required
           # Token to authenticate requests
-          access_token: ${{ steps.generate_token.outputs.token }}
-          # access_token: ${{ secrets.GITHUB_TOKEN }}
+          # access_token: ${{ steps.generate_token.outputs.token }}
+          access_token: ${{ secrets.GITHUB_TOKEN }}
 
           # Required
           # Backport PR by adding a label
