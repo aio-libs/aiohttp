@@ -1,3 +1,0 @@
-Fix a variable-shadowing bug causing `ThreadedResolver.resolve` to
-return the resolved IP as the "hostname" in each record, which prevented
-validation of HTTPS connections.
