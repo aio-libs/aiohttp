@@ -2,7 +2,6 @@ import asyncio
 import contextlib
 import gc
 import json
-import re
 import sys
 from http.cookies import SimpleCookie
 from io import BytesIO
@@ -10,6 +9,7 @@ from unittest import mock
 
 import pytest
 from multidict import CIMultiDict, MultiDict
+from re_assert import Matches
 from yarl import URL
 
 import aiohttp
@@ -321,8 +321,9 @@ def test_connector_loop(loop) -> None:
                 return ClientSession(connector=connector, loop=loop)
 
             loop.run_until_complete(make_sess())
-        assert re.match(
-            "Session and connector has to use same event loop", str(ctx.value)
+        assert (
+            Matches("Session and connector has to use same event loop")
+            == str(ctx.value).strip()
         )
 
 
