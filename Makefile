@@ -36,6 +36,7 @@ isort:
 fmt format:
 	isort $(SRC)
 	black $(SRC)
+	pre-commit run --all-files
 
 
 .PHONY: flake
