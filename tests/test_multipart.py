@@ -381,7 +381,7 @@ class TestPartReader:
 
     async def test_read_text_default_encoding(self) -> None:
         obj = aiohttp.BodyPartReader(
-            BOUNDARY, {}, Stream("Привет, Мир!\r\n--:--".encode("utf-8"))
+            BOUNDARY, {}, Stream("Привет, Мир!\r\n--:--".encode())
         )
         result = await obj.text()
         assert "Привет, Мир!" == result
@@ -486,7 +486,7 @@ class TestPartReader:
         obj = aiohttp.BodyPartReader(
             BOUNDARY,
             {CONTENT_TYPE: "application/x-www-form-urlencoded; charset=utf-8"},
-            Stream("foo=bar&foo=baz&boo=\r\n--:--".encode("utf-8")),
+            Stream(b"foo=bar&foo=baz&boo=\r\n--:--"),
         )
         result = await obj.form()
         assert [("foo", "bar"), ("foo", "baz"), ("boo", "")] == result

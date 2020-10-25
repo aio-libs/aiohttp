@@ -110,7 +110,7 @@ class Application(MutableMapping[str, Any]):
         handler_args: Optional[Mapping[str, Any]] = None,
         client_max_size: int = 1024 ** 2,
         loop: Optional[asyncio.AbstractEventLoop] = None,
-        debug: Any = ...  # mypy doesn't support ellipsis
+        debug: Any = ...,  # mypy doesn't support ellipsis
     ) -> None:
         if router is None:
             router = UrlDispatcher()
@@ -365,7 +365,7 @@ class Application(MutableMapping[str, Any]):
         *,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         access_log_class: Type[AbstractAccessLogger] = AccessLogger,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Server:
 
         if not issubclass(access_log_class, AbstractAccessLogger):
@@ -387,7 +387,7 @@ class Application(MutableMapping[str, Any]):
             self._handle,  # type: ignore
             request_factory=self._make_request,
             loop=self._loop,
-            **kwargs
+            **kwargs,
         )
 
     def make_handler(
@@ -395,7 +395,7 @@ class Application(MutableMapping[str, Any]):
         *,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         access_log_class: Type[AbstractAccessLogger] = AccessLogger,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Server:
 
         warnings.warn(
@@ -544,7 +544,7 @@ class CleanupContext(_CleanupContextBase):
             except Exception as exc:
                 errors.append(exc)
             else:
-                errors.append(RuntimeError("{!r} has more than one 'yield'".format(it)))
+                errors.append(RuntimeError(f"{it!r} has more than one 'yield'"))
         if errors:
             if len(errors) == 1:
                 raise errors[0]

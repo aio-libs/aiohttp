@@ -109,7 +109,7 @@ class Connection:
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
     def __repr__(self) -> str:
-        return "Connection<{}>".format(self._key)
+        return f"Connection<{self._key}>"
 
     def __del__(self, _warnings: Any = warnings) -> None:
         if self._protocol is not None:
@@ -117,9 +117,7 @@ class Connection:
                 kwargs = {"source": self}
             else:
                 kwargs = {}
-            _warnings.warn(
-                "Unclosed connection {!r}".format(self), ResourceWarning, **kwargs
-            )
+            _warnings.warn(f"Unclosed connection {self!r}", ResourceWarning, **kwargs)
             if self._loop.is_closed():
                 return
 
@@ -213,7 +211,7 @@ class BaseConnector:
         limit: int = 100,
         limit_per_host: int = 0,
         enable_cleanup_closed: bool = False,
-        loop: Optional[asyncio.AbstractEventLoop] = None
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
 
         if force_close:
@@ -276,9 +274,7 @@ class BaseConnector:
             kwargs = {"source": self}
         else:
             kwargs = {}
-        _warnings.warn(
-            "Unclosed connector {!r}".format(self), ResourceWarning, **kwargs
-        )
+        _warnings.warn(f"Unclosed connector {self!r}", ResourceWarning, **kwargs)
         context = {
             "connector": self,
             "connections": conns,
@@ -640,7 +636,7 @@ class BaseConnector:
         key: "ConnectionKey",
         protocol: ResponseHandler,
         *,
-        should_close: bool = False
+        should_close: bool = False,
     ) -> None:
         if self._closed:
             # acquired connection is already released on connector closing
@@ -757,7 +753,7 @@ class TCPConnector(BaseConnector):
         limit: int = 100,
         limit_per_host: int = 0,
         enable_cleanup_closed: bool = False,
-        loop: Optional[asyncio.AbstractEventLoop] = None
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ):
         super().__init__(
             keepalive_timeout=keepalive_timeout,
@@ -968,7 +964,7 @@ class TCPConnector(BaseConnector):
         req: "ClientRequest",
         timeout: "ClientTimeout",
         client_error: Type[Exception] = ClientConnectorError,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Tuple[asyncio.Transport, ResponseHandler]:
         try:
             with CeilTimeout(timeout.sock_connect):
@@ -986,7 +982,7 @@ class TCPConnector(BaseConnector):
         traces: List["Trace"],
         timeout: "ClientTimeout",
         *,
-        client_error: Type[Exception] = ClientConnectorError
+        client_error: Type[Exception] = ClientConnectorError,
     ) -> Tuple[asyncio.Transport, ResponseHandler]:
         sslcontext = self._get_ssl_context(req)
         fingerprint = self._get_fingerprint(req)

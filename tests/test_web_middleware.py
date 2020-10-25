@@ -66,7 +66,7 @@ async def test_middleware_chain(loop, aiohttp_client) -> None:
                 getattr(handler, "annotation", None)
             )
             resp = await handler(request)
-            resp.text = resp.text + "[{}]".format(num)
+            resp.text = resp.text + f"[{num}]"
             return resp
 
         return middleware
@@ -110,9 +110,7 @@ async def test_middleware_subapp(loop, aiohttp_client) -> None:
         async def middleware(request, handler):
             annotation = getattr(handler, "annotation", None)
             if annotation is not None:
-                middleware_annotation_seen_values.append(
-                    "{}/{}".format(annotation, num)
-                )
+                middleware_annotation_seen_values.append(f"{annotation}/{num}")
             return await handler(request)
 
         return middleware

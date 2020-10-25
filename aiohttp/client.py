@@ -222,7 +222,7 @@ class ClientSession:
         trust_env: bool = False,
         requote_redirect_url: bool = True,
         trace_configs: Optional[List[TraceConfig]] = None,
-        read_bufsize: int = 2 ** 16
+        read_bufsize: int = 2 ** 16,
     ) -> None:
 
         if loop is None:
@@ -336,7 +336,7 @@ class ClientSession:
             else:
                 kwargs = {}
             _warnings.warn(
-                "Unclosed client session {!r}".format(self), ResourceWarning, **kwargs
+                f"Unclosed client session {self!r}", ResourceWarning, **kwargs
             )
             context = {"client_session": self, "message": "Unclosed client session"}
             if self._source_traceback is not None:
@@ -377,7 +377,7 @@ class ClientSession:
         ssl: Optional[Union[SSLContext, bool, Fingerprint]] = None,
         proxy_headers: Optional[LooseHeaders] = None,
         trace_request_ctx: Optional[SimpleNamespace] = None,
-        read_bufsize: Optional[int] = None
+        read_bufsize: Optional[int] = None,
     ) -> ClientResponse:
 
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
@@ -529,7 +529,7 @@ class ClientSession:
                             )
                     except asyncio.TimeoutError as exc:
                         raise ServerTimeoutError(
-                            "Connection timeout " "to host {0}".format(url)
+                            "Connection timeout " "to host {}".format(url)
                         ) from exc
 
                     assert conn.transport is not None
@@ -677,7 +677,7 @@ class ClientSession:
         ssl_context: Optional[SSLContext] = None,
         proxy_headers: Optional[LooseHeaders] = None,
         compress: int = 0,
-        max_msg_size: int = 4 * 1024 * 1024
+        max_msg_size: int = 4 * 1024 * 1024,
     ) -> "_WSRequestContextManager":
         """Initiate websocket connection."""
         return _WSRequestContextManager(
@@ -727,7 +727,7 @@ class ClientSession:
         ssl_context: Optional[SSLContext] = None,
         proxy_headers: Optional[LooseHeaders] = None,
         compress: int = 0,
-        max_msg_size: int = 4 * 1024 * 1024
+        max_msg_size: int = 4 * 1024 * 1024,
     ) -> ClientWebSocketResponse:
 
         if headers is None:
@@ -1207,7 +1207,7 @@ def request(
     version: HttpVersion = http.HttpVersion11,
     connector: Optional[BaseConnector] = None,
     read_bufsize: Optional[int] = None,
-    loop: Optional[asyncio.AbstractEventLoop] = None
+    loop: Optional[asyncio.AbstractEventLoop] = None,
 ) -> _SessionRequestContextManager:
     """Constructs and sends a request. Returns response object.
     method - HTTP method

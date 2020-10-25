@@ -248,7 +248,7 @@ async def test_proxy_http_multi_conn_limit(proxy_test_server, loop) -> None:
     responses = await asyncio.gather(*requests, loop=loop)
 
     assert len(responses) == multi_conn_num
-    assert set(resp.status for resp in responses) == {200}
+    assert {resp.status for resp in responses} == {200}
 
     await sess.close()
 
@@ -453,7 +453,7 @@ async def xtest_proxy_https_multi_conn_limit(proxy_test_server, loop):
     responses = await asyncio.gather(*requests, loop=loop)
 
     assert len(responses) == multi_conn_num
-    assert set(resp.status for resp in responses) == {200}
+    assert {resp.status for resp in responses} == {200}
 
     await sess.close()
 
@@ -532,7 +532,7 @@ async def test_proxy_from_env_http_with_auth_from_netrc(
     proxy = await proxy_test_server()
     auth = aiohttp.BasicAuth("user", "pass")
     netrc_file = tmpdir.join("test_netrc")
-    netrc_file_data = "machine 127.0.0.1 login %s password %s" % (
+    netrc_file_data = "machine 127.0.0.1 login {} password {}".format(
         auth.login,
         auth.password,
     )
@@ -558,7 +558,7 @@ async def test_proxy_from_env_http_without_auth_from_netrc(
     proxy = await proxy_test_server()
     auth = aiohttp.BasicAuth("user", "pass")
     netrc_file = tmpdir.join("test_netrc")
-    netrc_file_data = "machine 127.0.0.2 login %s password %s" % (
+    netrc_file_data = "machine 127.0.0.2 login {} password {}".format(
         auth.login,
         auth.password,
     )
@@ -584,7 +584,7 @@ async def test_proxy_from_env_http_without_auth_from_wrong_netrc(
     proxy = await proxy_test_server()
     auth = aiohttp.BasicAuth("user", "pass")
     netrc_file = tmpdir.join("test_netrc")
-    invalid_data = "machine 127.0.0.1 %s pass %s" % (auth.login, auth.password)
+    invalid_data = f"machine 127.0.0.1 {auth.login} pass {auth.password}"
     with open(str(netrc_file), "w") as f:
         f.write(invalid_data)
 

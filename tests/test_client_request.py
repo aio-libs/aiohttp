@@ -1,5 +1,3 @@
-# coding: utf-8
-
 import asyncio
 import hashlib
 import io
@@ -306,7 +304,7 @@ def test_default_headers_useragent_custom(make_request) -> None:
 
 def test_skip_default_useragent_header(make_request) -> None:
     req = make_request(
-        "get", "http://python.org/", skip_auto_headers=set([istr("user-agent")])
+        "get", "http://python.org/", skip_auto_headers={istr("user-agent")}
     )
 
     assert "User-Agent" not in req.headers

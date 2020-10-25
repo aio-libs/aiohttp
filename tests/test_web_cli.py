@@ -75,7 +75,9 @@ def test_entry_func_non_existent_attribute(mocker) -> None:
     with pytest.raises(SystemExit):
         web.main(argv)
 
-    error.assert_called_with("module %r has no attribute %r" % ("alpha.beta", "func"))
+    error.assert_called_with(
+        "module {!r} has no attribute {!r}".format("alpha.beta", "func")
+    )
 
 
 def test_path_when_unsupported(mocker, monkeypatch) -> None:

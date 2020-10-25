@@ -150,7 +150,7 @@ async def test_HTTPMethodNotAllowed(buf, http_request) -> None:
 def test_override_body_with_text() -> None:
     resp = web.HTTPNotFound(text="Page not found")
     assert 404 == resp.status
-    assert "Page not found".encode("utf-8") == resp.body
+    assert b"Page not found" == resp.body
     assert "Page not found" == resp.text
     assert "text/plain" == resp.content_type
     assert "utf-8" == resp.charset

@@ -94,7 +94,7 @@ class BaseTestServer(ABC):
         host: str = "127.0.0.1",
         port: Optional[int] = None,
         skip_url_asserts: bool = False,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         self._loop = loop
         self.runner = None  # type: Optional[BaseRunner]
@@ -131,7 +131,7 @@ class BaseTestServer(ABC):
             else:
                 scheme = "http"
             self.scheme = scheme
-        self._root = URL("{}://{}:{}".format(self.scheme, self.host, self.port))
+        self._root = URL(f"{self.scheme}://{self.host}:{self.port}")
 
     @abstractmethod  # pragma: no cover
     async def _make_runner(self, **kwargs: Any) -> BaseRunner:
@@ -215,7 +215,7 @@ class TestServer(BaseTestServer):
         scheme: Union[str, object] = sentinel,
         host: str = "127.0.0.1",
         port: Optional[int] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         self.app = app
         super().__init__(scheme=scheme, host=host, port=port, **kwargs)
@@ -232,7 +232,7 @@ class RawTestServer(BaseTestServer):
         scheme: Union[str, object] = sentinel,
         host: str = "127.0.0.1",
         port: Optional[int] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         self._handler = handler
         super().__init__(scheme=scheme, host=host, port=port, **kwargs)
@@ -258,7 +258,7 @@ class TestClient:
         *,
         cookie_jar: Optional[AbstractCookieJar] = None,
         loop: Optional[asyncio.AbstractEventLoop] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         if not isinstance(server, BaseTestServer):
             raise TypeError(
@@ -593,7 +593,7 @@ def make_mocked_request(
     payload: Any = sentinel,
     sslcontext: Optional[SSLContext] = None,
     client_max_size: int = 1024 ** 2,
-    loop: Any = ...
+    loop: Any = ...,
 ) -> Any:
     """Creates mocked web.Request testing purposes.
 
