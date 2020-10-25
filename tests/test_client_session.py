@@ -321,9 +321,10 @@ def test_connector_loop(loop) -> None:
                 return ClientSession(connector=connector, loop=loop)
 
             loop.run_until_complete(make_sess())
-        assert Matches("Session and connector has to use same event loop") == str(
-            ctx.value
-        ).strip()
+        assert (
+            Matches("Session and connector has to use same event loop")
+            == str(ctx.value).strip()
+        )
 
 
 def test_detach(session) -> None:
@@ -574,9 +575,7 @@ async def test_request_tracing(loop, aiohttp_client) -> None:
     trace_config.on_request_headers_sent.append(on_request_headers_sent)
 
     headers = CIMultiDict({"Custom-Header": "Custom value"})
-    session = await aiohttp_client(
-        app, trace_configs=[trace_config], headers=headers
-    )
+    session = await aiohttp_client(app, trace_configs=[trace_config], headers=headers)
 
     async with session.post(
         "/", data=body, trace_request_ctx=trace_request_ctx
