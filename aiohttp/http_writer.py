@@ -1,9 +1,8 @@
 """Http related parsers and protocol."""
 
 import asyncio
-import collections
 import zlib
-from typing import Any, Awaitable, Callable, Optional, Union  # noqa
+from typing import Any, Awaitable, Callable, NamedTuple, Optional, Union  # noqa
 
 from multidict import CIMultiDict  # noqa
 
@@ -13,7 +12,12 @@ from .helpers import NO_EXTENSIONS
 
 __all__ = ("StreamWriter", "HttpVersion", "HttpVersion10", "HttpVersion11")
 
-HttpVersion = collections.namedtuple("HttpVersion", ["major", "minor"])
+
+class HttpVersion(NamedTuple):
+    major: int
+    minor: int
+
+
 HttpVersion10 = HttpVersion(1, 0)
 HttpVersion11 = HttpVersion(1, 1)
 
