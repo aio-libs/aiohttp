@@ -1,0 +1,29 @@
+repos:
+- repo: https://github.com/asottile/pyupgrade
+  rev: 'v2.7.3'
+  hooks:
+  - id: pyupgrade
+    args: ['--py36-plus']
+- repo: https://github.com/psf/black
+  rev: '20.8b1'
+  hooks:
+    - id: black
+      language_version: python3 # Should be a command that runs python3.6+
+- repo: https://github.com/pre-commit/mirrors-isort
+  rev: 'v5.6.4'
+  hooks:
+  - id: isort
+- repo: https://gitlab.com/pycqa/flake8
+  rev: '3.8.4'
+  hooks:
+  - id: flake8
+    exclude: "^docs/"
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: 'v3.3.0'
+  hooks:
+  - id: check-case-conflict
+  - id: check-json
+  - id: check-xml
+  - id: check-yaml
+  - id: debug-statements
+  - id: check-added-large-files
