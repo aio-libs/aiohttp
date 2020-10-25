@@ -282,7 +282,7 @@ class FileResponse(StreamResponse):
                 #
                 # Will do the same below. Many servers ignore this and do not
                 # send a Content-Range header with HTTP 416
-                self.headers[hdrs.CONTENT_RANGE] = "bytes */{0}".format(file_size)
+                self.headers[hdrs.CONTENT_RANGE] = f"bytes */{file_size}"
                 self.set_status(HTTPRequestRangeNotSatisfiable.status_code)
                 return await super().prepare(request)
 
@@ -318,7 +318,7 @@ class FileResponse(StreamResponse):
                     # suffix-byte-range-spec with a non-zero suffix-length,
                     # then the byte-range-set is satisfiable. Otherwise, the
                     # byte-range-set is unsatisfiable.
-                    self.headers[hdrs.CONTENT_RANGE] = "bytes */{0}".format(file_size)
+                    self.headers[hdrs.CONTENT_RANGE] = f"bytes */{file_size}"
                     self.set_status(HTTPRequestRangeNotSatisfiable.status_code)
                     return await super().prepare(request)
 
@@ -341,7 +341,7 @@ class FileResponse(StreamResponse):
         real_start = cast(int, start)
 
         if status == HTTPPartialContent.status_code:
-            self.headers[hdrs.CONTENT_RANGE] = "bytes {0}-{1}/{2}".format(
+            self.headers[hdrs.CONTENT_RANGE] = "bytes {}-{}/{}".format(
                 real_start, real_start + count - 1, file_size
             )
 
