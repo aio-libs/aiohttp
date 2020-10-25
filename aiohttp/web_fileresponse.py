@@ -100,10 +100,7 @@ class SendfileStreamWriter(StreamWriter):
             self.transport.write(data)
             if self._count != 0:
                 await loop.sendfile(
-                    self.transport,
-                    self._fobj,
-                    self._offset,
-                    self._count
+                    self.transport, self._fobj, self._offset, self._count
                 )
             await super().write_eof()
             return
