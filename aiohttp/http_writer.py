@@ -19,7 +19,7 @@ HttpVersion11 = HttpVersion(1, 1)
 
 
 _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
-_T_OnHeadersSent = Optional[Callable[[CIMultiDict[str]], Awaitable[None]]]
+_T_OnHeadersSent = Optional[Callable[["CIMultiDict[str]"], Awaitable[None]]]
 
 
 class StreamWriter(AbstractStreamWriter):
