@@ -94,7 +94,7 @@ class Connection:
         self._callbacks: List[Callable[[], None]] = []
 
     def __repr__(self) -> str:
-        return "Connection<{}>".format(self._key)
+        return f"Connection<{self._key}>"
 
     @property
     def transport(self) -> Optional[asyncio.Transport]:
@@ -178,7 +178,7 @@ class BaseConnector:
         force_close: bool = False,
         limit: int = 100,
         limit_per_host: int = 0,
-        enable_cleanup_closed: bool = False
+        enable_cleanup_closed: bool = False,
     ) -> None:
 
         if force_close:
@@ -236,9 +236,9 @@ class BaseConnector:
         if not self._conns:
             return
 
-        _warnings.warn(
-            "Unclosed connector {!r}".format(self), ResourceWarning, source=self
-        )
+        self._close_immediately()
+
+        _warnings.warn(f"Unclosed connector {self!r}", ResourceWarning, source=self)
         context = {
             "connector": self,
             "connections": self._conns,
@@ -534,7 +534,7 @@ class BaseConnector:
         key: "ConnectionKey",
         protocol: ResponseHandler,
         *,
-        should_close: bool = False
+        should_close: bool = False,
     ) -> None:
         if self._closed:
             # acquired connection is already released on connector closing
@@ -636,7 +636,7 @@ class TCPConnector(BaseConnector):
         force_close: bool = False,
         limit: int = 100,
         limit_per_host: int = 0,
-        enable_cleanup_closed: bool = False
+        enable_cleanup_closed: bool = False,
     ) -> None:
         super().__init__(
             keepalive_timeout=keepalive_timeout,
@@ -844,7 +844,7 @@ class TCPConnector(BaseConnector):
         req: "ClientRequest",
         timeout: "ClientTimeout",
         client_error: Type[Exception] = ClientConnectorError,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Tuple[asyncio.Transport, ResponseHandler]:
         try:
             async with ceil_timeout(timeout.sock_connect):
@@ -862,7 +862,7 @@ class TCPConnector(BaseConnector):
         traces: List["Trace"],
         timeout: "ClientTimeout",
         *,
-        client_error: Type[Exception] = ClientConnectorError
+        client_error: Type[Exception] = ClientConnectorError,
     ) -> Tuple[asyncio.Transport, ResponseHandler]:
         sslcontext = self._get_ssl_context(req)
         fingerprint = self._get_fingerprint(req)

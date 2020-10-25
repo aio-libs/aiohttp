@@ -1864,7 +1864,7 @@ async def test_resolver_not_called_with_address_is_ip(loop) -> None:
 
     req = ClientRequest(
         "GET",
-        URL("http://127.0.0.1:{}".format(unused_port())),
+        URL(f"http://127.0.0.1:{unused_port()}"),
         loop=loop,
         response_class=mock.Mock(),
     )

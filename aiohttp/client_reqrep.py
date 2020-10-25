@@ -203,7 +203,7 @@ class ClientRequest:
         session: Optional["ClientSession"] = None,
         ssl: Union[SSLContext, bool, Fingerprint, None] = None,
         proxy_headers: Optional[LooseHeaders] = None,
-        traces: Optional[List["Trace"]] = None
+        traces: Optional[List["Trace"]] = None,
     ):
 
         assert isinstance(url, URL), url
@@ -314,7 +314,7 @@ class ClientRequest:
                 version = http.HttpVersion(int(v[0]), int(v[1]))
             except ValueError:
                 raise ValueError(
-                    "Can not parse http version number: {}".format(version)
+                    f"Can not parse http version number: {version}"
                 ) from None
         self.version = version
 
@@ -325,7 +325,7 @@ class ClientRequest:
         # add host
         netloc = cast(str, self.url.raw_host)
         if helpers.is_ipv6_address(netloc):
-            netloc = "[{}]".format(netloc)
+            netloc = f"[{netloc}]"
         if self.url.port is not None and not self.url.is_default_port():
             netloc += ":" + str(self.url.port)
         self.headers[hdrs.HOST] = netloc
@@ -548,8 +548,8 @@ class ClientRequest:
             connect_host = self.url.raw_host
             assert connect_host is not None
             if helpers.is_ipv6_address(connect_host):
-                connect_host = "[{}]".format(connect_host)
-            path = "{}:{}".format(connect_host, self.url.port)
+                connect_host = f"[{connect_host}]"
+            path = f"{connect_host}:{self.url.port}"
         elif self.proxy and not self.is_ssl():
             path = str(self.url)
         else:
@@ -673,7 +673,7 @@ class ClientResponse(HeadersMixin):
         request_info: RequestInfo,
         traces: List["Trace"],
         loop: asyncio.AbstractEventLoop,
-        session: "ClientSession"
+        session: "ClientSession",
     ) -> None:
         assert isinstance(url, URL)
         super().__init__()
@@ -743,7 +743,7 @@ class ClientResponse(HeadersMixin):
 
             if self._loop.get_debug():
                 _warnings.warn(
-                    "Unclosed response {!r}".format(self), ResourceWarning, source=self
+                    f"Unclosed response {self!r}", ResourceWarning, source=self
                 )
                 context = {"client_response": self, "message": "Unclosed response"}
                 if self._source_traceback:
@@ -1021,7 +1021,7 @@ class ClientResponse(HeadersMixin):
         *,
         encoding: Optional[str] = None,
         loads: JSONDecoder = DEFAULT_JSON_DECODER,
-        content_type: Optional[str] = "application/json"
+        content_type: Optional[str] = "application/json",
     ) -> Any:
         """Read and decodes JSON response."""
         if self._body is None:

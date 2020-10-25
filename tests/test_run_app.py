@@ -509,7 +509,7 @@ def test_run_app_http_unix_socket(patched_loop, tmp_path) -> None:
     patched_loop.create_unix_server.assert_called_with(
         mock.ANY, sock_path, ssl=None, backlog=128
     )
-    assert "http://unix:{}:".format(sock_path) in printer.call_args[0][0]
+    assert f"http://unix:{sock_path}:" in printer.call_args[0][0]
 
 
 @skip_if_no_unix_socks
@@ -524,7 +524,7 @@ def test_run_app_https_unix_socket(patched_loop, tmp_path) -> None:
     patched_loop.create_unix_server.assert_called_with(
         mock.ANY, sock_path, ssl=ssl_context, backlog=128
     )
-    assert "https://unix:{}:".format(sock_path) in printer.call_args[0][0]
+    assert f"https://unix:{sock_path}:" in printer.call_args[0][0]
 
 
 @skip_if_no_unix_socks
@@ -555,7 +555,7 @@ def test_run_app_preexisting_inet_socket(patched_loop, mocker) -> None:
         patched_loop.create_server.assert_called_with(
             mock.ANY, sock=sock, backlog=128, ssl=None
         )
-        assert "http://0.0.0.0:{}".format(port) in printer.call_args[0][0]
+        assert f"http://0.0.0.0:{port}" in printer.call_args[0][0]
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not available")
@@ -573,7 +573,7 @@ def test_run_app_preexisting_inet6_socket(patched_loop) -> None:
         patched_loop.create_server.assert_called_with(
             mock.ANY, sock=sock, backlog=128, ssl=None
         )
-        assert "http://[::]:{}".format(port) in printer.call_args[0][0]
+        assert f"http://[::]:{port}" in printer.call_args[0][0]
 
 
 @skip_if_no_unix_socks
@@ -592,7 +592,7 @@ def test_run_app_preexisting_unix_socket(patched_loop, mocker) -> None:
         patched_loop.create_server.assert_called_with(
             mock.ANY, sock=sock, backlog=128, ssl=None
         )
-        assert "http://unix:{}:".format(sock_path) in printer.call_args[0][0]
+        assert f"http://unix:{sock_path}:" in printer.call_args[0][0]
 
 
 def test_run_app_multiple_preexisting_sockets(patched_loop) -> None:
@@ -615,8 +615,8 @@ def test_run_app_multiple_preexisting_sockets(patched_loop) -> None:
                 mock.call(mock.ANY, sock=sock2, backlog=128, ssl=None),
             ]
         )
-        assert "http://0.0.0.0:{}".format(port1) in printer.call_args[0][0]
-        assert "http://0.0.0.0:{}".format(port2) in printer.call_args[0][0]
+        assert f"http://0.0.0.0:{port1}" in printer.call_args[0][0]
+        assert f"http://0.0.0.0:{port2}" in printer.call_args[0][0]
 
 
 _script_test_signal = """

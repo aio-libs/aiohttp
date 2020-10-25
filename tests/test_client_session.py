@@ -521,9 +521,7 @@ async def test_request_tracing(loop, aiohttp_client) -> None:
     trace_config.on_request_headers_sent.append(on_request_headers_sent)
 
     headers = CIMultiDict({"Custom-Header": "Custom value"})
-    session = await aiohttp_client(
-        app, trace_configs=[trace_config], headers=headers
-    )
+    session = await aiohttp_client(app, trace_configs=[trace_config], headers=headers)
 
     async with session.post(
         "/", data=body, trace_request_ctx=trace_request_ctx
@@ -598,7 +596,7 @@ async def test_request_tracing_interpose_headers(loop, aiohttp_client) -> None:
         headers = None
 
         def __init__(self, *args, **kwargs):
-            super(MyClientRequest, self).__init__(*args, **kwargs)
+            super().__init__(*args, **kwargs)
             MyClientRequest.headers = self.headers
 
     async def new_headers(session, trace_config_ctx, data):

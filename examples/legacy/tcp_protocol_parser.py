@@ -60,7 +60,7 @@ class MyProtocolWriter:
         self.transport.write(b"stop:\r\n")
 
     def send_text(self, text):
-        self.transport.write("text:{}\r\n".format(text.strip()).encode("utf-8"))
+        self.transport.write(f"text:{text.strip()}\r\n".encode("utf-8"))
 
 
 class EchoServer(asyncio.Protocol):
@@ -90,7 +90,7 @@ class EchoServer(asyncio.Protocol):
                 # client has been disconnected
                 break
 
-            print("Message received: {}".format(msg))
+            print(f"Message received: {msg}")
 
             if msg.type == MSG_PING:
                 writer.pong()
@@ -116,7 +116,7 @@ async def start_client(loop, host, port):
             print("Server has been disconnected.")
             break
 
-        print("Message received: {}".format(msg))
+        print(f"Message received: {msg}")
         if msg.type == MSG_PONG:
             writer.send_text(message)
             print("data sent:", message)

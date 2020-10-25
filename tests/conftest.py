@@ -87,7 +87,7 @@ def tls_certificate_fingerprint_sha256(tls_certificate_pem_bytes):
 
 @pytest.fixture
 def pipe_name():
-    name = r"\\.\pipe\{}".format(uuid4().hex)
+    name = fr"\\.\pipe\{uuid4().hex}"
     return name
 
 
@@ -121,7 +121,7 @@ def unix_sockname(tmp_path, tmp_path_factory):
     # Ref: https://unix.stackexchange.com/a/367012/27133
 
     sock_file_name = "unix.sock"
-    unique_prefix = "{!s}-".format(uuid4())
+    unique_prefix = f"{uuid4()!s}-"
     unique_prefix_len = len(unique_prefix.encode())
 
     root_tmp_dir = Path("/tmp").resolve()
@@ -138,7 +138,7 @@ def unix_sockname(tmp_path, tmp_path_factory):
         return TemporaryDirectory(
             dir=str(base_tmp_dir),
             prefix="pt-",
-            suffix="-{!s}".format(original_base_tmp_path_hash),
+            suffix=f"-{original_base_tmp_path_hash!s}",
         )
 
     def assert_sock_fits(sock_path):
