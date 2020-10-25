@@ -1811,7 +1811,7 @@ CookieJar
          *iterable* of *pairs* with cookies returned by server's
          response.
 
-      :param str response_url: URL of response, ``None`` for *shared
+      :param ~yarl.URL response_url: URL of response, ``None`` for *shared
          cookies*.  Regular cookies are coupled with server's URL and
          are sent only to this server, shared ones are sent in every
          client request.
@@ -1821,7 +1821,7 @@ CookieJar
       Return jar's cookies acceptable for URL and available in
       ``Cookie`` header for sending client requests for given URL.
 
-      :param str response_url: request's URL for which cookies are asked.
+      :param ~yarl.URL response_url: request's URL for which cookies are asked.
 
       :return: :class:`http.cookies.SimpleCookie` with filtered
          cookies for given URL.
