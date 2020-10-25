@@ -506,9 +506,9 @@ TraceRequestHeadersSentParams
 
 .. class:: TraceRequestHeadersSentParams
 
-   .. versionadded:: 3.8
-
    See :attr:`TraceConfig.on_request_headers_sent` for details.
+
+   .. versionadded:: 3.8
 
    .. attribute:: method
 
