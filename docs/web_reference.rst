@@ -2798,6 +2798,8 @@ Utilities
                                    closed after a HTTP request. The delay
                                    allows for reuse of a TCP connection.
 
+      .. versionadded:: 3.7
+
    :param ssl_context: :class:`ssl.SSLContext` for HTTPS server,
                        ``None`` for HTTP connection.
 
