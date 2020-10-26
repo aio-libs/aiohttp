@@ -1,0 +1,18 @@
+
+-e .
+
+# Using PEP 508 env markers to control dependency on runtimes:
+
+# required c-ares will not build on windows and has build problems on Macos Python<3.7
+aiodns==2.0.0; sys_platform=="linux" or sys_platform=="darwin" and python_version>="3.7"
+async-timeout==4.0.0a2
+attrs==20.2.0
+Brotli==1.0.9
+cchardet==2.1.6
+chardet==3.0.4
+gunicorn==20.0.4
+idna-ssl==1.1.0; python_version<"3.7"
+multidict==5.0.0
+typing_extensions==3.7.4.3
+uvloop==0.14.0; platform_system!="Windows" and implementation_name=="cpython" and python_version<"3.9" # MagicStack/uvloop#14
+yarl==1.6.1
