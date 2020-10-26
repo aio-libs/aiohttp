@@ -20,19 +20,10 @@ cythonize: .install-cython $(PYXS:.pyx=.c)
 	pip install -r requirements/dev.txt
 	@touch .install-deps
 
-.PHONY: pre-commit
-pre-commit:
-	pre-commit run --all-files
-
-
-.PHONY: lint
-lint: pre-commit mypy
-
 
 .PHONY: fmt format
-fmt format:
+fmt format lint: check_changes
 	pre-commit run --all-files
-
 
 .PHONY: mypy
 mypy:
@@ -41,6 +32,7 @@ mypy:
 .PHONY: check_changes
 check_changes:
 	./tools/check_changes.py
+
 
 .develop: .install-deps $(shell find aiohttp -type f) .flake check_changes mypy
 	# pip install -e .
