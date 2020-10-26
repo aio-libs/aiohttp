@@ -686,22 +686,18 @@ def test_run_app_cancels_failed_tasks(patched_loop):
     exc_handler.assert_called_with(patched_loop, msg)
 
 
-def test_run_app_keepalive_timeout(patched_loop):
+def test_run_app_keepalive_timeout(patched_loop, mocker):
     new_timeout = 1234
-    base_runner_init_mock = mock.MagicMock()
     base_runner_init_orig = BaseRunner.__init__
 
     def base_runner_init_spy(self, *args, **kwargs):
-        base_runner_init_mock(*args, **kwargs)
+        assert kwargs["keepalive_timeout"] == new_timeout
         base_runner_init_orig(self, *args, **kwargs)
 
+    app = web.Application()
     with mock.patch.object(BaseRunner, "__init__", base_runner_init_spy):
-        app = web.Application()
         web.run_app(app, keepalive_timeout=new_timeout,
                     print=stopper(patched_loop))
-
-    base_runner_init_kwargs = base_runner_init_mock.call_args[1]
-    assert base_runner_init_kwargs["keepalive_timeout"] == new_timeout
 
 
 @pytest.mark.skipif(not PY_37,
