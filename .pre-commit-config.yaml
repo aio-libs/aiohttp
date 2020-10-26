@@ -8,11 +8,6 @@ repos:
   hooks:
     - id: black
       language_version: python3 # Should be a command that runs python3.6+
-- repo: https://gitlab.com/pycqa/flake8
-  rev: '3.8.4'
-  hooks:
-  - id: flake8
-    exclude: "^docs/"
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: 'v3.3.0'
   hooks:
@@ -36,3 +31,8 @@ repos:
   hooks:
   - id: pyupgrade
     args: ['--py36-plus']
+- repo: https://gitlab.com/pycqa/flake8
+  rev: '3.8.4'
+  hooks:
+  - id: flake8
+    exclude: "^docs/"
