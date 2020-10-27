@@ -9,10 +9,9 @@ Async http client/server framework
 
 |
 
-.. image:: https://dev.azure.com/aio-libs/aiohttp/_apis/build/status/CI?branchName=master
-   :target: https://dev.azure.com/aio-libs/aiohttp/_build
-   :align: right
-   :alt: Azure Pipelines status for master branch
+.. image:: https://github.com/aio-libs/aiohttp/workflows/CI/badge.svg
+   :target: https://github.com/aio-libs/aiohttp/actions?query=workflow%3ACI
+   :alt: GitHub Actions status for master branch
 
 .. image:: https://codecov.io/gh/aio-libs/aiohttp/branch/master/graph/badge.svg
    :target: https://codecov.io/gh/aio-libs/aiohttp
@@ -159,7 +158,7 @@ Please add *aiohttp* tag to your question there.
 Requirements
 ============
 
-- Python >= 3.5.3
+- Python >= 3.6
 - async-timeout_
 - attrs_
 - chardet_

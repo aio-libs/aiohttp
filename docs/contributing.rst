@@ -92,17 +92,34 @@ After that please install libraries required for development:
 
   For now, the development tooling depends on ``make`` and assumes an Unix OS If you wish to contribute to aiohttp from a Windows machine, the easiest way is probably to `configure the WSL <https://docs.microsoft.com/en-us/windows/wsl/install-win10>`_ so you can use the same instructions. If it's not possible for you or if it doesn't work, please contact us so we can find a solution together.
 
+Install pre-commit hooks:
+
+.. code-block:: shell
+
+   $ pre-commit install
+
 .. warning::
 
   If you plan to use temporary ``print()``, ``pdb`` or ``ipdb`` within the test suite, execute it with ``-s``:
 
   .. code-block:: shell
 
-     $ py.test tests -s
+     $ pytest tests -s
 
   in order to run the tests without output capturing.
 
 Congratulations, you are ready to run the test suite!
+
+
+Run autoformatter
+-----------------
+
+The project uses black_ + isort_ formatters to keep the source code style.
+Please run `make fmt` after every change before starting tests.
+
+  .. code-block:: shell
+
+     $ make fmt
 
 
 Run aiohttp test suite
@@ -115,10 +132,10 @@ command:
 
    $ make test
 
-The command at first will run the *flake8* tool (sorry, we don't accept
-pull requests with pep8 or pyflakes errors).
+The command at first will run the *linters* (sorry, we don't accept
+pull requests with pyflakes, black, isort, or mypy errors).
 
-On *flake8* success the tests will be run.
+On *lint* success the tests will be run.
 
 Please take a look on the produced output.
 
@@ -302,3 +319,7 @@ our team.
 .. _GitHub: https://github.com/aio-libs/aiohttp
 
 .. _ipdb: https://pypi.python.org/pypi/ipdb
+
+.. _black: https://pypi.python.org/pypi/black
+
+.. _isort: https://pypi.python.org/pypi/isort

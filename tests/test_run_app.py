@@ -23,7 +23,7 @@ _has_unix_domain_socks = hasattr(socket, "AF_UNIX")
 if _has_unix_domain_socks:
     _abstract_path_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     try:
-        _abstract_path_sock.bind(b"\x00" + uuid4().hex.encode("ascii"))  # type: ignore  # noqa
+        _abstract_path_sock.bind(b"\x00" + uuid4().hex.encode("ascii"))  # type: ignore
     except FileNotFoundError:
         _abstract_path_failed = True
     else:
@@ -458,6 +458,27 @@ def test_run_app_nondefault_host_port(patched_loop, aiohttp_unused_port) -> None
     patched_loop.create_server.assert_called_with(
         mock.ANY, host, port, ssl=None, backlog=128, reuse_address=None, reuse_port=None
     )
+
+
+def test_run_app_multiple_hosts(patched_loop) -> None:
+    hosts = ("127.0.0.1", "127.0.0.2")
+
+    app = web.Application()
+    web.run_app(app, host=hosts, print=stopper(patched_loop))
+
+    calls = map(
+        lambda h: mock.call(
+            mock.ANY,
+            h,
+            8080,
+            ssl=None,
+            backlog=128,
+            reuse_address=None,
+            reuse_port=None,
+        ),
+        hosts,
+    )
+    patched_loop.create_server.assert_has_calls(calls)
 
 
 def test_run_app_custom_backlog(patched_loop) -> None:

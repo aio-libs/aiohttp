@@ -1,1 +1,0 @@
-Added `ClientSession.timeout` property.

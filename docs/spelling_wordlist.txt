@@ -19,6 +19,8 @@ asynctest
 auth
 autocalculated
 autodetection
+autoformatter
+autoformatters
 autogenerates
 autogeneration
 awaitable
@@ -40,8 +42,10 @@ builtin
 BytesIO
 cancelled
 canonicalization
+canonicalize
 cchardet
 cChardet
+ceil
 Changelog
 charset
 charsetdetect
@@ -101,6 +105,7 @@ fallback
 fallbacks
 filename
 finalizers
+formatters
 frontend
 getall
 gethostbyname
@@ -191,6 +196,7 @@ Overridable
 Paolini
 param
 params
+parsers
 pathlib
 peername
 performant
@@ -310,8 +316,11 @@ urls
 utf
 utils
 uvloop
+uWSGI
 vcvarsall
 waituntil
+wakeup
+wakeups
 webapp
 websocket
 websocket’s

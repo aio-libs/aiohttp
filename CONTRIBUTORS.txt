@@ -251,6 +251,7 @@ Sergey Ninua
 Sergey Skripnick
 Serhii Charykov
 Serhii Kostel
+Serhiy Storchaka
 Simon Kennedy
 Sin-Woo Bang
 Stanislas Plum
@@ -280,6 +281,7 @@ Vaibhav Sagar
 Vamsi Krishna Avula
 Vasiliy Faronov
 Vasyl Baran
+Viacheslav Greshilov
 Victor Collod
 Victor Kovtun
 Victor Makarov

@@ -16,8 +16,7 @@ from cpython.mem cimport PyMem_Free, PyMem_Malloc
 from libc.limits cimport ULLONG_MAX
 from libc.string cimport memcpy
 
-from multidict import CIMultiDict as _CIMultiDict
-from multidict import CIMultiDictProxy as _CIMultiDictProxy
+from multidict import CIMultiDict as _CIMultiDict, CIMultiDictProxy as _CIMultiDictProxy
 from yarl import URL as _URL
 
 from aiohttp import hdrs
@@ -33,11 +32,12 @@ from .http_exceptions import (
     TransferEncodingError,
 )
 from .http_parser import DeflateBuffer as _DeflateBuffer
-from .http_writer import HttpVersion as _HttpVersion
-from .http_writer import HttpVersion10 as _HttpVersion10
-from .http_writer import HttpVersion11 as _HttpVersion11
-from .streams import EMPTY_PAYLOAD as _EMPTY_PAYLOAD
-from .streams import StreamReader as _StreamReader
+from .http_writer import (
+    HttpVersion as _HttpVersion,
+    HttpVersion10 as _HttpVersion10,
+    HttpVersion11 as _HttpVersion11,
+)
+from .streams import EMPTY_PAYLOAD as _EMPTY_PAYLOAD, StreamReader as _StreamReader
 
 cimport cython
 
@@ -868,7 +868,7 @@ cdef _parse_url(char* buf_data, size_t length):
 
             return URL_build(scheme=schema,
                              user=user, password=password, host=host, port=port,
-                             path=path, query=query, fragment=fragment)
+                             path=path, query_string=query, fragment=fragment, encoded=True)
         else:
             raise InvalidURLError("invalid url {!r}".format(buf_data))
     finally:

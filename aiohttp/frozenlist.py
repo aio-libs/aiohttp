@@ -7,7 +7,7 @@ from .helpers import NO_EXTENSIONS
 @total_ordering
 class FrozenList(MutableSequence):
 
-    __slots__ = ('_frozen', '_items')
+    __slots__ = ("_frozen", "_items")
 
     def __init__(self, items=None):
         self._frozen = False
@@ -58,14 +58,14 @@ class FrozenList(MutableSequence):
         self._items.insert(pos, item)
 
     def __repr__(self):
-        return '<FrozenList(frozen={}, {!r})>'.format(self._frozen,
-                                                      self._items)
+        return f"<FrozenList(frozen={self._frozen}, {self._items!r})>"
 
 
 PyFrozenList = FrozenList
 
 try:
     from aiohttp._frozenlist import FrozenList as CFrozenList  # type: ignore
+
     if not NO_EXTENSIONS:
         FrozenList = CFrozenList  # type: ignore
 except ImportError:  # pragma: no cover
