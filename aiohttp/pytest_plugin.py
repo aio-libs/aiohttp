@@ -95,7 +95,7 @@ def pytest_fixture_setup(fixturedef):  # type: ignore
             def finalizer():  # type: ignore
                 try:
                     return _loop.run_until_complete(gen.__anext__())
-                except StopAsyncIteration:  # NOQA
+                except StopAsyncIteration:
                     pass
 
             request.addfinalizer(finalizer)

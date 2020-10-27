@@ -17,7 +17,7 @@ from .http import (
     WSMsgType,
 )
 from .http_websocket import WebSocketWriter  # WSMessage
-from .streams import EofStream, FlowControlDataQueue  # noqa
+from .streams import EofStream, FlowControlDataQueue
 from .typedefs import (
     DEFAULT_JSON_DECODER,
     DEFAULT_JSON_ENCODER,
@@ -305,5 +305,5 @@ class ClientWebSocketResponse:
     async def __anext__(self) -> WSMessage:
         msg = await self.receive()
         if msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSING, WSMsgType.CLOSED):
-            raise StopAsyncIteration  # NOQA
+            raise StopAsyncIteration
         return msg

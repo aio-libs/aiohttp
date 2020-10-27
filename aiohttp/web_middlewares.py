@@ -13,7 +13,7 @@ __all__ = (
 )
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .web_app import Application  # noqa
+    from .web_app import Application
 
 _Func = TypeVar("_Func")
 
