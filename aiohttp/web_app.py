@@ -2,7 +2,7 @@ import asyncio
 import logging
 import warnings
 from functools import partial, update_wrapper
-from typing import (  # noqa
+from typing import (
     TYPE_CHECKING,
     Any,
     AsyncIterator,
@@ -488,7 +488,7 @@ class Application(MutableMapping[str, Any]):
 
             if self._run_middlewares:
                 for app in match_info.apps[::-1]:
-                    for m, new_style in app._middlewares_handlers:  # type: ignore  # noqa
+                    for m, new_style in app._middlewares_handlers:  # type: ignore
                         if new_style:
                             handler = update_wrapper(
                                 partial(m, handler=handler), handler

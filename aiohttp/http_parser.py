@@ -5,7 +5,7 @@ import re
 import string
 import zlib
 from enum import IntEnum
-from typing import Any, List, Optional, Tuple, Type, Union  # noqa
+from typing import Any, List, Optional, Tuple, Type, Union
 
 from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
@@ -631,7 +631,7 @@ class HttpPayloadParser:
         if response_with_body and compression and self._auto_decompress:
             real_payload = DeflateBuffer(
                 payload, compression
-            )  # type: Union[StreamReader, DeflateBuffer]  # noqa
+            )  # type: Union[StreamReader, DeflateBuffer]
         else:
             real_payload = payload
 
@@ -874,7 +874,7 @@ RawResponseMessagePy = RawResponseMessage
 
 try:
     if not NO_EXTENSIONS:
-        from ._http_parser import (  # type: ignore  # noqa
+        from ._http_parser import (  # type: ignore
             HttpRequestParser,
             HttpResponseParser,
             RawRequestMessage,

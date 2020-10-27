@@ -29,7 +29,7 @@ from .web_response import StreamResponse
 __all__ = ("FileResponse",)
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .web_request import BaseRequest  # noqa
+    from .web_request import BaseRequest
 
 
 _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
