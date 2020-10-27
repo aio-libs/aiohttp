@@ -5,7 +5,7 @@ import collections
 import zlib
 from typing import Any, Awaitable, Callable, Optional, Union  # noqa
 
-from multidict import CIMultiDict  # noqa
+from multidict import CIMultiDict
 
 from .abc import AbstractStreamWriter
 from .base_protocol import BaseProtocol

@@ -2,7 +2,7 @@ import asyncio
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Sized
-from http.cookies import BaseCookie, Morsel  # noqa
+from http.cookies import BaseCookie, Morsel
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -16,7 +16,7 @@ from typing import (
     Tuple,
 )
 
-from multidict import CIMultiDict  # noqa
+from multidict import CIMultiDict
 from yarl import URL
 
 from .helpers import get_running_loop

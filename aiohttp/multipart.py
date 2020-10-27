@@ -7,7 +7,7 @@ import warnings
 import zlib
 from collections import deque
 from types import TracebackType
-from typing import (  # noqa
+from typing import (
     TYPE_CHECKING,
     Any,
     Dict,
@@ -22,7 +22,7 @@ from typing import (  # noqa
 )
 from urllib.parse import parse_qsl, unquote, urlencode
 
-from multidict import CIMultiDict, CIMultiDictProxy, MultiMapping  # noqa
+from multidict import CIMultiDict, CIMultiDictProxy, MultiMapping
 
 from .hdrs import (
     CONTENT_DISPOSITION,
@@ -56,7 +56,7 @@ __all__ = (
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .client_reqrep import ClientResponse  # noqa
+    from .client_reqrep import ClientResponse
 
 
 class BadContentDispositionHeader(RuntimeWarning):
@@ -222,7 +222,7 @@ class MultipartResponseWrapper:
     ) -> Union["MultipartReader", "BodyPartReader"]:
         part = await self.next()
         if part is None:
-            raise StopAsyncIteration  # NOQA
+            raise StopAsyncIteration
         return part
 
     def at_eof(self) -> bool:
@@ -271,7 +271,7 @@ class BodyPartReader:
     async def __anext__(self) -> bytes:
         part = await self.next()
         if part is None:
-            raise StopAsyncIteration  # NOQA
+            raise StopAsyncIteration
         return part
 
     async def next(self) -> Optional[bytes]:
@@ -532,7 +532,7 @@ class MultipartReader:
         self._content = content
         self._last_part = (
             None
-        )  # type: Optional[Union['MultipartReader', BodyPartReader]]  # noqa
+        )  # type: Optional[Union['MultipartReader', BodyPartReader]]
         self._at_eof = False
         self._at_bof = True
         self._unread = []  # type: List[bytes]
@@ -547,7 +547,7 @@ class MultipartReader:
     ) -> Optional[Union["MultipartReader", BodyPartReader]]:
         part = await self.next()
         if part is None:
-            raise StopAsyncIteration  # NOQA
+            raise StopAsyncIteration
         return part
 
     @classmethod
@@ -722,7 +722,7 @@ class MultipartWriter(Payload):
 
         super().__init__(None, content_type=ctype)
 
-        self._parts = []  # type: List[_Part]  # noqa
+        self._parts = []  # type: List[_Part]
 
     def __enter__(self) -> "MultipartWriter":
         return self
