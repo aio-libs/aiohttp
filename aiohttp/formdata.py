@@ -1,5 +1,5 @@
 import io
-from typing import Any, Iterable, List, Optional  # noqa
+from typing import Any, Iterable, List, Optional
 from urllib.parse import urlencode
 
 from multidict import MultiDict, MultiDictProxy
