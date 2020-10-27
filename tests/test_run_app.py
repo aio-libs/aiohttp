@@ -825,7 +825,7 @@ def test_run_app_cancels_failed_tasks(patched_loop):
     exc_handler.assert_called_with(patched_loop, msg)
 
 
-def test_run_app_keepalive_timeout(patched_loop, mocker):
+def test_run_app_keepalive_timeout(patched_loop, mocker, monkeypatch):
     new_timeout = 1234
     base_runner_init_orig = BaseRunner.__init__
 
@@ -834,8 +834,8 @@ def test_run_app_keepalive_timeout(patched_loop, mocker):
         base_runner_init_orig(self, *args, **kwargs)
 
     app = web.Application()
-    with mock.patch.object(BaseRunner, "__init__", base_runner_init_spy):
-        web.run_app(app, keepalive_timeout=new_timeout, print=stopper(patched_loop))
+    monkeypatch.setattr(BaseRunner, "__init__", base_runner_init_spy)
+    web.run_app(app, keepalive_timeout=new_timeout, print=stopper(patched_loop))
 
 
 @pytest.mark.skipif(not PY_37, reason="contextvars support is required")
