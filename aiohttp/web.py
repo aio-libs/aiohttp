@@ -155,128 +155,128 @@ from .web_ws import WSMsgType as WSMsgType
 
 __all__ = (
     # web_app
-    'Application',
-    'CleanupError',
+    "Application",
+    "CleanupError",
     # web_exceptions
-    'HTTPAccepted',
-    'HTTPBadGateway',
-    'HTTPBadRequest',
-    'HTTPClientError',
-    'HTTPConflict',
-    'HTTPCreated',
-    'HTTPError',
-    'HTTPException',
-    'HTTPExpectationFailed',
-    'HTTPFailedDependency',
-    'HTTPForbidden',
-    'HTTPFound',
-    'HTTPGatewayTimeout',
-    'HTTPGone',
-    'HTTPInsufficientStorage',
-    'HTTPInternalServerError',
-    'HTTPLengthRequired',
-    'HTTPMethodNotAllowed',
-    'HTTPMisdirectedRequest',
-    'HTTPMovedPermanently',
-    'HTTPMultipleChoices',
-    'HTTPNetworkAuthenticationRequired',
-    'HTTPNoContent',
-    'HTTPNonAuthoritativeInformation',
-    'HTTPNotAcceptable',
-    'HTTPNotExtended',
-    'HTTPNotFound',
-    'HTTPNotImplemented',
-    'HTTPNotModified',
-    'HTTPOk',
-    'HTTPPartialContent',
-    'HTTPPaymentRequired',
-    'HTTPPermanentRedirect',
-    'HTTPPreconditionFailed',
-    'HTTPPreconditionRequired',
-    'HTTPProxyAuthenticationRequired',
-    'HTTPRedirection',
-    'HTTPRequestEntityTooLarge',
-    'HTTPRequestHeaderFieldsTooLarge',
-    'HTTPRequestRangeNotSatisfiable',
-    'HTTPRequestTimeout',
-    'HTTPRequestURITooLong',
-    'HTTPResetContent',
-    'HTTPSeeOther',
-    'HTTPServerError',
-    'HTTPServiceUnavailable',
-    'HTTPSuccessful',
-    'HTTPTemporaryRedirect',
-    'HTTPTooManyRequests',
-    'HTTPUnauthorized',
-    'HTTPUnavailableForLegalReasons',
-    'HTTPUnprocessableEntity',
-    'HTTPUnsupportedMediaType',
-    'HTTPUpgradeRequired',
-    'HTTPUseProxy',
-    'HTTPVariantAlsoNegotiates',
-    'HTTPVersionNotSupported',
+    "HTTPAccepted",
+    "HTTPBadGateway",
+    "HTTPBadRequest",
+    "HTTPClientError",
+    "HTTPConflict",
+    "HTTPCreated",
+    "HTTPError",
+    "HTTPException",
+    "HTTPExpectationFailed",
+    "HTTPFailedDependency",
+    "HTTPForbidden",
+    "HTTPFound",
+    "HTTPGatewayTimeout",
+    "HTTPGone",
+    "HTTPInsufficientStorage",
+    "HTTPInternalServerError",
+    "HTTPLengthRequired",
+    "HTTPMethodNotAllowed",
+    "HTTPMisdirectedRequest",
+    "HTTPMovedPermanently",
+    "HTTPMultipleChoices",
+    "HTTPNetworkAuthenticationRequired",
+    "HTTPNoContent",
+    "HTTPNonAuthoritativeInformation",
+    "HTTPNotAcceptable",
+    "HTTPNotExtended",
+    "HTTPNotFound",
+    "HTTPNotImplemented",
+    "HTTPNotModified",
+    "HTTPOk",
+    "HTTPPartialContent",
+    "HTTPPaymentRequired",
+    "HTTPPermanentRedirect",
+    "HTTPPreconditionFailed",
+    "HTTPPreconditionRequired",
+    "HTTPProxyAuthenticationRequired",
+    "HTTPRedirection",
+    "HTTPRequestEntityTooLarge",
+    "HTTPRequestHeaderFieldsTooLarge",
+    "HTTPRequestRangeNotSatisfiable",
+    "HTTPRequestTimeout",
+    "HTTPRequestURITooLong",
+    "HTTPResetContent",
+    "HTTPSeeOther",
+    "HTTPServerError",
+    "HTTPServiceUnavailable",
+    "HTTPSuccessful",
+    "HTTPTemporaryRedirect",
+    "HTTPTooManyRequests",
+    "HTTPUnauthorized",
+    "HTTPUnavailableForLegalReasons",
+    "HTTPUnprocessableEntity",
+    "HTTPUnsupportedMediaType",
+    "HTTPUpgradeRequired",
+    "HTTPUseProxy",
+    "HTTPVariantAlsoNegotiates",
+    "HTTPVersionNotSupported",
     # web_fileresponse
-    'FileResponse',
+    "FileResponse",
     # web_middlewares
-    'middleware',
-    'normalize_path_middleware',
+    "middleware",
+    "normalize_path_middleware",
     # web_protocol
-    'PayloadAccessError',
-    'RequestHandler',
-    'RequestPayloadError',
+    "PayloadAccessError",
+    "RequestHandler",
+    "RequestPayloadError",
     # web_request
-    'BaseRequest',
-    'FileField',
-    'Request',
+    "BaseRequest",
+    "FileField",
+    "Request",
     # web_response
-    'ContentCoding',
-    'Response',
-    'StreamResponse',
-    'json_response',
+    "ContentCoding",
+    "Response",
+    "StreamResponse",
+    "json_response",
     # web_routedef
-    'AbstractRouteDef',
-    'RouteDef',
-    'RouteTableDef',
-    'StaticDef',
-    'delete',
-    'get',
-    'head',
-    'options',
-    'patch',
-    'post',
-    'put',
-    'route',
-    'static',
-    'view',
+    "AbstractRouteDef",
+    "RouteDef",
+    "RouteTableDef",
+    "StaticDef",
+    "delete",
+    "get",
+    "head",
+    "options",
+    "patch",
+    "post",
+    "put",
+    "route",
+    "static",
+    "view",
     # web_runner
-    'AppRunner',
-    'BaseRunner',
-    'BaseSite',
-    'GracefulExit',
-    'ServerRunner',
-    'SockSite',
-    'TCPSite',
-    'UnixSite',
-    'NamedPipeSite',
+    "AppRunner",
+    "BaseRunner",
+    "BaseSite",
+    "GracefulExit",
+    "ServerRunner",
+    "SockSite",
+    "TCPSite",
+    "UnixSite",
+    "NamedPipeSite",
     # web_server
-    'Server',
+    "Server",
     # web_urldispatcher
-    'AbstractResource',
-    'AbstractRoute',
-    'DynamicResource',
-    'PlainResource',
-    'Resource',
-    'ResourceRoute',
-    'StaticResource',
-    'UrlDispatcher',
-    'UrlMappingMatchInfo',
-    'View',
+    "AbstractResource",
+    "AbstractRoute",
+    "DynamicResource",
+    "PlainResource",
+    "Resource",
+    "ResourceRoute",
+    "StaticResource",
+    "UrlDispatcher",
+    "UrlMappingMatchInfo",
+    "View",
     # web_ws
-    'WebSocketReady',
-    'WebSocketResponse',
-    'WSMsgType',
+    "WebSocketReady",
+    "WebSocketResponse",
+    "WSMsgType",
     # web
-    'run_app',
+    "run_app",
 )
 
 
@@ -286,33 +286,39 @@ except ImportError:  # pragma: no cover
     SSLContext = Any  # type: ignore
 
 
-async def _run_app(app: Union[Application, Awaitable[Application]], *,
-                   host: Optional[str]=None,
-                   port: Optional[int]=None,
-                   path: Optional[str]=None,
-                   sock: Optional[socket.socket]=None,
-                   shutdown_timeout: float=60.0,
-                   keepalive_timeout: float=75.0,
-                   ssl_context: Optional[SSLContext]=None,
-                   print: Optional[Callable[..., None]]=print,
-                   backlog: int=128,
-                   access_log_class: Type[AbstractAccessLogger]=AccessLogger,
-                   access_log_format: str=AccessLogger.LOG_FORMAT,
-                   access_log: Optional[logging.Logger]=access_logger,
-                   handle_signals: bool=True,
-                   reuse_address: Optional[bool]=None,
-                   reuse_port: Optional[bool]=None) -> None:
+async def _run_app(
+    app: Union[Application, Awaitable[Application]],
+    *,
+    host: Optional[str] = None,
+    port: Optional[int] = None,
+    path: Optional[str] = None,
+    sock: Optional[socket.socket] = None,
+    shutdown_timeout: float = 60.0,
+    keepalive_timeout: float = 75.0,
+    ssl_context: Optional[SSLContext] = None,
+    print: Optional[Callable[..., None]] = print,
+    backlog: int = 128,
+    access_log_class: Type[AbstractAccessLogger] = AccessLogger,
+    access_log_format: str = AccessLogger.LOG_FORMAT,
+    access_log: Optional[logging.Logger] = access_logger,
+    handle_signals: bool = True,
+    reuse_address: Optional[bool] = None,
+    reuse_port: Optional[bool] = None,
+) -> None:
     # An internal function to actually do all dirty job for application running
     if asyncio.iscoroutine(app):
         app = await app  # type: ignore
 
     app = cast(Application, app)
 
-    runner = AppRunner(app, handle_signals=handle_signals,
-                       access_log_class=access_log_class,
-                       access_log_format=access_log_format,
-                       access_log=access_log,
-                       keepalive_timeout=keepalive_timeout)
+    runner = AppRunner(
+        app,
+        handle_signals=handle_signals,
+        access_log_class=access_log_class,
+        access_log_format=access_log_format,
+        access_log=access_log,
+        keepalive_timeout=keepalive_timeout,
+    )
 
     await runner.setup()
 
@@ -321,67 +327,108 @@ async def _run_app(app: Union[Application, Awaitable[Application]], *,
     try:
         if host is not None:
             if isinstance(host, (str, bytes, bytearray, memoryview)):
-                sites.append(TCPSite(runner, host, port,
-                                     shutdown_timeout=shutdown_timeout,
-                                     ssl_context=ssl_context,
-                                     backlog=backlog,
-                                     reuse_address=reuse_address,
-                                     reuse_port=reuse_port))
+                sites.append(
+                    TCPSite(
+                        runner,
+                        host,
+                        port,
+                        shutdown_timeout=shutdown_timeout,
+                        ssl_context=ssl_context,
+                        backlog=backlog,
+                        reuse_address=reuse_address,
+                        reuse_port=reuse_port,
+                    )
+                )
             else:
                 for h in host:
-                    sites.append(TCPSite(runner, h, port,
-                                         shutdown_timeout=shutdown_timeout,
-                                         ssl_context=ssl_context,
-                                         backlog=backlog,
-                                         reuse_address=reuse_address,
-                                         reuse_port=reuse_port))
+                    sites.append(
+                        TCPSite(
+                            runner,
+                            h,
+                            port,
+                            shutdown_timeout=shutdown_timeout,
+                            ssl_context=ssl_context,
+                            backlog=backlog,
+                            reuse_address=reuse_address,
+                            reuse_port=reuse_port,
+                        )
+                    )
         elif path is None and sock is None or port is not None:
-            sites.append(TCPSite(runner, port=port,
-                                 shutdown_timeout=shutdown_timeout,
-                                 ssl_context=ssl_context, backlog=backlog,
-                                 reuse_address=reuse_address,
-                                 reuse_port=reuse_port))
+            sites.append(
+                TCPSite(
+                    runner,
+                    port=port,
+                    shutdown_timeout=shutdown_timeout,
+                    ssl_context=ssl_context,
+                    backlog=backlog,
+                    reuse_address=reuse_address,
+                    reuse_port=reuse_port,
+                )
+            )
 
         if path is not None:
             if isinstance(path, (str, bytes, bytearray, memoryview)):
-                sites.append(UnixSite(runner, path,
-                                      shutdown_timeout=shutdown_timeout,
-                                      ssl_context=ssl_context,
-                                      backlog=backlog))
+                sites.append(
+                    UnixSite(
+                        runner,
+                        path,
+                        shutdown_timeout=shutdown_timeout,
+                        ssl_context=ssl_context,
+                        backlog=backlog,
+                    )
+                )
             else:
                 for p in path:
-                    sites.append(UnixSite(runner, p,
-                                          shutdown_timeout=shutdown_timeout,
-                                          ssl_context=ssl_context,
-                                          backlog=backlog))
+                    sites.append(
+                        UnixSite(
+                            runner,
+                            p,
+                            shutdown_timeout=shutdown_timeout,
+                            ssl_context=ssl_context,
+                            backlog=backlog,
+                        )
+                    )
 
         if sock is not None:
             if not isinstance(sock, Iterable):
-                sites.append(SockSite(runner, sock,
-                                      shutdown_timeout=shutdown_timeout,
-                                      ssl_context=ssl_context,
-                                      backlog=backlog))
+                sites.append(
+                    SockSite(
+                        runner,
+                        sock,
+                        shutdown_timeout=shutdown_timeout,
+                        ssl_context=ssl_context,
+                        backlog=backlog,
+                    )
+                )
             else:
                 for s in sock:
-                    sites.append(SockSite(runner, s,
-                                          shutdown_timeout=shutdown_timeout,
-                                          ssl_context=ssl_context,
-                                          backlog=backlog))
+                    sites.append(
+                        SockSite(
+                            runner,
+                            s,
+                            shutdown_timeout=shutdown_timeout,
+                            ssl_context=ssl_context,
+                            backlog=backlog,
+                        )
+                    )
         for site in sites:
             await site.start()
 
         if print:  # pragma: no branch
             names = sorted(str(s.name) for s in runner.sites)
-            print("======== Running on {} ========\n"
-                  "(Press CTRL+C to quit)".format(', '.join(names)))
+            print(
+                "======== Running on {} ========\n"
+                "(Press CTRL+C to quit)".format(", ".join(names))
+            )
         while True:
             await asyncio.sleep(3600)  # sleep forever by 1 hour intervals
     finally:
         await runner.cleanup()
 
 
-def _cancel_tasks(to_cancel: Set['asyncio.Task[Any]'],
-                  loop: asyncio.AbstractEventLoop) -> None:
+def _cancel_tasks(
+    to_cancel: Set["asyncio.Task[Any]"], loop: asyncio.AbstractEventLoop
+) -> None:
     if not to_cancel:
         return
 
@@ -389,65 +436,74 @@ def _cancel_tasks(to_cancel: Set['asyncio.Task[Any]'],
         task.cancel()
 
     loop.run_until_complete(
-        asyncio.gather(*to_cancel, loop=loop, return_exceptions=True))
+        asyncio.gather(*to_cancel, loop=loop, return_exceptions=True)
+    )
 
     for task in to_cancel:
         if task.cancelled():
             continue
         if task.exception() is not None:
-            loop.call_exception_handler({
-                'message': 'unhandled exception during asyncio.run() shutdown',
-                'exception': task.exception(),
-                'task': task,
-            })
+            loop.call_exception_handler(
+                {
+                    "message": "unhandled exception during asyncio.run() shutdown",
+                    "exception": task.exception(),
+                    "task": task,
+                }
+            )
 
 
-def run_app(app: Union[Application, Awaitable[Application]], *,
-            debug: bool=False,
-            host: Optional[str]=None,
-            port: Optional[int]=None,
-            path: Optional[str]=None,
-            sock: Optional[socket.socket]=None,
-            shutdown_timeout: float=60.0,
-            keepalive_timeout: float=75.0,
-            ssl_context: Optional[SSLContext]=None,
-            print: Optional[Callable[..., None]]=print,
-            backlog: int=128,
-            access_log_class: Type[AbstractAccessLogger]=AccessLogger,
-            access_log_format: str=AccessLogger.LOG_FORMAT,
-            access_log: Optional[logging.Logger]=access_logger,
-            handle_signals: bool=True,
-            reuse_address: Optional[bool]=None,
-            reuse_port: Optional[bool]=None) -> None:
+def run_app(
+    app: Union[Application, Awaitable[Application]],
+    *,
+    debug: bool = False,
+    host: Optional[str] = None,
+    port: Optional[int] = None,
+    path: Optional[str] = None,
+    sock: Optional[socket.socket] = None,
+    shutdown_timeout: float = 60.0,
+    keepalive_timeout: float = 75.0,
+    ssl_context: Optional[SSLContext] = None,
+    print: Optional[Callable[..., None]] = print,
+    backlog: int = 128,
+    access_log_class: Type[AbstractAccessLogger] = AccessLogger,
+    access_log_format: str = AccessLogger.LOG_FORMAT,
+    access_log: Optional[logging.Logger] = access_logger,
+    handle_signals: bool = True,
+    reuse_address: Optional[bool] = None,
+    reuse_port: Optional[bool] = None,
+) -> None:
     """Run an app locally"""
     loop = asyncio.get_event_loop()
     loop.set_debug(debug)
 
     # Configure if and only if in debugging mode and using the default logger
-    if loop.get_debug() and access_log and access_log.name == 'aiohttp.access':
+    if loop.get_debug() and access_log and access_log.name == "aiohttp.access":
         if access_log.level == logging.NOTSET:
             access_log.setLevel(logging.DEBUG)
         if not access_log.hasHandlers():
             access_log.addHandler(logging.StreamHandler())
 
     try:
-        main_task = loop.create_task(_run_app(
-            app,
-            host=host,
-            port=port,
-            path=path,
-            sock=sock,
-            shutdown_timeout=shutdown_timeout,
-            keepalive_timeout=keepalive_timeout,
-            ssl_context=ssl_context,
-            print=print,
-            backlog=backlog,
-            access_log_class=access_log_class,
-            access_log_format=access_log_format,
-            access_log=access_log,
-            handle_signals=handle_signals,
-            reuse_address=reuse_address,
-            reuse_port=reuse_port))
+        main_task = loop.create_task(
+            _run_app(
+                app,
+                host=host,
+                port=port,
+                path=path,
+                sock=sock,
+                shutdown_timeout=shutdown_timeout,
+                keepalive_timeout=keepalive_timeout,
+                ssl_context=ssl_context,
+                print=print,
+                backlog=backlog,
+                access_log_class=access_log_class,
+                access_log_format=access_log_format,
+                access_log=access_log,
+                handle_signals=handle_signals,
+                reuse_address=reuse_address,
+                reuse_port=reuse_port,
+            )
+        )
         loop.run_until_complete(main_task)
     except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
         pass
@@ -461,54 +517,57 @@ def run_app(app: Union[Application, Awaitable[Application]], *,
 
 def main(argv: List[str]) -> None:
     arg_parser = ArgumentParser(
-        description="aiohttp.web Application server",
-        prog="aiohttp.web"
+        description="aiohttp.web Application server", prog="aiohttp.web"
     )
     arg_parser.add_argument(
         "entry_func",
-        help=("Callable returning the `aiohttp.web.Application` instance to "
-              "run. Should be specified in the 'module:function' syntax."),
-        metavar="entry-func"
+        help=(
+            "Callable returning the `aiohttp.web.Application` instance to "
+            "run. Should be specified in the 'module:function' syntax."
+        ),
+        metavar="entry-func",
     )
     arg_parser.add_argument(
-        "-H", "--hostname",
+        "-H",
+        "--hostname",
         help="TCP/IP hostname to serve on (default: %(default)r)",
-        default="localhost"
+        default="localhost",
     )
     arg_parser.add_argument(
-        "-P", "--port",
+        "-P",
+        "--port",
         help="TCP/IP port to serve on (default: %(default)r)",
         type=int,
-        default="8080"
+        default="8080",
     )
     arg_parser.add_argument(
-        "-U", "--path",
+        "-U",
+        "--path",
         help="Unix file system path to serve on. Specifying a path will cause "
-             "hostname and port arguments to be ignored.",
+        "hostname and port arguments to be ignored.",
     )
     args, extra_argv = arg_parser.parse_known_args(argv)
 
     # Import logic
     mod_str, _, func_str = args.entry_func.partition(":")
     if not func_str or not mod_str:
-        arg_parser.error(
-            "'entry-func' not in 'module:function' syntax"
-        )
+        arg_parser.error("'entry-func' not in 'module:function' syntax")
     if mod_str.startswith("."):
         arg_parser.error("relative module names not supported")
     try:
         module = import_module(mod_str)
     except ImportError as ex:
-        arg_parser.error("unable to import %s: %s" % (mod_str, ex))
+        arg_parser.error(f"unable to import {mod_str}: {ex}")
     try:
         func = getattr(module, func_str)
     except AttributeError:
-        arg_parser.error("module %r has no attribute %r" % (mod_str, func_str))
+        arg_parser.error(f"module {mod_str!r} has no attribute {func_str!r}")
 
     # Compatibility logic
-    if args.path is not None and not hasattr(socket, 'AF_UNIX'):
-        arg_parser.error("file system paths not supported by your operating"
-                         " environment")
+    if args.path is not None and not hasattr(socket, "AF_UNIX"):
+        arg_parser.error(
+            "file system paths not supported by your operating" " environment"
+        )
 
     logging.basicConfig(level=logging.DEBUG)
 
