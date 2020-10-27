@@ -292,6 +292,7 @@ async def _run_app(
     path: Optional[str] = None,
     sock: Optional[socket.socket] = None,
     shutdown_timeout: float = 60.0,
+    keepalive_timeout: float = 75.0,
     ssl_context: Optional[SSLContext] = None,
     print: Optional[Callable[..., None]] = print,
     backlog: int = 128,
@@ -314,6 +315,7 @@ async def _run_app(
         access_log_class=access_log_class,
         access_log_format=access_log_format,
         access_log=access_log,
+        keepalive_timeout=keepalive_timeout,
     )
 
     await runner.setup()
@@ -466,6 +468,7 @@ def run_app(
     path: Optional[str] = None,
     sock: Optional[socket.socket] = None,
     shutdown_timeout: float = 60.0,
+    keepalive_timeout: float = 75.0,
     ssl_context: Optional[SSLContext] = None,
     print: Optional[Callable[..., None]] = print,
     backlog: int = 128,
@@ -496,6 +499,7 @@ def run_app(
                 path=path,
                 sock=sock,
                 shutdown_timeout=shutdown_timeout,
+                keepalive_timeout=keepalive_timeout,
                 ssl_context=ssl_context,
                 print=print,
                 backlog=backlog,
