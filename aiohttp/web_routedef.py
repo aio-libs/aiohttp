@@ -165,13 +165,13 @@ class RouteTableDef(Sequence[AbstractRouteDef]):
 
     @overload
     def __getitem__(self, index: int) -> AbstractRouteDef:
-        ...  # noqa
+        ...
 
-    @overload  # noqa
+    @overload
     def __getitem__(self, index: slice) -> List[AbstractRouteDef]:
-        ...  # noqa
+        ...
 
-    def __getitem__(self, index):  # type: ignore  # noqa
+    def __getitem__(self, index):  # type: ignore
         return self._items[index]
 
     def __iter__(self) -> Iterator[AbstractRouteDef]:

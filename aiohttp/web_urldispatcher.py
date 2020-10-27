@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
 from types import MappingProxyType
-from typing import (  # noqa
+from typing import (
     TYPE_CHECKING,
     Any,
     Awaitable,
@@ -68,7 +68,7 @@ __all__ = (
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .web_app import Application  # noqa
+    from .web_app import Application
 
     BaseDict = Dict[str, str]
 else:

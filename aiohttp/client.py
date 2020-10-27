@@ -9,7 +9,7 @@ import sys
 import traceback
 import warnings
 from types import SimpleNamespace, TracebackType
-from typing import (  # noqa
+from typing import (
     Any,
     Awaitable,
     Callable,
@@ -82,12 +82,7 @@ from .helpers import (
     strip_auth_from_url,
 )
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
-from .http_websocket import (  # noqa
-    WSHandshakeError,
-    WSMessage,
-    ws_ext_gen,
-    ws_ext_parse,
-)
+from .http_websocket import WSHandshakeError, WSMessage, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
 from .tracing import Trace, TraceConfig
 from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
@@ -208,9 +203,7 @@ class ClientSession:
         json_serialize: JSONEncoder = json.dumps,
         request_class: Type[ClientRequest] = ClientRequest,
         response_class: Type[ClientResponse] = ClientResponse,
-        ws_response_class: Type[
-            ClientWebSocketResponse
-        ] = ClientWebSocketResponse,  # noqa
+        ws_response_class: Type[ClientWebSocketResponse] = ClientWebSocketResponse,
         version: HttpVersion = http.HttpVersion11,
         cookie_jar: Optional[AbstractCookieJar] = None,
         connector_owner: bool = True,
@@ -851,7 +844,7 @@ class ClientSession:
             assert transport is not None
             reader = FlowControlDataQueue(
                 conn_proto, 2 ** 16, loop=self._loop
-            )  # type: FlowControlDataQueue[WSMessage]  # noqa
+            )  # type: FlowControlDataQueue[WSMessage]
             conn_proto.set_parser(WebSocketReader(reader, max_msg_size), reader)
             writer = WebSocketWriter(
                 conn_proto,

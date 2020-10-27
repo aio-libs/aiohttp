@@ -2,7 +2,7 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING, Awaitable, Optional, Type, TypeVar
 
 import attr
-from multidict import CIMultiDict  # noqa
+from multidict import CIMultiDict
 from yarl import URL
 
 from .client_reqrep import ClientResponse
@@ -11,7 +11,7 @@ from .signals import Signal
 if TYPE_CHECKING:  # pragma: no cover
     from typing_extensions import Protocol
 
-    from .client import ClientSession  # noqa
+    from .client import ClientSession
 
     _ParamT_contra = TypeVar("_ParamT_contra", contravariant=True)
 
@@ -106,7 +106,7 @@ class TraceConfig:
 
     def trace_config_ctx(
         self, trace_request_ctx: Optional[SimpleNamespace] = None
-    ) -> SimpleNamespace:  # noqa
+    ) -> SimpleNamespace:
         """ Return a new trace_config_ctx instance """
         return self._trace_config_ctx_factory(trace_request_ctx=trace_request_ctx)
 

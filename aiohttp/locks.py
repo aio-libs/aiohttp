@@ -5,7 +5,7 @@ from typing import Any, Optional
 try:
     from typing import Deque
 except ImportError:
-    from typing_extensions import Deque  # noqa
+    from typing_extensions import Deque
 
 
 class EventResultOrError:
