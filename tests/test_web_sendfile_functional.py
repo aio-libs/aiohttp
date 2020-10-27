@@ -15,12 +15,21 @@ except ImportError:
     ssl = None  # type: ignore
 
 
-@pytest.fixture(params=["sendfile", "fallback"], ids=["sendfile", "fallback"])
-def sender(request):
+@pytest.fixture
+def loop_without_sendfile(loop):
+    def sendfile(*args, **kwargs):
+        raise NotImplementedError
+
+    loop.sendfile = sendfile
+    return loop
+
+
+@pytest.fixture(params=["sendfile", "no_sendfile"], ids=["sendfile", "no_sendfile"])
+def sender(request, loop_without_sendfile):
     def maker(*args, **kwargs):
         ret = web.FileResponse(*args, **kwargs)
-        if request.param == "fallback":
-            ret._sendfile = ret._sendfile_fallback
+        if request.param == "no_sendfile":
+            asyncio.set_event_loop(loop_without_sendfile)
         return ret
 
     return maker
