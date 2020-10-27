@@ -1,1 +1,0 @@
-Fixed static files handling for loops without .sendfile()
