@@ -1,5 +1,5 @@
-import asyncio  # noqa
-import collections.abc  # noqa
+import asyncio
+import collections.abc
 import datetime
 import enum
 import json
@@ -10,7 +10,7 @@ import zlib
 from concurrent.futures import Executor
 from email.utils import parsedate
 from http.cookies import Morsel, SimpleCookie
-from typing import (  # noqa
+from typing import (
     TYPE_CHECKING,
     Any,
     Dict,
@@ -36,7 +36,7 @@ __all__ = ("ContentCoding", "StreamResponse", "Response", "json_response")
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .web_request import BaseRequest  # noqa
+    from .web_request import BaseRequest
 
     BaseClass = MutableMapping[str, Any]
 else:

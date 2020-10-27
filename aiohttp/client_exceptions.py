@@ -14,12 +14,7 @@ except ImportError:  # pragma: no cover
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .client_reqrep import (  # noqa
-        ClientResponse,
-        ConnectionKey,
-        Fingerprint,
-        RequestInfo,
-    )
+    from .client_reqrep import ClientResponse, ConnectionKey, Fingerprint, RequestInfo
 else:
     RequestInfo = ClientResponse = ConnectionKey = None
 

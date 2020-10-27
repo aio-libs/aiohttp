@@ -342,7 +342,7 @@ class Application(MutableMapping[str, Any]):
             if self._run_middlewares:
                 for app in match_info.apps[::-1]:
                     assert app.pre_frozen, "middleware handlers are not ready"
-                    for m in app._middlewares_handlers:  # noqa
+                    for m in app._middlewares_handlers:
                         handler = update_wrapper(partial(m, handler=handler), handler)
 
             resp = await handler(request)

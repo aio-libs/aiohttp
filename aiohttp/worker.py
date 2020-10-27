@@ -20,7 +20,7 @@ from .web_log import AccessLogger
 try:
     import ssl
 
-    SSLContext = ssl.SSLContext  # noqa
+    SSLContext = ssl.SSLContext
 except ImportError:  # pragma: no cover
     ssl = None  # type: ignore
     SSLContext = object  # type: ignore

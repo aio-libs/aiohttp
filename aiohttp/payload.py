@@ -55,7 +55,7 @@ TOO_LARGE_BYTES_BODY = 2 ** 20  # 1 MB
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import List  # noqa
+    from typing import List
 
 
 class LookupError(Exception):

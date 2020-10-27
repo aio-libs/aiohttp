@@ -1,17 +1,16 @@
 import asyncio
 import collections
 import warnings
-from typing import List  # noqa
-from typing import Awaitable, Callable, Generic, Optional, Tuple, TypeVar
+from typing import Awaitable, Callable, Generic, List, Optional, Tuple, TypeVar
 
 from .base_protocol import BaseProtocol
 from .helpers import BaseTimerContext, set_exception, set_result
 from .log import internal_logger
 
 try:  # pragma: no cover
-    from typing import Deque  # noqa
+    from typing import Deque
 except ImportError:
-    from typing_extensions import Deque  # noqa
+    from typing_extensions import Deque
 
 __all__ = (
     "EMPTY_PAYLOAD",
@@ -39,9 +38,9 @@ class AsyncStreamIterator(Generic[_T]):
         try:
             rv = await self.read_func()
         except EofStream:
-            raise StopAsyncIteration  # NOQA
+            raise StopAsyncIteration
         if rv == b"":
-            raise StopAsyncIteration  # NOQA
+            raise StopAsyncIteration
         return rv
 
 
@@ -55,7 +54,7 @@ class ChunkTupleAsyncStreamIterator:
     async def __anext__(self) -> Tuple[bytes, bool]:
         rv = await self._stream.readchunk()
         if rv == (b"", False):
-            raise StopAsyncIteration  # NOQA
+            raise StopAsyncIteration
         return rv
 
 
