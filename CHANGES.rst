@@ -14,6 +14,19 @@ Changelog
 
 .. towncrier release notes start
 
+3.7.2 (2020-10-27)
+==================
+
+Bugfixes
+--------
+
+- Fixed static files handling for loops without ``.sendfile()`` support
+  `#5149 <https://github.com/aio-libs/aiohttp/issues/5149>`_
+
+
+----
+
+
 3.7.1 (2020-10-25)
 ==================
 
