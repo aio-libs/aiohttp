@@ -30,7 +30,7 @@ lint: fmt mypy
 
 .PHONY: fmt format
 fmt format: check_changes
-	python3 -m pre_commit run --all-files --show-diff-on-failure
+	python -m pre_commit run --all-files --show-diff-on-failure
 
 .PHONY: mypy
 mypy:
