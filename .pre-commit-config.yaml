@@ -26,6 +26,8 @@ repos:
   - id: debug-statements
   - id: check-added-large-files
   - id: end-of-file-fixer
+    exclude: >-
+      ^docs/[^/]*\.svg$
   - id: requirements-txt-fixer
   - id: trailing-whitespace
   - id: check-symlinks
