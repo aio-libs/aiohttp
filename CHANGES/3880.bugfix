@@ -1,0 +1,1 @@
+Fixed type annotation for add_view method of UrlDispatcher to accept any subclass of View
