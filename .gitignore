@@ -63,3 +63,4 @@ virtualenv.py
 pip-wheel-metadata
 .test-results
 coverage.xml
+*.md5
