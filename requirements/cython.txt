@@ -1,1 +1,2 @@
+-r multidict.txt
 cython==0.29.21
