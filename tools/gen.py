@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import io
 import pathlib
@@ -6,14 +6,21 @@ from collections import defaultdict
 
 import multidict
 
-import aiohttp
-import aiohttp.hdrs
+ROOT = pathlib.Path.cwd()
+while ROOT.parent != ROOT and not (ROOT / ".git").exists():
+    ROOT = ROOT.parent
 
-headers = [
-    getattr(aiohttp.hdrs, name)
-    for name in dir(aiohttp.hdrs)
-    if isinstance(getattr(aiohttp.hdrs, name), multidict.istr)
-]
+
+def calc_headers(root):
+    hdrs_file = root / "aiohttp/hdrs.py"
+    code = compile(hdrs_file.read_text(), str(hdrs_file), "exec")
+    globs = {}
+    exec(code, globs)
+    headers = [val for val in globs.values() if isinstance(val, multidict.istr)]
+    return sorted(headers)
+
+
+headers = calc_headers(ROOT)
 
 
 def factory():
@@ -65,7 +72,7 @@ find_header(const char *str, int size)
 """
 
 BLOCK = """
-{label}:
+{label}
     NEXT_CHAR();
     switch (ch) {{
 {cases}
@@ -98,7 +105,7 @@ def gen_prefix(prefix, k):
 
 
 def gen_block(dct, prefix, used_blocks, missing, out):
-    cases = []
+    cases = {}
     for k, v in dct.items():
         if k is TERMINAL:
             continue
@@ -111,13 +118,13 @@ def gen_block(dct, prefix, used_blocks, missing, out):
         hi = k.upper()
         lo = k.lower()
         case = CASE.format(char=hi, index=index, next=next_prefix)
-        cases.append(case)
+        cases[hi] = case
         if lo != hi:
             case = CASE.format(char=lo, index=index, next=next_prefix)
-            cases.append(case)
-    label = prefix if prefix else "INITIAL"
+            cases[lo] = case
+    label = prefix + ":" if prefix else ""
     if cases:
-        block = BLOCK.format(label=label, cases="\n".join(cases))
+        block = BLOCK.format(label=label, cases="\n".join(cases.values()))
         out.write(block)
     else:
         missing.add(label)
@@ -136,7 +143,7 @@ def gen(dct):
     out.write(HEADER)
     missing = set()
     gen_block(dct, "", set(), missing, out)
-    missing_labels = "\n".join(m + ":" for m in sorted(missing))
+    missing_labels = "\n".join(m for m in sorted(missing))
     out.write(FOOTER.format(missing=missing_labels))
     return out
 
@@ -158,7 +165,7 @@ def gen_headers(headers):
 # print(gen_headers(headers).getvalue())
 
 
-folder = pathlib.Path(aiohttp.__file__).parent
+folder = ROOT / "aiohttp"
 
 with (folder / "_find_header.c").open("w") as f:
     f.write(gen(dct).getvalue())
