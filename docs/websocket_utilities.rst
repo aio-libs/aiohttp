@@ -154,5 +154,3 @@ WebSocket utilities
       Returns parsed JSON data.
 
       :param loads: optional JSON decoder function.
-
-
