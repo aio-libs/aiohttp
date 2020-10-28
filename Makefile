@@ -20,10 +20,12 @@ cythonize: .install-cython $(PYXS:.pyx=.c)
 	pip install -r requirements/dev.txt
 	@touch .install-deps
 
+.PHONY: lint
+lint: fmt mypy
 
 .PHONY: fmt format
-fmt format lint: check_changes
-	python3 -m pre-commit run --all-files --show-diff-on-failure
+fmt format: check_changes
+	python3 -m pre_commit run --all-files --show-diff-on-failure
 
 .PHONY: mypy
 mypy:
