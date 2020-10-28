@@ -18,8 +18,8 @@ all: test
 
 FORCE:
 
-# Enumerate intermediate files to don't remove them automatically
-# the target must exist, no need to execute it
+# Enumerate intermediate files to don't remove them automatically.
+# The target must exist, no need to execute it.
 .PHONY: keep-intermediate-files
 _keep-intermediate-files: $(addsuffix .md5,$(CYS))\
                          $(addsuffix .md5,$(CS))\
