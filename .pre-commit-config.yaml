@@ -1,4 +1,8 @@
 repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: 'v3.3.0'
+  hooks:
+  - id: check-merge-conflict
 - repo: https://github.com/asottile/yesqa
   rev: v1.2.2
   hooks:
@@ -21,9 +25,13 @@ repos:
   - id: check-yaml
   - id: debug-statements
   - id: check-added-large-files
+  - id: end-of-file-fixer
   - id: requirements-txt-fixer
+  - id: trailing-whitespace
+  - id: check-symlinks
   - id: file-contents-sorter
     files: CONTRIBUTORS.txt
+  - id: debug-statements
 # Another entry is required to apply file-contents-sorter to another file
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: 'v3.3.0'
@@ -52,3 +60,10 @@ repos:
   hooks:
   - id: flake8
     exclude: "^docs/"
+
+- repo: git://github.com/Lucas-C/pre-commit-hooks-markup
+  rev: v1.0.0
+  hooks:
+  - id: rst-linter
+    files: >-
+      ^[^/]+[.]rst$

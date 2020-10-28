@@ -330,8 +330,8 @@ We can proxy our gunicorn workers through NGINX with a configuration like this:
         }
     }
 
-Since gunicorn listens for requests at our localhost address on port 8080, we can 
-use the `proxy_pass <https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_pass>`_ 
+Since gunicorn listens for requests at our localhost address on port 8080, we can
+use the `proxy_pass <https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_pass>`_
 directive to send web traffic to our workers. If everything is configured correctly,
 we should reach our application at the ip address of our web server.
 
@@ -374,11 +374,11 @@ Here is an example NGINX configuration setup to accept SSL connections:
             }
         }
     }
-  
+
 
 The first server block accepts regular http connections on port 80 and redirects
 them to our secure SSL connection. The second block matches our previous example
-except we need to change our open port to https and specify where our SSL 
+except we need to change our open port to https and specify where our SSL
 certificates are being stored with the ``ssl_certificate`` and ``ssl_certificate_key``
 directives.
 
@@ -409,5 +409,5 @@ Log <aiohttp-logging-access-log-format-spec>`.
 
 Proxy through Apache at your own risk
 -------------------------------------
-Issues have been reported using Apache2 in front of aiohttp server: 
+Issues have been reported using Apache2 in front of aiohttp server:
 `#2687 Intermittent 502 proxy errors when running behind Apache <https://github.com/aio-libs/aiohttp/issues/2687>`.
