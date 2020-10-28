@@ -1,6 +1,6 @@
-mypy==0.790; implementation_name=="cpython"
+black==20.8b1; python_version >= "3.6"
 flake8==3.8.4
 flake8-pyi==20.10.0
-black==20.8b1; python_version >= "3.6"
 isort==5.6.4
+mypy==0.790; implementation_name=="cpython"
 pre-commit==2.7.1

@@ -54,7 +54,6 @@ jobs:
       run: |
         sudo apt install libenchant-dev
         pip install -r requirements/doc-spelling.txt
-        pip install -r requirements/towncrier.txt
     - name: Run docs spelling
       run: |
         # towncrier --yes  # uncomment me after publishing a release
@@ -128,7 +127,7 @@ jobs:
     - name: Install dependencies
       uses: py-actions/py-dependency-install@v2
       with:
-        path: requirements/ci.txt
+        path: requirements/test.txt
       env:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
     - name: Run unittests
