@@ -1,6 +1,7 @@
 # Some simple testing tasks (sorry, UNIX only).
 
-PYXS = $(wildcard aiohttp/*.{pyx,pyi,pxd})
+CYS = $(wildcard aiohttp/*.{pyx,pyi,pxd})
+PYXS = $(wildcard aiohttp/*.pyx)
 CS = $(wildcard aiohttp/*.c)
 PYS = $(wildcard aiohttp/*.py)
 REQS = $(wildcard requirements/*.txt)
@@ -24,7 +25,7 @@ aiohttp/%.c: aiohttp/%.pyx aiohttp/_find_header.c
 .PHONY: cythonize
 cythonize: .install-cython $(PYXS:.pyx=.c)
 
-.install-deps: .install-cython $(PYXS) $(REQS)
+.install-deps: .install-cython $(CYS) $(REQS)
 	pip install -r requirements/dev.txt
 	@touch .install-deps
 
@@ -44,7 +45,7 @@ check_changes:
 	./tools/check_changes.py
 
 
-.develop: .install-deps $(PYS) $(PYXS) $(CS)
+.develop: .install-deps $(PYS) $(CYS) $(CS)
 	pip install -e .
 	@touch .develop
 
@@ -72,26 +73,14 @@ clean:
 	@rm -rf cover
 	@make -C docs clean
 	@python setup.py clean
-	@rm -f aiohttp/_frozenlist.html
+	@rm -f aiohttp/*.so
+	@rm -f aiohttp/*.pyd
+	@rm -f aiohttp/*.html
 	@rm -f aiohttp/_frozenlist.c
-	@rm -f aiohttp/_frozenlist.*.so
-	@rm -f aiohttp/_frozenlist.*.pyd
-	@rm -f aiohttp/_http_parser.html
+	@rm -f aiohttp/_find_header.c
 	@rm -f aiohttp/_http_parser.c
-	@rm -f aiohttp/_http_parser.*.so
-	@rm -f aiohttp/_http_parser.*.pyd
-	@rm -f aiohttp/_multidict.html
-	@rm -f aiohttp/_multidict.c
-	@rm -f aiohttp/_multidict.*.so
-	@rm -f aiohttp/_multidict.*.pyd
-	@rm -f aiohttp/_websocket.html
+	@rm -f aiohttp/_http_writer.c
 	@rm -f aiohttp/_websocket.c
-	@rm -f aiohttp/_websocket.*.so
-	@rm -f aiohttp/_websocket.*.pyd
-	@rm -f aiohttp/_parser.html
-	@rm -f aiohttp/_parser.c
-	@rm -f aiohttp/_parser.*.so
-	@rm -f aiohttp/_parser.*.pyd
 	@rm -rf .tox
 	@rm -f .develop
 	@rm -f .flake
