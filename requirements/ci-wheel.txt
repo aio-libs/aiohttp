@@ -2,7 +2,7 @@
 attrs==20.2.0
 async-timeout==4.0.0a3
 Brotli==1.0.9
-cchardet==2.1.6
+cchardet==2.1.7
 chardet==3.0.4
 coverage==5.3
 gunicorn==20.0.4
