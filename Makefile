@@ -21,7 +21,7 @@ FORCE:
 # Enumerate intermediate files to don't remove them automatically
 # the target must exist, no need to execute it
 .PHONY: keep-intermediate-files
-keep-intermediate-files: $(addsuffix .md5,$(CYS))\
+_keep-intermediate-files: $(addsuffix .md5,$(CYS))\
                          $(addsuffix .md5,$(CS))\
                          $(addsuffix .md5,$(PYS))\
                          $(addsuffix .md5,$(REQS))
