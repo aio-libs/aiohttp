@@ -10,6 +10,7 @@ from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
+    AsyncIterator,
     Dict,
     Iterator,
     List,
@@ -265,7 +266,7 @@ class BodyPartReader:
         self._content_eof = 0
         self._cache = {}  # type: Dict[str, Any]
 
-    def __aiter__(self) -> Iterator["BodyPartReader"]:
+    def __aiter__(self) -> AsyncIterator["BodyPartReader"]:
         return self  # type: ignore
 
     async def __anext__(self) -> bytes:
@@ -539,7 +540,7 @@ class MultipartReader:
 
     def __aiter__(
         self,
-    ) -> Iterator["BodyPartReader"]:
+    ) -> AsyncIterator["BodyPartReader"]:
         return self  # type: ignore
 
     async def __anext__(
