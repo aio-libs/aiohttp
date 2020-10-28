@@ -1,6 +1,8 @@
 # Some simple testing tasks (sorry, UNIX only).
 
-CYS = $(wildcard aiohttp/*.{pyx,pyi,pxd})
+to-md5 = $1 $(addsuffix .md5,$1)
+
+CYS = $(wildcard aiohttp/*.pyx) $(wildcard aiohttp/*.pyi)  $(wildcard aiohttp/*.pxd)
 PYXS = $(wildcard aiohttp/*.pyx)
 CS = $(wildcard aiohttp/*.c)
 PYS = $(wildcard aiohttp/*.py)
@@ -10,22 +12,36 @@ SRC = aiohttp examples tests setup.py
 .PHONY: all
 all: test
 
-.install-cython: requirements/cython.txt
+# Recipe from https://www.cmcrossroads.com/article/rebuilding-when-files-checksum-changes
+%.md5: FORCE
+	@$(if $(filter-out $(shell cat $@ 2>/dev/null),$(shell md5sum $*)),md5sum $* > $@)
+
+FORCE:
+
+# Enumerate intermediate files to don't remove them automatically
+# the target must exist, no need to execute it
+.PHONY: keep-intermediate-files
+keep-intermediate-files: $(addsuffix .md5,$(CYS))\
+                         $(addsuffix .md5,$(CS))\
+                         $(addsuffix .md5,$(PYS))\
+                         $(addsuffix .md5,$(REQS))
+
+.install-cython: $(call to-md5,requirements/cython.txt)
 	pip install -r requirements/cython.txt
 	@touch .install-cython
 
-aiohttp/_find_header.c: aiohttp/hdrs.py
+aiohttp/_find_header.c: $(call to-md5,aiohttp/hdrs.py)
 	./tools/gen.py
 
 # _find_headers generator creates _headers.pyi as well
-aiohttp/%.c: aiohttp/%.pyx aiohttp/_find_header.c
+aiohttp/%.c: $(call to-md5,aiohttp/%.pyx) aiohttp/_find_header.c
 	cython -3 -o $@ $< -I aiohttp
 
 
 .PHONY: cythonize
 cythonize: .install-cython $(PYXS:.pyx=.c)
 
-.install-deps: .install-cython $(CYS) $(REQS)
+.install-deps: .install-cython $(PYXS:.pyx=.c) $(call to-md5,$(CYS) $(REQS))
 	pip install -r requirements/dev.txt
 	@touch .install-deps
 
@@ -45,7 +61,7 @@ check_changes:
 	./tools/check_changes.py
 
 
-.develop: .install-deps $(PYS) $(CYS) $(CS)
+.develop: .install-deps $(call to-md5,$(PYS) $(CYS) $(CS))
 	pip install -e .
 	@touch .develop
 
@@ -86,6 +102,7 @@ clean:
 	@rm -f .flake
 	@rm -f .install-deps
 	@rm -rf aiohttp.egg-info
+	@rm -f .install-cython
 
 .PHONY: doc
 doc:
