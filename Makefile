@@ -13,12 +13,13 @@ all: test
 aiohttp/_find_header.c: aiohttp/hdrs.py
 	./tools/gen.py
 
-aiohttp/%.c: aiohttp/%.pyx
+# _find_headers generator creates _headers.pyi as well
+aiohttp/%.c: aiohttp/%.pyx aiohttp/_find_header.c
 	cython -3 -o $@ $< -I aiohttp
 
 
 .PHONY: cythonize
-cythonize: .install-cython $(PYXS:.pyx=.c) aiohttp/_find_header.c
+cythonize: .install-cython $(PYXS:.pyx=.c)
 
 .install-deps: .install-cython $(PYXS:.pyx=.c) $(wildcard requirements/*.txt)
 	pip install -r requirements/dev.txt
