@@ -21,8 +21,10 @@
 .noseids
 .tox
 .vimrc
+aiohttp/_find_header.c
 aiohttp/_frozenlist.c
 aiohttp/_frozenlist.html
+aiohttp/_headers.pxi
 aiohttp/_helpers.c
 aiohttp/_helpers.html
 aiohttp/_websocket.c
