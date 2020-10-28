@@ -1,6 +1,9 @@
 # Some simple testing tasks (sorry, UNIX only).
 
-PYXS = $(wildcard aiohttp/*.pyx)
+PYXS = $(wildcard aiohttp/*.{pyx,pyi,pxd})
+CS = $(wildcard aiohttp/*.c)
+PYS = $(wildcard aiohttp/*.py)
+REQS = $(wildcard requirements/*.txt)
 SRC = aiohttp examples tests setup.py
 
 .PHONY: all
@@ -21,7 +24,7 @@ aiohttp/%.c: aiohttp/%.pyx aiohttp/_find_header.c
 .PHONY: cythonize
 cythonize: .install-cython $(PYXS:.pyx=.c)
 
-.install-deps: .install-cython $(PYXS:.pyx=.c) $(wildcard requirements/*.txt)
+.install-deps: .install-cython $(PYXS) $(REQS)
 	pip install -r requirements/dev.txt
 	@touch .install-deps
 
@@ -41,7 +44,7 @@ check_changes:
 	./tools/check_changes.py
 
 
-.develop: .install-deps $(wildcard aiohttp/*)
+.develop: .install-deps $(PYS) $(PYXS) $(CS)
 	pip install -e .
 	@touch .develop
 
