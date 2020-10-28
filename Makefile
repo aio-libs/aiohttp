@@ -10,8 +10,12 @@ all: test
 	pip install -r requirements/cython.txt
 	@touch .install-cython
 
+aiohttp/_find_header.c: aiohttp/hdrs.py
+	./tools/gen.py
+
 aiohttp/%.c: aiohttp/%.pyx
 	cython -3 -o $@ $< -I aiohttp
+
 
 .PHONY: cythonize
 cythonize: .install-cython $(PYXS:.pyx=.c)
@@ -37,6 +41,7 @@ check_changes:
 
 
 .develop: .install-deps $(wildcard aiohttp/*)
+	pip install -e .
 	@touch .develop
 
 .PHONY: test
