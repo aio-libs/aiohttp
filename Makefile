@@ -6,9 +6,9 @@ SRC = aiohttp examples tests setup.py
 .PHONY: all
 all: test
 
-.install-cython:
+.install-cython: requirements/cython.txt
 	pip install -r requirements/cython.txt
-	touch .install-cython
+	@touch .install-cython
 
 aiohttp/%.c: aiohttp/%.pyx
 	cython -3 -o $@ $< -I aiohttp
@@ -16,69 +16,25 @@ aiohttp/%.c: aiohttp/%.pyx
 .PHONY: cythonize
 cythonize: .install-cython $(PYXS:.pyx=.c)
 
-.install-deps: cythonize $(shell find requirements -type f)
+.install-deps: .install-cython $(PYXS:.pyx=.c) $(wildcard requirements/*.txt)
 	pip install -r requirements/dev.txt
 	@touch .install-deps
 
-.PHONY: lint
-lint: isort-check black-check flake8 mypy
-
-
-.PHONY: black-check
-black-check:
-	black --check $(SRC)
-
-.PHONY: isort
-isort:
-	isort $(SRC)
 
 .PHONY: fmt format
-fmt format:
-	isort $(SRC)
-	black $(SRC)
-	pre-commit run --all-files
-
-
-.PHONY: flake
-flake: .flake
-
-.flake: .install-deps $(shell find aiohttp -type f) \
-                      $(shell find tests -type f) \
-                      $(shell find examples -type f)
-	flake8 aiohttp examples tests
-	@if ! isort -c aiohttp tests examples; then \
-            echo "Import sort errors, run 'make isort' to fix them!!!"; \
-            isort --diff aiohttp tests examples; \
-            false; \
-	fi
-	@if ! LC_ALL=C sort -c CONTRIBUTORS.txt; then \
-            echo "CONTRIBUTORS.txt sort error"; \
-	fi
-	@touch .flake
-
-
-.PHONY: flake8
-flake8:
-	flake8 $(SRC)
+fmt format lint: check_changes
+	python3 -m pre-commit run --all-files --show-diff-on-failure
 
 .PHONY: mypy
-mypy: .flake
+mypy:
 	mypy aiohttp
-
-.PHONY: isort-check
-isort-check:
-	@if ! isort --check-only $(SRC); then \
-            echo "Import sort errors, run 'make isort' to fix them!!!"; \
-            isort --diff $(SRC); \
-            false; \
-	fi
 
 .PHONY: check_changes
 check_changes:
 	./tools/check_changes.py
 
-.develop: .install-deps $(shell find aiohttp -type f) .flake check_changes mypy
-	# pip install -e .
+
+.develop: .install-deps $(wildcard aiohttp/*)
 	@touch .develop
 
 .PHONY: test
@@ -88,24 +44,6 @@ test: .develop
 .PHONY: vtest
 vtest: .develop
 	@pytest -s -v
-
-.PHONY: cov cover coverage
-cov cover coverage:
-	tox
-
-.PHONY: cov-dev
-cov-dev: .develop
-	@pytest --cov-report=html
-	@echo "open file://`pwd`/htmlcov/index.html"
-
-.PHONY: cov-ci-run
-cov-ci-run: .develop
-	@echo "Regular run"
-	@pytest --cov-report=html
-
-.PHONY: cov-dev-full
-cov-dev-full: cov-ci-run
-	@echo "open file://`pwd`/htmlcov/index.html"
 
 .PHONY: clean
 clean:
