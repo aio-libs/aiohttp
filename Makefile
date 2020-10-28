@@ -6,9 +6,9 @@ SRC = aiohttp examples tests setup.py
 .PHONY: all
 all: test
 
-.install-cython:
+.install-cython: requirements/cython.txt
 	pip install -r requirements/cython.txt
-	touch .install-cython
+	@touch .install-cython
 
 aiohttp/%.c: aiohttp/%.pyx
 	cython -3 -o $@ $< -I aiohttp
@@ -16,14 +16,14 @@ aiohttp/%.c: aiohttp/%.pyx
 .PHONY: cythonize
 cythonize: .install-cython $(PYXS:.pyx=.c)
 
-.install-deps: cythonize $(shell find requirements -type f)
+.install-deps: .install-cython $(PYXS:.pyx=.c) $(wildcard requirements/*.txt)
 	pip install -r requirements/dev.txt
 	@touch .install-deps
 
 
 .PHONY: fmt format
 fmt format lint: check_changes
-	pre-commit run --all-files
+	python3 -m pre-commit run --all-files --show-diff-on-failure
 
 .PHONY: mypy
 mypy:
@@ -34,8 +34,7 @@ check_changes:
 	./tools/check_changes.py
 
 
-.develop: .install-deps $(shell find aiohttp -type f) .flake check_changes mypy
-	# pip install -e .
+.develop: .install-deps $(wildcard aiohttp/*)
 	@touch .develop
 
 .PHONY: test

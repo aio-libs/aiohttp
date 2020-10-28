@@ -1,5 +1,5 @@
 import json
-import os  # noqa
+import os
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Tuple, Union
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, istr
@@ -13,7 +13,7 @@ if TYPE_CHECKING:  # pragma: no cover
     _CIMultiDictProxy = CIMultiDictProxy[str]
     _MultiDict = MultiDict[str]
     _MultiDictProxy = MultiDictProxy[str]
-    from http.cookies import BaseCookie, Morsel  # noqa
+    from http.cookies import BaseCookie, Morsel
 else:
     _CIMultiDict = CIMultiDict
     _CIMultiDictProxy = CIMultiDictProxy

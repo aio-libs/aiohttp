@@ -9,7 +9,7 @@ import types
 from email.utils import parsedate
 from http.cookies import SimpleCookie
 from types import MappingProxyType
-from typing import (  # noqa
+from typing import (
     TYPE_CHECKING,
     Any,
     Dict,
@@ -60,9 +60,9 @@ __all__ = ("BaseRequest", "FileField", "Request")
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .web_app import Application  # noqa
-    from .web_protocol import RequestHandler  # noqa
-    from .web_urldispatcher import UrlMappingMatchInfo  # noqa
+    from .web_app import Application
+    from .web_protocol import RequestHandler
+    from .web_urldispatcher import UrlMappingMatchInfo
 
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
@@ -166,7 +166,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self._rel_url = message.url
         self._post = (
             None
-        )  # type: Optional[MultiDictProxy[Union[str, bytes, FileField]]]  # noqa
+        )  # type: Optional[MultiDictProxy[Union[str, bytes, FileField]]]
         self._read_bytes = None  # type: Optional[bytes]
 
         self._state = state

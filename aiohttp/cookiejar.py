@@ -5,7 +5,7 @@ import pickle
 import re
 import warnings
 from collections import defaultdict
-from http.cookies import BaseCookie, Morsel, SimpleCookie  # noqa
+from http.cookies import BaseCookie, Morsel, SimpleCookie
 from typing import (  # noqa
     DefaultDict,
     Dict,
@@ -58,14 +58,12 @@ class CookieJar(AbstractCookieJar):
         self._loop = get_running_loop()
         self._cookies = defaultdict(
             SimpleCookie
-        )  # type: DefaultDict[str, SimpleCookie[str]]  # noqa
+        )  # type: DefaultDict[str, SimpleCookie[str]]
         self._host_only_cookies = set()  # type: Set[Tuple[str, str]]
         self._unsafe = unsafe
         self._quote_cookie = quote_cookie
         self._next_expiration = next_whole_second()
-        self._expirations = (
-            {}
-        )  # type: Dict[Tuple[str, str], datetime.datetime]  # noqa: E501
+        self._expirations = {}  # type: Dict[Tuple[str, str], datetime.datetime]
         # #4515: datetime.max may not be representable on 32-bit platforms
         self._max_time = self.MAX_TIME
         try:
