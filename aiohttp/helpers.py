@@ -18,7 +18,7 @@ from contextlib import suppress
 from math import ceil
 from pathlib import Path
 from types import TracebackType
-from typing import (  # noqa
+from typing import (
     Any,
     Awaitable,
     Callable,
@@ -75,7 +75,7 @@ def all_tasks(
 
 
 if PY_37:
-    all_tasks = getattr(asyncio, "all_tasks")  # noqa
+    all_tasks = getattr(asyncio, "all_tasks")
 
 
 _T = TypeVar("_T")
@@ -573,7 +573,7 @@ class TimeoutHandle:
         self._loop = loop
         self._callbacks = (
             []
-        )  # type: List[Tuple[Callable[..., None], Tuple[Any, ...], Dict[str, Any]]]  # noqa
+        )  # type: List[Tuple[Callable[..., None], Tuple[Any, ...], Dict[str, Any]]]
 
     def register(
         self, callback: Callable[..., None], *args: Any, **kwargs: Any

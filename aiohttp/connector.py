@@ -72,9 +72,9 @@ __all__ = ("BaseConnector", "TCPConnector", "UnixConnector", "NamedPipeConnector
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .client import ClientTimeout  # noqa
-    from .client_reqrep import ConnectionKey  # noqa
-    from .tracing import Trace  # noqa
+    from .client import ClientTimeout
+    from .client_reqrep import ConnectionKey
+    from .tracing import Trace
 
 
 log = logging.getLogger(__name__)
@@ -151,7 +151,7 @@ class _TransportPlaceholder:
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         fut = loop.create_future()
         fut.set_result(None)
-        self.closed = fut  # type: asyncio.Future[Optional[Exception]]  # noqa
+        self.closed = fut  # type: asyncio.Future[Optional[Exception]]
 
     def close(self) -> None:
         pass
@@ -209,13 +209,13 @@ class BaseConnector:
 
         self._conns = (
             {}
-        )  # type: Dict[ConnectionKey, List[Tuple[ResponseHandler, float]]]  # noqa
+        )  # type: Dict[ConnectionKey, List[Tuple[ResponseHandler, float]]]
         self._limit = limit
         self._limit_per_host = limit_per_host
         self._acquired = set()  # type: Set[ResponseHandler]
         self._acquired_per_host = defaultdict(
             set
-        )  # type: DefaultDict[ConnectionKey, Set[ResponseHandler]]  # noqa
+        )  # type: DefaultDict[ConnectionKey, Set[ResponseHandler]]
         self._keepalive_timeout = cast(float, keepalive_timeout)
         self._force_close = force_close
 
@@ -563,7 +563,7 @@ class _DNSCacheTable:
     def __init__(self, ttl: Optional[float] = None) -> None:
         self._addrs_rr = (
             {}
-        )  # type: Dict[Tuple[str, int], Tuple[Iterator[Dict[str, Any]], int]]  # noqa
+        )  # type: Dict[Tuple[str, int], Tuple[Iterator[Dict[str, Any]], int]]
         self._timestamps = {}  # type: Dict[Tuple[str, int], float]
         self._ttl = ttl
 
@@ -660,7 +660,7 @@ class TCPConnector(BaseConnector):
         self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache)
         self._throttle_dns_events = (
             {}
-        )  # type: Dict[Tuple[str, int], EventResultOrError]  # noqa
+        )  # type: Dict[Tuple[str, int], EventResultOrError]
         self._family = family
         self._local_addr = local_addr
 
@@ -1103,7 +1103,7 @@ class NamedPipeConnector(BaseConnector):
             limit=limit,
             limit_per_host=limit_per_host,
         )
-        if not isinstance(self._loop, asyncio.ProactorEventLoop):  # type: ignore # noqa
+        if not isinstance(self._loop, asyncio.ProactorEventLoop):  # type: ignore
             raise RuntimeError(
                 "Named Pipes only available in proactor " "loop under windows"
             )
@@ -1119,7 +1119,7 @@ class NamedPipeConnector(BaseConnector):
     ) -> ResponseHandler:
         try:
             async with ceil_timeout(timeout.sock_connect):
-                _, proto = await self._loop.create_pipe_connection(  # type: ignore # noqa
+                _, proto = await self._loop.create_pipe_connection(  # type: ignore
                     self._factory, self._path
                 )
                 # the drain is required so that the connection_made is called

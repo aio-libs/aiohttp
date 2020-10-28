@@ -41,7 +41,7 @@ from .web_response import Response, StreamResponse
 __all__ = ("RequestHandler", "RequestPayloadError", "PayloadAccessError")
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .web_server import Server  # noqa
+    from .web_server import Server
 
 
 _RequestFactory = Callable[
@@ -188,10 +188,10 @@ class RequestHandler(BaseProtocol):
         self._manager = manager  # type: Optional[Server]
         self._request_handler = (
             manager.request_handler
-        )  # type: Optional[_RequestHandler]  # noqa
+        )  # type: Optional[_RequestHandler]
         self._request_factory = (
             manager.request_factory
-        )  # type: Optional[_RequestFactory]  # noqa
+        )  # type: Optional[_RequestFactory]
 
         self._tcp_keepalive = tcp_keepalive
         # placeholder to be replaced on keepalive timeout setup
@@ -217,7 +217,7 @@ class RequestHandler(BaseProtocol):
             max_field_size=max_field_size,
             max_headers=max_headers,
             payload_exception=RequestPayloadError,
-        )  # type: Optional[HttpRequestParser]  # noqa
+        )  # type: Optional[HttpRequestParser]
 
         self.logger = logger
         self.access_log = access_log
@@ -225,7 +225,7 @@ class RequestHandler(BaseProtocol):
             if issubclass(access_log_class, AbstractAsyncAccessLogger):
                 self.access_logger = (
                     access_log_class()
-                )  # type: Optional[AbstractAsyncAccessLogger]  # noqa
+                )  # type: Optional[AbstractAsyncAccessLogger]
             else:
                 access_logger = access_log_class(access_log, access_log_format)
                 self.access_logger = AccessLoggerWrapper(

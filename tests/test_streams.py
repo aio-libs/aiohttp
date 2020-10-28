@@ -1306,7 +1306,7 @@ async def test_data_queue_empty() -> None:
     buffer = streams.DataQueue(loop)
     buffer.feed_eof()
 
-    async for _ in buffer:  # NOQA
+    async for _ in buffer:
         assert False
 
 

@@ -9,7 +9,7 @@ import warnings
 from hashlib import md5, sha1, sha256
 from http.cookies import CookieError, Morsel, SimpleCookie
 from types import MappingProxyType, TracebackType
-from typing import (  # noqa
+from typing import (
     TYPE_CHECKING,
     Any,
     Dict,
@@ -38,7 +38,7 @@ from .client_exceptions import (
     ServerFingerprintMismatch,
 )
 from .formdata import FormData
-from .helpers import (  # noqa
+from .helpers import (
     BaseTimerContext,
     BasicAuth,
     HeadersMixin,
@@ -50,7 +50,7 @@ from .helpers import (  # noqa
 )
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, StreamWriter
 from .log import client_logger
-from .streams import StreamReader  # noqa
+from .streams import StreamReader
 from .typedefs import (
     DEFAULT_JSON_DECODER,
     JSONDecoder,
@@ -76,9 +76,9 @@ __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .client import ClientSession  # noqa
-    from .connector import Connection  # noqa
-    from .tracing import Trace  # noqa
+    from .client import ClientSession
+    from .connector import Connection
+    from .tracing import Trace
 
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
@@ -264,7 +264,7 @@ class ClientRequest:
         if proxy_headers:
             h = hash(
                 tuple((k, v) for k, v in proxy_headers.items())
-            )  # type: Optional[int]  # noqa
+            )  # type: Optional[int]
         else:
             h = None
         return ConnectionKey(

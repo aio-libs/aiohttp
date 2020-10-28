@@ -16,13 +16,14 @@ import pytest
 from aiohttp import web
 from aiohttp.helpers import PY_37
 from aiohttp.test_utils import make_mocked_coro
+from aiohttp.web_runner import BaseRunner
 
 # Test for features of OS' socket support
 _has_unix_domain_socks = hasattr(socket, "AF_UNIX")
 if _has_unix_domain_socks:
     _abstract_path_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     try:
-        _abstract_path_sock.bind(b"\x00" + uuid4().hex.encode("ascii"))  # type: ignore  # noqa
+        _abstract_path_sock.bind(b"\x00" + uuid4().hex.encode("ascii"))  # type: ignore
     except FileNotFoundError:
         _abstract_path_failed = True
     else:
@@ -822,6 +823,19 @@ def test_run_app_cancels_failed_tasks(patched_loop):
         "task": task,
     }
     exc_handler.assert_called_with(patched_loop, msg)
+
+
+def test_run_app_keepalive_timeout(patched_loop, mocker, monkeypatch):
+    new_timeout = 1234
+    base_runner_init_orig = BaseRunner.__init__
+
+    def base_runner_init_spy(self, *args, **kwargs):
+        assert kwargs["keepalive_timeout"] == new_timeout
+        base_runner_init_orig(self, *args, **kwargs)
+
+    app = web.Application()
+    monkeypatch.setattr(BaseRunner, "__init__", base_runner_init_spy)
+    web.run_app(app, keepalive_timeout=new_timeout, print=stopper(patched_loop))
 
 
 @pytest.mark.skipif(not PY_37, reason="contextvars support is required")

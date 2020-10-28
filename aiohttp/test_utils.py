@@ -12,16 +12,7 @@ import sys
 import unittest
 from abc import ABC, abstractmethod
 from types import TracebackType
-from typing import (  # noqa
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Iterator,
-    List,
-    Optional,
-    Type,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, Iterator, List, Optional, Type, Union
 from unittest import mock
 
 from multidict import CIMultiDict, CIMultiDictProxy
@@ -36,8 +27,8 @@ from aiohttp.client import (
 
 from . import ClientSession, hdrs
 from .abc import AbstractCookieJar
-from .client_reqrep import ClientResponse  # noqa
-from .client_ws import ClientWebSocketResponse  # noqa
+from .client_reqrep import ClientResponse
+from .client_ws import ClientWebSocketResponse
 from .helpers import sentinel
 from .http import HttpVersion, RawRequestMessage
 from .signals import Signal

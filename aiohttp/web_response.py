@@ -1,5 +1,5 @@
-import asyncio  # noqa
-import collections.abc  # noqa
+import asyncio
+import collections.abc
 import datetime
 import enum
 import json
@@ -10,7 +10,7 @@ import zlib
 from concurrent.futures import Executor
 from email.utils import parsedate
 from http.cookies import Morsel, SimpleCookie
-from typing import (  # noqa
+from typing import (
     TYPE_CHECKING,
     Any,
     Dict,
@@ -36,7 +36,7 @@ __all__ = ("ContentCoding", "StreamResponse", "Response", "json_response")
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .web_request import BaseRequest  # noqa
+    from .web_request import BaseRequest
 
     BaseClass = MutableMapping[str, Any]
 else:
@@ -419,7 +419,7 @@ class StreamResponse(BaseClass, HeadersMixin):
         elif self._length_check:
             writer.length = self.content_length
             if writer.length is None:
-                if version >= HttpVersion11:
+                if version >= HttpVersion11 and self.status != 204:
                     writer.enable_chunking()
                     headers[hdrs.TRANSFER_ENCODING] = "chunked"
                     if hdrs.CONTENT_LENGTH in headers:
@@ -431,7 +431,8 @@ class StreamResponse(BaseClass, HeadersMixin):
             elif version >= HttpVersion11 and self.status in (100, 101, 102, 103, 204):
                 del headers[hdrs.CONTENT_LENGTH]
 
-        headers.setdefault(hdrs.CONTENT_TYPE, "application/octet-stream")
+        if self.status != 204:
+            headers.setdefault(hdrs.CONTENT_TYPE, "application/octet-stream")
         headers.setdefault(hdrs.DATE, rfc822_formatted_time())
         headers.setdefault(hdrs.SERVER, SERVER_SOFTWARE)
 

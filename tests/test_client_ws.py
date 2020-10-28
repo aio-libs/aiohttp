@@ -32,8 +32,8 @@ async def test_ws_connect(ws_key, loop, key_data) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
-        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
         hdrs.SEC_WEBSOCKET_PROTOCOL: "chat",
     }
@@ -79,8 +79,8 @@ async def test_ws_connect_custom_response(loop, ws_key, key_data) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
-        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
     with mock.patch("aiohttp.client.os") as m_os:
@@ -100,8 +100,8 @@ async def test_ws_connect_err_status(loop, ws_key, key_data) -> None:
     resp = mock.Mock()
     resp.status = 500
     resp.headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
-        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
     with mock.patch("aiohttp.client.os") as m_os:
@@ -123,7 +123,7 @@ async def test_ws_connect_err_upgrade(loop, ws_key, key_data) -> None:
     resp.status = 101
     resp.headers = {
         hdrs.UPGRADE: "test",
-        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
     with mock.patch("aiohttp.client.os") as m_os:
@@ -144,7 +144,7 @@ async def test_ws_connect_err_conn(loop, ws_key, key_data) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
+        hdrs.UPGRADE: "websocket",
         hdrs.CONNECTION: "close",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
@@ -166,8 +166,8 @@ async def test_ws_connect_err_challenge(loop, ws_key, key_data) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
-        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: "asdfasdfasdfasdfasdfasdf",
     }
     with mock.patch("aiohttp.client.os") as m_os:
@@ -200,8 +200,8 @@ async def test_ws_connect_common_headers(ws_key, loop, key_data) -> None:
                 hashlib.sha1(base64.b64encode(base64.b64decode(key)) + WS_KEY).digest()
             ).decode()
             resp.headers = {
-                hdrs.UPGRADE: hdrs.WEBSOCKET,
-                hdrs.CONNECTION: hdrs.UPGRADE,
+                hdrs.UPGRADE: "websocket",
+                hdrs.CONNECTION: "upgrade",
                 hdrs.SEC_WEBSOCKET_ACCEPT: accept,
                 hdrs.SEC_WEBSOCKET_PROTOCOL: "chat",
             }
@@ -231,8 +231,8 @@ async def test_close(loop, ws_key, key_data) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
-        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
     with mock.patch("aiohttp.client.WebSocketWriter") as WebSocketWriter:
@@ -271,8 +271,8 @@ async def test_close_eofstream(loop, ws_key, key_data) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
-        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
     with mock.patch("aiohttp.client.WebSocketWriter") as WebSocketWriter:
@@ -301,8 +301,8 @@ async def test_close_exc(loop, ws_key, key_data) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
-        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
     with mock.patch("aiohttp.client.WebSocketWriter") as WebSocketWriter:
@@ -333,8 +333,8 @@ async def test_close_exc2(loop, ws_key, key_data) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
-        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
     with mock.patch("aiohttp.client.WebSocketWriter") as WebSocketWriter:
@@ -365,8 +365,8 @@ async def test_send_data_after_close(ws_key, key_data, loop) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
-        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
     with mock.patch("aiohttp.client.os") as m_os:
@@ -393,8 +393,8 @@ async def test_send_data_type_errors(ws_key, key_data, loop) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
-        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
     with mock.patch("aiohttp.client.WebSocketWriter") as WebSocketWriter:
@@ -419,8 +419,8 @@ async def test_reader_read_exception(ws_key, key_data, loop) -> None:
     hresp = mock.Mock()
     hresp.status = 101
     hresp.headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
-        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
     with mock.patch("aiohttp.client.WebSocketWriter") as WebSocketWriter:
@@ -461,8 +461,8 @@ async def test_ws_connect_close_resp_on_err(loop, ws_key, key_data) -> None:
     resp = mock.Mock()
     resp.status = 500
     resp.headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
-        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
     with mock.patch("aiohttp.client.os") as m_os:
@@ -482,8 +482,8 @@ async def test_ws_connect_non_overlapped_protocols(ws_key, loop, key_data) -> No
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
-        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
         hdrs.SEC_WEBSOCKET_PROTOCOL: "other,another",
     }
@@ -504,8 +504,8 @@ async def test_ws_connect_non_overlapped_protocols_2(ws_key, loop, key_data) -> 
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
-        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
         hdrs.SEC_WEBSOCKET_PROTOCOL: "other,another",
     }
@@ -528,8 +528,8 @@ async def test_ws_connect_deflate(loop, ws_key, key_data) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
-        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
         hdrs.SEC_WEBSOCKET_EXTENSIONS: "permessage-deflate",
     }
@@ -551,8 +551,8 @@ async def test_ws_connect_deflate_per_message(loop, ws_key, key_data) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
-        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
         hdrs.SEC_WEBSOCKET_EXTENSIONS: "permessage-deflate",
     }
@@ -584,8 +584,8 @@ async def test_ws_connect_deflate_server_not_support(loop, ws_key, key_data) -> 
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
-        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
     with mock.patch("aiohttp.client.os") as m_os:
@@ -606,8 +606,8 @@ async def test_ws_connect_deflate_notakeover(loop, ws_key, key_data) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
-        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
         hdrs.SEC_WEBSOCKET_EXTENSIONS: "permessage-deflate; "
         "client_no_context_takeover",
@@ -630,8 +630,8 @@ async def test_ws_connect_deflate_client_wbits(loop, ws_key, key_data) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
-        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
         hdrs.SEC_WEBSOCKET_EXTENSIONS: "permessage-deflate; "
         "client_max_window_bits=10",
@@ -654,8 +654,8 @@ async def test_ws_connect_deflate_client_wbits_bad(loop, ws_key, key_data) -> No
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
-        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
         hdrs.SEC_WEBSOCKET_EXTENSIONS: "permessage-deflate; "
         "client_max_window_bits=6",
@@ -674,8 +674,8 @@ async def test_ws_connect_deflate_server_ext_bad(loop, ws_key, key_data) -> None
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
-        hdrs.UPGRADE: hdrs.WEBSOCKET,
-        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
         hdrs.SEC_WEBSOCKET_EXTENSIONS: "permessage-deflate; bad",
     }

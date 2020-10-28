@@ -9,7 +9,7 @@ import sys
 import traceback
 import warnings
 from types import SimpleNamespace, TracebackType
-from typing import (  # noqa
+from typing import (
     Any,
     Awaitable,
     Callable,
@@ -85,12 +85,7 @@ from .helpers import (
     strip_auth_from_url,
 )
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
-from .http_websocket import (  # noqa
-    WSHandshakeError,
-    WSMessage,
-    ws_ext_gen,
-    ws_ext_parse,
-)
+from .http_websocket import WSHandshakeError, WSMessage, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
 from .tracing import Trace, TraceConfig
 from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
@@ -206,15 +201,13 @@ class ClientSession:
         json_serialize: JSONEncoder = json.dumps,
         request_class: Type[ClientRequest] = ClientRequest,
         response_class: Type[ClientResponse] = ClientResponse,
-        ws_response_class: Type[
-            ClientWebSocketResponse
-        ] = ClientWebSocketResponse,  # noqa
+        ws_response_class: Type[ClientWebSocketResponse] = ClientWebSocketResponse,
         version: HttpVersion = http.HttpVersion11,
         cookie_jar: Optional[AbstractCookieJar] = None,
         connector_owner: bool = True,
         raise_for_status: Union[
             bool, Callable[[ClientResponse], Awaitable[None]]
-        ] = False,  # noqa
+        ] = False,
         timeout: Union[object, ClientTimeout] = sentinel,
         auto_decompress: bool = True,
         trust_env: bool = False,
@@ -234,7 +227,7 @@ class ClientSession:
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(
                 sys._getframe(1)
-            )  # type: Optional[traceback.StackSummary]  # noqa
+            )  # type: Optional[traceback.StackSummary]
         else:
             self._source_traceback = None
 
@@ -329,7 +322,7 @@ class ClientSession:
         expect100: bool = False,
         raise_for_status: Union[
             None, bool, Callable[[ClientResponse], Awaitable[None]]
-        ] = None,  # noqa
+        ] = None,
         read_until_eof: bool = True,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
@@ -716,8 +709,8 @@ class ClientSession:
             real_headers = CIMultiDict(headers)
 
         default_headers = {
-            hdrs.UPGRADE: hdrs.WEBSOCKET,
-            hdrs.CONNECTION: hdrs.UPGRADE,
+            hdrs.UPGRADE: "websocket",
+            hdrs.CONNECTION: "upgrade",
             hdrs.SEC_WEBSOCKET_VERSION: "13",
         }
 
@@ -835,7 +828,7 @@ class ClientSession:
             assert transport is not None
             reader = FlowControlDataQueue(
                 conn_proto, 2 ** 16, loop=self._loop
-            )  # type: FlowControlDataQueue[WSMessage]  # noqa
+            )  # type: FlowControlDataQueue[WSMessage]
             conn_proto.set_parser(WebSocketReader(reader, max_msg_size), reader)
             writer = WebSocketWriter(
                 conn_proto,

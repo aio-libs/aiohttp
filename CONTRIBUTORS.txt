@@ -141,6 +141,7 @@ Jaesung Lee
 Jake Davis
 Jakob Ackermann
 Jakub Wilk
+Jan Buchar
 Jashandeep Sohi
 Jens Steinhauser
 Jeonghun Lee
@@ -173,6 +174,7 @@ Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
 Konstantin Valetov
+Krzysztof Blazewicz
 Kyrylo Perevozchikov
 Kyungmin Lee
 Lars P. Søndergaard
@@ -280,6 +282,7 @@ Vaibhav Sagar
 Vamsi Krishna Avula
 Vasiliy Faronov
 Vasyl Baran
+Viacheslav Greshilov
 Victor Collod
 Victor Kovtun
 Victor Makarov
