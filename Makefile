@@ -100,8 +100,8 @@ clean:
 	@rm -rf .tox
 	@rm -f .develop
 	@rm -f .flake
-	@rm -f .install-deps
 	@rm -rf aiohttp.egg-info
+	@rm -f .install-deps
 	@rm -f .install-cython
 
 .PHONY: doc
