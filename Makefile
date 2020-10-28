@@ -18,7 +18,7 @@ aiohttp/%.c: aiohttp/%.pyx
 
 
 .PHONY: cythonize
-cythonize: .install-cython $(PYXS:.pyx=.c)
+cythonize: .install-cython $(PYXS:.pyx=.c) aiohttp/_find_header.c
 
 .install-deps: .install-cython $(PYXS:.pyx=.c) $(wildcard requirements/*.txt)
 	pip install -r requirements/dev.txt
