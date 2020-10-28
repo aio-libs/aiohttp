@@ -1,6 +1,9 @@
 # Some simple testing tasks (sorry, UNIX only).
 
-PYXS = $(wildcard aiohttp/*.pyx)
+PYXS = $(wildcard aiohttp/*.{pyx,pyi,pxd})
+CS = $(wildcard aiohttp/*.c)
+PYS = $(wildcard aiohttp/*.py)
+REQS = $(wildcard requirements/*.txt)
 SRC = aiohttp examples tests setup.py
 
 .PHONY: all
@@ -10,13 +13,18 @@ all: test
 	pip install -r requirements/cython.txt
 	@touch .install-cython
 
-aiohttp/%.c: aiohttp/%.pyx
+aiohttp/_find_header.c: aiohttp/hdrs.py
+	./tools/gen.py
+
+# _find_headers generator creates _headers.pyi as well
+aiohttp/%.c: aiohttp/%.pyx aiohttp/_find_header.c
 	cython -3 -o $@ $< -I aiohttp
+
 
 .PHONY: cythonize
 cythonize: .install-cython $(PYXS:.pyx=.c)
 
-.install-deps: .install-cython $(PYXS:.pyx=.c) $(wildcard requirements/*.txt)
+.install-deps: .install-cython $(PYXS) $(REQS)
 	pip install -r requirements/dev.txt
 	@touch .install-deps
 
@@ -25,7 +33,7 @@ lint: fmt mypy
 
 .PHONY: fmt format
 fmt format: check_changes
-	python3 -m pre_commit run --all-files --show-diff-on-failure
+	python -m pre_commit run --all-files --show-diff-on-failure
 
 .PHONY: mypy
 mypy:
@@ -36,7 +44,8 @@ check_changes:
 	./tools/check_changes.py
 
 
-.develop: .install-deps $(wildcard aiohttp/*)
+.develop: .install-deps $(PYS) $(PYXS) $(CS)
+	pip install -e .
 	@touch .develop
 
 .PHONY: test

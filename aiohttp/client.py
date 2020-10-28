@@ -729,8 +729,8 @@ class ClientSession:
             real_headers = CIMultiDict(headers)
 
         default_headers = {
-            hdrs.UPGRADE: hdrs.WEBSOCKET,
-            hdrs.CONNECTION: hdrs.UPGRADE,
+            hdrs.UPGRADE: "websocket",
+            hdrs.CONNECTION: "upgrade",
             hdrs.SEC_WEBSOCKET_VERSION: "13",
         }
 
