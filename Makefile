@@ -49,17 +49,12 @@ cythonize: .install-cython $(PYXS:.pyx=.c)
 lint: fmt mypy
 
 .PHONY: fmt format
-fmt format: check_changes
+fmt format:
 	python -m pre_commit run --all-files --show-diff-on-failure
 
 .PHONY: mypy
 mypy:
 	mypy aiohttp
-
-.PHONY: check_changes
-check_changes:
-	./tools/check_changes.py
-
 
 .develop: .install-deps $(call to-md5,$(PYS) $(CYS) $(CS))
 	pip install -e .

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Example of serving an Application using the `aiohttp.web` CLI.
 
