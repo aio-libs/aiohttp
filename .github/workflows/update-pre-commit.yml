@@ -1,33 +1,35 @@
 name: Pre-commit auto-update
 on:
   schedule:
-    - cron: '0 0 * * *'
+  - cron: '0 0 * * *'
 jobs:
   auto-update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.8
-      - name: Install pre-commit
-        run: pip install pre-commit
-      - name: Run pre-commit autoupdate
-        run: pre-commit autoupdate
-      - id: generate_token
-        uses: tibdex/github-app-token@v1
-        with:
-          app_id: ${{ secrets.BOT_APP_ID }}
-          private_key: ${{ secrets.BOT_PRIVATE_KEY }}
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v2
-        with:
-          token: ${{ steps.generate_token.outputs.token }}
-          branch: update/pre-commit-autoupdate
-          title: Auto-update pre-commit hooks
-          commit-message: Auto-update pre-commit hooks
-          body: |
-            Update versions of tools in pre-commit
-            configs to latest version
-          labels: dependencies
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+    - name: Install dependencies
+      uses: py-actions/py-dependency-install@v2
+      with:
+        path: requirements/lint.txt
+    - name: Run pre-commit autoupdate
+      run: pre-commit autoupdate
+    - id: generate_token
+      uses: tibdex/github-app-token@v1
+      with:
+        app_id: ${{ secrets.BOT_APP_ID }}
+        private_key: ${{ secrets.BOT_PRIVATE_KEY }}
+    - name: Create Pull Request
+      uses: peter-evans/create-pull-request@v2
+      with:
+        token: ${{ steps.generate_token.outputs.token }}
+        branch: update/pre-commit-autoupdate
+        title: Auto-update pre-commit hooks
+        commit-message: Auto-update pre-commit hooks
+        body: |
+          Update versions of tools in pre-commit
+          configs to latest version
+        labels: dependencies
