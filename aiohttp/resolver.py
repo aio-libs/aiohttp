@@ -35,19 +35,18 @@ class ThreadedResolver(AbstractResolver):
         hosts = []
         for info in infos:
             family, _, proto, _, address = info
-            if family == socket.AF_INET6:
-                # https://github.com/aio-libs/aiohttp/issues/5156
-                if len(address) != 4:
-                    internal_logger.warning(f"Bad address format in {info}")
-                    continue
-                if address[3]:  # type: ignore
-                    # This is essential for link-local IPv6 addresses.
-                    # LL IPv6 is a VERY rare case. Strictly speaking, we should use
-                    # getnameinfo() unconditionally, but performance makes sense.
-                    host, _port = socket.getnameinfo(
-                        address, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV
-                    )
-                    port = int(_port)
+            # https://github.com/aio-libs/aiohttp/issues/5156
+            if family == socket.AF_INET6 and len(address) != 4:
+                internal_logger.warning(f"Bad address format in {info}")
+                continue
+            elif family == socket.AF_INET6 and address[3]:  # type: ignore
+                # This is essential for link-local IPv6 addresses.
+                # LL IPv6 is a VERY rare case. Strictly speaking, we should use
+                # getnameinfo() unconditionally, but performance makes sense.
+                host, _port = socket.getnameinfo(
+                    address, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV
+                )
+                port = int(_port)
             else:
                 host, port = address[:2]
             hosts.append(
