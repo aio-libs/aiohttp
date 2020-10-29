@@ -32,4 +32,4 @@ jobs:
         body: |
           Update versions of tools in pre-commit
           configs to latest version
-        labels: dependencies
+        labels: dependencies backport-3.7 backport-3.8
