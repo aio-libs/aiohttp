@@ -1,0 +1,1 @@
+Workaround wrong return value of socket.getaddrinfo in rare case
