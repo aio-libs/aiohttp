@@ -21,10 +21,7 @@ FORCE:
 # Enumerate intermediate files to don't remove them automatically.
 # The target must exist, no need to execute it.
 .PHONY: _keep-intermediate-files
-_keep-intermediate-files: $(addsuffix .md5,$(CYS))\
-                         $(addsuffix .md5,$(CS))\
-                         $(addsuffix .md5,$(PYS))\
-                         $(addsuffix .md5,$(REQS))
+_keep-intermediate-files: $(call to-md5,$(CYS) $(CS) $(PYS) $(REQS))
 
 .install-cython: $(call to-md5,requirements/cython.txt)
 	pip install -r requirements/cython.txt
@@ -78,6 +75,7 @@ clean:
 	@rm -f `find . -type f -name '#*#' `
 	@rm -f `find . -type f -name '*.orig' `
 	@rm -f `find . -type f -name '*.rej' `
+	@rm -f `find . -type f -name '*.md5' `
 	@rm -f .coverage
 	@rm -rf htmlcov
 	@rm -rf build
