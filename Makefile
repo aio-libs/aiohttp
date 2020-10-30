@@ -1,6 +1,6 @@
 # Some simple testing tasks (sorry, UNIX only).
 
-to-md5 = $1 $(addsuffix .md5,$1)
+to-md5 = $1 $(dir $1).md5/$(addsuffix .md5,$(notdir $1))
 
 CYS = $(wildcard aiohttp/*.pyx) $(wildcard aiohttp/*.pyi)  $(wildcard aiohttp/*.pxd)
 PYXS = $(wildcard aiohttp/*.pyx)
@@ -12,9 +12,22 @@ SRC = aiohttp examples tests setup.py
 .PHONY: all
 all: test
 
+tst:
+	@echo $(call to-md5,requirements/cython.txt)
+
+
 # Recipe from https://www.cmcrossroads.com/article/rebuilding-when-files-checksum-changes
 %.md5: FORCE
-	@$(if $(filter-out $(shell cat $@ 2>/dev/null),$(shell md5sum $*)),md5sum $* > $@)
+	$(eval $@_DIR := $(dir $*))
+	@mkdir -p $($@_DIR)
+	$(eval $@_PDIR := $(realpath $(dir $*)../))
+	@echo 22222222222 $($@_PDIR)
+	$(eval $@_ORG := $($@_PDIR)/$(notdir $*))
+	@echo 'MD5' $@ '>' $($@_ORG)
+	@echo 'EQ' $(filter-out $(shell cat $@ 2>/dev/null),$(shell md5sum $($@_ORG)))
+	@echo 1 $@ $(shell cat $@ 2>/dev/null)
+	@echo 2 $($@_ORG) $(shell md5sum $($@_ORG))
+	@$(if $(filter-out $(file < $@),$(shell md5sum $($@_ORG))),$(file > $@,$(shell md5sum $($@_ORG))))
 
 FORCE:
 
@@ -32,6 +45,7 @@ aiohttp/_find_header.c: $(call to-md5,aiohttp/hdrs.py)
 
 # _find_headers generator creates _headers.pyi as well
 aiohttp/%.c: $(call to-md5,aiohttp/%.pyx) aiohttp/_find_header.c
+	@echo "aiohttp/%.c >" $(call to-md5,aiohttp/%.pyx) aiohttp/_find_header.c
 	cython -3 -o $@ $< -I aiohttp
 
 
