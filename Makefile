@@ -23,6 +23,7 @@ tst:
 FORCE:
 
 %.hash: FORCE
+	ifeq (, $(shell which sha256sum))
 	$(eval $@_ABS := $(abspath $@))
 	$(eval $@_NAME := $($@_ABS))
 	$(eval $@_HASHDIR := $(dir $($@_ABS)))
@@ -34,11 +35,11 @@ FORCE:
 	  echo re-hash $($@_ORIG); \
 	  sha256sum $($@_ORIG) > $($@_ABS); \
 	fi
-
-# check_sum.py works perfectly fine but slow when called for every file from $(ALLS)
-# (perhaps even several times for each file).
-# That's why much less readable but faster solution exists
-#	@./tools/check_sum.py $@ # --debug
+	else
+	@# check_sum.py works perfectly fine but slow when called for every file from $(ALLS)
+	@# (perhaps even several times for each file).
+	@# That is why much less readable but faster solution exists
+	@./tools/check_sum.py $@ # --debug
 
 # Enumerate intermediate files to don't remove them automatically.
 # The target must exist, no need to execute it.
