@@ -19,7 +19,7 @@ def main(argv):
     dirname = dst.parent
     if dirname.name != ".hash":
         if args.debug:
-            print(f"Invalid name {dst} -> dirname {dirname}")
+            print(f"Invalid name {dst} -> dirname {dirname}", file=sys.stderr)
         return 0
     dirname.mkdir(exist_ok=True)
     src_dir = dirname.parent
@@ -30,7 +30,7 @@ def main(argv):
         hasher.update(full_src.read_bytes())
     except OSError:
         if args.debug:
-            print(f"Cannot open {full_src}")
+            print(f"Cannot open {full_src}", file=sys.stderr)
         return 0
     src_hash = hasher.hexdigest()
     if dst.exists():
@@ -39,8 +39,7 @@ def main(argv):
         dst_hash = ""
     if src_hash != dst_hash:
         dst.write_text(src_hash)
-        if args.debug:
-            print(f"Update {src_hash} checksum")
+        print(f"re-hash {src_hash}")
     else:
         if args.debug:
             print(f"Skip {src_hash} checksum, up-to-date")
