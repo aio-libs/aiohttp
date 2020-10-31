@@ -22,8 +22,11 @@ tst:
 # Recipe from https://www.cmcrossroads.com/article/rebuilding-when-files-checksum-changes
 FORCE:
 
+# check_sum.py works perfectly fine but slow when called for every file from $(ALLS)
+# (perhaps even several times for each file).
+# That is why much less readable but faster solution exists
+ifneq (, $(shell which sha256sum))
 %.hash: FORCE
-	ifeq (, $(shell which sha256sum))
 	$(eval $@_ABS := $(abspath $@))
 	$(eval $@_NAME := $($@_ABS))
 	$(eval $@_HASHDIR := $(dir $($@_ABS)))
@@ -35,12 +38,10 @@ FORCE:
 	  echo re-hash $($@_ORIG); \
 	  sha256sum $($@_ORIG) > $($@_ABS); \
 	fi
-	else
-	@# check_sum.py works perfectly fine but slow when called for every file from $(ALLS)
-	@# (perhaps even several times for each file).
-	@# That is why much less readable but faster solution exists
+else
+%.hash: FORCE
 	@./tools/check_sum.py $@ # --debug
-	endif
+endif
 
 # Enumerate intermediate files to don't remove them automatically.
 # The target must exist, no need to execute it.
@@ -65,7 +66,7 @@ KEEP-INTERMEDIATE-FILES: $(call to-hash,$(ALLS))
 	pip install -r requirements/cython.txt
 	@touch .install-cython
 
-aiohttp/_find_header.c: $(call to-hash,aiohttp/hdrs.py)
+aiohttp/_find_header.c: $(call to-hash,aiohttp/hdrs.py ./tools/gen.py)
 	./tools/gen.py
 
 # _find_headers generator creates _headers.pyi as well
