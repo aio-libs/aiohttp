@@ -26,10 +26,9 @@ FORCE:
 	$(eval $@_ABS := $(abspath $@))
 	$(eval $@_NAME := $($@_ABS))
 	$(eval $@_HASHDIR := $(dir $($@_ABS)))
-	$(eval $@_PDIR := $($@_HASHDIR)../)
-	$(eval $@_TMP := $($@_PDIR)$(notdir $($@_ABS)))
-	$(eval $@_ORIG := $(basename $($@_TMP)))
-	@#echo ==== $($@_ABS) $($@_HASHDIR) $($@_NAME) $($@_PDIR) $($@_TMP) $($@_ORIG)
+	$(eval $@_TMP := $($@_HASHDIR)../$(notdir $($@_ABS)))
+	$(eval $@_ORIG := $(subst /.hash/../,/,$(basename $($@_TMP))))
+	@#echo ==== $($@_ABS) $($@_HASHDIR) $($@_NAME) $($@_TMP) $($@_ORIG)
 	@if ! (sha256sum --check $($@_ABS) 1>/dev/null 2>/dev/null); then \
 	  mkdir -p $($@_HASHDIR); \
 	  echo re-hash $($@_ORIG); \
