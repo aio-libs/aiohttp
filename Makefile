@@ -44,23 +44,8 @@ else
 endif
 
 # Enumerate intermediate files to don't remove them automatically.
-# The target must exist, no need to execute it.
 .SECONDARY: $(call to-hash,$(ALLS))
 
-
-# Exists for debug purposes
-.PHONY: KEEP-INTERMEDIATE-FILES
-KEEP-INTERMEDIATE-FILES: $(call to-hash,$(ALLS))
-	@echo ====================
-	@echo CYS $(CYS)
-	@echo CS $(CS)
-	@echo PYS $(PYS)
-	@echo REQS $(REQS)
-	@echo ALLS $(ALLS)
-	@echo --------------------
-	@echo TO-HASH $(call to-hash,$(ALLS))
-	@echo ++++++++++++++++++++
-	@echo $^
 
 .install-cython: $(call to-hash,requirements/cython.txt)
 	pip install -r requirements/cython.txt
