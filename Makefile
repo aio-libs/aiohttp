@@ -89,6 +89,10 @@ test: .develop
 vtest: .develop
 	@pytest -s -v
 
+.PHONY: vvtest
+vtest: .develop
+	@pytest -vv
+
 .PHONY: clean
 clean:
 	@rm -rf `find . -name __pycache__`
