@@ -1,1 +1,1 @@
-Workaround wrong return value of socket.getaddrinfo in rare case
+Fixed querying the address families from DNS that the current host supports.
