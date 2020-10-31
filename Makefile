@@ -9,7 +9,6 @@ CS := $(wildcard aiohttp/*.c)
 PYS := $(wildcard aiohttp/*.py)
 REQS := $(wildcard requirements/*.txt)
 ALLS := $(sort $(CYS) $(CS) $(PYS) $(REQS))
-SRC := aiohttp examples tests setup.py
 
 .PHONY: all
 all: test
