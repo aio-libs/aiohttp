@@ -40,6 +40,7 @@ FORCE:
 	@# (perhaps even several times for each file).
 	@# That is why much less readable but faster solution exists
 	@./tools/check_sum.py $@ # --debug
+	endif
 
 # Enumerate intermediate files to don't remove them automatically.
 # The target must exist, no need to execute it.
