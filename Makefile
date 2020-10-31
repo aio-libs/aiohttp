@@ -90,7 +90,7 @@ vtest: .develop
 	@pytest -s -v
 
 .PHONY: vvtest
-vtest: .develop
+vvtest: .develop
 	@pytest -vv
 
 .PHONY: clean
