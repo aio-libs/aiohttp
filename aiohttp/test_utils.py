@@ -585,7 +585,7 @@ def make_mocked_request(
     sslcontext: Optional[SSLContext] = None,
     client_max_size: int = 1024 ** 2,
     loop: Any = ...,
-) -> Any:
+) -> Request:
     """Creates mocked web.Request testing purposes.
 
     Useful in unit tests, when spinning full web server is overkill or
