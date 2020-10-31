@@ -1,58 +1,81 @@
 # Some simple testing tasks (sorry, UNIX only).
 
-to-md5 = $1 $(dir $1).md5/$(addsuffix .md5,$(notdir $1))
+to-hash-one = $(dir $1).hash/$(addsuffix .hash,$(notdir $1))
+to-hash = $(foreach fname,$1,$(call to-hash-one,$(fname)))
 
-CYS = $(wildcard aiohttp/*.pyx) $(wildcard aiohttp/*.pyi)  $(wildcard aiohttp/*.pxd)
-PYXS = $(wildcard aiohttp/*.pyx)
-CS = $(wildcard aiohttp/*.c)
-PYS = $(wildcard aiohttp/*.py)
-REQS = $(wildcard requirements/*.txt)
-SRC = aiohttp examples tests setup.py
+CYS := $(wildcard aiohttp/*.pyx) $(wildcard aiohttp/*.pyi)  $(wildcard aiohttp/*.pxd)
+PYXS := $(wildcard aiohttp/*.pyx)
+CS := $(wildcard aiohttp/*.c)
+PYS := $(wildcard aiohttp/*.py)
+REQS := $(wildcard requirements/*.txt)
+ALLS := $(sort $(CYS) $(CS) $(PYS) $(REQS))
+SRC := aiohttp examples tests setup.py
 
 .PHONY: all
 all: test
 
 tst:
-	@echo $(call to-md5,requirements/cython.txt)
+	@echo $(call to-hash,requirements/cython.txt)
+	@echo $(call to-hash,aiohttp/%.pyx)
 
 
 # Recipe from https://www.cmcrossroads.com/article/rebuilding-when-files-checksum-changes
-%.md5: FORCE
-	$(eval $@_DIR := $(dir $*))
-	@mkdir -p $($@_DIR)
-	$(eval $@_PDIR := $(realpath $(dir $*)../))
-	@echo 22222222222 $($@_PDIR)
-	$(eval $@_ORG := $($@_PDIR)/$(notdir $*))
-	@echo 'MD5' $@ '>' $($@_ORG)
-	@echo 'EQ' $(filter-out $(shell cat $@ 2>/dev/null),$(shell md5sum $($@_ORG)))
-	@echo 1 $@ $(shell cat $@ 2>/dev/null)
-	@echo 2 $($@_ORG) $(shell md5sum $($@_ORG))
-	@$(if $(filter-out $(file < $@),$(shell md5sum $($@_ORG))),$(file > $@,$(shell md5sum $($@_ORG))))
-
 FORCE:
+
+%.hash: FORCE
+	$(eval $@_ABS := $(abspath $@))
+	$(eval $@_NAME := $($@_ABS))
+	$(eval $@_HASHDIR := $(dir $($@_ABS)))
+	$(eval $@_PDIR := $($@_HASHDIR)../)
+	$(eval $@_TMP := $($@_PDIR)$(notdir $($@_ABS)))
+	$(eval $@_ORIG := $(basename $($@_TMP)))
+	@#echo ==== $($@_ABS) $($@_HASHDIR) $($@_NAME) $($@_PDIR) $($@_TMP) $($@_ORIG)
+	@if ! (sha256sum --check $($@_ABS) 1>/dev/null 2>/dev/null); then \
+	  mkdir -p $($@_HASHDIR); \
+	  echo re-hash $($@_ORIG); \
+	  sha256sum $($@_ORIG) > $($@_ABS); \
+	fi
+
+# check_sum.py works perfectly fine but slow when called for every file from $(ALLS)
+# (perhaps even several times for each file).
+# That's why much less readable but faster solution exists
+#	@./tools/check_sum.py $@ # --debug
 
 # Enumerate intermediate files to don't remove them automatically.
 # The target must exist, no need to execute it.
-.PHONY: _keep-intermediate-files
-_keep-intermediate-files: $(call to-md5,$(CYS) $(CS) $(PYS) $(REQS))
+.SECONDARY: $(call to-hash,$(ALLS))
 
-.install-cython: $(call to-md5,requirements/cython.txt)
+
+# Exists for debug purposes
+.PHONY: KEEP-INTERMEDIATE-FILES
+KEEP-INTERMEDIATE-FILES: $(call to-hash,$(ALLS))
+	@echo ====================
+	@echo CYS $(CYS)
+	@echo CS $(CS)
+	@echo PYS $(PYS)
+	@echo REQS $(REQS)
+	@echo ALLS $(ALLS)
+	@echo --------------------
+	@echo TO-HASH $(call to-hash,$(ALLS))
+	@echo ++++++++++++++++++++
+	@echo $^
+
+.install-cython: $(call to-hash,requirements/cython.txt)
 	pip install -r requirements/cython.txt
 	@touch .install-cython
 
-aiohttp/_find_header.c: $(call to-md5,aiohttp/hdrs.py)
+aiohttp/_find_header.c: $(call to-hash,aiohttp/hdrs.py)
 	./tools/gen.py
 
 # _find_headers generator creates _headers.pyi as well
-aiohttp/%.c: $(call to-md5,aiohttp/%.pyx) aiohttp/_find_header.c
-	@echo "aiohttp/%.c >" $(call to-md5,aiohttp/%.pyx) aiohttp/_find_header.c
+aiohttp/%.c: aiohttp/%.pyx $(call to-hash,$(CYS)) aiohttp/_find_header.c
 	cython -3 -o $@ $< -I aiohttp
 
 
 .PHONY: cythonize
 cythonize: .install-cython $(PYXS:.pyx=.c)
 
-.install-deps: .install-cython $(PYXS:.pyx=.c) $(call to-md5,$(CYS) $(REQS))
+.install-deps: .install-cython $(PYXS:.pyx=.c) $(call to-hash,$(CYS) $(REQS))
 	pip install -r requirements/dev.txt
 	@touch .install-deps
 
@@ -67,7 +90,7 @@ fmt format:
 mypy:
 	mypy aiohttp
 
-.develop: .install-deps $(call to-md5,$(PYS) $(CYS) $(CS))
+.develop: .install-deps $(call to-hash,$(PYS) $(CYS) $(CS))
 	pip install -e .
 	@touch .develop
 
@@ -82,6 +105,8 @@ vtest: .develop
 .PHONY: clean
 clean:
 	@rm -rf `find . -name __pycache__`
+	@rm -rf `find . -name .hash`
+	@rm -rf `find . -name .md5`  # old styling
 	@rm -f `find . -type f -name '*.py[co]' `
 	@rm -f `find . -type f -name '*~' `
 	@rm -f `find . -type f -name '.*~' `
@@ -89,7 +114,7 @@ clean:
 	@rm -f `find . -type f -name '#*#' `
 	@rm -f `find . -type f -name '*.orig' `
 	@rm -f `find . -type f -name '*.rej' `
-	@rm -f `find . -type f -name '*.md5' `
+	@rm -f `find . -type f -name '*.md5' `  # old styling
 	@rm -f .coverage
 	@rm -rf htmlcov
 	@rm -rf build
