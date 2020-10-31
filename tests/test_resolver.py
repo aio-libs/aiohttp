@@ -34,18 +34,14 @@ async def fake_query_result(result):
     return [FakeQueryResult(host=h) for h in result]
 
 
-def fake_addrinfo_raw(return_value):
+def fake_addrinfo(hosts):
     async def fake(*args, **kwargs):
-        if not return_value:
+        if not hosts:
             raise socket.gaierror
 
-        return return_value
+        return list([(None, None, None, None, [h, 0]) for h in hosts])
 
     return fake
-
-
-def fake_addrinfo(hosts):
-    return fake_addrinfo_raw(list([(None, None, None, None, [h, 0]) for h in hosts]))
 
 
 @pytest.mark.skipif(not gethostbyname, reason="aiodns 1.1 required")
@@ -164,17 +160,3 @@ def test_default_resolver() -> None:
     # else:
     #     assert DefaultResolver is ThreadedResolver
     assert DefaultResolver is ThreadedResolver
-
-
-async def test_threaded_resolver_5156() -> None:
-    loop = Mock()
-    loop.getaddrinfo = fake_addrinfo_raw(
-        [
-            (2, 1, 6, "", ("151.101.188.223", 443)),
-            (10, 1, 6, "", (10, b"\x01\xbb\x00\x00\x00\x00*\x04NB\x00-\x00\x00")),
-        ]
-    )
-    resolver = ThreadedResolver()
-    resolver._loop = loop
-
-    await resolver.resolve("foo")
