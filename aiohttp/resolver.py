@@ -29,7 +29,11 @@ class ThreadedResolver(AbstractResolver):
         self, hostname: str, port: int = 0, family: int = socket.AF_INET
     ) -> List[Dict[str, Any]]:
         infos = await self._loop.getaddrinfo(
-            hostname, port, type=socket.SOCK_STREAM, family=family
+            hostname,
+            port,
+            type=socket.SOCK_STREAM,
+            family=family,
+            flags=socket.AI_ADDRCONFIG,
         )
 
         hosts = []
