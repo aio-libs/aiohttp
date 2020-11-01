@@ -1,5 +1,5 @@
 -r lint.txt
 -r test.txt
 -r doc.txt
-cherry_picker==1.3.2; python_version>="3.6"
 asynctest==0.13.0; python_version<"3.8"
+cherry_picker==1.3.2; python_version>="3.6"
