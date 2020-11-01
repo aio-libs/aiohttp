@@ -109,6 +109,9 @@ They may be perfect or not -- we don't know.
 Please add your library reference here first and after some time
 period ask to raise the status.
 
+- `pytest-aiohttp-client <https://github.com/sivakov512/pytest-aiohttp-client>`_
+  Pytest fixture with simpler api, payload decoding and status code assertions.
+
 - `octomachinery <https://octomachinery.dev>`_ A framework for developing
   GitHub Apps and GitHub Actions. Python 3.7+ is required.
 
