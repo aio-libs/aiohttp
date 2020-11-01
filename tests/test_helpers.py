@@ -7,7 +7,8 @@ from math import isclose, modf
 from unittest import mock
 
 import pytest
-from multidict import MultiDict
+from multidict import CIMultiDict, MultiDict
+from re_assert import Matches
 from yarl import URL
 
 from aiohttp import helpers
@@ -654,3 +655,99 @@ def test_is_expected_content_type_non_json_not_match():
     assert not is_expected_content_type(
         response_content_type=response_ct, expected_content_type=expected_ct
     )
+
+
+def test_cookies_mixin():
+    sut = helpers.CookieMixin()
+
+    assert sut.cookies == {}
+    assert str(sut.cookies) == ""
+
+    sut.set_cookie("name", "value")
+    assert str(sut.cookies) == "Set-Cookie: name=value; Path=/"
+    sut.set_cookie("name", "other_value")
+    assert str(sut.cookies) == "Set-Cookie: name=other_value; Path=/"
+
+    sut.cookies["name"] = "another_other_value"
+    sut.cookies["name"]["max-age"] = 10
+    assert (
+        str(sut.cookies) == "Set-Cookie: name=another_other_value; Max-Age=10; Path=/"
+    )
+
+    sut.del_cookie("name")
+    expected = (
+        'Set-Cookie: name=("")?; '
+        "expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; Path=/"
+    )
+    assert Matches(expected) == str(sut.cookies)
+
+    sut.set_cookie("name", "value", domain="local.host")
+    expected = "Set-Cookie: name=value; Domain=local.host; Path=/"
+    assert str(sut.cookies) == expected
+
+
+def test_cookies_mixin_path():
+    sut = helpers.CookieMixin()
+
+    assert sut.cookies == {}
+
+    sut.set_cookie("name", "value", path="/some/path")
+    assert str(sut.cookies) == "Set-Cookie: name=value; Path=/some/path"
+    sut.set_cookie("name", "value", expires="123")
+    assert str(sut.cookies) == "Set-Cookie: name=value; expires=123; Path=/"
+    sut.set_cookie(
+        "name",
+        "value",
+        domain="example.com",
+        path="/home",
+        expires="123",
+        max_age="10",
+        secure=True,
+        httponly=True,
+        version="2.0",
+        samesite="lax",
+    )
+    assert (
+        str(sut.cookies).lower() == "set-cookie: name=value; "
+        "domain=example.com; "
+        "expires=123; "
+        "httponly; "
+        "max-age=10; "
+        "path=/home; "
+        "samesite=lax; "
+        "secure; "
+        "version=2.0"
+    )
+
+
+def test_sutonse_cookie__issue_del_cookie():
+    sut = helpers.CookieMixin()
+
+    assert sut.cookies == {}
+    assert str(sut.cookies) == ""
+
+    sut.del_cookie("name")
+    expected = (
+        'Set-Cookie: name=("")?; '
+        "expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; Path=/"
+    )
+    assert Matches(expected) == str(sut.cookies)
+
+
+def test_cookie_set_after_del():
+    sut = helpers.CookieMixin()
+
+    sut.del_cookie("name")
+    sut.set_cookie("name", "val")
+    # check for Max-Age dropped
+    expected = "Set-Cookie: name=val; Path=/"
+    assert str(sut.cookies) == expected
+
+
+def test_populate_with_cookies():
+    cookies_mixin = helpers.CookieMixin()
+    cookies_mixin.set_cookie("name", "value")
+    headers = CIMultiDict()
+
+    helpers.populate_with_cookies(headers, cookies_mixin.cookies)
+    assert headers == CIMultiDict({"Set-Cookie": "name=value; Path=/"})
