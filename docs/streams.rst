@@ -70,6 +70,17 @@ Reading Methods
 
    :return bytes: the given line
 
+.. comethod:: StreamReader.readuntil(separator="\n")
+
+   Read until separator, where `separator` is a sequence of bytes.
+
+   If EOF is received, and `separator` was not found, the method will
+   return the partial read bytes.
+
+   If the EOF was received and the internal buffer is empty, return an
+   empty bytes object.
+
+   :return bytes: the given data
 
 .. comethod:: StreamReader.readchunk()
 
