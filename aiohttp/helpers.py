@@ -45,7 +45,7 @@ from urllib.request import getproxies
 
 import async_timeout
 import attr
-from multidict import MultiDict, MultiDictProxy
+from multidict import CIMultiDict, MultiDict, MultiDictProxy
 from typing_extensions import Protocol, final
 from yarl import URL
 
@@ -881,3 +881,9 @@ class CookieMixin:
             domain=domain,
             path=path,
         )
+
+
+def populate_with_cookies(headers: "CIMultiDict[str]", cookies: "SimpleCookie[str]"):
+    for cookie in cookies.values():
+        value = cookie.output(header="")[1:]
+        headers.add(hdrs.SET_COOKIE, value)

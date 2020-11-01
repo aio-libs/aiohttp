@@ -27,7 +27,14 @@ from multidict import CIMultiDict, istr
 
 from . import hdrs, payload
 from .abc import AbstractStreamWriter
-from .helpers import PY_38, CookieMixin, HeadersMixin, rfc822_formatted_time, sentinel
+from .helpers import (
+    PY_38,
+    CookieMixin,
+    HeadersMixin,
+    populate_with_cookies,
+    rfc822_formatted_time,
+    sentinel,
+)
 from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
@@ -73,7 +80,6 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         "_chunked",
         "_compression",
         "_compression_force",
-        "_cookies",
         "_req",
         "_payload_writer",
         "_eof_sent",
@@ -324,9 +330,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         version = request.version
 
         headers = self._headers
-        for cookie in self._cookies.values():
-            value = cookie.output(header="")[1:]
-            headers.add(hdrs.SET_COOKIE, value)
+        populate_with_cookies(headers, self.cookies)
 
         if self._compression:
             await self._start_compression(request)
