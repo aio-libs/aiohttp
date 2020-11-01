@@ -312,15 +312,15 @@ class StreamReader(AsyncStreamReaderMixin):
     async def readline(self) -> bytes:
         return await self.readuntil()
 
-    async def readuntil(self, separator: bytes=b'\n') -> bytes:
+    async def readuntil(self, separator: bytes = b"\n") -> bytes:
         seplen = len(separator)
         if seplen == 0:
-            raise ValueError('Separator should be at least one-byte string')
+            raise ValueError("Separator should be at least one-byte string")
 
         if self._exception is not None:
             raise self._exception
 
-        chunk = b''
+        chunk = b""
         chunk_size = 0
         not_enough = True
 
@@ -336,13 +336,13 @@ class StreamReader(AsyncStreamReaderMixin):
                     not_enough = False
 
                 if chunk_size > self._high_water:
-                    raise ValueError('Chunk too big')
+                    raise ValueError("Chunk too big")
 
             if self._eof:
                 break
 
             if not_enough:
-                await self._wait('readuntil')
+                await self._wait("readuntil")
 
         return chunk
 
