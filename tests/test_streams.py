@@ -381,36 +381,37 @@ class TestStreamReader:
         # Read one chunk. 'readuntil' will need to wait for the data
         # to come from 'cb'
         stream = self._make_one()
-        stream.feed_data(b'chunk1 ')
-        read_task = loop.create_task(stream.readuntil(b'*'))
+        stream.feed_data(b"chunk1 ")
+        read_task = loop.create_task(stream.readuntil(b"*"))
 
         def cb():
-            stream.feed_data(b'chunk2 ')
-            stream.feed_data(b'chunk3 ')
-            stream.feed_data(b'* chunk4')
+            stream.feed_data(b"chunk2 ")
+            stream.feed_data(b"chunk3 ")
+            stream.feed_data(b"* chunk4")
+
         loop.call_soon(cb)
 
         line = await read_task
-        assert b'chunk1 chunk2 chunk3 *' == line
+        assert b"chunk1 chunk2 chunk3 *" == line
 
         stream.feed_eof()
         data = await stream.read()
-        assert b' chunk4' == data
+        assert b" chunk4" == data
 
     async def test_readuntil_limit_with_existing_data(self) -> None:
         # Read one chunk. The data is in StreamReader's buffer
         # before the event loop is run.
 
         stream = self._make_one(limit=2)
-        stream.feed_data(b'li')
-        stream.feed_data(b'ne1&line2&')
+        stream.feed_data(b"li")
+        stream.feed_data(b"ne1&line2&")
 
         with pytest.raises(ValueError):
-            await stream.readuntil(b'&')
+            await stream.readuntil(b"&")
         # The buffer should contain the remaining data after exception
         stream.feed_eof()
         data = await stream.read()
-        assert b'line2&' == data
+        assert b"line2&" == data
 
     async def test_readuntil_limit(self) -> None:
         loop = asyncio.get_event_loop()
@@ -419,71 +420,72 @@ class TestStreamReader:
         stream = self._make_one(limit=4)
 
         def cb():
-            stream.feed_data(b'chunk1')
-            stream.feed_data(b'chunk2$')
-            stream.feed_data(b'chunk3#')
+            stream.feed_data(b"chunk1")
+            stream.feed_data(b"chunk2$")
+            stream.feed_data(b"chunk3#")
             stream.feed_eof()
+
         loop.call_soon(cb)
 
         with pytest.raises(ValueError):
-            await stream.readuntil(b'$')
+            await stream.readuntil(b"$")
         data = await stream.read()
-        assert b'chunk3#' == data
+        assert b"chunk3#" == data
 
     async def test_readuntil_nolimit_nowait(self) -> None:
         # All needed data for the first 'readuntil' call will be
         # in the buffer.
         stream = self._make_one()
-        data = b'line1!line2!line3!'
+        data = b"line1!line2!line3!"
         stream.feed_data(data[:6])
         stream.feed_data(data[6:])
 
-        line = await stream.readuntil(b'!')
-        assert b'line1!' == line
+        line = await stream.readuntil(b"!")
+        assert b"line1!" == line
 
         stream.feed_eof()
         data = await stream.read()
-        assert b'line2!line3!' == data
+        assert b"line2!line3!" == data
 
     async def test_readuntil_eof(self) -> None:
         stream = self._make_one()
-        stream.feed_data(b'some data')
+        stream.feed_data(b"some data")
         stream.feed_eof()
 
-        line = await stream.readuntil(b'@')
-        assert b'some data' == line
+        line = await stream.readuntil(b"@")
+        assert b"some data" == line
 
     async def test_readuntil_empty_eof(self) -> None:
         stream = self._make_one()
         stream.feed_eof()
 
-        line = await stream.readuntil(b'@')
-        assert b'' == line
+        line = await stream.readuntil(b"@")
+        assert b"" == line
 
     async def test_readuntil_read_byte_count(self) -> None:
         stream = self._make_one()
-        data = b'line1!line2!line3!'
+        data = b"line1!line2!line3!"
         stream.feed_data(data)
 
-        await stream.readuntil(b'!')
+        await stream.readuntil(b"!")
 
         data = await stream.read(7)
-        assert b'line2!l' == data
+        assert b"line2!l" == data
 
         stream.feed_eof()
         data = await stream.read()
-        assert b'ine3!' == data
+        assert b"ine3!" == data
 
     async def test_readuntil_exception(self) -> None:
         stream = self._make_one()
-        stream.feed_data(b'line#')
+        stream.feed_data(b"line#")
 
-        data = await stream.readuntil(b'#')
-        assert b'line#' == data
+        data = await stream.readuntil(b"#")
+        assert b"line#" == data
 
         stream.set_exception(ValueError())
         with pytest.raises(ValueError):
-            await stream.readuntil(b'#')
+            await stream.readuntil(b"#")
 
     async def test_readexactly_zero_or_less(self) -> None:
         # Read exact number of bytes (zero or less).
