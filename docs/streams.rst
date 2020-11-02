@@ -80,7 +80,7 @@ Reading Methods
    If the EOF was received and the internal buffer is empty, return an
    empty bytes object.
 
-   .. versionadded:: 3.8 
+   .. versionadded:: 3.8
 
    :return bytes: the given data
 
