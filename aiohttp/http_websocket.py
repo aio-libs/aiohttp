@@ -42,7 +42,6 @@ class WSCloseCode(IntEnum):
     SERVICE_RESTART = 1012
     TRY_AGAIN_LATER = 1013
     BAD_GATEWAY = 1014
-    TLS_HANDSHAKE = 1015
 
 
 ALLOWED_CLOSE_CODES = {int(i) for i in WSCloseCode}

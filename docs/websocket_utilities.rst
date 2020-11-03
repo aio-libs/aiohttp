@@ -92,12 +92,6 @@ WebSocket utilities
        an invalid response from the upstream server.
        This is similar to 502 HTTP Status Code.
 
-    .. attribute:: TLS_HANDSHAKE
-
-       Indicates that the connection was closed due to a failure
-       to perform a TLS handshake
-       (e.g., the server certificate can't be verified).
-
 
 .. class:: WSMsgType
 
