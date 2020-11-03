@@ -804,7 +804,7 @@ class ChainMapProxy(Mapping[str, Any]):
 
 
 class CookieMixin:
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self._cookies = SimpleCookie()  # type: SimpleCookie[str]
 
@@ -883,7 +883,9 @@ class CookieMixin:
         )
 
 
-def populate_with_cookies(headers: "CIMultiDict[str]", cookies: "SimpleCookie[str]"):
+def populate_with_cookies(
+    headers: "CIMultiDict[str]", cookies: "SimpleCookie[str]"
+) -> None:
     for cookie in cookies.values():
         value = cookie.output(header="")[1:]
         headers.add(hdrs.SET_COOKIE, value)
