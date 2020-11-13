@@ -1,5 +1,6 @@
 
 -r base.txt
+brotlipy==0.7.0
 coverage==5.3
 cryptography==3.2.1; platform_machine!="i686" and python_version<"3.9" # no 32-bit wheels; no python 3.9 wheels yet
 freezegun==1.0.0
