@@ -109,6 +109,7 @@ backports
 basename
 boolean
 botocore
+brotli
 bugfix
 builtin
 cChardet
