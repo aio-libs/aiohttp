@@ -127,6 +127,9 @@ period ask to raise the status.
 - `aiohttp-validate <https://github.com/dchaplinsky/aiohttp_validate>`_
   Simple library that helps you validate your API endpoints requests/responses with json schema.
 
+- `aiohttp-pydantic <https://github.com/Maillol/aiohttp-pydantic>`_
+  An ``aiohttp.View`` to validate the HTTP request's body, query-string, and headers regarding function annotations and generate Open API doc. Python 3.8+ required.
+
 - `raven-aiohttp <https://github.com/getsentry/raven-aiohttp>`_ An
   aiohttp transport for raven-python (Sentry client).
 
