@@ -6,6 +6,7 @@ from multidict import CIMultiDict
 from yarl import URL
 
 from . import hdrs
+from .helpers import CookieMixin
 from .typedefs import LooseHeaders, StrOrURL
 
 __all__ = (
@@ -75,7 +76,7 @@ __all__ = (
 ############################################################
 
 
-class HTTPException(Exception):
+class HTTPException(CookieMixin, Exception):
 
     # You should set in subclasses:
     # status = 200
@@ -92,6 +93,7 @@ class HTTPException(Exception):
         text: Optional[str] = None,
         content_type: Optional[str] = None,
     ) -> None:
+        super().__init__()
         if reason is None:
             reason = self.default_reason
 

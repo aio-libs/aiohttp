@@ -16,6 +16,7 @@ import time
 import weakref
 from collections import namedtuple
 from contextlib import suppress
+from http.cookies import SimpleCookie
 from math import ceil
 from pathlib import Path
 from types import TracebackType
@@ -44,7 +45,7 @@ from urllib.request import getproxies
 
 import async_timeout
 import attr
-from multidict import MultiDict, MultiDictProxy
+from multidict import CIMultiDict, MultiDict, MultiDictProxy
 from typing_extensions import Protocol, final
 from yarl import URL
 
@@ -705,6 +706,7 @@ class HeadersMixin:
     __slots__ = ("_content_type", "_content_dict", "_stored_content_type")
 
     def __init__(self) -> None:
+        super().__init__()
         self._content_type = None  # type: Optional[str]
         self._content_dict = None  # type: Optional[Dict[str, str]]
         self._stored_content_type = sentinel
@@ -799,3 +801,91 @@ class ChainMapProxy(Mapping[str, Any]):
     def __repr__(self) -> str:
         content = ", ".join(map(repr, self._maps))
         return f"ChainMapProxy({content})"
+
+
+class CookieMixin:
+    def __init__(self) -> None:
+        super().__init__()
+        self._cookies = SimpleCookie()  # type: SimpleCookie[str]
+
+    @property
+    def cookies(self) -> "SimpleCookie[str]":
+        return self._cookies
+
+    def set_cookie(
+        self,
+        name: str,
+        value: str,
+        *,
+        expires: Optional[str] = None,
+        domain: Optional[str] = None,
+        max_age: Optional[Union[int, str]] = None,
+        path: str = "/",
+        secure: Optional[bool] = None,
+        httponly: Optional[bool] = None,
+        version: Optional[str] = None,
+        samesite: Optional[str] = None,
+    ) -> None:
+        """Set or update response cookie.
+
+        Sets new cookie or updates existent with new value.
+        Also updates only those params which are not None.
+        """
+
+        old = self._cookies.get(name)
+        if old is not None and old.coded_value == "":
+            # deleted cookie
+            self._cookies.pop(name, None)
+
+        self._cookies[name] = value
+        c = self._cookies[name]
+
+        if expires is not None:
+            c["expires"] = expires
+        elif c.get("expires") == "Thu, 01 Jan 1970 00:00:00 GMT":
+            del c["expires"]
+
+        if domain is not None:
+            c["domain"] = domain
+
+        if max_age is not None:
+            c["max-age"] = str(max_age)
+        elif "max-age" in c:
+            del c["max-age"]
+
+        c["path"] = path
+
+        if secure is not None:
+            c["secure"] = secure
+        if httponly is not None:
+            c["httponly"] = httponly
+        if version is not None:
+            c["version"] = version
+        if samesite is not None:
+            c["samesite"] = samesite
+
+    def del_cookie(
+        self, name: str, *, domain: Optional[str] = None, path: str = "/"
+    ) -> None:
+        """Delete cookie.
+
+        Creates new empty expired cookie.
+        """
+        # TODO: do we need domain/path here?
+        self._cookies.pop(name, None)
+        self.set_cookie(
+            name,
+            "",
+            max_age=0,
+            expires="Thu, 01 Jan 1970 00:00:00 GMT",
+            domain=domain,
+            path=path,
+        )
+
+
+def populate_with_cookies(
+    headers: "CIMultiDict[str]", cookies: "SimpleCookie[str]"
+) -> None:
+    for cookie in cookies.values():
+        value = cookie.output(header="")[1:]
+        headers.add(hdrs.SET_COOKIE, value)

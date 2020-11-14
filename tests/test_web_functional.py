@@ -1910,3 +1910,16 @@ async def test_stream_response_headers_204(aiohttp_client):
     resp = await client.get("/")
     assert CONTENT_TYPE not in resp.headers
     assert TRANSFER_ENCODING not in resp.headers
+
+
+async def test_httpfound_cookies_302(aiohttp_client):
+    async def handler(_):
+        resp = web.HTTPFound("/")
+        resp.set_cookie("my-cookie", "cookie-value")
+        raise resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.get("/", allow_redirects=False)
+    assert "my-cookie" in resp.cookies
