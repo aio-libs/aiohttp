@@ -226,7 +226,7 @@ jobs:
         os: [macos, windows]
       fail-fast: false
     runs-on: ${{ matrix.os }}-latest
-    needs: pre-deploy
+    # needs: pre-deploy
     steps:
     - name: Checkout
       uses: actions/checkout@v2
