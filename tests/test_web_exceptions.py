@@ -203,3 +203,31 @@ def test_HTTPException_retains_cause() -> None:
     tb = "".join(format_exception(ei.type, ei.value, ei.tb))
     assert "CustomException" in tb
     assert "direct cause" in tb
+
+
+async def test_HTTPException_retains_cookie(aiohttp_client):
+    @web.middleware
+    async def middleware(request, handler):
+        try:
+            return await handler(request)
+        except web.HTTPException as exc:
+            exc.set_cookie("foo", request["foo"])
+            raise exc
+
+    async def save(request):
+        request["foo"] = "works"
+        raise web.HTTPFound("/show")
+
+    async def show(request):
+        return web.Response(text=request.cookies["foo"])
+
+    app = web.Application(middlewares=[middleware])
+    app.router.add_route("GET", "/save", save)
+    app.router.add_route("GET", "/show", show)
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/save")
+    assert resp.status == 200
+    assert str(resp.url)[-5:] == "/show"
+    text = await resp.text()
+    assert text == "works"
