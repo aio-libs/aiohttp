@@ -168,11 +168,11 @@ Dependencies
 
      $ pip install aiodns
 
-- *Optional* :term:`brotlipy` for Brotli client compression support.
+- *Optional* :term:`Brotli` for brotli (:rfc:`7932`) client compression support.
 
   .. code-block:: bash
 
-     $ pip install brotlipy
+     $ pip install Brotli
 
 
 Communication channels
