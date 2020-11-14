@@ -5,6 +5,7 @@ Backporting
 BaseEventLoop
 BasicAuth
 BodyPartReader
+Brotli
 Bugfixes
 BytesIO
 CIMultiDict
