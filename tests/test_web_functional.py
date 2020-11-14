@@ -6,12 +6,12 @@ import socket
 import zlib
 from unittest import mock
 
+import brotli
 import pytest
 from multidict import CIMultiDictProxy, MultiDict
 from yarl import URL
 
 import aiohttp
-import brotli
 from aiohttp import FormData, HttpVersion10, HttpVersion11, TraceConfig, multipart, web
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
 from aiohttp.test_utils import make_mocked_coro
@@ -902,7 +902,6 @@ async def test_response_with_payload_stringio(aiohttp_client, fname) -> None:
     "compressor,encoding",
     [
         (zlib.compressobj(wbits=16 + zlib.MAX_WBITS), "gzip"),
-        (brotli.Compressor(), "br"),
         (zlib.compressobj(wbits=zlib.MAX_WBITS), "deflate"),
         # Actually, wrong compression format, but
         # should be supported for some legacy cases.
@@ -926,6 +925,22 @@ async def test_response_with_precompressed_body(
     data = await resp.read()
     assert b"mydata" == data
     assert resp.headers.get("Content-Encoding") == encoding
+
+
+async def test_response_with_precompressed_body_brotli(aiohttp_client) -> None:
+    async def handler(request):
+        headers = {"Content-Encoding": "br"}
+        return web.Response(body=brotli.compress(b"mydata"), headers=headers)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/")
+    assert 200 == resp.status
+    data = await resp.read()
+    assert b"mydata" == data
+    assert resp.headers.get("Content-Encoding") == "br"
 
 
 async def test_bad_request_payload(aiohttp_client) -> None:
@@ -1858,7 +1873,8 @@ async def test_read_bufsize(aiohttp_client) -> None:
 
 
 @pytest.mark.parametrize(
-    "status", [101, 204],
+    "status",
+    [101, 204],
 )
 async def test_response_101_204_no_content_length_http11(
     status, aiohttp_client
