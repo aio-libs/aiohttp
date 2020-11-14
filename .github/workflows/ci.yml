@@ -242,9 +242,15 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install -U setuptools wheel
-    - name: Make wheel
-      run:
+    - name: Make wheel (MacOS)
+      if: ${{matrix.os == 'macos'}}
+      run: |
         python setup.py bdist_wheel
+    - name: Make wheel (Windows)
+      if: ${{matrix.os == 'windows'}}
+      run: |
+        python setup.py bdist_wheel --plat-name=win-amd64
+        python setup.py bdist_wheel --plat-name=win32
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
