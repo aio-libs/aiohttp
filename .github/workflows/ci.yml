@@ -218,49 +218,76 @@ jobs:
         name: dist
         path: wheelhouse/*
 
-  build-binary:
-    name: Binary wheels
+  build-macos:
+    name: MacOS
     strategy:
       matrix:
         pyver: [3.6, 3.7, 3.8, 3.9]
-        os: [macos, windows]
       fail-fast: false
-    runs-on: ${{ matrix.os }}-latest
-    # needs: pre-deploy
+    runs-on: macos-latest
+    needs: pre-deploy
     steps:
     - name: Checkout
       uses: actions/checkout@v2
       with:
         submodules: true
-    - name: Setup Python 3.8
+    - name: Setup Python
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.pyver }}
     - name: Cythonize
-      if: ${{ matrix.no-extensions == '' }}
       run: |
         make cythonize
     - name: Install dependencies
       run: |
         python -m pip install -U setuptools wheel
-    - name: Make wheel (MacOS)
-      if: ${{matrix.os == 'macos'}}
+    - name: Make wheel
       run: |
         python setup.py bdist_wheel
-    - name: Make wheel (Windows)
-      if: ${{matrix.os == 'windows'}}
-      run: |
-        python setup.py bdist_wheel --plat-name=win-amd64
-        python setup.py bdist_wheel --plat-name=win32
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
         name: dist
         path: dist
 
+  build-windows:
+    name: Windows
+    strategy:
+      matrix:
+        pyver: [3.6, 3.7, 3.8, 3.9]
+        architecture: [x64, x86]
+      fail-fast: false
+    runs-on: windows-latest
+    # needs: pre-deploy
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.pyver }}
+        architecture: ${{ matrix.architecture }}
+    - name: Cythonize
+      run: |
+        make cythonize
+    - name: Install dependencies
+      run: |
+        python -m pip install -U setuptools wheel
+    - name: Make wheel
+      run: |
+        python setup.py bdist_wheel
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: dist
+        path: dist
+
+
   deploy:
     name: Deploy
-    needs: [build-linux, build-binary, build-tarball]
+    needs: [build-linux, build-macos, build-tarball]
     runs-on: ubuntu-latest
     steps:
     - name: Setup Python 3.8
