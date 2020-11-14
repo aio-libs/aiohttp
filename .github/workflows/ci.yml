@@ -5,7 +5,6 @@ on:
     branches:
       - 'master'
       - '[0-9].[0-9]+'  # matches to backport branches, e.g. 3.6
-      - 'win32_wheel'
     tags: [ 'v*' ]
   pull_request:
     branches:
@@ -258,7 +257,7 @@ jobs:
         architecture: [x64, x86]
       fail-fast: false
     runs-on: windows-latest
-    # needs: pre-deploy
+    needs: pre-deploy
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -287,7 +286,7 @@ jobs:
 
   deploy:
     name: Deploy
-    needs: [build-linux, build-macos, build-tarball]
+    needs: [build-linux, build-macos, build-windows, build-tarball]
     runs-on: ubuntu-latest
     steps:
     - name: Setup Python 3.8
