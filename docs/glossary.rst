@@ -27,6 +27,14 @@
 
       https://pypi.python.org/pypi/asyncio/
 
+   brotlipy
+
+      This library contains Python bindings for the reference Brotli
+      encoder/decoder. This allows Python software to use the Brotli
+      compression algorithm directly from Python code.
+
+      https://pypi.org/project/brotlipy/
+
    callable
 
       Any object that can be called. Use :func:`callable` to check
