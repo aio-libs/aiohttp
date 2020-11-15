@@ -21,7 +21,7 @@ from typing import (  # noqa
 
 from yarl import URL
 
-from .abc import AbstractCookieJar
+from .abc import AbstractCookieJar, ClearCookiePredicate
 from .helpers import get_running_loop, is_ip_address, next_whole_second
 from .typedefs import LooseCookies, PathLike
 
@@ -81,11 +81,33 @@ class CookieJar(AbstractCookieJar):
         with file_path.open(mode="rb") as f:
             self._cookies = pickle.load(f)
 
-    def clear(self) -> None:
-        self._cookies.clear()
-        self._host_only_cookies.clear()
-        self._next_expiration = next_whole_second()
-        self._expirations.clear()
+    def clear(self, predicate: Optional[ClearCookiePredicate] = None) -> None:
+        if predicate is None:
+            self._next_expiration = next_whole_second()
+            self._cookies.clear()
+            self._host_only_cookies.clear()
+            self._expirations.clear()
+            return
+
+        to_del = []
+        now = datetime.datetime.now(datetime.timezone.utc)
+        for domain, cookie in self._cookies.items():
+            for name, morsel in cookie.items():
+                key = (domain, name)
+            if (
+                key in self._expirations and self._expirations[key] <= now
+            ) or predicate(cookie):
+                to_del.append(key)
+
+        for domain, name in to_del:
+            self._host_only_cookies.discard((domain, name))
+            del self._expirations[(domain, name)]
+            self._cookies[domain].pop(name, None)
+
+        self._next_expiration = min(self._max_time, *list(self._expirations.values()))
+
+    def clear_domain(self, domain: str) -> None:
+        self.clear(lambda x: x["domain"] == domain)
 
     def __iter__(self) -> "Iterator[Morsel[str]]":
         self._do_expiration()
@@ -370,7 +392,10 @@ class DummyCookieJar(AbstractCookieJar):
     def __len__(self) -> int:
         return 0
 
-    def clear(self) -> None:
+    def clear(self, predicate: Optional[ClearCookiePredicate] = None) -> None:
+        pass
+
+    def clear_domain(self, domain: str) -> None:
         pass
 
     def update_cookies(self, cookies: LooseCookies, response_url: URL = URL()) -> None:
