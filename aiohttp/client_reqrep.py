@@ -876,7 +876,14 @@ class ClientResponse(HeadersMixin):
             ):
                 return
 
-            self._connection.release()
+            if (
+                self._writer is not None
+                and not self._writer.done()
+                and self._request_info.headers.get(hdrs.TRANSFER_ENCODING) == "chunked"
+            ):
+                self._connection.close()
+            else:
+                self._connection.release()
             self._connection = None
 
         self._closed = True
