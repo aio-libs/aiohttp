@@ -14,6 +14,64 @@ Changelog
 
 .. towncrier release notes start
 
+3.7.3 (2020-11-15)
+==================
+
+Features
+--------
+
+- Use Brotli instead of brotlipy
+  `#3803 <https://github.com/aio-libs/aiohttp/issues/3803>`_
+- Made exceptions pickleable. Also changed the repr of some exceptions.
+  `#4077 <https://github.com/aio-libs/aiohttp/issues/4077>`_
+
+
+Bugfixes
+--------
+
+- Raise a ClientResponseError instead of an AssertionError for a blank
+  HTTP Reason Phrase.
+  `#3532 <https://github.com/aio-libs/aiohttp/issues/3532>`_
+- Fix ``web_middlewares.normalize_path_middleware`` behavior for patch without slash.
+  `#3669 <https://github.com/aio-libs/aiohttp/issues/3669>`_
+- Fix overshadowing of overlapped subbaps prefixes.
+  `#3701 <https://github.com/aio-libs/aiohttp/issues/3701>`_
+- Make `BaseConnector.close()` a coroutine and wait until the client closes all connections. Drop deprecated "with Connector():" syntax.
+  `#3736 <https://github.com/aio-libs/aiohttp/issues/3736>`_
+- Reset the ``sock_read`` timeout each time data is received for a ``aiohttp.client`` response.
+  `#3808 <https://github.com/aio-libs/aiohttp/issues/3808>`_
+- Fixed type annotation for add_view method of UrlDispatcher to accept any subclass of View
+  `#3880 <https://github.com/aio-libs/aiohttp/issues/3880>`_
+- Fixed querying the address families from DNS that the current host supports.
+  `#5156 <https://github.com/aio-libs/aiohttp/issues/5156>`_
+- Change return type of MultipartReader.__aiter__() and BodyPartReader.__aiter__() to AsyncIterator.
+  `#5163 <https://github.com/aio-libs/aiohttp/issues/5163>`_
+- Provide x86 Windows wheels.
+  `#5230 <https://github.com/aio-libs/aiohttp/issues/5230>`_
+
+
+Improved Documentation
+----------------------
+
+- Add documentation for ``aiohttp.web.FileResponse``.
+  `#3958 <https://github.com/aio-libs/aiohttp/issues/3958>`_
+- Removed deprecation warning in tracing example docs
+  `#3964 <https://github.com/aio-libs/aiohttp/issues/3964>`_
+- Fixed wrong "Usage" docstring of ``aiohttp.client.request``.
+  `#4603 <https://github.com/aio-libs/aiohttp/issues/4603>`_
+- Add aiohttp-pydantic to third party libraries
+  `#5228 <https://github.com/aio-libs/aiohttp/issues/5228>`_
+
+
+Misc
+----
+
+- `#4102 <https://github.com/aio-libs/aiohttp/issues/4102>`_
+
+
+----
+
+
 3.7.2 (2020-10-27)
 ==================
 
