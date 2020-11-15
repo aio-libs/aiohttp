@@ -28,8 +28,8 @@ jobs:
         with:
           # Required
           # Token to authenticate requests
-          # access_token: ${{ steps.generate_token.outputs.token }}
-          access_token: ${{ secrets.GITHUB_TOKEN }}
+          access_token: ${{ steps.generate_token.outputs.token }}
+          # access_token: ${{ secrets.GITHUB_TOKEN }}
 
           # Required
           # Backport PR by adding a label
