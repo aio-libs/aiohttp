@@ -34,7 +34,7 @@ Bugfixes
   `#3532 <https://github.com/aio-libs/aiohttp/issues/3532>`_
 - Fix ``web_middlewares.normalize_path_middleware`` behavior for patch without slash.
   `#3669 <https://github.com/aio-libs/aiohttp/issues/3669>`_
-- Fix overshadowing of overlapped subbaps prefixes.
+- Fix overshadowing of overlapped sub-applications prefixes.
   `#3701 <https://github.com/aio-libs/aiohttp/issues/3701>`_
 - Make `BaseConnector.close()` a coroutine and wait until the client closes all connections. Drop deprecated "with Connector():" syntax.
   `#3736 <https://github.com/aio-libs/aiohttp/issues/3736>`_
