@@ -310,34 +310,41 @@ class StreamReader(AsyncStreamReaderMixin):
             self._waiter = None
 
     async def readline(self) -> bytes:
+        return await self.readuntil()
+
+    async def readuntil(self, separator: bytes = b"\n") -> bytes:
+        seplen = len(separator)
+        if seplen == 0:
+            raise ValueError("Separator should be at least one-byte string")
+
         if self._exception is not None:
             raise self._exception
 
-        line = []
-        line_size = 0
+        chunk = b""
+        chunk_size = 0
         not_enough = True
 
         while not_enough:
             while self._buffer and not_enough:
                 offset = self._buffer_offset
-                ichar = self._buffer[0].find(b"\n", offset) + 1
-                # Read from current offset to found b'\n' or to the end.
+                ichar = self._buffer[0].find(separator, offset) + 1
+                # Read from current offset to found separator or to the end.
                 data = self._read_nowait_chunk(ichar - offset if ichar else -1)
-                line.append(data)
-                line_size += len(data)
+                chunk += data
+                chunk_size += len(data)
                 if ichar:
                     not_enough = False
 
-                if line_size > self._high_water:
-                    raise ValueError("Line is too long")
+                if chunk_size > self._high_water:
+                    raise ValueError("Chunk too big")
 
             if self._eof:
                 break
 
             if not_enough:
-                await self._wait("readline")
+                await self._wait("readuntil")
 
-        return b"".join(line)
+        return chunk
 
     async def read(self, n: int = -1) -> bytes:
         if self._exception is not None:
@@ -516,6 +523,8 @@ class EmptyStreamReader(AsyncStreamReaderMixin):
 
     async def read(self, n: int = -1) -> bytes:
         return b""
+
+    # TODO add async def readuntil
 
     async def readany(self) -> bytes:
         return b""

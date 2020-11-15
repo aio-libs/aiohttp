@@ -109,6 +109,9 @@ They may be perfect or not -- we don't know.
 Please add your library reference here first and after some time
 period ask to raise the status.
 
+- `pytest-aiohttp-client <https://github.com/sivakov512/pytest-aiohttp-client>`_
+  Pytest fixture with simpler api, payload decoding and status code assertions.
+
 - `octomachinery <https://octomachinery.dev>`_ A framework for developing
   GitHub Apps and GitHub Actions. Python 3.7+ is required.
 
@@ -135,6 +138,9 @@ period ask to raise the status.
 
 - `aiohttp-validate <https://github.com/dchaplinsky/aiohttp_validate>`_
   Simple library that helps you validate your API endpoints requests/responses with json schema.
+
+- `aiohttp-pydantic <https://github.com/Maillol/aiohttp-pydantic>`_
+  An ``aiohttp.View`` to validate the HTTP request's body, query-string, and headers regarding function annotations and generate Open API doc. Python 3.8+ required.
 
 - `raven-aiohttp <https://github.com/getsentry/raven-aiohttp>`_ An
   aiohttp transport for raven-python (Sentry client).

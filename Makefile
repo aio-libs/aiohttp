@@ -1,47 +1,67 @@
 # Some simple testing tasks (sorry, UNIX only).
 
-to-md5 = $1 $(addsuffix .md5,$1)
+to-hash-one = $(dir $1).hash/$(addsuffix .hash,$(notdir $1))
+to-hash = $(foreach fname,$1,$(call to-hash-one,$(fname)))
 
-CYS = $(wildcard aiohttp/*.pyx) $(wildcard aiohttp/*.pyi)  $(wildcard aiohttp/*.pxd)
-PYXS = $(wildcard aiohttp/*.pyx)
-CS = $(wildcard aiohttp/*.c)
-PYS = $(wildcard aiohttp/*.py)
-REQS = $(wildcard requirements/*.txt)
-SRC = aiohttp examples tests setup.py
+CYS := $(wildcard aiohttp/*.pyx) $(wildcard aiohttp/*.pyi)  $(wildcard aiohttp/*.pxd)
+PYXS := $(wildcard aiohttp/*.pyx)
+CS := $(wildcard aiohttp/*.c)
+PYS := $(wildcard aiohttp/*.py)
+REQS := $(wildcard requirements/*.txt)
+ALLS := $(sort $(CYS) $(CS) $(PYS) $(REQS))
 
 .PHONY: all
 all: test
 
-# Recipe from https://www.cmcrossroads.com/article/rebuilding-when-files-checksum-changes
-%.md5: FORCE
-	@$(if $(filter-out $(shell cat $@ 2>/dev/null),$(shell md5sum $*)),md5sum $* > $@)
+tst:
+	@echo $(call to-hash,requirements/cython.txt)
+	@echo $(call to-hash,aiohttp/%.pyx)
 
+
+# Recipe from https://www.cmcrossroads.com/article/rebuilding-when-files-checksum-changes
 FORCE:
 
-# Enumerate intermediate files to don't remove them automatically.
-# The target must exist, no need to execute it.
-.PHONY: keep-intermediate-files
-_keep-intermediate-files: $(addsuffix .md5,$(CYS))\
-                         $(addsuffix .md5,$(CS))\
-                         $(addsuffix .md5,$(PYS))\
-                         $(addsuffix .md5,$(REQS))
+# check_sum.py works perfectly fine but slow when called for every file from $(ALLS)
+# (perhaps even several times for each file).
+# That is why much less readable but faster solution exists
+ifneq (, $(shell which sha256sum))
+%.hash: FORCE
+	$(eval $@_ABS := $(abspath $@))
+	$(eval $@_NAME := $($@_ABS))
+	$(eval $@_HASHDIR := $(dir $($@_ABS)))
+	$(eval $@_TMP := $($@_HASHDIR)../$(notdir $($@_ABS)))
+	$(eval $@_ORIG := $(subst /.hash/../,/,$(basename $($@_TMP))))
+	@#echo ==== $($@_ABS) $($@_HASHDIR) $($@_NAME) $($@_TMP) $($@_ORIG)
+	@if ! (sha256sum --check $($@_ABS) 1>/dev/null 2>/dev/null); then \
+	  mkdir -p $($@_HASHDIR); \
+	  echo re-hash $($@_ORIG); \
+	  sha256sum $($@_ORIG) > $($@_ABS); \
+	fi
+else
+%.hash: FORCE
+	@./tools/check_sum.py $@ # --debug
+endif
 
-.install-cython: $(call to-md5,requirements/cython.txt)
+# Enumerate intermediate files to don't remove them automatically.
+.SECONDARY: $(call to-hash,$(ALLS))
+
+
+.install-cython: $(call to-hash,requirements/cython.txt)
 	pip install -r requirements/cython.txt
 	@touch .install-cython
 
-aiohttp/_find_header.c: $(call to-md5,aiohttp/hdrs.py)
+aiohttp/_find_header.c: $(call to-hash,aiohttp/hdrs.py ./tools/gen.py)
 	./tools/gen.py
 
 # _find_headers generator creates _headers.pyi as well
-aiohttp/%.c: $(call to-md5,aiohttp/%.pyx) aiohttp/_find_header.c
+aiohttp/%.c: aiohttp/%.pyx $(call to-hash,$(CYS)) aiohttp/_find_header.c
 	cython -3 -o $@ $< -I aiohttp
 
 
 .PHONY: cythonize
 cythonize: .install-cython $(PYXS:.pyx=.c)
 
-.install-deps: .install-cython $(PYXS:.pyx=.c) $(call to-md5,$(CYS) $(REQS))
+.install-deps: .install-cython $(PYXS:.pyx=.c) $(call to-hash,$(CYS) $(REQS))
 	pip install -r requirements/dev.txt
 	@touch .install-deps
 
@@ -49,19 +69,14 @@ cythonize: .install-cython $(PYXS:.pyx=.c)
 lint: fmt mypy
 
 .PHONY: fmt format
-fmt format: check_changes
+fmt format:
 	python -m pre_commit run --all-files --show-diff-on-failure
 
 .PHONY: mypy
 mypy:
 	mypy aiohttp
 
-.PHONY: check_changes
-check_changes:
-	./tools/check_changes.py
-
-
-.develop: .install-deps $(call to-md5,$(PYS) $(CYS) $(CS))
+.develop: .install-deps $(call to-hash,$(PYS) $(CYS) $(CS))
 	pip install -e .
 	@touch .develop
 
@@ -73,9 +88,15 @@ test: .develop
 vtest: .develop
 	@pytest -s -v
 
+.PHONY: vvtest
+vvtest: .develop
+	@pytest -vv
+
 .PHONY: clean
 clean:
 	@rm -rf `find . -name __pycache__`
+	@rm -rf `find . -name .hash`
+	@rm -rf `find . -name .md5`  # old styling
 	@rm -f `find . -type f -name '*.py[co]' `
 	@rm -f `find . -type f -name '*~' `
 	@rm -f `find . -type f -name '.*~' `
@@ -83,6 +104,7 @@ clean:
 	@rm -f `find . -type f -name '#*#' `
 	@rm -f `find . -type f -name '*.orig' `
 	@rm -f `find . -type f -name '*.rej' `
+	@rm -f `find . -type f -name '*.md5' `  # old styling
 	@rm -f .coverage
 	@rm -rf htmlcov
 	@rm -rf build

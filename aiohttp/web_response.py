@@ -9,7 +9,7 @@ import warnings
 import zlib
 from concurrent.futures import Executor
 from email.utils import parsedate
-from http.cookies import Morsel, SimpleCookie
+from http.cookies import Morsel
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -27,7 +27,14 @@ from multidict import CIMultiDict, istr
 
 from . import hdrs, payload
 from .abc import AbstractStreamWriter
-from .helpers import PY_38, HeadersMixin, rfc822_formatted_time, sentinel
+from .helpers import (
+    PY_38,
+    CookieMixin,
+    HeadersMixin,
+    populate_with_cookies,
+    rfc822_formatted_time,
+    sentinel,
+)
 from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
@@ -64,7 +71,7 @@ class ContentCoding(enum.Enum):
 ############################################################
 
 
-class StreamResponse(BaseClass, HeadersMixin):
+class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
 
     __slots__ = (
         "_length_check",
@@ -73,7 +80,6 @@ class StreamResponse(BaseClass, HeadersMixin):
         "_chunked",
         "_compression",
         "_compression_force",
-        "_cookies",
         "_req",
         "_payload_writer",
         "_eof_sent",
@@ -99,7 +105,6 @@ class StreamResponse(BaseClass, HeadersMixin):
         self._chunked = False
         self._compression = False
         self._compression_force = None  # type: Optional[ContentCoding]
-        self._cookies = SimpleCookie()  # type: SimpleCookie[str]
 
         self._req = None  # type: Optional[BaseRequest]
         self._payload_writer = None  # type: Optional[AbstractStreamWriter]
@@ -184,80 +189,6 @@ class StreamResponse(BaseClass, HeadersMixin):
     @property
     def headers(self) -> "CIMultiDict[str]":
         return self._headers
-
-    @property
-    def cookies(self) -> "SimpleCookie[str]":
-        return self._cookies
-
-    def set_cookie(
-        self,
-        name: str,
-        value: str,
-        *,
-        expires: Optional[str] = None,
-        domain: Optional[str] = None,
-        max_age: Optional[Union[int, str]] = None,
-        path: str = "/",
-        secure: Optional[bool] = None,
-        httponly: Optional[bool] = None,
-        version: Optional[str] = None,
-        samesite: Optional[str] = None,
-    ) -> None:
-        """Set or update response cookie.
-
-        Sets new cookie or updates existent with new value.
-        Also updates only those params which are not None.
-        """
-
-        old = self._cookies.get(name)
-        if old is not None and old.coded_value == "":
-            # deleted cookie
-            self._cookies.pop(name, None)
-
-        self._cookies[name] = value
-        c = self._cookies[name]
-
-        if expires is not None:
-            c["expires"] = expires
-        elif c.get("expires") == "Thu, 01 Jan 1970 00:00:00 GMT":
-            del c["expires"]
-
-        if domain is not None:
-            c["domain"] = domain
-
-        if max_age is not None:
-            c["max-age"] = str(max_age)
-        elif "max-age" in c:
-            del c["max-age"]
-
-        c["path"] = path
-
-        if secure is not None:
-            c["secure"] = secure
-        if httponly is not None:
-            c["httponly"] = httponly
-        if version is not None:
-            c["version"] = version
-        if samesite is not None:
-            c["samesite"] = samesite
-
-    def del_cookie(
-        self, name: str, *, domain: Optional[str] = None, path: str = "/"
-    ) -> None:
-        """Delete cookie.
-
-        Creates new empty expired cookie.
-        """
-        # TODO: do we need domain/path here?
-        self._cookies.pop(name, None)
-        self.set_cookie(
-            name,
-            "",
-            max_age=0,
-            expires="Thu, 01 Jan 1970 00:00:00 GMT",
-            domain=domain,
-            path=path,
-        )
 
     @property
     def content_length(self) -> Optional[int]:
@@ -399,9 +330,7 @@ class StreamResponse(BaseClass, HeadersMixin):
         version = request.version
 
         headers = self._headers
-        for cookie in self._cookies.values():
-            value = cookie.output(header="")[1:]
-            headers.add(hdrs.SET_COOKIE, value)
+        populate_with_cookies(headers, self.cookies)
 
         if self._compression:
             await self._start_compression(request)

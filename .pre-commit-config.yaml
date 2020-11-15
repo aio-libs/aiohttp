@@ -1,4 +1,15 @@
 repos:
+- repo: local
+  hooks:
+  - id: check-changes
+    name: Check CHANGES
+    language: system
+    entry: ./tools/check_changes.py
+    pass_filenames: false
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: 'v3.3.0'
+  hooks:
+  - id: check-merge-conflict
 - repo: https://github.com/asottile/yesqa
   rev: v1.2.2
   hooks:
@@ -15,35 +26,34 @@ repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: 'v3.3.0'
   hooks:
+  - id: end-of-file-fixer
+    exclude: >-
+      ^docs/[^/]*\.svg$
+  - id: requirements-txt-fixer
+  - id: trailing-whitespace
+  - id: file-contents-sorter
+    files: |
+      CONTRIBUTORS.txt|
+      docs/spelling_wordlist.txt|
+      .gitignore|
+      .gitattributes
   - id: check-case-conflict
   - id: check-json
+  - id: check-xml
+  - id: check-executables-have-shebangs
+  - id: check-toml
   - id: check-xml
   - id: check-yaml
   - id: debug-statements
   - id: check-added-large-files
-  - id: requirements-txt-fixer
-  - id: file-contents-sorter
-    files: CONTRIBUTORS.txt
-# Another entry is required to apply file-contents-sorter to another file
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v3.3.0'
-  hooks:
-  - id: file-contents-sorter
-    files: docs/spelling_wordlist.txt
-# Another entry is required to apply file-contents-sorter to another file
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v3.3.0'
-  hooks:
-  - id: file-contents-sorter
-    files: .gitignore
-# Another entry is required to apply file-contents-sorter to another file
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v3.3.0'
-  hooks:
-  - id: file-contents-sorter
-    files: .gitattributes
+  - id: check-symlinks
+  - id: debug-statements
+  - id: detect-aws-credentials
+    args: ['--allow-missing-credentials']
+  - id: detect-private-key
+    exclude: ^examples/
 - repo: https://github.com/asottile/pyupgrade
-  rev: 'v2.7.3'
+  rev: 'v2.7.4'
   hooks:
   - id: pyupgrade
     args: ['--py36-plus']
@@ -52,3 +62,10 @@ repos:
   hooks:
   - id: flake8
     exclude: "^docs/"
+
+- repo: git://github.com/Lucas-C/pre-commit-hooks-markup
+  rev: v1.0.0
+  hooks:
+  - id: rst-linter
+    files: >-
+      ^[^/]+[.]rst$

@@ -115,27 +115,16 @@ jobs:
         path: ${{ steps.pip-cache.outputs.dir }}
         restore-keys: |
             pip-ci-${{ runner.os }}-${{ matrix.pyver }}-{{ matrix.no-extensions }}-
-    - name: Install cython
-      if: ${{ matrix.no-extensions == '' }}
-      uses: py-actions/py-dependency-install@v2
-      with:
-        path: requirements/cython.txt
     - name: Cythonize
       if: ${{ matrix.no-extensions == '' }}
       run: |
         make cythonize
-    - name: Install dependencies
-      uses: py-actions/py-dependency-install@v2
-      with:
-        path: requirements/test.txt
-      env:
-        AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
     - name: Run unittests
       env:
         COLOR: 'yes'
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
       run: |
-        python -m pytest tests -vv
+        make vvtest
         python -m coverage xml
     - name: Upload coverage
       uses: codecov/codecov-action@v1
@@ -168,10 +157,6 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.8
-    - name: Install cython
-      uses: py-actions/py-dependency-install@v2
-      with:
-        path: requirements/cython.txt
     - name: Cythonize
       run: |
         make cythonize
@@ -210,11 +195,6 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.8
-    - name: Install cython
-      if: ${{ matrix.no-extensions == '' }}
-      uses: py-actions/py-dependency-install@v2
-      with:
-        path: requirements/cython.txt
     - name: Cythonize
       if: ${{ matrix.no-extensions == '' }}
       run: |
@@ -243,6 +223,10 @@ jobs:
       matrix:
         pyver: [3.6, 3.7, 3.8, 3.9]
         os: [macos, windows]
+        arch: [x86, x64]
+        exclude:
+        - os: macos
+          arch: x86
       fail-fast: false
     runs-on: ${{ matrix.os }}-latest
     needs: pre-deploy
@@ -255,11 +239,7 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.pyver }}
-    - name: Install cython
-      if: ${{ matrix.no-extensions == '' }}
-      uses: py-actions/py-dependency-install@v2
-      with:
-        path: requirements/cython.txt
+        architecture: ${{ matrix.arch }}
     - name: Cythonize
       if: ${{ matrix.no-extensions == '' }}
       run: |
