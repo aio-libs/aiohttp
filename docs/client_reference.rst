@@ -1842,6 +1842,22 @@ CookieJar
       :param file_path: Path to file from where cookies will be
            imported, :class:`str` or :class:`pathlib.Path` instance.
 
+   .. method:: clear(predicate=None)
+
+      Removes all cookies from the jar if the predicate is ``None``. Otherwise remove only those :class:`~http.cookies.Morsel` that ``predicate(morsel)`` returns ``True``.
+
+      :param predicate: callable that gets :class:`~http.cookies.Morsel` as a parameter and returns ``True`` if this :class:`~http.cookies.Morsel` must be deleted from the jar.
+
+          .. versionadded:: 4.0
+
+   .. method:: clear_domain(domain)
+
+      Remove all cookies from the jar that belongs to the specified domain or its subdomains.
+
+      :param str domain: domain for which cookies must be deleted from the jar.
+
+      .. versionadded:: 4.0
+
 
 .. class:: DummyCookieJar(*, loop=None)
 
