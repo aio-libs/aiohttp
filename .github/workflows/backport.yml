@@ -3,11 +3,13 @@ name: Backport
 #   pull_request_target:
 #     types: [opened, closed, labeled, unlabeled, synchronize]
 on:
-  push:
-    branches:
-      - 'master'
-      - '[0-9].[0-9]+'  # matches to backport branches, e.g. 3.6
-    tags: [ 'v*' ]
+  # push:
+  #   branches:
+  #     - 'master'
+  #     - '[0-9].[0-9]+'  # matches to backport branches, e.g. 3.6
+  #   tags: [ 'v*' ]
+  pull_request_target:
+    types: [closed, labeled, unlabeled]
   # pull_request_target:
   #   types: [opened, closed, labeled, unlabeled, synchronize]
 
