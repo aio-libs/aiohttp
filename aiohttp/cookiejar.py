@@ -94,17 +94,23 @@ class CookieJar(AbstractCookieJar):
         for domain, cookie in self._cookies.items():
             for name, morsel in cookie.items():
                 key = (domain, name)
-            if (
-                key in self._expirations and self._expirations[key] <= now
-            ) or predicate(cookie):
-                to_del.append(key)
+                if (
+                    key in self._expirations and self._expirations[key] <= now
+                ) or predicate(morsel):
+                    to_del.append(key)
 
         for domain, name in to_del:
             self._host_only_cookies.discard((domain, name))
             del self._expirations[(domain, name)]
             self._cookies[domain].pop(name, None)
 
-        self._next_expiration = min(self._max_time, *list(self._expirations.values()))
+        next_expiration = min(self._expirations.values(), default=self._max_time)
+        try:
+            self._next_expiration = next_expiration.replace(
+                microsecond=0
+            ) + datetime.timedelta(seconds=1)
+        except OverflowError:
+            self._next_expiration = self._max_time
 
     def clear_domain(self, domain: str) -> None:
         self.clear(lambda x: x["domain"] == domain)
