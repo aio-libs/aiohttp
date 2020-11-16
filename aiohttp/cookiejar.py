@@ -100,8 +100,10 @@ class CookieJar(AbstractCookieJar):
                     to_del.append(key)
 
         for domain, name in to_del:
-            self._host_only_cookies.discard((domain, name))
-            del self._expirations[(domain, name)]
+            key = (domain, name)
+            self._host_only_cookies.discard(key)
+            if key in self._expirations:
+                del self._expirations[(domain, name)]
             self._cookies[domain].pop(name, None)
 
         next_expiration = min(self._expirations.values(), default=self._max_time)
@@ -113,7 +115,7 @@ class CookieJar(AbstractCookieJar):
             self._next_expiration = self._max_time
 
     def clear_domain(self, domain: str) -> None:
-        self.clear(lambda x: x["domain"] == domain)
+        self.clear(lambda x: self._is_domain_match(domain, x["domain"]))
 
     def __iter__(self) -> "Iterator[Morsel[str]]":
         self._do_expiration()
@@ -124,31 +126,7 @@ class CookieJar(AbstractCookieJar):
         return sum(1 for i in self)
 
     def _do_expiration(self) -> None:
-        now = datetime.datetime.now(datetime.timezone.utc)
-        if self._next_expiration > now:
-            return
-        if not self._expirations:
-            return
-        next_expiration = self._max_time
-        to_del = []
-        cookies = self._cookies
-        expirations = self._expirations
-        for (domain, name), when in expirations.items():
-            if when <= now:
-                cookies[domain].pop(name, None)
-                to_del.append((domain, name))
-                self._host_only_cookies.discard((domain, name))
-            else:
-                next_expiration = min(next_expiration, when)
-        for key in to_del:
-            del expirations[key]
-
-        try:
-            self._next_expiration = next_expiration.replace(
-                microsecond=0
-            ) + datetime.timedelta(seconds=1)
-        except OverflowError:
-            self._next_expiration = self._max_time
+        self.clear(lambda x: False)
 
     def _expire_cookie(self, when: datetime.datetime, domain: str, name: str) -> None:
         self._next_expiration = min(self._next_expiration, when)
