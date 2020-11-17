@@ -21,6 +21,10 @@ Async http client/server framework
    :target: https://pypi.org/project/aiohttp
    :alt: Latest PyPI package version
 
+.. image:: https://img.shields.io/pypi/dm/aiohttp
+   :target: https://pypi.org/project/aiohttp
+   :alt: Downloads count
+
 .. image:: https://readthedocs.org/projects/aiohttp/badge/?version=latest
    :target: https://docs.aiohttp.org/
    :alt: Latest Read The Docs
