@@ -156,8 +156,8 @@ html_theme_options = {
     "github_banner": True,
     "badges": [
         {
-            "image": "https://dev.azure.com/aio-libs/aiohttp/_apis/build/status/CI?branchName=master",
-            "target": "https://dev.azure.com/aio-libs/aiohttp/_build",
+            "image": "https://github.com/aio-libs/aiohttp/workflows/CI/badge.svg",
+            "target": "https://github.com/aio-libs/aiohttp/actions?query=workflow%3ACI",
             "height": "20",
             "alt": "Azure Pipelines CI status",
         },
