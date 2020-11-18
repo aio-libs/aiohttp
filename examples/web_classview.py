@@ -9,7 +9,6 @@ from aiohttp import web
 
 
 class MyView(web.View):
-
     async def get(self) -> web.StreamResponse:
         return web.json_response(
             {
