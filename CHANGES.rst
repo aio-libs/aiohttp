@@ -14,7 +14,7 @@ Changelog
 
 .. towncrier release notes start
 
-3.7.3 (2020-11-15)
+3.7.3 (2020-11-18)
 ==================
 
 Features
