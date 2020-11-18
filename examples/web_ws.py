@@ -3,13 +3,14 @@
 """
 
 import os
+from typing import Union
 
 from aiohttp import web
 
 WS_FILE = os.path.join(os.path.dirname(__file__), "websocket.html")
 
 
-async def wshandler(request):
+async def wshandler(request: web.Request) -> Union[web.WebSocketResponse, web.Response]:
     resp = web.WebSocketResponse()
     available = resp.can_prepare(request)
     if not available:
@@ -42,12 +43,12 @@ async def wshandler(request):
             await ws.send_str("Someone disconnected.")
 
 
-async def on_shutdown(app):
+async def on_shutdown(app: web.Application) -> None:
     for ws in app["sockets"]:
         await ws.close()
 
 
-def init():
+def init() -> web.Application:
     app = web.Application()
     app["sockets"] = []
     app.router.add_get("/", wshandler)

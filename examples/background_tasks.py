@@ -2,12 +2,12 @@
 """Example of aiohttp.web.Application.on_startup signal handler"""
 import asyncio
 
-import aioredis
+import aioredis  # type: ignore
 
 from aiohttp import web
 
 
-async def websocket_handler(request):
+async def websocket_handler(request: web.Request) -> web.StreamResponse:
     ws = web.WebSocketResponse()
     await ws.prepare(request)
     request.app["websockets"].append(ws)
@@ -20,14 +20,15 @@ async def websocket_handler(request):
     return ws
 
 
-async def on_shutdown(app):
+async def on_shutdown(app: web.Application) -> None:
     for ws in app["websockets"]:
         await ws.close(code=999, message="Server shutdown")
 
 
-async def listen_to_redis(app):
+async def listen_to_redis(app: web.Application) -> None:
     try:
-        sub = await aioredis.create_redis(("localhost", 6379), loop=app.loop)
+        loop = asyncio.get_event_loop()
+        sub = await aioredis.create_redis(("localhost", 6379), loop=loop)
         ch, *_ = await sub.subscribe("news")
         async for msg in ch.iter(encoding="utf-8"):
             # Forward message to all connected websockets:
@@ -43,17 +44,17 @@ async def listen_to_redis(app):
         print("Redis connection closed.")
 
 
-async def start_background_tasks(app):
+async def start_background_tasks(app: web.Application) -> None:
     app["redis_listener"] = app.loop.create_task(listen_to_redis(app))
 
 
-async def cleanup_background_tasks(app):
+async def cleanup_background_tasks(app: web.Application) -> None:
     print("cleanup background tasks...")
     app["redis_listener"].cancel()
     await app["redis_listener"]
 
 
-def init():
+def init() -> web.Application:
     app = web.Application()
     app["websockets"] = []
     app.router.add_get("/news", websocket_handler)
