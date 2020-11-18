@@ -1,4 +1,4 @@
-AioHTTPTestCase more async friendly
+AioHTTPTestCase is more async friendly now.
 
 for the people who use unittest and are used to use unittest.TestCase
 it will be easier to write new test cases like the sync version of the TestCase class,
