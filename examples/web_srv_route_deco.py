@@ -32,7 +32,6 @@ async def simple(request: web.Request) -> web.StreamResponse:
     return web.Response(text="Simple answer")
 
 
-@routes.get('/change_body')
 @routes.get("/change_body")
 async def change_body(request: web.Request) -> web.StreamResponse:
     resp = web.Response()

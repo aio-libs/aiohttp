@@ -5,7 +5,7 @@ import socket
 import ssl
 from typing import Any, Dict, List, Union
 
-from aiohttp import ClientSession, TCPConnector, web, resolver, test_utils
+from aiohttp import ClientSession, TCPConnector, resolver, test_utils, web
 
 
 class FakeResolver:
@@ -20,7 +20,7 @@ class FakeResolver:
         self,
         host: str,
         port: int = 0,
-        family: Union[socket.AddressFamily, int] = socket.AF_INET
+        family: Union[socket.AddressFamily, int] = socket.AF_INET,
     ) -> List[Dict[str, Any]]:
         fake_port = self._fakes.get(host)
         if fake_port is not None:
@@ -42,7 +42,6 @@ class FakeResolver:
 
 
 class FakeFacebook:
-
     def __init__(self) -> None:
         self.app = web.Application()
         self.app.router.add_routes(
