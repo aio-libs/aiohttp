@@ -5,11 +5,7 @@ import socket
 import ssl
 from typing import Any, Dict, List, Union
 
-import aiohttp
-from aiohttp import web
-from aiohttp.abc import AbstractResolver
-from aiohttp.resolver import DefaultResolver
-from aiohttp.test_utils import unused_port
+from aiohttp import ClientSession, TCPConnector, web, resolver, test_utils
 
 
 class FakeResolver:
@@ -18,7 +14,7 @@ class FakeResolver:
     def __init__(self, fakes: Dict[str, int]) -> None:
         """fakes -- dns -> port dict"""
         self._fakes = fakes
-        self._resolver = DefaultResolver()
+        self._resolver = resolver.DefaultResolver()
 
     async def resolve(
         self,
@@ -63,7 +59,7 @@ class FakeFacebook:
         self.ssl_context.load_cert_chain(str(ssl_cert), str(ssl_key))
 
     async def start(self) -> Dict[str, int]:
-        port = unused_port()
+        port = test_utils.unused_port()
         await self.runner.setup()
         site = web.TCPSite(self.runner, "127.0.0.1", port, ssl_context=self.ssl_context)
         await site.start()
@@ -104,9 +100,9 @@ async def main() -> None:
     fake_facebook = FakeFacebook()
     info = await fake_facebook.start()
     resolver = FakeResolver(info)
-    connector = aiohttp.TCPConnector(resolver=resolver, ssl=False)
+    connector = TCPConnector(resolver=resolver, ssl=False)
 
-    async with aiohttp.ClientSession(connector=connector) as session:
+    async with ClientSession(connector=connector) as session:
         async with session.get(
             "https://graph.facebook.com/v2.7/me", params={"access_token": token}
         ) as resp:

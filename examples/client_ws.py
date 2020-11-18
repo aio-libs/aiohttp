@@ -4,12 +4,11 @@ import argparse
 import asyncio
 import signal
 import sys
-from asyncio import AbstractEventLoop
 
 import aiohttp
 
 
-async def start_client(loop: AbstractEventLoop, url: str) -> None:
+async def start_client(loop: asyncio.AbstractEventLoop, url: str) -> None:
     name = input("Please enter your name: ")
 
     # input reader

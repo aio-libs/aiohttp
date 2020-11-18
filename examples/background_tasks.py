@@ -45,7 +45,6 @@ async def listen_to_redis(app: web.Application) -> None:
 
 
 async def start_background_tasks(app: web.Application) -> None:
-    loop = asyncio.get_event_loop()
     app["redis_listener"] = app.loop.create_task(listen_to_redis(app))
 
 

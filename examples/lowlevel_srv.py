@@ -1,11 +1,10 @@
 import asyncio
 from asyncio import AbstractEventLoop
 
-from aiohttp import web
-from aiohttp.web_request import BaseRequest
+from aiohttp import web, web_request
 
 
-async def handler(request: BaseRequest) -> web.StreamResponse:
+async def handler(request: web_request.BaseRequest) -> web.StreamResponse:
     return web.Response(text="OK")
 
 
