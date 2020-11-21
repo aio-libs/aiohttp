@@ -158,8 +158,8 @@ class ClientProxyConnectionError(ClientConnectorError):
 class UnixClientConnectorError(ClientConnectorError):
     """Unix connector error.
 
-    Raised in :class:`aiohttp.connector.UnixConnector` if
-        connection to unix socket can not be established.
+    Raised in :py:class:`aiohttp.connector.UnixConnector`
+    if connection to unix socket can not be established.
     """
     def __init__(self, path: str, connection_key: ConnectionKey,
                  os_error: OSError) -> None:
