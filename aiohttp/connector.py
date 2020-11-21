@@ -1163,9 +1163,7 @@ class UnixConnector(BaseConnector):
                     self._factory, self._path
                 )
         except OSError as exc:
-            raise UnixClientConnectorError(
-                self.path, req.connection_key, exc
-            ) from exc
+            raise UnixClientConnectorError(self.path, req.connection_key, exc) from exc
 
         return cast(ResponseHandler, proto)
 
