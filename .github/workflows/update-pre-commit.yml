@@ -4,6 +4,7 @@ on:
   - cron: '0 0 * * *'
 jobs:
   auto-update:
+    if: github.repository_owner == 'aiohttp'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
