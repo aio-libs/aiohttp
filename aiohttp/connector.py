@@ -40,6 +40,7 @@ from .client_exceptions import (
     ClientHttpProxyError,
     ClientProxyConnectionError,
     ServerFingerprintMismatch,
+    UnixClientConnectorError,
     cert_errors,
     ssl_errors,
 )
@@ -1162,7 +1163,9 @@ class UnixConnector(BaseConnector):
                     self._factory, self._path
                 )
         except OSError as exc:
-            raise ClientConnectorError(req.connection_key, exc) from exc
+            raise UnixClientConnectorError(
+                self.path, req.connection_key, exc
+            ) from exc
 
         return cast(ResponseHandler, proto)
 

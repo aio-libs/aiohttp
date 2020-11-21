@@ -1,0 +1,1 @@
+Added a new exception type for Unix socket client errors which provides a more useful error message.
