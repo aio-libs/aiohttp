@@ -321,7 +321,7 @@ class Application(MutableMapping[str, Any]):
         if self.on_cleanup.frozen:
             await self.on_cleanup.send(self)
         else:
-            # If an exception occurred in startup, ensure cleanup contexts are completed.
+            # If an exception occurrs in startup, ensure cleanup contexts are completed.
             await self._cleanup_ctx._on_cleanup(self)
 
     def _prepare_middleware(self) -> Iterator[_Middleware]:
