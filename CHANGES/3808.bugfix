@@ -1,1 +1,0 @@
-Reset the ``sock_read`` timeout each time data is received for a ``aiohttp.client`` response.
