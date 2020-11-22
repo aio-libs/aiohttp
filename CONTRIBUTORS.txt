@@ -114,6 +114,7 @@ Florian Scheffler
 Frederik Gladhorn
 Frederik Peter Aalund
 Gabriel Tremblay
+Gary Wilson Jr.
 Gennady Andreyev
 Georges Dubus
 Greg Holt
