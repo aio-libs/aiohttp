@@ -423,10 +423,7 @@ class RequestHandler(BaseProtocol):
             finally:
                 self._current_request = None
         except HTTPException as exc:
-            resp = Response(
-                status=exc.status, reason=exc.reason, text=exc.text, headers=exc.headers
-            )
-            resp._cookies = exc._cookies
+            resp = exc
             reset = await self.finish_response(request, resp, start_time)
         except asyncio.CancelledError:
             raise
