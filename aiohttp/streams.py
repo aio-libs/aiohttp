@@ -539,7 +539,7 @@ class EmptyStreamReader(AsyncStreamReaderMixin):
         return b""
 
 
-EMPTY_PAYLOAD = EmptyStreamReader()
+EMPTY_PAYLOAD: StreamReader = EmptyStreamReader()  # type: ignore
 
 
 class DataQueue(Generic[_T]):
