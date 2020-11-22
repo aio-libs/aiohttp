@@ -23,7 +23,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
         self._should_close = False
 
-        self._payload = None
+        self._payload: Optional[StreamReader] = None
         self._skip_payload = False
         self._payload_parser = None
 
@@ -223,7 +223,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
                 self._upgraded = upgraded
 
-                payload = None
+                payload: Optional[StreamReader] = None
                 for message, payload in messages:
                     if message.should_close:
                         self._should_close = True
