@@ -649,8 +649,7 @@ class RequestHandler(BaseProtocol):
         # some data already got sent, connection is broken
         if request.writer.output_size > 0:
             raise ConnectionError(
-                "Response is sent already, "
-                "cannot send another response"
+                "Response is sent already, cannot send another response "
                 "with the error message"
             )
 
