@@ -7,7 +7,17 @@ from contextlib import suppress
 from html import escape as html_escape
 from http import HTTPStatus
 from logging import Logger
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Optional, Tuple, Type, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Callable,
+    Deque,
+    Optional,
+    Tuple,
+    Type,
+    cast,
+)
 
 import yarl
 
@@ -172,7 +182,7 @@ class RequestHandler(BaseProtocol):
         self._keepalive_timeout = keepalive_timeout
         self._lingering_time = float(lingering_time)
 
-        self._messages = deque()  # type: Any  # Python 3.5 has no typing.Deque
+        self._messages: Deque[Tuple[RawRequestMessage, StreamReader]] = deque()
         self._message_tail = b""
 
         self._waiter = None  # type: Optional[asyncio.Future[None]]
