@@ -1,9 +1,6 @@
 import os
 import platform
-import sys
 import warnings
-
-import pytest
 
 from aiohttp import pytest_plugin
 
@@ -214,7 +211,6 @@ def test_bar(loop, bar) -> None:
     )
 
 
-@pytest.mark.skipif(sys.version_info < (3, 6), reason="old python")
 def test_aiohttp_plugin_async_gen_fixture(testdir) -> None:
     testdir.makepyfile(
         """\

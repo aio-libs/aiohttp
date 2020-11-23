@@ -371,10 +371,7 @@ def test_timer_context_cancelled() -> None:
             with ctx:
                 pass
 
-        if helpers.PY_37:
-            assert m_asyncio.current_task.return_value.cancel.called
-        else:
-            assert m_asyncio.Task.current_task.return_value.cancel.called
+        assert m_asyncio.current_task.return_value.cancel.called
 
 
 def test_timer_context_no_task(loop) -> None:
@@ -501,20 +498,6 @@ def test_proxies_from_env_http_with_auth(mocker) -> None:
     assert proxy_auth.login == "user"
     assert proxy_auth.password == "pass"
     assert proxy_auth.encoding == "latin1"
-
-
-# ------------ get_running_loop ---------------------------------
-
-
-def test_get_running_loop_not_running(loop) -> None:
-    with pytest.raises(
-        RuntimeError, match="The object should be created within an async function"
-    ):
-        helpers.get_running_loop()
-
-
-async def test_get_running_loop_ok(loop) -> None:
-    assert helpers.get_running_loop() is loop
 
 
 # ------------- set_result / set_exception ----------------------
