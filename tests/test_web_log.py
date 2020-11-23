@@ -8,7 +8,6 @@ import pytest
 import aiohttp
 from aiohttp import web
 from aiohttp.abc import AbstractAccessLogger, AbstractAsyncAccessLogger
-from aiohttp.helpers import PY_37
 from aiohttp.web_log import AccessLogger
 from aiohttp.web_response import Response
 
@@ -223,7 +222,6 @@ async def test_async_logger(aiohttp_raw_server, aiohttp_client):
     assert msg == "/path/to: 200"
 
 
-@pytest.mark.skipif(not PY_37, reason="contextvars support is required")
 async def test_contextvars_logger(aiohttp_server, aiohttp_client):
     VAR = ContextVar("VAR")
 

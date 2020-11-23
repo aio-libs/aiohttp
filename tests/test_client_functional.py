@@ -13,7 +13,7 @@ import pytest
 from multidict import MultiDict
 
 import aiohttp
-from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, helpers, web
+from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver
 from aiohttp.client_exceptions import TooManyRedirects
 from aiohttp.test_utils import unused_port
@@ -367,7 +367,7 @@ async def test_format_task_get(aiohttp_server) -> None:
     app.router.add_route("GET", "/", handler)
     server = await aiohttp_server(app)
     client = aiohttp.ClientSession()
-    task = helpers.create_task(client.get(server.make_url("/")))
+    task = asyncio.create_task(client.get(server.make_url("/")))
     assert f"{task}".startswith("<Task pending")
     resp = await task
     resp.close()

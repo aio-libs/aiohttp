@@ -14,7 +14,6 @@ from uuid import uuid4
 import pytest
 
 from aiohttp import web
-from aiohttp.helpers import PY_37
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.web_runner import BaseRunner
 
@@ -838,7 +837,6 @@ def test_run_app_keepalive_timeout(patched_loop, mocker, monkeypatch):
     web.run_app(app, keepalive_timeout=new_timeout, print=stopper(patched_loop))
 
 
-@pytest.mark.skipif(not PY_37, reason="contextvars support is required")
 def test_run_app_context_vars(patched_loop):
     from contextvars import ContextVar
 
