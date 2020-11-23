@@ -162,7 +162,7 @@ Please add *aiohttp* tag to your question there.
 Requirements
 ============
 
-- Python >= 3.6
+- Python >= 3.7
 - async-timeout_
 - attrs_
 - chardet_

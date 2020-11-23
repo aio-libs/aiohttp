@@ -1,10 +1,10 @@
 import asyncio
 import contextlib
+import inspect
 import warnings
 
 import pytest
 
-from aiohttp.helpers import PY_37, isasyncgenfunction
 from aiohttp.web import Application
 
 from .test_utils import (
@@ -56,7 +56,7 @@ def pytest_fixture_setup(fixturedef):  # type: ignore
     """
     func = fixturedef.func
 
-    if isasyncgenfunction(func):
+    if inspect.isasyncgenfunction(func):
         # async generator fixture
         is_async_gen = True
     elif asyncio.iscoroutinefunction(func):
@@ -239,12 +239,8 @@ def loop(loop_factory, fast, loop_debug):  # type: ignore
 
 @pytest.fixture
 def proactor_loop():  # type: ignore
-    if not PY_37:
-        policy = asyncio.get_event_loop_policy()
-        policy._loop_factory = asyncio.ProactorEventLoop  # type: ignore
-    else:
-        policy = asyncio.WindowsProactorEventLoopPolicy()  # type: ignore
-        asyncio.set_event_loop_policy(policy)
+    policy = asyncio.WindowsProactorEventLoopPolicy()  # type: ignore
+    asyncio.set_event_loop_policy(policy)
 
     with loop_context(policy.new_event_loop) as _loop:
         asyncio.set_event_loop(_loop)

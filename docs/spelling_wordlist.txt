@@ -5,6 +5,7 @@ Backporting
 BaseEventLoop
 BasicAuth
 BodyPartReader
+Brotli
 Bugfixes
 BytesIO
 brotli
@@ -111,6 +112,7 @@ backports
 basename
 boolean
 botocore
+brotli
 bugfix
 builtin
 cChardet

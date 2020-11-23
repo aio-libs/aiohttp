@@ -1578,14 +1578,14 @@ manually.
          The method is converted into :term:`coroutine`,
          *compress* parameter added.
 
-   .. comethod:: close(*, code=1000, message=b'')
+   .. comethod:: close(*, code=WSCloseCode.OK, message=b'')
 
       A :ref:`coroutine<coroutine>` that initiates closing handshake by sending
       :const:`~aiohttp.WSMsgType.CLOSE` message. It waits for
       close response from server. To add a timeout to `close()` call
       just wrap the call with `asyncio.wait()` or `asyncio.wait_for()`.
 
-      :param int code: closing code
+      :param int code: closing code. See also :class:`~aiohttp.WSCloseCode`.
 
       :param message: optional payload of *close* message,
          :class:`str` (converted to *UTF-8* encoded bytes) or :class:`bytes`.
@@ -1838,6 +1838,22 @@ CookieJar
 
       :param file_path: Path to file from where cookies will be
            imported, :class:`str` or :class:`pathlib.Path` instance.
+
+   .. method:: clear(predicate=None)
+
+      Removes all cookies from the jar if the predicate is ``None``. Otherwise remove only those :class:`~http.cookies.Morsel` that ``predicate(morsel)`` returns ``True``.
+
+      :param predicate: callable that gets :class:`~http.cookies.Morsel` as a parameter and returns ``True`` if this :class:`~http.cookies.Morsel` must be deleted from the jar.
+
+          .. versionadded:: 4.0
+
+   .. method:: clear_domain(domain)
+
+      Remove all cookies from the jar that belongs to the specified domain or its subdomains.
+
+      :param str domain: domain for which cookies must be deleted from the jar.
+
+      .. versionadded:: 4.0
 
 
 .. class:: DummyCookieJar(*, loop=None)
