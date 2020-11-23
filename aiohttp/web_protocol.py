@@ -359,17 +359,14 @@ class RequestHandler(BaseProtocol):
                 upgraded = False
                 tail = b""
 
-            if messages:
-                # sometimes the parser returns no messages
-                for (msg, payload) in messages:
-                    self._request_count += 1
-                    self._messages.append((msg, payload))
+            for msg, payload in (messages or ()):
+                self._request_count += 1
+                self._messages.append((msg, payload))
 
-                waiter = self._waiter
-                if waiter is not None:
-                    if not waiter.done():
-                        # don't set result twice
-                        waiter.set_result(None)
+            waiter = self._waiter
+            if messages and waiter is not None and not waiter.done():
+                # don't set result twice
+                waiter.set_result(None)
 
             self._upgrade = upgraded
             if upgraded and tail:
