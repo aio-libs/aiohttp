@@ -151,7 +151,7 @@ Abstract Cookie Jar
 
       :param predicate: callable that gets :class:`~http.cookies.Morsel` as a parameter and returns ``True`` if this :class:`~http.cookies.Morsel` must be deleted from the jar.
 
-          .. versionadded:: 4.0
+          .. versionadded:: 3.8
 
    .. method:: clear_domain(domain)
 
