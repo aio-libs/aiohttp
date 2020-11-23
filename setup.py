@@ -1,4 +1,3 @@
-import os
 import pathlib
 import re
 import sys
@@ -10,10 +9,7 @@ from setuptools import Extension, setup
 if sys.version_info < (3, 6):
     raise RuntimeError("aiohttp 3.7+ requires Python 3.6+")
 
-
-NO_EXTENSIONS = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))  # type: bool
 here = pathlib.Path(__file__).parent
-
 
 if (here / ".git").exists() and not (here / "vendor/http-parser/README.md").exists():
     print("Install submodules when building from git clone", file=sys.stderr)
@@ -152,13 +148,12 @@ args = dict(
     cmdclass=dict(build_ext=ve_build_ext),
 )
 
-if not NO_EXTENSIONS:
-    print("*********************")
-    print("* Accelerated build *")
-    print("*********************")
-    setup(ext_modules=extensions, **args)
-else:
-    print("*********************")
-    print("* Pure Python build *")
-    print("*********************")
+try:
+    setup(**args)
+except BuildFailed:
+    print("************************************************************")
+    print("Cannot compile C accelerator module, use pure python version")
+    print("************************************************************")
+    del args["ext_modules"]
+    del args["cmdclass"]
     setup(**args)
