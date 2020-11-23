@@ -694,3 +694,48 @@ async def test_loose_cookies_types() -> None:
 
     for loose_cookies_type in accepted_types:
         jar.update_cookies(cookies=loose_cookies_type)
+
+
+async def test_cookie_jar_clear_all():
+    sut = CookieJar()
+    cookie = SimpleCookie()
+    cookie["foo"] = "bar"
+    sut.update_cookies(cookie)
+
+    sut.clear()
+    assert len(sut) == 0
+
+
+async def test_cookie_jar_clear_expired():
+    sut = CookieJar()
+
+    cookie = SimpleCookie()
+
+    cookie["foo"] = "bar"
+    cookie["foo"]["expires"] = "Tue, 1 Jan 1990 12:00:00 GMT"
+
+    with freeze_time("1980-01-01"):
+        sut.update_cookies(cookie)
+
+    sut.clear(lambda x: False)
+    with freeze_time("1980-01-01"):
+        assert len(sut) == 0
+
+
+async def test_cookie_jar_clear_domain():
+    sut = CookieJar()
+    cookie = SimpleCookie()
+    cookie["foo"] = "bar"
+    cookie["domain_cookie"] = "value"
+    cookie["domain_cookie"]["domain"] = "example.com"
+    cookie["subdomain_cookie"] = "value"
+    cookie["subdomain_cookie"]["domain"] = "test.example.com"
+    sut.update_cookies(cookie)
+
+    sut.clear_domain("example.com")
+    iterator = iter(sut)
+    morsel = next(iterator)
+    assert morsel.key == "foo"
+    assert morsel.value == "bar"
+    with pytest.raises(StopIteration):
+        next(iterator)
