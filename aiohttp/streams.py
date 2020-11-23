@@ -3,6 +3,8 @@ import collections
 import warnings
 from typing import Awaitable, Callable, Generic, List, Optional, Tuple, TypeVar
 
+from typing_extensions import Final
+
 from .base_protocol import BaseProtocol
 from .helpers import BaseTimerContext, set_exception, set_result
 from .log import internal_logger
@@ -490,7 +492,10 @@ class StreamReader(AsyncStreamReaderMixin):
         return b"".join(chunks) if chunks else b""
 
 
-class EmptyStreamReader(AsyncStreamReaderMixin):
+class EmptyStreamReader(StreamReader):
+    def __init__(self) -> None:
+        pass
+
     def exception(self) -> Optional[BaseException]:
         return None
 
@@ -535,11 +540,11 @@ class EmptyStreamReader(AsyncStreamReaderMixin):
     async def readexactly(self, n: int) -> bytes:
         raise asyncio.IncompleteReadError(b"", n)
 
-    def read_nowait(self) -> bytes:
+    def read_nowait(self, n: int = -1) -> bytes:
         return b""
 
 
-EMPTY_PAYLOAD: StreamReader = EmptyStreamReader()  # type: ignore
+EMPTY_PAYLOAD: Final[StreamReader] = EmptyStreamReader()
 
 
 class DataQueue(Generic[_T]):
