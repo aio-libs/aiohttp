@@ -4,7 +4,6 @@ import warnings
 from typing import Any, Awaitable, Callable, Dict, List, Optional  # noqa
 
 from .abc import AbstractStreamWriter
-from .helpers import get_running_loop
 from .http_parser import RawRequestMessage
 from .streams import StreamReader
 from .web_protocol import RequestHandler, _RequestFactory, _RequestHandler
@@ -28,7 +27,7 @@ class Server:
                 DeprecationWarning,
                 stacklevel=2,
             )
-        self._loop = get_running_loop()
+        self._loop = asyncio.get_running_loop()
         self._connections = {}  # type: Dict[RequestHandler, asyncio.Transport]
         self._kwargs = kwargs
         self.requests_count = 0

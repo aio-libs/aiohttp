@@ -19,7 +19,6 @@ from typing import (
 )
 
 from .abc import AbstractAccessLogger
-from .helpers import all_tasks
 from .log import access_logger
 from .web_app import Application as Application, CleanupError as CleanupError
 from .web_exceptions import (
@@ -516,7 +515,7 @@ def run_app(
         pass
     finally:
         _cancel_tasks({main_task}, loop)
-        _cancel_tasks(all_tasks(loop), loop)
+        _cancel_tasks(asyncio.all_tasks(loop), loop)
         loop.run_until_complete(loop.shutdown_asyncgens())
         loop.close()
         asyncio.set_event_loop(None)

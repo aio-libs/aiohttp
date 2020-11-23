@@ -5,8 +5,8 @@ import sys
 
 from setuptools import Extension, setup
 
-if sys.version_info < (3, 6):
-    raise RuntimeError("aiohttp 4.x requires Python 3.6+")
+if sys.version_info < (3, 7):
+    raise RuntimeError("aiohttp 4.x requires Python 3.7+")
 
 
 NO_EXTENSIONS = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))  # type: bool
@@ -57,8 +57,7 @@ install_requires = [
     "async_timeout>=4.0a2,<5.0",
     'asynctest==0.13.0; python_version<"3.8"',
     "yarl>=1.0,<2.0",
-    'idna-ssl>=1.0; python_version<"3.7"',
-    "typing_extensions>=3.6.5",
+    "typing_extensions>=3.7.4",
 ]
 
 
@@ -77,7 +76,6 @@ args = dict(
         "Intended Audience :: Developers",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
@@ -109,7 +107,7 @@ args = dict(
     },
     license="Apache 2",
     packages=["aiohttp"],
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     install_requires=install_requires,
     extras_require={
         "speedups": [

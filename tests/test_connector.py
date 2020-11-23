@@ -20,7 +20,6 @@ from aiohttp import client, web
 from aiohttp.client import ClientRequest, ClientTimeout
 from aiohttp.client_reqrep import ConnectionKey
 from aiohttp.connector import Connection, TCPConnector, _DNSCacheTable
-from aiohttp.helpers import PY_37
 from aiohttp.locks import EventResultOrError
 from aiohttp.test_utils import make_mocked_coro, unused_port
 from aiohttp.tracing import Trace
@@ -1996,19 +1995,12 @@ async def test_tcp_connector_raise_connector_ssl_error(
     session = aiohttp.ClientSession(connector=conn)
     url = srv.make_url("/")
 
-    if PY_37:
-        err = aiohttp.ClientConnectorCertificateError
-    else:
-        err = aiohttp.ClientConnectorSSLError
+    err = aiohttp.ClientConnectorCertificateError
     with pytest.raises(err) as ctx:
         await session.get(url)
 
-    if PY_37:
-        assert isinstance(ctx.value, aiohttp.ClientConnectorCertificateError)
-        assert isinstance(ctx.value.certificate_error, ssl.SSLError)
-    else:
-        assert isinstance(ctx.value, aiohttp.ClientSSLError)
-        assert isinstance(ctx.value.os_error, ssl.SSLError)
+    assert isinstance(ctx.value, aiohttp.ClientConnectorCertificateError)
+    assert isinstance(ctx.value.certificate_error, ssl.SSLError)
 
     await session.close()
 

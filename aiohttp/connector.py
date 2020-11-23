@@ -46,7 +46,7 @@ from .client_exceptions import (
 )
 from .client_proto import ResponseHandler
 from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
-from .helpers import ceil_timeout, get_running_loop, is_ip_address, sentinel
+from .helpers import ceil_timeout, is_ip_address, sentinel
 from .http import RESPONSES
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
@@ -200,7 +200,7 @@ class BaseConnector:
             if keepalive_timeout is sentinel:
                 keepalive_timeout = 15.0
 
-        loop = get_running_loop()
+        loop = asyncio.get_running_loop()
 
         self._closed = False
         if loop.get_debug():

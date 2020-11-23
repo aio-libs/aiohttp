@@ -7,7 +7,6 @@ from typing import Any, List, Optional, Set, Type
 from yarl import URL
 
 from .abc import AbstractAccessLogger, AbstractStreamWriter
-from .helpers import get_running_loop
 from .http_parser import RawRequestMessage
 from .streams import StreamReader
 from .web_app import Application
@@ -415,7 +414,7 @@ class AppRunner(BaseRunner):
         task: "asyncio.Task[None]",
         _cls: Type[Request] = Request,
     ) -> Request:
-        loop = get_running_loop()
+        loop = asyncio.get_running_loop()
         return _cls(
             message,
             payload,

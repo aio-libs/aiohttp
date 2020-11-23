@@ -79,7 +79,6 @@ from .helpers import (
     BasicAuth,
     TimeoutHandle,
     ceil_timeout,
-    get_running_loop,
     proxies_from_env,
     sentinel,
     strip_auth_from_url,
@@ -215,7 +214,7 @@ class ClientSession:
         trace_configs: Optional[List[TraceConfig]] = None,
         read_bufsize: int = 2 ** 16,
     ) -> None:
-        loop = get_running_loop()
+        loop = asyncio.get_running_loop()
 
         if connector is None:
             connector = TCPConnector()

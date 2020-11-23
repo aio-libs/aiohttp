@@ -6,7 +6,6 @@ import binascii
 import cgi
 import datetime
 import functools
-import inspect
 import netrc
 import os
 import platform
@@ -22,7 +21,6 @@ from pathlib import Path
 from types import TracebackType
 from typing import (
     Any,
-    Awaitable,
     Callable,
     Dict,
     Generator,
@@ -33,7 +31,6 @@ from typing import (
     Mapping,
     Optional,
     Pattern,
-    Set,
     Tuple,
     Type,
     TypeVar,
@@ -55,29 +52,13 @@ from .typedefs import PathLike  # noqa
 
 __all__ = ("BasicAuth", "ChainMapProxy")
 
-PY_37 = sys.version_info >= (3, 7)
 PY_38 = sys.version_info >= (3, 8)
 
-if not PY_37:
-    import idna_ssl
-
-    idna_ssl.patch_match_hostname()
 
 try:
     from typing import ContextManager
 except ImportError:
     from typing_extensions import ContextManager
-
-
-def all_tasks(
-    loop: Optional[asyncio.AbstractEventLoop] = None,
-) -> Set["asyncio.Task[Any]"]:
-    tasks = list(asyncio.Task.all_tasks(loop))
-    return {t for t in tasks if not t.done()}
-
-
-if PY_37:
-    all_tasks = getattr(asyncio, "all_tasks")
 
 
 _T = TypeVar("_T")
@@ -284,39 +265,6 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
                 auth = BasicAuth(cast(str, login), cast(str, password))
         ret[proto] = ProxyInfo(proxy, auth)
     return ret
-
-
-def current_task(
-    loop: Optional[asyncio.AbstractEventLoop] = None,
-) -> "Optional[asyncio.Task[Any]]":
-    if PY_37:
-        return asyncio.current_task(loop=loop)
-    else:
-        return asyncio.Task.current_task(loop=loop)
-
-
-if sys.version_info >= (3, 7):
-    create_task = asyncio.create_task
-else:
-
-    def create_task(coro: Awaitable[_T]) -> "asyncio.Task[_T]":
-        loop = asyncio.get_event_loop()
-        return loop.create_task(coro)
-
-
-def get_running_loop() -> asyncio.AbstractEventLoop:
-    loop = asyncio.get_event_loop()
-    if not loop.is_running():
-        raise RuntimeError("The object should be created within an async function")
-    return loop
-
-
-def isasyncgenfunction(obj: Any) -> bool:
-    func = getattr(inspect, "isasyncgenfunction", None)
-    if func is not None:
-        return func(obj)
-    else:
-        return False
 
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
@@ -654,7 +602,7 @@ class TimerContext(BaseTimerContext):
         self._cancelled = False
 
     def __enter__(self) -> BaseTimerContext:
-        task = current_task(loop=self._loop)
+        task = asyncio.current_task(loop=self._loop)
 
         if task is None:
             raise RuntimeError(
@@ -691,7 +639,7 @@ class TimerContext(BaseTimerContext):
 
 def ceil_timeout(delay: Optional[float]) -> async_timeout.Timeout:
     if delay is not None and delay > 0:
-        loop = get_running_loop()
+        loop = asyncio.get_running_loop()
         now = loop.time()
         when = now + delay
         if delay > 5:
