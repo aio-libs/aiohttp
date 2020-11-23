@@ -12,7 +12,12 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import BaseConnector, hdrs, payload
-from aiohttp.client_reqrep import ClientRequest, ClientResponse, Fingerprint
+from aiohttp.client_reqrep import (
+    ClientRequest,
+    ClientResponse,
+    Fingerprint,
+    _gen_default_accept_encoding,
+)
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -304,7 +309,7 @@ def test_headers(make_request) -> None:
 
     assert "CONTENT-TYPE" in req.headers
     assert req.headers["CONTENT-TYPE"] == "text/plain"
-    assert req.headers["ACCEPT-ENCODING"] == "gzip, deflate"
+    assert req.headers["ACCEPT-ENCODING"] == "gzip, deflate, br"
 
 
 def test_headers_list(make_request) -> None:
@@ -1188,3 +1193,15 @@ def test_loose_cookies_types(loop) -> None:
 
     for loose_cookies_type in accepted_types:
         req.update_cookies(cookies=loose_cookies_type)
+
+
+@pytest.mark.parametrize(
+    "has_brotli,expected",
+    [
+        (False, "gzip, deflate"),
+        (True, "gzip, deflate, br"),
+    ],
+)
+def test_gen_default_accept_encoding(has_brotli, expected) -> None:
+    with mock.patch("aiohttp.client_reqrep.HAS_BROTLI", has_brotli):
+        assert _gen_default_accept_encoding() == expected
