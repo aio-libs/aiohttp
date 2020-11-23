@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import os  # noqa
 import pathlib
@@ -22,7 +23,7 @@ from typing import (  # noqa
 from yarl import URL
 
 from .abc import AbstractCookieJar
-from .helpers import get_running_loop, is_ip_address, next_whole_second
+from .helpers import is_ip_address, next_whole_second
 from .typedefs import LooseCookies, PathLike
 
 __all__ = ("CookieJar", "DummyCookieJar")
@@ -55,7 +56,7 @@ class CookieJar(AbstractCookieJar):
     MAX_32BIT_TIME = datetime.datetime.utcfromtimestamp(2 ** 31 - 1)
 
     def __init__(self, *, unsafe: bool = False, quote_cookie: bool = True) -> None:
-        self._loop = get_running_loop()
+        self._loop = asyncio.get_running_loop()
         self._cookies = defaultdict(
             SimpleCookie
         )  # type: DefaultDict[str, SimpleCookie[str]]
