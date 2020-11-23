@@ -492,7 +492,7 @@ class StreamReader(AsyncStreamReaderMixin):
         return b"".join(chunks) if chunks else b""
 
 
-class EmptyStreamReader(StreamReader):
+class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     def __init__(self) -> None:
         pass
 
