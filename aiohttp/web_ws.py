@@ -19,6 +19,7 @@ from .http import (
     WebSocketError,
     WebSocketReader,
     WebSocketWriter,
+    WSCloseCode,
     WSMessage,
     WSMsgType as WSMsgType,
     ws_ext_gen,
@@ -122,7 +123,7 @@ class WebSocketResponse(StreamResponse):
     def _pong_not_received(self) -> None:
         if self._req is not None and self._req.transport is not None:
             self._closed = True
-            self._close_code = 1006
+            self._close_code = WSCloseCode.ABNORMAL_CLOSURE
             self._exception = asyncio.TimeoutError()
             self._req.transport.close()
 
@@ -324,7 +325,7 @@ class WebSocketResponse(StreamResponse):
         await self.close()
         self._eof_sent = True
 
-    async def close(self, *, code: int = 1000, message: bytes = b"") -> bool:
+    async def close(self, *, code: int = WSCloseCode.OK, message: bytes = b"") -> bool:
         if self._writer is None:
             raise RuntimeError("Call .prepare() first")
 
@@ -346,10 +347,10 @@ class WebSocketResponse(StreamResponse):
                 assert writer is not None
                 await writer.drain()
             except (asyncio.CancelledError, asyncio.TimeoutError):
-                self._close_code = 1006
+                self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 raise
             except Exception as exc:
-                self._close_code = 1006
+                self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 self._exception = exc
                 return True
 
@@ -362,10 +363,10 @@ class WebSocketResponse(StreamResponse):
                 with async_timeout.timeout(self._timeout, loop=self._loop):
                     msg = await reader.read()
             except asyncio.CancelledError:
-                self._close_code = 1006
+                self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 raise
             except Exception as exc:
-                self._close_code = 1006
+                self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 self._exception = exc
                 return True
 
@@ -373,7 +374,7 @@ class WebSocketResponse(StreamResponse):
                 self._close_code = msg.data
                 return True
 
-            self._close_code = 1006
+            self._close_code = WSCloseCode.ABNORMAL_CLOSURE
             self._exception = asyncio.TimeoutError()
             return True
         else:
@@ -410,10 +411,10 @@ class WebSocketResponse(StreamResponse):
                     set_result(waiter, True)
                     self._waiting = None
             except (asyncio.CancelledError, asyncio.TimeoutError):
-                self._close_code = 1006
+                self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 raise
             except EofStream:
-                self._close_code = 1000
+                self._close_code = WSCloseCode.OK
                 await self.close()
                 return WSMessage(WSMsgType.CLOSED, None, None)
             except WebSocketError as exc:
@@ -423,7 +424,7 @@ class WebSocketResponse(StreamResponse):
             except Exception as exc:
                 self._exception = exc
                 self._closing = True
-                self._close_code = 1006
+                self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 await self.close()
                 return WSMessage(WSMsgType.ERROR, exc, None)
 
