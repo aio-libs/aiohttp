@@ -95,7 +95,7 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
         text = await request.text()
         assert _hello_world_str == text
 
-    def test_example(self) -> None:
+    def test_inner_example(self) -> None:
         async def test_get_route() -> None:
             resp = await self.client.request("GET", "/")
             assert resp.status == 200
@@ -103,6 +103,21 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
             assert _hello_world_str == text
 
         self.loop.run_until_complete(test_get_route())
+
+    async def test_example_without_explicit_loop(self) -> None:
+        request = await self.client.request("GET", "/")
+        assert request.status == 200
+        text = await request.text()
+        assert _hello_world_str == text
+
+    async def test_inner_example_without_explicit_loop(self) -> None:
+        async def test_get_route() -> None:
+            resp = await self.client.request("GET", "/")
+            assert resp.status == 200
+            text = await resp.text()
+            assert _hello_world_str == text
+
+        await test_get_route()
 
 
 def test_get_route(loop, test_client) -> None:

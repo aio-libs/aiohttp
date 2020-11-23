@@ -49,6 +49,7 @@ from .helpers import (
     set_result,
 )
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, StreamWriter
+from .http_parser import HAS_BROTLI
 from .log import client_logger
 from .streams import StreamReader
 from .typedefs import (
@@ -79,6 +80,10 @@ if TYPE_CHECKING:  # pragma: no cover
     from .client import ClientSession
     from .connector import Connection
     from .tracing import Trace
+
+
+def _gen_default_accept_encoding() -> str:
+    return "gzip, deflate, br" if HAS_BROTLI else "gzip, deflate"
 
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
@@ -165,7 +170,7 @@ class ClientRequest:
 
     DEFAULT_HEADERS = {
         hdrs.ACCEPT: "*/*",
-        hdrs.ACCEPT_ENCODING: "gzip, deflate",
+        hdrs.ACCEPT_ENCODING: _gen_default_accept_encoding(),
     }
 
     body = b""

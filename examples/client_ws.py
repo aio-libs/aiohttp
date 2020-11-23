@@ -8,11 +8,11 @@ import sys
 import aiohttp
 
 
-async def start_client(loop, url):
+async def start_client(loop: asyncio.AbstractEventLoop, url: str) -> None:
     name = input("Please enter your name: ")
 
     # input reader
-    def stdin_callback():
+    def stdin_callback() -> None:
         line = sys.stdin.buffer.readline().decode("utf-8")
         if not line:
             loop.stop()
@@ -21,7 +21,7 @@ async def start_client(loop, url):
 
     loop.add_reader(sys.stdin.fileno(), stdin_callback)
 
-    async def dispatch():
+    async def dispatch() -> None:
         while True:
             msg = await ws.receive()
 
@@ -30,7 +30,7 @@ async def start_client(loop, url):
             elif msg.type == aiohttp.WSMsgType.BINARY:
                 print("Binary: ", msg.data)
             elif msg.type == aiohttp.WSMsgType.PING:
-                ws.pong()
+                await ws.pong()
             elif msg.type == aiohttp.WSMsgType.PONG:
                 print("Pong received")
             else:

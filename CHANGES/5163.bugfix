@@ -1,1 +1,0 @@
-Change return type of MultipartReader.__aiter__() and BodyPartReader.__aiter__() to AsyncIterator.

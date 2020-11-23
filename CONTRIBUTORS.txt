@@ -30,6 +30,7 @@ Alexey Stepanov
 Amin Etesamian
 Amit Tulshyan
 Amy Boyle
+Anas El Amraoui
 Anders Melchiorsen
 Andrei Ursulenko
 Andrej Antonov
@@ -113,6 +114,7 @@ Florian Scheffler
 Frederik Gladhorn
 Frederik Peter Aalund
 Gabriel Tremblay
+Gary Wilson Jr.
 Gennady Andreyev
 Georges Dubus
 Greg Holt
@@ -319,6 +321,7 @@ Yuriy Shatrov
 Yury Selivanov
 Yusuke Tsutsumi
 Yuval Ofir
+Zeal Wierslee
 Zlatan Sičanica
 Марк Коренберг
 Семён Марьясин

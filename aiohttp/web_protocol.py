@@ -11,6 +11,7 @@ from typing import (
     Any,
     Awaitable,
     Callable,
+    Deque,
     Optional,
     Tuple,
     Type,
@@ -200,7 +201,7 @@ class RequestHandler(BaseProtocol):
         self._keepalive_timeout = keepalive_timeout
         self._lingering_time = float(lingering_time)
 
-        self._messages = deque()  # type: Any  # Python 3.5 has no typing.Deque
+        self._messages: Deque[Tuple[RawRequestMessage, StreamReader]] = deque()
         self._message_tail = b""
 
         self._waiter = None  # type: Optional[asyncio.Future[None]]

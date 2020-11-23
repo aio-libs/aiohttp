@@ -2,7 +2,6 @@
 """Example for aiohttp.web class based views
 """
 
-
 import functools
 import json
 
@@ -10,7 +9,7 @@ from aiohttp import web
 
 
 class MyView(web.View):
-    async def get(self):
+    async def get(self) -> web.StreamResponse:
         return web.json_response(
             {
                 "method": self.request.method,
@@ -20,7 +19,7 @@ class MyView(web.View):
             dumps=functools.partial(json.dumps, indent=4),
         )
 
-    async def post(self):
+    async def post(self) -> web.StreamResponse:
         data = await self.request.post()
         return web.json_response(
             {
@@ -32,7 +31,7 @@ class MyView(web.View):
         )
 
 
-async def index(request):
+async def index(request: web.Request) -> web.StreamResponse:
     txt = """
       <html>
         <head>
@@ -51,7 +50,7 @@ async def index(request):
     return web.Response(text=txt, content_type="text/html")
 
 
-def init():
+def init() -> web.Application:
     app = web.Application()
     app.router.add_get("/", index)
     app.router.add_get("/get", MyView)

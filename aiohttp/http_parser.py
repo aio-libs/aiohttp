@@ -4,8 +4,9 @@ import collections
 import re
 import string
 import zlib
+from contextlib import suppress
 from enum import IntEnum
-from typing import Any, List, Optional, Tuple, Type, Union
+from typing import Any, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
 from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
@@ -86,6 +87,9 @@ RawResponseMessage = collections.namedtuple(
         "chunked",
     ],
 )
+
+
+_MsgT = TypeVar("_MsgT", RawRequestMessage, RawResponseMessage)
 
 
 class ParseState(IntEnum):
@@ -198,7 +202,7 @@ class HeadersParser:
         return (CIMultiDictProxy(headers), tuple(raw_headers))
 
 
-class HttpParser(abc.ABC):
+class HttpParser(abc.ABC, Generic[_MsgT]):
     def __init__(
         self,
         protocol: BaseProtocol,
@@ -239,10 +243,10 @@ class HttpParser(abc.ABC):
         self._headers_parser = HeadersParser(max_line_size, max_headers, max_field_size)
 
     @abc.abstractmethod
-    def parse_message(self, lines: List[bytes]) -> Any:
+    def parse_message(self, lines: List[bytes]) -> _MsgT:
         pass
 
-    def feed_eof(self) -> Any:
+    def feed_eof(self) -> Optional[_MsgT]:
         if self._payload_parser is not None:
             self._payload_parser.feed_eof()
             self._payload_parser = None
@@ -254,10 +258,9 @@ class HttpParser(abc.ABC):
             if self._lines:
                 if self._lines[-1] != "\r\n":
                     self._lines.append(b"")
-                try:
+                with suppress(Exception):
                     return self.parse_message(self._lines)
-                except Exception:
-                    return None
+        return None
 
     def feed_data(
         self,
@@ -267,7 +270,7 @@ class HttpParser(abc.ABC):
         CONTENT_LENGTH: istr = hdrs.CONTENT_LENGTH,
         METH_CONNECT: str = hdrs.METH_CONNECT,
         SEC_WEBSOCKET_KEY1: istr = hdrs.SEC_WEBSOCKET_KEY1,
-    ) -> Tuple[List[Any], bool, bytes]:
+    ) -> Tuple[List[Tuple[_MsgT, StreamReader]], bool, bytes]:
 
         messages = []
 
@@ -346,6 +349,7 @@ class HttpParser(abc.ABC):
                             if not payload_parser.done:
                                 self._payload_parser = payload_parser
                         elif method == METH_CONNECT:
+                            assert isinstance(msg, RawRequestMessage)
                             payload = StreamReader(
                                 self.protocol,
                                 timer=self.timer,
@@ -480,13 +484,13 @@ class HttpParser(abc.ABC):
         self._upgraded = val
 
 
-class HttpRequestParser(HttpParser):
+class HttpRequestParser(HttpParser[RawRequestMessage]):
     """Read request status line. Exception .http_exceptions.BadStatusLine
     could be raised in case of any errors in status line.
     Returns RawRequestMessage.
     """
 
-    def parse_message(self, lines: List[bytes]) -> Any:
+    def parse_message(self, lines: List[bytes]) -> RawRequestMessage:
         # request line
         line = lines[0].decode("utf-8", "surrogateescape")
         try:
@@ -543,13 +547,13 @@ class HttpRequestParser(HttpParser):
         )
 
 
-class HttpResponseParser(HttpParser):
+class HttpResponseParser(HttpParser[RawResponseMessage]):
     """Read response status line and headers.
 
     BadStatusLine could be raised in case of any errors in status line.
     Returns RawResponseMessage"""
 
-    def parse_message(self, lines: List[bytes]) -> Any:
+    def parse_message(self, lines: List[bytes]) -> RawResponseMessage:
         line = lines[0].decode("utf-8", "surrogateescape")
         try:
             version, status = line.split(None, 1)

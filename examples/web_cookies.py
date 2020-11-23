@@ -16,25 +16,25 @@ tmpl = """\
 </html>"""
 
 
-async def root(request):
+async def root(request: web.Request) -> web.StreamResponse:
     resp = web.Response(content_type="text/html")
     resp.text = tmpl.format(pformat(request.cookies))
     return resp
 
 
-async def login(request):
+async def login(request: web.Request) -> None:
     exc = web.HTTPFound(location="/")
     exc.set_cookie("AUTH", "secret")
     raise exc
 
 
-async def logout(request):
+async def logout(request: web.Request) -> None:
     exc = web.HTTPFound(location="/")
     exc.del_cookie("AUTH")
     raise exc
 
 
-def init():
+def init() -> web.Application:
     app = web.Application()
     app.router.add_get("/", root)
     app.router.add_get("/login", login)

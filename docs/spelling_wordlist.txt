@@ -5,8 +5,12 @@ Backporting
 BaseEventLoop
 BasicAuth
 BodyPartReader
+Brotli
 Bugfixes
 BytesIO
+brotli
+brotlipy
+pydantic
 CIMultiDict
 CPython
 Changelog
@@ -108,6 +112,7 @@ backports
 basename
 boolean
 botocore
+brotli
 bugfix
 builtin
 cChardet

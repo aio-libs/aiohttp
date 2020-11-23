@@ -3,22 +3,25 @@ import asyncio
 import pathlib
 import socket
 import ssl
+from typing import Any, Dict, List, Union
 
-import aiohttp
-from aiohttp import web
-from aiohttp.resolver import DefaultResolver
-from aiohttp.test_utils import unused_port
+from aiohttp import ClientSession, TCPConnector, resolver, test_utils, web
 
 
 class FakeResolver:
     _LOCAL_HOST = {0: "127.0.0.1", socket.AF_INET: "127.0.0.1", socket.AF_INET6: "::1"}
 
-    def __init__(self, fakes):
+    def __init__(self, fakes: Dict[str, int]) -> None:
         """fakes -- dns -> port dict"""
         self._fakes = fakes
-        self._resolver = DefaultResolver()
+        self._resolver = resolver.DefaultResolver()
 
-    async def resolve(self, host, port=0, family=socket.AF_INET):
+    async def resolve(
+        self,
+        host: str,
+        port: int = 0,
+        family: Union[socket.AddressFamily, int] = socket.AF_INET,
+    ) -> List[Dict[str, Any]]:
         fake_port = self._fakes.get(host)
         if fake_port is not None:
             return [
@@ -34,9 +37,12 @@ class FakeResolver:
         else:
             return await self._resolver.resolve(host, port, family)
 
+    async def close(self) -> None:
+        self._resolver.close()
+
 
 class FakeFacebook:
-    def __init__(self):
+    def __init__(self) -> None:
         self.app = web.Application()
         self.app.router.add_routes(
             [
@@ -51,21 +57,20 @@ class FakeFacebook:
         self.ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         self.ssl_context.load_cert_chain(str(ssl_cert), str(ssl_key))
 
-    async def start(self):
-        port = unused_port()
-        self.runner = web.AppRunner(self.app)
+    async def start(self) -> Dict[str, int]:
+        port = test_utils.unused_port()
         await self.runner.setup()
         site = web.TCPSite(self.runner, "127.0.0.1", port, ssl_context=self.ssl_context)
         await site.start()
         return {"graph.facebook.com": port}
 
-    async def stop(self):
+    async def stop(self) -> None:
         await self.runner.cleanup()
 
-    async def on_me(self, request):
+    async def on_me(self, request: web.Request) -> web.StreamResponse:
         return web.json_response({"name": "John Doe", "id": "12345678901234567"})
 
-    async def on_my_friends(self, request):
+    async def on_my_friends(self, request: web.Request) -> web.StreamResponse:
         return web.json_response(
             {
                 "data": [
@@ -88,15 +93,15 @@ class FakeFacebook:
         )
 
 
-async def main():
+async def main() -> None:
     token = "ER34gsSGGS34XCBKd7u"
 
     fake_facebook = FakeFacebook()
     info = await fake_facebook.start()
     resolver = FakeResolver(info)
-    connector = aiohttp.TCPConnector(resolver=resolver, ssl=False)
+    connector = TCPConnector(resolver=resolver, ssl=False)
 
-    async with aiohttp.ClientSession(connector=connector) as session:
+    async with ClientSession(connector=connector) as session:
         async with session.get(
             "https://graph.facebook.com/v2.7/me", params={"access_token": token}
         ) as resp:

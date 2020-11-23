@@ -6,7 +6,7 @@ import asyncio
 import aiohttp
 
 
-async def curl(url):
+async def curl(url: str) -> None:
     async with aiohttp.ClientSession() as session:
         async with session.request("GET", url) as response:
             print(repr(response))

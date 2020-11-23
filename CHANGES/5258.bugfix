@@ -1,0 +1,3 @@
+Fixed github workflow `update-pre-commit` on forks,
+since this workflow should run only in the main repository and also because it was giving failed jobs on all the forks.
+Now it will show up as skipped workflow.

@@ -55,6 +55,7 @@ install_requires = [
     "chardet>=2.0,<4.0",
     "multidict>=4.5,<7.0",
     "async_timeout>=4.0a2,<5.0",
+    'asynctest==0.13.0; python_version<"3.8"',
     "yarl>=1.0,<2.0",
     'idna-ssl>=1.0; python_version<"3.7"',
     "typing_extensions>=3.6.5",
@@ -99,7 +100,7 @@ args = dict(
     url="https://github.com/aio-libs/aiohttp",
     project_urls={
         "Chat: Gitter": "https://gitter.im/aio-libs/Lobby",
-        "CI: Azure Pipelines": "https://dev.azure.com/aio-libs/aiohttp/_build",
+        "CI: GitHub Actions": "https://github.com/aio-libs/aiohttp/actions?query=workflow%3ACI",  # noqa
         "Coverage: codecov": "https://codecov.io/github/aio-libs/aiohttp",
         "Docs: Changelog": "https://docs.aiohttp.org/en/stable/changes.html",
         "Docs: RTD": "https://docs.aiohttp.org",
@@ -121,9 +122,9 @@ args = dict(
 )
 
 if not NO_EXTENSIONS:
-    print("**********************")
-    print("* Accellerated build *")
-    print("**********************")
+    print("*********************")
+    print("* Accelerated build *")
+    print("*********************")
     setup(ext_modules=extensions, **args)
 else:
     print("*********************")

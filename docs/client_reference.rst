@@ -129,7 +129,7 @@ The client session supports the context manager protocol for self closing.
       requests where you need to handle responses with status 400 or
       higher.
 
-   :param timeout: a :class:`ClientTimeout` settings structure, 5min
+   :param timeout: a :class:`ClientTimeout` settings structure, 300 seconds (5min)
         total timeout by default.
 
       .. versionadded:: 3.3
@@ -149,9 +149,6 @@ The client session supports the context manager protocol for self closing.
       .. deprecated:: 3.3
 
          Use ``timeout`` parameter instead.
-
-   :param timeout: a :class:`ClientTimeout` settings structure, 300 seconds (5min)
-        total timeout by default.
 
    :param bool connector_owner:
 
@@ -2090,6 +2087,10 @@ Connection errors
    Derived from :exc:`ClientOSError`
 
 .. class:: ClientProxyConnectionError
+
+   Derived from :exc:`ClientConnectorError`
+
+.. class:: UnixClientConnectorError
 
    Derived from :exc:`ClientConnectorError`
 
