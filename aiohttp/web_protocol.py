@@ -355,7 +355,7 @@ class RequestHandler(BaseProtocol):
                 upgraded = False
                 tail = b""
 
-            for msg, payload in (messages or ()):
+            for msg, payload in messages or ():
                 self._request_count += 1
                 self._messages.append((msg, payload))
 
