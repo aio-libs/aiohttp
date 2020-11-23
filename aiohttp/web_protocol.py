@@ -107,38 +107,34 @@ class _ErrInfo:
 class RequestHandler(BaseProtocol):
     """HTTP protocol implementation.
 
-        RequestHandler handles incoming HTTP request. It reads request line,
-        request headers and request payload and calls handle_request() method.
-        By default it always returns with 404 response.
+    RequestHandler handles incoming HTTP request. It reads request line,
+    request headers and request payload and calls handle_request() method.
+    By default it always returns with 404 response.
 
-        RequestHandler handles errors in incoming request, like bad
-        status line, bad headers or incomplete payload. If any error occurs,
-        connection gets closed.
+    RequestHandler handles errors in incoming request, like bad
+    status line, bad headers or incomplete payload. If any error occurs,
+    connection gets closed.
 
-        :param keepalive_timeout: number of seconds before closing
-    o                              keep-alive connection
-        :type keepalive_timeout: int or None
+    keepalive_timeout -- number of seconds before closing
+                         keep-alive connection
 
-        :param bool tcp_keepalive: TCP keep-alive is on, default is on
+    tcp_keepalive -- TCP keep-alive is on, default is on
 
-        :param logger: custom logger object
-        :type logger: aiohttp.log.server_logger
+    logger -- custom logger object
 
-        :param access_log_class: custom class for access_logger
-        :type access_log_class: aiohttp.abc.AbstractAccessLogger
+    access_log_class -- custom class for access_logger
 
-        :param access_log: custom logging object
-        :type access_log: aiohttp.log.server_logger
+    access_log -- custom logging object
 
-        :param str access_log_format: access log format string
+    access_log_format -- access log format string
 
-        :param loop: Optional event loop
+    loop -- Optional event loop
 
-        :param int max_line_size: Optional maximum header line size
+    max_line_size -- Optional maximum header line size
 
-        :param int max_field_size: Optional maximum header field size
+    max_field_size -- Optional maximum header field size
 
-        :param int max_headers: Optional maximum header size
+    max_headers -- Optional maximum header size
 
     """
 
