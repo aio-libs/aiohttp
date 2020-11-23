@@ -125,13 +125,13 @@ jobs:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
       run: |
         make vvtest
-        python -m coverage xml
-    - name: Upload coverage
-      uses: codecov/codecov-action@v1
-      with:
-        file: ./coverage.xml
-        flags: unit
-        fail_ci_if_error: false
+    #     python -m coverage xml
+    # - name: Upload coverage
+    #   uses: codecov/codecov-action@v1
+    #   with:
+    #     file: ./coverage.xml
+    #     flags: unit
+    #     fail_ci_if_error: false
 
   pre-deploy:
     name: Pre-Deploy
