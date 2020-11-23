@@ -1,3 +1,4 @@
+import os
 import pathlib
 import re
 import sys
@@ -9,6 +10,8 @@ from setuptools import Extension, setup
 if sys.version_info < (3, 6):
     raise RuntimeError("aiohttp 3.7+ requires Python 3.6+")
 
+
+NO_EXTENSIONS = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))  # type: bool
 here = pathlib.Path(__file__).parent
 
 
@@ -125,7 +128,7 @@ args = dict(
     url="https://github.com/aio-libs/aiohttp",
     project_urls={
         "Chat: Gitter": "https://gitter.im/aio-libs/Lobby",
-        "CI: Azure Pipelines": "https://dev.azure.com/aio-libs/aiohttp/_build",
+        "CI: GitHub Actions": "https://github.com/aio-libs/aiohttp/actions?query=workflow%3ACI",  # noqa
         "Coverage: codecov": "https://codecov.io/github/aio-libs/aiohttp",
         "Docs: RTD": "https://docs.aiohttp.org",
         "GitHub: issues": "https://github.com/aio-libs/aiohttp/issues",
@@ -149,12 +152,13 @@ args = dict(
     cmdclass=dict(build_ext=ve_build_ext),
 )
 
-try:
-    setup(**args)
-except BuildFailed:
-    print("************************************************************")
-    print("Cannot compile C accelerator module, use pure python version")
-    print("************************************************************")
-    del args["ext_modules"]
-    del args["cmdclass"]
+if not NO_EXTENSIONS:
+    print("*********************")
+    print("* Accelerated build *")
+    print("*********************")
+    setup(ext_modules=extensions, **args)
+else:
+    print("*********************")
+    print("* Pure Python build *")
+    print("*********************")
     setup(**args)
