@@ -159,7 +159,7 @@ Abstract Cookie Jar
 
       :param str domain: domain for which cookies must be deleted from the jar.
 
-      .. versionadded:: 4.0
+      .. versionadded:: 3.8
 
 Abstract Abstract Access Logger
 -------------------------------
