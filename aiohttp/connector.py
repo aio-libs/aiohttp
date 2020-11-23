@@ -237,8 +237,6 @@ class BaseConnector:
         if not self._conns:
             return
 
-        self._close_immediately()
-
         _warnings.warn(f"Unclosed connector {self!r}", ResourceWarning, source=self)
         context = {
             "connector": self,
