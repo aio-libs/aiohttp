@@ -1117,14 +1117,14 @@ WebSocketResponse
          The method is converted into :term:`coroutine`,
          *compress* parameter added.
 
-   .. comethod:: close(*, code=1000, message=b'')
+   .. comethod:: close(*, code=WSCloseCode.OK, message=b'')
 
       A :ref:`coroutine<coroutine>` that initiates closing
       handshake by sending :const:`~aiohttp.WSMsgType.CLOSE` message.
 
       It is safe to call `close()` from different task.
 
-      :param int code: closing code
+      :param int code: closing code. See also :class:`~aiohttp.WSCloseCode`.
 
       :param message: optional payload of *close* message,
                       :class:`str` (converted to *UTF-8* encoded bytes)
