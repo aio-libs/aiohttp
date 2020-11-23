@@ -100,7 +100,7 @@ class AccessLoggerWrapper(AbstractAsyncAccessLogger):
 class _ErrInfo:
     status: int
     exc: BaseException
-    message: Optional[str] = None
+    message: str
 
 
 _MsgType = Tuple[Union[RawRequestMessage, _ErrInfo], StreamReader]
@@ -347,11 +347,6 @@ class RequestHandler(BaseProtocol):
                 messages = [
                     (_ErrInfo(status=400, exc=exc, message=exc.message), EMPTY_PAYLOAD)
                 ]
-                upgraded = False
-                tail = b""
-            except Exception as exc:
-                # 500: internal error
-                messages = [(_ErrInfo(status=500, exc=exc), EMPTY_PAYLOAD)]
                 upgraded = False
                 tail = b""
 
