@@ -6,7 +6,7 @@ import pytest
 
 import aiohttp
 from aiohttp import web
-from aiohttp.http import WSMsgType
+from aiohttp.http import WSCloseCode, WSMsgType
 
 
 async def test_websocket_can_prepare(loop, aiohttp_client) -> None:
@@ -153,11 +153,11 @@ async def test_send_recv_text(loop, aiohttp_client) -> None:
 
     msg = await ws.receive()
     assert msg.type == aiohttp.WSMsgType.CLOSE
-    assert msg.data == 1000
+    assert msg.data == WSCloseCode.OK
     assert msg.extra == ""
 
     assert ws.closed
-    assert ws.close_code == 1000
+    assert ws.close_code == WSCloseCode.OK
 
     await closed
 
@@ -188,11 +188,11 @@ async def test_send_recv_bytes(loop, aiohttp_client) -> None:
 
     msg = await ws.receive()
     assert msg.type == aiohttp.WSMsgType.CLOSE
-    assert msg.data == 1000
+    assert msg.data == WSCloseCode.OK
     assert msg.extra == ""
 
     assert ws.closed
-    assert ws.close_code == 1000
+    assert ws.close_code == WSCloseCode.OK
 
     await closed
 
@@ -223,7 +223,7 @@ async def test_send_recv_json(loop, aiohttp_client) -> None:
 
     msg = await ws.receive()
     assert msg.type == aiohttp.WSMsgType.CLOSE
-    assert msg.data == 1000
+    assert msg.data == WSCloseCode.OK
     assert msg.extra == ""
 
     await ws.close()
@@ -244,7 +244,7 @@ async def test_close_timeout(loop, aiohttp_client) -> None:
         begin = ws._loop.time()
         assert await ws.close()
         elapsed = ws._loop.time() - begin
-        assert ws.close_code == 1006
+        assert ws.close_code == WSCloseCode.ABNORMAL_CLOSURE
         assert isinstance(ws.exception(), asyncio.TimeoutError)
         aborted.set_result(1)
         return ws
@@ -300,7 +300,7 @@ async def test_concurrent_close(loop, aiohttp_client) -> None:
 
     ws = await client.ws_connect("/", autoclose=False, protocols=("eggs", "bar"))
 
-    await srv_ws.close(code=1007)
+    await srv_ws.close(code=WSCloseCode.INVALID_TEXT)
 
     msg = await ws.receive()
     assert msg.type == WSMsgType.CLOSE
@@ -321,7 +321,7 @@ async def test_auto_pong_with_closing_by_peer(loop, aiohttp_client) -> None:
 
         msg = await ws.receive()
         assert msg.type == WSMsgType.CLOSE
-        assert msg.data == 1000
+        assert msg.data == WSCloseCode.OK
         assert msg.extra == "exit message"
         closed.set_result(None)
         return ws
@@ -336,7 +336,7 @@ async def test_auto_pong_with_closing_by_peer(loop, aiohttp_client) -> None:
 
     msg = await ws.receive()
     assert msg.type == WSMsgType.PONG
-    await ws.close(code=1000, message="exit message")
+    await ws.close(code=WSCloseCode.OK, message="exit message")
     await closed
 
 
@@ -407,7 +407,7 @@ async def test_pong(loop, aiohttp_client) -> None:
 
         msg = await ws.receive()
         assert msg.type == WSMsgType.CLOSE
-        assert msg.data == 1000
+        assert msg.data == WSCloseCode.OK
         assert msg.extra == "exit message"
         closed.set_result(None)
         return ws
@@ -423,7 +423,7 @@ async def test_pong(loop, aiohttp_client) -> None:
     assert msg.type == WSMsgType.PONG
     assert msg.data == b"data"
 
-    await ws.close(code=1000, message="exit message")
+    await ws.close(code=WSCloseCode.OK, message="exit message")
 
     await closed
 
@@ -511,7 +511,7 @@ async def aiohttp_client_close_handshake(loop, aiohttp_client):
         assert not ws.closed
         await ws.close()
         assert ws.closed
-        assert ws.close_code == 1007
+        assert ws.close_code == WSCloseCode.INVALID_TEXT
 
         msg = await ws.receive()
         assert msg.type == WSMsgType.CLOSED
@@ -525,7 +525,7 @@ async def aiohttp_client_close_handshake(loop, aiohttp_client):
 
     ws = await client.ws_connect("/", autoclose=False, protocols=("eggs", "bar"))
 
-    await ws.close(code=1007)
+    await ws.close(code=WSCloseCode.INVALID_TEXT)
     msg = await ws.receive()
     assert msg.type == WSMsgType.CLOSED
     await closed
