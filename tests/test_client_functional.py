@@ -579,8 +579,6 @@ async def test_tcp_connector_fingerprint_fail(
 
 
 async def test_format_task_get(aiohttp_server) -> None:
-    loop = asyncio.get_event_loop()
-
     async def handler(request):
         return web.Response(body=b"OK")
 
@@ -588,7 +586,7 @@ async def test_format_task_get(aiohttp_server) -> None:
     app.router.add_route("GET", "/", handler)
     server = await aiohttp_server(app)
     client = aiohttp.ClientSession()
-    task = loop.create_task(client.get(server.make_url("/")))
+    task = asyncio.create_task(client.get(server.make_url("/")))
     assert f"{task}".startswith("<Task pending")
     resp = await task
     resp.close()
