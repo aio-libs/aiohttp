@@ -64,7 +64,6 @@ _AnyAbstractAccessLogger = Union[
     Type[AbstractAccessLogger],
 ]
 
-
 ERROR = RawRequestMessage(
     "UNKNOWN", "/", HttpVersion10, {}, {}, True, False, False, False, yarl.URL("/")
 )
@@ -102,6 +101,9 @@ class _ErrInfo:
     status: int
     exc: BaseException
     message: Optional[str] = None
+
+
+_MsgType = Tuple[Union[RawRequestMessage, _ErrInfo], StreamReader]
 
 
 class RequestHandler(BaseProtocol):
@@ -200,9 +202,7 @@ class RequestHandler(BaseProtocol):
         self._keepalive_timeout = keepalive_timeout
         self._lingering_time = float(lingering_time)
 
-        self._messages: Deque[
-            Tuple[Union[_ErrInfo, RawRequestMessage], StreamReader]
-        ] = deque()
+        self._messages: Deque[_MsgType] = deque()
         self._message_tail = b""
 
         self._waiter = None  # type: Optional[asyncio.Future[None]]
@@ -338,7 +338,7 @@ class RequestHandler(BaseProtocol):
         if self._force_close or self._close:
             return
         # parse http messages
-        messages: Sequence[Tuple[Union[RawRequestMessage, _ErrInfo], StreamReader]]
+        messages: Sequence[_MsgType]
         if self._payload_parser is None and not self._upgrade:
             assert self._request_parser is not None
             try:
