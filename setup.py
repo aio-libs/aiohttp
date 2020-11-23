@@ -11,7 +11,6 @@ if sys.version_info < (3, 6):
 
 here = pathlib.Path(__file__).parent
 
-
 if (here / ".git").exists() and not (here / "vendor/http-parser/README.md").exists():
     print("Install submodules when building from git clone", file=sys.stderr)
     print("Hint:", file=sys.stderr)
@@ -125,7 +124,7 @@ args = dict(
     url="https://github.com/aio-libs/aiohttp",
     project_urls={
         "Chat: Gitter": "https://gitter.im/aio-libs/Lobby",
-        "CI: Azure Pipelines": "https://dev.azure.com/aio-libs/aiohttp/_build",
+        "CI: GitHub Actions": "https://github.com/aio-libs/aiohttp/actions?query=workflow%3ACI",  # noqa
         "Coverage: codecov": "https://codecov.io/github/aio-libs/aiohttp",
         "Docs: RTD": "https://docs.aiohttp.org",
         "GitHub: issues": "https://github.com/aio-libs/aiohttp/issues",
