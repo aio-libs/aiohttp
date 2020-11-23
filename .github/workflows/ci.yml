@@ -76,7 +76,7 @@ jobs:
     needs: lint
     strategy:
       matrix:
-        pyver: [3.6, 3.7, 3.8, 3.9]
+        pyver: [3.7, 3.8, 3.9]
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         exclude:
@@ -173,7 +173,7 @@ jobs:
     name: Linux
     strategy:
       matrix:
-        pyver: [cp36-cp36m, cp37-cp37m, cp38-cp38, cp39-cp39]
+        pyver: [cp37-cp37m, cp38-cp38, cp39-cp39]
         arch: [x86_64, aarch64, i686, ppc64le, s390x]
       fail-fast: false
     runs-on: ubuntu-latest
@@ -221,7 +221,7 @@ jobs:
     name: Binary wheels
     strategy:
       matrix:
-        pyver: [3.6, 3.7, 3.8, 3.9]
+        pyver: [3.7, 3.8, 3.9]
         os: [macos, windows]
         arch: [x86, x64]
         exclude:
