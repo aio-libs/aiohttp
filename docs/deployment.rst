@@ -300,15 +300,99 @@ worker processes.
    `uvloop <https://github.com/MagicStack/uvloop>`_, you can use the
    ``aiohttp.GunicornUVLoopWebWorker`` worker class.
 
+Proxy through NGINX
+----------------------
+
+We can proxy our gunicorn workers through NGINX with a configuration like this:
+
+.. code-block:: nginx
+
+    worker_processes 1;
+    user nobody nogroup;
+    events {
+        worker_connections 1024;
+    }
+    http {
+        ## Main Server Block
+        server {
+            ## Open by default.
+            listen                80 default_server;
+            server_name           main;
+            client_max_body_size  200M;
+
+            ## Main site location.
+            location / {
+                proxy_pass                          http://127.0.0.1:8080;
+                proxy_set_header                    Host $host;
+                proxy_set_header X-Forwarded-Host   $server_name;
+                proxy_set_header X-Real-IP          $remote_addr;
+            }
+        }
+    }
+
+Since gunicorn listens for requests at our localhost address on port 8080, we can
+use the `proxy_pass <https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_pass>`_
+directive to send web traffic to our workers. If everything is configured correctly,
+we should reach our application at the ip address of our web server.
+
+Proxy through NGINX + SSL
+----------------------------
+
+Here is an example NGINX configuration setup to accept SSL connections:
+
+.. code-block:: nginx
+
+    worker_processes 1;
+    user nobody nogroup;
+    events {
+        worker_connections 1024;
+    }
+    http {
+        ## SSL Redirect
+        server {
+            listen 80       default;
+            return 301      https://$host$request_uri;
+        }
+
+        ## Main Server Block
+        server {
+            # Open by default.
+            listen                443 ssl default_server;
+            listen                [::]:443 ssl default_server;
+            server_name           main;
+            client_max_body_size  200M;
+
+            ssl_certificate       /etc/secrets/cert.pem;
+            ssl_certificate_key   /etc/secrets/key.pem;
+
+            ## Main site location.
+            location / {
+                proxy_pass                          http://127.0.0.1:8080;
+                proxy_set_header                    Host $host;
+                proxy_set_header X-Forwarded-Host   $server_name;
+                proxy_set_header X-Real-IP          $remote_addr;
+            }
+        }
+    }
+
+
+The first server block accepts regular http connections on port 80 and redirects
+them to our secure SSL connection. The second block matches our previous example
+except we need to change our open port to https and specify where our SSL
+certificates are being stored with the ``ssl_certificate`` and ``ssl_certificate_key``
+directives.
+
+During development, you may want to `create your own self-signed certificates for testing purposes <https://www.digitalocean.com/community/tutorials/how-to-create-a-self-signed-ssl-certificate-for-nginx-in-ubuntu-18-04>`_
+and use another service like `Let's Encrypt <https://letsencrypt.org/>`_ when you
+are ready to move to production.
 
 More information
 ----------------
 
-The Gunicorn documentation recommends deploying Gunicorn behind an
-Nginx proxy server. See the `official documentation
+See the `official documentation
 <http://docs.gunicorn.org/en/latest/deploy.html>`_ for more
-information about suggested nginx configuration.
-
+information about suggested nginx configuration. You can also find out more about
+`configuring for secure https connections as well. <https://nginx.org/en/docs/http/configuring_https_servers.html>`_
 
 Logging configuration
 ---------------------
@@ -321,3 +405,9 @@ By default aiohttp uses own defaults::
 
 For more information please read :ref:`Format Specification for Access
 Log <aiohttp-logging-access-log-format-spec>`.
+
+
+Proxy through Apache at your own risk
+-------------------------------------
+Issues have been reported using Apache2 in front of aiohttp server:
+`#2687 Intermittent 502 proxy errors when running behind Apache <https://github.com/aio-libs/aiohttp/issues/2687>`.

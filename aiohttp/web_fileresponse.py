@@ -2,7 +2,7 @@ import asyncio
 import mimetypes
 import os
 import pathlib
-from functools import partial
+import sys
 from typing import (  # noqa
     IO,
     TYPE_CHECKING,
@@ -17,10 +17,6 @@ from typing import (  # noqa
 
 from . import hdrs
 from .abc import AbstractStreamWriter
-from .base_protocol import BaseProtocol
-from .helpers import set_exception, set_result
-from .http_writer import StreamWriter
-from .log import server_logger
 from .typedefs import LooseHeaders
 from .web_exceptions import (
     HTTPNotModified,
@@ -30,10 +26,10 @@ from .web_exceptions import (
 )
 from .web_response import StreamResponse
 
-__all__ = ('FileResponse',)
+__all__ = ("FileResponse",)
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .web_request import BaseRequest  # noqa
+    from .web_request import BaseRequest
 
 
 _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
@@ -42,93 +38,17 @@ _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
 NOSENDFILE = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
 
 
-class SendfileStreamWriter(StreamWriter):
-
-    def __init__(self,
-                 protocol: BaseProtocol,
-                 loop: asyncio.AbstractEventLoop,
-                 fobj: IO[Any],
-                 count: int,
-                 on_chunk_sent: _T_OnChunkSent=None) -> None:
-        super().__init__(protocol, loop, on_chunk_sent)
-        self._sendfile_buffer = []  # type: List[bytes]
-        self._fobj = fobj
-        self._count = count
-        self._offset = fobj.tell()
-        self._in_fd = fobj.fileno()
-
-    def _write(self, chunk: bytes) -> None:
-        # we overwrite StreamWriter._write, so nothing can be appended to
-        # _buffer, and nothing is written to the transport directly by the
-        # parent class
-        self.output_size += len(chunk)
-        self._sendfile_buffer.append(chunk)
-
-    def _sendfile_cb(self, fut: 'asyncio.Future[None]', out_fd: int) -> None:
-        if fut.cancelled():
-            return
-        try:
-            if self._do_sendfile(out_fd):
-                set_result(fut, None)
-        except Exception as exc:
-            set_exception(fut, exc)
-
-    def _do_sendfile(self, out_fd: int) -> bool:
-        try:
-            n = os.sendfile(out_fd,
-                            self._in_fd,
-                            self._offset,
-                            self._count)
-            if n == 0:  # in_fd EOF reached
-                n = self._count
-        except (BlockingIOError, InterruptedError):
-            n = 0
-        self.output_size += n
-        self._offset += n
-        self._count -= n
-        assert self._count >= 0
-        return self._count == 0
-
-    def _done_fut(self, out_fd: int, fut: 'asyncio.Future[None]') -> None:
-        self.loop.remove_writer(out_fd)
-
-    async def sendfile(self) -> None:
-        assert self.transport is not None
-        out_socket = self.transport.get_extra_info('socket').dup()
-        out_socket.setblocking(False)
-        out_fd = out_socket.fileno()
-
-        loop = self.loop
-        data = b''.join(self._sendfile_buffer)
-        try:
-            await loop.sock_sendall(out_socket, data)
-            if not self._do_sendfile(out_fd):
-                fut = loop.create_future()
-                fut.add_done_callback(partial(self._done_fut, out_fd))
-                loop.add_writer(out_fd, self._sendfile_cb, fut, out_fd)
-                await fut
-        except asyncio.CancelledError:
-            raise
-        except Exception:
-            server_logger.debug('Socket error')
-            self.transport.close()
-        finally:
-            out_socket.close()
-
-        await super().write_eof()
-
-    async def write_eof(self, chunk: bytes=b'') -> None:
-        pass
-
-
 class FileResponse(StreamResponse):
     """A response object can be used to send files."""
 
-    def __init__(self, path: Union[str, pathlib.Path],
-                 chunk_size: int=256*1024,
-                 status: int=200,
-                 reason: Optional[str]=None,
-                 headers: Optional[LooseHeaders]=None) -> None:
+    def __init__(
+        self,
+        path: Union[str, pathlib.Path],
+        chunk_size: int = 256 * 1024,
+        status: int = 200,
+        reason: Optional[str] = None,
+        headers: Optional[LooseHeaders] = None,
+    ) -> None:
         super().__init__(status=status, reason=reason, headers=headers)
 
         if isinstance(path, str):
@@ -137,55 +57,16 @@ class FileResponse(StreamResponse):
         self._path = path
         self._chunk_size = chunk_size
 
-    async def _sendfile_system(self, request: 'BaseRequest',
-                               fobj: IO[Any],
-                               count: int) -> AbstractStreamWriter:
-        # Write count bytes of fobj to resp using
-        # the os.sendfile system call.
-        #
-        # For details check
-        # https://github.com/KeepSafe/aiohttp/issues/1177
-        # See https://github.com/KeepSafe/aiohttp/issues/958 for details
-        #
-        # request should be an aiohttp.web.Request instance.
-        # fobj should be an open file object.
-        # count should be an integer > 0.
-
-        transport = request.transport
-        assert transport is not None
-        if (transport.get_extra_info("sslcontext") or
-                transport.get_extra_info("socket") is None or
-                self.compression):
-            writer = await self._sendfile_fallback(request, fobj, count)
-        else:
-            writer = SendfileStreamWriter(
-                request.protocol,
-                request._loop,
-                fobj,
-                count
-            )
-            request._payload_writer = writer
-
-            await super().prepare(request)
-            await writer.sendfile()
-
-        return writer
-
-    async def _sendfile_fallback(self, request: 'BaseRequest',
-                                 fobj: IO[Any],
-                                 count: int) -> AbstractStreamWriter:
-        # Mimic the _sendfile_system() method, but without using the
-        # os.sendfile() system call. This should be used on systems
-        # that don't support the os.sendfile().
-
+    async def _sendfile_fallback(
+        self, writer: AbstractStreamWriter, fobj: IO[Any], offset: int, count: int
+    ) -> AbstractStreamWriter:
         # To keep memory usage low,fobj is transferred in chunks
         # controlled by the constructor's chunk_size argument.
 
-        writer = await super().prepare(request)
-        assert writer is not None
-
         chunk_size = self._chunk_size
         loop = asyncio.get_event_loop()
+
+        await loop.run_in_executor(None, fobj.seek, offset)
 
         chunk = await loop.run_in_executor(None, fobj.read, chunk_size)
         while chunk:
@@ -193,27 +74,38 @@ class FileResponse(StreamResponse):
             count = count - chunk_size
             if count <= 0:
                 break
-            chunk = await loop.run_in_executor(
-                None, fobj.read, min(chunk_size, count)
-            )
+            chunk = await loop.run_in_executor(None, fobj.read, min(chunk_size, count))
 
         await writer.drain()
         return writer
 
-    if hasattr(os, "sendfile") and not NOSENDFILE:  # pragma: no cover
-        _sendfile = _sendfile_system
-    else:  # pragma: no cover
-        _sendfile = _sendfile_fallback
+    async def _sendfile(
+        self, request: "BaseRequest", fobj: IO[Any], offset: int, count: int
+    ) -> AbstractStreamWriter:
+        writer = await super().prepare(request)
+        assert writer is not None
 
-    async def prepare(
-            self,
-            request: 'BaseRequest'
-    ) -> Optional[AbstractStreamWriter]:
+        if NOSENDFILE or sys.version_info < (3, 7) or self.compression:
+            return await self._sendfile_fallback(writer, fobj, offset, count)
+
+        loop = request._loop
+        transport = request.transport
+        assert transport is not None
+
+        try:
+            await loop.sendfile(transport, fobj, offset, count)
+        except NotImplementedError:
+            return await self._sendfile_fallback(writer, fobj, offset, count)
+
+        await super().write_eof()
+        return writer
+
+    async def prepare(self, request: "BaseRequest") -> Optional[AbstractStreamWriter]:
         filepath = self._path
 
         gzip = False
-        if 'gzip' in request.headers.get(hdrs.ACCEPT_ENCODING, ''):
-            gzip_path = filepath.with_name(filepath.name + '.gz')
+        if "gzip" in request.headers.get(hdrs.ACCEPT_ENCODING, ""):
+            gzip_path = filepath.with_name(filepath.name + ".gz")
 
             if gzip_path.is_file():
                 filepath = gzip_path
@@ -238,10 +130,10 @@ class FileResponse(StreamResponse):
         if hdrs.CONTENT_TYPE not in self.headers:
             ct, encoding = mimetypes.guess_type(str(filepath))
             if not ct:
-                ct = 'application/octet-stream'
+                ct = "application/octet-stream"
             should_set_ct = True
         else:
-            encoding = 'gzip' if gzip else None
+            encoding = "gzip" if gzip else None
             should_set_ct = False
 
         status = self._status
@@ -273,8 +165,7 @@ class FileResponse(StreamResponse):
                 #
                 # Will do the same below. Many servers ignore this and do not
                 # send a Content-Range header with HTTP 416
-                self.headers[hdrs.CONTENT_RANGE] = 'bytes */{0}'.format(
-                    file_size)
+                self.headers[hdrs.CONTENT_RANGE] = f"bytes */{file_size}"
                 self.set_status(HTTPRequestRangeNotSatisfiable.status_code)
                 return await super().prepare(request)
 
@@ -296,8 +187,9 @@ class FileResponse(StreamResponse):
                     # of the representation (i.e., the server replaces the
                     # value of last-byte-pos with a value that is one less than
                     # the current length of the selected representation).
-                    count = min(end if end is not None else file_size,
-                                file_size) - start
+                    count = (
+                        min(end if end is not None else file_size, file_size) - start
+                    )
 
                 if start >= file_size:
                     # HTTP 416 should be returned in this case.
@@ -309,8 +201,7 @@ class FileResponse(StreamResponse):
                     # suffix-byte-range-spec with a non-zero suffix-length,
                     # then the byte-range-set is satisfiable. Otherwise, the
                     # byte-range-set is unsatisfiable.
-                    self.headers[hdrs.CONTENT_RANGE] = 'bytes */{0}'.format(
-                        file_size)
+                    self.headers[hdrs.CONTENT_RANGE] = f"bytes */{file_size}"
                     self.set_status(HTTPRequestRangeNotSatisfiable.status_code)
                     return await super().prepare(request)
 
@@ -328,19 +219,25 @@ class FileResponse(StreamResponse):
         self.last_modified = st.st_mtime  # type: ignore
         self.content_length = count
 
-        self.headers[hdrs.ACCEPT_RANGES] = 'bytes'
+        self.headers[hdrs.ACCEPT_RANGES] = "bytes"
 
         real_start = cast(int, start)
 
         if status == HTTPPartialContent.status_code:
-            self.headers[hdrs.CONTENT_RANGE] = 'bytes {0}-{1}/{2}'.format(
-                real_start, real_start + count - 1, file_size)
+            self.headers[hdrs.CONTENT_RANGE] = "bytes {}-{}/{}".format(
+                real_start, real_start + count - 1, file_size
+            )
 
-        fobj = await loop.run_in_executor(None, filepath.open, 'rb')
+        if request.method == hdrs.METH_HEAD or self.status in [204, 304]:
+            return await super().prepare(request)
+
+        fobj = await loop.run_in_executor(None, filepath.open, "rb")
         if start:  # be aware that start could be None or int=0 here.
-            await loop.run_in_executor(None, fobj.seek, start)
+            offset = start
+        else:
+            offset = 0
 
         try:
-            return await self._sendfile(request, fobj, count)
+            return await self._sendfile(request, fobj, offset, count)
         finally:
             await loop.run_in_executor(None, fobj.close)

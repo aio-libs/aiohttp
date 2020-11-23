@@ -6,28 +6,30 @@ Contributing
 Instructions for contributors
 -----------------------------
 
-
-In order to make a clone of the GitHub_ repo: open the link and press the
-"Fork" button on the upper-right menu of the web page.
+In order to make a clone of the GitHub_ repo: open the link and press the "Fork" button on the upper-right menu of the web page.
 
 I hope everybody knows how to work with git and github nowadays :)
 
 Workflow is pretty straightforward:
 
-  1. Clone the GitHub_ repo using ``--recurse-submodules`` argument
+  0. Make sure you are reading the latest version of this document.
+     It can be found in the GitHub_ repo in the ``docs`` subdirectory.
 
-  2. Make a change
+  1. Clone the GitHub_ repo using the ``--recurse-submodules`` argument
 
-  3. Make sure all tests passed
+  2. Setup your machine with the required dev environment
 
-  4. Add a file into ``CHANGES`` folder (`Changelog update`_).
+  3. Make a change
 
-  5. Commit changes to own aiohttp clone
+  4. Make sure all tests passed
 
-  6. Make pull request from github page for your clone against master branch
+  5. Add a file into the ``CHANGES`` folder (see `Changelog update`_ for how).
 
-  7. Optionally make backport Pull Request(s) for landing a bug fix
-     into released aiohttp versions.
+  6. Commit changes to your own aiohttp clone
+
+  7. Make a pull request from the github page of your clone against the master branch
+
+  8. Optionally make backport Pull Request(s) for landing a bug fix into released aiohttp versions.
 
 .. note::
 
@@ -37,6 +39,16 @@ Workflow is pretty straightforward:
    *master* branch. Just ``git merge`` *master* into your working copy (a fork) if
    needed. The Pull Request is automatically squashed into the single commit
    once the PR is accepted.
+
+.. note::
+
+   GitHub issue and pull request threads are automatically locked when there has
+   not been any recent activity for one year.  Please open a `new issue
+   <https://github.com/aio-libs/aiohttp/issues/new>`_ for related bugs.
+
+   If you feel like there are important points in the locked discussions,
+   please include those excerpts into that new issue.
+
 
 Preconditions for running aiohttp test suite
 --------------------------------------------
@@ -68,26 +80,46 @@ For *virtualenvwrapper*:
    $ cd aiohttp
    $ mkvirtualenv --python=`which python3` aiohttp
 
-There are other tools like *pyvenv* but you know the rule of thumb
-now: create a python3 virtual environment and activate it.
+There are other tools like *pyvenv* but you know the rule of thumb now: create a python3 virtual environment and activate it.
 
 After that please install libraries required for development:
 
 .. code-block:: shell
 
-   $ pip install -r requirements/dev.txt
+   $ make install-dev
 
 .. note::
 
-  If you plan to use ``pdb`` or ``ipdb`` within the test suite, execute:
+  For now, the development tooling depends on ``make`` and assumes an Unix OS If you wish to contribute to aiohttp from a Windows machine, the easiest way is probably to `configure the WSL <https://docs.microsoft.com/en-us/windows/wsl/install-win10>`_ so you can use the same instructions. If it's not possible for you or if it doesn't work, please contact us so we can find a solution together.
+
+Install pre-commit hooks:
+
+.. code-block:: shell
+
+   $ pre-commit install
+
+.. warning::
+
+  If you plan to use temporary ``print()``, ``pdb`` or ``ipdb`` within the test suite, execute it with ``-s``:
 
   .. code-block:: shell
 
-     $ py.test tests -s
+     $ pytest tests -s
 
-  command to run the tests with disabled output capturing.
+  in order to run the tests without output capturing.
 
 Congratulations, you are ready to run the test suite!
+
+
+Run autoformatter
+-----------------
+
+The project uses black_ + isort_ formatters to keep the source code style.
+Please run `make fmt` after every change before starting tests.
+
+  .. code-block:: shell
+
+     $ make fmt
 
 
 Run aiohttp test suite
@@ -100,10 +132,10 @@ command:
 
    $ make test
 
-The command at first will run the *flake8* tool (sorry, we don't accept
-pull requests with pep8 or pyflakes errors).
+The command at first will run the *linters* (sorry, we don't accept
+pull requests with pyflakes, black, isort, or mypy errors).
 
-On *flake8* success the tests will be run.
+On *lint* success the tests will be run.
 
 Please take a look on the produced output.
 
@@ -119,7 +151,7 @@ Use:
 
 .. code-block:: shell
 
-   $ make cov
+   $ make cov-dev
 
 to run test suite and collect coverage information. Once the command
 has finished check your coverage at the file that appears in the last
@@ -287,3 +319,7 @@ our team.
 .. _GitHub: https://github.com/aio-libs/aiohttp
 
 .. _ipdb: https://pypi.python.org/pypi/ipdb
+
+.. _black: https://pypi.python.org/pypi/black
+
+.. _isort: https://pypi.python.org/pypi/isort

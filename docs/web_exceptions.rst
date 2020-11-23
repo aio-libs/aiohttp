@@ -33,14 +33,15 @@ HTTP Exception hierarchy chart::
          * 205 - HTTPResetContent
          * 206 - HTTPPartialContent
        HTTPRedirection
-         * 300 - HTTPMultipleChoices
-         * 301 - HTTPMovedPermanently
-         * 302 - HTTPFound
-         * 303 - HTTPSeeOther
          * 304 - HTTPNotModified
-         * 305 - HTTPUseProxy
-         * 307 - HTTPTemporaryRedirect
-         * 308 - HTTPPermanentRedirect
+         HTTPMove
+           * 300 - HTTPMultipleChoices
+           * 301 - HTTPMovedPermanently
+           * 302 - HTTPFound
+           * 303 - HTTPSeeOther
+           * 305 - HTTPUseProxy
+           * 307 - HTTPTemporaryRedirect
+           * 308 - HTTPPermanentRedirect
        HTTPError
          HTTPClientError
            * 400 - HTTPBadRequest
@@ -140,6 +141,86 @@ Base HTTP Exception
    .. attribute:: headers
 
       HTTP headers for the exception, :class:`multidict.CIMultiDict`
+
+   .. attribute:: cookies
+
+      An instance of :class:`http.cookies.SimpleCookie` for *outgoing* cookies.
+
+      .. versionadded:: 4.0
+
+   .. method:: set_cookie(name, value, *, path='/', expires=None, \
+                          domain=None, max_age=None, \
+                          secure=None, httponly=None, version=None, \
+                          samesite=None)
+
+      Convenient way for setting :attr:`cookies`, allows to specify
+      some additional properties like *max_age* in a single call.
+
+      .. versionadded:: 4.0
+
+      :param str name: cookie name
+
+      :param str value: cookie value (will be converted to
+                        :class:`str` if value has another type).
+
+      :param expires: expiration date (optional)
+
+      :param str domain: cookie domain (optional)
+
+      :param int max_age: defines the lifetime of the cookie, in
+                          seconds.  The delta-seconds value is a
+                          decimal non- negative integer.  After
+                          delta-seconds seconds elapse, the client
+                          should discard the cookie.  A value of zero
+                          means the cookie should be discarded
+                          immediately.  (optional)
+
+      :param str path: specifies the subset of URLs to
+                       which this cookie applies. (optional, ``'/'`` by default)
+
+      :param bool secure: attribute (with no value) directs
+                          the user agent to use only (unspecified)
+                          secure means to contact the origin server
+                          whenever it sends back this cookie.
+                          The user agent (possibly under the user's
+                          control) may determine what level of
+                          security it considers appropriate for
+                          "secure" cookies.  The *secure* should be
+                          considered security advice from the server
+                          to the user agent, indicating that it is in
+                          the session's interest to protect the cookie
+                          contents. (optional)
+
+      :param bool httponly: ``True`` if the cookie HTTP only (optional)
+
+      :param int version: a decimal integer, identifies to which
+                          version of the state management
+                          specification the cookie
+                          conforms. (Optional, *version=1* by default)
+
+      :param str samesite: Asserts that a cookie must not be sent with
+         cross-origin requests, providing some protection
+         against cross-site request forgery attacks.
+         Generally the value should be one of: ``None``,
+         ``Lax`` or ``Strict``. (optional)
+
+      .. warning::
+
+         In HTTP version 1.1, ``expires`` was deprecated and replaced with
+         the easier-to-use ``max-age``, but Internet Explorer (IE6, IE7,
+         and IE8) **does not** support ``max-age``.
+
+   .. method:: del_cookie(name, *, path='/', domain=None)
+
+      Deletes cookie.
+
+      .. versionadded:: 4.0
+
+      :param str name: cookie name
+
+      :param str domain: optional cookie domain
+
+      :param str path: optional cookie path, ``'/'`` by default
 
 
 Successful Exceptions

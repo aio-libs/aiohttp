@@ -1,3 +1,0 @@
-Emit a warning when :py:attr:`ssl.OP_NO_COMPRESSION` is
-unavailable because the runtime is built against
-an outdated OpenSSL.

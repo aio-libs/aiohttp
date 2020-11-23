@@ -1,1 +1,0 @@
-Fix ``web_middlewares.normalize_path_middleware`` behavior for patch without slash.

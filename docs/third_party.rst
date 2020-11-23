@@ -109,6 +109,9 @@ They may be perfect or not -- we don't know.
 Please add your library reference here first and after some time
 period ask to raise the status.
 
+- `pytest-aiohttp-client <https://github.com/sivakov512/pytest-aiohttp-client>`_
+  Pytest fixture with simpler api, payload decoding and status code assertions.
+
 - `octomachinery <https://octomachinery.dev>`_ A framework for developing
   GitHub Apps and GitHub Actions. Python 3.7+ is required.
 
@@ -135,6 +138,9 @@ period ask to raise the status.
 
 - `aiohttp-validate <https://github.com/dchaplinsky/aiohttp_validate>`_
   Simple library that helps you validate your API endpoints requests/responses with json schema.
+
+- `aiohttp-pydantic <https://github.com/Maillol/aiohttp-pydantic>`_
+  An ``aiohttp.View`` to validate the HTTP request's body, query-string, and headers regarding function annotations and generate Open API doc. Python 3.8+ required.
 
 - `raven-aiohttp <https://github.com/getsentry/raven-aiohttp>`_ An
   aiohttp transport for raven-python (Sentry client).
@@ -181,6 +187,9 @@ period ask to raise the status.
 - `gidgethub <https://github.com/brettcannon/gidgethub>`_ An async
   GitHub API library for Python.
 
+- `aiohttp-rpc <https://github.com/expert-m/aiohttp-rpc>`_ A simple
+  JSON-RPC for aiohttp.
+
 - `aiohttp_jrpc <https://github.com/zloidemon/aiohttp_jrpc>`_ aiohttp
   JSON-RPC service.
 
@@ -211,7 +220,7 @@ period ask to raise the status.
 
 - `aiogram <https://github.com/aiogram/aiogram>`_
   A fully asynchronous library for Telegram Bot API written with asyncio and aiohttp.
-  
+
 - `vk.py <https://github.com/prostomarkeloff/vk.py>`_
   Extremely-fast Python 3.6+ toolkit for create applications work`s with VKAPI.
 
@@ -242,13 +251,30 @@ period ask to raise the status.
 - `eider-py <https://github.com/eider-rpc/eider-py>`_ Python implementation of
   the `Eider RPC protocol <http://eider.readthedocs.io/>`_.
 
-- `asynapplicationinsights <https://github.com/RobertoPrevato/asynapplicationinsights>`_ A client 
-  for `Azure Application Insights <https://azure.microsoft.com/en-us/services/application-insights/>`_
-  implemented using ``aiohttp`` client, including a middleware for ``aiohttp`` servers to collect web apps
-  telemetry.
+- `asynapplicationinsights
+  <https://github.com/RobertoPrevato/asynapplicationinsights>`_ A client for
+  `Azure Application Insights
+  <https://azure.microsoft.com/en-us/services/application-insights/>`_
+  implemented using ``aiohttp`` client, including a middleware for ``aiohttp``
+  servers to collect web apps telemetry.
 
 - `aiogmaps <https://github.com/hzlmn/aiogmaps>`_
   Asynchronous client for Google Maps API Web Services. Python 3.6+ required.
 
 - `DBGR <https://github.com/JakubTesarek/dbgr>`_
   Terminal based tool to test and debug HTTP APIs with ``aiohttp``.
+
+- `rororo <https://github.com/playpauseandstop/rororo>`_
+  Implement ``aiohtp.web`` OpenAPI 3 server applications with schema first
+  approach. Python 3.6+ required.
+
+- `aiohttp-middlewares <https://github.com/playpauseandstop/aiohttp-middlewares>`_
+  Collection of useful middlewares for ``aiohttp.web`` applications. Python
+  3.6+ required.
+
+- `aiohttp-tus <https://github.com/pylotcode/aiohttp-tus>`_
+  `tus.io <https://tus.io>`_ protocol implementation for ``aiohttp.web``
+  applications. Python 3.6+ required.
+
+- `aiohttp-sse-client <https://github.com/rtfol/aiohttp-sse-client>`_
+  A Server-Sent Event python client base on aiohttp. Python 3.6+ required.

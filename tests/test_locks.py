@@ -1,4 +1,4 @@
-"""Tests of custom aiohttp locks implementations"""
+# Tests of custom aiohttp locks implementations
 import asyncio
 
 import pytest
@@ -7,7 +7,6 @@ from aiohttp.locks import EventResultOrError
 
 
 class TestEventResultOrError:
-
     async def test_set_exception(self, loop) -> None:
         ev = EventResultOrError(loop=loop)
 

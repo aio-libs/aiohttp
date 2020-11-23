@@ -77,31 +77,6 @@ other resource you want to share between handlers.
         return app
 
 
-Why is Python 3.5.3 the lowest supported version?
--------------------------------------------------
-
-Python 3.5.2 fixes the protocol for async iterators: ``__aiter__()`` is
-not a coroutine but a regular function.
-
-Python 3.5.3 has a more important change: :func:`asyncio.get_event_loop`
-returns the running loop instance if called from a coroutine.
-Previously it returned a *default* loop, set by
-:func:`asyncio.set_event_loop`.
-
-Previous to Python 3.5.3,
-:func:`asyncio.get_event_loop` was not reliable, so users were
-forced to explicitly pass the event loop instance everywhere.
-If a future object were created for one event loop
-(e.g. the default loop) but a coroutine was run by another loop, the coroutine
-was never awaited. As a result, the task would hang.
-
-Keep in mind that every internal ``await`` expression either passed
-instantly or paused, waiting for a future.
-
-It's extremely important that all tasks (coroutine runners) and
-futures use the same event loop.
-
-
 How can middleware store data for web handlers to use?
 ------------------------------------------------------
 
@@ -163,8 +138,8 @@ peers. ::
 
         try:
             async for msg in channel.iter():
-                answer = process message(msg)
-                ws.send_str(answer)
+                answer = process_the_message(msg)  # your function here
+                await ws.send_str(answer)
         finally:
             await redis.unsubscribe('channel:1')
 
@@ -291,7 +266,7 @@ Sessions save cookies internally. If you don't need cookie processing,
 use :class:`aiohttp.DummyCookieJar`. If you need separate cookies
 for different http calls but process them in logical chains, use a single
 :class:`aiohttp.TCPConnector` with separate
-client sessions and ``own_connector=False``.
+client sessions and ``connector_owner=False``.
 
 
 How do I access database connections from a subapplication?

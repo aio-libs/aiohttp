@@ -5,7 +5,7 @@ from typing import Any, Optional
 try:
     from typing import Deque
 except ImportError:
-    from typing_extensions import Deque  # noqa
+    from typing_extensions import Deque
 
 
 class EventResultOrError:
@@ -15,13 +15,14 @@ class EventResultOrError:
 
     thanks to @vorpalsmith for the simple design.
     """
+
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
         self._exc = None  # type: Optional[BaseException]
-        self._event = asyncio.Event(loop=loop)
+        self._event = asyncio.Event()
         self._waiters = collections.deque()  # type: Deque[asyncio.Future[Any]]
 
-    def set(self, exc: Optional[BaseException]=None) -> None:
+    def set(self, exc: Optional[BaseException] = None) -> None:
         self._exc = exc
         self._event.set()
 

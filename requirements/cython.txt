@@ -1,1 +1,2 @@
-cython==0.29.13
+-r multidict.txt
+cython==0.29.21

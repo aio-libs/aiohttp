@@ -8,13 +8,17 @@ from aiohttp import web
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 
 
-@pytest.mark.skipif(platform.system() == "Windows",
-                    reason="the test is not valid for Windows")
+@pytest.mark.skipif(
+    platform.system() == "Windows", reason="the test is not valid for Windows"
+)
 async def test_subprocess_co(loop) -> None:
     assert isinstance(threading.current_thread(), threading._MainThread)
     proc = await asyncio.create_subprocess_shell(
-        "exit 0", loop=loop, stdin=asyncio.subprocess.DEVNULL,
-        stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
+        "exit 0",
+        stdin=asyncio.subprocess.DEVNULL,
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.DEVNULL,
+    )
     await proc.wait()
 
 

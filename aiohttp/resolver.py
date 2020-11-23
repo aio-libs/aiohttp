@@ -4,10 +4,11 @@ from typing import Any, Dict, List
 from .abc import AbstractResolver
 from .helpers import get_running_loop
 
-__all__ = ('ThreadedResolver', 'AsyncResolver', 'DefaultResolver')
+__all__ = ("ThreadedResolver", "AsyncResolver", "DefaultResolver")
 
 try:
     import aiodns
+
     # aiodns_default = hasattr(aiodns.DNSResolver, 'gethostbyname')
 except ImportError:  # pragma: no cover
     aiodns = None
@@ -23,18 +24,39 @@ class ThreadedResolver(AbstractResolver):
     def __init__(self) -> None:
         self._loop = get_running_loop()
 
-    async def resolve(self, host: str, port: int=0,
-                      family: int=socket.AF_INET) -> List[Dict[str, Any]]:
+    async def resolve(
+        self, hostname: str, port: int = 0, family: int = socket.AF_INET
+    ) -> List[Dict[str, Any]]:
         infos = await self._loop.getaddrinfo(
-            host, port, type=socket.SOCK_STREAM, family=family)
+            hostname,
+            port,
+            type=socket.SOCK_STREAM,
+            family=family,
+            flags=socket.AI_ADDRCONFIG,
+        )
 
         hosts = []
         for family, _, proto, _, address in infos:
+            if family == socket.AF_INET6 and address[3]:  # type: ignore
+                # This is essential for link-local IPv6 addresses.
+                # LL IPv6 is a VERY rare case. Strictly speaking, we should use
+                # getnameinfo() unconditionally, but performance makes sense.
+                host, _port = socket.getnameinfo(
+                    address, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV
+                )
+                port = int(_port)
+            else:
+                host, port = address[:2]
             hosts.append(
-                {'hostname': host,
-                 'host': address[0], 'port': address[1],
-                 'family': family, 'proto': proto,
-                 'flags': socket.AI_NUMERICHOST})
+                {
+                    "hostname": hostname,
+                    "host": host,
+                    "port": port,
+                    "family": family,
+                    "proto": proto,
+                    "flags": socket.AI_NUMERICHOST | socket.AI_NUMERICSERV,
+                }
+            )
 
         return hosts
 
@@ -52,8 +74,9 @@ class AsyncResolver(AbstractResolver):
         self._loop = get_running_loop()
         self._resolver = aiodns.DNSResolver(*args, loop=self._loop, **kwargs)
 
-    async def resolve(self, host: str, port: int=0,
-                      family: int=socket.AF_INET) -> List[Dict[str, Any]]:
+    async def resolve(
+        self, host: str, port: int = 0, family: int = socket.AF_INET
+    ) -> List[Dict[str, Any]]:
         try:
             resp = await self._resolver.gethostbyname(host, family)
         except aiodns.error.DNSError as exc:
@@ -62,10 +85,15 @@ class AsyncResolver(AbstractResolver):
         hosts = []
         for address in resp.addresses:
             hosts.append(
-                {'hostname': host,
-                 'host': address, 'port': port,
-                 'family': family, 'proto': 0,
-                 'flags': socket.AI_NUMERICHOST})
+                {
+                    "hostname": host,
+                    "host": address,
+                    "port": port,
+                    "family": family,
+                    "proto": 0,
+                    "flags": socket.AI_NUMERICHOST | socket.AI_NUMERICSERV,
+                }
+            )
 
         if not hosts:
             raise OSError("DNS lookup failed")
