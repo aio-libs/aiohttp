@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 import datetime
 import io
 import re
@@ -24,7 +25,6 @@ from typing import (
 )
 from urllib.parse import parse_qsl
 
-import attr
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
@@ -65,7 +65,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from .web_urldispatcher import UrlMappingMatchInfo
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class FileField:
     name: str
     filename: str

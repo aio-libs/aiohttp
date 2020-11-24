@@ -4,6 +4,7 @@ import asyncio
 import base64
 import binascii
 import cgi
+import dataclasses
 import datetime
 import functools
 import netrc
@@ -41,7 +42,6 @@ from urllib.parse import quote
 from urllib.request import getproxies
 
 import async_timeout
-import attr
 from multidict import CIMultiDict, MultiDict, MultiDictProxy
 from typing_extensions import Protocol, final
 from yarl import URL
@@ -230,7 +230,7 @@ def netrc_from_env() -> Optional[netrc.netrc]:
     return None
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class ProxyInfo:
     proxy: URL
     proxy_auth: Optional[BasicAuth]
@@ -267,7 +267,7 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
     return ret
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class MimeType:
     type: str
     subtype: str

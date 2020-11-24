@@ -1,10 +1,10 @@
 """WebSocket client for asyncio."""
 
 import asyncio
+import dataclasses
 from typing import Any, Optional
 
 import async_timeout
-import attr
 
 from .client_exceptions import ClientError
 from .client_reqrep import ClientResponse
@@ -27,7 +27,7 @@ from .typedefs import (
 )
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class ClientWSTimeout:
     ws_receive: Optional[float] = None
     ws_close: Optional[float] = None
