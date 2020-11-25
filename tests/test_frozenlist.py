@@ -1,14 +1,15 @@
 from collections.abc import MutableSequence
+from typing import Any
 
 import pytest
 
-from aiohttp.frozenlist import FrozenList, PyFrozenList
+from aiohttp.frozenlist import FrozenList as CFrozenList, PyFrozenList
 
 
 class FrozenListMixin:
-    FrozenList = NotImplemented
+    FrozenList: Any = NotImplemented
 
-    SKIP_METHODS = {"__abstractmethods__", "__slots__"}
+    SKIP_METHODS: Any = {"__abstractmethods__", "__slots__"}
 
     def test_subclass(self) -> None:
         assert issubclass(self.FrozenList, MutableSequence)
@@ -222,9 +223,9 @@ class FrozenListMixin:
         assert _list.count(1) == 1
 
 
-class TestFrozenList(FrozenListMixin):
-    FrozenList = FrozenList
+class TestFrozenListC(FrozenListMixin):
+    FrozenList: Any = CFrozenList
 
 
 class TestFrozenListPy(FrozenListMixin):
-    FrozenList = PyFrozenList
+    FrozenList: Any = PyFrozenList

@@ -1,3 +1,5 @@
+# type: ignore
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -11,7 +13,7 @@ def buf():
 
 
 @pytest.fixture
-def writer(buf):
+def writer(buf: Any):
     writer = mock.Mock()
 
     async def write(chunk):
@@ -21,7 +23,7 @@ def writer(buf):
     return writer
 
 
-def test_formdata_multipart(buf, writer) -> None:
+def test_formdata_multipart(buf: Any, writer: Any) -> None:
     form = FormData()
     assert not form.is_multipart
 
@@ -70,7 +72,7 @@ def test_invalid_formdata_content_transfer_encoding() -> None:
             form.add_field("foo", "bar", content_transfer_encoding=invalid_val)
 
 
-async def test_formdata_field_name_is_quoted(buf, writer) -> None:
+async def test_formdata_field_name_is_quoted(buf: Any, writer: Any) -> None:
     form = FormData(charset="ascii")
     form.add_field("emails[]", "xxx@x.co", content_type="multipart/form-data")
     payload = form()
@@ -78,7 +80,7 @@ async def test_formdata_field_name_is_quoted(buf, writer) -> None:
     assert b'name="emails%5B%5D"' in buf
 
 
-async def test_formdata_field_name_is_not_quoted(buf, writer) -> None:
+async def test_formdata_field_name_is_not_quoted(buf: Any, writer: Any) -> None:
     form = FormData(quote_fields=False, charset="ascii")
     form.add_field("emails[]", "xxx@x.co", content_type="multipart/form-data")
     payload = form()
