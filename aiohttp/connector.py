@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 import functools
 import logging
 import random
@@ -27,8 +28,6 @@ from typing import (  # noqa
     Union,
     cast,
 )
-
-import attr
 
 from . import hdrs, helpers
 from .abc import AbstractResolver
@@ -1070,7 +1069,7 @@ class TCPConnector(BaseConnector):
             # asyncio handles this perfectly
             proxy_req.method = hdrs.METH_CONNECT
             proxy_req.url = req.url
-            key = attr.evolve(
+            key = dataclasses.replace(
                 req.connection_key, proxy=None, proxy_auth=None, proxy_headers_hash=None
             )
             conn = Connection(self, key, proto, self._loop)

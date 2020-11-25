@@ -100,9 +100,8 @@ def test_version_default(make_request: Any) -> None:
 
 def test_request_info(make_request: Any) -> None:
     req = make_request("get", "http://python.org/")
-    assert req.request_info == aiohttp.RequestInfo(
-        URL("http://python.org/"), "GET", req.headers
-    )
+    url = URL("http://python.org/")
+    assert req.request_info == aiohttp.RequestInfo(url, "GET", req.headers, url)
 
 
 def test_request_info_with_fragment(make_request: Any) -> None:

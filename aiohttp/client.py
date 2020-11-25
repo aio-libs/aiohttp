@@ -2,6 +2,7 @@
 
 import asyncio
 import base64
+import dataclasses
 import hashlib
 import json
 import os
@@ -28,7 +29,6 @@ from typing import (
     Union,
 )
 
-import attr
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from typing_extensions import final
 from yarl import URL
@@ -136,7 +136,7 @@ except ImportError:  # pragma: no cover
     SSLContext = object  # type: ignore
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class ClientTimeout:
     total: Optional[float] = None
     connect: Optional[float] = None
@@ -701,7 +701,7 @@ class ClientSession:
                 DeprecationWarning,
                 stacklevel=2,
             )
-            ws_timeout = attr.evolve(ws_timeout, ws_receive=receive_timeout)
+            ws_timeout = dataclasses.replace(ws_timeout, ws_receive=receive_timeout)
 
         if headers is None:
             real_headers = CIMultiDict()  # type: CIMultiDict[str]
