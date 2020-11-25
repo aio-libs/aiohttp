@@ -1,4 +1,6 @@
+# type: ignore
 import pathlib
+from typing import Any
 
 import pytest
 from yarl import URL
@@ -12,7 +14,7 @@ def router():
     return UrlDispatcher()
 
 
-def test_get(router) -> None:
+def test_get(router: Any) -> None:
     async def handler(request):
         pass
 
@@ -29,7 +31,7 @@ def test_get(router) -> None:
     assert route2.method == "HEAD"
 
 
-def test_head(router) -> None:
+def test_head(router: Any) -> None:
     async def handler(request):
         pass
 
@@ -42,7 +44,7 @@ def test_head(router) -> None:
     assert str(route.url_for()) == "/"
 
 
-def test_options(router) -> None:
+def test_options(router: Any) -> None:
     async def handler(request):
         pass
 
@@ -55,7 +57,7 @@ def test_options(router) -> None:
     assert str(route.url_for()) == "/"
 
 
-def test_post(router) -> None:
+def test_post(router: Any) -> None:
     async def handler(request):
         pass
 
@@ -67,7 +69,7 @@ def test_post(router) -> None:
     assert str(route.url_for()) == "/"
 
 
-def test_put(router) -> None:
+def test_put(router: Any) -> None:
     async def handler(request):
         pass
 
@@ -80,7 +82,7 @@ def test_put(router) -> None:
     assert str(route.url_for()) == "/"
 
 
-def test_patch(router) -> None:
+def test_patch(router: Any) -> None:
     async def handler(request):
         pass
 
@@ -93,7 +95,7 @@ def test_patch(router) -> None:
     assert str(route.url_for()) == "/"
 
 
-def test_delete(router) -> None:
+def test_delete(router: Any) -> None:
     async def handler(request):
         pass
 
@@ -106,7 +108,7 @@ def test_delete(router) -> None:
     assert str(route.url_for()) == "/"
 
 
-def test_route(router) -> None:
+def test_route(router: Any) -> None:
     async def handler(request):
         pass
 
@@ -119,7 +121,7 @@ def test_route(router) -> None:
     assert str(route.url_for()) == "/"
 
 
-def test_static(router) -> None:
+def test_static(router: Any) -> None:
     folder = pathlib.Path(__file__).parent
     router.add_routes([web.static("/prefix", folder)])
     assert len(router.resources()) == 1  # 2 routes: for HEAD and GET
@@ -132,7 +134,7 @@ def test_static(router) -> None:
     assert url == URL("/prefix/aiohttp.png")
 
 
-def test_head_deco(router) -> None:
+def test_head_deco(router: Any) -> None:
     routes = web.RouteTableDef()
 
     @routes.head("/path")
@@ -148,7 +150,7 @@ def test_head_deco(router) -> None:
     assert str(route.url_for()) == "/path"
 
 
-def test_get_deco(router) -> None:
+def test_get_deco(router: Any) -> None:
     routes = web.RouteTableDef()
 
     @routes.get("/path")
@@ -168,7 +170,7 @@ def test_get_deco(router) -> None:
     assert str(route2.url_for()) == "/path"
 
 
-def test_post_deco(router) -> None:
+def test_post_deco(router: Any) -> None:
     routes = web.RouteTableDef()
 
     @routes.post("/path")
@@ -184,7 +186,7 @@ def test_post_deco(router) -> None:
     assert str(route.url_for()) == "/path"
 
 
-def test_put_deco(router) -> None:
+def test_put_deco(router: Any) -> None:
     routes = web.RouteTableDef()
 
     @routes.put("/path")
@@ -200,7 +202,7 @@ def test_put_deco(router) -> None:
     assert str(route.url_for()) == "/path"
 
 
-def test_patch_deco(router) -> None:
+def test_patch_deco(router: Any) -> None:
     routes = web.RouteTableDef()
 
     @routes.patch("/path")
@@ -216,7 +218,7 @@ def test_patch_deco(router) -> None:
     assert str(route.url_for()) == "/path"
 
 
-def test_delete_deco(router) -> None:
+def test_delete_deco(router: Any) -> None:
     routes = web.RouteTableDef()
 
     @routes.delete("/path")
@@ -232,7 +234,7 @@ def test_delete_deco(router) -> None:
     assert str(route.url_for()) == "/path"
 
 
-def test_options_deco(router) -> None:
+def test_options_deco(router: Any) -> None:
     routes = web.RouteTableDef()
 
     @routes.options("/path")
@@ -248,7 +250,7 @@ def test_options_deco(router) -> None:
     assert str(route.url_for()) == "/path"
 
 
-def test_route_deco(router) -> None:
+def test_route_deco(router: Any) -> None:
     routes = web.RouteTableDef()
 
     @routes.route("OTHER", "/path")

@@ -1,4 +1,6 @@
+# type: ignore
 import random
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -22,36 +24,36 @@ def transport():
 
 
 @pytest.fixture
-def writer(protocol, transport):
+def writer(protocol: Any, transport: Any):
     return WebSocketWriter(protocol, transport, use_mask=False)
 
 
-async def test_pong(writer) -> None:
+async def test_pong(writer: Any) -> None:
     await writer.pong()
     writer.transport.write.assert_called_with(b"\x8a\x00")
 
 
-async def test_ping(writer) -> None:
+async def test_ping(writer: Any) -> None:
     await writer.ping()
     writer.transport.write.assert_called_with(b"\x89\x00")
 
 
-async def test_send_text(writer) -> None:
+async def test_send_text(writer: Any) -> None:
     await writer.send(b"text")
     writer.transport.write.assert_called_with(b"\x81\x04text")
 
 
-async def test_send_binary(writer) -> None:
+async def test_send_binary(writer: Any) -> None:
     await writer.send("binary", True)
     writer.transport.write.assert_called_with(b"\x82\x06binary")
 
 
-async def test_send_binary_long(writer) -> None:
+async def test_send_binary_long(writer: Any) -> None:
     await writer.send(b"b" * 127, True)
     assert writer.transport.write.call_args[0][0].startswith(b"\x82~\x00\x7fb")
 
 
-async def test_send_binary_very_long(writer) -> None:
+async def test_send_binary_very_long(writer: Any) -> None:
     await writer.send(b"b" * 65537, True)
     assert (
         writer.transport.write.call_args_list[0][0][0]
@@ -60,7 +62,7 @@ async def test_send_binary_very_long(writer) -> None:
     assert writer.transport.write.call_args_list[1][0][0] == b"b" * 65537
 
 
-async def test_close(writer) -> None:
+async def test_close(writer: Any) -> None:
     await writer.close(1001, "msg")
     writer.transport.write.assert_called_with(b"\x88\x05\x03\xe9msg")
 
@@ -72,7 +74,7 @@ async def test_close(writer) -> None:
     writer.transport.write.assert_called_with(b"\x88\x05\x03\xf4msg")
 
 
-async def test_send_text_masked(protocol, transport) -> None:
+async def test_send_text_masked(protocol: Any, transport: Any) -> None:
     writer = WebSocketWriter(
         protocol, transport, use_mask=True, random=random.Random(123)
     )
@@ -80,7 +82,7 @@ async def test_send_text_masked(protocol, transport) -> None:
     writer.transport.write.assert_called_with(b"\x81\x84\rg\xb3fy\x02\xcb\x12")
 
 
-async def test_send_compress_text(protocol, transport) -> None:
+async def test_send_compress_text(protocol: Any, transport: Any) -> None:
     writer = WebSocketWriter(protocol, transport, compress=15)
     await writer.send(b"text")
     writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")
@@ -88,7 +90,7 @@ async def test_send_compress_text(protocol, transport) -> None:
     writer.transport.write.assert_called_with(b"\xc1\x05*\x01b\x00\x00")
 
 
-async def test_send_compress_text_notakeover(protocol, transport) -> None:
+async def test_send_compress_text_notakeover(protocol: Any, transport: Any) -> None:
     writer = WebSocketWriter(protocol, transport, compress=15, notakeover=True)
     await writer.send(b"text")
     writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")
@@ -96,7 +98,7 @@ async def test_send_compress_text_notakeover(protocol, transport) -> None:
     writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")
 
 
-async def test_send_compress_text_per_message(protocol, transport) -> None:
+async def test_send_compress_text_per_message(protocol: Any, transport: Any) -> None:
     writer = WebSocketWriter(protocol, transport)
     await writer.send(b"text", compress=15)
     writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")

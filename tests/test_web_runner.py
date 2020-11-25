@@ -1,6 +1,8 @@
+# type: ignore
 import asyncio
 import platform
 import signal
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -16,7 +18,7 @@ def app():
 
 
 @pytest.fixture
-def make_runner(loop, app):
+def make_runner(loop: Any, app: Any):
     asyncio.set_event_loop(loop)
     runners = []
 
@@ -30,7 +32,7 @@ def make_runner(loop, app):
         loop.run_until_complete(runner.cleanup())
 
 
-async def test_site_for_nonfrozen_app(make_runner) -> None:
+async def test_site_for_nonfrozen_app(make_runner: Any) -> None:
     runner = make_runner()
     with pytest.raises(RuntimeError):
         web.TCPSite(runner)
@@ -40,7 +42,7 @@ async def test_site_for_nonfrozen_app(make_runner) -> None:
 @pytest.mark.skipif(
     platform.system() == "Windows", reason="the test is not valid for Windows"
 )
-async def test_runner_setup_handle_signals(make_runner) -> None:
+async def test_runner_setup_handle_signals(make_runner: Any) -> None:
     runner = make_runner(handle_signals=True)
     await runner.setup()
     assert signal.getsignal(signal.SIGTERM) is not signal.SIG_DFL
@@ -51,7 +53,7 @@ async def test_runner_setup_handle_signals(make_runner) -> None:
 @pytest.mark.skipif(
     platform.system() == "Windows", reason="the test is not valid for Windows"
 )
-async def test_runner_setup_without_signal_handling(make_runner) -> None:
+async def test_runner_setup_without_signal_handling(make_runner: Any) -> None:
     runner = make_runner(handle_signals=False)
     await runner.setup()
     assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
@@ -59,7 +61,7 @@ async def test_runner_setup_without_signal_handling(make_runner) -> None:
     assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
 
 
-async def test_site_double_added(make_runner) -> None:
+async def test_site_double_added(make_runner: Any) -> None:
     _sock = get_unused_port_socket("127.0.0.1")
     runner = make_runner()
     await runner.setup()
@@ -71,7 +73,7 @@ async def test_site_double_added(make_runner) -> None:
     assert len(runner.sites) == 1
 
 
-async def test_site_stop_not_started(make_runner) -> None:
+async def test_site_stop_not_started(make_runner: Any) -> None:
     runner = make_runner()
     await runner.setup()
     site = web.TCPSite(runner)
@@ -81,13 +83,13 @@ async def test_site_stop_not_started(make_runner) -> None:
     assert len(runner.sites) == 0
 
 
-async def test_custom_log_format(make_runner) -> None:
+async def test_custom_log_format(make_runner: Any) -> None:
     runner = make_runner(access_log_format="abc")
     await runner.setup()
     assert runner.server._kwargs["access_log_format"] == "abc"
 
 
-async def test_unreg_site(make_runner) -> None:
+async def test_unreg_site(make_runner: Any) -> None:
     runner = make_runner()
     await runner.setup()
     site = web.TCPSite(runner)
@@ -95,7 +97,7 @@ async def test_unreg_site(make_runner) -> None:
         runner._unreg_site(site)
 
 
-async def test_app_property(make_runner, app) -> None:
+async def test_app_property(make_runner: Any, app: Any) -> None:
     runner = make_runner()
     assert runner.app is app
 
@@ -151,7 +153,7 @@ async def test_app_make_handler_access_log_class2() -> None:
     assert runner._kwargs["access_log_class"] is Logger
 
 
-async def test_addresses(make_runner, unix_sockname) -> None:
+async def test_addresses(make_runner: Any, unix_sockname: Any) -> None:
     _sock = get_unused_port_socket("127.0.0.1")
     runner = make_runner()
     await runner.setup()
@@ -167,7 +169,9 @@ async def test_addresses(make_runner, unix_sockname) -> None:
 @pytest.mark.skipif(
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
-async def test_named_pipe_runner_wrong_loop(app, selector_loop, pipe_name) -> None:
+async def test_named_pipe_runner_wrong_loop(
+    app: Any, selector_loop: Any, pipe_name: Any
+) -> None:
     runner = web.AppRunner(app)
     await runner.setup()
     with pytest.raises(RuntimeError):
@@ -177,7 +181,9 @@ async def test_named_pipe_runner_wrong_loop(app, selector_loop, pipe_name) -> No
 @pytest.mark.skipif(
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
-async def test_named_pipe_runner_proactor_loop(proactor_loop, app, pipe_name) -> None:
+async def test_named_pipe_runner_proactor_loop(
+    proactor_loop: Any, app: Any, pipe_name: Any
+) -> None:
     runner = web.AppRunner(app)
     await runner.setup()
     pipe = web.NamedPipeSite(runner, pipe_name)
@@ -185,7 +191,7 @@ async def test_named_pipe_runner_proactor_loop(proactor_loop, app, pipe_name) ->
     await runner.cleanup()
 
 
-async def test_tcpsite_default_host(make_runner):
+async def test_tcpsite_default_host(make_runner: Any) -> None:
     runner = make_runner()
     await runner.setup()
     site = web.TCPSite(runner)

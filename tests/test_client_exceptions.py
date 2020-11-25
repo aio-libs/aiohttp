@@ -1,14 +1,16 @@
+# type: ignore
 # Tests for client_exceptions.py
 
 import errno
 import pickle
 import sys
+from typing import Any
 
 from aiohttp import client, client_reqrep
 
 
 class TestClientResponseError:
-    request_info = client.RequestInfo(
+    request_info: Any = client.RequestInfo(
         url="http://example.com",
         method="GET",
         headers={},
@@ -84,7 +86,7 @@ class TestClientResponseError:
 
 
 class TestClientConnectorError:
-    connection_key = client_reqrep.ConnectionKey(
+    connection_key: Any = client_reqrep.ConnectionKey(
         host="example.com",
         port=8080,
         is_ssl=False,
@@ -145,7 +147,7 @@ class TestClientConnectorError:
 
 
 class TestClientConnectorCertificateError:
-    connection_key = client_reqrep.ConnectionKey(
+    connection_key: Any = client_reqrep.ConnectionKey(
         host="example.com",
         port=8080,
         is_ssl=False,

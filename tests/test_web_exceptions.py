@@ -1,6 +1,8 @@
+# type: ignore
 import collections
 import pickle
 from traceback import format_exception
+from typing import Any
 
 import pytest
 from yarl import URL
@@ -151,7 +153,7 @@ class TestHTTPOk:
             assert resp2.status == 200
             assert resp2.foo == "bar"
 
-    async def test_app(self, aiohttp_client) -> None:
+    async def test_app(self, aiohttp_client: Any) -> None:
         async def handler(request):
             raise web.HTTPOk()
 
@@ -205,7 +207,7 @@ class TestHTTPFound:
             assert resp2.status == 302
             assert resp2.foo == "bar"
 
-    async def test_app(self, aiohttp_client) -> None:
+    async def test_app(self, aiohttp_client: Any) -> None:
         async def handler(request):
             raise web.HTTPFound(location="/redirect")
 

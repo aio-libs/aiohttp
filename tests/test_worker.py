@@ -1,3 +1,4 @@
+# type: ignore
 # Tests for aiohttp/worker.py
 import asyncio
 import os
@@ -39,16 +40,14 @@ class BaseTestWorker:
         self.wsgi = web.Application()
 
 
-class AsyncioWorker(BaseTestWorker, base_worker.GunicornWebWorker):  # type: ignore
+class AsyncioWorker(BaseTestWorker, base_worker.GunicornWebWorker):
     pass
 
 
 PARAMS = [AsyncioWorker]
 if uvloop is not None:
 
-    class UvloopWorker(
-        BaseTestWorker, base_worker.GunicornUVLoopWebWorker  # type: ignore
-    ):
+    class UvloopWorker(BaseTestWorker, base_worker.GunicornUVLoopWebWorker):
         pass
 
     PARAMS.append(UvloopWorker)
