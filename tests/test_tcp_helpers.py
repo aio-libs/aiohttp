@@ -1,12 +1,11 @@
 import socket
-from typing import Any
 from unittest import mock
 
 import pytest
 
 from aiohttp.tcp_helpers import tcp_nodelay
 
-has_ipv6: Any = socket.has_ipv6
+has_ipv6: bool = socket.has_ipv6
 if has_ipv6:
     # The socket.has_ipv6 flag may be True if Python was built with IPv6
     # support, but the target system still may not have it.
