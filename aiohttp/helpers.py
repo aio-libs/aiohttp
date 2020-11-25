@@ -29,6 +29,7 @@ from typing import (
     Iterator,
     List,
     Mapping,
+    NewType,
     Optional,
     Pattern,
     Tuple,
@@ -64,8 +65,9 @@ except ImportError:
 _T = TypeVar("_T")
 _S = TypeVar("_S")
 
+_SENTINEL = NewType("_SENTINEL", object)
 
-sentinel = object()  # type: Any
+sentinel: _SENTINEL = _SENTINEL(object())
 NO_EXTENSIONS = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))  # type: bool
 
 # N.B. sys.flags.dev_mode is available on Python 3.7+, use getattr
@@ -657,7 +659,7 @@ class HeadersMixin:
         super().__init__()
         self._content_type = None  # type: Optional[str]
         self._content_dict = None  # type: Optional[Dict[str, str]]
-        self._stored_content_type = sentinel
+        self._stored_content_type: Union[str, _SENTINEL] = sentinel
 
     def _parse_content_type(self, raw: str) -> None:
         self._stored_content_type = raw

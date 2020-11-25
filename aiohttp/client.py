@@ -76,6 +76,7 @@ from .connector import (
 )
 from .cookiejar import CookieJar
 from .helpers import (
+    _SENTINEL,
     BasicAuth,
     TimeoutHandle,
     ceil_timeout,
@@ -207,7 +208,7 @@ class ClientSession:
         raise_for_status: Union[
             bool, Callable[[ClientResponse], Awaitable[None]]
         ] = False,
-        timeout: Union[object, ClientTimeout] = sentinel,
+        timeout: Union[_SENTINEL, ClientTimeout] = sentinel,
         auto_decompress: bool = True,
         trust_env: bool = False,
         requote_redirect_url: bool = True,
@@ -325,7 +326,7 @@ class ClientSession:
         read_until_eof: bool = True,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
-        timeout: Union[ClientTimeout, object] = sentinel,
+        timeout: Union[ClientTimeout, _SENTINEL] = sentinel,
         ssl: Optional[Union[SSLContext, bool, Fingerprint]] = None,
         proxy_headers: Optional[LooseHeaders] = None,
         trace_request_ctx: Optional[SimpleNamespace] = None,
@@ -619,7 +620,7 @@ class ClientSession:
         *,
         method: str = hdrs.METH_GET,
         protocols: Iterable[str] = (),
-        timeout: Union[ClientWSTimeout, float] = sentinel,
+        timeout: Union[ClientWSTimeout, float, _SENTINEL] = sentinel,
         receive_timeout: Optional[float] = None,
         autoclose: bool = True,
         autoping: bool = True,
@@ -663,7 +664,7 @@ class ClientSession:
         *,
         method: str = hdrs.METH_GET,
         protocols: Iterable[str] = (),
-        timeout: Union[ClientWSTimeout, float] = sentinel,
+        timeout: Union[ClientWSTimeout, float, _SENTINEL] = sentinel,
         receive_timeout: Optional[float] = None,
         autoclose: bool = True,
         autoping: bool = True,
@@ -689,7 +690,7 @@ class ClientSession:
                     DeprecationWarning,
                     stacklevel=2,
                 )
-                ws_timeout = ClientWSTimeout(ws_close=timeout)
+                ws_timeout = ClientWSTimeout(ws_close=timeout)  # type: ignore
         else:
             ws_timeout = DEFAULT_WS_CLIENT_TIMEOUT
         if receive_timeout is not None:
@@ -1147,7 +1148,7 @@ def request(
     read_until_eof: bool = True,
     proxy: Optional[StrOrURL] = None,
     proxy_auth: Optional[BasicAuth] = None,
-    timeout: Union[ClientTimeout, object] = sentinel,
+    timeout: Union[ClientTimeout, _SENTINEL] = sentinel,
     cookies: Optional[LooseCookies] = None,
     version: HttpVersion = http.HttpVersion11,
     connector: Optional[BaseConnector] = None,

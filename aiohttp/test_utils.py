@@ -24,7 +24,7 @@ from . import ClientSession, hdrs
 from .abc import AbstractCookieJar
 from .client_reqrep import ClientResponse
 from .client_ws import ClientWebSocketResponse
-from .helpers import PY_38, sentinel
+from .helpers import _SENTINEL, PY_38, sentinel
 from .http import HttpVersion, RawRequestMessage
 from .signals import Signal
 from .web import (
@@ -84,7 +84,7 @@ class BaseTestServer(ABC):
     def __init__(
         self,
         *,
-        scheme: Union[str, object] = sentinel,
+        scheme: Union[str, _SENTINEL] = sentinel,
         host: str = "127.0.0.1",
         port: Optional[int] = None,
         skip_url_asserts: bool = False,
@@ -198,7 +198,7 @@ class TestServer(BaseTestServer):
         self,
         app: Application,
         *,
-        scheme: Union[str, object] = sentinel,
+        scheme: Union[str, _SENTINEL] = sentinel,
         host: str = "127.0.0.1",
         port: Optional[int] = None,
         **kwargs: Any,
@@ -215,7 +215,7 @@ class RawTestServer(BaseTestServer):
         self,
         handler: _RequestHandler,
         *,
-        scheme: Union[str, object] = sentinel,
+        scheme: Union[str, _SENTINEL] = sentinel,
         host: str = "127.0.0.1",
         port: Optional[int] = None,
         **kwargs: Any,
