@@ -143,7 +143,7 @@ async def test_lost_drain_cancelled() -> None:
 
     fut = loop.create_future()
 
-    async def wait():
+    async def wait() -> None:
         fut.set_result(None)
         await pr._drain_helper()
 
@@ -167,7 +167,7 @@ async def test_resume_drain_cancelled() -> None:
 
     fut = loop.create_future()
 
-    async def wait():
+    async def wait() -> None:
         fut.set_result(None)
         await pr._drain_helper()
 

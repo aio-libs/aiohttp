@@ -2,6 +2,7 @@
 
 import base64
 import os
+from typing import Any, List, Tuple
 
 import pytest
 
@@ -10,12 +11,12 @@ from aiohttp.test_utils import make_mocked_request
 
 
 def gen_ws_headers(
-    protocols="",
-    compress=0,
-    extension_text="",
-    server_notakeover=False,
-    client_notakeover=False,
-):
+    protocols: str = "",
+    compress: int = 0,
+    extension_text: str = "",
+    server_notakeover: bool = False,
+    client_notakeover: bool = False,
+) -> Tuple[List[Tuple[str, str]], str]:
     key = base64.b64encode(os.urandom(16)).decode()
     hdrs = [
         ("Upgrade", "websocket"),
@@ -164,7 +165,7 @@ async def test_handshake_protocol_agreement() -> None:
     assert ws.ws_protocol == best_proto
 
 
-async def test_handshake_protocol_unsupported(caplog) -> None:
+async def test_handshake_protocol_unsupported(caplog: Any) -> None:
     # Tests if a protocol mismatch handshake warns and returns None
     proto = "chat"
     req = make_mocked_request("GET", "/", headers=gen_ws_headers("test")[0])

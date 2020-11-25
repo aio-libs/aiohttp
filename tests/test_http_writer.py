@@ -1,5 +1,7 @@
+# type: ignore
 # Tests for aiohttp/http_writer.py
 import array
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -14,7 +16,7 @@ def buf():
 
 
 @pytest.fixture
-def transport(buf):
+def transport(buf: Any):
     transport = mock.Mock()
 
     def write(chunk):
@@ -26,19 +28,19 @@ def transport(buf):
 
 
 @pytest.fixture
-def protocol(loop, transport):
+def protocol(loop: Any, transport: Any):
     protocol = mock.Mock(transport=transport)
     protocol._drain_helper = make_mocked_coro()
     return protocol
 
 
-def test_payloadwriter_properties(transport, protocol, loop) -> None:
+def test_payloadwriter_properties(transport: Any, protocol: Any, loop: Any) -> None:
     writer = http.StreamWriter(protocol, loop)
     assert writer.protocol == protocol
     assert writer.transport == transport
 
 
-async def test_write_payload_eof(transport, protocol, loop) -> None:
+async def test_write_payload_eof(transport: Any, protocol: Any, loop: Any) -> None:
     write = transport.write = mock.Mock()
     msg = http.StreamWriter(protocol, loop)
 
@@ -50,7 +52,9 @@ async def test_write_payload_eof(transport, protocol, loop) -> None:
     assert b"data1data2" == content.split(b"\r\n\r\n", 1)[-1]
 
 
-async def test_write_payload_chunked(buf, protocol, transport, loop) -> None:
+async def test_write_payload_chunked(
+    buf: Any, protocol: Any, transport: Any, loop: Any
+) -> None:
     msg = http.StreamWriter(protocol, loop)
     msg.enable_chunking()
     await msg.write(b"data")
@@ -59,7 +63,9 @@ async def test_write_payload_chunked(buf, protocol, transport, loop) -> None:
     assert b"4\r\ndata\r\n0\r\n\r\n" == buf
 
 
-async def test_write_payload_chunked_multiple(buf, protocol, transport, loop) -> None:
+async def test_write_payload_chunked_multiple(
+    buf: Any, protocol: Any, transport: Any, loop: Any
+) -> None:
     msg = http.StreamWriter(protocol, loop)
     msg.enable_chunking()
     await msg.write(b"data1")
@@ -69,7 +75,7 @@ async def test_write_payload_chunked_multiple(buf, protocol, transport, loop) ->
     assert b"5\r\ndata1\r\n5\r\ndata2\r\n0\r\n\r\n" == buf
 
 
-async def test_write_payload_length(protocol, transport, loop) -> None:
+async def test_write_payload_length(protocol: Any, transport: Any, loop: Any) -> None:
     write = transport.write = mock.Mock()
 
     msg = http.StreamWriter(protocol, loop)
@@ -82,7 +88,9 @@ async def test_write_payload_length(protocol, transport, loop) -> None:
     assert b"da" == content.split(b"\r\n\r\n", 1)[-1]
 
 
-async def test_write_payload_chunked_filter(protocol, transport, loop) -> None:
+async def test_write_payload_chunked_filter(
+    protocol: Any, transport: Any, loop: Any
+) -> None:
     write = transport.write = mock.Mock()
 
     msg = http.StreamWriter(protocol, loop)
@@ -95,7 +103,9 @@ async def test_write_payload_chunked_filter(protocol, transport, loop) -> None:
     assert content.endswith(b"2\r\nda\r\n2\r\nta\r\n0\r\n\r\n")
 
 
-async def test_write_payload_chunked_filter_mutiple_chunks(protocol, transport, loop):
+async def test_write_payload_chunked_filter_mutiple_chunks(
+    protocol: Any, transport: Any, loop: Any
+) -> None:
     write = transport.write = mock.Mock()
     msg = http.StreamWriter(protocol, loop)
     msg.enable_chunking()
@@ -111,7 +121,9 @@ async def test_write_payload_chunked_filter_mutiple_chunks(protocol, transport, 
     )
 
 
-async def test_write_payload_deflate_compression(protocol, transport, loop) -> None:
+async def test_write_payload_deflate_compression(
+    protocol: Any, transport: Any, loop: Any
+) -> None:
 
     COMPRESSED = b"x\x9cKI,I\x04\x00\x04\x00\x01\x9b"
     write = transport.write = mock.Mock()
@@ -126,7 +138,9 @@ async def test_write_payload_deflate_compression(protocol, transport, loop) -> N
     assert COMPRESSED == content.split(b"\r\n\r\n", 1)[-1]
 
 
-async def test_write_payload_deflate_and_chunked(buf, protocol, transport, loop):
+async def test_write_payload_deflate_and_chunked(
+    buf: Any, protocol: Any, transport: Any, loop: Any
+) -> None:
     msg = http.StreamWriter(protocol, loop)
     msg.enable_compression("deflate")
     msg.enable_chunking()
@@ -139,7 +153,9 @@ async def test_write_payload_deflate_and_chunked(buf, protocol, transport, loop)
     assert thing == buf
 
 
-async def test_write_payload_bytes_memoryview(buf, protocol, transport, loop):
+async def test_write_payload_bytes_memoryview(
+    buf: Any, protocol: Any, transport: Any, loop: Any
+) -> None:
 
     msg = http.StreamWriter(protocol, loop)
 
@@ -152,7 +168,9 @@ async def test_write_payload_bytes_memoryview(buf, protocol, transport, loop):
     assert thing == buf
 
 
-async def test_write_payload_short_ints_memoryview(buf, protocol, transport, loop):
+async def test_write_payload_short_ints_memoryview(
+    buf: Any, protocol: Any, transport: Any, loop: Any
+) -> None:
     msg = http.StreamWriter(protocol, loop)
     msg.enable_chunking()
 
@@ -168,7 +186,9 @@ async def test_write_payload_short_ints_memoryview(buf, protocol, transport, loo
     assert buf in endians
 
 
-async def test_write_payload_2d_shape_memoryview(buf, protocol, transport, loop):
+async def test_write_payload_2d_shape_memoryview(
+    buf: Any, protocol: Any, transport: Any, loop: Any
+) -> None:
     msg = http.StreamWriter(protocol, loop)
     msg.enable_chunking()
 
@@ -182,7 +202,9 @@ async def test_write_payload_2d_shape_memoryview(buf, protocol, transport, loop)
     assert thing == buf
 
 
-async def test_write_payload_slicing_long_memoryview(buf, protocol, transport, loop):
+async def test_write_payload_slicing_long_memoryview(
+    buf: Any, protocol: Any, transport: Any, loop: Any
+) -> None:
     msg = http.StreamWriter(protocol, loop)
     msg.length = 4
 
@@ -196,7 +218,7 @@ async def test_write_payload_slicing_long_memoryview(buf, protocol, transport, l
     assert thing == buf
 
 
-async def test_write_drain(protocol, transport, loop) -> None:
+async def test_write_drain(protocol: Any, transport: Any, loop: Any) -> None:
     msg = http.StreamWriter(protocol, loop)
     msg.drain = make_mocked_coro()
     await msg.write(b"1" * (64 * 1024 * 2), drain=False)
@@ -207,7 +229,7 @@ async def test_write_drain(protocol, transport, loop) -> None:
     assert msg.buffer_size == 0
 
 
-async def test_write_calls_callback(protocol, transport, loop) -> None:
+async def test_write_calls_callback(protocol: Any, transport: Any, loop: Any) -> None:
     on_chunk_sent = make_mocked_coro()
     msg = http.StreamWriter(protocol, loop, on_chunk_sent=on_chunk_sent)
     chunk = b"1"
@@ -216,7 +238,9 @@ async def test_write_calls_callback(protocol, transport, loop) -> None:
     assert on_chunk_sent.call_args == mock.call(chunk)
 
 
-async def test_write_eof_calls_callback(protocol, transport, loop) -> None:
+async def test_write_eof_calls_callback(
+    protocol: Any, transport: Any, loop: Any
+) -> None:
     on_chunk_sent = make_mocked_coro()
     msg = http.StreamWriter(protocol, loop, on_chunk_sent=on_chunk_sent)
     chunk = b"1"
@@ -225,7 +249,9 @@ async def test_write_eof_calls_callback(protocol, transport, loop) -> None:
     assert on_chunk_sent.call_args == mock.call(chunk)
 
 
-async def test_write_to_closing_transport(protocol, transport, loop) -> None:
+async def test_write_to_closing_transport(
+    protocol: Any, transport: Any, loop: Any
+) -> None:
     msg = http.StreamWriter(protocol, loop)
 
     await msg.write(b"Before closing")
@@ -235,13 +261,13 @@ async def test_write_to_closing_transport(protocol, transport, loop) -> None:
         await msg.write(b"After closing")
 
 
-async def test_drain(protocol, transport, loop) -> None:
+async def test_drain(protocol: Any, transport: Any, loop: Any) -> None:
     msg = http.StreamWriter(protocol, loop)
     await msg.drain()
     assert protocol._drain_helper.called
 
 
-async def test_drain_no_transport(protocol, transport, loop) -> None:
+async def test_drain_no_transport(protocol: Any, transport: Any, loop: Any) -> None:
     msg = http.StreamWriter(protocol, loop)
     msg._protocol.transport = None
     await msg.drain()

@@ -1,3 +1,5 @@
+# type: ignore
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -14,11 +16,11 @@ def app():
     return Application()
 
 
-def make_request(app, method, path, headers=CIMultiDict()):
+def make_request(app: Any, method: Any, path: Any, headers: Any = CIMultiDict()):
     return make_mocked_request(method, path, headers, app=app)
 
 
-async def test_add_signal_handler_not_a_callable(app) -> None:
+async def test_add_signal_handler_not_a_callable(app: Any) -> None:
     callback = True
     app.on_response_prepare.append(callback)
     app.on_response_prepare.freeze()
@@ -26,7 +28,7 @@ async def test_add_signal_handler_not_a_callable(app) -> None:
         await app.on_response_prepare(None, None)
 
 
-async def test_function_signal_dispatch(app) -> None:
+async def test_function_signal_dispatch(app: Any) -> None:
     signal = Signal(app)
     kwargs = {"foo": 1, "bar": 2}
 
@@ -42,7 +44,7 @@ async def test_function_signal_dispatch(app) -> None:
     callback_mock.assert_called_once_with(**kwargs)
 
 
-async def test_function_signal_dispatch2(app) -> None:
+async def test_function_signal_dispatch2(app: Any) -> None:
     signal = Signal(app)
     args = {"a", "b"}
     kwargs = {"foo": 1, "bar": 2}
@@ -59,7 +61,7 @@ async def test_function_signal_dispatch2(app) -> None:
     callback_mock.assert_called_once_with(*args, **kwargs)
 
 
-async def test_response_prepare(app) -> None:
+async def test_response_prepare(app: Any) -> None:
     callback = mock.Mock()
 
     async def cb(*args, **kwargs):
@@ -75,7 +77,7 @@ async def test_response_prepare(app) -> None:
     callback.assert_called_once_with(request, response)
 
 
-async def test_non_coroutine(app) -> None:
+async def test_non_coroutine(app: Any) -> None:
     signal = Signal(app)
     kwargs = {"foo": 1, "bar": 2}
 
@@ -88,7 +90,7 @@ async def test_non_coroutine(app) -> None:
         await signal.send(**kwargs)
 
 
-def test_setitem(app) -> None:
+def test_setitem(app: Any) -> None:
     signal = Signal(app)
     m1 = mock.Mock()
     signal.append(m1)
@@ -98,7 +100,7 @@ def test_setitem(app) -> None:
     assert signal[0] is m2
 
 
-def test_delitem(app) -> None:
+def test_delitem(app: Any) -> None:
     signal = Signal(app)
     m1 = mock.Mock()
     signal.append(m1)
@@ -107,7 +109,7 @@ def test_delitem(app) -> None:
     assert len(signal) == 0
 
 
-def test_cannot_append_to_frozen_signal(app) -> None:
+def test_cannot_append_to_frozen_signal(app: Any) -> None:
     signal = Signal(app)
     m1 = mock.Mock()
     m2 = mock.Mock()
@@ -119,7 +121,7 @@ def test_cannot_append_to_frozen_signal(app) -> None:
     assert list(signal) == [m1]
 
 
-def test_cannot_setitem_in_frozen_signal(app) -> None:
+def test_cannot_setitem_in_frozen_signal(app: Any) -> None:
     signal = Signal(app)
     m1 = mock.Mock()
     m2 = mock.Mock()
@@ -131,7 +133,7 @@ def test_cannot_setitem_in_frozen_signal(app) -> None:
     assert list(signal) == [m1]
 
 
-def test_cannot_delitem_in_frozen_signal(app) -> None:
+def test_cannot_delitem_in_frozen_signal(app: Any) -> None:
     signal = Signal(app)
     m1 = mock.Mock()
     signal.append(m1)
@@ -142,7 +144,7 @@ def test_cannot_delitem_in_frozen_signal(app) -> None:
     assert list(signal) == [m1]
 
 
-async def test_cannot_send_non_frozen_signal(app) -> None:
+async def test_cannot_send_non_frozen_signal(app: Any) -> None:
     signal = Signal(app)
 
     callback = make_mocked_coro()
@@ -155,7 +157,7 @@ async def test_cannot_send_non_frozen_signal(app) -> None:
     assert not callback.called
 
 
-async def test_repr(app) -> None:
+async def test_repr(app: Any) -> None:
     signal = Signal(app)
 
     callback = make_mocked_coro()

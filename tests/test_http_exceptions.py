@@ -1,3 +1,4 @@
+# type: ignore
 # Tests for http_exceptions.py
 
 import pickle

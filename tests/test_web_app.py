@@ -1,4 +1,6 @@
+# type: ignore
 import asyncio
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -302,7 +304,7 @@ async def test_cleanup_ctx_multiple_yields() -> None:
     assert out == ["pre_1", "post_1"]
 
 
-async def test_subapp_chained_config_dict_visibility(aiohttp_client) -> None:
+async def test_subapp_chained_config_dict_visibility(aiohttp_client: Any) -> None:
     async def main_handler(request):
         assert request.config_dict["key1"] == "val1"
         assert "key2" not in request.config_dict
@@ -330,7 +332,7 @@ async def test_subapp_chained_config_dict_visibility(aiohttp_client) -> None:
     assert resp.status == 201
 
 
-async def test_subapp_chained_config_dict_overriding(aiohttp_client) -> None:
+async def test_subapp_chained_config_dict_overriding(aiohttp_client: Any) -> None:
     async def main_handler(request):
         assert request.config_dict["key"] == "val1"
         return web.Response(status=200)
@@ -356,7 +358,7 @@ async def test_subapp_chained_config_dict_overriding(aiohttp_client) -> None:
     assert resp.status == 201
 
 
-async def test_subapp_on_startup(aiohttp_client) -> None:
+async def test_subapp_on_startup(aiohttp_client: Any) -> None:
 
     subapp = web.Application()
 
@@ -430,14 +432,14 @@ async def test_subapp_on_startup(aiohttp_client) -> None:
     assert cleanup_called
 
 
-def test_app_iter():
+def test_app_iter() -> None:
     app = web.Application()
     app["a"] = "1"
     app["b"] = "2"
     assert sorted(list(app)) == ["a", "b"]
 
 
-def test_app_forbid_nonslot_attr():
+def test_app_forbid_nonslot_attr() -> None:
     app = web.Application()
     with pytest.raises(AttributeError):
         app.unknow_attr

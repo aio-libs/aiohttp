@@ -1,4 +1,6 @@
+# type: ignore
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -101,7 +103,7 @@ class TestTrace:
             ("dns_cache_miss", (Mock(),), TraceDnsCacheMissParams),
         ],
     )
-    async def test_send(self, signal, params, param_obj) -> None:
+    async def test_send(self, signal: Any, params: Any, param_obj: Any) -> None:
         session = Mock()
         trace_request_ctx = Mock()
         callback = Mock(side_effect=make_mocked_coro(Mock()))

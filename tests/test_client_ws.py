@@ -1,7 +1,9 @@
+# type: ignore
 import asyncio
 import base64
 import hashlib
 import os
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -19,16 +21,16 @@ def key_data():
 
 
 @pytest.fixture
-def key(key_data):
+def key(key_data: Any):
     return base64.b64encode(key_data)
 
 
 @pytest.fixture
-def ws_key(key):
+def ws_key(key: Any):
     return base64.b64encode(hashlib.sha1(key + WS_KEY).digest()).decode()
 
 
-async def test_ws_connect(ws_key, loop, key_data) -> None:
+async def test_ws_connect(ws_key: Any, loop: Any, key_data: Any) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -52,7 +54,7 @@ async def test_ws_connect(ws_key, loop, key_data) -> None:
     assert hdrs.ORIGIN not in m_req.call_args[1]["headers"]
 
 
-async def test_ws_connect_with_origin(key_data, loop) -> None:
+async def test_ws_connect_with_origin(key_data: Any, loop: Any) -> None:
     resp = mock.Mock()
     resp.status = 403
     with mock.patch("aiohttp.client.os") as m_os:
@@ -71,7 +73,9 @@ async def test_ws_connect_with_origin(key_data, loop) -> None:
     assert m_req.call_args[1]["headers"][hdrs.ORIGIN] == origin
 
 
-async def test_ws_connect_custom_response(loop, ws_key, key_data) -> None:
+async def test_ws_connect_custom_response(
+    loop: Any, ws_key: Any, key_data: Any
+) -> None:
     class CustomResponse(client.ClientWebSocketResponse):
         def read(self, decode=False):
             return "customized!"
@@ -96,7 +100,7 @@ async def test_ws_connect_custom_response(loop, ws_key, key_data) -> None:
     assert res.read() == "customized!"
 
 
-async def test_ws_connect_err_status(loop, ws_key, key_data) -> None:
+async def test_ws_connect_err_status(loop: Any, ws_key: Any, key_data: Any) -> None:
     resp = mock.Mock()
     resp.status = 500
     resp.headers = {
@@ -118,7 +122,7 @@ async def test_ws_connect_err_status(loop, ws_key, key_data) -> None:
     assert ctx.value.message == "Invalid response status"
 
 
-async def test_ws_connect_err_upgrade(loop, ws_key, key_data) -> None:
+async def test_ws_connect_err_upgrade(loop: Any, ws_key: Any, key_data: Any) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -140,7 +144,7 @@ async def test_ws_connect_err_upgrade(loop, ws_key, key_data) -> None:
     assert ctx.value.message == "Invalid upgrade header"
 
 
-async def test_ws_connect_err_conn(loop, ws_key, key_data) -> None:
+async def test_ws_connect_err_conn(loop: Any, ws_key: Any, key_data: Any) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -162,7 +166,7 @@ async def test_ws_connect_err_conn(loop, ws_key, key_data) -> None:
     assert ctx.value.message == "Invalid connection header"
 
 
-async def test_ws_connect_err_challenge(loop, ws_key, key_data) -> None:
+async def test_ws_connect_err_challenge(loop: Any, ws_key: Any, key_data: Any) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -184,7 +188,7 @@ async def test_ws_connect_err_challenge(loop, ws_key, key_data) -> None:
     assert ctx.value.message == "Invalid challenge response"
 
 
-async def test_ws_connect_common_headers(ws_key, loop, key_data) -> None:
+async def test_ws_connect_common_headers(ws_key: Any, loop: Any, key_data: Any) -> None:
     # Emulate a headers dict being reused for a second ws_connect.
 
     # In this scenario, we need to ensure that the newly generated secret key
@@ -227,7 +231,7 @@ async def test_ws_connect_common_headers(ws_key, loop, key_data) -> None:
     await test_connection()
 
 
-async def test_close(loop, ws_key, key_data) -> None:
+async def test_close(loop: Any, ws_key: Any, key_data: Any) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -267,7 +271,7 @@ async def test_close(loop, ws_key, key_data) -> None:
                 await session.close()
 
 
-async def test_close_eofstream(loop, ws_key, key_data) -> None:
+async def test_close_eofstream(loop: Any, ws_key: Any, key_data: Any) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -297,7 +301,7 @@ async def test_close_eofstream(loop, ws_key, key_data) -> None:
                 await session.close()
 
 
-async def test_close_exc(loop, ws_key, key_data) -> None:
+async def test_close_exc(loop: Any, ws_key: Any, key_data: Any) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -329,7 +333,7 @@ async def test_close_exc(loop, ws_key, key_data) -> None:
                 await session.close()
 
 
-async def test_close_exc2(loop, ws_key, key_data) -> None:
+async def test_close_exc2(loop: Any, ws_key: Any, key_data: Any) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -361,7 +365,7 @@ async def test_close_exc2(loop, ws_key, key_data) -> None:
                     await resp.close()
 
 
-async def test_send_data_after_close(ws_key, key_data, loop) -> None:
+async def test_send_data_after_close(ws_key: Any, key_data: Any, loop: Any) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -389,7 +393,7 @@ async def test_send_data_after_close(ws_key, key_data, loop) -> None:
                     await meth(*args)
 
 
-async def test_send_data_type_errors(ws_key, key_data, loop) -> None:
+async def test_send_data_type_errors(ws_key: Any, key_data: Any, loop: Any) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -415,7 +419,7 @@ async def test_send_data_type_errors(ws_key, key_data, loop) -> None:
                     await resp.send_json(set())
 
 
-async def test_reader_read_exception(ws_key, key_data, loop) -> None:
+async def test_reader_read_exception(ws_key: Any, key_data: Any, loop: Any) -> None:
     hresp = mock.Mock()
     hresp.status = 101
     hresp.headers = {
@@ -447,7 +451,7 @@ async def test_reader_read_exception(ws_key, key_data, loop) -> None:
                 await session.close()
 
 
-async def test_receive_runtime_err(loop) -> None:
+async def test_receive_runtime_err(loop: Any) -> None:
     resp = client.ClientWebSocketResponse(
         mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock(), 10.0, True, True, loop
     )
@@ -457,7 +461,9 @@ async def test_receive_runtime_err(loop) -> None:
         await resp.receive()
 
 
-async def test_ws_connect_close_resp_on_err(loop, ws_key, key_data) -> None:
+async def test_ws_connect_close_resp_on_err(
+    loop: Any, ws_key: Any, key_data: Any
+) -> None:
     resp = mock.Mock()
     resp.status = 500
     resp.headers = {
@@ -478,7 +484,9 @@ async def test_ws_connect_close_resp_on_err(loop, ws_key, key_data) -> None:
             resp.close.assert_called_with()
 
 
-async def test_ws_connect_non_overlapped_protocols(ws_key, loop, key_data) -> None:
+async def test_ws_connect_non_overlapped_protocols(
+    ws_key: Any, loop: Any, key_data: Any
+) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -500,7 +508,9 @@ async def test_ws_connect_non_overlapped_protocols(ws_key, loop, key_data) -> No
     assert res.protocol is None
 
 
-async def test_ws_connect_non_overlapped_protocols_2(ws_key, loop, key_data) -> None:
+async def test_ws_connect_non_overlapped_protocols_2(
+    ws_key: Any, loop: Any, key_data: Any
+) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -524,7 +534,7 @@ async def test_ws_connect_non_overlapped_protocols_2(ws_key, loop, key_data) -> 
     del res
 
 
-async def test_ws_connect_deflate(loop, ws_key, key_data) -> None:
+async def test_ws_connect_deflate(loop: Any, ws_key: Any, key_data: Any) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -547,7 +557,9 @@ async def test_ws_connect_deflate(loop, ws_key, key_data) -> None:
     assert res.client_notakeover is False
 
 
-async def test_ws_connect_deflate_per_message(loop, ws_key, key_data) -> None:
+async def test_ws_connect_deflate_per_message(
+    loop: Any, ws_key: Any, key_data: Any
+) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -580,7 +592,9 @@ async def test_ws_connect_deflate_per_message(loop, ws_key, key_data) -> None:
                 await session.close()
 
 
-async def test_ws_connect_deflate_server_not_support(loop, ws_key, key_data) -> None:
+async def test_ws_connect_deflate_server_not_support(
+    loop: Any, ws_key: Any, key_data: Any
+) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -602,7 +616,9 @@ async def test_ws_connect_deflate_server_not_support(loop, ws_key, key_data) -> 
     assert res.client_notakeover is False
 
 
-async def test_ws_connect_deflate_notakeover(loop, ws_key, key_data) -> None:
+async def test_ws_connect_deflate_notakeover(
+    loop: Any, ws_key: Any, key_data: Any
+) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -626,7 +642,9 @@ async def test_ws_connect_deflate_notakeover(loop, ws_key, key_data) -> None:
     assert res.client_notakeover is True
 
 
-async def test_ws_connect_deflate_client_wbits(loop, ws_key, key_data) -> None:
+async def test_ws_connect_deflate_client_wbits(
+    loop: Any, ws_key: Any, key_data: Any
+) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -650,7 +668,9 @@ async def test_ws_connect_deflate_client_wbits(loop, ws_key, key_data) -> None:
     assert res.client_notakeover is False
 
 
-async def test_ws_connect_deflate_client_wbits_bad(loop, ws_key, key_data) -> None:
+async def test_ws_connect_deflate_client_wbits_bad(
+    loop: Any, ws_key: Any, key_data: Any
+) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -670,7 +690,9 @@ async def test_ws_connect_deflate_client_wbits_bad(loop, ws_key, key_data) -> No
                 await aiohttp.ClientSession().ws_connect("http://test.org", compress=15)
 
 
-async def test_ws_connect_deflate_server_ext_bad(loop, ws_key, key_data) -> None:
+async def test_ws_connect_deflate_server_ext_bad(
+    loop: Any, ws_key: Any, key_data: Any
+) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {

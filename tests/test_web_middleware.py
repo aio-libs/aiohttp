@@ -1,10 +1,13 @@
+# type: ignore
+from typing import Any
+
 import pytest
 from yarl import URL
 
 from aiohttp import web
 
 
-async def test_middleware_modifies_response(loop, aiohttp_client) -> None:
+async def test_middleware_modifies_response(loop: Any, aiohttp_client: Any) -> None:
     async def handler(request):
         return web.Response(body=b"OK")
 
@@ -25,7 +28,7 @@ async def test_middleware_modifies_response(loop, aiohttp_client) -> None:
     assert "OK[MIDDLEWARE]" == txt
 
 
-async def test_middleware_handles_exception(loop, aiohttp_client) -> None:
+async def test_middleware_handles_exception(loop: Any, aiohttp_client: Any) -> None:
     async def handler(request):
         raise RuntimeError("Error text")
 
@@ -44,7 +47,7 @@ async def test_middleware_handles_exception(loop, aiohttp_client) -> None:
     assert "Error text[MIDDLEWARE]" == txt
 
 
-async def test_middleware_chain(loop, aiohttp_client) -> None:
+async def test_middleware_chain(loop: Any, aiohttp_client: Any) -> None:
     async def handler(request):
         return web.Response(text="OK")
 
@@ -89,7 +92,7 @@ async def test_middleware_chain(loop, aiohttp_client) -> None:
     ]
 
 
-async def test_middleware_subapp(loop, aiohttp_client) -> None:
+async def test_middleware_subapp(loop: Any, aiohttp_client: Any) -> None:
     async def sub_handler(request):
         return web.Response(text="OK")
 
@@ -135,7 +138,7 @@ async def test_middleware_subapp(loop, aiohttp_client) -> None:
 
 
 @pytest.fixture
-def cli(loop, aiohttp_client):
+def cli(loop: Any, aiohttp_client: Any):
     async def handler(request):
         return web.Response(text="OK")
 
@@ -168,7 +171,9 @@ class TestNormalizePathMiddleware:
             ("/resource2/a/b%2Fc/", 200),
         ],
     )
-    async def test_add_trailing_when_necessary(self, path, status, cli):
+    async def test_add_trailing_when_necessary(
+        self, path: Any, status: Any, cli: Any
+    ) -> None:
         extra_middlewares = [web.normalize_path_middleware(merge_slashes=False)]
         client = await cli(extra_middlewares)
 
@@ -193,7 +198,9 @@ class TestNormalizePathMiddleware:
             ("/resource12345", 404),
         ],
     )
-    async def test_remove_trailing_when_necessary(self, path, status, cli) -> None:
+    async def test_remove_trailing_when_necessary(
+        self, path: Any, status: Any, cli: Any
+    ) -> None:
         extra_middlewares = [
             web.normalize_path_middleware(
                 append_slash=False, remove_slash=True, merge_slashes=False
@@ -220,7 +227,9 @@ class TestNormalizePathMiddleware:
             ("/resource2/a/b%2Fc/", 200),
         ],
     )
-    async def test_no_trailing_slash_when_disabled(self, path, status, cli):
+    async def test_no_trailing_slash_when_disabled(
+        self, path: Any, status: Any, cli: Any
+    ) -> None:
         extra_middlewares = [
             web.normalize_path_middleware(append_slash=False, merge_slashes=False)
         ]
@@ -247,7 +256,7 @@ class TestNormalizePathMiddleware:
             ("/////resource1/a//b/?p=1", 404),
         ],
     )
-    async def test_merge_slash(self, path, status, cli) -> None:
+    async def test_merge_slash(self, path: Any, status: Any, cli: Any) -> None:
         extra_middlewares = [web.normalize_path_middleware(append_slash=False)]
         client = await cli(extra_middlewares)
 
@@ -290,7 +299,9 @@ class TestNormalizePathMiddleware:
             ("/////resource2/a///b/?p=1", 200),
         ],
     )
-    async def test_append_and_merge_slash(self, path, status, cli) -> None:
+    async def test_append_and_merge_slash(
+        self, path: Any, status: Any, cli: Any
+    ) -> None:
         extra_middlewares = [web.normalize_path_middleware()]
 
         client = await cli(extra_middlewares)
@@ -334,7 +345,9 @@ class TestNormalizePathMiddleware:
             ("/////resource2/a///b/?p=1", 200),
         ],
     )
-    async def test_remove_and_merge_slash(self, path, status, cli) -> None:
+    async def test_remove_and_merge_slash(
+        self, path: Any, status: Any, cli: Any
+    ) -> None:
         extra_middlewares = [
             web.normalize_path_middleware(append_slash=False, remove_slash=True)
         ]
@@ -349,7 +362,7 @@ class TestNormalizePathMiddleware:
             web.normalize_path_middleware(append_slash=True, remove_slash=True)
 
 
-async def test_bug_3669(aiohttp_client):
+async def test_bug_3669(aiohttp_client: Any):
     async def paymethod(request):
         return web.Response(text="OK")
 
@@ -366,7 +379,7 @@ async def test_bug_3669(aiohttp_client):
     assert resp.url.path != "/paymethod"
 
 
-async def test_old_style_middleware(loop, aiohttp_client) -> None:
+async def test_old_style_middleware(loop: Any, aiohttp_client: Any) -> None:
     async def view_handler(request):
         return web.Response(body=b"OK")
 
@@ -389,7 +402,7 @@ async def test_old_style_middleware(loop, aiohttp_client) -> None:
     assert "OK[old style middleware]" == txt
 
 
-async def test_new_style_middleware_class(loop, aiohttp_client) -> None:
+async def test_new_style_middleware_class(loop: Any, aiohttp_client: Any) -> None:
     async def handler(request):
         return web.Response(body=b"OK")
 
@@ -414,7 +427,7 @@ async def test_new_style_middleware_class(loop, aiohttp_client) -> None:
     assert len(warning_checker) == 0
 
 
-async def test_new_style_middleware_method(loop, aiohttp_client) -> None:
+async def test_new_style_middleware_method(loop: Any, aiohttp_client: Any) -> None:
     async def handler(request):
         return web.Response(body=b"OK")
 

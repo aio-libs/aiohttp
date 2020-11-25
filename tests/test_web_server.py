@@ -1,4 +1,6 @@
+# type: ignore
 import asyncio
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -6,7 +8,7 @@ import pytest
 from aiohttp import client, web
 
 
-async def test_simple_server(aiohttp_raw_server, aiohttp_client) -> None:
+async def test_simple_server(aiohttp_raw_server: Any, aiohttp_client: Any) -> None:
     async def handler(request):
         return web.Response(text=str(request.rel_url))
 
@@ -18,7 +20,9 @@ async def test_simple_server(aiohttp_raw_server, aiohttp_client) -> None:
     assert txt == "/path/to"
 
 
-async def test_raw_server_not_http_exception(aiohttp_raw_server, aiohttp_client, loop):
+async def test_raw_server_not_http_exception(
+    aiohttp_raw_server: Any, aiohttp_client: Any, loop: Any
+) -> None:
     # disable debug mode not to print traceback
     loop.set_debug(False)
 
@@ -41,7 +45,9 @@ async def test_raw_server_not_http_exception(aiohttp_raw_server, aiohttp_client,
     logger.exception.assert_called_with("Error handling request", exc_info=exc)
 
 
-async def test_raw_server_handler_timeout(aiohttp_raw_server, aiohttp_client) -> None:
+async def test_raw_server_handler_timeout(
+    aiohttp_raw_server: Any, aiohttp_client: Any
+) -> None:
     loop = asyncio.get_event_loop()
     loop.set_debug(True)
     exc = asyncio.TimeoutError("error")
@@ -59,7 +65,9 @@ async def test_raw_server_handler_timeout(aiohttp_raw_server, aiohttp_client) ->
     logger.debug.assert_called_with("Request handler timed out.", exc_info=exc)
 
 
-async def test_raw_server_do_not_swallow_exceptions(aiohttp_raw_server, aiohttp_client):
+async def test_raw_server_do_not_swallow_exceptions(
+    aiohttp_raw_server: Any, aiohttp_client: Any
+) -> None:
     async def handler(request):
         raise asyncio.CancelledError()
 
@@ -75,7 +83,9 @@ async def test_raw_server_do_not_swallow_exceptions(aiohttp_raw_server, aiohttp_
     logger.debug.assert_called_with("Ignored premature client disconnection")
 
 
-async def test_raw_server_cancelled_in_write_eof(aiohttp_raw_server, aiohttp_client):
+async def test_raw_server_cancelled_in_write_eof(
+    aiohttp_raw_server: Any, aiohttp_client: Any
+):
     class MyResponse(web.Response):
         async def write_eof(self, data=b""):
             raise asyncio.CancelledError("error")
@@ -97,7 +107,9 @@ async def test_raw_server_cancelled_in_write_eof(aiohttp_raw_server, aiohttp_cli
     logger.debug.assert_called_with("Ignored premature client disconnection")
 
 
-async def test_raw_server_not_http_exception_debug(aiohttp_raw_server, aiohttp_client):
+async def test_raw_server_not_http_exception_debug(
+    aiohttp_raw_server: Any, aiohttp_client: Any
+) -> None:
     exc = RuntimeError("custom runtime error")
 
     async def handler(request):
@@ -118,7 +130,9 @@ async def test_raw_server_not_http_exception_debug(aiohttp_raw_server, aiohttp_c
     logger.exception.assert_called_with("Error handling request", exc_info=exc)
 
 
-async def test_raw_server_html_exception(aiohttp_raw_server, aiohttp_client, loop):
+async def test_raw_server_html_exception(
+    aiohttp_raw_server: Any, aiohttp_client: Any, loop: Any
+) -> None:
     # disable debug mode not to print traceback
     loop.set_debug(False)
 
@@ -145,7 +159,9 @@ async def test_raw_server_html_exception(aiohttp_raw_server, aiohttp_client, loo
     logger.exception.assert_called_with("Error handling request", exc_info=exc)
 
 
-async def test_raw_server_html_exception_debug(aiohttp_raw_server, aiohttp_client):
+async def test_raw_server_html_exception_debug(
+    aiohttp_raw_server: Any, aiohttp_client: Any
+) -> None:
     exc = RuntimeError("custom runtime error")
 
     async def handler(request):

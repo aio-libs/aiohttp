@@ -1,3 +1,5 @@
+# type: ignore
+from typing import Any
 from unittest import mock
 
 from yarl import URL
@@ -9,7 +11,7 @@ from aiohttp.client_reqrep import ClientResponse
 from aiohttp.helpers import TimerNoop
 
 
-async def test_oserror(loop) -> None:
+async def test_oserror(loop: Any) -> None:
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)
@@ -19,7 +21,7 @@ async def test_oserror(loop) -> None:
     assert isinstance(proto.exception(), ClientOSError)
 
 
-async def test_pause_resume_on_error(loop) -> None:
+async def test_pause_resume_on_error(loop: Any) -> None:
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)
@@ -31,7 +33,7 @@ async def test_pause_resume_on_error(loop) -> None:
     assert not proto._reading_paused
 
 
-async def test_client_proto_bad_message(loop) -> None:
+async def test_client_proto_bad_message(loop: Any) -> None:
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)
@@ -43,7 +45,7 @@ async def test_client_proto_bad_message(loop) -> None:
     assert isinstance(proto.exception(), http.HttpProcessingError)
 
 
-async def test_uncompleted_message(loop) -> None:
+async def test_uncompleted_message(loop: Any) -> None:
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)
@@ -60,7 +62,7 @@ async def test_uncompleted_message(loop) -> None:
     assert dict(exc.message.headers) == {"Location": "http://python.org/"}
 
 
-async def test_client_protocol_readuntil_eof(loop) -> None:
+async def test_client_protocol_readuntil_eof(loop: Any) -> None:
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)
@@ -97,20 +99,20 @@ async def test_client_protocol_readuntil_eof(loop) -> None:
     assert response.content.is_eof()
 
 
-async def test_empty_data(loop) -> None:
+async def test_empty_data(loop: Any) -> None:
     proto = ResponseHandler(loop=loop)
     proto.data_received(b"")
 
     # do nothing
 
 
-async def test_schedule_timeout(loop) -> None:
+async def test_schedule_timeout(loop: Any) -> None:
     proto = ResponseHandler(loop=loop)
     proto.set_response_params(read_timeout=1)
     assert proto._read_timeout_handle is not None
 
 
-async def test_drop_timeout(loop) -> None:
+async def test_drop_timeout(loop: Any) -> None:
     proto = ResponseHandler(loop=loop)
     proto.set_response_params(read_timeout=1)
     assert proto._read_timeout_handle is not None
@@ -118,7 +120,7 @@ async def test_drop_timeout(loop) -> None:
     assert proto._read_timeout_handle is None
 
 
-async def test_reschedule_timeout(loop) -> None:
+async def test_reschedule_timeout(loop: Any) -> None:
     proto = ResponseHandler(loop=loop)
     proto.set_response_params(read_timeout=1)
     assert proto._read_timeout_handle is not None
@@ -128,7 +130,7 @@ async def test_reschedule_timeout(loop) -> None:
     assert proto._read_timeout_handle is not h
 
 
-async def test_eof_received(loop) -> None:
+async def test_eof_received(loop: Any) -> None:
     proto = ResponseHandler(loop=loop)
     proto.set_response_params(read_timeout=1)
     assert proto._read_timeout_handle is not None
