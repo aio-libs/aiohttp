@@ -46,7 +46,7 @@ from .client_exceptions import (
 )
 from .client_proto import ResponseHandler
 from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
-from .helpers import ceil_timeout, is_ip_address, sentinel
+from .helpers import _SENTINEL, ceil_timeout, is_ip_address, sentinel
 from .http import RESPONSES
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
@@ -184,7 +184,7 @@ class BaseConnector:
     def __init__(
         self,
         *,
-        keepalive_timeout: Union[object, None, float] = sentinel,
+        keepalive_timeout: Union[_SENTINEL, None, float] = sentinel,
         force_close: bool = False,
         limit: int = 100,
         limit_per_host: int = 0,
@@ -717,7 +717,7 @@ class TCPConnector(BaseConnector):
         ssl: Union[None, bool, Fingerprint, SSLContext] = None,
         local_addr: Optional[Tuple[str, int]] = None,
         resolver: Optional[AbstractResolver] = None,
-        keepalive_timeout: Union[None, float, object] = sentinel,
+        keepalive_timeout: Union[None, float, _SENTINEL] = sentinel,
         force_close: bool = False,
         limit: int = 100,
         limit_per_host: int = 0,
@@ -1137,7 +1137,7 @@ class UnixConnector(BaseConnector):
         self,
         path: str,
         force_close: bool = False,
-        keepalive_timeout: Union[object, float, None] = sentinel,
+        keepalive_timeout: Union[_SENTINEL, float, None] = sentinel,
         limit: int = 100,
         limit_per_host: int = 0,
     ) -> None:
@@ -1187,7 +1187,7 @@ class NamedPipeConnector(BaseConnector):
         self,
         path: str,
         force_close: bool = False,
-        keepalive_timeout: Union[object, float, None] = sentinel,
+        keepalive_timeout: Union[_SENTINEL, float, None] = sentinel,
         limit: int = 100,
         limit_per_host: int = 0,
     ) -> None:

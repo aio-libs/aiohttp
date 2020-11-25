@@ -27,6 +27,7 @@ from multidict import CIMultiDict
 from . import hdrs
 from .abc import AbstractStreamWriter
 from .helpers import (
+    _SENTINEL,
     content_disposition_header,
     guess_filename,
     parse_mimetype,
@@ -134,7 +135,7 @@ class Payload(ABC):
         headers: Optional[
             Union[_CIMultiDict, Dict[str, str], Iterable[Tuple[str, str]]]
         ] = None,
-        content_type: Optional[str] = sentinel,
+        content_type: Union[None, str, _SENTINEL] = sentinel,
         filename: Optional[str] = None,
         encoding: Optional[str] = None,
         **kwargs: Any,
@@ -144,6 +145,7 @@ class Payload(ABC):
         self._headers = CIMultiDict()  # type: _CIMultiDict
         self._value = value
         if content_type is not sentinel and content_type is not None:
+            assert isinstance(content_type, str)
             self._headers[hdrs.CONTENT_TYPE] = content_type
         elif self._filename is not None:
             content_type = mimetypes.guess_type(self._filename)[0]
