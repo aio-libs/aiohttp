@@ -1,7 +1,7 @@
+import dataclasses
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Awaitable, Optional, Type, TypeVar
 
-import attr
 from multidict import CIMultiDict
 from yarl import URL
 
@@ -217,7 +217,7 @@ class TraceConfig:
         return self._on_request_headers_sent
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class TraceRequestStartParams:
     """ Parameters sent by the `on_request_start` signal"""
 
@@ -226,7 +226,7 @@ class TraceRequestStartParams:
     headers: "CIMultiDict[str]"
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class TraceRequestChunkSentParams:
     """ Parameters sent by the `on_request_chunk_sent` signal"""
 
@@ -235,7 +235,7 @@ class TraceRequestChunkSentParams:
     chunk: bytes
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class TraceResponseChunkReceivedParams:
     """ Parameters sent by the `on_response_chunk_received` signal"""
 
@@ -244,7 +244,7 @@ class TraceResponseChunkReceivedParams:
     chunk: bytes
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class TraceRequestEndParams:
     """ Parameters sent by the `on_request_end` signal"""
 
@@ -254,7 +254,7 @@ class TraceRequestEndParams:
     response: ClientResponse
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class TraceRequestExceptionParams:
     """ Parameters sent by the `on_request_exception` signal"""
 
@@ -264,7 +264,7 @@ class TraceRequestExceptionParams:
     exception: BaseException
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class TraceRequestRedirectParams:
     """ Parameters sent by the `on_request_redirect` signal"""
 
@@ -274,60 +274,60 @@ class TraceRequestRedirectParams:
     response: ClientResponse
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class TraceConnectionQueuedStartParams:
     """ Parameters sent by the `on_connection_queued_start` signal"""
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class TraceConnectionQueuedEndParams:
     """ Parameters sent by the `on_connection_queued_end` signal"""
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class TraceConnectionCreateStartParams:
     """ Parameters sent by the `on_connection_create_start` signal"""
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class TraceConnectionCreateEndParams:
     """ Parameters sent by the `on_connection_create_end` signal"""
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class TraceConnectionReuseconnParams:
     """ Parameters sent by the `on_connection_reuseconn` signal"""
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class TraceDnsResolveHostStartParams:
     """ Parameters sent by the `on_dns_resolvehost_start` signal"""
 
     host: str
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class TraceDnsResolveHostEndParams:
     """ Parameters sent by the `on_dns_resolvehost_end` signal"""
 
     host: str
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class TraceDnsCacheHitParams:
     """ Parameters sent by the `on_dns_cache_hit` signal"""
 
     host: str
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class TraceDnsCacheMissParams:
     """ Parameters sent by the `on_dns_cache_miss` signal"""
 
     host: str
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class TraceRequestHeadersSentParams:
     """ Parameters sent by the `on_request_headers_sent` signal"""
 

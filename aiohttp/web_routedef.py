@@ -1,4 +1,5 @@
 import abc
+import dataclasses
 import os  # noqa
 from typing import (
     TYPE_CHECKING,
@@ -14,8 +15,6 @@ from typing import (
     Union,
     overload,
 )
-
-import attr
 
 from . import hdrs
 from .abc import AbstractView
@@ -57,7 +56,7 @@ _SimpleHandler = Callable[[Request], Awaitable[StreamResponse]]
 _HandlerType = Union[Type[AbstractView], _SimpleHandler]
 
 
-@attr.s(auto_attribs=True, frozen=True, repr=False, slots=True)
+@dataclasses.dataclass(frozen=True, repr=False)
 class RouteDef(AbstractRouteDef):
     method: str
     path: str
@@ -82,7 +81,7 @@ class RouteDef(AbstractRouteDef):
             ]
 
 
-@attr.s(auto_attribs=True, frozen=True, repr=False, slots=True)
+@dataclasses.dataclass(frozen=True, repr=False)
 class StaticDef(AbstractRouteDef):
     prefix: str
     path: PathLike

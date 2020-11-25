@@ -1,12 +1,12 @@
 import asyncio
 import base64
 import binascii
+import dataclasses
 import hashlib
 import json
 from typing import Any, Iterable, Optional, Tuple
 
 import async_timeout
-import attr
 from multidict import CIMultiDict
 
 from . import hdrs
@@ -41,7 +41,7 @@ __all__ = (
 THRESHOLD_CONNLOST_ACCESS = 5
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class WebSocketReady:
     ok: bool
     protocol: Optional[str]

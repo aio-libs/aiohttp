@@ -1,5 +1,6 @@
 import asyncio
 import codecs
+import dataclasses
 import functools
 import io
 import re
@@ -23,7 +24,6 @@ from typing import (
     cast,
 )
 
-import attr
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
@@ -86,23 +86,19 @@ def _gen_default_accept_encoding() -> str:
     return "gzip, deflate, br" if HAS_BROTLI else "gzip, deflate"
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class ContentDisposition:
     type: Optional[str]
     parameters: "MappingProxyType[str, str]"
     filename: Optional[str]
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class RequestInfo:
     url: URL
     method: str
     headers: "CIMultiDictProxy[str]"
-    real_url: URL = attr.ib()
-
-    @real_url.default
-    def real_url_default(self) -> URL:
-        return self.url
+    real_url: URL
 
 
 class Fingerprint:
@@ -145,7 +141,7 @@ else:  # pragma: no cover
     SSL_ALLOWED_TYPES = type(None)
 
 
-@attr.s(auto_attribs=True, slots=True, frozen=True)
+@dataclasses.dataclass(frozen=True)
 class ConnectionKey:
     # the key should contain an information about used proxy / TLS
     # to prevent reusing wrong connections from a pool
