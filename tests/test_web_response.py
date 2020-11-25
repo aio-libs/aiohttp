@@ -1,9 +1,11 @@
+# type: ignore
 import collections.abc
 import datetime
 import gzip
 import json
 import weakref
 from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Optional
 from unittest import mock
 
 import pytest
@@ -17,12 +19,12 @@ from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
 
 
 def make_request(
-    method,
-    path,
-    headers=CIMultiDict(),
-    version=HttpVersion11,
-    on_response_prepare=None,
-    **kwargs
+    method: Any,
+    path: Any,
+    headers: Any = CIMultiDict(),
+    version: Any = HttpVersion11,
+    on_response_prepare: Optional[Any] = None,
+    **kwargs: Any
 ):
     app = kwargs.pop("app", None) or mock.Mock()
     app._debug = False
@@ -42,7 +44,7 @@ def buf():
 
 
 @pytest.fixture
-def writer(buf):
+def writer(buf: Any):
     writer = mock.Mock()
 
     def acquire(cb):
@@ -838,7 +840,7 @@ def test_response_set_content_length() -> None:
         resp.content_length = 1
 
 
-async def test_send_headers_for_empty_body(buf, writer) -> None:
+async def test_send_headers_for_empty_body(buf: Any, writer: Any) -> None:
     req = make_request("GET", "/", writer=writer)
     resp = Response()
 
@@ -857,7 +859,7 @@ async def test_send_headers_for_empty_body(buf, writer) -> None:
     )
 
 
-async def test_render_with_body(buf, writer) -> None:
+async def test_render_with_body(buf: Any, writer: Any) -> None:
     req = make_request("GET", "/", writer=writer)
     resp = Response(body=b"data")
 
@@ -878,7 +880,7 @@ async def test_render_with_body(buf, writer) -> None:
     )
 
 
-async def test_send_set_cookie_header(buf, writer) -> None:
+async def test_send_set_cookie_header(buf: Any, writer: Any) -> None:
     resp = Response()
     resp.cookies["name"] = "value"
     req = make_request("GET", "/", writer=writer)

@@ -1,3 +1,4 @@
+# type: ignore
 import asyncio
 import os
 import socket
@@ -6,6 +7,7 @@ import sys
 from hashlib import md5, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Any, List
 from unittest import mock
 from uuid import uuid4
 
@@ -13,16 +15,19 @@ import pytest
 
 from aiohttp.test_utils import loop_context, make_mocked_coro
 
+IS_LINUX: bool
+IS_UNIX: bool
+needs_unix: bool
 try:
     import trustme
 
-    TRUSTME = True
+    TRUSTME: bool = True
 except ImportError:
     TRUSTME = False
 
-pytest_plugins = ["aiohttp.pytest_plugin", "pytester"]
+pytest_plugins: List[str] = ["aiohttp.pytest_plugin", "pytester"]
 
-IS_HPUX = sys.platform.startswith("hp-ux")
+IS_HPUX: bool = sys.platform.startswith("hp-ux")
 # Specifies whether the current runtime is HP-UX.
 IS_LINUX = sys.platform.startswith("linux")
 # Specifies whether the current runtime is HP-UX.
@@ -33,14 +38,14 @@ needs_unix = pytest.mark.skipif(not IS_UNIX, reason="requires UNIX sockets")
 
 
 @pytest.fixture
-def tls_certificate_authority():
+def tls_certificate_authority() -> Any:
     if not TRUSTME:
         pytest.xfail("trustme fails on 32bit Linux")
     return trustme.CA()
 
 
 @pytest.fixture
-def tls_certificate(tls_certificate_authority):
+def tls_certificate(tls_certificate_authority: Any) -> Any:
     return tls_certificate_authority.issue_server_cert(
         "localhost",
         "127.0.0.1",
@@ -49,50 +54,50 @@ def tls_certificate(tls_certificate_authority):
 
 
 @pytest.fixture
-def ssl_ctx(tls_certificate):
+def ssl_ctx(tls_certificate: Any) -> ssl.SSLContext:
     ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
     tls_certificate.configure_cert(ssl_ctx)
     return ssl_ctx
 
 
 @pytest.fixture
-def client_ssl_ctx(tls_certificate_authority):
+def client_ssl_ctx(tls_certificate_authority: Any) -> ssl.SSLContext:
     ssl_ctx = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
     tls_certificate_authority.configure_trust(ssl_ctx)
     return ssl_ctx
 
 
 @pytest.fixture
-def tls_ca_certificate_pem_path(tls_certificate_authority):
+def tls_ca_certificate_pem_path(tls_certificate_authority: Any) -> None:
     with tls_certificate_authority.cert_pem.tempfile() as ca_cert_pem:
         yield ca_cert_pem
 
 
 @pytest.fixture
-def tls_certificate_pem_path(tls_certificate):
+def tls_certificate_pem_path(tls_certificate: Any) -> None:
     with tls_certificate.private_key_and_cert_chain_pem.tempfile() as cert_pem:
         yield cert_pem
 
 
 @pytest.fixture
-def tls_certificate_pem_bytes(tls_certificate):
+def tls_certificate_pem_bytes(tls_certificate: Any) -> bytes:
     return tls_certificate.cert_chain_pems[0].bytes()
 
 
 @pytest.fixture
-def tls_certificate_fingerprint_sha256(tls_certificate_pem_bytes):
+def tls_certificate_fingerprint_sha256(tls_certificate_pem_bytes: Any) -> str:
     tls_cert_der = ssl.PEM_cert_to_DER_cert(tls_certificate_pem_bytes.decode())
     return sha256(tls_cert_der).digest()
 
 
 @pytest.fixture
-def pipe_name():
+def pipe_name() -> str:
     name = fr"\\.\pipe\{uuid4().hex}"
     return name
 
 
 @pytest.fixture
-def create_mocked_conn(loop):
+def create_mocked_conn(loop: Any):
     def _proto_factory(conn_closing_result=None, **kwargs):
         proto = mock.Mock(**kwargs)
         proto.closed = loop.create_future()
@@ -104,7 +109,7 @@ def create_mocked_conn(loop):
 
 
 @pytest.fixture
-def unix_sockname(tmp_path, tmp_path_factory):
+def unix_sockname(tmp_path: Any, tmp_path_factory: Any):
     # Generate an fs path to the UNIX domain socket for testing.
 
     # N.B. Different OS kernels have different fs path length limitations
@@ -180,13 +185,13 @@ def unix_sockname(tmp_path, tmp_path_factory):
 
 
 @pytest.fixture
-def selector_loop():
+def selector_loop() -> None:
     if sys.version_info < (3, 7):
         policy = asyncio.get_event_loop_policy()
-        policy._loop_factory = asyncio.SelectorEventLoop  # type: ignore
+        policy._loop_factory = asyncio.SelectorEventLoop
     else:
         if sys.version_info >= (3, 8):
-            policy = asyncio.WindowsSelectorEventLoopPolicy()  # type: ignore
+            policy = asyncio.WindowsSelectorEventLoopPolicy()
         else:
             policy = asyncio.DefaultEventLoopPolicy()
         asyncio.set_event_loop_policy(policy)

@@ -146,7 +146,7 @@ Continuous Integration.
 Dependencies
 ============
 
-- Python 3.6+
+- Python 3.7+
 - *async_timeout*
 - *attrs*
 - *chardet*

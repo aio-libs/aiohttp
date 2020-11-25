@@ -49,13 +49,7 @@ from .client_exceptions import (
 )
 from .client_proto import ResponseHandler
 from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
-from .helpers import (
-    ceil_timeout,
-    create_task,
-    get_running_loop,
-    is_ip_address,
-    sentinel,
-)
+from .helpers import ceil_timeout, is_ip_address, sentinel
 from .http import RESPONSES
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
@@ -201,7 +195,7 @@ class BaseConnector:
                 stacklevel=2,
             )
 
-        loop = get_running_loop()
+        loop = asyncio.get_running_loop()
 
         self._closed = False
         self._wakeup = asyncio.Event()
@@ -229,7 +223,7 @@ class BaseConnector:
         self.cookies = SimpleCookie()  # type: SimpleCookie[str]
 
         # start keep-alive connection cleanup task
-        self._cleanup_task = create_task(self._cleanup())
+        self._cleanup_task = asyncio.create_task(self._cleanup())
 
     def __del__(self, _warnings: Any = warnings) -> None:
         if self._closed:

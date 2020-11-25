@@ -1,5 +1,6 @@
 # Tests of custom aiohttp locks implementations
 import asyncio
+from typing import Any, Union
 
 import pytest
 
@@ -7,10 +8,10 @@ from aiohttp.locks import EventResultOrError
 
 
 class TestEventResultOrError:
-    async def test_set_exception(self, loop) -> None:
+    async def test_set_exception(self, loop: Any) -> None:
         ev = EventResultOrError(loop=loop)
 
-        async def c():
+        async def c() -> Union[int, Exception]:
             try:
                 await ev.wait()
             except Exception as e:
@@ -23,10 +24,10 @@ class TestEventResultOrError:
         ev.set(exc=e)
         assert (await t) == e
 
-    async def test_set(self, loop) -> None:
+    async def test_set(self, loop: Any) -> None:
         ev = EventResultOrError(loop=loop)
 
-        async def c():
+        async def c() -> int:
             await ev.wait()
             return 1
 
@@ -35,10 +36,10 @@ class TestEventResultOrError:
         ev.set()
         assert (await t) == 1
 
-    async def test_cancel_waiters(self, loop) -> None:
+    async def test_cancel_waiters(self, loop: Any) -> None:
         ev = EventResultOrError(loop=loop)
 
-        async def c():
+        async def c() -> None:
             await ev.wait()
 
         t1 = loop.create_task(c())

@@ -23,7 +23,7 @@ import yarl
 
 from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
 from .base_protocol import BaseProtocol
-from .helpers import ceil_timeout, current_task
+from .helpers import ceil_timeout
 from .http import (
     HttpProcessingError,
     HttpRequestParser,
@@ -680,7 +680,7 @@ class RequestHandler(BaseProtocol):
         exc: Optional[BaseException] = None,
         message: Optional[str] = None,
     ) -> None:
-        task = current_task()
+        task = asyncio.current_task()
         assert task is not None
         request = BaseRequest(
             ERROR, EMPTY_PAYLOAD, self, writer, task, self._loop  # type: ignore

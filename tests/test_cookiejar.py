@@ -1,9 +1,11 @@
+# type: ignore
 import asyncio
 import datetime
 import itertools
 import pathlib
 import unittest
 from http.cookies import BaseCookie, Morsel, SimpleCookie
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -163,7 +165,9 @@ def test_path_matching() -> None:
     assert not test_func("/different-folder/", "/folder/")
 
 
-async def test_constructor(loop, cookies_to_send, cookies_to_receive) -> None:
+async def test_constructor(
+    loop: Any, cookies_to_send: Any, cookies_to_receive: Any
+) -> None:
     jar = CookieJar()
     jar.update_cookies(cookies_to_send)
     jar_cookies = SimpleCookie()
@@ -175,7 +179,7 @@ async def test_constructor(loop, cookies_to_send, cookies_to_receive) -> None:
 
 
 async def test_constructor_with_expired(
-    loop, cookies_to_send_with_expired, cookies_to_receive
+    loop: Any, cookies_to_send_with_expired: Any, cookies_to_receive: Any
 ) -> None:
     jar = CookieJar()
     jar.update_cookies(cookies_to_send_with_expired)
@@ -187,7 +191,9 @@ async def test_constructor_with_expired(
     assert jar._loop is loop
 
 
-async def test_save_load(tmp_path, loop, cookies_to_send, cookies_to_receive) -> None:
+async def test_save_load(
+    tmp_path: Any, loop: Any, cookies_to_send: Any, cookies_to_receive: Any
+) -> None:
     file_path = pathlib.Path(str(tmp_path)) / "aiohttp.test.cookie"
 
     # export cookie jar
@@ -205,7 +211,7 @@ async def test_save_load(tmp_path, loop, cookies_to_send, cookies_to_receive) ->
     assert jar_test == cookies_to_receive
 
 
-async def test_update_cookie_with_unicode_domain(loop) -> None:
+async def test_update_cookie_with_unicode_domain(loop: Any) -> None:
     cookies = (
         "idna-domain-first=first; Domain=xn--9caa.com; Path=/;",
         "idna-domain-second=second; Domain=xn--9caa.com; Path=/;",
@@ -222,7 +228,7 @@ async def test_update_cookie_with_unicode_domain(loop) -> None:
     assert jar_test == SimpleCookie(" ".join(cookies))
 
 
-async def test_filter_cookie_with_unicode_domain(loop) -> None:
+async def test_filter_cookie_with_unicode_domain(loop: Any) -> None:
     jar = CookieJar()
     jar.update_cookies(
         SimpleCookie("idna-domain-first=first; Domain=xn--9caa.com; Path=/; ")
@@ -231,13 +237,13 @@ async def test_filter_cookie_with_unicode_domain(loop) -> None:
     assert len(jar.filter_cookies(URL("http://xn--9caa.com"))) == 1
 
 
-async def test_filter_cookies_str_deprecated(loop) -> None:
+async def test_filter_cookies_str_deprecated(loop: Any) -> None:
     jar = CookieJar()
     with pytest.warns(DeprecationWarning):
         jar.filter_cookies("http://éé.com")
 
 
-async def test_domain_filter_ip_cookie_send(loop) -> None:
+async def test_domain_filter_ip_cookie_send(loop: Any) -> None:
     jar = CookieJar()
     cookies = SimpleCookie(
         "shared-cookie=first; "
@@ -267,7 +273,7 @@ async def test_domain_filter_ip_cookie_send(loop) -> None:
     assert cookies_sent == "Cookie: shared-cookie=first"
 
 
-async def test_domain_filter_ip_cookie_receive(cookies_to_receive) -> None:
+async def test_domain_filter_ip_cookie_receive(cookies_to_receive: Any) -> None:
     jar = CookieJar()
 
     jar.update_cookies(cookies_to_receive, URL("http://1.2.3.4/"))
@@ -296,7 +302,7 @@ async def test_domain_filter_ip_cookie_receive(cookies_to_receive) -> None:
     ),
 )
 async def test_quotes_correctly_based_on_input(
-    loop, cookies, expected, quote_bool
+    loop: Any, cookies: Any, expected: Any, quote_bool: Any
 ) -> None:
     jar = CookieJar(unsafe=True, quote_cookie=quote_bool)
     jar.update_cookies(SimpleCookie(cookies))
@@ -304,7 +310,7 @@ async def test_quotes_correctly_based_on_input(
     assert cookies_sent == expected
 
 
-async def test_ignore_domain_ending_with_dot(loop) -> None:
+async def test_ignore_domain_ending_with_dot(loop: Any) -> None:
     jar = CookieJar(unsafe=True)
     jar.update_cookies(
         SimpleCookie("cookie=val; Domain=example.com.;"), URL("http://www.example.com")
@@ -316,6 +322,9 @@ async def test_ignore_domain_ending_with_dot(loop) -> None:
 
 
 class TestCookieJarBase(unittest.TestCase):
+    loop: Any
+    jar: Any
+
     def setUp(self):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
@@ -326,10 +335,10 @@ class TestCookieJarBase(unittest.TestCase):
 
         self.jar = self.loop.run_until_complete(make_jar())
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         self.loop.close()
 
-    def request_reply_with_same_url(self, url):
+    def request_reply_with_same_url(self, url: Any):
         self.jar.update_cookies(self.cookies_to_send)
         cookies_sent = self.jar.filter_cookies(URL(url))
 
@@ -346,6 +355,10 @@ class TestCookieJarBase(unittest.TestCase):
 
 
 class TestCookieJarSafe(TestCookieJarBase):
+    cookies_to_send: Any
+    cookies_to_receive: Any
+    jar: Any
+
     def setUp(self):
         super().setUp()
 
@@ -389,7 +402,7 @@ class TestCookieJarSafe(TestCookieJarBase):
 
         self.jar = self.loop.run_until_complete(make_jar())
 
-    def timed_request(self, url, update_time, send_time):
+    def timed_request(self, url: Any, update_time: Any, send_time: Any):
         if isinstance(update_time, int):
             update_time = datetime.timedelta(seconds=update_time)
         elif isinstance(update_time, float):
@@ -698,3 +711,48 @@ async def test_loose_cookies_types() -> None:
 
     for loose_cookies_type in accepted_types:
         jar.update_cookies(cookies=loose_cookies_type)
+
+
+async def test_cookie_jar_clear_all() -> None:
+    sut = CookieJar()
+    cookie = SimpleCookie()
+    cookie["foo"] = "bar"
+    sut.update_cookies(cookie)
+
+    sut.clear()
+    assert len(sut) == 0
+
+
+async def test_cookie_jar_clear_expired():
+    sut = CookieJar()
+
+    cookie = SimpleCookie()
+
+    cookie["foo"] = "bar"
+    cookie["foo"]["expires"] = "Tue, 1 Jan 1990 12:00:00 GMT"
+
+    with freeze_time("1980-01-01"):
+        sut.update_cookies(cookie)
+
+    sut.clear(lambda x: False)
+    with freeze_time("1980-01-01"):
+        assert len(sut) == 0
+
+
+async def test_cookie_jar_clear_domain() -> None:
+    sut = CookieJar()
+    cookie = SimpleCookie()
+    cookie["foo"] = "bar"
+    cookie["domain_cookie"] = "value"
+    cookie["domain_cookie"]["domain"] = "example.com"
+    cookie["subdomain_cookie"] = "value"
+    cookie["subdomain_cookie"]["domain"] = "test.example.com"
+    sut.update_cookies(cookie)
+
+    sut.clear_domain("example.com")
+    iterator = iter(sut)
+    morsel = next(iterator)
+    assert morsel.key == "foo"
+    assert morsel.value == "bar"
+    with pytest.raises(StopIteration):
+        next(iterator)
