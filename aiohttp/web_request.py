@@ -31,6 +31,7 @@ from yarl import URL
 from . import hdrs
 from .abc import AbstractStreamWriter
 from .helpers import (
+    _SENTINEL,
     ChainMapProxy,
     HeadersMixin,
     is_expected_content_type,
@@ -191,12 +192,12 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
     def clone(
         self,
         *,
-        method: str = sentinel,
-        rel_url: StrOrURL = sentinel,
-        headers: LooseHeaders = sentinel,
-        scheme: str = sentinel,
-        host: str = sentinel,
-        remote: str = sentinel,
+        method: Union[str, _SENTINEL] = sentinel,
+        rel_url: Union[StrOrURL, _SENTINEL] = sentinel,
+        headers: Union[LooseHeaders, _SENTINEL] = sentinel,
+        scheme: Union[str, _SENTINEL] = sentinel,
+        host: Union[str, _SENTINEL] = sentinel,
+        remote: Union[str, _SENTINEL] = sentinel,
     ) -> "BaseRequest":
         """Clone itself with replacement some attributes.
 
@@ -213,25 +214,26 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         if method is not sentinel:
             dct["method"] = method
         if rel_url is not sentinel:
-            new_url = URL(rel_url)
+            new_url: URL = URL(rel_url)  # type: ignore
             dct["url"] = new_url
             dct["path"] = str(new_url)
         if headers is not sentinel:
             # a copy semantic
-            dct["headers"] = CIMultiDictProxy(CIMultiDict(headers))
+            new_headers = CIMultiDictProxy(CIMultiDict(headers))  # type: ignore
+            dct["headers"] = new_headers
             dct["raw_headers"] = tuple(
-                (k.encode("utf-8"), v.encode("utf-8")) for k, v in headers.items()
+                (k.encode("utf-8"), v.encode("utf-8")) for k, v in new_headers.items()
             )
 
         message = self._message._replace(**dct)
 
-        kwargs = {}
+        kwargs: Dict[str, str] = {}
         if scheme is not sentinel:
-            kwargs["scheme"] = scheme
+            kwargs["scheme"] = scheme  # type: ignore
         if host is not sentinel:
-            kwargs["host"] = host
+            kwargs["host"] = host  # type: ignore
         if remote is not sentinel:
-            kwargs["remote"] = remote
+            kwargs["remote"] = remote  # type: ignore
 
         return self.__class__(
             message,
@@ -787,12 +789,12 @@ class Request(BaseRequest):
     def clone(
         self,
         *,
-        method: str = sentinel,
-        rel_url: StrOrURL = sentinel,
-        headers: LooseHeaders = sentinel,
-        scheme: str = sentinel,
-        host: str = sentinel,
-        remote: str = sentinel,
+        method: Union[str, _SENTINEL] = sentinel,
+        rel_url: Union[StrOrURL, _SENTINEL] = sentinel,
+        headers: Union[LooseHeaders, _SENTINEL] = sentinel,
+        scheme: Union[str, _SENTINEL] = sentinel,
+        host: Union[str, _SENTINEL] = sentinel,
+        remote: Union[str, _SENTINEL] = sentinel,
     ) -> "Request":
         ret = super().clone(
             method=method,
