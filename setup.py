@@ -38,7 +38,6 @@ extensions = [
         ],
         define_macros=[("HTTP_PARSER_STRICT", 0)],
     ),
-    Extension("aiohttp._frozenlist", ["aiohttp/_frozenlist.c"]),
     Extension("aiohttp._helpers", ["aiohttp/_helpers.c"]),
     Extension("aiohttp._http_writer", ["aiohttp/_http_writer.c"]),
 ]
