@@ -1,0 +1,1 @@
+Acquire the connection before running traces to prevent race condition.
