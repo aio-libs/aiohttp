@@ -56,6 +56,8 @@ install_requires = [
     'asynctest==0.13.0; python_version<"3.8"',
     "yarl>=1.0,<2.0",
     "typing_extensions>=3.7.4",
+    "frozenlist>=1.1.1",
+    "aiosignal>=1.1.0",
 ]
 
 
