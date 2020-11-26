@@ -553,8 +553,14 @@ class BaseConnector:
                     await trace.send_connection_create_end()
         else:
             if traces:
+                # Acquire the connection to prevent race conditions with limits
+                placeholder = cast(ResponseHandler, _TransportPlaceholder(self._loop))
+                self._acquired.add(placeholder)
+                self._acquired_per_host[key].add(placeholder)
                 for trace in traces:
                     await trace.send_connection_reuseconn()
+                self._acquired.remove(placeholder)
+                self._drop_acquired_per_host(key, placeholder)
 
         self._acquired.add(proto)
         self._acquired_per_host[key].add(proto)

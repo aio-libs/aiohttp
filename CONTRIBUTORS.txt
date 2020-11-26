@@ -48,6 +48,7 @@ Arthur Darcet
 Ben Bader
 Ben Timby
 Benedikt Reinartz
+Bob Haddleton
 Boris Feld
 Boyi Chen
 Brett Cannon
