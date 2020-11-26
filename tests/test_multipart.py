@@ -1318,7 +1318,7 @@ class TestMultipartWriter:
             b"Content-Type: test/passed\r\n"
             b"Content-Length: 3\r\n"
             b"Content-Disposition:"
-            b" form-data; filename=\"bug\"; filename*=utf-8''bug"
+            b' form-data; filename="bug"'
         )
         assert message == b"foo\r\n--:--\r\n"
 
@@ -1405,7 +1405,7 @@ class TestMultipartWriter:
             b"--:\r\n"
             b"Content-Type: text/plain\r\n"
             b"Content-Disposition:"
-            b" attachments; filename=\"bug.py\"; filename*=utf-8''bug.py\r\n"
+            b' attachments; filename="bug.py"\r\n'
             b"Content-Length: %s"
             b"" % (str(content_length).encode(),)
         )
