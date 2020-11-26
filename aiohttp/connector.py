@@ -554,7 +554,7 @@ class BaseConnector:
         else:
             if traces:
                 # Acquire the connection to prevent race conditions with limits
-                placeholder = cast(ResponseHandler, _TransportPlaceholder(self._loop))
+                placeholder = cast(ResponseHandler, _TransportPlaceholder())
                 self._acquired.add(placeholder)
                 self._acquired_per_host[key].add(placeholder)
                 for trace in traces:
