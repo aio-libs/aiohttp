@@ -78,7 +78,6 @@ from .resolver import (
     DefaultResolver as DefaultResolver,
     ThreadedResolver as ThreadedResolver,
 )
-from .signals import Signal as Signal
 from .streams import (
     EMPTY_PAYLOAD as EMPTY_PAYLOAD,
     DataQueue as DataQueue,
