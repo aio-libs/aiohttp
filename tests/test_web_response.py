@@ -5,11 +5,12 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from unittest import mock
 
+import aiosignal
 import pytest
 from multidict import CIMultiDict, CIMultiDictProxy
 from re_assert import Matches
 
-from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, signals
+from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs
 from aiohttp.payload import BytesPayload
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
@@ -26,7 +27,7 @@ def make_request(
     app = kwargs.pop("app", None) or mock.Mock()
     app._debug = False
     if on_response_prepare is None:
-        on_response_prepare = signals.Signal(app)
+        on_response_prepare = aiosignal.Signal(app)
     app.on_response_prepare = on_response_prepare
     app.on_response_prepare.freeze()
     protocol = kwargs.pop("protocol", None) or mock.Mock()
@@ -820,7 +821,7 @@ async def test_prepare_twice() -> None:
 async def test_prepare_calls_signal() -> None:
     app = mock.Mock()
     sig = make_mocked_coro()
-    on_response_prepare = signals.Signal(app)
+    on_response_prepare = aiosignal.Signal(app)
     on_response_prepare.append(sig)
     req = make_request("GET", "/", app=app, on_response_prepare=on_response_prepare)
     resp = StreamResponse()
@@ -1184,7 +1185,7 @@ async def test_response_prepared_after_header_preparation() -> None:
             del res.headers["Server"]
 
     app = mock.Mock()
-    sig = signals.Signal(app)
+    sig = aiosignal.Signal(app)
     sig.append(_strip_server)
 
     req = make_request("GET", "/", on_response_prepare=sig, app=app)

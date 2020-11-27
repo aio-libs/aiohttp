@@ -31,7 +31,6 @@ extensions = [
         ],
         define_macros=[("HTTP_PARSER_STRICT", 0)],
     ),
-    Extension("aiohttp._frozenlist", ["aiohttp/_frozenlist.c"]),
     Extension("aiohttp._helpers", ["aiohttp/_helpers.c"]),
     Extension("aiohttp._http_writer", ["aiohttp/_http_writer.c"]),
 ]
@@ -71,7 +70,9 @@ install_requires = [
     'asynctest==0.13.0; python_version<"3.8"',
     "yarl>=1.0,<2.0",
     'idna-ssl>=1.0; python_version<"3.7"',
-    "typing_extensions>=3.6.5",
+    "typing_extensions>=3.7.4",
+    "frozenlist>=1.1.1",
+    "aiosignal>=1.1.2",
 ]
 
 

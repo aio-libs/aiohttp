@@ -13,6 +13,7 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Any, Callable, Iterator, List, Optional, Type, Union
 from unittest import mock
 
+from aiosignal import Signal
 from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
@@ -25,7 +26,6 @@ from .client_reqrep import ClientResponse
 from .client_ws import ClientWebSocketResponse
 from .helpers import PY_38, sentinel
 from .http import HttpVersion, RawRequestMessage
-from .signals import Signal
 from .web import (
     Application,
     AppRunner,

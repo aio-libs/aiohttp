@@ -1,10 +1,11 @@
 import asyncio
 from unittest import mock
 
+import aiosignal
 import pytest
 from multidict import CIMultiDict
 
-from aiohttp import WSMessage, WSMsgType, signals
+from aiohttp import WSMessage, WSMsgType
 from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import HTTPBadRequest, WebSocketResponse
@@ -16,7 +17,7 @@ def app(loop):
     ret = mock.Mock()
     ret.loop = loop
     ret._debug = False
-    ret.on_response_prepare = signals.Signal(ret)
+    ret.on_response_prepare = aiosignal.Signal(ret)
     ret.on_response_prepare.freeze()
     return ret
 
