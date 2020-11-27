@@ -1472,3 +1472,7 @@ async def test_stream_reader_iter_chunks_chunked_encoding(protocol: Any) -> None
     async for data, end_of_chunk in stream.iter_chunks():
         assert (data, end_of_chunk) == (next(it), True)
     pytest.raises(StopIteration, next, it)
+
+
+def test_isinstance_check() -> None:
+    assert isinstance(streams.EMPTY_PAYLOAD, streams.StreamReader)

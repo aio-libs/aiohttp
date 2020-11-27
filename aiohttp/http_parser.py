@@ -390,7 +390,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 if not payload_parser.done:
                                     self._payload_parser = payload_parser
                             else:
-                                payload = EMPTY_PAYLOAD  # type: ignore
+                                payload = EMPTY_PAYLOAD
 
                         messages.append((msg, payload))
                 else:
