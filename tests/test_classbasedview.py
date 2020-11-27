@@ -16,7 +16,7 @@ async def test_render_ok() -> None:
     resp = web.Response(text="OK")
 
     class MyView(View):
-        async def get(self):
+        async def get(self) -> web.StreamResponse:
             return resp
 
     request = mock.Mock()
@@ -27,7 +27,7 @@ async def test_render_ok() -> None:
 
 async def test_render_unknown_method() -> None:
     class MyView(View):
-        async def get(self):
+        async def get(self) -> web.StreamResponse:
             return web.Response(text="OK")
 
         options = get
@@ -42,7 +42,7 @@ async def test_render_unknown_method() -> None:
 
 async def test_render_unsupported_method() -> None:
     class MyView(View):
-        async def get(self):
+        async def get(self) -> web.StreamResponse:
             return web.Response(text="OK")
 
         options = delete = get

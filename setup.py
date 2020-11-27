@@ -38,7 +38,6 @@ extensions = [
         ],
         define_macros=[("HTTP_PARSER_STRICT", 0)],
     ),
-    Extension("aiohttp._frozenlist", ["aiohttp/_frozenlist.c"]),
     Extension("aiohttp._helpers", ["aiohttp/_helpers.c"]),
     Extension("aiohttp._http_writer", ["aiohttp/_http_writer.c"]),
 ]
@@ -51,13 +50,14 @@ except IndexError:
     raise RuntimeError("Unable to determine version.")
 
 install_requires = [
-    "attrs>=17.3.0",
     "chardet>=2.0,<4.0",
     "multidict>=4.5,<7.0",
     "async_timeout>=4.0a2,<5.0",
     'asynctest==0.13.0; python_version<"3.8"',
     "yarl>=1.0,<2.0",
     "typing_extensions>=3.7.4",
+    "frozenlist>=1.1.1",
+    "aiosignal>=1.1.2",
 ]
 
 

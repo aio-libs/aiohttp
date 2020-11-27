@@ -1,3 +1,4 @@
+# type: ignore
 import asyncio
 import base64
 import gc
@@ -434,11 +435,25 @@ async def test_ceil_timeout_small(loop) -> None:
 # -------------------------------- ContentDisposition -------------------
 
 
-def test_content_disposition() -> None:
-    assert (
-        helpers.content_disposition_header("attachment", foo="bar")
-        == 'attachment; foo="bar"'
-    )
+@pytest.mark.parametrize(
+    "kwargs, result",
+    [
+        (dict(foo="bar"), 'attachment; foo="bar"'),
+        (dict(foo="bar[]"), 'attachment; foo="bar[]"'),
+        (dict(foo=' a""b\\'), 'attachment; foo="\\ a\\"\\"b\\\\"'),
+        (dict(foo="bär"), "attachment; foo*=utf-8''b%C3%A4r"),
+        (dict(foo='bär "\\', quote_fields=False), 'attachment; foo="bär \\"\\\\"'),
+        (dict(foo="bär", _charset="latin-1"), "attachment; foo*=latin-1''b%E4r"),
+        (dict(filename="bär"), 'attachment; filename="b%C3%A4r"'),
+        (dict(filename="bär", _charset="latin-1"), 'attachment; filename="b%E4r"'),
+        (
+            dict(filename='bär "\\', quote_fields=False),
+            'attachment; filename="bär \\"\\\\"',
+        ),
+    ],
+)
+def test_content_disposition(kwargs, result) -> None:
+    assert helpers.content_disposition_header("attachment", **kwargs) == result
 
 
 def test_content_disposition_bad_type() -> None:

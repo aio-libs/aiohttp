@@ -22,12 +22,12 @@ from typing import (  # noqa
     cast,
 )
 
+from aiosignal import Signal
+from frozenlist import FrozenList
 from typing_extensions import final
 
 from . import hdrs
-from .frozenlist import FrozenList
 from .log import web_logger
-from .signals import Signal
 from .web_middlewares import _fix_request_current_app
 from .web_request import Request
 from .web_response import StreamResponse

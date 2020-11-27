@@ -1,10 +1,12 @@
+# type: ignore
+from typing import Any
 from unittest import mock
 
 from aiohttp import web
 from aiohttp.test_utils import make_mocked_coro
 
 
-async def serve(request):
+async def serve(request: Any):
     return web.Response()
 
 

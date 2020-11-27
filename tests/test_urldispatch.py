@@ -1,7 +1,9 @@
+# type: ignore
 import pathlib
 import re
 from collections.abc import Container, Iterable, Mapping, MutableMapping, Sized
 from functools import partial
+from typing import Any
 from urllib.parse import unquote
 
 import pytest
@@ -47,12 +49,12 @@ def app():
 
 
 @pytest.fixture
-def router(app):
+def router(app: Any):
     return app.router
 
 
 @pytest.fixture
-def fill_routes(router):
+def fill_routes(router: Any):
     def go():
         route1 = router.add_route("GET", "/plain", make_handler())
         route2 = router.add_route("GET", "/variable/{name}", make_handler())
@@ -62,7 +64,7 @@ def fill_routes(router):
     return go
 
 
-def test_register_uncommon_http_methods(router) -> None:
+def test_register_uncommon_http_methods(router: Any) -> None:
     uncommon_http_methods = {
         "PROPFIND",
         "PROPPATCH",
@@ -79,12 +81,12 @@ def test_register_uncommon_http_methods(router) -> None:
         router.add_route(method, "/handler/to/path", make_handler())
 
 
-async def test_add_partial_handler(router) -> None:
+async def test_add_partial_handler(router: Any) -> None:
     handler = make_partial_handler()
     router.add_get("/handler/to/path", handler)
 
 
-async def test_add_sync_handler(router) -> None:
+async def test_add_sync_handler(router: Any) -> None:
     def handler(request):
         pass
 
@@ -92,7 +94,7 @@ async def test_add_sync_handler(router) -> None:
         router.add_get("/handler/to/path", handler)
 
 
-async def test_add_route_root(router) -> None:
+async def test_add_route_root(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/", handler)
     req = make_mocked_request("GET", "/")
@@ -103,7 +105,7 @@ async def test_add_route_root(router) -> None:
     assert info.route.name is None
 
 
-async def test_add_route_simple(router) -> None:
+async def test_add_route_simple(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/handler/to/path", handler)
     req = make_mocked_request("GET", "/handler/to/path")
@@ -114,7 +116,7 @@ async def test_add_route_simple(router) -> None:
     assert info.route.name is None
 
 
-async def test_add_with_matchdict(router) -> None:
+async def test_add_with_matchdict(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/handler/{to}", handler)
     req = make_mocked_request("GET", "/handler/tail")
@@ -125,7 +127,7 @@ async def test_add_with_matchdict(router) -> None:
     assert info.route.name is None
 
 
-async def test_add_with_matchdict_with_colon(router) -> None:
+async def test_add_with_matchdict_with_colon(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/handler/{to}", handler)
     req = make_mocked_request("GET", "/handler/1:2:3")
@@ -136,7 +138,7 @@ async def test_add_with_matchdict_with_colon(router) -> None:
     assert info.route.name is None
 
 
-async def test_add_route_with_add_get_shortcut(router) -> None:
+async def test_add_route_with_add_get_shortcut(router: Any) -> None:
     handler = make_handler()
     router.add_get("/handler/to/path", handler)
     req = make_mocked_request("GET", "/handler/to/path")
@@ -147,7 +149,7 @@ async def test_add_route_with_add_get_shortcut(router) -> None:
     assert info.route.name is None
 
 
-async def test_add_route_with_add_post_shortcut(router) -> None:
+async def test_add_route_with_add_post_shortcut(router: Any) -> None:
     handler = make_handler()
     router.add_post("/handler/to/path", handler)
     req = make_mocked_request("POST", "/handler/to/path")
@@ -158,7 +160,7 @@ async def test_add_route_with_add_post_shortcut(router) -> None:
     assert info.route.name is None
 
 
-async def test_add_route_with_add_put_shortcut(router) -> None:
+async def test_add_route_with_add_put_shortcut(router: Any) -> None:
     handler = make_handler()
     router.add_put("/handler/to/path", handler)
     req = make_mocked_request("PUT", "/handler/to/path")
@@ -169,7 +171,7 @@ async def test_add_route_with_add_put_shortcut(router) -> None:
     assert info.route.name is None
 
 
-async def test_add_route_with_add_patch_shortcut(router) -> None:
+async def test_add_route_with_add_patch_shortcut(router: Any) -> None:
     handler = make_handler()
     router.add_patch("/handler/to/path", handler)
     req = make_mocked_request("PATCH", "/handler/to/path")
@@ -180,7 +182,7 @@ async def test_add_route_with_add_patch_shortcut(router) -> None:
     assert info.route.name is None
 
 
-async def test_add_route_with_add_delete_shortcut(router) -> None:
+async def test_add_route_with_add_delete_shortcut(router: Any) -> None:
     handler = make_handler()
     router.add_delete("/handler/to/path", handler)
     req = make_mocked_request("DELETE", "/handler/to/path")
@@ -191,7 +193,7 @@ async def test_add_route_with_add_delete_shortcut(router) -> None:
     assert info.route.name is None
 
 
-async def test_add_route_with_add_head_shortcut(router) -> None:
+async def test_add_route_with_add_head_shortcut(router: Any) -> None:
     handler = make_handler()
     router.add_head("/handler/to/path", handler)
     req = make_mocked_request("HEAD", "/handler/to/path")
@@ -202,7 +204,7 @@ async def test_add_route_with_add_head_shortcut(router) -> None:
     assert info.route.name is None
 
 
-async def test_add_with_name(router) -> None:
+async def test_add_with_name(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/handler/to/path", handler, name="name")
     req = make_mocked_request("GET", "/handler/to/path")
@@ -211,7 +213,7 @@ async def test_add_with_name(router) -> None:
     assert "name" == info.route.name
 
 
-async def test_add_with_tailing_slash(router) -> None:
+async def test_add_with_tailing_slash(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/handler/to/path/", handler)
     req = make_mocked_request("GET", "/handler/to/path/")
@@ -221,37 +223,37 @@ async def test_add_with_tailing_slash(router) -> None:
     assert handler is info.handler
 
 
-def test_add_invalid_path(router) -> None:
+def test_add_invalid_path(router: Any) -> None:
     handler = make_handler()
     with pytest.raises(ValueError):
         router.add_route("GET", "/{/", handler)
 
 
-def test_add_url_invalid1(router) -> None:
+def test_add_url_invalid1(router: Any) -> None:
     handler = make_handler()
     with pytest.raises(ValueError):
         router.add_route("post", "/post/{id", handler)
 
 
-def test_add_url_invalid2(router) -> None:
+def test_add_url_invalid2(router: Any) -> None:
     handler = make_handler()
     with pytest.raises(ValueError):
         router.add_route("post", "/post/{id{}}", handler)
 
 
-def test_add_url_invalid3(router) -> None:
+def test_add_url_invalid3(router: Any) -> None:
     handler = make_handler()
     with pytest.raises(ValueError):
         router.add_route("post", "/post/{id{}", handler)
 
 
-def test_add_url_invalid4(router) -> None:
+def test_add_url_invalid4(router: Any) -> None:
     handler = make_handler()
     with pytest.raises(ValueError):
         router.add_route("post", '/post/{id"}', handler)
 
 
-async def test_add_url_escaping(router) -> None:
+async def test_add_url_escaping(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/+$", handler)
 
@@ -261,7 +263,7 @@ async def test_add_url_escaping(router) -> None:
     assert handler is info.handler
 
 
-async def test_any_method(router) -> None:
+async def test_any_method(router: Any) -> None:
     handler = make_handler()
     route = router.add_route(hdrs.METH_ANY, "/", handler)
 
@@ -277,7 +279,7 @@ async def test_any_method(router) -> None:
     assert info1.route is info2.route
 
 
-async def test_match_second_result_in_table(router) -> None:
+async def test_match_second_result_in_table(router: Any) -> None:
     handler1 = make_handler()
     handler2 = make_handler()
     router.add_route("GET", "/h1", handler1)
@@ -289,7 +291,7 @@ async def test_match_second_result_in_table(router) -> None:
     assert handler2 is info.handler
 
 
-async def test_raise_method_not_allowed(router) -> None:
+async def test_raise_method_not_allowed(router: Any) -> None:
     handler1 = make_handler()
     handler2 = make_handler()
     router.add_route("GET", "/", handler1)
@@ -309,7 +311,7 @@ async def test_raise_method_not_allowed(router) -> None:
     assert {"POST", "GET"} == exc.allowed_methods
 
 
-async def test_raise_method_not_found(router) -> None:
+async def test_raise_method_not_found(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/a", handler)
     req = make_mocked_request("GET", "/b")
@@ -325,7 +327,7 @@ async def test_raise_method_not_found(router) -> None:
     assert 404 == exc.status
 
 
-def test_double_add_url_with_the_same_name(router) -> None:
+def test_double_add_url_with_the_same_name(router: Any) -> None:
     handler1 = make_handler()
     handler2 = make_handler()
     router.add_route("GET", "/get", handler1, name="name")
@@ -336,7 +338,7 @@ def test_double_add_url_with_the_same_name(router) -> None:
     assert Matches(regexp) == str(ctx.value)
 
 
-def test_route_plain(router) -> None:
+def test_route_plain(router: Any) -> None:
     handler = make_handler()
     route = router.add_route("GET", "/get", handler, name="name")
     route2 = next(iter(router["name"]))
@@ -345,12 +347,12 @@ def test_route_plain(router) -> None:
     assert route is route2
 
 
-def test_route_unknown_route_name(router) -> None:
+def test_route_unknown_route_name(router: Any) -> None:
     with pytest.raises(KeyError):
         router["unknown"]
 
 
-def test_route_dynamic(router) -> None:
+def test_route_dynamic(router: Any) -> None:
     handler = make_handler()
     route = router.add_route("GET", "/get/{name}", handler, name="name")
 
@@ -360,7 +362,7 @@ def test_route_dynamic(router) -> None:
     assert route is route2
 
 
-def test_add_static(router) -> None:
+def test_add_static(router: Any) -> None:
     resource = router.add_static(
         "/st", pathlib.Path(aiohttp.__file__).parent, name="static"
     )
@@ -370,7 +372,7 @@ def test_add_static(router) -> None:
     assert len(resource) == 2
 
 
-def test_add_static_append_version(router) -> None:
+def test_add_static_append_version(router: Any) -> None:
     resource = router.add_static("/st", pathlib.Path(__file__).parent, name="static")
     url = resource.url_for(filename="/data.unknown_mime_type", append_version=True)
     expect_url = (
@@ -379,7 +381,7 @@ def test_add_static_append_version(router) -> None:
     assert expect_url == str(url)
 
 
-def test_add_static_append_version_set_from_constructor(router) -> None:
+def test_add_static_append_version_set_from_constructor(router: Any) -> None:
     resource = router.add_static(
         "/st", pathlib.Path(__file__).parent, append_version=True, name="static"
     )
@@ -390,7 +392,7 @@ def test_add_static_append_version_set_from_constructor(router) -> None:
     assert expect_url == str(url)
 
 
-def test_add_static_append_version_override_constructor(router) -> None:
+def test_add_static_append_version_override_constructor(router: Any) -> None:
     resource = router.add_static(
         "/st", pathlib.Path(__file__).parent, append_version=True, name="static"
     )
@@ -399,7 +401,7 @@ def test_add_static_append_version_override_constructor(router) -> None:
     assert expect_url == str(url)
 
 
-def test_add_static_append_version_filename_without_slash(router) -> None:
+def test_add_static_append_version_filename_without_slash(router: Any) -> None:
     resource = router.add_static("/st", pathlib.Path(__file__).parent, name="static")
     url = resource.url_for(filename="data.unknown_mime_type", append_version=True)
     expect_url = (
@@ -408,19 +410,19 @@ def test_add_static_append_version_filename_without_slash(router) -> None:
     assert expect_url == str(url)
 
 
-def test_add_static_append_version_non_exists_file(router) -> None:
+def test_add_static_append_version_non_exists_file(router: Any) -> None:
     resource = router.add_static("/st", pathlib.Path(__file__).parent, name="static")
     url = resource.url_for(filename="/non_exists_file", append_version=True)
     assert "/st/non_exists_file" == str(url)
 
 
-def test_add_static_append_version_non_exists_file_without_slash(router) -> None:
+def test_add_static_append_version_non_exists_file_without_slash(router: Any) -> None:
     resource = router.add_static("/st", pathlib.Path(__file__).parent, name="static")
     url = resource.url_for(filename="non_exists_file", append_version=True)
     assert "/st/non_exists_file" == str(url)
 
 
-def test_add_static_append_version_follow_symlink(router, tmp_path) -> None:
+def test_add_static_append_version_follow_symlink(router: Any, tmp_path: Any) -> None:
     # Tests the access to a symlink, in static folder with apeend_version
     symlink_path = tmp_path / "append_version_symlink"
     symlink_target_path = pathlib.Path(__file__).parent
@@ -440,7 +442,9 @@ def test_add_static_append_version_follow_symlink(router, tmp_path) -> None:
     assert expect_url == str(url)
 
 
-def test_add_static_append_version_not_follow_symlink(router, tmp_path) -> None:
+def test_add_static_append_version_not_follow_symlink(
+    router: Any, tmp_path: Any
+) -> None:
     # Tests the access to a symlink, in static folder with apeend_version
 
     symlink_path = tmp_path / "append_version_symlink"
@@ -458,7 +462,7 @@ def test_add_static_append_version_not_follow_symlink(router, tmp_path) -> None:
     assert "/st/append_version_symlink/data.unknown_mime_type" == str(url)
 
 
-def test_add_static_quoting(router) -> None:
+def test_add_static_quoting(router: Any) -> None:
     resource = router.add_static(
         "/пре %2Fфикс", pathlib.Path(aiohttp.__file__).parent, name="static"
     )
@@ -472,49 +476,49 @@ def test_add_static_quoting(router) -> None:
     assert len(resource) == 2
 
 
-def test_plain_not_match(router) -> None:
+def test_plain_not_match(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/get/path", handler, name="name")
     route = router["name"]
     assert route._match("/another/path") is None
 
 
-def test_dynamic_not_match(router) -> None:
+def test_dynamic_not_match(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/get/{name}", handler, name="name")
     route = router["name"]
     assert route._match("/another/path") is None
 
 
-async def test_static_not_match(router) -> None:
+async def test_static_not_match(router: Any) -> None:
     router.add_static("/pre", pathlib.Path(aiohttp.__file__).parent, name="name")
     resource = router["name"]
     ret = await resource.resolve(make_mocked_request("GET", "/another/path"))
     assert (None, set()) == ret
 
 
-def test_dynamic_with_trailing_slash(router) -> None:
+def test_dynamic_with_trailing_slash(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/get/{name}/", handler, name="name")
     route = router["name"]
     assert {"name": "John"} == route._match("/get/John/")
 
 
-def test_len(router) -> None:
+def test_len(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/get1", handler, name="name1")
     router.add_route("GET", "/get2", handler, name="name2")
     assert 2 == len(router)
 
 
-def test_iter(router) -> None:
+def test_iter(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/get1", handler, name="name1")
     router.add_route("GET", "/get2", handler, name="name2")
     assert {"name1", "name2"} == set(iter(router))
 
 
-def test_contains(router) -> None:
+def test_contains(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/get1", handler, name="name1")
     router.add_route("GET", "/get2", handler, name="name2")
@@ -522,22 +526,22 @@ def test_contains(router) -> None:
     assert "name3" not in router
 
 
-def test_static_repr(router) -> None:
+def test_static_repr(router: Any) -> None:
     router.add_static("/get", pathlib.Path(aiohttp.__file__).parent, name="name")
     assert Matches(r"<StaticResource 'name' /get") == repr(router["name"])
 
 
-def test_static_adds_slash(router) -> None:
+def test_static_adds_slash(router: Any) -> None:
     route = router.add_static("/prefix", pathlib.Path(aiohttp.__file__).parent)
     assert "/prefix" == route._prefix
 
 
-def test_static_remove_trailing_slash(router) -> None:
+def test_static_remove_trailing_slash(router: Any) -> None:
     route = router.add_static("/prefix/", pathlib.Path(aiohttp.__file__).parent)
     assert "/prefix" == route._prefix
 
 
-async def test_add_route_with_re(router) -> None:
+async def test_add_route_with_re(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", r"/handler/{to:\d+}", handler)
 
@@ -552,7 +556,7 @@ async def test_add_route_with_re(router) -> None:
     assert {"name": "test"} == info
 
 
-async def test_add_route_with_re_and_slashes(router) -> None:
+async def test_add_route_with_re_and_slashes(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", r"/handler/{to:[^/]+/?}", handler)
     req = make_mocked_request("GET", "/handler/1234/")
@@ -567,7 +571,7 @@ async def test_add_route_with_re_and_slashes(router) -> None:
     assert {"to": "1234/5/6/7"} == info
 
 
-async def test_add_route_with_re_not_match(router) -> None:
+async def test_add_route_with_re_not_match(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", r"/handler/{to:\d+}", handler)
 
@@ -579,7 +583,7 @@ async def test_add_route_with_re_not_match(router) -> None:
         await match_info.handler(req)
 
 
-async def test_add_route_with_re_including_slashes(router) -> None:
+async def test_add_route_with_re_including_slashes(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", r"/handler/{to:.+}/tail", handler)
     req = make_mocked_request("GET", "/handler/re/with/slashes/tail")
@@ -588,7 +592,7 @@ async def test_add_route_with_re_including_slashes(router) -> None:
     assert {"to": "re/with/slashes"} == info
 
 
-def test_add_route_with_invalid_re(router) -> None:
+def test_add_route_with_invalid_re(router: Any) -> None:
     handler = make_handler()
     with pytest.raises(ValueError) as ctx:
         router.add_route("GET", r"/handler/{to:+++}", handler)
@@ -603,7 +607,7 @@ def test_add_route_with_invalid_re(router) -> None:
     assert ctx.value.__cause__ is None
 
 
-def test_route_dynamic_with_regex_spec(router) -> None:
+def test_route_dynamic_with_regex_spec(router: Any) -> None:
     handler = make_handler()
     route = router.add_route("GET", r"/get/{num:^\d+}", handler, name="name")
 
@@ -611,7 +615,7 @@ def test_route_dynamic_with_regex_spec(router) -> None:
     assert "/get/123" == str(url)
 
 
-def test_route_dynamic_with_regex_spec_and_trailing_slash(router) -> None:
+def test_route_dynamic_with_regex_spec_and_trailing_slash(router: Any) -> None:
     handler = make_handler()
     route = router.add_route("GET", r"/get/{num:^\d+}/", handler, name="name")
 
@@ -619,7 +623,7 @@ def test_route_dynamic_with_regex_spec_and_trailing_slash(router) -> None:
     assert "/get/123/" == str(url)
 
 
-def test_route_dynamic_with_regex(router) -> None:
+def test_route_dynamic_with_regex(router: Any) -> None:
     handler = make_handler()
     route = router.add_route("GET", r"/{one}/{two:.+}", handler)
 
@@ -627,7 +631,7 @@ def test_route_dynamic_with_regex(router) -> None:
     assert "/1/2" == str(url)
 
 
-def test_route_dynamic_quoting(router) -> None:
+def test_route_dynamic_quoting(router: Any) -> None:
     handler = make_handler()
     route = router.add_route("GET", r"/пре %2Fфикс/{arg}", handler)
 
@@ -639,7 +643,7 @@ def test_route_dynamic_quoting(router) -> None:
     )
 
 
-async def test_regular_match_info(router) -> None:
+async def test_regular_match_info(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/get/{name}", handler)
 
@@ -649,7 +653,7 @@ async def test_regular_match_info(router) -> None:
     assert Matches("<MatchInfo {'name': 'john'}: .+<Dynamic.+>>") == repr(match_info)
 
 
-async def test_match_info_with_plus(router) -> None:
+async def test_match_info_with_plus(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/get/{version}", handler)
 
@@ -658,13 +662,13 @@ async def test_match_info_with_plus(router) -> None:
     assert {"version": "1.0+test"} == match_info
 
 
-async def test_not_found_repr(router) -> None:
+async def test_not_found_repr(router: Any) -> None:
     req = make_mocked_request("POST", "/path/to")
     match_info = await router.resolve(req)
     assert "<MatchInfoError 404: Not Found>" == repr(match_info)
 
 
-async def test_not_allowed_repr(router) -> None:
+async def test_not_allowed_repr(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/path/to", handler)
 
@@ -676,12 +680,12 @@ async def test_not_allowed_repr(router) -> None:
     assert "<MatchInfoError 405: Method Not Allowed>" == repr(match_info)
 
 
-def test_default_expect_handler(router) -> None:
+def test_default_expect_handler(router: Any) -> None:
     route = router.add_route("GET", "/", make_handler())
     assert route._expect_handler is _default_expect_handler
 
 
-def test_custom_expect_handler_plain(router) -> None:
+def test_custom_expect_handler_plain(router: Any) -> None:
     async def handler(request):
         pass
 
@@ -690,7 +694,7 @@ def test_custom_expect_handler_plain(router) -> None:
     assert isinstance(route, ResourceRoute)
 
 
-def test_custom_expect_handler_dynamic(router) -> None:
+def test_custom_expect_handler_dynamic(router: Any) -> None:
     async def handler(request):
         pass
 
@@ -701,7 +705,7 @@ def test_custom_expect_handler_dynamic(router) -> None:
     assert isinstance(route, ResourceRoute)
 
 
-def test_expect_handler_non_coroutine(router) -> None:
+def test_expect_handler_non_coroutine(router: Any) -> None:
     def handler(request):
         pass
 
@@ -709,7 +713,7 @@ def test_expect_handler_non_coroutine(router) -> None:
         router.add_route("GET", "/", make_handler(), expect_handler=handler)
 
 
-async def test_dynamic_match_non_ascii(router) -> None:
+async def test_dynamic_match_non_ascii(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/{var}", handler)
     req = make_mocked_request(
@@ -719,7 +723,7 @@ async def test_dynamic_match_non_ascii(router) -> None:
     assert {"var": "рус текст"} == match_info
 
 
-async def test_dynamic_match_with_static_part(router) -> None:
+async def test_dynamic_match_with_static_part(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/{name}.html", handler)
     req = make_mocked_request("GET", "/file.html")
@@ -727,7 +731,7 @@ async def test_dynamic_match_with_static_part(router) -> None:
     assert {"name": "file"} == match_info
 
 
-async def test_dynamic_match_two_part2(router) -> None:
+async def test_dynamic_match_two_part2(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/{name}.{ext}", handler)
     req = make_mocked_request("GET", "/file.html")
@@ -735,7 +739,7 @@ async def test_dynamic_match_two_part2(router) -> None:
     assert {"name": "file", "ext": "html"} == match_info
 
 
-async def test_dynamic_match_unquoted_path(router) -> None:
+async def test_dynamic_match_unquoted_path(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/{path}/{subpath}", handler)
     resource_id = "my%2Fpath%7Cwith%21some%25strange%24characters"
@@ -744,13 +748,13 @@ async def test_dynamic_match_unquoted_path(router) -> None:
     assert match_info == {"path": "path", "subpath": unquote(resource_id)}
 
 
-def test_add_route_not_started_with_slash(router) -> None:
+def test_add_route_not_started_with_slash(router: Any) -> None:
     with pytest.raises(ValueError):
         handler = make_handler()
         router.add_route("GET", "invalid_path", handler)
 
 
-def test_add_route_invalid_method(router) -> None:
+def test_add_route_invalid_method(router: Any) -> None:
 
     sample_bad_methods = {
         "BAD METHOD",
@@ -767,34 +771,34 @@ def test_add_route_invalid_method(router) -> None:
             router.add_route(bad_method, "/path", handler)
 
 
-def test_routes_view_len(router, fill_routes) -> None:
+def test_routes_view_len(router: Any, fill_routes: Any) -> None:
     fill_routes()
     assert 4 == len(router.routes())
 
 
-def test_routes_view_iter(router, fill_routes) -> None:
+def test_routes_view_iter(router: Any, fill_routes: Any) -> None:
     routes = fill_routes()
     assert list(routes) == list(router.routes())
 
 
-def test_routes_view_contains(router, fill_routes) -> None:
+def test_routes_view_contains(router: Any, fill_routes: Any) -> None:
     routes = fill_routes()
     for route in routes:
         assert route in router.routes()
 
 
-def test_routes_abc(router) -> None:
+def test_routes_abc(router: Any) -> None:
     assert isinstance(router.routes(), Sized)
     assert isinstance(router.routes(), Iterable)
     assert isinstance(router.routes(), Container)
 
 
-def test_named_resources_abc(router) -> None:
+def test_named_resources_abc(router: Any) -> None:
     assert isinstance(router.named_resources(), Mapping)
     assert not isinstance(router.named_resources(), MutableMapping)
 
 
-def test_named_resources(router) -> None:
+def test_named_resources(router: Any) -> None:
     route1 = router.add_route("GET", "/plain", make_handler(), name="route1")
     route2 = router.add_route("GET", "/variable/{name}", make_handler(), name="route2")
     route3 = router.add_static(
@@ -809,7 +813,7 @@ def test_named_resources(router) -> None:
         assert isinstance(router.named_resources()[name], AbstractResource)
 
 
-def test_resource_iter(router) -> None:
+def test_resource_iter(router: Any) -> None:
     async def handler(request):
         pass
 
@@ -820,14 +824,14 @@ def test_resource_iter(router) -> None:
     assert [r1, r2] == list(resource)
 
 
-def test_view_route(router) -> None:
+def test_view_route(router: Any) -> None:
     resource = router.add_resource("/path")
 
     route = resource.add_route("*", View)
     assert View is route.handler
 
 
-def test_resource_route_match(router) -> None:
+def test_resource_route_match(router: Any) -> None:
     async def handler(request):
         pass
 
@@ -836,7 +840,7 @@ def test_resource_route_match(router) -> None:
     assert {} == route.resource._match("/path")
 
 
-def test_error_on_double_route_adding(router) -> None:
+def test_error_on_double_route_adding(router: Any) -> None:
     async def handler(request):
         pass
 
@@ -847,7 +851,7 @@ def test_error_on_double_route_adding(router) -> None:
         resource.add_route("GET", handler)
 
 
-def test_error_on_adding_route_after_wildcard(router) -> None:
+def test_error_on_adding_route_after_wildcard(router: Any) -> None:
     async def handler(request):
         pass
 
@@ -858,7 +862,7 @@ def test_error_on_adding_route_after_wildcard(router) -> None:
         resource.add_route("GET", handler)
 
 
-async def test_http_exception_is_none_when_resolved(router) -> None:
+async def test_http_exception_is_none_when_resolved(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/", handler)
     req = make_mocked_request("GET", "/")
@@ -866,7 +870,7 @@ async def test_http_exception_is_none_when_resolved(router) -> None:
     assert info.http_exception is None
 
 
-async def test_http_exception_is_not_none_when_not_resolved(router) -> None:
+async def test_http_exception_is_not_none_when_not_resolved(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/", handler)
     req = make_mocked_request("GET", "/abc")
@@ -874,7 +878,7 @@ async def test_http_exception_is_not_none_when_not_resolved(router) -> None:
     assert info.http_exception.status == 404
 
 
-async def test_match_info_get_info_plain(router) -> None:
+async def test_match_info_get_info_plain(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/", handler)
     req = make_mocked_request("GET", "/")
@@ -882,7 +886,7 @@ async def test_match_info_get_info_plain(router) -> None:
     assert info.get_info() == {"path": "/"}
 
 
-async def test_match_info_get_info_dynamic(router) -> None:
+async def test_match_info_get_info_dynamic(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/{a}", handler)
     req = make_mocked_request("GET", "/value")
@@ -893,7 +897,7 @@ async def test_match_info_get_info_dynamic(router) -> None:
     }
 
 
-async def test_match_info_get_info_dynamic2(router) -> None:
+async def test_match_info_get_info_dynamic2(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/{a}/{b}", handler)
     req = make_mocked_request("GET", "/path/to")
@@ -906,7 +910,7 @@ async def test_match_info_get_info_dynamic2(router) -> None:
     }
 
 
-def test_static_resource_get_info(router) -> None:
+def test_static_resource_get_info(router: Any) -> None:
     directory = pathlib.Path(aiohttp.__file__).parent.resolve()
     resource = router.add_static("/st", directory)
     info = resource.get_info()
@@ -916,7 +920,7 @@ def test_static_resource_get_info(router) -> None:
     assert all([type(r) is ResourceRoute for r in info["routes"].values()])
 
 
-async def test_system_route_get_info(router) -> None:
+async def test_system_route_get_info(router: Any) -> None:
     handler = make_handler()
     router.add_route("GET", "/", handler)
     req = make_mocked_request("GET", "/abc")
@@ -924,20 +928,20 @@ async def test_system_route_get_info(router) -> None:
     assert info.get_info()["http_exception"].status == 404
 
 
-def test_resources_view_len(router) -> None:
+def test_resources_view_len(router: Any) -> None:
     router.add_resource("/plain")
     router.add_resource("/variable/{name}")
     assert 2 == len(router.resources())
 
 
-def test_resources_view_iter(router) -> None:
+def test_resources_view_iter(router: Any) -> None:
     resource1 = router.add_resource("/plain")
     resource2 = router.add_resource("/variable/{name}")
     resources = [resource1, resource2]
     assert list(resources) == list(router.resources())
 
 
-def test_resources_view_contains(router) -> None:
+def test_resources_view_contains(router: Any) -> None:
     resource1 = router.add_resource("/plain")
     resource2 = router.add_resource("/variable/{name}")
     resources = [resource1, resource2]
@@ -945,13 +949,13 @@ def test_resources_view_contains(router) -> None:
         assert resource in router.resources()
 
 
-def test_resources_abc(router) -> None:
+def test_resources_abc(router: Any) -> None:
     assert isinstance(router.resources(), Sized)
     assert isinstance(router.resources(), Iterable)
     assert isinstance(router.resources(), Container)
 
 
-def test_static_route_user_home(router) -> None:
+def test_static_route_user_home(router: Any) -> None:
     here = pathlib.Path(aiohttp.__file__).parent
     try:
         static_dir = pathlib.Path("~") / here.relative_to(pathlib.Path.home())
@@ -961,25 +965,25 @@ def test_static_route_user_home(router) -> None:
     assert here == route.get_info()["directory"]
 
 
-def test_static_route_points_to_file(router) -> None:
+def test_static_route_points_to_file(router: Any) -> None:
     here = pathlib.Path(aiohttp.__file__).parent / "__init__.py"
     with pytest.raises(ValueError):
         router.add_static("/st", here)
 
 
-async def test_404_for_static_resource(router) -> None:
+async def test_404_for_static_resource(router: Any) -> None:
     resource = router.add_static("/st", pathlib.Path(aiohttp.__file__).parent)
     ret = await resource.resolve(make_mocked_request("GET", "/unknown/path"))
     assert (None, set()) == ret
 
 
-async def test_405_for_resource_adapter(router) -> None:
+async def test_405_for_resource_adapter(router: Any) -> None:
     resource = router.add_static("/st", pathlib.Path(aiohttp.__file__).parent)
     ret = await resource.resolve(make_mocked_request("POST", "/st/abc.py"))
     assert (None, {"HEAD", "GET"}) == ret
 
 
-async def test_check_allowed_method_for_found_resource(router) -> None:
+async def test_check_allowed_method_for_found_resource(router: Any) -> None:
     handler = make_handler()
     resource = router.add_resource("/")
     resource.add_route("GET", handler)
@@ -988,24 +992,24 @@ async def test_check_allowed_method_for_found_resource(router) -> None:
     assert {"GET"} == ret[1]
 
 
-def test_url_for_in_static_resource(router) -> None:
+def test_url_for_in_static_resource(router: Any) -> None:
     resource = router.add_static("/static", pathlib.Path(aiohttp.__file__).parent)
     assert URL("/static/file.txt") == resource.url_for(filename="file.txt")
 
 
-def test_url_for_in_static_resource_pathlib(router) -> None:
+def test_url_for_in_static_resource_pathlib(router: Any) -> None:
     resource = router.add_static("/static", pathlib.Path(aiohttp.__file__).parent)
     assert URL("/static/file.txt") == resource.url_for(
         filename=pathlib.Path("file.txt")
     )
 
 
-def test_url_for_in_resource_route(router) -> None:
+def test_url_for_in_resource_route(router: Any) -> None:
     route = router.add_route("GET", "/get/{name}", make_handler(), name="name")
     assert URL("/get/John") == route.url_for(name="John")
 
 
-def test_subapp_get_info(app) -> None:
+def test_subapp_get_info(app: Any) -> None:
     subapp = web.Application()
     resource = subapp.add_subapp("/pre", subapp)
     assert resource.get_info() == {"prefix": "/pre", "app": subapp}
@@ -1021,12 +1025,12 @@ def test_subapp_get_info(app) -> None:
         ("example$com", ValueError),
     ],
 )
-def test_domain_validation_error(domain, error):
+def test_domain_validation_error(domain: Any, error: Any) -> None:
     with pytest.raises(error):
         Domain(domain)
 
 
-def test_domain_valid():
+def test_domain_valid() -> None:
     assert Domain("example.com:81").canonical == "example.com:81"
     assert MaskDomain("*.example.com").canonical == r".*\.example\.com"
     assert Domain("пуни.код").canonical == "xn--h1ajfq.xn--d1alm"
@@ -1044,7 +1048,7 @@ def test_domain_valid():
         ("*.example.com", "example.com", False),
     ],
 )
-def test_match_domain(a, b, result):
+def test_match_domain(a: Any, b: Any, result: Any) -> None:
     if "*" in a:
         rule = MaskDomain(a)
     else:
@@ -1052,12 +1056,12 @@ def test_match_domain(a, b, result):
     assert rule.match_domain(b) is result
 
 
-def test_add_subapp_errors(app):
+def test_add_subapp_errors(app: Any) -> None:
     with pytest.raises(TypeError):
         app.add_subapp(1, web.Application())
 
 
-def test_subapp_rule_resource(app):
+def test_subapp_rule_resource(app: Any) -> None:
     subapp = web.Application()
     subapp.router.add_get("/", make_handler())
     rule = Domain("example.com")
@@ -1074,13 +1078,13 @@ def test_subapp_rule_resource(app):
         resource.url_for()
 
 
-async def test_add_domain_not_str(app, loop):
+async def test_add_domain_not_str(app: Any, loop: Any) -> None:
     app = web.Application()
     with pytest.raises(TypeError):
         app.add_domain(1, app)
 
 
-async def test_add_domain(app, loop):
+async def test_add_domain(app: Any, loop: Any) -> None:
     subapp1 = web.Application()
     h1 = make_handler()
     subapp1.router.add_get("/", h1)
@@ -1113,20 +1117,20 @@ async def test_add_domain(app, loop):
     assert isinstance(match_info.http_exception, HTTPMethodNotAllowed)
 
 
-def test_subapp_url_for(app) -> None:
+def test_subapp_url_for(app: Any) -> None:
     subapp = web.Application()
     resource = app.add_subapp("/pre", subapp)
     with pytest.raises(RuntimeError):
         resource.url_for()
 
 
-def test_subapp_repr(app) -> None:
+def test_subapp_repr(app: Any) -> None:
     subapp = web.Application()
     resource = app.add_subapp("/pre", subapp)
     assert repr(resource).startswith("<PrefixedSubAppResource /pre -> <Application")
 
 
-def test_subapp_len(app) -> None:
+def test_subapp_len(app: Any) -> None:
     subapp = web.Application()
     subapp.router.add_get("/", make_handler(), allow_head=False)
     subapp.router.add_post("/", make_handler())
@@ -1134,7 +1138,7 @@ def test_subapp_len(app) -> None:
     assert len(resource) == 2
 
 
-def test_subapp_iter(app) -> None:
+def test_subapp_iter(app: Any) -> None:
     subapp = web.Application()
     r1 = subapp.router.add_get("/", make_handler(), allow_head=False)
     r2 = subapp.router.add_post("/", make_handler())
@@ -1142,7 +1146,7 @@ def test_subapp_iter(app) -> None:
     assert list(resource) == [r1, r2]
 
 
-def test_invalid_route_name(router) -> None:
+def test_invalid_route_name(router: Any) -> None:
     with pytest.raises(ValueError):
         router.add_get("/", make_handler(), name="invalid name")
 
@@ -1152,27 +1156,27 @@ def test_invalid_route_name(router) -> None:
         router.add_get("/", make_handler(), name="class")  # identifier
 
 
-def test_frozen_router(router) -> None:
+def test_frozen_router(router: Any) -> None:
     router.freeze()
     with pytest.raises(RuntimeError):
         router.add_get("/", make_handler())
 
 
-def test_frozen_router_subapp(app) -> None:
+def test_frozen_router_subapp(app: Any) -> None:
     subapp = web.Application()
     subapp.freeze()
     with pytest.raises(RuntimeError):
         app.add_subapp("/pre", subapp)
 
 
-def test_frozen_app_on_subapp(app) -> None:
+def test_frozen_app_on_subapp(app: Any) -> None:
     app.freeze()
     subapp = web.Application()
     with pytest.raises(RuntimeError):
         app.add_subapp("/pre", subapp)
 
 
-def test_set_options_route(router) -> None:
+def test_set_options_route(router: Any) -> None:
     resource = router.add_static("/static", pathlib.Path(aiohttp.__file__).parent)
     options = None
     for route in resource:
@@ -1189,24 +1193,24 @@ def test_set_options_route(router) -> None:
         resource.set_options_route(make_handler())
 
 
-def test_dynamic_url_with_name_started_from_underscore(router) -> None:
+def test_dynamic_url_with_name_started_from_underscore(router: Any) -> None:
     route = router.add_route("GET", "/get/{_name}", make_handler())
     assert URL("/get/John") == route.url_for(_name="John")
 
 
-def test_cannot_add_subapp_with_empty_prefix(app) -> None:
+def test_cannot_add_subapp_with_empty_prefix(app: Any) -> None:
     subapp = web.Application()
     with pytest.raises(ValueError):
         app.add_subapp("", subapp)
 
 
-def test_cannot_add_subapp_with_slash_prefix(app) -> None:
+def test_cannot_add_subapp_with_slash_prefix(app: Any) -> None:
     subapp = web.Application()
     with pytest.raises(ValueError):
         app.add_subapp("/", subapp)
 
 
-async def test_convert_empty_path_to_slash_on_freezing(router) -> None:
+async def test_convert_empty_path_to_slash_on_freezing(router: Any) -> None:
     handler = make_handler()
     route = router.add_get("", handler)
     resource = route.resource
@@ -1241,14 +1245,14 @@ def test_static_resource_canonical() -> None:
     assert res.canonical == canonical
 
 
-def test_prefixed_subapp_resource_canonical(app) -> None:
+def test_prefixed_subapp_resource_canonical(app: Any) -> None:
     canonical = "/prefix"
     subapp = web.Application()
     res = subapp.add_subapp(canonical, subapp)
     assert res.canonical == canonical
 
 
-async def test_prefixed_subapp_overlap(app) -> None:
+async def test_prefixed_subapp_overlap(app: Any) -> None:
     # Subapp should not overshadow other subapps with overlapping prefixes
     subapp1 = web.Application()
     handler1 = make_handler()
@@ -1266,7 +1270,7 @@ async def test_prefixed_subapp_overlap(app) -> None:
     assert match_info.route.handler is handler2
 
 
-async def test_prefixed_subapp_empty_route(app) -> None:
+async def test_prefixed_subapp_empty_route(app: Any) -> None:
     subapp = web.Application()
     handler = make_handler()
     subapp.router.add_get("", handler)
@@ -1278,7 +1282,7 @@ async def test_prefixed_subapp_empty_route(app) -> None:
     assert "<MatchInfoError 404: Not Found>" == repr(match_info)
 
 
-async def test_prefixed_subapp_root_route(app) -> None:
+async def test_prefixed_subapp_root_route(app: Any) -> None:
     subapp = web.Application()
     handler = make_handler()
     subapp.router.add_get("/", handler)

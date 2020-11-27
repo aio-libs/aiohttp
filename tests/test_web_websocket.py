@@ -1,10 +1,13 @@
+# type: ignore
 import asyncio
+from typing import Any
 from unittest import mock
 
+import aiosignal
 import pytest
 from multidict import CIMultiDict
 
-from aiohttp import WSMsgType, signals
+from aiohttp import WSMsgType
 from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import HTTPBadRequest, WebSocketResponse
@@ -12,11 +15,11 @@ from aiohttp.web_ws import WS_CLOSED_MESSAGE, WebSocketReady
 
 
 @pytest.fixture
-def app(loop):
+def app(loop: Any):
     ret = mock.Mock()
     ret.loop = loop
     ret._debug = False
-    ret.on_response_prepare = signals.Signal(ret)
+    ret.on_response_prepare = aiosignal.Signal(ret)
     ret.on_response_prepare.freeze()
     return ret
 
@@ -29,7 +32,7 @@ def protocol():
 
 
 @pytest.fixture
-def make_request(app, protocol):
+def make_request(app: Any, protocol: Any):
     def maker(method, path, headers=None, protocols=False):
         if headers is None:
             headers = CIMultiDict(
@@ -106,7 +109,7 @@ async def test_nonstarted_receive_json() -> None:
         await ws.receive_json()
 
 
-async def test_send_str_nonstring(make_request) -> None:
+async def test_send_str_nonstring(make_request: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
@@ -114,7 +117,7 @@ async def test_send_str_nonstring(make_request) -> None:
         await ws.send_str(b"bytes")
 
 
-async def test_send_bytes_nonbytes(make_request) -> None:
+async def test_send_bytes_nonbytes(make_request: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
@@ -122,7 +125,7 @@ async def test_send_bytes_nonbytes(make_request) -> None:
         await ws.send_bytes("string")
 
 
-async def test_send_json_nonjson(make_request) -> None:
+async def test_send_json_nonjson(make_request: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
@@ -164,25 +167,25 @@ def test_bool_websocket_not_ready() -> None:
     assert bool(websocket_ready) is False
 
 
-def test_can_prepare_ok(make_request) -> None:
+def test_can_prepare_ok(make_request: Any) -> None:
     req = make_request("GET", "/", protocols=True)
     ws = WebSocketResponse(protocols=("chat",))
     assert WebSocketReady(True, "chat") == ws.can_prepare(req)
 
 
-def test_can_prepare_unknown_protocol(make_request) -> None:
+def test_can_prepare_unknown_protocol(make_request: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     assert WebSocketReady(True, None) == ws.can_prepare(req)
 
 
-def test_can_prepare_without_upgrade(make_request) -> None:
+def test_can_prepare_without_upgrade(make_request: Any) -> None:
     req = make_request("GET", "/", headers=CIMultiDict({}))
     ws = WebSocketResponse()
     assert WebSocketReady(False, None) == ws.can_prepare(req)
 
 
-async def test_can_prepare_started(make_request) -> None:
+async def test_can_prepare_started(make_request: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
@@ -198,7 +201,7 @@ def test_closed_after_ctor() -> None:
     assert ws.close_code is None
 
 
-async def test_send_str_closed(make_request) -> None:
+async def test_send_str_closed(make_request: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
@@ -209,7 +212,7 @@ async def test_send_str_closed(make_request) -> None:
         await ws.send_str("string")
 
 
-async def test_send_bytes_closed(make_request) -> None:
+async def test_send_bytes_closed(make_request: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
@@ -220,7 +223,7 @@ async def test_send_bytes_closed(make_request) -> None:
         await ws.send_bytes(b"bytes")
 
 
-async def test_send_json_closed(make_request) -> None:
+async def test_send_json_closed(make_request: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
@@ -231,7 +234,7 @@ async def test_send_json_closed(make_request) -> None:
         await ws.send_json({"type": "json"})
 
 
-async def test_ping_closed(make_request) -> None:
+async def test_ping_closed(make_request: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
@@ -242,7 +245,7 @@ async def test_ping_closed(make_request) -> None:
         await ws.ping()
 
 
-async def test_pong_closed(make_request, mocker) -> None:
+async def test_pong_closed(make_request: Any, mocker: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
@@ -253,7 +256,7 @@ async def test_pong_closed(make_request, mocker) -> None:
         await ws.pong()
 
 
-async def test_close_idempotent(make_request) -> None:
+async def test_close_idempotent(make_request: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
@@ -263,14 +266,14 @@ async def test_close_idempotent(make_request) -> None:
     assert not (await ws.close(code=2, message="message2"))
 
 
-async def test_prepare_post_method_ok(make_request) -> None:
+async def test_prepare_post_method_ok(make_request: Any) -> None:
     req = make_request("POST", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
     assert ws.prepared
 
 
-async def test_prepare_without_upgrade(make_request) -> None:
+async def test_prepare_without_upgrade(make_request: Any) -> None:
     req = make_request("GET", "/", headers=CIMultiDict({}))
     ws = WebSocketResponse()
     with pytest.raises(HTTPBadRequest):
@@ -289,7 +292,7 @@ async def test_write_eof_not_started() -> None:
         await ws.write_eof()
 
 
-async def test_write_eof_idempotent(make_request) -> None:
+async def test_write_eof_idempotent(make_request: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
@@ -301,7 +304,7 @@ async def test_write_eof_idempotent(make_request) -> None:
     await ws.write_eof()
 
 
-async def test_receive_eofstream_in_reader(make_request, loop) -> None:
+async def test_receive_eofstream_in_reader(make_request: Any, loop: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
@@ -320,7 +323,7 @@ async def test_receive_eofstream_in_reader(make_request, loop) -> None:
     assert ws.closed
 
 
-async def test_receive_timeouterror(make_request, loop) -> None:
+async def test_receive_timeouterror(make_request: Any, loop: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
@@ -334,7 +337,7 @@ async def test_receive_timeouterror(make_request, loop) -> None:
         await ws.receive()
 
 
-async def test_multiple_receive_on_close_connection(make_request) -> None:
+async def test_multiple_receive_on_close_connection(make_request: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
@@ -350,7 +353,7 @@ async def test_multiple_receive_on_close_connection(make_request) -> None:
         await ws.receive()
 
 
-async def test_concurrent_receive(make_request) -> None:
+async def test_concurrent_receive(make_request: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
@@ -360,7 +363,7 @@ async def test_concurrent_receive(make_request) -> None:
         await ws.receive()
 
 
-async def test_close_exc(make_request) -> None:
+async def test_close_exc(make_request: Any) -> None:
 
     req = make_request("GET", "/")
     ws = WebSocketResponse()
@@ -379,7 +382,7 @@ async def test_close_exc(make_request) -> None:
         await ws.close()
 
 
-async def test_prepare_twice_idempotent(make_request) -> None:
+async def test_prepare_twice_idempotent(make_request: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
 
@@ -388,7 +391,7 @@ async def test_prepare_twice_idempotent(make_request) -> None:
     assert impl1 is impl2
 
 
-async def test_send_with_per_message_deflate(make_request, mocker) -> None:
+async def test_send_with_per_message_deflate(make_request: Any, mocker: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
@@ -404,7 +407,7 @@ async def test_send_with_per_message_deflate(make_request, mocker) -> None:
     writer_send.assert_called_with('"[{}]"', binary=False, compress=9)
 
 
-async def test_no_transfer_encoding_header(make_request, mocker) -> None:
+async def test_no_transfer_encoding_header(make_request: Any, mocker: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws._start(req)

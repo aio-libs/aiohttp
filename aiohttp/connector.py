@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 import functools
 import logging
 import random
@@ -28,8 +29,6 @@ from typing import (  # noqa
     cast,
 )
 
-import attr
-
 from . import hdrs, helpers
 from .abc import AbstractResolver
 from .client_exceptions import (
@@ -46,7 +45,7 @@ from .client_exceptions import (
 )
 from .client_proto import ResponseHandler
 from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
-from .helpers import ceil_timeout, is_ip_address, sentinel
+from .helpers import _SENTINEL, ceil_timeout, is_ip_address, sentinel
 from .http import RESPONSES
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
@@ -184,7 +183,7 @@ class BaseConnector:
     def __init__(
         self,
         *,
-        keepalive_timeout: Union[object, None, float] = sentinel,
+        keepalive_timeout: Union[_SENTINEL, None, float] = sentinel,
         force_close: bool = False,
         limit: int = 100,
         limit_per_host: int = 0,
@@ -526,8 +525,14 @@ class BaseConnector:
                     await trace.send_connection_create_end()
         else:
             if traces:
+                # Acquire the connection to prevent race conditions with limits
+                placeholder = cast(ResponseHandler, _TransportPlaceholder(self._loop))
+                self._acquired.add(placeholder)
+                self._acquired_per_host[key].add(placeholder)
                 for trace in traces:
                     await trace.send_connection_reuseconn()
+                self._acquired.remove(placeholder)
+                self._drop_acquired_per_host(key, placeholder)
 
         self._acquired.add(proto)
         self._acquired_per_host[key].add(proto)
@@ -717,7 +722,7 @@ class TCPConnector(BaseConnector):
         ssl: Union[None, bool, Fingerprint, SSLContext] = None,
         local_addr: Optional[Tuple[str, int]] = None,
         resolver: Optional[AbstractResolver] = None,
-        keepalive_timeout: Union[None, float, object] = sentinel,
+        keepalive_timeout: Union[None, float, _SENTINEL] = sentinel,
         force_close: bool = False,
         limit: int = 100,
         limit_per_host: int = 0,
@@ -1070,7 +1075,7 @@ class TCPConnector(BaseConnector):
             # asyncio handles this perfectly
             proxy_req.method = hdrs.METH_CONNECT
             proxy_req.url = req.url
-            key = attr.evolve(
+            key = dataclasses.replace(
                 req.connection_key, proxy=None, proxy_auth=None, proxy_headers_hash=None
             )
             conn = Connection(self, key, proto, self._loop)
@@ -1137,7 +1142,7 @@ class UnixConnector(BaseConnector):
         self,
         path: str,
         force_close: bool = False,
-        keepalive_timeout: Union[object, float, None] = sentinel,
+        keepalive_timeout: Union[_SENTINEL, float, None] = sentinel,
         limit: int = 100,
         limit_per_host: int = 0,
     ) -> None:
@@ -1187,7 +1192,7 @@ class NamedPipeConnector(BaseConnector):
         self,
         path: str,
         force_close: bool = False,
-        keepalive_timeout: Union[object, float, None] = sentinel,
+        keepalive_timeout: Union[_SENTINEL, float, None] = sentinel,
         limit: int = 100,
         limit_per_host: int = 0,
     ) -> None:
