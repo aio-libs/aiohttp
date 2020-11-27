@@ -13,12 +13,14 @@ from typing import (
     Callable,
     Deque,
     Optional,
+    Sequence,
     Tuple,
     Type,
     Union,
     cast,
 )
 
+import attr
 import yarl
 
 from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
@@ -62,7 +64,6 @@ _AnyAbstractAccessLogger = Union[
     Type[AbstractAccessLogger],
 ]
 
-
 ERROR = RawRequestMessage(
     "UNKNOWN", "/", HttpVersion10, {}, {}, True, False, False, False, yarl.URL("/")
 )
@@ -95,6 +96,16 @@ class AccessLoggerWrapper(AbstractAsyncAccessLogger):
         self.access_logger.log(request, response, self._loop.time() - request_start)
 
 
+@attr.s(auto_attribs=True, frozen=True, slots=True)
+class _ErrInfo:
+    status: int
+    exc: BaseException
+    message: str
+
+
+_MsgType = Tuple[Union[RawRequestMessage, _ErrInfo], StreamReader]
+
+
 class RequestHandler(BaseProtocol):
     """HTTP protocol implementation.
 
@@ -106,30 +117,26 @@ class RequestHandler(BaseProtocol):
     status line, bad headers or incomplete payload. If any error occurs,
     connection gets closed.
 
-    :param keepalive_timeout: number of seconds before closing
-                              keep-alive connection
-    :type keepalive_timeout: int or None
+    keepalive_timeout -- number of seconds before closing
+                         keep-alive connection
 
-    :param bool tcp_keepalive: TCP keep-alive is on, default is on
+    tcp_keepalive -- TCP keep-alive is on, default is on
 
-    :param logger: custom logger object
-    :type logger: aiohttp.log.server_logger
+    logger -- custom logger object
 
-    :param access_log_class: custom class for access_logger
-    :type access_log_class: aiohttp.abc.AbstractAccessLogger
+    access_log_class -- custom class for access_logger
 
-    :param access_log: custom logging object
-    :type access_log: aiohttp.log.server_logger
+    access_log -- custom logging object
 
-    :param str access_log_format: access log format string
+    access_log_format -- access log format string
 
-    :param loop: Optional event loop
+    loop -- Optional event loop
 
-    :param int max_line_size: Optional maximum header line size
+    max_line_size -- Optional maximum header line size
 
-    :param int max_field_size: Optional maximum header field size
+    max_field_size -- Optional maximum header field size
 
-    :param int max_headers: Optional maximum header size
+    max_headers -- Optional maximum header size
 
     """
 
@@ -149,7 +156,6 @@ class RequestHandler(BaseProtocol):
         "_messages",
         "_message_tail",
         "_waiter",
-        "_error_handler",
         "_task_handler",
         "_upgrade",
         "_payload_parser",
@@ -180,19 +186,14 @@ class RequestHandler(BaseProtocol):
         lingering_time: float = 10.0,
         read_bufsize: int = 2 ** 16,
     ):
-
         super().__init__(loop)
 
         self._request_count = 0
         self._keepalive = False
         self._current_request = None  # type: Optional[BaseRequest]
         self._manager = manager  # type: Optional[Server]
-        self._request_handler = (
-            manager.request_handler
-        )  # type: Optional[_RequestHandler]
-        self._request_factory = (
-            manager.request_factory
-        )  # type: Optional[_RequestFactory]
+        self._request_handler: Optional[_RequestHandler] = manager.request_handler
+        self._request_factory: Optional[_RequestFactory] = manager.request_factory
 
         self._tcp_keepalive = tcp_keepalive
         # placeholder to be replaced on keepalive timeout setup
@@ -201,11 +202,10 @@ class RequestHandler(BaseProtocol):
         self._keepalive_timeout = keepalive_timeout
         self._lingering_time = float(lingering_time)
 
-        self._messages: Deque[Tuple[RawRequestMessage, StreamReader]] = deque()
+        self._messages: Deque[_MsgType] = deque()
         self._message_tail = b""
 
         self._waiter = None  # type: Optional[asyncio.Future[None]]
-        self._error_handler = None  # type: Optional[asyncio.Task[None]]
         self._task_handler = None  # type: Optional[asyncio.Task[None]]
 
         self._upgrade = False
@@ -264,9 +264,6 @@ class RequestHandler(BaseProtocol):
         # wait for handlers
         with suppress(asyncio.CancelledError, asyncio.TimeoutError):
             async with ceil_timeout(timeout):
-                if self._error_handler is not None and not self._error_handler.done():
-                    await self._error_handler
-
                 if self._current_request is not None:
                     self._current_request._cancel(asyncio.CancelledError())
 
@@ -313,8 +310,6 @@ class RequestHandler(BaseProtocol):
                 exc = ConnectionResetError("Connection lost")
             self._current_request._cancel(exc)
 
-        if self._error_handler is not None:
-            self._error_handler.cancel()
         if self._task_handler is not None:
             self._task_handler.cancel()
         if self._waiter is not None:
@@ -343,40 +338,30 @@ class RequestHandler(BaseProtocol):
         if self._force_close or self._close:
             return
         # parse http messages
+        messages: Sequence[_MsgType]
         if self._payload_parser is None and not self._upgrade:
             assert self._request_parser is not None
             try:
                 messages, upgraded, tail = self._request_parser.feed_data(data)
             except HttpProcessingError as exc:
-                # something happened during parsing
-                self._error_handler = self._loop.create_task(
-                    self.handle_parse_error(
-                        StreamWriter(self, self._loop), 400, exc, exc.message
-                    )
-                )
-                self.close()
-            except Exception as exc:
-                # 500: internal error
-                self._error_handler = self._loop.create_task(
-                    self.handle_parse_error(StreamWriter(self, self._loop), 500, exc)
-                )
-                self.close()
-            else:
-                if messages:
-                    # sometimes the parser returns no messages
-                    for (msg, payload) in messages:
-                        self._request_count += 1
-                        self._messages.append((msg, payload))
+                messages = [
+                    (_ErrInfo(status=400, exc=exc, message=exc.message), EMPTY_PAYLOAD)
+                ]
+                upgraded = False
+                tail = b""
 
-                    waiter = self._waiter
-                    if waiter is not None:
-                        if not waiter.done():
-                            # don't set result twice
-                            waiter.set_result(None)
+            for msg, payload in messages or ():
+                self._request_count += 1
+                self._messages.append((msg, payload))
 
-                self._upgrade = upgraded
-                if upgraded and tail:
-                    self._message_tail = tail
+            waiter = self._waiter
+            if messages and waiter is not None and not waiter.done():
+                # don't set result twice
+                waiter.set_result(None)
+
+            self._upgrade = upgraded
+            if upgraded and tail:
+                self._message_tail = tail
 
         # no parser, just store
         elif self._payload_parser is None and self._upgrade and data:
@@ -449,12 +434,13 @@ class RequestHandler(BaseProtocol):
         self,
         request: BaseRequest,
         start_time: float,
+        request_handler: Callable[[BaseRequest], Awaitable[StreamResponse]],
     ) -> Tuple[StreamResponse, bool]:
         assert self._request_handler is not None
         try:
             try:
                 self._current_request = request
-                resp = await self._request_handler(request)
+                resp = await request_handler(request)
             finally:
                 self._current_request = None
         except HTTPException as exc:
@@ -513,10 +499,19 @@ class RequestHandler(BaseProtocol):
 
             manager.requests_count += 1
             writer = StreamWriter(self, loop)
+            if isinstance(message, _ErrInfo):
+                # make request_factory work
+                request_handler = self._make_error_handler(message)
+                message = ERROR
+            else:
+                request_handler = self._request_handler
+
             request = self._request_factory(message, payload, self, writer, handler)
             try:
                 # a new task is used for copy context vars (#3406)
-                task = self._loop.create_task(self._handle_request(request, start))
+                task = self._loop.create_task(
+                    self._handle_request(request, start, request_handler)
+                )
                 try:
                     resp, reset = await task
                 except (asyncio.CancelledError, ConnectionError):
@@ -586,7 +581,7 @@ class RequestHandler(BaseProtocol):
         # remove handler, close transport if no handlers left
         if not self._force_close:
             self._task_handler = None
-            if self.transport is not None and self._error_handler is None:
+            if self.transport is not None:
                 self.transport.close()
 
     async def finish_response(
@@ -639,6 +634,13 @@ class RequestHandler(BaseProtocol):
         information. It always closes current connection."""
         self.log_exception("Error handling request", exc_info=exc)
 
+        # some data already got sent, connection is broken
+        if request.writer.output_size > 0:
+            raise ConnectionError(
+                "Response is sent already, cannot send another response "
+                "with the error message"
+            )
+
         ct = "text/plain"
         if status == HTTPStatus.INTERNAL_SERVER_ERROR:
             title = "{0.value} {0.phrase}".format(HTTPStatus.INTERNAL_SERVER_ERROR)
@@ -667,30 +669,14 @@ class RequestHandler(BaseProtocol):
         resp = Response(status=status, text=message, content_type=ct)
         resp.force_close()
 
-        # some data already got sent, connection is broken
-        if request.writer.output_size > 0 or self.transport is None:
-            self.force_close()
-
         return resp
 
-    async def handle_parse_error(
-        self,
-        writer: AbstractStreamWriter,
-        status: int,
-        exc: Optional[BaseException] = None,
-        message: Optional[str] = None,
-    ) -> None:
-        task = asyncio.current_task()
-        assert task is not None
-        request = BaseRequest(
-            ERROR, EMPTY_PAYLOAD, self, writer, task, self._loop  # type: ignore
-        )
+    def _make_error_handler(
+        self, err_info: _ErrInfo
+    ) -> Callable[[BaseRequest], Awaitable[StreamResponse]]:
+        async def handler(request: BaseRequest) -> StreamResponse:
+            return self.handle_error(
+                request, err_info.status, err_info.exc, err_info.message
+            )
 
-        resp = self.handle_error(request, status, exc, message)
-        await resp.prepare(request)
-        await resp.write_eof()
-
-        if self.transport is not None:
-            self.transport.close()
-
-        self._error_handler = None
+        return handler
