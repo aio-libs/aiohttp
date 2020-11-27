@@ -34,8 +34,6 @@
 .vimrc
 .vscode
 aiohttp/_find_header.c
-aiohttp/_frozenlist.c
-aiohttp/_frozenlist.html
 aiohttp/_headers.html
 aiohttp/_headers.pxi
 aiohttp/_helpers.c

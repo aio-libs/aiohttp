@@ -3,9 +3,10 @@ import re
 from traceback import format_exception
 from unittest import mock
 
+import aiosignal
 import pytest
 
-from aiohttp import helpers, signals, web
+from aiohttp import helpers, web
 from aiohttp.test_utils import make_mocked_request
 
 
@@ -41,7 +42,7 @@ def http_request(buf):
 
     app = mock.Mock()
     app._debug = False
-    app.on_response_prepare = signals.Signal(app)
+    app.on_response_prepare = aiosignal.Signal(app)
     app.on_response_prepare.freeze()
     req = make_mocked_request(method, path, app=app, writer=writer)
     return req
