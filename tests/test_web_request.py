@@ -17,6 +17,7 @@ from aiohttp.http_parser import RawRequestMessage
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPRequestEntityTooLarge, HTTPUnsupportedMediaType
+from aiohttp.web_request import ETag
 
 
 @pytest.fixture
@@ -820,3 +821,36 @@ async def test_handler_return_type(aiohttp_client: Any) -> None:
 
     async with client.get("/1") as resp:
         assert 500 == resp.status
+
+
+@pytest.mark.parametrize(
+    "header,header_attr",
+    [
+        pytest.param("If-Match", "if_match"),
+        pytest.param("If-None-Match", "if_none_match"),
+    ],
+)
+@pytest.mark.parametrize(
+    "header_val,expected",
+    [
+        pytest.param(
+            '"67ab43", W/"54ed21", "7892dd"',
+            (
+                ETag(is_weak=False, value="67ab43"),
+                ETag(is_weak=True, value="54ed21"),
+                ETag(is_weak=False, value="7892dd"),
+            ),
+        ),
+        pytest.param(
+            '"bfc1ef-5b2c2730249c88ca92d82d"',
+            (ETag(is_weak=False, value="bfc1ef-5b2c2730249c88ca92d82d"),),
+        ),
+        pytest.param(
+            "*",
+            (ETag(is_weak=False, value="*"),),
+        ),
+    ],
+)
+def test_etag_headers(header, header_attr, header_val, expected) -> None:
+    req = make_mocked_request("GET", "/", headers={header: header_val})
+    assert getattr(req, header_attr) == expected

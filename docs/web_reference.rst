@@ -318,6 +318,24 @@ and :ref:`aiohttp-web-signals` handlers.
 
       .. versionadded:: 3.1
 
+   .. attribute:: if_match
+
+      Read-only property that returns :class:`ETag` objects specified
+      in the *If-Match* header.
+
+      Returns :class:`tuple` of :class:`ETag` or ``None`` if
+      *If-Match* header is absent.
+
+   .. attribute:: if_none_match
+
+      Read-only property that returns :class:`ETag` objects specified
+      *If-None-Match* header.
+
+      Returns :class:`tuple` of :class:`ETag` or ``None`` if
+      *If-None-Match* header is absent.
+
+      .. versionadded:: 4.0
+
    .. attribute:: if_range
 
       Read-only property that returns the date specified in the
