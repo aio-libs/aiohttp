@@ -278,3 +278,6 @@ period ask to raise the status.
 
 - `aiohttp-sse-client <https://github.com/rtfol/aiohttp-sse-client>`_
   A Server-Sent Event python client base on aiohttp. Python 3.6+ required.
+
+- `aiohttp-retry <https://github.com/inyutin/aiohttp_retry>`_
+  Wrapper for aiohttp client for retrying requests. Python 3.6+ required.
