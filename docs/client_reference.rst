@@ -1688,6 +1688,23 @@ ClientTimeout
 
    .. versionadded:: 3.3
 
+ETag
+^^^^
+
+.. class:: ETag(name, is_weak=False)
+
+   Represents `ETag` identifier.
+
+   .. attribute:: value
+
+      Value of corresponding etag without quotes.
+
+   .. attribute:: is_weak
+
+      Flag indicates that etag is weak (has `W/` prefix).
+
+   .. versionadded:: 4.0
+
 RequestInfo
 ^^^^^^^^^^^
 

@@ -14,6 +14,7 @@ from multidict import CIMultiDict, CIMultiDictProxy
 from re_assert import Matches
 
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs
+from aiohttp.helpers import ETag
 from aiohttp.payload import BytesPayload
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
@@ -25,7 +26,7 @@ def make_request(
     headers: Any = CIMultiDict(),
     version: Any = HttpVersion11,
     on_response_prepare: Optional[Any] = None,
-    **kwargs: Any
+    **kwargs: Any,
 ):
     app = kwargs.pop("app", None) or mock.Mock()
     app._debug = False
@@ -255,6 +256,48 @@ def test_last_modified_reset() -> None:
     resp.last_modified = 0
     resp.last_modified = None
     assert resp.last_modified is None
+
+
+def test_etag_initial() -> None:
+    resp = StreamResponse()
+    assert resp.etag is None
+
+
+def test_etag_string() -> None:
+    resp = StreamResponse()
+    value = "0123-kotik"
+    resp.etag = value
+    assert resp.etag == ETag(value=value)
+    assert resp.headers[hdrs.ETAG] == f'"{value}"'
+
+
+def test_etag_class() -> None:
+    resp = StreamResponse()
+    etag = ETag(value="0123-weak-kotik", is_weak=True)
+    resp.etag = etag
+    assert resp.etag == etag
+    assert resp.headers[hdrs.ETAG] == f'W/"{etag.value}"'
+
+
+def test_etag_any() -> None:
+    resp = StreamResponse()
+    resp.etag = "*"
+    assert resp.etag == ETag(value="*")
+    assert resp.headers[hdrs.ETAG] == "*"
+
+
+@pytest.mark.parametrize("wrong_value", (123, ETag(value=123, is_weak=True)))
+def test_etag_wrong_class(wrong_value) -> None:
+    resp = StreamResponse()
+    with pytest.raises(ValueError):
+        resp.etag = wrong_value
+
+
+def test_etag_reset() -> None:
+    resp = StreamResponse()
+    resp.etag = "*"
+    resp.etag = None
+    assert resp.etag is None
 
 
 async def test_start() -> None:

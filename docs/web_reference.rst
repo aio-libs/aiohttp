@@ -774,6 +774,18 @@ StreamResponse
       as an :class:`int` or a :class:`float` object, and the
       value ``None`` to unset the header.
 
+   .. attribute:: etag
+
+      *ETag* header for outgoing response.
+
+      This property accepts raw :class:`str` values, :class:`ETag`
+      objects and the value ``None`` to unset the header.
+
+      In case of :class:`str` input, etag is considered as strong by default.
+
+      **Do not** use double quotes ``"`` in the etag value,
+      they will be added automatically.
+
    .. comethod:: prepare(request)
 
       :param aiohttp.web.Request request: HTTP request object, that the

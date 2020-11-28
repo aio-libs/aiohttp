@@ -51,7 +51,7 @@ from . import hdrs
 from .log import client_logger
 from .typedefs import PathLike  # noqa
 
-__all__ = ("BasicAuth", "ChainMapProxy")
+__all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
 PY_38 = sys.version_info >= (3, 8)
 
@@ -887,3 +887,22 @@ def populate_with_cookies(
     for cookie in cookies.values():
         value = cookie.output(header="")[1:]
         headers.add(hdrs.SET_COOKIE, value)
+
+
+# https://tools.ietf.org/html/rfc7232#section-2.3
+_ETAGC = r"[{}]+".format(
+    r"".join(
+        chr(c) for c in (0x21,) + tuple(range(0x23, 0x7E)) + tuple(range(0x80, 0xFF))
+    )
+)
+_QUOTED_ETAG = fr'(W\/)?("{_ETAGC}")'
+QUOTED_ETAG_RE = re.compile(_QUOTED_ETAG)
+LIST_QUOTED_ETAG_RE = re.compile(fr"({_QUOTED_ETAG})(?:\s*,\s*|$)")
+
+ETAG_ANY = "*"
+
+
+@dataclasses.dataclass(frozen=True)
+class ETag:
+    value: str
+    is_weak: bool = False

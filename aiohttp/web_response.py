@@ -28,8 +28,11 @@ from multidict import CIMultiDict, istr
 from . import hdrs, payload
 from .abc import AbstractStreamWriter
 from .helpers import (
+    ETAG_ANY,
     PY_38,
+    QUOTED_ETAG_RE,
     CookieMixin,
+    ETag,
     HeadersMixin,
     populate_with_cookies,
     rfc822_formatted_time,
@@ -271,6 +274,41 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         elif isinstance(value, str):
             self._headers[hdrs.LAST_MODIFIED] = value
 
+    @property
+    def etag(self) -> Optional[ETag]:
+        quoted_value = self._headers.get(hdrs.ETAG)
+        if not quoted_value:
+            return None
+        elif quoted_value == ETAG_ANY:
+            return ETag(value=ETAG_ANY)
+        match = QUOTED_ETAG_RE.match(quoted_value)
+        if not match:
+            return None
+        is_weak, value = match.group(1), match.group(2)
+        return ETag(
+            is_weak=bool(is_weak),
+            value=value[1:-1],
+        )
+
+    @etag.setter
+    def etag(self, value: Optional[Union[ETag, str]]) -> None:
+        if (isinstance(value, str) and value == ETAG_ANY) or (
+            isinstance(value, ETag) and value.value == ETAG_ANY
+        ):
+            self._headers[hdrs.ETAG] = ETAG_ANY
+        elif isinstance(value, str):
+            self._headers[hdrs.ETAG] = f'"{value}"'
+        elif isinstance(value, ETag) and isinstance(value.value, str):
+            hdr_value = f'W/"{value.value}"' if value.is_weak else f'"{value}"'
+            self._headers[hdrs.ETAG] = hdr_value
+        elif value is None:
+            self._headers.pop(hdrs.ETAG, None)
+        else:
+            raise ValueError(
+                f"Unsupported etag type: {type(value)!r}. "
+                f"etag must be str, ETag or None"
+            )
+
     def _generate_content_type_header(
         self, CONTENT_TYPE: istr = hdrs.CONTENT_TYPE
     ) -> None:
@@ -363,7 +401,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             elif version >= HttpVersion11 and self.status in (100, 101, 102, 103, 204):
                 del headers[hdrs.CONTENT_LENGTH]
 
-        if self.status != 204:
+        if self.status not in (204, 304):
             headers.setdefault(hdrs.CONTENT_TYPE, "application/octet-stream")
         headers.setdefault(hdrs.DATE, rfc822_formatted_time())
         headers.setdefault(hdrs.SERVER, SERVER_SOFTWARE)
