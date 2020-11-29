@@ -671,7 +671,7 @@ def ceil_timeout(delay: Optional[float]) -> async_timeout.Timeout:
         loop = get_running_loop()
         now = loop.time()
         when = now + delay
-        if delay <= 5:
+        if delay > 5:
             when = ceil(when)
         return async_timeout.timeout_at(when)
 
