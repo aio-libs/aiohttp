@@ -74,8 +74,8 @@ from .helpers import (
     DEBUG,
     PY_36,
     BasicAuth,
-    CeilTimeout,
     TimeoutHandle,
+    ceil_timeout,
     get_running_loop,
     proxies_from_env,
     sentinel,
@@ -515,7 +515,7 @@ class ClientSession:
 
                     # connection timeout
                     try:
-                        with CeilTimeout(real_timeout.connect, loop=self._loop):
+                        async with ceil_timeout(real_timeout.connect):
                             assert self._connector is not None
                             conn = await self._connector.connect(
                                 req, traces=traces, timeout=real_timeout

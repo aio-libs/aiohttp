@@ -3,7 +3,6 @@ import base64
 import gc
 import os
 import platform
-import sys
 import tempfile
 from math import isclose, modf
 from unittest import mock
@@ -391,48 +390,22 @@ async def test_weakref_handle_weak(loop) -> None:
     await asyncio.sleep(0.1)
 
 
-def test_ceil_call_later() -> None:
-    cb = mock.Mock()
-    loop = mock.Mock()
-    loop.time.return_value = 10.1
-    helpers.call_later(cb, 10.1, loop)
-    loop.call_at.assert_called_with(21.0, cb)
+async def test_ceil_timeout() -> None:
+    async with helpers.ceil_timeout(None) as timeout:
+        assert timeout.deadline is None
 
 
-def test_ceil_call_later_no_timeout() -> None:
-    cb = mock.Mock()
-    loop = mock.Mock()
-    helpers.call_later(cb, 0, loop)
-    assert not loop.call_at.called
-
-
-async def test_ceil_timeout(loop) -> None:
-    with helpers.CeilTimeout(None, loop=loop) as timeout:
-        assert timeout._timeout is None
-        assert timeout._cancel_handler is None
-
-
-def test_ceil_timeout_no_task(loop) -> None:
-    with pytest.raises(RuntimeError):
-        with helpers.CeilTimeout(10, loop=loop):
-            pass
-
-
-@pytest.mark.skipif(
-    sys.version_info < (3, 7), reason="TimerHandle.when() doesn't exist"
-)
-async def test_ceil_timeout_round(loop) -> None:
-    with helpers.CeilTimeout(7.5, loop=loop) as cm:
-        frac, integer = modf(cm._cancel_handler.when())
+async def test_ceil_timeout_round() -> None:
+    async with helpers.ceil_timeout(7.5) as cm:
+        assert cm.deadline is not None
+        frac, integer = modf(cm.deadline)
         assert frac == 0
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 7), reason="TimerHandle.when() doesn't exist"
-)
-async def test_ceil_timeout_small(loop) -> None:
-    with helpers.CeilTimeout(1.1, loop=loop) as cm:
-        frac, integer = modf(cm._cancel_handler.when())
+async def test_ceil_timeout_small() -> None:
+    async with helpers.ceil_timeout(1.1) as cm:
+        assert cm.deadline is not None
+        frac, integer = modf(cm.deadline)
         # a chance for exact integer with zero fraction is negligible
         assert frac != 0
 

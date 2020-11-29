@@ -66,7 +66,7 @@ install_requires = [
     "attrs>=17.3.0",
     "chardet>=2.0,<4.0",
     "multidict>=4.5,<7.0",
-    "async_timeout>=3.0,<4.0",
+    "async_timeout>=4.0.0a3,<5.0",
     'asynctest==0.13.0; python_version<"3.8"',
     "yarl>=1.0,<2.0",
     'idna-ssl>=1.0; python_version<"3.7"',
