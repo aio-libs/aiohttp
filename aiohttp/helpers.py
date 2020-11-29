@@ -890,8 +890,8 @@ def populate_with_cookies(
 
 
 # https://tools.ietf.org/html/rfc7232#section-2.3
-_ETAGC = r"[{}]+".format(
-    r"".join(
+_ETAGC = "[{}]+".format(
+    "".join(
         chr(c) for c in (0x21,) + tuple(range(0x23, 0x7E)) + tuple(range(0x80, 0xFF))
     )
 )
