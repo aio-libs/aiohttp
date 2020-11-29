@@ -192,7 +192,7 @@ class ClientWebSocketResponse:
 
             while True:
                 try:
-                    with async_timeout.timeout(self._timeout, loop=self._loop):
+                    async with async_timeout.timeout(self._timeout):
                         msg = await self._reader.read()
                 except asyncio.CancelledError:
                     self._close_code = WSCloseCode.ABNORMAL_CLOSURE
@@ -225,9 +225,7 @@ class ClientWebSocketResponse:
             try:
                 self._waiting = self._loop.create_future()
                 try:
-                    with async_timeout.timeout(
-                        timeout or self._receive_timeout, loop=self._loop
-                    ):
+                    async with async_timeout.timeout(timeout or self._receive_timeout):
                         msg = await self._reader.read()
                     self._reset_heartbeat()
                 finally:

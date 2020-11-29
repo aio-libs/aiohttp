@@ -360,7 +360,7 @@ class WebSocketResponse(StreamResponse):
             reader = self._reader
             assert reader is not None
             try:
-                with async_timeout.timeout(self._timeout, loop=self._loop):
+                async with async_timeout.timeout(self._timeout):
                     msg = await reader.read()
             except asyncio.CancelledError:
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
@@ -401,9 +401,7 @@ class WebSocketResponse(StreamResponse):
             try:
                 self._waiting = loop.create_future()
                 try:
-                    with async_timeout.timeout(
-                        timeout or self._receive_timeout, loop=self._loop
-                    ):
+                    async with async_timeout.timeout(timeout or self._receive_timeout):
                         msg = await self._reader.read()
                     self._reset_heartbeat()
                 finally:
