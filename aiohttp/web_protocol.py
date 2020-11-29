@@ -26,7 +26,7 @@ import yarl
 
 from .abc import AbstractAccessLogger, AbstractStreamWriter
 from .base_protocol import BaseProtocol
-from .helpers import CeilTimeout
+from .helpers import ceil_timeout
 from .http import (
     HttpProcessingError,
     HttpRequestParser,
@@ -239,7 +239,7 @@ class RequestHandler(BaseProtocol):
 
         # wait for handlers
         with suppress(asyncio.CancelledError, asyncio.TimeoutError):
-            with CeilTimeout(timeout, loop=self._loop):
+            async with ceil_timeout(timeout):
                 if self._current_request is not None:
                     self._current_request._cancel(asyncio.CancelledError())
 
@@ -523,7 +523,7 @@ class RequestHandler(BaseProtocol):
 
                         with suppress(asyncio.TimeoutError, asyncio.CancelledError):
                             while not payload.is_eof() and now < end_t:
-                                with CeilTimeout(end_t - now, loop=loop):
+                                async with ceil_timeout(end_t - now):
                                     # read and ignore
                                     await payload.readany()
                                 now = loop.time()
