@@ -420,9 +420,7 @@ class RequestHandler(BaseProtocol):
             finally:
                 self._current_request = None
         except HTTPException as exc:
-            resp = Response(
-                status=exc.status, reason=exc.reason, text=exc.text, headers=exc.headers
-            )
+            resp = exc
             reset = await self.finish_response(request, resp, start_time)
         except asyncio.CancelledError:
             raise
@@ -434,6 +432,15 @@ class RequestHandler(BaseProtocol):
             resp = self.handle_error(request, 500, exc)
             reset = await self.finish_response(request, resp, start_time)
         else:
+            # Deprecation warning (See #2415)
+            if getattr(resp, "__http_exception__", False):
+                warnings.warn(
+                    "returning HTTPException object is deprecated "
+                    "(#2415) and will be removed, "
+                    "please raise the exception instead",
+                    DeprecationWarning,
+                )
+
             reset = await self.finish_response(request, resp, start_time)
 
         return resp, reset
@@ -492,14 +499,6 @@ class RequestHandler(BaseProtocol):
                 except (asyncio.CancelledError, ConnectionError):
                     self.log_debug("Ignored premature client disconnection")
                     break
-                # Deprecation warning (See #2415)
-                if getattr(resp, "__http_exception__", False):
-                    warnings.warn(
-                        "returning HTTPException object is deprecated "
-                        "(#2415) and will be removed, "
-                        "please raise the exception instead",
-                        DeprecationWarning,
-                    )
 
                 # Drop the processed task from asyncio.Task.all_tasks() early
                 del task
