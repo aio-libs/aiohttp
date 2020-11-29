@@ -30,6 +30,7 @@ Alexey Stepanov
 Amin Etesamian
 Amit Tulshyan
 Amy Boyle
+Anas El Amraoui
 Anders Melchiorsen
 Andrei Ursulenko
 Andrej Antonov
@@ -47,6 +48,7 @@ Arthur Darcet
 Ben Bader
 Ben Timby
 Benedikt Reinartz
+Bob Haddleton
 Boris Feld
 Boyi Chen
 Brett Cannon
@@ -137,6 +139,7 @@ Jaesung Lee
 Jake Davis
 Jakob Ackermann
 Jakub Wilk
+Jan Buchar
 Jashandeep Sohi
 Jens Steinhauser
 Jeonghun Lee
@@ -307,6 +310,8 @@ Young-Ho Cha
 Yuriy Shatrov
 Yury Selivanov
 Yusuke Tsutsumi
+Yuval Ofir
+Zeal Wierslee
 Zlatan Sičanica
 Марк Коренберг
 Семён Марьясин

@@ -1098,14 +1098,14 @@ WebSocketResponse
          The method is converted into :term:`coroutine`,
          *compress* parameter added.
 
-   .. comethod:: close(*, code=1000, message=b'')
+   .. comethod:: close(*, code=WSCloseCode.OK, message=b'')
 
       A :ref:`coroutine<coroutine>` that initiates closing
       handshake by sending :const:`~aiohttp.WSMsgType.CLOSE` message.
 
       It is safe to call `close()` from different task.
 
-      :param int code: closing code
+      :param int code: closing code. See also :class:`~aiohttp.WSCloseCode`.
 
       :param message: optional payload of *close* message,
                       :class:`str` (converted to *UTF-8* encoded bytes)
@@ -2825,6 +2825,7 @@ Utilities
 
 .. function:: run_app(app, *, host=None, port=None, path=None, \
                       sock=None, shutdown_timeout=60.0, \
+                      keepalive_timeout=75.0, \
                       ssl_context=None, print=print, backlog=128, \
                       access_log_class=aiohttp.helpers.AccessLogger, \
                       access_log_format=aiohttp.helpers.AccessLogger.LOG_FORMAT, \
@@ -2878,6 +2879,12 @@ Utilities
                                 implemented never waits for this
                                 timeout but closes a server in a few
                                 milliseconds.
+
+   :param float keepalive_timeout: a delay before a TCP connection is
+                                   closed after a HTTP request. The delay
+                                   allows for reuse of a TCP connection.
+
+      .. versionadded:: 3.8
 
    :param ssl_context: :class:`ssl.SSLContext` for HTTPS server,
                        ``None`` for HTTP connection.

@@ -1,4 +1,4 @@
-__version__ = "3.7.3"
+__version__ = "3.8.0a0"
 
 from typing import Tuple
 
@@ -78,7 +78,6 @@ from .resolver import (
     DefaultResolver as DefaultResolver,
     ThreadedResolver as ThreadedResolver,
 )
-from .signals import Signal as Signal
 from .streams import (
     EMPTY_PAYLOAD as EMPTY_PAYLOAD,
     DataQueue as DataQueue,

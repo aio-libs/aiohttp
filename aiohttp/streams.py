@@ -3,6 +3,8 @@ import collections
 import warnings
 from typing import Awaitable, Callable, Generic, List, Optional, Tuple, TypeVar
 
+from typing_extensions import Final
+
 from .base_protocol import BaseProtocol
 from .helpers import BaseTimerContext, set_exception, set_result
 from .log import internal_logger
@@ -310,34 +312,41 @@ class StreamReader(AsyncStreamReaderMixin):
             self._waiter = None
 
     async def readline(self) -> bytes:
+        return await self.readuntil()
+
+    async def readuntil(self, separator: bytes = b"\n") -> bytes:
+        seplen = len(separator)
+        if seplen == 0:
+            raise ValueError("Separator should be at least one-byte string")
+
         if self._exception is not None:
             raise self._exception
 
-        line = []
-        line_size = 0
+        chunk = b""
+        chunk_size = 0
         not_enough = True
 
         while not_enough:
             while self._buffer and not_enough:
                 offset = self._buffer_offset
-                ichar = self._buffer[0].find(b"\n", offset) + 1
-                # Read from current offset to found b'\n' or to the end.
+                ichar = self._buffer[0].find(separator, offset) + 1
+                # Read from current offset to found separator or to the end.
                 data = self._read_nowait_chunk(ichar - offset if ichar else -1)
-                line.append(data)
-                line_size += len(data)
+                chunk += data
+                chunk_size += len(data)
                 if ichar:
                     not_enough = False
 
-                if line_size > self._high_water:
-                    raise ValueError("Line is too long")
+                if chunk_size > self._high_water:
+                    raise ValueError("Chunk too big")
 
             if self._eof:
                 break
 
             if not_enough:
-                await self._wait("readline")
+                await self._wait("readuntil")
 
-        return b"".join(line)
+        return chunk
 
     async def read(self, n: int = -1) -> bytes:
         if self._exception is not None:
@@ -497,7 +506,10 @@ class StreamReader(AsyncStreamReaderMixin):
         return b"".join(chunks) if chunks else b""
 
 
-class EmptyStreamReader(AsyncStreamReaderMixin):
+class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
+    def __init__(self) -> None:
+        pass
+
     def exception(self) -> Optional[BaseException]:
         return None
 
@@ -531,6 +543,8 @@ class EmptyStreamReader(AsyncStreamReaderMixin):
     async def read(self, n: int = -1) -> bytes:
         return b""
 
+    # TODO add async def readuntil
+
     async def readany(self) -> bytes:
         return b""
 
@@ -540,11 +554,11 @@ class EmptyStreamReader(AsyncStreamReaderMixin):
     async def readexactly(self, n: int) -> bytes:
         raise asyncio.IncompleteReadError(b"", n)
 
-    def read_nowait(self) -> bytes:
+    def read_nowait(self, n: int = -1) -> bytes:
         return b""
 
 
-EMPTY_PAYLOAD = EmptyStreamReader()
+EMPTY_PAYLOAD: Final[StreamReader] = EmptyStreamReader()
 
 
 class DataQueue(Generic[_T]):

@@ -22,6 +22,9 @@ from typing import (
     cast,
 )
 
+from aiosignal import Signal
+from frozenlist import FrozenList
+
 from . import hdrs
 from .abc import (
     AbstractAccessLogger,
@@ -29,11 +32,9 @@ from .abc import (
     AbstractRouter,
     AbstractStreamWriter,
 )
-from .frozenlist import FrozenList
 from .helpers import DEBUG
 from .http_parser import RawRequestMessage
 from .log import web_logger
-from .signals import Signal
 from .streams import StreamReader
 from .web_log import AccessLogger
 from .web_middlewares import _fix_request_current_app

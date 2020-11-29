@@ -11,7 +11,6 @@ if sys.version_info < (3, 6):
 
 here = pathlib.Path(__file__).parent
 
-
 if (here / ".git").exists() and not (here / "vendor/http-parser/README.md").exists():
     print("Install submodules when building from git clone", file=sys.stderr)
     print("Hint:", file=sys.stderr)
@@ -32,7 +31,6 @@ extensions = [
         ],
         define_macros=[("HTTP_PARSER_STRICT", 0)],
     ),
-    Extension("aiohttp._frozenlist", ["aiohttp/_frozenlist.c"]),
     Extension("aiohttp._helpers", ["aiohttp/_helpers.c"]),
     Extension("aiohttp._http_writer", ["aiohttp/_http_writer.c"]),
 ]
@@ -69,9 +67,12 @@ install_requires = [
     "chardet>=2.0,<4.0",
     "multidict>=4.5,<7.0",
     "async_timeout>=3.0,<4.0",
+    'asynctest==0.13.0; python_version<"3.8"',
     "yarl>=1.0,<2.0",
     'idna-ssl>=1.0; python_version<"3.7"',
-    "typing_extensions>=3.6.5",
+    "typing_extensions>=3.7.4",
+    "frozenlist>=1.1.1",
+    "aiosignal>=1.1.2",
 ]
 
 
@@ -124,7 +125,7 @@ args = dict(
     url="https://github.com/aio-libs/aiohttp",
     project_urls={
         "Chat: Gitter": "https://gitter.im/aio-libs/Lobby",
-        "CI: Azure Pipelines": "https://dev.azure.com/aio-libs/aiohttp/_build",
+        "CI: GitHub Actions": "https://github.com/aio-libs/aiohttp/actions?query=workflow%3ACI",  # noqa
         "Coverage: codecov": "https://codecov.io/github/aio-libs/aiohttp",
         "Docs: RTD": "https://docs.aiohttp.org",
         "GitHub: issues": "https://github.com/aio-libs/aiohttp/issues",

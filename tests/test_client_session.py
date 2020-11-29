@@ -550,6 +550,7 @@ async def test_request_tracing(loop, aiohttp_client) -> None:
     body = "This is request body"
     gathered_req_body = BytesIO()
     gathered_res_body = BytesIO()
+    gathered_req_headers = CIMultiDict()
     on_request_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
     on_request_redirect = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
     on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
@@ -560,6 +561,9 @@ async def test_request_tracing(loop, aiohttp_client) -> None:
     async def on_response_chunk_received(session, context, params):
         gathered_res_body.write(params.chunk)
 
+    async def on_request_headers_sent(session, context, params):
+        gathered_req_headers.extend(**params.headers)
+
     trace_config = aiohttp.TraceConfig(
         trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
     )
@@ -568,8 +572,10 @@ async def test_request_tracing(loop, aiohttp_client) -> None:
     trace_config.on_request_chunk_sent.append(on_request_chunk_sent)
     trace_config.on_response_chunk_received.append(on_response_chunk_received)
     trace_config.on_request_redirect.append(on_request_redirect)
+    trace_config.on_request_headers_sent.append(on_request_headers_sent)
 
-    session = await aiohttp_client(app, trace_configs=[trace_config])
+    headers = CIMultiDict({"Custom-Header": "Custom value"})
+    session = await aiohttp_client(app, trace_configs=[trace_config], headers=headers)
 
     async with session.post(
         "/", data=body, trace_request_ctx=trace_request_ctx
@@ -581,7 +587,7 @@ async def test_request_tracing(loop, aiohttp_client) -> None:
             session.session,
             trace_config_ctx,
             aiohttp.TraceRequestStartParams(
-                hdrs.METH_POST, session.make_url("/"), CIMultiDict()
+                hdrs.METH_POST, session.make_url("/"), headers
             ),
         )
 
@@ -589,12 +595,13 @@ async def test_request_tracing(loop, aiohttp_client) -> None:
             session.session,
             trace_config_ctx,
             aiohttp.TraceRequestEndParams(
-                hdrs.METH_POST, session.make_url("/"), CIMultiDict(), resp
+                hdrs.METH_POST, session.make_url("/"), headers, resp
             ),
         )
         assert not on_request_redirect.called
         assert gathered_req_body.getvalue() == body.encode("utf8")
         assert gathered_res_body.getvalue() == json.dumps({"ok": True}).encode("utf8")
+        assert gathered_req_headers["Custom-Header"] == "Custom value"
 
 
 async def test_request_tracing_exception() -> None:
