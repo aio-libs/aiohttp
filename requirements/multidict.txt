@@ -1,1 +1,1 @@
-multidict==5.0.2
+multidict==5.1.0
