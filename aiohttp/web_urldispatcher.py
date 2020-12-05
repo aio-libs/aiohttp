@@ -80,7 +80,7 @@ HTTP_METHOD_RE: Final[Pattern[str]] = re.compile(
 ROUTE_RE: Final[Pattern[str]] = re.compile(
     r"(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})"
 )
-PATH_SEP: Final[AnyStr] = re.escape("/")
+PATH_SEP: Final[str] = re.escape("/")
 
 
 _WebHandler = Callable[[Request], Awaitable[StreamResponse]]
