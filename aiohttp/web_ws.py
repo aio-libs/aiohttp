@@ -4,7 +4,7 @@ import binascii
 import dataclasses
 import hashlib
 import json
-from typing import Any, Iterable, Optional, Tuple
+from typing import Any, Final, Iterable, Optional, Tuple
 
 import async_timeout
 from multidict import CIMultiDict
@@ -38,7 +38,7 @@ __all__ = (
     "WSMsgType",
 )
 
-THRESHOLD_CONNLOST_ACCESS = 5
+THRESHOLD_CONNLOST_ACCESS: Final[int] = 5
 
 
 @dataclasses.dataclass(frozen=True)

@@ -6,8 +6,19 @@ import string
 import zlib
 from contextlib import suppress
 from enum import IntEnum
-from typing import Any, Generic, List, Optional, Tuple, Type, TypeVar, Union
-
+from typing import (
+    Any,
+    Final,
+    Generic,
+    List,
+    Optional,
+    Pattern,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union
+)
 from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
 
@@ -44,7 +55,7 @@ __all__ = (
     "RawResponseMessage",
 )
 
-ASCIISET = set(string.printable)
+ASCIISET: Final[Set[str]] = set(string.printable)
 
 # See https://tools.ietf.org/html/rfc7230#section-3.1.1
 # and https://tools.ietf.org/html/rfc7230#appendix-B
@@ -53,9 +64,9 @@ ASCIISET = set(string.printable)
 #     tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "." /
 #             "^" / "_" / "`" / "|" / "~" / DIGIT / ALPHA
 #     token = 1*tchar
-METHRE = re.compile(r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+")
-VERSRE = re.compile(r"HTTP/(\d+).(\d+)")
-HDRRE = re.compile(rb"[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\\\"]")
+METHRE: Final[Pattern] = re.compile(r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+")
+VERSRE: Final[Pattern] = re.compile(r"HTTP/(\d+).(\d+)")
+HDRRE: Final[Pattern] = re.compile(rb"[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\\\"]")
 
 RawRequestMessage = collections.namedtuple(
     "RawRequestMessage",

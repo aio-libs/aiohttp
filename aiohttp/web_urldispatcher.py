@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from types import MappingProxyType
 from typing import (
-    TYPE_CHECKING,
+    AnyStr, Final, TYPE_CHECKING,
     Any,
     Awaitable,
     Callable,
@@ -70,11 +70,11 @@ if TYPE_CHECKING:  # pragma: no cover
 else:
     BaseDict = dict
 
-YARL_VERSION = tuple(map(int, yarl_version.split(".")[:2]))
+YARL_VERSION: Final[Tuple[int]] = tuple(map(int, yarl_version.split(".")[:2]))
 
-HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
-ROUTE_RE = re.compile(r"(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})")
-PATH_SEP = re.escape("/")
+HTTP_METHOD_RE: Final[Pattern] = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
+ROUTE_RE: Final[Pattern] = re.compile(r"(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})")
+PATH_SEP: Final[AnyStr] = re.escape("/")
 
 
 _WebHandler = Callable[[Request], Awaitable[StreamResponse]]

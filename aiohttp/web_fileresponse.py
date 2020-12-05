@@ -4,6 +4,7 @@ import os
 import pathlib
 import sys
 from typing import (  # noqa
+    Final,
     IO,
     TYPE_CHECKING,
     Any,
@@ -35,7 +36,7 @@ if TYPE_CHECKING:  # pragma: no cover
 _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
 
 
-NOSENDFILE = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
+NOSENDFILE: Final[bool] = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
 
 
 class FileResponse(StreamResponse):

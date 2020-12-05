@@ -8,7 +8,7 @@ import warnings
 from abc import ABC, abstractmethod
 from itertools import chain
 from typing import (
-    IO,
+    Final, IO,
     TYPE_CHECKING,
     Any,
     ByteString,
@@ -52,7 +52,7 @@ __all__ = (
     "AsyncIterablePayload",
 )
 
-TOO_LARGE_BYTES_BODY = 2 ** 20  # 1 MB
+TOO_LARGE_BYTES_BODY: Final[int] = 2 ** 20  # 1 MB
 
 
 if TYPE_CHECKING:  # pragma: no cover

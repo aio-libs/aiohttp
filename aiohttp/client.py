@@ -15,6 +15,7 @@ from typing import (
     Awaitable,
     Callable,
     Coroutine,
+    Final,
     FrozenSet,
     Generator,
     Generic,
@@ -158,7 +159,7 @@ class ClientTimeout:
 
 
 # 5 Minute default read timeout
-DEFAULT_TIMEOUT = ClientTimeout(total=5 * 60)
+DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60)
 
 _RetType = TypeVar("_RetType")
 
