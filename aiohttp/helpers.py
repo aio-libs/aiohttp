@@ -890,11 +890,7 @@ def populate_with_cookies(
 
 
 # https://tools.ietf.org/html/rfc7232#section-2.3
-_ETAGC = "[{}]+".format(
-    "".join(
-        chr(c) for c in (0x21,) + tuple(range(0x23, 0x7E)) + tuple(range(0x80, 0xFF))
-    )
-)
+_ETAGC = r"[!#-}\x80-\xff]+"
 _QUOTED_ETAG = fr'(W\/)?("{_ETAGC}")'
 QUOTED_ETAG_RE = re.compile(_QUOTED_ETAG)
 LIST_QUOTED_ETAG_RE = re.compile(fr"({_QUOTED_ETAG})(?:\s*,\s*|$)")
