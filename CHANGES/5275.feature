@@ -1,1 +1,1 @@
-Add final declarations for constants
+Add final declarations for constants.
