@@ -4,12 +4,12 @@ import os
 import pathlib
 import sys
 from typing import (  # noqa
-    Final,
     IO,
     TYPE_CHECKING,
     Any,
     Awaitable,
     Callable,
+    Final,
     List,
     Optional,
     Union,

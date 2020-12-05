@@ -11,15 +11,15 @@ from email.utils import parsedate
 from http.cookies import SimpleCookie
 from types import MappingProxyType
 from typing import (
-    Final,
-    Pattern,
     TYPE_CHECKING,
     Any,
     Dict,
+    Final,
     Iterator,
     Mapping,
     MutableMapping,
     Optional,
+    Pattern,
     Set,
     Tuple,
     Union,

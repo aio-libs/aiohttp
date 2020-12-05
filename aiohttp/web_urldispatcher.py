@@ -8,14 +8,14 @@ from contextlib import contextmanager
 from pathlib import Path
 from types import MappingProxyType
 from typing import (
-    AnyStr,
-    Final,
     TYPE_CHECKING,
     Any,
+    AnyStr,
     Awaitable,
     Callable,
     Container,
     Dict,
+    Final,
     Generator,
     Iterable,
     Iterator,

@@ -8,12 +8,12 @@ import warnings
 from abc import ABC, abstractmethod
 from itertools import chain
 from typing import (
-    Final,
     IO,
     TYPE_CHECKING,
     Any,
     ByteString,
     Dict,
+    Final,
     Iterable,
     Optional,
     Text,

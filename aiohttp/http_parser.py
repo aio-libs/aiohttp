@@ -19,6 +19,7 @@ from typing import (
     TypeVar,
     Union,
 )
+
 from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
 
