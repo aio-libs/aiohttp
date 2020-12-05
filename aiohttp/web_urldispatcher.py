@@ -10,7 +10,6 @@ from types import MappingProxyType
 from typing import (
     TYPE_CHECKING,
     Any,
-    AnyStr,
     Awaitable,
     Callable,
     Container,
