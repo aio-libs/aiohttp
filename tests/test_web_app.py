@@ -252,6 +252,32 @@ async def test_cleanup_ctx_exception_on_cleanup() -> None:
     assert out == ["pre_1", "pre_2", "pre_3", "post_3", "post_2", "post_1"]
 
 
+async def test_cleanup_ctx_cleanup_after_exception() -> None:
+    app = web.Application()
+    ctx_state = None
+
+    async def success_ctx(app):
+        nonlocal ctx_state
+        ctx_state = "START"
+        yield
+        ctx_state = "CLEAN"
+
+    async def fail_ctx(app):
+        raise Exception()
+        yield
+
+    app.cleanup_ctx.append(success_ctx)
+    app.cleanup_ctx.append(fail_ctx)
+    runner = web.AppRunner(app)
+    try:
+        with pytest.raises(Exception):
+            await runner.setup()
+    finally:
+        await runner.cleanup()
+
+    assert ctx_state == "CLEAN"
+
+
 async def test_cleanup_ctx_exception_on_cleanup_multiple() -> None:
     app = web.Application()
     out = []
