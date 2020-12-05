@@ -151,7 +151,7 @@ else:
 _WS_DEFLATE_TRAILING: Final[bytes] = bytes([0x00, 0x00, 0xFF, 0xFF])
 
 
-_WS_EXT_RE: Final[Pattern] = re.compile(
+_WS_EXT_RE: Final[Pattern[str]] = re.compile(
     r"^(?:;\s*(?:"
     r"(server_no_context_takeover)|"
     r"(client_no_context_takeover)|"
@@ -159,7 +159,7 @@ _WS_EXT_RE: Final[Pattern] = re.compile(
     r"(client_max_window_bits(?:=(\d+))?)))*$"
 )
 
-_WS_EXT_RE_SPLIT: Final[Pattern] = re.compile(r"permessage-deflate([^,]+)?")
+_WS_EXT_RE_SPLIT: Final[Pattern[str]] = re.compile(r"permessage-deflate([^,]+)?")
 
 
 def ws_ext_parse(extstr: Optional[str], isserver: bool = False) -> Tuple[int, bool]:

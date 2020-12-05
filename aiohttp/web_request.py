@@ -100,10 +100,10 @@ _FORWARDED_PAIR: Final[
     token=_TOKEN, quoted_string=_QUOTED_STRING
 )
 
-_QUOTED_PAIR_REPLACE_RE: Final[Pattern] = re.compile(r"\\([\t !-~])")
+_QUOTED_PAIR_REPLACE_RE: Final[Pattern[str]] = re.compile(r"\\([\t !-~])")
 # same pattern as _QUOTED_PAIR but contains a capture group
 
-_FORWARDED_PAIR_RE: Final[Pattern] = re.compile(_FORWARDED_PAIR)
+_FORWARDED_PAIR_RE: Final[Pattern[str]] = re.compile(_FORWARDED_PAIR)
 
 ############################################################
 # HTTP Request

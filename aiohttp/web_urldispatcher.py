@@ -74,8 +74,12 @@ else:
 
 YARL_VERSION: Final[Tuple[int]] = tuple(map(int, yarl_version.split(".")[:2]))
 
-HTTP_METHOD_RE: Final[Pattern] = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
-ROUTE_RE: Final[Pattern] = re.compile(r"(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})")
+HTTP_METHOD_RE: Final[Pattern[str]] = re.compile(
+    r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$"
+)
+ROUTE_RE: Final[Pattern[str]] = re.compile(
+    r"(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})"
+)
 PATH_SEP: Final[AnyStr] = re.escape("/")
 
 
