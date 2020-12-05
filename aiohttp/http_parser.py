@@ -17,7 +17,7 @@ from typing import (
     Tuple,
     Type,
     TypeVar,
-    Union
+    Union,
 )
 from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL

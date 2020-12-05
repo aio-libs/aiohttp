@@ -8,7 +8,9 @@ from contextlib import contextmanager
 from pathlib import Path
 from types import MappingProxyType
 from typing import (
-    AnyStr, Final, TYPE_CHECKING,
+    AnyStr,
+    Final,
+    TYPE_CHECKING,
     Any,
     Awaitable,
     Callable,

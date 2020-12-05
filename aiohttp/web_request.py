@@ -11,7 +11,9 @@ from email.utils import parsedate
 from http.cookies import SimpleCookie
 from types import MappingProxyType
 from typing import (
-    Final, Pattern, TYPE_CHECKING,
+    Final,
+    Pattern,
+    TYPE_CHECKING,
     Any,
     Dict,
     Iterator,
@@ -92,7 +94,9 @@ _QUOTED_STRING: Final[str] = r'"(?:{quoted_pair}|{qdtext})*"'.format(
     qdtext=_QDTEXT, quoted_pair=_QUOTED_PAIR
 )
 
-_FORWARDED_PAIR: Final[str] = r"({token})=({token}|{quoted_string})(:\d{{1,4}})?".format(
+_FORWARDED_PAIR: Final[
+    str
+] = r"({token})=({token}|{quoted_string})(:\d{{1,4}})?".format(
     token=_TOKEN, quoted_string=_QUOTED_STRING
 )
 

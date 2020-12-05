@@ -8,7 +8,8 @@ import warnings
 from abc import ABC, abstractmethod
 from itertools import chain
 from typing import (
-    Final, IO,
+    Final,
+    IO,
     TYPE_CHECKING,
     Any,
     ByteString,
