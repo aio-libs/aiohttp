@@ -72,7 +72,7 @@ if TYPE_CHECKING:  # pragma: no cover
 else:
     BaseDict = dict
 
-YARL_VERSION: Final[Tuple[int]] = tuple(map(int, yarl_version.split(".")[:2]))
+YARL_VERSION: Final[Tuple[int, ...]] = tuple(map(int, yarl_version.split(".")[:2]))
 
 HTTP_METHOD_RE: Final[Pattern[str]] = re.compile(
     r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$"

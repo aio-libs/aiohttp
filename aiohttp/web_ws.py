@@ -216,9 +216,9 @@ class WebSocketResponse(StreamResponse):
         accept_val = base64.b64encode(
             hashlib.sha1(key.encode() + WS_KEY).digest()
         ).decode()
-        response_headers = CIMultiDict(  # type: ignore
+        response_headers = CIMultiDict(
             {
-                hdrs.UPGRADE: "websocket",  # type: ignore
+                hdrs.UPGRADE: "websocket",
                 hdrs.CONNECTION: "upgrade",
                 hdrs.SEC_WEBSOCKET_ACCEPT: accept_val,
             }
