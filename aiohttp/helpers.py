@@ -891,9 +891,10 @@ def populate_with_cookies(
 
 # https://tools.ietf.org/html/rfc7232#section-2.3
 _ETAGC = r"[!#-}\x80-\xff]+"
-_QUOTED_ETAG = fr'(W/)?("{_ETAGC}")'
+_ETAGC_RE = re.compile(_ETAGC)
+_QUOTED_ETAG = fr'(W/)?"({_ETAGC})"'
 QUOTED_ETAG_RE = re.compile(_QUOTED_ETAG)
-LIST_QUOTED_ETAG_RE = re.compile(fr"({_QUOTED_ETAG})(?:\s*,\s*|$)")
+LIST_QUOTED_ETAG_RE = re.compile(fr"({_QUOTED_ETAG})(?:\s*,\s*|$)|(.)")
 
 ETAG_ANY = "*"
 
@@ -902,3 +903,10 @@ ETAG_ANY = "*"
 class ETag:
     value: str
     is_weak: bool = False
+
+
+def validate_etag_value(value: str) -> None:
+    if value != ETAG_ANY and not _ETAGC_RE.fullmatch(value):
+        raise ValueError(
+            f"Value {value!r} is not a valid etag. Maybe it contains '\"'?"
+        )

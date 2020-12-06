@@ -513,10 +513,15 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             )
         else:
             for match in LIST_QUOTED_ETAG_RE.finditer(etag_header):
-                is_weak, quoted_value = match.group(2), match.group(3)
+                is_weak, value, garbage = match.group(2, 3, 4)
+                # Any symbol captured by 4th group means
+                # that the following sequence is invalid.
+                if garbage:
+                    break
+
                 yield ETag(
                     is_weak=bool(is_weak),
-                    value=quoted_value[1:-1],
+                    value=value,
                 )
 
     @classmethod

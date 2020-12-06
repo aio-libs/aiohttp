@@ -271,12 +271,18 @@ def test_etag_string() -> None:
     assert resp.headers[hdrs.ETAG] == f'"{value}"'
 
 
-def test_etag_class() -> None:
+@pytest.mark.parametrize(
+    "etag,expected_header",
+    (
+        (ETag(value="0123-weak-kotik", is_weak=True), 'W/"0123-weak-kotik"'),
+        (ETag(value="0123-strong-kotik", is_weak=False), '"0123-strong-kotik"'),
+    ),
+)
+def test_etag_class(etag, expected_header) -> None:
     resp = StreamResponse()
-    etag = ETag(value="0123-weak-kotik", is_weak=True)
     resp.etag = etag
     assert resp.etag == etag
-    assert resp.headers[hdrs.ETAG] == f'W/"{etag.value}"'
+    assert resp.headers[hdrs.ETAG] == expected_header
 
 
 def test_etag_any() -> None:
@@ -286,11 +292,20 @@ def test_etag_any() -> None:
     assert resp.headers[hdrs.ETAG] == "*"
 
 
-@pytest.mark.parametrize("wrong_value", (123, ETag(value=123, is_weak=True)))
-def test_etag_wrong_class(wrong_value) -> None:
+@pytest.mark.parametrize(
+    "invalid", ('"invalid"', ETag(value='"invalid"', is_weak=True))
+)
+def test_etag_invalid_value(invalid) -> None:
     resp = StreamResponse()
     with pytest.raises(ValueError):
-        resp.etag = wrong_value
+        resp.etag = invalid
+
+
+@pytest.mark.parametrize("invalid", (123, ETag(value=123, is_weak=True)))
+def test_etag_invalid_value_class(invalid) -> None:
+    resp = StreamResponse()
+    with pytest.raises(ValueError):
+        resp.etag = invalid
 
 
 def test_etag_reset() -> None:

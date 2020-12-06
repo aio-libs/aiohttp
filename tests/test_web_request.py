@@ -834,16 +834,23 @@ async def test_handler_return_type(aiohttp_client: Any) -> None:
     "header_val,expected",
     [
         pytest.param(
-            '"67ab43", W/"54ed21", "7892dd"',
+            '"67ab43", W/"54ed21", "7892,dd"',
             (
                 ETag(is_weak=False, value="67ab43"),
                 ETag(is_weak=True, value="54ed21"),
-                ETag(is_weak=False, value="7892dd"),
+                ETag(is_weak=False, value="7892,dd"),
             ),
         ),
         pytest.param(
             '"bfc1ef-5b2c2730249c88ca92d82d"',
             (ETag(is_weak=False, value="bfc1ef-5b2c2730249c88ca92d82d"),),
+        ),
+        pytest.param(
+            '"valid-tag", "also-valid-tag",somegarbage"last-tag"',
+            (
+                ETag(is_weak=False, value="valid-tag"),
+                ETag(is_weak=False, value="also-valid-tag"),
+            ),
         ),
         pytest.param(
             "*",

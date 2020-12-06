@@ -37,6 +37,7 @@ from .helpers import (
     populate_with_cookies,
     rfc822_formatted_time,
     sentinel,
+    validate_etag_value,
 )
 from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
@@ -281,31 +282,33 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             return None
         elif quoted_value == ETAG_ANY:
             return ETag(value=ETAG_ANY)
-        match = QUOTED_ETAG_RE.match(quoted_value)
+        match = QUOTED_ETAG_RE.fullmatch(quoted_value)
         if not match:
             return None
-        is_weak, value = match.group(1), match.group(2)
+        is_weak, value = match.group(1, 2)
         return ETag(
             is_weak=bool(is_weak),
-            value=value[1:-1],
+            value=value,
         )
 
     @etag.setter
     def etag(self, value: Optional[Union[ETag, str]]) -> None:
-        if (isinstance(value, str) and value == ETAG_ANY) or (
+        if value is None:
+            self._headers.pop(hdrs.ETAG, None)
+        elif (isinstance(value, str) and value == ETAG_ANY) or (
             isinstance(value, ETag) and value.value == ETAG_ANY
         ):
             self._headers[hdrs.ETAG] = ETAG_ANY
         elif isinstance(value, str):
+            validate_etag_value(value)
             self._headers[hdrs.ETAG] = f'"{value}"'
         elif isinstance(value, ETag) and isinstance(value.value, str):
-            hdr_value = f'W/"{value.value}"' if value.is_weak else f'"{value}"'
+            validate_etag_value(value.value)
+            hdr_value = f'W/"{value.value}"' if value.is_weak else f'"{value.value}"'
             self._headers[hdrs.ETAG] = hdr_value
-        elif value is None:
-            self._headers.pop(hdrs.ETAG, None)
         else:
             raise ValueError(
-                f"Unsupported etag type: {type(value)!r}. "
+                f"Unsupported etag type: {type(value)}. "
                 f"etag must be str, ETag or None"
             )
 
