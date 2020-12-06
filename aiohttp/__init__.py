@@ -38,11 +38,7 @@ from .client import (
 )
 from .cookiejar import CookieJar as CookieJar, DummyCookieJar as DummyCookieJar
 from .formdata import FormData as FormData
-from .helpers import (
-    BasicAuth as BasicAuth,
-    ChainMapProxy as ChainMapProxy,
-    ETag as ETag,
-)
+from .helpers import BasicAuth, ChainMapProxy, ETag
 from .http import (
     HttpVersion as HttpVersion,
     HttpVersion10 as HttpVersion10,
