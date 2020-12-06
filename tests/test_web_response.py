@@ -10,6 +10,7 @@ from unittest import mock
 
 import aiosignal
 import pytest
+from freezegun import freeze_time
 from multidict import CIMultiDict, CIMultiDictProxy
 from re_assert import Matches
 
@@ -255,6 +256,17 @@ def test_last_modified_reset() -> None:
     resp.last_modified = 0
     resp.last_modified = None
     assert resp.last_modified is None
+
+
+@freeze_time("2020-12-06 15:38:05.5555")
+def test_last_modified_round_consistency() -> None:
+    resp = StreamResponse()
+
+    resp.last_modified = datetime.datetime.now(tz=datetime.timezone.utc)
+    datetime_last_modified = resp.last_modified
+    resp.last_modified = datetime.datetime.now().timestamp()
+    float_last_modified = resp.last_modified
+    assert datetime_last_modified == float_last_modified
 
 
 async def test_start() -> None:

@@ -259,7 +259,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             self._headers.pop(hdrs.LAST_MODIFIED, None)
         elif isinstance(value, (int, float)):
             self._headers[hdrs.LAST_MODIFIED] = time.strftime(
-                "%a, %d %b %Y %H:%M:%S GMT", time.gmtime(math.ceil(value))
+                "%a, %d %b %Y %H:%M:%S GMT", time.gmtime(math.floor(value))
             )
         elif isinstance(value, datetime.datetime):
             self._headers[hdrs.LAST_MODIFIED] = time.strftime(

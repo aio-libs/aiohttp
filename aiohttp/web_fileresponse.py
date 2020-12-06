@@ -114,8 +114,12 @@ class FileResponse(StreamResponse):
         loop = asyncio.get_event_loop()
         st = await loop.run_in_executor(None, filepath.stat)
 
+        self.last_modified = st.st_mtime  # type: ignore
+        assert self.last_modified is not None
+
         modsince = request.if_modified_since
-        if modsince is not None and st.st_mtime <= modsince.timestamp():
+
+        if modsince is not None and self.last_modified <= modsince:
             self.set_status(HTTPNotModified.status_code)
             self._length_check = False
             # Delete any Content-Length headers provided by user. HTTP 304
@@ -123,7 +127,7 @@ class FileResponse(StreamResponse):
             return await super().prepare(request)
 
         unmodsince = request.if_unmodified_since
-        if unmodsince is not None and st.st_mtime > unmodsince.timestamp():
+        if unmodsince is not None and self.last_modified > unmodsince:
             self.set_status(HTTPPreconditionFailed.status_code)
             return await super().prepare(request)
 
@@ -143,7 +147,7 @@ class FileResponse(StreamResponse):
         start = None
 
         ifrange = request.if_range
-        if ifrange is None or st.st_mtime <= ifrange.timestamp():
+        if ifrange is None or self.last_modified <= ifrange:
             # If-Range header check:
             # condition = cached date >= last modification date
             # return 206 if True else 200.
@@ -216,7 +220,6 @@ class FileResponse(StreamResponse):
             self.headers[hdrs.CONTENT_ENCODING] = encoding
         if gzip:
             self.headers[hdrs.VARY] = hdrs.ACCEPT_ENCODING
-        self.last_modified = st.st_mtime  # type: ignore
         self.content_length = count
 
         self.headers[hdrs.ACCEPT_RANGES] = "bytes"
