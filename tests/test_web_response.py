@@ -269,6 +269,13 @@ def test_last_modified_round_consistency() -> None:
     assert datetime_last_modified == float_last_modified
 
 
+def test_last_modified_tz_unaware_warning() -> None:
+    resp = StreamResponse()
+
+    with pytest.warns(RuntimeWarning):
+        resp.last_modified = datetime.datetime.now()
+
+
 async def test_start() -> None:
     req = make_request("GET", "/")
     resp = StreamResponse()
