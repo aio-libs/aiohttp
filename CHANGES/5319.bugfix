@@ -1,1 +1,1 @@
-Fix failures with aiohttp web server redirections with complex URLs
+Fix failures with aiohttp web server redirections with complex URLs.
