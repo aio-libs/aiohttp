@@ -229,7 +229,7 @@ class HTTPMove(HTTPRedirection):
             headers=headers, reason=reason, text=text, content_type=content_type
         )
         self._location = URL(location)
-        self.headers["Location"] = str(self.location)
+        self.headers["Location"] = str(location)
 
     @property
     def location(self) -> URL:
