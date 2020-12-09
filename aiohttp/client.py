@@ -1072,6 +1072,8 @@ class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType
 
 
 class _RequestContextManager(_BaseRequestContextManager[ClientResponse]):
+    __slots__ = ()
+
     async def __aexit__(
         self,
         exc_type: Optional[Type[BaseException]],
@@ -1087,6 +1089,8 @@ class _RequestContextManager(_BaseRequestContextManager[ClientResponse]):
 
 
 class _WSRequestContextManager(_BaseRequestContextManager[ClientWebSocketResponse]):
+    __slots__ = ()
+
     async def __aexit__(
         self,
         exc_type: Optional[Type[BaseException]],
