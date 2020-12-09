@@ -293,12 +293,31 @@ def test_etag_any() -> None:
 
 
 @pytest.mark.parametrize(
-    "invalid", ('"invalid"', ETag(value='"invalid"', is_weak=True))
+    "invalid_value",
+    (
+        '"invalid"',
+        "повинен бути ascii",
+        ETag(value='"invalid"', is_weak=True),
+        ETag(value="bad ©®"),
+    ),
 )
-def test_etag_invalid_value(invalid) -> None:
+def test_etag_invalid_value_set(invalid_value) -> None:
     resp = StreamResponse()
     with pytest.raises(ValueError):
-        resp.etag = invalid
+        resp.etag = invalid_value
+
+
+@pytest.mark.parametrize(
+    "header",
+    (
+        "forgotten quotes",
+        '"∀ x ∉ ascii"',
+    ),
+)
+def test_etag_invalid_value_get(header) -> None:
+    resp = StreamResponse()
+    resp.headers["ETag"] = header
+    assert resp.etag is None
 
 
 @pytest.mark.parametrize("invalid", (123, ETag(value=123, is_weak=True)))

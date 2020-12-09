@@ -326,6 +326,8 @@ and :ref:`aiohttp-web-signals` handlers.
       Returns :class:`tuple` of :class:`ETag` or ``None`` if
       *If-Match* header is absent.
 
+      .. versionadded:: 3.8
+
    .. attribute:: if_none_match
 
       Read-only property that returns :class:`ETag` objects specified
@@ -334,7 +336,7 @@ and :ref:`aiohttp-web-signals` handlers.
       Returns :class:`tuple` of :class:`ETag` or ``None`` if
       *If-None-Match* header is absent.
 
-      .. versionadded:: 4.0
+      .. versionadded:: 3.8
 
    .. attribute:: if_range
 
@@ -803,6 +805,8 @@ StreamResponse
 
       **Do not** use double quotes ``"`` in the etag value,
       they will be added automatically.
+
+      .. versionadded:: 3.8
 
    .. comethod:: prepare(request)
 

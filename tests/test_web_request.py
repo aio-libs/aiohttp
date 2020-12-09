@@ -853,6 +853,10 @@ async def test_handler_return_type(aiohttp_client: Any) -> None:
             ),
         ),
         pytest.param(
+            '"ascii", "это точно не ascii", "ascii again"',
+            (ETag(is_weak=False, value="ascii"),),
+        ),
+        pytest.param(
             "*",
             (ETag(is_weak=False, value="*"),),
         ),

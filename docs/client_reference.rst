@@ -1703,7 +1703,7 @@ ETag
 
       Flag indicates that etag is weak (has `W/` prefix).
 
-   .. versionadded:: 4.0
+   .. versionadded:: 3.8
 
 RequestInfo
 ^^^^^^^^^^^
