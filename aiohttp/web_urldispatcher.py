@@ -79,7 +79,7 @@ PATH_SEP = re.escape("/")
 
 _WebHandler = Callable[[Request], Awaitable[StreamResponse]]
 _ExpectHandler = Callable[[Request], Awaitable[None]]
-_Resolve = Tuple[Optional[AbstractMatchInfo], Set[str]]
+_Resolve = Tuple[Optional["UrlMappingMatchInfo"], Set[str]]
 
 
 class _InfoDict(TypedDict, total=False):
@@ -977,7 +977,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self._resources = []  # type: List[AbstractResource]
         self._named_resources = {}  # type: Dict[str, AbstractResource]
 
-    async def resolve(self, request: Request) -> AbstractMatchInfo:
+    async def resolve(self, request: Request) -> UrlMappingMatchInfo:
         method = request.method
         allowed_methods = set()  # type: Set[str]
 
@@ -987,11 +987,11 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
                 return match_dict
             else:
                 allowed_methods |= allowed
+
+        if allowed_methods:
+            return MatchInfoError(HTTPMethodNotAllowed(method, allowed_methods))
         else:
-            if allowed_methods:
-                return MatchInfoError(HTTPMethodNotAllowed(method, allowed_methods))
-            else:
-                return MatchInfoError(HTTPNotFound())
+            return MatchInfoError(HTTPNotFound())
 
     def __iter__(self) -> Iterator[str]:
         return iter(self._named_resources)

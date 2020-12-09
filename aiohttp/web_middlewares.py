@@ -22,7 +22,7 @@ async def _check_request_resolves(request: Request, path: str) -> Tuple[bool, Re
     alt_request = request.clone(rel_url=path)
 
     match_info = await request.app.router.resolve(alt_request)
-    alt_request._match_info = match_info  # type: ignore
+    alt_request._match_info = match_info
 
     if match_info.http_exception is None:
         return True, alt_request
