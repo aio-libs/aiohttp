@@ -26,7 +26,7 @@ except ImportError:  # pragma: no cover
     SSLContext = object  # type: ignore
 
 
-__all__ = ("GunicornWebWorker", "GunicornUVLoopWebWorker", "GunicornTokioWebWorker")
+__all__ = ("GunicornTokioWebWorker", "GunicornUVLoopWebWorker", "GunicornWebWorker")
 
 
 class GunicornWebWorker(base.Worker):

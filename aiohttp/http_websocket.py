@@ -16,15 +16,15 @@ from .helpers import NO_EXTENSIONS
 from .streams import DataQueue
 
 __all__ = (
+    "WSCloseCode",
+    "WSMessage",
+    "WSMsgType",
     "WS_CLOSED_MESSAGE",
     "WS_CLOSING_MESSAGE",
     "WS_KEY",
+    "WebSocketError",
     "WebSocketReader",
     "WebSocketWriter",
-    "WSMessage",
-    "WebSocketError",
-    "WSMsgType",
-    "WSCloseCode",
 )
 
 

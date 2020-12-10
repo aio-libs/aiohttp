@@ -73,7 +73,7 @@ except ImportError:  # pragma: no cover
     import chardet  # type: ignore
 
 
-__all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
+__all__ = ("ClientRequest", "ClientResponse", "Fingerprint", "RequestInfo")
 
 
 if TYPE_CHECKING:  # pragma: no cover

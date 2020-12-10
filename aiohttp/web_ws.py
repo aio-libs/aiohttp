@@ -33,9 +33,9 @@ from .web_request import BaseRequest
 from .web_response import StreamResponse
 
 __all__ = (
-    "WebSocketResponse",
-    "WebSocketReady",
     "WSMsgType",
+    "WebSocketReady",
+    "WebSocketResponse",
 )
 
 THRESHOLD_CONNLOST_ACCESS = 5

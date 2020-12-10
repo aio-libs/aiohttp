@@ -15,11 +15,11 @@ except ImportError:
     from typing_extensions import Deque
 
 __all__ = (
+    "DataQueue",
     "EMPTY_PAYLOAD",
     "EofStream",
-    "StreamReader",
-    "DataQueue",
     "FlowControlDataQueue",
+    "StreamReader",
 )
 
 _T = TypeVar("_T")

@@ -10,6 +10,10 @@ repos:
   rev: 'v3.3.0'
   hooks:
   - id: check-merge-conflict
+- repo: https://github.com/aio-libs/sort-all
+  rev: v1.0.1
+  hooks:
+  - id: sort-all
 - repo: https://github.com/asottile/yesqa
   rev: v1.2.2
   hooks:

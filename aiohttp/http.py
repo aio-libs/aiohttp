@@ -33,33 +33,30 @@ from .http_writer import (
 )
 
 __all__ = (
+    "HeadersParser",
+    "HttpParser",
     "HttpProcessingError",
-    "RESPONSES",
-    "SERVER_SOFTWARE",
-    # .http_writer
-    "StreamWriter",
+    "HttpRequestParser",
+    "HttpResponseParser",
     "HttpVersion",
     "HttpVersion10",
     "HttpVersion11",
-    # .http_parser
-    "HeadersParser",
-    "HttpParser",
-    "HttpRequestParser",
-    "HttpResponseParser",
+    "RESPONSES",
     "RawRequestMessage",
     "RawResponseMessage",
-    # .http_websocket
+    "SERVER_SOFTWARE",
+    "StreamWriter",
+    "WSCloseCode",
+    "WSMessage",
+    "WSMsgType",
     "WS_CLOSED_MESSAGE",
     "WS_CLOSING_MESSAGE",
     "WS_KEY",
+    "WebSocketError",
     "WebSocketReader",
     "WebSocketWriter",
     "ws_ext_gen",
     "ws_ext_parse",
-    "WSMessage",
-    "WebSocketError",
-    "WSMsgType",
-    "WSCloseCode",
 )
 
 

@@ -50,15 +50,15 @@ from .web_response import Response, StreamResponse
 from .web_routedef import AbstractRouteDef
 
 __all__ = (
-    "UrlDispatcher",
-    "UrlMappingMatchInfo",
     "AbstractResource",
-    "Resource",
-    "PlainResource",
-    "DynamicResource",
     "AbstractRoute",
+    "DynamicResource",
+    "PlainResource",
+    "Resource",
     "ResourceRoute",
     "StaticResource",
+    "UrlDispatcher",
+    "UrlMappingMatchInfo",
     "View",
 )
 

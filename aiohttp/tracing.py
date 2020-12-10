@@ -27,22 +27,22 @@ if TYPE_CHECKING:  # pragma: no cover
 
 __all__ = (
     "TraceConfig",
-    "TraceRequestStartParams",
-    "TraceRequestEndParams",
-    "TraceRequestExceptionParams",
-    "TraceConnectionQueuedStartParams",
-    "TraceConnectionQueuedEndParams",
-    "TraceConnectionCreateStartParams",
     "TraceConnectionCreateEndParams",
+    "TraceConnectionCreateStartParams",
+    "TraceConnectionQueuedEndParams",
+    "TraceConnectionQueuedStartParams",
     "TraceConnectionReuseconnParams",
-    "TraceDnsResolveHostStartParams",
-    "TraceDnsResolveHostEndParams",
     "TraceDnsCacheHitParams",
     "TraceDnsCacheMissParams",
-    "TraceRequestRedirectParams",
+    "TraceDnsResolveHostEndParams",
+    "TraceDnsResolveHostStartParams",
     "TraceRequestChunkSentParams",
-    "TraceResponseChunkReceivedParams",
+    "TraceRequestEndParams",
+    "TraceRequestExceptionParams",
     "TraceRequestHeadersSentParams",
+    "TraceRequestRedirectParams",
+    "TraceRequestStartParams",
+    "TraceResponseChunkReceivedParams",
 )
 
 

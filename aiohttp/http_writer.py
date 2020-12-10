@@ -10,7 +10,7 @@ from .abc import AbstractStreamWriter
 from .base_protocol import BaseProtocol
 from .helpers import NO_EXTENSIONS
 
-__all__ = ("StreamWriter", "HttpVersion", "HttpVersion10", "HttpVersion11")
+__all__ = ("HttpVersion", "HttpVersion10", "HttpVersion11", "StreamWriter")
 
 
 class HttpVersion(NamedTuple):

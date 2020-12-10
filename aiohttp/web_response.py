@@ -39,7 +39,7 @@ from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
 
-__all__ = ("ContentCoding", "StreamResponse", "Response", "json_response")
+__all__ = ("ContentCoding", "Response", "StreamResponse", "json_response")
 
 
 if TYPE_CHECKING:  # pragma: no cover

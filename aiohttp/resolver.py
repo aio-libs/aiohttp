@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 
 from .abc import AbstractResolver
 
-__all__ = ("ThreadedResolver", "AsyncResolver", "DefaultResolver")
+__all__ = ("AsyncResolver", "DefaultResolver", "ThreadedResolver")
 
 try:
     import aiodns
