@@ -6,7 +6,7 @@ async-generator==1.10
 async-timeout==4.0.0a3
 asynctest==0.13.0; python_version<"3.8"
 attrs==20.3.0
-brotlipy==0.7.0
+brotli==1.0.7
 cchardet==2.1.7
 chardet==4.0.0
 frozenlist==1.1.1
