@@ -52,7 +52,7 @@ Installing speedups altogether
 ------------------------------
 
 The following will get you ``aiohttp`` along with :term:`chardet`,
-:term:`aiodns` and ``brotlipy`` in one bundle. No need to type
+:term:`aiodns` and ``Brotli`` in one bundle. No need to type
 separate commands anymore!
 
 .. code-block:: bash
