@@ -8,7 +8,7 @@ asynctest==0.13.0; python_version<"3.8"
 attrs==20.3.0
 brotlipy==0.7.0
 cchardet==2.1.7
-chardet==3.0.4
+chardet==4.0.0
 frozenlist==1.1.1
 gunicorn==20.0.4
 idna-ssl==1.1.0; python_version<"3.7"
