@@ -66,7 +66,7 @@ except IndexError:
 
 install_requires = [
     "attrs>=17.3.0",
-    "chardet>=2.0,<4.0",
+    "chardet>=2.0,<5.0",
     "multidict>=4.5,<7.0",
     "async_timeout>=3.0,<4.0",
     "yarl>=1.0,<2.0",
