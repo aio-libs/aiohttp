@@ -6,7 +6,7 @@ import string
 import zlib
 from contextlib import suppress
 from enum import IntEnum
-from typing import Generic, List, Optional, Tuple, Type, TypeVar, Union
+from typing import Any, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
 from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
@@ -804,6 +804,8 @@ class HttpPayloadParser:
 class DeflateBuffer:
     """DeflateStream decompress stream and feed data into specified stream."""
 
+    decompressor: Any
+
     def __init__(self, out: StreamReader, encoding: Optional[str]) -> None:
         self.out = out
         self.size = 0
@@ -814,9 +816,27 @@ class DeflateBuffer:
             if not HAS_BROTLI:  # pragma: no cover
                 raise ContentEncodingError(
                     "Can not decode content-encoding: brotli (br). "
-                    "Please install `brotlipy`"
+                    "Please install `Brotli`"
                 )
-            self.decompressor = brotli.Decompressor()
+
+            class BrotliDecoder:
+                # Supports both 'brotlipy' and 'Brotli' packages
+                # since they share an import name. The top branches
+                # are for 'brotlipy' and bottom branches for 'Brotli'
+                def __init__(self) -> None:
+                    self._obj = brotli.Decompressor()
+
+                def decompress(self, data: bytes) -> bytes:
+                    if hasattr(self._obj, "decompress"):
+                        return self._obj.decompress(data)
+                    return self._obj.process(data)
+
+                def flush(self) -> bytes:
+                    if hasattr(self._obj, "flush"):
+                        return self._obj.flush()
+                    return b""
+
+            self.decompressor = BrotliDecoder()
         else:
             zlib_mode = 16 + zlib.MAX_WBITS if encoding == "gzip" else zlib.MAX_WBITS
             self.decompressor = zlib.decompressobj(wbits=zlib_mode)
