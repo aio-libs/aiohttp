@@ -24,10 +24,10 @@ from typing import (
     Union,
     cast,
 )
-from typing_extensions import Final
 from urllib.parse import parse_qsl
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
+from typing_extensions import Final
 from yarl import URL
 
 from . import hdrs

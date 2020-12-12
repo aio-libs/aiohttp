@@ -19,8 +19,8 @@ from typing import (
     Union,
 )
 
-from typing_extensions import Final
 from multidict import CIMultiDict, CIMultiDictProxy, istr
+from typing_extensions import Final
 from yarl import URL
 
 from . import hdrs

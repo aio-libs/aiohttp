@@ -22,8 +22,8 @@ from typing import (
     Union,
 )
 
-from typing_extensions import Final
 from multidict import CIMultiDict
+from typing_extensions import Final
 
 from . import hdrs
 from .abc import AbstractStreamWriter

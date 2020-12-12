@@ -29,7 +29,7 @@ from typing import (
     cast,
 )
 
-from typing_extensions import TypedDict, Final
+from typing_extensions import Final, TypedDict
 from yarl import URL, __version__ as yarl_version  # type: ignore
 
 from . import hdrs
