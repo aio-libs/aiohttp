@@ -2,7 +2,8 @@
 
 import asyncio
 import dataclasses
-from typing import Any, Final, Optional
+from typing import Any, Optional
+from typing_extensions import Final
 
 import async_timeout
 

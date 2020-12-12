@@ -8,7 +8,6 @@ from contextlib import suppress
 from enum import IntEnum
 from typing import (
     Any,
-    Final,
     Generic,
     List,
     Optional,
@@ -20,6 +19,7 @@ from typing import (
     Union,
 )
 
+from typing_extensions import Final
 from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
 

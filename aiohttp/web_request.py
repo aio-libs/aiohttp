@@ -14,7 +14,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Dict,
-    Final,
     Iterator,
     Mapping,
     MutableMapping,
@@ -25,6 +24,7 @@ from typing import (
     Union,
     cast,
 )
+from typing_extensions import Final
 from urllib.parse import parse_qsl
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy

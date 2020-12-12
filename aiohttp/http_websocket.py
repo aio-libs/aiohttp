@@ -9,7 +9,8 @@ import sys
 import zlib
 from enum import IntEnum
 from struct import Struct
-from typing import Any, Callable, Final, List, Optional, Pattern, Set, Tuple, Union
+from typing import Any, Callable, List, Optional, Pattern, Set, Tuple, Union
+from typing_extensions import Final
 
 from .base_protocol import BaseProtocol
 from .helpers import NO_EXTENSIONS

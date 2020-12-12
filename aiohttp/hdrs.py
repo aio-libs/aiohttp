@@ -2,7 +2,8 @@
 
 # After changing the file content call ./tools/gen.py
 # to regenerate the headers parser
-from typing import Final, Set
+from typing import Set
+from typing_extensions import Final
 
 from multidict import istr
 

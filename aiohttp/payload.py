@@ -13,7 +13,6 @@ from typing import (
     Any,
     ByteString,
     Dict,
-    Final,
     Iterable,
     Optional,
     Text,
@@ -23,6 +22,7 @@ from typing import (
     Union,
 )
 
+from typing_extensions import Final
 from multidict import CIMultiDict
 
 from . import hdrs

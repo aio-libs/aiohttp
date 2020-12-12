@@ -15,7 +15,6 @@ from typing import (
     Awaitable,
     Callable,
     Coroutine,
-    Final,
     FrozenSet,
     Generator,
     Generic,
@@ -30,6 +29,7 @@ from typing import (
     Union,
 )
 
+from typing_extensions import Final
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from typing_extensions import final
 from yarl import URL

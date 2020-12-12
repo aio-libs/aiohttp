@@ -9,12 +9,12 @@ from typing import (  # noqa
     Any,
     Awaitable,
     Callable,
-    Final,
     List,
     Optional,
     Union,
     cast,
 )
+from typing_extensions import Final
 
 from . import hdrs
 from .abc import AbstractStreamWriter

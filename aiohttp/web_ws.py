@@ -4,7 +4,8 @@ import binascii
 import dataclasses
 import hashlib
 import json
-from typing import Any, Final, Iterable, Optional, Tuple
+from typing import Any, Iterable, Optional, Tuple
+from typing_extensions import Final
 
 import async_timeout
 from multidict import CIMultiDict
