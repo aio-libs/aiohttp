@@ -1,4 +1,5 @@
 import array
+import json
 from io import StringIO
 from typing import Any, AsyncIterator, Iterator
 
@@ -116,3 +117,9 @@ def test_async_iterable_payload_not_async_iterable() -> None:
 
     with pytest.raises(TypeError):
         payload.AsyncIterablePayload(object())  # type: ignore
+
+
+def test_decode_json_payload(registry: Any) -> None:
+    j = {"foo": 42}
+    p = payload.JsonPayload(j)
+    assert json.dumps(j) == p.decode("utf-8")

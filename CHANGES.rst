@@ -48,7 +48,8 @@ Bugfixes
   `#5163 <https://github.com/aio-libs/aiohttp/issues/5163>`_
 - Provide x86 Windows wheels.
   `#5230 <https://github.com/aio-libs/aiohttp/issues/5230>`_
-
+- Fix AttributeError: object has no attribute 'decode' for PAYLOAD_REGISTRY.
+  `#5281 <https://github.com/aio-libs/aiohttp/issues/5281>`_
 
 Improved Documentation
 ----------------------

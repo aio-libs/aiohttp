@@ -386,6 +386,9 @@ class JsonPayload(BytesPayload):
             **kwargs,
         )
 
+    def decode(self, encoding: str) -> str:
+        return self._value.decode(encoding)
+
 
 if TYPE_CHECKING:  # pragma: no cover
     from typing import AsyncIterable, AsyncIterator
