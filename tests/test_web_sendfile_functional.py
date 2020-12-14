@@ -389,7 +389,7 @@ async def test_static_file_huge(aiohttp_client: Any, tmp_path: Any) -> None:
 
 
 async def test_static_file_range(aiohttp_client: Any, sender: Any) -> None:
-    filepath = pathlib.Path(__file__).parent.parent / "LICENSE.txt"
+    filepath = pathlib.Path(__file__).parent / "sample.txt"
 
     filesize = filepath.stat().st_size
 
