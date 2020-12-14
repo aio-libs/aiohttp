@@ -308,6 +308,7 @@ Yegor Roganov
 Yifei Kong
 Young-Ho Cha
 Yuriy Shatrov
+Yury Pliner
 Yury Selivanov
 Yusuke Tsutsumi
 Yuval Ofir
