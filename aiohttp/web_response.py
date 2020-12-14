@@ -121,7 +121,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
 
     @property
     def prepared(self) -> bool:
-        return self._payload_writer is not None
+        return self._eof_sent or self._payload_writer is not None
 
     @property
     def task(self) -> "asyncio.Task[None]":

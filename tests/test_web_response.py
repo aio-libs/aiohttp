@@ -580,11 +580,8 @@ async def test___repr___after_eof() -> None:
     resp = StreamResponse()
     await resp.prepare(make_request("GET", "/"))
 
-    assert resp.prepared
-
     await resp.write(b"data")
     await resp.write_eof()
-    assert not resp.prepared
     resp_repr = repr(resp)
     assert resp_repr == "<StreamResponse OK eof>"
 
@@ -958,14 +955,22 @@ def test_content_type_with_set_body() -> None:
     assert resp.content_type == "application/octet-stream"
 
 
-def test_started_when_not_started() -> None:
+def test_prepared_when_not_started() -> None:
     resp = StreamResponse()
     assert not resp.prepared
 
 
-async def test_started_when_started() -> None:
+async def test_prepared_when_started() -> None:
     resp = StreamResponse()
     await resp.prepare(make_request("GET", "/"))
+    assert resp.prepared
+
+
+async def test_prepared_after_eof() -> None:
+    resp = StreamResponse()
+    await resp.prepare(make_request("GET", "/"))
+    await resp.write(b"data")
+    await resp.write_eof()
     assert resp.prepared
 
 
