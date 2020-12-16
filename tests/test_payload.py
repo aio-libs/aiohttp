@@ -125,7 +125,7 @@ def test_decode_json_payload(registry: Any) -> None:
     assert json.dumps(j) == p.decode("utf-8")
 
 
-async def test_json_payload(aiohttp_client: Any) -> None:
+async def test_json_payload(registry: Any, aiohttp_client: Any) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(body={"foo": 42})
 
