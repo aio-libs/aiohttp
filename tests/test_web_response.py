@@ -5,8 +5,7 @@ import gzip
 import json
 import weakref
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Mapping, Optional
-from types import MappingProxyType
+from typing import Any, Optional
 from unittest import mock
 
 import aiosignal
@@ -15,7 +14,7 @@ from multidict import CIMultiDict, CIMultiDictProxy
 from re_assert import Matches
 
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs
-from aiohttp.payload import BytesPayload, JsonPayload, PAYLOAD_REGISTRY
+from aiohttp.payload import BytesPayload
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
 
@@ -1095,11 +1094,3 @@ class TestJSONResponse:
     def test_content_type_is_overrideable(self) -> None:
         resp = json_response({"foo": 42}, content_type="application/vnd.json+api")
         assert "application/vnd.json+api" == resp.content_type
-
-
-class TestPayloadRegistryResponse:
-    def test_json_payload_text(self) -> None:
-        PAYLOAD_REGISTRY.register(JsonPayload, (Mapping, MappingProxyType))
-        data = {"foo": 42}
-        resp = json_response(data)
-        assert json.dumps(data) == resp.text

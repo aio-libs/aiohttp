@@ -9,8 +9,8 @@ Adrián Chaves
 Alan Tse
 Alec Hanefeld
 Alejandro Gómez
-Aleksandr Vaskevich
 Aleksandr Danshyn
+Aleksandr Vaskevich
 Aleksey Kutepov
 Alex Hayes
 Alex Key
