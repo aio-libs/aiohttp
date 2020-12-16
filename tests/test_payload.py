@@ -125,14 +125,12 @@ def test_decode_json_payload(registry: Any) -> None:
     assert json.dumps(j) == p.decode("utf-8")
 
 
-async def test_json_payload(registry: Any, aiohttp_client: Any) -> None:
-    async def handler(request):
+async def test_json_payload(aiohttp_client: Any) -> None:
+    async def handler(request: web.Request) -> web.Response:
         return web.Response(body={"foo": 42})
 
     app = web.Application()
-    payload.register_payload(
-        payload.JsonPayload, Mapping, order=payload.Order.try_first
-    )
+    payload.register_payload(payload.JsonPayload, Mapping)
     app.router.add_route("GET", "/", handler)
     client = await aiohttp_client(app)
     resp = await client.get("/")
