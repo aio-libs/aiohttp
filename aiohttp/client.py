@@ -30,7 +30,7 @@ from typing import (
 )
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
-from typing_extensions import final
+from typing_extensions import Final, final
 from yarl import URL
 
 from . import hdrs, http, payload
@@ -158,7 +158,7 @@ class ClientTimeout:
 
 
 # 5 Minute default read timeout
-DEFAULT_TIMEOUT = ClientTimeout(total=5 * 60)
+DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60)
 
 _RetType = TypeVar("_RetType")
 
