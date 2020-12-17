@@ -19,7 +19,7 @@ class Server:
         *,
         request_factory: Optional[_RequestFactory] = None,
         debug: Optional[bool] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         if debug is not None:
             warnings.warn(

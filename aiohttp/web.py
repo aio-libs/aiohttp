@@ -6,16 +6,16 @@ from argparse import ArgumentParser
 from collections.abc import Iterable
 from importlib import import_module
 from typing import (
-    Any as Any,
-    Awaitable as Awaitable,
-    Callable as Callable,
+    Any,
+    Awaitable,
+    Callable,
     Iterable as TypingIterable,
-    List as List,
-    Optional as Optional,
-    Set as Set,
-    Type as Type,
-    Union as Union,
-    cast as cast,
+    List,
+    Optional,
+    Set,
+    Type,
+    Union,
+    cast,
 )
 
 from .abc import AbstractAccessLogger

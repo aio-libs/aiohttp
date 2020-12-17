@@ -5,6 +5,7 @@ import dataclasses
 from typing import Any, Optional
 
 import async_timeout
+from typing_extensions import Final
 
 from .client_exceptions import ClientError
 from .client_reqrep import ClientResponse
@@ -33,7 +34,9 @@ class ClientWSTimeout:
     ws_close: Optional[float] = None
 
 
-DEFAULT_WS_CLIENT_TIMEOUT = ClientWSTimeout(ws_receive=None, ws_close=10.0)
+DEFAULT_WS_CLIENT_TIMEOUT: Final[ClientWSTimeout] = ClientWSTimeout(
+    ws_receive=None, ws_close=10.0
+)
 
 
 class ClientWebSocketResponse:
