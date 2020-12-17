@@ -18,6 +18,7 @@ from typing import (
     Mapping,
     MutableMapping,
     Optional,
+    Pattern,
     Tuple,
     Union,
     cast,
@@ -26,6 +27,7 @@ from urllib.parse import parse_qsl
 
 import attr
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
+from typing_extensions import Final
 from yarl import URL
 
 from . import hdrs
@@ -63,31 +65,33 @@ class FileField:
     headers: "CIMultiDictProxy[str]"
 
 
-_TCHAR = string.digits + string.ascii_letters + r"!#$%&'*+.^_`|~-"
+_TCHAR: Final[str] = string.digits + string.ascii_letters + r"!#$%&'*+.^_`|~-"
 # '-' at the end to prevent interpretation as range in a char class
 
-_TOKEN = fr"[{_TCHAR}]+"
+_TOKEN: Final[str] = fr"[{_TCHAR}]+"
 
-_QDTEXT = r"[{}]".format(
+_QDTEXT: Final[str] = r"[{}]".format(
     r"".join(chr(c) for c in (0x09, 0x20, 0x21) + tuple(range(0x23, 0x7F)))
 )
 # qdtext includes 0x5C to escape 0x5D ('\]')
 # qdtext excludes obs-text (because obsoleted, and encoding not specified)
 
-_QUOTED_PAIR = r"\\[\t !-~]"
+_QUOTED_PAIR: Final[str] = r"\\[\t !-~]"
 
-_QUOTED_STRING = r'"(?:{quoted_pair}|{qdtext})*"'.format(
+_QUOTED_STRING: Final[str] = r'"(?:{quoted_pair}|{qdtext})*"'.format(
     qdtext=_QDTEXT, quoted_pair=_QUOTED_PAIR
 )
 
-_FORWARDED_PAIR = r"({token})=({token}|{quoted_string})(:\d{{1,4}})?".format(
+_FORWARDED_PAIR: Final[
+    str
+] = r"({token})=({token}|{quoted_string})(:\d{{1,4}})?".format(
     token=_TOKEN, quoted_string=_QUOTED_STRING
 )
 
-_QUOTED_PAIR_REPLACE_RE = re.compile(r"\\([\t !-~])")
+_QUOTED_PAIR_REPLACE_RE: Final[Pattern[str]] = re.compile(r"\\([\t !-~])")
 # same pattern as _QUOTED_PAIR but contains a capture group
 
-_FORWARDED_PAIR_RE = re.compile(_FORWARDED_PAIR)
+_FORWARDED_PAIR_RE: Final[Pattern[str]] = re.compile(_FORWARDED_PAIR)
 
 ############################################################
 # HTTP Request

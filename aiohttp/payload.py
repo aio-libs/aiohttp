@@ -23,6 +23,7 @@ from typing import (
 )
 
 from multidict import CIMultiDict
+from typing_extensions import Final
 
 from . import hdrs
 from .abc import AbstractStreamWriter
@@ -52,7 +53,7 @@ __all__ = (
     "AsyncIterablePayload",
 )
 
-TOO_LARGE_BYTES_BODY = 2 ** 20  # 1 MB
+TOO_LARGE_BYTES_BODY: Final[int] = 2 ** 20  # 1 MB
 
 
 if TYPE_CHECKING:  # pragma: no cover

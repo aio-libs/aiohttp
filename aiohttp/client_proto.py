@@ -142,7 +142,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         read_until_eof: bool = False,
         auto_decompress: bool = True,
         read_timeout: Optional[float] = None,
-        read_bufsize: int = 2 ** 16
+        read_bufsize: int = 2 ** 16,
     ) -> None:
         self._skip_payload = skip_payload
 

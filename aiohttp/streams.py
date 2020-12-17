@@ -111,7 +111,7 @@ class StreamReader(AsyncStreamReaderMixin):
         limit: int,
         *,
         timer: Optional[BaseTimerContext] = None,
-        loop: Optional[asyncio.AbstractEventLoop] = None
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
         self._protocol = protocol
         self._low_water = limit
