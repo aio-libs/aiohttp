@@ -45,7 +45,7 @@ class FormData:
         *,
         content_type: Optional[str] = None,
         filename: Optional[str] = None,
-        content_transfer_encoding: Optional[str] = None
+        content_transfer_encoding: Optional[str] = None,
     ) -> None:
 
         if isinstance(value, io.IOBase):

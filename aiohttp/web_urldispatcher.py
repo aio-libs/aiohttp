@@ -33,7 +33,7 @@ from typing import (
     cast,
 )
 
-from typing_extensions import TypedDict
+from typing_extensions import Final, TypedDict
 from yarl import URL, __version__ as yarl_version  # type: ignore
 
 from . import hdrs
@@ -74,11 +74,15 @@ if TYPE_CHECKING:  # pragma: no cover
 else:
     BaseDict = dict
 
-YARL_VERSION = tuple(map(int, yarl_version.split(".")[:2]))
+YARL_VERSION: Final[Tuple[int, ...]] = tuple(map(int, yarl_version.split(".")[:2]))
 
-HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
-ROUTE_RE = re.compile(r"(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})")
-PATH_SEP = re.escape("/")
+HTTP_METHOD_RE: Final[Pattern[str]] = re.compile(
+    r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$"
+)
+ROUTE_RE: Final[Pattern[str]] = re.compile(
+    r"(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})"
+)
+PATH_SEP: Final[str] = re.escape("/")
 
 
 _WebHandler = Callable[[Request], Awaitable[StreamResponse]]
