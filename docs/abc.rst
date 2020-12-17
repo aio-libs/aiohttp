@@ -140,7 +140,7 @@ Abstract Cookie Jar
       Return jar's cookies acceptable for URL and available in
       ``Cookie`` header for sending client requests for given URL.
 
-      :param str response_url: request's URL for which cookies are asked.
+      :param URL request_url: request's URL for which cookies are asked.
 
       :return: :class:`http.cookies.SimpleCookie` with filtered
          cookies for given URL.
