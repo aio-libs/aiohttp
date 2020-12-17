@@ -8,6 +8,7 @@ from typing import Any, Iterable, Optional, Tuple
 import async_timeout
 import attr
 from multidict import CIMultiDict
+from typing_extensions import Final
 
 from . import hdrs
 from .abc import AbstractStreamWriter
@@ -38,7 +39,7 @@ __all__ = (
     "WSMsgType",
 )
 
-THRESHOLD_CONNLOST_ACCESS = 5
+THRESHOLD_CONNLOST_ACCESS: Final[int] = 5
 
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)

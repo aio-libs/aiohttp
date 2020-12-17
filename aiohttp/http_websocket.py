@@ -9,7 +9,9 @@ import sys
 import zlib
 from enum import IntEnum
 from struct import Struct
-from typing import Any, Callable, List, Optional, Tuple, Union
+from typing import Any, Callable, List, Optional, Pattern, Set, Tuple, Union
+
+from typing_extensions import Final
 
 from .base_protocol import BaseProtocol
 from .helpers import NO_EXTENSIONS
@@ -44,7 +46,7 @@ class WSCloseCode(IntEnum):
     BAD_GATEWAY = 1014
 
 
-ALLOWED_CLOSE_CODES = {int(i) for i in WSCloseCode}
+ALLOWED_CLOSE_CODES: Final[Set[int]] = {int(i) for i in WSCloseCode}
 
 
 class WSMsgType(IntEnum):
@@ -71,7 +73,7 @@ class WSMsgType(IntEnum):
     error = ERROR
 
 
-WS_KEY = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+WS_KEY: Final[bytes] = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 
 UNPACK_LEN2 = Struct("!H").unpack_from
@@ -81,8 +83,8 @@ PACK_LEN1 = Struct("!BB").pack
 PACK_LEN2 = Struct("!BBH").pack
 PACK_LEN3 = Struct("!BBQ").pack
 PACK_CLOSE_CODE = Struct("!H").pack
-MSG_SIZE = 2 ** 14
-DEFAULT_LIMIT = 2 ** 16
+MSG_SIZE: Final[int] = 2 ** 14
+DEFAULT_LIMIT: Final[int] = 2 ** 16
 
 
 _WSMessageBase = collections.namedtuple("_WSMessageBase", ["type", "data", "extra"])
@@ -116,11 +118,11 @@ class WSHandshakeError(Exception):
     """WebSocket protocol handshake error."""
 
 
-native_byteorder = sys.byteorder
+native_byteorder: Final[str] = sys.byteorder
 
 
 # Used by _websocket_mask_python
-_XOR_TABLE = [bytes(a ^ b for a in range(256)) for b in range(256)]
+_XOR_TABLE: Final[List[bytes]] = [bytes(a ^ b for a in range(256)) for b in range(256)]
 
 
 def _websocket_mask_python(mask: bytes, data: bytearray) -> None:
@@ -157,10 +159,10 @@ else:
     except ImportError:  # pragma: no cover
         _websocket_mask = _websocket_mask_python
 
-_WS_DEFLATE_TRAILING = bytes([0x00, 0x00, 0xFF, 0xFF])
+_WS_DEFLATE_TRAILING: Final[bytes] = bytes([0x00, 0x00, 0xFF, 0xFF])
 
 
-_WS_EXT_RE = re.compile(
+_WS_EXT_RE: Final[Pattern[str]] = re.compile(
     r"^(?:;\s*(?:"
     r"(server_no_context_takeover)|"
     r"(client_no_context_takeover)|"
@@ -168,7 +170,7 @@ _WS_EXT_RE = re.compile(
     r"(client_max_window_bits(?:=(\d+))?)))*$"
 )
 
-_WS_EXT_RE_SPLIT = re.compile(r"permessage-deflate([^,]+)?")
+_WS_EXT_RE_SPLIT: Final[Pattern[str]] = re.compile(r"permessage-deflate([^,]+)?")
 
 
 def ws_ext_parse(extstr: Optional[str], isserver: bool = False) -> Tuple[int, bool]:

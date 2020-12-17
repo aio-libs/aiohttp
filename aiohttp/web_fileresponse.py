@@ -15,6 +15,8 @@ from typing import (  # noqa
     cast,
 )
 
+from typing_extensions import Final
+
 from . import hdrs
 from .abc import AbstractStreamWriter
 from .typedefs import LooseHeaders
@@ -35,7 +37,7 @@ if TYPE_CHECKING:  # pragma: no cover
 _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
 
 
-NOSENDFILE = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
+NOSENDFILE: Final[bool] = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
 
 
 class FileResponse(StreamResponse):
