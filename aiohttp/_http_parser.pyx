@@ -80,13 +80,13 @@ cdef inline object extend(object buf, const char* at, size_t length):
     memcpy(ptr + s, at, length)
 
 
-DEF METHODS_COUNT = 34;
+DEF METHODS_COUNT = 46;
 
 cdef list _http_method = []
 
 for i in range(METHODS_COUNT):
     _http_method.append(
-        cparser.http_method_str(<cparser.http_method> i).decode('ascii'))
+        cparser.llhttp_method_name(<cparser.llhttp_method_t> i).decode('ascii'))
 
 
 cdef inline str http_method_str(int i):
@@ -272,8 +272,8 @@ cdef _new_response_message(object version,
 cdef class HttpParser:
 
     cdef:
-        cparser.http_parser* _cparser
-        cparser.http_parser_settings* _csettings
+        cparser.llhttp_t* _cparser
+        cparser.llhttp_settings_t* _csettings
 
         bytearray _raw_name
         bytearray _raw_value
@@ -310,13 +310,13 @@ cdef class HttpParser:
         Py_buffer py_buf
 
     def __cinit__(self):
-        self._cparser = <cparser.http_parser*> \
-                                PyMem_Malloc(sizeof(cparser.http_parser))
+        self._cparser = <cparser.llhttp_t*> \
+                                PyMem_Malloc(sizeof(cparser.llhttp_t))
         if self._cparser is NULL:
             raise MemoryError()
 
-        self._csettings = <cparser.http_parser_settings*> \
-                                PyMem_Malloc(sizeof(cparser.http_parser_settings))
+        self._csettings = <cparser.llhttp_settings_t*> \
+                                PyMem_Malloc(sizeof(cparser.llhttp_settings_t))
         if self._csettings is NULL:
             raise MemoryError()
 
@@ -324,18 +324,17 @@ cdef class HttpParser:
         PyMem_Free(self._cparser)
         PyMem_Free(self._csettings)
 
-    cdef _init(self, cparser.http_parser_type mode,
+    cdef _init(self, cparser.llhttp_type mode,
                    object protocol, object loop, int limit,
                    object timer=None,
                    size_t max_line_size=8190, size_t max_headers=32768,
                    size_t max_field_size=8190, payload_exception=None,
                    bint response_with_body=True, bint read_until_eof=False,
                    bint auto_decompress=True):
-        cparser.http_parser_init(self._cparser, mode)
+        cparser.llhttp_settings_init(self._csettings)
+        cparser.llhttp_init(self._cparser, mode, self._csettings)
         self._cparser.data = <void*>self
         self._cparser.content_length = 0
-
-        cparser.http_parser_settings_init(self._csettings)
 
         self._protocol = protocol
         self._loop = loop
@@ -417,7 +416,7 @@ cdef class HttpParser:
         self._process_header()
 
         method = http_method_str(self._cparser.method)
-        should_close = not cparser.http_should_keep_alive(self._cparser)
+        should_close = not cparser.llhttp_should_keep_alive(self._cparser)
         upgrade = self._cparser.upgrade
         chunked = self._cparser.flags & cparser.F_CHUNKED
 
@@ -485,7 +484,7 @@ cdef class HttpParser:
         pass
 
     cdef inline http_version(self):
-        cdef cparser.http_parser* parser = self._cparser
+        cdef cparser.llhttp_t* parser = self._cparser
 
         if parser.http_major == 1:
             if parser.http_minor == 0:
@@ -504,12 +503,11 @@ cdef class HttpParser:
             if self._cparser.flags & cparser.F_CHUNKED:
                 raise TransferEncodingError(
                     "Not enough data for satisfy transfer length header.")
-            elif self._cparser.flags & cparser.F_CONTENTLENGTH:
+            elif self._cparser.flags & cparser.F_CONTENT_LENGTH:
                 raise ContentLengthError(
                     "Not enough data for satisfy content length header.")
-            elif self._cparser.http_errno != cparser.HPE_OK:
-                desc = cparser.http_errno_description(
-                    <cparser.http_errno> self._cparser.http_errno)
+            elif cparser.llhttp_get_errno(self._cparser) != cparser.HPE_OK:
+                desc = cparser.llhttp_get_error_reason(self._cparser)
                 raise PayloadEncodingError(desc.decode('latin-1'))
             else:
                 self._payload.feed_eof()
@@ -526,22 +524,20 @@ cdef class HttpParser:
         PyObject_GetBuffer(data, &self.py_buf, PyBUF_SIMPLE)
         data_len = <size_t>self.py_buf.len
 
-        nb = cparser.http_parser_execute(
+        nb = cparser.llhttp_execute(
             self._cparser,
-            self._csettings,
             <char*>self.py_buf.buf,
             data_len)
 
         PyBuffer_Release(&self.py_buf)
 
-        if (self._cparser.http_errno != cparser.HPE_OK):
+        if (cparser.llhttp_get_errno(self._cparser) != cparser.HPE_OK):
             if self._payload_error == 0:
                 if self._last_error is not None:
                     ex = self._last_error
                     self._last_error = None
                 else:
-                    ex = parser_error_from_errno(
-                        <cparser.http_errno> self._cparser.http_errno)
+                    ex = parser_error_from_errno(self._cparser)
                 self._payload = None
                 raise ex
 
@@ -608,7 +604,7 @@ cdef class HttpResponseParser(HttpParser):
         else:
             self._reason = self._reason or ''
 
-cdef int cb_on_message_begin(cparser.http_parser* parser) except -1:
+cdef int cb_on_message_begin(cparser.llhttp_t* parser) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
 
     pyparser._started = True
@@ -620,7 +616,7 @@ cdef int cb_on_message_begin(cparser.http_parser* parser) except -1:
     return 0
 
 
-cdef int cb_on_url(cparser.http_parser* parser,
+cdef int cb_on_url(cparser.llhttp_t* parser,
                    const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
@@ -635,7 +631,7 @@ cdef int cb_on_url(cparser.http_parser* parser,
         return 0
 
 
-cdef int cb_on_status(cparser.http_parser* parser,
+cdef int cb_on_status(cparser.llhttp_t* parser,
                       const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     cdef str reason
@@ -651,7 +647,7 @@ cdef int cb_on_status(cparser.http_parser* parser,
         return 0
 
 
-cdef int cb_on_header_field(cparser.http_parser* parser,
+cdef int cb_on_header_field(cparser.llhttp_t* parser,
                             const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     cdef Py_ssize_t size
@@ -669,7 +665,7 @@ cdef int cb_on_header_field(cparser.http_parser* parser,
         return 0
 
 
-cdef int cb_on_header_value(cparser.http_parser* parser,
+cdef int cb_on_header_value(cparser.llhttp_t* parser,
                             const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     cdef Py_ssize_t size
@@ -686,7 +682,7 @@ cdef int cb_on_header_value(cparser.http_parser* parser,
         return 0
 
 
-cdef int cb_on_headers_complete(cparser.http_parser* parser) except -1:
+cdef int cb_on_headers_complete(cparser.llhttp_t* parser) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
         pyparser._on_status_complete()
@@ -701,7 +697,7 @@ cdef int cb_on_headers_complete(cparser.http_parser* parser) except -1:
             return 0
 
 
-cdef int cb_on_body(cparser.http_parser* parser,
+cdef int cb_on_body(cparser.llhttp_t* parser,
                     const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     cdef bytes body = at[:length]
@@ -718,7 +714,7 @@ cdef int cb_on_body(cparser.http_parser* parser,
         return 0
 
 
-cdef int cb_on_message_complete(cparser.http_parser* parser) except -1:
+cdef int cb_on_message_complete(cparser.llhttp_t* parser) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
         pyparser._started = False
@@ -730,7 +726,7 @@ cdef int cb_on_message_complete(cparser.http_parser* parser) except -1:
         return 0
 
 
-cdef int cb_on_chunk_header(cparser.http_parser* parser) except -1:
+cdef int cb_on_chunk_header(cparser.llhttp_t* parser) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
         pyparser._on_chunk_header()
@@ -741,7 +737,7 @@ cdef int cb_on_chunk_header(cparser.http_parser* parser) except -1:
         return 0
 
 
-cdef int cb_on_chunk_complete(cparser.http_parser* parser) except -1:
+cdef int cb_on_chunk_complete(cparser.llhttp_t* parser) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
         pyparser._on_chunk_complete()
@@ -752,25 +748,30 @@ cdef int cb_on_chunk_complete(cparser.http_parser* parser) except -1:
         return 0
 
 
-cdef parser_error_from_errno(cparser.http_errno errno):
-    cdef bytes desc = cparser.http_errno_description(errno)
+cdef parser_error_from_errno(cparser.llhttp_t* parser):
+    cdef cparser.llhttp_errno_t errno = cparser.llhttp_get_errno(parser)
+    cdef bytes desc = cparser.llhttp_get_error_reason(parser)
 
-    if errno in (cparser.HPE_CB_message_begin,
-                 cparser.HPE_CB_url,
-                 cparser.HPE_CB_header_field,
-                 cparser.HPE_CB_header_value,
-                 cparser.HPE_CB_headers_complete,
-                 cparser.HPE_CB_body,
-                 cparser.HPE_CB_message_complete,
-                 cparser.HPE_CB_status,
-                 cparser.HPE_CB_chunk_header,
-                 cparser.HPE_CB_chunk_complete):
+    if errno in (cparser.HPE_CB_MESSAGE_BEGIN,
+                 cparser.HPE_CB_HEADERS_COMPLETE,
+                 cparser.HPE_CB_MESSAGE_COMPLETE,
+                 cparser.HPE_CB_CHUNK_HEADER,
+                 cparser.HPE_CB_CHUNK_COMPLETE,
+                 cparser.HPE_INVALID_CONSTANT,
+                 cparser.HPE_INVALID_HEADER_TOKEN,
+                 cparser.HPE_INVALID_CONTENT_LENGTH,
+                 cparser.HPE_INVALID_CHUNK_SIZE,
+                 cparser.HPE_INVALID_EOF_STATE,
+                 cparser.HPE_INVALID_TRANSFER_ENCODING):
         cls = BadHttpMessage
 
     elif errno == cparser.HPE_INVALID_STATUS:
         cls = BadStatusLine
 
     elif errno == cparser.HPE_INVALID_METHOD:
+        cls = BadStatusLine
+
+    elif errno == cparser.HPE_INVALID_VERSION:
         cls = BadStatusLine
 
     elif errno == cparser.HPE_INVALID_URL:

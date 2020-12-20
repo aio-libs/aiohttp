@@ -34,6 +34,7 @@ extensions = [
         [
             "aiohttp/_http_parser.c",
             "vendor/http-parser/http_parser.c",
+            "vendor/llhttp/build/c/llhttp.c",
             "aiohttp/_find_header.c",
         ],
         define_macros=[("HTTP_PARSER_STRICT", 0)],
