@@ -101,6 +101,7 @@ jobs:
       with:
         name: llhttp
         path: vendor/llhttp/build
+        if-no-files-found: error
 
   test:
     name: Test
