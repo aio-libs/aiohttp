@@ -68,7 +68,7 @@ vendor/llhttp/node_modules: vendor/llhttp/package.json
 generate-llhttp: .llhttp-gen
 
 .PHONY: cythonize
-cythonize: .install-cython $(PYXS:.pyx=.c) generate-llhttp
+cythonize: .install-cython $(PYXS:.pyx=.c)
 
 .install-deps: .install-cython $(PYXS:.pyx=.c) $(call to-hash,$(CYS) $(REQS))
 	pip install -r requirements/dev.txt
@@ -85,7 +85,7 @@ fmt format:
 mypy:
 	mypy aiohttp tests
 
-.develop: .install-deps $(call to-hash,$(PYS) $(CYS) $(CS))
+.develop: .install-deps generate-llhttp $(call to-hash,$(PYS) $(CYS) $(CS))
 	pip install -e .
 	@touch .develop
 
