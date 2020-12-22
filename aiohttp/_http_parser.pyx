@@ -452,7 +452,7 @@ cdef class HttpParser:
         if (ULLONG_MAX > self._cparser.content_length > 0 or chunked or
                 self._cparser.method == 5 or  # CONNECT: 5
                 (self._cparser.status_code >= 199 and
-                 self._cparser.content_length == ULLONG_MAX and
+                 self._cparser.content_length == 0 and
                  self._read_until_eof)
         ):
             payload = StreamReader(
