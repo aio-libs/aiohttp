@@ -86,9 +86,7 @@ jobs:
       id: cache
       with:
         key: llhttp-${{ hashFiles('vendor/llhttp/package.json', 'vendor/llhttp/src/**/*') }}
-        path: |
-          vendor/llhttp/build/llhttp.h
-          vendor/llhttp/build/c/llhttp.c
+        path:  vendor/llhttp/build
     - name: Setup NodeJS
       if: steps.cache.outputs.cache-hit != 'true'
       uses: actions/setup-node@v2
@@ -102,9 +100,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: llhttp-${{ hashFiles('vendor/llhttp/package.json', 'vendor/llhttp/src/**/*') }}
-        path: |
-          vendor/llhttp/build/llhttp.h
-          vendor/llhttp/build/c/llhttp.c
+        path: vendor/llhttp/build
 
   test:
     name: Test
