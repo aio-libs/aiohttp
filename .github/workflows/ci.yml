@@ -71,9 +71,39 @@ jobs:
       run: |
         LC_ALL=C sort -c CONTRIBUTORS.txt
 
+  gen_llhttp:
+    name: Generate llhttp sources
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Cache llhttp generated files
+      uses: actions/cache@v2
+      id: cache
+      with:
+        key: llhttp-${{ hashFiles('vendor/llhttp/package.json', 'vendor/llhttp/src/**/*') }}
+        path: |
+          vendor/llhttp/build/llhttp.h
+          vendor/llhttp/build/c/llhttp.c
+    - name: Setup NodeJS
+      uses: actions/setup-node@v2
+      if: steps.cache.outputs.cache-hit != 'true'
+      with:
+        node-version: '14'
+    - name: Generate sources
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        cd vendor/llhttp
+        npm install
+        make generate
+
   test:
     name: Test
-    needs: lint
+    needs: gen_llhttp
     strategy:
       matrix:
         pyver: [3.7, 3.8, 3.9]
