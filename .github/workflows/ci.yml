@@ -90,8 +90,8 @@ jobs:
           vendor/llhttp/build/llhttp.h
           vendor/llhttp/build/c/llhttp.c
     - name: Setup NodeJS
-      uses: actions/setup-node@v2
       if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/setup-node@v2
       with:
         node-version: '14'
     - name: Generate sources
@@ -150,6 +150,15 @@ jobs:
       if: ${{ matrix.no-extensions == '' }}
       run: |
         make cythonize
+    - name: Restore llhttp generated files
+      if: ${{ matrix.no-extensions == '' }}
+      uses: actions/cache@v2
+      with:
+        key: llhttp-${{ hashFiles('vendor/llhttp/package.json', 'vendor/llhttp/src/**/*') }}
+        path: |
+          vendor/llhttp/build/llhttp.h
+          vendor/llhttp/build/c/llhttp.c
+        restore-keys: llhttp-
     - name: Run unittests
       env:
         COLOR: 'yes'
