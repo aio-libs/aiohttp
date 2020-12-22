@@ -531,7 +531,8 @@ cdef class HttpParser:
 
         PyBuffer_Release(&self.py_buf)
 
-        if (cparser.llhttp_get_errno(self._cparser) != cparser.HPE_OK):
+        cdef cparser.llhttp_errno_t errno = cparser.llhttp_get_errno(self._cparser)
+        if errno not in (cparser.HPE_OK, cparser.HPE_PAUSED_UPGRADE):
             if self._payload_error == 0:
                 if self._last_error is not None:
                     ex = self._last_error
@@ -568,20 +569,13 @@ cdef class HttpRequestParser(HttpParser):
                     payload_exception, response_with_body, read_until_eof)
 
     cdef object _on_status_complete(self):
-         cdef Py_buffer py_buf
          if not self._buf:
              return
          self._path = self._buf.decode('utf-8', 'surrogateescape')
-         if self._cparser.method == 5:  # CONNECT
+         try:
              self._url = URL(self._path)
-         else:
-             PyObject_GetBuffer(self._buf, &py_buf, PyBUF_SIMPLE)
-             try:
-                 self._url = _parse_url(<char*>py_buf.buf,
-                                        py_buf.len)
-             finally:
-                 PyBuffer_Release(&py_buf)
-         PyByteArray_Resize(self._buf, 0)
+         finally:
+             PyByteArray_Resize(self._buf, 0)
 
 
 cdef class HttpResponseParser(HttpParser):
@@ -781,96 +775,3 @@ cdef parser_error_from_errno(cparser.llhttp_t* parser):
         cls = BadHttpMessage
 
     return cls(desc.decode('latin-1'))
-
-
-def parse_url(url):
-    cdef:
-        Py_buffer py_buf
-        char* buf_data
-
-    PyObject_GetBuffer(url, &py_buf, PyBUF_SIMPLE)
-    try:
-        buf_data = <char*>py_buf.buf
-        return _parse_url(buf_data, py_buf.len)
-    finally:
-        PyBuffer_Release(&py_buf)
-
-
-cdef _parse_url(char* buf_data, size_t length):
-    cdef:
-        cparser.http_parser_url* parsed
-        int res
-        str schema = None
-        str host = None
-        object port = None
-        str path = None
-        str query = None
-        str fragment = None
-        str user = None
-        str password = None
-        str userinfo = None
-        object result = None
-        int off
-        int ln
-
-    parsed = <cparser.http_parser_url*> \
-                        PyMem_Malloc(sizeof(cparser.http_parser_url))
-    if parsed is NULL:
-        raise MemoryError()
-    cparser.http_parser_url_init(parsed)
-    try:
-        res = cparser.http_parser_parse_url(buf_data, length, 0, parsed)
-
-        if res == 0:
-            if parsed.field_set & (1 << cparser.UF_SCHEMA):
-                off = parsed.field_data[<int>cparser.UF_SCHEMA].off
-                ln = parsed.field_data[<int>cparser.UF_SCHEMA].len
-                schema = buf_data[off:off+ln].decode('utf-8', 'surrogateescape')
-            else:
-                schema = ''
-
-            if parsed.field_set & (1 << cparser.UF_HOST):
-                off = parsed.field_data[<int>cparser.UF_HOST].off
-                ln = parsed.field_data[<int>cparser.UF_HOST].len
-                host = buf_data[off:off+ln].decode('utf-8', 'surrogateescape')
-            else:
-                host = ''
-
-            if parsed.field_set & (1 << cparser.UF_PORT):
-                port = parsed.port
-
-            if parsed.field_set & (1 << cparser.UF_PATH):
-                off = parsed.field_data[<int>cparser.UF_PATH].off
-                ln = parsed.field_data[<int>cparser.UF_PATH].len
-                path = buf_data[off:off+ln].decode('utf-8', 'surrogateescape')
-            else:
-                path = ''
-
-            if parsed.field_set & (1 << cparser.UF_QUERY):
-                off = parsed.field_data[<int>cparser.UF_QUERY].off
-                ln = parsed.field_data[<int>cparser.UF_QUERY].len
-                query = buf_data[off:off+ln].decode('utf-8', 'surrogateescape')
-            else:
-                query = ''
-
-            if parsed.field_set & (1 << cparser.UF_FRAGMENT):
-                off = parsed.field_data[<int>cparser.UF_FRAGMENT].off
-                ln = parsed.field_data[<int>cparser.UF_FRAGMENT].len
-                fragment = buf_data[off:off+ln].decode('utf-8', 'surrogateescape')
-            else:
-                fragment = ''
-
-            if parsed.field_set & (1 << cparser.UF_USERINFO):
-                off = parsed.field_data[<int>cparser.UF_USERINFO].off
-                ln = parsed.field_data[<int>cparser.UF_USERINFO].len
-                userinfo = buf_data[off:off+ln].decode('utf-8', 'surrogateescape')
-
-                user, sep, password = userinfo.partition(':')
-
-            return URL_build(scheme=schema,
-                             user=user, password=password, host=host, port=port,
-                             path=path, query_string=query, fragment=fragment, encoded=True)
-        else:
-            raise InvalidURLError("invalid url {!r}".format(buf_data))
-    finally:
-        PyMem_Free(parsed)
