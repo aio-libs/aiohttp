@@ -96,10 +96,17 @@ jobs:
         node-version: '14'
     - name: Generate sources
       if: steps.cache.outputs.cache-hit != 'true'
+      working-directory: vendor/llhttp
       run: |
-        cd vendor/llhttp
         npm install
         make generate
+    - name: Upload llhttp generated files
+      uses: actions/upload-artifact@v2
+      with:
+        name: llhttp-${{ hashFiles('vendor/llhttp/package.json', 'vendor/llhttp/src/**/*') }}
+        path: |
+          vendor/llhttp/build/llhttp.h
+          vendor/llhttp/build/c/llhttp.c
 
   test:
     name: Test
