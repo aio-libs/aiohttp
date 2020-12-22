@@ -11,10 +11,7 @@ from libc.stdint cimport (
 
 cdef extern from "../vendor/llhttp/build/llhttp.h":
 
-    ctypedef int (*llhttp_data_cb)(llhttp_t*, const char *at, size_t length) except -1
-    ctypedef int (*llhttp_cb)(llhttp_t*) except -1
-
-    struct llhttp_t:
+    struct llhttp__internal_s:
         int32_t _index
         void* _span_pos0
         void* _span_cb0
@@ -36,7 +33,13 @@ cdef extern from "../vendor/llhttp/build/llhttp.h":
         uint16_t status_code
         void* settings
 
-    struct llhttp_settings_t:
+    ctypedef llhttp__internal_s llhttp__internal_t
+    ctypedef llhttp__internal_t llhttp_t
+
+    ctypedef int (*llhttp_data_cb)(llhttp_t*, const char *at, size_t length) except -1
+    ctypedef int (*llhttp_cb)(llhttp_t*) except -1
+
+    struct llhttp_settings_s:
         llhttp_cb      on_message_begin
         llhttp_data_cb on_url
         llhttp_data_cb on_status
@@ -53,7 +56,9 @@ cdef extern from "../vendor/llhttp/build/llhttp.h":
         llhttp_cb      on_header_field_complete
         llhttp_cb      on_header_value_complete
 
-    enum llhttp_errno_t:
+    ctypedef llhttp_settings_s llhttp_settings_t
+
+    enum llhttp_errno:
         HPE_OK,
         HPE_INTERNAL,
         HPE_STRICT,
@@ -78,6 +83,8 @@ cdef extern from "../vendor/llhttp/build/llhttp.h":
         HPE_PAUSED,
         HPE_PAUSED_UPGRADE,
         HPE_USER
+
+    ctypedef llhttp_errno llhttp_errno_t
 
     enum llhttp_flags:
         F_CONNECTION_KEEP_ALIVE,
@@ -104,7 +111,7 @@ cdef extern from "../vendor/llhttp/build/llhttp.h":
         HTTP_FINISH_SAFE_WITH_CB,
         HTTP_FINISH_UNSAFE
 
-    enum llhttp_method_t:
+    enum llhttp_method:
         HTTP_DELETE,
         HTTP_GET,
         HTTP_HEAD,
@@ -152,6 +159,8 @@ cdef extern from "../vendor/llhttp/build/llhttp.h":
         HTTP_RECORD,
         HTTP_FLUSH
 
+    ctypedef llhttp_method llhttp_method_t;
+
     void llhttp_settings_init(llhttp_settings_t* settings)
     void llhttp_init(llhttp_t* parser, llhttp_type type,
                  const llhttp_settings_t* settings)
@@ -178,31 +187,3 @@ cdef extern from "../vendor/llhttp/build/llhttp.h":
 
     void llhttp_set_lenient_headers(llhttp_t* parser, int enabled)
     void llhttp_set_lenient_chunked_length(llhttp_t* parser, int enabled)
-
-cdef extern from "../vendor/http-parser/http_parser.h":
-    # URL Parser
-    enum http_parser_url_fields:
-        UF_SCHEMA   = 0,
-        UF_HOST     = 1,
-        UF_PORT     = 2,
-        UF_PATH     = 3,
-        UF_QUERY    = 4,
-        UF_FRAGMENT = 5,
-        UF_USERINFO = 6,
-        UF_MAX      = 7
-
-    struct http_parser_url_field_data:
-        uint16_t off
-        uint16_t len
-
-    struct http_parser_url:
-        uint16_t field_set
-        uint16_t port
-        http_parser_url_field_data[<int>UF_MAX] field_data
-
-    void http_parser_url_init(http_parser_url *u)
-
-    int http_parser_parse_url(const char *buf,
-                              size_t buflen,
-                              int is_connect,
-                              http_parser_url *u)
