@@ -520,18 +520,23 @@ cdef class HttpParser:
         cdef:
             size_t data_len
             size_t nb
+            cdef cparser.llhttp_errno_t errno
 
         PyObject_GetBuffer(data, &self.py_buf, PyBUF_SIMPLE)
         data_len = <size_t>self.py_buf.len
 
-        nb = cparser.llhttp_execute(
+        errno = cparser.llhttp_execute(
             self._cparser,
             <char*>self.py_buf.buf,
             data_len)
 
+        if errno is cparser.HPE_PAUSED_UPGRADE:
+            cparser.llhttp_resume_after_upgrade(self._cparser)
+
+            nb = cparser.llhttp_get_error_pos(self._cparser) - <char*>self.py_buf.buf
+
         PyBuffer_Release(&self.py_buf)
 
-        cdef cparser.llhttp_errno_t errno = cparser.llhttp_get_errno(self._cparser)
         if errno not in (cparser.HPE_OK, cparser.HPE_PAUSED_UPGRADE):
             if self._payload_error == 0:
                 if self._last_error is not None:
