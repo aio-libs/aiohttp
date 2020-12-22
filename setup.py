@@ -18,7 +18,7 @@ if sys.implementation.name != "cpython":
     NO_EXTENSIONS = True
 
 
-if IS_GIT_REPO and not (HERE / "vendor/http-parser/README.md").exists():
+if IS_GIT_REPO and not (HERE / "vendor/llhttp/README.md").exists():
     print("Install submodules when building from git clone", file=sys.stderr)
     print("Hint:", file=sys.stderr)
     print("  git submodule update --init", file=sys.stderr)
