@@ -57,9 +57,18 @@ aiohttp/_find_header.c: $(call to-hash,aiohttp/hdrs.py ./tools/gen.py)
 aiohttp/%.c: aiohttp/%.pyx $(call to-hash,$(CYS)) aiohttp/_find_header.c
 	cython -3 -o $@ $< -I aiohttp
 
+vendor/llhttp/node_modules: vendor/llhttp/package.json
+	cd vendor/llhttp; npm install
+
+.llhttp-gen: vendor/llhttp/node_modules
+	$(MAKE) -C vendor/llhttp generate
+	@touch .llhttp-gen
+
+.PHONY: generate-llhttp
+generate-llhttp: .llhttp-gen
 
 .PHONY: cythonize
-cythonize: .install-cython $(PYXS:.pyx=.c)
+cythonize: .install-cython $(PYXS:.pyx=.c) generate-llhttp
 
 .install-deps: .install-cython $(PYXS:.pyx=.c) $(call to-hash,$(CYS) $(REQS))
 	pip install -r requirements/dev.txt
@@ -125,6 +134,9 @@ clean:
 	@rm -rf aiohttp.egg-info
 	@rm -f .install-deps
 	@rm -f .install-cython
+	@rm -rf vendor/llhttp/node_modules
+	@rm -f .llhttp-gen
+	@$(MAKE) -C vendor/llhttp clean
 
 .PHONY: doc
 doc:
