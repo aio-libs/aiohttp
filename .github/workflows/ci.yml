@@ -99,7 +99,7 @@ jobs:
     - name: Upload llhttp generated files
       uses: actions/upload-artifact@v2
       with:
-        name: llhttp-${{ env.GITHUB_SHA }}
+        name: llhttp-${{ env.GITHUB_RUN_ID }}
         path: vendor/llhttp/build
 
   test:
@@ -155,7 +155,7 @@ jobs:
       if: ${{ matrix.no-extensions == '' }}
       uses: actions/download-artifact@v2
       with:
-        name: llhttp-${{ env.GITHUB_SHA }}
+        name: llhttp-${{ env.GITHUB_RUN_ID }}
         path: vendor/llhttp/build/
     - name: Run unittests
       env:
