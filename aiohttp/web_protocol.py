@@ -384,7 +384,7 @@ class RequestHandler(BaseProtocol):
             self._keepalive_handle = None
 
     def close(self) -> None:
-        """Stop accepting new pipelinig messages and close
+        """Stop accepting new pipelining messages and close
         connection when handlers done processing messages"""
         self._close = True
         if self._waiter:
