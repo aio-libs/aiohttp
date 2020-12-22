@@ -94,12 +94,10 @@ jobs:
       uses: actions/setup-node@v2
       with:
         node-version: '14'
-    - name: Generate sources
+    - name: Generate llhttp sources
       if: steps.cache.outputs.cache-hit != 'true'
-      working-directory: vendor/llhttp
       run: |
-        npm install
-        make generate
+        make generate-llhttp
     - name: Upload llhttp generated files
       uses: actions/upload-artifact@v2
       with:
