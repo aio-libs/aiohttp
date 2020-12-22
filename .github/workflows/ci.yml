@@ -159,18 +159,10 @@ jobs:
         make cythonize
     - name: Restore llhttp generated files
       if: ${{ matrix.no-extensions == '' }}
-      id: llhttp-restore-cache
-      uses: actions/cache@v2
+      uses: actions/download-artifact@v2
       with:
-        key: llhttp-${{ hashFiles('vendor/llhttp/package.json', 'vendor/llhttp/src/**/*') }}
-        path: |
-          vendor/llhttp/build/llhttp.h
-          vendor/llhttp/build/c/llhttp.c
-        restore-keys: llhttp-
-    - name: Check llhttp cache
-      if: steps.llhttp-restore-cache.outputs.cache-hit != 'true' && ${{ matrix.no-extensions == '' }}
-      run: |
-        exit 1
+        name: llhttp-${{ hashFiles('vendor/llhttp/package.json', 'vendor/llhttp/src/**/*') }}
+        path: vendor/llhttp/build/
     - name: Run unittests
       env:
         COLOR: 'yes'
