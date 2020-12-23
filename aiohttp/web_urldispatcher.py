@@ -4,13 +4,13 @@ import hashlib
 import keyword
 import os
 import re
+from collections.abc import Awaitable
 from contextlib import contextmanager
 from pathlib import Path
 from types import MappingProxyType
 from typing import (
     TYPE_CHECKING,
     Any,
-    Awaitable,
     Callable,
     Container,
     Dict,
@@ -927,7 +927,9 @@ class View(AbstractView):
     async def _iter(self) -> StreamResponse:
         if self.request.method not in hdrs.METH_ALL:
             self._raise_allowed_methods()
-        method = getattr(self, self.request.method.lower(), None)
+        method: Callable[[], Awaitable[StreamResponse]] = getattr(
+            self, self.request.method.lower(), None
+        )
         if method is None:
             self._raise_allowed_methods()
         resp = await method()
