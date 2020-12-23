@@ -3,6 +3,7 @@ import asyncio.streams
 import traceback
 from collections import deque
 from contextlib import suppress
+from dataclasses import dataclass
 from html import escape as html_escape
 from http import HTTPStatus
 from logging import Logger
@@ -20,7 +21,6 @@ from typing import (
     cast,
 )
 
-import attr
 import yarl
 
 from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
@@ -96,7 +96,7 @@ class AccessLoggerWrapper(AbstractAsyncAccessLogger):
         self.access_logger.log(request, response, self._loop.time() - request_start)
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclass(frozen=True)
 class _ErrInfo:
     status: int
     exc: BaseException
