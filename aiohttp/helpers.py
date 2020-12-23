@@ -410,8 +410,8 @@ def is_expected_content_type(
     return expected_content_type in response_content_type
 
 
-class _TSelf(Protocol):
-    _cache: Dict[str, Any]
+class _TSelf(Protocol, Generic[_T]):
+    _cache: Dict[str, _T]
 
 
 class reify(Generic[_T]):
@@ -428,7 +428,7 @@ class reify(Generic[_T]):
         self.__doc__ = wrapped.__doc__
         self.name = wrapped.__name__
 
-    def __get__(self, inst: _TSelf, owner: Optional[Type[Any]] = None) -> _T:
+    def __get__(self, inst: _TSelf[_T], owner: Optional[Type[Any]] = None) -> _T:
         try:
             try:
                 return inst._cache[self.name]
@@ -441,7 +441,7 @@ class reify(Generic[_T]):
                 return self
             raise
 
-    def __set__(self, inst: _TSelf, value: _T) -> None:
+    def __set__(self, inst: _TSelf[_T], value: _T) -> None:
         raise AttributeError("reified property is read-only")
 
 
