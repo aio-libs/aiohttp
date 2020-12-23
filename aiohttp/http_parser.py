@@ -17,6 +17,7 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    cast,
 )
 
 from multidict import CIMultiDict, CIMultiDictProxy, istr
@@ -839,12 +840,12 @@ class DeflateBuffer:
 
                 def decompress(self, data: bytes) -> bytes:
                     if hasattr(self._obj, "decompress"):
-                        return self._obj.decompress(data)
-                    return self._obj.process(data)
+                        return cast(bytes, self._obj.decompress(data))
+                    return cast(bytes, self._obj.process(data))
 
                 def flush(self) -> bytes:
                     if hasattr(self._obj, "flush"):
-                        return self._obj.flush()
+                        return cast(bytes, self._obj.flush())
                     return b""
 
             self.decompressor = BrotliDecoder()  # type: Any
