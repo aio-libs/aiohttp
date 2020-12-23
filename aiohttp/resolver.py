@@ -101,7 +101,7 @@ class AsyncResolver(AbstractResolver):
         return hosts
 
     async def close(self) -> None:
-        return self._resolver.cancel()
+        self._resolver.cancel()
 
 
 DefaultResolver = AsyncResolver if aiodns_default else ThreadedResolver
