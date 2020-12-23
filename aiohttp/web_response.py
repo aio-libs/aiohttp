@@ -124,8 +124,11 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         return self._payload_writer is not None
 
     @property
-    def task(self) -> "asyncio.Task[None]":
-        return getattr(self._req, "task", None)
+    def task(self) -> Optional[asyncio.Task[None]]:
+        if self._req:
+            return self._req.task
+        else:
+            return None
 
     @property
     def status(self) -> int:
