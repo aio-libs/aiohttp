@@ -1,0 +1,18 @@
+version: "3.9"
+services:
+  autobahn:
+    image: crossbario/autobahn-testsuite:0.8.0
+    volumes:
+      - type: bind
+        source: ./fuzzingserver.json
+        target: /config/fuzzingserver.json
+      - type: bind
+        source: ../reports
+        target: /reports
+    command: ["sudo", "-u", "${UID}", "/usr/local/bin/wstest", "--mode", "fuzzingserver", "--spec", "/config/fuzzingserver.json"]
+
+  aiohttp:
+    build:
+      context: ../../..
+      dockerfile: tests/autobahn/client/Dockerfile
+    command: ["wait-for-it", "autobahn:9001", "--", "python", "tests/autobahn/client/client.py"]
