@@ -3,10 +3,11 @@ services:
   autobahn:
     build:
       context: .
+      dockerfile: Dockerfile.autobahn
       args:
         USER_ID: ${USER_ID}
 
-  client:
+  aiohttp:
     build:
       context: ../..
-      dockerfile: tests/autobahn/client/Dockerfile
+      dockerfile: tests/autobahn/Dockerfile.aiohttp

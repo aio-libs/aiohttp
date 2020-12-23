@@ -11,5 +11,5 @@ services:
         target: /reports
 
   aiohttp:
-    image: aiohttp-autobahn_client
+    image: aiohttp-autobahn_aiohttp
     command: ["wait-for-it", "autobahn:9001", "--", "python", "tests/autobahn/client/client.py"]
