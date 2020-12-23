@@ -1,10 +1,16 @@
 {
-   "options": {"failByDrop": false},
-   "outdir": "./reports/servers",
+    "options": { "failByDrop": false },
+    "outdir": "./reports/servers",
 
-   "servers": [{"agent": "AutobahnServer", "url": "ws://localhost:9001", "options": {"version": 18}}],
+    "servers": [
+        {
+            "agent": "AutobahnServer",
+            "url": "ws://aiohttp:9001",
+            "options": { "version": 18 }
+        }
+    ],
 
-   "cases": ["*"],
-   "exclude-cases": ["12.*", "13.*"],
-   "exclude-agent-cases": {}
+    "cases": ["*"],
+    "exclude-cases": ["12.*", "13.*"],
+    "exclude-agent-cases": {}
 }
