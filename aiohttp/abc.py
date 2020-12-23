@@ -1,11 +1,10 @@
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Sized
+from collections.abc import Awaitable, Sized
 from http.cookies import BaseCookie, Morsel
 from typing import (
     TYPE_CHECKING,
     Any,
-    Awaitable,
     Callable,
     Dict,
     Generator,

@@ -1,10 +1,10 @@
 import abc
 import dataclasses
 import os  # noqa
+from collections.abc import Awaitable
 from typing import (
     TYPE_CHECKING,
     Any,
-    Awaitable,
     Callable,
     Dict,
     Iterator,

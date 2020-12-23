@@ -3,7 +3,7 @@ import logging
 import socket
 import sys
 from argparse import ArgumentParser
-from collections.abc import Iterable
+from collections.abc import Awaitable, Iterable
 from importlib import import_module
 from typing import (
     Any,

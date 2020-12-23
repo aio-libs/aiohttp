@@ -1,12 +1,12 @@
 import asyncio
 import logging
 import warnings
+from collections.abc import Awaitable
 from functools import partial, update_wrapper
 from typing import (  # noqa
     TYPE_CHECKING,
     Any,
     AsyncIterator,
-    Awaitable,
     Callable,
     Dict,
     Iterable,

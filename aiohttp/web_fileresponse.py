@@ -3,17 +3,8 @@ import mimetypes
 import os
 import pathlib
 import sys
-from typing import (  # noqa
-    IO,
-    TYPE_CHECKING,
-    Any,
-    Awaitable,
-    Callable,
-    List,
-    Optional,
-    Union,
-    cast,
-)
+from collections.abc import Awaitable
+from typing import IO, TYPE_CHECKING, Any, Callable, List, Optional, Union, cast  # noqa
 
 from typing_extensions import Final
 
