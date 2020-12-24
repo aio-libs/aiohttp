@@ -11,6 +11,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     AsyncIterator,
+    Deque,
     Dict,
     Iterator,
     List,
@@ -20,6 +21,7 @@ from typing import (
     Tuple,
     Type,
     Union,
+    cast,
 )
 from urllib.parse import parse_qsl, unquote, urlencode
 
@@ -267,7 +269,7 @@ class BodyPartReader:
         self._length = int(length) if length is not None else None
         self._read_bytes = 0
         # TODO: typeing.Deque is not supported by Python 3.5
-        self._unread = deque()  # type: Any
+        self._unread: Deque[bytes] = deque()
         self._prev_chunk = None  # type: Optional[bytes]
         self._content_eof = 0
         self._cache = {}  # type: Dict[str, Any]
@@ -448,7 +450,7 @@ class BodyPartReader:
         if not data:
             return None
         encoding = encoding or self.get_charset(default="utf-8")
-        return json.loads(data.decode(encoding))
+        return cast(Dict[str, Any], json.loads(data.decode(encoding)))
 
     async def form(self, *, encoding: Optional[str] = None) -> List[Tuple[str, str]]:
         """Like read(), but assumes that body parts contains form
