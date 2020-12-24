@@ -547,7 +547,7 @@ def rfc822_formatted_time() -> str:
     return _cached_formatted_datetime
 
 
-def _weakref_handle(info: Tuple[weakref.ref[object], str]) -> None:
+def _weakref_handle(info: "Tuple[weakref.ref[object], str]") -> None:
     ref, name = info
     ob = ref()
     if ob is not None:
