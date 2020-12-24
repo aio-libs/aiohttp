@@ -269,7 +269,7 @@ def aiohttp_server(loop):  # type: ignore
 
     yield go
 
-    async def finalize():  # type: ignore
+    async def finalize() -> None:
         while servers:
             await servers.pop().close()
 
@@ -292,7 +292,7 @@ def aiohttp_raw_server(loop):  # type: ignore
 
     yield go
 
-    async def finalize():  # type: ignore
+    async def finalize() -> None:
         while servers:
             await servers.pop().close()
 
@@ -352,7 +352,7 @@ def aiohttp_client(loop, aiohttp_client_cls):  # type: ignore
 
     yield go
 
-    async def finalize():  # type: ignore
+    async def finalize() -> None:
         while clients:
             await clients.pop().close()
 
