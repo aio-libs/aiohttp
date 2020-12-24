@@ -10,6 +10,7 @@ from typing import (
     Any,
     Generic,
     List,
+    NamedTuple,
     Optional,
     Pattern,
     Set,
@@ -70,21 +71,19 @@ METHRE: Final[Pattern[str]] = re.compile(r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+")
 VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d+).(\d+)")
 HDRRE: Final[Pattern[bytes]] = re.compile(rb"[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\\\"]")
 
-RawRequestMessage = collections.namedtuple(
-    "RawRequestMessage",
-    [
-        "method",
-        "path",
-        "version",
-        "headers",
-        "raw_headers",
-        "should_close",
-        "compression",
-        "upgrade",
-        "chunked",
-        "url",
-    ],
-)
+
+class RawRequestMessage(NamedTuple):
+    method: str
+    path: str
+    version: HttpVersion
+    headers: CIMultiDictProxy[str]
+    raw_headers: RawHeaders
+    should_close: bool
+    compression: Optional[str]
+    upgrade: bool
+    chunked: bool
+    url: URL
+
 
 RawResponseMessage = collections.namedtuple(
     "RawResponseMessage",
@@ -313,20 +312,27 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                     # \r\n\r\n found
                     if self._lines[-1] == EMPTY:
                         try:
-                            msg = self.parse_message(self._lines)
+                            msg: _MsgT = self.parse_message(self._lines)
                         finally:
                             self._lines.clear()
 
-                        # payload length
-                        length = msg.headers.get(CONTENT_LENGTH)
-                        if length is not None:
+                        def get_content_lenght() -> Optional[int]:
+                            # payload length
+                            length_hdr = msg.headers.get(CONTENT_LENGTH)
+                            if length_hdr is None:
+                                return None
+
                             try:
-                                length = int(length)
+                                length = int(length_hdr)
                             except ValueError:
                                 raise InvalidHeader(CONTENT_LENGTH)
+
                             if length < 0:
                                 raise InvalidHeader(CONTENT_LENGTH)
 
+                            return length
+
+                        length = get_content_lenght()
                         # do not support old websocket spec
                         if SEC_WEBSOCKET_KEY1 in msg.headers:
                             raise InvalidHeader(SEC_WEBSOCKET_KEY1)

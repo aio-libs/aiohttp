@@ -146,7 +146,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self,
         message: RawRequestMessage,
         payload: StreamReader,
-        protocol: "RequestHandler",
+        protocol: RequestHandler,
         payload_writer: AbstractStreamWriter,
         task: "asyncio.Task[None]",
         loop: asyncio.AbstractEventLoop,
@@ -403,8 +403,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         host = self._message.headers.get(hdrs.HOST)
         if host is not None:
             return host
-        else:
-            return socket.getfqdn()
+        return socket.getfqdn()
 
     @reify
     def remote(self) -> Optional[str]:
@@ -415,10 +414,11 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         - overridden value by .clone(remote=new_remote) call.
         - peername of opened socket
         """
+        if self._transport_peername is None:
+            return None
         if isinstance(self._transport_peername, (list, tuple)):
-            return self._transport_peername[0]
-        else:
-            return self._transport_peername
+            return str(self._transport_peername[0])
+        return str(self._transport_peername)
 
     @reify
     def url(self) -> URL:
@@ -451,9 +451,9 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._message.path
 
     @reify
-    def query(self) -> "MultiDictProxy[str]":
+    def query(self) -> MultiDictProxy[str]:
         """A multidict with all the variables in the query string."""
-        return self._rel_url.query
+        return MultiDictProxy(self._rel_url.query)
 
     @reify
     def query_string(self) -> str:
