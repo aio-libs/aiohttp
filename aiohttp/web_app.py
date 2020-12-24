@@ -367,7 +367,7 @@ class Application(MutableMapping[str, Any]):
 class CleanupError(RuntimeError):
     @property
     def exceptions(self) -> List[BaseException]:
-        return self.args[1]
+        return cast(List[BaseException], self.args[1])
 
 
 if TYPE_CHECKING:  # pragma: no cover
