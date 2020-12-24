@@ -108,7 +108,7 @@ class PayloadRegistry:
         self,
         data: Any,
         *args: Any,
-        _CHAIN: Type[chain[_PayloadRegistryItem]] = chain,
+        _CHAIN: "Type[chain[_PayloadRegistryItem]]" = chain,
         **kwargs: Any,
     ) -> "Payload":
         if isinstance(data, Payload):
