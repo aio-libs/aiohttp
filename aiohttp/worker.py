@@ -6,7 +6,7 @@ import re
 import signal
 import sys
 from types import FrameType
-from typing import Any, Callable, Optional, Union  # noqa
+from typing import Any, Awaitable, Callable, Optional, Union  # noqa
 
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 from gunicorn.workers import base

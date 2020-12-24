@@ -1,8 +1,7 @@
 import asyncio
 import collections
 import warnings
-from collections.abc import Awaitable
-from typing import Callable, Generic, List, Optional, Tuple, TypeVar
+from typing import Awaitable, Callable, Generic, List, Optional, Tuple, TypeVar
 
 from typing_extensions import Final
 

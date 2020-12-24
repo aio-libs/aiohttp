@@ -2,7 +2,6 @@ import asyncio
 import asyncio.streams
 import traceback
 from collections import deque
-from collections.abc import Awaitable
 from contextlib import suppress
 from html import escape as html_escape
 from http import HTTPStatus
@@ -10,6 +9,7 @@ from logging import Logger
 from typing import (
     TYPE_CHECKING,
     Any,
+    Awaitable,
     Callable,
     Deque,
     Optional,

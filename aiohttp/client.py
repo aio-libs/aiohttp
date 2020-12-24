@@ -9,10 +9,10 @@ import os
 import sys
 import traceback
 import warnings
-from collections.abc import Awaitable
 from types import SimpleNamespace, TracebackType
 from typing import (
     Any,
+    Awaitable,
     Callable,
     Coroutine,
     FrozenSet,

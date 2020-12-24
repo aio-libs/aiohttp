@@ -2,8 +2,7 @@
 
 import asyncio
 import zlib
-from collections.abc import Awaitable
-from typing import Any, Callable, NamedTuple, Optional, Union  # noqa
+from typing import Any, Awaitable, Callable, NamedTuple, Optional, Union  # noqa
 
 from multidict import CIMultiDict
 

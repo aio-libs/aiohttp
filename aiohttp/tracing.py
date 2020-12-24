@@ -1,7 +1,6 @@
 import dataclasses
-from collections.abc import Awaitable
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Optional, Type, TypeVar
+from typing import TYPE_CHECKING, Awaitable, Optional, Type, TypeVar
 
 from aiosignal import Signal
 from multidict import CIMultiDict

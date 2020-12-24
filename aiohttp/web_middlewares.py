@@ -1,7 +1,6 @@
 import re
 import warnings
-from collections.abc import Awaitable
-from typing import TYPE_CHECKING, Callable, Tuple, Type, TypeVar
+from typing import TYPE_CHECKING, Awaitable, Callable, Tuple, Type, TypeVar
 
 from .web_exceptions import HTTPMove, HTTPPermanentRedirect
 from .web_request import Request

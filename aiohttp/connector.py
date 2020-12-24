@@ -12,9 +12,10 @@ from http.cookies import SimpleCookie
 from itertools import cycle, islice
 from time import monotonic
 from types import TracebackType
-from typing import (
+from typing import (  # noqa
     TYPE_CHECKING,
     Any,
+    Awaitable,
     Callable,
     DefaultDict,
     Dict,
