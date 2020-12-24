@@ -4,7 +4,7 @@ import binascii
 import dataclasses
 import hashlib
 import json
-from typing import Any, Iterable, Optional, Tuple
+from typing import Any, Iterable, Optional, Tuple, cast
 
 import async_timeout
 from multidict import CIMultiDict
@@ -106,10 +106,10 @@ class WebSocketResponse(StreamResponse):
         self._autoclose = autoclose
         self._autoping = autoping
         self._heartbeat = heartbeat
-        self._heartbeat_cb = None
+        self._heartbeat_cb: Optional[asyncio.TimerHandle] = None
         if heartbeat is not None:
             self._pong_heartbeat = heartbeat / 2.0
-        self._pong_response_cb = None
+        self._pong_response_cb: Optional[asyncio.TimerHandle] = None
         self._compress = compress
         self._max_msg_size = max_msg_size
 
@@ -126,12 +126,14 @@ class WebSocketResponse(StreamResponse):
         self._cancel_heartbeat()
 
         if self._heartbeat is not None:
+            assert self._loop is not None
             self._heartbeat_cb = call_later(
                 self._send_heartbeat, self._heartbeat, self._loop
             )
 
     def _send_heartbeat(self) -> None:
         if self._heartbeat is not None and not self._closed:
+            assert self._loop is not None
             # fire-and-forget a task is not perfect but maybe ok for
             # sending ping. Otherwise we need a long-living heartbeat
             # task in the class.
@@ -472,13 +474,13 @@ class WebSocketResponse(StreamResponse):
                     msg.type, msg.data
                 )
             )
-        return msg.data
+        return cast(str, msg.data)
 
     async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
         if msg.type != WSMsgType.BINARY:
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not bytes")
-        return msg.data
+        return cast(bytes, msg.data)
 
     async def receive_json(
         self, *, loads: JSONDecoder = json.loads, timeout: Optional[float] = None
