@@ -547,7 +547,7 @@ def rfc822_formatted_time() -> str:
     return _cached_formatted_datetime
 
 
-def _weakref_handle(info):  # type: ignore
+def _weakref_handle(info: Tuple[weakref.ref[object], str]) -> None:
     ref, name = info
     ob = ref()
     if ob is not None:
@@ -555,21 +555,27 @@ def _weakref_handle(info):  # type: ignore
             getattr(ob, name)()
 
 
-def weakref_handle(ob, name, timeout, loop):  # type: ignore
+def weakref_handle(
+    ob: object, name: str, timeout: float, loop: asyncio.AbstractEventLoop
+) -> Optional[asyncio.TimerHandle]:
     if timeout is not None and timeout > 0:
         when = loop.time() + timeout
         if timeout >= 5:
             when = ceil(when)
 
         return loop.call_at(when, _weakref_handle, (weakref.ref(ob), name))
+    return None
 
 
-def call_later(cb, timeout, loop):  # type: ignore
+def call_later(
+    cb: Callable[[], Any], timeout: float, loop: asyncio.AbstractEventLoop
+) -> Optional[asyncio.TimerHandle]:
     if timeout is not None and timeout > 0:
         when = loop.time() + timeout
         if timeout > 5:
             when = ceil(when)
         return loop.call_at(when, cb)
+    return None
 
 
 class TimeoutHandle:
