@@ -225,10 +225,10 @@ class BaseConnector:
         self.cookies = SimpleCookie()  # type: SimpleCookie[str]
 
         # start keep-alive connection cleanup task
-        self._cleanup_handle = None
+        self._cleanup_handle: Optional[asyncio.TimerHandle] = None
 
         # start cleanup closed transports task
-        self._cleanup_closed_handle = None
+        self._cleanup_closed_handle: Optional[asyncio.TimerHandle] = None
         self._cleanup_closed_disabled = not enable_cleanup_closed
         self._cleanup_closed_transports = []  # type: List[Optional[asyncio.Transport]]
         self._cleanup_closed()
@@ -743,7 +743,7 @@ class TCPConnector(BaseConnector):
         self._ssl = ssl
         if resolver is None:
             resolver = DefaultResolver()
-        self._resolver = resolver
+        self._resolver: AbstractResolver = resolver
 
         self._use_dns_cache = use_dns_cache
         self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache)
