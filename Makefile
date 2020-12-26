@@ -74,7 +74,8 @@ fmt format:
 
 .PHONY: mypy
 mypy:
-	mypy --strict aiohttp tests
+	mypy --strict aiohttp
+	mypy tests
 
 .develop: .install-deps $(call to-hash,$(PYS) $(CYS) $(CS))
 	pip install -e .
