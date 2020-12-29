@@ -1,5 +1,6 @@
 import asyncio
 import collections
+import sys
 import warnings
 from typing import Awaitable, Callable, Deque, Generic, List, Optional, Tuple, TypeVar
 
@@ -7,9 +8,9 @@ from .base_protocol import BaseProtocol
 from .helpers import BaseTimerContext, set_exception, set_result
 from .log import internal_logger
 
-try:  # pragma: no cover
+if sys.version_info >= (3, 8):
     from typing import Final
-except ImportError:
+else:
     from typing_extensions import Final
 
 __all__ = (

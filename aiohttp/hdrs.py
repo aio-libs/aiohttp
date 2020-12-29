@@ -2,13 +2,14 @@
 
 # After changing the file content call ./tools/gen.py
 # to regenerate the headers parser
+import sys
 from typing import Set
 
 from multidict import istr
 
-try:
+if sys.version_info >= (3, 8):
     from typing import Final
-except ImportError:
+else:
     from typing_extensions import Final
 
 METH_ANY: Final[str] = "*"

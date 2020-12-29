@@ -4,6 +4,7 @@ import io
 import json
 import mimetypes
 import os
+import sys
 import warnings
 from abc import ABC, abstractmethod
 from itertools import chain
@@ -36,9 +37,9 @@ from .helpers import (
 from .streams import StreamReader
 from .typedefs import JSONEncoder, _CIMultiDict
 
-try:
+if sys.version_info >= (3, 8):
     from typing import Final
-except ImportError:
+else:
     from typing_extensions import Final
 
 __all__ = (

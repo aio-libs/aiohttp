@@ -4,6 +4,7 @@ import io
 import re
 import socket
 import string
+import sys
 import tempfile
 import types
 import warnings
@@ -46,9 +47,9 @@ from .typedefs import (
 from .web_exceptions import HTTPRequestEntityTooLarge
 from .web_response import StreamResponse
 
-try:
+if sys.version_info >= (3, 8):
     from typing import Final
-except ImportError:
+else:
     from typing_extensions import Final
 
 __all__ = ("BaseRequest", "FileField", "Request")

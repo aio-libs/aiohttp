@@ -3,6 +3,7 @@ import asyncio
 import collections
 import re
 import string
+import sys
 import zlib
 from contextlib import suppress
 from enum import IntEnum
@@ -38,9 +39,9 @@ from .log import internal_logger
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import RawHeaders
 
-try:
+if sys.version_info >= (3, 8):
     from typing import Final
-except ImportError:
+else:
     from typing_extensions import Final
 
 try:

@@ -6,6 +6,7 @@ import inspect
 import keyword
 import os
 import re
+import sys
 import warnings
 from contextlib import contextmanager
 from functools import wraps
@@ -52,9 +53,9 @@ from .web_request import Request
 from .web_response import Response, StreamResponse
 from .web_routedef import AbstractRouteDef
 
-try:
+if sys.version_info >= (3, 8):
     from typing import Final, TypedDict
-except ImportError:
+else:
     from typing_extensions import Final, TypedDict
 
 __all__ = (

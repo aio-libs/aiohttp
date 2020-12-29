@@ -63,9 +63,9 @@ if not PY_37:
 
     idna_ssl.patch_match_hostname()
 
-try:
+if sys.version_info >= (3, 8):
     from typing import Protocol
-except ImportError:
+else:
     from typing_extensions import Protocol
 
 

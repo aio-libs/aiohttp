@@ -3,6 +3,7 @@ import base64
 import binascii
 import hashlib
 import json
+import sys
 from typing import Any, Iterable, Optional, Tuple
 
 import async_timeout
@@ -32,9 +33,9 @@ from .web_exceptions import HTTPBadRequest, HTTPException
 from .web_request import BaseRequest
 from .web_response import StreamResponse
 
-try:
+if sys.version_info >= (3, 8):
     from typing import Final
-except ImportError:
+else:
     from typing_extensions import Final
 
 __all__ = (

@@ -1,3 +1,4 @@
+import sys
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Awaitable, Optional, Type, TypeVar
 
@@ -9,9 +10,9 @@ from yarl import URL
 from .client_reqrep import ClientResponse
 
 if TYPE_CHECKING:  # pragma: no cover
-    try:
+    if sys.version_info >= (3, 8):
         from typing import Protocol
-    except ImportError:
+    else:
         from typing_extensions import Protocol
 
     from .client import ClientSession
