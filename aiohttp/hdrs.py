@@ -5,7 +5,11 @@
 from typing import Set
 
 from multidict import istr
-from typing_extensions import Final
+
+try:
+    from typing import Final
+except ImportError:
+    from typing_extensions import Final
 
 METH_ANY: Final[str] = "*"
 METH_CONNECT: Final[str] = "CONNECT"

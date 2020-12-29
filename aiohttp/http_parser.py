@@ -20,7 +20,6 @@ from typing import (
 )
 
 from multidict import CIMultiDict, CIMultiDictProxy, istr
-from typing_extensions import Final
 from yarl import URL
 
 from . import hdrs
@@ -38,6 +37,11 @@ from .http_writer import HttpVersion, HttpVersion10
 from .log import internal_logger
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import RawHeaders
+
+try:
+    from typing import Final
+except ImportError:
+    from typing_extensions import Final
 
 try:
     import brotli

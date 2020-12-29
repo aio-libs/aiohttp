@@ -23,6 +23,7 @@ from types import TracebackType
 from typing import (
     Any,
     Callable,
+    ContextManager,
     Dict,
     Generator,
     Generic,
@@ -45,7 +46,6 @@ from urllib.request import getproxies
 import async_timeout
 import attr
 from multidict import MultiDict, MultiDictProxy
-from typing_extensions import Protocol
 from yarl import URL
 
 from . import hdrs
@@ -64,9 +64,9 @@ if not PY_37:
     idna_ssl.patch_match_hostname()
 
 try:
-    from typing import ContextManager
+    from typing import Protocol
 except ImportError:
-    from typing_extensions import ContextManager
+    from typing_extensions import Protocol
 
 
 def all_tasks(

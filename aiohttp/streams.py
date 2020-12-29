@@ -1,18 +1,16 @@
 import asyncio
 import collections
 import warnings
-from typing import Awaitable, Callable, Generic, List, Optional, Tuple, TypeVar
-
-from typing_extensions import Final
+from typing import Awaitable, Callable, Deque, Generic, List, Optional, Tuple, TypeVar
 
 from .base_protocol import BaseProtocol
 from .helpers import BaseTimerContext, set_exception, set_result
 from .log import internal_logger
 
 try:  # pragma: no cover
-    from typing import Deque
+    from typing import Final
 except ImportError:
-    from typing_extensions import Deque
+    from typing_extensions import Final
 
 __all__ = (
     "EMPTY_PAYLOAD",

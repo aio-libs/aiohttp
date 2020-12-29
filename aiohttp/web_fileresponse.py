@@ -15,8 +15,6 @@ from typing import (  # noqa
     cast,
 )
 
-from typing_extensions import Final
-
 from . import hdrs
 from .abc import AbstractStreamWriter
 from .typedefs import LooseHeaders
@@ -27,6 +25,11 @@ from .web_exceptions import (
     HTTPRequestRangeNotSatisfiable,
 )
 from .web_response import StreamResponse
+
+try:
+    from typing import Final
+except ImportError:
+    from typing_extensions import Final
 
 __all__ = ("FileResponse",)
 

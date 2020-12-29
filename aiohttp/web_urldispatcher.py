@@ -33,7 +33,6 @@ from typing import (
     cast,
 )
 
-from typing_extensions import Final, TypedDict
 from yarl import URL, __version__ as yarl_version  # type: ignore
 
 from . import hdrs
@@ -52,6 +51,11 @@ from .web_fileresponse import FileResponse
 from .web_request import Request
 from .web_response import Response, StreamResponse
 from .web_routedef import AbstractRouteDef
+
+try:
+    from typing import Final, TypedDict
+except ImportError:
+    from typing_extensions import Final, TypedDict
 
 __all__ = (
     "UrlDispatcher",

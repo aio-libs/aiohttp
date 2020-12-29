@@ -27,7 +27,6 @@ from urllib.parse import parse_qsl
 
 import attr
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
-from typing_extensions import Final
 from yarl import URL
 
 from . import hdrs
@@ -46,6 +45,11 @@ from .typedefs import (
 )
 from .web_exceptions import HTTPRequestEntityTooLarge
 from .web_response import StreamResponse
+
+try:
+    from typing import Final
+except ImportError:
+    from typing_extensions import Final
 
 __all__ = ("BaseRequest", "FileField", "Request")
 

@@ -11,11 +11,14 @@ from enum import IntEnum
 from struct import Struct
 from typing import Any, Callable, List, Optional, Pattern, Set, Tuple, Union
 
-from typing_extensions import Final
-
 from .base_protocol import BaseProtocol
 from .helpers import NO_EXTENSIONS
 from .streams import DataQueue
+
+try:
+    from typing import Final
+except ImportError:
+    from typing_extensions import Final
 
 __all__ = (
     "WS_CLOSED_MESSAGE",

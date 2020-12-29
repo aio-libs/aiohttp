@@ -8,7 +8,6 @@ from typing import Any, Iterable, Optional, Tuple
 import async_timeout
 import attr
 from multidict import CIMultiDict
-from typing_extensions import Final
 
 from . import hdrs
 from .abc import AbstractStreamWriter
@@ -32,6 +31,11 @@ from .typedefs import JSONDecoder, JSONEncoder
 from .web_exceptions import HTTPBadRequest, HTTPException
 from .web_request import BaseRequest
 from .web_response import StreamResponse
+
+try:
+    from typing import Final
+except ImportError:
+    from typing_extensions import Final
 
 __all__ = (
     "WebSocketResponse",

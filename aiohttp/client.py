@@ -30,7 +30,6 @@ from typing import (
 
 import attr
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
-from typing_extensions import Final
 from yarl import URL
 
 from . import hdrs, http, payload
@@ -87,6 +86,11 @@ from .http_websocket import WSHandshakeError, WSMessage, ws_ext_gen, ws_ext_pars
 from .streams import FlowControlDataQueue
 from .tracing import Trace, TraceConfig
 from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
+
+try:
+    from typing import Final
+except ImportError:
+    from typing_extensions import Final
 
 __all__ = (
     # client_exceptions

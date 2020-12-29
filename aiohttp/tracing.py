@@ -9,7 +9,10 @@ from yarl import URL
 from .client_reqrep import ClientResponse
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing_extensions import Protocol
+    try:
+        from typing import Protocol
+    except ImportError:
+        from typing_extensions import Protocol
 
     from .client import ClientSession
 
