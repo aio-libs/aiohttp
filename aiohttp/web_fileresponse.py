@@ -230,7 +230,8 @@ class FileResponse(StreamResponse):
                 real_start, real_start + count - 1, file_size
             )
 
-        if request.method == hdrs.METH_HEAD or self.status in [204, 304]:
+        # If we are sending 0 bytes calling sendfile() will throw a ValueError
+        if count == 0 or request.method == hdrs.METH_HEAD or self.status in [204, 304]:
             return await super().prepare(request)
 
         fobj = await loop.run_in_executor(None, filepath.open, "rb")

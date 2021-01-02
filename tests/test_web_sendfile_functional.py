@@ -25,6 +25,17 @@ def loop_without_sendfile(loop: Any):
     return loop
 
 
+@pytest.fixture
+def loop_with_mocked_native_sendfile(loop: Any):
+    def sendfile(transport, fobj, offset, count):
+        if count == 0:
+            raise ValueError("count must be a positive integer (got 0)")
+        raise NotImplementedError
+
+    loop.sendfile = sendfile
+    return loop
+
+
 @pytest.fixture(params=["sendfile", "no_sendfile"], ids=["sendfile", "no_sendfile"])
 def sender(request: Any, loop_without_sendfile: Any):
     def maker(*args, **kwargs):
@@ -65,13 +76,44 @@ async def test_zero_bytes_file_ok(aiohttp_client: Any, sender: Any) -> None:
     app.router.add_get("/", handler)
     client = await aiohttp_client(app)
 
-    resp = await client.get("/")
-    assert resp.status == 200
-    txt = await resp.text()
-    assert "" == txt.rstrip()
-    assert "application/octet-stream" == resp.headers["Content-Type"]
-    assert resp.headers.get("Content-Encoding") is None
-    await resp.release()
+    # Run the request multiple times to ensure
+    # that an untrapped exception is not hidden
+    # because there is no read of the zero bytes
+    for i in range(2):
+        resp = await client.get("/")
+        assert resp.status == 200
+        txt = await resp.text()
+        assert "" == txt.rstrip()
+        assert "application/octet-stream" == resp.headers["Content-Type"]
+        assert resp.headers.get("Content-Encoding") is None
+        await resp.release()
+
+
+async def test_zero_bytes_file_mocked_native_sendfile(
+    aiohttp_client: Any, loop_with_mocked_native_sendfile: Any
+) -> None:
+    filepath = pathlib.Path(__file__).parent / "data.zero_bytes"
+
+    async def handler(request):
+        asyncio.set_event_loop(loop_with_mocked_native_sendfile)
+        return web.FileResponse(filepath)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    # Run the request multiple times to ensure
+    # that an untrapped exception is not hidden
+    # because there is no read of the zero bytes
+    for i in range(2):
+        resp = await client.get("/")
+        assert resp.status == 200
+        txt = await resp.text()
+        assert "" == txt.rstrip()
+        assert "application/octet-stream" == resp.headers["Content-Type"]
+        assert resp.headers.get("Content-Encoding") is None
+        assert resp.headers.get("Content-Length") == "0"
+        await resp.release()
 
 
 async def test_static_file_ok_string_path(aiohttp_client: Any, sender: Any) -> None:
