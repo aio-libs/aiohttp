@@ -9,8 +9,8 @@ from yarl import URL
 from .client_reqrep import ClientResponse
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .typedefs import Protocol
     from .client import ClientSession
+    from .typedefs import Protocol
 
     _ParamT_contra = TypeVar("_ParamT_contra", contravariant=True)
 
