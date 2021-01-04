@@ -2,11 +2,15 @@
 
 # After changing the file content call ./tools/gen.py
 # to regenerate the headers parser
+import sys
 from typing import Set
 
 from multidict import istr
 
-from .typedefs import Final
+if sys.version_info >= (3, 8):
+    from typing import Final
+else:
+    from typing_extensions import Final
 
 METH_ANY: Final[str] = "*"
 METH_CONNECT: Final[str] = "CONNECT"
