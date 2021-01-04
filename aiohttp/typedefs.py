@@ -9,7 +9,7 @@ from yarl import URL
 
 # These are for other modules to use (to avoid repeating the conditional import).
 if sys.version_info >= (3, 8):
-    from typing import Final, Protocol, TypedDict  # noqa: F401
+    from typing import Final, Protocol, TypedDict
 else:
     from typing_extensions import Final, Protocol, TypedDict  # noqa: F401
 
