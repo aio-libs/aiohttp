@@ -4,7 +4,6 @@ import io
 import re
 import socket
 import string
-import sys
 import tempfile
 import types
 import warnings
@@ -39,6 +38,7 @@ from .multipart import BodyPartReader, MultipartReader
 from .streams import EmptyStreamReader, StreamReader
 from .typedefs import (
     DEFAULT_JSON_DECODER,
+    Final,
     JSONDecoder,
     LooseHeaders,
     RawHeaders,
@@ -46,11 +46,6 @@ from .typedefs import (
 )
 from .web_exceptions import HTTPRequestEntityTooLarge
 from .web_response import StreamResponse
-
-if sys.version_info >= (3, 8):
-    from typing import Final
-else:
-    from typing_extensions import Final
 
 __all__ = ("BaseRequest", "FileField", "Request")
 

@@ -4,7 +4,6 @@ import io
 import json
 import mimetypes
 import os
-import sys
 import warnings
 from abc import ABC, abstractmethod
 from itertools import chain
@@ -35,12 +34,7 @@ from .helpers import (
     sentinel,
 )
 from .streams import StreamReader
-from .typedefs import JSONEncoder, _CIMultiDict
-
-if sys.version_info >= (3, 8):
-    from typing import Final
-else:
-    from typing_extensions import Final
+from .typedefs import Final, JSONEncoder, _CIMultiDict
 
 __all__ = (
     "PAYLOAD_REGISTRY",

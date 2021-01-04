@@ -50,7 +50,7 @@ from yarl import URL
 
 from . import hdrs
 from .log import client_logger, internal_logger
-from .typedefs import PathLike  # noqa
+from .typedefs import PathLike, Protocol  # noqa
 
 __all__ = ("BasicAuth", "ChainMapProxy")
 
@@ -62,11 +62,6 @@ if not PY_37:
     import idna_ssl
 
     idna_ssl.patch_match_hostname()
-
-if sys.version_info >= (3, 8):
-    from typing import Protocol
-else:
-    from typing_extensions import Protocol
 
 
 def all_tasks(

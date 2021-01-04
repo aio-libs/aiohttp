@@ -3,7 +3,6 @@ import asyncio
 import collections
 import re
 import string
-import sys
 import zlib
 from contextlib import suppress
 from enum import IntEnum
@@ -37,12 +36,7 @@ from .http_exceptions import (
 from .http_writer import HttpVersion, HttpVersion10
 from .log import internal_logger
 from .streams import EMPTY_PAYLOAD, StreamReader
-from .typedefs import RawHeaders
-
-if sys.version_info >= (3, 8):
-    from typing import Final
-else:
-    from typing_extensions import Final
+from .typedefs import Final, RawHeaders
 
 try:
     import brotli

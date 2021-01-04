@@ -17,7 +17,7 @@ from typing import (  # noqa
 
 from . import hdrs
 from .abc import AbstractStreamWriter
-from .typedefs import LooseHeaders
+from .typedefs import Final, LooseHeaders
 from .web_exceptions import (
     HTTPNotModified,
     HTTPPartialContent,
@@ -25,11 +25,6 @@ from .web_exceptions import (
     HTTPRequestRangeNotSatisfiable,
 )
 from .web_response import StreamResponse
-
-if sys.version_info >= (3, 8):
-    from typing import Final
-else:
-    from typing_extensions import Final
 
 __all__ = ("FileResponse",)
 

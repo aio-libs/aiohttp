@@ -3,7 +3,6 @@ import base64
 import binascii
 import hashlib
 import json
-import sys
 from typing import Any, Iterable, Optional, Tuple
 
 import async_timeout
@@ -28,15 +27,10 @@ from .http import (
 )
 from .log import ws_logger
 from .streams import EofStream, FlowControlDataQueue
-from .typedefs import JSONDecoder, JSONEncoder
+from .typedefs import Final, JSONDecoder, JSONEncoder
 from .web_exceptions import HTTPBadRequest, HTTPException
 from .web_request import BaseRequest
 from .web_response import StreamResponse
-
-if sys.version_info >= (3, 8):
-    from typing import Final
-else:
-    from typing_extensions import Final
 
 __all__ = (
     "WebSocketResponse",

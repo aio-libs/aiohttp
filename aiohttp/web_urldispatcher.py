@@ -6,7 +6,6 @@ import inspect
 import keyword
 import os
 import re
-import sys
 import warnings
 from contextlib import contextmanager
 from functools import wraps
@@ -40,7 +39,7 @@ from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
 from .helpers import DEBUG
 from .http import HttpVersion11
-from .typedefs import PathLike
+from .typedefs import Final, PathLike, TypedDict
 from .web_exceptions import (
     HTTPException,
     HTTPExpectationFailed,
@@ -52,11 +51,6 @@ from .web_fileresponse import FileResponse
 from .web_request import Request
 from .web_response import Response, StreamResponse
 from .web_routedef import AbstractRouteDef
-
-if sys.version_info >= (3, 8):
-    from typing import Final, TypedDict
-else:
-    from typing_extensions import Final, TypedDict
 
 __all__ = (
     "UrlDispatcher",

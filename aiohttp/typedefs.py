@@ -7,6 +7,11 @@ from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Tuple, Union
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, istr
 from yarl import URL
 
+if sys.version_info >= (3, 8):
+    from typing import Final, Protocol, TypedDict
+else:
+    from typing_extensions import Final, Protocol, TypedDict
+
 DEFAULT_JSON_ENCODER = json.dumps
 DEFAULT_JSON_DECODER = json.loads
 

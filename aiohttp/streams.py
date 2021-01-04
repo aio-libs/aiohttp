@@ -1,17 +1,12 @@
 import asyncio
 import collections
-import sys
 import warnings
 from typing import Awaitable, Callable, Deque, Generic, List, Optional, Tuple, TypeVar
 
 from .base_protocol import BaseProtocol
 from .helpers import BaseTimerContext, set_exception, set_result
 from .log import internal_logger
-
-if sys.version_info >= (3, 8):
-    from typing import Final
-else:
-    from typing_extensions import Final
+from .typedefs import Final
 
 __all__ = (
     "EMPTY_PAYLOAD",

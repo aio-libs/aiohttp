@@ -14,11 +14,7 @@ from typing import Any, Callable, List, Optional, Pattern, Set, Tuple, Union
 from .base_protocol import BaseProtocol
 from .helpers import NO_EXTENSIONS
 from .streams import DataQueue
-
-if sys.version_info >= (3, 8):
-    from typing import Final
-else:
-    from typing_extensions import Final
+from .typedefs import Final
 
 __all__ = (
     "WS_CLOSED_MESSAGE",
