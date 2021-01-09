@@ -283,7 +283,7 @@ except ImportError:  # pragma: no cover
 HostSequence = TypingIterable[str]
 
 
-async def _run_app(
+async def start_app(
     app: Union[Application, Awaitable[Application]],
     *,
     host: Optional[Union[str, HostSequence]] = None,
@@ -301,8 +301,12 @@ async def _run_app(
     handle_signals: bool = True,
     reuse_address: Optional[bool] = None,
     reuse_port: Optional[bool] = None,
-) -> None:
-    # An internal function to actually do all dirty job for application running
+) -> AppRunner:
+    """Start an app locally.
+
+    Use `run_app` if you do not wish to control and keep the event loop
+    alive yourself, this is non-blocking and returns the runner created.
+    """
     if asyncio.iscoroutine(app):
         app = await app  # type: ignore
 
@@ -478,7 +482,11 @@ def run_app(
     reuse_address: Optional[bool] = None,
     reuse_port: Optional[bool] = None,
 ) -> None:
-    """Run an app locally"""
+    """Run an app locally.
+
+    Use `start_app` if you wish to control and keep the event loop alive
+    yourself, this should be the last line in your file.
+    """
     loop = asyncio.get_event_loop()
     loop.set_debug(debug)
 
@@ -491,7 +499,7 @@ def run_app(
 
     try:
         main_task = loop.create_task(
-            _run_app(
+            start_app(
                 app,
                 host=host,
                 port=port,
