@@ -245,7 +245,7 @@ class ClientRequest:
         self.update_proxy(proxy, proxy_auth, proxy_headers)
 
         self.update_body_from_data(data)
-        if data or self.method not in self.GET_METHODS:
+        if data is not None or self.method not in self.GET_METHODS:
             self.update_transfer_encoding()
         self.update_expect_continue(expect100)
         if traces is None:
@@ -383,7 +383,7 @@ class ClientRequest:
 
     def update_content_encoding(self, data: Any) -> None:
         """Set request content encoding."""
-        if not data:
+        if data is None:
             return
 
         enc = self.headers.get(hdrs.CONTENT_ENCODING, "").lower()
@@ -433,7 +433,7 @@ class ClientRequest:
         self.headers[hdrs.AUTHORIZATION] = auth.encode()
 
     def update_body_from_data(self, body: Any) -> None:
-        if not body:
+        if body is None:
             return
 
         # FormData
