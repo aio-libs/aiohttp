@@ -71,10 +71,15 @@ class ClientResponseError(ClientError):
         self.args = (request_info, history)
 
     def __str__(self) -> str:
+        if self.request_info.real_url.password:
+            url = self.request_info.real_url.with_password("*hidden*")
+        else:
+            url = self.request_info.real_url
+
         return "{}, message={!r}, url={!r}".format(
             self.status,
             self.message,
-            self.request_info.real_url,
+            url,
         )
 
     def __repr__(self) -> str:

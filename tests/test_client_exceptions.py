@@ -6,15 +6,17 @@ import pickle
 import sys
 from typing import Any
 
+from yarl import URL
+
 from aiohttp import client, client_reqrep
 
 
 class TestClientResponseError:
     request_info: Any = client.RequestInfo(
-        url="http://example.com",
+        url=URL("http://example.com"),
         method="GET",
         headers={},
-        real_url="http://example.com",
+        real_url=URL("http://example.com"),
     )
 
     def test_default_status(self) -> None:
@@ -81,7 +83,27 @@ class TestClientResponseError:
             headers={},
         )
         assert str(err) == (
-            "400, message='Something wrong', " "url='http://example.com'"
+            "400, message='Something wrong', " "url=URL('http://example.com')"
+        )
+
+    def test_str_with_password(self) -> None:
+        request_info: Any = client.RequestInfo(
+            url=URL("http://user:pass@example.com"),
+            method="GET",
+            headers={},
+            real_url=URL("http://user:pass@example.com"),
+        )
+
+        err = client.ClientResponseError(
+            request_info=request_info,
+            history=(),
+            status=400,
+            message="Something wrong",
+            headers={},
+        )
+        assert str(err) == (
+            "400, message='Something wrong', "
+            "url=URL('http://user:*hidden*@example.com')"
         )
 
 

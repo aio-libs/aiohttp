@@ -1,0 +1,1 @@
+Fixed str method for ``ClientResponseError`` so the password is not logged as clear text.
