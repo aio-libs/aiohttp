@@ -1243,3 +1243,22 @@ def test_response_links_empty(loop: Any, session: Any) -> None:
     )
     response._headers = CIMultiDict()
     assert response.links == {}
+
+
+def test_response_not_closed_after_get_ok() -> None:
+    response = ClientResponse(
+        "get",
+        URL("http://del-cl-resp.org"),
+        request_info=mock.Mock(),
+        writer=mock.Mock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=mock.Mock(),
+        session=mock.Mock(),
+    )
+    response.status = 400
+    response.reason = "Bad Request"
+    response._closed = False
+    assert not response.ok
+    assert not response.closed
