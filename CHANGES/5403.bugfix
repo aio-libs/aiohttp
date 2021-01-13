@@ -1,0 +1,1 @@
+Don't release the ```ClientResponse``` object during call to ```ok``` property for failed requests.
