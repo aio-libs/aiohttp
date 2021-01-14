@@ -923,14 +923,10 @@ class ClientResponse(HeadersMixin):
         This is **not** a check for ``200 OK`` but a check that the response
         status is under 400.
         """
-        try:
-            self.raise_for_status()
-        except ClientResponseError:
-            return False
-        return True
+        return 400 > self.status
 
     def raise_for_status(self) -> None:
-        if 400 <= self.status:
+        if not self.ok:
             # reason should always be not None for a started response
             assert self.reason is not None
             self.release()
