@@ -160,6 +160,10 @@ class _TransportPlaceholder:
     def close(self) -> None:
         pass
 
+    @property
+    def transport(self) -> None:
+        return None
+
 
 class BaseConnector:
     """Base connector class.
@@ -390,14 +394,31 @@ class BaseConnector:
             if self._cleanup_closed_handle:
                 self._cleanup_closed_handle.cancel()
 
-            for data in self._conns.values():
-                for proto, t0 in data:
+            for key, conns in self._conns.items():
+                for proto, t0 in conns:
+                    transport = proto.transport
                     proto.close()
                     waiters.append(proto.closed)
+                    # close the transport for the available connections
+                    if (
+                        key.is_ssl
+                        and not self._cleanup_closed_disabled
+                        and transport is not None
+                    ):
+                        transport.abort()
 
-            for proto in self._acquired:
-                proto.close()
-                waiters.append(proto.closed)
+            for key, protos in self._acquired_per_host.items():
+                for proto in protos:
+                    transport = proto.transport
+                    proto.close()
+                    waiters.append(proto.closed)
+                    # close the transport for the acquired connections
+                    if (
+                        key.is_ssl
+                        and not self._cleanup_closed_disabled
+                        and transport is not None
+                    ):
+                        transport.abort()
 
             # TODO (A.Yushovskiy, 24-May-2019) collect transp. closing futures
             for transport in self._cleanup_closed_transports:
