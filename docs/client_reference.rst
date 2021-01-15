@@ -2146,7 +2146,7 @@ Connection errors
 
    Server disconnected.
 
-   Derived from :exc:`ServerDisconnectionError`
+   Derived from :exc:`ServerConnectionError`
 
    .. attribute:: message
 
