@@ -415,25 +415,12 @@ async def start_app(
         for site in sites:
             await site.start()
 
-        if print:  # pragma: no branch
-            names = sorted(str(s.name) for s in runner.sites)
-            print(
-                "======== Running on {} ========\n"
-                "(Press CTRL+C to quit)".format(", ".join(names))
-            )
-
-        # sleep forever by 1 hour intervals,
-        # on Windows before Python 3.8 wake up every 1 second to handle
-        # Ctrl+C smoothly
-        if sys.platform == "win32" and sys.version_info < (3, 8):
-            delay = 1
-        else:
-            delay = 3600
-
-        while True:
-            await asyncio.sleep(delay)
-    finally:
+    # Cleanup, but still propagate exception
+    except Exception as e:
         await runner.cleanup()
+        raise e
+
+    return runner
 
 
 def _cancel_tasks(
@@ -497,9 +484,9 @@ def run_app(
         if not access_log.hasHandlers():
             access_log.addHandler(logging.StreamHandler())
 
-    try:
-        main_task = loop.create_task(
-            start_app(
+    async def main_runner() -> None:
+        try:
+            runner = await start_app(
                 app,
                 host=host,
                 port=port,
@@ -517,7 +504,36 @@ def run_app(
                 reuse_address=reuse_address,
                 reuse_port=reuse_port,
             )
-        )
+
+            if print:  # pragma: no branch
+                names = sorted(str(s.name) for s in runner.sites)
+                print(
+                    "======== Running on {} ========\n"
+                    "(Press CTRL+C to quit)".format(", ".join(names))
+                )
+
+            # sleep forever by 1 hour intervals,
+            # on Windows before Python 3.8 wake up every 1 second to handle
+            # Ctrl+C smoothly
+            if sys.platform == "win32" and sys.version_info < (3, 8):
+                delay = 1
+            else:
+                delay = 3600
+
+            while True:
+                await asyncio.sleep(delay)
+
+        finally:
+            try:
+                await runner.cleanup()
+            except UnboundLocalError:
+                # An exception was raised in start_app(), so runner never got
+                # defined. This is fine because we cleanup in an except clause
+                # and re-raise the exception, getting us here.
+                pass
+
+    try:
+        main_task = loop.create_task(main_runner())
         loop.run_until_complete(main_task)
     except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
         pass
