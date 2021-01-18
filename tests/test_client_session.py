@@ -16,7 +16,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import client, hdrs, web
-from aiohttp.client import ClientSession
+from aiohttp.client import ClientSession, ClientTimeout
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import BaseConnector, TCPConnector
 from aiohttp.test_utils import make_mocked_coro
@@ -677,8 +677,9 @@ async def test_client_session_timeout_default_args(loop: Any) -> None:
 
 
 async def test_client_session_timeout_argument() -> None:
-    session = ClientSession(timeout=500)
-    assert session.timeout == 500
+    timeout = ClientTimeout(total=500)
+    session = ClientSession(timeout=timeout)
+    assert session.timeout == timeout
 
 
 async def test_requote_redirect_url_default() -> None:
