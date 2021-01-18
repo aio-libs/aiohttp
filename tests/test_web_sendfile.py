@@ -6,6 +6,12 @@ from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web_fileresponse import FileResponse
 
 
+def make_file_sender(*args: Any, **kwargs: Any) -> FileResponse:
+    file_sender = FileResponse(*args, **kwargs)
+    file_sender._sendfile = make_mocked_coro(None)  # type: ignore[assignment]
+    return file_sender
+
+
 def test_using_gzip_if_header_present_and_file_available(loop: Any) -> None:
     request = make_mocked_request(
         "GET", "http://python.org/logo.png", headers={hdrs.ACCEPT_ENCODING: "gzip"}
@@ -22,8 +28,7 @@ def test_using_gzip_if_header_present_and_file_available(loop: Any) -> None:
     filepath.open = mock.mock_open()
     filepath.with_name.return_value = gz_filepath
 
-    file_sender = FileResponse(filepath)
-    file_sender._sendfile = make_mocked_coro(None)  # type: ignore
+    file_sender = make_file_sender(filepath)
 
     loop.run_until_complete(file_sender.prepare(request))
 
@@ -45,8 +50,7 @@ def test_gzip_if_header_not_present_and_file_available(loop: Any) -> None:
     filepath.stat.return_value = mock.MagicMock()
     filepath.stat.st_size = 1024
 
-    file_sender = FileResponse(filepath)
-    file_sender._sendfile = make_mocked_coro(None)  # type: ignore
+    file_sender = make_file_sender(filepath)
 
     loop.run_until_complete(file_sender.prepare(request))
 
@@ -68,8 +72,7 @@ def test_gzip_if_header_not_present_and_file_not_available(loop: Any) -> None:
     filepath.stat.return_value = mock.MagicMock()
     filepath.stat.st_size = 1024
 
-    file_sender = FileResponse(filepath)
-    file_sender._sendfile = make_mocked_coro(None)  # type: ignore
+    file_sender = make_file_sender(filepath)
 
     loop.run_until_complete(file_sender.prepare(request))
 
@@ -93,8 +96,7 @@ def test_gzip_if_header_present_and_file_not_available(loop: Any) -> None:
     filepath.stat.return_value = mock.MagicMock()
     filepath.stat.st_size = 1024
 
-    file_sender = FileResponse(filepath)
-    file_sender._sendfile = make_mocked_coro(None)  # type: ignore
+    file_sender = make_file_sender(filepath)
 
     loop.run_until_complete(file_sender.prepare(request))
 
@@ -111,8 +113,7 @@ def test_status_controlled_by_user(loop: Any) -> None:
     filepath.stat.return_value = mock.MagicMock()
     filepath.stat.st_size = 1024
 
-    file_sender = FileResponse(filepath, status=203)
-    file_sender._sendfile = make_mocked_coro(None)  # type: ignore
+    file_sender = make_file_sender(filepath, status=203)
 
     loop.run_until_complete(file_sender.prepare(request))
 

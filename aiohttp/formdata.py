@@ -92,14 +92,14 @@ class FormData:
 
             if isinstance(rec, io.IOBase):
                 k = guess_filename(rec, "unknown")
-                self.add_field(k, rec)  # type: ignore
+                self.add_field(k, rec)
 
             elif isinstance(rec, (MultiDictProxy, MultiDict)):
                 to_add.extend(rec.items())
 
             elif isinstance(rec, (list, tuple)) and len(rec) == 2:
                 k, fp = rec
-                self.add_field(k, fp)  # type: ignore
+                self.add_field(k, fp)
 
             else:
                 raise TypeError(

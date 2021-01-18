@@ -137,7 +137,8 @@ class WebSocketResponse(StreamResponse):
             # fire-and-forget a task is not perfect but maybe ok for
             # sending ping. Otherwise we need a long-living heartbeat
             # task in the class.
-            self._loop.create_task(self._writer.ping())  # type: ignore
+            assert self._writer is not None
+            self._loop.create_task(self._writer.ping())
 
             if self._pong_response_cb is not None:
                 self._pong_response_cb.cancel()
@@ -166,7 +167,7 @@ class WebSocketResponse(StreamResponse):
 
     def _handshake(
         self, request: BaseRequest
-    ) -> Tuple["CIMultiDict[str]", str, bool, bool]:
+    ) -> Tuple["CIMultiDict[str]", Optional[str], bool, bool]:
         headers = request.headers
         if "websocket" != headers.get(hdrs.UPGRADE, "").lower().strip():
             raise HTTPBadRequest(
@@ -219,9 +220,9 @@ class WebSocketResponse(StreamResponse):
         accept_val = base64.b64encode(
             hashlib.sha1(key.encode() + WS_KEY).digest()
         ).decode()
-        response_headers = CIMultiDict(  # type: ignore
+        response_headers = CIMultiDict(  # type: ignore[var-annotated]
             {
-                hdrs.UPGRADE: "websocket",  # type: ignore
+                hdrs.UPGRADE: "websocket",  # type: ignore[arg-type]
                 hdrs.CONNECTION: "upgrade",
                 hdrs.SEC_WEBSOCKET_ACCEPT: accept_val,
             }
@@ -242,9 +243,9 @@ class WebSocketResponse(StreamResponse):
 
         if protocol:
             response_headers[hdrs.SEC_WEBSOCKET_PROTOCOL] = protocol
-        return (response_headers, protocol, compress, notakeover)  # type: ignore
+        return (response_headers, protocol, bool(compress), notakeover)
 
-    def _pre_start(self, request: BaseRequest) -> Tuple[str, WebSocketWriter]:
+    def _pre_start(self, request: BaseRequest) -> Tuple[Optional[str], WebSocketWriter]:
         self._loop = request._loop
 
         headers, protocol, compress, notakeover = self._handshake(request)
@@ -262,7 +263,7 @@ class WebSocketResponse(StreamResponse):
         return protocol, writer
 
     def _post_start(
-        self, request: BaseRequest, protocol: str, writer: WebSocketWriter
+        self, request: BaseRequest, protocol: Optional[str], writer: WebSocketWriter
     ) -> None:
         self._ws_protocol = protocol
         self._writer = writer
@@ -341,7 +342,7 @@ class WebSocketResponse(StreamResponse):
     ) -> None:
         await self.send_str(dumps(data), compress=compress)
 
-    async def write_eof(self) -> None:  # type: ignore
+    async def write_eof(self, data: bytes = b"") -> None:
         if self._eof_sent:
             return
         if self._payload_writer is None:

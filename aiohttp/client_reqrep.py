@@ -64,13 +64,13 @@ try:
     import ssl
     from ssl import SSLContext
 except ImportError:  # pragma: no cover
-    ssl = None  # type: ignore
-    SSLContext = object  # type: ignore
+    ssl = None  # type: ignore[assignment]
+    SSLContext = object  # type: ignore[assignment,misc]
 
 try:
     import cchardet as chardet
 except ImportError:  # pragma: no cover
-    import chardet  # type: ignore
+    import chardet  # type: ignore[no-redef]
 
 
 __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
@@ -333,9 +333,9 @@ class ClientRequest:
 
         if headers:
             if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
-                headers = headers.items()  # type: ignore
+                headers = headers.items()  # type: ignore[assignment]
 
-            for key, value in headers:  # type: ignore
+            for key, value in headers:  # type: ignore[misc]
                 # A special case for Host header
                 if key.lower() == "host":
                     self.headers[key] = value
@@ -347,7 +347,7 @@ class ClientRequest:
             (hdr, None) for hdr in sorted(skip_auto_headers)
         )
         used_headers = self.headers.copy()
-        used_headers.extend(self.skip_auto_headers)  # type: ignore
+        used_headers.extend(self.skip_auto_headers)  # type: ignore[arg-type]
 
         for hdr, val in self.DEFAULT_HEADERS.items():
             if hdr not in used_headers:
@@ -369,7 +369,7 @@ class ClientRequest:
         if isinstance(cookies, Mapping):
             iter_cookies = cookies.items()
         else:
-            iter_cookies = cookies  # type: ignore
+            iter_cookies = cookies  # type: ignore[assignment]
         for name, value in iter_cookies:
             if isinstance(value, Morsel):
                 # Preserve coded_value
@@ -377,7 +377,7 @@ class ClientRequest:
                 mrsl_val.set(value.key, value.value, value.coded_value)
                 c[name] = mrsl_val
             else:
-                c[name] = value  # type: ignore
+                c[name] = value  # type: ignore[assignment]
 
         self.headers[hdrs.COOKIE] = c.output(header="", sep=";").strip()
 
@@ -519,10 +519,12 @@ class ClientRequest:
                 await self.body.write(writer)
             else:
                 if isinstance(self.body, (bytes, bytearray)):
-                    self.body = (self.body,)  # type: ignore
+                    body = (self.body,)
+                else:
+                    body = self.body
 
-                for chunk in self.body:
-                    await writer.write(chunk)  # type: ignore
+                for chunk in body:
+                    await writer.write(chunk)
 
             await writer.write_eof()
         except OSError as exc:
@@ -806,7 +808,7 @@ class ClientResponse(HeadersMixin):
 
                 link.add(key, value)
 
-            key = link.get("rel", url)  # type: ignore
+            key = link.get("rel", url)  # type: ignore[assignment]
 
             link.add("url", self.url.join(URL(url)))
 
@@ -818,13 +820,14 @@ class ClientResponse(HeadersMixin):
         """Start response processing."""
         self._closed = False
         self._protocol = connection.protocol
+        assert self._protocol is not None
         self._connection = connection
 
         with self._timer:
             while True:
                 # read response
                 try:
-                    message, payload = await self._protocol.read()  # type: ignore
+                    message, payload = await self._protocol.read()
                 except http.HttpProcessingError as exc:
                     raise ClientResponseError(
                         self.request_info,
@@ -1007,11 +1010,12 @@ class ClientResponse(HeadersMixin):
         """Read response payload and decode."""
         if self._body is None:
             await self.read()
+            assert self._body is not None
 
         if encoding is None:
             encoding = self.get_encoding()
 
-        return self._body.decode(encoding, errors=errors)  # type: ignore
+        return self._body.decode(encoding, errors=errors)
 
     async def json(
         self,
@@ -1023,6 +1027,7 @@ class ClientResponse(HeadersMixin):
         """Read and decodes JSON response."""
         if self._body is None:
             await self.read()
+            assert self._body is not None
 
         if content_type:
             ctype = self.headers.get(hdrs.CONTENT_TYPE, "").lower()
@@ -1039,7 +1044,7 @@ class ClientResponse(HeadersMixin):
         if encoding is None:
             encoding = self.get_encoding()
 
-        return loads(self._body.decode(encoding))  # type: ignore
+        return loads(self._body.decode(encoding))
 
     async def __aenter__(self) -> "ClientResponse":
         return self

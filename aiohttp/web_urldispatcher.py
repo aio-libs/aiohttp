@@ -30,7 +30,7 @@ from typing import (
 )
 
 from typing_extensions import Final, TypedDict
-from yarl import URL, __version__ as yarl_version  # type: ignore
+from yarl import URL, __version__ as yarl_version  # type: ignore[attr-defined]
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
@@ -123,7 +123,7 @@ class AbstractResource(Sized, Iterable["AbstractRoute"]):
         """
 
     @abc.abstractmethod  # pragma: no branch
-    def url_for(self, **kwargs: str) -> URL:
+    def url_for(self, **kwargs: Any) -> URL:
         """Construct url for resource with additional params."""
 
     @abc.abstractmethod  # pragma: no branch
@@ -241,8 +241,8 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
     def http_exception(self) -> Optional[HTTPException]:
         return None
 
-    def get_info(self) -> _InfoDict:  # type: ignore
-        return self._route.get_info()
+    def get_info(self) -> Dict[str, Any]:
+        return cast(Dict[str, Any], self._route.get_info())
 
     @property
     def apps(self) -> Tuple["Application", ...]:
@@ -406,7 +406,7 @@ class PlainResource(Resource):
     def get_info(self) -> _InfoDict:
         return {"path": self._path}
 
-    def url_for(self) -> URL:  # type: ignore
+    def url_for(self, **kwargs: Any) -> URL:
         return URL.build(path=self._path, encoded=True)
 
     def __repr__(self) -> str:
@@ -554,11 +554,12 @@ class StaticResource(PrefixResource):
             ),
         }
 
-    def url_for(  # type: ignore
+    def url_for(  # type: ignore[override]
         self,
         *,
         filename: Union[str, Path],
         append_version: Optional[bool] = None,
+        **kwargs: Any,
     ) -> URL:
         if append_version is None:
             append_version = self._append_version

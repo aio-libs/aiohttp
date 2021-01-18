@@ -27,6 +27,7 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    cast,
 )
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
@@ -133,7 +134,7 @@ __all__ = (
 try:
     from ssl import SSLContext
 except ImportError:  # pragma: no cover
-    SSLContext = object  # type: ignore
+    SSLContext = object  # type: ignore[assignment,misc]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -245,10 +246,10 @@ class ClientSession:
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
-        if timeout is sentinel:
-            self._timeout = DEFAULT_TIMEOUT
+        if isinstance(timeout, ClientTimeout):
+            self._timeout = timeout
         else:
-            self._timeout = timeout  # type: ignore
+            self._timeout = DEFAULT_TIMEOUT
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
@@ -378,10 +379,10 @@ class ClientSession:
                 raise InvalidURL(proxy) from e
 
         if timeout is sentinel:
-            real_timeout = self._timeout  # type: ClientTimeout
+            real_timeout: ClientTimeout = self._timeout
         else:
             if not isinstance(timeout, ClientTimeout):
-                real_timeout = ClientTimeout(total=timeout)  # type: ignore
+                real_timeout = ClientTimeout(total=cast(float, timeout))
             else:
                 real_timeout = timeout
         # timeout is cumulative for all request operations
@@ -690,7 +691,7 @@ class ClientSession:
                     DeprecationWarning,
                     stacklevel=2,
                 )
-                ws_timeout = ClientWSTimeout(ws_close=timeout)  # type: ignore
+                ws_timeout = ClientWSTimeout(ws_close=cast(float, timeout))
         else:
             ws_timeout = DEFAULT_WS_CLIENT_TIMEOUT
         if receive_timeout is not None:
@@ -1053,7 +1054,7 @@ class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType
     def send(self, arg: None) -> "asyncio.Future[Any]":
         return self._coro.send(arg)
 
-    def throw(self, arg: BaseException) -> None:  # type: ignore
+    def throw(self, arg: BaseException) -> None:  # type: ignore[override]
         self._coro.throw(arg)
 
     def close(self) -> None:
