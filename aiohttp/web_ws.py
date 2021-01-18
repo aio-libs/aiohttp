@@ -243,7 +243,12 @@ class WebSocketResponse(StreamResponse):
 
         if protocol:
             response_headers[hdrs.SEC_WEBSOCKET_PROTOCOL] = protocol
-        return (response_headers, protocol, bool(compress), notakeover)
+        return (
+            response_headers,
+            protocol,
+            compress,  # type: ignore[return-value]
+            notakeover,
+        )
 
     def _pre_start(self, request: BaseRequest) -> Tuple[Optional[str], WebSocketWriter]:
         self._loop = request._loop
