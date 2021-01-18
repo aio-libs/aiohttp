@@ -30,6 +30,8 @@ repos:
     exclude: >-
       ^docs/[^/]*\.svg$
   - id: requirements-txt-fixer
+    exclude: >-
+      ^requirements/dev.txt
   - id: trailing-whitespace
   - id: file-contents-sorter
     files: |
