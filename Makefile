@@ -145,7 +145,7 @@ compile-deps: .update-pip
 
 .PHONY: install
 install: .update-pip
-	@pip install -Ur requirements/dev.txt
+	@pip install -r requirements/dev.in -c requirements/dev.txt
 
 .PHONY: install-dev
 install-dev: .develop
