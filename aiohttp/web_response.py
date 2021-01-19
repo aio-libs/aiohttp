@@ -259,9 +259,17 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             self._headers.pop(hdrs.LAST_MODIFIED, None)
         elif isinstance(value, (int, float)):
             self._headers[hdrs.LAST_MODIFIED] = time.strftime(
-                "%a, %d %b %Y %H:%M:%S GMT", time.gmtime(math.ceil(value))
+                "%a, %d %b %Y %H:%M:%S GMT", time.gmtime(math.floor(value))
             )
         elif isinstance(value, datetime.datetime):
+            if not value.tzinfo:
+                warnings.warn(
+                    RuntimeWarning(
+                        "'last_modified' property received a offset-naive datetime. "
+                        "Please specify a timezone for your datetime object."
+                    )
+                )
+
             self._headers[hdrs.LAST_MODIFIED] = time.strftime(
                 "%a, %d %b %Y %H:%M:%S GMT", value.utctimetuple()
             )

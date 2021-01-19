@@ -15,7 +15,8 @@ def test_using_gzip_if_header_present_and_file_available(loop: Any) -> None:
     gz_filepath.open = mock.mock_open()
     gz_filepath.is_file.return_value = True
     gz_filepath.stat.return_value = mock.MagicMock()
-    gz_filepath.stat.st_size = 1024
+    gz_filepath.stat.return_value.st_size = 1024
+    gz_filepath.stat.return_value.st_mtime = 0
 
     filepath = mock.Mock()
     filepath.name = "logo.png"
@@ -43,7 +44,8 @@ def test_gzip_if_header_not_present_and_file_available(loop: Any) -> None:
     filepath.open = mock.mock_open()
     filepath.with_name.return_value = gz_filepath
     filepath.stat.return_value = mock.MagicMock()
-    filepath.stat.st_size = 1024
+    filepath.stat.return_value.st_size = 1024
+    filepath.stat.return_value.st_mtime = 0
 
     file_sender = FileResponse(filepath)
     file_sender._sendfile = make_mocked_coro(None)  # type: ignore
@@ -66,7 +68,8 @@ def test_gzip_if_header_not_present_and_file_not_available(loop: Any) -> None:
     filepath.open = mock.mock_open()
     filepath.with_name.return_value = gz_filepath
     filepath.stat.return_value = mock.MagicMock()
-    filepath.stat.st_size = 1024
+    filepath.stat.return_value.st_size = 1024
+    filepath.stat.return_value.st_mtime = 0
 
     file_sender = FileResponse(filepath)
     file_sender._sendfile = make_mocked_coro(None)  # type: ignore
@@ -91,7 +94,8 @@ def test_gzip_if_header_present_and_file_not_available(loop: Any) -> None:
     filepath.open = mock.mock_open()
     filepath.with_name.return_value = gz_filepath
     filepath.stat.return_value = mock.MagicMock()
-    filepath.stat.st_size = 1024
+    filepath.stat.return_value.st_size = 1024
+    filepath.stat.return_value.st_mtime = 0
 
     file_sender = FileResponse(filepath)
     file_sender._sendfile = make_mocked_coro(None)  # type: ignore
@@ -109,7 +113,8 @@ def test_status_controlled_by_user(loop: Any) -> None:
     filepath.name = "logo.png"
     filepath.open = mock.mock_open()
     filepath.stat.return_value = mock.MagicMock()
-    filepath.stat.st_size = 1024
+    filepath.stat.return_value.st_size = 1024
+    filepath.stat.return_value.st_mtime = 0
 
     file_sender = FileResponse(filepath, status=203)
     file_sender._sendfile = make_mocked_coro(None)  # type: ignore
