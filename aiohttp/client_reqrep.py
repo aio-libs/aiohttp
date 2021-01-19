@@ -519,12 +519,10 @@ class ClientRequest:
                 await self.body.write(writer)
             else:
                 if isinstance(self.body, (bytes, bytearray)):
-                    body = (self.body,)
-                else:
-                    body = self.body
+                    self.body = (self.body,)  # type: ignore[assignment]
 
-                for chunk in body:
-                    await writer.write(chunk)
+                for chunk in self.body:
+                    await writer.write(chunk)  # type: ignore[arg-type]
 
             await writer.write_eof()
         except OSError as exc:
