@@ -34,9 +34,7 @@ def test_register_unsupported_order(registry: Any) -> None:
         pass
 
     with pytest.raises(ValueError):
-        payload.register_payload(
-            Payload, TestProvider, order=object()  # type: ignore[arg-type]
-        )
+        payload.register_payload(Payload, TestProvider, order=object())  # type: ignore
 
 
 def test_payload_ctor() -> None:
@@ -65,7 +63,7 @@ def test_bytes_payload_explicit_content_type() -> None:
 
 def test_bytes_payload_bad_type() -> None:
     with pytest.raises(TypeError):
-        payload.BytesPayload(object())  # type: ignore[arg-type]
+        payload.BytesPayload(object())  # type: ignore
 
 
 def test_bytes_payload_memoryview_correct_size() -> None:
@@ -117,4 +115,4 @@ def test_async_iterable_payload_explicit_content_type() -> None:
 def test_async_iterable_payload_not_async_iterable() -> None:
 
     with pytest.raises(TypeError):
-        payload.AsyncIterablePayload(object())  # type: ignore[arg-type]
+        payload.AsyncIterablePayload(object())  # type: ignore

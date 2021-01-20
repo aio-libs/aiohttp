@@ -55,8 +55,8 @@ try:
 
     SSLContext = ssl.SSLContext
 except ImportError:  # pragma: no cover
-    ssl = None  # type: ignore[assignment]
-    SSLContext = object  # type: ignore[assignment,misc]
+    ssl = None  # type: ignore
+    SSLContext = object  # type: ignore
 
 
 __all__ = ("BaseConnector", "TCPConnector", "UnixConnector", "NamedPipeConnector")
@@ -218,7 +218,7 @@ class BaseConnector:
         self._force_close = force_close
 
         # {host_key: FIFO list of waiters}
-        self._waiters = defaultdict(deque)  # type: ignore[var-annotated]
+        self._waiters = defaultdict(deque)  # type: ignore
 
         self._loop = loop
         self._factory = functools.partial(ResponseHandler, loop=loop)
@@ -943,12 +943,7 @@ class TCPConnector(BaseConnector):
     ) -> Tuple[asyncio.Transport, ResponseHandler]:
         try:
             async with ceil_timeout(timeout.sock_connect):
-                transport, handler = await self._loop.create_connection(*args, **kwargs)
-                return (
-                    cast(asyncio.Transport, transport),
-                    cast(ResponseHandler, handler),
-                )
-
+                return await self._loop.create_connection(*args, **kwargs)  # type: ignore  # noqa
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:
@@ -1036,7 +1031,7 @@ class TCPConnector(BaseConnector):
     ) -> Tuple[asyncio.Transport, ResponseHandler]:
         headers = {}  # type: Dict[str, str]
         if req.proxy_headers is not None:
-            headers = req.proxy_headers  # type: ignore[assignment]
+            headers = req.proxy_headers  # type: ignore
         headers[hdrs.HOST] = req.headers[hdrs.HOST]
 
         url = req.proxy
@@ -1207,9 +1202,7 @@ class NamedPipeConnector(BaseConnector):
             limit=limit,
             limit_per_host=limit_per_host,
         )
-        if not isinstance(
-            self._loop, asyncio.ProactorEventLoop  # type: ignore[attr-defined]
-        ):
+        if not isinstance(self._loop, asyncio.ProactorEventLoop):  # type: ignore
             raise RuntimeError(
                 "Named Pipes only available in proactor " "loop under windows"
             )
@@ -1225,7 +1218,7 @@ class NamedPipeConnector(BaseConnector):
     ) -> ResponseHandler:
         try:
             async with ceil_timeout(timeout.sock_connect):
-                _, proto = await self._loop.create_pipe_connection(  # type: ignore[attr-defined]  # noqa: E501
+                _, proto = await self._loop.create_pipe_connection(  # type: ignore
                     self._factory, self._path
                 )
                 # the drain is required so that the connection_made is called

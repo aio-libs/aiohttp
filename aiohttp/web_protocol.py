@@ -68,8 +68,8 @@ ERROR = RawRequestMessage(
     "UNKNOWN",
     "/",
     HttpVersion10,
-    {},  # type: ignore[arg-type]
-    {},  # type: ignore[arg-type]
+    {},  # type: ignore
+    {},  # type: ignore
     True,
     None,
     False,

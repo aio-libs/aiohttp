@@ -38,7 +38,6 @@ from typing import (
     TypeVar,
     Union,
     cast,
-    overload,
 )
 from urllib.parse import quote
 from urllib.request import getproxies
@@ -326,16 +325,6 @@ def parse_mimetype(mimetype: str) -> MimeType:
     )
 
 
-@overload
-def guess_filename(obj: Any, default: str) -> str:
-    ...
-
-
-@overload
-def guess_filename(obj: Any) -> Optional[str]:
-    ...
-
-
 def guess_filename(obj: Any, default: Optional[str] = None) -> Optional[str]:
     name = getattr(obj, "name", None)
     if name and isinstance(name, str) and name[0] != "<" and name[-1] != ">":
@@ -462,7 +451,7 @@ try:
     from ._helpers import reify as reify_c
 
     if not NO_EXTENSIONS:
-        reify = reify_c  # type: ignore[assignment,misc]
+        reify = reify_c  # type: ignore
 except ImportError:
     pass
 
@@ -730,27 +719,23 @@ class HeadersMixin:
     @property
     def content_type(self) -> str:
         """The value of content part for Content-Type HTTP header."""
-        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore[attr-defined]
+        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
-        return cast(str, self._content_type)
+        return self._content_type  # type: ignore
 
     @property
     def charset(self) -> Optional[str]:
         """The value of charset part for Content-Type HTTP header."""
-        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore[attr-defined]
+        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
-
-        assert self._content_dict is not None
-        return self._content_dict.get("charset")
+        return self._content_dict.get("charset")  # type: ignore
 
     @property
     def content_length(self) -> Optional[int]:
         """The value of Content-Length HTTP header."""
-        content_length = self._headers.get(  # type: ignore[attr-defined]
-            hdrs.CONTENT_LENGTH
-        )
+        content_length = self._headers.get(hdrs.CONTENT_LENGTH)  # type: ignore
 
         if content_length is not None:
             return int(content_length)
@@ -794,7 +779,7 @@ class ChainMapProxy(Mapping[str, Any]):
 
     def __len__(self) -> int:
         # reuses stored hash values if possible
-        return len(set().union(*self._maps))  # type: ignore[arg-type]
+        return len(set().union(*self._maps))  # type: ignore
 
     def __iter__(self) -> Iterator[str]:
         d = {}  # type: Dict[str, Any]

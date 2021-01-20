@@ -62,16 +62,14 @@ class ChunkTupleAsyncStreamIterator:
 
 class AsyncStreamReaderMixin:
     def __aiter__(self) -> AsyncStreamIterator[bytes]:
-        return AsyncStreamIterator(self.readline)  # type: ignore[attr-defined]
+        return AsyncStreamIterator(self.readline)  # type: ignore
 
     def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
         """Returns an asynchronous iterator that yields chunks of size n.
 
         Python-3.5 available for Python 3.5+ only
         """
-        return AsyncStreamIterator(
-            lambda: self.read(n)  # type: ignore[attr-defined,no-any-return]
-        )
+        return AsyncStreamIterator(lambda: self.read(n))  # type: ignore
 
     def iter_any(self) -> AsyncStreamIterator[bytes]:
         """Returns an asynchronous iterator that yields all the available
@@ -79,7 +77,7 @@ class AsyncStreamReaderMixin:
 
         Python-3.5 available for Python 3.5+ only
         """
-        return AsyncStreamIterator(self.readany)  # type: ignore[attr-defined]
+        return AsyncStreamIterator(self.readany)  # type: ignore
 
     def iter_chunks(self) -> ChunkTupleAsyncStreamIterator:
         """Returns an asynchronous iterator that yields chunks of data
@@ -88,7 +86,7 @@ class AsyncStreamReaderMixin:
 
         Python-3.5 available for Python 3.5+ only
         """
-        return ChunkTupleAsyncStreamIterator(self)  # type: ignore[arg-type]
+        return ChunkTupleAsyncStreamIterator(self)  # type: ignore
 
 
 class StreamReader(AsyncStreamReaderMixin):

@@ -11,7 +11,7 @@ try:
 
     SSLContext = ssl.SSLContext
 except ImportError:  # pragma: no cover
-    ssl = SSLContext = None  # type: ignore[assignment]
+    ssl = SSLContext = None  # type: ignore
 
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -270,11 +270,11 @@ else:  # pragma: no cover
     ssl_error_bases = (ClientSSLError,)
 
 
-class ClientConnectorSSLError(*ssl_error_bases):  # type: ignore[misc]
+class ClientConnectorSSLError(*ssl_error_bases):  # type: ignore
     """Response ssl error."""
 
 
-class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore[misc]
+class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore
     """Response certificate error."""
 
     def __init__(

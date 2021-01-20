@@ -57,7 +57,7 @@ else:
 if PY_38:
     from unittest import IsolatedAsyncioTestCase as TestCase
 else:
-    from asynctest import TestCase  # type: ignore[no-redef]
+    from asynctest import TestCase  # type: ignore
 
 REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
 

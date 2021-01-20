@@ -916,7 +916,7 @@ RawResponseMessagePy = RawResponseMessage
 
 try:
     if not NO_EXTENSIONS:
-        from ._http_parser import (  # type: ignore[import,no-redef]
+        from ._http_parser import (  # type: ignore
             HttpRequestParser,
             HttpResponseParser,
             RawRequestMessage,

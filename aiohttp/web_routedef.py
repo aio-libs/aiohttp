@@ -157,7 +157,7 @@ class RouteTableDef(Sequence[AbstractRouteDef]):
     """Route definition table"""
 
     def __init__(self) -> None:
-        self._items: List[AbstractRouteDef] = []
+        self._items = []  # type: List[AbstractRouteDef]
 
     def __repr__(self) -> str:
         return "<RouteTableDef count={}>".format(len(self._items))
@@ -170,9 +170,7 @@ class RouteTableDef(Sequence[AbstractRouteDef]):
     def __getitem__(self, index: slice) -> List[AbstractRouteDef]:
         ...
 
-    def __getitem__(
-        self, index: Union[int, slice]
-    ) -> Union[AbstractRouteDef, List[AbstractRouteDef]]:
+    def __getitem__(self, index):  # type: ignore
         return self._items[index]
 
     def __iter__(self) -> Iterator[AbstractRouteDef]:

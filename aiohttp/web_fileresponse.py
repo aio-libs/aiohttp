@@ -213,12 +213,12 @@ class FileResponse(StreamResponse):
                 self.set_status(status)
 
         if should_set_ct:
-            self.content_type = ct  # type: ignore[assignment]
+            self.content_type = ct  # type: ignore
         if encoding:
             self.headers[hdrs.CONTENT_ENCODING] = encoding
         if gzip:
             self.headers[hdrs.VARY] = hdrs.ACCEPT_ENCODING
-        self.last_modified = st.st_mtime  # type: ignore[assignment]
+        self.last_modified = st.st_mtime  # type: ignore
         self.content_length = count
 
         self.headers[hdrs.ACCEPT_RANGES] = "bytes"

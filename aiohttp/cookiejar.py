@@ -147,7 +147,7 @@ class CookieJar(AbstractCookieJar):
         for name, cookie in cookies:
             if not isinstance(cookie, Morsel):
                 tmp = SimpleCookie()  # type: SimpleCookie[str]
-                tmp[name] = cookie  # type: ignore[assignment]
+                tmp[name] = cookie  # type: ignore
                 cookie = tmp[name]
 
             domain = cookie["domain"]
