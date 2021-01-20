@@ -451,7 +451,7 @@ try:
     from ._helpers import reify as reify_c
 
     if not NO_EXTENSIONS:
-        reify = reify_c  # type: ignore
+        reify = reify_c  # type: ignore[misc,assignment]
 except ImportError:
     pass
 
@@ -719,23 +719,25 @@ class HeadersMixin:
     @property
     def content_type(self) -> str:
         """The value of content part for Content-Type HTTP header."""
-        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore
+        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore[attr-defined]
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
-        return self._content_type  # type: ignore
+        return self._content_type  # type: ignore[return-value]
 
     @property
     def charset(self) -> Optional[str]:
         """The value of charset part for Content-Type HTTP header."""
-        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore
+        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore[attr-defined]
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
-        return self._content_dict.get("charset")  # type: ignore
+        return self._content_dict.get("charset")  # type: ignore[union-attr]
 
     @property
     def content_length(self) -> Optional[int]:
         """The value of Content-Length HTTP header."""
-        content_length = self._headers.get(hdrs.CONTENT_LENGTH)  # type: ignore
+        content_length = self._headers.get(  # type: ignore[attr-defined]
+            hdrs.CONTENT_LENGTH
+        )
 
         if content_length is not None:
             return int(content_length)
@@ -779,7 +781,7 @@ class ChainMapProxy(Mapping[str, Any]):
 
     def __len__(self) -> int:
         # reuses stored hash values if possible
-        return len(set().union(*self._maps))  # type: ignore
+        return len(set().union(*self._maps))  # type: ignore[arg-type]
 
     def __iter__(self) -> Iterator[str]:
         d = {}  # type: Dict[str, Any]

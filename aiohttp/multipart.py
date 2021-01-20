@@ -275,7 +275,7 @@ class BodyPartReader:
         self._cache = {}  # type: Dict[str, Any]
 
     def __aiter__(self) -> AsyncIterator["BodyPartReader"]:
-        return self  # type: ignore
+        return self  # type: ignore[return-value]
 
     async def __anext__(self) -> bytes:
         part = await self.next()
@@ -587,7 +587,7 @@ class MultipartReader:
     def __aiter__(
         self,
     ) -> AsyncIterator["BodyPartReader"]:
-        return self  # type: ignore
+        return self  # type: ignore[return-value]
 
     async def __anext__(
         self,
@@ -888,7 +888,7 @@ class MultipartWriter(Payload):
         if size is not None and not (encoding or te_encoding):
             payload.headers[CONTENT_LENGTH] = str(size)
 
-        self._parts.append((payload, encoding, te_encoding))  # type: ignore
+        self._parts.append((payload, encoding, te_encoding))  # type: ignore[arg-type]
         return payload
 
     def append_json(
@@ -953,7 +953,7 @@ class MultipartWriter(Payload):
                     w.enable_compression(encoding)
                 if te_encoding:
                     w.enable_encoding(te_encoding)
-                await part.write(w)  # type: ignore
+                await part.write(w)  # type: ignore[arg-type]
                 await w.write_eof()
             else:
                 await part.write(writer)
