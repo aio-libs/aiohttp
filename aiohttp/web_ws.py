@@ -110,7 +110,7 @@ class WebSocketResponse(StreamResponse):
         if heartbeat is not None:
             self._pong_heartbeat = heartbeat / 2.0
         self._pong_response_cb: Optional[asyncio.TimerHandle] = None
-        self._compress = int(compress)
+        self._compress = compress
         self._max_msg_size = max_msg_size
 
     def _cancel_heartbeat(self) -> None:
@@ -167,7 +167,7 @@ class WebSocketResponse(StreamResponse):
 
     def _handshake(
         self, request: BaseRequest
-    ) -> Tuple["CIMultiDict[str]", Optional[str], int, bool]:
+    ) -> Tuple["CIMultiDict[str]", Optional[str], bool, bool]:
         headers = request.headers
         if "websocket" != headers.get(hdrs.UPGRADE, "").lower().strip():
             raise HTTPBadRequest(
@@ -246,7 +246,7 @@ class WebSocketResponse(StreamResponse):
         return (
             response_headers,
             protocol,
-            compress,
+            compress,  # type: ignore[return-value]
             notakeover,
         )
 
@@ -279,9 +279,7 @@ class WebSocketResponse(StreamResponse):
         assert loop is not None
         self._reader = FlowControlDataQueue(request._protocol, 2 ** 16, loop=loop)
         request.protocol.set_parser(
-            WebSocketReader(
-                self._reader, self._max_msg_size, compress=bool(self._compress)
-            )
+            WebSocketReader(self._reader, self._max_msg_size, compress=self._compress)
         )
         # disable HTTP keepalive for WebSocket
         request.protocol.keep_alive(False)
@@ -309,7 +307,7 @@ class WebSocketResponse(StreamResponse):
         return self._ws_protocol
 
     @property
-    def compress(self) -> int:
+    def compress(self) -> bool:
         return self._compress
 
     def exception(self) -> Optional[BaseException]:
