@@ -59,7 +59,7 @@ PY_37 = sys.version_info >= (3, 7)
 PY_38 = sys.version_info >= (3, 8)
 
 if not PY_37:
-    import idna_ssl
+    import idna_ssl  # type: ignore[import]
 
     idna_ssl.patch_match_hostname()
 
@@ -297,7 +297,7 @@ def get_running_loop(
 def isasyncgenfunction(obj: Any) -> bool:
     func = getattr(inspect, "isasyncgenfunction", None)
     if func is not None:
-        return func(obj)
+        return func(obj)  # type: ignore[no-any-return]
     else:
         return False
 
@@ -395,8 +395,8 @@ def content_disposition_header(
     return value
 
 
-class _TSelf(Protocol):
-    _cache: Dict[str, Any]
+class _TSelf(Protocol, Generic[_T]):
+    _cache: Dict[str, _T]
 
 
 class reify(Generic[_T]):
@@ -413,7 +413,7 @@ class reify(Generic[_T]):
         self.__doc__ = wrapped.__doc__
         self.name = wrapped.__name__
 
-    def __get__(self, inst: _TSelf, owner: Optional[Type[Any]] = None) -> _T:
+    def __get__(self, inst: _TSelf[_T], owner: Optional[Type[Any]] = None) -> _T:
         try:
             try:
                 return inst._cache[self.name]
@@ -426,7 +426,7 @@ class reify(Generic[_T]):
                 return self
             raise
 
-    def __set__(self, inst: _TSelf, value: _T) -> None:
+    def __set__(self, inst: _TSelf[_T], value: _T) -> None:
         raise AttributeError("reified property is read-only")
 
 
@@ -436,7 +436,7 @@ try:
     from ._helpers import reify as reify_c
 
     if not NO_EXTENSIONS:
-        reify = reify_c  # type: ignore
+        reify = reify_c  # type: ignore[misc,assignment]
 except ImportError:
     pass
 
@@ -532,7 +532,7 @@ def rfc822_formatted_time() -> str:
     return _cached_formatted_datetime
 
 
-def _weakref_handle(info):  # type: ignore
+def _weakref_handle(info: "Tuple[weakref.ref[object], str]") -> None:
     ref, name = info
     ob = ref()
     if ob is not None:
@@ -540,21 +540,27 @@ def _weakref_handle(info):  # type: ignore
             getattr(ob, name)()
 
 
-def weakref_handle(ob, name, timeout, loop):  # type: ignore
+def weakref_handle(
+    ob: object, name: str, timeout: float, loop: asyncio.AbstractEventLoop
+) -> Optional[asyncio.TimerHandle]:
     if timeout is not None and timeout > 0:
         when = loop.time() + timeout
         if timeout >= 5:
             when = ceil(when)
 
         return loop.call_at(when, _weakref_handle, (weakref.ref(ob), name))
+    return None
 
 
-def call_later(cb, timeout, loop):  # type: ignore
+def call_later(
+    cb: Callable[[], Any], timeout: float, loop: asyncio.AbstractEventLoop
+) -> Optional[asyncio.TimerHandle]:
     if timeout is not None and timeout > 0:
         when = loop.time() + timeout
         if timeout > 5:
             when = ceil(when)
         return loop.call_at(when, cb)
+    return None
 
 
 class TimeoutHandle:
@@ -696,23 +702,25 @@ class HeadersMixin:
     @property
     def content_type(self) -> str:
         """The value of content part for Content-Type HTTP header."""
-        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore
+        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore[attr-defined]
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
-        return self._content_type  # type: ignore
+        return self._content_type  # type: ignore[return-value]
 
     @property
     def charset(self) -> Optional[str]:
         """The value of charset part for Content-Type HTTP header."""
-        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore
+        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore[attr-defined]
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
-        return self._content_dict.get("charset")  # type: ignore
+        return self._content_dict.get("charset")  # type: ignore[union-attr]
 
     @property
     def content_length(self) -> Optional[int]:
         """The value of Content-Length HTTP header."""
-        content_length = self._headers.get(hdrs.CONTENT_LENGTH)  # type: ignore
+        content_length = self._headers.get(  # type: ignore[attr-defined]
+            hdrs.CONTENT_LENGTH
+        )
 
         if content_length is not None:
             return int(content_length)
@@ -755,7 +763,7 @@ class ChainMapProxy(Mapping[str, Any]):
 
     def __len__(self) -> int:
         # reuses stored hash values if possible
-        return len(set().union(*self._maps))  # type: ignore
+        return len(set().union(*self._maps))  # type: ignore[arg-type]
 
     def __iter__(self) -> Iterator[str]:
         d = {}  # type: Dict[str, Any]
