@@ -21,7 +21,7 @@ async def _check_request_resolves(request: Request, path: str) -> Tuple[bool, Re
     alt_request = request.clone(rel_url=path)
 
     match_info = await request.app.router.resolve(alt_request)
-    alt_request._match_info = match_info  # type: ignore
+    alt_request._match_info = match_info  # type: ignore[assignment]
 
     if match_info.http_exception is None:
         return True, alt_request
@@ -30,7 +30,7 @@ async def _check_request_resolves(request: Request, path: str) -> Tuple[bool, Re
 
 
 def middleware(f: _Func) -> _Func:
-    f.__middleware_version__ = 1  # type: ignore
+    f.__middleware_version__ = 1  # type: ignore[attr-defined]
     return f
 
 

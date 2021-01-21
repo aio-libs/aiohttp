@@ -22,14 +22,14 @@ try:
 
     SSLContext = ssl.SSLContext
 except ImportError:  # pragma: no cover
-    ssl = None  # type: ignore
-    SSLContext = object  # type: ignore
+    ssl = None  # type: ignore[assignment]
+    SSLContext = object  # type: ignore[misc,assignment]
 
 
 __all__ = ("GunicornWebWorker", "GunicornUVLoopWebWorker", "GunicornTokioWebWorker")
 
 
-class GunicornWebWorker(base.Worker):
+class GunicornWebWorker(base.Worker):  # type: ignore[misc]
 
     DEFAULT_AIOHTTP_LOG_FORMAT = AccessLogger.LOG_FORMAT
     DEFAULT_GUNICORN_LOG_FORMAT = GunicornAccessLogFormat.default
@@ -101,7 +101,7 @@ class GunicornWebWorker(base.Worker):
         # If our parent changed then we shut down.
         pid = os.getpid()
         try:
-            while self.alive:  # type: ignore
+            while self.alive:  # type: ignore[has-type]
                 self.notify()
 
                 cnt = server.requests_count
