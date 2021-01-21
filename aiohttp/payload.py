@@ -55,7 +55,6 @@ __all__ = (
 
 TOO_LARGE_BYTES_BODY: Final[int] = 2 ** 20  # 1 MB
 
-
 if TYPE_CHECKING:  # pragma: no cover
     from typing import List
 
@@ -90,6 +89,10 @@ class payload_type:
         return factory
 
 
+PayloadType = Type["Payload"]
+_PayloadRegistryItem = Tuple[PayloadType, Any]
+
+
 class PayloadRegistry:
     """Payload registry.
 
@@ -97,12 +100,16 @@ class PayloadRegistry:
     """
 
     def __init__(self) -> None:
-        self._first = []  # type: List[Tuple[Type[Payload], Any]]
-        self._normal = []  # type: List[Tuple[Type[Payload], Any]]
-        self._last = []  # type: List[Tuple[Type[Payload], Any]]
+        self._first = []  # type: List[_PayloadRegistryItem]
+        self._normal = []  # type: List[_PayloadRegistryItem]
+        self._last = []  # type: List[_PayloadRegistryItem]
 
     def get(
-        self, data: Any, *args: Any, _CHAIN: Any = chain, **kwargs: Any
+        self,
+        data: Any,
+        *args: Any,
+        _CHAIN: "Type[chain[_PayloadRegistryItem]]" = chain,
+        **kwargs: Any,
     ) -> "Payload":
         if isinstance(data, Payload):
             return data
@@ -113,7 +120,7 @@ class PayloadRegistry:
         raise LookupError()
 
     def register(
-        self, factory: Type["Payload"], type: Any, *, order: Order = Order.normal
+        self, factory: PayloadType, type: Any, *, order: Order = Order.normal
     ) -> None:
         if order is Order.try_first:
             self._first.append((factory, type))
@@ -278,6 +285,8 @@ class StringIOPayload(StringPayload):
 
 
 class IOBasePayload(Payload):
+    _value: IO[Any]
+
     def __init__(
         self, value: IO[Any], disposition: str = "attachment", *args: Any, **kwargs: Any
     ) -> None:
@@ -302,6 +311,8 @@ class IOBasePayload(Payload):
 
 
 class TextIOPayload(IOBasePayload):
+    _value: TextIO
+
     def __init__(
         self,
         value: TextIO,
@@ -342,7 +353,12 @@ class TextIOPayload(IOBasePayload):
         try:
             chunk = await loop.run_in_executor(None, self._value.read, 2 ** 16)
             while chunk:
-                await writer.write(chunk.encode(self._encoding))
+                data = (
+                    chunk.encode(encoding=self._encoding)
+                    if self._encoding
+                    else chunk.encode()
+                )
+                await writer.write(data)
                 chunk = await loop.run_in_executor(None, self._value.read, 2 ** 16)
         finally:
             await loop.run_in_executor(None, self._value.close)

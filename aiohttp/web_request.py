@@ -218,12 +218,14 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         if method is not sentinel:
             dct["method"] = method
         if rel_url is not sentinel:
-            new_url: URL = URL(rel_url)  # type: ignore
+            new_url: URL = URL(rel_url)  # type: ignore[arg-type]
             dct["url"] = new_url
             dct["path"] = str(new_url)
         if headers is not sentinel:
             # a copy semantic
-            new_headers = CIMultiDictProxy(CIMultiDict(headers))  # type: ignore
+            new_headers = CIMultiDictProxy(
+                CIMultiDict(headers)  # type: ignore[arg-type]
+            )
             dct["headers"] = new_headers
             dct["raw_headers"] = tuple(
                 (k.encode("utf-8"), v.encode("utf-8")) for k, v in new_headers.items()
@@ -233,11 +235,11 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
         kwargs: Dict[str, str] = {}
         if scheme is not sentinel:
-            kwargs["scheme"] = scheme  # type: ignore
+            kwargs["scheme"] = scheme  # type: ignore[assignment]
         if host is not sentinel:
-            kwargs["host"] = host  # type: ignore
+            kwargs["host"] = host  # type: ignore[assignment]
         if remote is not sentinel:
-            kwargs["remote"] = remote  # type: ignore
+            kwargs["remote"] = remote  # type: ignore[assignment]
 
         return self.__class__(
             message,
@@ -403,8 +405,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         host = self._message.headers.get(hdrs.HOST)
         if host is not None:
             return host
-        else:
-            return socket.getfqdn()
+        return socket.getfqdn()
 
     @reify
     def remote(self) -> Optional[str]:
@@ -415,10 +416,11 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         - overridden value by .clone(remote=new_remote) call.
         - peername of opened socket
         """
+        if self._transport_peername is None:
+            return None
         if isinstance(self._transport_peername, (list, tuple)):
-            return self._transport_peername[0]
-        else:
-            return self._transport_peername
+            return str(self._transport_peername[0])
+        return str(self._transport_peername)
 
     @reify
     def url(self) -> URL:
@@ -451,9 +453,9 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._message.path
 
     @reify
-    def query(self) -> "MultiDictProxy[str]":
+    def query(self) -> MultiDictProxy[str]:
         """A multidict with all the variables in the query string."""
-        return self._rel_url.query
+        return MultiDictProxy(self._rel_url.query)
 
     @reify
     def query_string(self) -> str:
