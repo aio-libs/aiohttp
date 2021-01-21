@@ -279,7 +279,7 @@ __all__ = (
 try:
     from ssl import SSLContext
 except ImportError:  # pragma: no cover
-    SSLContext = Any  # type: ignore
+    SSLContext = Any  # type: ignore[misc,assignment]
 
 HostSequence = TypingIterable[str]
 
@@ -305,7 +305,7 @@ async def _run_app(
 ) -> None:
     # A internal functio to actually do all dirty job for application running
     if asyncio.iscoroutine(app):
-        app = await app  # type: ignore
+        app = await app  # type: ignore[misc]
 
     app = cast(Application, app)
 

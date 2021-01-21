@@ -10,7 +10,17 @@ import socket
 import sys
 from abc import ABC, abstractmethod
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Callable, Iterator, List, Optional, Type, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Iterator,
+    List,
+    Optional,
+    Type,
+    Union,
+    cast,
+)
 from unittest import mock
 
 from aiosignal import Signal
@@ -46,7 +56,7 @@ else:
 if PY_38:
     from unittest import IsolatedAsyncioTestCase as TestCase
 else:
-    from asynctest import TestCase  # type: ignore
+    from asynctest import TestCase  # type: ignore[no-redef]
 
 REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
 
@@ -70,7 +80,7 @@ def unused_port() -> int:
     """Return a port that is unused on the current host."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
+        return cast(int, s.getsockname()[1])
 
 
 class BaseTestServer(ABC):
@@ -279,8 +289,8 @@ class TestClient:
         return self._server
 
     @property
-    def app(self) -> Application:
-        return getattr(self._server, "app", None)
+    def app(self) -> Optional[Application]:
+        return cast(Optional[Application], getattr(self._server, "app", None))
 
     @property
     def session(self) -> ClientSession:
@@ -615,7 +625,7 @@ def make_mocked_request(
         headers,
         raw_hdrs,
         closing,
-        False,
+        None,
         False,
         chunked,
         URL(path),

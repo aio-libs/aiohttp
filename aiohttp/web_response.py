@@ -46,7 +46,7 @@ else:
 if not PY_38:
     # allow samesite to be used in python < 3.8
     # already permitted in python 3.8, see https://bugs.python.org/issue29613
-    Morsel._reserved["samesite"] = "SameSite"  # type: ignore
+    Morsel._reserved["samesite"] = "SameSite"  # type: ignore[attr-defined]
 
 
 class ContentCoding(enum.Enum):
@@ -100,8 +100,11 @@ class StreamResponse(BaseClass, HeadersMixin):
         return self._payload_writer is not None
 
     @property
-    def task(self) -> "asyncio.Task[None]":
-        return getattr(self._req, "task", None)
+    def task(self) -> "Optional[asyncio.Task[None]]":
+        if self._req:
+            return self._req.task
+        else:
+            return None
 
     @property
     def status(self) -> int:

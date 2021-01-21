@@ -131,7 +131,7 @@ __all__ = (
 try:
     from ssl import SSLContext
 except ImportError:  # pragma: no cover
-    SSLContext = object  # type: ignore
+    SSLContext = object  # type: ignore[misc,assignment]
 
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
@@ -265,7 +265,7 @@ class ClientSession:
                     stacklevel=2,
                 )
         else:
-            self._timeout = timeout  # type: ignore
+            self._timeout = timeout  # type: ignore[assignment]
             if read_timeout is not sentinel:
                 raise ValueError(
                     "read_timeout and timeout parameters "
@@ -421,7 +421,7 @@ class ClientSession:
             real_timeout = self._timeout  # type: ClientTimeout
         else:
             if not isinstance(timeout, ClientTimeout):
-                real_timeout = ClientTimeout(total=timeout)  # type: ignore
+                real_timeout = ClientTimeout(total=timeout)  # type: ignore[arg-type]
             else:
                 real_timeout = timeout
         # timeout is cumulative for all request operations
@@ -1101,7 +1101,7 @@ class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType
     def send(self, arg: None) -> "asyncio.Future[Any]":
         return self._coro.send(arg)
 
-    def throw(self, arg: BaseException) -> None:  # type: ignore
+    def throw(self, arg: BaseException) -> None:  # type: ignore[arg-type,override]
         self._coro.throw(arg)
 
     def close(self) -> None:

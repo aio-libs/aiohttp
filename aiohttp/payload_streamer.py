@@ -43,7 +43,7 @@ class _stream_wrapper:
         self.kwargs = kwargs
 
     async def __call__(self, writer: AbstractStreamWriter) -> None:
-        await self.coro(writer, *self.args, **self.kwargs)  # type: ignore
+        await self.coro(writer, *self.args, **self.kwargs)  # type: ignore[operator]
 
 
 class streamer:

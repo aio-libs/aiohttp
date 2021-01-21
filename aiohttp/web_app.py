@@ -279,7 +279,7 @@ class Application(MutableMapping[str, Any]):
     @property
     def debug(self) -> bool:
         warnings.warn("debug property is deprecated", DeprecationWarning, stacklevel=2)
-        return self._debug
+        return self._debug  # type: ignore[no-any-return]
 
     def _reg_subapp_signals(self, subapp: "Application") -> None:
         def reg_handler(signame: str) -> None:
@@ -385,7 +385,7 @@ class Application(MutableMapping[str, Any]):
                 kwargs[k] = v
 
         return Server(
-            self._handle,  # type: ignore
+            self._handle,  # type: ignore[arg-type]
             request_factory=self._make_request,
             loop=self._loop,
             **kwargs,
@@ -482,7 +482,7 @@ class Application(MutableMapping[str, Any]):
         match_info.freeze()
 
         resp = None
-        request._match_info = match_info  # type: ignore
+        request._match_info = match_info  # type: ignore[assignment]
         expect = request.headers.get(hdrs.EXPECT)
         if expect:
             resp = await match_info.expect_handler(request)
@@ -493,13 +493,13 @@ class Application(MutableMapping[str, Any]):
 
             if self._run_middlewares:
                 for app in match_info.apps[::-1]:
-                    for m, new_style in app._middlewares_handlers:  # type: ignore
+                    for m, new_style in app._middlewares_handlers:  # type: ignore[union-attr] # noqa
                         if new_style:
                             handler = update_wrapper(
                                 partial(m, handler=handler), handler
                             )
                         else:
-                            handler = await m(app, handler)  # type: ignore
+                            handler = await m(app, handler)  # type: ignore[arg-type]
 
             resp = await handler(request)
 
@@ -519,7 +519,7 @@ class Application(MutableMapping[str, Any]):
 class CleanupError(RuntimeError):
     @property
     def exceptions(self) -> List[BaseException]:
-        return self.args[1]
+        return cast(List[BaseException], self.args[1])
 
 
 if TYPE_CHECKING:  # pragma: no cover

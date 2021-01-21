@@ -12,7 +12,7 @@ from .web_server import Server
 try:
     from ssl import SSLContext
 except ImportError:
-    SSLContext = object  # type: ignore
+    SSLContext = object  # type: ignore[misc,assignment]
 
 
 __all__ = (
@@ -171,7 +171,9 @@ class NamedPipeSite(BaseSite):
         self, runner: "BaseRunner", path: str, *, shutdown_timeout: float = 60.0
     ) -> None:
         loop = asyncio.get_event_loop()
-        if not isinstance(loop, asyncio.ProactorEventLoop):  # type: ignore
+        if not isinstance(
+            loop, asyncio.ProactorEventLoop  # type: ignore[attr-defined]
+        ):
             raise RuntimeError(
                 "Named Pipes only available in proactor" "loop under windows"
             )
@@ -187,7 +189,9 @@ class NamedPipeSite(BaseSite):
         loop = asyncio.get_event_loop()
         server = self._runner.server
         assert server is not None
-        _server = await loop.start_serving_pipe(server, self._path)  # type: ignore
+        _server = await loop.start_serving_pipe(  # type: ignore[attr-defined]
+            server, self._path
+        )
         self._server = _server[0]
 
 
