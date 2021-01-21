@@ -2,7 +2,7 @@
 
 import asyncio
 import dataclasses
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import async_timeout
 from typing_extensions import Final
@@ -68,10 +68,10 @@ class ClientWebSocketResponse:
         self._autoclose = autoclose
         self._autoping = autoping
         self._heartbeat = heartbeat
-        self._heartbeat_cb = None
+        self._heartbeat_cb: Optional[asyncio.TimerHandle] = None
         if heartbeat is not None:
             self._pong_heartbeat = heartbeat / 2.0
-        self._pong_response_cb = None
+        self._pong_response_cb: Optional[asyncio.TimerHandle] = None
         self._loop = loop
         self._waiting = None  # type: Optional[asyncio.Future[bool]]
         self._exception = None  # type: Optional[BaseException]
@@ -286,13 +286,13 @@ class ClientWebSocketResponse:
         msg = await self.receive(timeout)
         if msg.type != WSMsgType.TEXT:
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not str")
-        return msg.data
+        return cast(str, msg.data)
 
     async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
         if msg.type != WSMsgType.BINARY:
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not bytes")
-        return msg.data
+        return cast(bytes, msg.data)
 
     async def receive_json(
         self,
