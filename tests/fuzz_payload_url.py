@@ -4,6 +4,8 @@ import sys
 import atheris
 from yarl import URL
 
+from aiohttp import payload
+
 
 def TestOneInput(data):
     fdp = atheris.FuzzedDataProvider(data)
