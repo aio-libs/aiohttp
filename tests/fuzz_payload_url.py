@@ -4,20 +4,18 @@ import sys
 import atheris
 from yarl import URL
 
-from aiohttp import http_exceptions, payload
-
 
 def TestOneInput(data):
     fdp = atheris.FuzzedDataProvider(data)
     original = fdp.ConsumeString(sys.maxsize)
 
     try:
-        p = payload.StringPayload(original)
+        payload.StringPayload(original)
     except UnicodeEncodeError:
         None
 
     try:
-        u = URL(original)
+        URL(original)
     except ValueError:
         None
 

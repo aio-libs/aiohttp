@@ -5,7 +5,6 @@ import sys
 import atheris
 
 import aiohttp
-from aiohttp import http_exceptions, streams
 from aiohttp.base_protocol import BaseProtocol
 
 
