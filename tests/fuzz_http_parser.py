@@ -8,6 +8,7 @@ import aiohttp
 from aiohttp import http_exceptions, streams
 from aiohttp.base_protocol import BaseProtocol
 
+
 def TestOneInput(data):
     loop = asyncio.get_event_loop()
     pr = BaseProtocol(loop)
