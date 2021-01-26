@@ -2,9 +2,9 @@
 import sys
 
 import atheris
+from yarl import URL
 
 from aiohttp import http_exceptions, payload
-from yarl import URL
 
 
 def TestOneInput(data):
