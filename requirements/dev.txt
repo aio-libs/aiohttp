@@ -53,13 +53,12 @@ click==7.1.2
     #   black
     #   cherry-picker
     #   towncrier
-coverage==5.3.1
+coverage==5.4
     # via
     #   -r requirements/test.txt
     #   pytest-cov
-cryptography==3.3.1 ; platform_machine != "i686" and python_version < "3.9"
+cryptography==3.3.1
     # via
-    #   -r requirements/test.txt
     #   pyjwt
     #   trustme
 distlib==0.3.1
@@ -74,7 +73,7 @@ flake8==3.8.4
     # via
     #   -r requirements/lint.txt
     #   flake8-pyi
-freezegun==1.0.0
+freezegun==1.1.0
     # via -r requirements/test.txt
 frozenlist==1.1.1
     # via
@@ -99,7 +98,7 @@ incremental==17.5.0
     # via towncrier
 iniconfig==1.1.1
     # via pytest
-isort==5.6.4
+isort==5.7.0
     # via -r requirements/lint.txt
 jinja2==2.11.2
     # via
@@ -156,12 +155,13 @@ pyjwt[crypto]==2.0.0
     # via gidgethub
 pyparsing==2.4.7
     # via packaging
-pytest-cov==2.10.1
+pytest-cov==2.11.1
     # via -r requirements/test.txt
 pytest-mock==3.5.1
     # via -r requirements/test.txt
-pytest==6.1.2
+pytest==6.2.2
     # via
+    #   -r requirements/lint.txt
     #   -r requirements/test.txt
     #   pytest-cov
     #   pytest-mock
@@ -236,8 +236,6 @@ uritemplate==3.0.1
     # via gidgethub
 urllib3==1.26.2
     # via requests
-uvloop==0.14.0 ; platform_system != "Windows" and implementation_name == "cpython" and python_version < "3.9"
-    # via -r requirements/base.txt
 virtualenv==20.3.1
     # via pre-commit
 webcolors==1.11.1
