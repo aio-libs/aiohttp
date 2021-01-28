@@ -1,0 +1,1 @@
+Fix test run on python 3.6 for aiohttp version 3.8
