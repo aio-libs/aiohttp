@@ -7,6 +7,7 @@ import zlib
 from contextlib import suppress
 from enum import IntEnum
 from typing import (
+    TYPE_CHECKING,
     Any,
     Generic,
     List,
@@ -71,18 +72,37 @@ METHRE: Final[Pattern[str]] = re.compile(r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+")
 VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d+).(\d+)")
 HDRRE: Final[Pattern[bytes]] = re.compile(rb"[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\\\"]")
 
+if TYPE_CHECKING:
 
-class RawRequestMessage(NamedTuple):
-    method: str
-    path: str
-    version: HttpVersion
-    headers: CIMultiDictProxy[str]
-    raw_headers: RawHeaders
-    should_close: bool
-    compression: Optional[str]
-    upgrade: bool
-    chunked: bool
-    url: URL
+    class RawRequestMessage(NamedTuple):
+        method: str
+        path: str
+        version: HttpVersion
+        headers: CIMultiDictProxy[str]
+        raw_headers: RawHeaders
+        should_close: bool
+        compression: Optional[str]
+        upgrade: bool
+        chunked: bool
+        url: URL
+
+
+else:
+    RawRequestMessage = collections.namedtuple(
+        "RawRequestMessage",
+        [
+            "method",
+            "path",
+            "version",
+            "headers",
+            "raw_headers",
+            "should_close",
+            "compression",
+            "upgrade",
+            "chunked",
+            "url",
+        ],
+    )
 
 
 RawResponseMessage = collections.namedtuple(
