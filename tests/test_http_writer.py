@@ -5,6 +5,7 @@ from typing import Any
 from unittest import mock
 
 import pytest
+from multidict import CIMultiDict
 
 from aiohttp import http
 from aiohttp.test_utils import make_mocked_coro
@@ -272,3 +273,20 @@ async def test_drain_no_transport(protocol: Any, transport: Any, loop: Any) -> N
     msg._protocol.transport = None
     await msg.drain()
     assert not protocol._drain_helper.called
+
+
+async def test_write_headers_prevents_injection(
+    protocol: Any, transport: Any, loop: Any
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    wrong_status_line = "HTTP/1.1 200 OK\r\nSet-Cookie: abc=123"
+    headers = CIMultiDict({"Content-Length": "256"})
+    with pytest.raises(ValueError):
+        await msg.write_headers(wrong_status_line, headers)
+    status_line = "HTTP/1.1 200 OK"
+    wrong_headers = CIMultiDict({"Set-Cookie: abc=123\r\nContent-Length": "256"})
+    with pytest.raises(ValueError):
+        await msg.write_headers(status_line, wrong_headers)
+    wrong_headers = CIMultiDict({"Content-Length": "256\r\nSet-Cookie: abc=123"})
+    with pytest.raises(ValueError):
+        await msg.write_headers(status_line, wrong_headers)

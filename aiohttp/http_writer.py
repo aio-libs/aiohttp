@@ -171,11 +171,26 @@ class StreamWriter(AbstractStreamWriter):
             await self._protocol._drain_helper()
 
 
+def _check_string(string: str) -> str:
+    if "\r" in string or "\n" in string:
+        raise ValueError(
+            "Newline or carriage return character detected in HTTP status message or "
+            "header. This is a potential security issue."
+        )
+    else:
+        return string
+
+
 def _py_serialize_headers(status_line: str, headers: "CIMultiDict[str]") -> bytes:
     line = (
-        status_line
+        _check_string(status_line)
         + "\r\n"
-        + "".join([k + ": " + v + "\r\n" for k, v in headers.items()])
+        + "".join(
+            [
+                _check_string(k) + ": " + _check_string(v) + "\r\n"
+                for k, v in headers.items()
+            ]
+        )
     )
     return line.encode("utf-8") + b"\r\n"
 

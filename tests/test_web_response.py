@@ -14,6 +14,7 @@ from multidict import CIMultiDict, CIMultiDictProxy
 from re_assert import Matches
 
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs
+from aiohttp.http_writer import _serialize_headers
 from aiohttp.payload import BytesPayload
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
@@ -58,12 +59,7 @@ def writer(buf: Any):
         buf.extend(chunk)
 
     async def write_headers(status_line, headers):
-        headers = (
-            status_line
-            + "\r\n"
-            + "".join([k + ": " + v + "\r\n" for k, v in headers.items()])
-        )
-        headers = headers.encode("utf-8") + b"\r\n"
+        headers = _serialize_headers(status_line, headers)
         buf.extend(headers)
 
     async def write_eof(chunk=b""):
