@@ -1,0 +1,1 @@
+Stop automatically releasing the ``ClientResponse`` object on calls to the ``ok`` property for the failed requests.
