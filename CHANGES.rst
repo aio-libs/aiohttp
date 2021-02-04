@@ -14,6 +14,285 @@ Changelog
 
 .. towncrier release notes start
 
+3.7.3 (2020-11-18)
+==================
+
+Features
+--------
+
+- Use Brotli instead of brotlipy
+  `#3803 <https://github.com/aio-libs/aiohttp/issues/3803>`_
+- Made exceptions pickleable. Also changed the repr of some exceptions.
+  `#4077 <https://github.com/aio-libs/aiohttp/issues/4077>`_
+
+
+Bugfixes
+--------
+
+- Raise a ClientResponseError instead of an AssertionError for a blank
+  HTTP Reason Phrase.
+  `#3532 <https://github.com/aio-libs/aiohttp/issues/3532>`_
+- Fix ``web_middlewares.normalize_path_middleware`` behavior for patch without slash.
+  `#3669 <https://github.com/aio-libs/aiohttp/issues/3669>`_
+- Fix overshadowing of overlapped sub-applications prefixes.
+  `#3701 <https://github.com/aio-libs/aiohttp/issues/3701>`_
+- Make `BaseConnector.close()` a coroutine and wait until the client closes all connections. Drop deprecated "with Connector():" syntax.
+  `#3736 <https://github.com/aio-libs/aiohttp/issues/3736>`_
+- Reset the ``sock_read`` timeout each time data is received for a ``aiohttp.client`` response.
+  `#3808 <https://github.com/aio-libs/aiohttp/issues/3808>`_
+- Fixed type annotation for add_view method of UrlDispatcher to accept any subclass of View
+  `#3880 <https://github.com/aio-libs/aiohttp/issues/3880>`_
+- Fixed querying the address families from DNS that the current host supports.
+  `#5156 <https://github.com/aio-libs/aiohttp/issues/5156>`_
+- Change return type of MultipartReader.__aiter__() and BodyPartReader.__aiter__() to AsyncIterator.
+  `#5163 <https://github.com/aio-libs/aiohttp/issues/5163>`_
+- Provide x86 Windows wheels.
+  `#5230 <https://github.com/aio-libs/aiohttp/issues/5230>`_
+
+
+Improved Documentation
+----------------------
+
+- Add documentation for ``aiohttp.web.FileResponse``.
+  `#3958 <https://github.com/aio-libs/aiohttp/issues/3958>`_
+- Removed deprecation warning in tracing example docs
+  `#3964 <https://github.com/aio-libs/aiohttp/issues/3964>`_
+- Fixed wrong "Usage" docstring of ``aiohttp.client.request``.
+  `#4603 <https://github.com/aio-libs/aiohttp/issues/4603>`_
+- Add aiohttp-pydantic to third party libraries
+  `#5228 <https://github.com/aio-libs/aiohttp/issues/5228>`_
+
+
+Misc
+----
+
+- `#4102 <https://github.com/aio-libs/aiohttp/issues/4102>`_
+
+
+----
+
+
+3.7.2 (2020-10-27)
+==================
+
+Bugfixes
+--------
+
+- Fixed static files handling for loops without ``.sendfile()`` support
+  `#5149 <https://github.com/aio-libs/aiohttp/issues/5149>`_
+
+
+----
+
+
+3.7.1 (2020-10-25)
+==================
+
+Bugfixes
+--------
+
+- Fixed a type error caused by the conditional import of `Protocol`.
+  `#5111 <https://github.com/aio-libs/aiohttp/issues/5111>`_
+- Server doesn't send Content-Length for 1xx or 204
+  `#4901 <https://github.com/aio-libs/aiohttp/issues/4901>`_
+- Fix run_app typing
+  `#4957 <https://github.com/aio-libs/aiohttp/issues/4957>`_
+- Always require ``typing_extensions`` library.
+  `#5107 <https://github.com/aio-libs/aiohttp/issues/5107>`_
+- Fix a variable-shadowing bug causing `ThreadedResolver.resolve` to
+  return the resolved IP as the ``hostname`` in each record, which prevented
+  validation of HTTPS connections.
+  `#5110 <https://github.com/aio-libs/aiohttp/issues/5110>`_
+- Added annotations to all public attributes.
+  `#5115 <https://github.com/aio-libs/aiohttp/issues/5115>`_
+- Fix flaky test_when_timeout_smaller_second
+  `#5116 <https://github.com/aio-libs/aiohttp/issues/5116>`_
+- Ensure sending a zero byte file does not throw an exception
+  `#5124 <https://github.com/aio-libs/aiohttp/issues/5124>`_
+- Fix a bug in ``web.run_app()`` about Python version checking on Windows
+  `#5127 <https://github.com/aio-libs/aiohttp/issues/5127>`_
+
+
+----
+
+
+3.7.0 (2020-10-24)
+==================
+
+Features
+--------
+
+- Response headers are now prepared prior to running ``on_response_prepare`` hooks, directly before headers are sent to the client.
+  `#1958 <https://github.com/aio-libs/aiohttp/issues/1958>`_
+- Add a ``quote_cookie`` option to ``CookieJar``, a way to skip quotation wrapping of cookies containing special characters.
+  `#2571 <https://github.com/aio-libs/aiohttp/issues/2571>`_
+- Call ``AccessLogger.log`` with the current exception available from ``sys.exc_info()``.
+  `#3557 <https://github.com/aio-libs/aiohttp/issues/3557>`_
+- `web.UrlDispatcher.add_routes` and `web.Application.add_routes` return a list
+  of registered `AbstractRoute` instances. `AbstractRouteDef.register` (and all
+  subclasses) return a list of registered resources registered resource.
+  `#3866 <https://github.com/aio-libs/aiohttp/issues/3866>`_
+- Added properties of default ClientSession params to ClientSession class so it is available for introspection
+  `#3882 <https://github.com/aio-libs/aiohttp/issues/3882>`_
+- Don't cancel web handler on peer disconnection, raise `OSError` on reading/writing instead.
+  `#4080 <https://github.com/aio-libs/aiohttp/issues/4080>`_
+- Implement BaseRequest.get_extra_info() to access a protocol transports' extra info.
+  `#4189 <https://github.com/aio-libs/aiohttp/issues/4189>`_
+- Added `ClientSession.timeout` property.
+  `#4191 <https://github.com/aio-libs/aiohttp/issues/4191>`_
+- allow use of SameSite in cookies.
+  `#4224 <https://github.com/aio-libs/aiohttp/issues/4224>`_
+- Use ``loop.sendfile()`` instead of custom implementation if available.
+  `#4269 <https://github.com/aio-libs/aiohttp/issues/4269>`_
+- Apply SO_REUSEADDR to test server's socket.
+  `#4393 <https://github.com/aio-libs/aiohttp/issues/4393>`_
+- Use .raw_host instead of slower .host in client API
+  `#4402 <https://github.com/aio-libs/aiohttp/issues/4402>`_
+- Allow configuring the buffer size of input stream by passing ``read_bufsize`` argument.
+  `#4453 <https://github.com/aio-libs/aiohttp/issues/4453>`_
+- Pass tests on Python 3.8 for Windows.
+  `#4513 <https://github.com/aio-libs/aiohttp/issues/4513>`_
+- Add `method` and `url` attributes to `TraceRequestChunkSentParams` and `TraceResponseChunkReceivedParams`.
+  `#4674 <https://github.com/aio-libs/aiohttp/issues/4674>`_
+- Add ClientResponse.ok property for checking status code under 400.
+  `#4711 <https://github.com/aio-libs/aiohttp/issues/4711>`_
+- Don't ceil timeouts that are smaller than 5 seconds.
+  `#4850 <https://github.com/aio-libs/aiohttp/issues/4850>`_
+- TCPSite now listens by default on all interfaces instead of just IPv4 when `None` is passed in as the host.
+  `#4894 <https://github.com/aio-libs/aiohttp/issues/4894>`_
+- Bump ``http_parser`` to 2.9.4
+  `#5070 <https://github.com/aio-libs/aiohttp/issues/5070>`_
+
+
+Bugfixes
+--------
+
+- Fix keepalive connections not being closed in time
+  `#3296 <https://github.com/aio-libs/aiohttp/issues/3296>`_
+- Fix failed websocket handshake leaving connection hanging.
+  `#3380 <https://github.com/aio-libs/aiohttp/issues/3380>`_
+- Fix tasks cancellation order on exit. The run_app task needs to be cancelled first for cleanup hooks to run with all tasks intact.
+  `#3805 <https://github.com/aio-libs/aiohttp/issues/3805>`_
+- Don't start heartbeat until _writer is set
+  `#4062 <https://github.com/aio-libs/aiohttp/issues/4062>`_
+- Fix handling of multipart file uploads without a content type.
+  `#4089 <https://github.com/aio-libs/aiohttp/issues/4089>`_
+- Preserve view handler function attributes across middlewares
+  `#4174 <https://github.com/aio-libs/aiohttp/issues/4174>`_
+- Fix the string representation of ``ServerDisconnectedError``.
+  `#4175 <https://github.com/aio-libs/aiohttp/issues/4175>`_
+- Raising RuntimeError when trying to get encoding from not read body
+  `#4214 <https://github.com/aio-libs/aiohttp/issues/4214>`_
+- Remove warning messages from noop.
+  `#4282 <https://github.com/aio-libs/aiohttp/issues/4282>`_
+- Raise ClientPayloadError if FormData re-processed.
+  `#4345 <https://github.com/aio-libs/aiohttp/issues/4345>`_
+- Fix a warning about unfinished task in ``web_protocol.py``
+  `#4408 <https://github.com/aio-libs/aiohttp/issues/4408>`_
+- Fixed 'deflate' compression. According to RFC 2616 now.
+  `#4506 <https://github.com/aio-libs/aiohttp/issues/4506>`_
+- Fixed OverflowError on platforms with 32-bit time_t
+  `#4515 <https://github.com/aio-libs/aiohttp/issues/4515>`_
+- Fixed request.body_exists returns wrong value for methods without body.
+  `#4528 <https://github.com/aio-libs/aiohttp/issues/4528>`_
+- Fix connecting to link-local IPv6 addresses.
+  `#4554 <https://github.com/aio-libs/aiohttp/issues/4554>`_
+- Fix a problem with connection waiters that are never awaited.
+  `#4562 <https://github.com/aio-libs/aiohttp/issues/4562>`_
+- Always make sure transport is not closing before reuse a connection.
+
+  Reuse a protocol based on keepalive in headers is unreliable.
+  For example, uWSGI will not support keepalive even it serves a
+  HTTP 1.1 request, except explicitly configure uWSGI with a
+  ``--http-keepalive`` option.
+
+  Servers designed like uWSGI could cause aiohttp intermittently
+  raise a ConnectionResetException when the protocol poll runs
+  out and some protocol is reused.
+  `#4587 <https://github.com/aio-libs/aiohttp/issues/4587>`_
+- Handle the last CRLF correctly even if it is received via separate TCP segment.
+  `#4630 <https://github.com/aio-libs/aiohttp/issues/4630>`_
+- Fix the register_resource function to validate route name before splitting it so that route name can include python keywords.
+  `#4691 <https://github.com/aio-libs/aiohttp/issues/4691>`_
+- Improve typing annotations for ``web.Request``, ``aiohttp.ClientResponse`` and
+  ``multipart`` module.
+  `#4736 <https://github.com/aio-libs/aiohttp/issues/4736>`_
+- Fix resolver task is not awaited when connector is cancelled
+  `#4795 <https://github.com/aio-libs/aiohttp/issues/4795>`_
+- Fix a bug "Aiohttp doesn't return any error on invalid request methods"
+  `#4798 <https://github.com/aio-libs/aiohttp/issues/4798>`_
+- Fix HEAD requests for static content.
+  `#4809 <https://github.com/aio-libs/aiohttp/issues/4809>`_
+- Fix incorrect size calculation for memoryview
+  `#4890 <https://github.com/aio-libs/aiohttp/issues/4890>`_
+- Add HTTPMove to _all__.
+  `#4897 <https://github.com/aio-libs/aiohttp/issues/4897>`_
+- Fixed the type annotations in the ``tracing`` module.
+  `#4912 <https://github.com/aio-libs/aiohttp/issues/4912>`_
+- Fix typing for multipart ``__aiter__``.
+  `#4931 <https://github.com/aio-libs/aiohttp/issues/4931>`_
+- Fix for race condition on connections in BaseConnector that leads to exceeding the connection limit.
+  `#4936 <https://github.com/aio-libs/aiohttp/issues/4936>`_
+- Add forced UTF-8 encoding for ``application/rdap+json`` responses.
+  `#4938 <https://github.com/aio-libs/aiohttp/issues/4938>`_
+- Fix inconsistency between Python and C http request parsers in parsing pct-encoded URL.
+  `#4972 <https://github.com/aio-libs/aiohttp/issues/4972>`_
+- Fix connection closing issue in HEAD request.
+  `#5012 <https://github.com/aio-libs/aiohttp/issues/5012>`_
+- Fix type hint on BaseRunner.addresses (from ``List[str]`` to ``List[Any]``)
+  `#5086 <https://github.com/aio-libs/aiohttp/issues/5086>`_
+- Make `web.run_app()` more responsive to Ctrl+C on Windows for Python < 3.8. It slightly
+  increases CPU load as a side effect.
+  `#5098 <https://github.com/aio-libs/aiohttp/issues/5098>`_
+
+
+Improved Documentation
+----------------------
+
+- Fix example code in client quick-start
+  `#3376 <https://github.com/aio-libs/aiohttp/issues/3376>`_
+- Updated the docs so there is no contradiction in ``ttl_dns_cache`` default value
+  `#3512 <https://github.com/aio-libs/aiohttp/issues/3512>`_
+- Add 'Deploy with SSL' to docs.
+  `#4201 <https://github.com/aio-libs/aiohttp/issues/4201>`_
+- Change typing of the secure argument on StreamResponse.set_cookie from ``Optional[str]`` to ``Optional[bool]``
+  `#4204 <https://github.com/aio-libs/aiohttp/issues/4204>`_
+- Changes ``ttl_dns_cache`` type from int to Optional[int].
+  `#4270 <https://github.com/aio-libs/aiohttp/issues/4270>`_
+- Simplify README hello word example and add a documentation page for people coming from requests.
+  `#4272 <https://github.com/aio-libs/aiohttp/issues/4272>`_
+- Improve some code examples in the documentation involving websockets and starting a simple HTTP site with an AppRunner.
+  `#4285 <https://github.com/aio-libs/aiohttp/issues/4285>`_
+- Fix typo in code example in Multipart docs
+  `#4312 <https://github.com/aio-libs/aiohttp/issues/4312>`_
+- Fix code example in Multipart section.
+  `#4314 <https://github.com/aio-libs/aiohttp/issues/4314>`_
+- Update contributing guide so new contributors read the most recent version of that guide. Update command used to create test coverage reporting.
+  `#4810 <https://github.com/aio-libs/aiohttp/issues/4810>`_
+- Spelling: Change "canonize" to "canonicalize".
+  `#4986 <https://github.com/aio-libs/aiohttp/issues/4986>`_
+- Add ``aiohttp-sse-client`` library to third party usage list.
+  `#5084 <https://github.com/aio-libs/aiohttp/issues/5084>`_
+
+
+Misc
+----
+
+- `#2856 <https://github.com/aio-libs/aiohttp/issues/2856>`_, `#4218 <https://github.com/aio-libs/aiohttp/issues/4218>`_, `#4250 <https://github.com/aio-libs/aiohttp/issues/4250>`_
+
+
+----
+
+
+3.6.3 (2020-10-12)
+==================
+
+Bugfixes
+--------
+
+- Pin yarl to ``<1.6.0`` to avoid buggy behavior that will be fixed by the next aiohttp
+  release.
+
 3.6.2 (2019-10-09)
 ==================
 

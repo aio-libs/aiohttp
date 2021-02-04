@@ -1,20 +1,21 @@
+#!/usr/bin/env python3
 import asyncio
 
 import aiohttp
 
 
-async def fetch(session):
-    print('Query http://httpbin.org/basic-auth/andrew/password')
-    async with session.get(
-            'http://httpbin.org/basic-auth/andrew/password') as resp:
+async def fetch(session: aiohttp.ClientSession) -> None:
+    print("Query http://httpbin.org/basic-auth/andrew/password")
+    async with session.get("http://httpbin.org/basic-auth/andrew/password") as resp:
         print(resp.status)
         body = await resp.text()
         print(body)
 
 
-async def go():
+async def go() -> None:
     async with aiohttp.ClientSession(
-            auth=aiohttp.BasicAuth('andrew', 'password')) as session:
+        auth=aiohttp.BasicAuth("andrew", "password")
+    ) as session:
         await fetch(session)
 
 

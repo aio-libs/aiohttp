@@ -5,8 +5,14 @@ from .tcp_helpers import tcp_nodelay
 
 
 class BaseProtocol(asyncio.Protocol):
-    __slots__ = ('_loop', '_paused', '_drain_waiter',
-                 '_connection_lost', '_reading_paused', 'transport')
+    __slots__ = (
+        "_loop",
+        "_paused",
+        "_drain_waiter",
+        "_connection_lost",
+        "_reading_paused",
+        "transport",
+    )
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop  # type: asyncio.AbstractEventLoop
@@ -71,7 +77,7 @@ class BaseProtocol(asyncio.Protocol):
 
     async def _drain_helper(self) -> None:
         if self._connection_lost:
-            raise ConnectionResetError('Connection lost')
+            raise ConnectionResetError("Connection lost")
         if not self._paused:
             return
         waiter = self._drain_waiter

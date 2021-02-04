@@ -1,1 +1,0 @@
-For URLs like "unix://localhost/..." set Host HTTP header to "localhost" instead of "localhost:None".

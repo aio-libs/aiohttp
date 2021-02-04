@@ -1,0 +1,12 @@
+# Ref: https://help.github.com/en/github/building-a-strong-community/configuring-issue-templates-for-your-repository#configuring-the-template-chooser
+blank_issues_enabled: false  # default: true
+contact_links:
+- name: 🤷💻🤦 StackOverflow
+  url: https://stackoverflow.com/questions/tagged/aiohttp
+  about: Please ask typical Q&A here
+- name: 💬 Discourse
+  url: https://aio-libs.discourse.group/
+  about: Please start usage discussions here
+- name: 💬 Gitter Chat
+  url: https://gitter.im/aio-libs/Lobby
+  about: Chat with devs and community

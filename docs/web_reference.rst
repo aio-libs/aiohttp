@@ -207,7 +207,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
    .. attribute:: transport
 
-      An :ref:`transport<asyncio-transport>` used to process request,
+      A :ref:`transport<asyncio-transport>` used to process request.
       Read-only property.
 
       The property can be used, for example, for getting IP address of
@@ -783,7 +783,8 @@ StreamResponse
       calling this method.
 
       The coroutine calls :attr:`~aiohttp.web.Application.on_response_prepare`
-      signal handlers.
+      signal handlers after default headers have been computed and directly
+      before headers are sent.
 
    .. comethod:: write(data)
 
@@ -1116,16 +1117,16 @@ WebSocketResponse
          The method is converted into :term:`coroutine`,
          *compress* parameter added.
 
-   .. comethod:: close(*, code=1000, message=b'')
+   .. comethod:: close(*, code=WSCloseCode.OK, message=b'')
 
       A :ref:`coroutine<coroutine>` that initiates closing
       handshake by sending :const:`~aiohttp.WSMsgType.CLOSE` message.
 
       It is safe to call `close()` from different task.
 
-      :param int code: closing code
+      :param int code: closing code. See also :class:`~aiohttp.WSCloseCode`.
 
-      :param message: optional payload of *pong* message,
+      :param message: optional payload of *close* message,
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
@@ -1337,10 +1338,11 @@ duplicated like one using :meth:`Application.copy`.
 
    .. attribute:: on_response_prepare
 
-      A :class:`~aiohttp.Signal` that is fired at the beginning
+      A :class:`~aiohttp.Signal` that is fired near the end
       of :meth:`StreamResponse.prepare` with parameters *request* and
       *response*. It can be used, for example, to add custom headers to each
-      response before sending.
+      response, or to modify the default headers computed by the application,
+      directly before sending the headers to the client.
 
       Signal handlers should have the following signature::
 
@@ -1360,7 +1362,7 @@ duplicated like one using :meth:`Application.copy`.
           async def on_startup(app):
               pass
 
-      .. seealso:: :ref:`aiohttp-web-signals`.
+      .. seealso:: :ref:`aiohttp-web-signals` and :ref:`aiohttp-web-cleanup-ctx`.
 
    .. attribute:: on_shutdown
 
@@ -2542,6 +2544,12 @@ application on specific TCP or Unix socket, e.g.::
         reads and ignores additional data coming from the client when
         lingering close is on.  Use ``0`` to disable lingering on
         server channel closing.
+   :param int read_bufsize: Size of the read buffer (:attr:`BaseRequest.content`).
+                            ``None`` by default,
+                            it means that the session global value is used.
+
+      .. versionadded:: 3.7
+
 
 
    .. attribute:: app
@@ -2611,7 +2619,7 @@ application on specific TCP or Unix socket, e.g.::
 
    :param runner: a runner to serve.
 
-   :param str host: HOST to listen on, ``'0.0.0.0'`` if ``None`` (default).
+   :param str host: HOST to listen on, all interfaces if ``None`` (default).
 
    :param int port: PORT to listed on, ``8080`` if ``None`` (default).
 
@@ -2727,9 +2735,10 @@ Utilities
    .. seealso:: :ref:`aiohttp-web-file-upload`
 
 
-.. function:: run_app(app, *, host=None, port=None, path=None, \
-                      sock=None, shutdown_timeout=60.0, \
-                      ssl_context=None, print=print, backlog=128, \
+.. function:: run_app(app, *, debug=False, host=None, port=None, \
+                      path=None, sock=None, shutdown_timeout=60.0, \
+                      keepalive_timeout=75.0, ssl_context=None, \
+                      print=print, backlog=128, \
                       access_log_class=aiohttp.helpers.AccessLogger, \
                       access_log_format=aiohttp.helpers.AccessLogger.LOG_FORMAT, \
                       access_log=aiohttp.log.access_logger, \
@@ -2757,6 +2766,8 @@ Utilities
    :param app: :class:`Application` instance to run or a *coroutine*
                that returns an application.
 
+   :param bool debug: enable :ref:`asyncio debug mode <asyncio-debug-mode>` if ``True``.
+
    :param str host: TCP/IP host or a sequence of hosts for HTTP server.
                     Default is ``'0.0.0.0'`` if *port* has been specified
                     or if *path* is not supplied.
@@ -2782,6 +2793,12 @@ Utilities
                                 implemented never waits for this
                                 timeout but closes a server in a few
                                 milliseconds.
+
+   :param float keepalive_timeout: a delay before a TCP connection is
+                                   closed after a HTTP request. The delay
+                                   allows for reuse of a TCP connection.
+
+      .. versionadded:: 3.8
 
    :param ssl_context: :class:`ssl.SSLContext` for HTTPS server,
                        ``None`` for HTTP connection.

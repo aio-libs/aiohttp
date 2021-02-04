@@ -9,10 +9,9 @@ Async http client/server framework
 
 |
 
-.. image:: https://dev.azure.com/aio-libs/aiohttp/_apis/build/status/CI?branchName=master
-   :target: https://dev.azure.com/aio-libs/aiohttp/_build
-   :align: right
-   :alt: Azure Pipelines status for master branch
+.. image:: https://github.com/aio-libs/aiohttp/workflows/CI/badge.svg
+   :target: https://github.com/aio-libs/aiohttp/actions?query=workflow%3ACI
+   :alt: GitHub Actions status for master branch
 
 .. image:: https://codecov.io/gh/aio-libs/aiohttp/branch/master/graph/badge.svg
    :target: https://codecov.io/gh/aio-libs/aiohttp
@@ -21,6 +20,10 @@ Async http client/server framework
 .. image:: https://badge.fury.io/py/aiohttp.svg
    :target: https://pypi.org/project/aiohttp
    :alt: Latest PyPI package version
+
+.. image:: https://img.shields.io/pypi/dm/aiohttp
+   :target: https://pypistats.org/packages/aiohttp
+   :alt: Downloads count
 
 .. image:: https://readthedocs.org/projects/aiohttp/badge/?version=latest
    :target: https://docs.aiohttp.org/
@@ -79,7 +82,7 @@ This prints:
     Content-type: text/html; charset=utf-8
     Body: <!doctype html> ...
 
-Comming from `requests <https://requests.readthedocs.io/>`_ ? Read `why we need so many lines <https://aiohttp.readthedocs.io/en/latest/http_request_lifecycle.html>`_.
+Coming from `requests <https://requests.readthedocs.io/>`_ ? Read `why we need so many lines <https://aiohttp.readthedocs.io/en/latest/http_request_lifecycle.html>`_.
 
 Server
 ------
@@ -159,7 +162,7 @@ Please add *aiohttp* tag to your question there.
 Requirements
 ============
 
-- Python >= 3.5.3
+- Python >= 3.7
 - async-timeout_
 - attrs_
 - chardet_

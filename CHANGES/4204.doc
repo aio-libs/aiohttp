@@ -1,1 +1,0 @@
-Change typing of the secure argument on StreamResponse.set_cookie from Optional[str] to a Optional[bool]

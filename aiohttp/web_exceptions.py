@@ -6,66 +6,68 @@ from multidict import CIMultiDict
 from yarl import URL
 
 from . import hdrs
+from .helpers import CookieMixin
 from .typedefs import LooseHeaders, StrOrURL
 
 __all__ = (
-    'HTTPException',
-    'HTTPError',
-    'HTTPRedirection',
-    'HTTPSuccessful',
-    'HTTPOk',
-    'HTTPCreated',
-    'HTTPAccepted',
-    'HTTPNonAuthoritativeInformation',
-    'HTTPNoContent',
-    'HTTPResetContent',
-    'HTTPPartialContent',
-    'HTTPMultipleChoices',
-    'HTTPMovedPermanently',
-    'HTTPFound',
-    'HTTPSeeOther',
-    'HTTPNotModified',
-    'HTTPUseProxy',
-    'HTTPTemporaryRedirect',
-    'HTTPPermanentRedirect',
-    'HTTPClientError',
-    'HTTPBadRequest',
-    'HTTPUnauthorized',
-    'HTTPPaymentRequired',
-    'HTTPForbidden',
-    'HTTPNotFound',
-    'HTTPMethodNotAllowed',
-    'HTTPNotAcceptable',
-    'HTTPProxyAuthenticationRequired',
-    'HTTPRequestTimeout',
-    'HTTPConflict',
-    'HTTPGone',
-    'HTTPLengthRequired',
-    'HTTPPreconditionFailed',
-    'HTTPRequestEntityTooLarge',
-    'HTTPRequestURITooLong',
-    'HTTPUnsupportedMediaType',
-    'HTTPRequestRangeNotSatisfiable',
-    'HTTPExpectationFailed',
-    'HTTPMisdirectedRequest',
-    'HTTPUnprocessableEntity',
-    'HTTPFailedDependency',
-    'HTTPUpgradeRequired',
-    'HTTPPreconditionRequired',
-    'HTTPTooManyRequests',
-    'HTTPRequestHeaderFieldsTooLarge',
-    'HTTPUnavailableForLegalReasons',
-    'HTTPServerError',
-    'HTTPInternalServerError',
-    'HTTPNotImplemented',
-    'HTTPBadGateway',
-    'HTTPServiceUnavailable',
-    'HTTPGatewayTimeout',
-    'HTTPVersionNotSupported',
-    'HTTPVariantAlsoNegotiates',
-    'HTTPInsufficientStorage',
-    'HTTPNotExtended',
-    'HTTPNetworkAuthenticationRequired',
+    "HTTPException",
+    "HTTPError",
+    "HTTPRedirection",
+    "HTTPSuccessful",
+    "HTTPOk",
+    "HTTPCreated",
+    "HTTPAccepted",
+    "HTTPNonAuthoritativeInformation",
+    "HTTPNoContent",
+    "HTTPResetContent",
+    "HTTPPartialContent",
+    "HTTPMove",
+    "HTTPMultipleChoices",
+    "HTTPMovedPermanently",
+    "HTTPFound",
+    "HTTPSeeOther",
+    "HTTPNotModified",
+    "HTTPUseProxy",
+    "HTTPTemporaryRedirect",
+    "HTTPPermanentRedirect",
+    "HTTPClientError",
+    "HTTPBadRequest",
+    "HTTPUnauthorized",
+    "HTTPPaymentRequired",
+    "HTTPForbidden",
+    "HTTPNotFound",
+    "HTTPMethodNotAllowed",
+    "HTTPNotAcceptable",
+    "HTTPProxyAuthenticationRequired",
+    "HTTPRequestTimeout",
+    "HTTPConflict",
+    "HTTPGone",
+    "HTTPLengthRequired",
+    "HTTPPreconditionFailed",
+    "HTTPRequestEntityTooLarge",
+    "HTTPRequestURITooLong",
+    "HTTPUnsupportedMediaType",
+    "HTTPRequestRangeNotSatisfiable",
+    "HTTPExpectationFailed",
+    "HTTPMisdirectedRequest",
+    "HTTPUnprocessableEntity",
+    "HTTPFailedDependency",
+    "HTTPUpgradeRequired",
+    "HTTPPreconditionRequired",
+    "HTTPTooManyRequests",
+    "HTTPRequestHeaderFieldsTooLarge",
+    "HTTPUnavailableForLegalReasons",
+    "HTTPServerError",
+    "HTTPInternalServerError",
+    "HTTPNotImplemented",
+    "HTTPBadGateway",
+    "HTTPServiceUnavailable",
+    "HTTPGatewayTimeout",
+    "HTTPVersionNotSupported",
+    "HTTPVariantAlsoNegotiates",
+    "HTTPInsufficientStorage",
+    "HTTPNotExtended",
+    "HTTPNetworkAuthenticationRequired",
 )
 
 
@@ -73,7 +75,8 @@ __all__ = (
 # HTTP Exceptions
 ############################################################
 
-class HTTPException(Exception):
+
+class HTTPException(CookieMixin, Exception):
 
     # You should set in subclasses:
     # status = 200
@@ -82,26 +85,32 @@ class HTTPException(Exception):
     empty_body = False
     default_reason = ""  # Initialized at the end of the module
 
-    def __init__(self, *,
-                 headers: Optional[LooseHeaders]=None,
-                 reason: Optional[str]=None,
-                 text: Optional[str]=None,
-                 content_type: Optional[str]=None) -> None:
+    def __init__(
+        self,
+        *,
+        headers: Optional[LooseHeaders] = None,
+        reason: Optional[str] = None,
+        text: Optional[str] = None,
+        content_type: Optional[str] = None,
+    ) -> None:
+        super().__init__()
         if reason is None:
             reason = self.default_reason
 
         if text is None:
             if not self.empty_body:
-                text = "{}: {}".format(self.status_code, reason)
+                text = f"{self.status_code}: {reason}"
         else:
             if self.empty_body:
                 warnings.warn(
                     "text argument is deprecated for HTTP status {} "
                     "since 4.0 and scheduled for removal in 5.0 (#3462),"
                     "the response should be provided without a body".format(
-                        self.status_code),
+                        self.status_code
+                    ),
                     DeprecationWarning,
-                    stacklevel=2)
+                    stacklevel=2,
+                )
 
         if headers is not None:
             real_headers = CIMultiDict(headers)
@@ -110,14 +119,16 @@ class HTTPException(Exception):
 
         if content_type is not None:
             if not text:
-                warnings.warn("content_type without text is deprecated "
-                              "since 4.0 and scheduled for removal in 5.0 "
-                              "(#3462)",
-                              DeprecationWarning,
-                              stacklevel=2)
+                warnings.warn(
+                    "content_type without text is deprecated "
+                    "since 4.0 and scheduled for removal in 5.0 "
+                    "(#3462)",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
             real_headers[hdrs.CONTENT_TYPE] = content_type
         elif hdrs.CONTENT_TYPE not in real_headers and text:
-            real_headers[hdrs.CONTENT_TYPE] = 'text/plain'
+            real_headers[hdrs.CONTENT_TYPE] = "text/plain"
 
         self._reason = reason
         self._text = text
@@ -140,14 +151,14 @@ class HTTPException(Exception):
         return self._text
 
     @property
-    def headers(self) -> 'CIMultiDict[str]':
+    def headers(self) -> "CIMultiDict[str]":
         return self._headers
 
     def __str__(self) -> str:
         return self.reason
 
     def __repr__(self) -> str:
-        return "<%s: %s>" % (self.__class__.__name__, self.reason)
+        return f"<{self.__class__.__name__}: {self.reason}>"
 
     __reduce__ = object.__reduce__
 
@@ -203,20 +214,22 @@ class HTTPPartialContent(HTTPSuccessful):
 
 
 class HTTPMove(HTTPRedirection):
-
-    def __init__(self,
-                 location: StrOrURL,
-                 *,
-                 headers: Optional[LooseHeaders]=None,
-                 reason: Optional[str]=None,
-                 text: Optional[str]=None,
-                 content_type: Optional[str]=None) -> None:
+    def __init__(
+        self,
+        location: StrOrURL,
+        *,
+        headers: Optional[LooseHeaders] = None,
+        reason: Optional[str] = None,
+        text: Optional[str] = None,
+        content_type: Optional[str] = None,
+    ) -> None:
         if not location:
             raise ValueError("HTTP redirects need a location to redirect to.")
-        super().__init__(headers=headers, reason=reason,
-                         text=text, content_type=content_type)
+        super().__init__(
+            headers=headers, reason=reason, text=text, content_type=content_type
+        )
         self._location = URL(location)
-        self.headers['Location'] = str(self.location)
+        self.headers["Location"] = str(self.location)
 
     @property
     def location(self) -> URL:
@@ -292,18 +305,21 @@ class HTTPNotFound(HTTPClientError):
 class HTTPMethodNotAllowed(HTTPClientError):
     status_code = 405
 
-    def __init__(self,
-                 method: str,
-                 allowed_methods: Iterable[str],
-                 *,
-                 headers: Optional[LooseHeaders]=None,
-                 reason: Optional[str]=None,
-                 text: Optional[str]=None,
-                 content_type: Optional[str]=None) -> None:
-        allow = ','.join(sorted(allowed_methods))
-        super().__init__(headers=headers, reason=reason,
-                         text=text, content_type=content_type)
-        self.headers['Allow'] = allow
+    def __init__(
+        self,
+        method: str,
+        allowed_methods: Iterable[str],
+        *,
+        headers: Optional[LooseHeaders] = None,
+        reason: Optional[str] = None,
+        text: Optional[str] = None,
+        content_type: Optional[str] = None,
+    ) -> None:
+        allow = ",".join(sorted(allowed_methods))
+        super().__init__(
+            headers=headers, reason=reason, text=text, content_type=content_type
+        )
+        self.headers["Allow"] = allow
         self._allowed = set(allowed_methods)  # type: Set[str]
         self._method = method
 
@@ -347,14 +363,11 @@ class HTTPPreconditionFailed(HTTPClientError):
 class HTTPRequestEntityTooLarge(HTTPClientError):
     status_code = 413
 
-    def __init__(self,
-                 max_size: int,
-                 actual_size: int,
-                 **kwargs: Any) -> None:
+    def __init__(self, max_size: int, actual_size: int, **kwargs: Any) -> None:
         kwargs.setdefault(
-            'text',
-            'Maximum request body size {} exceeded, '
-            'actual body size {}'.format(max_size, actual_size)
+            "text",
+            "Maximum request body size {} exceeded, "
+            "actual body size {}".format(max_size, actual_size),
         )
         super().__init__(**kwargs)
 
@@ -406,16 +419,19 @@ class HTTPRequestHeaderFieldsTooLarge(HTTPClientError):
 class HTTPUnavailableForLegalReasons(HTTPClientError):
     status_code = 451
 
-    def __init__(self,
-                 link: StrOrURL,
-                 *,
-                 headers: Optional[LooseHeaders]=None,
-                 reason: Optional[str]=None,
-                 text: Optional[str]=None,
-                 content_type: Optional[str]=None) -> None:
-        super().__init__(headers=headers, reason=reason,
-                         text=text, content_type=content_type)
-        self.headers['Link'] = '<{}>; rel="blocked-by"'.format(str(link))
+    def __init__(
+        self,
+        link: StrOrURL,
+        *,
+        headers: Optional[LooseHeaders] = None,
+        reason: Optional[str] = None,
+        text: Optional[str] = None,
+        content_type: Optional[str] = None,
+    ) -> None:
+        super().__init__(
+            headers=headers, reason=reason, text=text, content_type=content_type
+        )
+        self.headers["Link"] = '<{}>; rel="blocked-by"'.format(str(link))
         self._link = URL(link)
 
     @property

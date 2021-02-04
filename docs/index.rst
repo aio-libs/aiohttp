@@ -92,7 +92,7 @@ This prints:
     Content-type: text/html; charset=utf-8
     Body: <!doctype html> ...
 
-Comming from :term:`requests` ? Read :ref:`why we need so many lines <aiohttp-request-lifecycle>`.
+Coming from :term:`requests` ? Read :ref:`why we need so many lines <aiohttp-request-lifecycle>`.
 
 Server example:
 ----------------
@@ -146,7 +146,7 @@ Continuous Integration.
 Dependencies
 ============
 
-- Python 3.6+
+- Python 3.7+
 - *async_timeout*
 - *attrs*
 - *chardet*
@@ -167,6 +167,12 @@ Dependencies
   .. code-block:: bash
 
      $ pip install aiodns
+
+- *Optional* :term:`Brotli` for brotli (:rfc:`7932`) client compression support.
+
+  .. code-block:: bash
+
+     $ pip install Brotli
 
 
 Communication channels

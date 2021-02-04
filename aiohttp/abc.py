@@ -1,7 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Sized
-from http.cookies import BaseCookie, Morsel  # noqa
+from http.cookies import BaseCookie, Morsel
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -15,23 +15,22 @@ from typing import (
     Tuple,
 )
 
-from multidict import CIMultiDict  # noqa
+from multidict import CIMultiDict
 from yarl import URL
 
 from .typedefs import LooseCookies
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .web_request import BaseRequest, Request
-    from .web_response import StreamResponse
     from .web_app import Application
     from .web_exceptions import HTTPException
+    from .web_request import BaseRequest, Request
+    from .web_response import StreamResponse
 else:
     BaseRequest = Request = Application = StreamResponse = None
     HTTPException = None
 
 
 class AbstractRouter(ABC):
-
     def __init__(self) -> None:
         self._frozen = False
 
@@ -52,12 +51,11 @@ class AbstractRouter(ABC):
         self._frozen = True
 
     @abstractmethod
-    async def resolve(self, request: Request) -> 'AbstractMatchInfo':
+    async def resolve(self, request: Request) -> "AbstractMatchInfo":
         """Return MATCH_INFO for given request"""
 
 
 class AbstractMatchInfo(ABC):
-
     @property  # pragma: no branch
     @abstractmethod
     def handler(self) -> Callable[[Request], Awaitable[StreamResponse]]:
@@ -121,8 +119,7 @@ class AbstractResolver(ABC):
     """Abstract DNS resolver."""
 
     @abstractmethod
-    async def resolve(self, host: str,
-                      port: int, family: int) -> List[Dict[str, Any]]:
+    async def resolve(self, host: str, port: int, family: int) -> List[Dict[str, Any]]:
         """Return IP address for given hostname"""
 
     @abstractmethod
@@ -136,21 +133,26 @@ else:
     IterableBase = Iterable
 
 
+ClearCookiePredicate = Callable[["Morsel[str]"], bool]
+
+
 class AbstractCookieJar(Sized, IterableBase):
     """Abstract Cookie Jar."""
 
     @abstractmethod
-    def clear(self) -> None:
-        """Clear all cookies."""
+    def clear(self, predicate: Optional[ClearCookiePredicate] = None) -> None:
+        """Clear all cookies if no predicate is passed."""
 
     @abstractmethod
-    def update_cookies(self,
-                       cookies: LooseCookies,
-                       response_url: URL=URL()) -> None:
+    def clear_domain(self, domain: str) -> None:
+        """Clear all cookies for domain and all subdomains."""
+
+    @abstractmethod
+    def update_cookies(self, cookies: LooseCookies, response_url: URL = URL()) -> None:
         """Update cookies."""
 
     @abstractmethod
-    def filter_cookies(self, request_url: URL) -> 'BaseCookie[str]':
+    def filter_cookies(self, request_url: URL) -> "BaseCookie[str]":
         """Return the jar's cookies filtered by their attributes."""
 
 
@@ -166,7 +168,7 @@ class AbstractStreamWriter(ABC):
         """Write chunk into stream."""
 
     @abstractmethod
-    async def write_eof(self, chunk: bytes=b'') -> None:
+    async def write_eof(self, chunk: bytes = b"") -> None:
         """Write last chunk."""
 
     @abstractmethod
@@ -174,7 +176,7 @@ class AbstractStreamWriter(ABC):
         """Flush the write buffer."""
 
     @abstractmethod
-    def enable_compression(self, encoding: str='deflate') -> None:
+    def enable_compression(self, encoding: str = "deflate") -> None:
         """Enable HTTP body compression"""
 
     @abstractmethod
@@ -182,8 +184,9 @@ class AbstractStreamWriter(ABC):
         """Enable HTTP chunked mode"""
 
     @abstractmethod
-    async def write_headers(self, status_line: str,
-                            headers: 'CIMultiDict[str]') -> None:
+    async def write_headers(
+        self, status_line: str, headers: "CIMultiDict[str]"
+    ) -> None:
         """Write HTTP headers"""
 
 
@@ -195,10 +198,7 @@ class AbstractAccessLogger(ABC):
         self.log_format = log_format
 
     @abstractmethod
-    def log(self,
-            request: BaseRequest,
-            response: StreamResponse,
-            time: float) -> None:
+    def log(self, request: BaseRequest, response: StreamResponse, time: float) -> None:
         """Emit log to logger."""
 
 
@@ -206,8 +206,7 @@ class AbstractAsyncAccessLogger(ABC):
     """Abstract asynchronous writer to access log."""
 
     @abstractmethod
-    async def log(self,
-                  request: BaseRequest,
-                  response: StreamResponse,
-                  request_start: float) -> None:
+    async def log(
+        self, request: BaseRequest, response: StreamResponse, request_start: float
+    ) -> None:
         """Emit log to logger."""

@@ -1,1 +1,0 @@
-Changes doc and ttl_dns_cache type from int to Optional[int].

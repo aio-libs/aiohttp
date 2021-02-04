@@ -14,24 +14,22 @@ from .http import HttpResponseParser, RawResponseMessage
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamReader
 
 
-class ResponseHandler(BaseProtocol,
-                      DataQueue[Tuple[RawResponseMessage, StreamReader]]):
+class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamReader]]):
     """Helper class to adapt between Protocol and StreamReader."""
 
-    def __init__(self,
-                 loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         BaseProtocol.__init__(self, loop=loop)
         DataQueue.__init__(self, loop)
 
         self._should_close = False
 
-        self._payload = None
+        self._payload: Optional[StreamReader] = None
         self._skip_payload = False
         self._payload_parser = None
 
         self._timer = None
 
-        self._tail = b''
+        self._tail = b""
         self._upgraded = False
         self._parser = None  # type: Optional[HttpResponseParser]
 
@@ -46,14 +44,17 @@ class ResponseHandler(BaseProtocol,
 
     @property
     def should_close(self) -> bool:
-        if (self._payload is not None and
-                not self._payload.is_eof() or self._upgraded):
+        if self._payload is not None and not self._payload.is_eof() or self._upgraded:
             return True
 
-        return (self._should_close or self._upgraded or
-                self.exception() is not None or
-                self._payload_parser is not None or
-                len(self) > 0 or bool(self._tail))
+        return (
+            self._should_close
+            or self._upgraded
+            or self.exception() is not None
+            or self._payload_parser is not None
+            or len(self) > 0
+            or bool(self._tail)
+        )
 
     def force_close(self) -> None:
         self._should_close = True
@@ -67,7 +68,7 @@ class ResponseHandler(BaseProtocol,
             self._drop_timeout()
 
     def is_connected(self) -> bool:
-        return self.transport is not None
+        return self.transport is not None and not self.transport.is_closing()
 
     def connection_lost(self, exc: Optional[BaseException]) -> None:
         self._drop_timeout()
@@ -88,8 +89,8 @@ class ResponseHandler(BaseProtocol,
             except Exception:
                 if self._payload is not None:
                     self._payload.set_exception(
-                        ClientPayloadError(
-                            'Response payload is not completed'))
+                        ClientPayloadError("Response payload is not completed")
+                    )
 
         if not self.is_eof():
             if isinstance(exc, OSError):
@@ -137,27 +138,37 @@ class ResponseHandler(BaseProtocol,
         self._drop_timeout()
 
         if self._tail:
-            data, self._tail = self._tail, b''
+            data, self._tail = self._tail, b""
             self.data_received(data)
 
-    def set_response_params(self, *, timer: BaseTimerContext=None,
-                            skip_payload: bool=False,
-                            read_until_eof: bool=False,
-                            auto_decompress: bool=True,
-                            read_timeout: Optional[float]=None) -> None:
+    def set_response_params(
+        self,
+        *,
+        timer: Optional[BaseTimerContext] = None,
+        skip_payload: bool = False,
+        read_until_eof: bool = False,
+        auto_decompress: bool = True,
+        read_timeout: Optional[float] = None,
+        read_bufsize: int = 2 ** 16,
+    ) -> None:
         self._skip_payload = skip_payload
 
         self._read_timeout = read_timeout
         self._reschedule_timeout()
 
         self._parser = HttpResponseParser(
-            self, self._loop, timer=timer,
+            self,
+            self._loop,
+            read_bufsize,
+            timer=timer,
             payload_exception=ClientPayloadError,
+            response_with_body=not skip_payload,
             read_until_eof=read_until_eof,
-            auto_decompress=auto_decompress)
+            auto_decompress=auto_decompress,
+        )
 
         if self._tail:
-            data, self._tail = self._tail, b''
+            data, self._tail = self._tail, b""
             self.data_received(data)
 
     def _drop_timeout(self) -> None:
@@ -172,7 +183,8 @@ class ResponseHandler(BaseProtocol,
 
         if timeout:
             self._read_timeout_handle = self._loop.call_later(
-                timeout, self._on_read_timeout)
+                timeout, self._on_read_timeout
+            )
         else:
             self._read_timeout_handle = None
 
@@ -218,7 +230,7 @@ class ResponseHandler(BaseProtocol,
 
                 self._upgraded = upgraded
 
-                payload = None
+                payload: Optional[StreamReader] = None
                 for message, payload in messages:
                     if message.should_close:
                         self._should_close = True
@@ -226,7 +238,7 @@ class ResponseHandler(BaseProtocol,
                     self._payload = payload
 
                     if self._skip_payload or message.code in (204, 304):
-                        self.feed_data((message, EMPTY_PAYLOAD), 0)  # type: ignore  # noqa
+                        self.feed_data((message, EMPTY_PAYLOAD), 0)
                     else:
                         self.feed_data((message, payload), 0)
                 if payload is not None:

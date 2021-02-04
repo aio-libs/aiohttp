@@ -1,90 +1,76 @@
+from typing import Any
+
 import pytest
 
 from aiohttp import web
 
 
-def test_entry_func_empty(mocker) -> None:
-    error = mocker.patch("aiohttp.web.ArgumentParser.error",
-                         side_effect=SystemExit)
+def test_entry_func_empty(mocker: Any) -> None:
+    error = mocker.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
     argv = [""]
 
     with pytest.raises(SystemExit):
         web.main(argv)
 
-    error.assert_called_with(
-        "'entry-func' not in 'module:function' syntax"
-    )
+    error.assert_called_with("'entry-func' not in 'module:function' syntax")
 
 
-def test_entry_func_only_module(mocker) -> None:
+def test_entry_func_only_module(mocker: Any) -> None:
     argv = ["test"]
-    error = mocker.patch("aiohttp.web.ArgumentParser.error",
-                         side_effect=SystemExit)
+    error = mocker.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
 
     with pytest.raises(SystemExit):
         web.main(argv)
 
-    error.assert_called_with(
-        "'entry-func' not in 'module:function' syntax"
-    )
+    error.assert_called_with("'entry-func' not in 'module:function' syntax")
 
 
-def test_entry_func_only_function(mocker) -> None:
+def test_entry_func_only_function(mocker: Any) -> None:
     argv = [":test"]
-    error = mocker.patch("aiohttp.web.ArgumentParser.error",
-                         side_effect=SystemExit)
+    error = mocker.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
 
     with pytest.raises(SystemExit):
         web.main(argv)
 
-    error.assert_called_with(
-        "'entry-func' not in 'module:function' syntax"
-    )
+    error.assert_called_with("'entry-func' not in 'module:function' syntax")
 
 
-def test_entry_func_only_separator(mocker) -> None:
+def test_entry_func_only_separator(mocker: Any) -> None:
     argv = [":"]
-    error = mocker.patch("aiohttp.web.ArgumentParser.error",
-                         side_effect=SystemExit)
+    error = mocker.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
 
     with pytest.raises(SystemExit):
         web.main(argv)
 
-    error.assert_called_with(
-        "'entry-func' not in 'module:function' syntax"
-    )
+    error.assert_called_with("'entry-func' not in 'module:function' syntax")
 
 
-def test_entry_func_relative_module(mocker) -> None:
+def test_entry_func_relative_module(mocker: Any) -> None:
     argv = [".a.b:c"]
 
-    error = mocker.patch("aiohttp.web.ArgumentParser.error",
-                         side_effect=SystemExit)
+    error = mocker.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
     with pytest.raises(SystemExit):
         web.main(argv)
 
     error.assert_called_with("relative module names not supported")
 
 
-def test_entry_func_non_existent_module(mocker) -> None:
+def test_entry_func_non_existent_module(mocker: Any) -> None:
     argv = ["alpha.beta:func"]
 
-    mocker.patch("aiohttp.web.import_module",
-                 side_effect=ImportError("Test Error"))
-    error = mocker.patch("aiohttp.web.ArgumentParser.error",
-                         side_effect=SystemExit)
+    mocker.patch("aiohttp.web.import_module", side_effect=ImportError("Test Error"))
+    error = mocker.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
 
     with pytest.raises(SystemExit):
         web.main(argv)
 
-    error.assert_called_with('unable to import alpha.beta: Test Error')
+    error.assert_called_with("unable to import alpha.beta: Test Error")
 
 
-def test_entry_func_non_existent_attribute(mocker) -> None:
+def test_entry_func_non_existent_attribute(mocker: Any) -> None:
     argv = ["alpha.beta:func"]
     import_module = mocker.patch("aiohttp.web.import_module")
-    error = mocker.patch("aiohttp.web.ArgumentParser.error",
-                         side_effect=SystemExit)
+    error = mocker.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
     module = import_module("alpha.beta")
     del module.func
 
@@ -92,47 +78,49 @@ def test_entry_func_non_existent_attribute(mocker) -> None:
         web.main(argv)
 
     error.assert_called_with(
-        "module %r has no attribute %r" % ("alpha.beta", "func")
+        "module {!r} has no attribute {!r}".format("alpha.beta", "func")
     )
 
 
-def test_path_when_unsupported(mocker, monkeypatch) -> None:
+def test_path_when_unsupported(mocker: Any, monkeypatch: Any) -> None:
     argv = "--path=test_path.sock alpha.beta:func".split()
     mocker.patch("aiohttp.web.import_module")
     monkeypatch.delattr("socket.AF_UNIX", raising=False)
 
-    error = mocker.patch("aiohttp.web.ArgumentParser.error",
-                         side_effect=SystemExit)
+    error = mocker.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
     with pytest.raises(SystemExit):
         web.main(argv)
 
-    error.assert_called_with("file system paths not supported by your"
-                             " operating environment")
+    error.assert_called_with(
+        "file system paths not supported by your" " operating environment"
+    )
 
 
-def test_entry_func_call(mocker) -> None:
+def test_entry_func_call(mocker: Any) -> None:
     mocker.patch("aiohttp.web.run_app")
     import_module = mocker.patch("aiohttp.web.import_module")
-    argv = ("-H testhost -P 6666 --extra-optional-eins alpha.beta:func "
-            "--extra-optional-zwei extra positional args").split()
+    argv = (
+        "-H testhost -P 6666 --extra-optional-eins alpha.beta:func "
+        "--extra-optional-zwei extra positional args"
+    ).split()
     module = import_module("alpha.beta")
 
     with pytest.raises(SystemExit):
         web.main(argv)
 
     module.func.assert_called_with(
-        ("--extra-optional-eins --extra-optional-zwei extra positional "
-         "args").split()
+        ("--extra-optional-eins --extra-optional-zwei extra positional " "args").split()
     )
 
 
-def test_running_application(mocker) -> None:
+def test_running_application(mocker: Any) -> None:
     run_app = mocker.patch("aiohttp.web.run_app")
     import_module = mocker.patch("aiohttp.web.import_module")
-    exit = mocker.patch("aiohttp.web.ArgumentParser.exit",
-                        side_effect=SystemExit)
-    argv = ("-H testhost -P 6666 --extra-optional-eins alpha.beta:func "
-            "--extra-optional-zwei extra positional args").split()
+    exit = mocker.patch("aiohttp.web.ArgumentParser.exit", side_effect=SystemExit)
+    argv = (
+        "-H testhost -P 6666 --extra-optional-eins alpha.beta:func "
+        "--extra-optional-zwei extra positional args"
+    ).split()
     module = import_module("alpha.beta")
     app = module.func()
 

@@ -1,10 +1,11 @@
+# type: ignore
 import asyncio
+from typing import Any
 from unittest import mock
 
 import pytest
 
 from aiohttp import log, web
-from aiohttp.helpers import PY_36
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -88,8 +89,7 @@ async def test_on_startup() -> None:
         nonlocal all_long_running_called
         assert app is app_param
         all_long_running_called = True
-        return await asyncio.gather(long_running1(app_param),
-                                    long_running2(app_param))
+        return await asyncio.gather(long_running1(app_param), long_running2(app_param))
 
     app.on_startup.append(on_startup_all_long_running)
     app.freeze()
@@ -102,9 +102,9 @@ async def test_on_startup() -> None:
 
 def test_app_delitem() -> None:
     app = web.Application()
-    app['key'] = 'value'
+    app["key"] = "value"
     assert len(app) == 1
-    del app['key']
+    del app["key"]
     assert len(app) == 0
 
 
@@ -133,7 +133,7 @@ def test_app_run_middlewares() -> None:
 
     root = web.Application()
     sub = web.Application()
-    root.add_subapp('/sub', sub)
+    root.add_subapp("/sub", sub)
     root.freeze()
     assert root._run_middlewares is False
 
@@ -142,13 +142,13 @@ def test_app_run_middlewares() -> None:
 
     root = web.Application(middlewares=[middleware])
     sub = web.Application()
-    root.add_subapp('/sub', sub)
+    root.add_subapp("/sub", sub)
     root.freeze()
     assert root._run_middlewares is True
 
     root = web.Application()
     sub = web.Application(middlewares=[middleware])
-    root.add_subapp('/sub', sub)
+    root.add_subapp("/sub", sub)
     root.freeze()
     assert root._run_middlewares is True
 
@@ -157,15 +157,14 @@ def test_subapp_pre_frozen_after_adding() -> None:
     app = web.Application()
     subapp = web.Application()
 
-    app.add_subapp('/prefix', subapp)
+    app.add_subapp("/prefix", subapp)
     assert subapp.pre_frozen
     assert not subapp.frozen
 
 
-@pytest.mark.skipif(not PY_36,
-                    reason="Python 3.6+ required")
 def test_app_inheritance() -> None:
     with pytest.raises(TypeError):
+
         class A(web.Application):
             pass
 
@@ -182,33 +181,35 @@ async def test_cleanup_ctx() -> None:
 
     def f(num):
         async def inner(app):
-            out.append('pre_' + str(num))
+            out.append("pre_" + str(num))
             yield None
-            out.append('post_' + str(num))
+            out.append("post_" + str(num))
+
         return inner
 
     app.cleanup_ctx.append(f(1))
     app.cleanup_ctx.append(f(2))
     app.freeze()
     await app.startup()
-    assert out == ['pre_1', 'pre_2']
+    assert out == ["pre_1", "pre_2"]
     await app.cleanup()
-    assert out == ['pre_1', 'pre_2', 'post_2', 'post_1']
+    assert out == ["pre_1", "pre_2", "post_2", "post_1"]
 
 
 async def test_cleanup_ctx_exception_on_startup() -> None:
     app = web.Application()
     out = []
 
-    exc = Exception('fail')
+    exc = Exception("fail")
 
     def f(num, fail=False):
         async def inner(app):
-            out.append('pre_' + str(num))
+            out.append("pre_" + str(num))
             if fail:
                 raise exc
             yield None
-            out.append('post_' + str(num))
+            out.append("post_" + str(num))
+
         return inner
 
     app.cleanup_ctx.append(f(1))
@@ -218,24 +219,25 @@ async def test_cleanup_ctx_exception_on_startup() -> None:
     with pytest.raises(Exception) as ctx:
         await app.startup()
     assert ctx.value is exc
-    assert out == ['pre_1', 'pre_2']
+    assert out == ["pre_1", "pre_2"]
     await app.cleanup()
-    assert out == ['pre_1', 'pre_2', 'post_1']
+    assert out == ["pre_1", "pre_2", "post_1"]
 
 
 async def test_cleanup_ctx_exception_on_cleanup() -> None:
     app = web.Application()
     out = []
 
-    exc = Exception('fail')
+    exc = Exception("fail")
 
     def f(num, fail=False):
         async def inner(app):
-            out.append('pre_' + str(num))
+            out.append("pre_" + str(num))
             yield None
-            out.append('post_' + str(num))
+            out.append("post_" + str(num))
             if fail:
                 raise exc
+
         return inner
 
     app.cleanup_ctx.append(f(1))
@@ -243,11 +245,37 @@ async def test_cleanup_ctx_exception_on_cleanup() -> None:
     app.cleanup_ctx.append(f(3))
     app.freeze()
     await app.startup()
-    assert out == ['pre_1', 'pre_2', 'pre_3']
+    assert out == ["pre_1", "pre_2", "pre_3"]
     with pytest.raises(Exception) as ctx:
         await app.cleanup()
     assert ctx.value is exc
-    assert out == ['pre_1', 'pre_2', 'pre_3', 'post_3', 'post_2', 'post_1']
+    assert out == ["pre_1", "pre_2", "pre_3", "post_3", "post_2", "post_1"]
+
+
+async def test_cleanup_ctx_cleanup_after_exception() -> None:
+    app = web.Application()
+    ctx_state = None
+
+    async def success_ctx(app):
+        nonlocal ctx_state
+        ctx_state = "START"
+        yield
+        ctx_state = "CLEAN"
+
+    async def fail_ctx(app):
+        raise Exception()
+        yield
+
+    app.cleanup_ctx.append(success_ctx)
+    app.cleanup_ctx.append(fail_ctx)
+    runner = web.AppRunner(app)
+    try:
+        with pytest.raises(Exception):
+            await runner.setup()
+    finally:
+        await runner.cleanup()
+
+    assert ctx_state == "CLEAN"
 
 
 async def test_cleanup_ctx_exception_on_cleanup_multiple() -> None:
@@ -256,11 +284,12 @@ async def test_cleanup_ctx_exception_on_cleanup_multiple() -> None:
 
     def f(num, fail=False):
         async def inner(app):
-            out.append('pre_' + str(num))
+            out.append("pre_" + str(num))
             yield None
-            out.append('post_' + str(num))
+            out.append("post_" + str(num))
             if fail:
-                raise Exception('fail_' + str(num))
+                raise Exception("fail_" + str(num))
+
         return inner
 
     app.cleanup_ctx.append(f(1))
@@ -268,14 +297,14 @@ async def test_cleanup_ctx_exception_on_cleanup_multiple() -> None:
     app.cleanup_ctx.append(f(3, True))
     app.freeze()
     await app.startup()
-    assert out == ['pre_1', 'pre_2', 'pre_3']
+    assert out == ["pre_1", "pre_2", "pre_3"]
     with pytest.raises(web.CleanupError) as ctx:
         await app.cleanup()
     exc = ctx.value
     assert len(exc.exceptions) == 2
-    assert str(exc.exceptions[0]) == 'fail_3'
-    assert str(exc.exceptions[1]) == 'fail_2'
-    assert out == ['pre_1', 'pre_2', 'pre_3', 'post_3', 'post_2', 'post_1']
+    assert str(exc.exceptions[0]) == "fail_3"
+    assert str(exc.exceptions[1]) == "fail_2"
+    assert out == ["pre_1", "pre_2", "pre_3", "post_3", "post_2", "post_1"]
 
 
 async def test_cleanup_ctx_multiple_yields() -> None:
@@ -284,79 +313,78 @@ async def test_cleanup_ctx_multiple_yields() -> None:
 
     def f(num):
         async def inner(app):
-            out.append('pre_' + str(num))
+            out.append("pre_" + str(num))
             yield None
-            out.append('post_' + str(num))
+            out.append("post_" + str(num))
             yield None
+
         return inner
 
     app.cleanup_ctx.append(f(1))
     app.freeze()
     await app.startup()
-    assert out == ['pre_1']
+    assert out == ["pre_1"]
     with pytest.raises(RuntimeError) as ctx:
         await app.cleanup()
     assert "has more than one 'yield'" in str(ctx.value)
-    assert out == ['pre_1', 'post_1']
+    assert out == ["pre_1", "post_1"]
 
 
-async def test_subapp_chained_config_dict_visibility(aiohttp_client) -> None:
-
+async def test_subapp_chained_config_dict_visibility(aiohttp_client: Any) -> None:
     async def main_handler(request):
-        assert request.config_dict['key1'] == 'val1'
-        assert 'key2' not in request.config_dict
+        assert request.config_dict["key1"] == "val1"
+        assert "key2" not in request.config_dict
         return web.Response(status=200)
 
     root = web.Application()
-    root['key1'] = 'val1'
-    root.add_routes([web.get('/', main_handler)])
+    root["key1"] = "val1"
+    root.add_routes([web.get("/", main_handler)])
 
     async def sub_handler(request):
-        assert request.config_dict['key1'] == 'val1'
-        assert request.config_dict['key2'] == 'val2'
+        assert request.config_dict["key1"] == "val1"
+        assert request.config_dict["key2"] == "val2"
         return web.Response(status=201)
 
     sub = web.Application()
-    sub['key2'] = 'val2'
-    sub.add_routes([web.get('/', sub_handler)])
-    root.add_subapp('/sub', sub)
+    sub["key2"] = "val2"
+    sub.add_routes([web.get("/", sub_handler)])
+    root.add_subapp("/sub", sub)
 
     client = await aiohttp_client(root)
 
-    resp = await client.get('/')
+    resp = await client.get("/")
     assert resp.status == 200
-    resp = await client.get('/sub/')
+    resp = await client.get("/sub/")
     assert resp.status == 201
 
 
-async def test_subapp_chained_config_dict_overriding(aiohttp_client) -> None:
-
+async def test_subapp_chained_config_dict_overriding(aiohttp_client: Any) -> None:
     async def main_handler(request):
-        assert request.config_dict['key'] == 'val1'
+        assert request.config_dict["key"] == "val1"
         return web.Response(status=200)
 
     root = web.Application()
-    root['key'] = 'val1'
-    root.add_routes([web.get('/', main_handler)])
+    root["key"] = "val1"
+    root.add_routes([web.get("/", main_handler)])
 
     async def sub_handler(request):
-        assert request.config_dict['key'] == 'val2'
+        assert request.config_dict["key"] == "val2"
         return web.Response(status=201)
 
     sub = web.Application()
-    sub['key'] = 'val2'
-    sub.add_routes([web.get('/', sub_handler)])
-    root.add_subapp('/sub', sub)
+    sub["key"] = "val2"
+    sub.add_routes([web.get("/", sub_handler)])
+    root.add_subapp("/sub", sub)
 
     client = await aiohttp_client(root)
 
-    resp = await client.get('/')
+    resp = await client.get("/")
     assert resp.status == 200
-    resp = await client.get('/sub/')
+    resp = await client.get("/sub/")
     assert resp.status == 201
 
 
-async def test_subapp_on_startup(aiohttp_client) -> None:
+async def test_subapp_on_startup(aiohttp_client: Any) -> None:
 
     subapp = web.Application()
 
@@ -365,7 +393,7 @@ async def test_subapp_on_startup(aiohttp_client) -> None:
     async def on_startup(app):
         nonlocal startup_called
         startup_called = True
-        app['startup'] = True
+        app["startup"] = True
 
     subapp.on_startup.append(on_startup)
 
@@ -375,7 +403,7 @@ async def test_subapp_on_startup(aiohttp_client) -> None:
     async def cleanup_ctx(app):
         nonlocal ctx_pre_called, ctx_post_called
         ctx_pre_called = True
-        app['cleanup'] = True
+        app["cleanup"] = True
         yield None
         ctx_post_called = True
 
@@ -399,7 +427,7 @@ async def test_subapp_on_startup(aiohttp_client) -> None:
 
     app = web.Application()
 
-    app.add_subapp('/subapp', subapp)
+    app.add_subapp("/subapp", subapp)
 
     assert not startup_called
     assert not ctx_pre_called
@@ -430,14 +458,14 @@ async def test_subapp_on_startup(aiohttp_client) -> None:
     assert cleanup_called
 
 
-def test_app_iter():
+def test_app_iter() -> None:
     app = web.Application()
-    app['a'] = '1'
-    app['b'] = '2'
-    assert sorted(list(app)) == ['a', 'b']
+    app["a"] = "1"
+    app["b"] = "2"
+    assert sorted(list(app)) == ["a", "b"]
 
 
-def test_app_forbid_nonslot_attr():
+def test_app_forbid_nonslot_attr() -> None:
     app = web.Application()
     with pytest.raises(AttributeError):
         app.unknow_attr
@@ -449,7 +477,7 @@ def test_forbid_changing_frozen_app() -> None:
     app = web.Application()
     app.freeze()
     with pytest.raises(RuntimeError):
-        app['key'] = 'value'
+        app["key"] = "value"
 
 
 def test_app_boolean() -> None:

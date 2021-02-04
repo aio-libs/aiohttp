@@ -229,6 +229,53 @@ Pytest tooling has the following fixtures:
 
       The fixture was renamed from ``unused_port`` to ``aiohttp_unused_port``.
 
+.. data:: aiohttp_client_cls
+
+   A fixture for passing custom :class:`~aiohttp.test_utils.TestClient` implementations::
+
+      class MyClient(TestClient):
+          async def login(self, *, user, pw):
+              payload = {"username": user, "password": pw}
+              return await self.post("/login", json=payload)
+
+      @pytest.fixture
+      def aiohttp_client_cls():
+          return MyClient
+
+      def test_login(aiohttp_client):
+          app = web.Application()
+          client = await aiohttp_client(app)
+          await client.login(user="admin", pw="s3cr3t")
+
+   If you want to switch between different clients in tests, you can use
+   the usual ``pytest`` machinery. Example with using test markers::
+
+      class RESTfulClient(TestClient):
+          ...
+
+      class GraphQLClient(TestClient):
+          ...
+
+      @pytest.fixture
+      def aiohttp_client_cls(request):
+          if request.node.get_closest_marker('rest') is not None:
+              return RESTfulClient
+          if request.node.get_closest_marker('graphql') is not None:
+              return GraphQLClient
+          return TestClient
+
+
+      @pytest.mark.rest
+      async def test_rest(aiohttp_client) -> None:
+          client: RESTfulClient = await aiohttp_client(Application())
+          ...
+
+
+      @pytest.mark.graphql
+      async def test_graphql(aiohttp_client) -> None:
+          client: GraphQLClient = await aiohttp_client(Application())
+          ...
+
 
 .. _aiohttp-testing-unittest-example:
 
@@ -380,6 +427,70 @@ functionality, the AioHTTPTestCase is provided::
 
    Handles executing an asynchronous function, using
    the :attr:`AioHTTPTestCase.loop` of the :class:`AioHTTPTestCase`.
+
+Patching unittest test cases
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Patching test cases is tricky, when using python older than 3.8  :py:func:`~unittest.mock.patch` does not behave as it has to.
+We recommend using :py:mod:`asynctest` that provides :py:func:`~asynctest.patch` that is capable of creating
+a magic mock that supports async. It can be used with a decorator as well as with a context manager:
+
+.. code-block:: python
+   :emphasize-lines: 1,37,46
+
+    from asynctest.mock import patch as async_patch
+
+    from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+    from aiohttp.web_app import Application
+    from aiohttp.web_request import Request
+    from aiohttp.web_response import Response
+    from aiohttp.web_routedef import get
+
+
+    async def do_something():
+        print('something')
+
+
+    async def ping(request: Request) -> Response:
+        await do_something()
+        return Response(text='pong')
+
+
+    class TestApplication(AioHTTPTestCase):
+        def get_app(self) -> Application:
+            app = Application()
+            app.router.add_routes([
+                get('/ping/', ping)
+            ])
+
+            return app
+
+        @unittest_run_loop
+        async def test_ping(self):
+            resp = await self.client.get('/ping/')
+
+            self.assertEqual(resp.status, 200)
+            self.assertEqual(await resp.text(), 'pong')
+
+        @unittest_run_loop
+        async def test_ping_mocked_do_something(self):
+            with async_patch('tests.do_something') as do_something_patch:
+                resp = await self.client.get('/ping/')
+
+                self.assertEqual(resp.status, 200)
+                self.assertEqual(await resp.text(), 'pong')
+
+                self.assertTrue(do_something_patch.called)
+
+        @unittest_run_loop
+        @async_patch('tests.do_something')
+        async def test_ping_mocked_do_something_decorated(self, do_something_patch):
+            resp = await self.client.get('/ping/')
+
+            self.assertEqual(resp.status, 200)
+            self.assertEqual(await resp.text(), 'pong')
+
+            self.assertTrue(do_something_patch.called)
 
 
 Faking request object

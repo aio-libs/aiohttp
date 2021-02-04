@@ -1,25 +1,28 @@
 import asyncio
 import collections
 import warnings
-from typing import List  # noqa
-from typing import Awaitable, Callable, Generic, Optional, Tuple, TypeVar
+from typing import Awaitable, Callable, Generic, List, Optional, Tuple, TypeVar
+
+from typing_extensions import Final
 
 from .base_protocol import BaseProtocol
 from .helpers import BaseTimerContext, set_exception, set_result
 from .log import internal_logger
 
 try:  # pragma: no cover
-    from typing import Deque  # noqa
+    from typing import Deque
 except ImportError:
-    from typing_extensions import Deque  # noqa
+    from typing_extensions import Deque
 
 __all__ = (
-    'EMPTY_PAYLOAD', 'EofStream', 'StreamReader', 'DataQueue',
-    'FlowControlDataQueue')
+    "EMPTY_PAYLOAD",
+    "EofStream",
+    "StreamReader",
+    "DataQueue",
+    "FlowControlDataQueue",
+)
 
-DEFAULT_LIMIT = 2 ** 16
-
-_T = TypeVar('_T')
+_T = TypeVar("_T")
 
 
 class EofStream(Exception):
@@ -27,49 +30,48 @@ class EofStream(Exception):
 
 
 class AsyncStreamIterator(Generic[_T]):
-
     def __init__(self, read_func: Callable[[], Awaitable[_T]]) -> None:
         self.read_func = read_func
 
-    def __aiter__(self) -> 'AsyncStreamIterator[_T]':
+    def __aiter__(self) -> "AsyncStreamIterator[_T]":
         return self
 
     async def __anext__(self) -> _T:
         try:
             rv = await self.read_func()
         except EofStream:
-            raise StopAsyncIteration  # NOQA
-        if rv == b'':
-            raise StopAsyncIteration  # NOQA
+            raise StopAsyncIteration
+        if rv == b"":
+            raise StopAsyncIteration
         return rv
 
 
 class ChunkTupleAsyncStreamIterator:
-
-    def __init__(self, stream: 'StreamReader') -> None:
+    def __init__(self, stream: "StreamReader") -> None:
         self._stream = stream
 
-    def __aiter__(self) -> 'ChunkTupleAsyncStreamIterator':
+    def __aiter__(self) -> "ChunkTupleAsyncStreamIterator":
         return self
 
     async def __anext__(self) -> Tuple[bytes, bool]:
         rv = await self._stream.readchunk()
-        if rv == (b'', False):
-            raise StopAsyncIteration  # NOQA
+        if rv == (b"", False):
+            raise StopAsyncIteration
         return rv
 
 
 class AsyncStreamReaderMixin:
-
     def __aiter__(self) -> AsyncStreamIterator[bytes]:
-        return AsyncStreamIterator(self.readline)  # type: ignore
+        return AsyncStreamIterator(self.readline)  # type: ignore[attr-defined]
 
     def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
         """Returns an asynchronous iterator that yields chunks of size n.
 
         Python-3.5 available for Python 3.5+ only
         """
-        return AsyncStreamIterator(lambda: self.read(n))  # type: ignore
+        return AsyncStreamIterator(
+            lambda: self.read(n)  # type: ignore[attr-defined,no-any-return]
+        )
 
     def iter_any(self) -> AsyncStreamIterator[bytes]:
         """Returns an asynchronous iterator that yields all the available
@@ -77,7 +79,7 @@ class AsyncStreamReaderMixin:
 
         Python-3.5 available for Python 3.5+ only
         """
-        return AsyncStreamIterator(self.readany)  # type: ignore
+        return AsyncStreamIterator(self.readany)  # type: ignore[attr-defined]
 
     def iter_chunks(self) -> ChunkTupleAsyncStreamIterator:
         """Returns an asynchronous iterator that yields chunks of data
@@ -86,7 +88,7 @@ class AsyncStreamReaderMixin:
 
         Python-3.5 available for Python 3.5+ only
         """
-        return ChunkTupleAsyncStreamIterator(self)  # type: ignore
+        return ChunkTupleAsyncStreamIterator(self)  # type: ignore[arg-type]
 
 
 class StreamReader(AsyncStreamReaderMixin):
@@ -105,10 +107,14 @@ class StreamReader(AsyncStreamReaderMixin):
 
     total_bytes = 0
 
-    def __init__(self, protocol: BaseProtocol,
-                 *, limit: int=DEFAULT_LIMIT,
-                 timer: Optional[BaseTimerContext]=None,
-                 loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(
+        self,
+        protocol: BaseProtocol,
+        limit: int,
+        *,
+        timer: Optional[BaseTimerContext] = None,
+        loop: asyncio.AbstractEventLoop,
+    ) -> None:
         self._protocol = protocol
         self._low_water = limit
         self._high_water = limit * 2
@@ -130,16 +136,19 @@ class StreamReader(AsyncStreamReaderMixin):
     def __repr__(self) -> str:
         info = [self.__class__.__name__]
         if self._size:
-            info.append('%d bytes' % self._size)
+            info.append("%d bytes" % self._size)
         if self._eof:
-            info.append('eof')
-        if self._low_water != DEFAULT_LIMIT:
-            info.append('low=%d high=%d' % (self._low_water, self._high_water))
+            info.append("eof")
+        if self._low_water != 2 ** 16:  # default limit
+            info.append("low=%d high=%d" % (self._low_water, self._high_water))
         if self._waiter:
-            info.append('w=%r' % self._waiter)
+            info.append("w=%r" % self._waiter)
         if self._exception:
-            info.append('e=%r' % self._exception)
-        return '<%s>' % ' '.join(info)
+            info.append("e=%r" % self._exception)
+        return "<%s>" % " ".join(info)
+
+    def get_read_buffer_limits(self) -> Tuple[int, int]:
+        return (self._low_water, self._high_water)
 
     def exception(self) -> Optional[BaseException]:
         return self._exception
@@ -163,7 +172,7 @@ class StreamReader(AsyncStreamReaderMixin):
             try:
                 callback()
             except Exception:
-                internal_logger.exception('Exception in eof callback')
+                internal_logger.exception("Exception in eof callback")
         else:
             self._eof_callbacks.append(callback)
 
@@ -184,7 +193,7 @@ class StreamReader(AsyncStreamReaderMixin):
             try:
                 cb()
             except Exception:
-                internal_logger.exception('Exception in eof callback')
+                internal_logger.exception("Exception in eof callback")
 
         self._eof_callbacks.clear()
 
@@ -208,17 +217,18 @@ class StreamReader(AsyncStreamReaderMixin):
             self._eof_waiter = None
 
     def unread_data(self, data: bytes) -> None:
-        """ rollback reading some data from stream, inserting it to buffer head.
-        """
-        warnings.warn("unread_data() is deprecated "
-                      "and will be removed in future releases (#3260)",
-                      DeprecationWarning,
-                      stacklevel=2)
+        """rollback reading some data from stream, inserting it to buffer head."""
+        warnings.warn(
+            "unread_data() is deprecated "
+            "and will be removed in future releases (#3260)",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if not data:
             return
 
         if self._buffer_offset:
-            self._buffer[0] = self._buffer[0][self._buffer_offset:]
+            self._buffer[0] = self._buffer[0][self._buffer_offset :]
             self._buffer_offset = 0
         self._size += len(data)
         self._cursor -= len(data)
@@ -226,8 +236,8 @@ class StreamReader(AsyncStreamReaderMixin):
         self._eof_counter = 0
 
     # TODO: size is ignored, remove the param later
-    def feed_data(self, data: bytes, size: int=0) -> None:
-        assert not self._eof, 'feed_data after feed_eof'
+    def feed_data(self, data: bytes, size: int = 0) -> None:
+        assert not self._eof, "feed_data after feed_eof"
 
         if not data:
             return
@@ -241,21 +251,23 @@ class StreamReader(AsyncStreamReaderMixin):
             self._waiter = None
             set_result(waiter, None)
 
-        if (self._size > self._high_water and
-                not self._protocol._reading_paused):
+        if self._size > self._high_water and not self._protocol._reading_paused:
             self._protocol.pause_reading()
 
     def begin_http_chunk_receiving(self) -> None:
         if self._http_chunk_splits is None:
             if self.total_bytes:
-                raise RuntimeError("Called begin_http_chunk_receiving when"
-                                   "some data was already fed")
+                raise RuntimeError(
+                    "Called begin_http_chunk_receiving when" "some data was already fed"
+                )
             self._http_chunk_splits = []
 
     def end_http_chunk_receiving(self) -> None:
         if self._http_chunk_splits is None:
-            raise RuntimeError("Called end_chunk_receiving without calling "
-                               "begin_chunk_receiving first")
+            raise RuntimeError(
+                "Called end_chunk_receiving without calling "
+                "begin_chunk_receiving first"
+            )
 
         # self._http_chunk_splits contains logical byte offsets from start of
         # the body transfer. Each offset is the offset of the end of a chunk.
@@ -286,8 +298,10 @@ class StreamReader(AsyncStreamReaderMixin):
         # would have an unexpected behaviour. It would not possible to know
         # which coroutine would get the next data.
         if self._waiter is not None:
-            raise RuntimeError('%s() called while another coroutine is '
-                               'already waiting for incoming data' % func_name)
+            raise RuntimeError(
+                "%s() called while another coroutine is "
+                "already waiting for incoming data" % func_name
+            )
 
         waiter = self._waiter = self._loop.create_future()
         try:
@@ -300,41 +314,48 @@ class StreamReader(AsyncStreamReaderMixin):
             self._waiter = None
 
     async def readline(self) -> bytes:
+        return await self.readuntil()
+
+    async def readuntil(self, separator: bytes = b"\n") -> bytes:
+        seplen = len(separator)
+        if seplen == 0:
+            raise ValueError("Separator should be at least one-byte string")
+
         if self._exception is not None:
             raise self._exception
 
-        line = []
-        line_size = 0
+        chunk = b""
+        chunk_size = 0
         not_enough = True
 
         while not_enough:
             while self._buffer and not_enough:
                 offset = self._buffer_offset
-                ichar = self._buffer[0].find(b'\n', offset) + 1
-                # Read from current offset to found b'\n' or to the end.
+                ichar = self._buffer[0].find(separator, offset) + 1
+                # Read from current offset to found separator or to the end.
                 data = self._read_nowait_chunk(ichar - offset if ichar else -1)
-                line.append(data)
-                line_size += len(data)
+                chunk += data
+                chunk_size += len(data)
                 if ichar:
                     not_enough = False
 
-                if line_size > self._high_water:
-                    raise ValueError('Line is too long')
+                if chunk_size > self._high_water:
+                    raise ValueError("Chunk too big")
 
             if self._eof:
                 break
 
             if not_enough:
-                await self._wait('readline')
+                await self._wait("readuntil")
 
-        return b''.join(line)
+        return chunk
 
-    async def read(self, n: int=-1) -> bytes:
+    async def read(self, n: int = -1) -> bytes:
         if self._exception is not None:
             raise self._exception
 
         if not n:
-            return b''
+            return b""
 
         if n < 0:
             # This used to just loop creating a new waiter hoping to
@@ -347,13 +368,13 @@ class StreamReader(AsyncStreamReaderMixin):
                 if not block:
                     break
                 blocks.append(block)
-            return b''.join(blocks)
+            return b"".join(blocks)
 
         # TODO: should be `if` instead of `while`
         # because waiter maybe triggered on chunk end,
         # without feeding any data
         while not self._buffer and not self._eof:
-            await self._wait('read')
+            await self._wait("read")
 
         return self._read_nowait(n)
 
@@ -365,7 +386,7 @@ class StreamReader(AsyncStreamReaderMixin):
         # because waiter maybe triggered on chunk end,
         # without feeding any data
         while not self._buffer and not self._eof:
-            await self._wait('readany')
+            await self._wait("readany")
 
         return self._read_nowait(-1)
 
@@ -384,9 +405,11 @@ class StreamReader(AsyncStreamReaderMixin):
                 if pos == self._cursor:
                     return (b"", True)
                 if pos > self._cursor:
-                    return (self._read_nowait(pos-self._cursor), True)
-                internal_logger.warning('Skipping HTTP chunk end due to data '
-                                        'consumption beyond chunk boundary')
+                    return (self._read_nowait(pos - self._cursor), True)
+                internal_logger.warning(
+                    "Skipping HTTP chunk end due to data "
+                    "consumption beyond chunk boundary"
+                )
 
             if self._buffer:
                 return (self._read_nowait_chunk(-1), False)
@@ -395,9 +418,9 @@ class StreamReader(AsyncStreamReaderMixin):
             if self._eof:
                 # Special case for signifying EOF.
                 # (b'', True) is not a final return value actually.
-                return (b'', False)
+                return (b"", False)
 
-            await self._wait('readchunk')
+            await self._wait("readchunk")
 
     async def readexactly(self, n: int) -> bytes:
         if self._exception is not None:
@@ -407,15 +430,14 @@ class StreamReader(AsyncStreamReaderMixin):
         while n > 0:
             block = await self.read(n)
             if not block:
-                partial = b''.join(blocks)
-                raise asyncio.IncompleteReadError(
-                    partial, len(partial) + n)
+                partial = b"".join(blocks)
+                raise asyncio.IncompleteReadError(partial, len(partial) + n)
             blocks.append(block)
             n -= len(block)
 
-        return b''.join(blocks)
+        return b"".join(blocks)
 
-    def read_nowait(self, n: int=-1) -> bytes:
+    def read_nowait(self, n: int = -1) -> bytes:
         # default was changed to be consistent with .read(-1)
         #
         # I believe the most users don't know about the method and
@@ -425,7 +447,8 @@ class StreamReader(AsyncStreamReaderMixin):
 
         if self._waiter and not self._waiter.done():
             raise RuntimeError(
-                'Called while some coroutine is waiting for incoming data.')
+                "Called while some coroutine is waiting for incoming data."
+            )
 
         return self._read_nowait(n)
 
@@ -433,7 +456,7 @@ class StreamReader(AsyncStreamReaderMixin):
         first_buffer = self._buffer[0]
         offset = self._buffer_offset
         if n != -1 and len(first_buffer) - offset > n:
-            data = first_buffer[offset:offset + n]
+            data = first_buffer[offset : offset + n]
             self._buffer_offset += n
 
         elif offset:
@@ -457,7 +480,7 @@ class StreamReader(AsyncStreamReaderMixin):
         return data
 
     def _read_nowait(self, n: int) -> bytes:
-        """ Read not more than n bytes, or whole buffer is n == -1 """
+        """ Read not more than n bytes, or whole buffer if n == -1 """
         chunks = []
 
         while self._buffer:
@@ -468,10 +491,12 @@ class StreamReader(AsyncStreamReaderMixin):
                 if n == 0:
                     break
 
-        return b''.join(chunks) if chunks else b''
+        return b"".join(chunks) if chunks else b""
 
 
-class EmptyStreamReader(AsyncStreamReaderMixin):
+class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
+    def __init__(self) -> None:
+        pass
 
     def exception(self) -> Optional[BaseException]:
         return None
@@ -483,7 +508,7 @@ class EmptyStreamReader(AsyncStreamReaderMixin):
         try:
             callback()
         except Exception:
-            internal_logger.exception('Exception in eof callback')
+            internal_logger.exception("Exception in eof callback")
 
     def feed_eof(self) -> None:
         pass
@@ -497,29 +522,31 @@ class EmptyStreamReader(AsyncStreamReaderMixin):
     async def wait_eof(self) -> None:
         return
 
-    def feed_data(self, data: bytes, n: int=0) -> None:
+    def feed_data(self, data: bytes, n: int = 0) -> None:
         pass
 
     async def readline(self) -> bytes:
-        return b''
+        return b""
 
-    async def read(self, n: int=-1) -> bytes:
-        return b''
+    async def read(self, n: int = -1) -> bytes:
+        return b""
+
+    # TODO add async def readuntil
 
     async def readany(self) -> bytes:
-        return b''
+        return b""
 
     async def readchunk(self) -> Tuple[bytes, bool]:
-        return (b'', True)
+        return (b"", True)
 
     async def readexactly(self, n: int) -> bytes:
-        raise asyncio.IncompleteReadError(b'', n)
+        raise asyncio.IncompleteReadError(b"", n)
 
-    def read_nowait(self) -> bytes:
-        return b''
+    def read_nowait(self, n: int = -1) -> bytes:
+        return b""
 
 
-EMPTY_PAYLOAD = EmptyStreamReader()
+EMPTY_PAYLOAD: Final[StreamReader] = EmptyStreamReader()
 
 
 class DataQueue(Generic[_T]):
@@ -554,7 +581,7 @@ class DataQueue(Generic[_T]):
             self._waiter = None
             set_exception(waiter, exc)
 
-    def feed_data(self, data: _T, size: int=0) -> None:
+    def feed_data(self, data: _T, size: int = 0) -> None:
         self._size += size
         self._buffer.append((data, size))
 
@@ -600,15 +627,15 @@ class FlowControlDataQueue(DataQueue[_T]):
 
     It is a destination for parsed data."""
 
-    def __init__(self, protocol: BaseProtocol, *,
-                 limit: int=DEFAULT_LIMIT,
-                 loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(
+        self, protocol: BaseProtocol, limit: int, *, loop: asyncio.AbstractEventLoop
+    ) -> None:
         super().__init__(loop=loop)
 
         self._protocol = protocol
         self._limit = limit * 2
 
-    def feed_data(self, data: _T, size: int=0) -> None:
+    def feed_data(self, data: _T, size: int = 0) -> None:
         super().feed_data(data, size)
 
         if self._size > self._limit and not self._protocol._reading_paused:

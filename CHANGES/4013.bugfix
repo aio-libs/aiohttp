@@ -1,1 +1,0 @@
-Fixed race conditions in _resolve_host caching and throttling when tracing is enabled.

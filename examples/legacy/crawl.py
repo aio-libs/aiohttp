@@ -11,7 +11,6 @@ import aiohttp
 
 
 class Crawler:
-
     def __init__(self, rooturl, maxtasks=100):
         self.rooturl = rooturl
         self.todo = set()
@@ -24,7 +23,7 @@ class Crawler:
         self.session = aiohttp.ClientSession()
 
     async def run(self):
-        t = asyncio.ensure_future(self.addurls([(self.rooturl, '')]))
+        t = asyncio.ensure_future(self.addurls([(self.rooturl, "")]))
         await asyncio.sleep(1)
         while self.busy:
             await asyncio.sleep(1)
@@ -36,10 +35,12 @@ class Crawler:
         for url, parenturl in urls:
             url = urllib.parse.urljoin(parenturl, url)
             url, frag = urllib.parse.urldefrag(url)
-            if (url.startswith(self.rooturl) and
-                    url not in self.busy and
-                    url not in self.done and
-                    url not in self.todo):
+            if (
+                url.startswith(self.rooturl)
+                and url not in self.busy
+                and url not in self.done
+                and url not in self.todo
+            ):
                 self.todo.add(url)
                 await self.sem.acquire()
                 task = asyncio.ensure_future(self.process(url))
@@ -48,19 +49,18 @@ class Crawler:
                 self.tasks.add(task)
 
     async def process(self, url):
-        print('processing:', url)
+        print("processing:", url)
 
         self.todo.remove(url)
         self.busy.add(url)
         try:
             resp = await self.session.get(url)
         except Exception as exc:
-            print('...', url, 'has error', repr(str(exc)))
+            print("...", url, "has error", repr(str(exc)))
             self.done[url] = False
         else:
-            if (resp.status == 200 and
-                    ('text/html' in resp.headers.get('content-type'))):
-                data = (await resp.read()).decode('utf-8', 'replace')
+            if resp.status == 200 and ("text/html" in resp.headers.get("content-type")):
+                data = (await resp.read()).decode("utf-8", "replace")
                 urls = re.findall(r'(?i)href=["\']?([^\s"\'<>]+)', data)
                 asyncio.Task(self.addurls([(u, url) for u in urls]))
 
@@ -68,8 +68,13 @@ class Crawler:
             self.done[url] = True
 
         self.busy.remove(url)
-        print(len(self.done), 'completed tasks,', len(self.tasks),
-              'still pending, todo', len(self.todo))
+        print(
+            len(self.done),
+            "completed tasks,",
+            len(self.tasks),
+            "still pending, todo",
+            len(self.todo),
+        )
 
 
 def main():
@@ -83,17 +88,18 @@ def main():
     except RuntimeError:
         pass
     loop.run_forever()
-    print('todo:', len(c.todo))
-    print('busy:', len(c.busy))
-    print('done:', len(c.done), '; ok:', sum(c.done.values()))
-    print('tasks:', len(c.tasks))
+    print("todo:", len(c.todo))
+    print("busy:", len(c.busy))
+    print("done:", len(c.done), "; ok:", sum(c.done.values()))
+    print("tasks:", len(c.tasks))
 
 
-if __name__ == '__main__':
-    if '--iocp' in sys.argv:
+if __name__ == "__main__":
+    if "--iocp" in sys.argv:
         from asyncio import events, windows_events
-        sys.argv.remove('--iocp')
-        logging.info('using iocp')
+
+        sys.argv.remove("--iocp")
+        logging.info("using iocp")
         el = windows_events.ProactorEventLoop()
         events.set_event_loop(el)
 

@@ -1,1 +1,0 @@
-Made cython HTTP parser set Reason-Phrase of the response to an empty string if it is missing.
