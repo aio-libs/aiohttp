@@ -40,7 +40,7 @@ from typing import (
     cast,
 )
 from urllib.parse import quote
-from urllib.request import getproxies, proxy_bypass  # noqa: F401
+from urllib.request import getproxies
 
 import async_timeout
 from multidict import CIMultiDict, MultiDict, MultiDictProxy

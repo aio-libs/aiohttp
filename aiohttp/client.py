@@ -28,6 +28,7 @@ from typing import (
     TypeVar,
     Union,
 )
+from urllib.request import proxy_bypass
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from typing_extensions import Final, final
@@ -81,7 +82,6 @@ from .helpers import (
     TimeoutHandle,
     ceil_timeout,
     proxies_from_env,
-    proxy_bypass,
     sentinel,
     strip_auth_from_url,
 )
