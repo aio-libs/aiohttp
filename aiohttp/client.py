@@ -446,8 +446,7 @@ class ClientSession:
                         proxy = URL(proxy)
                     elif self._trust_env:
                         if not proxy_bypass(str(url.host)):
-                            for scheme, proxy_info in proxies_from_env()\
-                                    .items():
+                            for scheme, proxy_info in proxies_from_env().items():
                                 if scheme == url.scheme:
                                     proxy = proxy_info.proxy
                                     proxy_auth = proxy_info.proxy_auth
