@@ -103,5 +103,6 @@ class AsyncResolver(AbstractResolver):
     async def close(self) -> None:
         self._resolver.cancel()
 
+
 _DefaultType = Type[Union[AsyncResolver, ThreadedResolver]]
 DefaultResolver: _DefaultType = AsyncResolver if aiodns_default else ThreadedResolver
