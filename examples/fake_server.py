@@ -3,7 +3,7 @@ import asyncio
 import pathlib
 import socket
 import ssl
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Union
 
 from aiohttp import ClientSession, TCPConnector, resolver, test_utils, web
 from aiohttp.abc import AbstractResolver
