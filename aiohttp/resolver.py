@@ -1,6 +1,6 @@
 import asyncio
 import socket
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Type, Union
 
 from .abc import AbstractResolver
 
@@ -103,5 +103,5 @@ class AsyncResolver(AbstractResolver):
     async def close(self) -> None:
         self._resolver.cancel()
 
-
-DefaultResolver = AsyncResolver if aiodns_default else ThreadedResolver
+_DefaultType = Type[Union[AsyncResolver, ThreadedResolver]]
+DefaultResolver: _DefaultType = AsyncResolver if aiodns_default else ThreadedResolver
