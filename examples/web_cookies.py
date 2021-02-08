@@ -3,6 +3,7 @@
 """
 
 from pprint import pformat
+from typing import NoReturn
 
 from aiohttp import web
 
@@ -22,13 +23,13 @@ async def root(request: web.Request) -> web.StreamResponse:
     return resp
 
 
-async def login(request: web.Request) -> None:
+async def login(request: web.Request) -> NoReturn:
     exc = web.HTTPFound(location="/")
     exc.set_cookie("AUTH", "secret")
     raise exc
 
 
-async def logout(request: web.Request) -> None:
+async def logout(request: web.Request) -> NoReturn:
     exc = web.HTTPFound(location="/")
     exc.del_cookie("AUTH")
     raise exc
