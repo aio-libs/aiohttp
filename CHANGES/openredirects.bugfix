@@ -1,1 +1,4 @@
-Prevent open redirects from normalize_path_middleware.
+**(SECURITY BUG)** Started preventing open redirects in the
+``aiohttp.web.normalize_path_middleware`` middleware. For
+more details, see
+https://github.com/aio-libs/aiohttp/security/advisories/GHSA-v6wp-4m6f-gcjg.
