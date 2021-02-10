@@ -370,6 +370,7 @@ class TestNormalizePathMiddleware:
         client = await aiohttp_client(app, server_kwargs={"skip_url_asserts": True})
         resp = await client.get("//google.com", allow_redirects=False)
         assert resp.status == 404
+        assert 'Location' not in resp.headers
         assert resp.url.query == URL("//google.com").query
 
 
