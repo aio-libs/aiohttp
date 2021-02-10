@@ -1,0 +1,1 @@
+Prevent open redirects from normalize_path_middleware.
