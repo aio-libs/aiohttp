@@ -361,6 +361,19 @@ class TestNormalizePathMiddleware:
         with pytest.raises(AssertionError):
             web.normalize_path_middleware(append_slash=True, remove_slash=True)
 
+    async def test_open_redirects(
+        self, aiohttp_client: Any
+    ) -> None:
+        async def handle(request: web.Request) -> web.StreamResponse:
+            return web.Response(text="hello")
+
+        app = web.Application(middlewares=[web.normalize_path_middleware()])
+        app.add_routes([web.get('/', handle)])
+        client = await aiohttp_client(app, server_kwargs={"skip_url_asserts": True})
+        resp = await client.get('//google.com', allow_redirects=False)
+        assert resp.status == 404
+        assert resp.url.query == URL('//google.com').query
+
 
 async def test_bug_3669(aiohttp_client: Any):
     async def paymethod(request):
