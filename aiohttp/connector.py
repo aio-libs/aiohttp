@@ -59,7 +59,7 @@ except ImportError:  # pragma: no cover
     SSLContext = object  # type: ignore[misc,assignment]
 
 
-__all__ = ("BaseConnector", "TCPConnector", "UnixConnector", "NamedPipeConnector")
+__all__ = ("BaseConnector", "NamedPipeConnector", "TCPConnector", "UnixConnector")
 
 
 if TYPE_CHECKING:  # pragma: no cover

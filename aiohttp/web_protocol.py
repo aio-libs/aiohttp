@@ -41,7 +41,7 @@ from .web_log import AccessLogger
 from .web_request import BaseRequest
 from .web_response import Response, StreamResponse
 
-__all__ = ("RequestHandler", "RequestPayloadError", "PayloadAccessError")
+__all__ = ("PayloadAccessError", "RequestHandler", "RequestPayloadError")
 
 if TYPE_CHECKING:  # pragma: no cover
     from .web_server import Server

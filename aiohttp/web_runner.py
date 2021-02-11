@@ -22,15 +22,15 @@ except ImportError:
 
 
 __all__ = (
+    "AppRunner",
+    "BaseRunner",
     "BaseSite",
+    "GracefulExit",
+    "NamedPipeSite",
+    "ServerRunner",
+    "SockSite",
     "TCPSite",
     "UnixSite",
-    "NamedPipeSite",
-    "SockSite",
-    "BaseRunner",
-    "AppRunner",
-    "ServerRunner",
-    "GracefulExit",
 )
 
 

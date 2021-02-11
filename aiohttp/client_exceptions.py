@@ -20,24 +20,24 @@ else:
     RequestInfo = ClientResponse = ConnectionKey = None
 
 __all__ = (
-    "ClientError",
     "ClientConnectionError",
-    "ClientOSError",
-    "ClientConnectorError",
-    "ClientProxyConnectionError",
-    "ClientSSLError",
-    "ClientConnectorSSLError",
     "ClientConnectorCertificateError",
+    "ClientConnectorError",
+    "ClientConnectorSSLError",
+    "ClientError",
+    "ClientHttpProxyError",
+    "ClientOSError",
+    "ClientPayloadError",
+    "ClientProxyConnectionError",
+    "ClientResponseError",
+    "ClientSSLError",
+    "ContentTypeError",
+    "InvalidURL",
     "ServerConnectionError",
-    "ServerTimeoutError",
     "ServerDisconnectedError",
     "ServerFingerprintMismatch",
-    "ClientResponseError",
-    "ClientHttpProxyError",
+    "ServerTimeoutError",
     "WSServerHandshakeError",
-    "ContentTypeError",
-    "ClientPayloadError",
-    "InvalidURL",
 )
 
 
