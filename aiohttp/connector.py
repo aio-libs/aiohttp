@@ -45,7 +45,7 @@ from .client_exceptions import (
 )
 from .client_proto import ResponseHandler
 from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
-from .helpers import _SENTINEL, ceil_timeout, is_ip_address, sentinel
+from .helpers import _SENTINEL, PY_38, ceil_timeout, is_ip_address, sentinel
 from .http import RESPONSES
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
@@ -700,6 +700,13 @@ class TCPConnector(BaseConnector):
         resolver
     use_dns_cache - Use memory cache for DNS lookups.
     ttl_dns_cache - Max seconds having cached a DNS entry, None forever.
+    happy_eyeballs_delay - Number of seconds to wait before spawning an
+        RFC 8305 Happy Eyeballs connection. None value disables Happy
+        Eyeballs support.
+        This is ignored if Python 3.7 is used.
+    interleave_address_families - Controls address reordering when a
+        host name resolves to multiple IP addresses.
+        This is ignored if Python 3.7 is used.
     family - socket address family
     local_addr - local tuple of (host, port) to bind socket to
 
@@ -718,6 +725,8 @@ class TCPConnector(BaseConnector):
         *,
         use_dns_cache: bool = True,
         ttl_dns_cache: Optional[int] = 10,
+        happy_eyeballs_delay: float = 0.25,  # 250 ms recommended by RFC 8305.
+        interleave_address_families: int = 1,
         family: int = 0,
         ssl: Union[None, bool, Fingerprint, SSLContext] = None,
         local_addr: Optional[Tuple[str, int]] = None,
@@ -748,6 +757,8 @@ class TCPConnector(BaseConnector):
 
         self._use_dns_cache = use_dns_cache
         self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache)
+        self._happy_eyeballs_delay = happy_eyeballs_delay
+        self._interleave_address_families = interleave_address_families
         self._throttle_dns_events = (
             {}
         )  # type: Dict[Tuple[str, int], EventResultOrError]
@@ -994,6 +1005,13 @@ class TCPConnector(BaseConnector):
             port = hinfo["port"]
 
             try:
+                if PY_38:
+                    happy_eyeballs_kwargs = {
+                        "happy_eyeballs_delay": self._happy_eyeballs_delay,
+                        "interleave": self._interleave_address_families,
+                    }
+                else:
+                    happy_eyeballs_kwargs = {}
                 transp, proto = await self._wrap_create_connection(
                     self._factory,
                     host,
@@ -1007,6 +1025,7 @@ class TCPConnector(BaseConnector):
                     local_addr=self._local_addr,
                     req=req,
                     client_error=client_error,
+                    **happy_eyeballs_kwargs,
                 )
             except ClientConnectorError as exc:
                 last_exc = exc
