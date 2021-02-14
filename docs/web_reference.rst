@@ -318,6 +318,26 @@ and :ref:`aiohttp-web-signals` handlers.
 
       .. versionadded:: 3.1
 
+   .. attribute:: if_match
+
+      Read-only property that returns :class:`ETag` objects specified
+      in the *If-Match* header.
+
+      Returns :class:`tuple` of :class:`ETag` or ``None`` if
+      *If-Match* header is absent.
+
+      .. versionadded:: 3.8
+
+   .. attribute:: if_none_match
+
+      Read-only property that returns :class:`ETag` objects specified
+      *If-None-Match* header.
+
+      Returns :class:`tuple` of :class:`ETag` or ``None`` if
+      *If-None-Match* header is absent.
+
+      .. versionadded:: 3.8
+
    .. attribute:: if_range
 
       Read-only property that returns the date specified in the
@@ -773,6 +793,20 @@ StreamResponse
       :class:`datetime.datetime` objects, Unix timestamps specified
       as an :class:`int` or a :class:`float` object, and the
       value ``None`` to unset the header.
+
+   .. attribute:: etag
+
+      *ETag* header for outgoing response.
+
+      This property accepts raw :class:`str` values, :class:`ETag`
+      objects and the value ``None`` to unset the header.
+
+      In case of :class:`str` input, etag is considered as strong by default.
+
+      **Do not** use double quotes ``"`` in the etag value,
+      they will be added automatically.
+
+      .. versionadded:: 3.8
 
    .. comethod:: prepare(request)
 
