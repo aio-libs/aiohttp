@@ -34,7 +34,10 @@ from . import hdrs
 from .abc import AbstractStreamWriter
 from .helpers import (
     _SENTINEL,
+    ETAG_ANY,
+    LIST_QUOTED_ETAG_RE,
     ChainMapProxy,
+    ETag,
     HeadersMixin,
     is_expected_content_type,
     reify,
@@ -499,6 +502,52 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         This header is represented as a `datetime` object.
         """
         return self._http_date(self.headers.get(hdrs.IF_UNMODIFIED_SINCE))
+
+    @staticmethod
+    def _etag_values(etag_header: str) -> Iterator[ETag]:
+        """Extract `ETag` objects from raw header."""
+        if etag_header == ETAG_ANY:
+            yield ETag(
+                is_weak=False,
+                value=ETAG_ANY,
+            )
+        else:
+            for match in LIST_QUOTED_ETAG_RE.finditer(etag_header):
+                is_weak, value, garbage = match.group(2, 3, 4)
+                # Any symbol captured by 4th group means
+                # that the following sequence is invalid.
+                if garbage:
+                    break
+
+                yield ETag(
+                    is_weak=bool(is_weak),
+                    value=value,
+                )
+
+    @classmethod
+    def _if_match_or_none_impl(
+        cls, header_value: Optional[str]
+    ) -> Optional[Tuple[ETag, ...]]:
+        if not header_value:
+            return None
+
+        return tuple(cls._etag_values(header_value))
+
+    @reify
+    def if_match(self) -> Optional[Tuple[ETag, ...]]:
+        """The value of If-Match HTTP header, or None.
+
+        This header is represented as a `tuple` of `ETag` objects.
+        """
+        return self._if_match_or_none_impl(self.headers.get(hdrs.IF_MATCH))
+
+    @reify
+    def if_none_match(self) -> Optional[Tuple[ETag, ...]]:
+        """The value of If-None-Match HTTP header, or None.
+
+        This header is represented as a `tuple` of `ETag` objects.
+        """
+        return self._if_match_or_none_impl(self.headers.get(hdrs.IF_NONE_MATCH))
 
     @reify
     def if_range(self) -> Optional[datetime.datetime]:
