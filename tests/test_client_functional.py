@@ -1231,6 +1231,21 @@ async def test_POST_DATA_DEFLATE(aiohttp_client: Any) -> None:
     resp.close()
 
 
+async def test_GET_DEFLATE(aiohttp_client: Any) -> None:
+    async def handler(_):
+        return web.json_response(dict(ok=True))
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/", compress=True)
+    assert 200 == resp.status
+    content = await resp.json()
+    assert content == {"ok": True}
+    resp.close()
+
+
 async def test_POST_FILES(aiohttp_client: Any, fname: Any) -> None:
     async def handler(request):
         data = await request.post()
