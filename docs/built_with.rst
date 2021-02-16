@@ -17,7 +17,7 @@ can add it here in this list.
 You can also add a **Built with aiohttp** link somewhere in your
 project, pointing to `<https://github.com/aio-libs/aiohttp>`_.
 
-
+* `utube-search <https://github.com/rahulunair/utube-search>`_ CLI tool and a fast async API to search for youtube videos
 * `repo-peek <https://github.com/rahulunair/repo-peek>`_ CLI tool to open a remote repo locally quickly.
 * `Molotov <http://molotov.readthedocs.io>`_ Load testing tool.
 * `Arsenic <https://github.com/hde/arsenic>`_ Async WebDriver.
