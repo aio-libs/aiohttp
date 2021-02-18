@@ -380,11 +380,11 @@ class TestNormalizePathMiddleware:
 
         app = web.Application(middlewares=[web.normalize_path_middleware(
             append_slash=append_slash, remove_slash=remove_slash)])
-        app.add_routes([web.get("/", handle)])
+        app.add_routes([web.get("/", handle), web.get("/google.com", handle)])
         client = await aiohttp_client(app, server_kwargs={"skip_url_asserts": True})
         resp = await client.get("//google.com", allow_redirects=False)
-        assert resp.status == 404
-        assert 'Location' not in resp.headers
+        assert resp.status == 308
+        assert resp.headers.get('Location') == '/google.com'
         assert resp.url.query == URL("//google.com").query
 
 
