@@ -363,7 +363,11 @@ class TestNormalizePathMiddleware:
 
     async def test_open_redirects(self, aiohttp_client: Any) -> None:
         async def handle(request: web.Request) -> web.StreamResponse:
-            return web.Response(text="hello")
+            pytest.fail(
+                msg="Security advisory 'GHSA-v6wp-4m6f-gcjg' test handler "
+                "matched unexpectedly",
+                pytrace=False,
+            )
 
         app = web.Application(middlewares=[web.normalize_path_middleware()])
         app.add_routes([web.get("/", handle)])
