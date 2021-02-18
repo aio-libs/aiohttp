@@ -361,7 +361,16 @@ class TestNormalizePathMiddleware:
         with pytest.raises(AssertionError):
             web.normalize_path_middleware(append_slash=True, remove_slash=True)
 
-    async def test_open_redirects(self, aiohttp_client: Any) -> None:
+    @pytest.mark.parametrize(
+        "append_slash, remove_slash",
+        [
+            (True, False),
+            (False, True),
+        ],
+    )
+    async def test_open_redirects(
+            self, append_slash: bool, remove_slash: bool,
+            aiohttp_client: Any) -> None:
         async def handle(request: web.Request) -> web.StreamResponse:
             pytest.fail(
                 msg="Security advisory 'GHSA-v6wp-4m6f-gcjg' test handler "
@@ -369,7 +378,8 @@ class TestNormalizePathMiddleware:
                 pytrace=False,
             )
 
-        app = web.Application(middlewares=[web.normalize_path_middleware()])
+        app = web.Application(middlewares=[web.normalize_path_middleware(
+            append_slash=append_slash, remove_slash=remove_slash)])
         app.add_routes([web.get("/", handle)])
         client = await aiohttp_client(app, server_kwargs={"skip_url_asserts": True})
         resp = await client.get("//google.com", allow_redirects=False)
