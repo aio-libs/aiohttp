@@ -370,8 +370,8 @@ class TestNormalizePathMiddleware:
         ],
     )
     async def test_open_redirects(
-            self, append_slash: bool, remove_slash: bool,
-            aiohttp_client: Any) -> None:
+        self, append_slash: bool, remove_slash: bool, aiohttp_client: Any
+    ) -> None:
         async def handle(request: web.Request) -> web.StreamResponse:
             pytest.fail(
                 msg="Security advisory 'GHSA-v6wp-4m6f-gcjg' test handler "
@@ -379,13 +379,18 @@ class TestNormalizePathMiddleware:
                 pytrace=False,
             )
 
-        app = web.Application(middlewares=[web.normalize_path_middleware(
-            append_slash=append_slash, remove_slash=remove_slash)])
+        app = web.Application(
+            middlewares=[
+                web.normalize_path_middleware(
+                    append_slash=append_slash, remove_slash=remove_slash
+                )
+            ]
+        )
         app.add_routes([web.get("/", handle), web.get("/google.com", handle)])
         client = await aiohttp_client(app, server_kwargs={"skip_url_asserts": True})
         resp = await client.get("//google.com", allow_redirects=False)
         assert resp.status == 308
-        assert resp.headers.get('Location') == '/google.com'
+        assert resp.headers.get("Location") == "/google.com"
         assert resp.url.query == URL("//google.com").query
 
 
