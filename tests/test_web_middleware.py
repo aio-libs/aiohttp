@@ -366,6 +366,7 @@ class TestNormalizePathMiddleware:
         [
             (True, False),
             (False, True),
+            (False, False),
         ],
     )
     async def test_open_redirects(
