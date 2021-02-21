@@ -362,7 +362,7 @@ class TestNormalizePathMiddleware:
             web.normalize_path_middleware(append_slash=True, remove_slash=True)
 
     @pytest.mark.parametrize(
-        "append_slash, remove_slash",
+        ["append_slash", "remove_slash"],
         [
             (True, False),
             (False, True),
