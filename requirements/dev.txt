@@ -190,7 +190,7 @@ six==1.15.0
     #   virtualenv
 snowballstemmer==2.0.0
     # via sphinx
-sphinx==3.5.0
+sphinx==3.5.1
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-asyncio
