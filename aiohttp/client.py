@@ -608,9 +608,9 @@ class ClientSession:
                         elif not scheme:
                             parsed_url = url.join(parsed_url)
 
-                        if url.origin() != parsed_url.origin():
-                            auth = None
-                            headers.pop(hdrs.AUTHORIZATION, None)
+                        # if url.origin() != parsed_url.origin():
+                        #     auth = None
+                        #     headers.pop(hdrs.AUTHORIZATION, None)
 
                         url = parsed_url
                         params = None
