@@ -49,6 +49,7 @@ async def test_http_processing_error(session: Any) -> None:
         await response.start(connection)
 
     assert info.value.request_info is request_info
+    response.close()
 
 
 def test_del(session: Any) -> None:
