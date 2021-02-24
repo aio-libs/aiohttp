@@ -657,7 +657,7 @@ async def test_tcp_connector_multiple_hosts_errors(loop) -> None:
 
     conn._loop.create_connection = create_connection
 
-    await conn.connect(req, [], ClientTimeout())
+    established_connection = await conn.connect(req, [], ClientTimeout())
     assert ips == ips_tried
 
     assert os_error
@@ -665,6 +665,8 @@ async def test_tcp_connector_multiple_hosts_errors(loop) -> None:
     assert ssl_error
     assert fingerprint_error
     assert connected
+
+    established_connection.close()
 
 
 async def test_tcp_connector_resolve_host(loop) -> None:
@@ -1595,6 +1597,8 @@ async def test_connect_with_limit_cancelled(loop) -> None:
         await asyncio.wait_for(conn.connect(req, None, ClientTimeout()), 0.01)
     connection.close()
 
+    await conn.close()
+
 
 async def test_connect_with_capacity_release_waiters(loop) -> None:
     def check_with_exc(err):
@@ -2260,3 +2264,5 @@ async def test_connector_does_not_remove_needed_waiters(loop, key) -> None:
         await_connection_and_check_waiters(),
         allow_connection_and_add_dummy_waiter(),
     )
+
+    await connector.close()

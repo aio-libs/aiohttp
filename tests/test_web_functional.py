@@ -4,6 +4,7 @@ import json
 import pathlib
 import socket
 import zlib
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -324,7 +325,8 @@ async def test_post_single_file(aiohttp_client) -> None:
 
     fname = here / "data.unknown_mime_type"
 
-    resp = await client.post("/", data=[fname.open("rb")])
+    with fname.open("rb") as fd:
+        resp = await client.post("/", data=[fd])
     assert 200 == resp.status
 
 
@@ -874,13 +876,16 @@ async def test_response_with_streamer_no_params(aiohttp_client, fname) -> None:
     assert resp.headers.get("Content-Length") == str(len(resp_data))
 
 
-async def test_response_with_file(aiohttp_client, fname) -> None:
+async def test_response_with_file(aiohttp_client: Any, fname: Any) -> None:
+    outer_file_descriptor = None
 
     with fname.open("rb") as f:
         data = f.read()
 
     async def handler(request):
-        return web.Response(body=fname.open("rb"))
+        nonlocal outer_file_descriptor
+        outer_file_descriptor = fname.open("rb")
+        return web.Response(body=outer_file_descriptor)
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -901,15 +906,21 @@ async def test_response_with_file(aiohttp_client, fname) -> None:
     assert resp.headers.get("Content-Length") == str(len(resp_data))
     assert resp.headers.get("Content-Disposition") == expected_content_disposition
 
+    outer_file_descriptor.close()
 
-async def test_response_with_file_ctype(aiohttp_client, fname) -> None:
+
+async def test_response_with_file_ctype(aiohttp_client: Any, fname: Any) -> None:
+    outer_file_descriptor = None
 
     with fname.open("rb") as f:
         data = f.read()
 
     async def handler(request):
+        nonlocal outer_file_descriptor
+        outer_file_descriptor = fname.open("rb")
+
         return web.Response(
-            body=fname.open("rb"), headers={"content-type": "text/binary"}
+            body=outer_file_descriptor, headers={"content-type": "text/binary"}
         )
 
     app = web.Application()
@@ -927,14 +938,19 @@ async def test_response_with_file_ctype(aiohttp_client, fname) -> None:
     assert resp.headers.get("Content-Length") == str(len(resp_data))
     assert resp.headers.get("Content-Disposition") == expected_content_disposition
 
+    outer_file_descriptor.close()
 
-async def test_response_with_payload_disp(aiohttp_client, fname) -> None:
+
+async def test_response_with_payload_disp(aiohttp_client: Any, fname: Any) -> None:
+    outer_file_descriptor = None
 
     with fname.open("rb") as f:
         data = f.read()
 
     async def handler(request):
-        pl = aiohttp.get_payload(fname.open("rb"))
+        nonlocal outer_file_descriptor
+        outer_file_descriptor = fname.open("rb")
+        pl = aiohttp.get_payload(outer_file_descriptor)
         pl.set_content_disposition("inline", filename="test.txt")
         return web.Response(body=pl, headers={"content-type": "text/binary"})
 
@@ -952,6 +968,8 @@ async def test_response_with_payload_disp(aiohttp_client, fname) -> None:
         resp.headers.get("Content-Disposition")
         == "inline; filename=\"test.txt\"; filename*=utf-8''test.txt"
     )
+
+    outer_file_descriptor.close()
 
 
 async def test_response_with_payload_stringio(aiohttp_client, fname) -> None:
@@ -1565,6 +1583,7 @@ async def test_post_max_client_size(aiohttp_client) -> None:
     assert (
         "Maximum request body size 10 exceeded, " "actual body size 1024" in resp_text
     )
+    data["file"].close()
 
 
 async def test_post_max_client_size_for_file(aiohttp_client) -> None:
@@ -1618,11 +1637,12 @@ async def test_response_with_bodypart_named(aiohttp_client, tmpdir) -> None:
 
     f = tmpdir.join("foobar.txt")
     f.write_text("test", encoding="utf8")
-    data = {"file": open(str(f), "rb")}
-    resp = await client.post("/", data=data)
+    with open(str(f), "rb") as fd:
+        data = {"file": fd}
+        resp = await client.post("/", data=data)
 
-    assert 200 == resp.status
-    body = await resp.read()
+        assert 200 == resp.status
+        body = await resp.read()
     assert body == b"test"
 
     disp = multipart.parse_content_disposition(resp.headers["content-disposition"])
@@ -1700,11 +1720,14 @@ async def test_response_context_manager(aiohttp_server) -> None:
     app = web.Application()
     app.router.add_route("GET", "/", handler)
     server = await aiohttp_server(app)
-    resp = await aiohttp.ClientSession().get(server.make_url("/"))
+    session = aiohttp.ClientSession()
+    resp = await session.get(server.make_url("/"))
     async with resp:
         assert resp.status == 200
         assert resp.connection is None
     assert resp.connection is None
+
+    await session.close()
 
 
 async def test_response_context_manager_error(aiohttp_server) -> None:
@@ -1725,6 +1748,8 @@ async def test_response_context_manager_error(aiohttp_server) -> None:
     assert resp.closed
 
     assert len(session._connector._conns) == 1
+
+    await session.close()
 
 
 async def aiohttp_client_api_context_manager(aiohttp_server):

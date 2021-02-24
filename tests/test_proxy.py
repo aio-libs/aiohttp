@@ -72,6 +72,8 @@ class TestProxy(unittest.TestCase):
             ssl=None,
         )
 
+        conn.close()
+
     @mock.patch("aiohttp.connector.ClientRequest")
     def test_proxy_headers(self, ClientRequestMock) -> None:
         req = ClientRequest(
@@ -111,6 +113,8 @@ class TestProxy(unittest.TestCase):
             loop=self.loop,
             ssl=None,
         )
+
+        conn.close()
 
     def test_proxy_auth(self) -> None:
         with self.assertRaises(ValueError) as ctx:

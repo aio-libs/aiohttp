@@ -665,6 +665,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
                             tmp.write(chunk)
                             size += len(chunk)
                             if 0 < max_size < size:
+                                tmp.close()
                                 raise HTTPRequestEntityTooLarge(
                                     max_size=max_size, actual_size=size
                                 )

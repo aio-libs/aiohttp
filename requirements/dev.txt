@@ -160,7 +160,7 @@ pytest-cov==2.10.1
     # via -r requirements/test.txt
 pytest-mock==3.5.1
     # via -r requirements/test.txt
-pytest==6.1.2
+pytest==6.2.2
     # via
     #   -r requirements/lint.txt
     #   -r requirements/test.txt

@@ -152,6 +152,7 @@ async def test_access_to_the_file_with_spaces(
     r = await client.get(url)
     assert r.status == 200
     assert (await r.text()) == data
+    await r.release()
 
 
 async def test_access_non_existing_resource(tmp_dir_path, aiohttp_client) -> None:
