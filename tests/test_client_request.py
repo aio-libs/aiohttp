@@ -580,6 +580,7 @@ async def test_content_type_auto_header_get(loop: Any, conn: Any) -> None:
     resp = await req.send(conn)
     assert "CONTENT-TYPE" not in req.headers
     resp.close()
+    await req.close()
 
 
 async def test_content_type_auto_header_form(loop: Any, conn: Any) -> None:
@@ -686,6 +687,7 @@ async def test_pass_falsy_data_file(loop: Any, tmp_path: Any) -> None:
     )
     assert req.headers.get("CONTENT-LENGTH", None) is not None
     await req.close()
+    testfile.close()
 
 
 # Elasticsearch API requires to send request body with GET-requests

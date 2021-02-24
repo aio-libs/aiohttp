@@ -728,6 +728,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
                             tmp.write(chunk)
                             size += len(chunk)
                             if 0 < max_size < size:
+                                tmp.close()
                                 raise HTTPRequestEntityTooLarge(
                                     max_size=max_size, actual_size=size
                                 )
@@ -817,6 +818,19 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
     def _finish(self) -> None:
         for fut in self._disconnection_waiters:
             fut.cancel()
+
+        if self._post is None or self.content_type != "multipart/form-data":
+            return
+
+        # NOTE: Release file descriptors for the
+        # NOTE: `tempfile.Temporaryfile`-created `_io.BufferedRandom`
+        # NOTE: instances of files sent within multipart request body
+        # NOTE: via HTTP POST request.
+        for file_name, file_field_object in self._post.items():
+            if not isinstance(file_field_object, FileField):
+                continue
+
+            file_field_object.file.close()
 
     async def wait_for_disconnection(self) -> None:
         loop = asyncio.get_event_loop()
