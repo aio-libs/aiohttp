@@ -102,6 +102,7 @@ def normalize_path_middleware(
                 paths_to_check.append(merged_slashes[:-1])
 
             for path in paths_to_check:
+                path = re.sub("^//+", "/", path)  # SECURITY: GHSA-v6wp-4m6f-gcjg
                 resolves, request = await _check_request_resolves(request, path)
                 if resolves:
                     raise redirect_class(request.raw_path + query)
