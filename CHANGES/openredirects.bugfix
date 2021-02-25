@@ -3,4 +3,4 @@
 more details, see
 https://github.com/aio-libs/aiohttp/security/advisories/GHSA-v6wp-4m6f-gcjg.
 
-Thanks to 'Beast Glatisant' for finding the first instance of this issue.
+Thanks to `Beast Glatisant <https://github.com/g147>`__ for finding the first instance of this issue and `Jelmer Vernooĳ <https://jelmer.uk/>`__ for reporting and tracking it down in aiohttp.
