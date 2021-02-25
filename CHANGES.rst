@@ -14,7 +14,7 @@ Changelog
 
 .. towncrier release notes start
 
-3.7.3 (2021-02-25)
+3.7.4 (2021-02-25)
 ==================
 
 Bugfixes
