@@ -76,7 +76,7 @@ class RawRequestMessage(NamedTuple):
     method: str
     path: str
     version: HttpVersion
-    headers: CIMultiDictProxy[str]
+    headers: "CIMultiDictProxy[str]"
     raw_headers: RawHeaders
     should_close: bool
     compression: Optional[str]
