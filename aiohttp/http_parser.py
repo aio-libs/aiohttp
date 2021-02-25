@@ -498,6 +498,9 @@ class HttpRequestParser(HttpParser):
                 "Status line is too long", str(self.max_line_size), str(len(path))
             )
 
+        path_part, _hash_separator, url_fragment = path.partition("#")
+        path_part, _question_mark_separator, qs_part = path_part.partition("?")
+
         # method
         if not METHRE.match(method):
             raise BadStatusLine(method)
@@ -538,7 +541,16 @@ class HttpRequestParser(HttpParser):
             compression,
             upgrade,
             chunked,
-            URL(path),
+            # NOTE: `yarl.URL.build()` is used to mimic what the Cython-based
+            # NOTE: parser does, otherwise it results into the same
+            # NOTE: HTTP Request-Line input producing different
+            # NOTE: `yarl.URL()` objects
+            URL.build(
+                path=path_part,
+                query_string=qs_part,
+                fragment=url_fragment,
+                encoded=True,
+            ),
         )
 
 

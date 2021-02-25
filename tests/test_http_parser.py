@@ -528,6 +528,7 @@ def test_http_request_parser_two_slashes(parser) -> None:
 
     assert msg.method == "GET"
     assert msg.path == "//path"
+    assert msg.url.path == "//path"
     assert msg.version == (1, 1)
     assert not msg.should_close
     assert msg.compression is None
