@@ -1,0 +1,6 @@
+Fix interpretation difference of the pure-Python and the Cython-based
+HTTP parsers construct a ``yarl.URL`` object for HTTP request-target.
+
+Before this fix, the Python parser would turn the URI's absolute-path
+for ``//some-path`` into ``/`` while the Cython code preserved it as
+``//some-path``. Now, both do the latter.
