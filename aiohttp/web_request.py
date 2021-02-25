@@ -448,7 +448,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._message.path
 
     @reify
-    def query(self) -> MultiDictProxy[str]:
+    def query(self) -> "MultiDictProxy[str]":
         """A multidict with all the variables in the query string."""
         return MultiDictProxy(self._rel_url.query)
 
