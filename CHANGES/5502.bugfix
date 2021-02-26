@@ -1,0 +1,2 @@
+Use variable ``client_error`` instead of a hard-coded ``ClientConnectorError`` exception
+in ``TCPConnector``.

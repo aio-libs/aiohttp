@@ -985,7 +985,7 @@ class TCPConnector(BaseConnector):
         except OSError as exc:
             # in case of proxy it is not ClientProxyConnectionError
             # it is problem of resolving proxy ip itself
-            raise ClientConnectorError(req.connection_key, exc) from exc
+            raise client_error(req.connection_key, exc) from exc
 
         last_exc = None  # type: Optional[Exception]
 
@@ -1008,7 +1008,7 @@ class TCPConnector(BaseConnector):
                     req=req,
                     client_error=client_error,
                 )
-            except ClientConnectorError as exc:
+            except client_error as exc:
                 last_exc = exc
                 continue
 
