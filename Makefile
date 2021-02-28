@@ -61,8 +61,7 @@ aiohttp/%.c: aiohttp/%.pyx $(call to-hash,$(CYS)) aiohttp/_find_header.c
 .PHONY: cythonize
 cythonize: .install-cython $(PYXS:.pyx=.c)
 
-.install-deps: .install-cython $(PYXS:.pyx=.c) $(call to-hash,$(CYS) $(REQS))
-	pip install -r requirements/dev.in -c requirements/dev.txt
+.install-deps: .install-cython install $(PYXS:.pyx=.c) $(call to-hash,$(CYS) $(REQS))
 	@touch .install-deps
 
 .PHONY: lint
@@ -145,7 +144,7 @@ compile-deps: .update-pip
 
 .PHONY: install
 install: .update-pip
-	@pip install -r requirements/dev.in -c requirements/dev.txt
+	@pip install --use-deprecated=legacy-resolver -r requirements/dev.in -c requirements/dev.txt
 
 .PHONY: install-dev
 install-dev: .develop
