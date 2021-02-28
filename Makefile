@@ -144,6 +144,7 @@ compile-deps: .update-pip
 
 .PHONY: install
 install: .update-pip
+    # legacy-resolver is used until https://github.com/jazzband/pip-tools/issues/1190
 	@pip install --use-deprecated=legacy-resolver -r requirements/dev.in -c requirements/dev.txt
 
 .PHONY: install-dev
