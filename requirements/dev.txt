@@ -58,7 +58,7 @@ click==7.1.2
     #   black
     #   cherry-picker
     #   towncrier
-coverage==5.4
+coverage==5.5
     # via
     #   -r requirements/test.txt
     #   pytest-cov
