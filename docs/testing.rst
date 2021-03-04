@@ -350,7 +350,6 @@ functionality, the AioHTTPTestCase is provided::
 
          class TestA(AioHTTPTestCase):
 
-             @unittest_run_loop
              async def test_f(self):
                  async with self.client.get('/') as resp:
                      body = await resp.text()
