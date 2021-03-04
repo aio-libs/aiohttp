@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 
 from aiohttp import web
-from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+from aiohttp.test_utils import AioHTTPTestCase
 
 
 @pytest.mark.skipif(
@@ -34,7 +34,6 @@ class TestCase(AioHTTPTestCase):
     async def on_startup_hook(self, app: Any) -> None:
         self.on_startup_called = True
 
-    @unittest_run_loop
     async def test_on_startup_hook(self) -> None:
         self.assertTrue(self.on_startup_called)
 

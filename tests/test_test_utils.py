@@ -16,7 +16,6 @@ from aiohttp.test_utils import (
     TestServer as _TestServer,
     loop_context,
     make_mocked_request,
-    unittest_run_loop,
 )
 
 _hello_world_str = "Hello, world"
@@ -90,7 +89,6 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
     def get_app(self):
         return _create_example_app()
 
-    @unittest_run_loop
     async def test_example_with_loop(self) -> None:
         request = await self.client.request("GET", "/")
         assert request.status == 200
