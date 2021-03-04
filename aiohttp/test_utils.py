@@ -474,7 +474,7 @@ class AioHTTPTestCase(TestCase):
 def unittest_run_loop(func: Any, *args: Any, **kwargs: Any) -> Any:
     """A decorator dedicated to use with asynchronous methods of an
     AioHTTPTestCase in aiohttp <3.8.
-    
+
     In 3.8+, this does nothing.
     """
     warnings.warn("Decorator no longer needed in 3.8+", DeprecationWarning)
