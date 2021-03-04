@@ -135,6 +135,7 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
 
 def test_unittest_run_loop() -> None:
     with pytest.warns(DeprecationWarning):
+
         @unittest_run_loop
         def foo():
             pass
