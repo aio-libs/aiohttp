@@ -102,7 +102,6 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
     def get_app(self):
         return _create_example_app()
 
-    @unittest_run_loop
     async def test_example_with_loop(self) -> None:
         request = await self.client.request("GET", "/")
         assert request.status == 200
@@ -132,6 +131,13 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
             assert _hello_world_str == text
 
         await test_get_route()
+
+
+def test_unittest_run_loop() -> None:
+    with pytest.warns(DeprecationWarning):
+        @unittest_run_loop
+        def foo():
+            pass
 
 
 def test_get_route(loop, test_client) -> None:
