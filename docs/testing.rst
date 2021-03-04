@@ -261,9 +261,9 @@ functionality, the AioHTTPTestCase is provided::
 
         async def test_example(self):
             async with self.client.request("GET", "/") as resp:
-                assert resp.status == 200
+                self.assertEqual(resp.status, 200)
                 text = await resp.text()
-            assert "Hello, world" in text
+            self.assertIn("Hello, world", text)
 
 .. class:: AioHTTPTestCase
 
