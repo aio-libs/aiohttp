@@ -8,6 +8,7 @@ import inspect
 import os
 import socket
 import sys
+import warnings
 from abc import ABC, abstractmethod
 from types import TracebackType
 from typing import (
@@ -472,17 +473,12 @@ class AioHTTPTestCase(TestCase):
 
 def unittest_run_loop(func: Any, *args: Any, **kwargs: Any) -> Any:
     """A decorator dedicated to use with asynchronous methods of an
-    AioHTTPTestCase.
-
-    Handles executing an asynchronous function, using
-    the self.loop of the AioHTTPTestCase.
+    AioHTTPTestCase in aiohttp <3.7.
+    
+    In 3.8+, this does nothing.
     """
-
-    @functools.wraps(func, *args, **kwargs)
-    def new_func(self: Any, *inner_args: Any, **inner_kwargs: Any) -> Any:
-        return self.loop.run_until_complete(func(self, *inner_args, **inner_kwargs))
-
-    return new_func
+    warnings.warn("Decorator no longer needed in 3.8+", DeprecationWarning)
+    return func
 
 
 _LOOP_FACTORY = Callable[[], asyncio.AbstractEventLoop]
