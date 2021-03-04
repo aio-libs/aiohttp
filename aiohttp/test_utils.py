@@ -2,7 +2,6 @@
 
 import asyncio
 import contextlib
-import functools
 import gc
 import inspect
 import os
