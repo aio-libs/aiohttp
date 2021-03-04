@@ -477,7 +477,7 @@ def unittest_run_loop(func: Any, *args: Any, **kwargs: Any) -> Any:
     In 3.8+, this does nothing.
     """
     warnings.warn(
-        "Decorator no longer needed in 3.8+", DeprecationWarning, stacklever=2
+        "Decorator no longer needed in 3.8+", DeprecationWarning, stacklevel=2
     )
     return func
 
