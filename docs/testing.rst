@@ -346,7 +346,7 @@ functionality, the AioHTTPTestCase is provided::
    .. note::
 
       The ``TestClient``'s methods are asynchronous: you have to
-      execute functions on the test client using asynchronous methods.
+      execute functions on the test client using asynchronous methods.::
 
          class TestA(AioHTTPTestCase):
 
