@@ -243,7 +243,7 @@ Unittest
 To test applications with the standard library's unittest or unittest-based
 functionality, the AioHTTPTestCase is provided::
 
-    from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+    from aiohttp.test_utils import AioHTTPTestCase
     from aiohttp import web
 
     class MyAppTestCase(AioHTTPTestCase):
@@ -259,26 +259,11 @@ functionality, the AioHTTPTestCase is provided::
             app.router.add_get('/', hello)
             return app
 
-        # the unittest_run_loop decorator can be used in tandem with
-        # the AioHTTPTestCase to simplify running
-        # tests that are asynchronous
-        @unittest_run_loop
         async def test_example(self):
-            resp = await self.client.request("GET", "/")
-            assert resp.status == 200
-            text = await resp.text()
-            assert "Hello, world" in text
-
-        # a vanilla example
-        def test_example_vanilla(self):
-            async def test_get_route():
-                url = "/"
-                resp = await self.client.request("GET", url)
+            async with self.client.request("GET", "/") as resp:
                 assert resp.status == 200
                 text = await resp.text()
-                assert "Hello, world" in text
-
-            self.loop.run_until_complete(test_get_route())
+            assert "Hello, world" in text
 
 .. class:: AioHTTPTestCase
 
@@ -361,16 +346,14 @@ functionality, the AioHTTPTestCase is provided::
    .. note::
 
       The ``TestClient``'s methods are asynchronous: you have to
-      execute function on the test client using asynchronous methods.
-
-      A basic test class wraps every test method by
-      :func:`unittest_run_loop` decorator::
+      execute functions on the test client using asynchronous methods.
 
          class TestA(AioHTTPTestCase):
 
              @unittest_run_loop
              async def test_f(self):
-                 resp = await self.client.get('/')
+                 async with self.client.get('/') as resp:
+                     body = await resp.text()
 
 
 .. decorator:: unittest_run_loop:
@@ -380,6 +363,10 @@ functionality, the AioHTTPTestCase is provided::
 
    Handles executing an asynchronous function, using
    the :attr:`AioHTTPTestCase.loop` of the :class:`AioHTTPTestCase`.
+
+   .. deprecated:: 3.8
+       In 3.8+ :class:`AioHTTPTestCase` inherits from :class:`unittest.IsolatedAsyncioTestCase`
+       making this decorator unneeded.
 
 
 Faking request object
