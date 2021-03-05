@@ -365,7 +365,7 @@ functionality, the AioHTTPTestCase is provided::
 
    .. deprecated:: 3.8
        In 3.8+ :class:`AioHTTPTestCase` inherits from :class:`unittest.IsolatedAsyncioTestCase`
-       making this decorator unneeded.
+       making this decorator unneeded. It is now a no-op.
 
 
 Faking request object
