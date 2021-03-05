@@ -134,7 +134,10 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
 
 
 def test_unittest_run_loop() -> None:
-    with pytest.warns(DeprecationWarning, match=r"Decorator `@unittest_run_loop` is no longer needed in aiohttp 3\.8\+"):
+    with pytest.warns(
+        DeprecationWarning,
+        match=r"Decorator `@unittest_run_loop` is no longer needed in aiohttp 3\.8\+",
+    ):
 
         @unittest_run_loop
         def foo():
