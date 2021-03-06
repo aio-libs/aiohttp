@@ -128,7 +128,7 @@ clean:
 
 .PHONY: doc
 doc:
-	@make -C docs html SPHINXOPTS="-W -E"
+	@make -C docs html SPHINXOPTS="-W --keep-going -E"
 	@echo "open file://`pwd`/docs/_build/html/index.html"
 
 .PHONY: doc-spelling
