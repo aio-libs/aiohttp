@@ -14,7 +14,6 @@ Changelog
 
 .. towncrier release notes start
 
-=======
 3.7.4.post0 (2021-03-06)
 ========================
 
