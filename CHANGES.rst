@@ -14,6 +14,21 @@ Changelog
 
 .. towncrier release notes start
 
+=======
+3.7.4.post0 (2021-03-06)
+========================
+
+Misc
+----
+
+- Bumped upper bound of the ``chardet`` runtime dependency
+  to allow their v4.0 version stream.
+  `#5366 <https://github.com/aio-libs/aiohttp/issues/5366>`_
+
+
+----
+
+
 3.7.4 (2021-02-25)
 ==================
 
