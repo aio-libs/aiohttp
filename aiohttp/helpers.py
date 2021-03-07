@@ -40,7 +40,7 @@ from typing import (
     cast,
 )
 from urllib.parse import quote
-from urllib.request import getproxies
+from urllib.request import getproxies, proxy_bypass
 
 import async_timeout
 from multidict import CIMultiDict, MultiDict, MultiDictProxy
@@ -267,6 +267,15 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
                 auth = BasicAuth(cast(str, login), cast(str, password))
         ret[proto] = ProxyInfo(proxy, auth)
     return ret
+
+
+def get_env_proxy_for_url(url: URL):
+    if url is not None and not proxy_bypass(url.host):
+        for scheme, proxy_info in proxies_from_env().items():
+            if scheme == url.scheme:
+                return proxy_info.proxy, proxy_info.proxy_auth
+
+    return None, None
 
 
 @dataclasses.dataclass(frozen=True)

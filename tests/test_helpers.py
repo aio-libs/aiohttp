@@ -515,6 +515,52 @@ def test_proxies_from_env_http_with_auth(mocker) -> None:
     assert proxy_auth.encoding == "latin1"
 
 
+# --------------------- get_env_proxy_for_url ------------------------------
+
+
+def test_get_env_proxy_for_url_when_url_is_None(mocker) -> None:
+    mocker.patch("aiohttp.helpers.proxy_bypass", return_value={})
+    mocker.patch("aiohttp.helpers.proxies_from_env", return_value=False)
+    url = None
+    proxy, proxy_auth = helpers.get_env_proxy_for_url(url)
+    assert proxy is None
+    assert proxy_auth is None
+
+
+def test_get_env_proxy_for_url_when_url_matches_no_proxy_list(mocker) -> None:
+    mocker.patch("aiohttp.helpers.proxy_bypass", return_value=True)
+    mocker.patch(
+        "aiohttp.helpers.proxies_from_env",
+        return_value={"http": helpers.ProxyInfo("http://example.com", "")},
+    )
+    url = URL("http://aiohttp.io/path")
+    proxy, proxy_auth = helpers.get_env_proxy_for_url(url)
+    assert proxy is None
+    assert proxy_auth is None
+
+
+def test_get_env_proxy_for_url_when_url_scheme_matches_proxy_list(mocker) -> None:
+    mocker.patch("aiohttp.helpers.proxy_bypass", return_value=False)
+    proxies = {"http": helpers.ProxyInfo("http://example.com", "")}
+    mocker.patch("aiohttp.helpers.proxies_from_env", return_value=proxies)
+    url = URL("http://aiohttp.io/path")
+    proxy, proxy_auth = helpers.get_env_proxy_for_url(url)
+    assert proxy == proxies["http"].proxy
+    assert proxy_auth == proxies["http"].proxy_auth
+
+
+def test_get_env_proxy_for_url_when_url_scheme_does_not_match_proxy_list(
+    mocker,
+) -> None:
+    mocker.patch("aiohttp.helpers.proxy_bypass", return_value=False)
+    proxies = {"https": helpers.ProxyInfo("https://example.com", "")}
+    mocker.patch("aiohttp.helpers.proxies_from_env", return_value=proxies)
+    url = URL("http://aiohttp.io/path")
+    proxy, proxy_auth = helpers.get_env_proxy_for_url(url)
+    assert proxy is None
+    assert proxy_auth is None
+
+
 # ------------- set_result / set_exception ----------------------
 
 

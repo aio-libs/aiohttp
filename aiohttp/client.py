@@ -28,7 +28,6 @@ from typing import (
     TypeVar,
     Union,
 )
-from urllib.request import proxy_bypass
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from typing_extensions import Final, final
@@ -81,7 +80,7 @@ from .helpers import (
     BasicAuth,
     TimeoutHandle,
     ceil_timeout,
-    proxies_from_env,
+    get_env_proxy_for_url,
     sentinel,
     strip_auth_from_url,
 )
@@ -445,12 +444,7 @@ class ClientSession:
                     if proxy is not None:
                         proxy = URL(proxy)
                     elif self._trust_env:
-                        if not proxy_bypass(str(url.host)):
-                            for scheme, proxy_info in proxies_from_env().items():
-                                if scheme == url.scheme:
-                                    proxy = proxy_info.proxy
-                                    proxy_auth = proxy_info.proxy_auth
-                                    break
+                        proxy, proxy_auth = get_env_proxy_for_url(url)
 
                     req = self._request_class(
                         method,
