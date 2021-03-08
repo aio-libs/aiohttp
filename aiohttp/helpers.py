@@ -269,8 +269,8 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
     return ret
 
 
-def get_env_proxy_for_url(url: URL):
-    if url is not None and not proxy_bypass(url.host):
+def get_env_proxy_for_url(url: URL) -> Tuple[Optional[URL], Optional[BasicAuth]]:
+    if url is not None and not proxy_bypass(str(url.host)):
         for scheme, proxy_info in proxies_from_env().items():
             if scheme == url.scheme:
                 return proxy_info.proxy, proxy_info.proxy_auth
