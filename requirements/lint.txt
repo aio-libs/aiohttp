@@ -50,7 +50,7 @@ pathspec==0.8.1
     # via black
 pluggy==0.13.1
     # via pytest
-pre-commit==2.10.1
+pre-commit==2.11.0
     # via -r requirements/lint.in
 py==1.10.0
     # via pytest

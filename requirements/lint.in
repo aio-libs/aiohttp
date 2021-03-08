@@ -3,5 +3,5 @@ flake8==3.8.4
 flake8-pyi==20.10.0
 isort==5.7.0
 mypy==0.790; implementation_name=="cpython"
-pre-commit==2.10.1
+pre-commit==2.11.0
 pytest==6.2.2
