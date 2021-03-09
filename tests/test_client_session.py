@@ -729,6 +729,12 @@ async def test_client_session_timeout_argument() -> None:
     assert session.timeout == 500
 
 
+async def test_client_session_timeout_zero() -> None:
+    timeout = client.ClientTimeout(total=90, connect=0, sock_connect=0, sock_read=0)
+    async with ClientSession(timeout=timeout) as session:
+        await session.get("http://example.com")
+
+
 async def test_requote_redirect_url_default() -> None:
     session = ClientSession()
     assert session.requote_redirect_url
