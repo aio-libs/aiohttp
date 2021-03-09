@@ -444,7 +444,8 @@ class ClientSession:
                     if proxy is not None:
                         proxy = URL(proxy)
                     elif self._trust_env:
-                        proxy, proxy_auth = get_env_proxy_for_url(url)
+                        with contextlib.suppress(LookupError):
+                            proxy, proxy_auth = get_env_proxy_for_url(url)
 
                     req = self._request_class(
                         method,
