@@ -269,13 +269,18 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
     return ret
 
 
-def get_env_proxy_for_url(url: URL) -> Tuple[Optional[URL], Optional[BasicAuth]]:
-    if url is not None and not proxy_bypass(str(url.host)):
-        proxy_info = proxies_from_env().get(url.scheme, None)
-        if proxy_info is not None:
-            return proxy_info.proxy, proxy_info.proxy_auth
+def get_env_proxy_for_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
+    """Get a permitted proxy for the given URL from the env."""
+    if url.host is not None and proxy_bypass(url.host):
+        raise LookupError(f'Proxying is disallowed for `{url.host!r}`')
 
-    return None, None
+    proxies_in_env = proxies_from_env()
+    try:
+        proxy_info = proxies_in_env[url.scheme]
+    except KeyError:
+        raise LookupError(f'No proxies found for `{url!s}` in the env')
+    else:
+        return proxy_info.proxy, proxy_info.proxy_auth
 
 
 @dataclasses.dataclass(frozen=True)
