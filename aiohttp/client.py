@@ -9,6 +9,7 @@ import os
 import sys
 import traceback
 import warnings
+from contextlib import suppress
 from types import SimpleNamespace, TracebackType
 from typing import (
     Any,
@@ -444,7 +445,7 @@ class ClientSession:
                     if proxy is not None:
                         proxy = URL(proxy)
                     elif self._trust_env:
-                        with contextlib.suppress(LookupError):
+                        with suppress(LookupError):
                             proxy, proxy_auth = get_env_proxy_for_url(url)
 
                     req = self._request_class(
