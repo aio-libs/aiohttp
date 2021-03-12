@@ -689,7 +689,7 @@ def ceil_timeout(delay: Optional[float]) -> async_timeout.Timeout:
     if delay is None or delay <= 0:
         return async_timeout.timeout(None)
 
-    loop = get_running_loop()
+    loop = asyncio.get_running_loop()
     now = loop.time()
     when = now + delay
     if delay > 5:
