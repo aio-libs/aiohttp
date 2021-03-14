@@ -9,9 +9,9 @@ from yarl import URL
 
 # These are for other modules to use (to avoid repeating the conditional import).
 if sys.version_info >= (3, 8):
-    from typing import Final, Protocol, TypedDict
+    from typing import Final as Final, Protocol as Protocol, TypedDict as TypedDict
 else:
-    from typing_extensions import Final, Protocol, TypedDict  # noqa: F401
+    from typing_extensions import Final, Protocol as Protocol, TypedDict as TypedDict  # noqa: F401
 
 DEFAULT_JSON_ENCODER = json.dumps
 DEFAULT_JSON_DECODER = json.loads
