@@ -844,7 +844,7 @@ class TCPConnector(BaseConnector):
                 for trace in traces:
                     await trace.send_dns_resolvehost_end(host)
 
-            return res  # type: ignore[no-any-return]
+            return res
 
         key = (host, port)
 
