@@ -44,8 +44,9 @@ async def start_client(loop, url):
                 break
 
     # send request
-    async with aiohttp.ws_connect(url, autoclose=False, autoping=False) as ws:
-        await dispatch()
+    async with aiohttp.ClientSession() as session:
+        async with session.ws_connect(url, autoclose=False, autoping=False) as ws:
+            await dispatch()
 
 
 ARGS = argparse.ArgumentParser(

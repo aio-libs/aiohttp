@@ -43,8 +43,8 @@ async def listen_to_redis(app):
         print("Redis connection closed.")
 
 
-async def start_background_tasks(app):
-    app["redis_listener"] = app.loop.create_task(listen_to_redis(app))
+async def start_background_tasks(app: web.Application) -> None:
+    app["redis_listener"] = asyncio.create_task(listen_to_redis(app))
 
 
 async def cleanup_background_tasks(app):
