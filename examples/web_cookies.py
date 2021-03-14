@@ -3,6 +3,7 @@
 """
 
 from pprint import pformat
+from typing import NoReturn
 
 from aiohttp import web
 
@@ -22,20 +23,20 @@ async def root(request):
     return resp
 
 
-async def login(request):
-    resp = web.HTTPFound(location="/")
-    resp.set_cookie("AUTH", "secret")
-    return resp
+async def login(request: web.Request) -> NoReturn:
+    exc = web.HTTPFound(location="/")
+    exc.set_cookie("AUTH", "secret")
+    raise exc
 
 
-async def logout(request):
-    resp = web.HTTPFound(location="/")
-    resp.del_cookie("AUTH")
-    return resp
+async def logout(request: web.Request) -> NoReturn:
+    exc = web.HTTPFound(location="/")
+    exc.del_cookie("AUTH")
+    raise exc
 
 
-def init(loop):
-    app = web.Application(loop=loop)
+def init():
+    app = web.Application()
     app.router.add_get("/", root)
     app.router.add_get("/login", login)
     app.router.add_get("/logout", logout)

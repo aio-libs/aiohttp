@@ -62,7 +62,16 @@ _RequestFactory = Callable[
 _RequestHandler = Callable[[BaseRequest], Awaitable[StreamResponse]]
 
 ERROR = RawRequestMessage(
-    "UNKNOWN", "/", HttpVersion10, {}, {}, True, False, False, False, yarl.URL("/")
+    "UNKNOWN",
+    "/",
+    HttpVersion10,
+    {},  # type: ignore[arg-type]
+    {},  # type: ignore[arg-type]
+    True,
+    None,
+    False,
+    False,
+    yarl.URL("/"),
 )
 
 

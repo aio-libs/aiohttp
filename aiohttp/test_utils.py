@@ -2,15 +2,25 @@
 
 import asyncio
 import contextlib
-import functools
 import gc
 import inspect
 import os
 import socket
 import sys
+import warnings
 from abc import ABC, abstractmethod
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Callable, Iterator, List, Optional, Type, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Iterator,
+    List,
+    Optional,
+    Type,
+    Union,
+    cast,
+)
 from unittest import mock
 
 from aiosignal import Signal
@@ -46,7 +56,7 @@ else:
 if PY_38:
     from unittest import IsolatedAsyncioTestCase as TestCase
 else:
-    from asynctest import TestCase  # type: ignore
+    from asynctest import TestCase  # type: ignore[no-redef]
 
 REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
 
@@ -70,7 +80,7 @@ def unused_port() -> int:
     """Return a port that is unused on the current host."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
+        return cast(int, s.getsockname()[1])
 
 
 class BaseTestServer(ABC):
@@ -279,8 +289,8 @@ class TestClient:
         return self._server
 
     @property
-    def app(self) -> Application:
-        return getattr(self._server, "app", None)
+    def app(self) -> Optional[Application]:
+        return cast(Optional[Application], getattr(self._server, "app", None))
 
     @property
     def session(self) -> ClientSession:
@@ -462,17 +472,16 @@ class AioHTTPTestCase(TestCase):
 
 def unittest_run_loop(func: Any, *args: Any, **kwargs: Any) -> Any:
     """A decorator dedicated to use with asynchronous methods of an
-    AioHTTPTestCase.
+    AioHTTPTestCase in aiohttp <3.8.
 
-    Handles executing an asynchronous function, using
-    the self.loop of the AioHTTPTestCase.
+    In 3.8+, this does nothing.
     """
-
-    @functools.wraps(func, *args, **kwargs)
-    def new_func(self: Any, *inner_args: Any, **inner_kwargs: Any) -> Any:
-        return self.loop.run_until_complete(func(self, *inner_args, **inner_kwargs))
-
-    return new_func
+    warnings.warn(
+        "Decorator `@unittest_run_loop` is no longer needed in aiohttp 3.8+",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return func
 
 
 _LOOP_FACTORY = Callable[[], asyncio.AbstractEventLoop]
@@ -615,7 +624,7 @@ def make_mocked_request(
         headers,
         raw_hdrs,
         closing,
-        False,
+        None,
         False,
         chunked,
         URL(path),

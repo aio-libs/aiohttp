@@ -33,7 +33,7 @@ from typing import (
     cast,
 )
 
-from yarl import URL, __version__ as yarl_version  # type: ignore
+from yarl import URL, __version__ as yarl_version  # type: ignore[attr-defined]
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
@@ -196,7 +196,7 @@ class AbstractRoute(abc.ABC):
                 result = old_handler(request)
                 if asyncio.iscoroutine(result):
                     return await result
-                return result  # type: ignore
+                return result  # type: ignore[return-value]
 
             old_handler = handler
             handler = handler_wrapper
@@ -259,7 +259,7 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
     def http_exception(self) -> Optional[HTTPException]:
         return None
 
-    def get_info(self) -> _InfoDict:  # type: ignore
+    def get_info(self) -> _InfoDict:  # type: ignore[override]
         return self._route.get_info()
 
     @property
@@ -424,7 +424,7 @@ class PlainResource(Resource):
     def get_info(self) -> _InfoDict:
         return {"path": self._path}
 
-    def url_for(self) -> URL:  # type: ignore
+    def url_for(self) -> URL:  # type: ignore[override]
         return URL.build(path=self._path, encoded=True)
 
     def __repr__(self) -> str:
@@ -572,7 +572,7 @@ class StaticResource(PrefixResource):
             ),
         }
 
-    def url_for(  # type: ignore
+    def url_for(  # type: ignore[override]
         self,
         *,
         filename: Union[str, Path],
@@ -945,7 +945,9 @@ class View(AbstractView):
     async def _iter(self) -> StreamResponse:
         if self.request.method not in hdrs.METH_ALL:
             self._raise_allowed_methods()
-        method = getattr(self, self.request.method.lower(), None)
+        method: Callable[[], Awaitable[StreamResponse]] = getattr(
+            self, self.request.method.lower(), None
+        )
         if method is None:
             self._raise_allowed_methods()
         resp = await method()
