@@ -31,7 +31,7 @@ def connector(loop: Any, create_mocked_conn: Any):
     proto = create_mocked_conn()
     conn._conns["a"] = [(proto, 123)]
     yield conn
-    conn.close()
+    loop.run_until_complete(conn.close())
 
 
 @pytest.fixture
@@ -305,7 +305,7 @@ async def test_connector(create_session: Any, loop: Any, mocker: Any) -> None:
 
     await session.close()
     assert connector.close.called
-    connector.close()
+    await connector.close()
 
 
 async def test_create_connector(create_session: Any, loop: Any, mocker: Any) -> None:
@@ -339,7 +339,7 @@ def test_connector_loop(loop: Any) -> None:
         )
 
 
-def test_detach(session: Any) -> None:
+def test_detach(loop: Any, session: Any) -> None:
     conn = session.connector
     try:
         assert not conn.closed
@@ -348,7 +348,7 @@ def test_detach(session: Any) -> None:
         assert session.closed
         assert not conn.closed
     finally:
-        conn.close()
+        loop.run_until_complete(conn.close())
 
 
 async def test_request_closed_session(session: Any) -> None:
@@ -522,6 +522,7 @@ async def test_cookie_jar_usage(loop: Any, aiohttp_client: Any) -> None:
 async def test_session_default_version(loop: Any) -> None:
     session = aiohttp.ClientSession()
     assert session.version == aiohttp.HttpVersion11
+    await session.close()
 
 
 def test_proxy_str(session: Any, params: Any) -> None:
@@ -639,6 +640,8 @@ async def test_request_tracing_exception() -> None:
         )
         assert not on_request_end.called
 
+    await session.close()
+
 
 async def test_request_tracing_interpose_headers(
     loop: Any, aiohttp_client: Any
@@ -681,23 +684,37 @@ async def test_client_session_custom_attr() -> None:
     session = ClientSession()
     with pytest.raises(AttributeError):
         session.custom = None
+    await session.close()
 
 
 async def test_client_session_timeout_default_args(loop: Any) -> None:
     session1 = ClientSession()
     assert session1.timeout == client.DEFAULT_TIMEOUT
+    await session1.close()
 
 
 async def test_client_session_timeout_argument() -> None:
     session = ClientSession(timeout=500)
     assert session.timeout == 500
+    await session.close()
+
+
+async def test_client_session_timeout_zero() -> None:
+    timeout = client.ClientTimeout(total=10, connect=0, sock_connect=0, sock_read=0)
+    try:
+        async with ClientSession(timeout=timeout) as session:
+            await session.get("http://example.com")
+    except asyncio.TimeoutError:
+        pytest.fail("0 should disable timeout.")
 
 
 async def test_requote_redirect_url_default() -> None:
     session = ClientSession()
     assert session.requote_redirect_url
+    await session.close()
 
 
 async def test_requote_redirect_url_default_disable() -> None:
     session = ClientSession(requote_redirect_url=False)
     assert not session.requote_redirect_url
+    await session.close()

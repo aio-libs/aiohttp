@@ -170,7 +170,7 @@ class RouteTableDef(Sequence[AbstractRouteDef]):
     def __getitem__(self, index: slice) -> List[AbstractRouteDef]:
         ...
 
-    def __getitem__(self, index):  # type: ignore
+    def __getitem__(self, index):  # type: ignore[no-untyped-def]
         return self._items[index]
 
     def __iter__(self) -> Iterator[AbstractRouteDef]:

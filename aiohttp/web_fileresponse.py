@@ -9,8 +9,10 @@ from typing import (  # noqa
     Any,
     Awaitable,
     Callable,
+    Iterator,
     List,
     Optional,
+    Tuple,
     Union,
     cast,
 )
@@ -19,6 +21,7 @@ from typing_extensions import Final
 
 from . import hdrs
 from .abc import AbstractStreamWriter
+from .helpers import ETAG_ANY, ETag
 from .typedefs import LooseHeaders
 from .web_exceptions import (
     HTTPNotModified,
@@ -102,6 +105,31 @@ class FileResponse(StreamResponse):
         await super().write_eof()
         return writer
 
+    @staticmethod
+    def _strong_etag_match(etag_value: str, etags: Tuple[ETag, ...]) -> bool:
+        if len(etags) == 1 and etags[0].value == ETAG_ANY:
+            return True
+        else:
+            return any(etag.value == etag_value for etag in etags if not etag.is_weak)
+
+    async def _not_modified(
+        self, request: "BaseRequest", etag_value: str, last_modified: float
+    ) -> Optional[AbstractStreamWriter]:
+        self.set_status(HTTPNotModified.status_code)
+        self._length_check = False
+        self.etag = etag_value  # type: ignore
+        self.last_modified = last_modified  # type: ignore
+        # Delete any Content-Length headers provided by user. HTTP 304
+        # should always have empty response body
+        return await super().prepare(request)
+
+    async def _precondition_failed(
+        self, request: "BaseRequest"
+    ) -> Optional[AbstractStreamWriter]:
+        self.set_status(HTTPPreconditionFailed.status_code)
+        self.content_length = 0
+        return await super().prepare(request)
+
     async def prepare(self, request: "BaseRequest") -> Optional[AbstractStreamWriter]:
         filepath = self._path
 
@@ -114,20 +142,35 @@ class FileResponse(StreamResponse):
                 gzip = True
 
         loop = asyncio.get_event_loop()
-        st = await loop.run_in_executor(None, filepath.stat)
+        st: os.stat_result = await loop.run_in_executor(None, filepath.stat)
 
-        modsince = request.if_modified_since
-        if modsince is not None and st.st_mtime <= modsince.timestamp():
-            self.set_status(HTTPNotModified.status_code)
-            self._length_check = False
-            # Delete any Content-Length headers provided by user. HTTP 304
-            # should always have empty response body
-            return await super().prepare(request)
+        etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
+        last_modified = st.st_mtime
+
+        # https://tools.ietf.org/html/rfc7232#section-6
+        ifmatch = request.if_match
+        if ifmatch is not None and not self._strong_etag_match(etag_value, ifmatch):
+            return await self._precondition_failed(request)
 
         unmodsince = request.if_unmodified_since
-        if unmodsince is not None and st.st_mtime > unmodsince.timestamp():
-            self.set_status(HTTPPreconditionFailed.status_code)
-            return await super().prepare(request)
+        if (
+            unmodsince is not None
+            and ifmatch is None
+            and st.st_mtime > unmodsince.timestamp()
+        ):
+            return await self._precondition_failed(request)
+
+        ifnonematch = request.if_none_match
+        if ifnonematch is not None and self._strong_etag_match(etag_value, ifnonematch):
+            return await self._not_modified(request, etag_value, last_modified)
+
+        modsince = request.if_modified_since
+        if (
+            modsince is not None
+            and ifnonematch is None
+            and st.st_mtime <= modsince.timestamp()
+        ):
+            return await self._not_modified(request, etag_value, last_modified)
 
         if hdrs.CONTENT_TYPE not in self.headers:
             ct, encoding = mimetypes.guess_type(str(filepath))
@@ -213,12 +256,14 @@ class FileResponse(StreamResponse):
                 self.set_status(status)
 
         if should_set_ct:
-            self.content_type = ct  # type: ignore
+            self.content_type = ct  # type: ignore[assignment]
         if encoding:
             self.headers[hdrs.CONTENT_ENCODING] = encoding
         if gzip:
             self.headers[hdrs.VARY] = hdrs.ACCEPT_ENCODING
-        self.last_modified = st.st_mtime  # type: ignore
+
+        self.etag = etag_value  # type: ignore[assignment]
+        self.last_modified = st.st_mtime  # type: ignore[assignment]
         self.content_length = count
 
         self.headers[hdrs.ACCEPT_RANGES] = "bytes"

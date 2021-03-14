@@ -9,7 +9,7 @@ import sys
 import zlib
 from enum import IntEnum
 from struct import Struct
-from typing import Any, Callable, List, Optional, Pattern, Set, Tuple, Union
+from typing import Any, Callable, List, Optional, Pattern, Set, Tuple, Union, cast
 
 from typing_extensions import Final
 
@@ -102,7 +102,7 @@ class WebSocketError(Exception):
         super().__init__(code, message)
 
     def __str__(self) -> str:
-        return self.args[1]
+        return cast(str, self.args[1])
 
 
 class WSHandshakeError(Exception):
@@ -144,7 +144,7 @@ if NO_EXTENSIONS:  # pragma: no cover
     _websocket_mask = _websocket_mask_python
 else:
     try:
-        from ._websocket import _websocket_mask_cython  # type: ignore
+        from ._websocket import _websocket_mask_cython  # type: ignore[import]
 
         _websocket_mask = _websocket_mask_cython
     except ImportError:  # pragma: no cover

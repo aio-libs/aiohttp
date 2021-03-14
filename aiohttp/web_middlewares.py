@@ -22,7 +22,7 @@ async def _check_request_resolves(request: Request, path: str) -> Tuple[bool, Re
     alt_request = request.clone(rel_url=path)
 
     match_info = await request.app.router.resolve(alt_request)
-    alt_request._match_info = match_info  # type: ignore
+    alt_request._match_info = match_info  # type: ignore[assignment]
 
     if match_info.http_exception is None:
         return True, alt_request
@@ -108,6 +108,7 @@ def normalize_path_middleware(
                 paths_to_check.append(merged_slashes[:-1])
 
             for path in paths_to_check:
+                path = re.sub("^//+", "/", path)  # SECURITY: GHSA-v6wp-4m6f-gcjg
                 resolves, request = await _check_request_resolves(request, path)
                 if resolves:
                     raise redirect_class(request.raw_path + query)
