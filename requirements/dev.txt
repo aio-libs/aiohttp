@@ -21,8 +21,6 @@ async-generator==1.10
     # via -r requirements/base.txt
 async-timeout==4.0.0a3
     # via -r requirements/base.txt
-asynctest==0.13.0 ; python_version < "3.8"
-    # via -r requirements/base.txt
 attrs==20.3.0
     # via
     #   -r requirements/base.txt
@@ -65,15 +63,10 @@ coverage==5.3.1
     # via
     #   -r requirements/test.txt
     #   pytest-cov
-cryptography==3.3.1 ; platform_machine != "i686" and python_version < "3.9"
+cryptography==3.3.1
     # via
-    #   -r requirements/test.txt
     #   pyjwt
     #   trustme
-dataclasses==0.8 ; python_version < "3.7"
-    # via
-    #   -r requirements/lint.txt
-    #   black
 distlib==0.3.1
     # via
     #   -r requirements/lint.txt
@@ -106,29 +99,13 @@ identify==2.1.1
     # via
     #   -r requirements/lint.txt
     #   pre-commit
-idna-ssl==1.1.0 ; python_version < "3.7"
-    # via -r requirements/base.txt
 idna==2.10
     # via
-    #   idna-ssl
     #   requests
     #   trustme
     #   yarl
 imagesize==1.2.0
     # via sphinx
-importlib-metadata==3.7.0 ; python_version < "3.8"
-    # via
-    #   -r requirements/lint.txt
-    #   flake8
-    #   pluggy
-    #   pre-commit
-    #   pytest
-    #   virtualenv
-importlib-resources==5.1.2 ; python_version < "3.9"
-    # via
-    #   -r requirements/lint.txt
-    #   pre-commit
-    #   virtualenv
 incremental==17.5.0
     # via towncrier
 iniconfig==1.1.1
@@ -180,7 +157,7 @@ pluggy==0.13.1
     # via
     #   -r requirements/lint.txt
     #   pytest
-pre-commit==2.9.3
+pre-commit==2.11.1
     # via -r requirements/lint.txt
 py==1.10.0
     # via
@@ -292,19 +269,11 @@ typing-extensions==3.7.4.3
     #   -r requirements/lint.txt
     #   async-timeout
     #   black
-    #   importlib-metadata
     #   mypy
-    #   yarl
-typing==3.7.4.3 ; python_version < "3.7"
-    # via
-    #   -r requirements/base.txt
-    #   aiodns
 uritemplate==3.0.1
     # via gidgethub
 urllib3==1.26.2
     # via requests
-uvloop==0.14.0 ; platform_system != "Windows" and implementation_name == "cpython" and python_version < "3.9"
-    # via -r requirements/base.txt
 virtualenv==20.4.2
     # via
     #   -r requirements/lint.txt
@@ -313,12 +282,6 @@ webcolors==1.11.1
     # via blockdiag
 yarl==1.6.3
     # via -r requirements/base.txt
-zipp==3.4.1 ; python_version < "3.7"
-    # via
-    #   -r requirements/base.txt
-    #   -r requirements/lint.txt
-    #   importlib-metadata
-    #   importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
 setuptools==51.3.1

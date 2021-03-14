@@ -18,10 +18,6 @@ cfgv==3.2.0
     # via pre-commit
 click==7.1.2
     # via black
-dataclasses==0.8 ; python_version < "3.7"
-    # via
-    #   -r requirements/lint.in
-    #   black
 distlib==0.3.1
     # via virtualenv
 filelock==3.0.12
@@ -34,19 +30,6 @@ flake8==3.8.4
     #   flake8-pyi
 identify==2.1.1
     # via pre-commit
-importlib-metadata==3.7.0 ; python_version < "3.8"
-    # via
-    #   -r requirements/lint.in
-    #   flake8
-    #   pluggy
-    #   pre-commit
-    #   pytest
-    #   virtualenv
-importlib-resources==5.1.2 ; python_version < "3.9"
-    # via
-    #   -r requirements/lint.in
-    #   pre-commit
-    #   virtualenv
 iniconfig==1.1.1
     # via pytest
 isort==5.7.0
@@ -67,7 +50,7 @@ pathspec==0.8.1
     # via black
 pluggy==0.13.1
     # via pytest
-pre-commit==2.9.3
+pre-commit==2.11.1
     # via -r requirements/lint.in
 py==1.10.0
     # via pytest
@@ -100,11 +83,6 @@ typed-ast==1.4.2 ; implementation_name == "cpython"
 typing-extensions==3.7.4.3
     # via
     #   black
-    #   importlib-metadata
     #   mypy
 virtualenv==20.4.2
     # via pre-commit
-zipp==3.4.1
-    # via
-    #   importlib-metadata
-    #   importlib-resources
