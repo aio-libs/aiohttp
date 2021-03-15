@@ -33,14 +33,13 @@ from typing import (
     cast,
 )
 
-from typing_extensions import Final, TypedDict
 from yarl import URL, __version__ as yarl_version  # type: ignore[attr-defined]
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
 from .helpers import DEBUG
 from .http import HttpVersion11
-from .typedefs import PathLike
+from .typedefs import Final, PathLike, TypedDict
 from .web_exceptions import (
     HTTPException,
     HTTPExpectationFailed,

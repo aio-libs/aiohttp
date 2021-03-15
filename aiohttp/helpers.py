@@ -23,6 +23,7 @@ from types import TracebackType
 from typing import (
     Any,
     Callable,
+    ContextManager,
     Dict,
     Generator,
     Generic,
@@ -45,12 +46,11 @@ from urllib.request import getproxies
 import async_timeout
 import attr
 from multidict import MultiDict, MultiDictProxy
-from typing_extensions import Protocol
 from yarl import URL
 
 from . import hdrs
 from .log import client_logger, internal_logger
-from .typedefs import PathLike  # noqa
+from .typedefs import PathLike, Protocol  # noqa
 
 __all__ = ("BasicAuth", "ChainMapProxy")
 
@@ -62,11 +62,6 @@ if not PY_37:
     import idna_ssl  # type: ignore[import]
 
     idna_ssl.patch_match_hostname()
-
-try:
-    from typing import ContextManager
-except ImportError:
-    from typing_extensions import ContextManager
 
 
 def all_tasks(

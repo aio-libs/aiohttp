@@ -15,11 +15,9 @@ from typing import (  # noqa
     cast,
 )
 
-from typing_extensions import Final
-
 from . import hdrs
 from .abc import AbstractStreamWriter
-from .typedefs import LooseHeaders
+from .typedefs import Final, LooseHeaders
 from .web_exceptions import (
     HTTPNotModified,
     HTTPPartialContent,
