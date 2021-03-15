@@ -175,7 +175,7 @@ pyflakes==2.2.0
     #   -r requirements/lint.txt
     #   flake8
     #   flake8-pyi
-pygments==2.8.0
+pygments==2.8.1
     # via
     #   -r requirements/doc.txt
     #   sphinx
@@ -224,7 +224,7 @@ six==1.15.0
     #   virtualenv
 snowballstemmer==2.0.0
     # via sphinx
-sphinx==3.5.1
+sphinx==3.5.2
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-asyncio
