@@ -26,8 +26,6 @@ idna==2.10
     # via requests
 imagesize==1.2.0
     # via sphinx
-importlib-metadata==3.7.2
-    # via sphinxcontrib-spelling
 incremental==21.3.0
     # via towncrier
 jinja2==2.11.3
@@ -42,7 +40,7 @@ pillow==8.1.2
     # via blockdiag
 pyenchant==3.2.0
     # via sphinxcontrib-spelling
-pygments==2.8.0
+pygments==2.8.1
     # via
     #   -r requirements/doc.txt
     #   sphinx
@@ -54,7 +52,7 @@ requests==2.25.1
     # via sphinx
 snowballstemmer==2.1.0
     # via sphinx
-sphinx==3.5.1
+sphinx==3.5.2
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-asyncio
@@ -82,14 +80,10 @@ toml==0.10.2
     # via towncrier
 towncrier==19.2.0
     # via -r requirements/doc.txt
-typing-extensions==3.7.4.3
-    # via importlib-metadata
 urllib3==1.26.3
     # via requests
 webcolors==1.11.1
     # via blockdiag
-zipp==3.4.1
-    # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
 setuptools==54.1.1
