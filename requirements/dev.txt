@@ -59,7 +59,7 @@ click==7.1.2
     #   black
     #   cherry-picker
     #   towncrier
-coverage==5.3.1
+coverage==5.5
     # via
     #   -r requirements/test.txt
     #   pytest-cov
@@ -83,7 +83,7 @@ flake8==3.8.4
     # via
     #   -r requirements/lint.txt
     #   flake8-pyi
-freezegun==1.0.0
+freezegun==1.1.0
     # via -r requirements/test.txt
 frozenlist==1.1.1
     # via
@@ -176,7 +176,7 @@ pyflakes==2.2.0
     #   -r requirements/lint.txt
     #   flake8
     #   flake8-pyi
-pygments==2.8.0
+pygments==2.8.1
     # via
     #   -r requirements/doc.txt
     #   sphinx
@@ -186,7 +186,7 @@ pyparsing==2.4.7
     # via
     #   -r requirements/lint.txt
     #   packaging
-pytest-cov==2.10.1
+pytest-cov==2.11.1
     # via -r requirements/test.txt
 pytest-mock==3.5.1
     # via -r requirements/test.txt
@@ -225,7 +225,7 @@ six==1.15.0
     #   virtualenv
 snowballstemmer==2.0.0
     # via sphinx
-sphinx==3.5.1
+sphinx==3.5.2
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-asyncio
