@@ -23,7 +23,6 @@ from typing import (
 )
 
 from multidict import CIMultiDict
-from typing_extensions import Final
 
 from . import hdrs
 from .abc import AbstractStreamWriter
@@ -35,7 +34,7 @@ from .helpers import (
     sentinel,
 )
 from .streams import StreamReader
-from .typedefs import JSONEncoder, _CIMultiDict
+from .typedefs import Final, JSONEncoder, _CIMultiDict
 
 __all__ = (
     "PAYLOAD_REGISTRY",

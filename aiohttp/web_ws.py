@@ -8,7 +8,6 @@ from typing import Any, Iterable, Optional, Tuple, cast
 import async_timeout
 import attr
 from multidict import CIMultiDict
-from typing_extensions import Final
 
 from . import hdrs
 from .abc import AbstractStreamWriter
@@ -28,7 +27,7 @@ from .http import (
 )
 from .log import ws_logger
 from .streams import EofStream, FlowControlDataQueue
-from .typedefs import JSONDecoder, JSONEncoder
+from .typedefs import Final, JSONDecoder, JSONEncoder
 from .web_exceptions import HTTPBadRequest, HTTPException
 from .web_request import BaseRequest
 from .web_response import StreamResponse

@@ -27,7 +27,6 @@ from urllib.parse import parse_qsl
 
 import attr
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
-from typing_extensions import Final
 from yarl import URL
 
 from . import hdrs
@@ -39,6 +38,7 @@ from .multipart import BodyPartReader, MultipartReader
 from .streams import EmptyStreamReader, StreamReader
 from .typedefs import (
     DEFAULT_JSON_DECODER,
+    Final,
     JSONDecoder,
     LooseHeaders,
     RawHeaders,
