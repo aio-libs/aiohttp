@@ -78,7 +78,7 @@ filelock==3.0.12
     #   virtualenv
 flake8-pyi==20.10.0
     # via -r requirements/lint.txt
-flake8==3.8.4
+flake8==3.9.0
     # via
     #   -r requirements/lint.txt
     #   flake8-pyi
@@ -164,13 +164,13 @@ py==1.10.0
     #   pytest
 pycares==3.1.1
     # via aiodns
-pycodestyle==2.6.0
+pycodestyle==2.7.0
     # via
     #   -r requirements/lint.txt
     #   flake8
 pycparser==2.20
     # via cffi
-pyflakes==2.2.0
+pyflakes==2.3.0
     # via
     #   -r requirements/lint.txt
     #   flake8
