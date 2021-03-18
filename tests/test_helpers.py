@@ -522,17 +522,22 @@ def test_proxies_from_env_http_with_auth(mocker) -> None:
     ("bypass", "proxies", "url_input", "expected_err_msg"),
     (
         (
-            True, {"http": helpers.ProxyInfo("http://example.com", "")},
-            "http://aiohttp.io/path", r"Proxying is disallowed for `'aiohttp.io'`",
+            True,
+            {"http": helpers.ProxyInfo("http://example.com", "")},
+            "http://aiohttp.io/path",
+            r"Proxying is disallowed for `'aiohttp.io'`",
         ),
         (
-            False, {"https": helpers.ProxyInfo("https://example.com", "")},
+            False,
+            {"https": helpers.ProxyInfo("https://example.com", "")},
             "http://aiohttp.io/path",
             r"No proxies found for `http://aiohttp.io/path` in the env",
         ),
         (
-            False, {"https": helpers.ProxyInfo("https://example.com", "")},
-            "", r"No proxies found for `` in the env",
+            False,
+            {"https": helpers.ProxyInfo("https://example.com", "")},
+            "",
+            r"No proxies found for `` in the env",
         ),
     ),
     ids=(
@@ -542,7 +547,11 @@ def test_proxies_from_env_http_with_auth(mocker) -> None:
     ),
 )
 def test_get_env_proxy_for_url_negative(
-    bypass, expected_err_msg, mocker, proxies, url_input,
+    bypass,
+    expected_err_msg,
+    mocker,
+    proxies,
+    url_input,
 ) -> None:
     mocker.patch("aiohttp.helpers.proxy_bypass", return_value=bypass)
     mocker.patch("aiohttp.helpers.proxies_from_env", return_value=proxies)
