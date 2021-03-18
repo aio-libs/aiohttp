@@ -569,6 +569,7 @@ def test_get_env_proxy_for_url_when_url_is_empty(
             URL("http://aiohttp.com"),
         ),
     ],
+    ids=("https", "http"),
 )
 def test_get_env_proxy_for_url_when_url_scheme_matches_proxy_list(
     mocker, schema, proxyInfo, url
