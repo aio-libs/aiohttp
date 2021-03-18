@@ -556,7 +556,7 @@ def test_get_env_proxy_for_url_when_url_is_empty(
 
 
 @pytest.mark.parametrize(
-    "schema,proxyInfo,url",
+    ("schema", "proxyInfo", "url"),
     [
         (
             "https",
