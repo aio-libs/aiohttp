@@ -5,37 +5,39 @@
 #    pip-compile --allow-unsafe requirements/dev.in
 #
 aiodns==2.0.0 ; sys_platform == "linux" or sys_platform == "darwin" and python_version >= "3.7"
-    # via -r requirements/base.txt
+    # via -r base.txt
 aiohttp-theme==0.1.6
-    # via -r requirements/doc.txt
+    # via -r doc.txt
 aiosignal==1.1.2
-    # via -r requirements/base.txt
+    # via -r base.txt
 alabaster==0.7.12
     # via sphinx
 appdirs==1.4.4
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   black
     #   virtualenv
 async-timeout==4.0.0a3
-    # via -r requirements/base.txt
+    # via -r base.txt
+asynctest==0.13.0 ; python_version < "3.8"
+    # via -r base.txt
 attrs==20.3.0
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   flake8-pyi
     #   pytest
 babel==2.9.0
     # via sphinx
 black==20.8b1 ; implementation_name == "cpython"
-    # via -r requirements/lint.txt
+    # via -r lint.txt
 blockdiag==2.0.1
     # via sphinxcontrib-blockdiag
 brotli==1.0.9
     # via
-    #   -r requirements/base.txt
-    #   -r requirements/test.txt
+    #   -r base.txt
+    #   -r test.txt
 cchardet==2.1.7
-    # via -r requirements/base.txt
+    # via -r base.txt
 certifi==2020.12.5
     # via requests
 cffi==1.14.4
@@ -44,59 +46,60 @@ cffi==1.14.4
     #   pycares
 cfgv==3.2.0
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   pre-commit
 chardet==4.0.0
     # via
-    #   -r requirements/base.txt
+    #   -r base.txt
     #   requests
 cherry_picker==1.3.2 ; python_version >= "3.6"
-    # via -r requirements/dev.in
+    # via -r dev.in
 click==7.1.2
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   black
     #   cherry-picker
     #   towncrier
 coverage==5.5
     # via
-    #   -r requirements/test.txt
+    #   -r test.txt
     #   pytest-cov
-cryptography==3.3.1
+cryptography==3.3.1 ; platform_machine != "i686" and python_version < "3.9"
     # via
+    #   -r test.txt
     #   pyjwt
     #   trustme
 distlib==0.3.1
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   virtualenv
 docutils==0.16
     # via sphinx
 filelock==3.0.12
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   virtualenv
 flake8-pyi==20.10.0
-    # via -r requirements/lint.txt
+    # via -r lint.txt
 flake8==3.9.0
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   flake8-pyi
 freezegun==1.1.0
-    # via -r requirements/test.txt
+    # via -r test.txt
 frozenlist==1.1.1
     # via
-    #   -r requirements/base.txt
+    #   -r base.txt
     #   aiosignal
 funcparserlib==0.3.6
     # via blockdiag
 gidgethub==5.0.0
     # via cherry-picker
 gunicorn==20.0.4
-    # via -r requirements/base.txt
+    # via -r base.txt
 identify==1.5.14
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   pre-commit
 idna==2.10
     # via
@@ -105,14 +108,21 @@ idna==2.10
     #   yarl
 imagesize==1.2.0
     # via sphinx
+importlib-metadata==3.7.3
+    # via
+    #   flake8
+    #   pluggy
+    #   pre-commit
+    #   pytest
+    #   virtualenv
 incremental==17.5.0
     # via towncrier
 iniconfig==1.1.1
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   pytest
 isort==5.7.0
-    # via -r requirements/lint.txt
+    # via -r lint.txt
 jinja2==2.11.2
     # via
     #   sphinx
@@ -121,78 +131,78 @@ markupsafe==1.1.1
     # via jinja2
 mccabe==0.6.1
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   flake8
 multidict==5.1.0
     # via
-    #   -r requirements/multidict.txt
+    #   -r multidict.txt
     #   yarl
 mypy-extensions==0.4.3 ; implementation_name == "cpython"
     # via
-    #   -r requirements/lint.txt
-    #   -r requirements/test.txt
+    #   -r lint.txt
+    #   -r test.txt
     #   black
     #   mypy
 mypy==0.790 ; implementation_name == "cpython"
     # via
-    #   -r requirements/lint.txt
-    #   -r requirements/test.txt
+    #   -r lint.txt
+    #   -r test.txt
 nodeenv==1.5.0
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   pre-commit
 packaging==20.9
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   pytest
     #   sphinx
 pathspec==0.8.1
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   black
-pillow==8.1.0
+pillow==8.1.1
     # via blockdiag
 pluggy==0.13.1
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   pytest
 pre-commit==2.11.1
-    # via -r requirements/lint.txt
+    # via -r lint.txt
 py==1.10.0
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   pytest
 pycares==3.1.1
     # via aiodns
 pycodestyle==2.7.0
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   flake8
 pycparser==2.20
     # via cffi
 pyflakes==2.3.0
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   flake8
     #   flake8-pyi
 pygments==2.8.1
     # via
-    #   -r requirements/doc.txt
+    #   -r doc.txt
     #   sphinx
 pyjwt[crypto]==2.0.0
     # via gidgethub
 pyparsing==2.4.7
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   packaging
 pytest-cov==2.11.1
-    # via -r requirements/test.txt
+    # via -r test.txt
 pytest-mock==3.5.1
-    # via -r requirements/test.txt
+    # via -r test.txt
 pytest==6.2.2
     # via
-    #   -r requirements/lint.txt
-    #   -r requirements/test.txt
+    #   -r lint.txt
+    #   -r test.txt
     #   pytest-cov
     #   pytest-mock
 python-dateutil==2.8.1
@@ -201,13 +211,13 @@ pytz==2020.5
     # via babel
 pyyaml==5.4.1
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   pre-commit
 re-assert==1.1.0
-    # via -r requirements/test.txt
+    # via -r test.txt
 regex==2020.11.13
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   black
     #   re-assert
 requests==2.25.1
@@ -215,10 +225,10 @@ requests==2.25.1
     #   cherry-picker
     #   sphinx
 setuptools-git==1.2
-    # via -r requirements/test.txt
+    # via -r test.txt
 six==1.15.0
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   cryptography
     #   python-dateutil
     #   virtualenv
@@ -226,15 +236,15 @@ snowballstemmer==2.0.0
     # via sphinx
 sphinx==3.5.2
     # via
-    #   -r requirements/doc.txt
+    #   -r doc.txt
     #   sphinxcontrib-asyncio
     #   sphinxcontrib-blockdiag
 sphinxcontrib-applehelp==1.0.2
     # via sphinx
 sphinxcontrib-asyncio==0.3.0
-    # via -r requirements/doc.txt
+    # via -r doc.txt
 sphinxcontrib-blockdiag==2.0.0
-    # via -r requirements/doc.txt
+    # via -r doc.txt
 sphinxcontrib-devhelp==1.0.2
     # via sphinx
 sphinxcontrib-htmlhelp==1.0.3
@@ -247,40 +257,46 @@ sphinxcontrib-serializinghtml==1.1.4
     # via sphinx
 toml==0.10.2
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   black
     #   cherry-picker
     #   pre-commit
     #   pytest
     #   towncrier
 towncrier==19.2.0
-    # via -r requirements/doc.txt
+    # via -r doc.txt
 trustme==0.7.0 ; platform_machine != "i686"
-    # via -r requirements/test.txt
+    # via -r test.txt
 typed-ast==1.4.2
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   black
     #   mypy
 typing-extensions==3.7.4.3
     # via
-    #   -r requirements/base.txt
-    #   -r requirements/lint.txt
+    #   -r base.txt
+    #   -r lint.txt
     #   async-timeout
     #   black
+    #   importlib-metadata
     #   mypy
+    #   yarl
 uritemplate==3.0.1
     # via gidgethub
 urllib3==1.26.2
     # via requests
+uvloop==0.14.0 ; platform_system != "Windows" and implementation_name == "cpython" and python_version < "3.9"
+    # via -r base.txt
 virtualenv==20.4.2
     # via
-    #   -r requirements/lint.txt
+    #   -r lint.txt
     #   pre-commit
 webcolors==1.11.1
     # via blockdiag
 yarl==1.6.3
-    # via -r requirements/base.txt
+    # via -r base.txt
+zipp==3.4.1
+    # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
 setuptools==51.3.1
