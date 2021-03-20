@@ -6,6 +6,7 @@ import os
 import platform
 from math import isclose, modf
 from unittest import mock
+from urllib.request import getproxies_environment
 
 import pytest
 from multidict import CIMultiDict, MultiDict
@@ -519,71 +520,100 @@ def test_proxies_from_env_http_with_auth(mocker) -> None:
 
 
 @pytest.mark.parametrize(
-    ("bypass", "proxies", "url_input", "expected_err_msg"),
+    ("proxies", "url_input", "expected_err_msg"),
     (
         (
-            True,
-            {"http": helpers.ProxyInfo("http://example.com", "")},
+            {"no_proxy": ["aiohttp.io"], "NO_PROXY": ["aiohttp.io"]},
             "http://aiohttp.io/path",
             r"Proxying is disallowed for `'aiohttp.io'`",
         ),
         (
-            False,
-            {"https": helpers.ProxyInfo("https://example.com", "")},
+            {
+                "http_proxy": ["http://example.com"],
+                "HTTP_PROXY": ["http://example.com"],
+            },
+            "https://aiohttp.io/path",
+            r"No proxies found for `https://aiohttp.io/path` in the env",
+        ),
+        (
+            {
+                "https_proxy": ["https://example.com"],
+                "HTTPS_PROXY": ["https://example.com"],
+            },
             "http://aiohttp.io/path",
             r"No proxies found for `http://aiohttp.io/path` in the env",
         ),
         (
-            False,
-            {"https": helpers.ProxyInfo("https://example.com", "")},
+            {},
+            "https://aiohttp.io/path",
+            r"No proxies found for `https://aiohttp.io/path` in the env",
+        ),
+        (
+            {
+                "https_proxy": ["https://example.com"],
+                "HTTPS_PROXY": ["https://example.com"],
+            },
             "",
             r"No proxies found for `` in the env",
         ),
     ),
     ids=(
         "url_matches_the_no_proxy_list",
-        "url_scheme_does_not_match_proxy_list",
+        "url_scheme_does_not_match_http_proxy_list",
+        "url_scheme_does_not_match_https_proxy_list",
+        "no_proxies_are_set",
         "url_is_empty",
     ),
 )
 def test_get_env_proxy_for_url_negative(
-    bypass,
-    expected_err_msg,
-    mocker,
-    proxies,
-    url_input,
+    monkeypatch, proxies, url_input, expected_err_msg
 ) -> None:
-    mocker.patch("aiohttp.helpers.proxy_bypass", return_value=bypass)
-    mocker.patch("aiohttp.helpers.proxies_from_env", return_value=proxies)
+    for schema in getproxies_environment().keys():
+        monkeypatch.delenv(schema, False)
+
+    for proxy_type, proxy_list in proxies.items():
+        monkeypatch.setenv(proxy_type, ",".join(proxy_list))
+
     url = URL(url_input)
     with pytest.raises(LookupError, match=expected_err_msg):
         helpers.get_env_proxy_for_url(url)
 
 
 @pytest.mark.parametrize(
-    ("schema", "proxyInfo", "url"),
-    [
+    ("proxies", "url_input", "expected_err_msg"),
+    (
         (
-            "https",
-            helpers.ProxyInfo("https://other.com", ""),
-            URL("https://aiohttp.com"),
+            {
+                "http_proxy": ["http://example.com"],
+                "HTTP_PROXY": ["http://example.com"],
+            },
+            "http://aiohttp.io/path",
+            r"No proxies found for `http://aiohttp.io/path` in the env",
         ),
         (
-            "http",
-            helpers.ProxyInfo("http://example.com", ""),
-            URL("http://aiohttp.com"),
+            {
+                "https_proxy": ["http://example.com"],
+                "HTTPS_PROXY": ["http://example.com"],
+            },
+            "https://aiohttp.io/path",
+            r"No proxies found for `http://aiohttp.io/path` in the env",
         ),
-    ],
-    ids=("https", "http"),
+    ),
+    ids=("url_scheme_match_http_proxy_list", "url_scheme_match_https_proxy_list"),
 )
-def test_get_env_proxy_for_url_when_url_scheme_matches_proxy_list(
-    mocker, schema, proxyInfo, url
+def test_get_env_proxy_for_url(
+    monkeypatch, proxies, url_input, expected_err_msg
 ) -> None:
-    mocker.patch("aiohttp.helpers.proxy_bypass", return_value=False)
-    mocker.patch("aiohttp.helpers.proxies_from_env", return_value={schema: proxyInfo})
+    for schema in getproxies_environment().keys():
+        monkeypatch.delenv(schema, False)
+
+    for proxy_type, proxy_list in proxies.items():
+        monkeypatch.setenv(proxy_type, ",".join(proxy_list))
+
+    url = URL(url_input)
     proxy, proxy_auth = helpers.get_env_proxy_for_url(url)
-    assert proxy == proxyInfo.proxy
-    assert proxy_auth == proxyInfo.proxy_auth
+    assert proxy == URL("http://example.com")
+    assert proxy_auth is None
 
 
 # ------------- set_result / set_exception ----------------------
