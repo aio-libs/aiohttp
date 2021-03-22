@@ -519,27 +519,37 @@ def test_proxies_from_env_http_with_auth(mocker) -> None:
 # --------------------- get_env_proxy_for_url ------------------------------
 
 
+@pytest.fixture
+def proxy_env_vars(monkeypatch, request):
+    for schema in getproxies_environment().keys():
+        monkeypatch.delenv(f"{schema}_proxy", False)
+
+    for proxy_type, proxy_list in request.param.items():
+        monkeypatch.setenv(proxy_type, proxy_list)
+
+    return request.param
+
+
 @pytest.mark.parametrize(
-    ("proxies", "url_input", "expected_err_msg"),
+    ("proxy_env_vars", "url_input", "expected_err_msg"),
     (
         (
-            {"no_proxy": ["aiohttp.io"], "NO_PROXY": ["aiohttp.io"]},
+            {"no_proxy": "aiohttp.io"},
             "http://aiohttp.io/path",
             r"Proxying is disallowed for `'aiohttp.io'`",
         ),
         (
-            {
-                "http_proxy": ["http://example.com"],
-                "HTTP_PROXY": ["http://example.com"],
-            },
+            {"no_proxy": "aiohttp.io,proxy.com"},
+            "http://aiohttp.io/path",
+            r"Proxying is disallowed for `'aiohttp.io'`",
+        ),
+        (
+            {"http_proxy": "http://example.com"},
             "https://aiohttp.io/path",
             r"No proxies found for `https://aiohttp.io/path` in the env",
         ),
         (
-            {
-                "https_proxy": ["https://example.com"],
-                "HTTPS_PROXY": ["https://example.com"],
-            },
+            {"https_proxy": "https://example.com"},
             "http://aiohttp.io/path",
             r"No proxies found for `http://aiohttp.io/path` in the env",
         ),
@@ -549,16 +559,15 @@ def test_proxies_from_env_http_with_auth(mocker) -> None:
             r"No proxies found for `https://aiohttp.io/path` in the env",
         ),
         (
-            {
-                "https_proxy": ["https://example.com"],
-                "HTTPS_PROXY": ["https://example.com"],
-            },
+            {"https_proxy": "https://example.com"},
             "",
             r"No proxies found for `` in the env",
         ),
     ),
+    indirect=["proxy_env_vars"],
     ids=(
         "url_matches_the_no_proxy_list",
+        "url_matches_the_no_proxy_list_multiple",
         "url_scheme_does_not_match_http_proxy_list",
         "url_scheme_does_not_match_https_proxy_list",
         "no_proxies_are_set",
@@ -566,53 +575,35 @@ def test_proxies_from_env_http_with_auth(mocker) -> None:
     ),
 )
 def test_get_env_proxy_for_url_negative(
-    monkeypatch, proxies, url_input, expected_err_msg
+    monkeypatch, proxy_env_vars, url_input, expected_err_msg
 ) -> None:
-    for schema in getproxies_environment().keys():
-        monkeypatch.delenv(schema, False)
-
-    for proxy_type, proxy_list in proxies.items():
-        monkeypatch.setenv(proxy_type, ",".join(proxy_list))
-
     url = URL(url_input)
     with pytest.raises(LookupError, match=expected_err_msg):
         helpers.get_env_proxy_for_url(url)
 
 
 @pytest.mark.parametrize(
-    ("proxies", "url_input", "expected_err_msg"),
+    ("proxy_env_vars", "url_input"),
     (
+        ({"http_proxy": "http://example.com"}, "http://aiohttp.io/path"),
+        ({"https_proxy": "http://example.com"}, "https://aiohttp.io/path"),
         (
-            {
-                "http_proxy": ["http://example.com"],
-                "HTTP_PROXY": ["http://example.com"],
-            },
+            {"http_proxy": "http://example.com,http://proxy.org"},
             "http://aiohttp.io/path",
-            r"No proxies found for `http://aiohttp.io/path` in the env",
-        ),
-        (
-            {
-                "https_proxy": ["http://example.com"],
-                "HTTPS_PROXY": ["http://example.com"],
-            },
-            "https://aiohttp.io/path",
-            r"No proxies found for `http://aiohttp.io/path` in the env",
         ),
     ),
-    ids=("url_scheme_match_http_proxy_list", "url_scheme_match_https_proxy_list"),
+    indirect=["proxy_env_vars"],
+    ids=(
+        "url_scheme_match_http_proxy_list",
+        "url_scheme_match_https_proxy_list",
+        "url_scheme_match_http_proxy_list_multiple",
+    ),
 )
-def test_get_env_proxy_for_url(
-    monkeypatch, proxies, url_input, expected_err_msg
-) -> None:
-    for schema in getproxies_environment().keys():
-        monkeypatch.delenv(schema, False)
-
-    for proxy_type, proxy_list in proxies.items():
-        monkeypatch.setenv(proxy_type, ",".join(proxy_list))
-
+def test_get_env_proxy_for_url(monkeypatch, proxy_env_vars, url_input) -> None:
     url = URL(url_input)
     proxy, proxy_auth = helpers.get_env_proxy_for_url(url)
-    assert proxy == URL("http://example.com")
+    proxy_list = proxy_env_vars[url.scheme + "_proxy"]
+    assert proxy == URL(proxy_list)
     assert proxy_auth is None
 
 
