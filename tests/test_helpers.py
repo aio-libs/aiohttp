@@ -574,9 +574,8 @@ def proxy_env_vars(monkeypatch, request):
         "url_is_empty",
     ),
 )
-def test_get_env_proxy_for_url_negative(
-    monkeypatch, proxy_env_vars, url_input, expected_err_msg
-) -> None:
+@pytest.mark.usefixtures('proxy_env_vars')
+def test_get_env_proxy_for_url_negative(url_input, expected_err_msg) -> None:
     url = URL(url_input)
     with pytest.raises(LookupError, match=expected_err_msg):
         helpers.get_env_proxy_for_url(url)
@@ -599,7 +598,7 @@ def test_get_env_proxy_for_url_negative(
         "url_scheme_match_http_proxy_list_multiple",
     ),
 )
-def test_get_env_proxy_for_url(monkeypatch, proxy_env_vars, url_input) -> None:
+def test_get_env_proxy_for_url(proxy_env_vars, url_input) -> None:
     url = URL(url_input)
     proxy, proxy_auth = helpers.get_env_proxy_for_url(url)
     proxy_list = proxy_env_vars[url.scheme + "_proxy"]
