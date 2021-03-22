@@ -574,7 +574,7 @@ def proxy_env_vars(monkeypatch, request):
         "url_is_empty",
     ),
 )
-@pytest.mark.usefixtures('proxy_env_vars')
+@pytest.mark.usefixtures("proxy_env_vars")
 def test_get_env_proxy_for_url_negative(url_input, expected_err_msg) -> None:
     url = URL(url_input)
     with pytest.raises(LookupError, match=expected_err_msg):
