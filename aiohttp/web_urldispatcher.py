@@ -617,7 +617,7 @@ class StaticResource(PrefixResource):
         path = request.rel_url.raw_path
         method = request.method
         allowed_methods = set(self._routes)
-        if not path.startswith(self._prefix + "/"):
+        if not path.startswith(self._prefix + "/") and path != self._prefix):
             return None, set()
 
         if method not in allowed_methods:
