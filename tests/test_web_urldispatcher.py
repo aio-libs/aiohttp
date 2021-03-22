@@ -466,6 +466,7 @@ async def test_for_issue_5250(aiohttp_client: Any, tmp_path: Any) -> None:
 
     async def get_foobar(request):
         return web.Response(body="success!")
+
     app.router.add_get("/foobar", get_foobar)
 
     client = await aiohttp_client(app)
