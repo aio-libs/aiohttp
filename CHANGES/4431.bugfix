@@ -1,0 +1,1 @@
+Fixed HTTP client requests to honor ``no_proxy`` environment variables.
