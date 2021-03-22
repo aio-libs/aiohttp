@@ -14,8 +14,8 @@ repos:
   rev: v1.2.2
   hooks:
   - id: yesqa
-- repo: https://github.com/pre-commit/mirrors-isort
-  rev: 'v5.6.4'
+- repo: https://github.com/pycqa/isort
+  rev: '5.8.0'
   hooks:
   - id: isort
 - repo: https://github.com/psf/black
