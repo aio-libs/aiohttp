@@ -28,6 +28,7 @@ Dict
 Discord
 Django
 Dup
+ETag
 Facebook
 HTTPException
 HttpProcessingError
@@ -153,6 +154,7 @@ env
 environ
 eof
 epoll
+etag
 facto
 fallback
 fallbacks
