@@ -109,16 +109,15 @@ class FileResponse(StreamResponse):
     def _strong_etag_match(etag_value: str, etags: Tuple[ETag, ...]) -> bool:
         if len(etags) == 1 and etags[0].value == ETAG_ANY:
             return True
-        else:
-            return any(etag.value == etag_value for etag in etags if not etag.is_weak)
+        return any(etag.value == etag_value for etag in etags if not etag.is_weak)
 
     async def _not_modified(
         self, request: "BaseRequest", etag_value: str, last_modified: float
     ) -> Optional[AbstractStreamWriter]:
         self.set_status(HTTPNotModified.status_code)
         self._length_check = False
-        self.etag = etag_value  # type: ignore
-        self.last_modified = last_modified  # type: ignore
+        self.etag = etag_value  # type: ignore[assignment]
+        self.last_modified = last_modified  # type: ignore[assignment]
         # Delete any Content-Length headers provided by user. HTTP 304
         # should always have empty response body
         return await super().prepare(request)
