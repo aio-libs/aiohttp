@@ -52,7 +52,7 @@ from . import hdrs
 from .log import client_logger, internal_logger
 from .typedefs import PathLike, Protocol  # noqa
 
-__all__ = ("BasicAuth", "ChainMapProxy")
+__all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
 PY_36 = sys.version_info >= (3, 6)
 PY_37 = sys.version_info >= (3, 7)
@@ -776,3 +776,26 @@ class ChainMapProxy(Mapping[str, Any]):
     def __repr__(self) -> str:
         content = ", ".join(map(repr, self._maps))
         return f"ChainMapProxy({content})"
+
+
+# https://tools.ietf.org/html/rfc7232#section-2.3
+_ETAGC = r"[!#-}\x80-\xff]+"
+_ETAGC_RE = re.compile(_ETAGC)
+_QUOTED_ETAG = fr'(W/)?"({_ETAGC})"'
+QUOTED_ETAG_RE = re.compile(_QUOTED_ETAG)
+LIST_QUOTED_ETAG_RE = re.compile(fr"({_QUOTED_ETAG})(?:\s*,\s*|$)|(.)")
+
+ETAG_ANY = "*"
+
+
+@attr.s(auto_attribs=True, frozen=True, slots=True)
+class ETag:
+    value: str
+    is_weak: bool = False
+
+
+def validate_etag_value(value: str) -> None:
+    if value != ETAG_ANY and not _ETAGC_RE.fullmatch(value):
+        raise ValueError(
+            f"Value {value!r} is not a valid etag. Maybe it contains '\"'?"
+        )

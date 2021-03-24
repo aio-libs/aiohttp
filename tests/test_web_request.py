@@ -14,6 +14,7 @@ from aiohttp.http_parser import RawRequestMessage
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import BaseRequest, HTTPRequestEntityTooLarge
+from aiohttp.web_request import ETag
 
 
 @pytest.fixture
@@ -742,3 +743,47 @@ async def test_loop_prop() -> None:
     req = make_mocked_request("GET", "/path", loop=loop)
     with pytest.warns(DeprecationWarning):
         assert req.loop is loop
+
+
+@pytest.mark.parametrize(
+    ["header", "header_attr"],
+    [
+        pytest.param("If-Match", "if_match"),
+        pytest.param("If-None-Match", "if_none_match"),
+    ],
+)
+@pytest.mark.parametrize(
+    ["header_val", "expected"],
+    [
+        pytest.param(
+            '"67ab43", W/"54ed21", "7892,dd"',
+            (
+                ETag(is_weak=False, value="67ab43"),
+                ETag(is_weak=True, value="54ed21"),
+                ETag(is_weak=False, value="7892,dd"),
+            ),
+        ),
+        pytest.param(
+            '"bfc1ef-5b2c2730249c88ca92d82d"',
+            (ETag(is_weak=False, value="bfc1ef-5b2c2730249c88ca92d82d"),),
+        ),
+        pytest.param(
+            '"valid-tag", "also-valid-tag",somegarbage"last-tag"',
+            (
+                ETag(is_weak=False, value="valid-tag"),
+                ETag(is_weak=False, value="also-valid-tag"),
+            ),
+        ),
+        pytest.param(
+            '"ascii", "это точно не ascii", "ascii again"',
+            (ETag(is_weak=False, value="ascii"),),
+        ),
+        pytest.param(
+            "*",
+            (ETag(is_weak=False, value="*"),),
+        ),
+    ],
+)
+def test_etag_headers(header, header_attr, header_val, expected) -> None:
+    req = make_mocked_request("GET", "/", headers={header: header_val})
+    assert getattr(req, header_attr) == expected
