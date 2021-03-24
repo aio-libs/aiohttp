@@ -272,7 +272,7 @@ def test_etag_string() -> None:
 
 
 @pytest.mark.parametrize(
-    "etag,expected_header",
+    ["etag", "expected_header"],
     (
         (ETag(value="0123-weak-kotik", is_weak=True), 'W/"0123-weak-kotik"'),
         (ETag(value="0123-strong-kotik", is_weak=False), '"0123-strong-kotik"'),
@@ -303,7 +303,7 @@ def test_etag_any() -> None:
 )
 def test_etag_invalid_value_set(invalid_value) -> None:
     resp = StreamResponse()
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="is not a valid etag"):
         resp.etag = invalid_value
 
 
@@ -323,7 +323,7 @@ def test_etag_invalid_value_get(header) -> None:
 @pytest.mark.parametrize("invalid", (123, ETag(value=123, is_weak=True)))
 def test_etag_invalid_value_class(invalid) -> None:
     resp = StreamResponse()
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Unsupported etag type"):
         resp.etag = invalid
 
 

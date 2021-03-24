@@ -826,14 +826,14 @@ async def test_handler_return_type(aiohttp_client: Any) -> None:
 
 
 @pytest.mark.parametrize(
-    "header,header_attr",
+    ["header", "header_attr"],
     [
         pytest.param("If-Match", "if_match"),
         pytest.param("If-None-Match", "if_none_match"),
     ],
 )
 @pytest.mark.parametrize(
-    "header_val,expected",
+    ["header_val", "expected"],
     [
         pytest.param(
             '"67ab43", W/"54ed21", "7892,dd"',
