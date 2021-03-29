@@ -8,7 +8,7 @@ Brotli==1.0.9
 cchardet==2.1.7
 chardet==4.0.0
 frozenlist==1.1.1
-gunicorn==20.0.4
+gunicorn==20.1.0
 typing_extensions==3.7.4.3
 uvloop==0.14.0; platform_system!="Windows" and implementation_name=="cpython" and python_version<"3.9" # MagicStack/uvloop#14
 yarl==1.6.3
