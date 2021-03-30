@@ -211,3 +211,22 @@ async def test_tcpsite_default_host(make_runner: Any) -> None:
     assert server is runner.server
     assert host is None
     assert port == 8080
+
+
+async def test_run_after_asyncio_run() -> None:
+    async def nothing():
+        pass
+
+    async def shutdown():
+        raise web.GracefulExit()
+
+    # asyncio.run() creates a new loop and closes it.
+    asyncio.run(nothing())
+
+    app = web.Application()
+    # create_task() will delay the function until app is run.
+    app.on_startup.append(lambda a: asyncio.create_task(shutdown()))
+    try:
+        web.run_app(app)
+    except RuntimeError:
+        pytest.fail("run_app() should work after asyncio.run().")
