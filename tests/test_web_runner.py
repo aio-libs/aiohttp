@@ -213,7 +213,7 @@ async def test_tcpsite_default_host(make_runner: Any) -> None:
     assert port == 8080
 
 
-async def test_run_after_asyncio_run() -> None:
+def test_run_after_asyncio_run() -> None:
     async def nothing():
         pass
 
