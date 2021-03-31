@@ -93,7 +93,7 @@ funcparserlib==0.3.6
     # via blockdiag
 gidgethub==5.0.0
     # via cherry-picker
-gunicorn==20.0.4
+gunicorn==20.1.0
     # via -r requirements/base.txt
 identify==2.1.1
     # via
@@ -225,7 +225,7 @@ six==1.15.0
     #   virtualenv
 snowballstemmer==2.0.0
     # via sphinx
-sphinx==3.5.2
+sphinx==3.5.3
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-asyncio
