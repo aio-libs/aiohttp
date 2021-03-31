@@ -99,3 +99,9 @@ async def test_mark_formdata_as_processed() -> None:
 
         with pytest.raises(RuntimeError):
             await session.post(url, data=data)
+
+
+async def test_formdata_boundary_param() -> None:
+    boundary = "some_boundary"
+    form = FormData(boundary=boundary)
+    assert form._writer.boundary == boundary

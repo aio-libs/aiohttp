@@ -38,6 +38,7 @@ from .client_exceptions import (
     ServerFingerprintMismatch,
 )
 from .formdata import FormData
+from .hdrs import CONTENT_TYPE
 from .helpers import (
     BaseTimerContext,
     BasicAuth,
@@ -45,6 +46,7 @@ from .helpers import (
     TimerNoop,
     is_expected_content_type,
     noop,
+    parse_mimetype,
     reify,
     set_result,
 )
@@ -443,7 +445,12 @@ class ClientRequest:
         try:
             body = payload.PAYLOAD_REGISTRY.get(body, disposition=None)
         except payload.LookupError:
-            body = FormData(body)()
+            boundary = None
+            if CONTENT_TYPE in self.headers:
+                boundary = parse_mimetype(self.headers[CONTENT_TYPE]).parameters.get(
+                    "boundary"
+                )
+            body = FormData(body, boundary=boundary)()
 
         self.body = body
 
