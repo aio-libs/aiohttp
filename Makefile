@@ -100,7 +100,7 @@ vvtest: .develop
 .PHONY: cov-dev
 cov-dev: .develop
 	@pytest --cov-report=html
-	@echo "open file://`pwd`/htmlcov/index.html"
+	@echo "xdg-open file://`pwd`/htmlcov/index.html"
 
 .PHONY: clean
 clean:
