@@ -97,6 +97,11 @@ vtest: .develop
 vvtest: .develop
 	@pytest -vv
 
+.PHONY: cov-dev
+cov-dev: .develop
+	@pytest --cov-report=html
+	@echo "xdg-open file://`pwd`/htmlcov/index.html"
+
 .PHONY: clean
 clean:
 	@rm -rf `find . -name __pycache__`
