@@ -1590,26 +1590,21 @@ async def test_json(aiohttp_client: Any) -> None:
         await client.post("/", data="some data", json={"some": "data"})
 
 
-async def test_json_custom(aiohttp_client: Any) -> None:
+async def test_json_custom(aiohttp_client: Any, json_serialize: mock.Mock) -> None:
     async def handler(request):
         assert request.content_type == "application/json"
         data = await request.json()
         return web.Response(body=aiohttp.JsonPayload(data))
 
-    used = False
-
-    def dumps(obj):
-        nonlocal used
-        used = True
-        return json.dumps(obj)
+    request_json = {"some": "data"}
 
     app = web.Application()
     app.router.add_post("/", handler)
-    client = await aiohttp_client(app, json_serialize=dumps)
+    client = await aiohttp_client(app, json_serialize=json_serialize)
 
-    resp = await client.post("/", json={"some": "data"})
+    resp = await client.post("/", json=request_json)
     assert 200 == resp.status
-    assert used
+    json_serialize.assert_called_with(request_json)
     content = await resp.json()
     assert content == {"some": "data"}
     resp.close()

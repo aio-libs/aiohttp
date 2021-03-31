@@ -28,7 +28,7 @@ from .http import (
 )
 from .log import ws_logger
 from .streams import EofStream, FlowControlDataQueue
-from .typedefs import JSONDecoder, JSONEncoder
+from .typedefs import DEFAULT_JSON_ENCODER, JSONDecoder, JSONEncoder
 from .web_exceptions import HTTPBadRequest, HTTPException
 from .web_request import BaseRequest
 from .web_response import StreamResponse
@@ -342,9 +342,11 @@ class WebSocketResponse(StreamResponse):
         data: Any,
         compress: Optional[bool] = None,
         *,
-        dumps: JSONEncoder = json.dumps,
+        dumps: JSONEncoder = DEFAULT_JSON_ENCODER,
     ) -> None:
-        await self.send_str(dumps(data), compress=compress)
+        data = dumps(data)
+        data = data if isinstance(data, str) else data.decode("utf-8")
+        await self.send_str(data, compress=compress)
 
     async def write_eof(self) -> None:  # type: ignore[override]
         if self._eof_sent:

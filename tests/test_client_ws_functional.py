@@ -1,6 +1,7 @@
 # type: ignore
 import asyncio
 from typing import Any
+from unittest import mock
 
 import async_timeout
 import pytest
@@ -102,7 +103,7 @@ async def test_send_recv_text_bad_type(aiohttp_client: Any) -> None:
         await resp.close()
 
 
-async def test_send_recv_json(aiohttp_client: Any) -> None:
+async def test_send_recv_json(aiohttp_client: Any, json_serialize: mock.Mock) -> None:
     async def handler(request):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
@@ -116,11 +117,13 @@ async def test_send_recv_json(aiohttp_client: Any) -> None:
     app.router.add_route("GET", "/", handler)
     client = await aiohttp_client(app)
     resp = await client.ws_connect("/")
+
     payload = {"request": "test"}
-    await resp.send_json(payload)
+    await resp.send_json(payload, dumps=json_serialize)
 
     data = await resp.receive_json()
     assert data["response"] == payload["request"]
+    json_serialize.assert_called_with(payload)
     await resp.close()
 
 

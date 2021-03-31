@@ -4,7 +4,6 @@ import asyncio
 import base64
 import dataclasses
 import hashlib
-import json
 import os
 import sys
 import traceback
@@ -89,7 +88,13 @@ from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, WSMessage, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
 from .tracing import Trace, TraceConfig
-from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
+from .typedefs import (
+    DEFAULT_JSON_ENCODER,
+    JSONEncoder,
+    LooseCookies,
+    LooseHeaders,
+    StrOrURL,
+)
 
 __all__ = (
     # client_exceptions
@@ -199,7 +204,7 @@ class ClientSession:
         headers: Optional[LooseHeaders] = None,
         skip_auto_headers: Optional[Iterable[str]] = None,
         auth: Optional[BasicAuth] = None,
-        json_serialize: JSONEncoder = json.dumps,
+        json_serialize: JSONEncoder = DEFAULT_JSON_ENCODER,
         request_class: Type[ClientRequest] = ClientRequest,
         response_class: Type[ClientResponse] = ClientResponse,
         ws_response_class: Type[ClientWebSocketResponse] = ClientWebSocketResponse,

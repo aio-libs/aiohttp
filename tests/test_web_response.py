@@ -1168,6 +1168,12 @@ class TestJSONResponse:
         resp = json_response({"foo": 42})
         assert json.dumps({"foo": 42}) == resp.text
 
+    def test_data_custom_json_serialize(self, json_serialize):
+        payload = {"foo": 42}
+        resp = json_response(payload, dumps=json_serialize)
+        assert json.dumps(payload) == resp.text
+        json_serialize.assert_called_with(payload)
+
     def test_content_type_is_overrideable(self) -> None:
         resp = json_response({"foo": 42}, content_type="application/vnd.json+api")
         assert "application/vnd.json+api" == resp.content_type
