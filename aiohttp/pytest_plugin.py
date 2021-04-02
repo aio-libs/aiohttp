@@ -331,7 +331,7 @@ def aiohttp_client_cls() -> Type[TestClient]:
 
 @pytest.fixture
 def aiohttp_client(
-    loop: asyncio.AbstractEventLoop, aiohttp_client_cls: TestClient
+    loop: asyncio.AbstractEventLoop, aiohttp_client_cls: Type[TestClient]
 ) -> Generator[AiohttpClient, None, None]:
     """Factory to create a TestClient instance.
 
