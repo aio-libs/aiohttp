@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 import inspect
 import warnings
+from typing import Any, Awaitable, Callable, Dict, Optional, Union
 
 import pytest
 
@@ -27,6 +28,8 @@ try:
     import tokio
 except ImportError:  # pragma: no cover
     tokio = None
+
+AiohttpClient = Callable[[Union[Application, BaseTestServer]], Awaitable[TestClient]]
 
 
 def pytest_addoption(parser):  # type: ignore[no-untyped-def]
@@ -300,7 +303,7 @@ def aiohttp_raw_server(loop):  # type: ignore[no-untyped-def]
 
 
 @pytest.fixture
-def aiohttp_client_cls():  # type: ignore[no-untyped-def]
+def aiohttp_client_cls() -> TestClient:
     """
     Client class to use in ``aiohttp_client`` factory.
 
@@ -327,7 +330,7 @@ def aiohttp_client_cls():  # type: ignore[no-untyped-def]
 
 
 @pytest.fixture
-def aiohttp_client(loop, aiohttp_client_cls):  # type: ignore[no-untyped-def]
+def aiohttp_client(loop, aiohttp_client_cls: TestClient) -> AiohttpClient:
     """Factory to create a TestClient instance.
 
     aiohttp_client(app, **kwargs)
@@ -336,9 +339,12 @@ def aiohttp_client(loop, aiohttp_client_cls):  # type: ignore[no-untyped-def]
     """
     clients = []
 
-    async def go(  # type: ignore[no-untyped-def]
-        __param, *, server_kwargs=None, **kwargs
-    ):
+    async def go(
+        __param: Union[Application, BaseTestServer],
+        *,
+        server_kwargs: Optional[Dict[str, Any]] = None,
+        **kwargs: Any
+    ) -> TestClient:
         if isinstance(__param, Application):
             server_kwargs = server_kwargs or {}
             server = TestServer(__param, **server_kwargs)
