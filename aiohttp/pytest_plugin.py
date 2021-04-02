@@ -2,7 +2,7 @@ import asyncio
 import contextlib
 import inspect
 import warnings
-from typing import Any, Awaitable, Callable, Dict, Optional, Union
+from typing import Any, Awaitable, Callable, Dict, Generator, Optional, Type, Union
 
 import pytest
 
@@ -303,7 +303,7 @@ def aiohttp_raw_server(loop):  # type: ignore[no-untyped-def]
 
 
 @pytest.fixture
-def aiohttp_client_cls() -> TestClient:
+def aiohttp_client_cls() -> Type[TestClient]:
     """
     Client class to use in ``aiohttp_client`` factory.
 
@@ -330,7 +330,9 @@ def aiohttp_client_cls() -> TestClient:
 
 
 @pytest.fixture
-def aiohttp_client(loop, aiohttp_client_cls: TestClient) -> AiohttpClient:
+def aiohttp_client(
+    loop: asyncio.AbstractEventLoop, aiohttp_client_cls: TestClient
+) -> Generator[AiohttpClient, None, None]:
     """Factory to create a TestClient instance.
 
     aiohttp_client(app, **kwargs)
