@@ -97,5 +97,6 @@ async def test_mark_formdata_as_processed() -> None:
         await session.post(url, data=data)
         assert len(data._writer._parts) == 1
 
-        with pytest.raises(RuntimeError):
-            await session.post(url, data=data)
+        # second request doesn't append values to existing FormData
+        await session.post(url, data=data)
+        assert len(data._writer._parts) == 1
