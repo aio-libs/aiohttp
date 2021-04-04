@@ -295,7 +295,7 @@ nature are installed to perform their job in each signal handle::
 
 All signals take as a parameters first, the :class:`ClientSession`
 instance used by the specific request related to that signals and
-second, a :class:`SimpleNamespace` instance called
+second, a :class:`~types.SimpleNamespace` instance called
 ``trace_config_ctx``. The ``trace_config_ctx`` object can be used to
 share the state through to the different signals that belong to the
 same request and to the same :class:`TraceConfig` class, perhaps::
@@ -310,7 +310,7 @@ same request and to the same :class:`TraceConfig` class, perhaps::
 
 
 The ``trace_config_ctx`` param is by default a
-:class:`SimpleNampespace` that is initialized at the beginning of the
+:class:`~types.SimpleNamespace` that is initialized at the beginning of the
 request flow. However, the factory used to create this object can be
 overwritten using the ``trace_config_ctx_factory`` constructor param of
 the :class:`TraceConfig` class.
@@ -587,7 +587,7 @@ as it results in more compact code::
 
 This approach can be successfully used to define numerous of session given certain
 requirements. It benefits from having a single location where :class:`aiohttp.ClientSession`
-instances are created and where artifacts such as :class:`aiohttp.connector.BaseConnector`
+instances are created and where artifacts such as :class:`aiohttp.BaseConnector`
 can be safely shared between sessions if needed.
 
 In the end all you have to do is to close all sessions after `yield` statement::
