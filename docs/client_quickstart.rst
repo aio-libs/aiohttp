@@ -318,7 +318,7 @@ You can set the ``filename`` and ``content_type`` explicitly::
     await session.post(url, data=data)
 
 If you pass a file object as data parameter, aiohttp will stream it to
-the server automatically. Check :class:`~aiohttp.streams.StreamReader`
+the server automatically. Check :class:`~aiohttp.StreamReader`
 for supported format information.
 
 .. seealso:: :ref:`aiohttp-multipart`
@@ -327,7 +327,7 @@ for supported format information.
 Streaming uploads
 =================
 
-:mod:`aiohttp` supports multiple types of streaming uploads, which allows you to
+:mod:`~aiohttp.web` supports multiple types of streaming uploads, which allows you to
 send large files without reading them into memory.
 
 As a simple case, simply provide a file-like object for your body::
@@ -366,7 +366,7 @@ can chain get and post requests together::
 WebSockets
 ==========
 
-:mod:`aiohttp` works with client websockets out-of-the-box.
+:mod:`~aiohttp.web` works with client websockets out-of-the-box.
 
 You have to use the :meth:`aiohttp.ClientSession.ws_connect` coroutine
 for client websocket connection. It accepts a *url* as a first
