@@ -327,7 +327,7 @@ for supported format information.
 Streaming uploads
 =================
 
-:mod:`~aiohttp.web` supports multiple types of streaming uploads, which allows you to
+:mod:`aiohttp` supports multiple types of streaming uploads, which allows you to
 send large files without reading them into memory.
 
 As a simple case, simply provide a file-like object for your body::
@@ -366,7 +366,7 @@ can chain get and post requests together::
 WebSockets
 ==========
 
-:mod:`~aiohttp.web` works with client websockets out-of-the-box.
+:mod:`aiohttp` works with client websockets out-of-the-box.
 
 You have to use the :meth:`aiohttp.ClientSession.ws_connect` coroutine
 for client websocket connection. It accepts a *url* as a first
