@@ -19,18 +19,18 @@ aiohttp.web is built on top of few concepts: *application*, *router*,
 *router* is a *plugable* part: a library user may build a *router*
 from scratch, all other parts should work with new router seamlessly.
 
-:class:`AbstractRouter` has the only mandatory method:
-:meth:`AbstractRouter.resolve` coroutine. It must return an
-:class:`AbstractMatchInfo` instance.
+:class:`aiohttp.abc.aiohttp.abc.AbstractRouter` has the only mandatory method:
+:meth:`aiohttp.abc.aiohttp.abc.AbstractRouter.resolve` coroutine. It must return an
+:class:`aiohttp.abc.aiohttp.abc.AbstractMatchInfo` instance.
 
 If the requested URL handler is found
-:meth:`AbstractMatchInfo.handler` is a :term:`web-handler` for
-requested URL and :attr:`AbstractMatchInfo.http_exception` is ``None``.
+:meth:`aiohttp.abc.aiohttp.abc.AbstractMatchInfo.handler` is a :term:`web-handler` for
+requested URL and :attr:`aiohttp.abc.aiohttp.abc.AbstractMatchInfo.http_exception` is ``None``.
 
-Otherwise :attr:`AbstractMatchInfo.http_exception` is an instance of
-:exc:`~aiohttp.web.HTTPException` like *404: NotFound* or *405: Method
-Not Allowed*. :meth:`AbstractMatchInfo.handler` raises
-:attr:`~AbstractMatchInfo.http_exception` on call.
+Otherwise :attr:`aiohttp.abc.aiohttp.abc.AbstractMatchInfo.http_exception` is an instance of
+:exc:`~aiohttp.abc.aiohttp.abc.AbstractMatchInfo.http_exception` like *404: NotFound* or *405: Method
+Not Allowed*. :meth:`aiohttp.abc.aiohttp.abc.AbstractMatchInfo.handler` raises
+:attr:`~aiohttp.abc.aiohttp.abc.AbstractMatchInfo.http_exception` on call.
 
 
 .. class:: aiohttp.abc.AbstractRouter
@@ -49,12 +49,12 @@ Not Allowed*. :meth:`AbstractMatchInfo.handler` raises
                       :attr:`aiohttp.web.Request.match_info` equals to
                       ``None`` at resolving stage.
 
-      :return: :class:`AbstractMatchInfo` instance.
+      :return: :class:`aiohttp.abc.aiohttp.abc.AbstractMatchInfo` instance.
 
 
 .. class:: aiohttp.abc.AbstractMatchInfo
 
-   Abstract *match info*, returned by :meth:`AbstractRouter.resolve` call.
+   Abstract *match info*, returned by :meth:`aiohttp.abc.aiohttp.abc.AbstractRouter.resolve` call.
 
    .. attribute:: http_exception
 
@@ -102,7 +102,7 @@ Abstract Cookie Jar
 
 .. class:: aiohttp.abc.AbstractCookieJar
 
-   The cookie jar instance is available as :attr:`ClientSession.cookie_jar`.
+   The cookie jar instance is available as :attr:`aiohttp.ClientSession.cookie_jar`.
 
    The jar contains :class:`~http.cookies.Morsel` items for storing
    internal cookie data.
