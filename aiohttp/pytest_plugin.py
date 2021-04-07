@@ -335,7 +335,7 @@ def raw_test_server(  # type: ignore[no-untyped-def]  # pragma: no cover
 
 @pytest.fixture
 def aiohttp_client(
-    loop: asyncio.AbstractEventLoop
+    loop: asyncio.AbstractEventLoop,
 ) -> Generator[AiohttpClient, None, None]:
     """Factory to create a TestClient instance.
 
