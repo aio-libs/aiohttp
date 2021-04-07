@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 import warnings
 from collections.abc import Callable
+from typing import Any, Awaitable, Callable, Dict, Generator, Optional, Type, Union
 
 import pytest
 
@@ -28,6 +29,8 @@ try:
     import tokio
 except ImportError:  # pragma: no cover
     tokio = None
+
+AiohttpClient = Callable[[Union[Application, BaseTestServer]], Awaitable[TestClient]]
 
 
 def pytest_addoption(parser):  # type: ignore[no-untyped-def]
@@ -331,7 +334,9 @@ def raw_test_server(  # type: ignore[no-untyped-def]  # pragma: no cover
 
 
 @pytest.fixture
-def aiohttp_client(loop):  # type: ignore[no-untyped-def]
+def aiohttp_client(
+    loop: asyncio.AbstractEventLoop
+) -> Generator[AiohttpClient, None, None]:
     """Factory to create a TestClient instance.
 
     aiohttp_client(app, **kwargs)
@@ -340,9 +345,12 @@ def aiohttp_client(loop):  # type: ignore[no-untyped-def]
     """
     clients = []
 
-    async def go(  # type: ignore[no-untyped-def]
-        __param, *args, server_kwargs=None, **kwargs
-    ):
+    async def go(
+        __param: Union[Application, BaseTestServer],
+        *args: Any,
+        server_kwargs: Optional[Dict[str, Any]] = None,
+        **kwargs: Any
+    ) -> TestClient:
 
         if isinstance(__param, Callable) and not isinstance(  # type: ignore[arg-type]
             __param, (Application, BaseTestServer)
