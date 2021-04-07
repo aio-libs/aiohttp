@@ -54,7 +54,7 @@ requests==2.25.1
     # via sphinx
 snowballstemmer==2.1.0
     # via sphinx
-sphinx==3.5.2
+sphinx==3.5.3
     # via
     #   -r doc.txt
     #   sphinxcontrib-asyncio
@@ -84,7 +84,7 @@ towncrier==19.2.0
     # via -r doc.txt
 typing-extensions==3.7.4.3
     # via importlib-metadata
-urllib3==1.26.3
+urllib3==1.26.4
     # via requests
 webcolors==1.11.1
     # via blockdiag
