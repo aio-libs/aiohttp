@@ -41,7 +41,7 @@ jobs:
       with:
         path: requirements/lint.txt
     - name: Pre-Commit hooks
-      uses: pre-commit/action@v2.0.0
+      uses: pre-commit/action@v2.0.2
     - name: Install itself
       run: |
         python setup.py install
