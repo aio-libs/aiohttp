@@ -261,7 +261,7 @@ towncrier==21.3.0
     # via -r requirements/doc.txt
 trustme==0.7.0 ; platform_machine != "i686"
     # via -r requirements/test.txt
-typed-ast==1.4.2 ; implementation_name == "cpython"
+typed-ast==1.4.3 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.txt
     #   black

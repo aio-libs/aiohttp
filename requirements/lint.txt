@@ -75,7 +75,7 @@ toml==0.10.2
     #   black
     #   pre-commit
     #   pytest
-typed-ast==1.4.2 ; implementation_name == "cpython"
+typed-ast==1.4.3 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   black
