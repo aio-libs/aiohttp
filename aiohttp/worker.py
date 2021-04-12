@@ -61,23 +61,31 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         sys.exit(self.exit_code)
 
     async def _run(self) -> None:
+        runner = None
         if isinstance(self.wsgi, Application):
             app = self.wsgi
         elif asyncio.iscoroutinefunction(self.wsgi):
-            app = await self.wsgi()
+            wsgi = await self.wsgi()
+            if isinstance(wsgi, web.AppRunner):
+                runner = wsgi
+                app = runner.app
+            else:
+                app = wsgi
         else:
             raise RuntimeError(
                 "wsgi app should be either Application or "
                 "async function returning Application, got {}".format(self.wsgi)
             )
-        access_log = self.log.access_log if self.cfg.accesslog else None
-        runner = web.AppRunner(
-            app,
-            logger=self.log,
-            keepalive_timeout=self.cfg.keepalive,
-            access_log=access_log,
-            access_log_format=self._get_valid_log_format(self.cfg.access_log_format),
-        )
+
+        if runner is None:
+            access_log = self.log.access_log if self.cfg.accesslog else None
+            runner = web.AppRunner(
+                app,
+                logger=self.log,
+                keepalive_timeout=self.cfg.keepalive,
+                access_log=access_log,
+                access_log_format=self._get_valid_log_format(self.cfg.access_log_format),
+            )
         await runner.setup()
 
         ctx = self._create_ssl_context(self.cfg) if self.cfg.is_ssl else None
