@@ -85,7 +85,8 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
                 keepalive_timeout=self.cfg.keepalive,
                 access_log=access_log,
                 access_log_format=self._get_valid_log_format(
-                    self.cfg.access_log_format),
+                    self.cfg.access_log_format
+                ),
             )
         await runner.setup()
 
