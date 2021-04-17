@@ -315,7 +315,7 @@ You can set the ``filename`` and ``content_type`` explicitly::
     await session.post(url, data=data)
 
 If you pass a file object as data parameter, aiohttp will stream it to
-the server automatically. Check :class:`~aiohttp.streams.StreamReader`
+the server automatically. Check :class:`~aiohttp.StreamReader`
 for supported format information.
 
 .. seealso:: :ref:`aiohttp-multipart`
