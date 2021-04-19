@@ -15,7 +15,7 @@ import pytest
 from multidict import MultiDict
 
 import aiohttp
-from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
+from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web, FormData
 from aiohttp.abc import AbstractResolver
 from aiohttp.client_exceptions import TooManyRedirects
 from aiohttp.test_utils import unused_port
@@ -980,6 +980,60 @@ async def test_HTTP_308_PERMANENT_REDIRECT_POST(aiohttp_client: Any) -> None:
     client = await aiohttp_client(app)
 
     resp = await client.post("/redirect", data={"some": "data"})
+    assert 200 == resp.status
+    assert 1 == len(resp.history)
+    txt = await resp.text()
+    assert txt == "POST"
+    resp.close()
+
+
+async def test_HTTP_307_REDIRECT_POST_FORMDATA(aiohttp_client: Any) -> None:
+    async def handler(request):
+        return web.Response(text=request.method)
+
+    async def redirect(request):
+        await request.read()
+        raise web.HTTPTemporaryRedirect(location="/")
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    app.router.add_post("/redirect", redirect)
+    client = await aiohttp_client(app)
+
+    data = FormData()
+    data.add_field(
+        'file',
+        io.BytesIO(),
+        filename='bytes_file',
+    )
+    resp = await client.post("/redirect", data=data)
+    assert 200 == resp.status
+    assert 1 == len(resp.history)
+    txt = await resp.text()
+    assert txt == "POST"
+    resp.close()
+
+
+async def test_HTTP_308_PERMANENT_REDIRECT_POST_FORMDATA(aiohttp_client: Any) -> None:
+    async def handler(request):
+        return web.Response(text=request.method)
+
+    async def redirect(request):
+        await request.read()
+        raise web.HTTPPermanentRedirect(location="/")
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    app.router.add_post("/redirect", redirect)
+    client = await aiohttp_client(app)
+
+    data = FormData()
+    data.add_field(
+        'file',
+        io.BytesIO(),
+        filename='bytes_file',
+    )
+    resp = await client.post("/redirect", data=data)
     assert 200 == resp.status
     assert 1 == len(resp.history)
     txt = await resp.text()
