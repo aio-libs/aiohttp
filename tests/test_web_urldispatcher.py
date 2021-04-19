@@ -9,6 +9,7 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import pytest
+import yarl
 
 from aiohttp import abc, web
 from aiohttp.web_urldispatcher import SystemRoute
@@ -515,3 +516,17 @@ async def test_static_absolute_url(aiohttp_client, tmpdir) -> None:
     client = await aiohttp_client(app)
     resp = await client.get("/static/" + str(fname))
     assert resp.status == 403
+
+
+async def test_decoded_match_regex(aiohttp_client) -> None:
+    app = web.Application()
+
+    async def handler(_):
+        return web.Response()
+
+    app.router.add_get("/{user_ids:(([0-9]+)|(u_[0-9a-f]{16}))(,(([0-9]+)|(u_[0-9a-f]{16})))*}/hello", handler)
+    client = await aiohttp_client(app)
+
+    r = await client.get(yarl.URL("/467%2C802%2C24834%2C24952%2C25362%2C40574/hello", encoded=True))
+    assert r.status == 200
+    await r.release()
