@@ -518,6 +518,10 @@ async def test_static_absolute_url(aiohttp_client, tmpdir) -> None:
     assert resp.status == 403
 
 
+@pytest.mark.xfail(
+    raises=AssertionError,
+    reason="Regression in v3.7: https://github.com/aio-libs/aiohttp/issues/5621",
+)
 async def test_decoded_match_regex(aiohttp_client) -> None:
     app = web.Application()
 
@@ -536,6 +540,10 @@ async def test_decoded_match_regex(aiohttp_client) -> None:
     await r.release()
 
 
+@pytest.mark.xfail(
+    raises=AssertionError,
+    reason="Regression in v3.7: https://github.com/aio-libs/aiohttp/issues/5621",
+)
 async def test_decoded_raw_match_regex(aiohttp_client) -> None:
     app = web.Application()
 
