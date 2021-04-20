@@ -472,7 +472,7 @@ async def test_static_absolute_url(aiohttp_client: Any, tmp_path: Any) -> None:
         ("/{user_ids:([0-9]+)(,([0-9]+))*}/hello", "/467%2C802%2C24834/hello", 200),
         ("/1%2C3/hello", "/1%2C3/hello", 404),
     ),
-    ids=("urldecoded_route", "urlencoded_route"),
+    ids=("urldecoded_route", "urldecoded_route_with_regex", "urlencoded_route"),
 )
 async def test_decoded_url_match(
     aiohttp_client,
