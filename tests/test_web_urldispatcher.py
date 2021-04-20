@@ -469,7 +469,7 @@ async def test_static_absolute_url(aiohttp_client: Any, tmp_path: Any) -> None:
     ("route_definition", "urlencoded_path", "expected_http_resp_status"),
     (
         ("/{user_ids:([0-9]+)(,([0-9]+))*}/hello", "/467%2C802%2C24834/hello", 200),
-        ("/1%2C3/hello, "/1%2C3/hello", 404),
+        ("/1%2C3/hello", "/1%2C3/hello", 404),
     ),
     ids=("urldecoded_route", "urlencoded_route"),
 )
@@ -490,24 +490,4 @@ async def test_decoded_url_match(
     # '/467,802,24834,24952,25362,40574/hello'
     r = await client.get(yarl.URL(urlencoded_path, encoded=True))
     assert r.status == expected_http_resp_status
-    await r.release()
-
-
-@pytest.mark.xfail(
-    raises=AssertionError,
-    reason="Regression in v3.7: https://github.com/aio-libs/aiohttp/issues/5621",
-)
-async def test_decoded_raw_match_regex(aiohttp_client) -> None:
-    app = web.Application()
-
-    async def handler(_):
-        return web.Response()
-
-    app.router.add_get("/467%2C802%2C24834%2C24952%2C25362%2C40574/hello", handler)
-    client = await aiohttp_client(app)
-
-    r = await client.get(
-        yarl.URL("/467%2C802%2C24834%2C24952%2C25362%2C40574/hello", encoded=True)
-    )
-    assert r.status == 404  # should only match decoded url
     await r.release()
