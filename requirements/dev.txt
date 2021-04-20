@@ -81,7 +81,7 @@ filelock==3.0.12
     #   virtualenv
 flake8-pyi==20.10.0
     # via -r requirements/lint.txt
-flake8==3.9.0
+flake8==3.9.1
     # via
     #   -r requirements/lint.txt
     #   flake8-pyi
@@ -159,7 +159,7 @@ pluggy==0.13.1
     # via
     #   -r requirements/lint.txt
     #   pytest
-pre-commit==2.12.0
+pre-commit==2.12.1
     # via -r requirements/lint.txt
 py==1.10.0
     # via
