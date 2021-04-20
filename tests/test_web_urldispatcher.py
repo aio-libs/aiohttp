@@ -524,11 +524,14 @@ async def test_decoded_match_regex(aiohttp_client) -> None:
     async def handler(_):
         return web.Response()
 
-    app.router.add_get("/{user_ids:(([0-9]+)|(u_[0-9a-f]{16}))(,(([0-9]+)|(u_[0-9a-f]{16})))*}/hello", handler)
+    app.router.add_get(
+        "/{user_ids:(([0-9]+)|(u_[0-9a-f]{16}))(,(([0-9]+)|(u_[0-9a-f]{16})))*}/hello",
+        handler)
     client = await aiohttp_client(app)
 
     # '/467,802,24834,24952,25362,40574/hello'
-    r = await client.get(yarl.URL("/467%2C802%2C24834%2C24952%2C25362%2C40574/hello", encoded=True))
+    r = await client.get(
+        yarl.URL("/467%2C802%2C24834%2C24952%2C25362%2C40574/hello", encoded=True))
     assert r.status == 200
     await r.release()
 
@@ -542,6 +545,7 @@ async def test_decoded_raw_match_regex(aiohttp_client) -> None:
     app.router.add_get("/467%2C802%2C24834%2C24952%2C25362%2C40574/hello", handler)
     client = await aiohttp_client(app)
 
-    r = await client.get(yarl.URL("/467%2C802%2C24834%2C24952%2C25362%2C40574/hello", encoded=True))
+    r = await client.get(
+        yarl.URL("/467%2C802%2C24834%2C24952%2C25362%2C40574/hello", encoded=True))
     assert r.status == 404  # should only match decoded url
     await r.release()
