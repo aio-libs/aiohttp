@@ -309,7 +309,9 @@ class TestClient:
         self._responses.append(resp)
         return resp
 
-    def request(self, method: str, path: Union[str, URL], **kwargs: Any) -> _RequestContextManager:
+    def request(
+        self, method: str, path: Union[str, URL], **kwargs: Any
+    ) -> _RequestContextManager:
         """Routes a request to tested http server.
 
         The interface is identical to aiohttp.ClientSession.request,

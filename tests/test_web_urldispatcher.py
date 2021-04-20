@@ -473,7 +473,8 @@ async def test_decoded_match_regex(aiohttp_client) -> None:
 
     app.router.add_get(
         "/{user_ids:(([0-9]+)|(u_[0-9a-f]{16}))(,(([0-9]+)|(u_[0-9a-f]{16})))*}/hello",
-        handler)
+        handler,
+    )
     client = await aiohttp_client(app)
 
     # '/467,802,24834,24952,25362,40574/hello'
