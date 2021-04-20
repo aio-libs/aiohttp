@@ -465,23 +465,31 @@ async def test_static_absolute_url(aiohttp_client: Any, tmp_path: Any) -> None:
     raises=AssertionError,
     reason="Regression in v3.7: https://github.com/aio-libs/aiohttp/issues/5621",
 )
-async def test_decoded_match_regex(aiohttp_client) -> None:
+@pytest.mark.parametrize(
+    ("route_definition", "urlencoded_path", "expected_http_resp_status"),
+    (
+        ("/{user_ids:([0-9]+)(,([0-9]+))*}/hello", "/467%2C802%2C24834/hello", 200),
+        ("/1%2C3/hello, "/1%2C3/hello", 404),
+    ),
+    ids=("urldecoded_route", "urlencoded_route"),
+)
+async def test_decoded_url_match(
+    aiohttp_client,
+    route_definition,
+    urlencoded_path,
+    expected_http_resp_status,
+) -> None:
     app = web.Application()
 
     async def handler(_):
         return web.Response()
 
-    app.router.add_get(
-        "/{user_ids:(([0-9]+)|(u_[0-9a-f]{16}))(,(([0-9]+)|(u_[0-9a-f]{16})))*}/hello",
-        handler,
-    )
+    app.router.add_get(route_definition, handler)
     client = await aiohttp_client(app)
 
     # '/467,802,24834,24952,25362,40574/hello'
-    r = await client.get(
-        yarl.URL("/467%2C802%2C24834%2C24952%2C25362%2C40574/hello", encoded=True)
-    )
-    assert r.status == 200
+    r = await client.get(yarl.URL(urlencoded_path, encoded=True))
+    assert r.status == expected_http_resp_status
     await r.release()
 
 
