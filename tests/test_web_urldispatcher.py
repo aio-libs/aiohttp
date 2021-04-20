@@ -468,6 +468,7 @@ async def test_static_absolute_url(aiohttp_client: Any, tmp_path: Any) -> None:
 @pytest.mark.parametrize(
     ("route_definition", "urlencoded_path", "expected_http_resp_status"),
     (
+        ("/467,802,24834/hello", "/467%2C802%2C24834/hello", 200),
         ("/{user_ids:([0-9]+)(,([0-9]+))*}/hello", "/467%2C802%2C24834/hello", 200),
         ("/1%2C3/hello", "/1%2C3/hello", 404),
     ),
