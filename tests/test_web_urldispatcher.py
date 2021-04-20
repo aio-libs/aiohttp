@@ -487,7 +487,6 @@ async def test_decoded_url_match(
     app.router.add_get(route_definition, handler)
     client = await aiohttp_client(app)
 
-    # '/467,802,24834,24952,25362,40574/hello'
     r = await client.get(yarl.URL(urlencoded_path, encoded=True))
     assert r.status == expected_http_resp_status
     await r.release()
