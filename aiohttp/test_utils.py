@@ -144,7 +144,7 @@ class BaseTestServer(ABC):
     async def _make_runner(self, **kwargs: Any) -> BaseRunner:
         pass
 
-    def make_url(self, path: str) -> URL:
+    def make_url(self, path: Union[str, URL]) -> URL:
         assert self._root is not None
         url = URL(path)
         if not self.skip_url_asserts:
@@ -300,7 +300,7 @@ class TestClient:
         """
         return self._session
 
-    def make_url(self, path: str) -> URL:
+    def make_url(self, path: Union[str, URL]) -> URL:
         return self._server.make_url(path)
 
     async def _request(self, method: str, path: str, **kwargs: Any) -> ClientResponse:
@@ -309,7 +309,7 @@ class TestClient:
         self._responses.append(resp)
         return resp
 
-    def request(self, method: str, path: str, **kwargs: Any) -> _RequestContextManager:
+    def request(self, method: str, path: Union[str, URL], **kwargs: Any) -> _RequestContextManager:
         """Routes a request to tested http server.
 
         The interface is identical to aiohttp.ClientSession.request,
@@ -319,31 +319,31 @@ class TestClient:
         """
         return _RequestContextManager(self._request(method, path, **kwargs))
 
-    def get(self, path: str, **kwargs: Any) -> _RequestContextManager:
+    def get(self, path: Union[str, URL], **kwargs: Any) -> _RequestContextManager:
         """Perform an HTTP GET request."""
         return _RequestContextManager(self._request(hdrs.METH_GET, path, **kwargs))
 
-    def post(self, path: str, **kwargs: Any) -> _RequestContextManager:
+    def post(self, path: Union[str, URL], **kwargs: Any) -> _RequestContextManager:
         """Perform an HTTP POST request."""
         return _RequestContextManager(self._request(hdrs.METH_POST, path, **kwargs))
 
-    def options(self, path: str, **kwargs: Any) -> _RequestContextManager:
+    def options(self, path: Union[str, URL], **kwargs: Any) -> _RequestContextManager:
         """Perform an HTTP OPTIONS request."""
         return _RequestContextManager(self._request(hdrs.METH_OPTIONS, path, **kwargs))
 
-    def head(self, path: str, **kwargs: Any) -> _RequestContextManager:
+    def head(self, path: Union[str, URL], **kwargs: Any) -> _RequestContextManager:
         """Perform an HTTP HEAD request."""
         return _RequestContextManager(self._request(hdrs.METH_HEAD, path, **kwargs))
 
-    def put(self, path: str, **kwargs: Any) -> _RequestContextManager:
+    def put(self, path: Union[str, URL], **kwargs: Any) -> _RequestContextManager:
         """Perform an HTTP PUT request."""
         return _RequestContextManager(self._request(hdrs.METH_PUT, path, **kwargs))
 
-    def patch(self, path: str, **kwargs: Any) -> _RequestContextManager:
+    def patch(self, path: Union[str, URL], **kwargs: Any) -> _RequestContextManager:
         """Perform an HTTP PATCH request."""
         return _RequestContextManager(self._request(hdrs.METH_PATCH, path, **kwargs))
 
-    def delete(self, path: str, **kwargs: Any) -> _RequestContextManager:
+    def delete(self, path: Union[str, URL], **kwargs: Any) -> _RequestContextManager:
         """Perform an HTTP PATCH request."""
         return _RequestContextManager(self._request(hdrs.METH_DELETE, path, **kwargs))
 
