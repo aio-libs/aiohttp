@@ -36,6 +36,7 @@ from .hdrs import (
 )
 from .helpers import CHAR, TOKEN, parse_mimetype, reify
 from .http import HeadersParser
+from .typedefs import RawHeaders
 from .payload import (
     JsonPayload,
     LookupError,
@@ -256,11 +257,13 @@ class BodyPartReader:
         self,
         boundary: bytes,
         headers: "CIMultiDictProxy[str]",
+        raw_headers: RawHeaders
         content: StreamReader,
         *,
         _newline: bytes = b"\r\n",
     ) -> None:
         self.headers = headers
+        self.raw_headers = raw_headers
         self._boundary = boundary
         self._newline = _newline
         self._content = content
@@ -569,11 +572,13 @@ class MultipartReader:
     def __init__(
         self,
         headers: Mapping[str, str],
+        raw_headers: RawHeaders,
         content: StreamReader,
         *,
         _newline: bytes = b"\r\n",
     ) -> None:
         self.headers = headers
+        self.raw_headers = raw_headers
         self._boundary = ("--" + self._get_boundary()).encode()
         self._newline = _newline
         self._content = content
@@ -647,12 +652,13 @@ class MultipartReader:
         self,
     ) -> Union["MultipartReader", BodyPartReader]:
         """Returns the next body part reader."""
-        headers = await self._read_headers()
-        return self._get_part_reader(headers)
+        headers, raw_headers = await self._read_headers()
+        return self._get_part_reader(headers, raw_headers)
 
     def _get_part_reader(
         self,
         headers: "CIMultiDictProxy[str]",
+        raw_headers: RawHeaders
     ) -> Union["MultipartReader", BodyPartReader]:
         """Dispatches the response by the `Content-Type` header, returning
         suitable reader instance.
@@ -666,11 +672,11 @@ class MultipartReader:
             if self.multipart_reader_cls is None:
                 return type(self)(headers, self._content)
             return self.multipart_reader_cls(
-                headers, self._content, _newline=self._newline
+                headers, raw_headers, self._content, _newline=self._newline
             )
         else:
             return self.part_reader_cls(
-                self._boundary, headers, self._content, _newline=self._newline
+                self._boundary, headers, raw_headers, self._content, _newline=self._newline
             )
 
     def _get_boundary(self) -> str:
@@ -751,7 +757,7 @@ class MultipartReader:
                 break
         parser = HeadersParser()
         headers, raw_headers = parser.parse_headers(lines)
-        return headers
+        return headers, raw_headers
 
     async def _maybe_release_last_part(self) -> None:
         """Ensures that the last read body part is read completely."""
