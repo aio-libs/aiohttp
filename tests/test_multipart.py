@@ -1509,7 +1509,7 @@ class TestMultipartWriter:
 
 async def test_async_for_reader() -> None:
     data = [{"test": "passed"}, 42, b"plain text", b"aiohttp\n", b"no epilogue"]
-    headers = headers={CONTENT_TYPE: 'multipart/mixed; boundary=":"'}
+    headers = {CONTENT_TYPE: 'multipart/mixed; boundary=":"'}
     reader = aiohttp.MultipartReader(
         headers,
         to_raw_headers(headers),

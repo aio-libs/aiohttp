@@ -746,7 +746,7 @@ class MultipartReader:
         else:
             raise ValueError(f"Invalid boundary {chunk!r}, expected {self._boundary!r}")
 
-    async def _read_headers(self) -> "CIMultiDictProxy[str]":
+    async def _read_headers(self) -> Tuple["CIMultiDictProxy[str]", RawHeaders]:
         lines = [b""]
         while True:
             chunk = await self._content.readline()
