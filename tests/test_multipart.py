@@ -55,7 +55,7 @@ def writer():
 def to_raw_headers(headers: Mapping[str, str]):
     raw_headers = []
     for name, value in headers.items():
-        raw_headers.append(name.encode(), value.encode())
+        raw_headers.append((name.encode(), value.encode()))
     return tuple(raw_headers)
 
 
@@ -310,7 +310,7 @@ class TestPartReader:
     async def test_read_respects_content_length(self, newline: Any) -> None:
         data = b"." * 100500
         tail = b"%s--:--" % newline
-        headers = {"CONTENT-LENGTH": 100500}
+        headers = {"CONTENT-LENGTH": "100500"}
         obj = aiohttp.BodyPartReader(
             BOUNDARY,
             headers,
@@ -690,7 +690,7 @@ class TestPartReader:
         assert remained == stream.content.read()
 
     async def test_release_respects_content_length(self, newline: Any) -> None:
-        headers = {"CONTENT-LENGTH": 100500}
+        headers = {"CONTENT-LENGTH": "100500"}
         obj = aiohttp.BodyPartReader(
             BOUNDARY,
             headers,
@@ -759,7 +759,8 @@ class TestMultipartReader:
             to_raw_headers(headers),
             Stream(b"--:%s\r\necho%s--:--" % (newline, newline)),
         )
-        res = reader._get_part_reader({CONTENT_TYPE: "text/plain"})
+        headers = {CONTENT_TYPE: "text/plain"}
+        res = reader._get_part_reader(headers, to_raw_headers(headers))
         assert isinstance(res, reader.part_reader_cls)
 
     def test_dispatch_bodypart(self, newline: Any) -> None:
@@ -769,7 +770,8 @@ class TestMultipartReader:
             to_raw_headers(headers),
             Stream(b"--:%s\r\necho%s--:--" % (newline, newline)),
         )
-        res = reader._get_part_reader({CONTENT_TYPE: "text/plain"})
+        headers = {CONTENT_TYPE: "text/plain"}
+        res = reader._get_part_reader(headers, to_raw_headers(headers))
         assert isinstance(res, reader.part_reader_cls)
 
     def test_dispatch_multipart(self, newline: Any) -> None:
@@ -791,9 +793,9 @@ class TestMultipartReader:
                 )
             ),
         )
-        res = reader._get_part_reader(
-            {CONTENT_TYPE: "multipart/related;boundary=--:--"}
-        )
+
+        headers ={CONTENT_TYPE: "multipart/related;boundary=--:--"}
+        res = reader._get_part_reader(headers, to_raw_headers(headers))
         assert isinstance(res, reader.__class__)
 
     def test_dispatch_custom_multipart_reader(self, newline: Any) -> None:
@@ -820,9 +822,8 @@ class TestMultipartReader:
             ),
         )
         reader.multipart_reader_cls = CustomReader
-        res = reader._get_part_reader(
-            {CONTENT_TYPE: "multipart/related;boundary=--:--"}
-        )
+        headers = {CONTENT_TYPE: "multipart/related;boundary=--:--"}
+        res = reader._get_part_reader(headers, to_raw_headers(headers))
         assert isinstance(res, CustomReader)
 
     async def test_emit_next(self, newline: Any) -> None:

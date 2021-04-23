@@ -257,7 +257,7 @@ class BodyPartReader:
         self,
         boundary: bytes,
         headers: "CIMultiDictProxy[str]",
-        raw_headers: RawHeaders
+        raw_headers: RawHeaders,
         content: StreamReader,
         *,
         _newline: bytes = b"\r\n",
@@ -611,9 +611,8 @@ class MultipartReader:
 
         :param response: :class:`~aiohttp.client.ClientResponse` instance
         """
-        obj = cls.response_wrapper_cls(
-            response, cls(response.headers, response.content)
-        )
+        stream = cls(response.headers, response.raw_headers, response.content)
+        obj = cls.response_wrapper_cls(response, stream)
         return obj
 
     def at_eof(self) -> bool:
