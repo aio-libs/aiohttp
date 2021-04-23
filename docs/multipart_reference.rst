@@ -27,7 +27,7 @@ Multipart reference
       to the void.
 
 
-.. class:: BodyPartReader(boundary, headers, content)
+.. class:: BodyPartReader(boundary, headers, raw_headers, content)
 
    Multipart reader for single body part.
 
@@ -127,7 +127,7 @@ Multipart reference
       Readonly :class:`str` property.
 
 
-.. class:: MultipartReader(headers, content)
+.. class:: MultipartReader(headers, raw_headers, content)
 
    Multipart body reader.
 
