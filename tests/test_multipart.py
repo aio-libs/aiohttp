@@ -5,7 +5,7 @@ import json
 import pathlib
 import sys
 import zlib
-from typing import Any, Optional, Mapping
+from typing import Any, Mapping, Optional
 from unittest import mock
 
 import pytest
@@ -532,10 +532,7 @@ class TestPartReader:
     async def test_read_text_while_closed(self) -> None:
         headers = {CONTENT_TYPE: "text/plain"}
         obj = aiohttp.BodyPartReader(
-            BOUNDARY,
-            headers,
-            to_raw_headers(headers),
-            Stream(b"")
+            BOUNDARY, headers, to_raw_headers(headers), Stream(b"")
         )
         obj._at_eof = True
         result = await obj.text()
@@ -596,9 +593,7 @@ class TestPartReader:
     async def test_read_json_while_closed(self) -> None:
         stream = Stream(b"")
         headers = {CONTENT_TYPE: "application/json"}
-        obj = aiohttp.BodyPartReader(
-            BOUNDARY, headers, to_raw_headers(headers), stream
-        )
+        obj = aiohttp.BodyPartReader(BOUNDARY, headers, to_raw_headers(headers), stream)
         obj._at_eof = True
         result = await obj.json()
         assert result is None
@@ -719,9 +714,7 @@ class TestPartReader:
 
     async def test_filename(self) -> None:
         headers = {CONTENT_DISPOSITION: "attachment; filename=foo.html"}
-        part = aiohttp.BodyPartReader(
-            BOUNDARY, headers, to_raw_headers(headers), None
-        )
+        part = aiohttp.BodyPartReader(BOUNDARY, headers, to_raw_headers(headers), None)
         assert "foo.html" == part.filename
 
     async def test_reading_long_part(self, newline: Any) -> None:
@@ -794,7 +787,7 @@ class TestMultipartReader:
             ),
         )
 
-        headers ={CONTENT_TYPE: "multipart/related;boundary=--:--"}
+        headers = {CONTENT_TYPE: "multipart/related;boundary=--:--"}
         res = reader._get_part_reader(headers, to_raw_headers(headers))
         assert isinstance(res, reader.__class__)
 
@@ -1572,7 +1565,10 @@ async def test_async_for_reader() -> None:
 
 async def test_async_for_bodypart() -> None:
     part = aiohttp.BodyPartReader(
-        boundary=b"--:", headers={}, raw_headers=(), content=Stream(b"foobarbaz\r\n--:--")
+        boundary=b"--:",
+        headers={},
+        raw_headers=(),
+        content=Stream(b"foobarbaz\r\n--:--"),
     )
     async for data in part:
         assert data == b"foobarbaz"

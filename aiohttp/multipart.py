@@ -36,7 +36,6 @@ from .hdrs import (
 )
 from .helpers import CHAR, TOKEN, parse_mimetype, reify
 from .http import HeadersParser
-from .typedefs import RawHeaders
 from .payload import (
     JsonPayload,
     LookupError,
@@ -47,6 +46,7 @@ from .payload import (
     payload_type,
 )
 from .streams import StreamReader
+from .typedefs import RawHeaders
 
 __all__ = (
     "MultipartReader",
@@ -655,9 +655,7 @@ class MultipartReader:
         return self._get_part_reader(headers, raw_headers)
 
     def _get_part_reader(
-        self,
-        headers: "CIMultiDictProxy[str]",
-        raw_headers: RawHeaders
+        self, headers: "CIMultiDictProxy[str]", raw_headers: RawHeaders
     ) -> Union["MultipartReader", BodyPartReader]:
         """Dispatches the response by the `Content-Type` header, returning
         suitable reader instance.
@@ -675,7 +673,11 @@ class MultipartReader:
             )
         else:
             return self.part_reader_cls(
-                self._boundary, headers, raw_headers, self._content, _newline=self._newline
+                self._boundary,
+                headers,
+                raw_headers,
+                self._content,
+                _newline=self._newline,
             )
 
     def _get_boundary(self) -> str:
