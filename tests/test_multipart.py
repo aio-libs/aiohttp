@@ -310,7 +310,7 @@ class TestPartReader:
     async def test_read_respects_content_length(self, newline: Any) -> None:
         data = b"." * 100500
         tail = b"%s--:--" % newline
-        headers = {"CONTENT-LENGTH": 100500},
+        headers = {"CONTENT-LENGTH": 100500}
         obj = aiohttp.BodyPartReader(
             BOUNDARY,
             headers,
@@ -397,7 +397,7 @@ class TestPartReader:
     async def test_decode_with_content_transfer_encoding_base64(
         self, newline: Any
     ) -> None:
-        headers = {CONTENT_TRANSFER_ENCODING: "base64"},
+        headers = {CONTENT_TRANSFER_ENCODING: "base64"}
         obj = aiohttp.BodyPartReader(
             BOUNDARY,
             headers,
