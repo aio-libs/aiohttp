@@ -670,7 +670,7 @@ class MultipartReader:
 
         if mimetype.type == "multipart":
             if self.multipart_reader_cls is None:
-                return type(self)(headers, self._content)
+                return type(self)(headers, raw_headers, self._content)
             return self.multipart_reader_cls(
                 headers, raw_headers, self._content, _newline=self._newline
             )
