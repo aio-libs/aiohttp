@@ -97,6 +97,24 @@ async def test_mark_formdata_as_processed() -> None:
         await session.post(url, data=data)
         assert len(data._writer._parts) == 1
 
-        # second request doesn't append values to existing FormData
+        with pytest.raises(RuntimeError):
+            await session.post(url, data=data)
+
+
+@pytest.mark.xfail
+async def test_reuse_same_formadata() -> None:
+    async with ClientSession() as session:
+        url = "http://httpbin.org/anything"
+        data = FormData()
+        data.add_field("test", "test_value", content_type="application/json")
+
         await session.post(url, data=data)
+        assert len(data._writer._parts) == 1
+
+        with pytest.raises(RuntimeError):
+            # once the FormData is processed do not allow to add fields
+            data.add_field('other', 'value', content_type='application/json')
+
+        # second request doesn't append values to existing FormData
+        await session.post(f'{url}/some', data=data)
         assert len(data._writer._parts) == 1
