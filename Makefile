@@ -49,7 +49,7 @@ endif
 .SECONDARY: $(call to-hash,$(ALLS))
 
 .update-pip:
-	@pip install -U 'pip'
+	@python -m pip install --upgrade pip
 
 .install-cython: .update-pip $(call to-hash,requirements/cython.txt)
 	@pip install -r requirements/cython.txt
