@@ -12,7 +12,7 @@ attrs==20.3.0
     # via
     #   flake8-pyi
     #   pytest
-black==20.8b1 ; implementation_name == "cpython"
+black==21.4b1 ; implementation_name == "cpython"
     # via -r requirements/lint.in
 cfgv==3.2.0
     # via pre-commit
@@ -76,12 +76,8 @@ toml==0.10.2
     #   pre-commit
     #   pytest
 typed-ast==1.4.2
-    # via
-    #   black
-    #   mypy
+    # via mypy
 typing-extensions==3.7.4.3
-    # via
-    #   black
-    #   mypy
+    # via mypy
 virtualenv==20.4.2
     # via pre-commit
