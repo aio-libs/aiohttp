@@ -78,7 +78,7 @@ sphinxcontrib-qthelp==1.0.3
     # via sphinx
 sphinxcontrib-serializinghtml==1.1.4
     # via sphinx
-sphinxcontrib-spelling==7.1.0 ; platform_system != "Windows"
+sphinxcontrib-spelling==7.2.1 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.in
 toml==0.10.2
     # via towncrier
