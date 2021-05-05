@@ -6,7 +6,6 @@ updates:
     directory: "/"
     labels:
       - dependencies
-      - autosquash
     schedule:
       interval: "daily"
 
@@ -15,7 +14,6 @@ updates:
     directory: "/"
     labels:
       - dependencies
-      - autosquash
     schedule:
       interval: "daily"
     open-pull-requests-limit: 10
@@ -25,7 +23,6 @@ updates:
     directory: "/"
     labels:
       - dependencies
-      - autosquash
     target-branch: "3.8"
     schedule:
       interval: "daily"
@@ -35,7 +32,6 @@ updates:
     directory: "/"
     labels:
       - dependencies
-      - autosquash
     target-branch: "3.8"
     schedule:
       interval: "daily"
