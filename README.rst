@@ -2,7 +2,7 @@
 Async http client/server framework
 ==================================
 
-.. image:: https://raw.githubusercontent.com/aio-libs/aiohttp/master/docs/_static/aiohttp-icon-128x128.png
+.. image:: https://raw.githubusercontent.com/aio-libs/aiohttp/4d58400477331704132cc9427d66699e5815ee25/docs/aiohttp-plain.svg
    :height: 64px
    :width: 64px
    :alt: aiohttp logo
