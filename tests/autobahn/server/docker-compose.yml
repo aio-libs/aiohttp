@@ -9,7 +9,7 @@ services:
       - type: bind
         source: ../reports
         target: /reports
-    command: ["/bin/bash", "wait-for-it", "aiohttp:9001", "--", "/usr/local/bin/wstest", "--mode", "fuzzingclient", "--spec", "/config/fuzzingclient.json"]
+    command: ["/bin/bash", "wait-for-it", "aiohttp:9001", "--", "wstest", "--mode", "fuzzingclient", "--spec", "/config/fuzzingclient.json"]
 
   aiohttp:
     image: aiohttp-autobahn_aiohttp
