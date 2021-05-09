@@ -14,5 +14,5 @@ RUN \
 COPY ./ /src
 
 WORKDIR /src
-RUN pip install --no-cache-dir -e .
+RUN pip install .
 RUN pip install attrs
