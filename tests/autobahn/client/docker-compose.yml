@@ -12,4 +12,4 @@ services:
 
   aiohttp:
     image: aiohttp-autobahn_aiohttp
-    command: ["wait-for-it", "autobahn:9001", "--", "python", "tests/autobahn/client/client.py"]
+    command: ["python", "tests/autobahn/client/client.py"]

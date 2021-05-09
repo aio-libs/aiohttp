@@ -1,15 +1,6 @@
 FROM python:3.9.1
 
 ENV DEBIAN_FRONTEND=noninteractive
-RUN \
-    apt-get update && \
-    apt-get -y install --no-install-recommends bash && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN \
-    wget -q -O /usr/bin/wait-for-it https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh && \
-    chmod +x /usr/bin/wait-for-it
 
 COPY ./ /src
 
