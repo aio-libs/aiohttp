@@ -5,7 +5,7 @@ services:
     command: ["python", "tests/autobahn/server/server.py"]
 
   autobahn:
-    image: aiohttp-autobahn_autobahn
+    image: crossbario/autobahn-testsuite:0.8.2
     volumes:
       - type: bind
         source: ./fuzzingclient.json

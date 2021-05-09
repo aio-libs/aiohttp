@@ -1,6 +1,0 @@
-FROM crossbario/autobahn-testsuite:0.8.2
-
-ENV DEBIAN_FRONTEND=noninteractive
-
-ARG USER_ID
-USER $USER_ID

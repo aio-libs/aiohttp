@@ -1,12 +1,5 @@
 version: "3.9"
 services:
-  autobahn:
-    build:
-      context: .
-      dockerfile: Dockerfile.autobahn
-      args:
-        USER_ID: ${USER_ID}
-
   aiohttp:
     build:
       context: ../..
