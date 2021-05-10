@@ -12,4 +12,6 @@ services:
 
   aiohttp:
     image: aiohttp-autobahn_aiohttp
+    depends_on:
+      - autobahn
     command: ["python", "tests/autobahn/client/client.py"]
