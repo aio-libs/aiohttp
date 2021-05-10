@@ -6,7 +6,6 @@ updates:
     directory: "/"
     labels:
       - dependencies
-      - autosquash
     schedule:
       interval: "daily"
 
@@ -15,7 +14,6 @@ updates:
     directory: "/"
     labels:
       - dependencies
-      - autosquash
     schedule:
       interval: "daily"
 
@@ -24,7 +22,6 @@ updates:
     directory: "/"
     labels:
       - dependencies
-      - autosquash
     target-branch: "3.7"
     schedule:
       interval: "daily"
@@ -34,7 +31,6 @@ updates:
     directory: "/"
     labels:
       - dependencies
-      - autosquash
     target-branch: "3.7"
     schedule:
       interval: "daily"
