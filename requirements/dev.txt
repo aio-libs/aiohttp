@@ -26,7 +26,7 @@ attrs==20.3.0
     #   pytest
 babel==2.9.0
     # via sphinx
-black==20.8b1 ; implementation_name == "cpython"
+black==21.5b1 ; implementation_name == "cpython"
     # via -r requirements/lint.txt
 blockdiag==2.0.1
     # via sphinxcontrib-blockdiag
@@ -263,14 +263,12 @@ trustme==0.7.0 ; platform_machine != "i686"
 typed-ast==1.4.2
     # via
     #   -r requirements/lint.txt
-    #   black
     #   mypy
 typing-extensions==3.7.4.3
     # via
     #   -r requirements/base.txt
     #   -r requirements/lint.txt
     #   async-timeout
-    #   black
     #   mypy
 uritemplate==3.0.1
     # via gidgethub

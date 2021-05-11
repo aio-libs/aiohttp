@@ -1,4 +1,4 @@
-black==20.8b1; implementation_name=="cpython"
+black==21.5b1; implementation_name=="cpython"
 flake8==3.9.1
 flake8-pyi==20.10.0
 isort==5.8.0
