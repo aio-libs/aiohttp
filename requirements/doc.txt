@@ -1,6 +1,6 @@
 aiohttp-theme==0.1.6
 pygments==2.8.1
-sphinx==3.5.4
+sphinx==4.0.1
 sphinxcontrib-asyncio==0.3.0
 sphinxcontrib-blockdiag==2.0.0
 towncrier==21.3.0
