@@ -26,7 +26,7 @@ jobs:
       with:
         submodules: true
     - name: Setup Python 3.8
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v2.2.2
       with:
         python-version: 3.8
     - name: Cache PyPI
@@ -101,7 +101,7 @@ jobs:
       with:
         submodules: true
     - name: Setup Python ${{ matrix.pyver }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v2.2.2
       with:
         python-version: ${{ matrix.pyver }}
     - name: Get pip cache dir
@@ -154,7 +154,7 @@ jobs:
       with:
         submodules: true
     - name: Setup Python 3.8
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v2.2.2
       with:
         python-version: 3.8
     - name: Cythonize
@@ -192,7 +192,7 @@ jobs:
     - name: Available platforms
       run: echo ${{ steps.qemu.outputs.platforms }}
     - name: Setup Python 3.8
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v2.2.2
       with:
         python-version: 3.8
     - name: Cythonize
@@ -236,7 +236,7 @@ jobs:
       with:
         submodules: true
     - name: Setup Python 3.8
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v2.2.2
       with:
         python-version: ${{ matrix.pyver }}
         architecture: ${{ matrix.arch }}
@@ -262,7 +262,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Setup Python 3.8
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v2.2.2
       with:
         python-version: 3.8
     - name: Install twine
