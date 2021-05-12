@@ -37,7 +37,7 @@ jobs:
         restore-keys: |
             pip-lint-
     - name: Install dependencies
-      uses: py-actions/py-dependency-install@v2
+      uses: py-actions/py-dependency-install@v2.1.0
       with:
         path: requirements/lint.txt
     - name: Pre-Commit hooks
