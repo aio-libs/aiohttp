@@ -145,8 +145,9 @@ html_theme = "aiohttp_theme"
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
+html_logo="docs/aiohttp-plain.svg"
 html_theme_options = {
-    "logo": "aiohttp-plain.svg",
+    "logo": html_logo,
     "description": "Async HTTP client/server for asyncio and Python",
     "canonical_url": "http://docs.aiohttp.org/en/stable/",
     "github_user": "aio-libs",
