@@ -1,0 +1,7 @@
+.sphinxsidebarwrapper>h1.logo {
+  display: none;
+}
+
+.sphinxsidebarwrapper>p.logo>a>img.logo {
+  width: 65%;
+}
