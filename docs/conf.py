@@ -187,6 +187,10 @@ html_theme_options = {
     ],
 }
 
+html_css_files = [
+    "css/logo-adjustments.css",
+]
+
 # Add any paths that contain custom themes here, relative to this directory.
 # html_theme_path = [alabaster.get_path()]
 
