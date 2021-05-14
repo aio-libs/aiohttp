@@ -145,9 +145,7 @@ html_theme = "aiohttp_theme"
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-html_logo = "aiohttp-plain.svg"
 html_theme_options = {
-    "logo": html_logo,
     "description": "Async HTTP client/server for asyncio and Python",
     "canonical_url": "http://docs.aiohttp.org/en/stable/",
     "github_user": "aio-libs",
@@ -201,7 +199,7 @@ html_theme_options = {
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-# html_logo = 'aiohttp-icon.svg'
+html_logo = "aiohttp-plain.svg"
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
