@@ -1,9 +1,8 @@
 FROM python:3.9.5
 
-ENV DEBIAN_FRONTEND=noninteractive
-
 COPY ./ /src
 
 WORKDIR /src
+
 RUN pip install .
 RUN pip install attrs
