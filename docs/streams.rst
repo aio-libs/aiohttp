@@ -7,7 +7,7 @@ Streaming API
 
 
 ``aiohttp`` uses streams for retrieving *BODIES*:
-:attr:`aiohttp.web.Request.content` and
+:attr:`aiohttp.web.BaseRequest.content` and
 :attr:`aiohttp.ClientResponse.content` are properties with stream API.
 
 
@@ -16,7 +16,7 @@ Streaming API
    The reader from incoming stream.
 
    User should never instantiate streams manually but use existing
-   :attr:`aiohttp.web.Request.content` and
+   :attr:`aiohttp.web.BaseRequest.content` and
    :attr:`aiohttp.ClientResponse.content` properties for accessing raw
    BODY data.
 
