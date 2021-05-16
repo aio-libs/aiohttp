@@ -295,7 +295,7 @@ nature are installed to perform their job in each signal handle::
 
 All signals take as a parameters first, the :class:`ClientSession`
 instance used by the specific request related to that signals and
-second, a :class:`SimpleNamespace` instance called
+second, a :class:`~types.SimpleNamespace` instance called
 ``trace_config_ctx``. The ``trace_config_ctx`` object can be used to
 share the state through to the different signals that belong to the
 same request and to the same :class:`TraceConfig` class, perhaps::
@@ -310,7 +310,7 @@ same request and to the same :class:`TraceConfig` class, perhaps::
 
 
 The ``trace_config_ctx`` param is by default a
-:class:`SimpleNampespace` that is initialized at the beginning of the
+:class:`~types.SimpleNamespace` that is initialized at the beginning of the
 request flow. However, the factory used to create this object can be
 overwritten using the ``trace_config_ctx_factory`` constructor param of
 the :class:`TraceConfig` class.
