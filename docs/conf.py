@@ -372,4 +372,16 @@ nitpick_ignore = [
     ("py:class", "aiohttp.protocol.HttpVersion"),  # undocumented
     ("py:meth", "aiohttp.ClientSession.request"),  # undocumented
     ("py:class", "aiohttp.StreamWriter"),  # undocumented
+    ("py:attr", "aiohttp.StreamResponse.body"),  # undocumented
+    ("py:class", "aiohttp.payload.StringPayload"),  # undocumented
+    ("py:meth", "aiohttp.web.Application.copy"),  # undocumented
+    ("py:meth", "asyncio.AbstractEventLoop.create_server"),  # undocumented
+    ("py:data", "aiohttp.log.server_logger"),  # undocumented
+    ("py:data", "aiohttp.log.access_logger"),  # undocumented
+    ("py:data", "aiohttp.helpers.AccessLogger"),  # undocumented
+    ("py:attr", "helpers.AccessLogger.LOG_FORMAT"),  # undocumented
+    ("py:meth", "aiohttp.web.AbstractRoute.url"),  # undocumented
+    ("py:class", "aiohttp.web.MatchedSubAppResource"),  # undocumented
+    ("py:attr", "body"),  # undocumented
+    ("py:class", "socket.socket"),  # undocumented
 ]

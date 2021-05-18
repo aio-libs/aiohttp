@@ -1473,7 +1473,7 @@ duplicated like one using :meth:`~aiohttp.web.Application.copy`.
 
       :param Application subapp: nested application.
 
-      :returns: a :class:`MatchedSubAppResource` instance.
+      :returns: a :class:`~aiohttp.web.MatchedSubAppResource` instance.
 
    .. method:: add_routes(routes_table)
 
@@ -1754,11 +1754,11 @@ Router is any object that implements :class:`~aiohttp.abc.AbstractRouter` interf
       :param bool append_version: flag for adding file version (hash)
                               to the url query string, this value will
                               be used as default when you call to
-                              :meth:`StaticRoute.url` and
-                              :meth:`StaticRoute.url_for` methods.
+                              :meth:`~aiohttp.web.AbstractRoute.url` and
+                              :meth:`~aiohttp.web.AbstractRoute.url_for` methods.
 
 
-      :returns: new :class:`StaticRoute` instance.
+      :returns: new :class:`~aiohttp.web.AbstractRoute` instance.
 
    .. comethod:: resolve(request)
 
