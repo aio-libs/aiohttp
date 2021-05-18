@@ -43,8 +43,8 @@ WebSocket utilities
        received a message that violates its policy.  This is a generic
        status code that can be returned when there is no other more
        suitable status code (e.g.,
-       :attr:`~WSCloseCode.unsupported_data` or
-       :attr:`~WSCloseCode.message_too_big`) or if there is a need to
+       :attr:`~aiohttp.WSCloseCode.UNSUPPORTED_DATA` or
+       :attr:`~aiohttp.WSCloseCode.MESSAGE_TOO_BIG`) or if there is a need to
        hide specific details about the policy.
 
     .. attribute:: MESSAGE_TOO_BIG
