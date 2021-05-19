@@ -164,7 +164,7 @@ Abstract Cookie Jar
 Abstract Abstract Access Logger
 -------------------------------
 
-.. class:: aiohttp.abc.AbstractAccessLogger
+.. class:: AbstractAccessLogger
 
    An abstract class, base for all :class:`aiohttp.web.RequestHandler`
    ``access_logger`` implementations
