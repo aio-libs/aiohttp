@@ -1745,7 +1745,7 @@ BasicAuth
 
 
    Should be used for specifying authorization data in client API,
-   e.g. *auth* parameter for :meth:`~aiohttp.ClientSession.request`.
+   e.g. *auth* parameter for :meth:`ClientSession.request() <aiohttp.ClientSession.request>`.
 
 
    .. classmethod:: decode(auth_header, encoding='latin1')
