@@ -697,6 +697,8 @@ class Response(StreamResponse):
     def text(self) -> Optional[str]:
         if self._body is None:
             return None
+        if isinstance(self._body, Payload):
+            return self._body.value.decode(self._body.encoding)
         return self._body.decode(self.charset or "utf-8")
 
     @text.setter

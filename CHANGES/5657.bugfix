@@ -1,0 +1,1 @@
+Fixed constructing ``HTTPUnauthorized`` with a ``body`` argument that is a Unicode string after regression.
