@@ -2192,7 +2192,7 @@ Hierarchy of exceptions
 
     * :exc:`ContentTypeError`
     * :exc:`WSServerHandshakeError`
-    * :exc:`aiohttp.ClientHttpProxyError`
+    * :exc:`~aiohttp.ClientHttpProxyError`
 
   * :exc:`ClientConnectionError`
 
