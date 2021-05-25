@@ -219,9 +219,9 @@ and :ref:`aiohttp-web-signals` handlers.
 
    .. attribute:: cookies
 
-      A multidict of all request's cookies.
+      A read-only dictionary-like object containing the request's cookies.
 
-      Read-only :class:`~multidict.MultiDictProxy` lazy property.
+      Read-only :class:`~types.MappingProxyType` property.
 
    .. attribute:: content
 
