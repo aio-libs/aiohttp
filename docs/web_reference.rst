@@ -221,7 +221,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
       A read-only dictionary-like object containing the request's cookies.
 
-      Read-only property.
+      Read-only :class:`~types.MappingProxyType` property.
 
    .. attribute:: content
 
