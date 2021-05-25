@@ -1,0 +1,2 @@
+Fixed docs on request cookies type, so it matches what is actually used in the code (a
+read-only dictionary-like object).
