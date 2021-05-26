@@ -7,7 +7,7 @@ Multipart reference
 
 .. class:: MultipartResponseWrapper(resp, stream)
 
-   Wrapper around the :class:`~aiohttp.MultipartBodyReader` to take care about
+   Wrapper around the :class:`MultipartReader` to take care about
    underlying connection and close it when it needs in.
 
 

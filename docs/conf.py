@@ -366,5 +366,4 @@ nitpick_ignore = [
     ("py:meth", "start"),  # undocumented
     ("py:exc", "aiohttp.ServerDisconnectionError"),  # undocumented
     ("py:exc", "aiohttp.ClientHttpProxyError"),  # undocumented
-    ("py:class", "aiohttp.MultipartBodyReader"),  # undocumented
 ]
