@@ -57,7 +57,7 @@ requests to this server.
 
 :class:`~aiohttp.test_utils.TestServer` runs :class:`aiohttp.web.Application`
 based server, :class:`~aiohttp.test_utils.RawTestServer` starts
-:class:`aiohttp.web.WebServer` low level server.
+:class:`aiohttp.web.Server` low level server.
 
 For performing HTTP requests to these servers you have to create a
 test client: :class:`~aiohttp.test_utils.TestClient` instance.
@@ -338,7 +338,7 @@ functionality, the AioHTTPTestCase is provided::
 
     .. attribute:: app
 
-       The application returned by :meth:`get_app`
+       The application returned by :meth:`~aiohttp.test_utils.AioHTTPTestCase.get_application`
        (:class:`aiohttp.web.Application` instance).
 
     .. comethod:: get_client()
@@ -544,7 +544,7 @@ conditions that hard to reproduce on real server::
    :type writer: aiohttp.StreamWriter
 
    :param transport: asyncio transport instance
-   :type transport: asyncio.transports.Transport
+   :type transport: asyncio.Transport
 
    :param payload: raw payload reader object
    :type  payload: aiohttp.StreamReader
@@ -623,8 +623,8 @@ Test server
 Runs given :class:`aiohttp.web.Application` instance on random TCP port.
 
 After creation the server is not started yet, use
-:meth:`~aiohttp.test_utils.TestServer.start_server` for actual server
-starting and :meth:`~aiohttp.test_utils.TestServer.close` for
+:meth:`~aiohttp.test_utils.BaseTestServer.start_server` for actual server
+starting and :meth:`~aiohttp.test_utils.BaseTestServer.close` for
 stopping/cleanup.
 
 Test server usually works in conjunction with
@@ -660,7 +660,7 @@ for accessing to the server.
 
    .. attribute:: handler
 
-      :class:`aiohttp.web.WebServer` used for HTTP requests serving.
+      :class:`aiohttp.web.Server` used for HTTP requests serving.
 
    .. attribute:: server
 
@@ -772,7 +772,7 @@ Test Client
 
    .. attribute:: app
 
-      An alias for :attr:`self.server.app`. return ``None`` if
+      An alias for ``self.server.app``. return ``None`` if
       ``self.server`` is not :class:`TestServer`
       instance(e.g. :class:`RawTestServer` instance for test low-level server).
 
