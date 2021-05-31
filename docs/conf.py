@@ -372,4 +372,6 @@ nitpick_ignore = [
     ("py:class", "aiohttp.protocol.HttpVersion"),  # undocumented
     ("py:meth", "aiohttp.ClientSession.request"),  # undocumented
     ("py:class", "aiohttp.StreamWriter"),  # undocumented
+    ("py:obj", "logging.DEBUG"),  # undocumented
+    ("py:class", "aiohttp.abc.AbstractAsyncAccessLogger"),  # undocumented
 ]
