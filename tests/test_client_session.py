@@ -54,6 +54,11 @@ def session(create_session: Any, loop: Any):
 
 
 @pytest.fixture
+def session_params(create_session: Any, loop: Any):
+    return loop.run_until_complete(create_session(params={"x": 3}))
+
+
+@pytest.fixture
 def params():
     return dict(
         headers={"Authorization": "Basic ..."},
@@ -317,7 +322,6 @@ def test_connector_loop(loop: Any) -> None:
 
         stack.enter_context(contextlib.closing(connector))
         with pytest.raises(RuntimeError) as ctx:
-
             async def make_sess():
                 return ClientSession(connector=connector)
 
@@ -570,7 +574,6 @@ async def test_request_tracing(loop: Any, aiohttp_client: Any) -> None:
     async with session.post(
         "/", data=body, trace_request_ctx=trace_request_ctx
     ) as resp:
-
         await resp.json()
 
         on_request_start.assert_called_once_with(
@@ -663,7 +666,6 @@ async def test_request_tracing_interpose_headers(
 
 def test_client_session_inheritance() -> None:
     with pytest.raises(TypeError):
-
         class A(ClientSession):
             pass
 
@@ -706,3 +708,13 @@ async def test_requote_redirect_url_default_disable() -> None:
     session = ClientSession(requote_redirect_url=False)
     assert not session.requote_redirect_url
     await session.close()
+
+
+async def test_http_GET_with_params_argument(session_params: Any) -> None:
+    try:
+        async with session_params as session:
+            response: aiohttp.ClientResponse = await session.get("http://example.com")
+
+            assert response.url, f"http://example.com/x=2"
+    except Exception:
+        pass

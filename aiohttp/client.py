@@ -89,7 +89,7 @@ from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, WSMessage, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
 from .tracing import Trace, TraceConfig
-from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
+from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, LooseParams, StrOrURL
 
 __all__ = (
     # client_exceptions
@@ -129,7 +129,6 @@ __all__ = (
     "ClientTimeout",
     "request",
 )
-
 
 try:
     from ssl import SSLContext
@@ -184,6 +183,7 @@ class ClientSession:
         "_trust_env",
         "_default_headers",
         "_skip_auto_headers",
+        "_default_params",
         "_request_class",
         "_response_class",
         "_ws_response_class",
@@ -197,6 +197,7 @@ class ClientSession:
         connector: Optional[BaseConnector] = None,
         cookies: Optional[LooseCookies] = None,
         headers: Optional[LooseHeaders] = None,
+        params: Optional[LooseParams] = None,
         skip_auto_headers: Optional[Iterable[str]] = None,
         auth: Optional[BasicAuth] = None,
         json_serialize: JSONEncoder = json.dumps,
@@ -266,6 +267,13 @@ class ClientSession:
             self._skip_auto_headers = frozenset([istr(i) for i in skip_auto_headers])
         else:
             self._skip_auto_headers = frozenset()
+
+        # Convert to list of tuples
+        if params:
+            real_params = CIMultiDict(params)  # type: CIMultiDict[str]
+        else:
+            real_params = CIMultiDict()
+        self._default_params = real_params  # type: CIMultiDict[str]
 
         self._request_class = request_class
         self._response_class = response_class
@@ -361,6 +369,9 @@ class ClientSession:
         # Merge with default headers and transform to CIMultiDict
         headers = self._prepare_headers(headers)
         proxy_headers = self._prepare_headers(proxy_headers)
+
+        # Merge with default params and transform to CIMultiDict
+        params = self._prepare_params(params)
 
         try:
             url = URL(str_or_url)
@@ -854,7 +865,9 @@ class ClientSession:
             )
 
     def _prepare_headers(self, headers: Optional[LooseHeaders]) -> "CIMultiDict[str]":
-        """Add default headers and transform it to CIMultiDict"""
+        """
+        Add default headers and transform it to CIMultiDict
+        """
         # Convert headers to MultiDict
         result = CIMultiDict(self._default_headers)
         if headers:
@@ -862,6 +875,24 @@ class ClientSession:
                 headers = CIMultiDict(headers)
             added_names = set()  # type: Set[str]
             for key, value in headers.items():
+                if key in added_names:
+                    result.add(key, value)
+                else:
+                    result[key] = value
+                    added_names.add(key)
+        return result
+
+    def _prepare_params(self, params: Optional[LooseParams]) -> "CIMultiDict[str]":
+        """
+        Add default params and transform it to CIMultiDict
+        """
+        # Convert headers to MultiDict
+        result = CIMultiDict(self._default_params)
+        if params:
+            if not isinstance(params, (MultiDictProxy, MultiDict)):
+                params = CIMultiDict(params)
+            added_names = set()  # type: Set[str]
+            for key, value in params.items():
                 if key in added_names:
                     result.add(key, value)
                 else:
@@ -1042,7 +1073,6 @@ class ClientSession:
 
 
 class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType]):
-
     __slots__ = ("_coro", "_resp")
 
     def __init__(self, coro: Coroutine["asyncio.Future[Any]", None, _RetType]) -> None:
@@ -1099,7 +1129,6 @@ class _WSRequestContextManager(_BaseRequestContextManager[ClientWebSocketRespons
 
 
 class _SessionRequestContextManager:
-
     __slots__ = ("_coro", "_resp", "_session")
 
     def __init__(
