@@ -1052,8 +1052,9 @@ class TCPConnector(BaseConnector):
 
         # Many HTTP proxies has buggy keepalive support.  Let's not
         # reuse connection but close it after processing every
-        # response.
-        proto.force_close()
+        # response besides request has keep-alive header.
+        if not req.keep_alive():
+            proto.force_close()
 
         auth = proxy_req.headers.pop(hdrs.AUTHORIZATION, None)
         if auth is not None:
