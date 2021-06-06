@@ -1763,10 +1763,10 @@ Router is any object that implements :class:`~aiohttp.abc.AbstractRouter` interf
    .. comethod:: resolve(request)
 
       A :ref:`coroutine<coroutine>` that returns
-      :class:`aiohttp.abc.AbstractMatchInfo` for *request*.
+      :class:`~aiohttp.abc.AbstractMatchInfo` for *request*.
 
       The method never raises exception, but returns
-      :class:`aiohttp.abc.AbstractMatchInfo` instance with:
+      :class:`~aiohttp.abc.AbstractMatchInfo` instance with:
 
       1. :attr:`~aiohttp.abc.AbstractMatchInfo.http_exception` assigned to
          :exc:`HTTPException` instance.
