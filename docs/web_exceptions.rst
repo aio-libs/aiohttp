@@ -479,13 +479,13 @@ HTTP exceptions for status code in range 400-499, e.g. ``raise web.HTTPNotFound(
    :exc:`HTTPClientError`.
 
    :param link: A link to a resource with information for blocking reason,
-                :class:`str` or :class:`URL`
+                :class:`str` or :class:`~yarl.URL`
 
    For other parameters see :exc:`HTTPException` constructor.
 
    .. attribute:: link
 
-      A :class:`URL` link to a resource with information for blocking reason,
+      A :class:`~yarl.URL` link to a resource with information for blocking reason,
       read-only property.
 
 
