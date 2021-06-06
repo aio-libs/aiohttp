@@ -436,7 +436,7 @@ the keyword-only ``middlewares`` parameter::
 
 Internally, a single :ref:`request handler <aiohttp-web-handler>` is constructed
 by applying the middleware chain to the original handler in reverse order,
-and is called by the :class:`aiohttp.web.RequestHandler` as a regular *handler*.
+and is called by the :class:`~aiohttp.web.RequestHandler` as a regular *handler*.
 
 Since *middlewares* are themselves coroutines, they may perform extra
 ``await`` calls when creating a new handler, e.g. call database etc.
