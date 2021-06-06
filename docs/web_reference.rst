@@ -2747,7 +2747,7 @@ Utilities
 
 .. class:: FileField
 
-   A :class:`~typing.NamedTuple` instance that is returned as
+   A :mod:`dataclass <dataclasses>` instance that is returned as
    multidict value by :meth:`aiohttp.web.BaseRequest.post` if field is uploaded file.
 
    .. attribute:: name
