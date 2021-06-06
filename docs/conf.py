@@ -386,6 +386,7 @@ nitpick_ignore = [
     ("py:class", "socket.socket"),  # undocumented
     ("py:obj", "logging.DEBUG"),  # undocumented
     ("py:class", "aiohttp.abc.AbstractAsyncAccessLogger"),  # undocumented
+    ("py:meth", "aiohttp.web.Response.write_eof"),  # undocumented
     ("py:meth", "aiohttp.payload.Payload.set_content_disposition"),  # undocumented
     ("py:class", "cgi.FieldStorage"),  # undocumented
     ("py:meth", "aiohttp.web.UrlDispatcher.register_resource"),  # undocumented
