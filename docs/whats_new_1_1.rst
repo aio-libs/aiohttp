@@ -32,7 +32,7 @@ parameter. :class:`str` is still supported and will be supported forever.
 
 Reverse URL processing for *router* has been changed.
 
-The main API is :``aiohttp.web.Request.url_for``
+The main API is ``aiohttp.web.Request.url_for``
 which returns a :class:`yarl.URL` instance for named resource. It
 does not support *query args* but adding *args* is trivial:
 ``request.url_for('named_resource', param='a').with_query(arg='val')``.
