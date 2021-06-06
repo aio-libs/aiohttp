@@ -20,8 +20,8 @@ e.g. ``session.get('http://example.com')`` works as well as
 Internal API has been switched to :class:`yarl.URL`.
 :class:`aiohttp.CookieJar` accepts :class:`~yarl.URL` instances only.
 
-On server side has added :class:`web.Request.url` and
-:class:`web.Request.rel_url` properties for representing relative and
+On server side has added :attr:`aiohttp.web.BaseRequest.url` and
+:attr:`aiohttp.web.BaseRequest.rel_url` properties for representing relative and
 absolute request's URL.
 
 URL using is the recommended way, already existed properties for
@@ -32,7 +32,7 @@ parameter. :class:`str` is still supported and will be supported forever.
 
 Reverse URL processing for *router* has been changed.
 
-The main API is :class:`aiohttp.web.Request.url_for(name, **kwargs)`
+The main API is ``aiohttp.web.Request.url_for``
 which returns a :class:`yarl.URL` instance for named resource. It
 does not support *query args* but adding *args* is trivial:
 ``request.url_for('named_resource', param='a').with_query(arg='val')``.
