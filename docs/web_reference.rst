@@ -1527,7 +1527,7 @@ duplicated like one using :meth:`~aiohttp.web.Application.copy`.
       based but traversal ones).
 
       For sake of that fact we have very trivial ABC for
-      :class:`aiohttp.abc.AbstractRouter`: it should have only
+      :class:`~aiohttp.abc.AbstractRouter`: it should have only
       :meth:`aiohttp.abc.AbstractRouter.resolve` coroutine.
 
       No methods for adding routes or route reversing (getting URL by
