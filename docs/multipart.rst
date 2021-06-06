@@ -152,9 +152,9 @@ will include the file's basename::
     part = root.append(open(__file__, 'rb'))
 
 If you want to send a file with a different name, just handle the
-:class:`Payload` instance which :meth:`MultipartWriter.append` will
+:class:`~aiohttp.payload.Payload` instance which :meth:`MultipartWriter.append` will
 always return and set `Content-Disposition` explicitly by using
-the :meth:`Payload.set_content_disposition` helper::
+the :meth:`Payload.set_content_disposition() <aiohttp.payload.Payload.set_content_disposition>` helper::
 
     part.set_content_disposition('attachment', filename='secret.txt')
 
