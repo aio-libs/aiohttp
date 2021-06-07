@@ -234,10 +234,6 @@ async def test_HTTPException_retains_cookie(aiohttp_client):
     assert text == "works"
 
 
-@pytest.mark.xfail(
-    raises=AttributeError,
-    reason="Regression in v3.7: https://github.com/aio-libs/aiohttp/issues/5657",
-)
 def test_unicode_text_body_unauthorized() -> None:
     """
     Test that HTTPUnauthorized can be initialized with a string.
@@ -247,4 +243,3 @@ def test_unicode_text_body_unauthorized() -> None:
     ):
         resp = web.HTTPUnauthorized(body="text")
     assert resp.status == 401
-    assert resp.text == "text"
