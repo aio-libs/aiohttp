@@ -391,4 +391,18 @@ nitpick_ignore = [
     ("py:class", "cgi.FieldStorage"),  # undocumented
     ("py:meth", "aiohttp.web.UrlDispatcher.register_resource"),  # undocumented
     ("py:func", "aiohttp_debugtoolbar.setup"),  # undocumented
+    ("py:exc", "HTTPInternalServerError"),  # undocumented
+    ("py:exc", "HTTPForbidden"),  # undocumented
+    ("py:exc", "HTTPExpectationFailed"),  # undocumented
+    ("py:class", "HTTPFound"),  # undocumented
+    ("py:class", "HTTPMultipleChoices"),  # undocumented
+    ("py:class", "HTTPMovedPermanently"),  # undocumented
+    ("py:class", "HTTPSeeOther"),  # undocumented
+    ("py:class", "HTTPUseProxy"),  # undocumented
+    ("py:class", "HTTPTemporaryRedirect"),  # undocumented
+    ("py:class", "HTTPMethodNotAllowed"),  # undocumented
+    ("py:class", "FileResponse"),  # undocumented
+    ("py:exc", "HTTPNotFound"),  # undocumented
+    ("py:exc", "HTTPMethodNotAllowed"),  # undocumented
+    ("py:class", "HTTPMethodNotAllowed"),  # undocumented
 ]
