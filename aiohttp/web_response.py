@@ -576,9 +576,6 @@ class StreamResponse(BaseClass, HeadersMixin):
     def __eq__(self, other: object) -> bool:
         return self is other
 
-        # if isinstance(self._body, Payload):
-        #     return self._body.value.decode(self._body.encoding)
-
 
 class Response(StreamResponse):
     def __init__(
