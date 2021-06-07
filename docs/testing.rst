@@ -513,7 +513,7 @@ basis, the TestClient object can be used directly::
 
 
 A full list of the utilities provided can be found at the
-:data:`api reference <aiohttp.test_utils>`
+:mod:`api reference <aiohttp.test_utils>`
 
 
 Testing API Reference
