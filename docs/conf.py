@@ -351,7 +351,7 @@ texinfo_documents = [
 
 
 # -------------------------------------------------------------------------
-# nitpicky = True
+nitpicky = True
 nitpick_ignore = [
     ("py:mod", "aiohttp"),  # undocumented, no `.. currentmodule:: aiohttp` in docs
     ("py:class", "aiohttp.SimpleCookie"),  # undocumented
