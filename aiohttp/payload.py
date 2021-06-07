@@ -196,10 +196,6 @@ class Payload(ABC):
         """Content type"""
         return self._headers[hdrs.CONTENT_TYPE]
 
-    @property
-    def value(self) -> Any:
-        return self._value
-
     def set_content_disposition(
         self, disptype: str, quote_fields: bool = True, **params: Any
     ) -> None:

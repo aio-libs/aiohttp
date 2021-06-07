@@ -243,4 +243,3 @@ def test_unicode_text_body_unauthorized() -> None:
     ):
         resp = web.HTTPUnauthorized(body="text")
     assert resp.status == 401
-    assert resp.text == "text"

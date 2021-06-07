@@ -576,6 +576,9 @@ class StreamResponse(BaseClass, HeadersMixin):
     def __eq__(self, other: object) -> bool:
         return self is other
 
+        # if isinstance(self._body, Payload):
+        #     return self._body.value.decode(self._body.encoding)
+
 
 class Response(StreamResponse):
     def __init__(
@@ -697,8 +700,6 @@ class Response(StreamResponse):
     def text(self) -> Optional[str]:
         if self._body is None:
             return None
-        if isinstance(self._body, Payload):
-            return self._body.value.decode(self._body.encoding)
         return self._body.decode(self.charset or "utf-8")
 
     @text.setter
