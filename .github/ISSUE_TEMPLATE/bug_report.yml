@@ -69,7 +69,7 @@ body:
     required: true
 - type: textarea
   attributes:
-    label: Aiohttp Version
+    label: aiohttp Version
     description: Attach your version of aiohttp.
     render: console
     value: |
@@ -78,7 +78,7 @@ body:
     required: true
 - type: textarea
   attributes:
-    label: Multidict Version
+    label: multidict Version
     description: Attach your version of multidict.
     render: console
     value: |
@@ -87,7 +87,7 @@ body:
     required: true
 - type: textarea
   attributes:
-    label: Yarl Version
+    label: yarl Version
     description: Attach your version of yarl.
     render: console
     value: |
@@ -107,7 +107,7 @@ body:
   attributes:
     label: Related component
     description: >-
-      Aiohttp is both server framework and client library.
+      aiohttp is both server framework and client library.
       For getting rid of confusing make sure to select
       'server', 'client' or 'both'.
     options:
