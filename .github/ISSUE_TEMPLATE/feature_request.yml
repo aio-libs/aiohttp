@@ -67,6 +67,7 @@ body:
     label: Code of Conduct
     description: |
       Read the [aio-libs Code of Conduct][CoC] first.
+
       [CoC]: https://github.com/aio-libs/.github/blob/master/CODE_OF_CONDUCT.md
     options:
     - label: I agree to follow the aio-libs Code of Conduct
