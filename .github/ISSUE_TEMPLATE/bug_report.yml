@@ -111,8 +111,8 @@ body:
       'server', 'client' or both.
     multiple: true
     options:
-      - Server
-      - Client
+    - Server
+    - Client
   validations:
     required: true
 
