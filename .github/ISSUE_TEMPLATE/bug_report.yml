@@ -31,10 +31,10 @@ body:
     label: To Reproduce
     description: >-
       Describe the steps to reproduce this bug.
-    value: |
-      1. Have certain environment
-      2. Run given code snippet in a certain way
-      3. See some behavior described
+    placeholder: |
+      1. Implement the following server or a client '...'
+      2. Then run '...'
+      3. An error occurs.
   validations:
     required: true
 
