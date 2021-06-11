@@ -49,12 +49,11 @@ body:
 - type: textarea
   attributes:
     label: Logs/tracebacks
-    description: >-
-      |
+    description: |
       If applicable, add logs/tracebacks to help explain your problem.
       Paste the output of the steps above, including the commands
       themselves and their output/traceback etc.
-    render: Python traceback
+    render: python-traceback
   validations:
     required: true
 
