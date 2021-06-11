@@ -45,13 +45,13 @@ body:
   attributes:
     label: Related component
     description: >-
-      Aiohttp is both server framework and client library.
+      aiohttp is both server framework and client library.
       For getting rid of confusing make sure to select
-      'server', 'client' or 'both'.
+      'server', 'client' or both.
+    multiple: true
     options:
       - Server
       - Client
-      - Both
   validations:
     required: true
 
