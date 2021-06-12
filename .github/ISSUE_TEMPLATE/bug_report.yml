@@ -61,7 +61,6 @@ body:
   attributes:
     label: Python Version
     description: Attach your version of Python.
-    render: console
     value: |
       $ python --version
   validations:
