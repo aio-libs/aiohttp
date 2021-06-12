@@ -1,6 +1,6 @@
 ---
 name: 🚀 Feature request
-about: Suggest an idea for this project
+description: Suggest an idea for this project.
 labels: enhancement
 body:
 - type: markdown
