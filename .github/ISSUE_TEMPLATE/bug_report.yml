@@ -57,7 +57,7 @@ body:
   validations:
     required: true
 
-- type: input
+- type: textarea
   attributes:
     label: Python Version
     description: Attach your version of Python.
