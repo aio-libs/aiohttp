@@ -188,7 +188,7 @@ jobs:
         submodules: true
     - name: Set up QEMU
       id: qemu
-      uses: docker/setup-qemu-action@v1
+      uses: docker/setup-qemu-action@v1.1.0
     - name: Available platforms
       run: echo ${{ steps.qemu.outputs.platforms }}
     - name: Setup Python 3.8
