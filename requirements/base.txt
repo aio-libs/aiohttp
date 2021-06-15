@@ -1,6 +1,6 @@
 -r multidict.txt
 # required c-ares will not build on windows and has build problems on Macos Python<3.7
-aiodns==2.0.0; sys_platform=="linux" or sys_platform=="darwin" and python_version>="3.7"
+aiodns==3.0.0; sys_platform=="linux" or sys_platform=="darwin" and python_version>="3.7"
 aiosignal==1.1.2
 async-timeout==4.0.0a3
 asynctest==0.13.0; python_version<"3.8"
