@@ -160,7 +160,7 @@ pluggy==0.13.1
     # via
     #   -r requirements/lint.txt
     #   pytest
-pre-commit==2.12.1
+pre-commit==2.13.0
     # via -r requirements/lint.txt
 py==1.10.0
     # via
@@ -189,7 +189,7 @@ pyparsing==2.4.7
     # via
     #   -r requirements/lint.txt
     #   packaging
-pytest-cov==2.11.1
+pytest-cov==2.12.1
     # via -r requirements/test.txt
 pytest-mock==3.5.1
     # via -r requirements/test.txt
@@ -256,6 +256,7 @@ toml==0.10.2
     #   cherry-picker
     #   pre-commit
     #   pytest
+    #   pytest-cov
     #   towncrier
 towncrier==21.3.0
     # via -r requirements/doc.txt
