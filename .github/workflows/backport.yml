@@ -26,7 +26,7 @@ jobs:
           app_id: ${{ secrets.BOT_APP_ID }}
           private_key: ${{ secrets.BOT_PRIVATE_KEY }}
       - name: Backport
-        uses: sqren/backport-github-action@v1
+        uses: sqren/backport-github-action@v1.0.40
         with:
           # Required
           # Token to authenticate requests
