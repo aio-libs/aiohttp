@@ -56,7 +56,7 @@ requests==2.25.1
     # via sphinx
 snowballstemmer==2.1.0
     # via sphinx
-sphinx==3.5.4
+sphinx==4.0.2
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-asyncio
