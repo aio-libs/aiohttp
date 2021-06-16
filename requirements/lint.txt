@@ -12,7 +12,7 @@ attrs==20.3.0
     # via
     #   flake8-pyi
     #   pytest
-black==21.5b2 ; implementation_name == "cpython"
+black==21.6b0 ; implementation_name == "cpython"
     # via -r requirements/lint.in
 cfgv==3.2.0
     # via pre-commit
