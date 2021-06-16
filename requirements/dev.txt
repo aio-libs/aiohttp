@@ -26,7 +26,7 @@ attrs==20.3.0
     #   pytest
 babel==2.9.0
     # via sphinx
-black==21.5b2 ; implementation_name == "cpython"
+black==21.6b0 ; implementation_name == "cpython"
     # via -r requirements/lint.txt
 blockdiag==2.0.1
     # via sphinxcontrib-blockdiag
