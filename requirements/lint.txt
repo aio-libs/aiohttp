@@ -8,7 +8,7 @@ appdirs==1.4.4
     # via
     #   black
     #   virtualenv
-attrs==20.3.0
+attrs==21.2.0
     # via
     #   flake8-pyi
     #   pytest
