@@ -6,6 +6,6 @@ importlib-metadata==3.7.0; python_version < "3.8"
 importlib-resources; python_version < "3.9"
 isort==5.8.0
 mypy==0.790; implementation_name=="cpython"
-pre-commit==2.12.1
+pre-commit==2.13.0
 pytest==6.1.2
 typed-ast==1.4.3; implementation_name=="cpython"
