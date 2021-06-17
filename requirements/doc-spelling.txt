@@ -44,7 +44,7 @@ pillow==8.2.0
     # via blockdiag
 pyenchant==3.2.0
     # via sphinxcontrib-spelling
-pygments==2.8.1
+pygments==2.9.0
     # via
     #   -r requirements/doc.txt
     #   sphinx
