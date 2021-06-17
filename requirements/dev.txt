@@ -178,7 +178,7 @@ pyflakes==2.3.0
     #   -r requirements/lint.txt
     #   flake8
     #   flake8-pyi
-pygments==2.8.1
+pygments==2.9.0
     # via
     #   -r requirements/doc.txt
     #   sphinx
@@ -259,7 +259,7 @@ toml==0.10.2
     #   towncrier
 towncrier==21.3.0
     # via -r requirements/doc.txt
-trustme==0.7.0 ; platform_machine != "i686"
+trustme==0.8.0 ; platform_machine != "i686"
     # via -r requirements/test.txt
 typed-ast==1.4.2
     # via
