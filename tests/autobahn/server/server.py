@@ -43,6 +43,6 @@ if __name__ == "__main__":
     app.router.add_route("GET", "/", wshandler)
     app.on_shutdown.append(on_shutdown)
     try:
-        web.run_app(app, host="127.0.0.1", port=9001)
+        web.run_app(app, port=9001)
     except KeyboardInterrupt:
         print("Server stopped at http://127.0.0.1:9001")
