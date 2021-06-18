@@ -1,0 +1,17 @@
+FROM python:3.9.5
+
+COPY ./ /src
+
+WORKDIR /src
+
+RUN pip install .
+# NOTE: The attrs lib is necessary because it's
+# NOTE: still a de-facto runtime dependency of
+# NOTE: aiohttp. Although it shouldn't be anymore
+# NOTE: after the effort to get rid of it.
+# NOTE: It must be removed once made redundant.
+# Refs:
+# * https://github.com/aio-libs/aiohttp/issues/5806
+# * https://github.com/aio-libs/aiohttp/pull/5679/files#r654428147
+# * https://github.com/aio-libs/aiohttp/pull/5284
+RUN pip install attrs
