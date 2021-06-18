@@ -1,0 +1,17 @@
+version: "3.9"
+services:
+  autobahn:
+    image: crossbario/autobahn-testsuite:0.8.2
+    volumes:
+      - type: bind
+        source: ./fuzzingserver.json
+        target: /config/fuzzingserver.json
+      - type: bind
+        source: ../reports
+        target: /reports
+
+  aiohttp:
+    image: aiohttp-autobahn_aiohttp
+    depends_on:
+      - autobahn
+    command: ["python", "tests/autobahn/client/client.py"]
