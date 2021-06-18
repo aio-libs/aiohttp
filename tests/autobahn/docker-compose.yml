@@ -1,0 +1,6 @@
+version: "3.9"
+services:
+  aiohttp:
+    build:
+      context: ../..
+      dockerfile: tests/autobahn/Dockerfile.aiohttp
