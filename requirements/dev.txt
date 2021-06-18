@@ -304,3 +304,5 @@ setuptools==51.3.1
     #   blockdiag
     #   gunicorn
     #   sphinx
+
+python-on-whales==0.19.0
