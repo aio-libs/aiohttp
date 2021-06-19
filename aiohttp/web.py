@@ -477,9 +477,11 @@ def run_app(
     handle_signals: bool = True,
     reuse_address: Optional[bool] = None,
     reuse_port: Optional[bool] = None,
+    loop: Optional[asyncio.AbstractEventLoop] = None,
 ) -> None:
     """Run an app locally"""
-    loop = asyncio.new_event_loop()
+    if loop is None:
+        loop = asyncio.new_event_loop()
     loop.set_debug(debug)
 
     # Configure if and only if in debugging mode and using the default logger
