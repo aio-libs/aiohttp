@@ -438,7 +438,9 @@ def test_run_app_https(patched_loop: Any) -> None:
     app = web.Application()
 
     ssl_context = ssl.create_default_context()
-    web.run_app(app, ssl_context=ssl_context, print=stopper(patched_loop), loop=patched_loop)
+    web.run_app(
+        app, ssl_context=ssl_context, print=stopper(patched_loop), loop=patched_loop
+    )
 
     patched_loop.create_server.assert_called_with(
         mock.ANY,
@@ -458,7 +460,9 @@ def test_run_app_nondefault_host_port(
     host = "127.0.0.1"
 
     app = web.Application()
-    web.run_app(app, host=host, port=port, print=stopper(patched_loop), loop=patched_loop)
+    web.run_app(
+        app, host=host, port=port, print=stopper(patched_loop), loop=patched_loop
+    )
 
     patched_loop.create_server.assert_called_with(
         mock.ANY, host, port, ssl=None, backlog=128, reuse_address=None, reuse_port=None
@@ -497,7 +501,13 @@ def test_run_app_custom_backlog(patched_loop: Any) -> None:
 
 def test_run_app_custom_backlog_unix(patched_loop: Any) -> None:
     app = web.Application()
-    web.run_app(app, path="/tmp/tmpsock.sock", backlog=10, print=stopper(patched_loop), loop=patched_loop)
+    web.run_app(
+        app,
+        path="/tmp/tmpsock.sock",
+        backlog=10,
+        print=stopper(patched_loop),
+        loop=patched_loop
+    )
 
     patched_loop.create_unix_server.assert_called_with(
         mock.ANY, "/tmp/tmpsock.sock", ssl=None, backlog=10
@@ -525,7 +535,9 @@ def test_run_app_https_unix_socket(patched_loop: Any, tmp_path: Any) -> None:
     sock_path = str(tmp_path / "socket.sock")
     ssl_context = ssl.create_default_context()
     printer = mock.Mock(wraps=stopper(patched_loop))
-    web.run_app(app, path=sock_path, ssl_context=ssl_context, print=printer, loop=patched_loop)
+    web.run_app(
+        app, path=sock_path, ssl_context=ssl_context, print=printer, loop=patched_loop
+    )
 
     patched_loop.create_unix_server.assert_called_with(
         mock.ANY, sock_path, ssl=ssl_context, backlog=128
@@ -539,7 +551,10 @@ def test_run_app_abstract_linux_socket(patched_loop: Any) -> None:
     sock_path = b"\x00" + uuid4().hex.encode("ascii")
     app = web.Application()
     web.run_app(
-        app, path=sock_path.decode("ascii", "ignore"), print=stopper(patched_loop), loop=patched_loop
+        app,
+        path=sock_path.decode("ascii", "ignore"),
+        print=stopper(patched_loop),
+        loop=patched_loop
     )
 
     patched_loop.create_unix_server.assert_called_with(
@@ -710,7 +725,11 @@ def test_run_app_default_logger(monkeypatch: Any, patched_loop: Any) -> None:
 
     app = web.Application()
     web.run_app(
-        app, debug=True, print=stopper(patched_loop), access_log=mock_logger, loop=patched_loop
+        app,
+        debug=True,
+        print=stopper(patched_loop),
+        access_log=mock_logger,
+        loop=patched_loop
     )
     mock_logger.setLevel.assert_any_call(logging.DEBUG)
     mock_logger.hasHandlers.assert_called_with()
@@ -729,7 +748,11 @@ def test_run_app_default_logger_setup_requires_debug(patched_loop: Any) -> None:
 
     app = web.Application()
     web.run_app(
-        app, debug=False, print=stopper(patched_loop), access_log=mock_logger, loop=patched_loop
+        app,
+        debug=False,
+        print=stopper(patched_loop),
+        access_log=mock_logger,
+        loop=patched_loop
     )
     mock_logger.setLevel.assert_not_called()
     mock_logger.hasHandlers.assert_not_called()
@@ -749,7 +772,13 @@ def test_run_app_default_logger_setup_requires_default_logger(
     mock_logger.configure_mock(**attrs)
 
     app = web.Application()
-    web.run_app(app, debug=True, print=stopper(patched_loop), access_log=mock_logger, loop=patched_loop)
+    web.run_app(
+        app,
+        debug=True,
+        print=stopper(patched_loop),
+        access_log=mock_logger,
+        loop=patched_loop
+    )
     mock_logger.setLevel.assert_not_called()
     mock_logger.hasHandlers.assert_not_called()
     mock_logger.addHandler.assert_not_called()
@@ -766,7 +795,13 @@ def test_run_app_default_logger_setup_only_if_unconfigured(patched_loop: Any) ->
     mock_logger.configure_mock(**attrs)
 
     app = web.Application()
-    web.run_app(app, debug=True, print=stopper(patched_loop), access_log=mock_logger, loop=patched_loop)
+    web.run_app(
+        app,
+        debug=True,
+        print=stopper(patched_loop),
+        access_log=mock_logger,
+        loop=patched_loop
+    )
     mock_logger.setLevel.assert_not_called()
     mock_logger.hasHandlers.assert_called_with()
     mock_logger.addHandler.assert_not_called()
@@ -850,7 +885,12 @@ def test_run_app_keepalive_timeout(
 
     app = web.Application()
     monkeypatch.setattr(BaseRunner, "__init__", base_runner_init_spy)
-    web.run_app(app, keepalive_timeout=new_timeout, print=stopper(patched_loop), loop=patched_loop)
+    web.run_app(
+        app,
+        keepalive_timeout=new_timeout,
+        print=stopper(patched_loop),
+        loop=patched_loop
+    )
 
 
 def test_run_app_context_vars(patched_loop: Any):
