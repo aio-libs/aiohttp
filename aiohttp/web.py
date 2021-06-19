@@ -489,28 +489,29 @@ def run_app(
         if not access_log.hasHandlers():
             access_log.addHandler(logging.StreamHandler())
 
+    main_task = loop.create_task(
+        _run_app(
+            app,
+            host=host,
+            port=port,
+            path=path,
+            sock=sock,
+            shutdown_timeout=shutdown_timeout,
+            keepalive_timeout=keepalive_timeout,
+            ssl_context=ssl_context,
+            print=print,
+            backlog=backlog,
+            access_log_class=access_log_class,
+            access_log_format=access_log_format,
+            access_log=access_log,
+            handle_signals=handle_signals,
+            reuse_address=reuse_address,
+            reuse_port=reuse_port,
+        )
+    )
+
     try:
         asyncio.set_event_loop(loop)
-        main_task = loop.create_task(
-            _run_app(
-                app,
-                host=host,
-                port=port,
-                path=path,
-                sock=sock,
-                shutdown_timeout=shutdown_timeout,
-                keepalive_timeout=keepalive_timeout,
-                ssl_context=ssl_context,
-                print=print,
-                backlog=backlog,
-                access_log_class=access_log_class,
-                access_log_format=access_log_format,
-                access_log=access_log,
-                handle_signals=handle_signals,
-                reuse_address=reuse_address,
-                reuse_port=reuse_port,
-            )
-        )
         loop.run_until_complete(main_task)
     except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
         pass
