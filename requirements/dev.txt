@@ -19,11 +19,6 @@ appdirs==1.4.4
     #   virtualenv
 async-timeout==4.0.0a3
     # via -r requirements/base.txt
-attrs==20.3.0
-    # via
-    #   -r requirements/lint.txt
-    #   flake8-pyi
-    #   pytest
 babel==2.9.0
     # via sphinx
 black==21.6b0 ; implementation_name == "cpython"
