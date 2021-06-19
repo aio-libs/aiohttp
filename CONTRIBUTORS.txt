@@ -40,6 +40,7 @@ Andrew Lytvyn
 Andrew Svetlov
 Andrew Zhou
 Andrii Soldatenko
+Anes Abismail
 Antoine Pietri
 Anton Kasyanov
 Anton Zhdan-Pushkin
@@ -233,6 +234,7 @@ Paulius Šileikis
 Paulus Schoutsen
 Pavel Kamaev
 Pavel Polyakov
+Pavel Sapezhko
 Pawel Kowalski
 Pawel Miech
 Pepe Osca
@@ -265,6 +267,7 @@ Stanislav Prokop
 Stefan Tjarks
 Stepan Pletnev
 Stephan Jaensch
+Stephen Cirelli
 Stephen Granade
 Steven Seguin
 Sunghyun Hwang
@@ -308,6 +311,7 @@ Vladyslav Bondar
 W. Trevor King
 Wei Lin
 Weiwei Wang
+Will Fatherley
 Will McGugan
 Willem de Groot
 William Grzybowski
