@@ -219,6 +219,7 @@ def test_run_after_asyncio_run() -> None:
 
     def spy(cls):
         spy.called = True
+
     spy.called = False
 
     async def shutdown():
