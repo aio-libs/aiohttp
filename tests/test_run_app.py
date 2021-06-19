@@ -506,7 +506,7 @@ def test_run_app_custom_backlog_unix(patched_loop: Any) -> None:
         path="/tmp/tmpsock.sock",
         backlog=10,
         print=stopper(patched_loop),
-        loop=patched_loop
+        loop=patched_loop,
     )
 
     patched_loop.create_unix_server.assert_called_with(
@@ -554,7 +554,7 @@ def test_run_app_abstract_linux_socket(patched_loop: Any) -> None:
         app,
         path=sock_path.decode("ascii", "ignore"),
         print=stopper(patched_loop),
-        loop=patched_loop
+        loop=patched_loop,
     )
 
     patched_loop.create_unix_server.assert_called_with(
@@ -729,7 +729,7 @@ def test_run_app_default_logger(monkeypatch: Any, patched_loop: Any) -> None:
         debug=True,
         print=stopper(patched_loop),
         access_log=mock_logger,
-        loop=patched_loop
+        loop=patched_loop,
     )
     mock_logger.setLevel.assert_any_call(logging.DEBUG)
     mock_logger.hasHandlers.assert_called_with()
@@ -752,7 +752,7 @@ def test_run_app_default_logger_setup_requires_debug(patched_loop: Any) -> None:
         debug=False,
         print=stopper(patched_loop),
         access_log=mock_logger,
-        loop=patched_loop
+        loop=patched_loop,
     )
     mock_logger.setLevel.assert_not_called()
     mock_logger.hasHandlers.assert_not_called()
@@ -777,7 +777,7 @@ def test_run_app_default_logger_setup_requires_default_logger(
         debug=True,
         print=stopper(patched_loop),
         access_log=mock_logger,
-        loop=patched_loop
+        loop=patched_loop,
     )
     mock_logger.setLevel.assert_not_called()
     mock_logger.hasHandlers.assert_not_called()
@@ -800,7 +800,7 @@ def test_run_app_default_logger_setup_only_if_unconfigured(patched_loop: Any) ->
         debug=True,
         print=stopper(patched_loop),
         access_log=mock_logger,
-        loop=patched_loop
+        loop=patched_loop,
     )
     mock_logger.setLevel.assert_not_called()
     mock_logger.hasHandlers.assert_called_with()
@@ -889,7 +889,7 @@ def test_run_app_keepalive_timeout(
         app,
         keepalive_timeout=new_timeout,
         print=stopper(patched_loop),
-        loop=patched_loop
+        loop=patched_loop,
     )
 
 
