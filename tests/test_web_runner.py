@@ -217,7 +217,7 @@ def test_run_after_asyncio_run() -> None:
     async def nothing():
         pass
 
-    def spy(cls):
+    def spy():
         spy.called = True
 
     spy.called = False
