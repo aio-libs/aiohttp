@@ -1,1 +1,0 @@
-Always create a new event loop in ``aiohttp.web.run_app()`` to avoid an error caused by using ``asyncio.run()`` beforehand.
