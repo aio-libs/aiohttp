@@ -49,7 +49,7 @@ endif
 .SECONDARY: $(call to-hash,$(ALLS))
 
 .update-pip:
-	@pip install -U 'pip'
+	@python -m pip install --upgrade pip
 
 .install-cython: .update-pip $(call to-hash,requirements/cython.txt)
 	@pip install -r requirements/cython.txt
@@ -97,6 +97,11 @@ vtest: .develop
 vvtest: .develop
 	@pytest -vv
 
+.PHONY: cov-dev
+cov-dev: .develop
+	@pytest --cov-report=html
+	@echo "xdg-open file://`pwd`/htmlcov/index.html"
+
 .PHONY: clean
 clean:
 	@rm -rf `find . -name __pycache__`
@@ -133,12 +138,12 @@ clean:
 
 .PHONY: doc
 doc:
-	@make -C docs html SPHINXOPTS="-W --keep-going -E"
+	@make -C docs html SPHINXOPTS="-W --keep-going -n -E"
 	@echo "open file://`pwd`/docs/_build/html/index.html"
 
 .PHONY: doc-spelling
 doc-spelling:
-	@make -C docs spelling SPHINXOPTS="-W -E"
+	@make -C docs spelling SPHINXOPTS="-W --keep-going -n -E"
 
 .PHONY: compile-deps
 compile-deps: .update-pip
