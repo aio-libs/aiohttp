@@ -217,7 +217,12 @@ def test_run_after_asyncio_run() -> None:
     async def nothing():
         pass
 
+    def spy(cls):
+        spy.called = True
+    spy.called = False
+
     async def shutdown():
+        spy()
         raise web.GracefulExit()
 
     # asyncio.run() creates a new loop and closes it.
