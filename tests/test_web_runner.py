@@ -231,7 +231,6 @@ def test_run_after_asyncio_run() -> None:
     app = web.Application()
     # create_task() will delay the function until app is run.
     app.on_startup.append(lambda a: asyncio.create_task(shutdown()))
-    try:
-        web.run_app(app)
-    except RuntimeError:
-        pytest.fail("run_app() should work after asyncio.run().")
+
+    web.run_app(app)
+    assert spy.called, "run_app() should work after asyncio.run()."
