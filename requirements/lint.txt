@@ -8,10 +8,6 @@ appdirs==1.4.4
     # via
     #   black
     #   virtualenv
-attrs==20.3.0
-    # via
-    #   flake8-pyi
-    #   pytest
 black==21.6b0 ; implementation_name == "cpython"
     # via -r requirements/lint.in
 cfgv==3.2.0

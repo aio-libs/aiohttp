@@ -20,7 +20,11 @@ from typing import (
     cast,
 )
 
+<<<<<<< HEAD
 import attr
+=======
+import dataclasses
+>>>>>>> removal of attr
 import yarl
 
 from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
@@ -105,7 +109,11 @@ class AccessLoggerWrapper(AbstractAsyncAccessLogger):
         self.access_logger.log(request, response, self._loop.time() - request_start)
 
 
+<<<<<<< HEAD
 @attr.s(auto_attribs=True, frozen=True, slots=True)
+=======
+@dataclasses.dataclass(frozen=True)
+>>>>>>> removal of attr
 class _ErrInfo:
     status: int
     exc: BaseException
