@@ -6,10 +6,6 @@ repos:
     language: system
     entry: ./tools/check_changes.py
     pass_filenames: false
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v3.3.0'
-  hooks:
-  - id: check-merge-conflict
 - repo: https://github.com/asottile/yesqa
   rev: v1.2.2
   hooks:
@@ -26,6 +22,7 @@ repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: 'v3.3.0'
   hooks:
+  - id: check-merge-conflict
   - id: end-of-file-fixer
     exclude: >-
       ^docs/[^/]*\.svg$
@@ -39,21 +36,17 @@ repos:
       docs/spelling_wordlist.txt|
       .gitignore|
       .gitattributes
-  - id: check-case-conflict
   - id: check-json
   - id: check-xml
   - id: check-executables-have-shebangs
   - id: check-toml
-  - id: check-xml
   - id: check-yaml
   - id: debug-statements
   - id: check-added-large-files
   - id: check-symlinks
-  - id: debug-statements
   - id: fix-byte-order-marker
   - id: fix-encoding-pragma
     args: ['--remove']
-  - id: check-executables-have-shebangs
   - id: check-case-conflict
   - id: detect-aws-credentials
     args: ['--allow-missing-credentials']
@@ -69,7 +62,6 @@ repos:
   hooks:
   - id: flake8
     exclude: "^docs/"
-
 - repo: git://github.com/Lucas-C/pre-commit-hooks-markup
   rev: v1.0.0
   hooks:
