@@ -274,6 +274,7 @@ def test_http_DELETE(session: Any, params: Any) -> None:
 async def test_http_empty_data_text(session: Any) -> None:
     with mock.patch.object(session, "_connector", autospec=True) as connector_mock:
         connector_mock.closed = False
+        connector_mock.connect = mock.AsyncMock()
 
         # ClientOSError occurs after req has been produced, so we can just give up there
         with pytest.raises(aiohttp.client_exceptions.ClientOSError):
