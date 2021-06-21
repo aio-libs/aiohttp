@@ -1,6 +1,7 @@
 import asyncio
 import platform
 import signal
+import sys
 from unittest.mock import patch
 
 import pytest
