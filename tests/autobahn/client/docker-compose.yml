@@ -11,7 +11,7 @@ services:
         target: /reports
 
   aiohttp:
-    image: autobahn_aiohttp
+    image: aiohttp
     depends_on:
       - autobahn
     command: ["python", "tests/autobahn/client/client.py"]
