@@ -172,9 +172,6 @@ period ask to raise the status.
   popular web frameworks, including Flask, Django, Bottle, Tornado,
   Pyramid, webapp2, Falcon, and aiohttp.
 
-- `aioauth-client <https://github.com/klen/aioauth-client>`_ OAuth
-  client for aiohttp.
-
 - `aiohttpretty
   <https://github.com/CenterForOpenScience/aiohttpretty>`_ A simple
   asyncio compatible httpretty mock using aiohttp.
