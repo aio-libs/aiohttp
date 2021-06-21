@@ -164,6 +164,7 @@ async def test_tcpsite_default_host(make_runner):
     assert port == 8080
 
 
+@pytest.mark.skipif(sys.version_info < (3, 7), reason="Requires asyncio.run()")
 def test_run_after_asyncio_run() -> None:
     async def nothing():
         pass
