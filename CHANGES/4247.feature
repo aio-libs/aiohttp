@@ -1,1 +1,1 @@
-Automated running autobahn test suit by integrating with pytest.
+Automated running autobahn test suite by integrating with pytest.
