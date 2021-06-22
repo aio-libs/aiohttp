@@ -114,7 +114,7 @@ iniconfig==1.1.1
     # via
     #   -r requirements/lint.txt
     #   pytest
-isort==5.9.0
+isort==5.9.1
     # via -r requirements/lint.txt
 jinja2==2.11.3
     # via
