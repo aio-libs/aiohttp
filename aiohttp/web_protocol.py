@@ -104,7 +104,7 @@ class AccessLoggerWrapper(AbstractAsyncAccessLogger):
         self.access_logger.log(request, response, self._loop.time() - request_start)
 
 
-@dataclasses.dataclass(frozen =True)
+@dataclasses.dataclass(frozen=True)
 class _ErrInfo:
     status: int
     exc: BaseException
