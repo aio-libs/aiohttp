@@ -20,6 +20,7 @@ from typing import (
     cast,
 )
 import dataclasses
+
 import yarl
 
 from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
