@@ -1,0 +1,4 @@
+In the current version, the filenames are encoded before sending the files to the server when using FormData() object. 
+This problem has already been posted in #4012. 
+Its fix has been discussed in #4031 will be added in aiohttp v3.8. 
+Updated the docs to help users know the problem and its fix for now.
