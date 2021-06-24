@@ -317,6 +317,26 @@ You can set the ``filename`` and ``content_type`` explicitly::
 
     await session.post(url, data=data)
 
+If you are sending files using ``FormData`` payload, it will automatically encode the filenames into  `urlencoding` format.
+for example, file_name and encoded_file_name will look this ::
+
+    file_name = "form file.txt"
+    encoded_file_name = "form%20file.txt"
+
+This could lead to unexpected behavior on the server side while handling filenames. To decode the encoded_file_name, we can use python's ``urllib`` module.
+following snippet shows how we can use the ``urllib`` to decode the filename::
+
+        import urllib.parse
+        encoded_file_name = "form%20file.txt"
+        decoded_file_name = urllib.parse.unquote(encoded_file_name)
+        print(decoded_file_name)
+        
+Prints::
+
+        "form file.txt"
+        
+In upcoming ``aiohttp v3.8``, filenames will not be encoded before sending it to the server and need of decoding will not neccessary.
+
 If you pass a file object as data parameter, aiohttp will stream it to
 the server automatically. Check :class:`~aiohttp.StreamReader`
 for supported format information.
