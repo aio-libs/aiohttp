@@ -22,6 +22,7 @@ def build_aiohttp_docker_image():
     try:
         yield
     finally:
+        # default is the name of the default builder
         docker.buildx.remove("default")
 
 
