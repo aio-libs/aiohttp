@@ -758,6 +758,20 @@ async def test_cookie_jar_clear_domain() -> None:
         next(iterator)
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://127.0.0.1/index.html",
+        URL("http://127.0.0.1/index.html"),
+        ["http://127.0.0.1/index.html"],
+        [URL("http://127.0.0.1/index.html")],
+    ],
+)
+async def test_treat_as_secure_origin_init(url) -> None:
+    jar = CookieJar(unsafe=True, treat_as_secure_origin=url)
+    assert jar._treat_as_secure_origin == [URL("http://127.0.0.1")]
+
+
 async def test_treat_as_secure_origin() -> None:
     endpoint = URL("http://127.0.0.1/")
 

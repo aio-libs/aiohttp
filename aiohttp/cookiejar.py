@@ -26,7 +26,7 @@ from yarl import URL
 
 from .abc import AbstractCookieJar, ClearCookiePredicate
 from .helpers import is_ip_address, next_whole_second
-from .typedefs import LooseCookies, PathLike
+from .typedefs import LooseCookies, PathLike, StrOrURL
 
 __all__ = ("CookieJar", "DummyCookieJar")
 
@@ -62,7 +62,7 @@ class CookieJar(AbstractCookieJar):
         *,
         unsafe: bool = False,
         quote_cookie: bool = True,
-        treat_as_secure_origin: List[URL] = []
+        treat_as_secure_origin: Union[StrOrURL, List[StrOrURL]] = []
     ) -> None:
         self._loop = asyncio.get_running_loop()
         self._cookies = defaultdict(
@@ -71,7 +71,16 @@ class CookieJar(AbstractCookieJar):
         self._host_only_cookies = set()  # type: Set[Tuple[str, str]]
         self._unsafe = unsafe
         self._quote_cookie = quote_cookie
-        self._treat_as_secure_origin = [url.origin() for url in treat_as_secure_origin]
+        if isinstance(treat_as_secure_origin, URL):
+            treat_as_secure_origin = [treat_as_secure_origin.origin()]
+        elif isinstance(treat_as_secure_origin, str):
+            treat_as_secure_origin = [URL(treat_as_secure_origin).origin()]
+        else:
+            treat_as_secure_origin = [
+                URL(url).origin() if isinstance(url, str) else url.origin()
+                for url in treat_as_secure_origin
+            ]
+        self._treat_as_secure_origin = treat_as_secure_origin
         self._next_expiration = next_whole_second()
         self._expirations = {}  # type: Dict[Tuple[str, str], datetime.datetime]
         # #4515: datetime.max may not be representable on 32-bit platforms

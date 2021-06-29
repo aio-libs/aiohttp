@@ -1810,8 +1810,15 @@ CookieJar
 
       .. versionadded:: 3.7
 
-   :param List[Url] treat_as_secure_origin: (optional) Mark origins as secure
-                                            for cookies marked as Secured
+   :param treat_as_secure_origin: (optional) Mark origins as secure
+                                  for cookies marked as Secured. Possible types are
+
+                                  Possible types are:
+
+                                  - :class:`tuple` or :class:`list` of
+                                    :class:`str` or :class:`yarl.URL`
+                                  - :class:`str`
+                                  - :class:`yarl.URL`
 
       .. versionadded:: 3.8
 
