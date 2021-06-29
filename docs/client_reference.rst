@@ -1822,12 +1822,6 @@ CookieJar
 
       .. versionadded:: 3.8
 
-   :param bool loop: an :ref:`event loop<asyncio-event-loop>` instance.
-      See :class:`aiohttp.abc.AbstractCookieJar`
-
-      .. deprecated:: 2.0
-
-
    .. method:: update_cookies(cookies, response_url=None)
 
       Update cookies returned by server in ``Set-Cookie`` header.
