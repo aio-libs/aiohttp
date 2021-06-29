@@ -1225,7 +1225,7 @@ Response object
            assert resp.status == 200
 
    After exiting from ``async with`` block response object will be
-   *released* (see :meth:`release` coroutine).
+   *released* (see :meth:`release` method).
 
    .. attribute:: version
 
@@ -1354,7 +1354,7 @@ Response object
 
       .. seealso:: :meth:`close`, :meth:`release`.
 
-   .. comethod:: release()
+   .. method:: release()
 
       It is not required to call `release` on the response
       object. When the client fully receives the payload, the
