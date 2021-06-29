@@ -1778,7 +1778,7 @@ BasicAuth
 CookieJar
 ^^^^^^^^^
 
-.. class:: CookieJar(*, unsafe=False, quote_cookie=True, loop=None)
+.. class:: CookieJar(*, unsafe=False, quote_cookie=True, treat_as_secure_origin = [])
 
    The cookie jar instance is available as :attr:`ClientSession.cookie_jar`.
 
@@ -1809,6 +1809,11 @@ CookieJar
                              does not support quoted cookies.
 
       .. versionadded:: 3.7
+
+   :param List[Url] treat_as_secure_origin: (optional) Mark origins as secure
+                                            for cookies marked as Secured
+
+      .. versionadded:: 3.8
 
    :param bool loop: an :ref:`event loop<asyncio-event-loop>` instance.
       See :class:`aiohttp.abc.AbstractCookieJar`
