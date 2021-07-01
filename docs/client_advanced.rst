@@ -56,6 +56,14 @@ For *text/plain* ::
 
     await session.post(url, data='Привет, Мир!')
 
+.. note::
+   ``Authorization`` header will be removed if you get redirected
+   to a different host or protocol.
+
+.. versionchanged:: 4.0
+   ``Authorization`` header will **not** be removed during the
+   ``HTTP -> HTTPS`` redirect if the host remains the same.
+
 Custom Cookies
 --------------
 

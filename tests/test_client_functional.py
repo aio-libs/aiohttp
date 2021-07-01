@@ -8,11 +8,13 @@ import io
 import json
 import pathlib
 import socket
+import ssl
 from typing import Any
 from unittest import mock
 
 import pytest
 from multidict import MultiDict
+from yarl import URL
 
 import aiohttp
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
@@ -2333,25 +2335,74 @@ async def test_creds_in_auth_and_url() -> None:
         await session.close()
 
 
-async def test_drop_auth_on_redirect_to_other_host(aiohttp_server: Any) -> None:
+@pytest.mark.parametrize(
+    ["url_a", "url_b", "drop_header"],
+    [
+        [
+            "http://host1.com/path1",
+            "http://host2.com/path2",
+            True,
+        ],  # entirely different hosts
+        ["http://host1.com/path1", "https://host1.com/path1", False],  # http -> https
+        ["https://host1.com/path1", "http://host1.com/path2", True],  # https -> http
+    ],
+)
+async def test_drop_auth_on_redirect_to_other_host(
+    aiohttp_server: Any,
+    tls_certificate_authority: Any,
+    url_a: str,
+    url_b: str,
+    drop_header: bool,
+) -> None:
+    yarl_a = URL(url_a)
+    yarl_b = URL(url_b)
+
     async def srv1(request):
-        assert request.host == "host1.com"
+        assert request.host == yarl_a.host
         assert request.headers["Authorization"] == "Basic dXNlcjpwYXNz"
-        raise web.HTTPFound("http://host2.com/path2")
+        raise web.HTTPFound(url_b)
 
     async def srv2(request):
-        assert request.host == "host2.com"
-        assert "Authorization" not in request.headers
+        assert request.host == yarl_b.host
+        if drop_header:
+            assert "Authorization" not in request.headers, "Header wasn't dropped"
+        else:
+            assert "Authorization" in request.headers, "Header was dropped"
         return web.Response()
 
-    app = web.Application()
-    app.router.add_route("GET", "/path1", srv1)
-    app.router.add_route("GET", "/path2", srv2)
+    async def create_server(url: URL, srv: Any):
+        app = web.Application()
+        app.router.add_route("GET", url.path, srv)
 
-    server = await aiohttp_server(app)
+        if url.scheme == "https":
+            cert = tls_certificate_authority.issue_cert(
+                url.host, "localhost", "127.0.0.1"
+            )
+            ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+            cert.configure_cert(ssl_ctx)
+            kwargs = dict(ssl=ssl_ctx)
+        else:
+            kwargs = {}
+
+        return await aiohttp_server(app, **kwargs)
+
+    server_a = await create_server(yarl_a, srv1)
+    server_b = await create_server(yarl_b, srv2)
+
+    assert (
+        yarl_a.host != yarl_b.host or server_a.scheme != server_b.scheme
+    ), "Invalid test case, host or scheme must differ"
+
+    schemes = dict(http=80, https=443)
+    etc_hosts = {
+        (yarl_a.host, schemes[server_a.scheme]): server_a,
+        (yarl_b.host, schemes[server_b.scheme]): server_b,
+    }
 
     class FakeResolver(AbstractResolver):
         async def resolve(self, host, port=0, family=socket.AF_INET):
+            server = etc_hosts[(host, port)]
+
             return [
                 {
                     "hostname": host,
@@ -2366,14 +2417,17 @@ async def test_drop_auth_on_redirect_to_other_host(aiohttp_server: Any) -> None:
         async def close(self):
             pass
 
-    connector = aiohttp.TCPConnector(resolver=FakeResolver())
+    connector = aiohttp.TCPConnector(resolver=FakeResolver(), ssl=False)
+
     async with aiohttp.ClientSession(connector=connector) as client:
         resp = await client.get(
-            "http://host1.com/path1", auth=aiohttp.BasicAuth("user", "pass")
+            url_a,
+            auth=aiohttp.BasicAuth("user", "pass"),
         )
         assert resp.status == 200
         resp = await client.get(
-            "http://host1.com/path1", headers={"Authorization": "Basic dXNlcjpwYXNz"}
+            url_a,
+            headers={"Authorization": "Basic dXNlcjpwYXNz"},
         )
         assert resp.status == 200
 
