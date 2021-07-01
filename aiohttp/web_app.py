@@ -48,8 +48,10 @@ __all__ = ("Application", "CleanupError")
 if TYPE_CHECKING:  # pragma: no cover
     _AppSignal = Signal[Callable[["Application"], Awaitable[None]]]
     _RespPrepareSignal = Signal[Callable[[Request, StreamResponse], Awaitable[None]]]
-    _Handler = Callable[[Request], Awaitable[StreamResponse]]
-    _Middleware = Callable[[Request, _Handler], Awaitable[StreamResponse]]
+
+    from .typedefs import Handler
+
+    _Middleware = Callable[[Request, Handler], Awaitable[StreamResponse]]
     _Middlewares = FrozenList[_Middleware]
     _MiddlewaresHandlers = Sequence[_Middleware]
     _Subapps = List["Application"]
