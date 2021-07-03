@@ -89,6 +89,10 @@ mypy:
 test: .develop
 	@pytest -q
 
+.PHONY: xtest
+xtest: .develop
+	@pytest -n auto -q
+
 .PHONY: vtest
 vtest: .develop
 	@pytest -s -v
