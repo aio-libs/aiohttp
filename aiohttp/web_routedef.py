@@ -3,7 +3,6 @@ import os  # noqa
 from typing import (
     TYPE_CHECKING,
     Any,
-    Awaitable,
     Callable,
     Dict,
     Iterator,
@@ -19,7 +18,7 @@ import attr
 
 from . import hdrs
 from .abc import AbstractView
-from .typedefs import PathLike
+from .typedefs import Handler, PathLike
 
 if TYPE_CHECKING:  # pragma: no cover
     from .web_request import Request
@@ -53,8 +52,7 @@ class AbstractRouteDef(abc.ABC):
         pass  # pragma: no cover
 
 
-_SimpleHandler = Callable[[Request], Awaitable[StreamResponse]]
-_HandlerType = Union[Type[AbstractView], _SimpleHandler]
+_HandlerType = Union[Type[AbstractView], Handler]
 
 
 @attr.s(auto_attribs=True, frozen=True, repr=False, slots=True)

@@ -8,6 +8,7 @@ import aiohttp
 from aiohttp import web
 from aiohttp.abc import AbstractAccessLogger
 from aiohttp.helpers import PY_37
+from aiohttp.typedefs import Handler
 from aiohttp.web_log import AccessLogger
 
 try:
@@ -177,7 +178,7 @@ async def test_contextvars_logger(aiohttp_server, aiohttp_client):
         return web.Response()
 
     @web.middleware
-    async def middleware(request, handler):
+    async def middleware(request, handler: Handler):
         VAR.set("uuid")
         return await handler(request)
 

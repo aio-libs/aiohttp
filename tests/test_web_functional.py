@@ -15,6 +15,7 @@ import aiohttp
 from aiohttp import FormData, HttpVersion10, HttpVersion11, TraceConfig, multipart, web
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
 from aiohttp.test_utils import make_mocked_coro
+from aiohttp.typedefs import Handler
 
 try:
     import ssl
@@ -1273,7 +1274,7 @@ async def test_subapp_middlewares(aiohttp_client) -> None:
     async def handler(request):
         return web.Response(text="OK")
 
-    async def middleware_factory(app, handler):
+    async def middleware_factory(app, handler: Handler):
         async def middleware(request):
             order.append((1, app))
             resp = await handler(request)
@@ -1412,7 +1413,7 @@ async def test_subapp_middleware_context(aiohttp_client, route, expected, middle
 
     def show_app_context(appname):
         @web.middleware
-        async def middleware(request, handler):
+        async def middleware(request, handler: Handler):
             values.append("{}: {}".format(appname, request.app["my_value"]))
             return await handler(request)
 
