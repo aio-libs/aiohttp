@@ -2933,6 +2933,29 @@ async def test_read_timeout_on_prepared_response(aiohttp_client: Any) -> None:
             await resp.read()
 
 
+async def test_timeout_with_full_buffer(aiohttp_client: Any) -> None:
+    async def handler(request):
+        """Server response that never ends and always has more data available."""
+        resp = web.StreamResponse()
+        await resp.prepare(request)
+        while True:
+            await resp.write(b'1' * 100)
+
+    async def request(client):
+        with pytest.raises(asyncio.TimeoutError):
+            async with await client.get("/", timeout=0.5) as resp:
+                async for data in resp.content.iter_chunked(1):
+                    await asyncio.sleep(0.01)
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+    # wait_for() timeout should not be reached.
+    await asyncio.wait_for(request(client), 1)
+
+
+
 async def test_read_bufsize_session_default(aiohttp_client: Any) -> None:
     async def handler(request):
         return web.Response(body=b"1234567")

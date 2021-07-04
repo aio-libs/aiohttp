@@ -376,7 +376,7 @@ class StreamReader(AsyncStreamReaderMixin):
         while not self._buffer and not self._eof:
             await self._wait("read")
 
-        return self._read_nowait(n)
+        return await self._read_nowait(n)
 
     async def readany(self) -> bytes:
         if self._exception is not None:
@@ -388,7 +388,7 @@ class StreamReader(AsyncStreamReaderMixin):
         while not self._buffer and not self._eof:
             await self._wait("readany")
 
-        return self._read_nowait(-1)
+        return await self._read_nowait(-1)
 
     async def readchunk(self) -> Tuple[bytes, bool]:
         """Returns a tuple of (data, end_of_http_chunk). When chunked transfer
@@ -405,7 +405,7 @@ class StreamReader(AsyncStreamReaderMixin):
                 if pos == self._cursor:
                     return (b"", True)
                 if pos > self._cursor:
-                    return (self._read_nowait(pos - self._cursor), True)
+                    return (await self._read_nowait(pos - self._cursor), True)
                 internal_logger.warning(
                     "Skipping HTTP chunk end due to data "
                     "consumption beyond chunk boundary"
@@ -413,7 +413,7 @@ class StreamReader(AsyncStreamReaderMixin):
 
             if self._buffer:
                 return (self._read_nowait_chunk(-1), False)
-                # return (self._read_nowait(-1), False)
+                # return (await self._read_nowait(-1), False)
 
             if self._eof:
                 # Special case for signifying EOF.
@@ -437,7 +437,7 @@ class StreamReader(AsyncStreamReaderMixin):
 
         return b"".join(blocks)
 
-    def read_nowait(self, n: int = -1) -> bytes:
+    async def read_nowait(self, n: int = -1) -> bytes:
         # default was changed to be consistent with .read(-1)
         #
         # I believe the most users don't know about the method and
@@ -450,7 +450,7 @@ class StreamReader(AsyncStreamReaderMixin):
                 "Called while some coroutine is waiting for incoming data."
             )
 
-        return self._read_nowait(n)
+        return await self._read_nowait(n)
 
     def _read_nowait_chunk(self, n: int) -> bytes:
         first_buffer = self._buffer[0]
@@ -479,11 +479,18 @@ class StreamReader(AsyncStreamReaderMixin):
             self._protocol.resume_reading()
         return data
 
-    def _read_nowait(self, n: int) -> bytes:
+    async def _read_nowait(self, n: int) -> bytes:
+        if self._timer:
+            with self._timer:
+                return await self._read_nowait_internal(n)
+        return await self._read_nowait_internal(n)
+
+    async def _read_nowait_internal(self, n: int) -> bytes:
         """ Read not more than n bytes, or whole buffer if n == -1 """
         chunks = []
 
         while self._buffer:
+            await asyncio.sleep(0)  # Yield to event loop.
             chunk = self._read_nowait_chunk(n)
             chunks.append(chunk)
             if n != -1:
