@@ -58,11 +58,9 @@ For *text/plain* ::
 
 .. note::
    ``Authorization`` header will be removed if you get redirected
-   to a different host or protocol.
+   to a different host or protocol, except the case when  ``HTTP -> HTTPS``
+   redirect is performed on the same host.
 
-.. versionchanged:: 4.0
-   ``Authorization`` header will **not** be removed during the
-   ``HTTP -> HTTPS`` redirect if the host remains the same.
 
 Custom Cookies
 --------------

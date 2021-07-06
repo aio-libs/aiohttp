@@ -2335,42 +2335,11 @@ async def test_creds_in_auth_and_url() -> None:
         await session.close()
 
 
-@pytest.mark.parametrize(
-    ["url_a", "url_b", "drop_header"],
-    [
-        [
-            "http://host1.com/path1",
-            "http://host2.com/path2",
-            True,
-        ],  # entirely different hosts
-        ["http://host1.com/path1", "https://host1.com/path1", False],  # http -> https
-        ["https://host1.com/path1", "http://host1.com/path2", True],  # https -> http
-    ],
-)
-async def test_drop_auth_on_redirect_to_other_host(
-    aiohttp_server: Any,
-    tls_certificate_authority: Any,
-    url_a: str,
-    url_b: str,
-    drop_header: bool,
-) -> None:
-    yarl_a = URL(url_a)
-    yarl_b = URL(url_b)
-
-    async def srv1(request):
-        assert request.host == yarl_a.host
-        assert request.headers["Authorization"] == "Basic dXNlcjpwYXNz"
-        raise web.HTTPFound(url_b)
-
-    async def srv2(request):
-        assert request.host == yarl_b.host
-        if drop_header:
-            assert "Authorization" not in request.headers, "Header wasn't dropped"
-        else:
-            assert "Authorization" in request.headers, "Header was dropped"
-        return web.Response()
-
-    async def create_server(url: URL, srv: Any):
+@pytest.fixture
+def create_server_for_url_and_handler(
+    aiohttp_server: Any, tls_certificate_authority: Any
+):
+    async def create(url: URL, srv: Any):
         app = web.Application()
         app.router.add_route("GET", url.path, srv)
 
@@ -2383,20 +2352,59 @@ async def test_drop_auth_on_redirect_to_other_host(
             kwargs = dict(ssl=ssl_ctx)
         else:
             kwargs = {}
-
         return await aiohttp_server(app, **kwargs)
 
-    server_a = await create_server(yarl_a, srv1)
-    server_b = await create_server(yarl_b, srv2)
+    return create
+
+
+@pytest.mark.parametrize(
+    ["url_from", "url_to", "is_drop_header_expected"],
+    [
+        [
+            "http://host1.com/path1",
+            "http://host2.com/path2",
+            True,
+        ],  # entirely different hosts
+        ["http://host1.com/path1", "https://host1.com/path1", False],  # http -> https
+        ["https://host1.com/path1", "http://host1.com/path2", True],  # https -> http
+    ],
+)
+async def test_drop_auth_on_redirect_to_other_host(
+    create_server_for_url_and_handler: Any,
+    url_from: str,
+    url_to: str,
+    is_drop_header_expected: bool,
+) -> None:
+    yarl_a = URL(url_from)
+    yarl_b = URL(url_to)
+
+    async def srv1(request):
+        assert request.host == yarl_a.host
+        assert request.headers["Authorization"] == "Basic dXNlcjpwYXNz"
+        raise web.HTTPFound(url_to)
+
+    async def srv2(request):
+        assert request.host == yarl_b.host
+        if is_drop_header_expected:
+            assert "Authorization" not in request.headers, "Header wasn't dropped"
+        else:
+            assert "Authorization" in request.headers, "Header was dropped"
+        return web.Response()
+
+    server_from = await create_server_for_url_and_handler(yarl_a, srv1)
+    server_to = await create_server_for_url_and_handler(yarl_b, srv2)
 
     assert (
-        yarl_a.host != yarl_b.host or server_a.scheme != server_b.scheme
+        yarl_a.host != yarl_b.host or server_from.scheme != server_to.scheme
     ), "Invalid test case, host or scheme must differ"
 
-    schemes = dict(http=80, https=443)
+    protocol_port_map = {
+        "http": 80,
+        "https": 443,
+    }
     etc_hosts = {
-        (yarl_a.host, schemes[server_a.scheme]): server_a,
-        (yarl_b.host, schemes[server_b.scheme]): server_b,
+        (yarl_a.host, protocol_port_map[server_from.scheme]): server_from,
+        (yarl_b.host, protocol_port_map[server_to.scheme]): server_to,
     }
 
     class FakeResolver(AbstractResolver):
@@ -2421,12 +2429,12 @@ async def test_drop_auth_on_redirect_to_other_host(
 
     async with aiohttp.ClientSession(connector=connector) as client:
         resp = await client.get(
-            url_a,
+            url_from,
             auth=aiohttp.BasicAuth("user", "pass"),
         )
         assert resp.status == 200
         resp = await client.get(
-            url_a,
+            url_from,
             headers={"Authorization": "Basic dXNlcjpwYXNz"},
         )
         assert resp.status == 200
