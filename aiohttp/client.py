@@ -566,7 +566,7 @@ class ClientSession:
                         elif not scheme:
                             parsed_url = url.join(parsed_url)
 
-                        https_redirect = (
+                        is_same_host_https_redirect = (
                             url.host == parsed_url.host
                             and parsed_url.scheme == "https"
                             and url.scheme == "http"
