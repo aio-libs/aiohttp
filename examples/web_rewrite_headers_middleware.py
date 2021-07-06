@@ -11,7 +11,7 @@ async def handler(request):
 
 
 @web.middleware
-async def middleware(request, handler: Handler):
+async def middleware(request: web.Request, handler: Handler) -> web.Response:
     try:
         response = await handler(request)
     except web.HTTPException as exc:
