@@ -1,0 +1,1 @@
+Fix the `ClientWebSocketResponse.receive` stuck for a long time if network is suddenly interrupted.

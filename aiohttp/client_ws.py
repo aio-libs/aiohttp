@@ -78,6 +78,8 @@ class ClientWebSocketResponse:
         self._compress = compress
         self._client_notakeover = client_notakeover
 
+        # A flag to indicate whether the latest heartbeat failed.
+        self._is_heartbeat_failed = asyncio.Event()
         self._reset_heartbeat()
 
     def _cancel_heartbeat(self) -> None:
@@ -91,6 +93,7 @@ class ClientWebSocketResponse:
 
     def _reset_heartbeat(self) -> None:
         self._cancel_heartbeat()
+        self._is_heartbeat_failed.clear()
 
         if self._heartbeat is not None:
             self._heartbeat_cb = call_later(
@@ -116,6 +119,7 @@ class ClientWebSocketResponse:
             self._close_code = WSCloseCode.ABNORMAL_CLOSURE
             self._exception = asyncio.TimeoutError()
             self._response.close()
+            self._is_heartbeat_failed.set()
 
     @property
     def closed(self) -> bool:
@@ -235,11 +239,32 @@ class ClientWebSocketResponse:
 
             try:
                 self._waiting = self._loop.create_future()
+
+                read_task: asyncio.Task[WSMessage] = asyncio.create_task(
+                    self._reader.read()
+                )
+                is_heartbeat_failed_task: asyncio.Task[bool] = asyncio.create_task(
+                    self._is_heartbeat_failed.wait()
+                )
                 try:
                     async with async_timeout.timeout(
                         timeout or self._timeout.ws_receive
                     ):
-                        msg = await self._reader.read()
+                        # Check the heartbeat status when waiting data from server
+                        done, pending = await asyncio.wait(
+                            (read_task, is_heartbeat_failed_task),
+                            return_when=asyncio.FIRST_COMPLETED,
+                        )
+                        # If server doesn't pong, but return data normally,
+                        # supress the exception.
+                        if read_task in done:
+                            is_heartbeat_failed_task.cancel()
+                            msg = read_task.result()
+                        elif is_heartbeat_failed_task in done:
+                            read_task.cancel()
+                            assert self._exception is not None
+                            raise self._exception
+
                     self._reset_heartbeat()
                 finally:
                     waiter = self._waiting
