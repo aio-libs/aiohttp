@@ -1,1 +1,1 @@
-Keep ``Authorization`` header during the http->https redirect if the host remains the same.
+Started keeping the ``Authorization`` header during http->https redirects when the host remains the same.
