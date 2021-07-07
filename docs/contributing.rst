@@ -141,7 +141,7 @@ Please take a look on the produced output.
 
 Any extra texts (print statements and so on) should be removed.
 
-Tests can also be run in parallel with:
+Tests can also be run in parallel (experimentally) with:
 
 .. code-block:: console
 
