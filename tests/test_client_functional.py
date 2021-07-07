@@ -2350,7 +2350,7 @@ def create_server_for_url_and_handler(
             )
             ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
             cert.configure_cert(ssl_ctx)
-            kwargs['ssl'] = ssl_ctx
+            kwargs["ssl"] = ssl_ctx
         return await aiohttp_server(app, **kwargs)
 
     return create
@@ -2363,10 +2363,15 @@ def create_server_for_url_and_handler(
             "http://host1.com/path1",
             "http://host2.com/path2",
             True,
-        ],  # entirely different hosts
-        ["http://host1.com/path1", "https://host1.com/path1", False],  # http -> https
-        ["https://host1.com/path1", "http://host1.com/path2", True],  # https -> http
+        ],
+        ["http://host1.com/path1", "https://host1.com/path1", False],
+        ["https://host1.com/path1", "http://host1.com/path2", True],
     ],
+    ids=(
+        "entirely different hosts",
+        "http -> https",
+        "https -> http",
+    ),
 )
 async def test_drop_auth_on_redirect_to_other_host(
     create_server_for_url_and_handler: Any,
