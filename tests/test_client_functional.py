@@ -2350,9 +2350,7 @@ def create_server_for_url_and_handler(
             )
             ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
             cert.configure_cert(ssl_ctx)
-            kwargs = dict(ssl=ssl_ctx)
-        else:
-            kwargs = {}
+            kwargs['ssl'] = ssl_ctx
         return await aiohttp_server(app, **kwargs)
 
     return create
