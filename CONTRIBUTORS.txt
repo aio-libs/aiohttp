@@ -47,6 +47,7 @@ Anton Zhdan-Pushkin
 Arseny Timoniq
 Artem Yushkovskiy
 Arthur Darcet
+Austin Scola
 Ben Bader
 Ben Timby
 Benedikt Reinartz
@@ -240,6 +241,7 @@ Pawel Miech
 Pepe Osca
 Philipp A.
 Pieter van Beek
+Qiao Han
 Rafael Viotti
 Raphael Bialon
 Raúl Cumplido
