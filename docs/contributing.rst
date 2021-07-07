@@ -143,7 +143,7 @@ Any extra texts (print statements and so on) should be removed.
 
 Tests can also be run in parallel with:
 
-.. code-block:: shell
+.. code-block:: console
 
    $ make xtest
 
