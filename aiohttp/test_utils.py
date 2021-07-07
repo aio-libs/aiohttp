@@ -519,7 +519,16 @@ def setup_test_loop(
     asyncio.set_event_loop(loop)
     if sys.platform != "win32" and not skip_watcher:
         policy = asyncio.get_event_loop_policy()
-        watcher = asyncio.SafeChildWatcher()
+        watcher: asyncio.AbstractChildWatcher
+        try:  # Python >= 3.8
+            # Refs:
+            # * https://github.com/pytest-dev/pytest-xdist/issues/620
+            # * https://stackoverflow.com/a/58614689/595220
+            # * https://bugs.python.org/issue35621
+            # * https://github.com/python/cpython/pull/14344
+            watcher = asyncio.MultiLoopChildWatcher()
+        except AttributeError:  # Python < 3.8
+            watcher = asyncio.SafeChildWatcher()
         watcher.attach_loop(loop)
         with contextlib.suppress(NotImplementedError):
             policy.set_child_watcher(watcher)
