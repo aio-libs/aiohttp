@@ -57,12 +57,13 @@ __all__ = ("Application", "CleanupError")
 
 
 if TYPE_CHECKING:  # pragma: no cover
+    from .typedefs import Handler
+
     _AppSignal = Signal[Callable[["Application"], Awaitable[None]]]
     _RespPrepareSignal = Signal[Callable[[Request, StreamResponse], Awaitable[None]]]
-    _Handler = Callable[[Request], Awaitable[StreamResponse]]
     _Middleware = Union[
-        Callable[[Request, _Handler], Awaitable[StreamResponse]],
-        Callable[["Application", _Handler], Awaitable[_Handler]],  # old-style
+        Callable[[Request, Handler], Awaitable[StreamResponse]],
+        Callable[["Application", Handler], Awaitable[Handler]],  # old-style
     ]
     _Middlewares = FrozenList[_Middleware]
     _MiddlewaresHandlers = Optional[Sequence[Tuple[_Middleware, bool]]]
@@ -71,7 +72,6 @@ else:
     # No type checker mode, skip types
     _AppSignal = Signal
     _RespPrepareSignal = Signal
-    _Handler = Callable
     _Middleware = Callable
     _Middlewares = FrozenList
     _MiddlewaresHandlers = Optional[Sequence]

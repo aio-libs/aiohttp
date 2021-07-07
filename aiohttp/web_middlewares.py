@@ -1,6 +1,7 @@
 import re
 from typing import TYPE_CHECKING, Awaitable, Callable, Tuple, Type, TypeVar
 
+from .typedefs import Handler
 from .web_exceptions import HTTPPermanentRedirect, _HTTPMove
 from .web_request import Request
 from .web_response import StreamResponse
@@ -34,8 +35,7 @@ def middleware(f: _Func) -> _Func:
     return f
 
 
-_Handler = Callable[[Request], Awaitable[StreamResponse]]
-_Middleware = Callable[[Request, _Handler], Awaitable[StreamResponse]]
+_Middleware = Callable[[Request, Handler], Awaitable[StreamResponse]]
 
 
 def normalize_path_middleware(
@@ -79,7 +79,7 @@ def normalize_path_middleware(
     assert correct_configuration, "Cannot both remove and append slash"
 
     @middleware
-    async def impl(request: Request, handler: _Handler) -> StreamResponse:
+    async def impl(request: Request, handler: Handler) -> StreamResponse:
         if isinstance(request.match_info.route, SystemRoute):
             paths_to_check = []
             if "?" in request.raw_path:
@@ -114,7 +114,7 @@ def normalize_path_middleware(
 
 def _fix_request_current_app(app: "Application") -> _Middleware:
     @middleware
-    async def impl(request: Request, handler: _Handler) -> StreamResponse:
+    async def impl(request: Request, handler: Handler) -> StreamResponse:
         with request.match_info.set_current_app(app):
             return await handler(request)
 
