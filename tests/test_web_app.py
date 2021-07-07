@@ -8,6 +8,7 @@ from aiohttp import log, web
 from aiohttp.abc import AbstractAccessLogger, AbstractRouter
 from aiohttp.helpers import DEBUG, PY_36
 from aiohttp.test_utils import make_mocked_coro
+from aiohttp.typedefs import Handler
 
 
 async def test_app_ctor() -> None:
@@ -261,7 +262,7 @@ def test_app_run_middlewares() -> None:
     assert root._run_middlewares is False
 
     @web.middleware
-    async def middleware(request, handler):
+    async def middleware(request, handler: Handler):
         return await handler(request)
 
     root = web.Application(middlewares=[middleware])

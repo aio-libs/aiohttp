@@ -5,6 +5,7 @@ import pytest
 from yarl import URL
 
 from aiohttp import web
+from aiohttp.typedefs import Handler
 
 
 async def test_middleware_modifies_response(loop, aiohttp_client) -> None:
@@ -12,7 +13,7 @@ async def test_middleware_modifies_response(loop, aiohttp_client) -> None:
         return web.Response(body=b"OK")
 
     @web.middleware
-    async def middleware(request, handler):
+    async def middleware(request, handler: Handler):
         resp = await handler(request)
         assert 200 == resp.status
         resp.set_status(201)
@@ -34,7 +35,7 @@ async def test_middleware_handles_exception(loop, aiohttp_client) -> None:
         raise RuntimeError("Error text")
 
     @web.middleware
-    async def middleware(request, handler):
+    async def middleware(request, handler: Handler):
         with pytest.raises(RuntimeError) as ctx:
             await handler(request)
         return web.Response(status=501, text=str(ctx.value) + "[MIDDLEWARE]")
@@ -62,7 +63,7 @@ async def test_middleware_chain(loop, aiohttp_client) -> None:
 
     def make_middleware(num):
         @web.middleware
-        async def middleware(request, handler):
+        async def middleware(request, handler: Handler):
             middleware_annotation_seen_values.append(
                 getattr(handler, "annotation", None)
             )
@@ -108,7 +109,7 @@ async def test_middleware_subapp(loop, aiohttp_client) -> None:
 
     def make_middleware(num):
         @web.middleware
-        async def middleware(request, handler):
+        async def middleware(request, handler: Handler):
             annotation = getattr(handler, "annotation", None)
             if annotation is not None:
                 middleware_annotation_seen_values.append(f"{annotation}/{num}")
@@ -390,7 +391,7 @@ async def test_old_style_middleware(loop, aiohttp_client) -> None:
     async def handler(request):
         return web.Response(body=b"OK")
 
-    async def middleware_factory(app, handler):
+    async def middleware_factory(app, handler: Handler):
         async def middleware(request):
             resp = await handler(request)
             assert 200 == resp.status
@@ -425,7 +426,7 @@ async def test_mixed_middleware(loop, aiohttp_client) -> None:
     async def handler(request):
         return web.Response(body=b"OK")
 
-    async def m_old1(app, handler):
+    async def m_old1(app, handler: Handler):
         async def middleware(request):
             resp = await handler(request)
             resp.text += "[old style 1]"
@@ -434,12 +435,12 @@ async def test_mixed_middleware(loop, aiohttp_client) -> None:
         return middleware
 
     @web.middleware
-    async def m_new1(request, handler):
+    async def m_new1(request, handler: Handler):
         resp = await handler(request)
         resp.text += "[new style 1]"
         return resp
 
-    async def m_old2(app, handler):
+    async def m_old2(app, handler: Handler):
         async def middleware(request):
             resp = await handler(request)
             resp.text += "[old style 2]"
@@ -448,7 +449,7 @@ async def test_mixed_middleware(loop, aiohttp_client) -> None:
         return middleware
 
     @web.middleware
-    async def m_new2(request, handler):
+    async def m_new2(request, handler: Handler):
         resp = await handler(request)
         resp.text += "[new style 2]"
         return resp
@@ -483,7 +484,7 @@ async def test_old_style_middleware_class(loop, aiohttp_client) -> None:
         return web.Response(body=b"OK")
 
     class Middleware:
-        async def __call__(self, app, handler):
+        async def __call__(self, app, handler: Handler):
             async def middleware(request):
                 resp = await handler(request)
                 assert 200 == resp.status
@@ -520,7 +521,7 @@ async def test_new_style_middleware_class(loop, aiohttp_client) -> None:
 
     @web.middleware
     class Middleware:
-        async def __call__(self, request, handler):
+        async def __call__(self, request, handler: Handler):
             resp = await handler(request)
             assert 200 == resp.status
             resp.set_status(201)
@@ -546,7 +547,7 @@ async def test_new_style_middleware_method(loop, aiohttp_client) -> None:
 
     class Middleware:
         @web.middleware
-        async def call(self, request, handler):
+        async def call(self, request, handler: Handler):
             resp = await handler(request)
             assert 200 == resp.status
             resp.set_status(201)
