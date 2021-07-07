@@ -497,7 +497,7 @@ def setup_test_loop(
             # * https://stackoverflow.com/a/58614689/595220
             # * https://bugs.python.org/issue35621
             # * https://github.com/python/cpython/pull/14344
-            watcher = asyncio.ThreadedChildWatcher()
+            watcher = asyncio.MultiLoopChildWatcher()
         except AttributeError:  # Python < 3.8
             watcher = asyncio.SafeChildWatcher()
         watcher.attach_loop(loop)
