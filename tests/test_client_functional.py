@@ -2343,6 +2343,7 @@ def create_server_for_url_and_handler(
         app = web.Application()
         app.router.add_route("GET", url.path, srv)
 
+        kwargs = {}
         if url.scheme == "https":
             cert = tls_certificate_authority.issue_cert(
                 url.host, "localhost", "127.0.0.1"
