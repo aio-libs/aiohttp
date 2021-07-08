@@ -52,8 +52,6 @@ chardet==4.0.0
     #   requests
 cherry_picker==2.0.0 ; python_version >= "3.6"
     # via -r requirements/dev.in
-click-default-group==1.2.2
-    # via towncrier
 click==7.1.2
     # via
     #   -r requirements/lint.txt
@@ -61,6 +59,8 @@ click==7.1.2
     #   cherry-picker
     #   click-default-group
     #   towncrier
+click-default-group==1.2.2
+    # via towncrier
 coverage==5.5
     # via
     #   -r requirements/test.txt
@@ -79,12 +79,12 @@ filelock==3.0.12
     # via
     #   -r requirements/lint.txt
     #   virtualenv
-flake8-pyi==20.10.0
-    # via -r requirements/lint.txt
 flake8==3.9.2
     # via
     #   -r requirements/lint.txt
     #   flake8-pyi
+flake8-pyi==20.10.0
+    # via -r requirements/lint.txt
 freezegun==1.1.0
     # via -r requirements/test.txt
 frozenlist==1.1.1
@@ -114,7 +114,7 @@ iniconfig==1.1.1
     # via
     #   -r requirements/lint.txt
     #   pytest
-isort==5.9.1
+isort==5.9.2
     # via -r requirements/lint.txt
 jinja2==2.11.3
     # via
@@ -130,16 +130,16 @@ multidict==5.1.0
     # via
     #   -r requirements/multidict.txt
     #   yarl
+mypy==0.790 ; implementation_name == "cpython"
+    # via
+    #   -r requirements/lint.txt
+    #   -r requirements/test.txt
 mypy-extensions==0.4.3 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.txt
     #   -r requirements/test.txt
     #   black
     #   mypy
-mypy==0.790 ; implementation_name == "cpython"
-    # via
-    #   -r requirements/lint.txt
-    #   -r requirements/test.txt
 nodeenv==1.5.0
     # via
     #   -r requirements/lint.txt
@@ -188,16 +188,16 @@ pyparsing==2.4.7
     # via
     #   -r requirements/lint.txt
     #   packaging
-pytest-cov==2.12.1
-    # via -r requirements/test.txt
-pytest-mock==3.6.1
-    # via -r requirements/test.txt
 pytest==6.2.2
     # via
     #   -r requirements/lint.txt
     #   -r requirements/test.txt
     #   pytest-cov
     #   pytest-mock
+pytest-cov==2.12.1
+    # via -r requirements/test.txt
+pytest-mock==3.6.1
+    # via -r requirements/test.txt
 python-dateutil==2.8.1
     # via freezegun
 pytz==2020.5
@@ -227,7 +227,7 @@ six==1.15.0
     #   virtualenv
 snowballstemmer==2.0.0
     # via sphinx
-sphinx==4.0.2
+sphinx==4.0.3
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-asyncio
