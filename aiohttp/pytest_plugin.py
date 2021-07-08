@@ -163,9 +163,9 @@ def _runtime_warning_context():  # type: ignore[no-untyped-def]
 
 
 @contextlib.contextmanager
-def _passthrough_loop_context(
+def _passthrough_loop_context(  # type: ignore[no-untyped-def]
     loop, fast=False, skip_watcher=False
-):  # type: ignore[no-untyped-def]
+):
     """
     setups and tears down a loop unless one is passed in via the loop
     argument when it's passed straight through.
