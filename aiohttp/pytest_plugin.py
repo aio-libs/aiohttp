@@ -49,7 +49,7 @@ def pytest_addoption(parser):  # type: ignore[no-untyped-def]
         "--aiohttp-skip-watcher",
         action="store_true",
         default=False,
-        help="skip adding child process watcher when not calling asyncio.create_subprocess_*",
+        help="skip adding child process watcher when not using asyncio subprocess",
     )
     parser.addoption(
         "--aiohttp-enable-loop-debug",
@@ -163,7 +163,9 @@ def _runtime_warning_context():  # type: ignore[no-untyped-def]
 
 
 @contextlib.contextmanager
-def _passthrough_loop_context(loop, fast=False, skip_watcher=False):  # type: ignore[no-untyped-def]
+def _passthrough_loop_context(
+    loop, fast=False, skip_watcher=False
+):  # type: ignore[no-untyped-def]
     """
     setups and tears down a loop unless one is passed in via the loop
     argument when it's passed straight through.
