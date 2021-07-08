@@ -184,7 +184,7 @@ def unix_sockname(tmp_path: Any, tmp_path_factory: Any):
 
 
 @pytest.fixture
-def selector_loop() -> None:
+def selector_loop(skip_watcher) -> None:
     if sys.version_info < (3, 7):
         policy = asyncio.get_event_loop_policy()
         policy._loop_factory = asyncio.SelectorEventLoop
@@ -195,6 +195,22 @@ def selector_loop() -> None:
             policy = asyncio.DefaultEventLoopPolicy()
         asyncio.set_event_loop_policy(policy)
 
-    with loop_context(policy.new_event_loop) as _loop:
+    with loop_context(policy.new_event_loop, skip_watcher=skip_watcher) as _loop:
         asyncio.set_event_loop(_loop)
         yield _loop
+
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers", "use_aio_subprocess: mark test as using asyncio.create_subprocess_*"
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    if config.getoption("--aiohttp-skip-watcher"):
+        skip_subprocess = pytest.mark.skip(
+            reason="subprocess tests require adding child watcher"
+        )
+        for item in items:
+            if "use_aio_subprocess" in item.keywords:
+                item.add_marker(skip_subprocess)

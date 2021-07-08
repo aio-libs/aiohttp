@@ -54,8 +54,8 @@ def _create_example_app():
 
 # these exist to test the pytest scenario
 @pytest.fixture
-def loop() -> None:
-    with loop_context() as loop:
+def loop(skip_watcher) -> None:
+    with loop_context(skip_watcher=skip_watcher) as loop:
         yield loop
 
 

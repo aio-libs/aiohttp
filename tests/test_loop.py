@@ -12,6 +12,7 @@ from aiohttp.test_utils import AioHTTPTestCase
 @pytest.mark.skipif(
     platform.system() == "Windows", reason="the test is not valid for Windows"
 )
+@pytest.mark.use_aio_subprocess
 async def test_subprocess_co(loop: Any) -> None:
     assert threading.current_thread() is threading.main_thread()
     proc = await asyncio.create_subprocess_shell(

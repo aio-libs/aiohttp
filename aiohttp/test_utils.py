@@ -460,33 +460,39 @@ _LOOP_FACTORY = Callable[[], asyncio.AbstractEventLoop]
 
 @contextlib.contextmanager
 def loop_context(
-    loop_factory: _LOOP_FACTORY = asyncio.new_event_loop, fast: bool = False
+    loop_factory: _LOOP_FACTORY = asyncio.new_event_loop,
+    fast: bool = False,
+    skip_watcher: bool = False,
 ) -> Iterator[asyncio.AbstractEventLoop]:
     """A contextmanager that creates an event_loop, for test purposes.
 
     Handles the creation and cleanup of a test loop.
     """
-    loop = setup_test_loop(loop_factory)
+    loop = setup_test_loop(loop_factory, skip_watcher=skip_watcher)
     yield loop
     teardown_test_loop(loop, fast=fast)
 
 
 def setup_test_loop(
-    loop_factory: _LOOP_FACTORY = asyncio.new_event_loop,
+    loop_factory: _LOOP_FACTORY = asyncio.new_event_loop, skip_watcher: bool = False
 ) -> asyncio.AbstractEventLoop:
     """Create and return an asyncio.BaseEventLoop
     instance.
+
+    If you do not need to call `asyncio.create_subprocess_*` methods in unit tests, use
+    skip_watcher=True to avoid the cost of setting up child process watchers.
 
     The caller should also call teardown_test_loop,
     once they are done with the loop.
     """
     loop = loop_factory()
-    try:
-        module = loop.__class__.__module__
-        skip_watcher = "uvloop" in module
-    except AttributeError:  # pragma: no cover
-        # Just in case
-        skip_watcher = True
+    if not skip_watcher:
+        try:
+            module = loop.__class__.__module__
+            skip_watcher = "uvloop" in module
+        except AttributeError:  # pragma: no cover
+            # Just in case
+            pass
     asyncio.set_event_loop(loop)
     if sys.platform != "win32" and not skip_watcher:
         policy = asyncio.get_event_loop_policy()

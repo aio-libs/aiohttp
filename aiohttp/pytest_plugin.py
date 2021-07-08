@@ -46,6 +46,12 @@ def pytest_addoption(parser):  # type: ignore[no-untyped-def]
         help="run tests with specific loop: pyloop, uvloop, tokio or all",
     )
     parser.addoption(
+        "--aiohttp-skip-watcher",
+        action="store_true",
+        default=False,
+        help="skip adding child process watcher when not calling asyncio.create_subprocess_*",
+    )
+    parser.addoption(
         "--aiohttp-enable-loop-debug",
         action="store_true",
         default=False,
@@ -116,6 +122,12 @@ def fast(request):  # type: ignore[no-untyped-def]
 
 
 @pytest.fixture
+def skip_watcher(request):  # type: ignore[no-untyped-def]
+    """--skip-watcher config option"""
+    return request.config.getoption("--aiohttp-skip-watcher")
+
+
+@pytest.fixture
 def loop_debug(request):  # type: ignore[no-untyped-def]
     """--enable-loop-debug config option"""
     return request.config.getoption("--aiohttp-enable-loop-debug")
@@ -151,7 +163,7 @@ def _runtime_warning_context():  # type: ignore[no-untyped-def]
 
 
 @contextlib.contextmanager
-def _passthrough_loop_context(loop, fast=False):  # type: ignore[no-untyped-def]
+def _passthrough_loop_context(loop, fast=False, skip_watcher=False):  # type: ignore[no-untyped-def]
     """
     setups and tears down a loop unless one is passed in via the loop
     argument when it's passed straight through.
@@ -161,7 +173,7 @@ def _passthrough_loop_context(loop, fast=False):  # type: ignore[no-untyped-def]
         yield loop
     else:
         # this shadows loop_context's standard behavior
-        loop = setup_test_loop()
+        loop = setup_test_loop(skip_watcher=skip_watcher)
         yield loop
         teardown_test_loop(loop, fast=fast)
 
@@ -179,12 +191,15 @@ def pytest_pyfunc_call(pyfuncitem):  # type: ignore[no-untyped-def]
     Run coroutines in an event loop instead of a normal function call.
     """
     fast = pyfuncitem.config.getoption("--aiohttp-fast")
+    skip_watcher = pyfuncitem.config.getoption("--aiohttp-skip-watcher")
     if asyncio.iscoroutinefunction(pyfuncitem.function):
         existing_loop = pyfuncitem.funcargs.get(
             "proactor_loop"
         ) or pyfuncitem.funcargs.get("loop", None)
         with _runtime_warning_context():
-            with _passthrough_loop_context(existing_loop, fast=fast) as _loop:
+            with _passthrough_loop_context(
+                existing_loop, fast=fast, skip_watcher=skip_watcher
+            ) as _loop:
                 testargs = {
                     arg: pyfuncitem.funcargs[arg]
                     for arg in pyfuncitem._fixtureinfo.argnames
@@ -229,11 +244,11 @@ def pytest_generate_tests(metafunc):  # type: ignore[no-untyped-def]
 
 
 @pytest.fixture
-def loop(loop_factory, fast, loop_debug):  # type: ignore[no-untyped-def]
+def loop(loop_factory, fast, skip_watcher, loop_debug):  # type: ignore[no-untyped-def]
     """Return an instance of the event loop."""
     policy = loop_factory()
     asyncio.set_event_loop_policy(policy)
-    with loop_context(fast=fast) as _loop:
+    with loop_context(fast=fast, skip_watcher=skip_watcher) as _loop:
         if loop_debug:
             _loop.set_debug(True)  # pragma: no cover
         asyncio.set_event_loop(_loop)
@@ -244,8 +259,8 @@ def loop(loop_factory, fast, loop_debug):  # type: ignore[no-untyped-def]
 def proactor_loop():  # type: ignore[no-untyped-def]
     policy = asyncio.WindowsProactorEventLoopPolicy()  # type: ignore[attr-defined]
     asyncio.set_event_loop_policy(policy)
-
-    with loop_context(policy.new_event_loop) as _loop:
+    # Child process watcher is not supported on Windows
+    with loop_context(policy.new_event_loop, skip_watcher=True) as _loop:
         asyncio.set_event_loop(_loop)
         yield _loop
 
