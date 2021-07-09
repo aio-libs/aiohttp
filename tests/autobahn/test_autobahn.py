@@ -5,9 +5,9 @@ import pytest
 from python_on_whales import DockerClient
 
 
-@pytest.fixture(scope="session", autouse=True)
-def create_report_directory():
-    path = Path("tests/autobahn/reports")
+@pytest.fixture(scope="function", autouse=True)
+def create_report_directory(request):
+    path = Path(f"{request.fspath.dirname}/reports")
     if path.is_dir():
         shutil.rmtree(path)
     path.mkdir()
