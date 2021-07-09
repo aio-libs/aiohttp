@@ -2339,7 +2339,7 @@ async def test_creds_in_auth_and_url() -> None:
 def create_server_for_url_and_handler(
     aiohttp_server: Any, tls_certificate_authority: Any
 ):
-    async def create(url: URL, srv: Any):
+    def create(url: URL, srv: Any):
         app = web.Application()
         app.router.add_route("GET", url.path, srv)
 
@@ -2351,7 +2351,7 @@ def create_server_for_url_and_handler(
             ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
             cert.configure_cert(ssl_ctx)
             kwargs["ssl"] = ssl_ctx
-        return await aiohttp_server(app, **kwargs)
+        return aiohttp_server(app, **kwargs)
 
     return create
 
@@ -2379,27 +2379,26 @@ async def test_drop_auth_on_redirect_to_other_host(
     url_to: str,
     is_drop_header_expected: bool,
 ) -> None:
-    yarl_a = URL(url_from)
-    yarl_b = URL(url_to)
+    url_from, url_to = URL(url_from), URL(url_to)
 
-    async def srv1(request):
-        assert request.host == yarl_a.host
+    async def srv_from(request):
+        assert request.host == url_from.host
         assert request.headers["Authorization"] == "Basic dXNlcjpwYXNz"
         raise web.HTTPFound(url_to)
 
-    async def srv2(request):
-        assert request.host == yarl_b.host
+    async def srv_to(request):
+        assert request.host == url_to.host
         if is_drop_header_expected:
             assert "Authorization" not in request.headers, "Header wasn't dropped"
         else:
             assert "Authorization" in request.headers, "Header was dropped"
         return web.Response()
 
-    server_from = await create_server_for_url_and_handler(yarl_a, srv1)
-    server_to = await create_server_for_url_and_handler(yarl_b, srv2)
+    server_from = await create_server_for_url_and_handler(url_from, srv_from)
+    server_to = await create_server_for_url_and_handler(url_to, srv_to)
 
     assert (
-        yarl_a.host != yarl_b.host or server_from.scheme != server_to.scheme
+        url_from.host != url_to.host or server_from.scheme != server_to.scheme
     ), "Invalid test case, host or scheme must differ"
 
     protocol_port_map = {
@@ -2407,8 +2406,8 @@ async def test_drop_auth_on_redirect_to_other_host(
         "https": 443,
     }
     etc_hosts = {
-        (yarl_a.host, protocol_port_map[server_from.scheme]): server_from,
-        (yarl_b.host, protocol_port_map[server_to.scheme]): server_to,
+        (url_from.host, protocol_port_map[server_from.scheme]): server_from,
+        (url_to.host, protocol_port_map[server_to.scheme]): server_to,
     }
 
     class FakeResolver(AbstractResolver):
