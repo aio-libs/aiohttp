@@ -16,14 +16,14 @@ def create_report_directory(request):
 @pytest.fixture(scope="session", autouse=True)
 def build_aiohttp_docker_image():
     docker = DockerClient()
+    aiohttp_builder = docker.buildx.create(name="aiohttp", use=True)
     docker.buildx.build(
         context_path=".", file="tests/autobahn/Dockerfile.aiohttp", tags=["aiohttp"]
     )
     try:
         yield
     finally:
-        # default is the name of the default builder
-        docker.buildx.remove("default")
+        aiohttp_builder.remove()
 
 
 def test_client():
