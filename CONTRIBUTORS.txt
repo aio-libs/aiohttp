@@ -28,6 +28,7 @@ Alexandru Mihai
 Alexey Firsov
 Alexey Popravka
 Alexey Stepanov
+Almaz Salakhov
 Amin Etesamian
 Amit Tulshyan
 Amy Boyle

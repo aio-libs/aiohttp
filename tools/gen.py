@@ -111,10 +111,7 @@ def gen_block(dct, prefix, used_blocks, missing, out):
             continue
         next_prefix = gen_prefix(prefix, k)
         term = v.get(TERMINAL)
-        if term is not None:
-            index = headers.index(term)
-        else:
-            index = -1
+        index = headers.index(term) if term is not None else -1
         hi = k.upper()
         lo = k.lower()
         case = CASE.format(char=hi, index=index, next=next_prefix)
