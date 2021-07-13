@@ -5,7 +5,7 @@
 #    pip-compile --allow-unsafe requirements/doc-spelling.in
 #
 aiohttp-theme==0.1.6
-    # via -r doc.txt
+    # via -r requirements/doc.txt
 alabaster==0.7.12
     # via sphinx
 babel==2.9.0
@@ -16,12 +16,12 @@ certifi==2020.12.5
     # via requests
 chardet==4.0.0
     # via requests
-click-default-group==1.2.2
-    # via towncrier
 click==7.1.2
     # via
     #   click-default-group
     #   towncrier
+click-default-group==1.2.2
+    # via towncrier
 docutils==0.16
     # via sphinx
 funcparserlib==0.3.6
@@ -30,8 +30,6 @@ idna==2.10
     # via requests
 imagesize==1.2.0
     # via sphinx
-importlib-metadata==4.5.0
-    # via sphinxcontrib-spelling
 incremental==17.5.0
     # via towncrier
 jinja2==2.11.3
@@ -48,7 +46,7 @@ pyenchant==3.2.0
     # via sphinxcontrib-spelling
 pygments==2.9.0
     # via
-    #   -r doc.txt
+    #   -r requirements/doc.txt
     #   sphinx
 pyparsing==2.4.7
     # via packaging
@@ -58,18 +56,18 @@ requests==2.25.1
     # via sphinx
 snowballstemmer==2.1.0
     # via sphinx
-sphinx==4.0.2
+sphinx==4.1.0
     # via
-    #   -r doc.txt
+    #   -r requirements/doc.txt
     #   sphinxcontrib-asyncio
     #   sphinxcontrib-blockdiag
     #   sphinxcontrib-spelling
 sphinxcontrib-applehelp==1.0.2
     # via sphinx
 sphinxcontrib-asyncio==0.3.0
-    # via -r doc.txt
+    # via -r requirements/doc.txt
 sphinxcontrib-blockdiag==2.0.0
-    # via -r doc.txt
+    # via -r requirements/doc.txt
 sphinxcontrib-devhelp==1.0.2
     # via sphinx
 sphinxcontrib-htmlhelp==1.0.3
@@ -81,19 +79,15 @@ sphinxcontrib-qthelp==1.0.3
 sphinxcontrib-serializinghtml==1.1.4
     # via sphinx
 sphinxcontrib-spelling==7.2.1 ; platform_system != "Windows"
-    # via -r doc-spelling.in
+    # via -r requirements/doc-spelling.in
 toml==0.10.2
     # via towncrier
 towncrier==21.3.0
-    # via -r doc.txt
-typing-extensions==3.10.0.0
-    # via importlib-metadata
+    # via -r requirements/doc.txt
 urllib3==1.26.5
     # via requests
 webcolors==1.11.1
     # via blockdiag
-zipp==3.4.1
-    # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
 setuptools==53.0.0
