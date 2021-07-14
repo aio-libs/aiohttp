@@ -1,0 +1,1 @@
+Uses `ThreadedChildWatcher` under POSIX to allow setting up test loop in non-main thread.
