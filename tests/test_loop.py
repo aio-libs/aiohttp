@@ -46,7 +46,7 @@ def test_default_loop(loop: Any) -> None:
 
 
 def test_setup_loop_non_main_thread() -> None:
-    def target():
+    def target() -> None:
         with loop_context():
             pass
 
