@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 
 from aiohttp import web
-from aiohttp.test_utils import AioHTTPTestCase
+from aiohttp.test_utils import AioHTTPTestCase, setup_test_loop
 
 
 @pytest.mark.skipif(
@@ -43,3 +43,10 @@ class TestCase(AioHTTPTestCase):
 
 def test_default_loop(loop: Any) -> None:
     assert asyncio.get_event_loop() is loop
+
+
+def test_setup_loop_non_main_thread():
+    # Ensures setup_test_loop can be called by pytest-xdist in non-main thread.
+    t = threading.Thread(target=setup_test_loop)
+    t.start()
+    t.join()
