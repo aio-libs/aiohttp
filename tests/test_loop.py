@@ -45,7 +45,7 @@ def test_default_loop(loop: Any) -> None:
     assert asyncio.get_event_loop() is loop
 
 
-def test_setup_loop_non_main_thread():
+def test_setup_loop_non_main_thread() -> None:
     # Ensures setup_test_loop can be called by pytest-xdist in non-main thread.
     t = threading.Thread(target=setup_test_loop)
     t.start()
