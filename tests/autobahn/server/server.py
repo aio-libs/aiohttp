@@ -5,11 +5,11 @@ import logging
 from aiohttp import WSCloseCode, web
 
 
-async def wshandler(request):
+async def wshandler(request: web.Request) -> web.WebSocketResponse:
     ws = web.WebSocketResponse(autoclose=False)
     is_ws = ws.can_prepare(request)
     if not is_ws:
-        return web.HTTPBadRequest()
+        raise web.HTTPBadRequest()
 
     await ws.prepare(request)
 
@@ -29,7 +29,7 @@ async def wshandler(request):
     return ws
 
 
-async def on_shutdown(app):
+async def on_shutdown(app: web.Application) -> None:
     for ws in set(app["websockets"]):
         await ws.close(code=WSCloseCode.GOING_AWAY, message="Server shutdown")
 
