@@ -730,6 +730,14 @@ def test_is_expected_content_type_json_match_partially():
     )
 
 
+def test_is_expected_content_type_json_match_not_just_prefix():
+    expected_ct = "application/json"
+    response_ct = "application/json-seq"
+    assert not is_expected_content_type(
+        response_content_type=response_ct, expected_content_type=expected_ct
+    )
+
+
 def test_is_expected_content_type_non_json_match_exact():
     expected_ct = "text/javascript"
     response_ct = "text/javascript"
