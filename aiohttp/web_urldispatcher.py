@@ -37,6 +37,7 @@ from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
 from .helpers import DEBUG, iscoroutinefunction
 from .http import HttpVersion11
 from .typedefs import Handler, PathLike, _SafeApplication, _SafeRequest
+from .web_app import Application
 from .web_exceptions import (
     HTTPException,
     HTTPExpectationFailed,
@@ -245,7 +246,7 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
     def apps(self) -> Tuple[_SafeApplication, ...]:
         return tuple(self._apps)
 
-    def add_app(self, app: _SafeApplication) -> None:
+    def add_app(self, app: Application[Any]) -> None:
         if self._frozen:
             raise RuntimeError("Cannot change apps stack after .freeze() call")
         if self._current_app is None:

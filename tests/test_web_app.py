@@ -1,7 +1,7 @@
-# type: ignore
 import asyncio
-from typing import Any
+from typing import Any, Dict, TypedDict
 from unittest import mock
+from typing import AsyncIterator, Callable, NoReturn
 
 import pytest
 
@@ -10,18 +10,25 @@ from aiohttp.test_utils import make_mocked_coro
 from aiohttp.typedefs import Handler
 
 
+class EmptyDict(TypedDict):
+    pass
+
+
+_EmptyApplication = web.Application[EmptyDict]
+
+
 async def test_app_ctor() -> None:
-    app = web.Application()
+    app: _EmptyApplication = web.Application()
     assert app.logger is log.web_logger
 
 
 def test_app_call() -> None:
-    app = web.Application()
+    app: _EmptyApplication = web.Application()
     assert app is app()
 
 
 async def test_app_register_on_finish() -> None:
-    app = web.Application()
+    app: _EmptyApplication = web.Application()
     cb1 = make_mocked_coro(None)
     cb2 = make_mocked_coro(None)
     app.on_cleanup.append(cb1)
@@ -33,10 +40,10 @@ async def test_app_register_on_finish() -> None:
 
 
 async def test_app_register_coro() -> None:
-    app = web.Application()
+    app: _EmptyApplication = web.Application()
     fut = asyncio.get_event_loop().create_future()
 
-    async def cb(app):
+    async def cb(app: _EmptyApplication) -> None:
         await asyncio.sleep(0.001)
         fut.set_result(123)
 
@@ -49,16 +56,16 @@ async def test_app_register_coro() -> None:
 
 def test_logging() -> None:
     logger = mock.Mock()
-    app = web.Application()
+    app: _EmptyApplication = web.Application()
     app.logger = logger
     assert app.logger is logger
 
 
 async def test_on_shutdown() -> None:
-    app = web.Application()
+    app: _EmptyApplication = web.Application()
     called = False
 
-    async def on_shutdown(app_param):
+    async def on_shutdown(app_param: _EmptyApplication) -> None:
         nonlocal called
         assert app is app_param
         called = True
@@ -70,27 +77,27 @@ async def test_on_shutdown() -> None:
 
 
 async def test_on_startup() -> None:
-    app = web.Application()
+    app: _EmptyApplication = web.Application()
 
     long_running1_called = False
     long_running2_called = False
     all_long_running_called = False
 
-    async def long_running1(app_param):
+    async def long_running1(app_param: _EmptyApplication) -> None:
         nonlocal long_running1_called
         assert app is app_param
         long_running1_called = True
 
-    async def long_running2(app_param):
+    async def long_running2(app_param: _EmptyApplication) -> None:
         nonlocal long_running2_called
         assert app is app_param
         long_running2_called = True
 
-    async def on_startup_all_long_running(app_param):
+    async def on_startup_all_long_running(app_param: _EmptyApplication) -> None:
         nonlocal all_long_running_called
         assert app is app_param
         all_long_running_called = True
-        return await asyncio.gather(long_running1(app_param), long_running2(app_param))
+        await asyncio.gather(long_running1(app_param), long_running2(app_param))
 
     app.on_startup.append(on_startup_all_long_running)
     app.freeze()
@@ -102,15 +109,15 @@ async def test_on_startup() -> None:
 
 
 def test_app_delitem() -> None:
-    app = web.Application()
-    app["key"] = "value"
-    assert len(app) == 1
-    del app["key"]
-    assert len(app) == 0
+    app: web.Application[Dict[str, str]] = web.Application()
+    app.state["key"] = "value"
+    assert len(app.state) == 1
+    del app.state["key"]
+    assert len(app.state) == 0
 
 
 def test_app_freeze() -> None:
-    app = web.Application()
+    app: _EmptyApplication = web.Application()
     subapp = mock.Mock()
     subapp._middlewares = ()
     app._subapps.append(subapp)
@@ -123,8 +130,8 @@ def test_app_freeze() -> None:
 
 
 def test_equality() -> None:
-    app1 = web.Application()
-    app2 = web.Application()
+    app1: _EmptyApplication = web.Application()
+    app2: _EmptyApplication = web.Application()
 
     assert app1 == app1
     assert app1 != app2
@@ -132,13 +139,15 @@ def test_equality() -> None:
 
 def test_app_run_middlewares() -> None:
 
-    root = web.Application()
-    sub = web.Application()
+    root: _EmptyApplication = web.Application()
+    sub: _EmptyApplication = web.Application()
     root.add_subapp("/sub", sub)
     root.freeze()
     assert root._run_middlewares is False
 
-    async def middleware(request, handler: Handler):
+    async def middleware(
+        request: web.Request[EmptyDict], handler: Handler
+    ) -> web.StreamResponse:
         return await handler(request)
 
     root = web.Application(middlewares=[middleware])
@@ -155,8 +164,8 @@ def test_app_run_middlewares() -> None:
 
 
 def test_subapp_pre_frozen_after_adding() -> None:
-    app = web.Application()
-    subapp = web.Application()
+    app: _EmptyApplication = web.Application()
+    subapp: _EmptyApplication = web.Application()
 
     app.add_subapp("/prefix", subapp)
     assert subapp.pre_frozen
@@ -166,22 +175,22 @@ def test_subapp_pre_frozen_after_adding() -> None:
 def test_app_inheritance() -> None:
     with pytest.raises(TypeError):
 
-        class A(web.Application):
+        class A(web.Application[Any]):  # type: ignore[misc]
             pass
 
 
 def test_app_custom_attr() -> None:
-    app = web.Application()
+    app: _EmptyApplication = web.Application()
     with pytest.raises(AttributeError):
-        app.custom = None
+        app.custom = None  # type: ignore[attr-defined]
 
 
 async def test_cleanup_ctx() -> None:
-    app = web.Application()
+    app: _EmptyApplication = web.Application()
     out = []
 
-    def f(num):
-        async def inner(app):
+    def f(num: int) -> Callable[[_EmptyApplication], AsyncIterator[None]]:
+        async def inner(app: _EmptyApplication) -> AsyncIterator[None]:
             out.append("pre_" + str(num))
             yield None
             out.append("post_" + str(num))
@@ -198,13 +207,15 @@ async def test_cleanup_ctx() -> None:
 
 
 async def test_cleanup_ctx_exception_on_startup() -> None:
-    app = web.Application()
+    app: _EmptyApplication = web.Application()
     out = []
 
     exc = Exception("fail")
 
-    def f(num, fail=False):
-        async def inner(app):
+    def f(
+        num: int, fail: bool = False
+    ) -> Callable[[_EmptyApplication], AsyncIterator[None]]:
+        async def inner(app: _EmptyApplication) -> AsyncIterator[None]:
             out.append("pre_" + str(num))
             if fail:
                 raise exc
@@ -226,13 +237,15 @@ async def test_cleanup_ctx_exception_on_startup() -> None:
 
 
 async def test_cleanup_ctx_exception_on_cleanup() -> None:
-    app = web.Application()
+    app: _EmptyApplication = web.Application()
     out = []
 
     exc = Exception("fail")
 
-    def f(num, fail=False):
-        async def inner(app):
+    def f(
+        num: int, fail: bool = False
+    ) -> Callable[[_EmptyApplication], AsyncIterator[None]]:
+        async def inner(app: _EmptyApplication) -> AsyncIterator[None]:
             out.append("pre_" + str(num))
             yield None
             out.append("post_" + str(num))
@@ -254,16 +267,16 @@ async def test_cleanup_ctx_exception_on_cleanup() -> None:
 
 
 async def test_cleanup_ctx_cleanup_after_exception() -> None:
-    app = web.Application()
+    app: _EmptyApplication = web.Application()
     ctx_state = None
 
-    async def success_ctx(app):
+    async def success_ctx(app: _EmptyApplication) -> AsyncIterator[None]:
         nonlocal ctx_state
         ctx_state = "START"
         yield
         ctx_state = "CLEAN"
 
-    async def fail_ctx(app):
+    async def fail_ctx(app: _EmptyApplication) -> AsyncIterator[NoReturn]:
         raise Exception()
         yield
 
@@ -280,11 +293,13 @@ async def test_cleanup_ctx_cleanup_after_exception() -> None:
 
 
 async def test_cleanup_ctx_exception_on_cleanup_multiple() -> None:
-    app = web.Application()
+    app: _EmptyApplication = web.Application()
     out = []
 
-    def f(num, fail=False):
-        async def inner(app):
+    def f(
+        num: int, fail: bool = False
+    ) -> Callable[[_EmptyApplication], AsyncIterator[None]]:
+        async def inner(app: _EmptyApplication) -> AsyncIterator[None]:
             out.append("pre_" + str(num))
             yield None
             out.append("post_" + str(num))
@@ -309,11 +324,11 @@ async def test_cleanup_ctx_exception_on_cleanup_multiple() -> None:
 
 
 async def test_cleanup_ctx_multiple_yields() -> None:
-    app = web.Application()
+    app: _EmptyApplication = web.Application()
     out = []
 
-    def f(num):
-        async def inner(app):
+    def f(num: int) -> Callable[[_EmptyApplication], AsyncIterator[None]]:
+        async def inner(app: _EmptyApplication) -> AsyncIterator[None]:
             out.append("pre_" + str(num))
             yield None
             out.append("post_" + str(num))
@@ -332,22 +347,22 @@ async def test_cleanup_ctx_multiple_yields() -> None:
 
 
 async def test_subapp_chained_config_dict_visibility(aiohttp_client: Any) -> None:
-    async def main_handler(request):
+    async def main_handler(request: web.Request[Dict[str, str]]) -> web.Response:
         assert request.config_dict["key1"] == "val1"
         assert "key2" not in request.config_dict
         return web.Response(status=200)
 
-    root = web.Application()
-    root["key1"] = "val1"
+    root: web.Application[Dict[str, str]] = web.Application()
+    root.state["key1"] = "val1"
     root.add_routes([web.get("/", main_handler)])
 
-    async def sub_handler(request):
+    async def sub_handler(request: web.Request[Dict[str, str]]) -> web.Response:
         assert request.config_dict["key1"] == "val1"
         assert request.config_dict["key2"] == "val2"
         return web.Response(status=201)
 
-    sub = web.Application()
-    sub["key2"] = "val2"
+    sub: web.Application[Dict[str, str]] = web.Application()
+    sub.state["key2"] = "val2"
     sub.add_routes([web.get("/", sub_handler)])
     root.add_subapp("/sub", sub)
 
@@ -360,20 +375,20 @@ async def test_subapp_chained_config_dict_visibility(aiohttp_client: Any) -> Non
 
 
 async def test_subapp_chained_config_dict_overriding(aiohttp_client: Any) -> None:
-    async def main_handler(request):
+    async def main_handler(request: web.Request[Dict[str, str]]) -> web.Response:
         assert request.config_dict["key"] == "val1"
         return web.Response(status=200)
 
-    root = web.Application()
-    root["key"] = "val1"
+    root: web.Application[Dict[str, str]] = web.Application()
+    root.state["key"] = "val1"
     root.add_routes([web.get("/", main_handler)])
 
-    async def sub_handler(request):
+    async def sub_handler(request: web.Request[Dict[str, str]]) -> web.Response:
         assert request.config_dict["key"] == "val2"
         return web.Response(status=201)
 
-    sub = web.Application()
-    sub["key"] = "val2"
+    sub: web.Application[Dict[str, str]] = web.Application()
+    sub.state["key"] = "val2"
     sub.add_routes([web.get("/", sub_handler)])
     root.add_subapp("/sub", sub)
 
@@ -386,25 +401,24 @@ async def test_subapp_chained_config_dict_overriding(aiohttp_client: Any) -> Non
 
 
 async def test_subapp_on_startup(aiohttp_client: Any) -> None:
-
-    subapp = web.Application()
+    subapp: web.Application[Dict[str, bool]] = web.Application()
 
     startup_called = False
 
-    async def on_startup(app):
+    async def on_startup(app: web.Application[Dict[str, bool]]) -> None:
         nonlocal startup_called
         startup_called = True
-        app["startup"] = True
+        app.state["startup"] = True
 
     subapp.on_startup.append(on_startup)
 
     ctx_pre_called = False
     ctx_post_called = False
 
-    async def cleanup_ctx(app):
+    async def cleanup_ctx(app: web.Application[Dict[str, bool]]) -> AsyncIterator[None]:
         nonlocal ctx_pre_called, ctx_post_called
         ctx_pre_called = True
-        app["cleanup"] = True
+        app.state["cleanup"] = True
         yield None
         ctx_post_called = True
 
@@ -412,7 +426,7 @@ async def test_subapp_on_startup(aiohttp_client: Any) -> None:
 
     shutdown_called = False
 
-    async def on_shutdown(app):
+    async def on_shutdown(app: web.Application[Dict[str, bool]]) -> None:
         nonlocal shutdown_called
         shutdown_called = True
 
@@ -420,13 +434,13 @@ async def test_subapp_on_startup(aiohttp_client: Any) -> None:
 
     cleanup_called = False
 
-    async def on_cleanup(app):
+    async def on_cleanup(app: web.Application[Dict[str, bool]]) -> None:
         nonlocal cleanup_called
         cleanup_called = True
 
     subapp.on_cleanup.append(on_cleanup)
 
-    app = web.Application()
+    app: web.Application[Dict[str, bool]] = web.Application()
 
     app.add_subapp("/subapp", subapp)
 
@@ -460,27 +474,27 @@ async def test_subapp_on_startup(aiohttp_client: Any) -> None:
 
 
 def test_app_iter() -> None:
-    app = web.Application()
-    app["a"] = "1"
-    app["b"] = "2"
-    assert sorted(list(app)) == ["a", "b"]
+    app: web.Application[Dict[str, str]] = web.Application()
+    app.state["a"] = "1"
+    app.state["b"] = "2"
+    assert sorted(list(app.state)) == ["a", "b"]
 
 
 def test_app_forbid_nonslot_attr() -> None:
-    app = web.Application()
+    app: _EmptyApplication = web.Application()
     with pytest.raises(AttributeError):
-        app.unknow_attr
+        app.unknow_attr  # type: ignore[attr-defined]
     with pytest.raises(AttributeError):
-        app.unknow_attr = 1
+        app.unknow_attr = 1  # type: ignore[attr-defined]
 
 
 def test_forbid_changing_frozen_app() -> None:
-    app = web.Application()
+    app: web.Application[Dict[str, str]] = web.Application()
     app.freeze()
     with pytest.raises(RuntimeError):
-        app["key"] = "value"
+        app.state["key"] = "value"
 
 
 def test_app_boolean() -> None:
-    app = web.Application()
+    app: _EmptyApplication = web.Application()
     assert app

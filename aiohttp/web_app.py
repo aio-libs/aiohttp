@@ -54,7 +54,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
     _AppSignal = Signal[Callable[["Application[Any]"], Awaitable[None]]]
     _RespPrepareSignal = Signal[
-        Callable[[_SafeRequest, StreamResponse], Awaitable[None]]
+        Callable[[Request[Any], StreamResponse], Awaitable[None]]
     ]
     _Middleware = Callable[[Request, Handler], Awaitable[StreamResponse]]
     _Middlewares = FrozenList[_Middleware]
@@ -218,7 +218,7 @@ class Application(Generic[_T]):
         reg_handler("on_shutdown")
         reg_handler("on_cleanup")
 
-    def add_subapp(self, prefix: str, subapp: _SafeApplication) -> AbstractResource:
+    def add_subapp(self, prefix: str, subapp: "Application[Any]") -> AbstractResource:
         if not isinstance(prefix, str):
             raise TypeError("Prefix must be str")
         prefix = prefix.rstrip("/")
@@ -354,7 +354,7 @@ class CleanupError(RuntimeError):
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    _CleanupContextBase = FrozenList[Callable[[_SafeApplication], AsyncIterator[None]]]
+    _CleanupContextBase = FrozenList[Callable[[Application[Any]], AsyncIterator[None]]]
 else:
     _CleanupContextBase = FrozenList
 
