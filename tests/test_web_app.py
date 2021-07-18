@@ -1,7 +1,6 @@
 import asyncio
-from typing import Any, Dict, TypedDict
+from typing import Any, AsyncIterator, Callable, Dict, NoReturn, TypedDict
 from unittest import mock
-from typing import AsyncIterator, Callable, NoReturn
 
 import pytest
 

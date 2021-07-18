@@ -4,7 +4,17 @@ import json
 import pathlib
 import socket
 import zlib
-from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, NoReturn, TypedDict, cast
+from typing import (
+    Any,
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Dict,
+    List,
+    NoReturn,
+    TypedDict,
+    cast,
+)
 from unittest import mock
 
 import brotli
@@ -269,7 +279,7 @@ async def test_multipart_content_transfer_encoding(aiohttp_client: Any) -> None:
         # TODO: Fix arg-type error.
         writer.append(
             b"\x00" * 10,
-            headers={"Content-Transfer-Encoding": "binary"}  # type: ignore[arg-type]
+            headers={"Content-Transfer-Encoding": "binary"},  # type: ignore[arg-type]
         )
 
     async def handler(request: _EmptyRequest) -> web.Response:
@@ -1268,7 +1278,7 @@ async def test_subapp_on_response_prepare(aiohttp_client: Any) -> None:
         return web.Response(text="OK")
 
     def make_signal(
-        app: _EmptyApplication
+        app: _EmptyApplication,
     ) -> Callable[[_EmptyRequest, web.StreamResponse], Awaitable[None]]:
         async def on_response(
             request: _EmptyRequest, response: web.StreamResponse
@@ -1376,7 +1386,7 @@ async def test_subapp_middleware_context(
     RequestType = web.Request[Dict[str, str]]
 
     def show_app_context(
-        appname: str
+        appname: str,
     ) -> Callable[[RequestType, Handler], Awaitable[web.StreamResponse]]:
         async def middleware(
             request: RequestType, handler: Handler
@@ -1803,10 +1813,7 @@ async def test_request_tracing(aiohttp_server: Any) -> None:
             pass
 
         async def resolve(
-            self,
-            host: str,
-            port: int = 0,
-            family: int = socket.AF_INET
+            self, host: str, port: int = 0, family: int = socket.AF_INET
         ) -> List[Dict[str, object]]:
             fake_port = self._fakes.get(host)
             if fake_port is not None:
