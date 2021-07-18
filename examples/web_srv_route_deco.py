@@ -9,7 +9,8 @@ from typing import TypedDict
 from aiohttp import web
 
 
-class EmptyDict(TypedDict): pass
+class EmptyDict(TypedDict):
+    pass
 
 
 routes = web.RouteTableDef()

@@ -8,7 +8,8 @@ from typing import NoReturn, TypedDict
 from aiohttp import web
 
 
-class EmptyDict(TypedDict): pass
+class EmptyDict(TypedDict):
+    pass
 
 
 tmpl = """\

@@ -3,7 +3,7 @@
 """
 
 import os
-from typing import List, Union, TypedDict
+from typing import List, TypedDict, Union
 
 from aiohttp import web
 
@@ -14,7 +14,9 @@ class StateDict(TypedDict):
     sockets: List[web.WebSocketResponse]
 
 
-async def wshandler(request: web.Request[StateDict]) -> Union[web.WebSocketResponse, web.Response]:
+async def wshandler(
+    request: web.Request[StateDict]
+) -> Union[web.WebSocketResponse, web.Response]:
     resp = web.WebSocketResponse()
     available = resp.can_prepare(request)
     if not available:

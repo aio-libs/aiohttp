@@ -9,14 +9,17 @@ from aiohttp import web
 from aiohttp.typedefs import Handler
 
 
-class EmptyDict(TypedDict): pass
+class EmptyDict(TypedDict):
+    pass
 
 
 async def handler(request: web.Request[EmptyDict]) -> web.StreamResponse:
     return web.Response(text="Everything is fine")
 
 
-async def middleware(request: web.Request[EmptyDict], handler: Handler) -> web.StreamResponse:
+async def middleware(
+    request: web.Request[EmptyDict], handler: Handler
+) -> web.StreamResponse:
     try:
         response = await handler(request)
     except web.HTTPException as exc:

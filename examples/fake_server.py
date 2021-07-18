@@ -3,13 +3,14 @@ import asyncio
 import pathlib
 import socket
 import ssl
-from typing import Any, Dict, List, Union, TypedDict
+from typing import Any, Dict, List, TypedDict, Union
 
 from aiohttp import ClientSession, TCPConnector, resolver, test_utils, web
 from aiohttp.abc import AbstractResolver
 
 
-class EmptyDict(TypedDict): pass
+class EmptyDict(TypedDict):
+    pass
 
 
 class FakeResolver(AbstractResolver):
@@ -74,7 +75,9 @@ class FakeFacebook:
     async def on_me(self, request: web.Request[EmptyDict]) -> web.StreamResponse:
         return web.json_response({"name": "John Doe", "id": "12345678901234567"})
 
-    async def on_my_friends(self, request: web.Request[EmptyDict]) -> web.StreamResponse:
+    async def on_my_friends(
+        self, request: web.Request[EmptyDict]
+    ) -> web.StreamResponse:
         return web.json_response(
             {
                 "data": [

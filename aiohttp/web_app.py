@@ -53,7 +53,9 @@ if TYPE_CHECKING:  # pragma: no cover
     from .typedefs import Handler
 
     _AppSignal = Signal[Callable[[Application[Any]], Awaitable[None]]]
-    _RespPrepareSignal = Signal[Callable[[_SafeRequest, StreamResponse], Awaitable[None]]]
+    _RespPrepareSignal = Signal[
+        Callable[[_SafeRequest, StreamResponse], Awaitable[None]]
+    ]
     _Middleware = Callable[[Request, Handler], Awaitable[StreamResponse]]
     _Middlewares = FrozenList[_Middleware]
     _MiddlewaresHandlers = Sequence[_Middleware]

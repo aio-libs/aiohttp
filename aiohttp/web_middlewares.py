@@ -16,7 +16,9 @@ __all__ = (
 _Func = TypeVar("_Func")
 
 
-async def _check_request_resolves(request: _SafeRequest, path: str) -> Tuple[bool, _SafeRequest]:
+async def _check_request_resolves(
+    request: _SafeRequest, path: str
+) -> Tuple[bool, _SafeRequest]:
     alt_request = request.clone(rel_url=path)
 
     match_info = await request.app.router.resolve(alt_request)
