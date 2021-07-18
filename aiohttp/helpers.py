@@ -120,7 +120,7 @@ else:
         return asyncio.iscoroutinefunction(func)
 
 
-json_re = re.compile(r"^application/(?:[\w.+-]+?\+)?json")
+json_re = re.compile(r"(?:application/|[\w.-]+/[\w.+-]+?\+)json")
 
 
 class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
