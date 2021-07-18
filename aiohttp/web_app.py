@@ -28,6 +28,7 @@ from typing_extensions import final
 
 from . import hdrs
 from .log import web_logger
+from .typedefs import Middleware
 from .web_middlewares import _fix_request_current_app
 from .web_request import Request
 from .web_response import StreamResponse
@@ -46,8 +47,6 @@ __all__ = ("Application", "CleanupError")
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .typedefs import Middleware
-
     _AppSignal = Signal[Callable[["Application"], Awaitable[None]]]
     _RespPrepareSignal = Signal[Callable[[Request, StreamResponse], Awaitable[None]]]
     _Middlewares = FrozenList[Middleware]
