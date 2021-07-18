@@ -136,7 +136,7 @@ class Application(Generic[_T]):
         self._on_cleanup.append(self._cleanup_ctx._on_cleanup)
         self._client_max_size = client_max_size
 
-    def __init_subclass__(cls: Type[_SafeApplication]) -> None:
+    def __init_subclass__(cls: Type["Application[Any]"]) -> None:
         raise TypeError(
             "Inheritance class {} from web.Application "
             "is forbidden".format(cls.__name__)
