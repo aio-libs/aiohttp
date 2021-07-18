@@ -15,7 +15,7 @@ class StateDict(TypedDict):
 
 
 async def wshandler(
-    request: web.Request[StateDict]
+    request: web.Request[StateDict],
 ) -> Union[web.WebSocketResponse, web.Response]:
     resp = web.WebSocketResponse()
     available = resp.can_prepare(request)
