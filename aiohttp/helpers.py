@@ -114,7 +114,7 @@ if PY_38:
     iscoroutinefunction = asyncio.iscoroutinefunction
 else:
 
-    def iscoroutinefunction(func: Callable[..., Any]) -> bool:
+    def iscoroutinefunction(func: Any) -> bool:
         while isinstance(func, functools.partial):
             func = func.func
         return asyncio.iscoroutinefunction(func)
