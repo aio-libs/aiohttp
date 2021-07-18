@@ -16,7 +16,6 @@ from typing import (
     Dict,
     Generic,
     Iterator,
-    List,
     Mapping,
     MutableMapping,
     Optional,

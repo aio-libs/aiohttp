@@ -38,7 +38,6 @@ from .helpers import _SENTINEL, PY_38, sentinel
 from .http import HttpVersion, RawRequestMessage
 from .typedefs import _SafeApplication, _SafeRequest
 from .web import (
-    Application,
     AppRunner,
     BaseRunner,
     Request,

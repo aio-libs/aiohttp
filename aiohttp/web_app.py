@@ -52,7 +52,7 @@ _T = TypeVar("_T")
 if TYPE_CHECKING:  # pragma: no cover
     from .typedefs import Handler
 
-    _AppSignal = Signal[Callable[[Application[Any]], Awaitable[None]]]
+    _AppSignal = Signal[Callable[["Application[Any]"], Awaitable[None]]]
     _RespPrepareSignal = Signal[
         Callable[[_SafeRequest, StreamResponse], Awaitable[None]]
     ]

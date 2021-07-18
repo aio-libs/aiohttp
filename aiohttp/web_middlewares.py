@@ -1,6 +1,6 @@
 import re
 import warnings
-from typing import TYPE_CHECKING, Awaitable, Callable, Tuple, Type, TypeVar
+from typing import Awaitable, Callable, Tuple, Type, TypeVar
 
 from .typedefs import Handler, _SafeApplication, _SafeRequest
 from .web_exceptions import HTTPMove, HTTPPermanentRedirect
