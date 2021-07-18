@@ -4,8 +4,12 @@
 
 import functools
 import json
+from typing import TypedDict
 
 from aiohttp import web
+
+
+class EmptyDict(TypedDict): pass
 
 
 class MyView(web.View):
@@ -31,7 +35,7 @@ class MyView(web.View):
         )
 
 
-async def index(request: web.Request) -> web.StreamResponse:
+async def index(request: web.Request[EmptyDict]) -> web.StreamResponse:
     txt = """
       <html>
         <head>
@@ -50,8 +54,8 @@ async def index(request: web.Request) -> web.StreamResponse:
     return web.Response(text=txt, content_type="text/html")
 
 
-def init() -> web.Application:
-    app = web.Application()
+def init() -> web.Application[EmptyDict]:
+    app: web.Application[EmptyDict] = web.Application()
     app.router.add_get("/", index)
     app.router.add_get("/get", MyView)
     app.router.add_post("/post", MyView)

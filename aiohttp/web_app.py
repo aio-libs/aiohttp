@@ -9,15 +9,16 @@ from typing import (  # noqa
     Awaitable,
     Callable,
     Dict,
+    Generic,
     Iterable,
     Iterator,
     List,
     Mapping,
-    MutableMapping,
     Optional,
     Sequence,
     Tuple,
     Type,
+    TypeVar,
     Union,
     cast,
 )
@@ -28,6 +29,7 @@ from typing_extensions import final
 
 from . import hdrs
 from .log import web_logger
+from .typedefs import _SafeApplication, _SafeRequest
 from .web_middlewares import _fix_request_current_app
 from .web_request import Request
 from .web_response import StreamResponse
@@ -44,16 +46,18 @@ from .web_urldispatcher import (
 
 __all__ = ("Application", "CleanupError")
 
+_T = TypeVar("_T")
+
 
 if TYPE_CHECKING:  # pragma: no cover
     from .typedefs import Handler
 
-    _AppSignal = Signal[Callable[["Application"], Awaitable[None]]]
-    _RespPrepareSignal = Signal[Callable[[Request, StreamResponse], Awaitable[None]]]
+    _AppSignal = Signal[Callable[[Application[Any]], Awaitable[None]]]
+    _RespPrepareSignal = Signal[Callable[[_SafeRequest, StreamResponse], Awaitable[None]]]
     _Middleware = Callable[[Request, Handler], Awaitable[StreamResponse]]
     _Middlewares = FrozenList[_Middleware]
     _MiddlewaresHandlers = Sequence[_Middleware]
-    _Subapps = List["Application"]
+    _Subapps = List[_SafeApplication]
 else:
     # No type checker mode, skip types
     _AppSignal = Signal
@@ -66,8 +70,9 @@ else:
 
 
 @final
-class Application(MutableMapping[str, Any]):
+class Application(Generic[_T]):
     __slots__ = (
+        "state",
         "logger",
         "_debug",
         "_router",
@@ -76,7 +81,6 @@ class Application(MutableMapping[str, Any]):
         "_middlewares",
         "_middlewares_handlers",
         "_run_middlewares",
-        "_state",
         "_frozen",
         "_pre_frozen",
         "_subapps",
@@ -107,6 +111,8 @@ class Application(MutableMapping[str, Any]):
         self._router = UrlDispatcher()
         self._handler_args = handler_args
         self.logger = logger
+        # We cheat here slightly, to allow users to type hint their apps more easily.
+        self.state: _T = {}  # type: ignore[assignment]
 
         self._middlewares = FrozenList(middlewares)  # type: _Middlewares
 
@@ -115,7 +121,6 @@ class Application(MutableMapping[str, Any]):
         # initialized on freezing
         self._run_middlewares = None  # type: Optional[bool]
 
-        self._state = {}  # type: Dict[str, Any]
         self._frozen = False
         self._pre_frozen = False
         self._subapps = []  # type: _Subapps
@@ -129,39 +134,14 @@ class Application(MutableMapping[str, Any]):
         self._on_cleanup.append(self._cleanup_ctx._on_cleanup)
         self._client_max_size = client_max_size
 
-    def __init_subclass__(cls: Type["Application"]) -> None:
+    def __init_subclass__(cls: Type[_SafeApplication]) -> None:
         raise TypeError(
             "Inheritance class {} from web.Application "
             "is forbidden".format(cls.__name__)
         )
 
-    # MutableMapping API
-
     def __eq__(self, other: object) -> bool:
         return self is other
-
-    def __getitem__(self, key: str) -> Any:
-        return self._state[key]
-
-    def _check_frozen(self) -> None:
-        if self._frozen:
-            raise RuntimeError(
-                "Changing state of started or joined " "application is forbidden"
-            )
-
-    def __setitem__(self, key: str, value: Any) -> None:
-        self._check_frozen()
-        self._state[key] = value
-
-    def __delitem__(self, key: str) -> None:
-        self._check_frozen()
-        del self._state[key]
-
-    def __len__(self) -> int:
-        return len(self._state)
-
-    def __iter__(self) -> Iterator[str]:
-        return iter(self._state)
 
     ########
     def _set_loop(self, loop: Optional[asyncio.AbstractEventLoop]) -> None:
@@ -222,11 +202,11 @@ class Application(MutableMapping[str, Any]):
         )
         return asyncio.get_event_loop().get_debug()
 
-    def _reg_subapp_signals(self, subapp: "Application") -> None:
+    def _reg_subapp_signals(self, subapp: _SafeApplication) -> None:
         def reg_handler(signame: str) -> None:
             subsig = getattr(subapp, signame)
 
-            async def handler(app: "Application") -> None:
+            async def handler(app: _SafeApplication) -> None:
                 await subsig.send(subapp)
 
             appsig = getattr(self, signame)
@@ -236,7 +216,7 @@ class Application(MutableMapping[str, Any]):
         reg_handler("on_shutdown")
         reg_handler("on_cleanup")
 
-    def add_subapp(self, prefix: str, subapp: "Application") -> AbstractResource:
+    def add_subapp(self, prefix: str, subapp: _SafeApplication) -> AbstractResource:
         if not isinstance(prefix, str):
             raise TypeError("Prefix must be str")
         prefix = prefix.rstrip("/")
@@ -246,7 +226,7 @@ class Application(MutableMapping[str, Any]):
         return self._add_subapp(factory, subapp)
 
     def _add_subapp(
-        self, resource_factory: Callable[[], AbstractResource], subapp: "Application"
+        self, resource_factory: Callable[[], AbstractResource], subapp: _SafeApplication
     ) -> AbstractResource:
         if self.frozen:
             raise RuntimeError("Cannot add sub application to frozen application")
@@ -259,7 +239,7 @@ class Application(MutableMapping[str, Any]):
         subapp.pre_freeze()
         return resource
 
-    def add_domain(self, domain: str, subapp: "Application") -> AbstractResource:
+    def add_domain(self, domain: str, subapp: _SafeApplication) -> AbstractResource:
         if not isinstance(domain, str):
             raise TypeError("Domain must be str")
         elif "*" in domain:
@@ -323,15 +303,15 @@ class Application(MutableMapping[str, Any]):
             await self.on_cleanup.send(self)
         else:
             # If an exception occurs in startup, ensure cleanup contexts are completed.
-            await self._cleanup_ctx._on_cleanup(self)
+            await self._cleanup_ctx._on_cleanup(self)  # type: ignore[arg-type]
 
     def _prepare_middleware(self) -> Iterator[_Middleware]:
         yield from reversed(self._middlewares)
-        yield _fix_request_current_app(self)
+        yield _fix_request_current_app(self)  # type: ignore[arg-type]
 
-    async def _handle(self, request: Request) -> StreamResponse:
+    async def _handle(self, request: _SafeRequest) -> StreamResponse:
         match_info = await self._router.resolve(request)
-        match_info.add_app(self)
+        match_info.add_app(self)  # type: ignore[arg-type]
         match_info.freeze()
 
         resp = None
@@ -354,7 +334,7 @@ class Application(MutableMapping[str, Any]):
 
         return resp
 
-    def __call__(self) -> "Application":
+    def __call__(self) -> "Application[_T]":
         """gunicorn compatibility"""
         return self
 
@@ -372,7 +352,7 @@ class CleanupError(RuntimeError):
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    _CleanupContextBase = FrozenList[Callable[[Application], AsyncIterator[None]]]
+    _CleanupContextBase = FrozenList[Callable[[_SafeApplication], AsyncIterator[None]]]
 else:
     _CleanupContextBase = FrozenList
 
@@ -382,13 +362,13 @@ class CleanupContext(_CleanupContextBase):
         super().__init__()
         self._exits = []  # type: List[AsyncIterator[None]]
 
-    async def _on_startup(self, app: Application) -> None:
+    async def _on_startup(self, app: _SafeApplication) -> None:
         for cb in self:
             it = cb(app).__aiter__()
             await it.__anext__()
             self._exits.append(it)
 
-    async def _on_cleanup(self, app: Application) -> None:
+    async def _on_cleanup(self, app: _SafeApplication) -> None:
         errors = []
         for it in reversed(self._exits):
             try:

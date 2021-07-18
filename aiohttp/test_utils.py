@@ -36,6 +36,7 @@ from .client_reqrep import ClientResponse
 from .client_ws import ClientWebSocketResponse
 from .helpers import _SENTINEL, PY_38, sentinel
 from .http import HttpVersion, RawRequestMessage
+from .typedefs import _SafeApplication, _SafeRequest
 from .web import (
     Application,
     AppRunner,
@@ -205,7 +206,7 @@ class BaseTestServer(ABC):
 class TestServer(BaseTestServer):
     def __init__(
         self,
-        app: Application,
+        app: _SafeApplication,
         *,
         scheme: Union[str, _SENTINEL] = sentinel,
         host: str = "127.0.0.1",
@@ -286,8 +287,8 @@ class TestClient:
         return self._server
 
     @property
-    def app(self) -> Optional[Application]:
-        return cast(Optional[Application], getattr(self._server, "app", None))
+    def app(self) -> Optional[_SafeApplication]:
+        return cast(Optional[_SafeApplication], getattr(self._server, "app", None))
 
     @property
     def session(self) -> ClientSession:
@@ -410,7 +411,7 @@ class AioHTTPTestCase(TestCase):
     execute function on the test client using asynchronous methods.
     """
 
-    async def get_application(self) -> Application:
+    async def get_application(self) -> _SafeApplication:
         """
         This method should be overridden
         to return the aiohttp.web.Application
@@ -419,7 +420,7 @@ class AioHTTPTestCase(TestCase):
         """
         return self.get_app()
 
-    def get_app(self) -> Application:
+    def get_app(self) -> _SafeApplication:
         """Obsolete method used to constructing web application.
 
         Use .get_application() coroutine instead
@@ -446,7 +447,7 @@ class AioHTTPTestCase(TestCase):
     async def tearDownAsync(self) -> None:
         await self.client.close()
 
-    async def get_server(self, app: Application) -> TestServer:
+    async def get_server(self, app: _SafeApplication) -> TestServer:
         """Return a TestServer instance."""
         return TestServer(app)
 
@@ -569,7 +570,7 @@ def make_mocked_request(
     sslcontext: Optional[SSLContext] = None,
     client_max_size: int = 1024 ** 2,
     loop: Any = ...,
-) -> Request:
+) -> _SafeRequest:
     """Creates mocked web.Request testing purposes.
 
     Useful in unit tests, when spinning full web server is overkill or
@@ -632,7 +633,7 @@ def make_mocked_request(
     if payload is sentinel:
         payload = mock.Mock()
 
-    req = Request(
+    req: _SafeRequest = Request(
         message, payload, protocol, writer, task, loop, client_max_size=client_max_size
     )
 

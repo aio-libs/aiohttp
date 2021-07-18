@@ -5,6 +5,7 @@ from typing import (
     Any,
     Awaitable,
     Callable,
+    Dict,
     Iterable,
     Mapping,
     Tuple,
@@ -18,18 +19,23 @@ DEFAULT_JSON_ENCODER = json.dumps
 DEFAULT_JSON_DECODER = json.loads
 
 if TYPE_CHECKING:  # pragma: no cover
+    from http.cookies import BaseCookie, Morsel
+
+    from .web import Application, Request, StreamResponse
+
     _CIMultiDict = CIMultiDict[str]
     _CIMultiDictProxy = CIMultiDictProxy[str]
     _MultiDict = MultiDict[str]
     _MultiDictProxy = MultiDictProxy[str]
-    from http.cookies import BaseCookie, Morsel
-
-    from .web import Request, StreamResponse
+    _SafeApplication = Application[Dict[str, object]]
+    _SafeRequest = Request[Dict[str, object]]
 else:
     _CIMultiDict = CIMultiDict
     _CIMultiDictProxy = CIMultiDictProxy
     _MultiDict = MultiDict
     _MultiDictProxy = MultiDictProxy
+    _SafeApplication = "Application"
+    _SafeRequest = "Request"
 
 Byteish = Union[bytes, bytearray, memoryview]
 JSONEncoder = Callable[[Any], str]

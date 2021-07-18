@@ -2,7 +2,7 @@ import re
 import warnings
 from typing import TYPE_CHECKING, Awaitable, Callable, Tuple, Type, TypeVar
 
-from .typedefs import Handler
+from .typedefs import Handler, _SafeApplication, _SafeRequest
 from .web_exceptions import HTTPMove, HTTPPermanentRedirect
 from .web_request import Request
 from .web_response import StreamResponse
@@ -13,13 +13,10 @@ __all__ = (
     "normalize_path_middleware",
 )
 
-if TYPE_CHECKING:  # pragma: no cover
-    from .web_app import Application
-
 _Func = TypeVar("_Func")
 
 
-async def _check_request_resolves(request: Request, path: str) -> Tuple[bool, Request]:
+async def _check_request_resolves(request: _SafeRequest, path: str) -> Tuple[bool, _SafeRequest]:
     alt_request = request.clone(rel_url=path)
 
     match_info = await request.app.router.resolve(alt_request)
@@ -85,7 +82,7 @@ def normalize_path_middleware(
     correct_configuration = not (append_slash and remove_slash)
     assert correct_configuration, "Cannot both remove and append slash"
 
-    async def impl(request: Request, handler: Handler) -> StreamResponse:
+    async def impl(request: _SafeRequest, handler: Handler) -> StreamResponse:
         if isinstance(request.match_info.route, SystemRoute):
             paths_to_check = []
             if "?" in request.raw_path:
@@ -118,8 +115,8 @@ def normalize_path_middleware(
     return impl
 
 
-def _fix_request_current_app(app: "Application") -> _Middleware:
-    async def impl(request: Request, handler: Handler) -> StreamResponse:
+def _fix_request_current_app(app: "_SafeApplication") -> _Middleware:
+    async def impl(request: _SafeRequest, handler: Handler) -> StreamResponse:
         with request.match_info.set_current_app(app):
             return await handler(request)
 

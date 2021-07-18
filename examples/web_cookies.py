@@ -3,9 +3,13 @@
 """
 
 from pprint import pformat
-from typing import NoReturn
+from typing import NoReturn, TypedDict
 
 from aiohttp import web
+
+
+class EmptyDict(TypedDict): pass
+
 
 tmpl = """\
 <html>
@@ -17,26 +21,26 @@ tmpl = """\
 </html>"""
 
 
-async def root(request: web.Request) -> web.StreamResponse:
+async def root(request: web.Request[EmptyDict]) -> web.StreamResponse:
     resp = web.Response(content_type="text/html")
     resp.text = tmpl.format(pformat(request.cookies))
     return resp
 
 
-async def login(request: web.Request) -> NoReturn:
+async def login(request: web.Request[EmptyDict]) -> NoReturn:
     exc = web.HTTPFound(location="/")
     exc.set_cookie("AUTH", "secret")
     raise exc
 
 
-async def logout(request: web.Request) -> NoReturn:
+async def logout(request: web.Request[EmptyDict]) -> NoReturn:
     exc = web.HTTPFound(location="/")
     exc.del_cookie("AUTH")
     raise exc
 
 
-def init() -> web.Application:
-    app = web.Application()
+def init() -> web.Application[EmptyDict]:
+    app: web.Application[EmptyDict] = web.Application()
     app.router.add_get("/", root)
     app.router.add_get("/login", login)
     app.router.add_get("/logout", logout)

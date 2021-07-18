@@ -6,8 +6,6 @@ from typing import Any, Awaitable, Callable, Dict, Generator, Optional, Type, Un
 
 import pytest
 
-from aiohttp.web import Application
-
 from .test_utils import (
     BaseTestServer,
     RawTestServer,
@@ -18,6 +16,8 @@ from .test_utils import (
     teardown_test_loop,
     unused_port as _unused_port,
 )
+from .typedefs import _SafeApplication
+from .web import Application
 
 try:
     import uvloop
@@ -342,7 +342,7 @@ def aiohttp_client(
     clients = []
 
     async def go(
-        __param: Union[Application, BaseTestServer],
+        __param: Union[_SafeApplication, BaseTestServer],
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs: Any

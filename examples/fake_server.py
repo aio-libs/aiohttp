@@ -3,10 +3,13 @@ import asyncio
 import pathlib
 import socket
 import ssl
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, TypedDict
 
 from aiohttp import ClientSession, TCPConnector, resolver, test_utils, web
 from aiohttp.abc import AbstractResolver
+
+
+class EmptyDict(TypedDict): pass
 
 
 class FakeResolver(AbstractResolver):
@@ -44,7 +47,7 @@ class FakeResolver(AbstractResolver):
 
 class FakeFacebook:
     def __init__(self) -> None:
-        self.app = web.Application()
+        self.app: web.Application[EmptyDict] = web.Application()
         self.app.router.add_routes(
             [
                 web.get("/v2.7/me", self.on_me),
@@ -68,10 +71,10 @@ class FakeFacebook:
     async def stop(self) -> None:
         await self.runner.cleanup()
 
-    async def on_me(self, request: web.Request) -> web.StreamResponse:
+    async def on_me(self, request: web.Request[EmptyDict]) -> web.StreamResponse:
         return web.json_response({"name": "John Doe", "id": "12345678901234567"})
 
-    async def on_my_friends(self, request: web.Request) -> web.StreamResponse:
+    async def on_my_friends(self, request: web.Request[EmptyDict]) -> web.StreamResponse:
         return web.json_response(
             {
                 "data": [

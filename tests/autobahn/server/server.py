@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 
 import logging
+from typing import List, TypedDict
 
 from aiohttp import WSCloseCode, web
 
 
-async def wshandler(request: web.Request) -> web.WebSocketResponse:
+class StateDict(TypedDict):
+    websockets: List[web.WebSocketResponse]
+
+
+async def wshandler(request: web.Request[StateDict]) -> web.WebSocketResponse:
     ws = web.WebSocketResponse(autoclose=False)
     is_ws = ws.can_prepare(request)
     if not is_ws:
@@ -29,9 +34,9 @@ async def wshandler(request: web.Request) -> web.WebSocketResponse:
     return ws
 
 
-async def on_shutdown(app: web.Application) -> None:
-    for ws in set(app["websockets"]):
-        await ws.close(code=WSCloseCode.GOING_AWAY, message="Server shutdown")
+async def on_shutdown(app: web.Application[StateDict]) -> None:
+    for ws in set(app.state["websockets"]):
+        await ws.close(code=WSCloseCode.GOING_AWAY, message=b"Server shutdown")
 
 
 if __name__ == "__main__":
@@ -39,7 +44,7 @@ if __name__ == "__main__":
         level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s"
     )
 
-    app = web.Application()
+    app: web.Application[StateDict] = web.Application()
     app.router.add_route("GET", "/", wshandler)
     app.on_shutdown.append(on_shutdown)
     try:

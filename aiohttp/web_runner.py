@@ -2,13 +2,14 @@ import asyncio
 import signal
 import socket
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Set, Type
+from typing import Any, List, Optional, Set, Type, TypeVar
 
 from yarl import URL
 
 from .abc import AbstractAccessLogger, AbstractStreamWriter
 from .http_parser import RawRequestMessage
 from .streams import StreamReader
+from .typedefs import _SafeRequest
 from .web_app import Application
 from .web_log import AccessLogger
 from .web_protocol import RequestHandler
@@ -32,6 +33,8 @@ __all__ = (
     "ServerRunner",
     "GracefulExit",
 )
+
+_T = TypeVar("_T")
 
 
 class GracefulExit(SystemExit):
@@ -358,7 +361,7 @@ class AppRunner(BaseRunner):
 
     def __init__(
         self,
-        app: Application,
+        app: Application[_T],
         *,
         handle_signals: bool = False,
         access_log_class: Type[AbstractAccessLogger] = AccessLogger,
@@ -388,7 +391,7 @@ class AppRunner(BaseRunner):
         self._app = app
 
     @property
-    def app(self) -> Application:
+    def app(self) -> Application[_T]:
         return self._app
 
     async def shutdown(self) -> None:
@@ -412,8 +415,8 @@ class AppRunner(BaseRunner):
         protocol: RequestHandler,
         writer: AbstractStreamWriter,
         task: "asyncio.Task[None]",
-        _cls: Type[Request] = Request,
-    ) -> Request:
+        _cls: Type[_SafeRequest] = Request,
+    ) -> _SafeRequest:
         loop = asyncio.get_running_loop()
         return _cls(
             message,

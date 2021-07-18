@@ -20,6 +20,7 @@ from typing import (
 
 from .abc import AbstractAccessLogger
 from .log import access_logger
+from .typedefs import _SafeApplication
 from .web_app import Application as Application, CleanupError as CleanupError
 from .web_exceptions import (
     HTTPAccepted as HTTPAccepted,
@@ -284,7 +285,7 @@ HostSequence = TypingIterable[str]
 
 
 async def _run_app(
-    app: Union[Application, Awaitable[Application]],
+    app: Union[_SafeApplication, Awaitable[_SafeApplication]],
     *,
     host: Optional[Union[str, HostSequence]] = None,
     port: Optional[int] = None,
@@ -306,7 +307,7 @@ async def _run_app(
     if asyncio.iscoroutine(app):
         app = await app  # type: ignore[misc]
 
-    app = cast(Application, app)
+    app = cast(_SafeApplication, app)
 
     runner = AppRunner(
         app,
@@ -459,7 +460,7 @@ def _cancel_tasks(
 
 
 def run_app(
-    app: Union[Application, Awaitable[Application]],
+    app: Union[Application[Any], Awaitable[Application[Any]]],
     *,
     debug: bool = False,
     host: Optional[Union[str, HostSequence]] = None,

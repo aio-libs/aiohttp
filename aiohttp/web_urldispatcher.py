@@ -36,7 +36,7 @@ from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
 from .helpers import DEBUG, iscoroutinefunction
 from .http import HttpVersion11
-from .typedefs import Handler, PathLike
+from .typedefs import Handler, PathLike, _SafeApplication, _SafeRequest
 from .web_exceptions import (
     HTTPException,
     HTTPExpectationFailed,
@@ -64,8 +64,6 @@ __all__ = (
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .web_app import Application
-
     BaseDict = Dict[str, str]
 else:
     BaseDict = dict
@@ -95,7 +93,7 @@ class _InfoDict(TypedDict, total=False):
     prefix: str
     routes: Mapping[str, "AbstractRoute"]
 
-    app: "Application"
+    app: _SafeApplication
 
     domain: str
 
@@ -126,7 +124,7 @@ class AbstractResource(Sized, Iterable["AbstractRoute"]):
         """Construct url for resource with additional params."""
 
     @abc.abstractmethod  # pragma: no branch
-    async def resolve(self, request: Request) -> _Resolve:
+    async def resolve(self, request: _SafeRequest) -> _Resolve:
         """Resolve resource
 
         Return (UrlMappingMatchInfo, allowed_methods) pair."""
@@ -212,7 +210,7 @@ class AbstractRoute(abc.ABC):
     def url_for(self, *args: str, **kwargs: str) -> URL:
         """Construct url for route with additional params."""
 
-    async def handle_expect_header(self, request: Request) -> None:
+    async def handle_expect_header(self, request: _SafeRequest) -> None:
         await self._expect_handler(request)
 
 
@@ -220,8 +218,8 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
     def __init__(self, match_dict: Dict[str, str], route: AbstractRoute):
         super().__init__(match_dict)
         self._route = route
-        self._apps = []  # type: List[Application]
-        self._current_app = None  # type: Optional[Application]
+        self._apps: List[_SafeApplication] = []
+        self._current_app: Optional[_SafeApplication] = None
         self._frozen = False
 
     @property
@@ -244,10 +242,10 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
         return self._route.get_info()
 
     @property
-    def apps(self) -> Tuple["Application", ...]:
+    def apps(self) -> Tuple[_SafeApplication, ...]:
         return tuple(self._apps)
 
-    def add_app(self, app: "Application") -> None:
+    def add_app(self, app: _SafeApplication) -> None:
         if self._frozen:
             raise RuntimeError("Cannot change apps stack after .freeze() call")
         if self._current_app is None:
@@ -255,13 +253,13 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
         self._apps.insert(0, app)
 
     @property
-    def current_app(self) -> "Application":
+    def current_app(self) -> _SafeApplication:
         app = self._current_app
         assert app is not None
         return app
 
     @contextmanager
-    def set_current_app(self, app: "Application") -> Generator[None, None, None]:
+    def set_current_app(self, app: _SafeApplication) -> Generator[None, None, None]:
         if DEBUG:  # pragma: no cover
             if app not in self._apps:
                 raise RuntimeError(
@@ -298,7 +296,7 @@ class MatchInfoError(UrlMappingMatchInfo):
         )
 
 
-async def _default_expect_handler(request: Request) -> None:
+async def _default_expect_handler(request: _SafeRequest) -> None:
     """Default handler for Expect header.
 
     Just send "100 Continue" to client.
@@ -343,7 +341,7 @@ class Resource(AbstractResource):
         ), f"Instance of Route class is required, got {route!r}"
         self._routes.append(route)
 
-    async def resolve(self, request: Request) -> _Resolve:
+    async def resolve(self, request: _SafeRequest) -> _Resolve:
         allowed_methods = set()  # type: Set[str]
 
         match_dict = self._match(request.rel_url.raw_path)
@@ -612,7 +610,7 @@ class StaticResource(PrefixResource):
             "OPTIONS", handler, self, expect_handler=self._expect_handler
         )
 
-    async def resolve(self, request: Request) -> _Resolve:
+    async def resolve(self, request: _SafeRequest) -> _Resolve:
         path = request.rel_url.raw_path
         method = request.method
         allowed_methods = set(self._routes)
@@ -631,7 +629,7 @@ class StaticResource(PrefixResource):
     def __iter__(self) -> Iterator[AbstractRoute]:
         return iter(self._routes.values())
 
-    async def _handle(self, request: Request) -> StreamResponse:
+    async def _handle(self, request: _SafeRequest) -> StreamResponse:
         rel_url = request.match_info["filename"]
         try:
             filename = Path(rel_url)
@@ -713,7 +711,7 @@ class StaticResource(PrefixResource):
 
 
 class PrefixedSubAppResource(PrefixResource):
-    def __init__(self, prefix: str, app: "Application") -> None:
+    def __init__(self, prefix: str, app: _SafeApplication) -> None:
         super().__init__(prefix)
         self._app = app
         for resource in app.router.resources():
@@ -730,7 +728,7 @@ class PrefixedSubAppResource(PrefixResource):
     def get_info(self) -> _InfoDict:
         return {"app": self._app, "prefix": self._prefix}
 
-    async def resolve(self, request: Request) -> _Resolve:
+    async def resolve(self, request: _SafeRequest) -> _Resolve:
         if (
             not request.url.raw_path.startswith(self._prefix + "/")
             and request.url.raw_path != self._prefix
@@ -758,7 +756,7 @@ class PrefixedSubAppResource(PrefixResource):
 
 class AbstractRuleMatching(abc.ABC):
     @abc.abstractmethod  # pragma: no branch
-    async def match(self, request: Request) -> bool:
+    async def match(self, request: _SafeRequest) -> bool:
         """Return bool if the request satisfies the criteria"""
 
     @abc.abstractmethod  # pragma: no branch
@@ -798,7 +796,7 @@ class Domain(AbstractRuleMatching):
             return url.raw_host
         return f"{url.raw_host}:{url.port}"
 
-    async def match(self, request: Request) -> bool:
+    async def match(self, request: _SafeRequest) -> bool:
         host = request.headers.get(hdrs.HOST)
         if not host:
             return False
@@ -828,7 +826,7 @@ class MaskDomain(Domain):
 
 
 class MatchedSubAppResource(PrefixedSubAppResource):
-    def __init__(self, rule: AbstractRuleMatching, app: "Application") -> None:
+    def __init__(self, rule: AbstractRuleMatching, app: _SafeApplication) -> None:
         AbstractResource.__init__(self)
         self._prefix = ""
         self._app = app
@@ -841,7 +839,7 @@ class MatchedSubAppResource(PrefixedSubAppResource):
     def get_info(self) -> _InfoDict:
         return {"app": self._app, "rule": self._rule}
 
-    async def resolve(self, request: Request) -> _Resolve:
+    async def resolve(self, request: _SafeRequest) -> _Resolve:
         if not await self._rule.match(request):
             return None, set()
         match_info = await self._app.router.resolve(request)
@@ -907,7 +905,7 @@ class SystemRoute(AbstractRoute):
     def get_info(self) -> _InfoDict:
         return {"http_exception": self._http_exception}
 
-    async def _handle(self, request: Request) -> StreamResponse:
+    async def _handle(self, request: _SafeRequest) -> StreamResponse:
         raise self._http_exception
 
     @property
@@ -982,7 +980,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self._resources = []  # type: List[AbstractResource]
         self._named_resources = {}  # type: Dict[str, AbstractResource]
 
-    async def resolve(self, request: Request) -> AbstractMatchInfo:
+    async def resolve(self, request: _SafeRequest) -> AbstractMatchInfo:
         method = request.method
         allowed_methods = set()  # type: Set[str]
 

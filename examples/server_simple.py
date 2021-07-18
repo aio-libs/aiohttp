@@ -1,14 +1,18 @@
-# server_simple.py
+from typing import TypedDict
+
 from aiohttp import web
 
 
-async def handle(request: web.Request) -> web.StreamResponse:
+class EmptyDict(TypedDict): pass
+
+
+async def handle(request: web.Request[EmptyDict]) -> web.StreamResponse:
     name = request.match_info.get("name", "Anonymous")
     text = "Hello, " + name
     return web.Response(text=text)
 
 
-async def wshandle(request: web.Request) -> web.StreamResponse:
+async def wshandle(request: web.Request[EmptyDict]) -> web.StreamResponse:
     ws = web.WebSocketResponse()
     await ws.prepare(request)
 
@@ -23,7 +27,7 @@ async def wshandle(request: web.Request) -> web.StreamResponse:
     return ws
 
 
-app = web.Application()
+app: web.Application[EmptyDict] = web.Application()
 app.add_routes(
     [web.get("/", handle), web.get("/echo", wshandle), web.get("/{name}", handle)]
 )

@@ -26,8 +26,8 @@ async def test_subprocess_co(loop: Any) -> None:
 class TestCase(AioHTTPTestCase):
     on_startup_called: bool
 
-    async def get_application(self) -> web.Application:
-        app = web.Application()
+    async def get_application(self) -> web.Application[Any]:
+        app: web.Application[Any] = web.Application()
         app.on_startup.append(self.on_startup_hook)
         return app
 

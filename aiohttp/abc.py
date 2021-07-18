@@ -18,15 +18,14 @@ from typing import (
 from multidict import CIMultiDict
 from yarl import URL
 
-from .typedefs import LooseCookies
+from .typedefs import LooseCookies, _SafeApplication, _SafeRequest
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .web_app import Application
     from .web_exceptions import HTTPException
-    from .web_request import BaseRequest, Request
+    from .web_request import BaseRequest
     from .web_response import StreamResponse
 else:
-    BaseRequest = Request = Application = StreamResponse = None
+    BaseRequest = StreamResponse = None
     HTTPException = None
 
 
@@ -34,7 +33,7 @@ class AbstractRouter(ABC):
     def __init__(self) -> None:
         self._frozen = False
 
-    def post_init(self, app: Application) -> None:
+    def post_init(self, app: _SafeApplication) -> None:
         """Post init stage.
 
         Not an abstract method for sake of backward compatibility,
@@ -51,19 +50,19 @@ class AbstractRouter(ABC):
         self._frozen = True
 
     @abstractmethod
-    async def resolve(self, request: Request) -> "AbstractMatchInfo":
+    async def resolve(self, request: _SafeRequest) -> "AbstractMatchInfo":
         """Return MATCH_INFO for given request"""
 
 
 class AbstractMatchInfo(ABC):
     @property  # pragma: no branch
     @abstractmethod
-    def handler(self) -> Callable[[Request], Awaitable[StreamResponse]]:
+    def handler(self) -> Callable[[_SafeRequest], Awaitable[StreamResponse]]:
         """Execute matched request handler"""
 
     @property
     @abstractmethod
-    def expect_handler(self) -> Callable[[Request], Awaitable[None]]:
+    def expect_handler(self) -> Callable[[_SafeRequest], Awaitable[None]]:
         """Expect handler for 100-continue processing"""
 
     @property  # pragma: no branch
@@ -77,7 +76,7 @@ class AbstractMatchInfo(ABC):
 
     @property  # pragma: no branch
     @abstractmethod
-    def apps(self) -> Tuple[Application, ...]:
+    def apps(self) -> Tuple[_SafeApplication, ...]:
         """Stack of nested applications.
 
         Top level application is left-most element.
@@ -85,7 +84,7 @@ class AbstractMatchInfo(ABC):
         """
 
     @abstractmethod
-    def add_app(self, app: Application) -> None:
+    def add_app(self, app: _SafeApplication) -> None:
         """Add application to the nested apps stack."""
 
     @abstractmethod
@@ -102,11 +101,11 @@ class AbstractMatchInfo(ABC):
 class AbstractView(ABC):
     """Abstract class based view."""
 
-    def __init__(self, request: Request) -> None:
+    def __init__(self, request: _SafeRequest) -> None:
         self._request = request
 
     @property
-    def request(self) -> Request:
+    def request(self) -> _SafeRequest:
         """Request instance."""
         return self._request
 

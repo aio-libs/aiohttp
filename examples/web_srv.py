@@ -3,11 +3,15 @@
 """
 
 import textwrap
+from typing import TypedDict
 
 from aiohttp import web
 
 
-async def intro(request: web.Request) -> web.StreamResponse:
+class EmptyDict(TypedDict): pass
+
+
+async def intro(request: web.Request[EmptyDict]) -> web.StreamResponse:
     txt = textwrap.dedent(
         """\
         Type {url}/hello/John  {url}/simple or {url}/change_body
@@ -23,18 +27,18 @@ async def intro(request: web.Request) -> web.StreamResponse:
     return resp
 
 
-async def simple(request: web.Request) -> web.StreamResponse:
+async def simple(request: web.Request[EmptyDict]) -> web.StreamResponse:
     return web.Response(text="Simple answer")
 
 
-async def change_body(request: web.Request) -> web.StreamResponse:
+async def change_body(request: web.Request[EmptyDict]) -> web.StreamResponse:
     resp = web.Response()
     resp.body = b"Body changed"
     resp.content_type = "text/plain"
     return resp
 
 
-async def hello(request: web.Request) -> web.StreamResponse:
+async def hello(request: web.Request[EmptyDict]) -> web.StreamResponse:
     resp = web.StreamResponse()
     name = request.match_info.get("name", "Anonymous")
     answer = ("Hello, " + name).encode("utf8")
@@ -46,8 +50,8 @@ async def hello(request: web.Request) -> web.StreamResponse:
     return resp
 
 
-def init() -> web.Application:
-    app = web.Application()
+def init() -> web.Application[EmptyDict]:
+    app: web.Application[EmptyDict] = web.Application()
     app.router.add_get("/", intro)
     app.router.add_get("/simple", simple)
     app.router.add_get("/change_body", change_body)

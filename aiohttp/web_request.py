@@ -14,13 +14,16 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Dict,
+    Generic,
     Iterator,
+    List,
     Mapping,
     MutableMapping,
     Optional,
     Pattern,
     Set,
     Tuple,
+    TypeVar,
     Union,
     cast,
 )
@@ -69,6 +72,8 @@ if TYPE_CHECKING:  # pragma: no cover
     from .web_app import Application
     from .web_protocol import RequestHandler
     from .web_urldispatcher import UrlMappingMatchInfo
+
+_T = TypeVar("_T")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -842,7 +847,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             self._disconnection_waiters.remove(fut)
 
 
-class Request(BaseRequest):
+class Request(BaseRequest, Generic[_T]):
 
     __slots__ = ("_match_info",)
 
@@ -864,7 +869,7 @@ class Request(BaseRequest):
         scheme: Union[str, _SENTINEL] = sentinel,
         host: Union[str, _SENTINEL] = sentinel,
         remote: Union[str, _SENTINEL] = sentinel,
-    ) -> "Request":
+    ) -> "Request[_T]":
         ret = super().clone(
             method=method,
             rel_url=rel_url,
@@ -873,7 +878,7 @@ class Request(BaseRequest):
             host=host,
             remote=remote,
         )
-        new_ret = cast(Request, ret)
+        new_ret = cast(Request[_T], ret)
         new_ret._match_info = self._match_info
         return new_ret
 
@@ -885,19 +890,18 @@ class Request(BaseRequest):
         return match_info
 
     @property
-    def app(self) -> "Application":
+    def app(self) -> "Application[_T]":
         """Application instance."""
         match_info = self._match_info
         assert match_info is not None
-        return match_info.current_app
+        return match_info.current_app  # type: ignore[return-value]
 
     @property
     def config_dict(self) -> ChainMapProxy:
         match_info = self._match_info
         assert match_info is not None
-        lst = match_info.apps
-        app = self.app
-        idx = lst.index(app)
+        lst = [app.state for app in match_info.apps]
+        idx = lst.index(self.app.state)  # type: ignore[arg-type]
         sublist = list(reversed(lst[: idx + 1]))
         return ChainMapProxy(sublist)
 
