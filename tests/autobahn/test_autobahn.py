@@ -1,8 +1,8 @@
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
-from python_on_whales import DockerClient
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -15,24 +15,46 @@ def create_report_directory(request):
 
 @pytest.fixture(scope="session", autouse=True)
 def build_aiohttp_docker_image():
-    docker = DockerClient()
-    aiohttp_builder = docker.buildx.create(name="aiohttp", use=True)
-    docker.buildx.build(
-        context_path=".", file="tests/autobahn/Dockerfile.aiohttp", tags=["aiohttp"]
+    subprocess.run(
+        [
+            "docker",
+            "build",
+            "-f",
+            "tests/autobahn/Dockerfile.aiohttp",
+            "-t",
+            "aiohttp",
+            ".",
+        ]
     )
-    try:
-        yield
-    finally:
-        aiohttp_builder.remove()
 
 
 def test_client():
-    docker = DockerClient(compose_files=["tests/autobahn/client/docker-compose.yml"])
-    docker.compose.up(abort_on_container_exit=True)
-    docker.compose.down()
+    subprocess.run(
+        [
+            "docker-compose",
+            "-f",
+            "tests/autobahn/client/docker-compose.yml",
+            "up",
+            "--abort-on-container-exit",
+        ]
+    )
+
+    subprocess.run(
+        ["docker-compose", "-f", "tests/autobahn/client/docker-compose.yml", "down"]
+    )
 
 
 def test_server():
-    docker = DockerClient(compose_files=["tests/autobahn/server/docker-compose.yml"])
-    docker.compose.up(abort_on_container_exit=True)
-    docker.compose.down()
+    subprocess.run(
+        [
+            "docker-compose",
+            "-f",
+            "tests/autobahn/server/docker-compose.yml",
+            "up",
+            "--abort-on-container-exit",
+        ]
+    )
+
+    subprocess.run(
+        ["docker-compose", "-f", "tests/autobahn/server/docker-compose.yml", "down"]
+    )
