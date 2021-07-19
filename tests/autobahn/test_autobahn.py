@@ -7,7 +7,7 @@ from typing import Any, Dict, List
 import pytest
 
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def create_report_directory(request: Any) -> None:
     path = Path(f"{request.fspath.dirname}/reports")
     if path.is_dir():
@@ -15,7 +15,7 @@ def create_report_directory(request: Any) -> None:
     path.mkdir()
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def build_aiohttp_docker_image() -> None:
     subprocess.run(
         [
