@@ -2,12 +2,13 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Any, Dict, List
 
 import pytest
 
 
 @pytest.fixture(scope="function", autouse=True)
-def create_report_directory(request):
+def create_report_directory(request: Any) -> None:
     path = Path(f"{request.fspath.dirname}/reports")
     if path.is_dir():
         shutil.rmtree(path)
@@ -15,7 +16,7 @@ def create_report_directory(request):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def build_aiohttp_docker_image():
+def build_aiohttp_docker_image() -> None:
     subprocess.run(
         [
             "docker",
@@ -29,7 +30,7 @@ def build_aiohttp_docker_image():
     )
 
 
-def get_failed_tests(report_path: str, name) -> list[dict]:
+def get_failed_tests(report_path: str, name: str) -> List[Dict[str, Any]]:
     with open(Path(f"{report_path}/index.json")) as f:
         result_summary = json.load(f)[name]
     failed_messages = []
