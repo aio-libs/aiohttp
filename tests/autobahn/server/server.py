@@ -15,7 +15,9 @@ async def wshandler(request: web.Request) -> web.WebSocketResponse:
 
     request.app["websockets"].append(ws)
 
-    for msg in ws:
+    while True:
+        msg = await ws.receive()
+
         if msg.type == web.WSMsgType.TEXT:
             await ws.send_str(msg.data)
         elif msg.type == web.WSMsgType.BINARY:

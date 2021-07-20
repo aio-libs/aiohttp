@@ -1,3 +1,4 @@
+import errno
 import json
 import shutil
 import socket
@@ -5,7 +6,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List
 
 import pytest
 
@@ -43,7 +44,7 @@ def wait_for_server(host: str, port: int) -> None:
         try:
             sock.connect((HOST, PORT))
         except OSError as sock_err:
-            if sock_err.errno == socket.errno.ECONNREFUSED:
+            if sock_err.errno == errno.ECONNREFUSED:
                 time.sleep(0.01)
             else:
                 raise
@@ -53,7 +54,7 @@ def wait_for_server(host: str, port: int) -> None:
             sock.close()
 
 
-def get_failed_tests(report_path: str, name: str):
+def get_failed_tests(report_path: str, name: str) -> List[Dict[str, Any]]:
     with open(Path(f"{report_path}/index.json")) as f:
         result_summary = json.load(f)[name]
     failed_messages = []
