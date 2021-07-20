@@ -16,3 +16,5 @@ services:
   aiohttp:
     image: aiohttp
     command: ["python", "tests/autobahn/server/server.py"]
+    ports:
+      - "9001:9001"

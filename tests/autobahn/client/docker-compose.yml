@@ -9,6 +9,8 @@ services:
       - type: bind
         source: ../reports
         target: /reports
+    ports:
+      - "9001:9001"
 
   aiohttp:
     image: aiohttp
