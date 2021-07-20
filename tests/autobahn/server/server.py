@@ -13,9 +13,9 @@ async def wshandler(request: web.Request) -> web.WebSocketResponse:
 
     await ws.prepare(request)
 
-    while True:
-        msg = await ws.receive()
+    request.app["websockets"].append(ws)
 
+    for msg in ws:
         if msg.type == web.WSMsgType.TEXT:
             await ws.send_str(msg.data)
         elif msg.type == web.WSMsgType.BINARY:
@@ -40,6 +40,7 @@ if __name__ == "__main__":
     )
 
     app = web.Application()
+    app["websockets"] = []
     app.router.add_route("GET", "/", wshandler)
     app.on_shutdown.append(on_shutdown)
     try:

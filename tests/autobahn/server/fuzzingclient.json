@@ -1,11 +1,11 @@
 {
     "options": { "failByDrop": false },
-    "outdir": "./reports/servers",
+    "outdir": "./tests/autobahn/reports/servers",
 
     "servers": [
         {
             "agent": "AutobahnServer",
-            "url": "ws://aiohttp:9001",
+            "url": "ws://localhost:9001",
             "options": { "version": 18 }
         }
     ],

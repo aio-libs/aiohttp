@@ -3,7 +3,7 @@
    "url": "ws://localhost:9001",
 
    "options": {"failByDrop": false},
-   "outdir": "./reports/clients",
+   "outdir": "./tests/autobahn/reports/clients",
    "webport": 8080,
 
    "cases": ["*"],
