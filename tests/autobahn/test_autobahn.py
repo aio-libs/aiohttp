@@ -69,7 +69,7 @@ def test_client() -> None:
     failed_messages = get_failed_tests("tests/autobahn/reports/clients", "aiohttp")
 
     if failed_messages:
-        pytest.fail(
+        pytest.xfail(
             "\n".join(
                 [
                     f"case: {msg['case']}"
@@ -79,8 +79,7 @@ def test_client() -> None:
                     f"\nreceived: {msg['received']}"
                     for msg in failed_messages
                 ]
-            ),
-            pytrace=False,
+            )
         )
 
 
@@ -104,7 +103,7 @@ def test_server() -> None:
     )
 
     if failed_messages:
-        pytest.fail(
+        pytest.xfail(
             "\n".join(
                 [
                     f"case: {msg['case']}"
@@ -114,6 +113,5 @@ def test_server() -> None:
                     f"\nreceived: {msg['received']}"
                     for msg in failed_messages
                 ]
-            ),
-            pytrace=False,
+            )
         )
