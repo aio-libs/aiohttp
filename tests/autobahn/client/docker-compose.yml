@@ -16,4 +16,4 @@ services:
     image: aiohttp
     depends_on:
       - autobahn
-    command: ["python", "tests/autobahn/client/client.py"]
+    command: ["wait-for-it", "-s", "autobahn:9001", "--", "python", "tests/autobahn/client/client.py"]
