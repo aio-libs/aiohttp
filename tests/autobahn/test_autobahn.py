@@ -1,4 +1,3 @@
-import errno
 import json
 import shutil
 import socket
@@ -43,11 +42,8 @@ def wait_for_server(host: str, port: int) -> None:
         sock = socket.socket()
         try:
             sock.connect((HOST, PORT))
-        except OSError as sock_err:
-            if sock_err.errno == errno.ECONNREFUSED:
-                time.sleep(0.01)
-            else:
-                raise
+        except ConnectionRefusedError:
+            time.sleep(0.01)
         else:
             return
         finally:
@@ -55,23 +51,16 @@ def wait_for_server(host: str, port: int) -> None:
 
 
 def get_failed_tests(report_path: str, name: str) -> List[Dict[str, Any]]:
-    with open(Path(f"{report_path}/index.json")) as f:
-        result_summary = json.load(f)[name]
+    report_path = Path(report_path)
+    result_summary = json.loads((report_path / "index.json").read_text())[name]
     failed_messages = []
     PASS = {"OK", "INFORMATIONAL"}
+    entry_fields = {"case", "description", "expectation", "expected", "received"}
     for results in result_summary.values():
-        if results["behavior"] not in PASS or results["behaviorClose"] not in PASS:
-            with open(Path(f"{report_path}/{results['reportfile']}")) as f:
-                report = json.load(f)
-                failed_messages.append(
-                    {
-                        "case": report["case"],
-                        "description": report["description"],
-                        "expectation": report["expectation"],
-                        "expected": report["expected"],
-                        "received": report["received"],
-                    }
-                )
+        if results["behavior"] in PASS and results["behaviorClose"] in PASS:
+            continue
+        report = json.loads((report_path / results["reportfile"]).read_text())
+        failed_messages.append({field: report[field] for field in entry_fields})
     return failed_messages
 
 
