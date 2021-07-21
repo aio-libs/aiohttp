@@ -45,6 +45,7 @@ def get_failed_tests(report_path: str, name: str) -> List[Dict[str, Any]]:
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="run only on Linux")
+@pytest.mark.xfail
 def test_client(request: Any) -> None:
     try:
         print("Starting autobahn-testsuite server")
@@ -84,6 +85,7 @@ def test_client(request: Any) -> None:
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="run only on Linux")
+@pytest.mark.xfail
 def test_server(request: Any) -> None:
     try:
         print("Starting aiohttp test server")
