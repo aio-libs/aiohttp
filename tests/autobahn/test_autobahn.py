@@ -103,19 +103,13 @@ def test_client() -> None:
 
     failed_messages = get_failed_tests("tests/autobahn/reports/clients", "aiohttp")
 
-    if failed_messages:
-        pytest.xfail(
-            "\n".join(
-                [
-                    f"case: {msg['case']}"
-                    f"\ndescription: {msg['description']}"
-                    f"\nexpectation: {msg['expectation']}"
-                    f"\nexpected: {msg['expected']}"
-                    f"\nreceived: {msg['received']}"
-                    for msg in failed_messages
-                ]
-            )
+    assert not failed_messages, "\n".join(
+        "\n\t".join(
+            f"{field}: {msg[field]}"
+            for field in ("case", "description", "expectation", "expected", "received")
         )
+        for msg in failed_messages
+    )
 
 
 def test_server() -> None:
@@ -148,16 +142,10 @@ def test_server() -> None:
         "tests/autobahn/reports/servers", "AutobahnServer"
     )
 
-    if failed_messages:
-        pytest.xfail(
-            "\n".join(
-                [
-                    f"case: {msg['case']}"
-                    f"\ndescription: {msg['description']}"
-                    f"\nexpectation: {msg['expectation']}"
-                    f"\nexpected: {msg['expected']}"
-                    f"\nreceived: {msg['received']}"
-                    for msg in failed_messages
-                ]
-            )
+    assert not failed_messages, "\n".join(
+        "\n\t".join(
+            f"{field}: {msg[field]}"
+            for field in ("case", "description", "expectation", "expected", "received")
         )
+        for msg in failed_messages
+    )
