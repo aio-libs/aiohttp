@@ -1,6 +1,6 @@
 {
     "options": { "failByDrop": false },
-    "outdir": "./tests/autobahn/reports/servers",
+    "outdir": "./reports/servers",
 
     "servers": [
         {
