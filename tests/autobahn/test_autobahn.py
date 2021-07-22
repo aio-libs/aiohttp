@@ -1,20 +1,17 @@
 import json
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Dict, Generator, List
 
 import pytest
+from pytest import TempPathFactory
 from python_on_whales import docker
 
 
-@pytest.fixture(scope="module", autouse=True)
-def create_report_directory(request: Any) -> None:
-    path = Path(request.fspath.dirname) / "reports"
-    if path.is_dir():
-        shutil.rmtree(path)
-    path.mkdir()
+@pytest.fixture(scope="session")
+def report_dir(tmp_path_factory: TempPathFactory) -> Path:
+    return tmp_path_factory.mktemp("reports")
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -46,7 +43,7 @@ def get_failed_tests(report_path: str, name: str) -> List[Dict[str, Any]]:
 
 @pytest.mark.skipif(sys.platform != "linux", reason="run only on Linux")
 @pytest.mark.xfail
-def test_client(request: Any) -> None:
+def test_client(report_dir: Path, request: Any) -> None:
     try:
         print("Starting autobahn-testsuite server")
         autobahn_container = docker.run(
@@ -57,7 +54,7 @@ def test_client(request: Any) -> None:
             remove=True,
             volumes=[
                 (f"{request.fspath.dirname}/client", "/config"),
-                (f"{request.fspath.dirname}/reports", "/reports"),
+                (f"{report_dir}", "/reports"),
             ],
         )
         print("Running aiohttp test client")
@@ -73,7 +70,7 @@ def test_client(request: Any) -> None:
         client.wait()
         autobahn_container.stop()
 
-    failed_messages = get_failed_tests("tests/autobahn/reports/clients", "aiohttp")
+    failed_messages = get_failed_tests(f"{report_dir}/clients", "aiohttp")
 
     assert not failed_messages, "\n".join(
         "\n\t".join(
@@ -86,7 +83,7 @@ def test_client(request: Any) -> None:
 
 @pytest.mark.skipif(sys.platform != "linux", reason="run only on Linux")
 @pytest.mark.xfail
-def test_server(request: Any) -> None:
+def test_server(report_dir: Path, request: Any) -> None:
     try:
         print("Starting aiohttp test server")
         server = subprocess.Popen(
@@ -99,7 +96,7 @@ def test_server(request: Any) -> None:
             remove=True,
             volumes=[
                 (f"{request.fspath.dirname}/server", "/config"),
-                (f"{request.fspath.dirname}/reports", "/reports"),
+                (f"{report_dir}", "/reports"),
             ],
             networks=["host"],
             command=[
@@ -119,9 +116,7 @@ def test_server(request: Any) -> None:
         server.terminate()
         server.wait()
 
-    failed_messages = get_failed_tests(
-        "tests/autobahn/reports/servers", "AutobahnServer"
-    )
+    failed_messages = get_failed_tests(f"{report_dir}/servers", "AutobahnServer")
 
     assert not failed_messages, "\n".join(
         "\n\t".join(
