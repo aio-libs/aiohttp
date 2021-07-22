@@ -566,7 +566,16 @@ class ClientSession:
                         elif not scheme:
                             parsed_url = url.join(parsed_url)
 
-                        if url.origin() != parsed_url.origin():
+                        is_same_host_https_redirect = (
+                            url.host == parsed_url.host
+                            and parsed_url.scheme == "https"
+                            and url.scheme == "http"
+                        )
+
+                        if (
+                            url.origin() != parsed_url.origin()
+                            and not is_same_host_https_redirect
+                        ):
                             auth = None
                             headers.pop(hdrs.AUTHORIZATION, None)
 
