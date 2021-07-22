@@ -85,6 +85,7 @@ args = dict(
         "Operating System :: Microsoft :: Windows",
         "Topic :: Internet :: WWW/HTTP",
         "Framework :: AsyncIO",
+        "Framework :: aiohttp",
     ],
     author="Nikolay Kim",
     author_email="fafhrd91@gmail.com",
