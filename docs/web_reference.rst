@@ -1310,7 +1310,7 @@ or :class:`aiohttp.web.AppRunner`.
 *Application* contains a *router* instance and a list of callbacks that
 will be called during application finishing.
 
-:class:`Application` is a :obj:`dict`-like object, so you can use it for
+:attr:`Application.state` is a :obj:`dict`-like object, so you can use it for
 :ref:`sharing data<aiohttp-web-data-sharing>` globally by storing arbitrary
 properties for later access from a :ref:`handler<aiohttp-web-handler>` via the
 :attr:`Request.app` property::
@@ -1322,8 +1322,17 @@ properties for later access from a :ref:`handler<aiohttp-web-handler>` via the
        with (await request.app.state['database']) as conn:
            conn.execute("DELETE * FROM table")
 
-Although :class:`Application` is a :obj:`dict`-like object, it can't be
-duplicated like one using :meth:`~aiohttp.web.Application.copy`.
+Both :class:`Application` and :class:`Request` are generics and can be typed
+with information about the :attr:`Application.state` dict::
+
+    class MyState(TypedDict):
+        database: DBType
+
+    app: Application[MyState] = Application()
+    app.state['database'] = ...
+
+    async def handler(request: Request[MyState]):
+        request.app.state['database']
 
 .. class:: Application(*, logger=<default>, middlewares=(), \
                        handler_args=None, client_max_size=1024**2, \
@@ -1353,6 +1362,12 @@ duplicated like one using :meth:`~aiohttp.web.Application.copy`.
          The argument does nothing starting from 4.0,
          use asyncio :ref:`asyncio-debug-mode` instead.
 
+
+   .. attribute:: state
+
+      A dict that can be used to store *global-like* variables.
+      The class is also generic over this variable, so you can define the
+      type with `Application[MyState]`, where `MyState` is a :class:`TypedDict`.
 
    .. attribute:: router
 

@@ -272,7 +272,7 @@ For this please use :attr:`Request.config_dict` read-only property::
         data = request.config_dict["my_private_key"]
 
 To utilise type checking, you should create a :class:`TypedDict` to represent
-your config and use this for the application and request generics:
+your config and use this for the application and request generics::
 
     class MyState(TypedDict):
         my_private_key: str
