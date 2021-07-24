@@ -67,7 +67,7 @@ async def test_noop() -> None:
 async def previous(request):
     if request.method == 'POST':
         with pytest.warns(DeprecationWarning):
-            request.app['value'] = (await request.post())['value']
+            request.app.state['value'] = (await request.post())['value']
         return web.Response(body=b'thanks for the data')
     else:
         v = request.app.get('value', 'unknown')

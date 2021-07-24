@@ -38,6 +38,7 @@ from .helpers import _SENTINEL, PY_38, sentinel
 from .http import HttpVersion, RawRequestMessage
 from .typedefs import _SafeApplication, _SafeRequest
 from .web import (
+    Application,
     AppRunner,
     BaseRunner,
     Request,
@@ -524,16 +525,8 @@ def teardown_test_loop(loop: asyncio.AbstractEventLoop, fast: bool = False) -> N
 
 
 def _create_app_mock() -> mock.MagicMock:
-    def get_dict(app: Any, key: str) -> Any:
-        return app.__app_dict[key]
-
-    def set_dict(app: Any, key: str, value: Any) -> None:
-        app.__app_dict[key] = value
-
-    app = mock.MagicMock()
-    app.__app_dict = {}
-    app.__getitem__ = get_dict
-    app.__setitem__ = set_dict
+    app = mock.MagicMock(spec_set=Application)
+    app.state = {}
 
     app.on_response_prepare = Signal(app)
     app.on_response_prepare.freeze()
