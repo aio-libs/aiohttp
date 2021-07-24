@@ -9,7 +9,6 @@ from aiohttp import log, web
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.typedefs import Handler
 
-
 if sys.version_info >= (3, 8):
     from typing import TypedDict
 else:

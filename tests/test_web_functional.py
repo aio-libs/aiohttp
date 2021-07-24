@@ -5,16 +5,7 @@ import pathlib
 import socket
 import sys
 import zlib
-from typing import (
-    Any,
-    AsyncIterator,
-    Awaitable,
-    Callable,
-    Dict,
-    List,
-    NoReturn,
-    cast,
-)
+from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, NoReturn, cast
 from unittest import mock
 
 import brotli
