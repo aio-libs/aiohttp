@@ -76,12 +76,14 @@ jobs:
     needs: lint
     strategy:
       matrix:
-        pyver: [3.8, 3.9]
+        pyver: [3.7, 3.8, 3.9]
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         exclude:
           - os: macos
             no-extensions: 'Y'
+          - os: macos
+            pyver: 3.7
           - os: macos
             pyver: 3.8
           - os: windows
@@ -220,7 +222,7 @@ jobs:
     name: Binary wheels
     strategy:
       matrix:
-        pyver: [3.8, 3.9]
+        pyver: [3.7, 3.8, 3.9]
         os: [macos, windows]
         arch: [x86, x64]
         exclude:

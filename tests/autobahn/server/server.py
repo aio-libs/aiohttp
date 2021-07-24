@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 
 import logging
-from typing import List, TypedDict
+import sys
+from typing import List
 
 from aiohttp import WSCloseCode, web
+
+if sys.version_info >= (3, 8):
+    from typing import TypedDict
+else:
+    from typing_extensions import TypedDict
 
 
 class StateDict(TypedDict):

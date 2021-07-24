@@ -3,6 +3,7 @@ import io
 import json
 import pathlib
 import socket
+import sys
 import zlib
 from typing import (
     Any,
@@ -12,7 +13,6 @@ from typing import (
     Dict,
     List,
     NoReturn,
-    TypedDict,
     cast,
 )
 from unittest import mock
@@ -28,6 +28,11 @@ from aiohttp.abc import AbstractResolver
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.typedefs import Handler
+
+if sys.version_info >= (3, 8):
+    from typing import TypedDict
+else:
+    from typing_extensions import TypedDict
 
 
 class _EmptyDict(TypedDict):

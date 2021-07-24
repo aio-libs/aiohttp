@@ -1,5 +1,6 @@
 import asyncio
-from typing import Any, AsyncIterator, Callable, Dict, NoReturn, TypedDict
+import sys
+from typing import Any, AsyncIterator, Callable, Dict, NoReturn
 from unittest import mock
 
 import pytest
@@ -7,6 +8,12 @@ import pytest
 from aiohttp import log, web
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.typedefs import Handler
+
+
+if sys.version_info >= (3, 8):
+    from typing import TypedDict
+else:
+    from typing_extensions import TypedDict
 
 
 class EmptyDict(TypedDict):
