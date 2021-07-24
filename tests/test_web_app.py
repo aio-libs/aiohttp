@@ -499,7 +499,7 @@ def test_forbid_changing_frozen_app() -> None:
     with pytest.raises(TypeError):
         app.state["key"] = "value"
     with pytest.raises(AttributeError):
-        app.state = {}
+        app.state = {}  # type: ignore[misc]
 
 
 def test_app_boolean() -> None:
