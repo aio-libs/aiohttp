@@ -75,7 +75,6 @@ else:
 @final
 class Application(Generic[_T]):
     __slots__ = (
-        "state",
         "logger",
         "_debug",
         "_router",
@@ -84,6 +83,7 @@ class Application(Generic[_T]):
         "_middlewares",
         "_middlewares_handlers",
         "_run_middlewares",
+        "_state",
         "_frozen",
         "_pre_frozen",
         "_subapps",
@@ -114,8 +114,6 @@ class Application(Generic[_T]):
         self._router = UrlDispatcher()
         self._handler_args = handler_args
         self.logger = logger
-        # We cheat here slightly, to allow users to type hint their apps more easily.
-        self.state: _T = {}  # type: ignore[assignment]
 
         self._middlewares = FrozenList(middlewares)  # type: _Middlewares
 
@@ -124,6 +122,8 @@ class Application(Generic[_T]):
         # initialized on freezing
         self._run_middlewares = None  # type: Optional[bool]
 
+        # We cheat here slightly, to allow users to type hint their apps more easily.
+        self._state: _T = {}  # type: ignore[assignment]
         self._frozen = False
         self._pre_frozen = False
         self._subapps = []  # type: _Subapps
@@ -153,6 +153,10 @@ class Application(Generic[_T]):
             DeprecationWarning,
             stacklevel=2,
         )
+
+    @property
+    def state(self) -> _T:
+        return self._state
 
     @property
     def pre_frozen(self) -> bool:
@@ -192,7 +196,7 @@ class Application(Generic[_T]):
             return
 
         self.pre_freeze()
-        self.state = MappingProxyType(self.state)  # type: ignore[arg-type, assignment]
+        self._state = MappingProxyType(self._state)  # type: ignore[arg-type, assignment]
         self._frozen = True
         for subapp in self._subapps:
             subapp.freeze()
