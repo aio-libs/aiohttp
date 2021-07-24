@@ -271,6 +271,9 @@ For this please use :attr:`Request.config_dict` read-only property::
     async def handler(request):
         data = request.config_dict["my_private_key"]
 
+Type Annotations
+""""""""""""""""
+
 To utilize type checking, you should create a :class:`TypedDict` to represent
 your config and use this for the application and request generics::
 
