@@ -196,7 +196,7 @@ class Application(Generic[_T]):
             return
 
         self.pre_freeze()
-        self._state = MappingProxyType(self._state)  # type: ignore[arg-type, assignment]
+        self._state = MappingProxyType(self._state)  # type: ignore[arg-type,assignment]
         self._frozen = True
         for subapp in self._subapps:
             subapp.freeze()
