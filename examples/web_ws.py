@@ -2,8 +2,12 @@
 """Example for aiohttp.web websocket server
 """
 
+# The extra strict mypy settings are here to help test that `Application[T]` syntax
+# is working correctly. A regression will cause mypy to raise an error.
+# mypy: disallow-any-expr, disallow-any-unimported, disallow-subclassing-any
+
 import os
-from typing import List, TypedDict, Union
+from typing import List, TypedDict, Union, cast
 
 from aiohttp import web
 
@@ -33,11 +37,11 @@ async def wshandler(
             await ws.send_str("Someone joined")
         request.app.state["sockets"].append(resp)
 
-        async for msg in resp:
-            if msg.type == web.WSMsgType.TEXT:
+        async for msg in resp:  # type: ignore[misc]
+            if msg.type == web.WSMsgType.TEXT:  # type: ignore[misc]
                 for ws in request.app.state["sockets"]:
                     if ws is not resp:
-                        await ws.send_str(msg.data)
+                        await ws.send_str(cast(str, msg.data))  # type: ignore[misc]
             else:
                 return resp
         return resp
