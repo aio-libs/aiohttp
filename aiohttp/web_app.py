@@ -2,6 +2,7 @@ import asyncio
 import logging
 import warnings
 from functools import partial, update_wrapper
+from types import MappingProxyType
 from typing import (  # noqa
     TYPE_CHECKING,
     Any,
@@ -170,6 +171,7 @@ class Application(Generic[_T]):
         self._on_shutdown.freeze()
         self._on_cleanup.freeze()
         self._middlewares_handlers = tuple(self._prepare_middleware())
+        self.state = MappingProxyType(self.state)
 
         # If current app and any subapp do not have middlewares avoid run all
         # of the code footprint that it implies, which have a middleware

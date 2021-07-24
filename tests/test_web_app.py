@@ -490,7 +490,7 @@ def test_app_forbid_nonslot_attr() -> None:
 def test_forbid_changing_frozen_app() -> None:
     app: web.Application[Dict[str, str]] = web.Application()
     app.freeze()
-    with pytest.raises(RuntimeError):
+    with pytest.raises(TypeError):
         app.state["key"] = "value"
 
 
