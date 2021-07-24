@@ -171,7 +171,6 @@ class Application(Generic[_T]):
         self._on_shutdown.freeze()
         self._on_cleanup.freeze()
         self._middlewares_handlers = tuple(self._prepare_middleware())
-        self.state = MappingProxyType(self.state)  # type: ignore[arg-type, assignment]
 
         # If current app and any subapp do not have middlewares avoid run all
         # of the code footprint that it implies, which have a middleware
@@ -193,6 +192,7 @@ class Application(Generic[_T]):
             return
 
         self.pre_freeze()
+        self.state = MappingProxyType(self.state)  # type: ignore[arg-type, assignment]
         self._frozen = True
         for subapp in self._subapps:
             subapp.freeze()
