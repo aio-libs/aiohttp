@@ -575,12 +575,12 @@ as it results in more compact code::
     app.cleanup_ctx.append(persistent_session)
 
     async def persistent_session(app):
-       app['PERSISTENT_SESSION'] = session = aiohttp.ClientSession()
+       app.state['PERSISTENT_SESSION'] = session = aiohttp.ClientSession()
        yield
        await session.close()
 
     async def my_request_handler(request):
-       session = request.app['PERSISTENT_SESSION']
+       session = request.app.state['PERSISTENT_SESSION']
        async with session.get("http://python.org") as resp:
            print(resp.status)
 
@@ -593,9 +593,9 @@ can be safely shared between sessions if needed.
 In the end all you have to do is to close all sessions after `yield` statement::
 
     async def multiple_sessions(app):
-       app['PERSISTENT_SESSION_1'] = session_1 = aiohttp.ClientSession()
-       app['PERSISTENT_SESSION_2'] = session_2 = aiohttp.ClientSession()
-       app['PERSISTENT_SESSION_3'] = session_3 = aiohttp.ClientSession()
+       app.state['PERSISTENT_SESSION_1'] = session_1 = aiohttp.ClientSession()
+       app.state['PERSISTENT_SESSION_2'] = session_2 = aiohttp.ClientSession()
+       app.state['PERSISTENT_SESSION_3'] = session_3 = aiohttp.ClientSession()
 
        yield
 

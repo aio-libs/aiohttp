@@ -62,7 +62,7 @@ other resource you want to share between handlers.
 ::
 
     async def go(request):
-        db = request.app['db']
+        db = request.app.state['db']
         cursor = await db.cursor()
         await cursor.execute('SELECT 42')
         # ...
@@ -72,7 +72,7 @@ other resource you want to share between handlers.
     async def init_app():
         app = Application()
         db = await create_connection(user='user', password='123')
-        app['db'] = db
+        app.state['db'] = db
         app.router.add_get('/', go)
         return app
 
@@ -123,7 +123,7 @@ peers. ::
         await ws.prepare(request)
         task = asyncio.create_task(
             read_subscription(ws,
-                              request.app['redis']))
+                              request.app.state['redis']))
         try:
             async for msg in ws:
                 # handle incoming messages
@@ -166,12 +166,12 @@ and call :meth:`aiohttp.web.WebSocketResponse.close` on all of them in
         ws = web.WebSocketResponse()
         user_id = authenticate_user(request)
         await ws.prepare(request)
-        request.app['websockets'][user_id].add(ws)
+        request.app.state['websockets'][user_id].add(ws)
         try:
             async for msg in ws:
                 ws.send_str(msg.data)
         finally:
-            request.app['websockets'][user_id].remove(ws)
+            request.app.state['websockets'][user_id].remove(ws)
 
         return ws
 
@@ -181,7 +181,7 @@ and call :meth:`aiohttp.web.WebSocketResponse.close` on all of them in
         user_id = authenticate_user(request)
 
         ws_closers = [ws.close()
-                      for ws in request.app['websockets'][user_id]
+                      for ws in request.app.state['websockets'][user_id]
                       if not ws.closed]
 
         # Watch out, this will keep us from returing the response
@@ -196,7 +196,7 @@ and call :meth:`aiohttp.web.WebSocketResponse.close` on all of them in
         app = web.Application()
         app.router.add_route('GET', '/echo', echo_handler)
         app.router.add_route('POST', '/logout', logout_handler)
-        app['websockets'] = defaultdict(set)
+        app.state['websockets'] = defaultdict(set)
         web.run_app(app, host='localhost', port=8080)
 
 
@@ -278,7 +278,7 @@ deliberate choice.
 A subapplication is an isolated unit by design. If you need to share a
 database object, do it explicitly::
 
-   subapp['db'] = mainapp['db']
+   subapp.state['db'] = mainapp.state['db']
    mainapp.add_subapp('/prefix', subapp)
 
 
@@ -300,7 +300,7 @@ operations::
         await resp.write_eof()
 
         # increase the pong count
-        APP['db'].inc_pong()
+        APP.state['db'].inc_pong()
 
         return resp
 

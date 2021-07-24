@@ -134,7 +134,7 @@ If your logging needs to perform IO you can instead inherit from
   class AccessLogger(AbstractAsyncAccessLogger):
 
       async def log(self, request, response, time):
-          logging_service = request.app['logging_service']
+          logging_service = request.app.state['logging_service']
           await logging_service.log(f'{request.remote} '
                                     f'"{request.method} {request.path} '
                                     f'done in {time}s: {response.status}')

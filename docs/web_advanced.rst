@@ -250,14 +250,14 @@ Application's config
 ^^^^^^^^^^^^^^^^^^^^
 
 For storing *global-like* variables, feel free to save them in an
-:class:`Application` instance::
+:attr:`Application.state` instance::
 
-    app['my_private_key'] = data
+    app.state["my_private_key"] = data
 
 and get it back in the :term:`web-handler`::
 
     async def handler(request):
-        data = request.app['my_private_key']
+        data = request.app.state["my_private_key"]
 
 In case of :ref:`nested applications
 <aiohttp-web-nested-applications>` the desired lookup strategy could
@@ -269,8 +269,25 @@ be the following:
 For this please use :attr:`Request.config_dict` read-only property::
 
     async def handler(request):
-        data = request.config_dict['my_private_key']
+        data = request.config_dict["my_private_key"]
 
+To utilise type checking, you should create a :class:`TypedDict` to represent
+your config and use this for the application and request generics:
+
+    class MyState(TypedDict):
+        my_private_key: str
+
+    Request = web.Request[MyState]
+
+    app: web.Application[MyState] = web.Application()
+    app.state["my_private_key"] = data
+
+    def handler(request: Request):
+        data = request.app.state["my_private_key"]
+
+.. note::
+
+   :attr:`Request.config_dict` does not support static typing.
 
 Request's storage
 ^^^^^^^^^^^^^^^^^
@@ -556,7 +573,7 @@ engine::
     from aiopg.sa import create_engine
 
     async def create_aiopg(app):
-        app['pg_engine'] = await create_engine(
+        app.state['pg_engine'] = await create_engine(
             user='postgre',
             database='postgre',
             host='localhost',
@@ -565,8 +582,8 @@ engine::
         )
 
     async def dispose_aiopg(app):
-        app['pg_engine'].close()
-        await app['pg_engine'].wait_closed()
+        app.state['pg_engine'].close()
+        await app.state['pg_engine'].wait_closed()
 
     app.on_startup.append(create_aiopg)
     app.on_cleanup.append(dispose_aiopg)
@@ -598,7 +615,7 @@ knowledge about startup/cleanup pairs and their execution state.
 The solution is :attr:`Application.cleanup_ctx` usage::
 
     async def pg_engine(app):
-        app['pg_engine'] = await create_engine(
+        app.state['pg_engine'] = await create_engine(
             user='postgre',
             database='postgre',
             host='localhost',
@@ -606,8 +623,8 @@ The solution is :attr:`Application.cleanup_ctx` usage::
             password=''
         )
         yield
-        app['pg_engine'].close()
-        await app['pg_engine'].wait_closed()
+        app.state['pg_engine'].close()
+        await app.state['pg_engine'].wait_closed()
 
     app.cleanup_ctx.append(pg_engine)
 
@@ -685,10 +702,10 @@ use the following explicit technique::
    admin.add_routes([web.get('/resource', handler, name='name')])
 
    app.add_subapp('/admin/', admin)
-   app['admin'] = admin
+   app.state['admin'] = admin
 
    async def handler(request):  # main application's handler
-       admin = request.app['admin']
+       admin = request.app.state['admin']
        url = admin.router['name'].url_for()
 
 .. _aiohttp-web-expect-header:
@@ -805,18 +822,18 @@ handler::
     import weakref
 
     app = web.Application()
-    app['websockets'] = weakref.WeakSet()
+    app.state['websockets'] = weakref.WeakSet()
 
     async def websocket_handler(request):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
 
-        request.app['websockets'].add(ws)
+        request.app.state['websockets'].add(ws)
         try:
             async for msg in ws:
                 ...
         finally:
-            request.app['websockets'].discard(ws)
+            request.app.state['websockets'].discard(ws)
 
         return ws
 
@@ -825,7 +842,7 @@ Signal handler may look like::
     from aiohttp import WSCloseCode
 
     async def on_shutdown(app):
-        for ws in set(app['websockets']):
+        for ws in set(app.state['websockets']):
             await ws.close(code=WSCloseCode.GOING_AWAY,
                            message='Server shutdown')
 
@@ -869,7 +886,7 @@ signal handlers as shown in the example below::
           ch, *_ = await sub.subscribe('news')
           async for msg in ch.iter(encoding='utf-8'):
               # Forward message to all connected websockets:
-              for ws in app['websockets']:
+              for ws in app.state['websockets']:
                   ws.send_str('{}: {}'.format(ch.name, msg))
       except asyncio.CancelledError:
           pass
@@ -879,12 +896,12 @@ signal handlers as shown in the example below::
 
 
   async def start_background_tasks(app):
-      app['redis_listener'] = asyncio.create_task(listen_to_redis(app))
+      app.state['redis_listener'] = asyncio.create_task(listen_to_redis(app))
 
 
   async def cleanup_background_tasks(app):
-      app['redis_listener'].cancel()
-      await app['redis_listener']
+      app.state['redis_listener'].cancel()
+      await app.state['redis_listener']
 
 
   app = web.Application()

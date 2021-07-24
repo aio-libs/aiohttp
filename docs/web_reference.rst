@@ -1316,10 +1316,10 @@ properties for later access from a :ref:`handler<aiohttp-web-handler>` via the
 :attr:`Request.app` property::
 
    app = Application()
-   app['database'] = await aiopg.create_engine(**db_config)
+   app.state['database'] = await aiopg.create_engine(**db_config)
 
    async def handler(request):
-       with (await request.app['database']) as conn:
+       with (await request.app.state['database']) as conn:
            conn.execute("DELETE * FROM table")
 
 Although :class:`Application` is a :obj:`dict`-like object, it can't be
