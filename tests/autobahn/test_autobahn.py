@@ -41,7 +41,7 @@ def get_failed_tests(report_path: str, name: str) -> List[Dict[str, Any]]:
     return failed_messages
 
 
-@pytest.mark.skipif(sys.platform != "linux", reason="run only on Linux")
+@pytest.mark.skipif(sys.platform == "darwin", reason="Don't run on macOS")
 @pytest.mark.xfail
 def test_client(report_dir: Path, request: Any) -> None:
     try:
@@ -81,7 +81,7 @@ def test_client(report_dir: Path, request: Any) -> None:
     )
 
 
-@pytest.mark.skipif(sys.platform != "linux", reason="run only on Linux")
+@pytest.mark.skipif(sys.platform == "darwin", reason="Don't run on macOS")
 @pytest.mark.xfail
 def test_server(report_dir: Path, request: Any) -> None:
     try:
