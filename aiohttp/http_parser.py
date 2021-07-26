@@ -21,8 +21,12 @@ from typing import (
     cast,
 )
 
+try:
+    from typing import Final
+except ImportError:  # pragma: no cover
+    from typing_extensions import Final
+
 from multidict import CIMultiDict, CIMultiDictProxy, istr
-from typing_extensions import Final
 from yarl import URL
 
 from . import hdrs

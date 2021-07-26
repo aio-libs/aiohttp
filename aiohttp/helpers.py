@@ -42,9 +42,13 @@ from typing import (
 from urllib.parse import quote
 from urllib.request import getproxies, proxy_bypass
 
+try:
+    from typing import Protocol, final
+except ImportError:  # pragma: no cover
+    from typing_extensions import Protocol, final
+
 import async_timeout
 from multidict import CIMultiDict, MultiDict, MultiDictProxy
-from typing_extensions import Protocol, final
 from yarl import URL
 
 from . import hdrs

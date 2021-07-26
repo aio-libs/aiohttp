@@ -4,8 +4,12 @@ import asyncio
 import dataclasses
 from typing import Any, Optional, cast
 
+try:
+    from typing import Final
+except ImportError:  # pragma: no cover
+    from typing_extensions import Final
+
 import async_timeout
-from typing_extensions import Final
 
 from .client_exceptions import ClientError
 from .client_reqrep import ClientResponse

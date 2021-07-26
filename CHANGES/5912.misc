@@ -1,0 +1,1 @@
+Fix unnecessary dependency on typing_extensions on Python 3.8+.

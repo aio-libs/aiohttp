@@ -17,7 +17,10 @@ from typing import (  # noqa
     cast,
 )
 
-from typing_extensions import Final
+try:
+    from typing import Final
+except ImportError:  # pragma: no cover
+    from typing_extensions import Final
 
 from . import hdrs
 from .abc import AbstractStreamWriter

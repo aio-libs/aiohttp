@@ -30,8 +30,12 @@ from typing import (
     Union,
 )
 
+try:
+    from typing import Final, final
+except ImportError:  # pragma: no cover
+    from typing_extensions import Final, final
+
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
-from typing_extensions import Final, final
 from yarl import URL
 
 from . import hdrs, http, payload

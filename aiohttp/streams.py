@@ -3,7 +3,10 @@ import collections
 import warnings
 from typing import Awaitable, Callable, Generic, List, Optional, Tuple, TypeVar
 
-from typing_extensions import Final
+try:
+    from typing import Final
+except ImportError:  # pragma: no cover
+    from typing_extensions import Final
 
 from .base_protocol import BaseProtocol
 from .helpers import BaseTimerContext, set_exception, set_result

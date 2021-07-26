@@ -4,8 +4,12 @@
 # to regenerate the headers parser
 from typing import Set
 
+try:
+    from typing import Final
+except ImportError:  # pragma: no cover
+    from typing_extensions import Final
+
 from multidict import istr
-from typing_extensions import Final
 
 METH_ANY: Final[str] = "*"
 METH_CONNECT: Final[str] = "CONNECT"

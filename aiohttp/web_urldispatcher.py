@@ -29,7 +29,11 @@ from typing import (
     cast,
 )
 
-from typing_extensions import Final, TypedDict
+try:
+    from typing import Final, TypedDict
+except ImportError:  # pragma: no cover
+    from typing_extensions import Final, TypedDict
+
 from yarl import URL, __version__ as yarl_version  # type: ignore[attr-defined]
 
 from . import hdrs

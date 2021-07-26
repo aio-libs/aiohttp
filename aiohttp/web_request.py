@@ -26,8 +26,12 @@ from typing import (
 )
 from urllib.parse import parse_qsl
 
+try:
+    from typing import Final
+except ImportError:  # pragma: no cover
+    from typing_extensions import Final
+
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
-from typing_extensions import Final
 from yarl import URL
 
 from . import hdrs

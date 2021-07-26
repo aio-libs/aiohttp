@@ -22,9 +22,13 @@ from typing import (  # noqa
     cast,
 )
 
+try:
+    from typing import final
+except ImportError:  # pragma: no cover
+    from typing_extensions import final
+
 from aiosignal import Signal
 from frozenlist import FrozenList
-from typing_extensions import final
 
 from . import hdrs
 from .log import web_logger
