@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 
 from aiohttp import web
+from aiohttp.helpers import PY_38
 from aiohttp.test_utils import AioHTTPTestCase, loop_context
 
 
@@ -44,13 +45,22 @@ def test_default_loop(loop: Any) -> None:
     assert asyncio.get_event_loop() is loop
 
 
+@pytest.mark.xfail(not PY_38, reason="ThreadedChildWatcher is only available in 3.8+")
 def test_setup_loop_non_main_thread() -> None:
+    child_exc = None
+
     def target() -> None:
-        with loop_context() as loop:
-            assert asyncio.get_event_loop() is loop
-            loop.run_until_complete(test_subprocess_co(loop))
+        try:
+            with loop_context() as loop:
+                assert asyncio.get_event_loop() is loop
+                loop.run_until_complete(test_subprocess_co(loop))
+        except Exception as exc:
+            nonlocal child_exc
+            child_exc = exc
 
     # Ensures setup_test_loop can be called by pytest-xdist in non-main thread.
     t = threading.Thread(target=target)
     t.start()
     t.join()
+
+    assert child_exc is None
