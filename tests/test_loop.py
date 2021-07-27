@@ -13,7 +13,6 @@ from aiohttp.test_utils import AioHTTPTestCase, loop_context
     platform.system() == "Windows", reason="the test is not valid for Windows"
 )
 async def test_subprocess_co(loop: Any) -> None:
-    assert threading.current_thread() is threading.main_thread()
     proc = await asyncio.create_subprocess_shell(
         "exit 0",
         stdin=asyncio.subprocess.DEVNULL,
@@ -47,8 +46,9 @@ def test_default_loop(loop: Any) -> None:
 
 def test_setup_loop_non_main_thread() -> None:
     def target() -> None:
-        with loop_context():
-            pass
+        with loop_context() as loop:
+            assert asyncio.get_event_loop() is loop
+            loop.run_until_complete(test_subprocess_co(loop))
 
     # Ensures setup_test_loop can be called by pytest-xdist in non-main thread.
     t = threading.Thread(target=target)
