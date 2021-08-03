@@ -18,7 +18,7 @@ class TestEventResultOrError:
             return 1
 
         t = loop.create_task(c())
-        await asyncio.sleep(0, loop=loop)
+        await asyncio.sleep(0)
         e = Exception()
         ev.set(exc=e)
         assert (await t) == e
@@ -31,7 +31,7 @@ class TestEventResultOrError:
             return 1
 
         t = loop.create_task(c())
-        await asyncio.sleep(0, loop=loop)
+        await asyncio.sleep(0)
         ev.set()
         assert (await t) == 1
 
@@ -43,7 +43,7 @@ class TestEventResultOrError:
 
         t1 = loop.create_task(c())
         t2 = loop.create_task(c())
-        await asyncio.sleep(0, loop=loop)
+        await asyncio.sleep(0)
         ev.cancel()
         ev.set()
 
