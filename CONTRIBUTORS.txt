@@ -7,6 +7,7 @@ Adam Horacek
 Adam Mills
 Adrian Krupa
 Adrián Chaves
+Ahmed Tahri
 Alan Tse
 Alec Hanefeld
 Alejandro Gómez
@@ -335,4 +336,3 @@ Zeal Wierslee
 Zlatan Sičanica
 Марк Коренберг
 Семён Марьясин
-Ahmed Tahri
