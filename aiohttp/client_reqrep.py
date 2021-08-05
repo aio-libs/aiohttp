@@ -71,6 +71,9 @@ try:
     import cchardet as chardet
 except ImportError:  # pragma: no cover
     import charset_normalizer as chardet  # type: ignore[no-redef]
+    import warnings
+
+    warnings.filterwarnings('ignore', 'Trying to detect', module='charset_normalizer')
 
 
 __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
