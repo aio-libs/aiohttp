@@ -18,6 +18,7 @@ from libc.string cimport memcpy
 
 from multidict import CIMultiDict as _CIMultiDict, CIMultiDictProxy as _CIMultiDictProxy
 from yarl import URL as _URL
+from os import getenv
 
 from aiohttp import hdrs
 
@@ -48,6 +49,10 @@ include "_headers.pxi"
 from aiohttp cimport _find_header
 
 DEF DEFAULT_FREELIST_SIZE = 250
+
+DEFAULT_MAX_LINE_SIZE = int(os.getenv('AIOHTTP_DEFAULT_MAX_LINE_SIZE', 8190))
+DEFAULT_MAX_HEADERS = int(os.getenv('AIOHTTP_DEFAULT_MAX_HEADERS', 32768))
+DEFAULT_MAX_FIELD_SIZE = int(os.getenv('AIOHTTP_DEFAULT_MAX_FIELD_SIZE', 65536))
 
 cdef extern from "Python.h":
     int PyByteArray_Resize(object, Py_ssize_t) except -1
@@ -327,8 +332,8 @@ cdef class HttpParser:
     cdef _init(self, cparser.http_parser_type mode,
                    object protocol, object loop, int limit,
                    object timer=None,
-                   size_t max_line_size=8190, size_t max_headers=32768,
-                   size_t max_field_size=65536, payload_exception=None,
+                   size_t max_line_size=DEFAULT_MAX_LINE_SIZE, size_t max_headers=DEFAULT_MAX_HEADERS,
+                   size_t max_field_size=DEFAULT_MAX_FIELD_SIZE, payload_exception=None,
                    bint response_with_body=True, bint read_until_eof=False,
                    bint auto_decompress=True):
         cparser.http_parser_init(self._cparser, mode)
@@ -563,8 +568,8 @@ cdef class HttpParser:
 cdef class HttpRequestParser(HttpParser):
 
     def __init__(self, protocol, loop, int limit, timer=None,
-                 size_t max_line_size=8190, size_t max_headers=32768,
-                 size_t max_field_size=65536, payload_exception=None,
+                 size_t max_line_size=DEFAULT_MAX_LINE_SIZE, size_t max_headers=DEFAULT_MAX_HEADERS,
+                 size_t max_field_size=DEFAULT_MAX_FIELD_SIZE, payload_exception=None,
                  bint response_with_body=True, bint read_until_eof=False,
     ):
          self._init(cparser.HTTP_REQUEST, protocol, loop, limit, timer,
@@ -591,8 +596,8 @@ cdef class HttpRequestParser(HttpParser):
 cdef class HttpResponseParser(HttpParser):
 
     def __init__(self, protocol, loop, int limit, timer=None,
-                 size_t max_line_size=8190, size_t max_headers=32768,
-                 size_t max_field_size=65536, payload_exception=None,
+                 size_t max_line_size=DEFAULT_MAX_LINE_SIZE, size_t max_headers=DEFAULT_MAX_HEADERS,
+                 size_t max_field_size=DEFAULT_MAX_FIELD_SIZE, payload_exception=None,
                  bint response_with_body=True, bint read_until_eof=False,
                  bint auto_decompress=True
     ):
