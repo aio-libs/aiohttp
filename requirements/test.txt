@@ -9,6 +9,7 @@ mypy-extensions==0.4.3; implementation_name=="cpython"
 pytest==6.2.2
 pytest-cov==2.12.1
 pytest-mock==3.6.1
+pytest-xdist==2.3.0
 re-assert==1.1.0
 setuptools-git==1.2
 trustme==0.8.0; platform_machine!="i686"    # no 32-bit wheels
