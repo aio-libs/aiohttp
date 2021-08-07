@@ -47,9 +47,12 @@ jobs:
         python setup.py install
       env:
         AIOHTTP_NO_EXTENSIONS: 1
-    - name: Run linters
+    - name: Mypy
       run: |
         make mypy
+    - name: Flake8
+      run: |
+        flake8
     - name: Install spell checker
       run: |
         sudo apt install libenchant-dev
