@@ -83,7 +83,10 @@ flake8==3.9.2
     # via
     #   -r requirements/lint.txt
     #   flake8-pyi
+    #   flake8-requirements
 flake8-pyi==20.10.0
+    # via -r requirements/lint.txt
+flake8-requirements==1.5
     # via -r requirements/lint.txt
 freezegun==1.1.0
     # via -r requirements/test.txt
@@ -253,6 +256,7 @@ toml==0.10.2
     #   -r requirements/lint.txt
     #   black
     #   cherry-picker
+    #   flake8-requirements
     #   pre-commit
     #   pytest
     #   pytest-cov
@@ -290,5 +294,6 @@ yarl==1.6.3
 setuptools==51.3.1
     # via
     #   blockdiag
+    #   flake8-requirements
     #   gunicorn
     #   sphinx
