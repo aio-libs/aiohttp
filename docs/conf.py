@@ -161,7 +161,7 @@ html_theme_options = {
             "alt": "Azure Pipelines CI status",
         },
         {
-            "image": "https://codecov.io/github/aio-libs/aiohttp/coverage.svg?branch=master",
+            "image": "https://codecov.io/github/aio-libs/aiohttp/coverage.svg?branch=master",  # noqa: E501
             "target": "https://codecov.io/github/aio-libs/aiohttp",
             "height": "20",
             "alt": "Code coverage status",
@@ -173,7 +173,7 @@ html_theme_options = {
             "alt": "Latest PyPI package version",
         },
         {
-            "image": "https://img.shields.io/discourse/status?server=https%3A%2F%2Faio-libs.discourse.group",
+            "image": "https://img.shields.io/discourse/status?server=https%3A%2F%2Faio-libs.discourse.group",  # noqa: E501
             "target": "https://aio-libs.discourse.group",
             "height": "20",
             "alt": "Discourse status",
