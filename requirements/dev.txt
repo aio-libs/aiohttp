@@ -159,7 +159,7 @@ pluggy==0.13.1
     # via
     #   -r requirements/lint.txt
     #   pytest
-pre-commit==2.13.0
+pre-commit==2.14.0
     # via -r requirements/lint.txt
 py==1.10.0
     # via
@@ -227,7 +227,7 @@ six==1.15.0
     #   virtualenv
 snowballstemmer==2.0.0
     # via sphinx
-sphinx==4.0.3
+sphinx==4.1.0
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-asyncio
@@ -253,6 +253,7 @@ toml==0.10.2
     #   -r requirements/lint.txt
     #   black
     #   cherry-picker
+    #   mypy
     #   pre-commit
     #   pytest
     #   pytest-cov
@@ -261,12 +262,10 @@ towncrier==21.3.0
     # via -r requirements/doc.txt
 trustme==0.8.0 ; platform_machine != "i686"
     # via -r requirements/test.txt
-typed-ast==1.4.2
+types-chardet==0.1.3
     # via
     #   -r requirements/lint.txt
-    #   mypy
-types-chardet==0.1.3
-    # via -r requirements/lint.txt
+    #   -r requirements/test.txt
 typing-extensions==3.7.4.3
     # via
     #   -r requirements/base.txt
