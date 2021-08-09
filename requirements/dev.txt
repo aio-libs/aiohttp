@@ -26,7 +26,7 @@ attrs==20.3.0
     #   pytest
 babel==2.9.0
     # via sphinx
-black==21.6b0 ; implementation_name == "cpython"
+black==21.7b0 ; implementation_name == "cpython"
     # via -r requirements/lint.txt
 blockdiag==2.0.1
     # via sphinxcontrib-blockdiag
@@ -251,13 +251,16 @@ sphinxcontrib-serializinghtml==1.1.4
 toml==0.10.2
     # via
     #   -r requirements/lint.txt
-    #   black
     #   cherry-picker
     #   mypy
     #   pre-commit
     #   pytest
     #   pytest-cov
     #   towncrier
+tomli==1.2.1
+    # via
+    #   -r requirements/lint.txt
+    #   black
 towncrier==21.3.0
     # via -r requirements/doc.txt
 trustme==0.8.0 ; platform_machine != "i686"
