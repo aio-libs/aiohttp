@@ -14,7 +14,6 @@ from typing import Any, Optional
 from unittest import mock
 
 import pytest
-from conftest import needs_unix
 from yarl import URL
 
 import aiohttp
@@ -25,6 +24,7 @@ from aiohttp.connector import Connection, TCPConnector, _DNSCacheTable
 from aiohttp.locks import EventResultOrError
 from aiohttp.test_utils import make_mocked_coro, unused_port
 from aiohttp.tracing import Trace
+from .conftest import needs_unix
 
 
 @pytest.fixture()
