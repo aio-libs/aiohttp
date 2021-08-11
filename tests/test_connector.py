@@ -188,7 +188,7 @@ async def test_del_with_scheduled_cleanup(loop: Any) -> None:
         # obviously doesn't deletion because loop has a strong
         # reference to connector's instance method, isn't it?
         del conn
-        await asyncio.sleep(0.01, loop=loop)
+        await asyncio.sleep(0.01)
         gc.collect()
 
     assert not conns_impl

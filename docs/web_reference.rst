@@ -745,7 +745,7 @@ StreamResponse
       :param int version: a decimal integer, identifies to which
                           version of the state management
                           specification the cookie
-                          conforms. (Optional, *version=1* by default)
+                          conforms. (optional)
 
       :param str samesite: Asserts that a cookie must not be sent with
          cross-origin requests, providing some protection
