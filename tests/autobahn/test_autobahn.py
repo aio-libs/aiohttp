@@ -6,7 +6,7 @@ from typing import Any, Dict, Generator, List
 
 import pytest
 from pytest import TempPathFactory
-from python_on_whales import docker
+from python_on_whales import DockerException, docker
 
 
 @pytest.fixture(scope="session")
@@ -16,11 +16,16 @@ def report_dir(tmp_path_factory: TempPathFactory) -> Path:
 
 @pytest.fixture(scope="session", autouse=True)
 def build_autobahn_testsuite() -> Generator[None, None, None]:
-    docker.build(
-        file="tests/autobahn/Dockerfile.autobahn",
-        tags=["autobahn-testsuite"],
-        context_path=".",
-    )
+
+    try:
+        docker.build(
+            file="tests/autobahn/Dockerfile.autobahn",
+            tags=["autobahn-testsuite"],
+            context_path=".",
+        )
+    except DockerException:
+        pytest.skip(msg="The docker daemon is not running.")
+
     try:
         yield
     finally:
