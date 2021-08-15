@@ -45,7 +45,7 @@ User still may use wildcard for accepting all HTTP methods (maybe we
 will add something like ``resource.add_wildcard(handler)`` later).
 
 Since **names** belongs to **resources** now ``app.router['name']``
-returns a **resource** instance instead of :class:`aiohttp.web.Route`.
+returns a **resource** instance instead of :class:`aiohttp.web.AbstractRoute`.
 
 **resource** has ``.url()`` method, so
 ``app.router['name'].url(parts={'a': 'b'}, query={'arg': 'param'})``
@@ -65,8 +65,8 @@ The refactoring is 99% compatible with previous implementation.
 99% means all example and the most of current code works without
 modifications but we have subtle API backward incompatibles.
 
-``app.router['name']`` returns a :class:`aiohttp.web.BaseResource`
-instance instead of :class:`aiohttp.web.Route` but resource has the
+``app.router['name']`` returns a :class:`aiohttp.web.AbstractResource`
+instance instead of :class:`aiohttp.web.AbstractRoute` but resource has the
 same ``resource.url(...)`` most useful method, so end user should feel no
 difference.
 
@@ -81,4 +81,4 @@ shortcut for::
     return route
 
 ``app.router.register_route(...)`` is still supported, it creates
-:class:`aiohttp.web.ResourceAdapter` for every call (but it's deprecated now).
+``aiohttp.web.ResourceAdapter`` for every call (but it's deprecated now).

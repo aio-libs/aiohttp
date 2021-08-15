@@ -9,6 +9,9 @@ CS := $(wildcard aiohttp/*.c)
 PYS := $(wildcard aiohttp/*.py)
 REQS := $(wildcard requirements/*.txt)
 ALLS := $(sort $(CYS) $(CS) $(PYS) $(REQS))
+IN := doc-spelling lint cython dev
+REQIN := $(foreach fname,$(IN),requirements/$(fname).in)
+
 
 .PHONY: all
 all: test
@@ -45,9 +48,11 @@ endif
 # Enumerate intermediate files to don't remove them automatically.
 .SECONDARY: $(call to-hash,$(ALLS))
 
+.update-pip:
+	@python -m pip install --upgrade pip
 
-.install-cython: $(call to-hash,requirements/cython.txt)
-	pip install -r requirements/cython.txt
+.install-cython: .update-pip $(call to-hash,requirements/cython.txt)
+	@pip install -r requirements/cython.txt
 	@touch .install-cython
 
 aiohttp/_find_header.c: $(call to-hash,aiohttp/hdrs.py ./tools/gen.py)
@@ -62,7 +67,7 @@ aiohttp/%.c: aiohttp/%.pyx $(call to-hash,$(CYS)) aiohttp/_find_header.c
 cythonize: .install-cython $(PYXS:.pyx=.c)
 
 .install-deps: .install-cython $(PYXS:.pyx=.c) $(call to-hash,$(CYS) $(REQS))
-	pip install -r requirements/dev.txt
+	@pip install -r requirements/dev.txt
 	@touch .install-deps
 
 .PHONY: lint
@@ -74,7 +79,7 @@ fmt format:
 
 .PHONY: mypy
 mypy:
-	mypy --show-error-codes aiohttp tests
+	mypy
 
 .develop: .install-deps $(call to-hash,$(PYS) $(CYS) $(CS))
 	pip install -e .
@@ -91,6 +96,11 @@ vtest: .develop
 .PHONY: vvtest
 vvtest: .develop
 	@pytest -vv
+
+.PHONY: cov-dev
+cov-dev: .develop
+	@pytest --cov-report=html
+	@echo "xdg-open file://`pwd`/htmlcov/index.html"
 
 .PHONY: clean
 clean:
@@ -128,24 +138,21 @@ clean:
 
 .PHONY: doc
 doc:
-	@make -C docs html SPHINXOPTS="-W -E"
+	@make -C docs html SPHINXOPTS="-W --keep-going -n -E"
 	@echo "open file://`pwd`/docs/_build/html/index.html"
 
 .PHONY: doc-spelling
 doc-spelling:
-	@make -C docs spelling SPHINXOPTS="-W -E"
-
-.update-pip:
-	@pip install -U 'pip'
+	@make -C docs spelling SPHINXOPTS="-W --keep-going -n -E"
 
 .PHONY: compile-deps
 compile-deps: .update-pip
 	@pip install pip-tools
-	@pip-compile --allow-unsafe -q requirements/dev.in
+	@$(foreach fname,$(REQIN),pip-compile --allow-unsafe -q $(fname);)
 
 .PHONY: install
 install: .update-pip
-	@pip install -r requirements/dev.in -c requirements/dev.txt
+	@pip install -r requirements/dev.txt
 
 .PHONY: install-dev
 install-dev: .develop

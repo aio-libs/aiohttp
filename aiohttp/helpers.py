@@ -40,7 +40,7 @@ from typing import (
     cast,
 )
 from urllib.parse import quote
-from urllib.request import getproxies
+from urllib.request import getproxies, proxy_bypass
 
 import async_timeout
 from multidict import CIMultiDict, MultiDict, MultiDictProxy
@@ -51,7 +51,7 @@ from . import hdrs
 from .log import client_logger
 from .typedefs import PathLike  # noqa
 
-__all__ = ("BasicAuth", "ChainMapProxy")
+__all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
 PY_38 = sys.version_info >= (3, 8)
 
@@ -114,7 +114,7 @@ if PY_38:
     iscoroutinefunction = asyncio.iscoroutinefunction
 else:
 
-    def iscoroutinefunction(func: Callable[..., Any]) -> bool:
+    def iscoroutinefunction(func: Any) -> bool:
         while isinstance(func, functools.partial):
             func = func.func
         return asyncio.iscoroutinefunction(func)
@@ -267,6 +267,20 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
                 auth = BasicAuth(cast(str, login), cast(str, password))
         ret[proto] = ProxyInfo(proxy, auth)
     return ret
+
+
+def get_env_proxy_for_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
+    """Get a permitted proxy for the given URL from the env."""
+    if url.host is not None and proxy_bypass(url.host):
+        raise LookupError(f"Proxying is disallowed for `{url.host!r}`")
+
+    proxies_in_env = proxies_from_env()
+    try:
+        proxy_info = proxies_in_env[url.scheme]
+    except KeyError:
+        raise LookupError(f"No proxies found for `{url!s}` in the env")
+    else:
+        return proxy_info.proxy, proxy_info.proxy_auth
 
 
 @dataclasses.dataclass(frozen=True)
@@ -686,15 +700,15 @@ class TimerContext(BaseTimerContext):
 
 
 def ceil_timeout(delay: Optional[float]) -> async_timeout.Timeout:
-    if delay is not None and delay > 0:
-        loop = asyncio.get_running_loop()
-        now = loop.time()
-        when = now + delay
-        if delay > 5:
-            when = ceil(when)
-        return async_timeout.timeout_at(when)
-    else:
+    if delay is None or delay <= 0:
         return async_timeout.timeout(None)
+
+    loop = asyncio.get_running_loop()
+    now = loop.time()
+    when = now + delay
+    if delay > 5:
+        when = ceil(when)
+    return async_timeout.timeout_at(when)
 
 
 class HeadersMixin:
@@ -887,3 +901,26 @@ def populate_with_cookies(
     for cookie in cookies.values():
         value = cookie.output(header="")[1:]
         headers.add(hdrs.SET_COOKIE, value)
+
+
+# https://tools.ietf.org/html/rfc7232#section-2.3
+_ETAGC = r"[!#-}\x80-\xff]+"
+_ETAGC_RE = re.compile(_ETAGC)
+_QUOTED_ETAG = fr'(W/)?"({_ETAGC})"'
+QUOTED_ETAG_RE = re.compile(_QUOTED_ETAG)
+LIST_QUOTED_ETAG_RE = re.compile(fr"({_QUOTED_ETAG})(?:\s*,\s*|$)|(.)")
+
+ETAG_ANY = "*"
+
+
+@dataclasses.dataclass(frozen=True)
+class ETag:
+    value: str
+    is_weak: bool = False
+
+
+def validate_etag_value(value: str) -> None:
+    if value != ETAG_ANY and not _ETAGC_RE.fullmatch(value):
+        raise ValueError(
+            f"Value {value!r} is not a valid etag. Maybe it contains '\"'?"
+        )

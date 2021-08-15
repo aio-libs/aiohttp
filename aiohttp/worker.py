@@ -29,7 +29,7 @@ except ImportError:  # pragma: no cover
 __all__ = ("GunicornWebWorker", "GunicornUVLoopWebWorker", "GunicornTokioWebWorker")
 
 
-class GunicornWebWorker(base.Worker):  # type: ignore[misc]
+class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
 
     DEFAULT_AIOHTTP_LOG_FORMAT = AccessLogger.LOG_FORMAT
     DEFAULT_GUNICORN_LOG_FORMAT = GunicornAccessLogFormat.default
