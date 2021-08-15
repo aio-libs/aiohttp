@@ -177,22 +177,13 @@ def _check_string(string: str) -> str:
             "Newline or carriage return character detected in HTTP status message or "
             "header. This is a potential security issue."
         )
-    else:
-        return string
+    return string
 
 
 def _py_serialize_headers(status_line: str, headers: "CIMultiDict[str]") -> bytes:
-    line = (
-        _check_string(status_line)
-        + "\r\n"
-        + "".join(
-            [
-                _check_string(k) + ": " + _check_string(v) + "\r\n"
-                for k, v in headers.items()
-            ]
-        )
-    )
-    return line.encode("utf-8") + b"\r\n"
+    headers = (_check_string(k) + ": " + _check_string(v) for k, v in headers.items())
+    line = _check_string(status_line) + "\r\n" + "\r\n".join(headers) + "\r\n"
+    return line.encode("utf-8")
 
 
 _serialize_headers = _py_serialize_headers
