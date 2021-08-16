@@ -263,7 +263,7 @@ tomli==1.2.1
     #   black
 towncrier==21.3.0
     # via -r requirements/doc.txt
-trustme==0.8.0 ; platform_machine != "i686"
+trustme==0.9.0 ; platform_machine != "i686"
     # via -r requirements/test.txt
 types-chardet==0.1.3
     # via
