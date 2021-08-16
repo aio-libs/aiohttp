@@ -181,8 +181,8 @@ def _safe_header(string: str) -> str:
 
 
 def _py_serialize_headers(status_line: str, headers: "CIMultiDict[str]") -> bytes:
-    headers = (_safe_header(k) + ": " + _safe_header(v) for k, v in headers.items())
-    line = status_line + "\r\n" + "\r\n".join(headers) + "\r\n"
+    headers_gen = (_safe_header(k) + ": " + _safe_header(v) for k, v in headers.items())
+    line = status_line + "\r\n" + "\r\n".join(headers_gen) + "\r\n"
     return line.encode("utf-8")
 
 
