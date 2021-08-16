@@ -16,12 +16,12 @@ certifi==2020.12.5
     # via requests
 chardet==4.0.0
     # via requests
-click-default-group==1.2.2
-    # via towncrier
 click==7.1.2
     # via
     #   click-default-group
     #   towncrier
+click-default-group==1.2.2
+    # via towncrier
 docutils==0.16
     # via sphinx
 funcparserlib==0.3.6
@@ -44,7 +44,7 @@ pillow==8.1.2
     # via blockdiag
 pyenchant==3.2.0
     # via sphinxcontrib-spelling
-pygments==2.9.0
+pygments==2.10.0
     # via
     #   -r requirements/doc.txt
     #   sphinx
@@ -56,7 +56,7 @@ requests==2.25.1
     # via sphinx
 snowballstemmer==2.1.0
     # via sphinx
-sphinx==4.0.2
+sphinx==4.1.2
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-asyncio
@@ -70,13 +70,13 @@ sphinxcontrib-blockdiag==2.0.0
     # via -r requirements/doc.txt
 sphinxcontrib-devhelp==1.0.2
     # via sphinx
-sphinxcontrib-htmlhelp==1.0.3
+sphinxcontrib-htmlhelp==2.0.0
     # via sphinx
 sphinxcontrib-jsmath==1.0.1
     # via sphinx
 sphinxcontrib-qthelp==1.0.3
     # via sphinx
-sphinxcontrib-serializinghtml==1.1.4
+sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
 sphinxcontrib-spelling==7.2.1 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.in
