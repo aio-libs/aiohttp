@@ -111,7 +111,7 @@ cdef str to_str(object s):
         return str(s)
 
 
-cdef void _check_string(str string) except *:
+cdef void _safe_header(str string) except *:
     if "\r" in string or "\n" in string:
         raise ValueError(
             "Newline or carriage return character detected in HTTP status message or "
@@ -127,10 +127,9 @@ def _serialize_headers(str status_line, headers):
 
     _init_writer(&writer)
 
-    _check_string(status_line)
     for key, val in headers.items():
-        _check_string(to_str(key))
-        _check_string(to_str(val))
+        _safe_header(to_str(key))
+        _safe_header(to_str(val))
 
     try:
         if _write_str(&writer, status_line) < 0:

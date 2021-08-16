@@ -279,10 +279,6 @@ async def test_write_headers_prevents_injection(
     protocol: Any, transport: Any, loop: Any
 ) -> None:
     msg = http.StreamWriter(protocol, loop)
-    wrong_status_line = "HTTP/1.1 200 OK\r\nSet-Cookie: abc=123"
-    headers = CIMultiDict({"Content-Length": "256"})
-    with pytest.raises(ValueError):
-        await msg.write_headers(wrong_status_line, headers)
     status_line = "HTTP/1.1 200 OK"
     wrong_headers = CIMultiDict({"Set-Cookie: abc=123\r\nContent-Length": "256"})
     with pytest.raises(ValueError):
