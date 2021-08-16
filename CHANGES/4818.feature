@@ -1,1 +1,1 @@
-Add validation of HTTP status line, header keys and header values to prevent header injection.
+Add validation of HTTP header keys and values to prevent header injection.
