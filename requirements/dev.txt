@@ -178,7 +178,7 @@ pyflakes==2.3.0
     #   -r requirements/lint.txt
     #   flake8
     #   flake8-pyi
-pygments==2.9.0
+pygments==2.10.0
     # via
     #   -r requirements/doc.txt
     #   sphinx
