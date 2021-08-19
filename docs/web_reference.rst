@@ -2583,6 +2583,10 @@ application on specific TCP or Unix socket, e.g.::
                             it means that the session global value is used.
 
       .. versionadded:: 3.7
+   :param bool auto_decompress: Automatically decompress request body,
+      ``True`` by default.
+
+      .. versionadded:: 4.0
 
 
 
