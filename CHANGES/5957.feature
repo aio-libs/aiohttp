@@ -1,0 +1,1 @@
+optional auto_decompress for HttpRequestParser
