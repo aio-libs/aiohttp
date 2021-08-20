@@ -48,13 +48,14 @@ from typing_extensions import Protocol, final
 from yarl import URL
 
 from . import hdrs
-from .log import client_logger
+from .log import client_logger, server_logger
 from .typedefs import PathLike  # noqa
 
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
 PY_38 = sys.version_info >= (3, 8)
 
+COOKIE_MAX_LENGTH = 4096
 
 try:
     from typing import ContextManager
@@ -851,6 +852,15 @@ class CookieMixin:
 
         self._cookies[name] = value
         c = self._cookies[name]
+
+        if DEBUG:
+            cookie_length = (
+                len(name) + len(value) + sum(len(k) + len(v) for k, v in c.items())
+            )
+            if cookie_length > COOKIE_MAX_LENGTH:
+                server_logger.warning(
+                    "The size of the cookie exceeded %d bytes." % COOKIE_MAX_LENGTH
+                )
 
         if expires is not None:
             c["expires"] = expires
