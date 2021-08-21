@@ -151,7 +151,7 @@ class ClientTimeout:
 
     # to create a timeout specific for a single request, either
     # - create a completely new one to overwrite the default
-    # - or use http://www.attrs.org/en/stable/api.html#attr.evolve
+    # - or use https://docs.python.org/3/library/dataclasses.html#dataclasses.replace
     # to overwrite the defaults
 
 

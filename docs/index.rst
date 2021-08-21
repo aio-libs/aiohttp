@@ -148,7 +148,6 @@ Dependencies
 
 - Python 3.6+
 - *async_timeout*
-- *attrs*
 - *chardet*
 - *multidict*
 - *yarl*

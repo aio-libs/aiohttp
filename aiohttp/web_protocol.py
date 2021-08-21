@@ -1,5 +1,6 @@
 import asyncio
 import asyncio.streams
+import dataclasses
 import traceback
 import warnings
 from collections import deque
@@ -21,7 +22,6 @@ from typing import (
     cast,
 )
 
-import attr
 import yarl
 
 from .abc import AbstractAccessLogger, AbstractStreamWriter
@@ -83,7 +83,7 @@ class PayloadAccessError(Exception):
     """Payload was accessed after response was sent."""
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class _ErrInfo:
     status: int
     exc: BaseException
