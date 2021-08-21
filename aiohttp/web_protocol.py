@@ -20,7 +20,7 @@ from typing import (
     cast,
 )
 
-import attr
+import dataclasses
 import yarl
 
 from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
@@ -105,7 +105,7 @@ class AccessLoggerWrapper(AbstractAsyncAccessLogger):
         self.access_logger.log(request, response, self._loop.time() - request_start)
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class _ErrInfo:
     status: int
     exc: BaseException
