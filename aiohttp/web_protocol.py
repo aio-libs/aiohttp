@@ -1,5 +1,6 @@
 import asyncio
 import asyncio.streams
+import dataclasses
 import traceback
 from collections import deque
 from contextlib import suppress
@@ -20,7 +21,6 @@ from typing import (
     cast,
 )
 
-import dataclasses
 import yarl
 
 from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
