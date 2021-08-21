@@ -1389,8 +1389,8 @@ Response object
 
       :return str: decoded *BODY*
 
-      :raise LookupError: if the encoding detected by charset-normalizer or
-                          cchardet is unknown by Python (e.g. VISCII).
+      :raise LookupError: if the encoding detected by cchardet is
+                          unknown by Python (e.g. VISCII).
 
       .. note::
 
