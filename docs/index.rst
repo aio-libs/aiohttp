@@ -148,7 +148,6 @@ Dependencies
 
 - Python 3.7+
 - *async_timeout*
-- *attrs*
 - *charset-normalizer*
 - *multidict*
 - *yarl*
