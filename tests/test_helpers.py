@@ -840,3 +840,20 @@ def test_populate_with_cookies():
 
     helpers.populate_with_cookies(headers, cookies_mixin.cookies)
     assert headers == CIMultiDict({"Set-Cookie": "name=value; Path=/"})
+
+
+def test_large_cookies_prints_warning():
+    sut = helpers.CookieMixin()
+
+    assert sut.cookies == {}
+
+    with pytest.warns(None) as record:
+        sut.set_cookie("name", "value")
+
+    assert len(record) == 0
+
+    value = "a" * 4097
+    with pytest.warns(None) as record:
+        sut.set_cookie("name", value)
+
+    assert len(record) == 1
