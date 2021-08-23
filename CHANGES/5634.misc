@@ -1,1 +1,1 @@
-Add warning when a cookie's length exceeds the RFC 6265 minimum client support
+A warning was added, when a cookie's length exceeds the :rfc:`6265` minimum client support.
