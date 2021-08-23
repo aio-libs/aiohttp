@@ -13,6 +13,7 @@ import platform
 import re
 import sys
 import time
+import warnings
 import weakref
 from collections import namedtuple
 from contextlib import suppress
@@ -48,7 +49,7 @@ from typing_extensions import Protocol, final
 from yarl import URL
 
 from . import hdrs
-from .log import client_logger, server_logger
+from .log import client_logger
 from .typedefs import PathLike  # noqa
 
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag")
@@ -853,15 +854,6 @@ class CookieMixin:
         self._cookies[name] = value
         c = self._cookies[name]
 
-        if DEBUG:
-            cookie_length = (
-                len(name) + len(value) + sum(len(k) + len(v) for k, v in c.items())
-            )
-            if cookie_length > COOKIE_MAX_LENGTH:
-                server_logger.warning(
-                    "The size of the cookie exceeded %d bytes." % COOKIE_MAX_LENGTH
-                )
-
         if expires is not None:
             c["expires"] = expires
         elif c.get("expires") == "Thu, 01 Jan 1970 00:00:00 GMT":
@@ -885,6 +877,15 @@ class CookieMixin:
             c["version"] = version
         if samesite is not None:
             c["samesite"] = samesite
+
+        if DEBUG:
+            cookie_length = (
+                len(name) + len(value) + sum(len(k) + len(v) for k, v in c.items())
+            )
+            if cookie_length > COOKIE_MAX_LENGTH:
+                warnings.warn(
+                    "The size of the cookie exceeded %d bytes." % COOKIE_MAX_LENGTH
+                )
 
     def del_cookie(
         self, name: str, *, domain: Optional[str] = None, path: str = "/"
