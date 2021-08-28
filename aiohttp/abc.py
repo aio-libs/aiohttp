@@ -195,7 +195,7 @@ class AbstractAccessLogger(ABC):
 
     def __init__(self, logger: logging.Logger, log_format: str) -> None:
         self.logger = logger
-        self.log_format = log_format
+        self.log_format = log_format  # foo
 
     @abstractmethod
     def log(self, request: BaseRequest, response: StreamResponse, time: float) -> None:
