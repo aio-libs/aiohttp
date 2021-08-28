@@ -1,7 +1,7 @@
 codecov:
   branch: master
   notify:
-    wait_for_ci: yes
+    after_n_builds: 10
 
 coverage:
   range: "95..100"
