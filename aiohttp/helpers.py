@@ -239,6 +239,7 @@ class ProxyInfo:
 
 
 def proxies_from_env() -> Dict[str, ProxyInfo]:
+    print("FOO")
     proxy_urls = {
         k: URL(v)
         for k, v in getproxies().items()
