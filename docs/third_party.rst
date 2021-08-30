@@ -290,3 +290,6 @@ period ask to raise the status.
 
 - `aiohttp-retry <https://github.com/inyutin/aiohttp_retry>`_
   Wrapper for aiohttp client for retrying requests. Python 3.6+ required.
+  
+- `aiohttp-socks <https://github.com/romis2012/aiohttp-socks>`_
+  SOCKS proxy connector for aiohttp.
