@@ -3,6 +3,8 @@ import collections.abc
 import datetime
 import gzip
 import json
+import os
+import re
 import weakref
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Optional
@@ -1167,3 +1169,36 @@ class TestJSONResponse:
     def test_content_type_is_overrideable(self) -> None:
         resp = json_response({"foo": 42}, content_type="application/vnd.json+api")
         assert "application/vnd.json+api" == resp.content_type
+
+
+@pytest.mark.skipif(
+    not bool(os.environ.get("PYTHONASYNCIODEBUG")),
+    reason="Only run the test with debug mode",
+)
+async def test_warn_large_cookie(buf: Any, writer: Any) -> None:
+    resp = Response()
+    resp.set_cookie("foo", "8" * 4070, max_age=2600)  # No warning
+    req = make_request("GET", "/", writer=writer)
+
+    await resp.prepare(req)
+    await resp.write_eof()
+
+    cookie = re.search(b"Set-Cookie: (.*?)\r\n", buf).group(1)
+    assert len(cookie) == 4096
+    buf[:] = b""
+
+    resp = Response()
+
+    with pytest.warns(
+        UserWarning,
+        match="The size of is too large, it might get ignored by the client.",
+    ) as record:
+        resp.set_cookie("foo", "8" * 4071, max_age=2600)
+    req = make_request("GET", "/", writer=writer)
+
+    await resp.prepare(req)
+    await resp.write_eof()
+
+    cookie = re.search(b"Set-Cookie: (.*?)\r\n", buf).group(1)
+    assert len(cookie) == 4097
+    assert len(record) == 1

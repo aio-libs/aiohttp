@@ -879,12 +879,11 @@ class CookieMixin:
             c["samesite"] = samesite
 
         if DEBUG:
-            cookie_length = (
-                len(name) + len(value) + sum(len(k) + len(v) for k, v in c.items())
-            )
+            cookie_length = len(c.output(header="")[1:])
             if cookie_length > COOKIE_MAX_LENGTH:
                 warnings.warn(
-                    "The size of the cookie exceeded %d bytes." % COOKIE_MAX_LENGTH
+                    "The size of is too large, it might get ignored by the client.",
+                    UserWarning,
                 )
 
     def del_cookie(
