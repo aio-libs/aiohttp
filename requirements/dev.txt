@@ -159,7 +159,7 @@ pluggy==0.13.1
     # via
     #   -r requirements/lint.txt
     #   pytest
-pre-commit==2.14.1
+pre-commit==2.15.0
     # via -r requirements/lint.txt
 py==1.10.0
     # via
