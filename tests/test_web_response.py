@@ -1175,9 +1175,9 @@ class TestJSONResponse:
     not bool(os.environ.get("PYTHONASYNCIODEBUG")),
     reason="Only run the test with debug mode",
 )
-async def test_warn_large_cookie(buf: Any, writer: Any) -> None:
+async def test_no_warn_small_cookie(buf: Any, writer: Any) -> None:
     resp = Response()
-    resp.set_cookie("foo", "8" * 4070, max_age=2600)  # No warning
+    resp.set_cookie("foo", "ÿ" + "8" * 4064, max_age=2600)  # No warning
     req = make_request("GET", "/", writer=writer)
 
     await resp.prepare(req)
@@ -1185,15 +1185,20 @@ async def test_warn_large_cookie(buf: Any, writer: Any) -> None:
 
     cookie = re.search(b"Set-Cookie: (.*?)\r\n", buf).group(1)
     assert len(cookie) == 4096
-    buf[:] = b""
 
+
+@pytest.mark.skipif(
+    not bool(os.environ.get("PYTHONASYNCIODEBUG")),
+    reason="Only run the test with debug mode",
+)
+async def test_warn_large_cookie(buf: Any, writer: Any) -> None:
     resp = Response()
 
     with pytest.warns(
         UserWarning,
         match="The size of is too large, it might get ignored by the client.",
-    ) as record:
-        resp.set_cookie("foo", "8" * 4071, max_age=2600)
+    ):
+        resp.set_cookie("foo", "ÿ" + "8" * 4065, max_age=2600)
     req = make_request("GET", "/", writer=writer)
 
     await resp.prepare(req)
@@ -1201,4 +1206,3 @@ async def test_warn_large_cookie(buf: Any, writer: Any) -> None:
 
     cookie = re.search(b"Set-Cookie: (.*?)\r\n", buf).group(1)
     assert len(cookie) == 4097
-    assert len(record) == 1
