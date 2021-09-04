@@ -884,6 +884,7 @@ class CookieMixin:
                 warnings.warn(
                     "The size of is too large, it might get ignored by the client.",
                     UserWarning,
+                    stacklevel=2,
                 )
 
     def del_cookie(
