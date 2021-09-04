@@ -249,9 +249,7 @@ async def test_drain_no_transport(protocol, transport, loop) -> None:
     assert not protocol._drain_helper.called
 
 
-async def test_write_headers_prevents_injection(
-    protocol: Any, transport: Any, loop: Any
-) -> None:
+async def test_write_headers_prevents_injection(protocol, transport, loop) -> None:
     msg = http.StreamWriter(protocol, loop)
     status_line = "HTTP/1.1 200 OK"
     wrong_headers = CIMultiDict({"Set-Cookie: abc=123\r\nContent-Length": "256"})
