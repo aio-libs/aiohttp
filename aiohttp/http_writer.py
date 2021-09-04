@@ -171,13 +171,19 @@ class StreamWriter(AbstractStreamWriter):
             await self._protocol._drain_helper()
 
 
+def _safe_header(string: str) -> str:
+    if "\r" in string or "\n" in string:
+        raise ValueError(
+            "Newline or carriage return detected in headers. "
+            "Potential header injection attack."
+        )
+    return string
+
+
 def _py_serialize_headers(status_line: str, headers: "CIMultiDict[str]") -> bytes:
-    line = (
-        status_line
-        + "\r\n"
-        + "".join([k + ": " + v + "\r\n" for k, v in headers.items()])
-    )
-    return line.encode("utf-8") + b"\r\n"
+    headers_gen = (_safe_header(k) + ": " + _safe_header(v) for k, v in headers.items())
+    line = status_line + "\r\n" + "\r\n".join(headers_gen) + "\r\n\r\n"
+    return line.encode("utf-8")
 
 
 _serialize_headers = _py_serialize_headers
