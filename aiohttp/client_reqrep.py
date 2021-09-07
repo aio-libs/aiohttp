@@ -27,7 +27,7 @@ from typing import (
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
-from . import hdrs, helpers, http, multipart, payload
+from . import DEFAULT_USER_AGENT_HEADER, hdrs, helpers, http, multipart, payload
 from .abc import AbstractStreamWriter
 from .client_exceptions import (
     ClientConnectionError,
@@ -48,7 +48,7 @@ from .helpers import (
     reify,
     set_result,
 )
-from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, StreamWriter
+from .http import HttpVersion10, HttpVersion11, StreamWriter
 from .http_parser import HAS_BROTLI
 from .log import client_logger
 from .streams import StreamReader
@@ -354,7 +354,7 @@ class ClientRequest:
                 self.headers.add(hdr, val)
 
         if hdrs.USER_AGENT not in used_headers:
-            self.headers[hdrs.USER_AGENT] = SERVER_SOFTWARE
+            self.headers[hdrs.USER_AGENT] = DEFAULT_USER_AGENT_HEADER
 
     def update_cookies(self, cookies: Optional[LooseCookies]) -> None:
         """Update request cookies header."""

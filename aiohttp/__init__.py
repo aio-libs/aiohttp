@@ -43,6 +43,8 @@ from .http import (
     HttpVersion as HttpVersion,
     HttpVersion10 as HttpVersion10,
     HttpVersion11 as HttpVersion11,
+    SERVER_SOFTWARE as DEFAULT_SERVER_HEADER,
+    SERVER_SOFTWARE as DEFAULT_USER_AGENT_HEADER,
     WebSocketError as WebSocketError,
     WSCloseCode as WSCloseCode,
     WSMessage as WSMessage,

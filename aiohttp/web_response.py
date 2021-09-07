@@ -25,7 +25,7 @@ from typing import (
 
 from multidict import CIMultiDict, istr
 
-from . import hdrs, payload
+from . import DEFAULT_SERVER_HEADER, hdrs, payload
 from .abc import AbstractStreamWriter
 from .helpers import (
     ETAG_ANY,
@@ -39,7 +39,7 @@ from .helpers import (
     sentinel,
     validate_etag_value,
 )
-from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
+from .http import RESPONSES, HttpVersion10, HttpVersion11
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
 
@@ -407,7 +407,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         if self.status not in (204, 304):
             headers.setdefault(hdrs.CONTENT_TYPE, "application/octet-stream")
         headers.setdefault(hdrs.DATE, rfc822_formatted_time())
-        headers.setdefault(hdrs.SERVER, SERVER_SOFTWARE)
+        headers.setdefault(hdrs.SERVER, DEFAULT_SERVER_HEADER)
 
         # connection header
         if hdrs.CONNECTION not in headers:
