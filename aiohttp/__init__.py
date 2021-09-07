@@ -40,11 +40,11 @@ from .cookiejar import CookieJar as CookieJar, DummyCookieJar as DummyCookieJar
 from .formdata import FormData as FormData
 from .helpers import BasicAuth, ChainMapProxy, ETag
 from .http import (
+    SERVER_SOFTWARE as DEFAULT_SERVER_HEADER,
+    SERVER_SOFTWARE as DEFAULT_USER_AGENT_HEADER,
     HttpVersion as HttpVersion,
     HttpVersion10 as HttpVersion10,
     HttpVersion11 as HttpVersion11,
-    SERVER_SOFTWARE as DEFAULT_SERVER_HEADER,
-    SERVER_SOFTWARE as DEFAULT_USER_AGENT_HEADER,
     WebSocketError as WebSocketError,
     WSCloseCode as WSCloseCode,
     WSMessage as WSMessage,
