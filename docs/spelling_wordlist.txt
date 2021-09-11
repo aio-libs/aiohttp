@@ -124,6 +124,8 @@ cchardet
 ceil
 charset
 charsetdetect
+normalizer
+Chardet
 chunked
 chunking
 cls
