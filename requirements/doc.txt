@@ -4,3 +4,4 @@ sphinx==4.2.0
 sphinxcontrib-asyncio==0.3.0
 sphinxcontrib-blockdiag==2.0.0
 towncrier==21.3.0
+funcparserlib==1.0.0a0
