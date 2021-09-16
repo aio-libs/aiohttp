@@ -3,7 +3,6 @@ import collections.abc
 import datetime
 import gzip
 import json
-import os
 import re
 import weakref
 from concurrent.futures import ThreadPoolExecutor
@@ -16,7 +15,7 @@ from multidict import CIMultiDict, CIMultiDictProxy
 from re_assert import Matches
 
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs
-from aiohttp.helpers import ETag
+from aiohttp.helpers import DEBUG, ETag
 from aiohttp.http_writer import _serialize_headers
 from aiohttp.payload import BytesPayload
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
@@ -1172,7 +1171,7 @@ class TestJSONResponse:
 
 
 @pytest.mark.skipif(
-    not bool(os.environ.get("PYTHONASYNCIODEBUG")),
+    not DEBUG,
     reason="Only run the test with debug mode",
 )
 async def test_no_warn_small_cookie(buf: Any, writer: Any) -> None:
@@ -1188,7 +1187,7 @@ async def test_no_warn_small_cookie(buf: Any, writer: Any) -> None:
 
 
 @pytest.mark.skipif(
-    not bool(os.environ.get("PYTHONASYNCIODEBUG")),
+    not DEBUG,
     reason="Only run the test with debug mode",
 )
 async def test_warn_large_cookie(buf: Any, writer: Any) -> None:
