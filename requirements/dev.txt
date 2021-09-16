@@ -279,8 +279,12 @@ towncrier==21.3.0
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-towncrier
+tqdm==4.62.2
+    # via python-on-whales
 trustme==0.9.0 ; platform_machine != "i686"
     # via -r requirements/test.txt
+typer==0.4.0
+    # via python-on-whales
 types-chardet==0.1.3
     # via
     #   -r requirements/lint.txt
@@ -292,6 +296,7 @@ typing-extensions==3.7.4.3
     #   async-timeout
     #   mypy
     #   proxy.py
+    #   pydantic
 uritemplate==3.0.1
     # via gidgethub
 urllib3==1.26.5
