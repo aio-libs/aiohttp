@@ -15,7 +15,7 @@ from multidict import CIMultiDict, CIMultiDictProxy
 from re_assert import Matches
 
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs
-from aiohttp.helpers import DEBUG, ETag
+from aiohttp.helpers import ETag
 from aiohttp.http_writer import _serialize_headers
 from aiohttp.payload import BytesPayload
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
@@ -1170,10 +1170,7 @@ class TestJSONResponse:
         assert "application/vnd.json+api" == resp.content_type
 
 
-@pytest.mark.skipif(
-    not DEBUG,
-    reason="Only run the test with debug mode",
-)
+@pytest.mark.dev_mode
 async def test_no_warn_small_cookie(buf: Any, writer: Any) -> None:
     resp = Response()
     resp.set_cookie("foo", "ÿ" + "8" * 4064, max_age=2600)  # No warning
@@ -1186,10 +1183,7 @@ async def test_no_warn_small_cookie(buf: Any, writer: Any) -> None:
     assert len(cookie) == 4096
 
 
-@pytest.mark.skipif(
-    not DEBUG,
-    reason="Only run the test with debug mode",
-)
+@pytest.mark.dev_mode
 async def test_warn_large_cookie(buf: Any, writer: Any) -> None:
     resp = Response()
 
