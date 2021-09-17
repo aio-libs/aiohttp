@@ -647,7 +647,7 @@ class BaseConnector:
         raise NotImplementedError()
 
 
-class _DNSCacheTable:
+class DNSCacheTable:
     def __init__(self, ttl: Optional[float] = None) -> None:
         self._addrs_rr = (
             {}
@@ -718,6 +718,7 @@ class TCPConnector(BaseConnector):
         *,
         use_dns_cache: bool = True,
         ttl_dns_cache: Optional[int] = 10,
+        dns_cache_override: Optional[DNSCacheTable] = None,
         family: int = 0,
         ssl: Union[None, bool, Fingerprint, SSLContext] = None,
         local_addr: Optional[Tuple[str, int]] = None,
@@ -747,7 +748,7 @@ class TCPConnector(BaseConnector):
         self._resolver: AbstractResolver = resolver
 
         self._use_dns_cache = use_dns_cache
-        self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache)
+        self._cached_hosts = DNSCacheTable(ttl=ttl_dns_cache) if dns_cache_override is None else dns_cache_override
         self._throttle_dns_events = (
             {}
         )  # type: Dict[Tuple[str, int], EventResultOrError]

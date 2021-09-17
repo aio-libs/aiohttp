@@ -21,7 +21,7 @@ import aiohttp
 from aiohttp import client, web
 from aiohttp.client import ClientRequest, ClientTimeout
 from aiohttp.client_reqrep import ConnectionKey
-from aiohttp.connector import Connection, TCPConnector, _DNSCacheTable
+from aiohttp.connector import Connection, TCPConnector, DNSCacheTable
 from aiohttp.locks import EventResultOrError
 from aiohttp.test_utils import make_mocked_coro, unused_port
 from aiohttp.tracing import Trace
@@ -2133,7 +2133,7 @@ async def test_named_pipe_connector(
 class TestDNSCacheTable:
     @pytest.fixture
     def dns_cache_table(self):
-        return _DNSCacheTable()
+        return DNSCacheTable()
 
     def test_next_addrs_basic(self, dns_cache_table: Any) -> None:
         dns_cache_table.add("localhost", ["127.0.0.1"])
@@ -2163,12 +2163,12 @@ class TestDNSCacheTable:
         assert not dns_cache_table.expired("localhost")
 
     def test_not_expired_ttl(self) -> None:
-        dns_cache_table = _DNSCacheTable(ttl=0.1)
+        dns_cache_table = DNSCacheTable(ttl=0.1)
         dns_cache_table.add("localhost", ["127.0.0.1"])
         assert not dns_cache_table.expired("localhost")
 
     async def test_expired_ttl(self, loop: Any) -> None:
-        dns_cache_table = _DNSCacheTable(ttl=0.01)
+        dns_cache_table = DNSCacheTable(ttl=0.01)
         dns_cache_table.add("localhost", ["127.0.0.1"])
         await asyncio.sleep(0.02)
         assert dns_cache_table.expired("localhost")
