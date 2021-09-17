@@ -748,7 +748,11 @@ class TCPConnector(BaseConnector):
         self._resolver: AbstractResolver = resolver
 
         self._use_dns_cache = use_dns_cache
-        self._cached_hosts = DNSCacheTable(ttl=ttl_dns_cache) if dns_cache_override is None else dns_cache_override
+        self._cached_hosts = (
+            DNSCacheTable(ttl=ttl_dns_cache)
+            if dns_cache_override is None
+            else dns_cache_override
+        )
         self._throttle_dns_events = (
             {}
         )  # type: Dict[Tuple[str, int], EventResultOrError]
