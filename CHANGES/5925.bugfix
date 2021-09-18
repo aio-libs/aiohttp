@@ -1,0 +1,1 @@
+Return ``None`` from ``request.if_modified_since``, ``request.if_unmodified_since``, and ``request.if_range`` when corresponding request header is an invalid date.

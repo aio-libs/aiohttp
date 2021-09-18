@@ -7,6 +7,7 @@ import socket
 import string
 import tempfile
 import types
+from contextlib import suppress
 from email.utils import parsedate
 from http.cookies import SimpleCookie
 from types import MappingProxyType
@@ -484,7 +485,10 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         if _date_str is not None:
             timetuple = parsedate(_date_str)
             if timetuple is not None:
-                return datetime.datetime(*timetuple[:6], tzinfo=datetime.timezone.utc)
+                with suppress(ValueError):
+                    return datetime.datetime(
+                        *timetuple[:6], tzinfo=datetime.timezone.utc
+                    )
         return None
 
     @reify
