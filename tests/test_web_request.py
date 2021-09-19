@@ -881,13 +881,9 @@ def test_etag_headers(header, header_attr, header_val, expected) -> None:
 @pytest.mark.parametrize(
     ["header_val", "expected"],
     [
-        # email.utils.parsedate returns None
         pytest.param("xxyyzz", None),
-        # datetime.datetime fails with ValueError("year 4446413 is out of range")
         pytest.param("Tue, 08 Oct 4446413 00:56:40 GMT", None),
-        # datetime.datetime fails with ValueError("second must be in 0..59")
         pytest.param("Tue, 08 Oct 2000 00:56:80 GMT", None),
-        # OK
         pytest.param(
             "Tue, 08 Oct 2000 00:56:40 GMT",
             datetime.datetime(2000, 10, 8, 0, 56, 40, tzinfo=datetime.timezone.utc),

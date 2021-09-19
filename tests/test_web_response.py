@@ -254,6 +254,19 @@ def test_last_modified_reset() -> None:
     assert resp.last_modified is None
 
 
+@pytest.mark.parametrize(
+    ["header_val", "expected"],
+    [
+        pytest.param("xxyyzz", None),
+        pytest.param("Tue, 08 Oct 4446413 00:56:40 GMT", None),
+        pytest.param("Tue, 08 Oct 2000 00:56:80 GMT", None),
+    ],
+)
+def test_last_modified_string_invalid(header_val, expected) -> None:
+    resp = StreamResponse(headers={"Last-Modified": header_val})
+    assert resp.last_modified == expected
+
+
 def test_etag_initial() -> None:
     resp = StreamResponse()
     assert resp.etag is None
