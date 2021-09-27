@@ -222,7 +222,7 @@ class BytesPayload(Payload):
     def __init__(self, value: ByteString, *args: Any, **kwargs: Any) -> None:
         if not isinstance(value, (bytes, bytearray, memoryview)):
             raise TypeError(
-                "value argument must be byte-ish, not {!r}".format(type(value))
+                f"value argument must be byte-ish, not {type(value)!r}"
             )
 
         if "content_type" not in kwargs:
@@ -251,7 +251,7 @@ class BytesPayload(Payload):
 class StringPayload(BytesPayload):
     def __init__(
         self,
-        value: Text,
+        value: str,
         *args: Any,
         encoding: Optional[str] = None,
         content_type: Optional[str] = None,

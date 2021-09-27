@@ -996,7 +996,7 @@ async def test_HTTP_302_max_redirects(aiohttp_client: Any) -> None:
     async def redirect(request):
         count = int(request.match_info["count"])
         if count:
-            raise web.HTTPFound(location="/redirect/{}".format(count - 1))
+            raise web.HTTPFound(location=f"/redirect/{count - 1}")
         else:
             raise web.HTTPFound(location="/")
 
