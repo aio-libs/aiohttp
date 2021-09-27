@@ -92,7 +92,7 @@ frozenlist==1.1.1
     # via
     #   -r requirements/base.txt
     #   aiosignal
-funcparserlib==0.3.6
+funcparserlib==1.0.0a0
     # via blockdiag
 gidgethub==5.0.0
     # via cherry-picker
