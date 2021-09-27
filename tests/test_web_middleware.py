@@ -528,17 +528,14 @@ async def test_new_style_middleware_class(loop, aiohttp_client) -> None:
             resp.text = resp.text + "[new style middleware]"
             return resp
 
-    with pytest.warns(None) as warning_checker:
-        app = web.Application()
-        app.middlewares.append(Middleware())
-        app.router.add_route("GET", "/", handler)
-        client = await aiohttp_client(app)
-        resp = await client.get("/")
-        assert 201 == resp.status
-        txt = await resp.text()
-        assert "OK[new style middleware]" == txt
-
-    assert len(warning_checker) == 0
+    app = web.Application()
+    app.middlewares.append(Middleware())
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.get("/")
+    assert 201 == resp.status
+    txt = await resp.text()
+    assert "OK[new style middleware]" == txt
 
 
 async def test_new_style_middleware_method(loop, aiohttp_client) -> None:
