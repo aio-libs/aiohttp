@@ -24,7 +24,7 @@ click-default-group==1.2.2
     # via towncrier
 docutils==0.16
     # via sphinx
-funcparserlib==0.3.6
+funcparserlib==1.0.0a0
     # via blockdiag
 idna==2.10
     # via requests
