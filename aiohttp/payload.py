@@ -15,7 +15,6 @@ from typing import (
     Dict,
     Iterable,
     Optional,
-    Text,
     TextIO,
     Tuple,
     Type,
