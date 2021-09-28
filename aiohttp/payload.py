@@ -221,9 +221,7 @@ class Payload(ABC):
 class BytesPayload(Payload):
     def __init__(self, value: ByteString, *args: Any, **kwargs: Any) -> None:
         if not isinstance(value, (bytes, bytearray, memoryview)):
-            raise TypeError(
-                f"value argument must be byte-ish, not {type(value)!r}"
-            )
+            raise TypeError(f"value argument must be byte-ish, not {type(value)!r}")
 
         if "content_type" not in kwargs:
             kwargs["content_type"] = "application/octet-stream"
