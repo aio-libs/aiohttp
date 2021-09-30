@@ -2,7 +2,6 @@
 
 import asyncio
 import contextlib
-import functools
 import gc
 import inspect
 import ipaddress
@@ -11,7 +10,17 @@ import socket
 import sys
 from abc import ABC, abstractmethod
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Callable, Iterator, List, Optional, Type, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Iterator,
+    List,
+    Optional,
+    Type,
+    Union,
+    cast,
+)
 from unittest import mock
 
 from aiosignal import Signal
@@ -47,7 +56,7 @@ else:
 if PY_38:
     from unittest import IsolatedAsyncioTestCase as TestCase
 else:
-    from asynctest import TestCase  # type: ignore
+    from asynctest import TestCase  # type: ignore[no-redef]
 
 REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
 
@@ -75,7 +84,7 @@ def unused_port() -> int:
     """Return a port that is unused on the current host."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
+        return cast(int, s.getsockname()[1])
 
 
 class BaseTestServer(ABC):
@@ -277,8 +286,8 @@ class TestClient:
         return self._server
 
     @property
-    def app(self) -> Application:
-        return getattr(self._server, "app", None)
+    def app(self) -> Optional[Application]:
+        return cast(Optional[Application], getattr(self._server, "app", None))
 
     @property
     def session(self) -> ClientSession:
@@ -446,21 +455,6 @@ class AioHTTPTestCase(TestCase):
         return TestClient(server)
 
 
-def unittest_run_loop(func: Any, *args: Any, **kwargs: Any) -> Any:
-    """A decorator dedicated to use with asynchronous methods of an
-    AioHTTPTestCase.
-
-    Handles executing an asynchronous function, using
-    the self.loop of the AioHTTPTestCase.
-    """
-
-    @functools.wraps(func, *args, **kwargs)
-    def new_func(self: Any, *inner_args: Any, **inner_kwargs: Any) -> Any:
-        return self.loop.run_until_complete(func(self, *inner_args, **inner_kwargs))
-
-    return new_func
-
-
 _LOOP_FACTORY = Callable[[], asyncio.AbstractEventLoop]
 
 
@@ -496,7 +490,16 @@ def setup_test_loop(
     asyncio.set_event_loop(loop)
     if sys.platform != "win32" and not skip_watcher:
         policy = asyncio.get_event_loop_policy()
-        watcher = asyncio.SafeChildWatcher()
+        watcher: asyncio.AbstractChildWatcher
+        try:  # Python >= 3.8
+            # Refs:
+            # * https://github.com/pytest-dev/pytest-xdist/issues/620
+            # * https://stackoverflow.com/a/58614689/595220
+            # * https://bugs.python.org/issue35621
+            # * https://github.com/python/cpython/pull/14344
+            watcher = asyncio.ThreadedChildWatcher()
+        except AttributeError:  # Python < 3.8
+            watcher = asyncio.SafeChildWatcher()
         watcher.attach_loop(loop)
         with contextlib.suppress(NotImplementedError):
             policy.set_child_watcher(watcher)
@@ -600,7 +603,7 @@ def make_mocked_request(
         headers,
         raw_hdrs,
         closing,
-        False,
+        None,
         False,
         chunked,
         URL(path),

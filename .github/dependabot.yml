@@ -6,7 +6,6 @@ updates:
     directory: "/"
     labels:
       - dependencies
-      - autosquash
     schedule:
       interval: "daily"
 
@@ -15,7 +14,6 @@ updates:
     directory: "/"
     labels:
       - dependencies
-      - autosquash
     schedule:
       interval: "daily"
     open-pull-requests-limit: 10
@@ -25,17 +23,36 @@ updates:
     directory: "/"
     labels:
       - dependencies
-      - autosquash
     target-branch: "3.8"
     schedule:
       interval: "daily"
+    open-pull-requests-limit: 10
 
   # Maintain dependencies for Python aiohttp 3.8
   - package-ecosystem: "pip"
     directory: "/"
     labels:
       - dependencies
-      - autosquash
+    target-branch: "3.8"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 10
+
+  # Maintain dependencies for GitHub Actions aiohttp 3.8
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    labels:
+      - dependencies
+    target-branch: "3.8"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 10
+
+  # Maintain dependencies for Python aiohttp 3.8
+  - package-ecosystem: "pip"
+    directory: "/"
+    labels:
+      - dependencies
     target-branch: "3.8"
     schedule:
       interval: "daily"

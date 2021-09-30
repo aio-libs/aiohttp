@@ -14,6 +14,8 @@ from multidict import CIMultiDict, CIMultiDictProxy
 from re_assert import Matches
 
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs
+from aiohttp.helpers import ETag
+from aiohttp.http_writer import _serialize_headers
 from aiohttp.payload import BytesPayload
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
@@ -25,7 +27,7 @@ def make_request(
     headers: Any = CIMultiDict(),
     version: Any = HttpVersion11,
     on_response_prepare: Optional[Any] = None,
-    **kwargs: Any
+    **kwargs: Any,
 ):
     app = kwargs.pop("app", None) or mock.Mock()
     app._debug = False
@@ -58,12 +60,7 @@ def writer(buf: Any):
         buf.extend(chunk)
 
     async def write_headers(status_line, headers):
-        headers = (
-            status_line
-            + "\r\n"
-            + "".join([k + ": " + v + "\r\n" for k, v in headers.items()])
-        )
-        headers = headers.encode("utf-8") + b"\r\n"
+        headers = _serialize_headers(status_line, headers)
         buf.extend(headers)
 
     async def write_eof(chunk=b""):
@@ -255,6 +252,82 @@ def test_last_modified_reset() -> None:
     resp.last_modified = 0
     resp.last_modified = None
     assert resp.last_modified is None
+
+
+def test_etag_initial() -> None:
+    resp = StreamResponse()
+    assert resp.etag is None
+
+
+def test_etag_string() -> None:
+    resp = StreamResponse()
+    value = "0123-kotik"
+    resp.etag = value
+    assert resp.etag == ETag(value=value)
+    assert resp.headers[hdrs.ETAG] == f'"{value}"'
+
+
+@pytest.mark.parametrize(
+    ["etag", "expected_header"],
+    (
+        (ETag(value="0123-weak-kotik", is_weak=True), 'W/"0123-weak-kotik"'),
+        (ETag(value="0123-strong-kotik", is_weak=False), '"0123-strong-kotik"'),
+    ),
+)
+def test_etag_class(etag, expected_header) -> None:
+    resp = StreamResponse()
+    resp.etag = etag
+    assert resp.etag == etag
+    assert resp.headers[hdrs.ETAG] == expected_header
+
+
+def test_etag_any() -> None:
+    resp = StreamResponse()
+    resp.etag = "*"
+    assert resp.etag == ETag(value="*")
+    assert resp.headers[hdrs.ETAG] == "*"
+
+
+@pytest.mark.parametrize(
+    "invalid_value",
+    (
+        '"invalid"',
+        "повинен бути ascii",
+        ETag(value='"invalid"', is_weak=True),
+        ETag(value="bad ©®"),
+    ),
+)
+def test_etag_invalid_value_set(invalid_value) -> None:
+    resp = StreamResponse()
+    with pytest.raises(ValueError, match="is not a valid etag"):
+        resp.etag = invalid_value
+
+
+@pytest.mark.parametrize(
+    "header",
+    (
+        "forgotten quotes",
+        '"∀ x ∉ ascii"',
+    ),
+)
+def test_etag_invalid_value_get(header) -> None:
+    resp = StreamResponse()
+    resp.headers["ETag"] = header
+    assert resp.etag is None
+
+
+@pytest.mark.parametrize("invalid", (123, ETag(value=123, is_weak=True)))
+def test_etag_invalid_value_class(invalid) -> None:
+    resp = StreamResponse()
+    with pytest.raises(ValueError, match="Unsupported etag type"):
+        resp.etag = invalid
+
+
+def test_etag_reset() -> None:
+    resp = StreamResponse()
+    resp.etag = "*"
+    resp.etag = None
+    assert resp.etag is None
 
 
 async def test_start() -> None:
