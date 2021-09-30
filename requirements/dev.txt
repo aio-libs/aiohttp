@@ -93,7 +93,9 @@ frozenlist==1.1.1
     #   -r requirements/base.txt
     #   aiosignal
 funcparserlib==1.0.0a0
-    # via blockdiag
+    # via
+    #   -r requirements/doc.txt
+    #   blockdiag
 gidgethub==5.0.0
     # via cherry-picker
 gunicorn==20.1.0
@@ -228,7 +230,7 @@ six==1.15.0
     #   virtualenv
 snowballstemmer==2.0.0
     # via sphinx
-sphinx==4.1.2
+sphinx==4.2.0
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-asyncio
