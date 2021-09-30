@@ -172,7 +172,7 @@ def test_basic_auth_decode_invalid_credentials() -> None:
     ),
 )
 def test_basic_auth_decode_blank_username(credentials, expected_auth) -> None:
-    header = "Basic {}".format(base64.b64encode(credentials.encode()).decode())
+    header = f"Basic {base64.b64encode(credentials.encode()).decode()}"
     assert helpers.BasicAuth.decode(header) == expected_auth
 
 

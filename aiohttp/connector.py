@@ -150,7 +150,7 @@ class Connection:
 
 
 class _TransportPlaceholder:
-    """ placeholder for BaseConnector.connect function """
+    """placeholder for BaseConnector.connect function"""
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         fut = loop.create_future()

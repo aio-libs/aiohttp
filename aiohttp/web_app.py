@@ -359,7 +359,7 @@ class Application(MutableMapping[str, Any]):
         return self
 
     def __repr__(self) -> str:
-        return "<Application 0x{:x}>".format(id(self))
+        return f"<Application 0x{id(self):x}>"
 
     def __bool__(self) -> bool:
         return True

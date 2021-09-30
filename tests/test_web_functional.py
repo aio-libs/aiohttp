@@ -445,7 +445,7 @@ async def test_post_form_with_duplicate_keys(aiohttp_client: Any) -> None:
 
 def test_repr_for_application() -> None:
     app = web.Application()
-    assert "<Application 0x{:x}>".format(id(app)) == repr(app)
+    assert f"<Application 0x{id(app):x}>" == repr(app)
 
 
 async def test_expect_default_handler_unknown(aiohttp_client: Any) -> None:

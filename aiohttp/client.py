@@ -263,7 +263,7 @@ class ClientSession:
             real_headers = CIMultiDict()
         self._default_headers = real_headers  # type: CIMultiDict[str]
         if skip_auto_headers is not None:
-            self._skip_auto_headers = frozenset([istr(i) for i in skip_auto_headers])
+            self._skip_auto_headers = frozenset(istr(i) for i in skip_auto_headers)
         else:
             self._skip_auto_headers = frozenset()
 
