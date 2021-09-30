@@ -499,7 +499,7 @@ def _is_ip_address(
     elif isinstance(host, (bytes, bytearray, memoryview)):
         return bool(regexb.match(host))
     else:
-        raise TypeError("{} [{}] is not a str or bytes".format(host, type(host)))
+        raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
 
 
 is_ipv4_address = functools.partial(_is_ip_address, _ipv4_regex, _ipv4_regexb)
@@ -593,7 +593,7 @@ def call_later(
 
 
 class TimeoutHandle:
-    """ Timeout handle """
+    """Timeout handle"""
 
     def __init__(
         self, loop: asyncio.AbstractEventLoop, timeout: Optional[float]
@@ -656,7 +656,7 @@ class TimerNoop(BaseTimerContext):
 
 
 class TimerContext(BaseTimerContext):
-    """ Low resolution timeout context manager """
+    """Low resolution timeout context manager"""
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
