@@ -161,7 +161,7 @@ Abstract Cookie Jar
 
       .. versionadded:: 3.8
 
-Abstract Abstract Access Logger
+Abstract Access Logger
 -------------------------------
 
 .. class:: AbstractAccessLogger
