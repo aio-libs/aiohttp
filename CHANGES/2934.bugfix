@@ -1,0 +1,1 @@
+Modify _drain_helper() to handle parallel calls of _send_frame() without race-condition.
