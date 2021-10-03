@@ -164,6 +164,8 @@ pluggy==0.13.1
     #   pytest
 pre-commit==2.13.0
     # via -r requirements/lint.txt
+proxy.py==2.3.1
+    # via -r requirements/test.txt
 py==1.10.0
     # via
     #   -r requirements/lint.txt
@@ -277,6 +279,7 @@ typing-extensions==3.7.4.3
     #   -r requirements/lint.txt
     #   async-timeout
     #   mypy
+    #   proxy.py
 uritemplate==3.0.1
     # via gidgethub
 urllib3==1.26.2
