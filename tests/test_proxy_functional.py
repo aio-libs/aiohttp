@@ -3,11 +3,139 @@ import os
 import pathlib
 from unittest import mock
 
+import proxy
 import pytest
 from yarl import URL
 
 import aiohttp
 from aiohttp import web
+
+ASYNCIO_SUPPORTS_TLS_IN_TLS = hasattr(
+    asyncio.sslproto._SSLProtocolTransport,
+    "_start_tls_compatible",
+)
+
+
+@pytest.fixture
+def secure_proxy_url(monkeypatch, tls_certificate_pem_path):
+    """Return the URL of an instance of a running secure proxy.
+
+    This fixture also spawns that instance and tears it down after the test.
+    """
+    proxypy_args = [
+        "--threadless",  # use asyncio
+        "--num-workers",
+        "1",  # the tests only send one query anyway
+        "--hostname",
+        "127.0.0.1",  # network interface to listen to
+        "--port",
+        0,  # ephemeral port, so that kernel allocates a free one
+        "--cert-file",
+        tls_certificate_pem_path,  # contains both key and cert
+        "--key-file",
+        tls_certificate_pem_path,  # contains both key and cert
+    ]
+
+    class PatchedAccetorPool(proxy.core.acceptor.AcceptorPool):
+        def listen(self):
+            super().listen()
+            self.socket_host, self.socket_port = self.socket.getsockname()[:2]
+
+    monkeypatch.setattr(proxy.proxy, "AcceptorPool", PatchedAccetorPool)
+
+    with proxy.Proxy(input_args=proxypy_args) as proxy_instance:
+        yield URL.build(
+            scheme="https",
+            host=proxy_instance.acceptors.socket_host,
+            port=proxy_instance.acceptors.socket_port,
+        )
+
+
+@pytest.fixture
+def web_server_endpoint_payload():
+    return "Test message"
+
+
+@pytest.fixture(params=("http", "https"))
+def web_server_endpoint_type(request):
+    return request.param
+
+
+@pytest.fixture
+async def web_server_endpoint_url(
+    aiohttp_server,
+    ssl_ctx,
+    web_server_endpoint_payload,
+    web_server_endpoint_type,
+):
+    server_kwargs = (
+        {
+            "ssl": ssl_ctx,
+        }
+        if web_server_endpoint_type == "https"
+        else {}
+    )
+
+    async def handler(*args, **kwargs):
+        return web.Response(text=web_server_endpoint_payload)
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    server = await aiohttp_server(app, **server_kwargs)
+
+    return URL.build(
+        scheme=web_server_endpoint_type,
+        host=server.host,
+        port=server.port,
+    )
+
+
+@pytest.fixture
+def _pretend_asyncio_supports_tls_in_tls(
+    monkeypatch,
+    web_server_endpoint_type,
+):
+    if web_server_endpoint_type != "https" or ASYNCIO_SUPPORTS_TLS_IN_TLS:
+        return
+
+    # for https://github.com/python/cpython/pull/28073
+    # and https://bugs.python.org/issue37179
+    monkeypatch.setattr(
+        asyncio.sslproto._SSLProtocolTransport,
+        "_start_tls_compatible",
+        True,
+        raising=False,
+    )
+
+
+@pytest.mark.xfail(
+    reason="https://github.com/aio-libs/aiohttp/pull/5992",
+    raises=ValueError,
+)
+@pytest.mark.parametrize("web_server_endpoint_type", ("http", "https"))
+@pytest.mark.usefixtures("_pretend_asyncio_supports_tls_in_tls", "loop")
+async def test_secure_https_proxy_absolute_path(
+    client_ssl_ctx,
+    secure_proxy_url,
+    web_server_endpoint_url,
+    web_server_endpoint_payload,
+) -> None:
+    """Test urls can be requested through a secure proxy."""
+    conn = aiohttp.TCPConnector()
+    sess = aiohttp.ClientSession(connector=conn)
+
+    response = await sess.get(
+        web_server_endpoint_url,
+        proxy=secure_proxy_url,
+        ssl=client_ssl_ctx,  # used for both proxy and endpoint connections
+    )
+
+    assert response.status == 200
+    assert await response.text() == web_server_endpoint_payload
+
+    response.close()
+    await sess.close()
+    await conn.close()
 
 
 @pytest.fixture

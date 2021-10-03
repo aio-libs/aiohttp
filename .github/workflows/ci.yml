@@ -115,6 +115,8 @@ jobs:
         path: ${{ steps.pip-cache.outputs.dir }}
         restore-keys: |
             pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-
+    - name: Upgrade wheel  # Needed for proxy.py install not to explode
+      run: pip install -U wheel
     - name: Cythonize
       if: ${{ matrix.no-extensions == '' }}
       run: |
