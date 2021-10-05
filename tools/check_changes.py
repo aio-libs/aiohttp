@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 ALLOWED_SUFFIXES = [".feature", ".bugfix", ".doc", ".removal", ".misc"]
+ALLOWED_SUFFIXES += [f"{suffix}.rst" for suffix in ALLOWED_SUFFIXES]
 
 
 def get_root(script_path):
@@ -22,7 +23,7 @@ def main(argv):
     changes = root / "CHANGES"
     failed = False
     for fname in changes.iterdir():
-        if fname.name in (".gitignore", ".TEMPLATE.rst"):
+        if fname.name in (".gitignore", ".TEMPLATE.rst", "README.rst"):
             continue
         if fname.suffix not in ALLOWED_SUFFIXES:
             if not failed:
