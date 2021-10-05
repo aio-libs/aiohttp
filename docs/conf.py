@@ -43,8 +43,11 @@ with open(_version_path, encoding="latin1") as fp:
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "sphinx.ext.viewcode",
+    # stdlib-party extensions:
+    "sphinx.ext.extlinks",
     "sphinx.ext.intersphinx",
+    "sphinx.ext.viewcode",
+    # Third-party extensions:
     "sphinxcontrib.asyncio",
     "sphinxcontrib.blockdiag",
 ]
@@ -81,9 +84,17 @@ source_suffix = ".rst"
 # The master toctree document.
 master_doc = "index"
 
-# General information about the project.
-project = "aiohttp"
-copyright = "2013-2020, aiohttp maintainers"
+# -- Project information -----------------------------------------------------
+
+github_url = "https://github.com"
+github_repo_org = "aio-libs"
+github_repo_name = "aiohttp"
+github_repo_slug = f"{github_repo_org}/{github_repo_name}"
+github_repo_url = f"{github_url}/{github_repo_slug}"
+github_sponsors_url = f"{github_url}/sponsors"
+
+project = github_repo_name
+copyright = f"2013-2020, {project} maintainers"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -136,6 +147,17 @@ highlight_language = "python3"
 # keep_warnings = False
 
 
+# -- Extension configuration -------------------------------------------------
+
+# -- Options for extlinks extension ---------------------------------------
+extlinks = {
+    "issue": (f"{github_repo_url}/issues/%s", "#"),
+    "pr": (f"{github_repo_url}/pull/%s", "PR #"),
+    "commit": (f"{github_repo_url}/commit/%s", ""),
+    "gh": (f"{github_url}/%s", "GitHub: "),
+    "user": (f"{github_sponsors_url}/%s", "@"),
+}
+
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -148,39 +170,39 @@ html_theme = "aiohttp_theme"
 html_theme_options = {
     "description": "Async HTTP client/server for asyncio and Python",
     "canonical_url": "http://docs.aiohttp.org/en/stable/",
-    "github_user": "aio-libs",
-    "github_repo": "aiohttp",
+    "github_user": github_repo_org,
+    "github_repo": github_repo_name,
     "github_button": True,
     "github_type": "star",
     "github_banner": True,
     "badges": [
         {
-            "image": "https://github.com/aio-libs/aiohttp/workflows/CI/badge.svg",
-            "target": "https://github.com/aio-libs/aiohttp/actions?query=workflow%3ACI",
+            "image": f"{github_repo_url}/workflows/CI/badge.svg",
+            "target": f"{github_repo_url}/actions?query=workflow%3ACI",
             "height": "20",
             "alt": "Azure Pipelines CI status",
         },
         {
-            "image": "https://codecov.io/github/aio-libs/aiohttp/coverage.svg?branch=master",
-            "target": "https://codecov.io/github/aio-libs/aiohttp",
+            "image": f"https://codecov.io/github/{github_repo_slug}/coverage.svg?branch=master",
+            "target": f"https://codecov.io/github/{github_repo_slug}",
             "height": "20",
             "alt": "Code coverage status",
         },
         {
-            "image": "https://badge.fury.io/py/aiohttp.svg",
-            "target": "https://badge.fury.io/py/aiohttp",
+            "image": f"https://badge.fury.io/py/{project}.svg",
+            "target": f"https://badge.fury.io/py/{project}",
             "height": "20",
             "alt": "Latest PyPI package version",
         },
         {
-            "image": "https://img.shields.io/discourse/status?server=https%3A%2F%2Faio-libs.discourse.group",
-            "target": "https://aio-libs.discourse.group",
+            "image": f"https://img.shields.io/discourse/status?server=https%3A%2F%2F{github_repo_org}.discourse.group",
+            "target": f"https://{github_repo_org}.discourse.group",
             "height": "20",
             "alt": "Discourse status",
         },
         {
             "image": "https://badges.gitter.im/Join%20Chat.svg",
-            "target": "https://gitter.im/aio-libs/Lobby",
+            "target": f"https://gitter.im/{github_repo_org}/Lobby",
             "height": "20",
             "alt": "Chat on Gitter",
         },
@@ -268,7 +290,7 @@ html_sidebars = {
 # html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "aiohttpdoc"
+htmlhelp_basename = f"{project}doc"
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -286,7 +308,13 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    ("index", "aiohttp.tex", "aiohttp Documentation", "aiohttp contributors", "manual"),
+    (
+        "index",
+        f"{project}.tex",
+        f"{project} Documentation",
+        f"{project} contributors",
+        "manual",
+    ),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -314,7 +342,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [("index", "aiohttp", "aiohttp Documentation", ["aiohttp"], 1)]
+man_pages = [("index", project, f"{project} Documentation", [project], 1)]
 
 # If true, show URL addresses after external links.
 # man_show_urls = False
@@ -328,10 +356,10 @@ man_pages = [("index", "aiohttp", "aiohttp Documentation", ["aiohttp"], 1)]
 texinfo_documents = [
     (
         "index",
-        "aiohttp",
-        "aiohttp Documentation",
+        project,
+        f"{project} Documentation",
         "Aiohttp contributors",
-        "aiohttp",
+        project,
         "One line description of project.",
         "Miscellaneous",
     ),
