@@ -55,6 +55,7 @@ Bob Haddleton
 Boris Feld
 Boyi Chen
 Brett Cannon
+Brian Bouterse
 Brian C. Lane
 Brian Muller
 Bruce Merry
@@ -159,6 +160,7 @@ Jonas Obrist
 Jonathan Wright
 Jonny Tan
 Joongi Kim
+Jordan Borean
 Josep Cugat
 Josh Junon
 Joshu Coats

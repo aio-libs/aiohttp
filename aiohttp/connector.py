@@ -988,6 +988,100 @@ class TCPConnector(BaseConnector):
         except OSError as exc:
             raise client_error(req.connection_key, exc) from exc
 
+    def _warn_about_tls_in_tls(
+        self,
+        underlying_transport: asyncio.Transport,
+        req: "ClientRequest",
+    ) -> None:
+        """Issue a warning if the requested URL has HTTPS scheme."""
+        if req.request_info.url.scheme != "https":
+            return
+
+        asyncio_supports_tls_in_tls = getattr(
+            underlying_transport,
+            "_start_tls_compatible",
+            False,
+        )
+
+        if asyncio_supports_tls_in_tls:
+            return
+
+        warnings.warn(
+            "An HTTPS request is being sent through an HTTPS proxy. "
+            "This support for TLS in TLS is known to be disabled "
+            "in the stdlib asyncio. This is why you'll probably see "
+            "an error in the log below.\n\n"
+            "It is possible to enable it via monkeypatching under "
+            "Python 3.7 or higher. For more details, see:\n"
+            "* https://bugs.python.org/issue37179\n"
+            "* https://github.com/python/cpython/pull/28073\n\n"
+            "You can temporarily patch this as follows:\n"
+            "* https://docs.aiohttp.org/en/stable/client_advanced.html#proxy-support\n"
+            "* https://github.com/aio-libs/aiohttp/discussions/6044\n",
+            RuntimeWarning,
+            source=self,
+            # Why `4`? At least 3 of the calls in the stack originate
+            # from the methods in this class.
+            stacklevel=3,
+        )
+
+    async def _start_tls_connection(
+        self,
+        underlying_transport: asyncio.Transport,
+        req: "ClientRequest",
+        timeout: "ClientTimeout",
+        client_error: Type[Exception] = ClientConnectorError,
+    ) -> Tuple[asyncio.BaseTransport, ResponseHandler]:
+        """Wrap the raw TCP transport with TLS."""
+        tls_proto = self._factory()  # Create a brand new proto for TLS
+
+        # Safety of the `cast()` call here is based on the fact that
+        # internally `_get_ssl_context()` only returns `None` when
+        # `req.is_ssl()` evaluates to `False` which is never gonna happen
+        # in this code path. Of course, it's rather fragile
+        # maintainability-wise but this is to be solved separately.
+        sslcontext = cast(ssl.SSLContext, self._get_ssl_context(req))
+
+        try:
+            async with ceil_timeout(timeout.sock_connect):
+                try:
+                    tls_transport = await self._loop.start_tls(
+                        underlying_transport,
+                        tls_proto,
+                        sslcontext,
+                        server_hostname=req.host,
+                        ssl_handshake_timeout=timeout.total,
+                    )
+                except BaseException:
+                    # We need to close the underlying transport since
+                    # `start_tls()` probably failed before it had a
+                    # chance to do this:
+                    underlying_transport.close()
+                    raise
+        except cert_errors as exc:
+            raise ClientConnectorCertificateError(req.connection_key, exc) from exc
+        except ssl_errors as exc:
+            raise ClientConnectorSSLError(req.connection_key, exc) from exc
+        except OSError as exc:
+            raise client_error(req.connection_key, exc) from exc
+        except TypeError as type_err:
+            # Example cause looks like this:
+            # TypeError: transport <asyncio.sslproto._SSLProtocolTransport
+            # object at 0x7f760615e460> is not supported by start_tls()
+
+            raise ClientConnectionError(
+                "Cannot initialize a TLS-in-TLS connection to host "
+                f"{req.host!s}:{req.port:d} through an underlying connection "
+                f"to an HTTPS proxy {req.proxy!s} ssl:{req.ssl or 'default'} "
+                f"[{type_err!s}]"
+            ) from type_err
+        else:
+            tls_proto.connection_made(
+                tls_transport
+            )  # Kick the state machine of the new TLS protocol
+
+        return tls_transport, tls_proto
+
     async def _create_direct_connection(
         self,
         req: "ClientRequest",
@@ -1066,7 +1160,7 @@ class TCPConnector(BaseConnector):
 
     async def _create_proxy_connection(
         self, req: "ClientRequest", traces: List["Trace"], timeout: "ClientTimeout"
-    ) -> Tuple[asyncio.Transport, ResponseHandler]:
+    ) -> Tuple[asyncio.BaseTransport, ResponseHandler]:
         headers = {}  # type: Dict[str, str]
         if req.proxy_headers is not None:
             headers = req.proxy_headers  # type: ignore[assignment]
@@ -1101,7 +1195,8 @@ class TCPConnector(BaseConnector):
                 proxy_req.headers[hdrs.PROXY_AUTHORIZATION] = auth
 
         if req.is_ssl():
-            sslcontext = self._get_ssl_context(req)
+            self._warn_about_tls_in_tls(transport, req)
+
             # For HTTPS requests over HTTP proxy
             # we must notify proxy to tunnel connection
             # so we send CONNECT command:
@@ -1121,7 +1216,11 @@ class TCPConnector(BaseConnector):
             try:
                 protocol = conn._protocol
                 assert protocol is not None
-                protocol.set_response_params()
+
+                # read_until_eof=True will ensure the connection isn't closed
+                # once the response is received and processed allowing
+                # START_TLS to work on the connection below.
+                protocol.set_response_params(read_until_eof=True)
                 resp = await proxy_resp.start(conn)
             except BaseException:
                 proxy_resp.close()
@@ -1142,21 +1241,19 @@ class TCPConnector(BaseConnector):
                             message=message,
                             headers=resp.headers,
                         )
-                    rawsock = transport.get_extra_info("socket", default=None)
-                    if rawsock is None:
-                        raise RuntimeError("Transport does not expose socket instance")
-                    # Duplicate the socket, so now we can close proxy transport
-                    rawsock = rawsock.dup()
-                finally:
+                except BaseException:
+                    # It shouldn't be closed in `finally` because it's fed to
+                    # `loop.start_tls()` and the docs say not to touch it after
+                    # passing there.
                     transport.close()
+                    raise
 
-                transport, proto = await self._wrap_create_connection(
-                    self._factory,
-                    timeout=timeout,
-                    ssl=sslcontext,
-                    sock=rawsock,
-                    server_hostname=req.host,
+                return await self._start_tls_connection(
+                    # Access the old transport for the last time before it's
+                    # closed and forgotten forever:
+                    transport,
                     req=req,
+                    timeout=timeout,
                 )
             finally:
                 proxy_resp.close()
