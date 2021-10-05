@@ -481,8 +481,6 @@ class ClientRequest:
         proxy_auth: Optional[BasicAuth],
         proxy_headers: Optional[LooseHeaders],
     ) -> None:
-        if proxy and not proxy.scheme == "http":
-            raise ValueError("Only http proxies are supported")
         if proxy_auth and not isinstance(proxy_auth, helpers.BasicAuth):
             raise ValueError("proxy_auth must be None or BasicAuth() tuple")
         self.proxy = proxy
