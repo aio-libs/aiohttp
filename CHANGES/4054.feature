@@ -1,1 +1,1 @@
-Implemented readuntil in StreamResponse
+Implemented ``readuntil`` in ``StreamResponse``
