@@ -64,6 +64,7 @@ sphinx==4.2.0
     #   sphinxcontrib-asyncio
     #   sphinxcontrib-blockdiag
     #   sphinxcontrib-spelling
+    #   sphinxcontrib-towncrier
 sphinxcontrib-applehelp==1.0.2
     # via sphinx
 sphinxcontrib-asyncio==0.3.0
@@ -82,10 +83,14 @@ sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
 sphinxcontrib-spelling==7.2.1 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.in
+sphinxcontrib-towncrier==0.2.0a0
+    # via -r requirements/doc.txt
 toml==0.10.2
     # via towncrier
 towncrier==21.3.0
-    # via -r requirements/doc.txt
+    # via
+    #   -r requirements/doc.txt
+    #   sphinxcontrib-towncrier
 urllib3==1.26.5
     # via requests
 webcolors==1.11.1

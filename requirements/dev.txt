@@ -61,7 +61,7 @@ click==7.1.2
     #   towncrier
 click-default-group==1.2.2
     # via towncrier
-coverage==5.5
+coverage[toml]==6.0
     # via
     #   -r requirements/test.txt
     #   pytest-cov
@@ -128,7 +128,7 @@ mccabe==0.6.1
     # via
     #   -r requirements/lint.txt
     #   flake8
-multidict==5.1.0
+multidict==5.2.0
     # via
     #   -r requirements/multidict.txt
     #   yarl
@@ -198,7 +198,7 @@ pytest==6.2.2
     #   -r requirements/test.txt
     #   pytest-cov
     #   pytest-mock
-pytest-cov==2.12.1
+pytest-cov==3.0.0
     # via -r requirements/test.txt
 pytest-mock==3.6.1
     # via -r requirements/test.txt
@@ -236,6 +236,7 @@ sphinx==4.2.0
     #   -r requirements/doc.txt
     #   sphinxcontrib-asyncio
     #   sphinxcontrib-blockdiag
+    #   sphinxcontrib-towncrier
 sphinxcontrib-applehelp==1.0.2
     # via sphinx
 sphinxcontrib-asyncio==0.3.0
@@ -252,6 +253,8 @@ sphinxcontrib-qthelp==1.0.3
     # via sphinx
 sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
+sphinxcontrib-towncrier==0.2.0a0
+    # via -r requirements/doc.txt
 toml==0.10.2
     # via
     #   -r requirements/lint.txt
@@ -259,14 +262,16 @@ toml==0.10.2
     #   mypy
     #   pre-commit
     #   pytest
-    #   pytest-cov
     #   towncrier
 tomli==1.2.1
     # via
     #   -r requirements/lint.txt
     #   black
+    #   coverage
 towncrier==21.3.0
-    # via -r requirements/doc.txt
+    # via
+    #   -r requirements/doc.txt
+    #   sphinxcontrib-towncrier
 trustme==0.9.0 ; platform_machine != "i686"
     # via -r requirements/test.txt
 types-chardet==0.1.3
