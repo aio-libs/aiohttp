@@ -13,6 +13,7 @@ import platform
 import re
 import sys
 import time
+import warnings
 import weakref
 from collections import namedtuple
 from contextlib import suppress
@@ -55,6 +56,7 @@ __all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
 PY_38 = sys.version_info >= (3, 8)
 
+COOKIE_MAX_LENGTH = 4096
 
 try:
     from typing import ContextManager
@@ -875,6 +877,15 @@ class CookieMixin:
             c["version"] = version
         if samesite is not None:
             c["samesite"] = samesite
+
+        if DEBUG:
+            cookie_length = len(c.output(header="")[1:])
+            if cookie_length > COOKIE_MAX_LENGTH:
+                warnings.warn(
+                    "The size of is too large, it might get ignored by the client.",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
     def del_cookie(
         self, name: str, *, domain: Optional[str] = None, path: str = "/"
