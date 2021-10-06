@@ -192,7 +192,7 @@ pyparsing==2.4.7
     # via
     #   -r requirements/lint.txt
     #   packaging
-pytest==6.2.4
+pytest==6.2.5
     # via
     #   -r requirements/lint.txt
     #   -r requirements/test.txt
@@ -223,7 +223,7 @@ requests==2.25.1
     #   sphinx
 setuptools-git==1.2
     # via -r requirements/test.txt
-six==1.15.0
+six==1.16.0
     # via
     #   -r requirements/lint.txt
     #   cryptography
