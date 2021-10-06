@@ -38,4 +38,4 @@ async def run(url: str, name: str) -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(run("http://autobahn:9001", "aiohttp"))
+    asyncio.run(run("http://localhost:9001", "aiohttp"))
