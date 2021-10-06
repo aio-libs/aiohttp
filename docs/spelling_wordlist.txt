@@ -82,6 +82,7 @@ WSMsgType
 Websockets
 Workflow
 abc
+addons
 aiodns
 aioes
 aiohttp
@@ -115,6 +116,7 @@ botocore
 bugfix
 builtin
 cChardet
+callables
 cancelled
 canonicalization
 canonicalize
@@ -202,6 +204,7 @@ login
 lookup
 lookups
 lossless
+lowercased
 manylinux
 metadata
 microservice
@@ -258,6 +261,7 @@ redirections
 refactor
 refactored
 refactoring
+referenceable
 regex
 regexps
 regexs
@@ -316,6 +320,7 @@ unittest
 unix
 unsets
 unstripped
+uppercased
 upstr
 url
 urldispatcher
