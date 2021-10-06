@@ -13,6 +13,8 @@ async def wshandler(request: web.Request) -> web.WebSocketResponse:
 
     await ws.prepare(request)
 
+    request.app["websockets"].append(ws)
+
     while True:
         msg = await ws.receive()
 
@@ -40,6 +42,7 @@ if __name__ == "__main__":
     )
 
     app = web.Application()
+    app["websockets"] = []
     app.router.add_route("GET", "/", wshandler)
     app.on_shutdown.append(on_shutdown)
     try:
