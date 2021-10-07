@@ -63,7 +63,7 @@ click==7.1.2
     #   wait-for-it
 click-default-group==1.2.2
     # via towncrier
-coverage[toml]==6.0
+coverage[toml]==6.0.1
     # via
     #   -r requirements/test.txt
     #   pytest-cov
@@ -305,7 +305,7 @@ virtualenv==20.4.2
     # via
     #   -r requirements/lint.txt
     #   pre-commit
-wait-for-it==2.2.0
+wait-for-it==2.2.1
     # via -r requirements/dev.in
 webcolors==1.11.1
     # via blockdiag
