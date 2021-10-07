@@ -2,6 +2,7 @@
 import asyncio
 import os
 import pathlib
+import platform
 import sys
 from re import match as match_regex
 from typing import Any
@@ -116,7 +117,10 @@ def _pretend_asyncio_supports_tls_in_tls(
     )
 
 
-@pytest.mark.xfail(PY_310, reason="we need to fix the secure proxy fixture in 3.10")
+@pytest.mark.xfail(
+    PY_310 and platform.system() != "Darwin",
+    reason="we need to fix the secure proxy fixture in 3.10",
+)
 @pytest.mark.parametrize("web_server_endpoint_type", ("http", "https"))
 @pytest.mark.usefixtures("_pretend_asyncio_supports_tls_in_tls", "loop")
 async def test_secure_https_proxy_absolute_path(
@@ -143,7 +147,10 @@ async def test_secure_https_proxy_absolute_path(
     await conn.close()
 
 
-@pytest.mark.xfail(PY_310, reason="we need to fix the secure proxy fixture in 3.10")
+@pytest.mark.xfail(
+    PY_310 and platform.system() != "Darwin",
+    reason="we need to fix the secure proxy fixture in 3.10",
+)
 @pytest.mark.parametrize("web_server_endpoint_type", ("https",))
 @pytest.mark.usefixtures("loop")
 async def test_https_proxy_unsupported_tls_in_tls(
