@@ -2,6 +2,7 @@
 import asyncio
 import os
 import pathlib
+import sys
 from re import match as match_regex
 from typing import Any
 from unittest import mock
@@ -14,6 +15,8 @@ from yarl import URL
 import aiohttp
 from aiohttp import web
 from aiohttp.client_exceptions import ClientConnectionError
+
+PY_310 = sys.version_info >= (3, 10)
 
 ASYNCIO_SUPPORTS_TLS_IN_TLS = hasattr(
     asyncio.sslproto._SSLProtocolTransport,
@@ -113,6 +116,7 @@ def _pretend_asyncio_supports_tls_in_tls(
     )
 
 
+@pytest.mark.xfail(PY_310, reason="we need to fix the secure proxy fixture in 3.10")
 @pytest.mark.parametrize("web_server_endpoint_type", ("http", "https"))
 @pytest.mark.usefixtures("_pretend_asyncio_supports_tls_in_tls", "loop")
 async def test_secure_https_proxy_absolute_path(
@@ -139,6 +143,7 @@ async def test_secure_https_proxy_absolute_path(
     await conn.close()
 
 
+@pytest.mark.xfail(PY_310, reason="we need to fix the secure proxy fixture in 3.10")
 @pytest.mark.parametrize("web_server_endpoint_type", ("https",))
 @pytest.mark.usefixtures("loop")
 async def test_https_proxy_unsupported_tls_in_tls(
