@@ -1164,7 +1164,7 @@ def request(
     version: HttpVersion = http.HttpVersion11,
     connector: Optional[BaseConnector] = None,
     ssl: Optional[Union[SSLContext, bool, Fingerprint]] = None,
-    read_bufsize: Optional[int] = None
+    read_bufsize: Optional[int] = None,
 ) -> _SessionRequestContextManager:
     """Constructs and sends a request. Returns response object.
     method - HTTP method
@@ -1233,7 +1233,7 @@ def request(
             proxy=proxy,
             proxy_auth=proxy_auth,
             ssl=ssl,
-            read_bufsize=read_bufsize
+            read_bufsize=read_bufsize,
         ),
         session,
     )
