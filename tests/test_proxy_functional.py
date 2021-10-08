@@ -153,7 +153,7 @@ async def test_secure_https_proxy_absolute_path(
     await conn.close()
 
 
-@secure_proxy_xfail_under_py310_except_macos()
+@secure_proxy_xfail_under_py310_except_macos(raises=AssertionError)
 @pytest.mark.parametrize("web_server_endpoint_type", ("https",))
 @pytest.mark.usefixtures("loop")
 async def test_https_proxy_unsupported_tls_in_tls(
