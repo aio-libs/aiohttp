@@ -2348,7 +2348,7 @@ def create_server_for_url_and_handler(
             cert = tls_certificate_authority.issue_cert(
                 url.host, "localhost", "127.0.0.1"
             )
-            ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+            ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             cert.configure_cert(ssl_ctx)
             kwargs["ssl"] = ssl_ctx
         return aiohttp_server(app, **kwargs)

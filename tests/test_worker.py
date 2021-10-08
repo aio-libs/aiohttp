@@ -250,7 +250,7 @@ def test__create_ssl_context_without_certs_and_ciphers(
     worker,
     tls_certificate_pem_path,
 ) -> None:
-    worker.cfg.ssl_version = ssl.PROTOCOL_SSLv23
+    worker.cfg.ssl_version = ssl.PROTOCOL_TLS_CLIENT
     worker.cfg.cert_reqs = ssl.CERT_OPTIONAL
     worker.cfg.certfile = tls_certificate_pem_path
     worker.cfg.keyfile = tls_certificate_pem_path
@@ -264,7 +264,7 @@ def test__create_ssl_context_with_ciphers(
     worker,
     tls_certificate_pem_path,
 ) -> None:
-    worker.cfg.ssl_version = ssl.PROTOCOL_SSLv23
+    worker.cfg.ssl_version = ssl.PROTOCOL_TLS_CLIENT
     worker.cfg.cert_reqs = ssl.CERT_OPTIONAL
     worker.cfg.certfile = tls_certificate_pem_path
     worker.cfg.keyfile = tls_certificate_pem_path
@@ -279,7 +279,7 @@ def test__create_ssl_context_with_ca_certs(
     tls_ca_certificate_pem_path,
     tls_certificate_pem_path,
 ) -> None:
-    worker.cfg.ssl_version = ssl.PROTOCOL_SSLv23
+    worker.cfg.ssl_version = ssl.PROTOCOL_TLS_CLIENT
     worker.cfg.cert_reqs = ssl.CERT_OPTIONAL
     worker.cfg.certfile = tls_certificate_pem_path
     worker.cfg.keyfile = tls_certificate_pem_path

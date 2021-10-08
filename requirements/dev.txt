@@ -196,7 +196,7 @@ pyparsing==2.4.7
     # via
     #   -r requirements/lint.txt
     #   packaging
-pytest==6.2.2
+pytest==6.2.5
     # via
     #   -r requirements/lint.txt
     #   -r requirements/test.txt
@@ -230,7 +230,7 @@ requests==2.25.1
     #   sphinx
 setuptools-git==1.2
     # via -r requirements/test.txt
-six==1.15.0
+six==1.16.0
     # via
     #   -r requirements/lint.txt
     #   cryptography
@@ -313,7 +313,7 @@ yarl==1.6.3
     # via -r requirements/base.txt
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==51.3.1
+setuptools==57.4.0
     # via
     #   blockdiag
     #   gunicorn
