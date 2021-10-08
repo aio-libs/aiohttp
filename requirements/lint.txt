@@ -62,13 +62,13 @@ pyflakes==2.3.0
     #   flake8-pyi
 pyparsing==2.4.7
     # via packaging
-pytest==6.2.2
+pytest==6.2.5
     # via -r requirements/lint.in
 pyyaml==5.4.1
     # via pre-commit
 regex==2020.11.13
     # via black
-six==1.15.0
+six==1.16.0
     # via virtualenv
 toml==0.10.2
     # via
