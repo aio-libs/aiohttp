@@ -68,7 +68,7 @@ pyyaml==5.4.1
     # via pre-commit
 regex==2020.11.13
     # via black
-six==1.15.0
+six==1.16.0
     # via virtualenv
 toml==0.10.2
     # via
