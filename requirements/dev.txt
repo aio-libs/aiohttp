@@ -61,7 +61,7 @@ click==7.1.2
     #   towncrier
 click-default-group==1.2.2
     # via towncrier
-coverage==5.5
+coverage==6.0.1
     # via
     #   -r requirements/test.txt
     #   pytest-cov
@@ -128,7 +128,7 @@ mccabe==0.6.1
     # via
     #   -r requirements/lint.txt
     #   flake8
-multidict==5.1.0
+multidict==5.2.0
     # via
     #   -r requirements/multidict.txt
     #   yarl
@@ -287,7 +287,7 @@ virtualenv==20.4.2
     #   pre-commit
 webcolors==1.11.1
     # via blockdiag
-yarl==1.6.3
+yarl==1.7.0
     # via -r requirements/base.txt
 
 # The following packages are considered to be unsafe in a requirements file:
