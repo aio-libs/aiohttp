@@ -12,6 +12,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import web
 from aiohttp.client_exceptions import ClientConnectionError
+from aiohttp.helpers import IS_MACOS, IS_WINDOWS, PY_37
 
 ASYNCIO_SUPPORTS_TLS_IN_TLS = hasattr(
     asyncio.sslproto._SSLProtocolTransport,
@@ -26,7 +27,6 @@ def secure_proxy_url(monkeypatch, tls_certificate_pem_path):
     This fixture also spawns that instance and tears it down after the test.
     """
     proxypy_args = [
-        "--threadless",  # use asyncio
         "--num-workers",
         "1",  # the tests only send one query anyway
         "--hostname",
@@ -38,6 +38,8 @@ def secure_proxy_url(monkeypatch, tls_certificate_pem_path):
         "--key-file",
         tls_certificate_pem_path,  # contains both key and cert
     ]
+    if not IS_MACOS and not IS_WINDOWS:
+        proxypy_args.append("--threadless")  # use asyncio
 
     class PatchedAccetorPool(proxy.core.acceptor.AcceptorPool):
         def listen(self):
@@ -111,7 +113,20 @@ def _pretend_asyncio_supports_tls_in_tls(
     )
 
 
-@pytest.mark.parametrize("web_server_endpoint_type", ("http", "https"))
+@pytest.mark.parametrize(
+    "web_server_endpoint_type",
+    (
+        "http",
+        pytest.param(
+            "https",
+            marks=pytest.mark.xfail(
+                not PY_37,
+                raises=RuntimeError,
+                reason="`asyncio.loop.start_tls()` is only implemeneted in Python 3.7",
+            ),
+        ),
+    ),
+)
 @pytest.mark.usefixtures("_pretend_asyncio_supports_tls_in_tls", "loop")
 async def test_secure_https_proxy_absolute_path(
     client_ssl_ctx,
@@ -137,6 +152,11 @@ async def test_secure_https_proxy_absolute_path(
     await conn.close()
 
 
+@pytest.mark.xfail(
+    not PY_37,
+    raises=RuntimeError,
+    reason="`asyncio.loop.start_tls()` is only implemeneted in Python 3.7",
+)
 @pytest.mark.parametrize("web_server_endpoint_type", ("https",))
 @pytest.mark.usefixtures("loop")
 async def test_https_proxy_unsupported_tls_in_tls(
@@ -195,6 +215,49 @@ async def test_https_proxy_unsupported_tls_in_tls(
 
     await sess.close()
     await conn.close()
+
+
+@pytest.mark.skipif(
+    PY_37,
+    reason="This test checks an error we emit below Python 3.7",
+)
+@pytest.mark.usefixtures("loop")
+async def test_https_proxy_missing_start_tls() -> None:
+    """Ensure error is raised for TLS-in-TLS w/ no ``start_tls()``."""
+    conn = aiohttp.TCPConnector()
+    sess = aiohttp.ClientSession(connector=conn)
+
+    expected_exception_reason = (
+        r"^"
+        r"An HTTPS request is being sent through an HTTPS proxy\. "
+        "This needs support for TLS in TLS but it is not implemented "
+        r"in your runtime for the stdlib asyncio\.\n\n"
+        r"Please upgrade to Python 3\.7 or higher\. For more details, "
+        r"please see:\n"
+        r"\* https://bugs\.python\.org/issue37179\n"
+        r"\* https://github\.com/python/cpython/pull/28073\n"
+        r"\* https://docs\.aiohttp\.org/en/stable/client_advanced\.html#proxy-support\n"
+        r"\* https://github\.com/aio-libs/aiohttp/discussions/6044\n"
+        r"$"
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match=expected_exception_reason,
+    ) as runtime_err:
+        await sess.get("https://python.org", proxy="https://proxy")
+
+    await sess.close()
+    await conn.close()
+
+    assert type(runtime_err.value.__cause__) is AttributeError
+
+    selector_event_loop_type = "Windows" if IS_WINDOWS else "Unix"
+    attr_err = (
+        f"^'_{selector_event_loop_type}SelectorEventLoop' object "
+        "has no attribute 'start_tls'$"
+    )
+    assert match_regex(attr_err, str(runtime_err.value.__cause__))
 
 
 @pytest.fixture

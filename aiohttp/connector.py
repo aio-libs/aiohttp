@@ -988,6 +988,50 @@ class TCPConnector(BaseConnector):
         except OSError as exc:
             raise client_error(req.connection_key, exc) from exc
 
+    def _fail_on_no_start_tls(self, req: "ClientRequest") -> None:
+        """Raise a :py:exc:`RuntimeError` on missing ``start_tls()``.
+
+        One case is that :py:meth:`asyncio.loop.start_tls` is not yet
+        implemented under Python 3.6. It is necessary for TLS-in-TLS so
+        that it is possible to send HTTPS queries through HTTPS proxies.
+
+        This doesn't affect regular HTTP requests, though.
+        """
+        if not req.is_ssl():
+            return
+
+        proxy_url = req.proxy
+        assert proxy_url is not None
+        if proxy_url.scheme != "https":
+            return
+
+        self._check_loop_for_start_tls()
+
+    def _check_loop_for_start_tls(self) -> None:
+        try:
+            self._loop.start_tls
+        except AttributeError as attr_exc:
+            raise RuntimeError(
+                "An HTTPS request is being sent through an HTTPS proxy. "
+                "This needs support for TLS in TLS but it is not implemented "
+                "in your runtime for the stdlib asyncio.\n\n"
+                "Please upgrade to Python 3.7 or higher. For more details, "
+                "please see:\n"
+                "* https://bugs.python.org/issue37179\n"
+                "* https://github.com/python/cpython/pull/28073\n"
+                "* https://docs.aiohttp.org/en/stable/"
+                "client_advanced.html#proxy-support\n"
+                "* https://github.com/aio-libs/aiohttp/discussions/6044\n",
+            ) from attr_exc
+
+    def _loop_supports_start_tls(self) -> bool:
+        try:
+            self._check_loop_for_start_tls()
+        except RuntimeError:
+            return False
+        else:
+            return True
+
     def _warn_about_tls_in_tls(
         self,
         underlying_transport: asyncio.Transport,
@@ -1161,6 +1205,9 @@ class TCPConnector(BaseConnector):
     async def _create_proxy_connection(
         self, req: "ClientRequest", traces: List["Trace"], timeout: "ClientTimeout"
     ) -> Tuple[asyncio.BaseTransport, ResponseHandler]:
+        self._fail_on_no_start_tls(req)
+        runtime_has_start_tls = self._loop_supports_start_tls()
+
         headers = {}  # type: Dict[str, str]
         if req.proxy_headers is not None:
             headers = req.proxy_headers  # type: ignore[assignment]
@@ -1195,7 +1242,8 @@ class TCPConnector(BaseConnector):
                 proxy_req.headers[hdrs.PROXY_AUTHORIZATION] = auth
 
         if req.is_ssl():
-            self._warn_about_tls_in_tls(transport, req)
+            if runtime_has_start_tls:
+                self._warn_about_tls_in_tls(transport, req)
 
             # For HTTPS requests over HTTP proxy
             # we must notify proxy to tunnel connection
@@ -1220,7 +1268,7 @@ class TCPConnector(BaseConnector):
                 # read_until_eof=True will ensure the connection isn't closed
                 # once the response is received and processed allowing
                 # START_TLS to work on the connection below.
-                protocol.set_response_params(read_until_eof=True)
+                protocol.set_response_params(read_until_eof=runtime_has_start_tls)
                 resp = await proxy_resp.start(conn)
             except BaseException:
                 proxy_resp.close()
@@ -1241,12 +1289,35 @@ class TCPConnector(BaseConnector):
                             message=message,
                             headers=resp.headers,
                         )
+                    if not runtime_has_start_tls:
+                        rawsock = transport.get_extra_info("socket", default=None)
+                        if rawsock is None:
+                            raise RuntimeError(
+                                "Transport does not expose socket instance"
+                            )
+                        # Duplicate the socket, so now we can close proxy transport
+                        rawsock = rawsock.dup()
                 except BaseException:
                     # It shouldn't be closed in `finally` because it's fed to
                     # `loop.start_tls()` and the docs say not to touch it after
                     # passing there.
                     transport.close()
                     raise
+                finally:
+                    if not runtime_has_start_tls:
+                        transport.close()
+
+                if not runtime_has_start_tls:
+                    # HTTP proxy with support for upgrade to HTTPS
+                    sslcontext = self._get_ssl_context(req)
+                    return await self._wrap_create_connection(
+                        self._factory,
+                        timeout=timeout,
+                        ssl=sslcontext,
+                        sock=rawsock,
+                        server_hostname=req.host,
+                        req=req,
+                    )
 
                 return await self._start_tls_connection(
                     # Access the old transport for the last time before it's
