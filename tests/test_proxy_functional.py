@@ -162,14 +162,14 @@ async def test_https_proxy_unsupported_tls_in_tls(
         r"An HTTPS request is being sent through an HTTPS proxy\. "
         "This support for TLS in TLS is known to be disabled "
         r"in the stdlib asyncio\. This is why you'll probably see "
-        r"an error in the log below.\n\n"
+        r"an error in the log below\.\n\n"
         "It is possible to enable it via monkeypatching under "
         r"Python 3\.7 or higher\. For more details, see:\n"
-        r"* https://bugs\.python\.org/issue37179\n"
-        r"* https://github\.com/python/cpython/pull/28073\n\n"
+        r"\* https://bugs\.python\.org/issue37179\n"
+        r"\* https://github\.com/python/cpython/pull/28073\n\n"
         r"You can temporarily patch this as follows:\n"
-        r"* https://docs\.aiohttp\.org/en/stable/client_advanced\.html#proxy-support\n",
-        r"* https://github\.com/aio-libs/aiohttp/discussions/6044\n$",
+        r"\* https://docs\.aiohttp\.org/en/stable/client_advanced\.html#proxy-support\n"
+        r"\* https://github\.com/aio-libs/aiohttp/discussions/6044\n$"
     )
     type_err = (
         r"transport <asyncio\.sslproto\._SSLProtocolTransport object at "
@@ -184,13 +184,10 @@ async def test_https_proxy_unsupported_tls_in_tls(
         r"$"
     )
 
-    with pytest.raises(
+    with pytest.warns(RuntimeWarning, match=expected_warning_text,), pytest.raises(
         ClientConnectionError,
         match=expected_exception_reason,
-    ) as conn_err, pytest.warns(
-        RuntimeWarning,
-        match=expected_warning_text,
-    ):
+    ) as conn_err:
         await sess.get(url, proxy=secure_proxy_url, ssl=client_ssl_ctx)
 
     assert type(conn_err.value.__cause__) == TypeError
