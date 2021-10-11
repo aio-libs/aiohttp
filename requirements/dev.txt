@@ -309,7 +309,7 @@ wait-for-it==2.2.1
     # via -r requirements/dev.in
 webcolors==1.11.1
     # via blockdiag
-yarl==1.6.3
+yarl==1.7.0
     # via -r requirements/base.txt
 
 # The following packages are considered to be unsafe in a requirements file:
