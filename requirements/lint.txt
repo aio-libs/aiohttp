@@ -22,7 +22,7 @@ distlib==0.3.1
     # via virtualenv
 filelock==3.0.12
     # via virtualenv
-flake8==3.9.2
+flake8==4.0.0
     # via
     #   -r requirements/lint.in
     #   flake8-pyi
@@ -54,9 +54,9 @@ pre-commit==2.15.0
     # via -r requirements/lint.in
 py==1.10.0
     # via pytest
-pycodestyle==2.7.0
+pycodestyle==2.8.0
     # via flake8
-pyflakes==2.3.0
+pyflakes==2.4.0
     # via
     #   flake8
     #   flake8-pyi

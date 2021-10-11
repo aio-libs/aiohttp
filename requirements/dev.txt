@@ -61,7 +61,7 @@ click==7.1.2
     #   towncrier
 click-default-group==1.2.2
     # via towncrier
-coverage==6.0.1
+coverage[toml]==6.0.1
     # via
     #   -r requirements/test.txt
     #   pytest-cov
@@ -79,7 +79,7 @@ filelock==3.0.12
     # via
     #   -r requirements/lint.txt
     #   virtualenv
-flake8==3.9.2
+flake8==4.0.0
     # via
     #   -r requirements/lint.txt
     #   flake8-pyi
@@ -169,13 +169,13 @@ py==1.10.0
     #   pytest
 pycares==4.0.0
     # via aiodns
-pycodestyle==2.7.0
+pycodestyle==2.8.0
     # via
     #   -r requirements/lint.txt
     #   flake8
 pycparser==2.20
     # via cffi
-pyflakes==2.3.0
+pyflakes==2.4.0
     # via
     #   -r requirements/lint.txt
     #   flake8
@@ -196,7 +196,7 @@ pytest==6.2.2
     #   -r requirements/test.txt
     #   pytest-cov
     #   pytest-mock
-pytest-cov==2.12.1
+pytest-cov==3.0.0
     # via -r requirements/test.txt
 pytest-mock==3.6.1
     # via -r requirements/test.txt
@@ -257,12 +257,12 @@ toml==0.10.2
     #   mypy
     #   pre-commit
     #   pytest
-    #   pytest-cov
     #   towncrier
 tomli==1.2.1
     # via
     #   -r requirements/lint.txt
     #   black
+    #   coverage
 towncrier==21.3.0
     # via -r requirements/doc.txt
 trustme==0.9.0 ; platform_machine != "i686"
