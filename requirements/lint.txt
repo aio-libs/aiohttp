@@ -22,7 +22,7 @@ distlib==0.3.1
     # via virtualenv
 filelock==3.0.12
     # via virtualenv
-flake8==4.0.0
+flake8==4.0.1
     # via
     #   -r requirements/lint.in
     #   flake8-pyi
