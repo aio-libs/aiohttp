@@ -54,6 +54,9 @@ from .typedefs import PathLike, Protocol  # noqa
 
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
+IS_MACOS = platform.system() == "Darwin"
+IS_WINDOWS = platform.system() == "Windows"
+
 PY_36 = sys.version_info >= (3, 6)
 PY_37 = sys.version_info >= (3, 7)
 PY_38 = sys.version_info >= (3, 8)
@@ -213,9 +216,7 @@ def netrc_from_env() -> Optional[netrc.netrc]:
             )
             return None
 
-        netrc_path = home_dir / (
-            "_netrc" if platform.system() == "Windows" else ".netrc"
-        )
+        netrc_path = home_dir / ("_netrc" if IS_WINDOWS else ".netrc")
 
     try:
         return netrc.netrc(str(netrc_path))
