@@ -7,7 +7,7 @@ import re
 import weakref
 from concurrent.futures import ThreadPoolExecutor
 from types import MappingProxyType
-from typing import Any, Optional, Mapping
+from typing import Any, Mapping, Optional
 from unittest import mock
 
 import aiosignal
@@ -18,7 +18,7 @@ from re_assert import Matches
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs
 from aiohttp.helpers import ETag
 from aiohttp.http_writer import _serialize_headers
-from aiohttp.payload import BytesPayload, JsonPayload, PAYLOAD_REGISTRY
+from aiohttp.payload import PAYLOAD_REGISTRY, BytesPayload, JsonPayload
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
 
