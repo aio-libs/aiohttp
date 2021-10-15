@@ -63,7 +63,7 @@ click==7.1.2
     #   wait-for-it
 click-default-group==1.2.2
     # via towncrier
-coverage[toml]==6.0.1
+coverage[toml]==6.0.2
     # via
     #   -r requirements/test.txt
     #   pytest-cov
@@ -208,7 +208,7 @@ pytest-mock==3.6.1
     # via -r requirements/test.txt
 python-dateutil==2.8.1
     # via freezegun
-python-on-whales==0.27.0
+python-on-whales==0.28.0
     # via -r requirements/dev.in
 pytz==2020.5
     # via babel
