@@ -1,10 +1,11 @@
 import array
+import json
 from io import StringIO
-from typing import Any, AsyncIterator, Iterator
+from typing import Any, AsyncIterator, Iterator, Mapping
 
 import pytest
 
-from aiohttp import payload
+from aiohttp import payload, web
 
 
 @pytest.fixture
@@ -118,3 +119,25 @@ def test_async_iterable_payload_not_async_iterable() -> None:
 
     with pytest.raises(TypeError):
         payload.AsyncIterablePayload(object())  # type: ignore[arg-type]
+
+
+def test_decode_json_payload(registry: Any) -> None:
+    j = {"foo": 42}
+    p = payload.JsonPayload(j)
+    assert json.dumps(j) == p.decode("utf-8")
+
+
+async def test_json_payload(registry: Any, aiohttp_client: Any) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body={"foo": 42})
+
+    app = web.Application()
+    payload.register_payload(payload.JsonPayload, Mapping)
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.get("/")
+    body = json.loads(await resp.text())
+    assert "application/json" == resp.content_type
+    assert resp.status == 200
+    assert "foo" in body
+    assert body["foo"] == 42

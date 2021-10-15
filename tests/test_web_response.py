@@ -6,7 +6,8 @@ import json
 import re
 import weakref
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Optional
+from types import MappingProxyType
+from typing import Any, Optional, Mapping
 from unittest import mock
 
 import aiosignal
@@ -17,7 +18,7 @@ from re_assert import Matches
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs
 from aiohttp.helpers import ETag
 from aiohttp.http_writer import _serialize_headers
-from aiohttp.payload import BytesPayload
+from aiohttp.payload import BytesPayload, JsonPayload, PAYLOAD_REGISTRY
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
 
@@ -1199,3 +1200,11 @@ async def test_warn_large_cookie(buf: Any, writer: Any) -> None:
 
     cookie = re.search(b"Set-Cookie: (.*?)\r\n", buf).group(1)
     assert len(cookie) == 4097
+
+
+class TestPayloadRegistryResponse:
+    def test_json_payload_text(self) -> None:
+        PAYLOAD_REGISTRY.register(JsonPayload, (Mapping, MappingProxyType))
+        data = {"foo": 42}
+        resp = json_response(data)
+        assert json.dumps(data) == resp.text
