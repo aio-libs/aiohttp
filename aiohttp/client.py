@@ -9,6 +9,7 @@ import os
 import sys
 import traceback
 import warnings
+from contextlib import suppress
 from types import SimpleNamespace, TracebackType
 from typing import (
     Any,
@@ -30,7 +31,7 @@ from typing import (
 )
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
-from typing_extensions import final
+from typing_extensions import Final, final
 from yarl import URL
 
 from . import hdrs, http, payload
@@ -80,7 +81,7 @@ from .helpers import (
     BasicAuth,
     TimeoutHandle,
     ceil_timeout,
-    proxies_from_env,
+    get_env_proxy_for_url,
     sentinel,
     strip_auth_from_url,
 )
@@ -133,7 +134,7 @@ __all__ = (
 try:
     from ssl import SSLContext
 except ImportError:  # pragma: no cover
-    SSLContext = object  # type: ignore
+    SSLContext = object  # type: ignore[misc,assignment]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -153,12 +154,12 @@ class ClientTimeout:
 
     # to create a timeout specific for a single request, either
     # - create a completely new one to overwrite the default
-    # - or use http://www.attrs.org/en/stable/api.html#attr.evolve
+    # - or use https://docs.python.org/3/library/dataclasses.html#dataclasses.replace
     # to overwrite the defaults
 
 
 # 5 Minute default read timeout
-DEFAULT_TIMEOUT = ClientTimeout(total=5 * 60)
+DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60)
 
 _RetType = TypeVar("_RetType")
 
@@ -248,7 +249,7 @@ class ClientSession:
         if timeout is sentinel:
             self._timeout = DEFAULT_TIMEOUT
         else:
-            self._timeout = timeout  # type: ignore
+            self._timeout = timeout  # type: ignore[assignment]
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
@@ -262,7 +263,7 @@ class ClientSession:
             real_headers = CIMultiDict()
         self._default_headers = real_headers  # type: CIMultiDict[str]
         if skip_auto_headers is not None:
-            self._skip_auto_headers = frozenset([istr(i) for i in skip_auto_headers])
+            self._skip_auto_headers = frozenset(istr(i) for i in skip_auto_headers)
         else:
             self._skip_auto_headers = frozenset()
 
@@ -381,7 +382,7 @@ class ClientSession:
             real_timeout = self._timeout  # type: ClientTimeout
         else:
             if not isinstance(timeout, ClientTimeout):
-                real_timeout = ClientTimeout(total=timeout)  # type: ignore
+                real_timeout = ClientTimeout(total=timeout)  # type: ignore[arg-type]
             else:
                 real_timeout = timeout
         # timeout is cumulative for all request operations
@@ -444,11 +445,8 @@ class ClientSession:
                     if proxy is not None:
                         proxy = URL(proxy)
                     elif self._trust_env:
-                        for scheme, proxy_info in proxies_from_env().items():
-                            if scheme == url.scheme:
-                                proxy = proxy_info.proxy
-                                proxy_auth = proxy_info.proxy_auth
-                                break
+                        with suppress(LookupError):
+                            proxy, proxy_auth = get_env_proxy_for_url(url)
 
                     req = self._request_class(
                         method,
@@ -568,7 +566,16 @@ class ClientSession:
                         elif not scheme:
                             parsed_url = url.join(parsed_url)
 
-                        if url.origin() != parsed_url.origin():
+                        is_same_host_https_redirect = (
+                            url.host == parsed_url.host
+                            and parsed_url.scheme == "https"
+                            and url.scheme == "http"
+                        )
+
+                        if (
+                            url.origin() != parsed_url.origin()
+                            and not is_same_host_https_redirect
+                        ):
                             auth = None
                             headers.pop(hdrs.AUTHORIZATION, None)
 
@@ -690,7 +697,7 @@ class ClientSession:
                     DeprecationWarning,
                     stacklevel=2,
                 )
-                ws_timeout = ClientWSTimeout(ws_close=timeout)  # type: ignore
+                ws_timeout = ClientWSTimeout(ws_close=timeout)  # type: ignore[arg-type]
         else:
             ws_timeout = DEFAULT_WS_CLIENT_TIMEOUT
         if receive_timeout is not None:
@@ -1053,7 +1060,7 @@ class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType
     def send(self, arg: None) -> "asyncio.Future[Any]":
         return self._coro.send(arg)
 
-    def throw(self, arg: BaseException) -> None:  # type: ignore
+    def throw(self, arg: BaseException) -> None:  # type: ignore[arg-type,override]
         self._coro.throw(arg)
 
     def close(self) -> None:

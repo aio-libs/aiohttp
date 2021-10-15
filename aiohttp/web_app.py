@@ -46,10 +46,11 @@ __all__ = ("Application", "CleanupError")
 
 
 if TYPE_CHECKING:  # pragma: no cover
+    from .typedefs import Handler
+
     _AppSignal = Signal[Callable[["Application"], Awaitable[None]]]
     _RespPrepareSignal = Signal[Callable[[Request, StreamResponse], Awaitable[None]]]
-    _Handler = Callable[[Request], Awaitable[StreamResponse]]
-    _Middleware = Callable[[Request, _Handler], Awaitable[StreamResponse]]
+    _Middleware = Callable[[Request, Handler], Awaitable[StreamResponse]]
     _Middlewares = FrozenList[_Middleware]
     _MiddlewaresHandlers = Sequence[_Middleware]
     _Subapps = List["Application"]
@@ -334,7 +335,7 @@ class Application(MutableMapping[str, Any]):
         match_info.freeze()
 
         resp = None
-        request._match_info = match_info  # type: ignore
+        request._match_info = match_info  # type: ignore[assignment]
         expect = request.headers.get(hdrs.EXPECT)
         if expect:
             resp = await match_info.expect_handler(request)
@@ -358,7 +359,7 @@ class Application(MutableMapping[str, Any]):
         return self
 
     def __repr__(self) -> str:
-        return "<Application 0x{:x}>".format(id(self))
+        return f"<Application 0x{id(self):x}>"
 
     def __bool__(self) -> bool:
         return True
@@ -367,7 +368,7 @@ class Application(MutableMapping[str, Any]):
 class CleanupError(RuntimeError):
     @property
     def exceptions(self) -> List[BaseException]:
-        return self.args[1]
+        return cast(List[BaseException], self.args[1])
 
 
 if TYPE_CHECKING:  # pragma: no cover

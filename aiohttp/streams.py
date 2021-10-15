@@ -62,14 +62,16 @@ class ChunkTupleAsyncStreamIterator:
 
 class AsyncStreamReaderMixin:
     def __aiter__(self) -> AsyncStreamIterator[bytes]:
-        return AsyncStreamIterator(self.readline)  # type: ignore
+        return AsyncStreamIterator(self.readline)  # type: ignore[attr-defined]
 
     def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
         """Returns an asynchronous iterator that yields chunks of size n.
 
         Python-3.5 available for Python 3.5+ only
         """
-        return AsyncStreamIterator(lambda: self.read(n))  # type: ignore
+        return AsyncStreamIterator(
+            lambda: self.read(n)  # type: ignore[attr-defined,no-any-return]
+        )
 
     def iter_any(self) -> AsyncStreamIterator[bytes]:
         """Returns an asynchronous iterator that yields all the available
@@ -77,7 +79,7 @@ class AsyncStreamReaderMixin:
 
         Python-3.5 available for Python 3.5+ only
         """
-        return AsyncStreamIterator(self.readany)  # type: ignore
+        return AsyncStreamIterator(self.readany)  # type: ignore[attr-defined]
 
     def iter_chunks(self) -> ChunkTupleAsyncStreamIterator:
         """Returns an asynchronous iterator that yields chunks of data
@@ -86,7 +88,7 @@ class AsyncStreamReaderMixin:
 
         Python-3.5 available for Python 3.5+ only
         """
-        return ChunkTupleAsyncStreamIterator(self)  # type: ignore
+        return ChunkTupleAsyncStreamIterator(self)  # type: ignore[arg-type]
 
 
 class StreamReader(AsyncStreamReaderMixin):
@@ -111,7 +113,7 @@ class StreamReader(AsyncStreamReaderMixin):
         limit: int,
         *,
         timer: Optional[BaseTimerContext] = None,
-        loop: asyncio.AbstractEventLoop
+        loop: asyncio.AbstractEventLoop,
     ) -> None:
         self._protocol = protocol
         self._low_water = limit
@@ -478,7 +480,7 @@ class StreamReader(AsyncStreamReaderMixin):
         return data
 
     def _read_nowait(self, n: int) -> bytes:
-        """ Read not more than n bytes, or whole buffer if n == -1 """
+        """Read not more than n bytes, or whole buffer if n == -1"""
         chunks = []
 
         while self._buffer:

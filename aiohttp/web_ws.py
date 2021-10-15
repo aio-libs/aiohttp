@@ -4,10 +4,11 @@ import binascii
 import dataclasses
 import hashlib
 import json
-from typing import Any, Iterable, Optional, Tuple
+from typing import Any, Iterable, Optional, Tuple, cast
 
 import async_timeout
 from multidict import CIMultiDict
+from typing_extensions import Final
 
 from . import hdrs
 from .abc import AbstractStreamWriter
@@ -38,7 +39,7 @@ __all__ = (
     "WSMsgType",
 )
 
-THRESHOLD_CONNLOST_ACCESS = 5
+THRESHOLD_CONNLOST_ACCESS: Final[int] = 5
 
 
 @dataclasses.dataclass(frozen=True)
@@ -105,10 +106,10 @@ class WebSocketResponse(StreamResponse):
         self._autoclose = autoclose
         self._autoping = autoping
         self._heartbeat = heartbeat
-        self._heartbeat_cb = None
+        self._heartbeat_cb: Optional[asyncio.TimerHandle] = None
         if heartbeat is not None:
             self._pong_heartbeat = heartbeat / 2.0
-        self._pong_response_cb = None
+        self._pong_response_cb: Optional[asyncio.TimerHandle] = None
         self._compress = compress
         self._max_msg_size = max_msg_size
 
@@ -125,16 +126,18 @@ class WebSocketResponse(StreamResponse):
         self._cancel_heartbeat()
 
         if self._heartbeat is not None:
+            assert self._loop is not None
             self._heartbeat_cb = call_later(
                 self._send_heartbeat, self._heartbeat, self._loop
             )
 
     def _send_heartbeat(self) -> None:
         if self._heartbeat is not None and not self._closed:
+            assert self._loop is not None
             # fire-and-forget a task is not perfect but maybe ok for
             # sending ping. Otherwise we need a long-living heartbeat
             # task in the class.
-            self._loop.create_task(self._writer.ping())  # type: ignore
+            self._loop.create_task(self._writer.ping())  # type: ignore[union-attr]
 
             if self._pong_response_cb is not None:
                 self._pong_response_cb.cancel()
@@ -216,9 +219,9 @@ class WebSocketResponse(StreamResponse):
         accept_val = base64.b64encode(
             hashlib.sha1(key.encode() + WS_KEY).digest()
         ).decode()
-        response_headers = CIMultiDict(  # type: ignore
+        response_headers = CIMultiDict(  # type: ignore[var-annotated]
             {
-                hdrs.UPGRADE: "websocket",  # type: ignore
+                hdrs.UPGRADE: "websocket",  # type: ignore[arg-type]
                 hdrs.CONNECTION: "upgrade",
                 hdrs.SEC_WEBSOCKET_ACCEPT: accept_val,
             }
@@ -239,7 +242,12 @@ class WebSocketResponse(StreamResponse):
 
         if protocol:
             response_headers[hdrs.SEC_WEBSOCKET_PROTOCOL] = protocol
-        return (response_headers, protocol, compress, notakeover)  # type: ignore
+        return (
+            response_headers,
+            protocol,
+            compress,
+            notakeover,
+        )  # type: ignore[return-value]
 
     def _pre_start(self, request: BaseRequest) -> Tuple[str, WebSocketWriter]:
         self._loop = request._loop
@@ -338,7 +346,7 @@ class WebSocketResponse(StreamResponse):
     ) -> None:
         await self.send_str(dumps(data), compress=compress)
 
-    async def write_eof(self) -> None:  # type: ignore
+    async def write_eof(self) -> None:  # type: ignore[override]
         if self._eof_sent:
             return
         if self._payload_writer is None:
@@ -471,13 +479,13 @@ class WebSocketResponse(StreamResponse):
                     msg.type, msg.data
                 )
             )
-        return msg.data
+        return cast(str, msg.data)
 
     async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
         if msg.type != WSMsgType.BINARY:
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not bytes")
-        return msg.data
+        return cast(bytes, msg.data)
 
     async def receive_json(
         self, *, loads: JSONDecoder = json.loads, timeout: Optional[float] = None

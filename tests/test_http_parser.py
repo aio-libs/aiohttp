@@ -530,6 +530,7 @@ def test_http_request_parser_two_slashes(parser: Any) -> None:
 
     assert msg.method == "GET"
     assert msg.path == "//path"
+    assert msg.url.path == "//path"
     assert msg.version == (1, 1)
     assert not msg.should_close
     assert msg.compression is None
@@ -977,7 +978,7 @@ class TestParsePayload:
         assert out.is_eof()
 
     async def test_http_payload_parser_deflate_no_hdrs(self, stream: Any) -> None:
-        """Tests incorrectly formed data (no zlib headers) """
+        """Tests incorrectly formed data (no zlib headers)"""
 
         # c=compressobj(wbits=-15); b''.join([c.compress(b'data'), c.flush()])
         COMPRESSED = b"KI,I\x04\x00"
