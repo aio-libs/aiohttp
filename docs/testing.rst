@@ -57,7 +57,7 @@ requests to this server.
 
 :class:`~aiohttp.test_utils.TestServer` runs :class:`aiohttp.web.Application`
 based server, :class:`~aiohttp.test_utils.RawTestServer` starts
-:class:`aiohttp.web.WebServer` low level server.
+:class:`aiohttp.web.Server` low level server.
 
 For performing HTTP requests to these servers you have to create a
 test client: :class:`~aiohttp.test_utils.TestClient` instance.
@@ -290,7 +290,7 @@ Unittest
 To test applications with the standard library's unittest or unittest-based
 functionality, the AioHTTPTestCase is provided::
 
-    from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+    from aiohttp.test_utils import AioHTTPTestCase
     from aiohttp import web
 
     class MyAppTestCase(AioHTTPTestCase):
@@ -306,26 +306,11 @@ functionality, the AioHTTPTestCase is provided::
             app.router.add_get('/', hello)
             return app
 
-        # the unittest_run_loop decorator can be used in tandem with
-        # the AioHTTPTestCase to simplify running
-        # tests that are asynchronous
-        @unittest_run_loop
         async def test_example(self):
-            resp = await self.client.request("GET", "/")
-            assert resp.status == 200
-            text = await resp.text()
-            assert "Hello, world" in text
-
-        # a vanilla example
-        def test_example_vanilla(self):
-            async def test_get_route():
-                url = "/"
-                resp = await self.client.request("GET", url)
-                assert resp.status == 200
+            async with self.client.request("GET", "/") as resp:
+                self.assertEqual(resp.status, 200)
                 text = await resp.text()
-                assert "Hello, world" in text
-
-            self.loop.run_until_complete(test_get_route())
+            self.assertIn("Hello, world", text)
 
 .. class:: AioHTTPTestCase
 
@@ -353,7 +338,7 @@ functionality, the AioHTTPTestCase is provided::
 
     .. attribute:: app
 
-       The application returned by :meth:`get_app`
+       The application returned by :meth:`~aiohttp.test_utils.AioHTTPTestCase.get_application`
        (:class:`aiohttp.web.Application` instance).
 
     .. comethod:: get_client()
@@ -408,25 +393,13 @@ functionality, the AioHTTPTestCase is provided::
    .. note::
 
       The ``TestClient``'s methods are asynchronous: you have to
-      execute function on the test client using asynchronous methods.
-
-      A basic test class wraps every test method by
-      :func:`unittest_run_loop` decorator::
+      execute functions on the test client using asynchronous methods.::
 
          class TestA(AioHTTPTestCase):
 
-             @unittest_run_loop
              async def test_f(self):
-                 resp = await self.client.get('/')
-
-
-.. decorator:: unittest_run_loop:
-
-   A decorator dedicated to use with asynchronous methods of an
-   :class:`AioHTTPTestCase`.
-
-   Handles executing an asynchronous function, using
-   the :attr:`AioHTTPTestCase.loop` of the :class:`AioHTTPTestCase`.
+                 async with self.client.get('/') as resp:
+                     body = await resp.text()
 
 Patching unittest test cases
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -571,7 +544,7 @@ conditions that hard to reproduce on real server::
    :type writer: aiohttp.StreamWriter
 
    :param transport: asyncio transport instance
-   :type transport: asyncio.transports.Transport
+   :type transport: asyncio.Transport
 
    :param payload: raw payload reader object
    :type  payload: aiohttp.StreamReader
@@ -650,8 +623,8 @@ Test server
 Runs given :class:`aiohttp.web.Application` instance on random TCP port.
 
 After creation the server is not started yet, use
-:meth:`~aiohttp.test_utils.TestServer.start_server` for actual server
-starting and :meth:`~aiohttp.test_utils.TestServer.close` for
+:meth:`~aiohttp.test_utils.BaseTestServer.start_server` for actual server
+starting and :meth:`~aiohttp.test_utils.BaseTestServer.close` for
 stopping/cleanup.
 
 Test server usually works in conjunction with
@@ -687,7 +660,7 @@ for accessing to the server.
 
    .. attribute:: handler
 
-      :class:`aiohttp.web.WebServer` used for HTTP requests serving.
+      :class:`aiohttp.web.Server` used for HTTP requests serving.
 
    .. attribute:: server
 
@@ -799,7 +772,7 @@ Test Client
 
    .. attribute:: app
 
-      An alias for :attr:`self.server.app`. return ``None`` if
+      An alias for ``self.server.app``. return ``None`` if
       ``self.server`` is not :class:`TestServer`
       instance(e.g. :class:`RawTestServer` instance for test low-level server).
 

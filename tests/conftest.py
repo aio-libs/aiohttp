@@ -46,7 +46,7 @@ def tls_certificate_authority() -> Any:
 
 @pytest.fixture
 def tls_certificate(tls_certificate_authority: Any) -> Any:
-    return tls_certificate_authority.issue_server_cert(
+    return tls_certificate_authority.issue_cert(
         "localhost",
         "127.0.0.1",
         "::1",
@@ -55,7 +55,7 @@ def tls_certificate(tls_certificate_authority: Any) -> Any:
 
 @pytest.fixture
 def ssl_ctx(tls_certificate: Any) -> ssl.SSLContext:
-    ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+    ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     tls_certificate.configure_cert(ssl_ctx)
     return ssl_ctx
 
