@@ -913,9 +913,11 @@ class TCPConnector(BaseConnector):
         if verified:
             return ssl.create_default_context()
         else:
-            sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+            sslcontext = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
             sslcontext.options |= ssl.OP_NO_SSLv2
             sslcontext.options |= ssl.OP_NO_SSLv3
+            sslcontext.check_hostname = False
+            sslcontext.verify_mode = ssl.CERT_NONE
             try:
                 sslcontext.options |= ssl.OP_NO_COMPRESSION
             except AttributeError as attr_err:

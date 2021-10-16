@@ -60,6 +60,7 @@ IS_WINDOWS = platform.system() == "Windows"
 PY_36 = sys.version_info >= (3, 6)
 PY_37 = sys.version_info >= (3, 7)
 PY_38 = sys.version_info >= (3, 8)
+PY_310 = sys.version_info >= (3, 10)
 
 if not PY_37:
     import idna_ssl  # type: ignore[import]
