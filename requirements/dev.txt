@@ -81,7 +81,7 @@ filelock==3.0.12
     # via
     #   -r requirements/lint.txt
     #   virtualenv
-flake8==4.0.0
+flake8==4.0.1
     # via
     #   -r requirements/lint.txt
     #   flake8-pyi
