@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 5
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2.3.5
       with:
         submodules: true
     - name: Setup Python 3.8
@@ -98,7 +98,7 @@ jobs:
     timeout-minutes: 15
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2.3.5
       with:
         submodules: true
     - name: Setup Python ${{ matrix.pyver }}
@@ -153,7 +153,7 @@ jobs:
     needs: pre-deploy
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2.3.5
       with:
         submodules: true
     - name: Setup Python 3.8
@@ -186,7 +186,7 @@ jobs:
     needs: pre-deploy
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2.3.5
       with:
         submodules: true
     - name: Set up QEMU
@@ -235,7 +235,7 @@ jobs:
     needs: pre-deploy
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2.3.5
       with:
         submodules: true
     - name: Setup Python 3.8
