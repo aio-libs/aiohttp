@@ -1,2 +1,2 @@
 Added ``params`` keyword argument to ``ClientSession.ws_connect``.
-by :user:`hoh`
+Added ``params`` keyword argument to ``ClientSession.ws_connect``. --  :user:`hoh`.
