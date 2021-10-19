@@ -61,7 +61,7 @@ click==7.1.2
     #   towncrier
 click-default-group==1.2.2
     # via towncrier
-coverage[toml]==6.0.1
+coverage[toml]==6.0.2
     # via
     #   -r requirements/test.txt
     #   pytest-cov
@@ -87,7 +87,7 @@ flake8-pyi==20.10.0
     # via -r requirements/lint.txt
 freezegun==1.1.0
     # via -r requirements/test.txt
-frozenlist==1.1.1
+frozenlist==1.2.0
     # via
     #   -r requirements/base.txt
     #   aiosignal
