@@ -89,6 +89,12 @@ class TestStreamReader:
 
         assert stream._loop is loop
 
+        # Cleanup, leaks into `test_at_eof` otherwise:
+        loop.stop()
+        loop.run_forever()
+        loop.close()
+        gc.collect()
+
     async def test_at_eof(self) -> None:
         stream = self._make_one()
         assert not stream.at_eof()
