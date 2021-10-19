@@ -17,7 +17,7 @@ from multidict import MultiDict
 from yarl import URL
 
 import aiohttp
-from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
+from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web, FormData
 from aiohttp.abc import AbstractResolver
 from aiohttp.client_exceptions import TooManyRedirects
 from aiohttp.test_utils import unused_port
@@ -982,6 +982,35 @@ async def test_HTTP_308_PERMANENT_REDIRECT_POST(aiohttp_client: Any) -> None:
     client = await aiohttp_client(app)
 
     resp = await client.post("/redirect", data={"some": "data"})
+    assert 200 == resp.status
+    assert 1 == len(resp.history)
+    txt = await resp.text()
+    assert txt == "POST"
+    resp.close()
+
+
+@pytest.mark.xfail
+@pytest.mark.parametrize("redirect_type", [web.HTTPPermanentRedirect, web.HTTPTemporaryRedirect])
+async def test_HTTP_REDIRECT_POST_FORMDATA(redirect_type, aiohttp_client: Any) -> None:
+    async def handler(request):
+        return web.Response(text=request.method)
+
+    async def redirect(request):
+        await request.read()
+        raise redirect_type(location="/")
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    app.router.add_post("/redirect", redirect)
+    client = await aiohttp_client(app)
+
+    data = FormData()
+    data.add_field(
+        'file',
+        io.BytesIO(),
+        filename='bytes_file',
+    )
+    resp = await client.post("/redirect", data=data)
     assert 200 == resp.status
     assert 1 == len(resp.history)
     txt = await resp.text()

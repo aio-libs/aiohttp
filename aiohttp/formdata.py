@@ -129,7 +129,7 @@ class FormData:
     def _gen_form_data(self) -> multipart.MultipartWriter:
         """Encode a list of fields using the multipart/form-data MIME format"""
         if self._is_processed:
-            raise RuntimeError("Form data has been processed already")
+            return self._writer
         for dispparams, headers, value in self._fields:
             try:
                 if hdrs.CONTENT_TYPE in headers:
