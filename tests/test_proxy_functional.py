@@ -164,6 +164,9 @@ async def test_secure_https_proxy_absolute_path(
     await sess.close()
     await conn.close()
 
+    # https://docs.aiohttp.org/en/v3.8.0/client_advanced.html#graceful-shutdown
+    await asyncio.sleep(0.1)
+
 
 @secure_proxy_xfail_under_py310_except_macos(raises=AssertionError)
 @pytest.mark.xfail(

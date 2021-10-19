@@ -1,4 +1,5 @@
 import asyncio
+import gc
 from unittest import mock
 
 import pytest
@@ -48,6 +49,12 @@ def test_set_loop_default_loop() -> None:
         assert app.loop is loop
     asyncio.set_event_loop(None)
 
+    # Cleanup, leaks into `test_app_make_handler_debug_exc[True]` otherwise:
+    loop.stop()
+    loop.run_forever()
+    loop.close()
+    gc.collect()
+
 
 def test_set_loop_with_different_loops() -> None:
     loop = asyncio.new_event_loop()
@@ -58,6 +65,12 @@ def test_set_loop_with_different_loops() -> None:
 
     with pytest.raises(RuntimeError):
         app._set_loop(loop=object())
+
+    # Cleanup, leaks into `test_app_make_handler_debug_exc[True]` otherwise:
+    loop.stop()
+    loop.run_forever()
+    loop.close()
+    gc.collect()
 
 
 @pytest.mark.parametrize("debug", [True, False])

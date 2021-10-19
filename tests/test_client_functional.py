@@ -2581,6 +2581,8 @@ async def test_aiohttp_request_coroutine(aiohttp_server) -> None:
     with pytest.raises(TypeError):
         await aiohttp.request("GET", server.make_url("/"))
 
+    server.close()
+
 
 async def test_yield_from_in_session_request(aiohttp_client) -> None:
     # a test for backward compatibility with yield from syntax
@@ -2770,7 +2772,7 @@ async def test_server_close_keepalive_connection() -> None:
         await r.read()
         assert 0 == len(connector._conns)
     await session.close()
-    connector.close()
+    await connector.close()
     server.close()
     await server.wait_closed()
 
@@ -2812,7 +2814,7 @@ async def test_handle_keepalive_on_closed_connection() -> None:
     assert 0 == len(connector._conns)
 
     await session.close()
-    connector.close()
+    await connector.close()
     server.close()
     await server.wait_closed()
 
