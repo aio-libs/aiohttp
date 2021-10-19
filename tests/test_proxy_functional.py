@@ -16,12 +16,12 @@ from aiohttp import web
 from aiohttp.client_exceptions import ClientConnectionError, ClientProxyConnectionError
 from aiohttp.helpers import IS_MACOS, IS_WINDOWS, PY_37, PY_310
 
-secure_proxy_xfail_under_py310_except_macos = functools.partial(
+secure_proxy_xfail_under_py310_linux = functools.partial(
     pytest.mark.xfail,
-    PY_310 and platform.system() != "Darwin",
+    PY_310 and platform.system() == "Linux",
     reason=(
         "The secure proxy fixture does not seem to work "
-        "under Python 3.10 on Linux or Windows. "
+        "under Python 3.10 on Linux. "
         "See https://github.com/abhinavsingh/proxy.py/issues/622."
     ),
 )
@@ -125,7 +125,7 @@ def _pretend_asyncio_supports_tls_in_tls(
     )
 
 
-@secure_proxy_xfail_under_py310_except_macos(raises=ClientProxyConnectionError)
+@secure_proxy_xfail_under_py310_linux(raises=ClientProxyConnectionError)
 @pytest.mark.parametrize(
     "web_server_endpoint_type",
     (
@@ -168,7 +168,7 @@ async def test_secure_https_proxy_absolute_path(
     await asyncio.sleep(0.1)
 
 
-@secure_proxy_xfail_under_py310_except_macos(raises=AssertionError)
+@secure_proxy_xfail_under_py310_linux(raises=AssertionError)
 @pytest.mark.xfail(
     not PY_37,
     raises=RuntimeError,
