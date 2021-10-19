@@ -6,7 +6,11 @@ from typing import Any, Dict, Generator, List
 
 import pytest
 from pytest import TempPathFactory
-from python_on_whales import DockerException, docker
+
+python_on_whales = pytest.importorskip(
+    "python_on_whales",
+    reason="'python-on-whales' requires Python 3.7+",
+)
 
 
 @pytest.fixture(scope="session")
@@ -18,18 +22,18 @@ def report_dir(tmp_path_factory: TempPathFactory) -> Path:
 def build_autobahn_testsuite() -> Generator[None, None, None]:
 
     try:
-        docker.build(
+        python_on_whales.docker.build(
             file="tests/autobahn/Dockerfile.autobahn",
             tags=["autobahn-testsuite"],
             context_path=".",
         )
-    except DockerException:
+    except python_on_whales.DockerException:
         pytest.skip(msg="The docker daemon is not running.")
 
     try:
         yield
     finally:
-        docker.image.remove(x="autobahn-testsuite")
+        python_on_whales.docker.image.remove(x="autobahn-testsuite")
 
 
 def get_failed_tests(report_path: str, name: str) -> List[Dict[str, Any]]:
@@ -51,7 +55,7 @@ def get_failed_tests(report_path: str, name: str) -> List[Dict[str, Any]]:
 def test_client(report_dir: Path, request: Any) -> None:
     try:
         print("Starting autobahn-testsuite server")
-        autobahn_container = docker.run(
+        autobahn_container = python_on_whales.docker.run(
             detach=True,
             image="autobahn-testsuite",
             name="autobahn",
@@ -95,7 +99,7 @@ def test_server(report_dir: Path, request: Any) -> None:
             [sys.executable] + ["tests/autobahn/server/server.py"]
         )
         print("Starting autobahn-testsuite client")
-        docker.run(
+        python_on_whales.docker.run(
             image="autobahn-testsuite",
             name="autobahn",
             remove=True,
