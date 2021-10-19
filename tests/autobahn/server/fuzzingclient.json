@@ -5,7 +5,7 @@
     "servers": [
         {
             "agent": "AutobahnServer",
-            "url": "ws://aiohttp:9001",
+            "url": "ws://localhost:9001",
             "options": { "version": 18 }
         }
     ],
