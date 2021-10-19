@@ -60,6 +60,8 @@ click==7.1.2
     #   cherry-picker
     #   click-default-group
     #   towncrier
+    #   typer
+    #   wait-for-it
 click-default-group==1.2.2
     # via towncrier
 coverage[toml]==6.0.1
@@ -178,6 +180,8 @@ pycodestyle==2.7.0
     #   flake8
 pycparser==2.20
     # via cffi
+pydantic==1.8.2
+    # via python-on-whales
 pyflakes==2.3.0
     # via
     #   -r requirements/lint.txt
@@ -205,6 +209,8 @@ pytest-mock==3.6.1
     # via -r requirements/test.txt
 python-dateutil==2.8.1
     # via freezegun
+python-on-whales==0.19.0
+    # via -r requirements/dev.in
 pytz==2020.5
     # via babel
 pyyaml==5.4.1
@@ -221,6 +227,7 @@ regex==2020.11.13
 requests==2.25.1
     # via
     #   cherry-picker
+    #   python-on-whales
     #   sphinx
 setuptools-git==1.2
     # via -r requirements/test.txt
@@ -271,10 +278,14 @@ towncrier==21.3.0
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-towncrier
+tqdm==4.62.2
+    # via python-on-whales
 trustme==0.9.0 ; platform_machine != "i686"
     # via -r requirements/test.txt
 typed-ast==1.4.3 ; implementation_name == "cpython"
     # via -r requirements/lint.txt
+typer==0.4.0
+    # via python-on-whales
 types-chardet==0.1.3
     # via
     #   -r requirements/lint.txt
@@ -286,6 +297,7 @@ typing-extensions==3.7.4.3
     #   async-timeout
     #   mypy
     #   proxy.py
+    #   pydantic
 uritemplate==3.0.1
     # via gidgethub
 urllib3==1.26.2
@@ -294,6 +306,8 @@ virtualenv==20.4.2
     # via
     #   -r requirements/lint.txt
     #   pre-commit
+wait-for-it==2.2.0
+    # via -r requirements/dev.in
 webcolors==1.11.1
     # via blockdiag
 yarl==1.7.0
