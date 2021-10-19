@@ -86,7 +86,7 @@ def named_pipe_server(proactor_loop, pipe_name):
 def create_mocked_conn(conn_closing_result=None, **kwargs):
     try:
         loop = asyncio.get_running_loop()
-    except RuntimeError:
+    except (AttributeError, RuntimeError):  # AttributeError->py36
         loop = asyncio.get_event_loop_policy().get_event_loop()
 
     proto = mock.Mock(**kwargs)
