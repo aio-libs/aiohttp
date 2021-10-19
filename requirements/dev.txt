@@ -8,7 +8,7 @@ aiodns==3.0.0 ; sys_platform == "linux" or sys_platform == "darwin" and python_v
     # via -r requirements/base.txt
 aiohttp-theme==0.1.6
     # via -r requirements/doc.txt
-aiosignal==1.1.2
+aiosignal==1.2.0
     # via -r requirements/base.txt
 alabaster==0.7.12
     # via sphinx
@@ -89,7 +89,7 @@ flake8-pyi==20.10.0
     # via -r requirements/lint.txt
 freezegun==1.1.0
     # via -r requirements/test.txt
-frozenlist==1.1.1
+frozenlist==1.2.0
     # via
     #   -r requirements/base.txt
     #   aiosignal
