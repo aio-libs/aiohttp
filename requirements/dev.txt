@@ -29,12 +29,14 @@ attrs==21.2.0
     #   pytest
 babel==2.9.0
     # via sphinx
-black==21.6b0 ; implementation_name == "cpython"
+black==21.7b0 ; implementation_name == "cpython"
     # via -r requirements/lint.txt
 blockdiag==2.0.1
     # via sphinxcontrib-blockdiag
 brotli==1.0.9
-    # via -r requirements/base.txt
+    # via
+    #   -r requirements/base.txt
+    #   -r requirements/test.txt
 cchardet==2.1.7
     # via -r requirements/base.txt
 certifi==2020.12.5
@@ -64,7 +66,7 @@ click==7.1.2
     #   wait-for-it
 click-default-group==1.2.2
     # via towncrier
-coverage[toml]==6.0.1
+coverage[toml]==6.0.2
     # via
     #   -r requirements/test.txt
     #   pytest-cov
@@ -82,7 +84,7 @@ filelock==3.0.12
     # via
     #   -r requirements/lint.txt
     #   virtualenv
-flake8==3.9.2
+flake8==4.0.1
     # via
     #   -r requirements/lint.txt
     #   flake8-pyi
@@ -119,9 +121,9 @@ iniconfig==1.1.1
     # via
     #   -r requirements/lint.txt
     #   pytest
-isort==5.9.2
+isort==5.9.3
     # via -r requirements/lint.txt
-jinja2==2.11.2
+jinja2==2.11.3
     # via
     #   sphinx
     #   towncrier
@@ -158,13 +160,13 @@ pathspec==0.8.1
     # via
     #   -r requirements/lint.txt
     #   black
-pillow==8.1.0
+pillow==8.3.2
     # via blockdiag
 pluggy==0.13.1
     # via
     #   -r requirements/lint.txt
     #   pytest
-pre-commit==2.13.0
+pre-commit==2.15.0
     # via -r requirements/lint.txt
 proxy.py==2.3.1
     # via -r requirements/test.txt
@@ -174,7 +176,7 @@ py==1.10.0
     #   pytest
 pycares==4.0.0
     # via aiodns
-pycodestyle==2.7.0
+pycodestyle==2.8.0
     # via
     #   -r requirements/lint.txt
     #   flake8
@@ -182,7 +184,7 @@ pycparser==2.20
     # via cffi
 pydantic==1.8.2
     # via python-on-whales
-pyflakes==2.3.0
+pyflakes==2.4.0
     # via
     #   -r requirements/lint.txt
     #   flake8
@@ -197,7 +199,7 @@ pyparsing==2.4.7
     # via
     #   -r requirements/lint.txt
     #   packaging
-pytest==6.1.2
+pytest==6.2.5
     # via
     #   -r requirements/lint.txt
     #   -r requirements/test.txt
@@ -266,14 +268,16 @@ sphinxcontrib-towncrier==0.2.0a0
 toml==0.10.2
     # via
     #   -r requirements/lint.txt
-    #   black
     #   cherry-picker
     #   mypy
     #   pre-commit
     #   pytest
     #   towncrier
 tomli==1.2.1
-    # via coverage
+    # via
+    #   -r requirements/lint.txt
+    #   black
+    #   coverage
 towncrier==21.3.0
     # via
     #   -r requirements/doc.txt
@@ -300,7 +304,7 @@ typing-extensions==3.7.4.3
     #   pydantic
 uritemplate==3.0.1
     # via gidgethub
-urllib3==1.26.2
+urllib3==1.26.5
     # via requests
 virtualenv==20.4.2
     # via
