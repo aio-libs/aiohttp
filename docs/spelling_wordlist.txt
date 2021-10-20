@@ -124,10 +124,9 @@ canonicalization
 canonicalize
 cchardet
 ceil
+Chardet
 charset
 charsetdetect
-normalizer
-Chardet
 chunked
 chunking
 cls
@@ -230,6 +229,7 @@ namespace
 netrc
 nginx
 noop
+normalizer
 nowait
 optimizations
 os
