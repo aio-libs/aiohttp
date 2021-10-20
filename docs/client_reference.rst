@@ -2163,7 +2163,7 @@ Connection errors
 
    Server disconnected.
 
-   Derived from :exc:`~aiohttp.ServerDisconnectionError`
+   Derived from :exc:`~aiohttp.ServerConnectionError`
 
    .. attribute:: message
 
