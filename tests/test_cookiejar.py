@@ -26,7 +26,7 @@ def cookies_to_send():
         "different-domain-cookie=sixth; Domain=different.org; "
         "secure-cookie=seventh; Domain=secure.com; Secure; "
         "no-path-cookie=eighth; Domain=pathtest.com; "
-        "path1-cookie=nineth; Domain=pathtest.com; Path=/; "
+        "path1-cookie=ninth; Domain=pathtest.com; Path=/; "
         "path2-cookie=tenth; Domain=pathtest.com; Path=/one; "
         "path3-cookie=eleventh; Domain=pathtest.com; Path=/one/two; "
         "path4-cookie=twelfth; Domain=pathtest.com; Path=/one/two/; "
@@ -52,7 +52,7 @@ def cookies_to_send_with_expired():
         "different-domain-cookie=sixth; Domain=different.org; "
         "secure-cookie=seventh; Domain=secure.com; Secure; "
         "no-path-cookie=eighth; Domain=pathtest.com; "
-        "path1-cookie=nineth; Domain=pathtest.com; Path=/; "
+        "path1-cookie=ninth; Domain=pathtest.com; Path=/; "
         "path2-cookie=tenth; Domain=pathtest.com; Path=/one; "
         "path3-cookie=eleventh; Domain=pathtest.com; Path=/one/two; "
         "path4-cookie=twelfth; Domain=pathtest.com; Path=/one/two/; "
@@ -78,7 +78,7 @@ def cookies_to_receive():
         "different-domain-cookie=sixth; Domain=different.org; Path=/; "
         "no-path-cookie=seventh; Domain=pathtest.com; "
         "path-cookie=eighth; Domain=pathtest.com; Path=/somepath; "
-        "wrong-path-cookie=nineth; Domain=pathtest.com; Path=somepath;"
+        "wrong-path-cookie=ninth; Domain=pathtest.com; Path=somepath;"
     )
 
 
@@ -254,7 +254,7 @@ async def test_domain_filter_ip_cookie_send(loop: Any) -> None:
         "different-domain-cookie=sixth; Domain=different.org; "
         "secure-cookie=seventh; Domain=secure.com; Secure; "
         "no-path-cookie=eighth; Domain=pathtest.com; "
-        "path1-cookie=nineth; Domain=pathtest.com; Path=/; "
+        "path1-cookie=ninth; Domain=pathtest.com; Path=/; "
         "path2-cookie=tenth; Domain=pathtest.com; Path=/one; "
         "path3-cookie=eleventh; Domain=pathtest.com; Path=/one/two; "
         "path4-cookie=twelfth; Domain=pathtest.com; Path=/one/two/; "
@@ -371,7 +371,7 @@ class TestCookieJarSafe(TestCookieJarBase):
             "different-domain-cookie=sixth; Domain=different.org; "
             "secure-cookie=seventh; Domain=secure.com; Secure; "
             "no-path-cookie=eighth; Domain=pathtest.com; "
-            "path1-cookie=nineth; Domain=pathtest.com; Path=/; "
+            "path1-cookie=ninth; Domain=pathtest.com; Path=/; "
             "path2-cookie=tenth; Domain=pathtest.com; Path=/one; "
             "path3-cookie=eleventh; Domain=pathtest.com; Path=/one/two; "
             "path4-cookie=twelfth; Domain=pathtest.com; Path=/one/two/; "
@@ -394,7 +394,7 @@ class TestCookieJarSafe(TestCookieJarBase):
             "different-domain-cookie=sixth; Domain=different.org; Path=/; "
             "no-path-cookie=seventh; Domain=pathtest.com; "
             "path-cookie=eighth; Domain=pathtest.com; Path=/somepath; "
-            "wrong-path-cookie=nineth; Domain=pathtest.com; Path=somepath;"
+            "wrong-path-cookie=ninth; Domain=pathtest.com; Path=somepath;"
         )
 
         async def make_jar():
