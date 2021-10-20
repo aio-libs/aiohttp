@@ -100,8 +100,10 @@ async def test_mark_formdata_as_processed(aiohttp_client: Any) -> None:
     data = FormData()
     data.add_field("test", "test_value", content_type="application/json")
 
-    await client.post("/", data=data)
+    resp = await client.post("/", data=data)
     assert len(data._writer._parts) == 1
 
     with pytest.raises(RuntimeError):
         await client.post("/", data=data)
+
+    resp.release()
