@@ -315,7 +315,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         finally:
                             self._lines.clear()
 
-                        def get_content_lenght() -> Optional[int]:
+                        def get_content_length() -> Optional[int]:
                             # payload length
                             length_hdr = msg.headers.get(CONTENT_LENGTH)
                             if length_hdr is None:
@@ -331,7 +331,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
                             return length
 
-                        length = get_content_lenght()
+                        length = get_content_length()
                         # do not support old websocket spec
                         if SEC_WEBSOCKET_KEY1 in msg.headers:
                             raise InvalidHeader(SEC_WEBSOCKET_KEY1)
