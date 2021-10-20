@@ -15,7 +15,6 @@ from typing import (
     Dict,
     Iterable,
     Optional,
-    Text,
     TextIO,
     Tuple,
     Type,
@@ -221,9 +220,7 @@ class Payload(ABC):
 class BytesPayload(Payload):
     def __init__(self, value: ByteString, *args: Any, **kwargs: Any) -> None:
         if not isinstance(value, (bytes, bytearray, memoryview)):
-            raise TypeError(
-                "value argument must be byte-ish, not {!r}".format(type(value))
-            )
+            raise TypeError(f"value argument must be byte-ish, not {type(value)!r}")
 
         if "content_type" not in kwargs:
             kwargs["content_type"] = "application/octet-stream"
@@ -251,7 +248,7 @@ class BytesPayload(Payload):
 class StringPayload(BytesPayload):
     def __init__(
         self,
-        value: Text,
+        value: str,
         *args: Any,
         encoding: Optional[str] = None,
         content_type: Optional[str] = None,
