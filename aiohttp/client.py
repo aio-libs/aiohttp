@@ -8,6 +8,7 @@ import os
 import sys
 import traceback
 import warnings
+from contextlib import suppress
 from types import SimpleNamespace, TracebackType
 from typing import (
     Any,
@@ -30,7 +31,6 @@ from typing import (
 
 import attr
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
-from typing_extensions import Final
 from yarl import URL
 
 from . import hdrs, http, payload
@@ -77,8 +77,8 @@ from .helpers import (
     BasicAuth,
     TimeoutHandle,
     ceil_timeout,
+    get_env_proxy_for_url,
     get_running_loop,
-    proxies_from_env,
     sentinel,
     strip_auth_from_url,
 )
@@ -86,7 +86,7 @@ from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, WSMessage, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
 from .tracing import Trace, TraceConfig
-from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
+from .typedefs import Final, JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
 
 __all__ = (
     # client_exceptions
@@ -484,11 +484,8 @@ class ClientSession:
                     if proxy is not None:
                         proxy = URL(proxy)
                     elif self._trust_env:
-                        for scheme, proxy_info in proxies_from_env().items():
-                            if scheme == url.scheme:
-                                proxy = proxy_info.proxy
-                                proxy_auth = proxy_info.proxy_auth
-                                break
+                        with suppress(LookupError):
+                            proxy, proxy_auth = get_env_proxy_for_url(url)
 
                     req = self._request_class(
                         method,

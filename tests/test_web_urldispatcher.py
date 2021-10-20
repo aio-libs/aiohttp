@@ -9,6 +9,7 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import pytest
+import yarl
 
 from aiohttp import abc, web
 from aiohttp.web_urldispatcher import SystemRoute
@@ -152,6 +153,7 @@ async def test_access_to_the_file_with_spaces(
     r = await client.get(url)
     assert r.status == 200
     assert (await r.text()) == data
+    await r.release()
 
 
 async def test_access_non_existing_resource(tmp_dir_path, aiohttp_client) -> None:
@@ -515,3 +517,35 @@ async def test_static_absolute_url(aiohttp_client, tmpdir) -> None:
     client = await aiohttp_client(app)
     resp = await client.get("/static/" + str(fname))
     assert resp.status == 403
+
+
+@pytest.mark.xfail(
+    raises=AssertionError,
+    reason="Regression in v3.7: https://github.com/aio-libs/aiohttp/issues/5621",
+)
+@pytest.mark.parametrize(
+    ("route_definition", "urlencoded_path", "expected_http_resp_status"),
+    (
+        ("/467,802,24834/hello", "/467%2C802%2C24834/hello", 200),
+        ("/{user_ids:([0-9]+)(,([0-9]+))*}/hello", "/467%2C802%2C24834/hello", 200),
+        ("/1%2C3/hello", "/1%2C3/hello", 404),
+    ),
+    ids=("urldecoded_route", "urldecoded_route_with_regex", "urlencoded_route"),
+)
+async def test_decoded_url_match(
+    aiohttp_client,
+    route_definition,
+    urlencoded_path,
+    expected_http_resp_status,
+) -> None:
+    app = web.Application()
+
+    async def handler(_):
+        return web.Response()
+
+    app.router.add_get(route_definition, handler)
+    client = await aiohttp_client(app)
+
+    r = await client.get(yarl.URL(urlencoded_path, encoded=True))
+    assert r.status == expected_http_resp_status
+    await r.release()

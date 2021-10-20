@@ -30,7 +30,7 @@ def connector(loop):
     proto = mock.Mock()
     conn._conns["a"] = [(proto, 123)]
     yield conn
-    conn.close()
+    loop.run_until_complete(conn.close())
 
 
 @pytest.fixture
@@ -292,7 +292,7 @@ async def test_connector(create_session, loop, mocker) -> None:
 
     await session.close()
     assert connector.close.called
-    connector.close()
+    await connector.close()
 
 
 async def test_create_connector(create_session, loop, mocker) -> None:
@@ -314,7 +314,6 @@ def test_connector_loop(loop) -> None:
 
         connector = another_loop.run_until_complete(make_connector())
 
-        stack.enter_context(contextlib.closing(connector))
         with pytest.raises(RuntimeError) as ctx:
 
             async def make_sess():
@@ -326,8 +325,11 @@ def test_connector_loop(loop) -> None:
             == str(ctx.value).strip()
         )
 
+        # Cannot use `AsyncExitStack` as it's Python 3.7+:
+        another_loop.run_until_complete(connector.close())
 
-def test_detach(session) -> None:
+
+def test_detach(loop, session) -> None:
     conn = session.connector
     try:
         assert not conn.closed
@@ -336,7 +338,7 @@ def test_detach(session) -> None:
         assert session.closed
         assert not conn.closed
     finally:
-        conn.close()
+        loop.run_until_complete(conn.close())
 
 
 async def test_request_closed_session(session) -> None:
@@ -345,10 +347,10 @@ async def test_request_closed_session(session) -> None:
         await session.request("get", "/")
 
 
-def test_close_flag_for_closed_connector(session) -> None:
+def test_close_flag_for_closed_connector(loop, session) -> None:
     conn = session.connector
     assert not session.closed
-    conn.close()
+    loop.run_until_complete(conn.close())
     assert session.closed
 
 
@@ -514,6 +516,7 @@ async def test_cookie_jar_usage(loop, aiohttp_client) -> None:
 async def test_session_default_version(loop) -> None:
     session = aiohttp.ClientSession(loop=loop)
     assert session.version == aiohttp.HttpVersion11
+    await session.close()
 
 
 async def test_session_loop(loop) -> None:
@@ -639,6 +642,8 @@ async def test_request_tracing_exception() -> None:
         )
         assert not on_request_end.called
 
+    await session.close()
+
 
 async def test_request_tracing_interpose_headers(loop, aiohttp_client) -> None:
     async def handler(request):
@@ -681,6 +686,7 @@ async def test_client_session_custom_attr(loop) -> None:
     session = ClientSession(loop=loop)
     with pytest.warns(DeprecationWarning):
         session.custom = None
+    await session.close()
 
 
 async def test_client_session_timeout_args(loop) -> None:
@@ -701,25 +707,41 @@ async def test_client_session_timeout_args(loop) -> None:
             loop=loop, timeout=client.ClientTimeout(total=10 * 60), conn_timeout=30 * 60
         )
 
+    await session1.close()
+    await session2.close()
+
 
 async def test_client_session_timeout_default_args(loop) -> None:
     session1 = ClientSession()
     assert session1.timeout == client.DEFAULT_TIMEOUT
+    await session1.close()
 
 
 async def test_client_session_timeout_argument() -> None:
     session = ClientSession(timeout=500)
     assert session.timeout == 500
+    await session.close()
+
+
+async def test_client_session_timeout_zero() -> None:
+    timeout = client.ClientTimeout(total=10, connect=0, sock_connect=0, sock_read=0)
+    try:
+        async with ClientSession(timeout=timeout) as session:
+            await session.get("http://example.com")
+    except asyncio.TimeoutError:
+        pytest.fail("0 should disable timeout.")
 
 
 async def test_requote_redirect_url_default() -> None:
     session = ClientSession()
     assert session.requote_redirect_url
+    await session.close()
 
 
 async def test_requote_redirect_url_default_disable() -> None:
     session = ClientSession(requote_redirect_url=False)
     assert not session.requote_redirect_url
+    await session.close()
 
 
 async def test_requote_redirect_setter() -> None:
@@ -728,3 +750,4 @@ async def test_requote_redirect_setter() -> None:
     with pytest.warns(DeprecationWarning):
         session.requote_redirect_url = False
     assert not session.requote_redirect_url
+    await session.close()

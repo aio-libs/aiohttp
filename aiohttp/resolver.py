@@ -1,6 +1,6 @@
 import asyncio
 import socket
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Type, Union
 
 from .abc import AbstractResolver
 from .helpers import get_running_loop
@@ -146,4 +146,5 @@ class AsyncResolver(AbstractResolver):
         self._resolver.cancel()
 
 
-DefaultResolver = AsyncResolver if aiodns_default else ThreadedResolver
+_DefaultType = Type[Union[AsyncResolver, ThreadedResolver]]
+DefaultResolver: _DefaultType = AsyncResolver if aiodns_default else ThreadedResolver

@@ -2,12 +2,12 @@
 
 import asyncio
 import contextlib
-import functools
 import gc
 import inspect
 import os
 import socket
 import sys
+import warnings
 from abc import ABC, abstractmethod
 from types import TracebackType
 from typing import (
@@ -443,8 +443,10 @@ class AioHTTPTestCase(TestCase):
         raise RuntimeError("Did you forget to define get_application()?")
 
     def setUp(self) -> None:
-        if PY_38:
-            self.loop = asyncio.get_event_loop()
+        try:
+            self.loop = asyncio.get_running_loop()
+        except (AttributeError, RuntimeError):  # AttributeError->py36
+            self.loop = asyncio.get_event_loop_policy().get_event_loop()
 
         self.loop.run_until_complete(self.setUpAsync())
 
@@ -472,17 +474,16 @@ class AioHTTPTestCase(TestCase):
 
 def unittest_run_loop(func: Any, *args: Any, **kwargs: Any) -> Any:
     """A decorator dedicated to use with asynchronous methods of an
-    AioHTTPTestCase.
+    AioHTTPTestCase in aiohttp <3.8.
 
-    Handles executing an asynchronous function, using
-    the self.loop of the AioHTTPTestCase.
+    In 3.8+, this does nothing.
     """
-
-    @functools.wraps(func, *args, **kwargs)
-    def new_func(self: Any, *inner_args: Any, **inner_kwargs: Any) -> Any:
-        return self.loop.run_until_complete(func(self, *inner_args, **inner_kwargs))
-
-    return new_func
+    warnings.warn(
+        "Decorator `@unittest_run_loop` is no longer needed in aiohttp 3.8+",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return func
 
 
 _LOOP_FACTORY = Callable[[], asyncio.AbstractEventLoop]
@@ -520,7 +521,16 @@ def setup_test_loop(
     asyncio.set_event_loop(loop)
     if sys.platform != "win32" and not skip_watcher:
         policy = asyncio.get_event_loop_policy()
-        watcher = asyncio.SafeChildWatcher()
+        watcher: asyncio.AbstractChildWatcher
+        try:  # Python >= 3.8
+            # Refs:
+            # * https://github.com/pytest-dev/pytest-xdist/issues/620
+            # * https://stackoverflow.com/a/58614689/595220
+            # * https://bugs.python.org/issue35621
+            # * https://github.com/python/cpython/pull/14344
+            watcher = asyncio.MultiLoopChildWatcher()
+        except AttributeError:  # Python < 3.8
+            watcher = asyncio.SafeChildWatcher()
         watcher.attach_loop(loop)
         with contextlib.suppress(NotImplementedError):
             policy.set_child_watcher(watcher)

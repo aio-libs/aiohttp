@@ -28,6 +28,7 @@ Dict
 Discord
 Django
 Dup
+ETag
 Facebook
 HTTPException
 HttpProcessingError
@@ -81,6 +82,7 @@ WSMsgType
 Websockets
 Workflow
 abc
+addons
 aiodns
 aioes
 aiohttp
@@ -114,11 +116,13 @@ botocore
 bugfix
 builtin
 cChardet
+callables
 cancelled
 canonicalization
 canonicalize
 cchardet
 ceil
+Chardet
 charset
 charsetdetect
 chunked
@@ -153,6 +157,7 @@ env
 environ
 eof
 epoll
+etag
 facto
 fallback
 fallbacks
@@ -200,6 +205,7 @@ login
 lookup
 lookups
 lossless
+lowercased
 manylinux
 metadata
 microservice
@@ -221,6 +227,7 @@ namespace
 netrc
 nginx
 noop
+normalizer
 nowait
 optimizations
 os
@@ -256,6 +263,7 @@ redirections
 refactor
 refactored
 refactoring
+referenceable
 regex
 regexps
 regexs
@@ -314,6 +322,7 @@ unittest
 unix
 unsets
 unstripped
+uppercased
 upstr
 url
 urldispatcher

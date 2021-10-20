@@ -1,0 +1,1 @@
+Added a regression test for constructing ``HTTPUnauthorized`` with a ``body`` argument that is a Unicode string.

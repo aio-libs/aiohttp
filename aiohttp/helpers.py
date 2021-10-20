@@ -23,6 +23,7 @@ from types import TracebackType
 from typing import (
     Any,
     Callable,
+    ContextManager,
     Dict,
     Generator,
     Generic,
@@ -40,33 +41,31 @@ from typing import (
     cast,
 )
 from urllib.parse import quote
-from urllib.request import getproxies
+from urllib.request import getproxies, proxy_bypass
 
 import async_timeout
 import attr
 from multidict import MultiDict, MultiDictProxy
-from typing_extensions import Protocol
 from yarl import URL
 
 from . import hdrs
 from .log import client_logger, internal_logger
-from .typedefs import PathLike  # noqa
+from .typedefs import PathLike, Protocol  # noqa
 
-__all__ = ("BasicAuth", "ChainMapProxy")
+__all__ = ("BasicAuth", "ChainMapProxy", "ETag")
+
+IS_MACOS = platform.system() == "Darwin"
+IS_WINDOWS = platform.system() == "Windows"
 
 PY_36 = sys.version_info >= (3, 6)
 PY_37 = sys.version_info >= (3, 7)
 PY_38 = sys.version_info >= (3, 8)
+PY_310 = sys.version_info >= (3, 10)
 
 if not PY_37:
     import idna_ssl  # type: ignore[import]
 
     idna_ssl.patch_match_hostname()
-
-try:
-    from typing import ContextManager
-except ImportError:
-    from typing_extensions import ContextManager
 
 
 def all_tasks(
@@ -218,9 +217,7 @@ def netrc_from_env() -> Optional[netrc.netrc]:
             )
             return None
 
-        netrc_path = home_dir / (
-            "_netrc" if platform.system() == "Windows" else ".netrc"
-        )
+        netrc_path = home_dir / ("_netrc" if IS_WINDOWS else ".netrc")
 
     try:
         return netrc.netrc(str(netrc_path))
@@ -300,6 +297,20 @@ def isasyncgenfunction(obj: Any) -> bool:
         return func(obj)  # type: ignore[no-any-return]
     else:
         return False
+
+
+def get_env_proxy_for_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
+    """Get a permitted proxy for the given URL from the env."""
+    if url.host is not None and proxy_bypass(url.host):
+        raise LookupError(f"Proxying is disallowed for `{url.host!r}`")
+
+    proxies_in_env = proxies_from_env()
+    try:
+        proxy_info = proxies_in_env[url.scheme]
+    except KeyError:
+        raise LookupError(f"No proxies found for `{url!s}` in the env")
+    else:
+        return proxy_info.proxy, proxy_info.proxy_auth
 
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
@@ -671,15 +682,15 @@ class TimerContext(BaseTimerContext):
 
 
 def ceil_timeout(delay: Optional[float]) -> async_timeout.Timeout:
-    if delay is None:
+    if delay is None or delay <= 0:
         return async_timeout.timeout(None)
-    else:
-        loop = get_running_loop()
-        now = loop.time()
-        when = now + delay
-        if delay > 5:
-            when = ceil(when)
-        return async_timeout.timeout_at(when)
+
+    loop = get_running_loop()
+    now = loop.time()
+    when = now + delay
+    if delay > 5:
+        when = ceil(when)
+    return async_timeout.timeout_at(when)
 
 
 class HeadersMixin:
@@ -781,3 +792,26 @@ class ChainMapProxy(Mapping[str, Any]):
     def __repr__(self) -> str:
         content = ", ".join(map(repr, self._maps))
         return f"ChainMapProxy({content})"
+
+
+# https://tools.ietf.org/html/rfc7232#section-2.3
+_ETAGC = r"[!#-}\x80-\xff]+"
+_ETAGC_RE = re.compile(_ETAGC)
+_QUOTED_ETAG = fr'(W/)?"({_ETAGC})"'
+QUOTED_ETAG_RE = re.compile(_QUOTED_ETAG)
+LIST_QUOTED_ETAG_RE = re.compile(fr"({_QUOTED_ETAG})(?:\s*,\s*|$)|(.)")
+
+ETAG_ANY = "*"
+
+
+@attr.s(auto_attribs=True, frozen=True, slots=True)
+class ETag:
+    value: str
+    is_weak: bool = False
+
+
+def validate_etag_value(value: str) -> None:
+    if value != ETAG_ANY and not _ETAGC_RE.fullmatch(value):
+        raise ValueError(
+            f"Value {value!r} is not a valid etag. Maybe it contains '\"'?"
+        )

@@ -7,6 +7,7 @@ Adam Horacek
 Adam Mills
 Adrian Krupa
 Adrián Chaves
+Ahmed Tahri
 Alan Tse
 Alec Hanefeld
 Alejandro Gómez
@@ -40,12 +41,14 @@ Andrew Lytvyn
 Andrew Svetlov
 Andrew Zhou
 Andrii Soldatenko
+Anes Abismail
 Antoine Pietri
 Anton Kasyanov
 Anton Zhdan-Pushkin
 Arseny Timoniq
 Artem Yushkovskiy
 Arthur Darcet
+Austin Scola
 Ben Bader
 Ben Timby
 Benedikt Reinartz
@@ -53,6 +56,7 @@ Bob Haddleton
 Boris Feld
 Boyi Chen
 Brett Cannon
+Brian Bouterse
 Brian C. Lane
 Brian Muller
 Bruce Merry
@@ -109,6 +113,7 @@ Felix Yan
 Fernanda Guimarães
 FichteFoll
 Florian Scheffler
+Franek Magiera
 Frederik Gladhorn
 Frederik Peter Aalund
 Gabriel Tremblay
@@ -126,6 +131,7 @@ Hrishikesh Paranjape
 Hu Bo
 Hugh Young
 Hugo Herter
+Hugo van Kemenade
 Hynek Schlawack
 Igor Alexandrov
 Igor Davydenko
@@ -156,6 +162,7 @@ Jonas Obrist
 Jonathan Wright
 Jonny Tan
 Joongi Kim
+Jordan Borean
 Josep Cugat
 Josh Junon
 Joshu Coats
@@ -228,6 +235,7 @@ Pawel Miech
 Pepe Osca
 Philipp A.
 Pieter van Beek
+Qiao Han
 Rafael Viotti
 Raphael Bialon
 Raúl Cumplido
@@ -254,6 +262,7 @@ Stanislav Prokop
 Stefan Tjarks
 Stepan Pletnev
 Stephan Jaensch
+Stephen Cirelli
 Stephen Granade
 Steven Seguin
 Sunghyun Hwang
@@ -296,6 +305,7 @@ Vladyslav Bondar
 W. Trevor King
 Wei Lin
 Weiwei Wang
+Will Fatherley
 Will McGugan
 Willem de Groot
 William Grzybowski

@@ -41,21 +41,21 @@ def test__merge_ssl_params_verify_ssl() -> None:
 
 
 def test__merge_ssl_params_verify_ssl_conflict() -> None:
-    ctx = ssl.SSLContext()
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     with pytest.warns(DeprecationWarning):
         with pytest.raises(ValueError):
             _merge_ssl_params(ctx, False, None, None)
 
 
 def test__merge_ssl_params_ssl_context() -> None:
-    ctx = ssl.SSLContext()
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     with pytest.warns(DeprecationWarning):
         assert _merge_ssl_params(None, None, ctx, None) is ctx
 
 
 def test__merge_ssl_params_ssl_context_conflict() -> None:
-    ctx1 = ssl.SSLContext()
-    ctx2 = ssl.SSLContext()
+    ctx1 = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx2 = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     with pytest.warns(DeprecationWarning):
         with pytest.raises(ValueError):
             _merge_ssl_params(ctx1, None, ctx2, None)
@@ -70,14 +70,14 @@ def test__merge_ssl_params_fingerprint() -> None:
 
 def test__merge_ssl_params_fingerprint_conflict() -> None:
     fingerprint = aiohttp.Fingerprint(hashlib.sha256(b"123").digest())
-    ctx = ssl.SSLContext()
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     with pytest.warns(DeprecationWarning):
         with pytest.raises(ValueError):
             _merge_ssl_params(ctx, None, None, fingerprint)
 
 
 def test__merge_ssl_params_ssl() -> None:
-    ctx = ssl.SSLContext()
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     assert ctx is _merge_ssl_params(ctx, None, None, None)
 
 
