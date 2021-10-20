@@ -86,7 +86,7 @@ async def test_formdata_field_name_is_not_quoted(buf, writer) -> None:
     assert b'name="emails[]"' in buf
 
 
-async def test_mark_formdata_as_processed(aiohttp_client: Any) -> None:
+async def test_mark_formdata_as_processed(aiohttp_client) -> None:
     async def handler(request):
         return web.Response()
 
