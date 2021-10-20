@@ -17,6 +17,7 @@ import aiohttp
 from aiohttp import FormData, HttpVersion10, HttpVersion11, TraceConfig, multipart, web
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
 from aiohttp.test_utils import make_mocked_coro
+from aiohttp.typedefs import Handler
 
 try:
     import ssl
@@ -444,7 +445,7 @@ async def test_post_form_with_duplicate_keys(aiohttp_client: Any) -> None:
 
 def test_repr_for_application() -> None:
     app = web.Application()
-    assert "<Application 0x{:x}>".format(id(app)) == repr(app)
+    assert f"<Application 0x{id(app):x}>" == repr(app)
 
 
 async def test_expect_default_handler_unknown(aiohttp_client: Any) -> None:
@@ -1213,7 +1214,7 @@ async def test_old_style_subapp_middlewares(aiohttp_client: Any) -> None:
     with pytest.warns(DeprecationWarning, match="Middleware decorator is deprecated"):
 
         @web.middleware
-        async def middleware(request, handler):
+        async def middleware(request, handler: Handler):
             order.append((1, request.app["name"]))
             resp = await handler(request)
             assert 200 == resp.status
@@ -1353,7 +1354,7 @@ async def test_subapp_middleware_context(
     values = []
 
     def show_app_context(appname):
-        async def middleware(request, handler):
+        async def middleware(request, handler: Handler):
             values.append("{}: {}".format(appname, request.app["my_value"]))
             return await handler(request)
 
