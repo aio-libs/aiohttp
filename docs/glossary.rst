@@ -32,11 +32,12 @@
       Any object that can be called. Use :func:`callable` to check
       that.
 
-   chardet
+   charset-normalizer
 
-       The Universal Character Encoding Detector
+       The Real First Universal Charset Detector.
+       Open, modern and actively maintained alternative to Chardet.
 
-       https://pypi.python.org/pypi/chardet/
+       https://pypi.org/project/charset-normalizer/
 
    cchardet
 

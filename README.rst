@@ -161,14 +161,14 @@ Requirements
 - Python >= 3.6
 - async-timeout_
 - attrs_
-- chardet_
+- charset-normalizer_
 - multidict_
 - yarl_
 
 Optionally you may install the cChardet_ and aiodns_ libraries (highly
 recommended for sake of speed).
 
-.. _chardet: https://pypi.python.org/pypi/chardet
+.. _charset-normalizer: https://pypi.org/project/charset-normalizer
 .. _aiodns: https://pypi.python.org/pypi/aiodns
 .. _attrs: https://github.com/python-attrs/attrs
 .. _multidict: https://pypi.python.org/pypi/multidict
