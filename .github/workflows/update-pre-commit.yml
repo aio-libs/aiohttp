@@ -7,7 +7,7 @@ jobs:
     if: github.repository_owner == 'aiohttp'
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v2.3.5
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
@@ -19,12 +19,12 @@ jobs:
     - name: Run pre-commit autoupdate
       run: pre-commit autoupdate
     - id: generate_token
-      uses: tibdex/github-app-token@v1
+      uses: tibdex/github-app-token@v1.4
       with:
         app_id: ${{ secrets.BOT_APP_ID }}
         private_key: ${{ secrets.BOT_PRIVATE_KEY }}
     - name: Create Pull Request
-      uses: peter-evans/create-pull-request@v3.5.2
+      uses: peter-evans/create-pull-request@v3.10.1
       with:
         token: ${{ steps.generate_token.outputs.token }}
         branch: update/pre-commit-autoupdate

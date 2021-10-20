@@ -147,7 +147,7 @@ class CookieJar(AbstractCookieJar):
         for name, cookie in cookies:
             if not isinstance(cookie, Morsel):
                 tmp = SimpleCookie()  # type: SimpleCookie[str]
-                tmp[name] = cookie  # type: ignore
+                tmp[name] = cookie  # type: ignore[assignment]
                 cookie = tmp[name]
 
             domain = cookie["domain"]
@@ -320,7 +320,7 @@ class CookieJar(AbstractCookieJar):
                 time_match = cls.DATE_HMS_TIME_RE.match(token)
                 if time_match:
                     found_time = True
-                    hour, minute, second = [int(s) for s in time_match.groups()]
+                    hour, minute, second = (int(s) for s in time_match.groups())
                     continue
 
             if not found_day:

@@ -30,13 +30,13 @@ from typing import (
 )
 
 from typing_extensions import Final, TypedDict
-from yarl import URL, __version__ as yarl_version  # type: ignore
+from yarl import URL, __version__ as yarl_version  # type: ignore[attr-defined]
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
 from .helpers import DEBUG, iscoroutinefunction
 from .http import HttpVersion11
-from .typedefs import PathLike
+from .typedefs import Handler, PathLike
 from .web_exceptions import (
     HTTPException,
     HTTPExpectationFailed,
@@ -81,7 +81,6 @@ ROUTE_RE: Final[Pattern[str]] = re.compile(
 PATH_SEP: Final[str] = re.escape("/")
 
 
-_WebHandler = Callable[[Request], Awaitable[StreamResponse]]
 _ExpectHandler = Callable[[Request], Awaitable[None]]
 _Resolve = Tuple[Optional[AbstractMatchInfo], Set[str]]
 
@@ -156,7 +155,7 @@ class AbstractRoute(abc.ABC):
     def __init__(
         self,
         method: str,
-        handler: Union[_WebHandler, Type[AbstractView]],
+        handler: Union[Handler, Type[AbstractView]],
         *,
         expect_handler: Optional[_ExpectHandler] = None,
         resource: Optional[AbstractResource] = None,
@@ -193,7 +192,7 @@ class AbstractRoute(abc.ABC):
         return self._method
 
     @property
-    def handler(self) -> _WebHandler:
+    def handler(self) -> Handler:
         return self._handler
 
     @property
@@ -226,7 +225,7 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
         self._frozen = False
 
     @property
-    def handler(self) -> _WebHandler:
+    def handler(self) -> Handler:
         return self._route.handler
 
     @property
@@ -241,7 +240,7 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
     def http_exception(self) -> Optional[HTTPException]:
         return None
 
-    def get_info(self) -> _InfoDict:  # type: ignore
+    def get_info(self) -> _InfoDict:  # type: ignore[override]
         return self._route.get_info()
 
     @property
@@ -321,7 +320,7 @@ class Resource(AbstractResource):
     def add_route(
         self,
         method: str,
-        handler: Union[Type[AbstractView], _WebHandler],
+        handler: Union[Type[AbstractView], Handler],
         *,
         expect_handler: Optional[_ExpectHandler] = None,
     ) -> "ResourceRoute":
@@ -406,7 +405,7 @@ class PlainResource(Resource):
     def get_info(self) -> _InfoDict:
         return {"path": self._path}
 
-    def url_for(self) -> URL:  # type: ignore
+    def url_for(self) -> URL:  # type: ignore[override]
         return URL.build(path=self._path, encoded=True)
 
     def __repr__(self) -> str:
@@ -554,7 +553,7 @@ class StaticResource(PrefixResource):
             ),
         }
 
-    def url_for(  # type: ignore
+    def url_for(  # type: ignore[override]
         self,
         *,
         filename: Union[str, Path],
@@ -606,7 +605,7 @@ class StaticResource(PrefixResource):
             "routes": self._routes,
         }
 
-    def set_options_route(self, handler: _WebHandler) -> None:
+    def set_options_route(self, handler: Handler) -> None:
         if "OPTIONS" in self._routes:
             raise RuntimeError("OPTIONS route was set already")
         self._routes["OPTIONS"] = ResourceRoute(
@@ -863,7 +862,7 @@ class ResourceRoute(AbstractRoute):
     def __init__(
         self,
         method: str,
-        handler: Union[_WebHandler, Type[AbstractView]],
+        handler: Union[Handler, Type[AbstractView]],
         resource: AbstractResource,
         *,
         expect_handler: Optional[_ExpectHandler] = None,
@@ -927,7 +926,9 @@ class View(AbstractView):
     async def _iter(self) -> StreamResponse:
         if self.request.method not in hdrs.METH_ALL:
             self._raise_allowed_methods()
-        method = getattr(self, self.request.method.lower(), None)
+        method: Callable[[], Awaitable[StreamResponse]] = getattr(
+            self, self.request.method.lower(), None
+        )
         if method is None:
             self._raise_allowed_methods()
         resp = await method()
@@ -1071,7 +1072,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self,
         method: str,
         path: str,
-        handler: Union[_WebHandler, Type[AbstractView]],
+        handler: Union[Handler, Type[AbstractView]],
         *,
         name: Optional[str] = None,
         expect_handler: Optional[_ExpectHandler] = None,
@@ -1113,15 +1114,13 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self.register_resource(resource)
         return resource
 
-    def add_head(self, path: str, handler: _WebHandler, **kwargs: Any) -> AbstractRoute:
+    def add_head(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
         """
         Shortcut for add_route with method HEAD
         """
         return self.add_route(hdrs.METH_HEAD, path, handler, **kwargs)
 
-    def add_options(
-        self, path: str, handler: _WebHandler, **kwargs: Any
-    ) -> AbstractRoute:
+    def add_options(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
         """
         Shortcut for add_route with method OPTIONS
         """
@@ -1130,7 +1129,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
     def add_get(
         self,
         path: str,
-        handler: _WebHandler,
+        handler: Handler,
         *,
         name: Optional[str] = None,
         allow_head: bool = True,
@@ -1145,29 +1144,25 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
             resource.add_route(hdrs.METH_HEAD, handler, **kwargs)
         return resource.add_route(hdrs.METH_GET, handler, **kwargs)
 
-    def add_post(self, path: str, handler: _WebHandler, **kwargs: Any) -> AbstractRoute:
+    def add_post(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
         """
         Shortcut for add_route with method POST
         """
         return self.add_route(hdrs.METH_POST, path, handler, **kwargs)
 
-    def add_put(self, path: str, handler: _WebHandler, **kwargs: Any) -> AbstractRoute:
+    def add_put(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
         """
         Shortcut for add_route with method PUT
         """
         return self.add_route(hdrs.METH_PUT, path, handler, **kwargs)
 
-    def add_patch(
-        self, path: str, handler: _WebHandler, **kwargs: Any
-    ) -> AbstractRoute:
+    def add_patch(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
         """
         Shortcut for add_route with method PATCH
         """
         return self.add_route(hdrs.METH_PATCH, path, handler, **kwargs)
 
-    def add_delete(
-        self, path: str, handler: _WebHandler, **kwargs: Any
-    ) -> AbstractRoute:
+    def add_delete(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
         """
         Shortcut for add_route with method DELETE
         """

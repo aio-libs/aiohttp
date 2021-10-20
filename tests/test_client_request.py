@@ -119,11 +119,6 @@ def test_version_err(make_request: Any) -> None:
         make_request("get", "http://python.org/", version="1.c")
 
 
-def test_https_proxy(make_request: Any) -> None:
-    with pytest.raises(ValueError):
-        make_request("get", "http://python.org/", proxy=URL("https://proxy.org"))
-
-
 def test_keep_alive(make_request: Any) -> None:
     req = make_request("get", "http://python.org/", version=(0, 9))
     assert not req.keep_alive()
@@ -580,6 +575,7 @@ async def test_content_type_auto_header_get(loop: Any, conn: Any) -> None:
     resp = await req.send(conn)
     assert "CONTENT-TYPE" not in req.headers
     resp.close()
+    await req.close()
 
 
 async def test_content_type_auto_header_form(loop: Any, conn: Any) -> None:
@@ -686,6 +682,7 @@ async def test_pass_falsy_data_file(loop: Any, tmp_path: Any) -> None:
     )
     assert req.headers.get("CONTENT-LENGTH", None) is not None
     await req.close()
+    testfile.close()
 
 
 # Elasticsearch API requires to send request body with GET-requests

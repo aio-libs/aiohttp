@@ -211,3 +211,27 @@ async def test_tcpsite_default_host(make_runner: Any) -> None:
     assert server is runner.server
     assert host is None
     assert port == 8080
+
+
+def test_run_after_asyncio_run() -> None:
+    async def nothing():
+        pass
+
+    def spy():
+        spy.called = True
+
+    spy.called = False
+
+    async def shutdown():
+        spy()
+        raise web.GracefulExit()
+
+    # asyncio.run() creates a new loop and closes it.
+    asyncio.run(nothing())
+
+    app = web.Application()
+    # create_task() will delay the function until app is run.
+    app.on_startup.append(lambda a: asyncio.create_task(shutdown()))
+
+    web.run_app(app)
+    assert spy.called, "run_app() should work after asyncio.run()."

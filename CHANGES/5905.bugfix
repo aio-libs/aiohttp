@@ -1,0 +1,1 @@
+Removed the deprecated ``loop`` argument from the ``asyncio.sleep``/``gather`` calls
