@@ -70,7 +70,7 @@ install_requires = [
     'asynctest==0.13.0; python_version<"3.8"',
     "yarl>=1.0,<2.0",
     'idna-ssl>=1.0; python_version<"3.7"',
-    "typing_extensions>=3.7.4",
+    'typing_extensions>=3.7.4; python_version<"3.8"',
     "frozenlist>=1.1.1",
     "aiosignal>=1.1.2",
 ]
@@ -106,6 +106,7 @@ args = dict(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Development Status :: 5 - Production/Stable",
         "Operating System :: POSIX",
         "Operating System :: MacOS :: MacOS X",

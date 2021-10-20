@@ -2,10 +2,29 @@ import json
 import os
 import pathlib
 import sys
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Callable,
+    Iterable,
+    Mapping,
+    Tuple,
+    Union,
+)
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, istr
 from yarl import URL
+
+# These are for other modules to use (to avoid repeating the conditional import).
+if sys.version_info >= (3, 8):
+    from typing import Final as Final, Protocol as Protocol, TypedDict as TypedDict
+else:
+    from typing_extensions import (  # noqa: F401
+        Final,
+        Protocol as Protocol,
+        TypedDict as TypedDict,
+    )
 
 DEFAULT_JSON_ENCODER = json.dumps
 DEFAULT_JSON_DECODER = json.loads
@@ -16,6 +35,8 @@ if TYPE_CHECKING:  # pragma: no cover
     _MultiDict = MultiDict[str]
     _MultiDictProxy = MultiDictProxy[str]
     from http.cookies import BaseCookie, Morsel
+
+    from .web import Request, StreamResponse
 else:
     _CIMultiDict = CIMultiDict
     _CIMultiDictProxy = CIMultiDictProxy
@@ -39,6 +60,7 @@ LooseCookies = Union[
     "BaseCookie[str]",
 ]
 
+Handler = Callable[["Request"], Awaitable["StreamResponse"]]
 
 if sys.version_info >= (3, 6):
     PathLike = Union[str, "os.PathLike[str]"]

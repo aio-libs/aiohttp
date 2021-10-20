@@ -20,6 +20,7 @@ from aiohttp.client_reqrep import (
     Fingerprint,
     _merge_ssl_params,
 )
+from aiohttp.helpers import PY_310
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -118,11 +119,6 @@ def test_request_info_with_fragment(make_request) -> None:
 def test_version_err(make_request) -> None:
     with pytest.raises(ValueError):
         make_request("get", "http://python.org/", version="1.c")
-
-
-def test_https_proxy(make_request) -> None:
-    with pytest.raises(ValueError):
-        make_request("get", "http://python.org/", proxy=URL("https://proxy.org"))
 
 
 def test_keep_alive(make_request) -> None:
@@ -280,10 +276,17 @@ def test_host_header_ipv6_with_port(make_request) -> None:
     assert req.headers["HOST"] == "[::2]:99"
 
 
+@pytest.mark.xfail(
+    PY_310,
+    reason="No idea why ClientRequest() is constructed out of loop but "
+    "it calls `asyncio.get_event_loop()`",
+    raises=DeprecationWarning,
+)
 def test_default_loop(loop) -> None:
     asyncio.set_event_loop(loop)
     req = ClientRequest("get", URL("http://python.org/"))
     assert req.loop is loop
+    loop.run_until_complete(req.close())
 
 
 def test_default_headers_useragent(make_request) -> None:
@@ -589,6 +592,8 @@ async def test_connection_header(loop, conn) -> None:
     await req.send(conn)
     assert req.headers.get("CONNECTION") == "close"
 
+    await req.close()
+
 
 async def test_no_content_length(loop, conn) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
@@ -621,6 +626,7 @@ async def test_content_type_auto_header_form(loop, conn) -> None:
     resp = await req.send(conn)
     assert "application/x-www-form-urlencoded" == req.headers.get("CONTENT-TYPE")
     resp.close()
+    await req.close()
 
 
 async def test_content_type_auto_header_bytes(loop, conn) -> None:
@@ -628,6 +634,7 @@ async def test_content_type_auto_header_bytes(loop, conn) -> None:
     resp = await req.send(conn)
     assert "application/octet-stream" == req.headers.get("CONTENT-TYPE")
     resp.close()
+    await req.close()
 
 
 async def test_content_type_skip_auto_header_bytes(loop, conn) -> None:
@@ -641,6 +648,7 @@ async def test_content_type_skip_auto_header_bytes(loop, conn) -> None:
     resp = await req.send(conn)
     assert "CONTENT-TYPE" not in req.headers
     resp.close()
+    await req.close()
 
 
 async def test_content_type_skip_auto_header_form(loop, conn) -> None:
@@ -654,6 +662,7 @@ async def test_content_type_skip_auto_header_form(loop, conn) -> None:
     resp = await req.send(conn)
     assert "CONTENT-TYPE" not in req.headers
     resp.close()
+    await req.close()
 
 
 async def test_content_type_auto_header_content_length_no_skip(loop, conn) -> None:
@@ -667,6 +676,7 @@ async def test_content_type_auto_header_content_length_no_skip(loop, conn) -> No
     resp = await req.send(conn)
     assert req.headers.get("CONTENT-LENGTH") == "3"
     resp.close()
+    await req.close()
 
 
 async def test_urlencoded_formdata_charset(loop, conn) -> None:
@@ -680,6 +690,7 @@ async def test_urlencoded_formdata_charset(loop, conn) -> None:
     assert "application/x-www-form-urlencoded; charset=koi8-r" == req.headers.get(
         "CONTENT-TYPE"
     )
+    await req.close()
 
 
 async def test_post_data(loop, conn) -> None:
@@ -915,6 +926,7 @@ async def test_expect100(loop, conn) -> None:
     assert req._continue is not None
     req.terminate()
     resp.close()
+    await req.close()
 
 
 async def test_expect_100_continue_header(loop, conn) -> None:
@@ -926,6 +938,7 @@ async def test_expect_100_continue_header(loop, conn) -> None:
     assert req._continue is not None
     req.terminate()
     resp.close()
+    await req.close()
 
 
 async def test_data_stream(loop, buf, conn) -> None:
@@ -1127,6 +1140,8 @@ async def test_oserror_on_write_bytes(loop, conn) -> None:
     exc = conn.protocol.set_exception.call_args[0][0]
     assert isinstance(exc, aiohttp.ClientOSError)
 
+    await req.close()
+
 
 async def test_terminate(loop, conn) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
@@ -1138,6 +1153,8 @@ async def test_terminate(loop, conn) -> None:
     assert req._writer is None
     writer.cancel.assert_called_with()
     resp.close()
+
+    await req.close()
 
 
 def test_terminate_with_closed_loop(loop, conn) -> None:
@@ -1154,6 +1171,7 @@ def test_terminate_with_closed_loop(loop, conn) -> None:
 
     loop.run_until_complete(go())
 
+    loop.run_until_complete(req.close())
     loop.close()
     req.terminate()
     assert req._writer is None
@@ -1167,6 +1185,8 @@ def test_terminate_without_writer(loop) -> None:
 
     req.terminate()
     assert req._writer is None
+
+    loop.run_until_complete(req.close())
 
 
 async def test_custom_req_rep(loop) -> None:
@@ -1266,3 +1286,5 @@ def test_loose_cookies_types(loop) -> None:
 
     for loose_cookies_type in accepted_types:
         req.update_cookies(cookies=loose_cookies_type)
+
+    loop.run_until_complete(req.close())

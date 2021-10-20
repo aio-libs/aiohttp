@@ -232,3 +232,14 @@ async def test_HTTPException_retains_cookie(aiohttp_client):
     assert str(resp.url)[-5:] == "/show"
     text = await resp.text()
     assert text == "works"
+
+
+def test_unicode_text_body_unauthorized() -> None:
+    """
+    Test that HTTPUnauthorized can be initialized with a string.
+    """
+    with pytest.warns(
+        DeprecationWarning, match="body argument is deprecated for http web exceptions"
+    ):
+        resp = web.HTTPUnauthorized(body="text")
+    assert resp.status == 401

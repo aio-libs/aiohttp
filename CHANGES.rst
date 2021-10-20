@@ -1,7 +1,3 @@
-=========
-Changelog
-=========
-
 ..
     You should *NOT* be adding new change log entries to this file, this
     file is managed by towncrier. You *may* edit previous change logs to
@@ -13,6 +9,48 @@ Changelog
     WARNING: Don't drop the next directive!
 
 .. towncrier release notes start
+
+3.7.4.post0 (2021-03-06)
+========================
+
+Misc
+----
+
+- Bumped upper bound of the ``chardet`` runtime dependency
+  to allow their v4.0 version stream.
+  `#5366 <https://github.com/aio-libs/aiohttp/issues/5366>`_
+
+
+----
+
+
+3.7.4 (2021-02-25)
+==================
+
+Bugfixes
+--------
+
+- **(SECURITY BUG)** Started preventing open redirects in the
+  ``aiohttp.web.normalize_path_middleware`` middleware. For
+  more details, see
+  https://github.com/aio-libs/aiohttp/security/advisories/GHSA-v6wp-4m6f-gcjg.
+
+  Thanks to `Beast Glatisant <https://github.com/g147>`__ for
+  finding the first instance of this issue and `Jelmer Vernooĳ
+  <https://jelmer.uk/>`__ for reporting and tracking it down
+  in aiohttp.
+  `#5497 <https://github.com/aio-libs/aiohttp/issues/5497>`_
+- Fix interpretation difference of the pure-Python and the Cython-based
+  HTTP parsers construct a ``yarl.URL`` object for HTTP request-target.
+
+  Before this fix, the Python parser would turn the URI's absolute-path
+  for ``//some-path`` into ``/`` while the Cython code preserved it as
+  ``//some-path``. Now, both do the latter.
+  `#5498 <https://github.com/aio-libs/aiohttp/issues/5498>`_
+
+
+----
+
 
 3.7.3 (2020-11-18)
 ==================
