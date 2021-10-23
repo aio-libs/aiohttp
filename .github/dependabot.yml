@@ -26,6 +26,7 @@ updates:
     target-branch: "3.8"
     schedule:
       interval: "daily"
+    open-pull-requests-limit: 10
 
   # Maintain dependencies for Python aiohttp 3.8
   - package-ecosystem: "pip"
