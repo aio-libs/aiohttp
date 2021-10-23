@@ -756,3 +756,36 @@ async def test_cookie_jar_clear_domain() -> None:
     assert morsel.value == "bar"
     with pytest.raises(StopIteration):
         next(iterator)
+
+
+async def test_secure_cookie_not_filtered_from_unsafe_cookiejar_when_given_unsecured_endpoint() -> None:
+    """Secure SimpleCookie should not be filtered from unsafe CookieJar when given an unsecured endpoint.
+
+    There are times when sending a secure cookie to an unsecured endpoint is desireable.  Such an
+    occasion is during testing. RFC 6265 section-4.1.2.5 states that this behaviour is a decision
+    based on the trust of a network by the user agent.
+    """
+    endpoint = 'http://127.0.0.1/'
+
+    secure_cookie = SimpleCookie(
+        "cookie-key=cookie-value; HttpOnly; Path=/; Secure",
+    )
+
+    jar = CookieJar(unsafe=True)
+
+    # Confirm the jar is empty
+    assert len(jar) == 0
+
+    jar.update_cookies(
+        secure_cookie,
+        URL(endpoint),
+    )
+
+    # Confirm the jar contains the cookie
+    assert len(jar) == 1
+
+    filtered_cookies = jar.filter_cookies(request_url=endpoint)
+
+    # Confirm the filtered results contain the cookie
+    assert len(filtered_cookies) == 1
+
