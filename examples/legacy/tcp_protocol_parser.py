@@ -60,7 +60,7 @@ class MyProtocolWriter:
         self.transport.write(b"stop:\r\n")
 
     def send_text(self, text):
-        self.transport.write(f"text:{text.strip()}\r\n".encode("utf-8"))
+        self.transport.write(f"text:{text.strip()}\r\n".encode())
 
 
 class EchoServer(asyncio.Protocol):
