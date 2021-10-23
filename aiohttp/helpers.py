@@ -654,7 +654,6 @@ class TimerContext(BaseTimerContext):
             )
 
         if self._cancelled:
-            task.cancel()
             raise asyncio.TimeoutError from None
 
         self._tasks.append(task)
