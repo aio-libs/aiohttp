@@ -39,7 +39,7 @@ def shorttmpdir():
 @pytest.fixture
 def tls_certificate_authority():
     if not TRUSTME:
-        pytest.xfail("trustme fails on 32bit Linux")
+        pytest.xfail("trustme is not supported")
     return trustme.CA()
 
 
