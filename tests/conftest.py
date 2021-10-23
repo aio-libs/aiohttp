@@ -14,7 +14,10 @@ from aiohttp.test_utils import loop_context
 try:
     import trustme
 
-    TRUSTME = True
+    # Check if the CA is available in runtime, MacOS on Py3.10 fails somehow
+    trustme.CA()
+
+    TRUSTME: bool = True
 except ImportError:
     TRUSTME = False
 
