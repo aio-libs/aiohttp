@@ -8,7 +8,7 @@ aiodns==3.0.0 ; sys_platform == "linux" or sys_platform == "darwin" and python_v
     # via -r requirements/base.txt
 aiohttp-theme==0.1.6
     # via -r requirements/doc.txt
-aiosignal==1.1.2
+aiosignal==1.2.0
     # via -r requirements/base.txt
 alabaster==0.7.12
     # via sphinx
@@ -92,7 +92,7 @@ flake8-pyi==20.10.0
     # via -r requirements/lint.txt
 freezegun==1.1.0
     # via -r requirements/test.txt
-frozenlist==1.1.1
+frozenlist==1.2.0
     # via
     #   -r requirements/base.txt
     #   aiosignal
@@ -104,7 +104,7 @@ gidgethub==5.0.0
     # via cherry-picker
 gunicorn==20.1.0
     # via -r requirements/base.txt
-identify==2.1.1
+identify==1.5.14
     # via
     #   -r requirements/lint.txt
     #   pre-commit
@@ -211,7 +211,7 @@ pytest-mock==3.6.1
     # via -r requirements/test.txt
 python-dateutil==2.8.1
     # via freezegun
-python-on-whales==0.19.0; python_version >= "3.7"
+python-on-whales==0.19.0 ; python_version >= "3.7"
     # via -r requirements/dev.in
 pytz==2020.5
     # via babel
@@ -310,7 +310,7 @@ virtualenv==20.4.2
     # via
     #   -r requirements/lint.txt
     #   pre-commit
-wait-for-it==2.2.0; python_version >= "3.7"
+wait-for-it==2.2.0 ; python_version >= "3.7"
     # via -r requirements/dev.in
 webcolors==1.11.1
     # via blockdiag
