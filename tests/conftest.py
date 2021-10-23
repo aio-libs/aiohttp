@@ -43,7 +43,7 @@ needs_unix = pytest.mark.skipif(not IS_UNIX, reason="requires UNIX sockets")
 @pytest.fixture
 def tls_certificate_authority() -> Any:
     if not TRUSTME:
-        pytest.xfail("trustme fails on 32bit Linux")
+        pytest.xfail("trustme is not supported")
     return trustme.CA()
 
 
