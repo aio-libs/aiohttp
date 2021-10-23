@@ -46,10 +46,10 @@ cfgv==3.2.0
     # via
     #   -r requirements/lint.txt
     #   pre-commit
-charset-normalizer==2.0.4
-    # via
-    #   -r requirements/base.txt
-    #   requests
+chardet==4.0.0
+    # via requests
+charset-normalizer==2.0.7
+    # via -r requirements/base.txt
 cherry_picker==2.0.0 ; python_version >= "3.6"
     # via -r requirements/dev.in
 click==7.1.2
