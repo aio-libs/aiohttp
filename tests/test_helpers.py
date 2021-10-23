@@ -362,7 +362,7 @@ def test_timeout_handle_cb_exc(loop) -> None:
     assert not handle._callbacks
 
 
-def test_timer_context_cancelled() -> None:
+def test_timer_context_not_cancelled() -> None:
     with mock.patch("aiohttp.helpers.asyncio") as m_asyncio:
         m_asyncio.TimeoutError = asyncio.TimeoutError
         loop = mock.Mock()
@@ -373,7 +373,7 @@ def test_timer_context_cancelled() -> None:
             with ctx:
                 pass
 
-        assert m_asyncio.current_task.return_value.cancel.called
+        assert not m_asyncio.current_task.return_value.cancel.called
 
 
 def test_timer_context_no_task(loop) -> None:
