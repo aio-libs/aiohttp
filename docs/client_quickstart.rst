@@ -55,6 +55,18 @@ Other HTTP methods are available as well::
     session.options('http://httpbin.org/get')
     session.patch('http://httpbin.org/patch', data=b'data')
 
+To make several requests to the same site simplier, the parameter ``base_url``
+of :class:`ClientSession` constructor can be used. For example to request different
+endpoints of ``http://httpbin.org`` can be used the following code::
+
+    async with aiohttp.ClientSession('http://httpbin.org') as session:
+        async with session.get('/get'):
+            pass
+        async with session.post('/post', data=b'data'):
+            pass
+        async with session.put('/put', data=b'data'):
+            pass
+
 .. note::
 
    Don't create a session per request. Most likely you need a session

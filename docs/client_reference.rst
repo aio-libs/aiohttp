@@ -38,7 +38,8 @@ Usage example::
 
 The client session supports the context manager protocol for self closing.
 
-.. class:: ClientSession(*, connector=None, loop=None, cookies=None, \
+.. class:: ClientSession(base_url=None, *, \
+                         connector=None, cookies=None, \
                          headers=None, skip_auto_headers=None, \
                          auth=None, json_serialize=json.dumps, \
                          version=aiohttp.HttpVersion11, \
@@ -55,6 +56,9 @@ The client session supports the context manager protocol for self closing.
 
    The class for creating client sessions and making requests.
 
+
+   :param base_url: Base part of the URL (optional)
+      If set it allows to skip the base part in request calls.
 
    :param aiohttp.BaseConnector connector: BaseConnector
       sub-class instance to support connection pooling.
