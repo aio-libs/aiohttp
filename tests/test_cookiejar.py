@@ -739,3 +739,35 @@ async def test_cookie_jar_clear_domain():
     assert morsel.value == "bar"
     with pytest.raises(StopIteration):
         next(iterator)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://127.0.0.1/index.html",
+        URL("http://127.0.0.1/index.html"),
+        ["http://127.0.0.1/index.html"],
+        [URL("http://127.0.0.1/index.html")],
+    ],
+)
+async def test_treat_as_secure_origin_init(url) -> None:
+    jar = CookieJar(unsafe=True, treat_as_secure_origin=url)
+    assert jar._treat_as_secure_origin == [URL("http://127.0.0.1")]
+
+
+async def test_treat_as_secure_origin() -> None:
+    endpoint = URL("http://127.0.0.1/")
+
+    jar = CookieJar(unsafe=True, treat_as_secure_origin=[endpoint])
+    secure_cookie = SimpleCookie(
+        "cookie-key=cookie-value; HttpOnly; Path=/; Secure",
+    )
+
+    jar.update_cookies(
+        secure_cookie,
+        endpoint,
+    )
+
+    assert len(jar) == 1
+    filtered_cookies = jar.filter_cookies(request_url=endpoint)
+    assert len(filtered_cookies) == 1
