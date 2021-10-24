@@ -154,7 +154,7 @@ class ClientTimeout:
 
     # to create a timeout specific for a single request, either
     # - create a completely new one to overwrite the default
-    # - or use http://www.attrs.org/en/stable/api.html#attr.evolve
+    # - or use https://docs.python.org/3/library/dataclasses.html#dataclasses.replace
     # to overwrite the defaults
 
 
@@ -263,7 +263,7 @@ class ClientSession:
             real_headers = CIMultiDict()
         self._default_headers = real_headers  # type: CIMultiDict[str]
         if skip_auto_headers is not None:
-            self._skip_auto_headers = frozenset([istr(i) for i in skip_auto_headers])
+            self._skip_auto_headers = frozenset(istr(i) for i in skip_auto_headers)
         else:
             self._skip_auto_headers = frozenset()
 
