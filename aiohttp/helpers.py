@@ -63,21 +63,20 @@ PY_37 = sys.version_info >= (3, 7)
 PY_38 = sys.version_info >= (3, 8)
 PY_310 = sys.version_info >= (3, 10)
 
-if not PY_37:
-    import idna_ssl  # type: ignore[import]
+if sys.version_info < (3, 7):
+    import idna_ssl
 
     idna_ssl.patch_match_hostname()
 
+    def all_tasks(
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> Set["asyncio.Task[Any]"]:
+        tasks = list(asyncio.Task.all_tasks(loop))
+        return {t for t in tasks if not t.done()}
 
-def all_tasks(
-    loop: Optional[asyncio.AbstractEventLoop] = None,
-) -> Set["asyncio.Task[Any]"]:
-    tasks = list(asyncio.Task.all_tasks(loop))
-    return {t for t in tasks if not t.done()}
 
-
-if PY_37:
-    all_tasks = getattr(asyncio, "all_tasks")
+else:
+    all_tasks = asyncio.all_tasks
 
 
 _T = TypeVar("_T")
@@ -268,7 +267,7 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
 def current_task(
     loop: Optional[asyncio.AbstractEventLoop] = None,
 ) -> "Optional[asyncio.Task[Any]]":
-    if PY_37:
+    if sys.version_info >= (3, 7):
         return asyncio.current_task(loop=loop)
     else:
         return asyncio.Task.current_task(loop=loop)
