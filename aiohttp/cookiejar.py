@@ -320,7 +320,7 @@ class CookieJar(AbstractCookieJar):
                 time_match = cls.DATE_HMS_TIME_RE.match(token)
                 if time_match:
                     found_time = True
-                    hour, minute, second = [int(s) for s in time_match.groups()]
+                    hour, minute, second = (int(s) for s in time_match.groups())
                     continue
 
             if not found_day:

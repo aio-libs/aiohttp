@@ -37,7 +37,7 @@ Nginx+supervisord
 
 Running aiohttp servers behind :term:`nginx` makes several advantages.
 
-At first, nginx is the perfect frontend server. It may prevent many
+First, nginx is the perfect frontend server. It may prevent many
 attacks based on malformed http protocol etc.
 
 Second, running several aiohttp instances behind nginx allows to
@@ -51,10 +51,10 @@ But this way requires more complex configuration.
 Nginx configuration
 --------------------
 
-Here is short extraction about writing Nginx configuration file.
+Here is short example of an Nginx configuration file.
 It does not cover all available Nginx options.
 
-For full reference read `Nginx tutorial
+For full details, read `Nginx tutorial
 <https://www.nginx.com/resources/admin-guide/>`_ and `official Nginx
 documentation
 <http://nginx.org/en/docs/http/ngx_http_proxy_module.html>`_.
@@ -86,8 +86,8 @@ First configure HTTP server itself:
      }
    }
 
-This config listens on port ``80`` for server named ``example.com``
-and redirects everything to ``aiohttp`` backend group.
+This config listens on port ``80`` for a server named ``example.com``
+and redirects everything to the ``aiohttp`` backend group.
 
 Also it serves static files from ``/path/to/app/static`` path as
 ``example.com/static``.
@@ -124,20 +124,20 @@ selection.
 
 .. note::
 
-   Nginx is not the only existing *reverse proxy server* but the most
+   Nginx is not the only existing *reverse proxy server*, but it's the most
    popular one.  Alternatives like HAProxy may be used as well.
 
 Supervisord
 -----------
 
-After configuring Nginx we need to start our aiohttp backends. Better
-to use some tool for starting them automatically after system reboot
+After configuring Nginx we need to start our aiohttp backends. It's best
+to use some tool for starting them automatically after a system reboot
 or backend crash.
 
-There are very many ways to do it: Supervisord, Upstart, Systemd,
+There are many ways to do it: Supervisord, Upstart, Systemd,
 Gaffer, Circus, Runit etc.
 
-Here we'll use `Supervisord <http://supervisord.org/>`_ for example:
+Here we'll use `Supervisord <http://supervisord.org/>`_ as an example:
 
 .. code-block:: cfg
 
@@ -159,7 +159,7 @@ Here we'll use `Supervisord <http://supervisord.org/>`_ for example:
 aiohttp server
 --------------
 
-The last step is preparing aiohttp server for working with supervisord.
+The last step is preparing the aiohttp server to work with supervisord.
 
 Assuming we have properly configured :class:`aiohttp.web.Application`
 and port is specified by command line, the task is trivial:
@@ -196,17 +196,17 @@ aiohttp can be deployed using `Gunicorn
 pre-fork worker model.  Gunicorn launches your app as worker processes
 for handling incoming requests.
 
-In opposite to deployment with :ref:`bare Nginx
-<aiohttp-deployment-nginx-supervisord>` the solution does not need to
-manually run several aiohttp processes and use tool like supervisord
-for monitoring it. But nothing is for free: running aiohttp
+As opposed to deployment with :ref:`bare Nginx
+<aiohttp-deployment-nginx-supervisord>`, this solution does not need to
+manually run several aiohttp processes and use a tool like supervisord
+to monitor them. But nothing is free: running aiohttp
 application under gunicorn is slightly slower.
 
 
 Prepare environment
 -------------------
 
-You firstly need to setup your deployment environment. This example is
+You first need to setup your deployment environment. This example is
 based on `Ubuntu <https://www.ubuntu.com/>`_ 16.04.
 
 Create a directory for your application::
@@ -214,7 +214,7 @@ Create a directory for your application::
   >> mkdir myapp
   >> cd myapp
 
-Create Python virtual environment::
+Create a Python virtual environment::
 
   >> python3 -m venv venv
   >> source venv/bin/activate
