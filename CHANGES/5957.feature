@@ -1,1 +1,1 @@
-optional auto_decompress for HttpRequestParser
+Added optional auto_decompress argument for HttpRequestParser
