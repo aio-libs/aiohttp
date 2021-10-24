@@ -164,14 +164,14 @@ Requirements
 
 - Python >= 3.7
 - async-timeout_
-- chardet_
+- charset-normalizer_
 - multidict_
 - yarl_
 
 Optionally you may install the cChardet_ and aiodns_ libraries (highly
 recommended for sake of speed).
 
-.. _chardet: https://pypi.python.org/pypi/chardet
+.. _charset-normalizer: https://pypi.org/project/charset-normalizer
 .. _aiodns: https://pypi.python.org/pypi/aiodns
 .. _multidict: https://pypi.python.org/pypi/multidict
 .. _yarl: https://pypi.python.org/pypi/yarl

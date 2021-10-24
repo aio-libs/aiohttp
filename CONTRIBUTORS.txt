@@ -7,6 +7,7 @@ Adam Horacek
 Adam Mills
 Adrian Krupa
 Adrián Chaves
+Ahmed Tahri
 Alan Tse
 Alec Hanefeld
 Alejandro Gómez
@@ -57,6 +58,7 @@ Boris Feld
 Borys Vorona
 Boyi Chen
 Brett Cannon
+Brian Bouterse
 Brian C. Lane
 Brian Muller
 Bruce Merry
@@ -135,6 +137,7 @@ Hrishikesh Paranjape
 Hu Bo
 Hugh Young
 Hugo Herter
+Hugo van Kemenade
 Hynek Schlawack
 Igor Alexandrov
 Igor Davydenko
@@ -166,6 +169,7 @@ Jonas Obrist
 Jonathan Wright
 Jonny Tan
 Joongi Kim
+Jordan Borean
 Josep Cugat
 Josh Junon
 Joshu Coats

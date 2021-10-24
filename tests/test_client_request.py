@@ -119,11 +119,6 @@ def test_version_err(make_request: Any) -> None:
         make_request("get", "http://python.org/", version="1.c")
 
 
-def test_https_proxy(make_request: Any) -> None:
-    with pytest.raises(ValueError):
-        make_request("get", "http://python.org/", proxy=URL("https://proxy.org"))
-
-
 def test_keep_alive(make_request: Any) -> None:
     req = make_request("get", "http://python.org/", version=(0, 9))
     assert not req.keep_alive()

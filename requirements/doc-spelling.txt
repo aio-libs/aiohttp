@@ -8,7 +8,7 @@ aiohttp-theme==0.1.6
     # via -r doc.txt
 alabaster==0.7.12
     # via sphinx
-babel==2.9.0
+babel==2.9.1
     # via sphinx
 blockdiag==2.0.1
     # via sphinxcontrib-blockdiag
@@ -24,8 +24,10 @@ click-default-group==1.2.2
     # via towncrier
 docutils==0.16
     # via sphinx
-funcparserlib==0.3.6
-    # via blockdiag
+funcparserlib==1.0.0a0
+    # via
+    #   -r doc.txt
+    #   blockdiag
 idna==2.10
     # via requests
 imagesize==1.2.0
@@ -58,12 +60,13 @@ requests==2.25.1
     # via sphinx
 snowballstemmer==2.1.0
     # via sphinx
-sphinx==4.1.2
+sphinx==4.2.0
     # via
     #   -r doc.txt
     #   sphinxcontrib-asyncio
     #   sphinxcontrib-blockdiag
     #   sphinxcontrib-spelling
+    #   sphinxcontrib-towncrier
 sphinxcontrib-applehelp==1.0.2
     # via sphinx
 sphinxcontrib-asyncio==0.3.0
@@ -82,17 +85,21 @@ sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
 sphinxcontrib-spelling==7.2.1 ; platform_system != "Windows"
     # via -r doc-spelling.in
+sphinxcontrib-towncrier==0.2.0a0
+    # via -r doc.txt
 toml==0.10.2
     # via towncrier
 towncrier==21.3.0
-    # via -r doc.txt
+    # via
+    #   -r doc.txt
+    #   sphinxcontrib-towncrier
 typing-extensions==3.10.0.2
     # via importlib-metadata
 urllib3==1.26.5
     # via requests
 webcolors==1.11.1
     # via blockdiag
-zipp==3.5.0
+zipp==3.6.0
     # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
