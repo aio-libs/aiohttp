@@ -1,1 +1,1 @@
-Add `base_url` parameter to ClientSession contructor
+Add `base_url` parameter to ClientSession constructor

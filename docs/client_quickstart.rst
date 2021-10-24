@@ -55,7 +55,7 @@ Other HTTP methods are available as well::
     session.options('http://httpbin.org/get')
     session.patch('http://httpbin.org/patch', data=b'data')
 
-To make several requests to the same site simplier, the parameter ``base_url``
+To make several requests to the same site more simple, the parameter ``base_url``
 of :class:`ClientSession` constructor can be used. For example to request different
 endpoints of ``http://httpbin.org`` can be used the following code::
 
