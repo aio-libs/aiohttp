@@ -3009,7 +3009,7 @@ async def test_read_bufsize_explicit(aiohttp_client) -> None:
         assert resp.content.get_read_buffer_limits() == (4, 8)
 
 
-async def test_http_empty_data_text(aiohttp_client: Any) -> None:
+async def test_http_empty_data_text(aiohttp_client) -> None:
     async def handler(request):
         data = await request.read()
         ret = "ok" if data == b"" else "fail"
