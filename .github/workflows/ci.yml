@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 5
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v2.3.5
       with:
         submodules: true
     - name: Setup Python 3.8
@@ -30,7 +30,7 @@ jobs:
       with:
         python-version: 3.8
     - name: Cache PyPI
-      uses: actions/cache@v2.1.4
+      uses: actions/cache@v2.1.6
       with:
         key: pip-lint-${{ hashFiles('requirements/*.txt') }}
         path: ~/.cache/pip
@@ -41,7 +41,7 @@ jobs:
       with:
         path: requirements/lint.txt
     - name: Pre-Commit hooks
-      uses: pre-commit/action@v2.0.0
+      uses: pre-commit/action@v2.0.3
     - name: Install itself
       run: |
         python setup.py install
@@ -76,7 +76,7 @@ jobs:
     needs: lint
     strategy:
       matrix:
-        pyver: [3.7, 3.8, 3.9]
+        pyver: [3.7, 3.8, 3.9, '3.10']
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         exclude:
@@ -98,7 +98,7 @@ jobs:
     timeout-minutes: 15
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v2.3.5
       with:
         submodules: true
     - name: Setup Python ${{ matrix.pyver }}
@@ -110,12 +110,14 @@ jobs:
       run: |
         echo "::set-output name=dir::$(pip cache dir)"    # - name: Cache
     - name: Cache PyPI
-      uses: actions/cache@v2.1.4
+      uses: actions/cache@v2.1.6
       with:
         key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-${{ hashFiles('requirements/*.txt') }}
         path: ${{ steps.pip-cache.outputs.dir }}
         restore-keys: |
             pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-
+    - name: Upgrade wheel  # Needed for proxy.py install not to explode
+      run: pip install -U wheel
     - name: Cythonize
       if: ${{ matrix.no-extensions == '' }}
       run: |
@@ -128,7 +130,7 @@ jobs:
         make vvtest
         python -m coverage xml
     - name: Upload coverage
-      uses: codecov/codecov-action@v1
+      uses: codecov/codecov-action@v2.1.0
       with:
         file: ./coverage.xml
         flags: unit
@@ -151,7 +153,7 @@ jobs:
     needs: pre-deploy
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v2.3.5
       with:
         submodules: true
     - name: Setup Python 3.8
@@ -174,7 +176,7 @@ jobs:
     name: Linux
     strategy:
       matrix:
-        pyver: [cp37-cp37m, cp38-cp38, cp39-cp39]
+        pyver: [cp37-cp37m, cp38-cp38, cp39-cp39, cp310-cp310]
         arch: [x86_64, aarch64, i686, ppc64le, s390x]
       fail-fast: false
     runs-on: ubuntu-latest
@@ -184,7 +186,7 @@ jobs:
     needs: pre-deploy
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v2.3.5
       with:
         submodules: true
     - name: Set up QEMU
@@ -222,7 +224,7 @@ jobs:
     name: Binary wheels
     strategy:
       matrix:
-        pyver: [3.7, 3.8, 3.9]
+        pyver: [3.7, 3.8, 3.9, '3.10']
         os: [macos, windows]
         arch: [x86, x64]
         exclude:
@@ -233,7 +235,7 @@ jobs:
     needs: pre-deploy
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v2.3.5
       with:
         submodules: true
     - name: Setup Python 3.8

@@ -154,7 +154,7 @@ def parse_content_disposition(
             elif parts:
                 # maybe just ; in filename, in any case this is just
                 # one case fix, for proper fix we need to redesign parser
-                _value = "{};{}".format(value, parts[0])
+                _value = f"{value};{parts[0]}"
                 if is_quoted(_value):
                     parts.pop(0)
                     value = unescape(_value[1:-1].lstrip("\\/"))
@@ -982,9 +982,11 @@ class MultipartPayloadWriter:
         elif encoding == "quoted-printable":
             self._encoding = "quoted-printable"
 
-    def enable_compression(self, encoding: str = "deflate") -> None:
+    def enable_compression(
+        self, encoding: str = "deflate", strategy: int = zlib.Z_DEFAULT_STRATEGY
+    ) -> None:
         zlib_mode = 16 + zlib.MAX_WBITS if encoding == "gzip" else -zlib.MAX_WBITS
-        self._compress = zlib.compressobj(wbits=zlib_mode)
+        self._compress = zlib.compressobj(wbits=zlib_mode, strategy=strategy)
 
     async def write_eof(self) -> None:
         if self._compress is not None:
