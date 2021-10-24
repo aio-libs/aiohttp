@@ -28,6 +28,7 @@ from typing_extensions import final
 
 from . import hdrs
 from .log import web_logger
+from .typedefs import Middleware
 from .web_middlewares import _fix_request_current_app
 from .web_request import Request
 from .web_response import StreamResponse
@@ -46,20 +47,16 @@ __all__ = ("Application", "CleanupError")
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .typedefs import Handler
-
     _AppSignal = Signal[Callable[["Application"], Awaitable[None]]]
     _RespPrepareSignal = Signal[Callable[[Request, StreamResponse], Awaitable[None]]]
-    _Middleware = Callable[[Request, Handler], Awaitable[StreamResponse]]
-    _Middlewares = FrozenList[_Middleware]
-    _MiddlewaresHandlers = Sequence[_Middleware]
+    _Middlewares = FrozenList[Middleware]
+    _MiddlewaresHandlers = Sequence[Middleware]
     _Subapps = List["Application"]
 else:
     # No type checker mode, skip types
     _AppSignal = Signal
     _RespPrepareSignal = Signal
     _Handler = Callable
-    _Middleware = Callable
     _Middlewares = FrozenList
     _MiddlewaresHandlers = Sequence
     _Subapps = List
@@ -92,7 +89,7 @@ class Application(MutableMapping[str, Any]):
         self,
         *,
         logger: logging.Logger = web_logger,
-        middlewares: Iterable[_Middleware] = (),
+        middlewares: Iterable[Middleware] = (),
         handler_args: Optional[Mapping[str, Any]] = None,
         client_max_size: int = 1024 ** 2,
         debug: Any = ...,  # mypy doesn't support ellipsis
@@ -325,7 +322,7 @@ class Application(MutableMapping[str, Any]):
             # If an exception occurs in startup, ensure cleanup contexts are completed.
             await self._cleanup_ctx._on_cleanup(self)
 
-    def _prepare_middleware(self) -> Iterator[_Middleware]:
+    def _prepare_middleware(self) -> Iterator[Middleware]:
         yield from reversed(self._middlewares)
         yield _fix_request_current_app(self)
 
