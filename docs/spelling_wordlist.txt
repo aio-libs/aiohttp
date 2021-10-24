@@ -82,6 +82,7 @@ WSMsgType
 Websockets
 Workflow
 abc
+addons
 aiodns
 aioes
 aiohttp
@@ -117,11 +118,13 @@ brotli
 bugfix
 builtin
 cChardet
+callables
 cancelled
 canonicalization
 canonicalize
 cchardet
 ceil
+Chardet
 charset
 charsetdetect
 chunked
@@ -205,6 +208,7 @@ login
 lookup
 lookups
 lossless
+lowercased
 manylinux
 metadata
 microservice
@@ -226,6 +230,7 @@ namespace
 netrc
 nginx
 noop
+normalizer
 nowait
 optimizations
 os
@@ -262,6 +267,7 @@ redirections
 refactor
 refactored
 refactoring
+referenceable
 regex
 regexps
 regexs
@@ -320,6 +326,7 @@ unittest
 unix
 unsets
 unstripped
+uppercased
 upstr
 url
 urldispatcher

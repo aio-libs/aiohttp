@@ -245,10 +245,7 @@ In general, however, you should use a pattern like this to save what is being
 streamed to a file::
 
     with open(filename, 'wb') as fd:
-        while True:
-            chunk = await resp.content.read(chunk_size)
-            if not chunk:
-                break
+        async for chunk in resp.content.iter_chunked(chunk_size):
             fd.write(chunk)
 
 It is not possible to use :meth:`~ClientResponse.read`,

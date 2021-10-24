@@ -4,26 +4,26 @@ Third-Party libraries
 =====================
 
 
-aiohttp is not the library for making HTTP requests and creating WEB
-server only.
+aiohttp is not just a library for making HTTP requests and creating web
+servers.
 
-It is the grand basement for libraries built *on top* of aiohttp.
+It is the foundation for libraries built *on top* of aiohttp.
 
 This page is a list of these tools.
 
-Please feel free to add your open sourced library if it's not enlisted
-yet by making Pull Request to https://github.com/aio-libs/aiohttp/
+Please feel free to add your open source library if it's not listed
+yet by making a pull request to https://github.com/aio-libs/aiohttp/
 
-* Why do you might want to include your awesome library into the list?
+* Why would you want to include your awesome library in this list?
 
-* Just because the list increases your library visibility. People
+* Because the list increases your library visibility. People
   will have an easy way to find it.
 
 
 Officially supported
 --------------------
 
-This list contains libraries which are supported by *aio-libs* team
+This list contains libraries which are supported by the *aio-libs* team
 and located on https://github.com/aio-libs
 
 
@@ -31,7 +31,7 @@ aiohttp extensions
 ^^^^^^^^^^^^^^^^^^
 
 - `aiohttp-session <https://github.com/aio-libs/aiohttp-session>`_
-   provides sessions for :mod:`aiohttp.web`.
+  provides sessions for :mod:`aiohttp.web`.
 
 - `aiohttp-debugtoolbar <https://github.com/aio-libs/aiohttp-debugtoolbar>`_
   is a library for *debug toolbar* support for :mod:`aiohttp.web`.
@@ -65,7 +65,7 @@ Database drivers
 
 - `aiopg <https://github.com/aio-libs/aiopg>`_ PostgreSQL async driver.
 
-- `aiomysql <https://github.com/aio-libs/aiomysql>`_ MySql async driver.
+- `aiomysql <https://github.com/aio-libs/aiomysql>`_ MySQL async driver.
 
 - `aioredis <https://github.com/aio-libs/aioredis>`_ Redis async driver.
 
@@ -82,21 +82,21 @@ Other tools
 Approved third-party libraries
 ------------------------------
 
-The libraries are not part of ``aio-libs`` but they are proven to be very
+These libraries are not part of ``aio-libs`` but they have proven to be very
 well written and highly recommended for usage.
 
 - `uvloop <https://github.com/MagicStack/uvloop>`_ Ultra fast
   implementation of asyncio event loop on top of ``libuv``.
 
-  We are highly recommending to use it instead of standard ``asyncio``.
+  We highly recommend to use this instead of standard ``asyncio``.
 
 Database drivers
 ^^^^^^^^^^^^^^^^
 
 - `asyncpg <https://github.com/MagicStack/asyncpg>`_ Another
-  PostgreSQL async driver. It's much faster than ``aiopg`` but it is
-  not drop-in replacement -- the API is different. Anyway please take
-  a look on it -- the driver is really incredible fast.
+  PostgreSQL async driver. It's much faster than ``aiopg`` but is
+  not a drop-in replacement -- the API is different. But, please take
+  a look at it -- the driver is incredibly fast.
 
 OpenAPI / Swagger extensions
 ----------------------------
@@ -127,7 +127,7 @@ support to aiohttp web servers.
 
 - `aio-openapi <https://github.com/quantmind/aio-openapi>`_
   Asynchronous web middleware for aiohttp and serving Rest APIs with OpenAPI v3
-  specification and with optional PostgreSql database bindings.
+  specification and with optional PostgreSQL database bindings.
 
 - `rororo <https://github.com/playpauseandstop/rororo>`_
   Implement ``aiohttp.web`` OpenAPI 3 server applications with schema first
@@ -136,12 +136,12 @@ support to aiohttp web servers.
 Others
 ------
 
-The list of libraries which are exists but not enlisted in former categories.
+Here is a list of other known libraries that do not belong in the former categories.
 
-They may be perfect or not -- we don't know.
+We cannot vouch for the quality of these libraries, use them at your own risk.
 
 Please add your library reference here first and after some time
-period ask to raise the status.
+ask to raise the status.
 
 - `pytest-aiohttp-client <https://github.com/sivakov512/pytest-aiohttp-client>`_
   Pytest fixture with simpler api, payload decoding and status code assertions.
@@ -237,9 +237,6 @@ period ask to raise the status.
 - `aiogram <https://github.com/aiogram/aiogram>`_
   A fully asynchronous library for Telegram Bot API written with asyncio and aiohttp.
 
-- `vk.py <https://github.com/prostomarkeloff/vk.py>`_
-  Extremely-fast Python 3.6+ toolkit for create applications work`s with VKAPI.
-
 - `aiohttp-graphql <https://github.com/graphql-python/aiohttp-graphql>`_
   GraphQL and GraphIQL interface for aiohttp.
 
@@ -290,3 +287,6 @@ period ask to raise the status.
 
 - `aiohttp-retry <https://github.com/inyutin/aiohttp_retry>`_
   Wrapper for aiohttp client for retrying requests. Python 3.6+ required.
+
+- `aiohttp-socks <https://github.com/romis2012/aiohttp-socks>`_
+  SOCKS proxy connector for aiohttp.
