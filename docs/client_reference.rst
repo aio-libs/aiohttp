@@ -60,6 +60,8 @@ The client session supports the context manager protocol for self closing.
    :param base_url: Base part of the URL (optional)
       If set it allows to skip the base part in request calls.
 
+      .. versionadded:: 3.8
+
    :param aiohttp.BaseConnector connector: BaseConnector
       sub-class instance to support connection pooling.
 
