@@ -1897,11 +1897,12 @@ async def test_read_bufsize(aiohttp_client: Any) -> None:
 
 
 @pytest.mark.parametrize(
-    "auto_decompress,len_of",
-    [(True, "uncompressed"), (False, "compressed")]
+    "auto_decompress,len_of", [(True, "uncompressed"), (False, "compressed")]
 )
 async def test_auto_decompress(
-    aiohttp_client: Any, auto_decompress: bool, len_of: str,
+    aiohttp_client: Any,
+    auto_decompress: bool,
+    len_of: str,
 ) -> None:
     async def handler(request):
         data = await request.read()
