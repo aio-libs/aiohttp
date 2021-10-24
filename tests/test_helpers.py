@@ -1,6 +1,7 @@
 # type: ignore
 import asyncio
 import base64
+import datetime
 import gc
 import os
 import platform
@@ -14,7 +15,7 @@ from re_assert import Matches
 from yarl import URL
 
 from aiohttp import helpers
-from aiohttp.helpers import is_expected_content_type
+from aiohttp.helpers import is_expected_content_type, parse_http_date
 
 IS_PYPY = platform.python_implementation() == "PyPy"
 
@@ -840,3 +841,28 @@ def test_populate_with_cookies():
 
     helpers.populate_with_cookies(headers, cookies_mixin.cookies)
     assert headers == CIMultiDict({"Set-Cookie": "name=value; Path=/"})
+
+
+@pytest.mark.parametrize(
+    ["value", "expected"],
+    [
+        # email.utils.parsedate returns None
+        pytest.param("xxyyzz", None),
+        # datetime.datetime fails with ValueError("year 4446413 is out of range")
+        pytest.param("Tue, 08 Oct 4446413 00:56:40 GMT", None),
+        # datetime.datetime fails with ValueError("second must be in 0..59")
+        pytest.param("Tue, 08 Oct 2000 00:56:80 GMT", None),
+        # OK
+        pytest.param(
+            "Tue, 08 Oct 2000 00:56:40 GMT",
+            datetime.datetime(2000, 10, 8, 0, 56, 40, tzinfo=datetime.timezone.utc),
+        ),
+        # OK (ignore timezone and overwrite to UTC)
+        pytest.param(
+            "Tue, 08 Oct 2000 00:56:40 +0900",
+            datetime.datetime(2000, 10, 8, 0, 56, 40, tzinfo=datetime.timezone.utc),
+        ),
+    ],
+)
+def test_parse_http_date(value, expected):
+    assert parse_http_date(value) == expected

@@ -8,7 +8,6 @@ import time
 import warnings
 import zlib
 from concurrent.futures import Executor
-from email.utils import parsedate
 from http.cookies import Morsel
 from typing import (
     TYPE_CHECKING,
@@ -34,6 +33,7 @@ from .helpers import (
     CookieMixin,
     ETag,
     HeadersMixin,
+    parse_http_date,
     populate_with_cookies,
     rfc822_formatted_time,
     sentinel,
@@ -251,12 +251,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
 
         This header is represented as a `datetime` object.
         """
-        httpdate = self._headers.get(hdrs.LAST_MODIFIED)
-        if httpdate is not None:
-            timetuple = parsedate(httpdate)
-            if timetuple is not None:
-                return datetime.datetime(*timetuple[:6], tzinfo=datetime.timezone.utc)
-        return None
+        return parse_http_date(self._headers.get(hdrs.LAST_MODIFIED))
 
     @last_modified.setter
     def last_modified(

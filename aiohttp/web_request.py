@@ -7,7 +7,6 @@ import socket
 import string
 import tempfile
 import types
-from email.utils import parsedate
 from http.cookies import SimpleCookie
 from types import MappingProxyType
 from typing import (
@@ -40,6 +39,7 @@ from .helpers import (
     ETag,
     HeadersMixin,
     is_expected_content_type,
+    parse_http_date,
     reify,
     sentinel,
     set_result,
@@ -478,22 +478,13 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         """A sequence of pairs for all headers."""
         return self._message.raw_headers
 
-    @staticmethod
-    def _http_date(_date_str: Optional[str]) -> Optional[datetime.datetime]:
-        """Process a date string, return a datetime object"""
-        if _date_str is not None:
-            timetuple = parsedate(_date_str)
-            if timetuple is not None:
-                return datetime.datetime(*timetuple[:6], tzinfo=datetime.timezone.utc)
-        return None
-
     @reify
     def if_modified_since(self) -> Optional[datetime.datetime]:
         """The value of If-Modified-Since HTTP header, or None.
 
         This header is represented as a `datetime` object.
         """
-        return self._http_date(self.headers.get(hdrs.IF_MODIFIED_SINCE))
+        return parse_http_date(self.headers.get(hdrs.IF_MODIFIED_SINCE))
 
     @reify
     def if_unmodified_since(self) -> Optional[datetime.datetime]:
@@ -501,7 +492,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
         This header is represented as a `datetime` object.
         """
-        return self._http_date(self.headers.get(hdrs.IF_UNMODIFIED_SINCE))
+        return parse_http_date(self.headers.get(hdrs.IF_UNMODIFIED_SINCE))
 
     @staticmethod
     def _etag_values(etag_header: str) -> Iterator[ETag]:
@@ -555,7 +546,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
         This header is represented as a `datetime` object.
         """
-        return self._http_date(self.headers.get(hdrs.IF_RANGE))
+        return parse_http_date(self.headers.get(hdrs.IF_RANGE))
 
     @reify
     def keep_alive(self) -> bool:
