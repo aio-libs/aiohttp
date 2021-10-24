@@ -2586,7 +2586,7 @@ application on specific TCP or Unix socket, e.g.::
    :param bool auto_decompress: Automatically decompress request body,
       ``True`` by default.
 
-      .. versionadded:: 4.0
+      .. versionadded:: 3.8
 
 
 
