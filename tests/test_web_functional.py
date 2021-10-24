@@ -1964,6 +1964,32 @@ async def test_read_bufsize(aiohttp_client) -> None:
 
 
 @pytest.mark.parametrize(
+    "auto_decompress,len_of", [(True, "uncompressed"), (False, "compressed")]
+)
+async def test_auto_decompress(
+    aiohttp_client,
+    auto_decompress,
+    len_of,
+) -> None:
+    async def handler(request):
+        data = await request.read()
+        return web.Response(text=str(len(data)))
+
+    app = web.Application(handler_args={"auto_decompress": auto_decompress})
+    app.router.add_post("/", handler)
+
+    client = await aiohttp_client(app)
+    uncompressed = b"dataaaaaaaaaaaaaaaaaaaaaaaaa"
+    compressor = zlib.compressobj(wbits=16 + zlib.MAX_WBITS)
+    compressed = compressor.compress(uncompressed) + compressor.flush()
+    assert len(compressed) != len(uncompressed)
+    headers = {"content-encoding": "gzip"}
+    resp = await client.post("/", data=compressed, headers=headers)
+    assert resp.status == 200
+    assert await resp.text() == str(len(locals()[len_of]))
+
+
+@pytest.mark.parametrize(
     "status",
     [101, 204],
 )
