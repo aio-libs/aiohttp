@@ -219,7 +219,7 @@ class ClientSession:
         read_bufsize: int = 2 ** 16,
     ) -> None:
         if isinstance(base_url, str):
-            self._base_url = URL(base_url)
+            self._base_url: Optional[URL] = URL(base_url)
         else:
             self._base_url = base_url
 
