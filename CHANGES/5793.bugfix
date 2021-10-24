@@ -1,0 +1,1 @@
+Properly adhere to timeout passed to ws_connect

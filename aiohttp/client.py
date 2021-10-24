@@ -752,6 +752,7 @@ class ClientSession:
             proxy_auth=proxy_auth,
             ssl=ssl,
             proxy_headers=proxy_headers,
+            timeout=timeout,
         )
 
         try:
