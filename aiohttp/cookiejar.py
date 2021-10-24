@@ -62,7 +62,7 @@ class CookieJar(AbstractCookieJar):
         *,
         unsafe: bool = False,
         quote_cookie: bool = True,
-        treat_as_secure_origin: Union[StrOrURL, List[StrOrURL]] = []
+        treat_as_secure_origin: Union[StrOrURL, List[StrOrURL], None] = None
     ) -> None:
         self._loop = asyncio.get_running_loop()
         self._cookies = defaultdict(
@@ -71,7 +71,9 @@ class CookieJar(AbstractCookieJar):
         self._host_only_cookies = set()  # type: Set[Tuple[str, str]]
         self._unsafe = unsafe
         self._quote_cookie = quote_cookie
-        if isinstance(treat_as_secure_origin, URL):
+        if treat_as_secure_origin is None:
+            treat_as_secure_origin = []
+        elif isinstance(treat_as_secure_origin, URL):
             treat_as_secure_origin = [treat_as_secure_origin.origin()]
         elif isinstance(treat_as_secure_origin, str):
             treat_as_secure_origin = [URL(treat_as_secure_origin).origin()]
