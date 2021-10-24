@@ -44,17 +44,13 @@ repos:
   - id: check-xml
   - id: check-executables-have-shebangs
   - id: check-toml
-  - id: check-xml
   - id: check-yaml
   - id: debug-statements
   - id: check-added-large-files
   - id: check-symlinks
-  - id: debug-statements
   - id: fix-byte-order-marker
   - id: fix-encoding-pragma
     args: ['--remove']
-  - id: check-executables-have-shebangs
-  - id: check-case-conflict
   - id: detect-aws-credentials
     args: ['--allow-missing-credentials']
   - id: detect-private-key
@@ -69,7 +65,6 @@ repos:
   hooks:
   - id: flake8
     exclude: "^docs/"
-
 - repo: git://github.com/Lucas-C/pre-commit-hooks-markup
   rev: v1.0.0
   hooks:
