@@ -165,6 +165,7 @@ fallback
 fallbacks
 filename
 finalizers
+formatter
 formatters
 frontend
 getall
