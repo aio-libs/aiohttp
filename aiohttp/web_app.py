@@ -36,6 +36,7 @@ from .helpers import DEBUG
 from .http_parser import RawRequestMessage
 from .log import web_logger
 from .streams import StreamReader
+from .typedefs import Middleware
 from .web_log import AccessLogger
 from .web_middlewares import _fix_request_current_app
 from .web_protocol import RequestHandler
@@ -57,22 +58,15 @@ __all__ = ("Application", "CleanupError")
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .typedefs import Handler
-
     _AppSignal = Signal[Callable[["Application"], Awaitable[None]]]
     _RespPrepareSignal = Signal[Callable[[Request, StreamResponse], Awaitable[None]]]
-    _Middleware = Union[
-        Callable[[Request, Handler], Awaitable[StreamResponse]],
-        Callable[["Application", Handler], Awaitable[Handler]],  # old-style
-    ]
-    _Middlewares = FrozenList[_Middleware]
-    _MiddlewaresHandlers = Optional[Sequence[Tuple[_Middleware, bool]]]
+    _Middlewares = FrozenList[Middleware]
+    _MiddlewaresHandlers = Optional[Sequence[Tuple[Middleware, bool]]]
     _Subapps = List["Application"]
 else:
     # No type checker mode, skip types
     _AppSignal = Signal
     _RespPrepareSignal = Signal
-    _Middleware = Callable
     _Middlewares = FrozenList
     _MiddlewaresHandlers = Optional[Sequence]
     _Subapps = List
@@ -107,7 +101,7 @@ class Application(MutableMapping[str, Any]):
         *,
         logger: logging.Logger = web_logger,
         router: Optional[UrlDispatcher] = None,
-        middlewares: Iterable[_Middleware] = (),
+        middlewares: Iterable[Middleware] = (),
         handler_args: Optional[Mapping[str, Any]] = None,
         client_max_size: int = 1024 ** 2,
         loop: Optional[asyncio.AbstractEventLoop] = None,
@@ -453,7 +447,7 @@ class Application(MutableMapping[str, Any]):
             client_max_size=self._client_max_size,
         )
 
-    def _prepare_middleware(self) -> Iterator[Tuple[_Middleware, bool]]:
+    def _prepare_middleware(self) -> Iterator[Tuple[Middleware, bool]]:
         for m in reversed(self._middlewares):
             if getattr(m, "__middleware_version__", None) == 1:
                 yield m, True

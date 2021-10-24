@@ -1,7 +1,7 @@
 import re
-from typing import TYPE_CHECKING, Awaitable, Callable, Tuple, Type, TypeVar
+from typing import TYPE_CHECKING, Tuple, Type, TypeVar
 
-from .typedefs import Handler
+from .typedefs import Handler, Middleware
 from .web_exceptions import HTTPPermanentRedirect, _HTTPMove
 from .web_request import Request
 from .web_response import StreamResponse
@@ -33,9 +33,6 @@ async def _check_request_resolves(request: Request, path: str) -> Tuple[bool, Re
 def middleware(f: _Func) -> _Func:
     f.__middleware_version__ = 1  # type: ignore[attr-defined]
     return f
-
-
-_Middleware = Callable[[Request, Handler], Awaitable[StreamResponse]]
 
 
 def normalize_path_middleware(
@@ -110,7 +107,7 @@ def normalize_path_middleware(
     return impl
 
 
-def _fix_request_current_app(app: "Application") -> _Middleware:
+def _fix_request_current_app(app: "Application") -> Middleware:
     @middleware
     async def impl(request: Request, handler: Handler) -> StreamResponse:
         with request.match_info.set_current_app(app):
