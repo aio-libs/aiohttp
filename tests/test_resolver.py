@@ -158,6 +158,32 @@ async def test_close_for_threaded_resolver(loop) -> None:
     await resolver.close()
 
 
+async def test_threaded_negative_lookup_with_unknown_result() -> None:
+    loop = Mock()
+
+    # If compile CPython with `--disable-ipv6` option,
+    # we will get an (int, bytes) tuple, instead of a Exception.
+    async def unknown_addrinfo(*args, **kwargs):
+        return [
+            (
+                socket.AF_INET6,
+                socket.SOCK_STREAM,
+                6,
+                "",
+                (10, b"\x01\xbb\x00\x00\x00\x00*\x04NB\x00\x1a\x00\x00"),
+            )
+        ]
+
+    loop.getaddrinfo = unknown_addrinfo
+    resolver = ThreadedResolver()
+    resolver._loop = loop
+    with patch("socket.has_ipv6", False):
+        res = await resolver.resolve("www.python.org")
+    assert len(res) == 0
+
+    await resolver.close()
+
+
 @pytest.mark.skipif(aiodns is None, reason="aiodns required")
 async def test_close_for_async_resolver(loop) -> None:
     resolver = AsyncResolver(loop=loop)
