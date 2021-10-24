@@ -21,6 +21,9 @@ needs_unix: bool
 try:
     import trustme
 
+    # Check if the CA is available in runtime, MacOS on Py3.10 fails somehow
+    trustme.CA()
+
     TRUSTME: bool = True
 except ImportError:
     TRUSTME = False
@@ -40,7 +43,7 @@ needs_unix = pytest.mark.skipif(not IS_UNIX, reason="requires UNIX sockets")
 @pytest.fixture
 def tls_certificate_authority() -> Any:
     if not TRUSTME:
-        pytest.xfail("trustme fails on 32bit Linux")
+        pytest.xfail("trustme is not supported")
     return trustme.CA()
 
 
@@ -55,7 +58,7 @@ def tls_certificate(tls_certificate_authority: Any) -> Any:
 
 @pytest.fixture
 def ssl_ctx(tls_certificate: Any) -> ssl.SSLContext:
-    ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+    ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     tls_certificate.configure_cert(ssl_ctx)
     return ssl_ctx
 

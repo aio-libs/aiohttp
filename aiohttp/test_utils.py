@@ -428,8 +428,10 @@ class AioHTTPTestCase(TestCase):
         raise RuntimeError("Did you forget to define get_application()?")
 
     def setUp(self) -> None:
-        if PY_38:
-            self.loop = asyncio.get_event_loop()
+        try:
+            self.loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self.loop = asyncio.get_event_loop_policy().get_event_loop()
 
         self.loop.run_until_complete(self.setUpAsync())
 
@@ -497,7 +499,7 @@ def setup_test_loop(
             # * https://stackoverflow.com/a/58614689/595220
             # * https://bugs.python.org/issue35621
             # * https://github.com/python/cpython/pull/14344
-            watcher = asyncio.MultiLoopChildWatcher()
+            watcher = asyncio.ThreadedChildWatcher()
         except AttributeError:  # Python < 3.8
             watcher = asyncio.SafeChildWatcher()
         watcher.attach_loop(loop)

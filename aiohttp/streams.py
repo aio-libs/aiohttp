@@ -480,7 +480,7 @@ class StreamReader(AsyncStreamReaderMixin):
         return data
 
     def _read_nowait(self, n: int) -> bytes:
-        """ Read not more than n bytes, or whole buffer if n == -1 """
+        """Read not more than n bytes, or whole buffer if n == -1"""
         chunks = []
 
         while self._buffer:
