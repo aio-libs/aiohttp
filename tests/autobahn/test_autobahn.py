@@ -6,7 +6,7 @@ from typing import Any, Dict, Generator, List
 
 import pytest
 from pytest import TempPathFactory
-from python_on_whales import DockerException, docker
+from python_on_whales import DockerException, docker  # type: ignore[attr-defined]
 
 
 @pytest.fixture(scope="session")
@@ -73,7 +73,7 @@ def test_client(report_dir: Path, request: Any) -> None:
         print("Stopping client and server")
         client.terminate()
         client.wait()
-        autobahn_container.stop()
+        autobahn_container.stop()  # type: ignore[union-attr]
 
     failed_messages = get_failed_tests(f"{report_dir}/clients", "aiohttp")
 
