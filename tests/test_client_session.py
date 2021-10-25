@@ -735,7 +735,9 @@ async def test_request_uses_base_url_when_url_is_str() -> None:
     with contextlib.suppress(Exception):
         await session.get("/test")
 
-    assert request_class.call_args.args[1] == URL("http://example.com/test")
+    args, _ = request_class.call_args
+    url = args[1]
+    assert url == URL("http://example.com/test")
 
 
 async def test_request_not_uses_base_url_when_url_is_URL() -> None:
@@ -744,4 +746,6 @@ async def test_request_not_uses_base_url_when_url_is_URL() -> None:
     with contextlib.suppress(Exception):
         await session.get(URL("http://sample.com"))
 
-    assert request_class.call_args.args[1] == URL("http://sample.com")
+    args, _ = request_class.call_args
+    url = args[1]
+    assert url == URL("http://sample.com")
