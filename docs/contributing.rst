@@ -150,7 +150,7 @@ Any extra texts (print statements and so on) should be removed.
      make test-<python-version>[-no-extensions]
 
    For example, if you want to run tests for python3.7
-   without extentions, you can run this command::
+   without extensions, you can run this command::
 
      make test-3.7-no-extensions
 
