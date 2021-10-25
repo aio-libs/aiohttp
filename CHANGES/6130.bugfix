@@ -1,1 +1,1 @@
-Fix resetting signals in Gunicorn aiohttp Worker to fix subprocesses that capture output having an incorrect returncode.
+Fix resetting SIGCHLD  signals in Gunicorn aiohttp Worker to fix subprocesses that capture output having an incorrect returncode.
