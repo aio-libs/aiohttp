@@ -141,6 +141,18 @@ Please take a look on the produced output.
 
 Any extra texts (print statements and so on) should be removed.
 
+.. note::
+
+   If you see that CI build is failing on a specific Python version and
+   you don't have this version on your computer, you can use the helper to
+   run it (only if you have docker)::
+
+     make test-<python-version>[-no-extensions]
+
+   For example, if you want to run tests for python3.7
+   without extentions, you can run this command::
+
+     make test-3.7-no-extensions
 
 Tests coverage
 --------------
