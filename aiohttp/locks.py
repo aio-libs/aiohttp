@@ -40,6 +40,6 @@ class EventResultOrError:
         return val
 
     def cancel(self) -> None:
-        """ Cancel all waiters """
+        """Cancel all waiters"""
         for waiter in self._waiters:
             waiter.cancel()

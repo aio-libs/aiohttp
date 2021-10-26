@@ -194,6 +194,7 @@ class RequestHandler(BaseProtocol):
         max_field_size: int = 8190,
         lingering_time: float = 10.0,
         read_bufsize: int = 2 ** 16,
+        auto_decompress: bool = True,
     ):
         super().__init__(loop)
 
@@ -227,6 +228,7 @@ class RequestHandler(BaseProtocol):
             max_field_size=max_field_size,
             max_headers=max_headers,
             payload_exception=RequestPayloadError,
+            auto_decompress=auto_decompress,
         )  # type: Optional[HttpRequestParser]
 
         self.logger = logger
@@ -393,7 +395,7 @@ class RequestHandler(BaseProtocol):
             self._keepalive_handle = None
 
     def close(self) -> None:
-        """Stop accepting new pipelinig messages and close
+        """Stop accepting new pipelining messages and close
         connection when handlers done processing messages"""
         self._close = True
         if self._waiter:

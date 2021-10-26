@@ -445,7 +445,7 @@ async def test_post_form_with_duplicate_keys(aiohttp_client: Any) -> None:
 
 def test_repr_for_application() -> None:
     app = web.Application()
-    assert "<Application 0x{:x}>".format(id(app)) == repr(app)
+    assert f"<Application 0x{id(app):x}>" == repr(app)
 
 
 async def test_expect_default_handler_unknown(aiohttp_client: Any) -> None:
@@ -1894,6 +1894,32 @@ async def test_read_bufsize(aiohttp_client: Any) -> None:
     resp = await client.post("/", data=b"data")
     assert resp.status == 200
     assert await resp.text() == "data (2, 4)"
+
+
+@pytest.mark.parametrize(
+    "auto_decompress,len_of", [(True, "uncompressed"), (False, "compressed")]
+)
+async def test_auto_decompress(
+    aiohttp_client: Any,
+    auto_decompress: bool,
+    len_of: str,
+) -> None:
+    async def handler(request):
+        data = await request.read()
+        return web.Response(text=str(len(data)))
+
+    app = web.Application(handler_args={"auto_decompress": auto_decompress})
+    app.router.add_post("/", handler)
+
+    client = await aiohttp_client(app)
+    uncompressed = b"dataaaaaaaaaaaaaaaaaaaaaaaaa"
+    compressor = zlib.compressobj(wbits=16 + zlib.MAX_WBITS)
+    compressed = compressor.compress(uncompressed) + compressor.flush()
+    assert len(compressed) != len(uncompressed)
+    headers = {"content-encoding": "gzip"}
+    resp = await client.post("/", data=compressed, headers=headers)
+    assert resp.status == 200
+    assert await resp.text() == str(len(locals()[len_of]))
 
 
 @pytest.mark.parametrize(
