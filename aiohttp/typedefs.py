@@ -49,5 +49,6 @@ LooseCookies = Union[
 ]
 
 Handler = Callable[["Request"], Awaitable["StreamResponse"]]
+Middleware = Callable[["Request", Handler], Awaitable["StreamResponse"]]
 
 PathLike = Union[str, "os.PathLike[str]"]

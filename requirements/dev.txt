@@ -8,7 +8,7 @@ aiodns==3.0.0 ; sys_platform == "linux" or sys_platform == "darwin" and python_v
     # via -r requirements/base.txt
 aiohttp-theme==0.1.6
     # via -r requirements/doc.txt
-aiosignal==1.1.2
+aiosignal==1.2.0
     # via -r requirements/base.txt
 alabaster==0.7.12
     # via sphinx
@@ -24,7 +24,7 @@ attrs==20.3.0
     #   -r requirements/lint.txt
     #   flake8-pyi
     #   pytest
-babel==2.9.0
+babel==2.9.1
     # via sphinx
 black==21.7b0 ; implementation_name == "cpython"
     # via -r requirements/lint.txt
@@ -47,9 +47,9 @@ cfgv==3.2.0
     #   -r requirements/lint.txt
     #   pre-commit
 chardet==4.0.0
-    # via
-    #   -r requirements/base.txt
-    #   requests
+    # via requests
+charset-normalizer==2.0.7
+    # via -r requirements/base.txt
 cherry_picker==2.0.0 ; python_version >= "3.6"
     # via -r requirements/dev.in
 click==7.1.2
@@ -63,7 +63,7 @@ click==7.1.2
     #   wait-for-it
 click-default-group==1.2.2
     # via towncrier
-coverage[toml]==6.0.1
+coverage[toml]==6.0.2
     # via
     #   -r requirements/test.txt
     #   pytest-cov
@@ -81,7 +81,7 @@ filelock==3.0.12
     # via
     #   -r requirements/lint.txt
     #   virtualenv
-flake8==4.0.0
+flake8==4.0.1
     # via
     #   -r requirements/lint.txt
     #   flake8-pyi
@@ -89,7 +89,7 @@ flake8-pyi==20.10.0
     # via -r requirements/lint.txt
 freezegun==1.1.0
     # via -r requirements/test.txt
-frozenlist==1.1.1
+frozenlist==1.2.0
     # via
     #   -r requirements/base.txt
     #   aiosignal
@@ -208,7 +208,7 @@ pytest-mock==3.6.1
     # via -r requirements/test.txt
 python-dateutil==2.8.1
     # via freezegun
-python-on-whales==0.27.0
+python-on-whales==0.29.0
     # via -r requirements/dev.in
 pytz==2020.5
     # via babel

@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 5
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2.3.5
       with:
         submodules: true
     - name: Setup Python 3.8
@@ -40,8 +40,6 @@ jobs:
       uses: py-actions/py-dependency-install@v2
       with:
         path: requirements/lint.txt
-    - name: Pre-Commit hooks
-      uses: pre-commit/action@v2.0.3
     - name: Install itself
       run: |
         python setup.py install
@@ -95,10 +93,10 @@ jobs:
         #     os: ubuntu
       fail-fast: true
     runs-on: ${{ matrix.os }}-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2.3.5
       with:
         submodules: true
     - name: Setup Python ${{ matrix.pyver }}
@@ -153,7 +151,7 @@ jobs:
     needs: pre-deploy
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2.3.5
       with:
         submodules: true
     - name: Setup Python 3.8
@@ -186,7 +184,7 @@ jobs:
     needs: pre-deploy
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2.3.5
       with:
         submodules: true
     - name: Set up QEMU
@@ -235,7 +233,7 @@ jobs:
     needs: pre-deploy
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2.3.5
       with:
         submodules: true
     - name: Setup Python 3.8

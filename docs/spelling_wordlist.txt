@@ -124,6 +124,7 @@ canonicalization
 canonicalize
 cchardet
 ceil
+Chardet
 charset
 charsetdetect
 chunked
@@ -164,6 +165,7 @@ fallback
 fallbacks
 filename
 finalizers
+formatter
 formatters
 frontend
 getall
@@ -187,6 +189,7 @@ intaking
 io
 ip
 ipdb
+ipv
 ish
 iterable
 iterables
@@ -228,6 +231,7 @@ namespace
 netrc
 nginx
 noop
+normalizer
 nowait
 optimizations
 os

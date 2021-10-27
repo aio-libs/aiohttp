@@ -7,6 +7,7 @@ Adam Horacek
 Adam Mills
 Adrian Krupa
 Adrián Chaves
+Ahmed Tahri
 Alan Tse
 Alec Hanefeld
 Alejandro Gómez
@@ -131,6 +132,7 @@ Gustavo Carneiro
 Günther Jena
 Hans Adema
 Harmon Y.
+Hiroshi Ogawa
 Hrishikesh Paranjape
 Hu Bo
 Hugh Young
@@ -228,6 +230,7 @@ Navid Sheikhol
 Nicolas Braem
 Nikolay Kim
 Nikolay Novik
+Nándor Mátravölgyi
 Oisin Aylward
 Olaf Conradi
 Oleg Höfling
@@ -241,6 +244,7 @@ Paulus Schoutsen
 Pavel Kamaev
 Pavel Polyakov
 Pavel Sapezhko
+Pavol Vargovčík
 Pawel Kowalski
 Pawel Miech
 Pepe Osca

@@ -17,6 +17,7 @@ import warnings
 import weakref
 from collections import namedtuple
 from contextlib import suppress
+from email.utils import parsedate
 from http.cookies import SimpleCookie
 from math import ceil
 from pathlib import Path
@@ -675,7 +676,6 @@ class TimerContext(BaseTimerContext):
             )
 
         if self._cancelled:
-            task.cancel()
             raise asyncio.TimeoutError from None
 
         self._tasks.append(task)
@@ -936,3 +936,13 @@ def validate_etag_value(value: str) -> None:
         raise ValueError(
             f"Value {value!r} is not a valid etag. Maybe it contains '\"'?"
         )
+
+
+def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
+    """Process a date string, return a datetime object"""
+    if date_str is not None:
+        timetuple = parsedate(date_str)
+        if timetuple is not None:
+            with suppress(ValueError):
+                return datetime.datetime(*timetuple[:6], tzinfo=datetime.timezone.utc)
+    return None
