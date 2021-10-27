@@ -24,6 +24,7 @@
 .idea
 .install-cython
 .install-deps
+.llhttp-gen
 .installed.cfg
 .mypy_cache
 .noseids
