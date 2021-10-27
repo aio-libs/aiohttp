@@ -1,1 +1,1 @@
-Add socket factory to BaseTestServer
+Added a ``socket_factory`` argument to ``BaseTestServer``.
