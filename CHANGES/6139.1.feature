@@ -1,1 +1,1 @@
-Started shipping platform-specific arm64 wheels for Apple Silicon.
+Started shipping platform-specific arm64 wheels for Apple Silicon — :user:`asvetlov`.
