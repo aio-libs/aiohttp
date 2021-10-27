@@ -12,6 +12,7 @@ from re_assert import Matches
 
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs
 from aiohttp.helpers import ETag
+from aiohttp.http_writer import _serialize_headers
 from aiohttp.payload import BytesPayload
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
@@ -56,12 +57,7 @@ def writer(buf):
         buf.extend(chunk)
 
     async def write_headers(status_line, headers):
-        headers = (
-            status_line
-            + "\r\n"
-            + "".join([k + ": " + v + "\r\n" for k, v in headers.items()])
-        )
-        headers = headers.encode("utf-8") + b"\r\n"
+        headers = _serialize_headers(status_line, headers)
         buf.extend(headers)
 
     async def write_eof(chunk=b""):
@@ -253,6 +249,19 @@ def test_last_modified_reset() -> None:
     resp.last_modified = 0
     resp.last_modified = None
     assert resp.last_modified is None
+
+
+@pytest.mark.parametrize(
+    ["header_val", "expected"],
+    [
+        pytest.param("xxyyzz", None),
+        pytest.param("Tue, 08 Oct 4446413 00:56:40 GMT", None),
+        pytest.param("Tue, 08 Oct 2000 00:56:80 GMT", None),
+    ],
+)
+def test_last_modified_string_invalid(header_val, expected) -> None:
+    resp = StreamResponse(headers={"Last-Modified": header_val})
+    assert resp.last_modified == expected
 
 
 def test_etag_initial() -> None:

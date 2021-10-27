@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import datetime
 import gc
 import os
 import platform
@@ -13,6 +14,7 @@ from multidict import MultiDict
 from yarl import URL
 
 from aiohttp import helpers
+from aiohttp.helpers import parse_http_date
 
 IS_PYPY = platform.python_implementation() == "PyPy"
 
@@ -350,7 +352,7 @@ def test_timeout_handle_cb_exc(loop) -> None:
     assert not handle._callbacks
 
 
-def test_timer_context_cancelled() -> None:
+def test_timer_context_not_cancelled() -> None:
     with mock.patch("aiohttp.helpers.asyncio") as m_asyncio:
         m_asyncio.TimeoutError = asyncio.TimeoutError
         loop = mock.Mock()
@@ -362,9 +364,9 @@ def test_timer_context_cancelled() -> None:
                 pass
 
         if helpers.PY_37:
-            assert m_asyncio.current_task.return_value.cancel.called
+            assert not m_asyncio.current_task.return_value.cancel.called
         else:
-            assert m_asyncio.Task.current_task.return_value.cancel.called
+            assert not m_asyncio.Task.current_task.return_value.cancel.called
 
 
 def test_timer_context_no_task(loop) -> None:
@@ -414,11 +416,25 @@ async def test_ceil_timeout_small() -> None:
 # -------------------------------- ContentDisposition -------------------
 
 
-def test_content_disposition() -> None:
-    assert (
-        helpers.content_disposition_header("attachment", foo="bar")
-        == 'attachment; foo="bar"'
-    )
+@pytest.mark.parametrize(
+    "kwargs, result",
+    [
+        (dict(foo="bar"), 'attachment; foo="bar"'),
+        (dict(foo="bar[]"), 'attachment; foo="bar[]"'),
+        (dict(foo=' a""b\\'), 'attachment; foo="\\ a\\"\\"b\\\\"'),
+        (dict(foo="bär"), "attachment; foo*=utf-8''b%C3%A4r"),
+        (dict(foo='bär "\\', quote_fields=False), 'attachment; foo="bär \\"\\\\"'),
+        (dict(foo="bär", _charset="latin-1"), "attachment; foo*=latin-1''b%E4r"),
+        (dict(filename="bär"), 'attachment; filename="b%C3%A4r"'),
+        (dict(filename="bär", _charset="latin-1"), 'attachment; filename="b%E4r"'),
+        (
+            dict(filename='bär "\\', quote_fields=False),
+            'attachment; filename="bär \\"\\\\"',
+        ),
+    ],
+)
+def test_content_disposition(kwargs, result) -> None:
+    assert helpers.content_disposition_header("attachment", **kwargs) == result
 
 
 def test_content_disposition_bad_type() -> None:
@@ -695,3 +711,28 @@ class TestChainMapProxy:
         cp = helpers.ChainMapProxy([d1, d2])
         expected = f"ChainMapProxy({d1!r}, {d2!r})"
         assert expected == repr(cp)
+
+
+@pytest.mark.parametrize(
+    ["value", "expected"],
+    [
+        # email.utils.parsedate returns None
+        pytest.param("xxyyzz", None),
+        # datetime.datetime fails with ValueError("year 4446413 is out of range")
+        pytest.param("Tue, 08 Oct 4446413 00:56:40 GMT", None),
+        # datetime.datetime fails with ValueError("second must be in 0..59")
+        pytest.param("Tue, 08 Oct 2000 00:56:80 GMT", None),
+        # OK
+        pytest.param(
+            "Tue, 08 Oct 2000 00:56:40 GMT",
+            datetime.datetime(2000, 10, 8, 0, 56, 40, tzinfo=datetime.timezone.utc),
+        ),
+        # OK (ignore timezone and overwrite to UTC)
+        pytest.param(
+            "Tue, 08 Oct 2000 00:56:40 +0900",
+            datetime.datetime(2000, 10, 8, 0, 56, 40, tzinfo=datetime.timezone.utc),
+        ),
+    ],
+)
+def test_parse_http_date(value, expected):
+    assert parse_http_date(value) == expected

@@ -646,27 +646,29 @@ web.run_app(app, host=())
 def test_sigint() -> None:
     skip_if_on_windows()
 
-    proc = subprocess.Popen(
-        [sys.executable, "-u", "-c", _script_test_signal], stdout=subprocess.PIPE
-    )
-    for line in proc.stdout:
-        if line.startswith(b"======== Running on"):
-            break
-    proc.send_signal(signal.SIGINT)
-    assert proc.wait() == 0
+    with subprocess.Popen(
+        [sys.executable, "-u", "-c", _script_test_signal],
+        stdout=subprocess.PIPE,
+    ) as proc:
+        for line in proc.stdout:
+            if line.startswith(b"======== Running on"):
+                break
+        proc.send_signal(signal.SIGINT)
+        assert proc.wait() == 0
 
 
 def test_sigterm() -> None:
     skip_if_on_windows()
 
-    proc = subprocess.Popen(
-        [sys.executable, "-u", "-c", _script_test_signal], stdout=subprocess.PIPE
-    )
-    for line in proc.stdout:
-        if line.startswith(b"======== Running on"):
-            break
-    proc.terminate()
-    assert proc.wait() == 0
+    with subprocess.Popen(
+        [sys.executable, "-u", "-c", _script_test_signal],
+        stdout=subprocess.PIPE,
+    ) as proc:
+        for line in proc.stdout:
+            if line.startswith(b"======== Running on"):
+                break
+        proc.terminate()
+        assert proc.wait() == 0
 
 
 def test_startup_cleanup_signals_even_on_failure(patched_loop) -> None:

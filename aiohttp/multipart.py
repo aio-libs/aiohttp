@@ -920,9 +920,11 @@ class MultipartPayloadWriter:
         elif encoding == "quoted-printable":
             self._encoding = "quoted-printable"
 
-    def enable_compression(self, encoding: str = "deflate") -> None:
+    def enable_compression(
+        self, encoding: str = "deflate", strategy: int = zlib.Z_DEFAULT_STRATEGY
+    ) -> None:
         zlib_mode = 16 + zlib.MAX_WBITS if encoding == "gzip" else -zlib.MAX_WBITS
-        self._compress = zlib.compressobj(wbits=zlib_mode)
+        self._compress = zlib.compressobj(wbits=zlib_mode, strategy=strategy)
 
     async def write_eof(self) -> None:
         if self._compress is not None:

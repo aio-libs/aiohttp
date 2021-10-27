@@ -1,4 +1,5 @@
 import asyncio
+import gc
 from unittest import mock
 
 import pytest
@@ -6,7 +7,7 @@ from async_generator import async_generator, yield_
 
 from aiohttp import log, web
 from aiohttp.abc import AbstractAccessLogger, AbstractRouter
-from aiohttp.helpers import DEBUG, PY_36
+from aiohttp.helpers import DEBUG, PY_36, PY_310
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.typedefs import Handler
 
@@ -39,14 +40,28 @@ async def test_set_loop() -> None:
         assert app.loop is loop
 
 
+@pytest.mark.xfail(
+    PY_310,
+    reason="No idea why _set_loop() is constructed out of loop "
+    "but it calls `asyncio.get_event_loop()`",
+    raises=DeprecationWarning,
+)
 def test_set_loop_default_loop() -> None:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     app = web.Application()
-    app._set_loop(None)
-    with pytest.warns(DeprecationWarning):
-        assert app.loop is loop
-    asyncio.set_event_loop(None)
+    try:
+        app._set_loop(None)
+        with pytest.warns(DeprecationWarning):
+            assert app.loop is loop
+        asyncio.set_event_loop(None)
+
+    finally:
+        # Cleanup, leaks into `test_app_make_handler_debug_exc[True]` otherwise:
+        loop.stop()
+        loop.run_forever()
+        loop.close()
+        gc.collect()
 
 
 def test_set_loop_with_different_loops() -> None:
@@ -58,6 +73,12 @@ def test_set_loop_with_different_loops() -> None:
 
     with pytest.raises(RuntimeError):
         app._set_loop(loop=object())
+
+    # Cleanup, leaks into `test_app_make_handler_debug_exc[True]` otherwise:
+    loop.stop()
+    loop.run_forever()
+    loop.close()
+    gc.collect()
 
 
 @pytest.mark.parametrize("debug", [True, False])

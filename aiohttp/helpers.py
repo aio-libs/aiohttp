@@ -17,6 +17,7 @@ import warnings
 import weakref
 from collections import namedtuple
 from contextlib import suppress
+from email.utils import parsedate
 from math import ceil
 from pathlib import Path
 from types import TracebackType
@@ -54,25 +55,28 @@ from .typedefs import PathLike, Protocol  # noqa
 
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
+IS_MACOS = platform.system() == "Darwin"
+IS_WINDOWS = platform.system() == "Windows"
+
 PY_36 = sys.version_info >= (3, 6)
 PY_37 = sys.version_info >= (3, 7)
 PY_38 = sys.version_info >= (3, 8)
+PY_310 = sys.version_info >= (3, 10)
 
-if not PY_37:
-    import idna_ssl  # type: ignore[import]
+if sys.version_info < (3, 7):
+    import idna_ssl
 
     idna_ssl.patch_match_hostname()
 
+    def all_tasks(
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> Set["asyncio.Task[Any]"]:
+        tasks = list(asyncio.Task.all_tasks(loop))
+        return {t for t in tasks if not t.done()}
 
-def all_tasks(
-    loop: Optional[asyncio.AbstractEventLoop] = None,
-) -> Set["asyncio.Task[Any]"]:
-    tasks = list(asyncio.Task.all_tasks(loop))
-    return {t for t in tasks if not t.done()}
 
-
-if PY_37:
-    all_tasks = getattr(asyncio, "all_tasks")
+else:
+    all_tasks = asyncio.all_tasks
 
 
 _T = TypeVar("_T")
@@ -213,9 +217,7 @@ def netrc_from_env() -> Optional[netrc.netrc]:
             )
             return None
 
-        netrc_path = home_dir / (
-            "_netrc" if platform.system() == "Windows" else ".netrc"
-        )
+        netrc_path = home_dir / ("_netrc" if IS_WINDOWS else ".netrc")
 
     try:
         return netrc.netrc(str(netrc_path))
@@ -265,7 +267,7 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
 def current_task(
     loop: Optional[asyncio.AbstractEventLoop] = None,
 ) -> "Optional[asyncio.Task[Any]]":
-    if PY_37:
+    if sys.version_info >= (3, 7):
         return asyncio.current_task(loop=loop)
     else:
         return asyncio.Task.current_task(loop=loop)
@@ -374,13 +376,40 @@ def guess_filename(obj: Any, default: Optional[str] = None) -> Optional[str]:
     return default
 
 
+not_qtext_re = re.compile(r"[^\041\043-\133\135-\176]")
+QCONTENT = {chr(i) for i in range(0x20, 0x7F)} | {"\t"}
+
+
+def quoted_string(content: str) -> str:
+    """Return 7-bit content as quoted-string.
+
+    Format content into a quoted-string as defined in RFC5322 for
+    Internet Message Format. Notice that this is not the 8-bit HTTP
+    format, but the 7-bit email format. Content must be in usascii or
+    a ValueError is raised.
+    """
+    if not (QCONTENT > set(content)):
+        raise ValueError(f"bad content for quoted-string {content!r}")
+    return not_qtext_re.sub(lambda x: "\\" + x.group(0), content)
+
+
 def content_disposition_header(
-    disptype: str, quote_fields: bool = True, **params: str
+    disptype: str, quote_fields: bool = True, _charset: str = "utf-8", **params: str
 ) -> str:
-    """Sets ``Content-Disposition`` header.
+    """Sets ``Content-Disposition`` header for MIME.
+
+    This is the MIME payload Content-Disposition header from RFC 2183
+    and RFC 7579 section 4.2, not the HTTP Content-Disposition from
+    RFC 6266.
 
     disptype is a disposition type: inline, attachment, form-data.
     Should be valid extension token (see RFC 2183)
+
+    quote_fields performs value quoting to 7-bit MIME headers
+    according to RFC 7578. Set to quote_fields to False if recipient
+    can take 8-bit file names and field values.
+
+    _charset specifies the charset to use when quote_fields is True.
 
     params is a dict with disposition params.
     """
@@ -395,10 +424,23 @@ def content_disposition_header(
                 raise ValueError(
                     "bad content disposition parameter" " {!r}={!r}".format(key, val)
                 )
-            qval = quote(val, "") if quote_fields else val
-            lparams.append((key, '"%s"' % qval))
-            if key == "filename":
-                lparams.append(("filename*", "utf-8''" + qval))
+            if quote_fields:
+                if key.lower() == "filename":
+                    qval = quote(val, "", encoding=_charset)
+                    lparams.append((key, '"%s"' % qval))
+                else:
+                    try:
+                        qval = quoted_string(val)
+                    except ValueError:
+                        qval = "".join(
+                            (_charset, "''", quote(val, "", encoding=_charset))
+                        )
+                        lparams.append((key + "*", qval))
+                    else:
+                        lparams.append((key, '"%s"' % qval))
+            else:
+                qval = val.replace("\\", "\\\\").replace('"', '\\"')
+                lparams.append((key, '"%s"' % qval))
         sparams = "; ".join("=".join(pair) for pair in lparams)
         value = "; ".join((value, sparams))
     return value
@@ -652,7 +694,6 @@ class TimerContext(BaseTimerContext):
             )
 
         if self._cancelled:
-            task.cancel()
             raise asyncio.TimeoutError from None
 
         self._tasks.append(task)
@@ -813,3 +854,13 @@ def validate_etag_value(value: str) -> None:
         raise ValueError(
             f"Value {value!r} is not a valid etag. Maybe it contains '\"'?"
         )
+
+
+def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
+    """Process a date string, return a datetime object"""
+    if date_str is not None:
+        timetuple = parsedate(date_str)
+        if timetuple is not None:
+            with suppress(ValueError):
+                return datetime.datetime(*timetuple[:6], tzinfo=datetime.timezone.utc)
+    return None

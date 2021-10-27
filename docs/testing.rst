@@ -649,7 +649,8 @@ Test Client
                          first with ``TestServer(app)``.
 
    :param cookie_jar: an optional :class:`aiohttp.CookieJar` instance,
-                      may be useful with ``CookieJar(unsafe=True)``
+                      may be useful with
+                      ``CookieJar(unsafe=True, treat_as_secure_origin="http://127.0.0.1")``
                       option.
 
    :param str scheme: HTTP scheme, non-protected ``"http"`` by default.

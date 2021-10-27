@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 5
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2.3.5
       with:
         submodules: true
     - name: Setup Python 3.8
@@ -76,7 +76,7 @@ jobs:
     needs: lint
     strategy:
       matrix:
-        pyver: [3.6, 3.7, 3.8, 3.9]
+        pyver: [3.6, 3.7, 3.8, 3.9, '3.10']
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         exclude:
@@ -97,7 +97,7 @@ jobs:
     timeout-minutes: 15
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2.3.5
       with:
         submodules: true
     - name: Setup Python ${{ matrix.pyver }}
@@ -115,6 +115,8 @@ jobs:
         path: ${{ steps.pip-cache.outputs.dir }}
         restore-keys: |
             pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-
+    - name: Upgrade wheel  # Needed for proxy.py install not to explode
+      run: pip install -U wheel
     - name: Cythonize
       if: ${{ matrix.no-extensions == '' }}
       run: |
@@ -150,7 +152,7 @@ jobs:
     needs: pre-deploy
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2.3.5
       with:
         submodules: true
     - name: Setup Python 3.8
@@ -173,7 +175,7 @@ jobs:
     name: Linux
     strategy:
       matrix:
-        pyver: [cp36-cp36m, cp37-cp37m, cp38-cp38, cp39-cp39]
+        pyver: [cp36-cp36m, cp37-cp37m, cp38-cp38, cp39-cp39, cp310-cp310]
         arch: [x86_64, aarch64, i686, ppc64le, s390x]
       fail-fast: false
     runs-on: ubuntu-latest
@@ -183,7 +185,7 @@ jobs:
     needs: pre-deploy
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2.3.5
       with:
         submodules: true
     - name: Set up QEMU
@@ -221,7 +223,7 @@ jobs:
     name: Binary wheels
     strategy:
       matrix:
-        pyver: [3.6, 3.7, 3.8, 3.9]
+        pyver: [3.6, 3.7, 3.8, 3.9, '3.10']
         os: [macos, windows]
         arch: [x86, x64]
         exclude:
@@ -232,7 +234,7 @@ jobs:
     needs: pre-deploy
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2.3.5
       with:
         submodules: true
     - name: Setup Python 3.8

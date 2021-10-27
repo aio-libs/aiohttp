@@ -7,11 +7,13 @@ import io
 import json
 import pathlib
 import socket
+import ssl
 from unittest import mock
 
 import pytest
 from async_generator import async_generator, yield_
 from multidict import MultiDict
+from yarl import URL
 
 import aiohttp
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
@@ -1425,7 +1427,7 @@ async def test_POST_FILES_SINGLE_content_disposition(aiohttp_client, fname) -> N
             "text/x-python",
         ]
         assert request.headers["content-disposition"] == (
-            "inline; filename=\"conftest.py\"; filename*=utf-8''conftest.py"
+            'inline; filename="conftest.py"'
         )
 
         return web.Response()
@@ -2327,25 +2329,75 @@ async def test_creds_in_auth_and_url() -> None:
         await session.close()
 
 
-async def test_drop_auth_on_redirect_to_other_host(aiohttp_server) -> None:
-    async def srv1(request):
-        assert request.host == "host1.com"
-        assert request.headers["Authorization"] == "Basic dXNlcjpwYXNz"
-        raise web.HTTPFound("http://host2.com/path2")
+@pytest.fixture
+def create_server_for_url_and_handler(aiohttp_server, tls_certificate_authority):
+    def create(url, srv):
+        app = web.Application()
+        app.router.add_route("GET", url.path, srv)
 
-    async def srv2(request):
-        assert request.host == "host2.com"
-        assert "Authorization" not in request.headers
+        kwargs = {}
+        if url.scheme == "https":
+            cert = tls_certificate_authority.issue_cert(
+                url.host, "localhost", "127.0.0.1"
+            )
+            ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            cert.configure_cert(ssl_ctx)
+            kwargs["ssl"] = ssl_ctx
+        return aiohttp_server(app, **kwargs)
+
+    return create
+
+
+@pytest.mark.parametrize(
+    ["url_from", "url_to"],
+    [
+        ["http://host1.com/path1", "http://host2.com/path2"],
+        ["http://host1.com/path1", "https://host1.com/path1"],
+        ["https://host1.com/path1", "http://host1.com/path2"],
+    ],
+    ids=(
+        "entirely different hosts",
+        "http -> https",
+        "https -> http",
+    ),
+)
+async def test_drop_auth_on_redirect_to_other_host(
+    create_server_for_url_and_handler,
+    url_from,
+    url_to,
+) -> None:
+    url_from, url_to = URL(url_from), URL(url_to)
+
+    async def srv_from(request):
+        assert request.host == url_from.host
+        assert request.headers["Authorization"] == "Basic dXNlcjpwYXNz"
+        raise web.HTTPFound(url_to)
+
+    async def srv_to(request):
+        assert request.host == url_to.host
+        assert "Authorization" not in request.headers, "Header wasn't dropped"
         return web.Response()
 
-    app = web.Application()
-    app.router.add_route("GET", "/path1", srv1)
-    app.router.add_route("GET", "/path2", srv2)
+    server_from = await create_server_for_url_and_handler(url_from, srv_from)
+    server_to = await create_server_for_url_and_handler(url_to, srv_to)
 
-    server = await aiohttp_server(app)
+    assert (
+        url_from.host != url_to.host or server_from.scheme != server_to.scheme
+    ), "Invalid test case, host or scheme must differ"
+
+    protocol_port_map = {
+        "http": 80,
+        "https": 443,
+    }
+    etc_hosts = {
+        (url_from.host, protocol_port_map[server_from.scheme]): server_from,
+        (url_to.host, protocol_port_map[server_to.scheme]): server_to,
+    }
 
     class FakeResolver(AbstractResolver):
         async def resolve(self, host, port=0, family=socket.AF_INET):
+            server = etc_hosts[(host, port)]
+
             return [
                 {
                     "hostname": host,
@@ -2360,14 +2412,17 @@ async def test_drop_auth_on_redirect_to_other_host(aiohttp_server) -> None:
         async def close(self):
             pass
 
-    connector = aiohttp.TCPConnector(resolver=FakeResolver())
+    connector = aiohttp.TCPConnector(resolver=FakeResolver(), ssl=False)
+
     async with aiohttp.ClientSession(connector=connector) as client:
         resp = await client.get(
-            "http://host1.com/path1", auth=aiohttp.BasicAuth("user", "pass")
+            url_from,
+            auth=aiohttp.BasicAuth("user", "pass"),
         )
         assert resp.status == 200
         resp = await client.get(
-            "http://host1.com/path1", headers={"Authorization": "Basic dXNlcjpwYXNz"}
+            url_from,
+            headers={"Authorization": "Basic dXNlcjpwYXNz"},
         )
         assert resp.status == 200
 
@@ -2525,6 +2580,8 @@ async def test_aiohttp_request_coroutine(aiohttp_server) -> None:
 
     with pytest.raises(TypeError):
         await aiohttp.request("GET", server.make_url("/"))
+
+    server.close()
 
 
 async def test_yield_from_in_session_request(aiohttp_client) -> None:
@@ -2715,7 +2772,7 @@ async def test_server_close_keepalive_connection() -> None:
         await r.read()
         assert 0 == len(connector._conns)
     await session.close()
-    connector.close()
+    await connector.close()
     server.close()
     await server.wait_closed()
 
@@ -2757,7 +2814,7 @@ async def test_handle_keepalive_on_closed_connection() -> None:
     assert 0 == len(connector._conns)
 
     await session.close()
-    connector.close()
+    await connector.close()
     server.close()
     await server.wait_closed()
 
@@ -2950,3 +3007,22 @@ async def test_read_bufsize_explicit(aiohttp_client) -> None:
 
     async with await client.get("/", read_bufsize=4) as resp:
         assert resp.content.get_read_buffer_limits() == (4, 8)
+
+
+async def test_http_empty_data_text(aiohttp_client) -> None:
+    async def handler(request):
+        data = await request.read()
+        ret = "ok" if data == b"" else "fail"
+        resp = web.Response(text=ret)
+        resp.headers["Content-Type"] = request.headers["Content-Type"]
+        return resp
+
+    app = web.Application()
+    app.add_routes([web.post("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    async with await client.post("/", data="") as resp:
+        assert resp.status == 200
+        assert await resp.text() == "ok"
+        assert resp.headers["Content-Type"] == "text/plain; charset=utf-8"
