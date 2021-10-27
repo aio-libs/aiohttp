@@ -180,3 +180,21 @@ async def test_resume_drain_cancelled() -> None:
     with suppress(asyncio.CancelledError):
         await t
     assert pr._drain_waiter is None
+
+
+async def test_parallel_drain_race_condition() -> None:
+    loop = asyncio.get_event_loop()
+    pr = BaseProtocol(loop=loop)
+    tr = mock.Mock()
+    pr.connection_made(tr)
+    pr.pause_writing()
+
+    ts = [loop.create_task(pr._drain_helper()) for _ in range(5)]
+    assert not (await asyncio.wait(ts, timeout=0.5))[
+        0
+    ], "All draining tasks must be pending"
+
+    assert pr._drain_waiter is not None
+    pr.resume_writing()
+    await asyncio.gather(*ts)
+    assert pr._drain_waiter is None

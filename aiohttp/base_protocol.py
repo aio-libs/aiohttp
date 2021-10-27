@@ -81,7 +81,7 @@ class BaseProtocol(asyncio.Protocol):
         if not self._paused:
             return
         waiter = self._drain_waiter
-        assert waiter is None or waiter.cancelled()
-        waiter = self._loop.create_future()
-        self._drain_waiter = waiter
-        await waiter
+        if waiter is None:
+            waiter = self._loop.create_future()
+            self._drain_waiter = waiter
+        await asyncio.shield(waiter)
