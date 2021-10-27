@@ -40,8 +40,6 @@ jobs:
       uses: py-actions/py-dependency-install@v2
       with:
         path: requirements/lint.txt
-    - name: Pre-Commit hooks
-      uses: pre-commit/action@v2.0.3
     - name: Install itself
       run: |
         python setup.py install
