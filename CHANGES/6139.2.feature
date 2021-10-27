@@ -1,1 +1,1 @@
-Started shipping platform-specific wheels with the ``musl`` tag targeting typical Alpine Linux runtimes.
+Started shipping platform-specific wheels with the ``musl`` tag targeting typical Alpine Linux runtimes — :user:`asvetlov`.
