@@ -779,6 +779,10 @@ class MultipartWriter(Payload):
             self._boundary = boundary.encode("ascii")
         except UnicodeEncodeError:
             raise ValueError("boundary should contain ASCII only chars") from None
+
+        if len(boundary) > 70:
+            raise ValueError("boundary %r is too long (70 chars max)" % boundary)
+
         ctype = f"multipart/{subtype}; boundary={self._boundary_value}"
 
         super().__init__(None, content_type=ctype)

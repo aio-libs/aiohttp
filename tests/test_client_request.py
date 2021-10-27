@@ -648,6 +648,21 @@ async def test_urlencoded_formdata_charset(loop: Any, conn: Any) -> None:
     )
 
 
+async def test_formdata_boundary_from_headers(loop: Any, conn: Any) -> None:
+    boundary = "some_boundary"
+    file_path = pathlib.Path(__file__).parent / "aiohttp.png"
+    with file_path.open("rb") as f:
+        req = ClientRequest(
+            "post",
+            URL("http://python.org"),
+            data={"aiohttp.png": f},
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+            loop=loop,
+        )
+        await req.send(conn)
+        assert req.body._boundary == boundary.encode()
+
+
 async def test_post_data(loop: Any, conn: Any) -> None:
     for meth in ClientRequest.POST_METHODS:
         req = ClientRequest(

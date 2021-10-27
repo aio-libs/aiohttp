@@ -20,8 +20,10 @@ class FormData:
         fields: Iterable[Any] = (),
         quote_fields: bool = True,
         charset: Optional[str] = None,
+        boundary: Optional[str] = None,
     ) -> None:
-        self._writer = multipart.MultipartWriter("form-data")
+        self._boundary = boundary
+        self._writer = multipart.MultipartWriter("form-data", boundary=self._boundary)
         self._fields = []  # type: List[Any]
         self._is_multipart = False
         self._is_processed = False
