@@ -9,6 +9,7 @@ from libc.stdint cimport (
     uint64_t,
 )
 
+
 cdef extern from "../vendor/llhttp/build/llhttp.h":
 
     struct llhttp__internal_s:
