@@ -132,6 +132,7 @@ Gustavo Carneiro
 Günther Jena
 Hans Adema
 Harmon Y.
+Harry Liu
 Hiroshi Ogawa
 Hrishikesh Paranjape
 Hu Bo
@@ -230,6 +231,7 @@ Navid Sheikhol
 Nicolas Braem
 Nikolay Kim
 Nikolay Novik
+Nándor Mátravölgyi
 Oisin Aylward
 Olaf Conradi
 Oleg Höfling
