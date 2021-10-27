@@ -71,6 +71,30 @@ async def test_ws_connect_with_origin(key_data, loop) -> None:
     assert m_req.call_args[1]["headers"][hdrs.ORIGIN] == origin
 
 
+async def test_ws_connect_with_params(ws_key, loop, key_data) -> None:
+    params = {"key1": "value1", "key2": "value2"}
+
+    resp = mock.Mock()
+    resp.status = 101
+    resp.headers = {
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
+        hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
+        hdrs.SEC_WEBSOCKET_PROTOCOL: "chat",
+    }
+    with mock.patch("aiohttp.client.os") as m_os:
+        with mock.patch("aiohttp.client.ClientSession.request") as m_req:
+            m_os.urandom.return_value = key_data
+            m_req.return_value = loop.create_future()
+            m_req.return_value.set_result(resp)
+
+            await aiohttp.ClientSession().ws_connect(
+                "http://test.org", protocols=("t1", "t2", "chat"), params=params
+            )
+
+    assert m_req.call_args[1]["params"] == params
+
+
 async def test_ws_connect_custom_response(loop, ws_key, key_data) -> None:
     class CustomResponse(client.ClientWebSocketResponse):
         def read(self, decode=False):
