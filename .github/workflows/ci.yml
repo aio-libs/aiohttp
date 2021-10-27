@@ -152,12 +152,12 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2.3.5
+    - name: Setup Python
+      uses: actions/setup-python@v2.2.2
+    - name: Install cython
+      uses: py-actions/py-dependency-install@v2
       with:
-        submodules: true
-    - name: Setup Python 3.8
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.8
+        path: requirements/cython.txt
     - name: Cythonize
       run: |
         make cythonize
@@ -170,113 +170,76 @@ jobs:
         name: dist
         path: dist
 
-  build-linux:
-    name: Linux
-    strategy:
-      matrix:
-        pyver: [cp37-cp37m, cp38-cp38, cp39-cp39, cp310-cp310]
-        arch: [x86_64, aarch64, i686, ppc64le, s390x]
-      fail-fast: false
-    runs-on: ubuntu-latest
-    env:
-      py: /opt/python/${{ matrix.pyver }}/bin/python
-      img: quay.io/pypa/manylinux2014_${{ matrix.arch }}
-    needs: pre-deploy
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v2.3.5
-      with:
-        submodules: true
-    - name: Set up QEMU
-      id: qemu
-      uses: docker/setup-qemu-action@v1
-    - name: Available platforms
-      run: echo ${{ steps.qemu.outputs.platforms }}
-    - name: Setup Python 3.8
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.8
-    - name: Cythonize
-      if: ${{ matrix.no-extensions == '' }}
-      run: |
-        make cythonize
-    - name: Install tools
-      run: |
-        docker run --rm -v ${{ github.workspace }}:/ws:rw --workdir=/ws \
-          ${{ env.img }} ${{ env.py }} -m pip install -U setuptools wheel
-    - name: Make wheel
-      run: |
-        docker run --rm -v ${{ github.workspace }}:/ws:rw --workdir=/ws \
-          ${{ env.img }} ${{ env.py }} setup.py bdist_wheel
-    - name: Repair wheel wheel
-      run: |
-        docker run --rm -v ${{ github.workspace }}:/ws:rw --workdir=/ws \
-          ${{ env.img }} auditwheel repair dist/*.whl --wheel-dir wheelhouse/
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v2
-      with:
-        name: dist
-        path: wheelhouse/*
-
-  build-binary:
-    name: Binary wheels
-    strategy:
-      matrix:
-        pyver: [3.7, 3.8, 3.9, '3.10']
-        os: [macos, windows]
-        arch: [x86, x64]
-        exclude:
-        - os: macos
-          arch: x86
-      fail-fast: false
+  build-wheels:
+    name: Build wheels on ${{ matrix.os }} ${{ matrix.qemu }}
     runs-on: ${{ matrix.os }}-latest
     needs: pre-deploy
+    strategy:
+      matrix:
+        os: [ubuntu, windows, macos]
+        qemu: ['']
+        include:
+          # Split ubuntu job for the sake of speed-up
+        - os: ubuntu
+          qemu: aarch64
+        - os: ubuntu
+          qemu: ppc64le
+        - os: ubuntu
+          qemu: s390x
     steps:
     - name: Checkout
       uses: actions/checkout@v2.3.5
+    - name: Set up QEMU
+      if: ${{ matrix.qemu }}
+      uses: docker/setup-qemu-action@v1
       with:
-        submodules: true
-    - name: Setup Python 3.8
-      uses: actions/setup-python@v2
+        platforms: all
+      id: qemu
+    - name: Prepare emulation
+      run: |
+        if [[ -n "${{ matrix.qemu }}" ]]; then
+          # Build emulated architectures only if QEMU is set,
+          # use default "auto" otherwise
+          echo "CIBW_ARCHS_LINUX=${{ matrix.qemu }}" >> $GITHUB_ENV
+        fi
+      shell: bash
+    - name: Setup Python
+      uses: actions/setup-python@v2.2.2
+    - name: Install cython
+      uses: py-actions/py-dependency-install@v2
       with:
-        python-version: ${{ matrix.pyver }}
-        architecture: ${{ matrix.arch }}
+        path: requirements/cython.txt
     - name: Cythonize
-      if: ${{ matrix.no-extensions == '' }}
       run: |
         make cythonize
-    - name: Install dependencies
-      run: |
-        python -m pip install -U setuptools wheel
-    - name: Make wheel
-      run:
-        python setup.py bdist_wheel
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v2
+    - name: Build wheels
+      uses: pypa/cibuildwheel@v2.2.2
+      env:
+        CIBW_ARCHS_MACOS: x86_64 arm64 universal2
+    - uses: actions/upload-artifact@v2
       with:
         name: dist
-        path: dist
+        path: ./wheelhouse/*.whl
 
   deploy:
     name: Deploy
-    needs: [build-linux, build-binary, build-tarball]
+    environment: release
+    needs: [build-tarball, build-wheels]
     runs-on: ubuntu-latest
     steps:
-    - name: Setup Python 3.8
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.8
-    - name: Install twine
+    - name: Checkout
+      uses: actions/checkout@v2.3.5
+    - name: Login
       run: |
-        python -m pip install twine
-    - name: Download dists
-      uses: actions/download-artifact@v2
+        echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+    - name: Make Release
+      uses: aio-libs/create-release@v1.2.2
       with:
-        name: dist
-        path: dist
-    - name: PyPI upload
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-      run: |
-        twine upload dist/*
+        changes_file: CHANGES.rst
+        name: aiohttp
+        version_file: aiohttp/__init__.py
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        pypi_token: ${{ secrets.PYPI_API_TOKEN }}
+        artifact: dist
+        fix_issue_regex: "`#(\\d+) <https://github.com/aio-libs/aiohttp/issues/\\1>`"
+        fix_issue_repl: "(#\\1)"
