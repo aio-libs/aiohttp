@@ -1,1 +1,1 @@
-Add `base_url` parameter to ClientSession constructor
+Added ``base_url`` parameter to the initializer of :class:`ClientSession`.
