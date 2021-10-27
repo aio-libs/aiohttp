@@ -482,7 +482,7 @@ class Application(MutableMapping[str, Any]):
         match_info.freeze()
 
         resp = None
-        request._match_info = match_info  # type: ignore[assignment]
+        request._match_info = match_info
         expect = request.headers.get(hdrs.EXPECT)
         if expect:
             resp = await match_info.expect_handler(request)
