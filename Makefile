@@ -49,7 +49,7 @@ endif
 .SECONDARY: $(call to-hash,$(ALLS))
 
 .update-pip:
-	@pip install -U 'pip'
+	@python -m pip install --upgrade pip
 
 .install-cython: .update-pip $(call to-hash,requirements/cython.txt)
 	@pip install -r requirements/cython.txt
@@ -92,10 +92,12 @@ test: .develop
 .PHONY: vtest
 vtest: .develop
 	@pytest -s -v
+	@python -X dev -m pytest -s -v -m dev_mode
 
 .PHONY: vvtest
 vvtest: .develop
 	@pytest -vv
+	@python -X dev -m pytest -s -vv -m dev_mode
 
 .PHONY: cov-dev
 cov-dev: .develop
@@ -138,12 +140,12 @@ clean:
 
 .PHONY: doc
 doc:
-	@make -C docs html SPHINXOPTS="-W --keep-going -E"
+	@make -C docs html SPHINXOPTS="-W --keep-going -n -E"
 	@echo "open file://`pwd`/docs/_build/html/index.html"
 
 .PHONY: doc-spelling
 doc-spelling:
-	@make -C docs spelling SPHINXOPTS="-W -E"
+	@make -C docs spelling SPHINXOPTS="-W --keep-going -n -E"
 
 .PHONY: compile-deps
 compile-deps: .update-pip

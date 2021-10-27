@@ -1,0 +1,2 @@
+Implemented end-to-end testing of sending HTTP and HTTPS requests
+via ``proxy.py``.

@@ -38,6 +38,7 @@ from .client_exceptions import (
     ServerFingerprintMismatch,
 )
 from .formdata import FormData
+from .hdrs import CONTENT_TYPE
 from .helpers import (
     BaseTimerContext,
     BasicAuth,
@@ -45,6 +46,7 @@ from .helpers import (
     TimerNoop,
     is_expected_content_type,
     noop,
+    parse_mimetype,
     reify,
     set_result,
 )
@@ -70,7 +72,7 @@ except ImportError:  # pragma: no cover
 try:
     import cchardet as chardet
 except ImportError:  # pragma: no cover
-    import chardet  # type: ignore[no-redef]
+    import charset_normalizer as chardet  # type: ignore[no-redef]
 
 
 __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
@@ -245,7 +247,7 @@ class ClientRequest:
         self.update_proxy(proxy, proxy_auth, proxy_headers)
 
         self.update_body_from_data(data)
-        if data or self.method not in self.GET_METHODS:
+        if data is not None or self.method not in self.GET_METHODS:
             self.update_transfer_encoding()
         self.update_expect_continue(expect100)
         if traces is None:
@@ -383,7 +385,7 @@ class ClientRequest:
 
     def update_content_encoding(self, data: Any) -> None:
         """Set request content encoding."""
-        if not data:
+        if data is None:
             return
 
         enc = self.headers.get(hdrs.CONTENT_ENCODING, "").lower()
@@ -433,7 +435,7 @@ class ClientRequest:
         self.headers[hdrs.AUTHORIZATION] = auth.encode()
 
     def update_body_from_data(self, body: Any) -> None:
-        if not body:
+        if body is None:
             return
 
         # FormData
@@ -443,7 +445,12 @@ class ClientRequest:
         try:
             body = payload.PAYLOAD_REGISTRY.get(body, disposition=None)
         except payload.LookupError:
-            body = FormData(body)()
+            boundary = None
+            if CONTENT_TYPE in self.headers:
+                boundary = parse_mimetype(self.headers[CONTENT_TYPE]).parameters.get(
+                    "boundary"
+                )
+            body = FormData(body, boundary=boundary)()
 
         self.body = body
 
@@ -481,8 +488,6 @@ class ClientRequest:
         proxy_auth: Optional[BasicAuth],
         proxy_headers: Optional[LooseHeaders],
     ) -> None:
-        if proxy and not proxy.scheme == "http":
-            raise ValueError("Only http proxies are supported")
         if proxy_auth and not isinstance(proxy_auth, helpers.BasicAuth):
             raise ValueError("proxy_auth must be None or BasicAuth() tuple")
         self.proxy = proxy

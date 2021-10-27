@@ -1,7 +1,8 @@
 import re
 import warnings
-from typing import TYPE_CHECKING, Awaitable, Callable, Tuple, Type, TypeVar
+from typing import TYPE_CHECKING, Tuple, Type, TypeVar
 
+from .typedefs import Handler, Middleware
 from .web_exceptions import HTTPMove, HTTPPermanentRedirect
 from .web_request import Request
 from .web_response import StreamResponse
@@ -22,7 +23,7 @@ async def _check_request_resolves(request: Request, path: str) -> Tuple[bool, Re
     alt_request = request.clone(rel_url=path)
 
     match_info = await request.app.router.resolve(alt_request)
-    alt_request._match_info = match_info  # type: ignore[assignment]
+    alt_request._match_info = match_info
 
     if match_info.http_exception is None:
         return True, alt_request
@@ -41,17 +42,13 @@ def middleware(f: _Func) -> _Func:
     return f
 
 
-_Handler = Callable[[Request], Awaitable[StreamResponse]]
-_Middleware = Callable[[Request, _Handler], Awaitable[StreamResponse]]
-
-
 def normalize_path_middleware(
     *,
     append_slash: bool = True,
     remove_slash: bool = False,
     merge_slashes: bool = True,
     redirect_class: Type[HTTPMove] = HTTPPermanentRedirect,
-) -> _Middleware:
+) -> Middleware:
     """
     Middleware factory which produces a middleware that normalizes
     the path of a request. By normalizing it means:
@@ -85,7 +82,7 @@ def normalize_path_middleware(
     correct_configuration = not (append_slash and remove_slash)
     assert correct_configuration, "Cannot both remove and append slash"
 
-    async def impl(request: Request, handler: _Handler) -> StreamResponse:
+    async def impl(request: Request, handler: Handler) -> StreamResponse:
         if isinstance(request.match_info.route, SystemRoute):
             paths_to_check = []
             if "?" in request.raw_path:
@@ -118,8 +115,8 @@ def normalize_path_middleware(
     return impl
 
 
-def _fix_request_current_app(app: "Application") -> _Middleware:
-    async def impl(request: Request, handler: _Handler) -> StreamResponse:
+def _fix_request_current_app(app: "Application") -> Middleware:
+    async def impl(request: Request, handler: Handler) -> StreamResponse:
         with request.match_info.set_current_app(app):
             return await handler(request)
 

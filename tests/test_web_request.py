@@ -1,5 +1,6 @@
 # type: ignore
 import asyncio
+import datetime
 import socket
 import weakref
 from collections.abc import MutableMapping
@@ -865,5 +866,30 @@ async def test_handler_return_type(aiohttp_client: Any) -> None:
     ],
 )
 def test_etag_headers(header, header_attr, header_val, expected) -> None:
+    req = make_mocked_request("GET", "/", headers={header: header_val})
+    assert getattr(req, header_attr) == expected
+
+
+@pytest.mark.parametrize(
+    ["header", "header_attr"],
+    [
+        pytest.param("If-Modified-Since", "if_modified_since"),
+        pytest.param("If-Unmodified-Since", "if_unmodified_since"),
+        pytest.param("If-Range", "if_range"),
+    ],
+)
+@pytest.mark.parametrize(
+    ["header_val", "expected"],
+    [
+        pytest.param("xxyyzz", None),
+        pytest.param("Tue, 08 Oct 4446413 00:56:40 GMT", None),
+        pytest.param("Tue, 08 Oct 2000 00:56:80 GMT", None),
+        pytest.param(
+            "Tue, 08 Oct 2000 00:56:40 GMT",
+            datetime.datetime(2000, 10, 8, 0, 56, 40, tzinfo=datetime.timezone.utc),
+        ),
+    ],
+)
+def test_datetime_headers(header, header_attr, header_val, expected) -> None:
     req = make_mocked_request("GET", "/", headers={header: header_val})
     assert getattr(req, header_attr) == expected

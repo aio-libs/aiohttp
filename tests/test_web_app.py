@@ -7,6 +7,7 @@ import pytest
 
 from aiohttp import log, web
 from aiohttp.test_utils import make_mocked_coro
+from aiohttp.typedefs import Handler
 
 
 async def test_app_ctor() -> None:
@@ -137,7 +138,7 @@ def test_app_run_middlewares() -> None:
     root.freeze()
     assert root._run_middlewares is False
 
-    async def middleware(request, handler):
+    async def middleware(request, handler: Handler):
         return await handler(request)
 
     root = web.Application(middlewares=[middleware])

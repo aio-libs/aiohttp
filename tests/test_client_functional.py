@@ -8,11 +8,13 @@ import io
 import json
 import pathlib
 import socket
+import ssl
 from typing import Any
 from unittest import mock
 
 import pytest
 from multidict import MultiDict
+from yarl import URL
 
 import aiohttp
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
@@ -994,7 +996,7 @@ async def test_HTTP_302_max_redirects(aiohttp_client: Any) -> None:
     async def redirect(request):
         count = int(request.match_info["count"])
         if count:
-            raise web.HTTPFound(location="/redirect/{}".format(count - 1))
+            raise web.HTTPFound(location=f"/redirect/{count - 1}")
         else:
             raise web.HTTPFound(location="/")
 
@@ -2333,25 +2335,85 @@ async def test_creds_in_auth_and_url() -> None:
         await session.close()
 
 
-async def test_drop_auth_on_redirect_to_other_host(aiohttp_server: Any) -> None:
-    async def srv1(request):
-        assert request.host == "host1.com"
-        assert request.headers["Authorization"] == "Basic dXNlcjpwYXNz"
-        raise web.HTTPFound("http://host2.com/path2")
+@pytest.fixture
+def create_server_for_url_and_handler(
+    aiohttp_server: Any, tls_certificate_authority: Any
+):
+    def create(url: URL, srv: Any):
+        app = web.Application()
+        app.router.add_route("GET", url.path, srv)
 
-    async def srv2(request):
-        assert request.host == "host2.com"
-        assert "Authorization" not in request.headers
+        kwargs = {}
+        if url.scheme == "https":
+            cert = tls_certificate_authority.issue_cert(
+                url.host, "localhost", "127.0.0.1"
+            )
+            ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            cert.configure_cert(ssl_ctx)
+            kwargs["ssl"] = ssl_ctx
+        return aiohttp_server(app, **kwargs)
+
+    return create
+
+
+@pytest.mark.parametrize(
+    ["url_from", "url_to", "is_drop_header_expected"],
+    [
+        [
+            "http://host1.com/path1",
+            "http://host2.com/path2",
+            True,
+        ],
+        ["http://host1.com/path1", "https://host1.com/path1", False],
+        ["https://host1.com/path1", "http://host1.com/path2", True],
+    ],
+    ids=(
+        "entirely different hosts",
+        "http -> https",
+        "https -> http",
+    ),
+)
+async def test_drop_auth_on_redirect_to_other_host(
+    create_server_for_url_and_handler: Any,
+    url_from: str,
+    url_to: str,
+    is_drop_header_expected: bool,
+) -> None:
+    url_from, url_to = URL(url_from), URL(url_to)
+
+    async def srv_from(request):
+        assert request.host == url_from.host
+        assert request.headers["Authorization"] == "Basic dXNlcjpwYXNz"
+        raise web.HTTPFound(url_to)
+
+    async def srv_to(request):
+        assert request.host == url_to.host
+        if is_drop_header_expected:
+            assert "Authorization" not in request.headers, "Header wasn't dropped"
+        else:
+            assert "Authorization" in request.headers, "Header was dropped"
         return web.Response()
 
-    app = web.Application()
-    app.router.add_route("GET", "/path1", srv1)
-    app.router.add_route("GET", "/path2", srv2)
+    server_from = await create_server_for_url_and_handler(url_from, srv_from)
+    server_to = await create_server_for_url_and_handler(url_to, srv_to)
 
-    server = await aiohttp_server(app)
+    assert (
+        url_from.host != url_to.host or server_from.scheme != server_to.scheme
+    ), "Invalid test case, host or scheme must differ"
+
+    protocol_port_map = {
+        "http": 80,
+        "https": 443,
+    }
+    etc_hosts = {
+        (url_from.host, protocol_port_map[server_from.scheme]): server_from,
+        (url_to.host, protocol_port_map[server_to.scheme]): server_to,
+    }
 
     class FakeResolver(AbstractResolver):
         async def resolve(self, host, port=0, family=socket.AF_INET):
+            server = etc_hosts[(host, port)]
+
             return [
                 {
                     "hostname": host,
@@ -2366,14 +2428,17 @@ async def test_drop_auth_on_redirect_to_other_host(aiohttp_server: Any) -> None:
         async def close(self):
             pass
 
-    connector = aiohttp.TCPConnector(resolver=FakeResolver())
+    connector = aiohttp.TCPConnector(resolver=FakeResolver(), ssl=False)
+
     async with aiohttp.ClientSession(connector=connector) as client:
         resp = await client.get(
-            "http://host1.com/path1", auth=aiohttp.BasicAuth("user", "pass")
+            url_from,
+            auth=aiohttp.BasicAuth("user", "pass"),
         )
         assert resp.status == 200
         resp = await client.get(
-            "http://host1.com/path1", headers={"Authorization": "Basic dXNlcjpwYXNz"}
+            url_from,
+            headers={"Authorization": "Basic dXNlcjpwYXNz"},
         )
         assert resp.status == 200
 
@@ -2957,3 +3022,22 @@ async def test_read_bufsize_explicit(aiohttp_client: Any) -> None:
 
     async with await client.get("/", read_bufsize=4) as resp:
         assert resp.content.get_read_buffer_limits() == (4, 8)
+
+
+async def test_http_empty_data_text(aiohttp_client: Any) -> None:
+    async def handler(request):
+        data = await request.read()
+        ret = "ok" if data == b"" else "fail"
+        resp = web.Response(text=ret)
+        resp.headers["Content-Type"] = request.headers["Content-Type"]
+        return resp
+
+    app = web.Application()
+    app.add_routes([web.post("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    async with await client.post("/", data="") as resp:
+        assert resp.status == 200
+        assert await resp.text() == "ok"
+        assert resp.headers["Content-Type"] == "text/plain; charset=utf-8"
