@@ -13,9 +13,11 @@ import platform
 import re
 import sys
 import time
+import warnings
 import weakref
 from collections import namedtuple
 from contextlib import suppress
+from email.utils import parsedate
 from http.cookies import SimpleCookie
 from math import ceil
 from pathlib import Path
@@ -54,7 +56,9 @@ from .typedefs import PathLike  # noqa
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
 PY_38 = sys.version_info >= (3, 8)
+PY_310 = sys.version_info >= (3, 10)
 
+COOKIE_MAX_LENGTH = 4096
 
 try:
     from typing import ContextManager
@@ -672,7 +676,6 @@ class TimerContext(BaseTimerContext):
             )
 
         if self._cancelled:
-            task.cancel()
             raise asyncio.TimeoutError from None
 
         self._tasks.append(task)
@@ -876,6 +879,15 @@ class CookieMixin:
         if samesite is not None:
             c["samesite"] = samesite
 
+        if DEBUG:
+            cookie_length = len(c.output(header="")[1:])
+            if cookie_length > COOKIE_MAX_LENGTH:
+                warnings.warn(
+                    "The size of is too large, it might get ignored by the client.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
     def del_cookie(
         self, name: str, *, domain: Optional[str] = None, path: str = "/"
     ) -> None:
@@ -924,3 +936,13 @@ def validate_etag_value(value: str) -> None:
         raise ValueError(
             f"Value {value!r} is not a valid etag. Maybe it contains '\"'?"
         )
+
+
+def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
+    """Process a date string, return a datetime object"""
+    if date_str is not None:
+        timetuple = parsedate(date_str)
+        if timetuple is not None:
+            with suppress(ValueError):
+                return datetime.datetime(*timetuple[:6], tzinfo=datetime.timezone.utc)
+    return None

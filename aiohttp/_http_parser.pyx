@@ -566,10 +566,12 @@ cdef class HttpRequestParser(HttpParser):
                  size_t max_line_size=8190, size_t max_headers=32768,
                  size_t max_field_size=8190, payload_exception=None,
                  bint response_with_body=True, bint read_until_eof=False,
+                 bint auto_decompress=True,
     ):
          self._init(cparser.HTTP_REQUEST, protocol, loop, limit, timer,
                     max_line_size, max_headers, max_field_size,
-                    payload_exception, response_with_body, read_until_eof)
+                    payload_exception, response_with_body, read_until_eof,
+                    auto_decompress)
 
     cdef object _on_status_complete(self):
          cdef Py_buffer py_buf

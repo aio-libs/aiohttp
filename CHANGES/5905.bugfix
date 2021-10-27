@@ -1,1 +1,1 @@
-remove deprecated loop argument for asnycio.sleep/gather calls
+Removed the deprecated ``loop`` argument from the ``asyncio.sleep``/``gather`` calls

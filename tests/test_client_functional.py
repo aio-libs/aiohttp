@@ -2348,7 +2348,7 @@ def create_server_for_url_and_handler(
             cert = tls_certificate_authority.issue_cert(
                 url.host, "localhost", "127.0.0.1"
             )
-            ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+            ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             cert.configure_cert(ssl_ctx)
             kwargs["ssl"] = ssl_ctx
         return aiohttp_server(app, **kwargs)
@@ -3022,3 +3022,22 @@ async def test_read_bufsize_explicit(aiohttp_client: Any) -> None:
 
     async with await client.get("/", read_bufsize=4) as resp:
         assert resp.content.get_read_buffer_limits() == (4, 8)
+
+
+async def test_http_empty_data_text(aiohttp_client: Any) -> None:
+    async def handler(request):
+        data = await request.read()
+        ret = "ok" if data == b"" else "fail"
+        resp = web.Response(text=ret)
+        resp.headers["Content-Type"] = request.headers["Content-Type"]
+        return resp
+
+    app = web.Application()
+    app.add_routes([web.post("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    async with await client.post("/", data="") as resp:
+        assert resp.status == 200
+        assert await resp.text() == "ok"
+        assert resp.headers["Content-Type"] == "text/plain; charset=utf-8"
