@@ -1,1 +1,1 @@
-Modify _drain_helper() to handle parallel calls of _send_frame() without race-condition.
+Modify _drain_helper() to handle concurrrent `await resp.write(...)` or `ws.send_json(...)` calls without race-condition.
