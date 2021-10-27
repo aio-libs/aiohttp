@@ -13,7 +13,6 @@ from yarl import URL
 import aiohttp
 from aiohttp import http_exceptions, streams
 from aiohttp.http_parser import (
-    NO_EXTENSIONS,
     DeflateBuffer,
     HttpPayloadParser,
     HttpRequestParserPy,
@@ -84,14 +83,6 @@ def response_cls(request: Any):
 @pytest.fixture
 def stream():
     return mock.Mock()
-
-
-@pytest.mark.skipif(NO_EXTENSIONS, reason="Extentions available but not imported")
-def test_c_parser_loaded():
-    assert "HttpRequestParserC" in dir(aiohttp.http_parser)
-    assert "HttpResponseParserC" in dir(aiohttp.http_parser)
-    assert "RawRequestMessageC" in dir(aiohttp.http_parser)
-    assert "RawResponseMessageC" in dir(aiohttp.http_parser)
 
 
 def test_parse_headers(parser: Any) -> None:
