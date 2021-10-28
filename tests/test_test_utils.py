@@ -1,4 +1,6 @@
 import gzip
+from socket import socket
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -12,6 +14,7 @@ from aiohttp.test_utils import (
     RawTestServer as _RawTestServer,
     TestClient as _TestClient,
     TestServer as _TestServer,
+    get_port_socket,
     loop_context,
     make_mocked_request,
     unittest_run_loop,
@@ -339,3 +342,21 @@ async def test_custom_port(loop, app, aiohttp_unused_port) -> None:
     assert _hello_world_str == text
 
     await client.close()
+
+
+@pytest.mark.parametrize("test_server_cls", [_TestServer, _RawTestServer])
+async def test_base_test_server_socket_factory(
+    test_server_cls: type, app: Any, loop: Any
+) -> None:
+    factory_called = False
+
+    def factory(*args, **kwargs) -> socket:
+        nonlocal factory_called
+        factory_called = True
+        return get_port_socket(*args, **kwargs)
+
+    server = test_server_cls(app, loop=loop, socket_factory=factory)
+    async with server:
+        pass
+
+    assert factory_called
