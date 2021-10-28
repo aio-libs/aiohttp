@@ -1,5 +1,4 @@
 import pathlib
-import re
 import sys
 from distutils.command.build_ext import build_ext
 from distutils.errors import CCompilerError, DistutilsExecError, DistutilsPlatformError
@@ -9,9 +8,9 @@ from setuptools import Extension, setup
 if sys.version_info < (3, 6):
     raise RuntimeError("aiohttp 3.7+ requires Python 3.6+")
 
-here = pathlib.Path(__file__).parent
+HERE = pathlib.Path(__file__).parent
 
-if (here / ".git").exists() and not (here / "vendor/http-parser/README.md").exists():
+if (HERE / ".git").exists() and not (HERE / "vendor/http-parser/README.md").exists():
     print("Install submodules when building from git clone", file=sys.stderr)
     print("Hint:", file=sys.stderr)
     print("  git submodule update --init", file=sys.stderr)
@@ -56,93 +55,13 @@ class ve_build_ext(build_ext):
             raise BuildFailed()
 
 
-txt = (here / "aiohttp" / "__init__.py").read_text("utf-8")
 try:
-    version = re.findall(r'^__version__ = "([^"]+)"\r?$', txt, re.M)[0]
-except IndexError:
-    raise RuntimeError("Unable to determine version.")
-
-install_requires = [
-    "attrs>=17.3.0",
-    "charset-normalizer>=2.0,<3.0",
-    "multidict>=4.5,<7.0",
-    "async_timeout>=4.0.0a3,<5.0",
-    'asynctest==0.13.0; python_version<"3.8"',
-    "yarl>=1.0,<2.0",
-    'idna-ssl>=1.0; python_version<"3.7"',
-    'typing_extensions>=3.7.4; python_version<"3.8"',
-    "frozenlist>=1.1.1",
-    "aiosignal>=1.1.2",
-]
-
-
-def read(f):
-    return (here / f).read_text("utf-8").strip()
-
-
-args = dict(
-    name="aiohttp",
-    version=version,
-    description="Async http client/server framework (asyncio)",
-    long_description=read("README.rst"),
-    long_description_content_type="text/x-rst",
-    classifiers=[
-        "License :: OSI Approved :: Apache Software License",
-        "Intended Audience :: Developers",
-        "Programming Language :: Python",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
-        "Development Status :: 5 - Production/Stable",
-        "Operating System :: POSIX",
-        "Operating System :: MacOS :: MacOS X",
-        "Operating System :: Microsoft :: Windows",
-        "Topic :: Internet :: WWW/HTTP",
-        "Framework :: AsyncIO",
-    ],
-    author="Nikolay Kim",
-    author_email="fafhrd91@gmail.com",
-    maintainer=", ".join(
-        (
-            "Nikolay Kim <fafhrd91@gmail.com>",
-            "Andrew Svetlov <andrew.svetlov@gmail.com>",
-        )
-    ),
-    maintainer_email="aio-libs@googlegroups.com",
-    url="https://github.com/aio-libs/aiohttp",
-    project_urls={
-        "Chat: Gitter": "https://gitter.im/aio-libs/Lobby",
-        "CI: GitHub Actions": "https://github.com/aio-libs/aiohttp/actions?query=workflow%3ACI",  # noqa
-        "Coverage: codecov": "https://codecov.io/github/aio-libs/aiohttp",
-        "Docs: RTD": "https://docs.aiohttp.org",
-        "GitHub: issues": "https://github.com/aio-libs/aiohttp/issues",
-        "GitHub: repo": "https://github.com/aio-libs/aiohttp",
-    },
-    license="Apache 2",
-    packages=["aiohttp"],
-    python_requires=">=3.6",
-    install_requires=install_requires,
-    extras_require={
-        "speedups": [
-            "aiodns",
-            "Brotli",
-            "cchardet",
-        ],
-    },
-    include_package_data=True,
-    ext_modules=extensions,
-    cmdclass=dict(build_ext=ve_build_ext),
-)
-
-try:
-    setup(**args)
+    setup(
+        ext_modules=extensions,
+        cmdclass=dict(build_ext=ve_build_ext),
+    )
 except BuildFailed:
     print("************************************************************")
     print("Cannot compile C accelerator module, use pure python version")
     print("************************************************************")
-    del args["ext_modules"]
-    del args["cmdclass"]
-    setup(**args)
+    setup()
