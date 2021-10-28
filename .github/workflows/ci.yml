@@ -40,9 +40,9 @@ jobs:
       uses: py-actions/py-dependency-install@v2
       with:
         path: requirements/lint.txt
-    - name: Install itself
+    - name: Install self
       run: |
-        python setup.py install
+        python -m pip install .
       env:
         AIOHTTP_NO_EXTENSIONS: 1
     - name: Run linters
