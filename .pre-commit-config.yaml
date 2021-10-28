@@ -1,6 +1,21 @@
 repos:
 - repo: local
   hooks:
+  - id: changelogs-rst
+    name: changelog filenames
+    language: fail
+    entry: >-
+      Changelog files must be named
+      ####.(bugfix|feature|removal|doc|misc)(.#)?(.rst)?
+    exclude: >-
+      ^CHANGES/(\.TEMPLATE\.rst|\.gitignore|\d+\.(bugfix|feature|removal|doc|misc)(\.\d+)?(\.rst)?|README\.rst)$
+    files: ^CHANGES/
+  - id: changelogs-user-role
+    name: Changelog files should use a non-broken :user:`name` role
+    language: pygrep
+    entry: :user:([^`]+`?|`[^`]+[\s,])
+    pass_filenames: true
+    types: [file, rst]
   - id: check-changes
     name: Check CHANGES
     language: system
