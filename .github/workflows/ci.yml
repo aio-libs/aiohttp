@@ -40,9 +40,9 @@ jobs:
       uses: py-actions/py-dependency-install@v2.1.0
       with:
         path: requirements/lint.txt
-    - name: Install itself
+    - name: Install self
       run: |
-        python setup.py install
+        python -m pip install .
       env:
         AIOHTTP_NO_EXTENSIONS: 1
     - name: Run linters
@@ -58,13 +58,13 @@ jobs:
         make doc-spelling
     - name: Prepare twine checker
       run: |
-        pip install -U twine wheel
-        python setup.py sdist bdist_wheel
+        pip install -U build twine
+        python -m build
       env:
         AIOHTTP_NO_EXTENSIONS: 1
     - name: Run twine checker
       run: |
-        twine check dist/*
+        twine check --strict dist/*
     - name: Making sure that CONTRIBUTORS.txt remains sorted
       run: |
         LC_ALL=C sort -c CONTRIBUTORS.txt
@@ -162,7 +162,8 @@ jobs:
         make cythonize
     - name: Make sdist
       run:
-        python setup.py sdist
+        python -m pip install build --user
+        python -m build --sdist
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
