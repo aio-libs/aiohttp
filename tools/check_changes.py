@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 ALLOWED_SUFFIXES = ["feature", "bugfix", "doc", "removal", "misc"]
-PATTERN = re.compile(r"\d+\.(" + "|".join(ALLOWED_SUFFIXES) + r")(\.d+)?(.rst)?")
+PATTERN = re.compile(r"\d+\.(" + "|".join(ALLOWED_SUFFIXES) + r")(\.\d+)?(\.rst)?")
 
 
 def get_root(script_path):
