@@ -709,21 +709,23 @@ async def test_requote_redirect_url_default_disable() -> None:
 
 
 @pytest.mark.parametrize(
-    ("base_url", "url"),
+    ("base_url", "url", "expected_url"),
     [
-        (None, "http://example.com/test"),
-        ("http://example.com", "/test"),
-        (URL("http://example.com"), "/test"),
-        ("http://example.com/", "/test"),
-        (URL("http://example.com/"), "/test"),
+        (None, "http://example.com/test", URL("http://example.com/test")),
+        ("http://example.com", "/test", URL("http://example.com/test")),
+        (URL("http://example.com"), "/test", URL("http://example.com/test")),
+        ("http://example.com/", "/test", URL("http://example.com/test")),
+        (URL("http://example.com/"), "/test", URL("http://example.com/test")),
     ],
 )
-async def test_build_url(create_session, base_url, url) -> None:
+async def test_build_url_returns_expected_url(
+    create_session, base_url, url, expected_url
+) -> None:
     session = await create_session(base_url)
-    assert session._build_url(url) == URL("http://example.com/test")
+    assert session._build_url(url) == expected_url
 
 
-async def test_build_url_raises(create_session) -> None:
+async def test_build_url_raises_when_url_not_starts_with_slash(create_session) -> None:
     session = await create_session("http://example.com")
     with pytest.raises(ValueError, match="url must start with /"):
         session._build_url("test")
