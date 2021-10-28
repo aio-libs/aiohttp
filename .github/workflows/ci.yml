@@ -58,13 +58,13 @@ jobs:
         make doc-spelling
     - name: Prepare twine checker
       run: |
-        pip install -U twine wheel
-        python setup.py sdist bdist_wheel
+        pip install -U build twine
+        python -m build
       env:
         AIOHTTP_NO_EXTENSIONS: 1
     - name: Run twine checker
       run: |
-        twine check dist/*
+        twine check --strict dist/*
     - name: Making sure that CONTRIBUTORS.txt remains sorted
       run: |
         LC_ALL=C sort -c CONTRIBUTORS.txt
