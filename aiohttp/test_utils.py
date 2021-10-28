@@ -97,6 +97,9 @@ class BaseTestServer(ABC):
         host: str = "127.0.0.1",
         port: Optional[int] = None,
         skip_url_asserts: bool = False,
+        socket_factory: Callable[
+            [str, int, socket.AddressFamily], socket.socket
+        ] = get_port_socket,
         **kwargs: Any,
     ) -> None:
         self.runner = None  # type: Optional[BaseRunner]
@@ -106,6 +109,7 @@ class BaseTestServer(ABC):
         self._closed = False
         self.scheme = scheme
         self.skip_url_asserts = skip_url_asserts
+        self.socket_factory = socket_factory
 
     async def start_server(self, **kwargs: Any) -> None:
         if self.runner:
@@ -123,7 +127,7 @@ class BaseTestServer(ABC):
         if version == 6:
             absolute_host = f"[{self.host}]"
         family = socket.AF_INET6 if version == 6 else socket.AF_INET
-        _sock = get_port_socket(self.host, self.port, family=family)
+        _sock = self.socket_factory(self.host, self.port, family)
         self.host, self.port = _sock.getsockname()[:2]
         site = SockSite(self.runner, sock=_sock, ssl_context=self._ssl)
         await site.start()
