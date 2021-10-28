@@ -218,10 +218,10 @@ class ClientSession:
         trace_configs: Optional[List[TraceConfig]] = None,
         read_bufsize: int = 2 ** 16,
     ) -> None:
-        if isinstance(base_url, str):
-            self._base_url: Optional[URL] = URL(base_url)
+        if base_url is None or isinstance(base_url, URL):
+            self._base_url: Optional[URL] = base_url
         else:
-            self._base_url = base_url
+            self._base_url = URL(base_url)
 
         loop = asyncio.get_running_loop()
 
