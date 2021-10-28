@@ -631,7 +631,7 @@ Test server usually works in conjunction with
 :class:`aiohttp.test_utils.TestClient` which provides handy client methods
 for accessing to the server.
 
-.. class:: BaseTestServer(*, scheme='http', host='127.0.0.1', port=None)
+.. class:: BaseTestServer(*, scheme='http', host='127.0.0.1', port=None, socket_factory=get_port_socket)
 
    Base class for test servers.
 
@@ -644,6 +644,13 @@ for accessing to the server.
       random unused port is used.
 
       .. versionadded:: 3.0
+
+   :param collections.abc.Callable[[str,int,socket.AddressFamily],socket.socket] socket_factory: optional
+                          Factory to create a socket for the server.
+                          By default creates a TCP socket and binds it
+                          to ``host`` and ``port``.
+
+      .. versionadded:: 3.8
 
    .. attribute:: scheme
 
@@ -665,6 +672,12 @@ for accessing to the server.
    .. attribute:: server
 
       :class:`asyncio.AbstractServer` used for managing accepted connections.
+
+   .. attribute:: socket_factory
+
+      *socket_factory* used to create and bind a server socket.
+
+      .. versionadded:: 3.8
 
    .. comethod:: start_server(**kwargs)
 
