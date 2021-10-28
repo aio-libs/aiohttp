@@ -239,6 +239,13 @@ Data Sharing aka No Singletons Please
 :mod:`aiohttp.web` discourages the use of *global variables*, aka *singletons*.
 Every variable should have its own context that is *not global*.
 
+Global variables are generally considered bad practice due to the complexity
+they add in keeping track of state changes to variables.
+
+*aiohttp* does not use globals by design, which will reduce the number of bugs
+and/or unexpected behaviors for its users. For example, an i18n translated string
+being written for one request and then being served to another.
+
 So, :class:`Application` and :class:`Request`
 support a :class:`collections.abc.MutableMapping` interface (i.e. they are
 dict-like objects), allowing them to be used as data stores.
@@ -271,6 +278,9 @@ For this please use :attr:`Request.config_dict` read-only property::
     async def handler(request):
         data = request.config_dict['my_private_key']
 
+You may use the app object to connect your database to your web application.
+
+See this reference section for more detail: :ref:`aiohttp-web-app-and-router`.
 
 Request's storage
 ^^^^^^^^^^^^^^^^^
