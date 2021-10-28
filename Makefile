@@ -97,6 +97,30 @@ vtest: .develop
 vvtest: .develop
 	@pytest -vv
 
+
+define run_tests_in_docker
+	DOCKER_BUILDKIT=1 docker build --build-arg PYTHON_VERSION=$(1) --build-arg AIOHTTP_NO_EXTENSIONS=$(2) -t "aiohttp-test-$(1)-$(2)" -f tools/testing/Dockerfile .
+	docker run --rm -ti -v `pwd`:/src -w /src "aiohttp-test-$(1)-$(2)" $(TEST_SPEC)
+endef
+
+.PHONY: test-3.7-no-extensions test-3.7 test-3.8-no-extensions test-3.8 test-3.9-no-extensions test-3.9 test-3.10-no-extensions test-3.10
+test-3.7-no-extensions:
+	$(call run_tests_in_docker,3.7,y)
+test-3.7:
+	$(call run_tests_in_docker,3.7,n)
+test-3.8-no-extensions:
+	$(call run_tests_in_docker,3.8,y)
+test-3.8:
+	$(call run_tests_in_docker,3.8,n)
+test-3.9-no-extensions:
+	$(call run_tests_in_docker,3.9,y)
+test-3.9:
+	$(call run_tests_in_docker,3.9,n)
+test-3.10-no-extensions:
+	$(call run_tests_in_docker,3.10,y)
+test-3.10:
+	$(call run_tests_in_docker,3.10,n)
+
 .PHONY: clean
 clean:
 	@rm -rf `find . -name __pycache__`
