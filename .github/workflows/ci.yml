@@ -163,7 +163,8 @@ jobs:
         make cythonize
     - name: Make sdist
       run:
-        python setup.py sdist
+        python -m pip install build --user
+        python -m build --sdist
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
