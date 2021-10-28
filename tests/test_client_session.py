@@ -711,11 +711,42 @@ async def test_requote_redirect_url_default_disable() -> None:
 @pytest.mark.parametrize(
     ("base_url", "url", "expected_url"),
     [
-        (None, "http://example.com/test", URL("http://example.com/test")),
-        ("http://example.com", "/test", URL("http://example.com/test")),
-        (URL("http://example.com"), "/test", URL("http://example.com/test")),
-        ("http://example.com/", "/test", URL("http://example.com/test")),
-        (URL("http://example.com/"), "/test", URL("http://example.com/test")),
+        pytest.param(
+            None,
+            "http://example.com/test",
+            URL("http://example.com/test"),
+            id="base_url(None) + str(http://example.com/test)",
+        ),
+        pytest.param(
+            None,
+            URL("http://example.com/test"),
+            URL("http://example.com/test"),
+            id="base_url(None) + URL(http://example.com/test))",
+        ),
+        pytest.param(
+            "http://example.com",
+            "/test",
+            URL("http://example.com/test"),
+            id="base_url(str(http://example.com)) + str(/test)",
+        ),
+        pytest.param(
+            "http://example.com",
+            "test",
+            URL("http://example.com/test"),
+            id="base_url(str(http://example.com)) + str(test)",
+        ),
+        pytest.param(
+            URL("http://example.com"),
+            "/test",
+            URL("http://example.com/test"),
+            id="base_url(URL(http://example.com)) + str(/test)",
+        ),
+        pytest.param(
+            URL("http://example.com"),
+            "test",
+            URL("http://example.com/test"),
+            id="base_url(URL(http://example.com)) + str(test)",
+        ),
     ],
 )
 async def test_build_url_returns_expected_url(
