@@ -725,12 +725,6 @@ async def test_build_url_returns_expected_url(
     assert session._build_url(url) == expected_url
 
 
-async def test_build_url_raises_when_url_not_starts_with_slash(create_session) -> None:
-    session = await create_session("http://example.com")
-    with pytest.raises(ValueError, match="url must start with /"):
-        session._build_url("test")
-
-
 async def test_request_uses_base_url_when_url_is_str(create_session) -> None:
     request_class = mock.MagicMock()
     session = await create_session("http://example.com", request_class=request_class)

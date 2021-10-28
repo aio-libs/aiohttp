@@ -311,13 +311,11 @@ class ClientSession:
         """Perform HTTP request."""
         return _RequestContextManager(self._request(method, url, **kwargs))
 
-    def _build_url(self, url: str) -> URL:
+    def _build_url(self, str_or_url: StrOrURL) -> URL:
         if self._base_url is None:
-            return URL(url)
-        elif url.startswith("/"):
-            return self._base_url / url[1:]
+            return URL(str_or_url)
         else:
-            raise ValueError("url must start with /")
+            return self._base_url.join(URL(str_or_url))
 
     async def _request(
         self,
@@ -378,10 +376,7 @@ class ClientSession:
         proxy_headers = self._prepare_headers(proxy_headers)
 
         try:
-            if isinstance(str_or_url, URL):
-                url = str_or_url
-            else:
-                url = self._build_url(str_or_url)
+            url = self._build_url(str_or_url)
         except ValueError as e:
             raise InvalidURL(str_or_url) from e
 
