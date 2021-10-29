@@ -155,6 +155,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2.3.5
+      with:
+        submodules: true
     - name: Setup Python
       uses: actions/setup-python@v2.2.2
     - name: Install cython
@@ -193,6 +195,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2.3.5
+      with:
+        submodules: true
     - name: Set up QEMU
       if: ${{ matrix.qemu }}
       uses: docker/setup-qemu-action@v1
@@ -233,6 +237,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2.3.5
+      with:
+        submodules: true
     - name: Login
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
