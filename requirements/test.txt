@@ -5,7 +5,7 @@ cryptography==3.3.1; platform_machine!="i686" and python_version<"3.9" # no 32-b
 freezegun==1.1.0
 mypy==0.910; implementation_name=="cpython"
 mypy-extensions==0.4.3; implementation_name=="cpython"
-proxy.py==2.3.1
+proxy.py==3.4.0
 pytest==6.2.5
 pytest-cov==3.0.0
 pytest-mock==3.6.1
