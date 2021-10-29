@@ -35,7 +35,7 @@ ASYNCIO_SUPPORTS_TLS_IN_TLS = hasattr(
 
 
 @pytest.fixture
-def secure_proxy_url(monkeypatch, tls_certificate_pem_path):
+def secure_proxy_url(tls_certificate_pem_path):
     """Return the URL of an instance of a running secure proxy.
 
     This fixture also spawns that instance and tears it down after the test.
@@ -54,18 +54,11 @@ def secure_proxy_url(monkeypatch, tls_certificate_pem_path):
         tls_certificate_pem_path,  # contains both key and cert
     ]
 
-    class PatchedAccetorPool(proxy.core.acceptor.AcceptorPool):
-        def listen(self):
-            super().listen()
-            self.socket_host, self.socket_port = self.socket.getsockname()[:2]
-
-    monkeypatch.setattr(proxy.proxy, "AcceptorPool", PatchedAccetorPool)
-
     with proxy.Proxy(input_args=proxypy_args) as proxy_instance:
         yield URL.build(
             scheme="https",
-            host=proxy_instance.acceptors.socket_host,
-            port=proxy_instance.acceptors.socket_port,
+            host=proxy_instance.pool.flags.hostname,
+            port=proxy_instance.pool.flags.port,
         )
 
 
