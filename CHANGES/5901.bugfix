@@ -1,4 +1,0 @@
-Fix the error in handling the return value of `getaddrinfo`.
-`getaddrinfo` will return an `(int, bytes)` tuple, if CPython could not handle the address family.
-It will cause a index out of range error in aiohttp. For example, if user compile CPython with
-`--disable-ipv6` option but his system enable the ipv6.
