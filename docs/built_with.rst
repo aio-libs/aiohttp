@@ -18,6 +18,8 @@ You can also add a **Built with aiohttp** link somewhere in your
 project, pointing to `<https://github.com/aio-libs/aiohttp>`_.
 
 
+* `Pulp <https://pulpproject.org>`_ Platform for managing repositories
+  of software packages and making them available to consumers.
 * `Molotov <http://molotov.readthedocs.io>`_ Load testing tool.
 * `Arsenic <https://github.com/hde/arsenic>`_ Async WebDriver.
 * `Home Assistant <https://home-assistant.io>`_ Home Automation Platform.
