@@ -1,1 +1,0 @@
-Started using `MultiLoopChildWatcher` when it's available under POSIX while setting up the test I/O loop.
