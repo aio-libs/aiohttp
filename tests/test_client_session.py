@@ -715,7 +715,7 @@ async def test_requote_redirect_url_default_disable() -> None:
             None,
             "http://example.com/test",
             URL("http://example.com/test"),
-            id="base_url(None) + str(http://example.com/test)",
+            id="base_url=None url='http://example.com/test'",
         ),
         pytest.param(
             None,
