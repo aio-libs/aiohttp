@@ -8,7 +8,6 @@ issue_format = "`#{issue} <https://github.com/aio-libs/aiohttp/issues/{issue}>`_
 
 
 [tool.cibuildwheel]
-test-requires = "-r requirements/test.txt"
-test-command = "pytest {project}/tests"
+test-command = ""
 # don't build PyPy wheels, install from source instead
 skip = "pp*"
