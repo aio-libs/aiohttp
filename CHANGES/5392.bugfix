@@ -1,1 +1,0 @@
-Set "text/plain" when data is an empty string in client requests.
