@@ -2,7 +2,7 @@
 # Tests for aiohttp/protocol.py
 
 import asyncio
-from typing import Any
+from typing import Any, List
 from unittest import mock
 from urllib.parse import quote
 
@@ -43,7 +43,14 @@ def protocol():
     return mock.Mock()
 
 
-@pytest.fixture(params=REQUEST_PARSERS)
+def _gen_ids(parsers: List[Any]) -> List[str]:
+    return [
+        "py-parser" if parser.__module__ == "aiohttp.http_parser" else "c-parser"
+        for parser in parsers
+    ]
+
+
+@pytest.fixture(params=REQUEST_PARSERS, ids=_gen_ids(REQUEST_PARSERS))
 def parser(loop: Any, protocol: Any, request: Any):
     # Parser implementations
     return request.param(
@@ -56,13 +63,13 @@ def parser(loop: Any, protocol: Any, request: Any):
     )
 
 
-@pytest.fixture(params=REQUEST_PARSERS)
+@pytest.fixture(params=REQUEST_PARSERS, ids=_gen_ids(REQUEST_PARSERS))
 def request_cls(request: Any):
     # Request Parser class
     return request.param
 
 
-@pytest.fixture(params=RESPONSE_PARSERS)
+@pytest.fixture(params=RESPONSE_PARSERS, ids=_gen_ids(RESPONSE_PARSERS))
 def response(loop: Any, protocol: Any, request: Any):
     # Parser implementations
     return request.param(
@@ -75,7 +82,7 @@ def response(loop: Any, protocol: Any, request: Any):
     )
 
 
-@pytest.fixture(params=RESPONSE_PARSERS)
+@pytest.fixture(params=RESPONSE_PARSERS, ids=_gen_ids(RESPONSE_PARSERS))
 def response_cls(request: Any):
     # Parser implementations
     return request.param
