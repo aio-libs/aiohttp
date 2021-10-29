@@ -1,6 +1,7 @@
 # Tests for aiohttp/protocol.py
 
 import asyncio
+from typing import Any, List
 from unittest import mock
 from urllib.parse import quote
 
@@ -11,6 +12,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import http_exceptions, streams
 from aiohttp.http_parser import (
+    NO_EXTENSIONS,
     DeflateBuffer,
     HttpPayloadParser,
     HttpRequestParserPy,
@@ -40,8 +42,15 @@ def protocol():
     return mock.Mock()
 
 
-@pytest.fixture(params=REQUEST_PARSERS)
-def parser(loop, protocol, request):
+def _gen_ids(parsers: List[Any]) -> List[str]:
+    return [
+        "py-parser" if parser.__module__ == "aiohttp.http_parser" else "c-parser"
+        for parser in parsers
+    ]
+
+
+@pytest.fixture(params=REQUEST_PARSERS, ids=_gen_ids(REQUEST_PARSERS))
+def parser(loop: Any, protocol: Any, request: Any):
     # Parser implementations
     return request.param(
         protocol,
@@ -53,14 +62,14 @@ def parser(loop, protocol, request):
     )
 
 
-@pytest.fixture(params=REQUEST_PARSERS)
-def request_cls(request):
+@pytest.fixture(params=REQUEST_PARSERS, ids=_gen_ids(REQUEST_PARSERS))
+def request_cls(request: Any):
     # Request Parser class
     return request.param
 
 
-@pytest.fixture(params=RESPONSE_PARSERS)
-def response(loop, protocol, request):
+@pytest.fixture(params=RESPONSE_PARSERS, ids=_gen_ids(RESPONSE_PARSERS))
+def response(loop: Any, protocol: Any, request: Any):
     # Parser implementations
     return request.param(
         protocol,
@@ -72,8 +81,8 @@ def response(loop, protocol, request):
     )
 
 
-@pytest.fixture(params=RESPONSE_PARSERS)
-def response_cls(request):
+@pytest.fixture(params=RESPONSE_PARSERS, ids=_gen_ids(RESPONSE_PARSERS))
+def response_cls(request: Any):
     # Parser implementations
     return request.param
 
@@ -83,7 +92,15 @@ def stream():
     return mock.Mock()
 
 
-def test_parse_headers(parser) -> None:
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Extentions available but not imported")
+def test_c_parser_loaded():
+    assert "HttpRequestParserC" in dir(aiohttp.http_parser)
+    assert "HttpResponseParserC" in dir(aiohttp.http_parser)
+    assert "RawRequestMessageC" in dir(aiohttp.http_parser)
+    assert "RawResponseMessageC" in dir(aiohttp.http_parser)
+
+
+def test_parse_headers(parser: Any) -> None:
     text = b"""GET /test HTTP/1.1\r
 test: line\r
  continue\r
