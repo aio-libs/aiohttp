@@ -324,13 +324,15 @@ cdef class HttpParser:
         PyMem_Free(self._cparser)
         PyMem_Free(self._csettings)
 
-    cdef _init(self, cparser.llhttp_type mode,
-                   object protocol, object loop, int limit,
-                   object timer=None,
-                   size_t max_line_size=8190, size_t max_headers=32768,
-                   size_t max_field_size=8190, payload_exception=None,
-                   bint response_with_body=True, bint read_until_eof=False,
-                   bint auto_decompress=True):
+    cdef _init(
+        self, cparser.llhttp_type mode,
+        object protocol, object loop, int limit,
+        object timer=None,
+        size_t max_line_size=8190, size_t max_headers=32768,
+        size_t max_field_size=8190, payload_exception=None,
+        bint response_with_body=True, bint read_until_eof=False,
+        bint auto_decompress=True,
+    ):
         cparser.llhttp_settings_init(self._csettings)
         cparser.llhttp_init(self._cparser, mode, self._csettings)
         self._cparser.data = <void*>self
@@ -449,11 +451,12 @@ cdef class HttpParser:
                 headers, raw_headers, should_close, encoding,
                 upgrade, chunked)
 
-        if (ULLONG_MAX > self._cparser.content_length > 0 or chunked or
-                self._cparser.method == 5 or  # CONNECT: 5
-                (self._cparser.status_code >= 199 and
-                 self._cparser.content_length == 0 and
-                 self._read_until_eof)
+        if (
+            ULLONG_MAX > self._cparser.content_length > 0 or chunked or
+            self._cparser.method == 5 or  # CONNECT: 5
+            (self._cparser.status_code >= 199 and
+             self._cparser.content_length == 0 and
+             self._read_until_eof)
         ):
             payload = StreamReader(
                 self._protocol, timer=self._timer, loop=self._loop,
@@ -564,34 +567,65 @@ cdef class HttpParser:
 
 cdef class HttpRequestParser(HttpParser):
 
-    def __init__(self, protocol, loop, int limit, timer=None,
-                 size_t max_line_size=8190, size_t max_headers=32768,
-                 size_t max_field_size=8190, payload_exception=None,
-                 bint response_with_body=True, bint read_until_eof=False,
-                 bint auto_decompress=True,
+    def __init__(
+        self, protocol, loop, int limit, timer=None,
+        size_t max_line_size=8190, size_t max_headers=32768,
+        size_t max_field_size=8190, payload_exception=None,
+        bint response_with_body=True, bint read_until_eof=False,
+        bint auto_decompress=True,
     ):
-         self._init(cparser.HTTP_REQUEST, protocol, loop, limit, timer,
-                    max_line_size, max_headers, max_field_size,
-                    payload_exception, response_with_body, read_until_eof,
-                    auto_decompress)
+        self._init(cparser.HTTP_REQUEST, protocol, loop, limit, timer,
+                   max_line_size, max_headers, max_field_size,
+                   payload_exception, response_with_body, read_until_eof,
+                   auto_decompress)
 
     cdef object _on_status_complete(self):
-         if not self._buf:
-             return
-         self._path = self._buf.decode('utf-8', 'surrogateescape')
-         try:
-             self._url = URL(self._path)
-         finally:
-             PyByteArray_Resize(self._buf, 0)
+        cdef int idx1, idx2
+        if not self._buf:
+            return
+        self._path = self._buf.decode('utf-8', 'surrogateescape')
+        try:
+            idx3 = len(self._path)
+            idx1 = self._path.find("?")
+            if idx1 == -1:
+                query = ""
+                idx2 = self._path.find("#")
+                if idx2 == -1:
+                    path = self._path
+                    fragment = ""
+                else:
+                    path = self._path[0: idx2]
+                    fragment = self._path[idx2+1:]
+
+            else:
+                path = self._path[0:idx1]
+                idx1 += 1
+                idx2 = self._path.find("#", idx1+1)
+                if idx2 == -1:
+                    query = self._path[idx1:]
+                    fragment = ""
+                else:
+                    query = self._path[idx1: idx2]
+                    fragment = self._path[idx2+1:]
+
+            self._url = URL.build(
+                path=path,
+                query_string=query,
+                fragment=fragment,
+                encoded=True,
+            )
+        finally:
+            PyByteArray_Resize(self._buf, 0)
 
 
 cdef class HttpResponseParser(HttpParser):
 
-    def __init__(self, protocol, loop, int limit, timer=None,
-                 size_t max_line_size=8190, size_t max_headers=32768,
-                 size_t max_field_size=8190, payload_exception=None,
-                 bint response_with_body=True, bint read_until_eof=False,
-                 bint auto_decompress=True
+    def __init__(
+        self, protocol, loop, int limit, timer=None,
+            size_t max_line_size=8190, size_t max_headers=32768,
+            size_t max_field_size=8190, payload_exception=None,
+            bint response_with_body=True, bint read_until_eof=False,
+            bint auto_decompress=True
     ):
         self._init(cparser.HTTP_RESPONSE, protocol, loop, limit, timer,
                    max_line_size, max_headers, max_field_size,
