@@ -1,30 +1,45 @@
 repos:
 - repo: local
   hooks:
+  - id: changelogs-rst
+    name: changelog filenames
+    language: fail
+    entry: >-
+      Changelog files must be named
+      ####.(bugfix|feature|removal|doc|misc)(.#)?(.rst)?
+    exclude: >-
+      ^CHANGES/(\.TEMPLATE\.rst|\.gitignore|\d+\.(bugfix|feature|removal|doc|misc)(\.\d+)?(\.rst)?|README\.rst)$
+    files: ^CHANGES/
+  - id: changelogs-user-role
+    name: Changelog files should use a non-broken :user:`name` role
+    language: pygrep
+    entry: :user:([^`]+`?|`[^`]+[\s,])
+    pass_filenames: true
+    types: [file, rst]
   - id: check-changes
     name: Check CHANGES
     language: system
     entry: ./tools/check_changes.py
     pass_filenames: false
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v3.3.0'
+  rev: 'v4.0.1'
   hooks:
   - id: check-merge-conflict
 - repo: https://github.com/asottile/yesqa
-  rev: v1.2.2
+  rev: v1.3.0
   hooks:
   - id: yesqa
-- repo: https://github.com/pre-commit/mirrors-isort
-  rev: 'v5.6.4'
+- repo: https://github.com/PyCQA/isort
+  rev: '5.9.3'
   hooks:
   - id: isort
 - repo: https://github.com/psf/black
-  rev: '20.8b1'
+  rev: '21.9b0'
   hooks:
     - id: black
       language_version: python3 # Should be a command that runs python3.6+
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v3.3.0'
+  rev: 'v4.0.1'
   hooks:
   - id: end-of-file-fixer
     exclude: >-
@@ -44,35 +59,32 @@ repos:
   - id: check-xml
   - id: check-executables-have-shebangs
   - id: check-toml
-  - id: check-xml
   - id: check-yaml
   - id: debug-statements
   - id: check-added-large-files
   - id: check-symlinks
-  - id: debug-statements
   - id: fix-byte-order-marker
   - id: fix-encoding-pragma
     args: ['--remove']
-  - id: check-executables-have-shebangs
-  - id: check-case-conflict
   - id: detect-aws-credentials
     args: ['--allow-missing-credentials']
   - id: detect-private-key
     exclude: ^examples/
 - repo: https://github.com/asottile/pyupgrade
-  rev: 'v2.7.4'
+  rev: 'v2.29.0'
   hooks:
   - id: pyupgrade
     args: ['--py36-plus']
-- repo: https://gitlab.com/pycqa/flake8
-  rev: '3.8.4'
+- repo: https://github.com/PyCQA/flake8
+  rev: '4.0.1'
   hooks:
   - id: flake8
     exclude: "^docs/"
-
 - repo: git://github.com/Lucas-C/pre-commit-hooks-markup
-  rev: v1.0.0
+  rev: v1.0.1
   hooks:
   - id: rst-linter
     files: >-
       ^[^/]+[.]rst$
+    exclude: >-
+      ^CHANGES\.rst$

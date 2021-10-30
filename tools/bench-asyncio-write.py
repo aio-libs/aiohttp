@@ -3,6 +3,7 @@ import atexit
 import math
 import os
 import signal
+from typing import List, Tuple
 
 PORT = 8888
 
@@ -38,7 +39,7 @@ def fm_size(s, _fms=("", "K", "M", "G")):
     while s >= 1024:
         s /= 1024
         i += 1
-    return "{:.0f}{}B".format(s, _fms[i])
+    return f"{s:.0f}{_fms[i]}B"
 
 
 def fm_time(s, _fms=("", "m", "µ", "n")):
@@ -48,7 +49,14 @@ def fm_time(s, _fms=("", "m", "µ", "n")):
     while s < 1:
         s *= 1000
         i += 1
-    return "{:.2f}{}s".format(s, _fms[i])
+    return f"{s:.2f}{_fms[i]}s"
+
+
+def _job(j: List[int]) -> Tuple[str, List[bytes]]:
+    # Always start with a 256B headers chunk
+    body = [b"0" * s for s in [256] + list(j)]
+    job_title = f"{fm_size(sum(j))} / {len(j)}"
+    return (job_title, body)
 
 
 writes = [
@@ -71,14 +79,8 @@ bodies = (
     [10 * 2 ** 27 for _ in range(5)],
 )
 
-jobs = [
-    (
-        # always start with a 256B headers chunk
-        "{} / {}".format(fm_size(sum(j) if j else 0), len(j)),
-        [b"0" * s for s in [256] + list(j)],
-    )
-    for j in bodies
-]
+
+jobs = [_job(j) for j in bodies]
 
 
 async def time(loop, fn, *args):
@@ -111,7 +113,7 @@ async def main(loop):
                 fm_time(mean),
                 fm_time(sd),
                 str(it),
-                "{:.2%}".format(mean / base - 1) if base is not None else "",
+                f"{mean / base - 1:.2%}" if base is not None else "",
             )
         )
         return mean

@@ -1,140 +1,190 @@
-from libc.stdint cimport uint16_t, uint32_t, uint64_t
+from libc.stdint cimport (
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t,
+    uint8_t,
+    uint16_t,
+    uint32_t,
+    uint64_t,
+)
 
 
-cdef extern from "../vendor/http-parser/http_parser.h":
-    ctypedef int (*http_data_cb) (http_parser*,
-                                  const char *at,
-                                  size_t length) except -1
+cdef extern from "../vendor/llhttp/build/llhttp.h":
 
-    ctypedef int (*http_cb) (http_parser*) except -1
-
-    struct http_parser:
-        unsigned int type
-        unsigned int flags
-        unsigned int state
-        unsigned int header_state
-        unsigned int index
-
-        uint32_t nread
+    struct llhttp__internal_s:
+        int32_t _index
+        void* _span_pos0
+        void* _span_cb0
+        int32_t error
+        const char* reason
+        const char* error_pos
+        void* data
+        void* _current
         uint64_t content_length
+        uint8_t type
+        uint8_t method
+        uint8_t http_major
+        uint8_t http_minor
+        uint8_t header_state
+        uint8_t lenient_flags
+        uint8_t upgrade
+        uint8_t finish
+        uint16_t flags
+        uint16_t status_code
+        void* settings
 
-        unsigned short http_major
-        unsigned short http_minor
-        unsigned int status_code
-        unsigned int method
-        unsigned int http_errno
+    ctypedef llhttp__internal_s llhttp__internal_t
+    ctypedef llhttp__internal_t llhttp_t
 
-        unsigned int upgrade
+    ctypedef int (*llhttp_data_cb)(llhttp_t*, const char *at, size_t length) except -1
+    ctypedef int (*llhttp_cb)(llhttp_t*) except -1
 
-        void *data
+    struct llhttp_settings_s:
+        llhttp_cb      on_message_begin
+        llhttp_data_cb on_url
+        llhttp_data_cb on_status
+        llhttp_data_cb on_header_field
+        llhttp_data_cb on_header_value
+        llhttp_cb      on_headers_complete
+        llhttp_data_cb on_body
+        llhttp_cb      on_message_complete
+        llhttp_cb      on_chunk_header
+        llhttp_cb      on_chunk_complete
 
-    struct http_parser_settings:
-        http_cb      on_message_begin
-        http_data_cb on_url
-        http_data_cb on_status
-        http_data_cb on_header_field
-        http_data_cb on_header_value
-        http_cb      on_headers_complete
-        http_data_cb on_body
-        http_cb      on_message_complete
-        http_cb      on_chunk_header
-        http_cb      on_chunk_complete
+        llhttp_cb      on_url_complete
+        llhttp_cb      on_status_complete
+        llhttp_cb      on_header_field_complete
+        llhttp_cb      on_header_value_complete
 
-    enum http_parser_type:
+    ctypedef llhttp_settings_s llhttp_settings_t
+
+    enum llhttp_errno:
+        HPE_OK,
+        HPE_INTERNAL,
+        HPE_STRICT,
+        HPE_LF_EXPECTED,
+        HPE_UNEXPECTED_CONTENT_LENGTH,
+        HPE_CLOSED_CONNECTION,
+        HPE_INVALID_METHOD,
+        HPE_INVALID_URL,
+        HPE_INVALID_CONSTANT,
+        HPE_INVALID_VERSION,
+        HPE_INVALID_HEADER_TOKEN,
+        HPE_INVALID_CONTENT_LENGTH,
+        HPE_INVALID_CHUNK_SIZE,
+        HPE_INVALID_STATUS,
+        HPE_INVALID_EOF_STATE,
+        HPE_INVALID_TRANSFER_ENCODING,
+        HPE_CB_MESSAGE_BEGIN,
+        HPE_CB_HEADERS_COMPLETE,
+        HPE_CB_MESSAGE_COMPLETE,
+        HPE_CB_CHUNK_HEADER,
+        HPE_CB_CHUNK_COMPLETE,
+        HPE_PAUSED,
+        HPE_PAUSED_UPGRADE,
+        HPE_USER
+
+    ctypedef llhttp_errno llhttp_errno_t
+
+    enum llhttp_flags:
+        F_CONNECTION_KEEP_ALIVE,
+        F_CONNECTION_CLOSE,
+        F_CONNECTION_UPGRADE,
+        F_CHUNKED,
+        F_UPGRADE,
+        F_CONTENT_LENGTH,
+        F_SKIPBODY,
+        F_TRAILING,
+        F_TRANSFER_ENCODING
+
+    enum llhttp_lenient_flags:
+        LENIENT_HEADERS,
+        LENIENT_CHUNKED_LENGTH
+
+    enum llhttp_type:
         HTTP_REQUEST,
         HTTP_RESPONSE,
         HTTP_BOTH
 
-    enum http_errno:
-        HPE_OK,
-        HPE_CB_message_begin,
-        HPE_CB_url,
-        HPE_CB_header_field,
-        HPE_CB_header_value,
-        HPE_CB_headers_complete,
-        HPE_CB_body,
-        HPE_CB_message_complete,
-        HPE_CB_status,
-        HPE_CB_chunk_header,
-        HPE_CB_chunk_complete,
-        HPE_INVALID_EOF_STATE,
-        HPE_HEADER_OVERFLOW,
-        HPE_CLOSED_CONNECTION,
-        HPE_INVALID_VERSION,
-        HPE_INVALID_STATUS,
-        HPE_INVALID_METHOD,
-        HPE_INVALID_URL,
-        HPE_INVALID_HOST,
-        HPE_INVALID_PORT,
-        HPE_INVALID_PATH,
-        HPE_INVALID_QUERY_STRING,
-        HPE_INVALID_FRAGMENT,
-        HPE_LF_EXPECTED,
-        HPE_INVALID_HEADER_TOKEN,
-        HPE_INVALID_CONTENT_LENGTH,
-        HPE_INVALID_CHUNK_SIZE,
-        HPE_INVALID_CONSTANT,
-        HPE_INVALID_INTERNAL_STATE,
-        HPE_STRICT,
-        HPE_PAUSED,
-        HPE_UNKNOWN
+    enum llhttp_finish_t:
+        HTTP_FINISH_SAFE,
+        HTTP_FINISH_SAFE_WITH_CB,
+        HTTP_FINISH_UNSAFE
 
-    enum flags:
-        F_CHUNKED,
-        F_CONNECTION_KEEP_ALIVE,
-        F_CONNECTION_CLOSE,
-        F_CONNECTION_UPGRADE,
-        F_TRAILING,
-        F_UPGRADE,
-        F_SKIPBODY,
-        F_CONTENTLENGTH
+    enum llhttp_method:
+        HTTP_DELETE,
+        HTTP_GET,
+        HTTP_HEAD,
+        HTTP_POST,
+        HTTP_PUT,
+        HTTP_CONNECT,
+        HTTP_OPTIONS,
+        HTTP_TRACE,
+        HTTP_COPY,
+        HTTP_LOCK,
+        HTTP_MKCOL,
+        HTTP_MOVE,
+        HTTP_PROPFIND,
+        HTTP_PROPPATCH,
+        HTTP_SEARCH,
+        HTTP_UNLOCK,
+        HTTP_BIND,
+        HTTP_REBIND,
+        HTTP_UNBIND,
+        HTTP_ACL,
+        HTTP_REPORT,
+        HTTP_MKACTIVITY,
+        HTTP_CHECKOUT,
+        HTTP_MERGE,
+        HTTP_MSEARCH,
+        HTTP_NOTIFY,
+        HTTP_SUBSCRIBE,
+        HTTP_UNSUBSCRIBE,
+        HTTP_PATCH,
+        HTTP_PURGE,
+        HTTP_MKCALENDAR,
+        HTTP_LINK,
+        HTTP_UNLINK,
+        HTTP_SOURCE,
+        HTTP_PRI,
+        HTTP_DESCRIBE,
+        HTTP_ANNOUNCE,
+        HTTP_SETUP,
+        HTTP_PLAY,
+        HTTP_PAUSE,
+        HTTP_TEARDOWN,
+        HTTP_GET_PARAMETER,
+        HTTP_SET_PARAMETER,
+        HTTP_REDIRECT,
+        HTTP_RECORD,
+        HTTP_FLUSH
 
-    enum http_method:
-        DELETE, GET, HEAD, POST, PUT, CONNECT, OPTIONS, TRACE, COPY,
-        LOCK, MKCOL, MOVE, PROPFIND, PROPPATCH, SEARCH, UNLOCK, BIND,
-        REBIND, UNBIND, ACL, REPORT, MKACTIVITY, CHECKOUT, MERGE,
-        MSEARCH, NOTIFY, SUBSCRIBE, UNSUBSCRIBE, PATCH, PURGE, MKCALENDAR,
-        LINK, UNLINK
+    ctypedef llhttp_method llhttp_method_t;
 
-    void http_parser_init(http_parser *parser, http_parser_type type)
+    void llhttp_settings_init(llhttp_settings_t* settings)
+    void llhttp_init(llhttp_t* parser, llhttp_type type,
+                 const llhttp_settings_t* settings)
 
-    size_t http_parser_execute(http_parser *parser,
-                               const http_parser_settings *settings,
-                               const char *data,
-                               size_t len)
+    llhttp_errno_t llhttp_execute(llhttp_t* parser, const char* data, size_t len)
+    llhttp_errno_t llhttp_finish(llhttp_t* parser)
 
-    int http_should_keep_alive(const http_parser *parser)
+    int llhttp_message_needs_eof(const llhttp_t* parser)
 
-    void http_parser_settings_init(http_parser_settings *settings)
+    int llhttp_should_keep_alive(const llhttp_t* parser)
 
-    const char *http_errno_name(http_errno err)
-    const char *http_errno_description(http_errno err)
-    const char *http_method_str(http_method m)
+    void llhttp_pause(llhttp_t* parser)
+    void llhttp_resume(llhttp_t* parser)
 
-    # URL Parser
+    void llhttp_resume_after_upgrade(llhttp_t* parser)
 
-    enum http_parser_url_fields:
-        UF_SCHEMA   = 0,
-        UF_HOST     = 1,
-        UF_PORT     = 2,
-        UF_PATH     = 3,
-        UF_QUERY    = 4,
-        UF_FRAGMENT = 5,
-        UF_USERINFO = 6,
-        UF_MAX      = 7
+    llhttp_errno_t llhttp_get_errno(const llhttp_t* parser)
+    const char* llhttp_get_error_reason(const llhttp_t* parser)
+    void llhttp_set_error_reason(llhttp_t* parser, const char* reason)
+    const char* llhttp_get_error_pos(const llhttp_t* parser)
+    const char* llhttp_errno_name(llhttp_errno_t err)
 
-    struct http_parser_url_field_data:
-        uint16_t off
-        uint16_t len
+    const char* llhttp_method_name(llhttp_method_t method)
 
-    struct http_parser_url:
-        uint16_t field_set
-        uint16_t port
-        http_parser_url_field_data[<int>UF_MAX] field_data
-
-    void http_parser_url_init(http_parser_url *u)
-
-    int http_parser_parse_url(const char *buf,
-                              size_t buflen,
-                              int is_connect,
-                              http_parser_url *u)
+    void llhttp_set_lenient_headers(llhttp_t* parser, int enabled)
+    void llhttp_set_lenient_chunked_length(llhttp_t* parser, int enabled)

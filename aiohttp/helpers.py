@@ -13,9 +13,11 @@ import platform
 import re
 import sys
 import time
+import warnings
 import weakref
 from collections import namedtuple
 from contextlib import suppress
+from email.utils import parsedate
 from http.cookies import SimpleCookie
 from math import ceil
 from pathlib import Path
@@ -40,7 +42,7 @@ from typing import (
     cast,
 )
 from urllib.parse import quote
-from urllib.request import getproxies
+from urllib.request import getproxies, proxy_bypass
 
 import async_timeout
 from multidict import CIMultiDict, MultiDict, MultiDictProxy
@@ -54,7 +56,9 @@ from .typedefs import PathLike  # noqa
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
 PY_38 = sys.version_info >= (3, 8)
+PY_310 = sys.version_info >= (3, 10)
 
+COOKIE_MAX_LENGTH = 4096
 
 try:
     from typing import ContextManager
@@ -114,13 +118,13 @@ if PY_38:
     iscoroutinefunction = asyncio.iscoroutinefunction
 else:
 
-    def iscoroutinefunction(func: Callable[..., Any]) -> bool:
+    def iscoroutinefunction(func: Any) -> bool:
         while isinstance(func, functools.partial):
             func = func.func
         return asyncio.iscoroutinefunction(func)
 
 
-json_re = re.compile(r"^application/(?:[\w.+-]+?\+)?json")
+json_re = re.compile(r"(?:application/|[\w.-]+/[\w.+-]+?\+)json")
 
 
 class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
@@ -267,6 +271,20 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
                 auth = BasicAuth(cast(str, login), cast(str, password))
         ret[proto] = ProxyInfo(proxy, auth)
     return ret
+
+
+def get_env_proxy_for_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
+    """Get a permitted proxy for the given URL from the env."""
+    if url.host is not None and proxy_bypass(url.host):
+        raise LookupError(f"Proxying is disallowed for `{url.host!r}`")
+
+    proxies_in_env = proxies_from_env()
+    try:
+        proxy_info = proxies_in_env[url.scheme]
+    except KeyError:
+        raise LookupError(f"No proxies found for `{url!s}` in the env")
+    else:
+        return proxy_info.proxy, proxy_info.proxy_auth
 
 
 @dataclasses.dataclass(frozen=True)
@@ -485,7 +503,7 @@ def _is_ip_address(
     elif isinstance(host, (bytes, bytearray, memoryview)):
         return bool(regexb.match(host))
     else:
-        raise TypeError("{} [{}] is not a str or bytes".format(host, type(host)))
+        raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
 
 
 is_ipv4_address = functools.partial(_is_ip_address, _ipv4_regex, _ipv4_regexb)
@@ -579,7 +597,7 @@ def call_later(
 
 
 class TimeoutHandle:
-    """ Timeout handle """
+    """Timeout handle"""
 
     def __init__(
         self, loop: asyncio.AbstractEventLoop, timeout: Optional[float]
@@ -642,7 +660,7 @@ class TimerNoop(BaseTimerContext):
 
 
 class TimerContext(BaseTimerContext):
-    """ Low resolution timeout context manager """
+    """Low resolution timeout context manager"""
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
@@ -658,7 +676,6 @@ class TimerContext(BaseTimerContext):
             )
 
         if self._cancelled:
-            task.cancel()
             raise asyncio.TimeoutError from None
 
         self._tasks.append(task)
@@ -686,15 +703,15 @@ class TimerContext(BaseTimerContext):
 
 
 def ceil_timeout(delay: Optional[float]) -> async_timeout.Timeout:
-    if delay is not None and delay > 0:
-        loop = asyncio.get_running_loop()
-        now = loop.time()
-        when = now + delay
-        if delay > 5:
-            when = ceil(when)
-        return async_timeout.timeout_at(when)
-    else:
+    if delay is None or delay <= 0:
         return async_timeout.timeout(None)
+
+    loop = asyncio.get_running_loop()
+    now = loop.time()
+    when = now + delay
+    if delay > 5:
+        when = ceil(when)
+    return async_timeout.timeout_at(when)
 
 
 class HeadersMixin:
@@ -862,6 +879,15 @@ class CookieMixin:
         if samesite is not None:
             c["samesite"] = samesite
 
+        if DEBUG:
+            cookie_length = len(c.output(header="")[1:])
+            if cookie_length > COOKIE_MAX_LENGTH:
+                warnings.warn(
+                    "The size of is too large, it might get ignored by the client.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
     def del_cookie(
         self, name: str, *, domain: Optional[str] = None, path: str = "/"
     ) -> None:
@@ -910,3 +936,13 @@ def validate_etag_value(value: str) -> None:
         raise ValueError(
             f"Value {value!r} is not a valid etag. Maybe it contains '\"'?"
         )
+
+
+def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
+    """Process a date string, return a datetime object"""
+    if date_str is not None:
+        timetuple = parsedate(date_str)
+        if timetuple is not None:
+            with suppress(ValueError):
+                return datetime.datetime(*timetuple[:6], tzinfo=datetime.timezone.utc)
+    return None

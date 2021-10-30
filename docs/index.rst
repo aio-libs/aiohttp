@@ -34,7 +34,7 @@ Library Installation
    $ pip install aiohttp
 
 You may want to install *optional* :term:`cchardet` library as faster
-replacement for :term:`chardet`:
+replacement for :term:`charset-normalizer`:
 
 .. code-block:: bash
 
@@ -51,7 +51,7 @@ This option is highly recommended:
 Installing speedups altogether
 ------------------------------
 
-The following will get you ``aiohttp`` along with :term:`chardet`,
+The following will get you ``aiohttp`` along with :term:`charset-normalizer`,
 :term:`aiodns` and ``Brotli`` in one bundle. No need to type
 separate commands anymore!
 
@@ -148,12 +148,11 @@ Dependencies
 
 - Python 3.7+
 - *async_timeout*
-- *attrs*
-- *chardet*
+- *charset-normalizer*
 - *multidict*
 - *yarl*
 - *Optional* :term:`cchardet` as faster replacement for
-  :term:`chardet`.
+  :term:`charset-normalizer`.
 
   Install it explicitly via:
 

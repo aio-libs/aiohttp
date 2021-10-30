@@ -57,7 +57,7 @@ requests to this server.
 
 :class:`~aiohttp.test_utils.TestServer` runs :class:`aiohttp.web.Application`
 based server, :class:`~aiohttp.test_utils.RawTestServer` starts
-:class:`aiohttp.web.WebServer` low level server.
+:class:`aiohttp.web.Server` low level server.
 
 For performing HTTP requests to these servers you have to create a
 test client: :class:`~aiohttp.test_utils.TestClient` instance.
@@ -338,7 +338,7 @@ functionality, the AioHTTPTestCase is provided::
 
     .. attribute:: app
 
-       The application returned by :meth:`get_app`
+       The application returned by :meth:`~aiohttp.test_utils.AioHTTPTestCase.get_application`
        (:class:`aiohttp.web.Application` instance).
 
     .. comethod:: get_client()
@@ -544,7 +544,7 @@ conditions that hard to reproduce on real server::
    :type writer: aiohttp.StreamWriter
 
    :param transport: asyncio transport instance
-   :type transport: asyncio.transports.Transport
+   :type transport: asyncio.Transport
 
    :param payload: raw payload reader object
    :type  payload: aiohttp.StreamReader
@@ -623,15 +623,15 @@ Test server
 Runs given :class:`aiohttp.web.Application` instance on random TCP port.
 
 After creation the server is not started yet, use
-:meth:`~aiohttp.test_utils.TestServer.start_server` for actual server
-starting and :meth:`~aiohttp.test_utils.TestServer.close` for
+:meth:`~aiohttp.test_utils.BaseTestServer.start_server` for actual server
+starting and :meth:`~aiohttp.test_utils.BaseTestServer.close` for
 stopping/cleanup.
 
 Test server usually works in conjunction with
 :class:`aiohttp.test_utils.TestClient` which provides handy client methods
 for accessing to the server.
 
-.. class:: BaseTestServer(*, scheme='http', host='127.0.0.1', port=None)
+.. class:: BaseTestServer(*, scheme='http', host='127.0.0.1', port=None, socket_factory=get_port_socket)
 
    Base class for test servers.
 
@@ -644,6 +644,13 @@ for accessing to the server.
       random unused port is used.
 
       .. versionadded:: 3.0
+
+   :param collections.abc.Callable[[str,int,socket.AddressFamily],socket.socket] socket_factory: optional
+                          Factory to create a socket for the server.
+                          By default creates a TCP socket and binds it
+                          to ``host`` and ``port``.
+
+      .. versionadded:: 3.8
 
    .. attribute:: scheme
 
@@ -660,11 +667,17 @@ for accessing to the server.
 
    .. attribute:: handler
 
-      :class:`aiohttp.web.WebServer` used for HTTP requests serving.
+      :class:`aiohttp.web.Server` used for HTTP requests serving.
 
    .. attribute:: server
 
       :class:`asyncio.AbstractServer` used for managing accepted connections.
+
+   .. attribute:: socket_factory
+
+      *socket_factory* used to create and bind a server socket.
+
+      .. versionadded:: 3.8
 
    .. comethod:: start_server(**kwargs)
 
@@ -744,7 +757,8 @@ Test Client
                          first with ``TestServer(app)``.
 
    :param cookie_jar: an optional :class:`aiohttp.CookieJar` instance,
-                      may be useful with ``CookieJar(unsafe=True)``
+                      may be useful with
+                      ``CookieJar(unsafe=True, treat_as_secure_origin="http://127.0.0.1")``
                       option.
 
    :param str scheme: HTTP scheme, non-protected ``"http"`` by default.
@@ -772,7 +786,7 @@ Test Client
 
    .. attribute:: app
 
-      An alias for :attr:`self.server.app`. return ``None`` if
+      An alias for ``self.server.app``. return ``None`` if
       ``self.server`` is not :class:`TestServer`
       instance(e.g. :class:`RawTestServer` instance for test low-level server).
 

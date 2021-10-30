@@ -19,7 +19,7 @@ request and returns a response object.
 
 This is done by introducing :class:`aiohttp.web.Server` class which
 serves a *protocol factory* role for
-:meth:`asyncio.AbstractEventLoop.create_server` and bridges data
+:meth:`asyncio.loop.create_server` and bridges data
 stream to *web handler* and sends result back.
 
 

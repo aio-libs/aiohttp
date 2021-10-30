@@ -245,10 +245,7 @@ In general, however, you should use a pattern like this to save what is being
 streamed to a file::
 
     with open(filename, 'wb') as fd:
-        while True:
-            chunk = await resp.content.read(chunk_size)
-            if not chunk:
-                break
+        async for chunk in resp.content.iter_chunked(chunk_size):
             fd.write(chunk)
 
 It is not possible to use :meth:`~ClientResponse.read`,
@@ -318,7 +315,7 @@ You can set the ``filename`` and ``content_type`` explicitly::
     await session.post(url, data=data)
 
 If you pass a file object as data parameter, aiohttp will stream it to
-the server automatically. Check :class:`~aiohttp.streams.StreamReader`
+the server automatically. Check :class:`~aiohttp.StreamReader`
 for supported format information.
 
 .. seealso:: :ref:`aiohttp-multipart`

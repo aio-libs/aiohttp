@@ -9,6 +9,7 @@ import os
 import sys
 import traceback
 import warnings
+from contextlib import suppress
 from types import SimpleNamespace, TracebackType
 from typing import (
     Any,
@@ -80,7 +81,7 @@ from .helpers import (
     BasicAuth,
     TimeoutHandle,
     ceil_timeout,
-    proxies_from_env,
+    get_env_proxy_for_url,
     sentinel,
     strip_auth_from_url,
 )
@@ -153,7 +154,7 @@ class ClientTimeout:
 
     # to create a timeout specific for a single request, either
     # - create a completely new one to overwrite the default
-    # - or use http://www.attrs.org/en/stable/api.html#attr.evolve
+    # - or use https://docs.python.org/3/library/dataclasses.html#dataclasses.replace
     # to overwrite the defaults
 
 
@@ -262,7 +263,7 @@ class ClientSession:
             real_headers = CIMultiDict()
         self._default_headers = real_headers  # type: CIMultiDict[str]
         if skip_auto_headers is not None:
-            self._skip_auto_headers = frozenset([istr(i) for i in skip_auto_headers])
+            self._skip_auto_headers = frozenset(istr(i) for i in skip_auto_headers)
         else:
             self._skip_auto_headers = frozenset()
 
@@ -402,7 +403,7 @@ class ClientSession:
         ]
 
         for trace in traces:
-            await trace.send_request_start(method, url, headers)
+            await trace.send_request_start(method, url.update_query(params), headers)
 
         timer = tm.timer()
         try:
@@ -444,11 +445,8 @@ class ClientSession:
                     if proxy is not None:
                         proxy = URL(proxy)
                     elif self._trust_env:
-                        for scheme, proxy_info in proxies_from_env().items():
-                            if scheme == url.scheme:
-                                proxy = proxy_info.proxy
-                                proxy_auth = proxy_info.proxy_auth
-                                break
+                        with suppress(LookupError):
+                            proxy, proxy_auth = get_env_proxy_for_url(url)
 
                     req = self._request_class(
                         method,
@@ -521,7 +519,7 @@ class ClientSession:
 
                         for trace in traces:
                             await trace.send_request_redirect(
-                                method, url, headers, resp
+                                method, url.update_query(params), headers, resp
                             )
 
                         redirects += 1
@@ -568,7 +566,16 @@ class ClientSession:
                         elif not scheme:
                             parsed_url = url.join(parsed_url)
 
-                        if url.origin() != parsed_url.origin():
+                        is_same_host_https_redirect = (
+                            url.host == parsed_url.host
+                            and parsed_url.scheme == "https"
+                            and url.scheme == "http"
+                        )
+
+                        if (
+                            url.origin() != parsed_url.origin()
+                            and not is_same_host_https_redirect
+                        ):
                             auth = None
                             headers.pop(hdrs.AUTHORIZATION, None)
 
@@ -600,7 +607,9 @@ class ClientSession:
             resp._history = tuple(history)
 
             for trace in traces:
-                await trace.send_request_end(method, url, headers, resp)
+                await trace.send_request_end(
+                    method, url.update_query(params), headers, resp
+                )
             return resp
 
         except BaseException as e:
@@ -611,7 +620,9 @@ class ClientSession:
                 handle = None
 
             for trace in traces:
-                await trace.send_request_exception(method, url, headers, e)
+                await trace.send_request_exception(
+                    method, url.update_query(params), headers, e
+                )
             raise
 
     def ws_connect(
@@ -627,6 +638,7 @@ class ClientSession:
         heartbeat: Optional[float] = None,
         auth: Optional[BasicAuth] = None,
         origin: Optional[str] = None,
+        params: Optional[Mapping[str, str]] = None,
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
@@ -648,6 +660,7 @@ class ClientSession:
                 heartbeat=heartbeat,
                 auth=auth,
                 origin=origin,
+                params=params,
                 headers=headers,
                 proxy=proxy,
                 proxy_auth=proxy_auth,
@@ -671,6 +684,7 @@ class ClientSession:
         heartbeat: Optional[float] = None,
         auth: Optional[BasicAuth] = None,
         origin: Optional[str] = None,
+        params: Optional[Mapping[str, str]] = None,
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
@@ -738,6 +752,7 @@ class ClientSession:
         resp = await self.request(
             method,
             url,
+            params=params,
             headers=real_headers,
             read_until_eof=False,
             auth=auth,

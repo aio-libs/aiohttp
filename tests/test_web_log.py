@@ -10,6 +10,7 @@ import pytest
 import aiohttp
 from aiohttp import web
 from aiohttp.abc import AbstractAccessLogger, AbstractAsyncAccessLogger
+from aiohttp.typedefs import Handler
 from aiohttp.web_log import AccessLogger
 from aiohttp.web_response import Response
 
@@ -232,7 +233,7 @@ async def test_contextvars_logger(aiohttp_server: Any, aiohttp_client: Any):
     async def handler(request):
         return web.Response()
 
-    async def middleware(request, handler):
+    async def middleware(request, handler: Handler):
         VAR.set("uuid")
         return await handler(request)
 

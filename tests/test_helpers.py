@@ -1,11 +1,13 @@
 # type: ignore
 import asyncio
 import base64
+import datetime
 import gc
 import os
 import platform
 from math import isclose, modf
 from unittest import mock
+from urllib.request import getproxies_environment
 
 import pytest
 from multidict import CIMultiDict, MultiDict
@@ -13,7 +15,7 @@ from re_assert import Matches
 from yarl import URL
 
 from aiohttp import helpers
-from aiohttp.helpers import is_expected_content_type
+from aiohttp.helpers import is_expected_content_type, parse_http_date
 
 IS_PYPY = platform.python_implementation() == "PyPy"
 
@@ -171,7 +173,7 @@ def test_basic_auth_decode_invalid_credentials() -> None:
     ),
 )
 def test_basic_auth_decode_blank_username(credentials, expected_auth) -> None:
-    header = "Basic {}".format(base64.b64encode(credentials.encode()).decode())
+    header = f"Basic {base64.b64encode(credentials.encode()).decode()}"
     assert helpers.BasicAuth.decode(header) == expected_auth
 
 
@@ -361,7 +363,7 @@ def test_timeout_handle_cb_exc(loop) -> None:
     assert not handle._callbacks
 
 
-def test_timer_context_cancelled() -> None:
+def test_timer_context_not_cancelled() -> None:
     with mock.patch("aiohttp.helpers.asyncio") as m_asyncio:
         m_asyncio.TimeoutError = asyncio.TimeoutError
         loop = mock.Mock()
@@ -372,7 +374,7 @@ def test_timer_context_cancelled() -> None:
             with ctx:
                 pass
 
-        assert m_asyncio.current_task.return_value.cancel.called
+        assert not m_asyncio.current_task.return_value.cancel.called
 
 
 def test_timer_context_no_task(loop) -> None:
@@ -515,6 +517,96 @@ def test_proxies_from_env_http_with_auth(mocker) -> None:
     assert proxy_auth.encoding == "latin1"
 
 
+# --------------------- get_env_proxy_for_url ------------------------------
+
+
+@pytest.fixture
+def proxy_env_vars(monkeypatch, request):
+    for schema in getproxies_environment().keys():
+        monkeypatch.delenv(f"{schema}_proxy", False)
+
+    for proxy_type, proxy_list in request.param.items():
+        monkeypatch.setenv(proxy_type, proxy_list)
+
+    return request.param
+
+
+@pytest.mark.parametrize(
+    ("proxy_env_vars", "url_input", "expected_err_msg"),
+    (
+        (
+            {"no_proxy": "aiohttp.io"},
+            "http://aiohttp.io/path",
+            r"Proxying is disallowed for `'aiohttp.io'`",
+        ),
+        (
+            {"no_proxy": "aiohttp.io,proxy.com"},
+            "http://aiohttp.io/path",
+            r"Proxying is disallowed for `'aiohttp.io'`",
+        ),
+        (
+            {"http_proxy": "http://example.com"},
+            "https://aiohttp.io/path",
+            r"No proxies found for `https://aiohttp.io/path` in the env",
+        ),
+        (
+            {"https_proxy": "https://example.com"},
+            "http://aiohttp.io/path",
+            r"No proxies found for `http://aiohttp.io/path` in the env",
+        ),
+        (
+            {},
+            "https://aiohttp.io/path",
+            r"No proxies found for `https://aiohttp.io/path` in the env",
+        ),
+        (
+            {"https_proxy": "https://example.com"},
+            "",
+            r"No proxies found for `` in the env",
+        ),
+    ),
+    indirect=["proxy_env_vars"],
+    ids=(
+        "url_matches_the_no_proxy_list",
+        "url_matches_the_no_proxy_list_multiple",
+        "url_scheme_does_not_match_http_proxy_list",
+        "url_scheme_does_not_match_https_proxy_list",
+        "no_proxies_are_set",
+        "url_is_empty",
+    ),
+)
+@pytest.mark.usefixtures("proxy_env_vars")
+def test_get_env_proxy_for_url_negative(url_input, expected_err_msg) -> None:
+    url = URL(url_input)
+    with pytest.raises(LookupError, match=expected_err_msg):
+        helpers.get_env_proxy_for_url(url)
+
+
+@pytest.mark.parametrize(
+    ("proxy_env_vars", "url_input"),
+    (
+        ({"http_proxy": "http://example.com"}, "http://aiohttp.io/path"),
+        ({"https_proxy": "http://example.com"}, "https://aiohttp.io/path"),
+        (
+            {"http_proxy": "http://example.com,http://proxy.org"},
+            "http://aiohttp.io/path",
+        ),
+    ),
+    indirect=["proxy_env_vars"],
+    ids=(
+        "url_scheme_match_http_proxy_list",
+        "url_scheme_match_https_proxy_list",
+        "url_scheme_match_http_proxy_list_multiple",
+    ),
+)
+def test_get_env_proxy_for_url(proxy_env_vars, url_input) -> None:
+    url = URL(url_input)
+    proxy, proxy_auth = helpers.get_env_proxy_for_url(url)
+    proxy_list = proxy_env_vars[url.scheme + "_proxy"]
+    assert proxy == URL(proxy_list)
+    assert proxy_auth is None
+
+
 # ------------- set_result / set_exception ----------------------
 
 
@@ -639,6 +731,22 @@ def test_is_expected_content_type_json_match_partially():
     )
 
 
+def test_is_expected_content_type_non_application_json_suffix():
+    expected_ct = "application/json"
+    response_ct = "model/gltf+json"  # rfc 6839
+    assert is_expected_content_type(
+        response_content_type=response_ct, expected_content_type=expected_ct
+    )
+
+
+def test_is_expected_content_type_non_application_json_private_suffix():
+    expected_ct = "application/json"
+    response_ct = "x-foo/bar+json"  # rfc 6839
+    assert is_expected_content_type(
+        response_content_type=response_ct, expected_content_type=expected_ct
+    )
+
+
 def test_is_expected_content_type_non_json_match_exact():
     expected_ct = "text/javascript"
     response_ct = "text/javascript"
@@ -749,3 +857,28 @@ def test_populate_with_cookies():
 
     helpers.populate_with_cookies(headers, cookies_mixin.cookies)
     assert headers == CIMultiDict({"Set-Cookie": "name=value; Path=/"})
+
+
+@pytest.mark.parametrize(
+    ["value", "expected"],
+    [
+        # email.utils.parsedate returns None
+        pytest.param("xxyyzz", None),
+        # datetime.datetime fails with ValueError("year 4446413 is out of range")
+        pytest.param("Tue, 08 Oct 4446413 00:56:40 GMT", None),
+        # datetime.datetime fails with ValueError("second must be in 0..59")
+        pytest.param("Tue, 08 Oct 2000 00:56:80 GMT", None),
+        # OK
+        pytest.param(
+            "Tue, 08 Oct 2000 00:56:40 GMT",
+            datetime.datetime(2000, 10, 8, 0, 56, 40, tzinfo=datetime.timezone.utc),
+        ),
+        # OK (ignore timezone and overwrite to UTC)
+        pytest.param(
+            "Tue, 08 Oct 2000 00:56:40 +0900",
+            datetime.datetime(2000, 10, 8, 0, 56, 40, tzinfo=datetime.timezone.utc),
+        ),
+    ],
+)
+def test_parse_http_date(value, expected):
+    assert parse_http_date(value) == expected

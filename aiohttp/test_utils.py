@@ -97,6 +97,9 @@ class BaseTestServer(ABC):
         host: str = "127.0.0.1",
         port: Optional[int] = None,
         skip_url_asserts: bool = False,
+        socket_factory: Callable[
+            [str, int, socket.AddressFamily], socket.socket
+        ] = get_port_socket,
         **kwargs: Any,
     ) -> None:
         self.runner = None  # type: Optional[BaseRunner]
@@ -106,6 +109,7 @@ class BaseTestServer(ABC):
         self._closed = False
         self.scheme = scheme
         self.skip_url_asserts = skip_url_asserts
+        self.socket_factory = socket_factory
 
     async def start_server(self, **kwargs: Any) -> None:
         if self.runner:
@@ -123,7 +127,7 @@ class BaseTestServer(ABC):
         if version == 6:
             absolute_host = f"[{self.host}]"
         family = socket.AF_INET6 if version == 6 else socket.AF_INET
-        _sock = get_port_socket(self.host, self.port, family=family)
+        _sock = self.socket_factory(self.host, self.port, family)
         self.host, self.port = _sock.getsockname()[:2]
         site = SockSite(self.runner, sock=_sock, ssl_context=self._ssl)
         await site.start()
@@ -428,8 +432,10 @@ class AioHTTPTestCase(TestCase):
         raise RuntimeError("Did you forget to define get_application()?")
 
     def setUp(self) -> None:
-        if PY_38:
-            self.loop = asyncio.get_event_loop()
+        try:
+            self.loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self.loop = asyncio.get_event_loop_policy().get_event_loop()
 
         self.loop.run_until_complete(self.setUpAsync())
 
@@ -490,7 +496,16 @@ def setup_test_loop(
     asyncio.set_event_loop(loop)
     if sys.platform != "win32" and not skip_watcher:
         policy = asyncio.get_event_loop_policy()
-        watcher = asyncio.SafeChildWatcher()
+        watcher: asyncio.AbstractChildWatcher
+        try:  # Python >= 3.8
+            # Refs:
+            # * https://github.com/pytest-dev/pytest-xdist/issues/620
+            # * https://stackoverflow.com/a/58614689/595220
+            # * https://bugs.python.org/issue35621
+            # * https://github.com/python/cpython/pull/14344
+            watcher = asyncio.ThreadedChildWatcher()
+        except AttributeError:  # Python < 3.8
+            watcher = asyncio.SafeChildWatcher()
         watcher.attach_loop(loop)
         with contextlib.suppress(NotImplementedError):
             policy.set_child_watcher(watcher)
