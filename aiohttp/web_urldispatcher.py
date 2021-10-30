@@ -513,6 +513,7 @@ class PrefixResource(AbstractResource):
         assert prefix in ("", "/") or not prefix.endswith("/"), prefix
         super().__init__(name=name)
         self._prefix = _requote_path(prefix)
+        self._prefix2 = self._prefix + "/"
 
     @property
     def canonical(self) -> str:
@@ -523,6 +524,7 @@ class PrefixResource(AbstractResource):
         assert not prefix.endswith("/")
         assert len(prefix) > 1
         self._prefix = prefix + self._prefix
+        self._prefix2 = self._prefix + "/"
 
     def raw_match(self, prefix: str) -> bool:
         return False
@@ -634,7 +636,7 @@ class StaticResource(PrefixResource):
         path = request.rel_url.raw_path
         method = request.method
         allowed_methods = set(self._routes)
-        if not path.startswith(self._prefix):
+        if not path.startswith(self._prefix2) and path != self._prefix:
             return None, set()
 
         if method not in allowed_methods:
@@ -750,7 +752,7 @@ class PrefixedSubAppResource(PrefixResource):
 
     async def resolve(self, request: Request) -> _Resolve:
         if (
-            not request.url.raw_path.startswith(self._prefix + "/")
+            not request.url.raw_path.startswith(self._prefix2)
             and request.url.raw_path != self._prefix
         ):
             return None, set()
