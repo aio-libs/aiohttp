@@ -731,6 +731,22 @@ def test_is_expected_content_type_json_match_partially():
     )
 
 
+def test_is_expected_content_type_non_application_json_suffix():
+    expected_ct = "application/json"
+    response_ct = "model/gltf+json"  # rfc 6839
+    assert is_expected_content_type(
+        response_content_type=response_ct, expected_content_type=expected_ct
+    )
+
+
+def test_is_expected_content_type_non_application_json_private_suffix():
+    expected_ct = "application/json"
+    response_ct = "x-foo/bar+json"  # rfc 6839
+    assert is_expected_content_type(
+        response_content_type=response_ct, expected_content_type=expected_ct
+    )
+
+
 def test_is_expected_content_type_non_json_match_exact():
     expected_ct = "text/javascript"
     response_ct = "text/javascript"
