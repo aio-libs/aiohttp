@@ -65,7 +65,6 @@ Bruce Merry
 Bryan Kok
 Bryce Drennan
 Carl George
-Cássio Antoniazzi
 Cecile Tonglet
 Chien-Wei Huang
 Chih-Yuan Chen
@@ -76,6 +75,7 @@ Christopher Schmitt
 Claudiu Popa
 Colin Dunklau
 Cong Xu
+Cássio Antoniazzi
 Damien Nadé
 Dan Xu
 Daniel García
