@@ -1,0 +1,1 @@
+Remove repeated check for raise_for_status is None.
