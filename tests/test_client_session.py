@@ -634,7 +634,7 @@ async def test_request_tracing_url_params(loop: Any, aiohttp_client: Any) -> Non
             m.reset_mock()
 
     def to_trace_urls(mock_func: mock.Mock) -> List[URL]:
-        return [call_args.args[-1].url for call_args in mock_func.call_args_list]
+        return [call_args[0][-1].url for call_args in mock_func.call_args_list]
 
     def to_url(path: str) -> URL:
         return session.make_url(path)
