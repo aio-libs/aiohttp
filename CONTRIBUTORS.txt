@@ -76,6 +76,7 @@ Claudiu Popa
 Colin Dunklau
 Cong Xu
 Damien Nadé
+Dan King
 Dan Xu
 Daniel García
 Daniel Grossmann-Kavanagh
