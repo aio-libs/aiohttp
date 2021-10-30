@@ -589,9 +589,6 @@ class ClientSession:
             # check response status
             if raise_for_status is None:
                 raise_for_status = self._raise_for_status
-
-            if raise_for_status is None:
-                pass
             elif callable(raise_for_status):
                 await raise_for_status(resp)
             elif raise_for_status:
