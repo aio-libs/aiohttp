@@ -5,6 +5,7 @@ import pathlib
 import shutil
 import sys
 import tempfile
+from typing import Any
 from unittest import mock
 from unittest.mock import MagicMock
 
@@ -517,6 +518,21 @@ async def test_static_absolute_url(aiohttp_client, tmpdir) -> None:
     client = await aiohttp_client(app)
     resp = await client.get("/static/" + str(fname))
     assert resp.status == 403
+
+
+async def test_for_issue_5250(aiohttp_client: Any, tmp_path: Any) -> None:
+    app = web.Application()
+    app.router.add_static("/foo", tmp_path)
+
+    async def get_foobar(request):
+        return web.Response(body="success!")
+
+    app.router.add_get("/foobar", get_foobar)
+
+    client = await aiohttp_client(app)
+    async with await client.get("/foobar") as resp:
+        assert resp.status == 200
+        assert (await resp.text()) == "success!"
 
 
 @pytest.mark.xfail(
