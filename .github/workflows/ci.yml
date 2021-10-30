@@ -200,6 +200,11 @@ jobs:
       uses: py-actions/py-dependency-install@v2
       with:
         path: requirements/cython.txt
+    - name: Restore llhttp generated files
+      uses: actions/download-artifact@v2
+      with:
+        name: llhttp
+        path: vendor/llhttp/build/
     - name: Cythonize
       run: |
         make cythonize
@@ -254,6 +259,11 @@ jobs:
       uses: py-actions/py-dependency-install@v2
       with:
         path: requirements/cython.txt
+    - name: Restore llhttp generated files
+      uses: actions/download-artifact@v2
+      with:
+        name: llhttp
+        path: vendor/llhttp/build/
     - name: Cythonize
       run: |
         make cythonize
