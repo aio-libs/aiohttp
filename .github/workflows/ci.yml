@@ -290,9 +290,14 @@ jobs:
     - name: Login
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-    - uses: actions/download-artifact@v2
+    - name: Download disctributions
+      uses: actions/download-artifact@v2
       with:
         name: dist
+        path: dist
+    - name: Collected dists
+      run: |
+        tree dist
     - name: Make Release
       uses: aio-libs/create-release@v1.2.2
       with:
