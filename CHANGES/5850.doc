@@ -1,2 +1,0 @@
-Documented that the HTTP client ``Authorization`` header is removed
-on redirects to a different host or protocol.

@@ -1,2 +1,0 @@
-Migrated the Python packaging setup to use PEP 517 in the CI via
-the official PyPA front-end called ``build`` — :user:`webknjaz`.
