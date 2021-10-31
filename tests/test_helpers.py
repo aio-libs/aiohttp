@@ -747,6 +747,15 @@ def test_is_expected_content_type_non_application_json_private_suffix():
     )
 
 
+def test_is_expected_content_type_json_non_lowercase():
+    """Per RFC 2045, media type matching is case insensitive."""
+    expected_ct = "application/json"
+    response_ct = "Application/JSON"
+    assert is_expected_content_type(
+        response_content_type=response_ct, expected_content_type=expected_ct
+    )
+
+
 def test_is_expected_content_type_non_json_match_exact():
     expected_ct = "text/javascript"
     response_ct = "text/javascript"
