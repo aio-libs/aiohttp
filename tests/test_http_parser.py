@@ -292,6 +292,19 @@ def test_request_chunked(parser: Any) -> None:
     assert isinstance(payload, streams.StreamReader)
 
 
+def test_request_te_chunked_with_content_length(parser: Any) -> None:
+    text = (
+        b"GET /test HTTP/1.1\r\n"
+        b"content-length: 1234\r\n"
+        b"transfer-encoding: chunked\r\n\r\n"
+    )
+    with pytest.raises(
+        http_exceptions.BadHttpMessage,
+        match="Content-Length can't be present with Transfer-Encoding",
+    ):
+        parser.feed_data(text)
+
+
 def test_conn_upgrade(parser: Any) -> None:
     text = (
         b"GET /test HTTP/1.1\r\n"
