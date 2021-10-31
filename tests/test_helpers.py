@@ -3,7 +3,6 @@ import asyncio
 import base64
 import datetime
 import gc
-import os
 import platform
 from math import isclose, modf
 from unittest import mock
@@ -483,35 +482,69 @@ def test_set_content_disposition_bad_param() -> None:
 # --------------------- proxies_from_env ------------------------------
 
 
-@pytest.mark.parametrize("protocol", ["http", "https", "ws", "wss"])
-def test_proxies_from_env(monkeypatch, protocol) -> None:
-    url = URL("http://aiohttp.io/path")
-    monkeypatch.setenv(protocol + "_proxy", str(url))
+@pytest.mark.parametrize(
+    ("proxy_env_vars", "url_input", "expected_scheme"),
+    (
+        ({"http_proxy": "http://aiohttp.io/path"}, "http://aiohttp.io/path", "http"),
+        ({"https_proxy": "http://aiohttp.io/path"}, "http://aiohttp.io/path", "https"),
+        ({"ws_proxy": "http://aiohttp.io/path"}, "http://aiohttp.io/path", "ws"),
+        ({"wss_proxy": "http://aiohttp.io/path"}, "http://aiohttp.io/path", "wss"),
+    ),
+    indirect=["proxy_env_vars"],
+    ids=("http", "https", "ws", "wss"),
+)
+@pytest.mark.usefixtures("proxy_env_vars")
+def test_proxies_from_env(url_input, expected_scheme) -> None:
+    url = URL(url_input)
     ret = helpers.proxies_from_env()
-    assert ret.keys() == {protocol}
-    assert ret[protocol].proxy == url
-    assert ret[protocol].proxy_auth is None
+    assert ret.keys() == {expected_scheme}
+    assert ret[expected_scheme].proxy == url
+    assert ret[expected_scheme].proxy_auth is None
 
 
-@pytest.mark.parametrize("protocol", ["https", "wss"])
-def test_proxies_from_env_skipped(monkeypatch, caplog, protocol) -> None:
-    url = URL(protocol + "://aiohttp.io/path")
-    monkeypatch.setenv(protocol + "_proxy", str(url))
+@pytest.mark.parametrize(
+    ("proxy_env_vars", "url_input", "expected_scheme"),
+    (
+        (
+            {"https_proxy": "https://aiohttp.io/path"},
+            "https://aiohttp.io/path",
+            "https",
+        ),
+        ({"wss_proxy": "wss://aiohttp.io/path"}, "wss://aiohttp.io/path", "wss"),
+    ),
+    indirect=["proxy_env_vars"],
+    ids=("https", "wss"),
+)
+@pytest.mark.usefixtures("proxy_env_vars")
+def test_proxies_from_env_skipped(caplog, url_input, expected_scheme) -> None:
+    url = URL(url_input)
     assert helpers.proxies_from_env() == {}
     assert len(caplog.records) == 1
     log_message = "{proto!s} proxies {url!s} are not supported, ignoring".format(
-        proto=protocol.upper(), url=url
+        proto=expected_scheme.upper(), url=url
     )
     assert caplog.record_tuples == [("aiohttp.client", 30, log_message)]
 
 
-def test_proxies_from_env_http_with_auth(mocker) -> None:
+@pytest.mark.parametrize(
+    ("proxy_env_vars", "url_input", "expected_scheme"),
+    (
+        (
+            {"http_proxy": "http://user:pass@aiohttp.io/path"},
+            "http://user:pass@aiohttp.io/path",
+            "http",
+        ),
+    ),
+    indirect=["proxy_env_vars"],
+    ids=("http",),
+)
+@pytest.mark.usefixtures("proxy_env_vars")
+def test_proxies_from_env_http_with_auth(url_input, expected_scheme) -> None:
     url = URL("http://user:pass@aiohttp.io/path")
-    mocker.patch.dict(os.environ, {"http_proxy": str(url)})
     ret = helpers.proxies_from_env()
-    assert ret.keys() == {"http"}
-    assert ret["http"].proxy == url.with_user(None)
-    proxy_auth = ret["http"].proxy_auth
+    assert ret.keys() == {expected_scheme}
+    assert ret[expected_scheme].proxy == url.with_user(None)
+    proxy_auth = ret[expected_scheme].proxy_auth
     assert proxy_auth.login == "user"
     assert proxy_auth.password == "pass"
     assert proxy_auth.encoding == "latin1"
