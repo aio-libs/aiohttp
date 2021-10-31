@@ -1,3 +1,0 @@
-Only encode content-disposition filename parameter using percent-encoding.
-Other parameters are encoded to quoted-string or RFC2231 extended parameter
-value.
