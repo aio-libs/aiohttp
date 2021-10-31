@@ -730,22 +730,10 @@ async def test_requote_redirect_url_default_disable() -> None:
             id="base_url='http://example.com' url='/test'",
         ),
         pytest.param(
-            "http://example.com",
-            "test",
-            URL("http://example.com/test"),
-            id="base_url='http://example.com' url='test'",
-        ),
-        pytest.param(
             URL("http://example.com"),
             "/test",
             URL("http://example.com/test"),
             id="base_url=URL('http://example.com') url='/test'",
-        ),
-        pytest.param(
-            URL("http://example.com"),
-            "test",
-            URL("http://example.com/test"),
-            id="base_url=URL('http://example.com') url='test'",
         ),
     ],
 )
@@ -754,25 +742,3 @@ async def test_build_url_returns_expected_url(
 ) -> None:
     session = await create_session(base_url)
     assert session._build_url(url) == expected_url
-
-
-async def test_request_uses_base_url_when_url_is_str(create_session) -> None:
-    request_class = mock.MagicMock()
-    session = await create_session("http://example.com", request_class=request_class)
-    with contextlib.suppress(Exception):
-        await session.get("/test")
-
-    args, _ = request_class.call_args
-    url = args[1]
-    assert url == URL("http://example.com/test")
-
-
-async def test_request_not_uses_base_url_when_url_is_URL(create_session) -> None:
-    request_class = mock.MagicMock()
-    session = await create_session("http://example.com", request_class=request_class)
-    with contextlib.suppress(Exception):
-        await session.get(URL("http://sample.com"))
-
-    args, _ = request_class.call_args
-    url = args[1]
-    assert url == URL("http://sample.com")
