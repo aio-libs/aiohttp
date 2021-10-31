@@ -1,1 +1,0 @@
-Fixes failing tests when an environment variable <scheme>_proxy is set.
