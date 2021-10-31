@@ -222,6 +222,7 @@ class ClientSession:
             self._base_url: Optional[URL] = base_url
         else:
             self._base_url = URL(base_url)
+            assert self._base_url.origin() == self._base_url, "Only absolute URLs without path part are supported"
 
         loop = asyncio.get_running_loop()
 
@@ -312,10 +313,12 @@ class ClientSession:
         return _RequestContextManager(self._request(method, url, **kwargs))
 
     def _build_url(self, str_or_url: StrOrURL) -> URL:
+        url = URL(str_or_url)
         if self._base_url is None:
-            return URL(str_or_url)
+            return url
         else:
-            return self._base_url.join(URL(str_or_url))
+            assert not url.is_absolute() and url.path.startswith('/')
+            return self._base_url.join(url)
 
     async def _request(
         self,
