@@ -789,6 +789,14 @@ def test_is_expected_content_type_json_non_lowercase():
     )
 
 
+def test_is_expected_content_type_json_with_charset():
+    expected_ct = "application/json"
+    response_ct = "application/json; charset=UTF-8"
+    assert is_expected_content_type(
+        response_content_type=response_ct, expected_content_type=expected_ct
+    )
+
+
 def test_is_expected_content_type_json_match_not_just_prefix():
     expected_ct = "application/json"
     response_ct = "application/json-seq"
