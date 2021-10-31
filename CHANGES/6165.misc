@@ -1,2 +1,0 @@
-Migrated the Python packaging setup to have static metadata
-in the declarative ``setup.cfg`` file — :user:`webknjaz`.
