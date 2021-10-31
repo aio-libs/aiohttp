@@ -29,6 +29,7 @@ from . import hdrs
 from .base_protocol import BaseProtocol
 from .helpers import NO_EXTENSIONS, BaseTimerContext
 from .http_exceptions import (
+    BadHttpMessage,
     BadStatusLine,
     ContentEncodingError,
     ContentLengthError,
@@ -490,8 +491,15 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
         # chunking
         te = headers.get(hdrs.TRANSFER_ENCODING)
-        if te and "chunked" in te.lower():
-            chunked = True
+        if te is not None:
+            te_lower = te.lower()
+            if "chunked" in te_lower:
+                chunked = True
+
+            if hdrs.CONTENT_LENGTH in headers:
+                raise BadHttpMessage(
+                    "Content-Length can't be present with Transfer-Encoding",
+                )
 
         return (headers, raw_headers, close_conn, encoding, upgrade, chunked)
 
