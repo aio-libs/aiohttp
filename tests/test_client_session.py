@@ -816,3 +816,39 @@ async def test_requote_redirect_url_default_disable() -> None:
     session = ClientSession(requote_redirect_url=False)
     assert not session.requote_redirect_url
     await session.close()
+
+
+@pytest.mark.parametrize(
+    ("base_url", "url", "expected_url"),
+    [
+        pytest.param(
+            None,
+            "http://example.com/test",
+            URL("http://example.com/test"),
+            id="base_url=None url='http://example.com/test'",
+        ),
+        pytest.param(
+            None,
+            URL("http://example.com/test"),
+            URL("http://example.com/test"),
+            id="base_url=None url=URL('http://example.com/test')",
+        ),
+        pytest.param(
+            "http://example.com",
+            "/test",
+            URL("http://example.com/test"),
+            id="base_url='http://example.com' url='/test'",
+        ),
+        pytest.param(
+            URL("http://example.com"),
+            "/test",
+            URL("http://example.com/test"),
+            id="base_url=URL('http://example.com') url='/test'",
+        ),
+    ],
+)
+async def test_build_url_returns_expected_url(
+    create_session, base_url, url, expected_url
+) -> None:
+    session = await create_session(base_url)
+    assert session._build_url(url) == expected_url

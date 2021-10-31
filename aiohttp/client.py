@@ -169,6 +169,7 @@ class ClientSession:
     """First-class interface for making HTTP requests."""
 
     __slots__ = (
+        "_base_url",
         "_source_traceback",
         "_connector",
         "_loop",
@@ -193,6 +194,7 @@ class ClientSession:
 
     def __init__(
         self,
+        base_url: Optional[StrOrURL] = None,
         *,
         connector: Optional[BaseConnector] = None,
         cookies: Optional[LooseCookies] = None,
@@ -216,6 +218,14 @@ class ClientSession:
         trace_configs: Optional[List[TraceConfig]] = None,
         read_bufsize: int = 2 ** 16,
     ) -> None:
+        if base_url is None or isinstance(base_url, URL):
+            self._base_url: Optional[URL] = base_url
+        else:
+            self._base_url = URL(base_url)
+            assert (
+                self._base_url.origin() == self._base_url
+            ), "Only absolute URLs without path part are supported"
+
         loop = asyncio.get_running_loop()
 
         if connector is None:
@@ -304,6 +314,14 @@ class ClientSession:
         """Perform HTTP request."""
         return _RequestContextManager(self._request(method, url, **kwargs))
 
+    def _build_url(self, str_or_url: StrOrURL) -> URL:
+        url = URL(str_or_url)
+        if self._base_url is None:
+            return url
+        else:
+            assert not url.is_absolute() and url.path.startswith("/")
+            return self._base_url.join(url)
+
     async def _request(
         self,
         method: str,
@@ -363,7 +381,7 @@ class ClientSession:
         proxy_headers = self._prepare_headers(proxy_headers)
 
         try:
-            url = URL(str_or_url)
+            url = self._build_url(str_or_url)
         except ValueError as e:
             raise InvalidURL(str_or_url) from e
 
