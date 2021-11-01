@@ -1407,7 +1407,7 @@ duplicated like one using :meth:`~aiohttp.web.Application.copy`.
 
    .. attribute:: on_response_prepare
 
-      A :class:`~aiohttp.Signal` that is fired near the end
+      A :class:`~aiosignal.Signal` that is fired near the end
       of :meth:`StreamResponse.prepare` with parameters *request* and
       *response*. It can be used, for example, to add custom headers to each
       response, or to modify the default headers computed by the application,
@@ -1420,7 +1420,7 @@ duplicated like one using :meth:`~aiohttp.web.Application.copy`.
 
    .. attribute:: on_startup
 
-      A :class:`~aiohttp.Signal` that is fired on application start-up.
+      A :class:`~aiosignal.Signal` that is fired on application start-up.
 
       Subscribers may use the signal to run background tasks in the event
       loop along with the application's request handler just after the
@@ -1435,7 +1435,7 @@ duplicated like one using :meth:`~aiohttp.web.Application.copy`.
 
    .. attribute:: on_shutdown
 
-      A :class:`~aiohttp.Signal` that is fired on application shutdown.
+      A :class:`~aiosignal.Signal` that is fired on application shutdown.
 
       Subscribers may use the signal for gracefully closing long running
       connections, e.g. websockets and data streaming.
@@ -1455,7 +1455,7 @@ duplicated like one using :meth:`~aiohttp.web.Application.copy`.
 
    .. attribute:: on_cleanup
 
-      A :class:`~aiohttp.Signal` that is fired on application cleanup.
+      A :class:`~aiosignal.Signal` that is fired on application cleanup.
 
       Subscribers may use the signal for gracefully closing
       connections to database server etc.
