@@ -180,8 +180,6 @@ __all__: Tuple[str, ...] = (
     "AsyncResolver",
     "DefaultResolver",
     "ThreadedResolver",
-    # signals
-    "Signal",
     # streams
     "DataQueue",
     "EMPTY_PAYLOAD",

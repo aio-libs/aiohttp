@@ -69,6 +69,7 @@ intersphinx_mapping = {
     "python": ("http://docs.python.org/3", None),
     "multidict": ("https://multidict.readthedocs.io/en/stable/", None),
     "yarl": ("https://yarl.readthedocs.io/en/stable/", None),
+    "aiosignal": ("https://aiosignal.readthedocs.io/en/stable/", None),
     "aiohttpjinja2": ("https://aiohttp-jinja2.readthedocs.io/en/stable/", None),
     "aiohttpremotes": ("https://aiohttp-remotes.readthedocs.io/en/stable/", None),
     "aiohttpsession": ("https://aiohttp-session.readthedocs.io/en/stable/", None),
