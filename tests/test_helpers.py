@@ -789,20 +789,18 @@ def test_is_expected_content_type_json_non_lowercase():
     )
 
 
-def test_is_expected_content_type_json_with_charset():
-    expected_ct = "application/json"
-    response_ct = "application/json; charset=UTF-8"
+@pytest.mark.paratetrize(
+    ("expected_ct", "response_ct", "should_match"),
+    (
+        ("application/json", "application/json; charset=UTF-8", True),
+        ("application/json", "application/json-seq", False),
+    ),
+    ids=("with-charset", "non-plus-suffix-should-not-match"),
+)
+def test_is_expected_content_type_json(expected_ct, response_ct, should_match):
     assert is_expected_content_type(
         response_content_type=response_ct, expected_content_type=expected_ct
-    )
-
-
-def test_is_expected_content_type_json_match_not_just_prefix():
-    expected_ct = "application/json"
-    response_ct = "application/json-seq"
-    assert not is_expected_content_type(
-        response_content_type=response_ct, expected_content_type=expected_ct
-    )
+    ) is should_match
 
 
 def test_is_expected_content_type_non_json_match_exact():
