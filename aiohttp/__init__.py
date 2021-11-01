@@ -103,7 +103,7 @@ from .tracing import (
     TraceResponseChunkReceivedParams as TraceResponseChunkReceivedParams,
 )
 
-__all__: Tuple[str, ...] = (
+__all__ = (
     "hdrs",
     # client
     "BaseConnector",
