@@ -1,6 +1,6 @@
 -r base.txt
 Brotli==1.0.9
-coverage==6.0.2
+coverage==6.1.1
 cryptography==3.3.1; platform_machine!="i686" and python_version<"3.9" # no 32-bit wheels; no python 3.9 wheels yet
 freezegun==1.1.0
 mypy==0.910; implementation_name=="cpython"
