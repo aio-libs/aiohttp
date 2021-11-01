@@ -100,7 +100,7 @@ class ClientResponseError(ClientError):
             args += f", message={self.message!r}"
         if self.headers is not None:
             args += f", headers={self.headers!r}"
-        return "{}({})".format(type(self).__name__, args)
+        return f"{type(self).__name__}({args})"
 
     @property
     def code(self) -> int:

@@ -154,7 +154,7 @@ def parse_content_disposition(
             elif parts:
                 # maybe just ; in filename, in any case this is just
                 # one case fix, for proper fix we need to redesign parser
-                _value = "{};{}".format(value, parts[0])
+                _value = f"{value};{parts[0]}"
                 if is_quoted(_value):
                     parts.pop(0)
                     value = unescape(_value[1:-1].lstrip("\\/"))

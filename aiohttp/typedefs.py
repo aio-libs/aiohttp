@@ -1,6 +1,5 @@
 import json
 import os
-import pathlib
 import sys
 from typing import (
     TYPE_CHECKING,
@@ -62,7 +61,4 @@ LooseCookies = Union[
 
 Handler = Callable[["Request"], Awaitable["StreamResponse"]]
 
-if sys.version_info >= (3, 6):
-    PathLike = Union[str, "os.PathLike[str]"]
-else:
-    PathLike = Union[str, pathlib.PurePath]
+PathLike = Union[str, "os.PathLike[str]"]

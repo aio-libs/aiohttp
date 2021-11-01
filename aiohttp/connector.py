@@ -186,7 +186,7 @@ class Connection:
 
 
 class _TransportPlaceholder:
-    """ placeholder for BaseConnector.connect function """
+    """placeholder for BaseConnector.connect function"""
 
     def close(self) -> None:
         pass
