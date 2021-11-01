@@ -1,7 +1,5 @@
 __version__ = "4.0.0a1"
 
-from typing import Tuple
-
 from . import hdrs as hdrs
 from .client import (
     BaseConnector as BaseConnector,
