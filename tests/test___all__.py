@@ -7,8 +7,8 @@ def test___all__(pytester: Any) -> None:
     """
     pytester.makepyfile(
         test_a="""
-        from aiohttp import *
-    """
+            from aiohttp import *
+        """
     )
     result = pytester.runpytest("-vv")
     result.assert_outcomes(passed=0, errors=0)
@@ -17,8 +17,8 @@ def test___all__(pytester: Any) -> None:
 def test_web___all__(pytester: Any) -> None:
     pytester.makepyfile(
         test_b="""
-        from aiohttp.web import *
-    """
+            from aiohttp.web import *
+        """
     )
     result = pytester.runpytest("-vv")
     result.assert_outcomes(passed=0, errors=0)
