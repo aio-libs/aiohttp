@@ -798,9 +798,12 @@ def test_is_expected_content_type_json_non_lowercase():
     ids=("with-charset", "non-plus-suffix-should-not-match"),
 )
 def test_is_expected_content_type_json(expected_ct, response_ct, should_match):
-    assert is_expected_content_type(
-        response_content_type=response_ct, expected_content_type=expected_ct
-    ) is should_match
+    assert (
+        is_expected_content_type(
+            response_content_type=response_ct, expected_content_type=expected_ct
+        )
+        is should_match
+    )
 
 
 def test_is_expected_content_type_non_json_match_exact():
