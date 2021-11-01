@@ -106,7 +106,7 @@ class TraceConfig:
     def trace_config_ctx(
         self, trace_request_ctx: Optional[SimpleNamespace] = None
     ) -> SimpleNamespace:
-        """ Return a new trace_config_ctx instance """
+        """Return a new trace_config_ctx instance"""
         return self._trace_config_ctx_factory(trace_request_ctx=trace_request_ctx)
 
     def freeze(self) -> None:
@@ -218,7 +218,7 @@ class TraceConfig:
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceRequestStartParams:
-    """ Parameters sent by the `on_request_start` signal"""
+    """Parameters sent by the `on_request_start` signal"""
 
     method: str
     url: URL
@@ -227,7 +227,7 @@ class TraceRequestStartParams:
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceRequestChunkSentParams:
-    """ Parameters sent by the `on_request_chunk_sent` signal"""
+    """Parameters sent by the `on_request_chunk_sent` signal"""
 
     method: str
     url: URL
@@ -236,7 +236,7 @@ class TraceRequestChunkSentParams:
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceResponseChunkReceivedParams:
-    """ Parameters sent by the `on_response_chunk_received` signal"""
+    """Parameters sent by the `on_response_chunk_received` signal"""
 
     method: str
     url: URL
@@ -245,7 +245,7 @@ class TraceResponseChunkReceivedParams:
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceRequestEndParams:
-    """ Parameters sent by the `on_request_end` signal"""
+    """Parameters sent by the `on_request_end` signal"""
 
     method: str
     url: URL
@@ -255,7 +255,7 @@ class TraceRequestEndParams:
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceRequestExceptionParams:
-    """ Parameters sent by the `on_request_exception` signal"""
+    """Parameters sent by the `on_request_exception` signal"""
 
     method: str
     url: URL
@@ -265,7 +265,7 @@ class TraceRequestExceptionParams:
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceRequestRedirectParams:
-    """ Parameters sent by the `on_request_redirect` signal"""
+    """Parameters sent by the `on_request_redirect` signal"""
 
     method: str
     url: URL
@@ -275,60 +275,60 @@ class TraceRequestRedirectParams:
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceConnectionQueuedStartParams:
-    """ Parameters sent by the `on_connection_queued_start` signal"""
+    """Parameters sent by the `on_connection_queued_start` signal"""
 
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceConnectionQueuedEndParams:
-    """ Parameters sent by the `on_connection_queued_end` signal"""
+    """Parameters sent by the `on_connection_queued_end` signal"""
 
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceConnectionCreateStartParams:
-    """ Parameters sent by the `on_connection_create_start` signal"""
+    """Parameters sent by the `on_connection_create_start` signal"""
 
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceConnectionCreateEndParams:
-    """ Parameters sent by the `on_connection_create_end` signal"""
+    """Parameters sent by the `on_connection_create_end` signal"""
 
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceConnectionReuseconnParams:
-    """ Parameters sent by the `on_connection_reuseconn` signal"""
+    """Parameters sent by the `on_connection_reuseconn` signal"""
 
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceDnsResolveHostStartParams:
-    """ Parameters sent by the `on_dns_resolvehost_start` signal"""
+    """Parameters sent by the `on_dns_resolvehost_start` signal"""
 
     host: str
 
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceDnsResolveHostEndParams:
-    """ Parameters sent by the `on_dns_resolvehost_end` signal"""
+    """Parameters sent by the `on_dns_resolvehost_end` signal"""
 
     host: str
 
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceDnsCacheHitParams:
-    """ Parameters sent by the `on_dns_cache_hit` signal"""
+    """Parameters sent by the `on_dns_cache_hit` signal"""
 
     host: str
 
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceDnsCacheMissParams:
-    """ Parameters sent by the `on_dns_cache_miss` signal"""
+    """Parameters sent by the `on_dns_cache_miss` signal"""
 
     host: str
 
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
 class TraceRequestHeadersSentParams:
-    """ Parameters sent by the `on_request_headers_sent` signal"""
+    """Parameters sent by the `on_request_headers_sent` signal"""
 
     method: str
     url: URL
