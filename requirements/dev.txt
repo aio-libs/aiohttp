@@ -310,7 +310,7 @@ virtualenv==20.4.2
     # via
     #   -r requirements/lint.txt
     #   pre-commit
-wait-for-it==2.2.0 ; python_version >= "3.7"
+wait-for-it==2.2.1 ; python_version >= "3.7"
     # via -r requirements/dev.in
 webcolors==1.11.1
     # via blockdiag
