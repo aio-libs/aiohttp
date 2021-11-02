@@ -1,4 +1,4 @@
-__version__ = "4.0.0a1"
+from ._version import __version__
 
 from typing import Tuple
 
