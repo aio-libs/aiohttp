@@ -143,6 +143,29 @@ async def test_threaded_negative_lookup_with_unknown_result() -> None:
     assert len(res) == 0
 
 
+async def test_threaded_resolver_ipv6_only_host() -> None:
+    loop = Mock()
+
+    async def ipv6_addrinfo(*args: Any, **kwargs: Any) -> List[Any]:
+        return [
+            (
+                socket.AF_INET6,
+                socket.SOCK_STREAM,
+                6,
+                "",
+                ("2404:6800:4004:819::200", 443, 0, 0),
+            )
+        ]
+
+    loop.getaddrinfo = ipv6_addrinfo
+    resolver = ThreadedResolver()
+    resolver._loop = loop
+    res = await resolver.resolve("https://ipv6.google.com")
+    assert len(res) == 1
+    assert res[0]["hostname"] == "https://ipv6.google.com"
+    assert res[0]["host"] == "2404:6800:4004:819::200"
+
+
 async def test_close_for_threaded_resolver(loop: Any) -> None:
     resolver = ThreadedResolver()
     await resolver.close()

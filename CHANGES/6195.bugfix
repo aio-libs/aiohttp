@@ -1,0 +1,1 @@
+Fix the threaded dns resolver skip the correct dns response when connecting a IPv6-only host.
