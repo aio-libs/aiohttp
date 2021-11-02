@@ -1,8 +1,7 @@
-from ._version import __version__
-
 from typing import Tuple
 
 from . import hdrs as hdrs
+from ._version import __version__
 from .client import (
     BaseConnector as BaseConnector,
     ClientConnectionError as ClientConnectionError,
