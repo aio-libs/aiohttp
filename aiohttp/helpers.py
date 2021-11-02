@@ -124,9 +124,7 @@ else:
         return asyncio.iscoroutinefunction(func)
 
 
-json_re = re.compile(
-    r"(?:application/|[\w.-]+/[\w.+-]+?\+)json(?:\s*;.*)?$", re.IGNORECASE
-)
+json_re = re.compile(r"(?:application/|[\w.-]+/[\w.+-]+?\+)json$", re.IGNORECASE)
 
 
 class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
@@ -425,6 +423,9 @@ def content_disposition_header(
 def is_expected_content_type(
     response_content_type: str, expected_content_type: str
 ) -> bool:
+    """Checks if received content type is processable as an expected one.
+    Both arguments should be given without parameters.
+    """
     if expected_content_type == "application/json":
         return json_re.match(response_content_type) is not None
     return expected_content_type in response_content_type
