@@ -1,1 +1,2 @@
-Added requirement for compatible ``setuptools`` version.
+Declared the minimum required version of ``setuptools`` in the :pep:`517`
+configuration file -- :user:`jameshilliard`.
