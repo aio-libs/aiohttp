@@ -2,7 +2,7 @@
 # required c-ares will not build on windows and has build problems on Macos Python<3.7
 aiodns==3.0.0; sys_platform=="linux" or sys_platform=="darwin" and python_version>="3.7"
 aiosignal==1.2.0
-async-timeout==4.0.0a3
+async-timeout==4.0.0
 asynctest==0.13.0; python_version<"3.8"
 Brotli==1.0.9
 cchardet==2.1.7
