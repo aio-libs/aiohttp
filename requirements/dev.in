@@ -2,5 +2,5 @@
 -r test.txt
 -r doc.txt
 cherry_picker==2.0.0; python_version>="3.6"
-python-on-whales==0.29.0
+python-on-whales==0.30.0
 wait-for-it==2.2.1
