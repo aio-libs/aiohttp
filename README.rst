@@ -163,6 +163,7 @@ Requirements
 ============
 
 - Python >= 3.7
+- setuptools >= 46.4.0
 - async-timeout_
 - charset-normalizer_
 - multidict_
