@@ -19,6 +19,8 @@ appdirs==1.4.4
     #   virtualenv
 async-timeout==4.0.0a3
     # via -r requirements/base.txt
+asynctest==0.13.0 ; python_version < "3.8"
+    # via -r requirements/base.txt
 attrs==20.3.0
     # via
     #   -r requirements/lint.txt
@@ -63,12 +65,13 @@ click==7.1.2
     #   wait-for-it
 click-default-group==1.2.2
     # via towncrier
-coverage[toml]==6.0.2
+coverage[toml]==6.1.1
     # via
     #   -r requirements/test.txt
     #   pytest-cov
-cryptography==3.3.1
+cryptography==3.3.1 ; platform_machine != "i686" and python_version < "3.9"
     # via
+    #   -r requirements/test.txt
     #   pyjwt
     #   trustme
 distlib==0.3.1
@@ -112,6 +115,13 @@ idna==2.10
     #   yarl
 imagesize==1.2.0
     # via sphinx
+importlib-metadata==4.2.0
+    # via
+    #   flake8
+    #   pluggy
+    #   pre-commit
+    #   pytest
+    #   virtualenv
 incremental==17.5.0
     # via towncrier
 iniconfig==1.1.1
@@ -208,7 +218,7 @@ pytest-mock==3.6.1
     # via -r requirements/test.txt
 python-dateutil==2.8.1
     # via freezegun
-python-on-whales==0.29.0
+python-on-whales==0.30.0
     # via -r requirements/dev.in
 pytz==2020.5
     # via babel
@@ -283,6 +293,10 @@ tqdm==4.62.2
     # via python-on-whales
 trustme==0.9.0 ; platform_machine != "i686"
     # via -r requirements/test.txt
+typed-ast==1.4.3
+    # via
+    #   black
+    #   mypy
 typer==0.4.0
     # via python-on-whales
 types-chardet==0.1.3
@@ -294,13 +308,18 @@ typing-extensions==3.7.4.3
     #   -r requirements/base.txt
     #   -r requirements/lint.txt
     #   async-timeout
+    #   black
+    #   importlib-metadata
     #   mypy
     #   proxy.py
     #   pydantic
+    #   yarl
 uritemplate==3.0.1
     # via gidgethub
 urllib3==1.26.5
     # via requests
+uvloop==0.14.0 ; platform_system != "Windows" and implementation_name == "cpython" and python_version < "3.9"
+    # via -r requirements/base.txt
 virtualenv==20.4.2
     # via
     #   -r requirements/lint.txt
@@ -311,6 +330,8 @@ webcolors==1.11.1
     # via blockdiag
 yarl==1.7.0
     # via -r requirements/base.txt
+zipp==3.6.0
+    # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
 setuptools==57.4.0
