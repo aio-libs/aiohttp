@@ -27,9 +27,11 @@ jobs:
         path: ~/.cache/pip
         restore-keys: |
             post-update-
-    - name: Install dependencies
+    - name: Update pip, wheel, setuptools
       run: |
         python -m pip install -U pip wheel setuptools
+    - name: Install dependencies
+      run: |
         python -m pip install -r requirements/lint.txt -c requirements/constraints.txt
     - name: Run pip-compile
       run: |
