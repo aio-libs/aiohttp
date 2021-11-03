@@ -38,6 +38,25 @@ repos:
   hooks:
     - id: black
       language_version: python3 # Should be a command that runs python3.6+
+- repo: https://github.com/jazzband/pip-tools
+  rev: 6.4.0
+  hooks:
+  - id: pip-compile
+    name: pip-compile cython.in
+    args: [requirements/cython.in]
+    files: ^requirements/cython\.(in|txt)$
+  - id: pip-compile
+    name: pip-compile dev.in
+    args: [requirements/dev.in]
+    files: ^requirements/dev\.(in|txt)$
+  - id: pip-compile
+    name: pip-compile doc-spelling.in
+    args: [requirements/doc-spelling.in]
+    files: ^requirements/doc-spelling\.(in|txt)$
+  - id: pip-compile
+    name: pip-compile lint.in
+    args: [requirements/lint.in]
+    files: ^requirements/lint\.(in|txt)$
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: 'v4.0.1'
   hooks:
