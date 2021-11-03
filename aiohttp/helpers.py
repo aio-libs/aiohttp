@@ -425,6 +425,7 @@ def is_expected_content_type(
 ) -> bool:
     """Checks if received content type is processable as an expected one.
 
+
     Both arguments should be given without parameters.
     """
     if expected_content_type == "application/json":
