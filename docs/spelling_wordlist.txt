@@ -115,6 +115,7 @@ boolean
 botocore
 bugfix
 builtin
+chardet
 cChardet
 callables
 cancelled
