@@ -18,7 +18,7 @@ appdirs==1.4.4
     #   virtualenv
 async-generator==1.10
     # via -r requirements/base.txt
-async-timeout==4.0.0a3
+async-timeout==4.0.0
     # via -r requirements/base.txt
 attrs==21.2.0
     # via
@@ -120,7 +120,7 @@ iniconfig==1.1.1
     # via
     #   -r requirements/lint.txt
     #   pytest
-isort==5.9.3
+isort==5.10.0
     # via -r requirements/lint.txt
 jinja2==2.11.3
     # via
@@ -318,7 +318,7 @@ wait-for-it==2.2.0 ; python_version >= "3.7"
     # via -r requirements/dev.in
 webcolors==1.11.1
     # via blockdiag
-yarl==1.7.0
+yarl==1.7.2
     # via -r requirements/base.txt
 
 # The following packages are considered to be unsafe in a requirements file:
