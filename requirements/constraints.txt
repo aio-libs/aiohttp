@@ -248,7 +248,7 @@ urllib3==1.26.7
     # via requests
 virtualenv==20.10.0
     # via pre-commit
-wait-for-it==2.2.1
+wait-for-it==2.2.1 ; python_version >= "3.7"
     # via -r requirements/test.txt
 webcolors==1.11.1
     # via blockdiag
