@@ -44,7 +44,7 @@ jobs:
         else
           echo "::set-output name=changed::false"
     - name: Commit and push if needed
-      if: ${{ steps.meta.values.changed == "true" }}
+      if: ${{ steps.meta.values.changed == 'true' }}
       run: |
         git add requirements/constraints.txt
         git commit -m "Update constraints"
