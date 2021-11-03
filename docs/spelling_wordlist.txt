@@ -117,6 +117,7 @@ botocore
 brotli
 bugfix
 builtin
+chardet
 cChardet
 callables
 cancelled
