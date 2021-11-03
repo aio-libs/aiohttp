@@ -6,10 +6,14 @@ aiosignal==1.2.0
     # via -r requirements/base.txt
 alabaster==0.7.12
     # via sphinx
+async-generator==1.10
+    # via -r requirements/base.txt
 async-timeout==4.0.0
     # via -r requirements/base.txt
 attrs==21.2.0
-    # via pytest
+    # via
+    #   -r requirements/base.txt
+    #   pytest
 babel==2.9.1
     # via sphinx
 backports.entry-points-selectable==1.1.0
@@ -50,8 +54,9 @@ coverage==6.1.1
     # via
     #   -r requirements/test.txt
     #   pytest-cov
-cryptography==35.0.0
+cryptography==35.0.0 ; platform_machine != "i686"
     # via
+    #   -r requirements/test.txt
     #   pyjwt
     #   trustme
 cython==0.29.24
@@ -157,7 +162,7 @@ pytest-mock==3.6.1
     # via -r requirements/test.txt
 python-dateutil==2.8.2
     # via freezegun
-python-on-whales==0.30.0
+python-on-whales==0.30.0 ; python_version >= "3.7"
     # via -r requirements/test.txt
 pytz==2021.3
     # via babel
