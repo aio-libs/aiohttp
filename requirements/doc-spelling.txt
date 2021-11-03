@@ -1,154 +1,97 @@
 aiohttp-theme==0.1.6
-    # via -r requirements/doc-spelling.txt
+    # via -r requirements/doc.txt
 alabaster==0.7.12
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   sphinx
+    # via sphinx
 babel==2.9.1
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   sphinx
+    # via sphinx
 blockdiag==2.0.1
+    # via sphinxcontrib-blockdiag
+certifi==2021.10.8
+    # via requests
+charset-normalizer==2.0.7
+    # via requests
+click==8.0.3
     # via
-    #   -r requirements/doc-spelling.txt
-    #   sphinxcontrib-blockdiag
-certifi==2020.12.5
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   requests
-chardet==4.0.0
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   requests
-click==7.1.2
-    # via
-    #   -r requirements/doc-spelling.txt
     #   click-default-group
     #   towncrier
 click-default-group==1.2.2
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   towncrier
-docutils==0.16
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   sphinx
+    # via towncrier
+docutils==0.17.1
+    # via sphinx
 funcparserlib==1.0.0a0
     # via
-    #   -r requirements/doc-spelling.txt
+    #   -r requirements/doc.txt
     #   blockdiag
-idna==2.10
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   requests
+idna==3.3
+    # via requests
 imagesize==1.2.0
+    # via sphinx
+incremental==21.3.0
+    # via towncrier
+jinja2==3.0.2
     # via
-    #   -r requirements/doc-spelling.txt
-    #   sphinx
-incremental==17.5.0
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   towncrier
-jinja2==2.11.3
-    # via
-    #   -r requirements/doc-spelling.txt
     #   sphinx
     #   towncrier
-markupsafe==1.1.1
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   jinja2
-packaging==20.9
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   sphinx
-pillow==8.3.2
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   blockdiag
-pyenchant==3.2.0
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   sphinxcontrib-spelling
+markupsafe==2.0.1
+    # via jinja2
+packaging==21.2
+    # via sphinx
+pillow==8.4.0
+    # via blockdiag
+pyenchant==3.2.2
+    # via sphinxcontrib-spelling
 pygments==2.10.0
     # via
-    #   -r requirements/doc-spelling.txt
+    #   -r requirements/doc.txt
     #   sphinx
 pyparsing==2.4.7
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   packaging
-pytz==2021.1
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   babel
-requests==2.25.1
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   sphinx
+    # via packaging
+pytz==2021.3
+    # via babel
+requests==2.26.0
+    # via sphinx
 snowballstemmer==2.1.0
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   sphinx
+    # via sphinx
 sphinx==4.2.0
     # via
-    #   -r requirements/doc-spelling.txt
+    #   -r requirements/doc.txt
     #   sphinxcontrib-asyncio
     #   sphinxcontrib-blockdiag
     #   sphinxcontrib-spelling
     #   sphinxcontrib-towncrier
 sphinxcontrib-applehelp==1.0.2
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   sphinx
+    # via sphinx
 sphinxcontrib-asyncio==0.3.0
-    # via -r requirements/doc-spelling.txt
+    # via -r requirements/doc.txt
 sphinxcontrib-blockdiag==2.0.0
-    # via -r requirements/doc-spelling.txt
+    # via -r requirements/doc.txt
 sphinxcontrib-devhelp==1.0.2
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   sphinx
+    # via sphinx
 sphinxcontrib-htmlhelp==2.0.0
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   sphinx
+    # via sphinx
 sphinxcontrib-jsmath==1.0.1
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   sphinx
+    # via sphinx
 sphinxcontrib-qthelp==1.0.3
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   sphinx
+    # via sphinx
 sphinxcontrib-serializinghtml==1.1.5
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   sphinx
+    # via sphinx
 sphinxcontrib-spelling==7.2.1 ; platform_system != "Windows"
-    # via -r requirements/doc-spelling.txt
+    # via -r requirements/doc-spelling.in
 sphinxcontrib-towncrier==0.2.0a0
-    # via -r requirements/doc-spelling.txt
+    # via -r requirements/doc.txt
 toml==0.10.2
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   towncrier
+    # via towncrier
 towncrier==21.3.0
     # via
-    #   -r requirements/doc-spelling.txt
+    #   -r requirements/doc.txt
     #   sphinxcontrib-towncrier
-urllib3==1.26.5
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   requests
+urllib3==1.26.7
+    # via requests
 webcolors==1.11.1
-    # via
-    #   -r requirements/doc-spelling.txt
-    #   blockdiag
+    # via blockdiag
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==53.0.0
+setuptools==58.4.0
     # via
-    #   -r requirements/doc-spelling.txt
     #   blockdiag
     #   sphinx
