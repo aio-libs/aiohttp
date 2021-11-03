@@ -4,3 +4,4 @@
 cherry_picker==2.0.0; python_version>="3.6"
 python-on-whales==0.30.0
 wait-for-it==2.2.1
+pip-tools==6.4.0
