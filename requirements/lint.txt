@@ -30,9 +30,16 @@ flake8-pyi==20.10.0
     # via -r requirements/lint.in
 identify==1.5.14
     # via pre-commit
+importlib-metadata==4.2.0
+    # via
+    #   flake8
+    #   pluggy
+    #   pre-commit
+    #   pytest
+    #   virtualenv
 iniconfig==1.1.1
     # via pytest
-isort==5.9.3
+isort==5.10.0
     # via -r requirements/lint.in
 mccabe==0.6.1
     # via flake8
@@ -77,9 +84,18 @@ toml==0.10.2
     #   pytest
 tomli==1.2.1
     # via black
+typed-ast==1.4.3
+    # via
+    #   black
+    #   mypy
 types-chardet==0.1.3
     # via -r requirements/lint.in
 typing-extensions==3.7.4.3
-    # via mypy
+    # via
+    #   black
+    #   importlib-metadata
+    #   mypy
 virtualenv==20.4.2
     # via pre-commit
+zipp==3.6.0
+    # via importlib-metadata
