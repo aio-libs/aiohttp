@@ -7,10 +7,8 @@ CYS := $(wildcard aiohttp/*.pyx) $(wildcard aiohttp/*.pyi)  $(wildcard aiohttp/*
 PYXS := $(wildcard aiohttp/*.pyx)
 CS := $(wildcard aiohttp/*.c)
 PYS := $(wildcard aiohttp/*.py)
-REQS := $(wildcard requirements/*.txt)
-ALLS := $(sort $(CYS) $(CS) $(PYS) $(REQS))
 IN := doc-spelling lint cython dev
-REQIN := $(foreach fname,$(IN),requirements/$(fname).in)
+ALLS := $(sort $(CYS) $(CS) $(PYS) $(REQS))
 
 
 .PHONY: all
@@ -177,9 +175,10 @@ doc-spelling:
 	@make -C docs spelling SPHINXOPTS="-W --keep-going -n -E"
 
 .PHONY: compile-deps
-compile-deps: .update-pip
-	@pip install pip-tools
-	@$(foreach fname,$(REQIN),pip-compile --allow-unsafe -q $(fname);)
+compile-deps: .update-pip $(REQS)
+	pip-compile --no-header --allow-unsafe -q --strip-extras \
+		-o requirements/constraints.txt \
+		requirements/constraints.in
 
 .PHONY: install
 install: .update-pip
