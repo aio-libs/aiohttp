@@ -40,10 +40,12 @@ jobs:
         path: ~/.cache/pip
         restore-keys: |
             pip-lint-
+    - name: Update pip, wheel, setuptools, build, twine
+      run: |
+        python -m pip install -U pip wheel setuptools build twine
     - name: Install dependencies
-      uses: py-actions/py-dependency-install@v2
-      with:
-        path: requirements/lint.txt
+      run: |
+        python -m pip install -r requirements/lint.txt -c requirements/constraints.txt
     - name: Install self
       run: |
         python -m pip install .
@@ -52,17 +54,18 @@ jobs:
     - name: Run linters
       run: |
         make mypy
-    - name: Install spell checker
+    - name: Install libenchant-dev
       run: |
         sudo apt install libenchant-dev
-        pip install -r requirements/doc-spelling.txt
+    - name: Install spell checker
+      run: |
+        pip install -r requirements/doc-spelling.txt -c requirements/constraints.txt
     - name: Run docs spelling
       run: |
         # towncrier --yes  # uncomment me after publishing a release
         make doc-spelling
-    - name: Prepare twine checker
+    - name: Build package
       run: |
-        pip install -U build twine
         python -m build
       env:
         AIOHTTP_NO_EXTENSIONS: 1
@@ -149,8 +152,12 @@ jobs:
         path: ${{ steps.pip-cache.outputs.dir }}
         restore-keys: |
             pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-
-    - name: Upgrade wheel  # Needed for proxy.py install not to explode
-      run: pip install -U wheel
+    - name: Update pip, wheel, setuptools, build, twine
+      run: |
+        python -m pip install -U pip wheel setuptools build twine
+    - name: Install dependencies
+      run: |
+        python -m pip install -r requirements/test.txt -c requirements/constraints.txt
     - name: Cythonize
       if: ${{ matrix.no-extensions == '' }}
       run: |
@@ -209,10 +216,12 @@ jobs:
         submodules: true
     - name: Setup Python
       uses: actions/setup-python@v2.2.2
+    - name: Update pip, wheel, setuptools, build, twine
+      run: |
+        python -m pip install -U pip wheel setuptools build twine
     - name: Install cython
-      uses: py-actions/py-dependency-install@v2
-      with:
-        path: requirements/cython.txt
+      run: |
+        python -m pip install -r requirements/cython.txt -c requirements/constraints.txt
     - name: Restore llhttp generated files
       uses: actions/download-artifact@v2
       with:
@@ -223,7 +232,6 @@ jobs:
         make cythonize
     - name: Make sdist
       run: |
-        python -m pip install build --user
         python -m build --sdist
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
@@ -268,10 +276,12 @@ jobs:
       shell: bash
     - name: Setup Python
       uses: actions/setup-python@v2.2.2
+    - name: Update pip, wheel, setuptools, build, twine
+      run: |
+        python -m pip install -U pip wheel setuptools build twine
     - name: Install cython
-      uses: py-actions/py-dependency-install@v2
-      with:
-        path: requirements/cython.txt
+      run: |
+        python -m pip install -r requirements/cython.txt -c requirements/constraints.txt
     - name: Restore llhttp generated files
       uses: actions/download-artifact@v2
       with:
@@ -299,6 +309,9 @@ jobs:
       uses: actions/checkout@v2.4.0
       with:
         submodules: true
+    - name: Update pip, wheel, setuptools, build, twine
+      run: |
+        python -m pip install -U pip wheel setuptools build twine
     - name: Login
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token

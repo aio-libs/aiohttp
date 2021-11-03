@@ -46,7 +46,7 @@ repos:
       ^docs/[^/]*\.svg$
   - id: requirements-txt-fixer
     exclude: >-
-      ^requirements/(cython|dev|doc-spelling|lint).txt$
+      ^requirements/constraints[.]txt$
   - id: trailing-whitespace
   - id: file-contents-sorter
     files: |
