@@ -1031,13 +1031,13 @@ class ClientResponse(HeadersMixin):
             await self.read()
 
         if content_type:
-            ctype = self.headers.get(hdrs.CONTENT_TYPE, "").lower()
-            if not is_expected_content_type(ctype, content_type):
+            if not is_expected_content_type(self.content_type, content_type):
                 raise ContentTypeError(
                     self.request_info,
                     self.history,
                     message=(
-                        "Attempt to decode JSON with " "unexpected mimetype: %s" % ctype
+                        "Attempt to decode JSON with "
+                        "unexpected mimetype: %s" % self.content_type
                     ),
                     headers=self.headers,
                 )

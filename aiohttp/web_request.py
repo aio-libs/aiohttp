@@ -661,11 +661,11 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         """Return BODY as JSON."""
         body = await self.text()
         if content_type:
-            ctype = self.headers.get(hdrs.CONTENT_TYPE, "").lower()
-            if not is_expected_content_type(ctype, content_type):
+            if not is_expected_content_type(self.content_type, content_type):
                 raise HTTPBadRequest(
                     text=(
-                        "Attempt to decode JSON with " "unexpected mimetype: %s" % ctype
+                        "Attempt to decode JSON with "
+                        "unexpected mimetype: %s" % self.content_type
                     )
                 )
 
