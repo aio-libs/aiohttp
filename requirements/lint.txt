@@ -30,7 +30,7 @@ identify==1.5.14
     # via pre-commit
 iniconfig==1.1.1
     # via pytest
-isort==5.9.3
+isort==5.10.0
     # via -r requirements/lint.in
 mccabe==0.6.1
     # via flake8
