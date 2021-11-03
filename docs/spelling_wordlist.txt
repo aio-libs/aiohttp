@@ -189,6 +189,7 @@ ip
 ipdb
 ipv
 ish
+isort
 iterable
 iterables
 javascript
