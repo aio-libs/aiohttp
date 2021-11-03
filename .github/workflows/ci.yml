@@ -41,9 +41,9 @@ jobs:
         restore-keys: |
             pip-lint-
     - name: Install dependencies
-      uses: py-actions/py-dependency-install@v2
-      with:
-        path: requirements/lint.txt
+      run: |
+        python -m pip install -U pip wheel setuptools
+        python -m pip install -r requirements/lint.txt -c requirements/constraints.txt
     - name: Install self
       run: |
         python -m pip install .
@@ -55,7 +55,7 @@ jobs:
     - name: Install spell checker
       run: |
         sudo apt install libenchant-dev
-        pip install -r requirements/doc-spelling.txt
+        pip install -r requirements/doc-spelling.txt -c requirements/constraints.txt
     - name: Run docs spelling
       run: |
         # towncrier --yes  # uncomment me after publishing a release
@@ -149,8 +149,10 @@ jobs:
         path: ${{ steps.pip-cache.outputs.dir }}
         restore-keys: |
             pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-
-    - name: Upgrade wheel  # Needed for proxy.py install not to explode
-      run: pip install -U wheel
+    - name: Upgrade deps  # Needed for proxy.py install not to explode
+      run: |
+        python -m pip install -U pip wheel setuptools
+        python -m pip install -r requirements/test.txt -c requirements/constraints.txt
     - name: Cythonize
       if: ${{ matrix.no-extensions == '' }}
       run: |
@@ -210,9 +212,9 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v2.2.2
     - name: Install cython
-      uses: py-actions/py-dependency-install@v2
-      with:
-        path: requirements/cython.txt
+      run: |
+        python -m pip install -U pip wheel setuptools
+        python -m pip install -r requirements/cython.txt -c requirements/constraints.txt
     - name: Restore llhttp generated files
       uses: actions/download-artifact@v2
       with:
@@ -269,9 +271,9 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v2.2.2
     - name: Install cython
-      uses: py-actions/py-dependency-install@v2
-      with:
-        path: requirements/cython.txt
+      run: |
+        python -m pip install -U pip wheel setuptools
+        python -m pip install -r requirements/cython.txt -c requirements/constraints.txt
     - name: Restore llhttp generated files
       uses: actions/download-artifact@v2
       with:
