@@ -107,3 +107,6 @@ repos:
       ^[^/]+[.]rst$
     exclude: >-
       ^CHANGES\.rst$
+ci:
+  skip:
+  - pip-compile
