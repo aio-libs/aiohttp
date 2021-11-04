@@ -1,5 +1,5 @@
 mypy==0.910; implementation_name=="cpython"
 pre-commit==2.15.0
 pytest==6.2.5
-types-chardet==0.1.3
+types-chardet==4.0.1
 typing_extensions==3.7.4.3

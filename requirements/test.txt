@@ -13,5 +13,5 @@ python-on-whales==0.30.0; python_version>="3.7"
 re-assert==1.1.0
 setuptools-git==1.2
 trustme==0.9.0; platform_machine!="i686"    # no 32-bit wheels
-types-chardet==0.1.3
+types-chardet==4.0.1
 wait-for-it==2.2.1; python_version>="3.7"
