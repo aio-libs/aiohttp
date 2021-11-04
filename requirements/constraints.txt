@@ -233,15 +233,13 @@ trustme==0.9.0 ; platform_machine != "i686"
     # via -r requirements/test.txt
 typer==0.4.0
     # via python-on-whales
-types-chardet==0.1.3
+types-chardet==4.0.1
     # via
     #   -r requirements/lint.txt
     #   -r requirements/test.txt
 typing-extensions==3.7.4.3
     # via
-    #   -r requirements/base.txt
-    #   -r requirements/cython.txt
-    #   -r requirements/lint.txt
+    #   -r requirements/typing-extensions.txt
     #   async-timeout
     #   mypy
     #   proxy.py
