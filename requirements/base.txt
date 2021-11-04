@@ -1,4 +1,5 @@
 -r multidict.txt
+-r typing-extensions.txt
 # required c-ares will not build on windows and has build problems on Macos Python<3.7
 aiodns==3.0.0; sys_platform=="linux" or sys_platform=="darwin" and python_version>="3.7"
 aiosignal==1.2.0
@@ -13,7 +14,6 @@ frozenlist==1.2.0
 gunicorn==20.1.0
 idna-ssl==1.1.0; python_version<"3.7"
 typing==3.7.4.3; python_version<"3.7"
-typing_extensions==3.10.0.2
 uvloop==0.14.0; platform_system!="Windows" and implementation_name=="cpython" and python_version<"3.9" # MagicStack/uvloop#14
 yarl==1.7.2
 zipp==3.4.1; python_version<"3.7"
