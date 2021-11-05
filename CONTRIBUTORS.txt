@@ -184,6 +184,7 @@ Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
 Konstantin Valetov
+Konstantin Shutkin
 Krzysztof Blazewicz
 Kyrylo Perevozchikov
 Kyungmin Lee
