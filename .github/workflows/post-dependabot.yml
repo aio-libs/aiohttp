@@ -15,12 +15,14 @@ jobs:
     if: ${{ github.actor == 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     steps:
+    - name: Checkout
+      uses: actions/checkout@v2.4.0
     - name: Login
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
     - name: Checkout
       run: |
-        gh pr checkout ${{ github.event.pull_request.number }} --repo ${{ github.repository }}
+        gh pr checkout ${{ github.event.pull_request.number }}
     - name: Setup Python
       uses: actions/setup-python@v2
     - name: Cache PyPI
