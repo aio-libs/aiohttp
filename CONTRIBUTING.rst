@@ -14,7 +14,7 @@ Workflow is pretty straightforward:
 
   1. Clone the GitHub_ repo using the ``--recurse-submodules`` argument
 
-  2. Setup your machine with the required dev environment
+  2. Setup your machine with the required development environment
 
   3. Make a change
 
