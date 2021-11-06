@@ -233,7 +233,7 @@ types-chardet==4.0.1
     # via
     #   -r requirements/lint.txt
     #   -r requirements/test.txt
-typing-extensions==3.7.4.3
+typing-extensions==3.10.0.2
     # via
     #   -r requirements/typing-extensions.txt
     #   async-timeout
