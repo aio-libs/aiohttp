@@ -108,7 +108,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         self._keep_alive = None  # type: Optional[bool]
         self._chunked = False
         self._compression = False
-        self._compression_strategy = None  # type: Optional[int]
+        self._compression_strategy: Optional[int] = None
         self._compression_force = None  # type: Optional[ContentCoding]
 
         self._req = None  # type: Optional[BaseRequest]
