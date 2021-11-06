@@ -188,7 +188,11 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
                 "You can't enable chunked encoding when " "a content length is set"
             )
 
-    def enable_compression(self, force: Optional[ContentCoding] = None, strategy: Optional[int] = zlib.Z_DEFAULT_STRATEGY) -> None:
+    def enable_compression(
+        self,
+        force: Optional[ContentCoding] = None,
+        strategy: Optional[int] = zlib.Z_DEFAULT_STRATEGY,
+    ) -> None:
         """Enables response compression encoding."""
         # Backwards compatibility for when force was a bool <0.17.
         self._compression = True
@@ -325,7 +329,9 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         if coding != ContentCoding.identity:
             assert self._payload_writer is not None
             self._headers[hdrs.CONTENT_ENCODING] = coding.value
-            self._payload_writer.enable_compression(coding.value, self._compression_strategy)
+            self._payload_writer.enable_compression(
+                coding.value, self._compression_strategy
+            )
             # Compressed payload may have different content length,
             # remove the header
             self._headers.popall(hdrs.CONTENT_LENGTH, None)
