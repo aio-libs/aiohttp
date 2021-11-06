@@ -40,6 +40,7 @@ from .helpers import (
     validate_etag_value,
 )
 from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
+from .http_writer import StreamWriter
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
 
@@ -329,9 +330,12 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         if coding != ContentCoding.identity:
             assert self._payload_writer is not None
             self._headers[hdrs.CONTENT_ENCODING] = coding.value
-            self._payload_writer.enable_compression(
-                coding.value, self._compression_strategy
-            )
+            if isinstance(self._payload_writer, StreamWriter):
+                self._payload_writer.enable_compression(
+                    coding.value, self._compression_strategy
+                )
+            else:
+                self._payload_writer.enable_compression(coding.value)
             # Compressed payload may have different content length,
             # remove the header
             self._headers.popall(hdrs.CONTENT_LENGTH, None)
