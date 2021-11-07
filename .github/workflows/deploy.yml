@@ -1,0 +1,138 @@
+name: Lint
+on:
+  workflow_call:
+    inputs:
+      git_ref:
+        description: 'Git reference to use'
+        default: ''
+        required: false
+        type: string
+
+jobs:
+  build-tarball:
+    name: Tarball
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2.4.0
+      with:
+        submodules: true
+    - name: Setup Python
+      uses: actions/setup-python@v2.2.2
+    - name: Update pip, wheel, setuptools, build, twine
+      run: |
+        python -m pip install -U pip wheel setuptools build twine
+    - name: Install cython
+      run: |
+        python -m pip install -r requirements/cython.txt -c requirements/constraints.txt
+    - name: Restore llhttp generated files
+      uses: actions/download-artifact@v2
+      with:
+        name: llhttp
+        path: vendor/llhttp/build/
+    - name: Cythonize
+      run: |
+        make cythonize
+    - name: Make sdist
+      run: |
+        python -m build --sdist
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: dist
+        path: dist
+
+  build-wheels:
+    name: Build wheels on ${{ matrix.os }} ${{ matrix.qemu }}
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      matrix:
+        os: [ubuntu, windows, macos]
+        qemu: ['']
+        include:
+          # Split ubuntu job for the sake of speed-up
+        - os: ubuntu
+          qemu: aarch64
+        - os: ubuntu
+          qemu: ppc64le
+        - os: ubuntu
+          qemu: s390x
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2.4.0
+      with:
+        submodules: true
+    - name: Set up QEMU
+      if: ${{ matrix.qemu }}
+      uses: docker/setup-qemu-action@v1
+      with:
+        platforms: all
+      id: qemu
+    - name: Prepare emulation
+      run: |
+        if [[ -n "${{ matrix.qemu }}" ]]; then
+          # Build emulated architectures only if QEMU is set,
+          # use default "auto" otherwise
+          echo "CIBW_ARCHS_LINUX=${{ matrix.qemu }}" >> $GITHUB_ENV
+        fi
+      shell: bash
+    - name: Setup Python
+      uses: actions/setup-python@v2.2.2
+    - name: Update pip, wheel, setuptools, build, twine
+      run: |
+        python -m pip install -U pip wheel setuptools build twine
+    - name: Install cython
+      run: |
+        python -m pip install -r requirements/cython.txt -c requirements/constraints.txt
+    - name: Restore llhttp generated files
+      uses: actions/download-artifact@v2
+      with:
+        name: llhttp
+        path: vendor/llhttp/build/
+    - name: Cythonize
+      run: |
+        make cythonize
+    - name: Build wheels
+      uses: pypa/cibuildwheel@v2.2.2
+      env:
+        CIBW_ARCHS_MACOS: x86_64 arm64 universal2
+    - uses: actions/upload-artifact@v2
+      with:
+        name: dist
+        path: ./wheelhouse/*.whl
+
+  deploy:
+    name: Deploy
+    environment: release
+    needs: [build-tarball, build-wheels]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2.4.0
+      with:
+        submodules: true
+    - name: Update pip, wheel, setuptools, build, twine
+      run: |
+        python -m pip install -U pip wheel setuptools build twine
+    - name: Login
+      run: |
+        echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+    - name: Download disctributions
+      uses: actions/download-artifact@v2
+      with:
+        name: dist
+        path: dist
+    - name: Collected dists
+      run: |
+        tree dist
+    - name: Make Release
+      uses: aio-libs/create-release@v1.2.3
+      with:
+        changes_file: CHANGES.rst
+        name: aiohttp
+        version_file: aiohttp/__init__.py
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        pypi_token: ${{ secrets.PYPI_API_TOKEN }}
+        dist_dir: dist
+        fix_issue_regex: "`#(\\d+) <https://github.com/aio-libs/aiohttp/issues/\\1>`"
+        fix_issue_repl: "(#\\1)"
