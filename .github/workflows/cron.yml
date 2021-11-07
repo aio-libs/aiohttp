@@ -18,13 +18,13 @@ jobs:
   # TODO: replace to @master after the PR merging
   lint:
     name: Lint
-    uses: aio-libs/aiohttp/.github/workflows/lint.yml@dd7a391876aa03721720f3fb0fd075462d576347
+    uses: aio-libs/aiohttp/.github/workflows/lint.yml@0c8a36f3383a4b27ba2facda47944f314d0cf8c2
     with:
       ref: ${{ env.ref }}
   test:
     name: Test
     needs: lint
-    uses: aio-libs/aiohttp/.github/workflows/test.yml@dd7a391876aa03721720f3fb0fd075462d576347
+    uses: aio-libs/aiohttp/.github/workflows/test.yml@0c8a36f3383a4b27ba2facda47944f314d0cf8c2
     with:
       ref: ${{ env.ref }}
 
