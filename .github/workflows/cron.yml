@@ -1,33 +1,32 @@
-name: Pull-Request
+name: Schedule
 
 on:
-  pull_request:
-    branches:
-      - 'master'
-      - '[0-9].[0-9]+'
+  schedule:
+    - cron:  '0 6 * * *'  # Daily 6AM UTC build
+
+env:
+  REF: master
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
-
 jobs:
-  compile-deps:
-    name: Compile deps
-    if: ${{ github.actor != 'dependabot[bot]' }}
-    uses: aio-libs/aiohttp/.github/workflows/compile-deps@dd7a391876aa03721720f3fb0fd075462d576347
-    secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # No compile-deps on cron job.
+  # Apply run to all active branches by keeping workflows like cron-38.yml etc.
 
   # TODO: replace to @master after the PR merging
   lint:
     name: Lint
-    needs: compile-deps
     uses: aio-libs/aiohttp/.github/workflows/lint.yml@dd7a391876aa03721720f3fb0fd075462d576347
+    with:
+      ref: ${{ env.ref }}
   test:
     name: Test
     needs: lint
     uses: aio-libs/aiohttp/.github/workflows/test.yml@dd7a391876aa03721720f3fb0fd075462d576347
+    with:
+      ref: ${{ env.ref }}
 
   check:  # This job does nothing and is only used for the branch protection
     needs: test

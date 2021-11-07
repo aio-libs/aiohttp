@@ -1,4 +1,4 @@
-name: Dependabot auto-merge
+name: Dependabot
 on: pull_request_target
 
 concurrency:
