@@ -659,8 +659,8 @@ StreamResponse
       :class:`ContentCoding`.
 
       *strategy* accepts a :mod:`zlib` compression strategy.
-      Possible values are zlib.Z_DEFAULT_STRATEGY,
-      zlib.Z_FILTERED, zlib.Z_HUFFMAN_ONLY, zlib.Z_RLE and zlib.Z_FIXED.
+      Possible values are :data:`zlib.Z_DEFAULT_STRATEGY`,
+      :data:`zlib.Z_FILTERED`, :data:`zlib.Z_HUFFMAN_ONLY`, :data:`zlib.Z_RLE` and :data:`zlib.Z_FIXED`.
 
       .. seealso:: :attr:`compression`
 
