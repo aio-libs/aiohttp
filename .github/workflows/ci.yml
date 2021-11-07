@@ -21,10 +21,10 @@ concurrency:
 jobs:
   # TODO: replace to @master after the PR merging
   lint:
-    uses: aio-libs/aiohttp/.github/workflows/lint.yml@be5a4b4f064c99799b4fadbd829136d70f2c52c4
+    uses: aio-libs/aiohttp/.github/workflows/lint.yml@f4d13de656c875dca8662f2772da844d4d9a553a
   test:
     needs: lint
-    uses: aio-libs/aiohttp/.github/workflows/test.yml@be5a4b4f064c99799b4fadbd829136d70f2c52c4
+    uses: aio-libs/aiohttp/.github/workflows/test.yml@f4d13de656c875dca8662f2772da844d4d9a553a
 
   check:  # This job does nothing and is only used for the branch protection
     needs:
