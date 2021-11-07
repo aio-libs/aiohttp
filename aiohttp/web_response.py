@@ -109,7 +109,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         self._keep_alive = None  # type: Optional[bool]
         self._chunked = False
         self._compression = False
-        self._compression_strategy = zlib.Z_DEFAULT_STRATEGY  # type: int
+        self._compression_strategy: int = zlib.Z_DEFAULT_STRATEGY
         self._compression_force = None  # type: Optional[ContentCoding]
 
         self._req = None  # type: Optional[BaseRequest]
