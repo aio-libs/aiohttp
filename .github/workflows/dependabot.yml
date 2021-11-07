@@ -13,17 +13,17 @@ jobs:
   compile-deps:
     name: Compile deps
     if: ${{ github.actor == 'dependabot[bot]' }}
-    uses: aio-libs/aiohttp/.github/workflows/compile-deps@f4d13de656c875dca8662f2772da844d4d9a553a
+    uses: aio-libs/aiohttp/.github/workflows/compile-deps@dd7a391876aa03721720f3fb0fd075462d576347
     secrets:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   lint:
     name: Lint
     needs: compile-deps
-    uses: aio-libs/aiohttp/.github/workflows/lint.yml@f4d13de656c875dca8662f2772da844d4d9a553a
+    uses: aio-libs/aiohttp/.github/workflows/lint.yml@dd7a391876aa03721720f3fb0fd075462d576347
   test:
     name: Test
     needs: lint
-    uses: aio-libs/aiohttp/.github/workflows/test.yml@f4d13de656c875dca8662f2772da844d4d9a553a
+    uses: aio-libs/aiohttp/.github/workflows/test.yml@dd7a391876aa03721720f3fb0fd075462d576347
   check:  # This job does nothing and is only used for the branch protection
     needs: test
     runs-on: ubuntu-latest
