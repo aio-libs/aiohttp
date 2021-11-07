@@ -19,11 +19,12 @@ concurrency:
 
 
 jobs:
+  # TODO: replace to @master after the PR merging
   lint:
-    uses: aio-libs/aiohttp/.github/workflows/lint.yml@${{ github.sha }}
+    uses: aio-libs/aiohttp/.github/workflows/lint.yml@d7f3f7aa
   test:
     needs: lint
-    uses: aio-libs/aiohttp/.github/workflows/test.yml@${{ github.sha }}
+    uses: aio-libs/aiohttp/.github/workflows/test.yml@d7f3f7aa
 
   check:  # This job does nothing and is only used for the branch protection
     needs:
