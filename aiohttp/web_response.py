@@ -109,7 +109,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         self._keep_alive = None  # type: Optional[bool]
         self._chunked = False
         self._compression = False
-        self._compression_strategy: Optional[int] = None
+        self._compression_strategy = zlib.Z_DEFAULT_STRATEGY  # type: int
         self._compression_force = None  # type: Optional[ContentCoding]
 
         self._req = None  # type: Optional[BaseRequest]
@@ -192,7 +192,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
     def enable_compression(
         self,
         force: Optional[ContentCoding] = None,
-        strategy: Optional[int] = zlib.Z_DEFAULT_STRATEGY,
+        strategy: int = zlib.Z_DEFAULT_STRATEGY,
     ) -> None:
         """Enables response compression encoding."""
         # Backwards compatibility for when force was a bool <0.17.
