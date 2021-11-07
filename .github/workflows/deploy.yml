@@ -2,11 +2,18 @@ name: Lint
 on:
   workflow_call:
     inputs:
-      git_ref:
+      ref:
         description: 'Git reference to use'
         default: ''
         required: false
         type: string
+    secrets:
+      GITHUB_TOKEN:
+        description: 'Github token'
+        required: true
+      PYPI_TOKEN:
+        description: 'PYPI token'
+        required: true
 
 jobs:
   build-tarball:
@@ -16,6 +23,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2.4.0
       with:
+        ref: ${{ inputs.ref }}
         submodules: true
     - name: Setup Python
       uses: actions/setup-python@v2.2.2
@@ -61,6 +69,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2.4.0
       with:
+        ref: ${{ inputs.ref }}
         submodules: true
     - name: Set up QEMU
       if: ${{ matrix.qemu }}
@@ -110,13 +119,14 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2.4.0
       with:
+        ref: ${{ inputs.ref }}
         submodules: true
     - name: Update pip, wheel, setuptools, build, twine
       run: |
         python -m pip install -U pip wheel setuptools build twine
     - name: Login
       run: |
-        echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+        echo "${{ inputs.secrets.GITHUB_TOKEN }}" | gh auth login --with-token
     - name: Download disctributions
       uses: actions/download-artifact@v2
       with:
@@ -132,7 +142,7 @@ jobs:
         name: aiohttp
         version_file: aiohttp/__init__.py
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        pypi_token: ${{ secrets.PYPI_API_TOKEN }}
+        pypi_token: ${{ secrets.PYPI_TOKEN }}
         dist_dir: dist
         fix_issue_regex: "`#(\\d+) <https://github.com/aio-libs/aiohttp/issues/\\1>`"
         fix_issue_repl: "(#\\1)"

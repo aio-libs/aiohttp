@@ -1,0 +1,49 @@
+name: Dependabot auto-merge
+on: pull_request_target
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  pull-requests: write
+  contents: write
+
+jobs:
+  compile-deps:
+    name: Compile deps
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    uses: aio-libs/aiohttp/.github/workflows/compile-deps@f4d13de656c875dca8662f2772da844d4d9a553a
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  lint:
+    name: Lint
+    needs: compile-deps
+    uses: aio-libs/aiohttp/.github/workflows/lint.yml@f4d13de656c875dca8662f2772da844d4d9a553a
+  test:
+    name: Test
+    needs: lint
+    uses: aio-libs/aiohttp/.github/workflows/test.yml@f4d13de656c875dca8662f2772da844d4d9a553a
+  check:  # This job does nothing and is only used for the branch protection
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report success of the test matrix
+        run: >-
+          print("All's good")
+        shell: python
+
+  auto-merge:
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - name: Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v1.1.1
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+      - name: Auto-merge if all checks has passed
+        run: gh pr merge --squash "$PR_URL"
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}

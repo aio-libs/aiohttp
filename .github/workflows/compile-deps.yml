@@ -1,28 +1,23 @@
-name: Dependabot post-update
+name: Compile dependencies
 on:
-  pull_request_target:
-    action: [opened, synchronize, reopened]
-    branches:
-      - 'master'
-      - '[0-9].[0-9]+'
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Git reference to use'
+        default: ''
+        required: false
+        type: string
+    secrets:
+      GITHUB_TOKEN:
+        description: 'Github token'
+        required: true
 
 jobs:
   post-update:
-    if: ${{ github.actor == 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
       uses: actions/checkout@v2.4.0
-    - name: Login
-      run: |
-        echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-    - name: Checkout
-      run: |
-        gh pr checkout ${{ github.event.pull_request.number }}
     - name: Setup Python
       uses: actions/setup-python@v2
     - name: Cache PyPI
@@ -37,7 +32,7 @@ jobs:
         python -m pip install -U pip wheel setuptools
     - name: Install dependencies
       run: |
-        python -m pip install -r requirements/lint.txt -c requirements/constraints.txt
+        python -m pip install -r requirements/pip-tools.txt -c requirements/constraints.txt
     - name: Run pip-compile
       run: |
         make compile-deps
@@ -48,9 +43,17 @@ jobs:
           echo "::set-output name=changed::true"
         else
           echo "::set-output name=changed::false"
-    - name: Commit and push if needed
+    - name: Commit and push if needed\
       if: ${{ steps.meta.values.changed == 'true' }}
       run: |
+        # Cleanup workspace
+        rm -rf ${{ github.workspace }}
+        # Checkout with read-write access
+        echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+        gh pr checkout ${{ github.event.pull_request.number }}
+        # Regenerate dependencies again
+        make compile-deps
+        # push regenerated dependencies back to GitHub PR
         git add requirements/constraints.txt
         git commit -m "Update constraints"
         git push

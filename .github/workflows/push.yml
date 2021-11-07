@@ -1,4 +1,4 @@
-name: CI
+name: Update
 
 on:
   push:
@@ -6,33 +6,17 @@ on:
       - 'master'
       - '[0-9].[0-9]+'  # matches to backport branches, e.g. 3.6
     tags: [ 'v*' ]
-  pull_request:
-    branches:
-      - 'master'
-      - '[0-9].[0-9]+'
-  schedule:
-    - cron:  '0 6 * * *'  # Daily 6AM UTC build
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
-  cancel-in-progress: true
-
+# Use default concurrency, don't want cancelling commit checks on master/backports
+# anyway
 
 jobs:
-  pre-check:
-    name: Pre-Check
-    runs-on: ubuntu-latest
-    # dependabot PRs are handled by workflows/dependabot.yml
-    if: ${{ github.actor != 'dependabot[bot]' }}
-    steps:
-      - name: Dummy
-        run: |
-          echo "Pre-check has passed"
+  # NB: No compile-deps on push, if recompilation is needed it should be done
+  # explicitly by a separate commit to master or backport branches
 
   # TODO: replace to @master after the PR merging
   lint:
     name: Lint
-    needs: pre-check
     uses: aio-libs/aiohttp/.github/workflows/lint.yml@f4d13de656c875dca8662f2772da844d4d9a553a
   test:
     name: Test
@@ -50,9 +34,10 @@ jobs:
 
   deploy:
     name: Deploy
-    runs-on: ubuntu-latest
     needs: check
     # Run only on pushing a tag
     if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
-    uses:
-      uses: aio-libs/aiohttp/.github/workflows/deploy.yml@f4d13de656c875dca8662f2772da844d4d9a553a
+    uses: aio-libs/aiohttp/.github/workflows/deploy.yml@f4d13de656c875dca8662f2772da844d4d9a553a
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}

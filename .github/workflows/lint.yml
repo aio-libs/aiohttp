@@ -2,7 +2,7 @@ name: Lint
 on:
   workflow_call:
     inputs:
-      git_ref:
+      ref:
         description: 'Git reference to use'
         default: ''
         required: false
@@ -17,6 +17,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2.4.0
       with:
+        ref: ${{ inputs.ref }}
         submodules: true
     - name: Setup Python 3.8
       uses: actions/setup-python@v2

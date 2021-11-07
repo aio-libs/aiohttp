@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - 'master'
+      - '[0-9].[0-9]+'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+
+jobs:
+  compile-deps:
+    name: Compile deps
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    uses: aio-libs/aiohttp/.github/workflows/compile-deps@f4d13de656c875dca8662f2772da844d4d9a553a
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # TODO: replace to @master after the PR merging
+  lint:
+    name: Lint
+    needs: compile-deps
+    uses: aio-libs/aiohttp/.github/workflows/lint.yml@f4d13de656c875dca8662f2772da844d4d9a553a
+  test:
+    name: Test
+    needs: lint
+    uses: aio-libs/aiohttp/.github/workflows/test.yml@f4d13de656c875dca8662f2772da844d4d9a553a
+
+  check:  # This job does nothing and is only used for the branch protection
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report success of the test matrix
+        run: >-
+          print("All's good")
+        shell: python
