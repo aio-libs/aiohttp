@@ -8,10 +8,6 @@ on:
         required: false
         type: string
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
-  cancel-in-progress: true
-
 jobs:
   gen_llhttp:
     name: Generate llhttp sources
