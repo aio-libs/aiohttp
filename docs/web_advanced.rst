@@ -278,7 +278,7 @@ For this please use :attr:`Request.config_dict` read-only property::
     async def handler(request):
         data = request.config_dict['my_private_key']
 
-You may use the app object to connect your database to your web application.
+The app object can be used in this way to reuse a database connection or anything else needed throughout the application.
 
 See this reference section for more detail: :ref:`aiohttp-web-app-and-router`.
 
