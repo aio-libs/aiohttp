@@ -1710,6 +1710,31 @@ ClientTimeout
 
    .. versionadded:: 3.3
 
+
+   .. note::
+
+      Timeouts larger than 1 second are rounded for scheduling on the next
+      second boundary (an absolute time where microseconds part is zero) for the
+      sake of performance.
+
+      E.g., assume a timeout is ``5``, absolute time when timeout should expire
+      is ``loop.time() + 5``, and it points to ``12345.67 + 5`` which is equal
+      to ``12350.67``.
+
+      The absolute time for the timeout cancellation is ``12351``.
+
+      It leads to grouping all close scheduled timeout expirations to exactly
+      the same time to reduce amount of loop wakeups.
+
+      .. versionchanged:: 3.7
+
+         Rounding to the next seconds boundary is disabled for timeouts smaller
+         than 1 second for the sake of easy debugging.
+
+         In turn, tiny timeouts can lead to significant performance degradation
+         on production environment.
+
+
 ETag
 ^^^^
 
