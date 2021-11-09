@@ -897,6 +897,8 @@ The task ``listen_to_redis`` will run forever.
 To shut it down correctly :attr:`Application.on_cleanup` signal handler
 may be used to send a cancellation to it.
 
+.. _aiohttp-web-complex-applications:
+
 Complex Applications
 ++++++++++++++++++++
 
