@@ -900,7 +900,7 @@ may be used to send a cancellation to it.
 .. _aiohttp-web-complex-applications:
 
 Complex Applications
-++++++++++++++++++++
+^^^^^^^^^^^^^^^^^^^^
 
 Sometimes aiohttp is not the sole part of an application and additional
 tasks/processes may need to be run alongside the aiohttp :class:`Application`.
