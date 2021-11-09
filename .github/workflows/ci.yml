@@ -331,5 +331,5 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         pypi_token: ${{ secrets.PYPI_API_TOKEN }}
         dist_dir: dist
-        fix_issue_regex: "`#(\\d+) <https://github.com/aio-libs/aiohttp/issues/\\1>`"
+        fix_issue_regex: "`#(\\d+) <https://github.com/aio-libs/aiohttp/issues/\\1>`_"
         fix_issue_repl: "(#\\1)"
