@@ -162,7 +162,7 @@ pytest-mock==3.6.1
     # via -r requirements/test.txt
 python-dateutil==2.8.2
     # via freezegun
-python-on-whales==0.30.0 ; python_version >= "3.7"
+python-on-whales==0.31.0 ; python_version >= "3.7"
     # via -r requirements/test.txt
 pytz==2021.3
     # via babel
