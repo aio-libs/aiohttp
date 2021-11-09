@@ -925,6 +925,8 @@ can be done with a cleanup_ctx function like::
       with suppress(asyncio.CancelledError):
           await task  # Ensure any exceptions etc. are raised.
 
+  app.cleanup_ctx.append(run_other_task)
+
 
 Or a separate process can be run with something like::
 
