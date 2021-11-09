@@ -913,7 +913,7 @@ will be more robust and ensure that the tasks are started and stopped along
 with the application.
 
 For example, running a long-lived task alongside the :class:`Application`
-can be done with a cleanup_ctx function like::
+can be done with a :ref:`aiohttp-web-cleanup-ctx` function like::
 
 
   async def run_other_task(_app):
