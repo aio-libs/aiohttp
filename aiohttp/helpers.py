@@ -74,6 +74,12 @@ _SENTINEL = NewType("_SENTINEL", object)
 sentinel: _SENTINEL = _SENTINEL(object())
 NO_EXTENSIONS = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))  # type: bool
 
+CEIL_TIMEOUT_THRESHOLD: float = 5
+try:
+    CEIL_TIMEOUT_THRESHOLD = float(os.environ.get("AIOHTTP_CEIL_TIMEOUT_THRESHOLD", 5))
+except ValueError:
+    pass
+
 # N.B. sys.flags.dev_mode is available on Python 3.7+, use getattr
 # for compatibility with older versions
 DEBUG = getattr(sys.flags, "dev_mode", False) or (
@@ -583,7 +589,7 @@ def weakref_handle(
 ) -> Optional[asyncio.TimerHandle]:
     if timeout is not None and timeout > 0:
         when = loop.time() + timeout
-        if timeout >= 5:
+        if timeout >= CEIL_TIMEOUT_THRESHOLD:
             when = ceil(when)
 
         return loop.call_at(when, _weakref_handle, (weakref.ref(ob), name))
@@ -595,7 +601,7 @@ def call_later(
 ) -> Optional[asyncio.TimerHandle]:
     if timeout is not None and timeout > 0:
         when = loop.time() + timeout
-        if timeout > 5:
+        if timeout > CEIL_TIMEOUT_THRESHOLD:
             when = ceil(when)
         return loop.call_at(when, cb)
     return None
@@ -625,7 +631,7 @@ class TimeoutHandle:
         timeout = self._timeout
         if timeout is not None and timeout > 0:
             when = self._loop.time() + timeout
-            if timeout >= 5:
+            if timeout >= CEIL_TIMEOUT_THRESHOLD:
                 when = ceil(when)
             return self._loop.call_at(when, self.__call__)
         else:
@@ -714,7 +720,7 @@ def ceil_timeout(delay: Optional[float]) -> async_timeout.Timeout:
     loop = asyncio.get_running_loop()
     now = loop.time()
     when = now + delay
-    if delay > 5:
+    if delay > CEIL_TIMEOUT_THRESHOLD:
         when = ceil(when)
     return async_timeout.timeout_at(when)
 
