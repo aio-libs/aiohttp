@@ -242,8 +242,10 @@ class MultipartResponseWrapper:
         return item
 
     async def release(self) -> None:
-        """Releases the connection gracefully, reading all the content
-        to the void."""
+        """Release the connection gracefully.
+
+        All remaining content is read to the void.
+        """
         await self.resp.release()
 
 
@@ -416,9 +418,7 @@ class BodyPartReader:
         return cast(Dict[str, Any], json.loads(data.decode(encoding)))
 
     async def form(self, *, encoding: Optional[str] = None) -> List[Tuple[str, str]]:
-        """Like read(), but assumes that body parts contains form
-        urlencoded data.
-        """
+        """Like read(), but assumes that body parts contain form urlencoded data."""
         data = await self.read(decode=True)
         if not data:
             return []
@@ -437,7 +437,9 @@ class BodyPartReader:
         return self._at_eof
 
     def decode(self, data: bytes) -> bytes:
-        """Decodes data according the specified Content-Encoding
+        """Decodes data.
+
+        Decoding is done according the specified Content-Encoding
         or Content-Transfer-Encoding headers value.
         """
         if CONTENT_TRANSFER_ENCODING in self.headers:
@@ -480,17 +482,18 @@ class BodyPartReader:
 
     @reify
     def name(self) -> Optional[str]:
-        """Returns name specified in Content-Disposition header or None
-        if missed or header is malformed.
-        """
+        """Returns name specified in Content-Disposition header.
 
+        If the header is missing or malformed, returns None.
+        """
         _, params = parse_content_disposition(self.headers.get(CONTENT_DISPOSITION))
         return content_disposition_filename(params, "name")
 
     @reify
     def filename(self) -> Optional[str]:
-        """Returns filename specified in Content-Disposition header or None
-        if missed or header is malformed.
+        """Returns filename specified in Content-Disposition header.
+
+        Returns None if the header is missing or malformed.
         """
         _, params = parse_content_disposition(self.headers.get(CONTENT_DISPOSITION))
         return content_disposition_filename(params, "filename")
@@ -568,9 +571,7 @@ class MultipartReader:
         return obj
 
     def at_eof(self) -> bool:
-        """Returns True if the final boundary was reached or
-        False otherwise.
-        """
+        """Returns True if the final boundary was reached, false otherwise."""
         return self._at_eof
 
     async def next(
@@ -610,8 +611,9 @@ class MultipartReader:
         self,
         headers: "CIMultiDictProxy[str]",
     ) -> Union["MultipartReader", BodyPartReader]:
-        """Dispatches the response by the `Content-Type` header, returning
-        suitable reader instance.
+        """Dispatches the response by the `Content-Type` header.
+
+        Returns a suitable reader instance.
 
         :param dict headers: Response headers
         """

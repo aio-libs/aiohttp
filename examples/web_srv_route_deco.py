@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""Example for aiohttp.web basic server
-with decorator definition for routes
-"""
+"""Example for aiohttp.web basic server with decorator definition for routes."""
 
 import textwrap
 

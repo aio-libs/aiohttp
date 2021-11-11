@@ -26,9 +26,8 @@ pytest_plugins = ["aiohttp.pytest_plugin", "pytester"]
 
 @pytest.fixture
 def shorttmpdir():
-    """Provides a temporary directory with a shorter file system path than the
-    tmpdir fixture.
-    """
+    # Provides a temporary directory with a shorter file system path than the
+    # tmpdir fixture.
     tmpdir = pathlib.Path(tempfile.mkdtemp())
     yield tmpdir
     # str(tmpdir) is required, Python 3.5 doesn't have __fspath__

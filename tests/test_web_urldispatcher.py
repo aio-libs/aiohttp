@@ -20,6 +20,7 @@ from aiohttp.web_urldispatcher import SystemRoute
 def tmp_dir_path(request):
     """
     Give a path for a temporary directory
+
     The directory is destroyed at the end of the test.
     """
     # Temporary directory.
@@ -195,10 +196,7 @@ async def test_url_escaping(aiohttp_client, registered_path, request_url) -> Non
 
 
 async def test_handler_metadata_persistence() -> None:
-    """
-    Tests accessing metadata of a handler after registering it on the app
-    router.
-    """
+    """Tests accessing metadata of a handler after registering it on the app router."""
     app = web.Application()
 
     async def async_handler(request):
