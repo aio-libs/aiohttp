@@ -991,9 +991,8 @@ class TestParsePayload:
         assert b"data" == b"".join(d for d, _ in out._buffer)
         assert out.is_eof()
 
-    async def test_http_payload_parser_deflate_no_hdrs(self, stream) -> None:
-        """Tests incorrectly formed data (no zlib headers)"""
-
+    async def test_http_payload_parser_deflate_no_hdrs(self, stream: Any) -> None:
+        """Tests incorrectly formed data (no zlib headers)."""
         # c=compressobj(wbits=-15); b''.join([c.compress(b'data'), c.flush()])
         COMPRESSED = b"KI,I\x04\x00"
 

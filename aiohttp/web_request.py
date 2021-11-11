@@ -203,9 +203,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         Creates and returns a new instance of Request object. If no parameters
         are given, an exact copy is returned. If a parameter is not passed, it
         will reuse the one from the current request object.
-
         """
-
         if self._read_bytes:
             raise RuntimeError("Cannot clone request " "after reading its content")
 
@@ -450,6 +448,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
     @reify
     def raw_path(self) -> str:
         """The URL including raw *PATH INFO* without the host or scheme.
+
         Warning, the path is unquoted and may contains non valid URL characters
 
         E.g., ``/my%2Fpath%7Cwith%21some%25strange%24characters``

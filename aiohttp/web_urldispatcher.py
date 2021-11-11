@@ -130,16 +130,16 @@ class AbstractResource(Sized, Iterable["AbstractRoute"]):
 
     @abc.abstractmethod  # pragma: no branch
     async def resolve(self, request: Request) -> _Resolve:
-        """Resolve resource
+        """Resolve resource.
 
-        Return (UrlMappingMatchInfo, allowed_methods) pair."""
+        Return (UrlMappingMatchInfo, allowed_methods) pair.
+        """
 
     @abc.abstractmethod
     def add_prefix(self, prefix: str) -> None:
         """Add a prefix to processed URLs.
 
         Required for subapplications support.
-
         """
 
     @abc.abstractmethod
@@ -1135,15 +1135,11 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         return resource
 
     def add_head(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
-        """
-        Shortcut for add_route with method HEAD
-        """
+        """Shortcut for add_route with method HEAD."""
         return self.add_route(hdrs.METH_HEAD, path, handler, **kwargs)
 
     def add_options(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
-        """
-        Shortcut for add_route with method OPTIONS
-        """
+        """Shortcut for add_route with method OPTIONS."""
         return self.add_route(hdrs.METH_OPTIONS, path, handler, **kwargs)
 
     def add_get(
@@ -1155,9 +1151,10 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         allow_head: bool = True,
         **kwargs: Any,
     ) -> AbstractRoute:
-        """
-        Shortcut for add_route with method GET, if allow_head is true another
-        route is added allowing head requests to the same endpoint
+        """Shortcut for add_route with method GET.
+
+        If allow_head is true, another
+        route is added allowing head requests to the same endpoint.
         """
         resource = self.add_resource(path, name=name)
         if allow_head:
@@ -1165,35 +1162,25 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         return resource.add_route(hdrs.METH_GET, handler, **kwargs)
 
     def add_post(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
-        """
-        Shortcut for add_route with method POST
-        """
+        """Shortcut for add_route with method POST."""
         return self.add_route(hdrs.METH_POST, path, handler, **kwargs)
 
     def add_put(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
-        """
-        Shortcut for add_route with method PUT
-        """
+        """Shortcut for add_route with method PUT."""
         return self.add_route(hdrs.METH_PUT, path, handler, **kwargs)
 
     def add_patch(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
-        """
-        Shortcut for add_route with method PATCH
-        """
+        """Shortcut for add_route with method PATCH."""
         return self.add_route(hdrs.METH_PATCH, path, handler, **kwargs)
 
     def add_delete(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
-        """
-        Shortcut for add_route with method DELETE
-        """
+        """Shortcut for add_route with method DELETE."""
         return self.add_route(hdrs.METH_DELETE, path, handler, **kwargs)
 
     def add_view(
         self, path: str, handler: Type[AbstractView], **kwargs: Any
     ) -> AbstractRoute:
-        """
-        Shortcut for add_route with ANY methods for a class-based view
-        """
+        """Shortcut for add_route with ANY methods for a class-based view."""
         return self.add_route(hdrs.METH_ANY, path, handler, **kwargs)
 
     def freeze(self) -> None:

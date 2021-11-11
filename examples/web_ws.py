@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Example for aiohttp.web websocket server
-"""
+"""Example for aiohttp.web websocket server."""
 
 import os
 
