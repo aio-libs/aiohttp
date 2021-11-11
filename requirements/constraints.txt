@@ -8,7 +8,7 @@ alabaster==0.7.12
     # via sphinx
 async-generator==1.10
     # via -r requirements/base.txt
-async-timeout==4.0.0
+async-timeout==4.0.1
     # via -r requirements/base.txt
 attrs==21.2.0
     # via
@@ -38,7 +38,7 @@ charset-normalizer==2.0.7
     # via
     #   -r requirements/base.txt
     #   requests
-cherry_picker==2.0.0 ; python_version >= "3.6"
+cherry_picker==2.1.0 ; python_version >= "3.6"
     # via -r requirements/dev.txt
 click==8.0.3
     # via
@@ -50,7 +50,7 @@ click==8.0.3
     #   wait-for-it
 click-default-group==1.2.2
     # via towncrier
-coverage==6.1.1
+coverage==6.1.2
     # via
     #   -r requirements/test.txt
     #   pytest-cov
@@ -185,7 +185,7 @@ six==1.16.0
     #   virtualenv
 snowballstemmer==2.1.0
     # via sphinx
-sphinx==4.2.0
+sphinx==4.3.0
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-asyncio
