@@ -512,7 +512,9 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
 
 class HttpRequestParser(HttpParser[RawRequestMessage]):
-    """Read request status line. Exception .http_exceptions.BadStatusLine
+    """Read request status line.
+
+    Exception .http_exceptions.BadStatusLine
     could be raised in case of any errors in status line.
     Returns RawRequestMessage.
     """
@@ -590,7 +592,8 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
     """Read response status line and headers.
 
     BadStatusLine could be raised in case of any errors in status line.
-    Returns RawResponseMessage"""
+    Returns RawResponseMessage.
+    """
 
     def parse_message(self, lines: List[bytes]) -> RawResponseMessage:
         line = lines[0].decode("utf-8", "surrogateescape")

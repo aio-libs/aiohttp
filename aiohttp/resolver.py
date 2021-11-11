@@ -17,8 +17,10 @@ aiodns_default = False
 
 
 class ThreadedResolver(AbstractResolver):
-    """Use Executor for synchronous getaddrinfo() calls, which defaults to
-    concurrent.futures.ThreadPoolExecutor.
+    """Threaded resolver.
+
+    Uses an Executor for synchronous getaddrinfo() calls.
+    concurrent.futures.ThreadPoolExecutor is used by default.
     """
 
     def __init__(self) -> None:

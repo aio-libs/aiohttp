@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Example for aiohttp.web basic server with cookies.
-"""
+"""Example for aiohttp.web basic server with cookies."""
 
 from pprint import pformat
 from typing import NoReturn

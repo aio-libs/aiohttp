@@ -1032,23 +1032,21 @@ class ClientSession:
     def raise_for_status(
         self,
     ) -> Union[bool, Callable[[ClientResponse], Awaitable[None]]]:
-        """
-        Should `ClientResponse.raise_for_status()`
-        be called for each response
-        """
+        """Should `ClientResponse.raise_for_status()` be called for each response."""
         return self._raise_for_status
 
     @property
     def auto_decompress(self) -> bool:
-        """Should the body response be automatically decompressed"""
+        """Should the body response be automatically decompressed."""
         return self._auto_decompress
 
     @property
     def trust_env(self) -> bool:
         """
-        Should get proxies information
-        from HTTP_PROXY / HTTPS_PROXY environment variables
-        or ~/.netrc file if present
+        Should proxies information from environment or netrc be trusted.
+
+        Information is from HTTP_PROXY / HTTPS_PROXY environment variables
+        or ~/.netrc file if present.
         """
         return self._trust_env
 
@@ -1191,7 +1189,9 @@ def request(
     connector: Optional[BaseConnector] = None,
     read_bufsize: Optional[int] = None,
 ) -> _SessionRequestContextManager:
-    """Constructs and sends a request. Returns response object.
+    """Constructs and sends a request.
+
+    Returns response object.
     method - HTTP method
     url - request url
     params - (optional) Dictionary or bytes to be sent in the query

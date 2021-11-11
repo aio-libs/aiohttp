@@ -229,7 +229,8 @@ class InvalidURL(ClientError, ValueError):
     """Invalid URL.
 
     URL used for fetching is malformed, e.g. it doesn't contains host
-    part."""
+    part.
+    """
 
     # Derive from ValueError for backward compatibility
 

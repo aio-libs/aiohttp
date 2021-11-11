@@ -154,6 +154,7 @@ dict
 django
 dns
 docstring
+docstrings
 elasticsearch
 encodings
 env

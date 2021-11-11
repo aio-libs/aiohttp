@@ -49,10 +49,9 @@ def normalize_path_middleware(
     merge_slashes: bool = True,
     redirect_class: Type[HTTPMove] = HTTPPermanentRedirect,
 ) -> Middleware:
-    """
-    Middleware factory which produces a middleware that normalizes
-    the path of a request. By normalizing it means:
+    """Factory for producing a middleware that normalizes the path of a request.
 
+    Normalizing means:
         - Add or remove a trailing slash to the path.
         - Double slashes are replaced by one.
 
@@ -78,7 +77,6 @@ def normalize_path_middleware(
     If merge_slashes is True, merge multiple consecutive slashes in the
     path into one.
     """
-
     correct_configuration = not (append_slash and remove_slash)
     assert correct_configuration, "Cannot both remove and append slash"
 

@@ -2,9 +2,7 @@ from typing import Any
 
 
 def test___all__(pytester: Any) -> None:
-    """
-    See https://github.com/aio-libs/aiohttp/issues/6197
-    """
+    """See https://github.com/aio-libs/aiohttp/issues/6197"""
     pytester.makepyfile(
         test_a="""
             from aiohttp import *

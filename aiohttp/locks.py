@@ -9,8 +9,9 @@ except ImportError:
 
 
 class EventResultOrError:
-    """
-    This class wrappers the Event asyncio lock allowing either awake the
+    """Event asyncio lock helper class.
+
+    Wraps the Event asyncio lock allowing either to awake the
     locked Tasks without any error or raising an exception.
 
     thanks to @vorpalsmith for the simple design.
