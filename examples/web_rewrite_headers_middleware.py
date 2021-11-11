@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-"""
-Example for rewriting response headers by middleware.
-"""
+"""Example for rewriting response headers by middleware."""
+
 from aiohttp import web
 from aiohttp.typedefs import Handler
 

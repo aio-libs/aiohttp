@@ -1,4 +1,5 @@
-""" Payload implemenation for coroutines as data provider.
+"""
+Payload implemenation for coroutines as data provider.
 
 As a simple case, you can upload data from file::
 

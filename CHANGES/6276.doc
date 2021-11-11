@@ -1,0 +1,1 @@
+Add flake8-docstrings to flake8 configuration, enable subset of checks.
