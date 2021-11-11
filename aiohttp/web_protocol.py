@@ -237,9 +237,11 @@ class RequestHandler(BaseProtocol):
         return self._keepalive_timeout
 
     async def shutdown(self, timeout: Optional[float] = 15.0) -> None:
-        """Worker process is about to exit, we need cleanup everything and
-        stop accepting requests. It is especially important for keep-alive
-        connections."""
+        """Do worker process exit preparations.
+
+        We need to clean up everything and stop accepting requests.
+        It is especially important for keep-alive connections.
+        """
         self._force_close = True
 
         if self._keepalive_handle is not None:
@@ -371,14 +373,17 @@ class RequestHandler(BaseProtocol):
             self._keepalive_handle = None
 
     def close(self) -> None:
-        """Stop accepting new pipelining messages and close
-        connection when handlers done processing messages"""
+        """Close connection.
+
+        Stop accepting new pipelining messages and close
+        connection when handlers done processing messages.
+        """
         self._close = True
         if self._waiter:
             self._waiter.cancel()
 
     def force_close(self) -> None:
-        """Force close connection"""
+        """Forcefully close connection."""
         self._force_close = True
         if self._waiter:
             self._waiter.cancel()
@@ -580,8 +585,9 @@ class RequestHandler(BaseProtocol):
     async def finish_response(
         self, request: BaseRequest, resp: StreamResponse, start_time: float
     ) -> bool:
-        """
-        Prepare the response and write_eof, then log access. This has to
+        """Prepare the response and write_eof, then log access.
+
+        This has to
         be called within the context of any exception so the access logger
         can get exception information. Returns True if the client disconnects
         prematurely.
@@ -623,7 +629,8 @@ class RequestHandler(BaseProtocol):
         """Handle errors.
 
         Returns HTTP response with specific status code. Logs additional
-        information. It always closes current connection."""
+        information. It always closes current connection.
+        """
         self.log_exception("Error handling request", exc_info=exc)
 
         # some data already got sent, connection is broken

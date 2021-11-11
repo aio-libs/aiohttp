@@ -12,8 +12,10 @@ __all__ = ("FormData",)
 
 
 class FormData:
-    """Helper class for multipart/form-data and
-    application/x-www-form-urlencoded body generation."""
+    """Helper class for form body generation.
+
+    Supports multipart/form-data and application/x-www-form-urlencoded.
+    """
 
     def __init__(
         self,

@@ -46,8 +46,7 @@ __all__ = (
 
 
 class TraceConfig:
-    """First-class used to trace requests launched via ClientSession
-    objects."""
+    """First-class used to trace requests launched via ClientSession objects."""
 
     def __init__(
         self, trace_config_ctx_factory: Type[SimpleNamespace] = SimpleNamespace
@@ -336,8 +335,11 @@ class TraceRequestHeadersSentParams:
 
 
 class Trace:
-    """Internal class used to keep together the main dependencies used
-    at the moment of send a signal."""
+    """Internal dependency holder class.
+
+    Used to keep together the main dependencies used
+    at the moment of send a signal.
+    """
 
     def __init__(
         self,

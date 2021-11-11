@@ -221,7 +221,6 @@ class StreamResponse(BaseClass, HeadersMixin):
         Sets new cookie or updates existent with new value.
         Also updates only those params which are not None.
         """
-
         old = self._cookies.get(name)
         if old is not None and old.coded_value == "":
             # deleted cookie
