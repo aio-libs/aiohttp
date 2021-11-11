@@ -197,7 +197,9 @@ def strip_auth_from_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
 
 
 def netrc_from_env() -> Optional[netrc.netrc]:
-    """Attempt to load the netrc file from the path specified by the env-var
+    """Load netrc from file.
+
+    Attempt to load it from the path specified by the env-var
     NETRC or in the default location in the user's home directory.
 
     Returns None if it couldn't be found or fails to parse.
@@ -425,7 +427,6 @@ def is_expected_content_type(
 ) -> bool:
     """Checks if received content type is processable as an expected one.
 
-
     Both arguments should be given without parameters.
     """
     if expected_content_type == "application/json":
@@ -438,12 +439,13 @@ class _TSelf(Protocol, Generic[_T]):
 
 
 class reify(Generic[_T]):
-    """Use as a class method decorator.  It operates almost exactly like
+    """Use as a class method decorator.
+
+    It operates almost exactly like
     the Python `@property` decorator, but it puts the result of the
     method it decorates into the instance dict after the first call,
     effectively replacing the function it decorates with an instance
     variable.  It is, in Python parlance, a data descriptor.
-
     """
 
     def __init__(self, wrapped: Callable[..., _T]) -> None:
@@ -851,7 +853,6 @@ class CookieMixin:
         Sets new cookie or updates existent with new value.
         Also updates only those params which are not None.
         """
-
         old = self._cookies.get(name)
         if old is not None and old.coded_value == "":
             # deleted cookie
