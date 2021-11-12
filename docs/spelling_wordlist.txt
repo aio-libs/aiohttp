@@ -160,6 +160,7 @@ env
 environ
 eof
 epoll
+expirations
 etag
 facto
 fallback
