@@ -897,6 +897,52 @@ The task ``listen_to_redis`` will run forever.
 To shut it down correctly :attr:`Application.on_cleanup` signal handler
 may be used to send a cancellation to it.
 
+.. _aiohttp-web-complex-applications:
+
+Complex Applications
+^^^^^^^^^^^^^^^^^^^^
+
+Sometimes aiohttp is not the sole part of an application and additional
+tasks/processes may need to be run alongside the aiohttp :class:`Application`.
+
+Generally, the best way to achieve this is to use :func:`aiohttp.web.run_app`
+as the entry point for the program. Other tasks can then be run via
+:attr:`Application.startup` and :attr:`Application.on_cleanup`. By having the
+:class:`Application` control the lifecycle of the entire program, the code
+will be more robust and ensure that the tasks are started and stopped along
+with the application.
+
+For example, running a long-lived task alongside the :class:`Application`
+can be done with a :ref:`aiohttp-web-cleanup-ctx` function like::
+
+
+  async def run_other_task(_app):
+      task = asyncio.create_task(other_long_task())
+
+      yield
+
+      task.cancel()
+      with suppress(asyncio.CancelledError):
+          await task  # Ensure any exceptions etc. are raised.
+
+  app.cleanup_ctx.append(run_other_task)
+
+
+Or a separate process can be run with something like::
+
+
+  async def run_process(_app):
+      proc = await asyncio.create_subprocess_exec(path)
+
+      yield
+
+      if proc.returncode is None:
+          proc.terminate()
+      await proc.wait()
+
+  app.cleanup_ctx.append(run_process)
+
+
 Handling error pages
 --------------------
 
