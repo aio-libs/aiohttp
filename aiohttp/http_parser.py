@@ -491,9 +491,10 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         # chunking
         te = headers.get(hdrs.TRANSFER_ENCODING)
         if te is not None:
-            te_lower = te.lower()
-            if "chunked" in te_lower:
+            if "chunked" == te.lower():
                 chunked = True
+            else:
+                raise BadHttpMessage("Request has invalid `Transfer-Encoding`")
 
             if hdrs.CONTENT_LENGTH in headers:
                 raise BadHttpMessage(
