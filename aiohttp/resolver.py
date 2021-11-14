@@ -44,7 +44,7 @@ class ThreadedResolver(AbstractResolver):
                     # IPv6 is not supported by Python build,
                     # or IPv6 is not enabled in the host
                     continue
-                if address[3]:
+                if address[3]:  # type: ignore[misc]
                     # This is essential for link-local IPv6 addresses.
                     # LL IPv6 is a VERY rare case. Strictly speaking, we should use
                     # getnameinfo() unconditionally, but performance makes sense.
@@ -54,8 +54,9 @@ class ThreadedResolver(AbstractResolver):
                     port = int(_port)
                 else:
                     host, port = address[:2]
-            else:
-                host, port = address
+            else:  # IPv4
+                assert family == socket.AF_INET
+                host, port = address  # type: ignore[misc]
             hosts.append(
                 {
                     "hostname": hostname,
