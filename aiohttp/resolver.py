@@ -40,17 +40,22 @@ class ThreadedResolver(AbstractResolver):
         hosts = []
         for family, _, proto, _, address in infos:
             if family == socket.AF_INET6:
-                if not (socket.has_ipv6 and address[3]):  # type: ignore[misc]
+                if len(address) < 3:
+                    # IPv6 is not supported by Python build,
+                    # or IPv6 is not enabled in the host
                     continue
-                # This is essential for link-local IPv6 addresses.
-                # LL IPv6 is a VERY rare case. Strictly speaking, we should use
-                # getnameinfo() unconditionally, but performance makes sense.
-                host, _port = socket.getnameinfo(
-                    address, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV
-                )
-                port = int(_port)
+                if address[3]:
+                    # This is essential for link-local IPv6 addresses.
+                    # LL IPv6 is a VERY rare case. Strictly speaking, we should use
+                    # getnameinfo() unconditionally, but performance makes sense.
+                    host, _port = socket.getnameinfo(
+                        address, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV
+                    )
+                    port = int(_port)
+                else:
+                    host, port = address[:2]
             else:
-                host, port = address[:2]
+                host, port = address
             hosts.append(
                 {
                     "hostname": hostname,
