@@ -44,7 +44,7 @@ def fake_addrinfo(hosts: Any) -> Callable[..., Awaitable[Any]]:
         if not hosts:
             raise socket.gaierror
 
-        return [(None, None, None, None, [h, 0]) for h in hosts]
+        return [(socket.AF_INET, None, socket.SOCK_STREAM, None, [h, 0]) for h in hosts]
 
     return fake
 
