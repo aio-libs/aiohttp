@@ -54,7 +54,7 @@ class ThreadedResolver(AbstractResolver):
                     port = int(_port)
                 else:
                     host, port = address[:2]
-            else:  # IPv4 or None
+            else:  # IPv4
                 assert family == socket.AF_INET
                 host, port = address  # type: ignore[misc]
             hosts.append(
