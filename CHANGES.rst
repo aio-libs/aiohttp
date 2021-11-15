@@ -10,6 +10,49 @@
 
 .. towncrier release notes start
 
+3.8.1 (2021-11-14)
+==================
+
+Bugfixes
+--------
+
+- Fix the error in handling the return value of `getaddrinfo`.
+  `getaddrinfo` will return an `(int, bytes)` tuple, if CPython could not handle the address family.
+  It will cause a index out of range error in aiohttp. For example, if user compile CPython with
+  `--disable-ipv6` option but his system enable the ipv6.
+  `#5901 <https://github.com/aio-libs/aiohttp/issues/5901>`_
+- Do not install "examples" as a top-level package.
+  `#6189 <https://github.com/aio-libs/aiohttp/issues/6189>`_
+- Restored ability to connect IPv6-only host.
+  `#6195 <https://github.com/aio-libs/aiohttp/issues/6195>`_
+- Remove ``Signal`` from ``__all__``, replace ``aiohttp.Signal`` with ``aiosignal.Signal`` in docs
+  `#6201 <https://github.com/aio-libs/aiohttp/issues/6201>`_
+- Made chunked encoding HTTP header check stricter.
+  `#6305 <https://github.com/aio-libs/aiohttp/issues/6305>`_
+
+
+Improved Documentation
+----------------------
+
+- update quick starter demo codes.
+  `#6240 <https://github.com/aio-libs/aiohttp/issues/6240>`_
+- Added an explanation of how tiny timeouts affect performance to the client reference document.
+  `#6274 <https://github.com/aio-libs/aiohttp/issues/6274>`_
+- Add flake8-docstrings to flake8 configuration, enable subset of checks.
+  `#6276 <https://github.com/aio-libs/aiohttp/issues/6276>`_
+- Added information on running complex applications with additional tasks/processes -- :user:`Dreamsorcerer`.
+  `#6278 <https://github.com/aio-libs/aiohttp/issues/6278>`_
+
+
+Misc
+----
+
+- `#6205 <https://github.com/aio-libs/aiohttp/issues/6205>`_
+
+
+----
+
+
 3.8.0 (2021-10-31)
 ==================
 
