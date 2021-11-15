@@ -1,1 +1,1 @@
-typing_extensions==3.7.4.3
+typing_extensions==4.0.0
