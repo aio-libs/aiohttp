@@ -607,10 +607,14 @@ class TimeoutHandle:
     """Timeout handle"""
 
     def __init__(
-        self, loop: asyncio.AbstractEventLoop, timeout: Optional[float]
+        self,
+        loop: asyncio.AbstractEventLoop,
+        timeout: Optional[float],
+        ceil_threshold: float = 5,
     ) -> None:
         self._timeout = timeout
         self._loop = loop
+        self._ceil_threshold = ceil_threshold
         self._callbacks = (
             []
         )  # type: List[Tuple[Callable[..., None], Tuple[Any, ...], Dict[str, Any]]]
@@ -627,7 +631,7 @@ class TimeoutHandle:
         timeout = self._timeout
         if timeout is not None and timeout > 0:
             when = self._loop.time() + timeout
-            if timeout >= 5:
+            if timeout >= self._ceil_threshold:
                 when = ceil(when)
             return self._loop.call_at(when, self.__call__)
         else:
@@ -709,14 +713,16 @@ class TimerContext(BaseTimerContext):
             self._cancelled = True
 
 
-def ceil_timeout(delay: Optional[float]) -> async_timeout.Timeout:
+def ceil_timeout(
+    delay: Optional[float], ceil_threshold: float = 5
+) -> async_timeout.Timeout:
     if delay is None or delay <= 0:
         return async_timeout.timeout(None)
 
     loop = asyncio.get_running_loop()
     now = loop.time()
     when = now + delay
-    if delay > 5:
+    if delay > ceil_threshold:
         when = ceil(when)
     return async_timeout.timeout_at(when)
 

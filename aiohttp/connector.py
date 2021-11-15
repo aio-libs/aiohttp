@@ -945,7 +945,7 @@ class TCPConnector(BaseConnector):
         **kwargs: Any,
     ) -> Tuple[asyncio.Transport, ResponseHandler]:
         try:
-            async with ceil_timeout(timeout.sock_connect):
+            async with ceil_timeout(timeout.sock_connect, timeout.ceil_threshold):
                 return await self._loop.create_connection(*args, **kwargs)  # type: ignore[return-value]  # noqa
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
@@ -1009,7 +1009,7 @@ class TCPConnector(BaseConnector):
         sslcontext = cast(ssl.SSLContext, self._get_ssl_context(req))
 
         try:
-            async with ceil_timeout(timeout.sock_connect):
+            async with ceil_timeout(timeout.sock_connect, timeout.ceil_threshold):
                 try:
                     tls_transport = await self._loop.start_tls(
                         underlying_transport,
@@ -1263,7 +1263,7 @@ class UnixConnector(BaseConnector):
         self, req: "ClientRequest", traces: List["Trace"], timeout: "ClientTimeout"
     ) -> ResponseHandler:
         try:
-            async with ceil_timeout(timeout.sock_connect):
+            async with ceil_timeout(timeout.sock_connect, timeout.ceil_threshold):
                 _, proto = await self._loop.create_unix_connection(
                     self._factory, self._path
                 )
@@ -1319,7 +1319,7 @@ class NamedPipeConnector(BaseConnector):
         self, req: "ClientRequest", traces: List["Trace"], timeout: "ClientTimeout"
     ) -> ResponseHandler:
         try:
-            async with ceil_timeout(timeout.sock_connect):
+            async with ceil_timeout(timeout.sock_connect, timeout.ceil_threshold):
                 _, proto = await self._loop.create_pipe_connection(  # type: ignore[attr-defined] # noqa: E501
                     self._factory, self._path
                 )
