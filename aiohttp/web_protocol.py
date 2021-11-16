@@ -144,6 +144,10 @@ class RequestHandler(BaseProtocol):
 
     max_headers -- Optional maximum header size
 
+    timeout_ceil_threshold -- Optional threshold value
+                              for to trigger ceiling of
+                              timeout event values
+
     """
 
     KEEPALIVE_RESCHEDULE_DELAY = 1
@@ -173,6 +177,7 @@ class RequestHandler(BaseProtocol):
         "_close",
         "_force_close",
         "_current_request",
+        "_timeout_ceil_threshold",
     )
 
     def __init__(
@@ -192,6 +197,7 @@ class RequestHandler(BaseProtocol):
         lingering_time: float = 10.0,
         read_bufsize: int = 2 ** 16,
         auto_decompress: bool = True,
+        timeout_ceil_threshold: float = 5,
     ):
         super().__init__(loop)
 
@@ -227,6 +233,11 @@ class RequestHandler(BaseProtocol):
             payload_exception=RequestPayloadError,
             auto_decompress=auto_decompress,
         )  # type: Optional[HttpRequestParser]
+
+        try:
+            self._timeout_ceil_threshold = timeout_ceil_threshold
+        except ValueError:
+            self._timeout_ceil_threshold = 5
 
         self.logger = logger
         self.access_log = access_log
@@ -440,7 +451,8 @@ class RequestHandler(BaseProtocol):
         # not all request handlers are done,
         # reschedule itself to next second
         self._keepalive_handle = self._loop.call_later(
-            self.KEEPALIVE_RESCHEDULE_DELAY, self._process_keepalive
+            self.KEEPALIVE_RESCHEDULE_DELAY,
+            self._process_keepalive,
         )
 
     async def _handle_request(

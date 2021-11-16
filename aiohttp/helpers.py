@@ -581,11 +581,15 @@ def _weakref_handle(info: "Tuple[weakref.ref[object], str]") -> None:
 
 
 def weakref_handle(
-    ob: object, name: str, timeout: float, loop: asyncio.AbstractEventLoop
+    ob: object,
+    name: str,
+    timeout: float,
+    loop: asyncio.AbstractEventLoop,
+    timeout_ceil_threshold: float = 5,
 ) -> Optional[asyncio.TimerHandle]:
     if timeout is not None and timeout > 0:
         when = loop.time() + timeout
-        if timeout >= 5:
+        if timeout >= timeout_ceil_threshold:
             when = ceil(when)
 
         return loop.call_at(when, _weakref_handle, (weakref.ref(ob), name))
@@ -593,11 +597,14 @@ def weakref_handle(
 
 
 def call_later(
-    cb: Callable[[], Any], timeout: float, loop: asyncio.AbstractEventLoop
+    cb: Callable[[], Any],
+    timeout: float,
+    loop: asyncio.AbstractEventLoop,
+    timeout_ceil_threshold: float = 5,
 ) -> Optional[asyncio.TimerHandle]:
     if timeout is not None and timeout > 0:
         when = loop.time() + timeout
-        if timeout > 5:
+        if timeout > timeout_ceil_threshold:
             when = ceil(when)
         return loop.call_at(when, cb)
     return None

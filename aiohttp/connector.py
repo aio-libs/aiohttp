@@ -171,6 +171,8 @@ class BaseConnector:
     limit_per_host - Number of simultaneous connections to one host.
     enable_cleanup_closed - Enables clean-up closed ssl transports.
                             Disabled by default.
+    timeout_ceil_threshold - Trigger ceiling of timeout values when
+                             it's above timeout_ceil_threshold.
     loop - Optional event loop.
     """
 
@@ -188,6 +190,7 @@ class BaseConnector:
         limit: int = 100,
         limit_per_host: int = 0,
         enable_cleanup_closed: bool = False,
+        timeout_ceil_threshold: float = 5,
     ) -> None:
 
         if force_close:
@@ -198,6 +201,8 @@ class BaseConnector:
         else:
             if keepalive_timeout is sentinel:
                 keepalive_timeout = 15.0
+
+        self._timeout_ceil_threshold = timeout_ceil_threshold
 
         loop = asyncio.get_running_loop()
 
@@ -326,7 +331,11 @@ class BaseConnector:
 
         if self._conns:
             self._cleanup_handle = helpers.weakref_handle(
-                self, "_cleanup", timeout, self._loop
+                self,
+                "_cleanup",
+                timeout,
+                self._loop,
+                timeout_ceil_threshold=self._timeout_ceil_threshold,
             )
 
     def _drop_acquired_per_host(
@@ -356,7 +365,11 @@ class BaseConnector:
 
         if not self._cleanup_closed_disabled:
             self._cleanup_closed_handle = helpers.weakref_handle(
-                self, "_cleanup_closed", self._cleanup_closed_period, self._loop
+                self,
+                "_cleanup_closed",
+                self._cleanup_closed_period,
+                self._loop,
+                timeout_ceil_threshold=self._timeout_ceil_threshold,
             )
 
     async def close(self) -> None:
@@ -639,7 +652,11 @@ class BaseConnector:
 
             if self._cleanup_handle is None:
                 self._cleanup_handle = helpers.weakref_handle(
-                    self, "_cleanup", self._keepalive_timeout, self._loop
+                    self,
+                    "_cleanup",
+                    self._keepalive_timeout,
+                    self._loop,
+                    timeout_ceil_threshold=self._timeout_ceil_threshold,
                 )
 
     async def _create_connection(
@@ -728,6 +745,7 @@ class TCPConnector(BaseConnector):
         limit: int = 100,
         limit_per_host: int = 0,
         enable_cleanup_closed: bool = False,
+        timeout_ceil_threshold: float = 5,
     ) -> None:
         super().__init__(
             keepalive_timeout=keepalive_timeout,
@@ -735,6 +753,7 @@ class TCPConnector(BaseConnector):
             limit=limit,
             limit_per_host=limit_per_host,
             enable_cleanup_closed=enable_cleanup_closed,
+            timeout_ceil_threshold=timeout_ceil_threshold,
         )
 
         if not isinstance(ssl, SSL_ALLOWED_TYPES):
@@ -945,7 +964,9 @@ class TCPConnector(BaseConnector):
         **kwargs: Any,
     ) -> Tuple[asyncio.Transport, ResponseHandler]:
         try:
-            async with ceil_timeout(timeout.sock_connect, timeout.ceil_threshold):
+            async with ceil_timeout(
+                timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
+            ):
                 return await self._loop.create_connection(*args, **kwargs)  # type: ignore[return-value]  # noqa
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
@@ -1009,7 +1030,9 @@ class TCPConnector(BaseConnector):
         sslcontext = cast(ssl.SSLContext, self._get_ssl_context(req))
 
         try:
-            async with ceil_timeout(timeout.sock_connect, timeout.ceil_threshold):
+            async with ceil_timeout(
+                timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
+            ):
                 try:
                     tls_transport = await self._loop.start_tls(
                         underlying_transport,
@@ -1185,7 +1208,10 @@ class TCPConnector(BaseConnector):
                 # read_until_eof=True will ensure the connection isn't closed
                 # once the response is received and processed allowing
                 # START_TLS to work on the connection below.
-                protocol.set_response_params(read_until_eof=True)
+                protocol.set_response_params(
+                    read_until_eof=True,
+                    timeout_ceil_threshold=self._timeout_ceil_threshold,
+                )
                 resp = await proxy_resp.start(conn)
             except BaseException:
                 proxy_resp.close()
@@ -1263,7 +1289,9 @@ class UnixConnector(BaseConnector):
         self, req: "ClientRequest", traces: List["Trace"], timeout: "ClientTimeout"
     ) -> ResponseHandler:
         try:
-            async with ceil_timeout(timeout.sock_connect, timeout.ceil_threshold):
+            async with ceil_timeout(
+                timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
+            ):
                 _, proto = await self._loop.create_unix_connection(
                     self._factory, self._path
                 )
@@ -1319,7 +1347,9 @@ class NamedPipeConnector(BaseConnector):
         self, req: "ClientRequest", traces: List["Trace"], timeout: "ClientTimeout"
     ) -> ResponseHandler:
         try:
-            async with ceil_timeout(timeout.sock_connect, timeout.ceil_threshold):
+            async with ceil_timeout(
+                timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
+            ):
                 _, proto = await self._loop.create_pipe_connection(  # type: ignore[attr-defined] # noqa: E501
                     self._factory, self._path
                 )

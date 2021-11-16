@@ -492,7 +492,10 @@ class ClientSession:
 
                     # connection timeout
                     try:
-                        async with ceil_timeout(real_timeout.connect):
+                        async with ceil_timeout(
+                            real_timeout.connect,
+                            ceil_threshold=real_timeout.ceil_threshold,
+                        ):
                             assert self._connector is not None
                             conn = await self._connector.connect(
                                 req, traces=traces, timeout=real_timeout
@@ -512,6 +515,7 @@ class ClientSession:
                         auto_decompress=self._auto_decompress,
                         read_timeout=real_timeout.sock_read,
                         read_bufsize=read_bufsize,
+                        timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
                     )
 
                     try:
