@@ -369,17 +369,33 @@ functionality, the AioHTTPTestCase is provided::
 
     .. comethod:: setUpAsync()
 
-       This async method do nothing by default and can be overridden to execute
-       asynchronous code during the ``setUp`` stage of the ``TestCase``.
+       This async method can be overridden to execute asynchronous code during
+       the ``setUp`` stage of the ``TestCase``::
+
+           async def setUpAsync(self):
+               await super().setUpAsync()
+               await foo()
 
        .. versionadded:: 2.3
+
+       .. versionchanged:: 3.8
+
+          ``await super().setUpAsync()`` call is required.
 
     .. comethod:: tearDownAsync()
 
-       This async method do nothing by default and can be overridden to execute
-       asynchronous code during the ``tearDown`` stage of the ``TestCase``.
+       This async method can be overridden to execute asynchronous code during
+       the ``tearDown`` stage of the ``TestCase``::
+
+           async def tearDownAsync(self):
+               await super().tearDownAsync()
+               await foo()
 
        .. versionadded:: 2.3
+
+       .. versionchanged:: 3.8
+
+          ``await super().tearDownAsync()`` call is required.
 
     .. method:: setUp()
 
