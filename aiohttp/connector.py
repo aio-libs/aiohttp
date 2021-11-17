@@ -45,7 +45,7 @@ from .client_exceptions import (
 )
 from .client_proto import ResponseHandler
 from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
-from .helpers import _SENTINEL, ceil_timeout, is_ip_address, sentinel
+from .helpers import _SENTINEL, ceil_timeout, is_ip_address, sentinel, set_result
 from .http import RESPONSES
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
@@ -628,6 +628,9 @@ class BaseConnector:
         if should_close or protocol.should_close:
             transport = protocol.transport
             protocol.close()
+            # Ignore the following protocol exceptions
+            # See PR #6321
+            set_result(protocol.closed, None)
 
             if key.is_ssl and not self._cleanup_closed_disabled:
                 self._cleanup_closed_transports.append(transport)
