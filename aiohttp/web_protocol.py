@@ -234,10 +234,11 @@ class RequestHandler(BaseProtocol):
             auto_decompress=auto_decompress,
         )  # type: Optional[HttpRequestParser]
 
+        self._timeout_ceil_threshold = 5  # type: float
         try:
             self._timeout_ceil_threshold = timeout_ceil_threshold
         except ValueError:
-            self._timeout_ceil_threshold = 5
+            pass
 
         self.logger = logger
         self.access_log = access_log
