@@ -65,4 +65,13 @@ class Server:
         self._connections.clear()
 
     def __call__(self) -> RequestHandler:
-        return RequestHandler(self, loop=self._loop, **self._kwargs)
+        try:
+            return RequestHandler(self, loop=self._loop, **self._kwargs)
+        except TypeError:
+            # Failsafe creation: remove all custom handler_args
+            kwargs = {
+                k: v
+                for k, v in self._kwargs.items()
+                if k in ["debug", "access_log_class"]
+            }
+            return RequestHandler(self, loop=self._loop, **kwargs)

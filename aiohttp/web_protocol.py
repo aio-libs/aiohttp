@@ -144,9 +144,9 @@ class RequestHandler(BaseProtocol):
 
     max_headers -- Optional maximum header size
 
-    timeout_ceil_threshold -- Optional threshold value
-                              for to trigger ceiling of
-                              timeout event values
+    timeout_ceil_threshold -- Optional value to specify
+                              threshold to ceil() timeout
+                              values
 
     """
 
@@ -236,8 +236,8 @@ class RequestHandler(BaseProtocol):
 
         self._timeout_ceil_threshold = 5  # type: float
         try:
-            self._timeout_ceil_threshold = timeout_ceil_threshold
-        except ValueError:
+            self._timeout_ceil_threshold = float(timeout_ceil_threshold)
+        except (TypeError, ValueError):
             pass
 
         self.logger = logger
