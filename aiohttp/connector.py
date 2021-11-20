@@ -12,7 +12,7 @@ from contextlib import suppress
 from http.cookies import SimpleCookie
 from itertools import cycle, islice
 from math import ceil
-from numbers import Rational
+from numbers import Real
 from time import monotonic
 from types import TracebackType
 from typing import (  # noqa
@@ -288,7 +288,7 @@ class BaseConnector:
             elif delay is None:
                 delay = 0
 
-            assert isinstance(delay, Rational)
+            assert isinstance(delay, Real), type(delay)
             when = now + delay
             if delay >= 5:  # type: ignore[operator]
                 when = ceil(when)
@@ -480,7 +480,7 @@ class BaseConnector:
             proto, t0 = conns.pop()
             if proto.is_connected():
                 if (
-                    not isinstance(keepalive_timeout, Rational)
+                    not isinstance(keepalive_timeout, Real)
                     or t1 - t0 > keepalive_timeout
                 ):
                     await proto.close()
