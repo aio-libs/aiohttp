@@ -399,10 +399,7 @@ class ClientSession:
         if timeout is sentinel:
             real_timeout = self._timeout  # type: ClientTimeout
         else:
-            if not isinstance(timeout, ClientTimeout):
-                real_timeout = ClientTimeout(total=timeout)  # type: ignore[arg-type]
-            else:
-                real_timeout = timeout
+            real_timeout = timeout  # type: ignore[assignment]
         # timeout is cumulative for all request operations
         # (request, redirects, responses, data consuming)
         tm = TimeoutHandle(self._loop, real_timeout.total)
