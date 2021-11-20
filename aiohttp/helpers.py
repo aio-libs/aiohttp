@@ -6,6 +6,7 @@ import binascii
 import cgi
 import dataclasses
 import datetime
+import enum
 import functools
 import netrc
 import os
@@ -32,7 +33,6 @@ from typing import (
     Iterator,
     List,
     Mapping,
-    NewType,
     Optional,
     Pattern,
     Tuple,
@@ -69,9 +69,9 @@ except ImportError:
 _T = TypeVar("_T")
 _S = TypeVar("_S")
 
-_SENTINEL = NewType("_SENTINEL", object)
+_SENTINEL = enum.Enum("_SENTINEL", "sentinel")
+sentinel = _SENTINEL.sentinel
 
-sentinel: _SENTINEL = _SENTINEL(object())
 NO_EXTENSIONS = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))  # type: bool
 
 # N.B. sys.flags.dev_mode is available on Python 3.7+, use getattr

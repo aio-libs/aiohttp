@@ -580,7 +580,7 @@ async def test_timeout_on_reading_headers(aiohttp_client: Any, mocker: Any) -> N
     client = await aiohttp_client(app)
 
     with pytest.raises(asyncio.TimeoutError):
-        await client.get("/", timeout=0.01)
+        await client.get("/", timeout=aiohttp.ClientTimeout(total=0.01))
 
 
 async def test_timeout_on_conn_reading_headers(
@@ -601,7 +601,7 @@ async def test_timeout_on_conn_reading_headers(
     client = await aiohttp_client(app, connector=conn)
 
     with pytest.raises(asyncio.TimeoutError):
-        await client.get("/", timeout=0.01)
+        await client.get("/", timeout=aiohttp.ClientTimeout(total=0.01))
 
 
 async def test_timeout_on_session_read_timeout(
@@ -687,7 +687,7 @@ async def test_timeout_on_reading_data(aiohttp_client: Any, mocker: Any) -> None
     app.router.add_route("GET", "/", handler)
     client = await aiohttp_client(app)
 
-    resp = await client.get("/", timeout=1)
+    resp = await client.get("/", timeout=aiohttp.ClientTimeout(1))
     await fut
 
     with pytest.raises(asyncio.TimeoutError):

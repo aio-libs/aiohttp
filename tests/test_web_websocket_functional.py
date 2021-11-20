@@ -809,6 +809,6 @@ async def test_bug3380(loop: Any, aiohttp_client: Any) -> None:
     with pytest.raises(WSServerHandshakeError):
         await client.ws_connect("/ws")
 
-    resp = await client.get("/api/null", timeout=1)
+    resp = await client.get("/api/null", timeout=aiohttp.ClientTimeout(total=1))
     assert (await resp.json()) == {"err": None}
     resp.close()

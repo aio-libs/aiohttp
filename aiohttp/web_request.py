@@ -219,14 +219,12 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         if method is not sentinel:
             dct["method"] = method
         if rel_url is not sentinel:
-            new_url: URL = URL(rel_url)  # type: ignore[arg-type]
+            new_url: URL = URL(rel_url)
             dct["url"] = new_url
             dct["path"] = str(new_url)
         if headers is not sentinel:
             # a copy semantic
-            new_headers = CIMultiDictProxy(
-                CIMultiDict(headers)  # type: ignore[arg-type]
-            )
+            new_headers = CIMultiDictProxy(CIMultiDict(headers))
             dct["headers"] = new_headers
             dct["raw_headers"] = tuple(
                 (k.encode("utf-8"), v.encode("utf-8")) for k, v in new_headers.items()
@@ -236,11 +234,11 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
         kwargs: Dict[str, str] = {}
         if scheme is not sentinel:
-            kwargs["scheme"] = scheme  # type: ignore[assignment]
+            kwargs["scheme"] = scheme
         if host is not sentinel:
-            kwargs["host"] = host  # type: ignore[assignment]
+            kwargs["host"] = host
         if remote is not sentinel:
-            kwargs["remote"] = remote  # type: ignore[assignment]
+            kwargs["remote"] = remote
 
         return self.__class__(
             message,
