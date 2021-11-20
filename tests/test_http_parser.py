@@ -2,7 +2,7 @@
 # Tests for aiohttp/protocol.py
 
 import asyncio
-from typing import Any
+from typing import Any, List
 from unittest import mock
 from urllib.parse import quote
 
@@ -13,6 +13,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import http_exceptions, streams
 from aiohttp.http_parser import (
+    NO_EXTENSIONS,
     DeflateBuffer,
     HttpPayloadParser,
     HttpRequestParserPy,
@@ -42,7 +43,14 @@ def protocol():
     return mock.Mock()
 
 
-@pytest.fixture(params=REQUEST_PARSERS)
+def _gen_ids(parsers: List[Any]) -> List[str]:
+    return [
+        "py-parser" if parser.__module__ == "aiohttp.http_parser" else "c-parser"
+        for parser in parsers
+    ]
+
+
+@pytest.fixture(params=REQUEST_PARSERS, ids=_gen_ids(REQUEST_PARSERS))
 def parser(loop: Any, protocol: Any, request: Any):
     # Parser implementations
     return request.param(
@@ -55,13 +63,13 @@ def parser(loop: Any, protocol: Any, request: Any):
     )
 
 
-@pytest.fixture(params=REQUEST_PARSERS)
+@pytest.fixture(params=REQUEST_PARSERS, ids=_gen_ids(REQUEST_PARSERS))
 def request_cls(request: Any):
     # Request Parser class
     return request.param
 
 
-@pytest.fixture(params=RESPONSE_PARSERS)
+@pytest.fixture(params=RESPONSE_PARSERS, ids=_gen_ids(RESPONSE_PARSERS))
 def response(loop: Any, protocol: Any, request: Any):
     # Parser implementations
     return request.param(
@@ -74,7 +82,7 @@ def response(loop: Any, protocol: Any, request: Any):
     )
 
 
-@pytest.fixture(params=RESPONSE_PARSERS)
+@pytest.fixture(params=RESPONSE_PARSERS, ids=_gen_ids(RESPONSE_PARSERS))
 def response_cls(request: Any):
     # Parser implementations
     return request.param
@@ -83,6 +91,14 @@ def response_cls(request: Any):
 @pytest.fixture
 def stream():
     return mock.Mock()
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Extentions available but not imported")
+def test_c_parser_loaded():
+    assert "HttpRequestParserC" in dir(aiohttp.http_parser)
+    assert "HttpResponseParserC" in dir(aiohttp.http_parser)
+    assert "RawRequestMessageC" in dir(aiohttp.http_parser)
+    assert "RawResponseMessageC" in dir(aiohttp.http_parser)
 
 
 def test_parse_headers(parser: Any) -> None:
@@ -274,6 +290,28 @@ def test_request_chunked(parser: Any) -> None:
     assert msg.chunked
     assert not upgrade
     assert isinstance(payload, streams.StreamReader)
+
+
+def test_request_te_chunked_with_content_length(parser: Any) -> None:
+    text = (
+        b"GET /test HTTP/1.1\r\n"
+        b"content-length: 1234\r\n"
+        b"transfer-encoding: chunked\r\n\r\n"
+    )
+    with pytest.raises(
+        http_exceptions.BadHttpMessage,
+        match="Content-Length can't be present with Transfer-Encoding",
+    ):
+        parser.feed_data(text)
+
+
+def test_request_te_chunked123(parser: Any) -> None:
+    text = b"GET /test HTTP/1.1\r\n" b"transfer-encoding: chunked123\r\n\r\n"
+    with pytest.raises(
+        http_exceptions.BadHttpMessage,
+        match="Request has invalid `Transfer-Encoding`",
+    ):
+        parser.feed_data(text)
 
 
 def test_conn_upgrade(parser: Any) -> None:
@@ -530,6 +568,7 @@ def test_http_request_parser_two_slashes(parser: Any) -> None:
 
     assert msg.method == "GET"
     assert msg.path == "//path"
+    assert msg.url.path == "//path"
     assert msg.version == (1, 1)
     assert not msg.should_close
     assert msg.compression is None
@@ -977,8 +1016,7 @@ class TestParsePayload:
         assert out.is_eof()
 
     async def test_http_payload_parser_deflate_no_hdrs(self, stream: Any) -> None:
-        """Tests incorrectly formed data (no zlib headers) """
-
+        """Tests incorrectly formed data (no zlib headers)."""
         # c=compressobj(wbits=-15); b''.join([c.compress(b'data'), c.flush()])
         COMPRESSED = b"KI,I\x04\x00"
 

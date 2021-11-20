@@ -150,7 +150,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         read_until_eof: bool = False,
         auto_decompress: bool = True,
         read_timeout: Optional[float] = None,
-        read_bufsize: int = 2 ** 16
+        read_bufsize: int = 2 ** 16,
     ) -> None:
         self._skip_payload = skip_payload
 
@@ -239,7 +239,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
                     self._payload = payload
 
                     if self._skip_payload or message.code in (204, 304):
-                        self.feed_data((message, EMPTY_PAYLOAD), 0)  # type: ignore
+                        self.feed_data((message, EMPTY_PAYLOAD), 0)
                     else:
                         self.feed_data((message, payload), 0)
                 if payload is not None:

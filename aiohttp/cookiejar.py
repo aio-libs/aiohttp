@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import datetime
 import os  # noqa
 import pathlib
@@ -12,6 +13,7 @@ from typing import (  # noqa
     Dict,
     Iterable,
     Iterator,
+    List,
     Mapping,
     Optional,
     Set,
@@ -24,7 +26,7 @@ from yarl import URL
 
 from .abc import AbstractCookieJar, ClearCookiePredicate
 from .helpers import is_ip_address, next_whole_second
-from .typedefs import LooseCookies, PathLike
+from .typedefs import LooseCookies, PathLike, StrOrURL
 
 __all__ = ("CookieJar", "DummyCookieJar")
 
@@ -55,7 +57,13 @@ class CookieJar(AbstractCookieJar):
 
     MAX_32BIT_TIME = datetime.datetime.utcfromtimestamp(2 ** 31 - 1)
 
-    def __init__(self, *, unsafe: bool = False, quote_cookie: bool = True) -> None:
+    def __init__(
+        self,
+        *,
+        unsafe: bool = False,
+        quote_cookie: bool = True,
+        treat_as_secure_origin: Union[StrOrURL, List[StrOrURL], None] = None
+    ) -> None:
         self._loop = asyncio.get_running_loop()
         self._cookies = defaultdict(
             SimpleCookie
@@ -63,6 +71,18 @@ class CookieJar(AbstractCookieJar):
         self._host_only_cookies = set()  # type: Set[Tuple[str, str]]
         self._unsafe = unsafe
         self._quote_cookie = quote_cookie
+        if treat_as_secure_origin is None:
+            treat_as_secure_origin = []
+        elif isinstance(treat_as_secure_origin, URL):
+            treat_as_secure_origin = [treat_as_secure_origin.origin()]
+        elif isinstance(treat_as_secure_origin, str):
+            treat_as_secure_origin = [URL(treat_as_secure_origin).origin()]
+        else:
+            treat_as_secure_origin = [
+                URL(url).origin() if isinstance(url, str) else url.origin()
+                for url in treat_as_secure_origin
+            ]
+        self._treat_as_secure_origin = treat_as_secure_origin
         self._next_expiration = next_whole_second()
         self._expirations = {}  # type: Dict[Tuple[str, str], datetime.datetime]
         # #4515: datetime.max may not be representable on 32-bit platforms
@@ -147,7 +167,7 @@ class CookieJar(AbstractCookieJar):
         for name, cookie in cookies:
             if not isinstance(cookie, Morsel):
                 tmp = SimpleCookie()  # type: SimpleCookie[str]
-                tmp[name] = cookie  # type: ignore
+                tmp[name] = cookie  # type: ignore[assignment]
                 cookie = tmp[name]
 
             domain = cookie["domain"]
@@ -227,7 +247,14 @@ class CookieJar(AbstractCookieJar):
             SimpleCookie() if self._quote_cookie else BaseCookie()
         )
         hostname = request_url.raw_host or ""
-        is_not_secure = request_url.scheme not in ("https", "wss")
+        request_origin = URL()
+        with contextlib.suppress(ValueError):
+            request_origin = request_url.origin()
+
+        is_not_secure = (
+            request_url.scheme not in ("https", "wss")
+            and request_origin not in self._treat_as_secure_origin
+        )
 
         for cookie in self:
             name = cookie.key
@@ -320,7 +347,7 @@ class CookieJar(AbstractCookieJar):
                 time_match = cls.DATE_HMS_TIME_RE.match(token)
                 if time_match:
                     found_time = True
-                    hour, minute, second = [int(s) for s in time_match.groups()]
+                    hour, minute, second = (int(s) for s in time_match.groups())
                     continue
 
             if not found_day:

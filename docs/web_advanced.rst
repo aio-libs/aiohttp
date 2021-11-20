@@ -436,7 +436,7 @@ the keyword-only ``middlewares`` parameter::
 
 Internally, a single :ref:`request handler <aiohttp-web-handler>` is constructed
 by applying the middleware chain to the original handler in reverse order,
-and is called by the :class:`RequestHandler` as a regular *handler*.
+and is called by the :class:`~aiohttp.web.RequestHandler` as a regular *handler*.
 
 Since *middlewares* are themselves coroutines, they may perform extra
 ``await`` calls when creating a new handler, e.g. call database etc.
@@ -748,7 +748,7 @@ header::
 Custom resource implementation
 ------------------------------
 
-To register custom resource use :meth:`UrlDispatcher.register_resource`.
+To register custom resource use :meth:`~aiohttp.web.UrlDispatcher.register_resource`.
 Resource instance must implement `AbstractResource` interface.
 
 .. _aiohttp-web-app-runners:
@@ -849,9 +849,9 @@ sources (e.g. ZeroMQ, Redis Pub/Sub, AMQP, etc.) to react to received messages
 within the application.
 
 For example the background task could listen to ZeroMQ on
-:data:`zmq.SUB` socket, process and forward retrieved messages to
+``zmq.SUB`` socket, process and forward retrieved messages to
 clients connected via WebSocket that are stored somewhere in the
-application (e.g. in the :obj:`application['websockets']` list).
+application (e.g. in the ``application['websockets']`` list).
 
 To run such short and long running background tasks aiohttp provides an
 ability to register :attr:`Application.on_startup` signal handler(s) that
@@ -893,9 +893,55 @@ signal handlers as shown in the example below::
   web.run_app(app)
 
 
-The task :func:`listen_to_redis` will run forever.
+The task ``listen_to_redis`` will run forever.
 To shut it down correctly :attr:`Application.on_cleanup` signal handler
 may be used to send a cancellation to it.
+
+.. _aiohttp-web-complex-applications:
+
+Complex Applications
+^^^^^^^^^^^^^^^^^^^^
+
+Sometimes aiohttp is not the sole part of an application and additional
+tasks/processes may need to be run alongside the aiohttp :class:`Application`.
+
+Generally, the best way to achieve this is to use :func:`aiohttp.web.run_app`
+as the entry point for the program. Other tasks can then be run via
+:attr:`Application.startup` and :attr:`Application.on_cleanup`. By having the
+:class:`Application` control the lifecycle of the entire program, the code
+will be more robust and ensure that the tasks are started and stopped along
+with the application.
+
+For example, running a long-lived task alongside the :class:`Application`
+can be done with a :ref:`aiohttp-web-cleanup-ctx` function like::
+
+
+  async def run_other_task(_app):
+      task = asyncio.create_task(other_long_task())
+
+      yield
+
+      task.cancel()
+      with suppress(asyncio.CancelledError):
+          await task  # Ensure any exceptions etc. are raised.
+
+  app.cleanup_ctx.append(run_other_task)
+
+
+Or a separate process can be run with something like::
+
+
+  async def run_process(_app):
+      proc = await asyncio.create_subprocess_exec(path)
+
+      yield
+
+      if proc.returncode is None:
+          proc.terminate()
+      await proc.wait()
+
+  app.cleanup_ctx.append(run_process)
+
 
 Handling error pages
 --------------------

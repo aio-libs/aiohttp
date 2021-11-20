@@ -2,7 +2,6 @@
 
 import asyncio
 import contextlib
-import functools
 import gc
 import inspect
 import ipaddress
@@ -11,9 +10,20 @@ import socket
 import sys
 from abc import ABC, abstractmethod
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Callable, Iterator, List, Optional, Type, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Iterator,
+    List,
+    Optional,
+    Type,
+    Union,
+    cast,
+)
 from unittest import mock
 
+from aiosignal import Signal
 from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
@@ -24,9 +34,8 @@ from . import ClientSession, hdrs
 from .abc import AbstractCookieJar
 from .client_reqrep import ClientResponse
 from .client_ws import ClientWebSocketResponse
-from .helpers import PY_38, sentinel
+from .helpers import _SENTINEL, PY_38, sentinel
 from .http import HttpVersion, RawRequestMessage
-from .signals import Signal
 from .web import (
     Application,
     AppRunner,
@@ -47,7 +56,7 @@ else:
 if PY_38:
     from unittest import IsolatedAsyncioTestCase as TestCase
 else:
-    from asynctest import TestCase  # type: ignore
+    from asynctest import TestCase  # type: ignore[no-redef]
 
 REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
 
@@ -75,7 +84,7 @@ def unused_port() -> int:
     """Return a port that is unused on the current host."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
+        return cast(int, s.getsockname()[1])
 
 
 class BaseTestServer(ABC):
@@ -84,10 +93,13 @@ class BaseTestServer(ABC):
     def __init__(
         self,
         *,
-        scheme: Union[str, object] = sentinel,
+        scheme: Union[str, _SENTINEL] = sentinel,
         host: str = "127.0.0.1",
         port: Optional[int] = None,
         skip_url_asserts: bool = False,
+        socket_factory: Callable[
+            [str, int, socket.AddressFamily], socket.socket
+        ] = get_port_socket,
         **kwargs: Any,
     ) -> None:
         self.runner = None  # type: Optional[BaseRunner]
@@ -97,6 +109,7 @@ class BaseTestServer(ABC):
         self._closed = False
         self.scheme = scheme
         self.skip_url_asserts = skip_url_asserts
+        self.socket_factory = socket_factory
 
     async def start_server(self, **kwargs: Any) -> None:
         if self.runner:
@@ -114,7 +127,7 @@ class BaseTestServer(ABC):
         if version == 6:
             absolute_host = f"[{self.host}]"
         family = socket.AF_INET6 if version == 6 else socket.AF_INET
-        _sock = get_port_socket(self.host, self.port, family=family)
+        _sock = self.socket_factory(self.host, self.port, family)
         self.host, self.port = _sock.getsockname()[:2]
         site = SockSite(self.runner, sock=_sock, ssl_context=self._ssl)
         await site.start()
@@ -198,7 +211,7 @@ class TestServer(BaseTestServer):
         self,
         app: Application,
         *,
-        scheme: Union[str, object] = sentinel,
+        scheme: Union[str, _SENTINEL] = sentinel,
         host: str = "127.0.0.1",
         port: Optional[int] = None,
         **kwargs: Any,
@@ -215,7 +228,7 @@ class RawTestServer(BaseTestServer):
         self,
         handler: _RequestHandler,
         *,
-        scheme: Union[str, object] = sentinel,
+        scheme: Union[str, _SENTINEL] = sentinel,
         host: str = "127.0.0.1",
         port: Optional[int] = None,
         **kwargs: Any,
@@ -277,8 +290,8 @@ class TestClient:
         return self._server
 
     @property
-    def app(self) -> Application:
-        return getattr(self._server, "app", None)
+    def app(self) -> Optional[Application]:
+        return cast(Optional[Application], getattr(self._server, "app", None))
 
     @property
     def session(self) -> ClientSession:
@@ -386,8 +399,7 @@ class TestClient:
 
 
 class AioHTTPTestCase(TestCase):
-    """A base class to allow for unittest web applications using
-    aiohttp.
+    """A base class to allow for unittest web applications using aiohttp.
 
     Provides the following:
 
@@ -402,25 +414,26 @@ class AioHTTPTestCase(TestCase):
     """
 
     async def get_application(self) -> Application:
-        """
+        """Get application.
+
         This method should be overridden
         to return the aiohttp.web.Application
         object to test.
-
         """
         return self.get_app()
 
     def get_app(self) -> Application:
         """Obsolete method used to constructing web application.
 
-        Use .get_application() coroutine instead
-
+        Use .get_application() coroutine instead.
         """
         raise RuntimeError("Did you forget to define get_application()?")
 
     def setUp(self) -> None:
-        if PY_38:
-            self.loop = asyncio.get_event_loop()
+        try:
+            self.loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self.loop = asyncio.get_event_loop_policy().get_event_loop()
 
         self.loop.run_until_complete(self.setUpAsync())
 
@@ -446,21 +459,6 @@ class AioHTTPTestCase(TestCase):
         return TestClient(server)
 
 
-def unittest_run_loop(func: Any, *args: Any, **kwargs: Any) -> Any:
-    """A decorator dedicated to use with asynchronous methods of an
-    AioHTTPTestCase.
-
-    Handles executing an asynchronous function, using
-    the self.loop of the AioHTTPTestCase.
-    """
-
-    @functools.wraps(func, *args, **kwargs)
-    def new_func(self: Any, *inner_args: Any, **inner_kwargs: Any) -> Any:
-        return self.loop.run_until_complete(func(self, *inner_args, **inner_kwargs))
-
-    return new_func
-
-
 _LOOP_FACTORY = Callable[[], asyncio.AbstractEventLoop]
 
 
@@ -480,8 +478,7 @@ def loop_context(
 def setup_test_loop(
     loop_factory: _LOOP_FACTORY = asyncio.new_event_loop,
 ) -> asyncio.AbstractEventLoop:
-    """Create and return an asyncio.BaseEventLoop
-    instance.
+    """Create and return an asyncio.BaseEventLoop instance.
 
     The caller should also call teardown_test_loop,
     once they are done with the loop.
@@ -496,7 +493,16 @@ def setup_test_loop(
     asyncio.set_event_loop(loop)
     if sys.platform != "win32" and not skip_watcher:
         policy = asyncio.get_event_loop_policy()
-        watcher = asyncio.SafeChildWatcher()
+        watcher: asyncio.AbstractChildWatcher
+        try:  # Python >= 3.8
+            # Refs:
+            # * https://github.com/pytest-dev/pytest-xdist/issues/620
+            # * https://stackoverflow.com/a/58614689/595220
+            # * https://bugs.python.org/issue35621
+            # * https://github.com/python/cpython/pull/14344
+            watcher = asyncio.ThreadedChildWatcher()
+        except AttributeError:  # Python < 3.8
+            watcher = asyncio.SafeChildWatcher()
         watcher.attach_loop(loop)
         with contextlib.suppress(NotImplementedError):
             policy.set_child_watcher(watcher)
@@ -504,10 +510,7 @@ def setup_test_loop(
 
 
 def teardown_test_loop(loop: asyncio.AbstractEventLoop, fast: bool = False) -> None:
-    """Teardown and cleanup an event_loop created
-    by setup_test_loop.
-
-    """
+    """Teardown and cleanup an event_loop created by setup_test_loop."""
     closed = loop.is_closed()
     if not closed:
         loop.call_soon(loop.stop)
@@ -571,9 +574,7 @@ def make_mocked_request(
 
     Useful in unit tests, when spinning full web server is overkill or
     specific conditions and errors are hard to trigger.
-
     """
-
     task = mock.Mock()
     if loop is ...:
         loop = mock.Mock()
@@ -600,7 +601,7 @@ def make_mocked_request(
         headers,
         raw_hdrs,
         closing,
-        False,
+        None,
         False,
         chunked,
         URL(path),

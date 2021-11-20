@@ -100,9 +100,8 @@ def test_version_default(make_request: Any) -> None:
 
 def test_request_info(make_request: Any) -> None:
     req = make_request("get", "http://python.org/")
-    assert req.request_info == aiohttp.RequestInfo(
-        URL("http://python.org/"), "GET", req.headers
-    )
+    url = URL("http://python.org/")
+    assert req.request_info == aiohttp.RequestInfo(url, "GET", req.headers, url)
 
 
 def test_request_info_with_fragment(make_request: Any) -> None:
@@ -118,11 +117,6 @@ def test_request_info_with_fragment(make_request: Any) -> None:
 def test_version_err(make_request: Any) -> None:
     with pytest.raises(ValueError):
         make_request("get", "http://python.org/", version="1.c")
-
-
-def test_https_proxy(make_request: Any) -> None:
-    with pytest.raises(ValueError):
-        make_request("get", "http://python.org/", proxy=URL("https://proxy.org"))
 
 
 def test_keep_alive(make_request: Any) -> None:
@@ -581,6 +575,7 @@ async def test_content_type_auto_header_get(loop: Any, conn: Any) -> None:
     resp = await req.send(conn)
     assert "CONTENT-TYPE" not in req.headers
     resp.close()
+    await req.close()
 
 
 async def test_content_type_auto_header_form(loop: Any, conn: Any) -> None:
@@ -653,6 +648,21 @@ async def test_urlencoded_formdata_charset(loop: Any, conn: Any) -> None:
     )
 
 
+async def test_formdata_boundary_from_headers(loop: Any, conn: Any) -> None:
+    boundary = "some_boundary"
+    file_path = pathlib.Path(__file__).parent / "aiohttp.png"
+    with file_path.open("rb") as f:
+        req = ClientRequest(
+            "post",
+            URL("http://python.org"),
+            data={"aiohttp.png": f},
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+            loop=loop,
+        )
+        await req.send(conn)
+        assert req.body._boundary == boundary.encode()
+
+
 async def test_post_data(loop: Any, conn: Any) -> None:
     for meth in ClientRequest.POST_METHODS:
         req = ClientRequest(
@@ -687,6 +697,7 @@ async def test_pass_falsy_data_file(loop: Any, tmp_path: Any) -> None:
     )
     assert req.headers.get("CONTENT-LENGTH", None) is not None
     await req.close()
+    testfile.close()
 
 
 # Elasticsearch API requires to send request body with GET-requests

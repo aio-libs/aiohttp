@@ -1,3 +1,9 @@
+[build-system]
+requires = [
+    "setuptools >= 46.4.0",
+]
+build-backend = "setuptools.build_meta"
+
 [tool.towncrier]
 package = "aiohttp"
 filename = "CHANGES.rst"
@@ -5,3 +11,9 @@ directory = "CHANGES/"
 title_format = "{version} ({project_date})"
 template = "CHANGES/.TEMPLATE.rst"
 issue_format = "`#{issue} <https://github.com/aio-libs/aiohttp/issues/{issue}>`_"
+
+
+[tool.cibuildwheel]
+test-command = ""
+# don't build PyPy wheels, install from source instead
+skip = "pp*"

@@ -1,9 +1,9 @@
 import abc
+import dataclasses
 import os  # noqa
 from typing import (
     TYPE_CHECKING,
     Any,
-    Awaitable,
     Callable,
     Dict,
     Iterator,
@@ -15,11 +15,9 @@ from typing import (
     overload,
 )
 
-import attr
-
 from . import hdrs
 from .abc import AbstractView
-from .typedefs import PathLike
+from .typedefs import Handler, PathLike
 
 if TYPE_CHECKING:  # pragma: no cover
     from .web_request import Request
@@ -53,11 +51,10 @@ class AbstractRouteDef(abc.ABC):
         pass  # pragma: no cover
 
 
-_SimpleHandler = Callable[[Request], Awaitable[StreamResponse]]
-_HandlerType = Union[Type[AbstractView], _SimpleHandler]
+_HandlerType = Union[Type[AbstractView], Handler]
 
 
-@attr.s(auto_attribs=True, frozen=True, repr=False, slots=True)
+@dataclasses.dataclass(frozen=True, repr=False)
 class RouteDef(AbstractRouteDef):
     method: str
     path: str
@@ -82,7 +79,7 @@ class RouteDef(AbstractRouteDef):
             ]
 
 
-@attr.s(auto_attribs=True, frozen=True, repr=False, slots=True)
+@dataclasses.dataclass(frozen=True, repr=False)
 class StaticDef(AbstractRouteDef):
     prefix: str
     path: PathLike
@@ -161,7 +158,7 @@ class RouteTableDef(Sequence[AbstractRouteDef]):
         self._items = []  # type: List[AbstractRouteDef]
 
     def __repr__(self) -> str:
-        return "<RouteTableDef count={}>".format(len(self._items))
+        return f"<RouteTableDef count={len(self._items)}>"
 
     @overload
     def __getitem__(self, index: int) -> AbstractRouteDef:
@@ -171,7 +168,7 @@ class RouteTableDef(Sequence[AbstractRouteDef]):
     def __getitem__(self, index: slice) -> List[AbstractRouteDef]:
         ...
 
-    def __getitem__(self, index):  # type: ignore
+    def __getitem__(self, index):  # type: ignore[no-untyped-def]
         return self._items[index]
 
     def __iter__(self) -> Iterator[AbstractRouteDef]:

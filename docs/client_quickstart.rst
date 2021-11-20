@@ -33,9 +33,7 @@ Now, let's try to get a web-page. For example let's query
                 print(resp.status)
                 print(await resp.text())
 
-
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    asyncio.run(main)
 
 Now, we have a :class:`ClientSession` called ``session`` and a
 :class:`ClientResponse` object called ``resp``. We can get all the
@@ -54,6 +52,18 @@ Other HTTP methods are available as well::
     session.head('http://httpbin.org/get')
     session.options('http://httpbin.org/get')
     session.patch('http://httpbin.org/patch', data=b'data')
+
+To make several requests to the same site more simple, the parameter ``base_url``
+of :class:`ClientSession` constructor can be used. For example to request different
+endpoints of ``http://httpbin.org`` can be used the following code::
+
+    async with aiohttp.ClientSession('http://httpbin.org') as session:
+        async with session.get('/get'):
+            pass
+        async with session.post('/post', data=b'data'):
+            pass
+        async with session.put('/put', data=b'data'):
+            pass
 
 .. note::
 
@@ -99,9 +109,9 @@ following code::
 
 You can see that the URL has been correctly encoded by printing the URL.
 
-For sending data with multiple values for the same key :class:`MultiDict` may be
-used; the library support nested lists (``{'key': ['value1', 'value2']}``)
-alternative as well.
+For sending data with multiple values for the same key
+:class:`~multidict.MultiDict` may be used; the library support nested lists
+(``{'key': ['value1', 'value2']}``) alternative as well.
 
 It is also possible to pass a list of 2 item tuples as parameters, in
 that case you can specify multiple values for each key::
@@ -245,10 +255,7 @@ In general, however, you should use a pattern like this to save what is being
 streamed to a file::
 
     with open(filename, 'wb') as fd:
-        while True:
-            chunk = await resp.content.read(chunk_size)
-            if not chunk:
-                break
+        async for chunk in resp.content.iter_chunked(chunk_size):
             fd.write(chunk)
 
 It is not possible to use :meth:`~ClientResponse.read`,
@@ -318,7 +325,7 @@ You can set the ``filename`` and ``content_type`` explicitly::
     await session.post(url, data=data)
 
 If you pass a file object as data parameter, aiohttp will stream it to
-the server automatically. Check :class:`~aiohttp.streams.StreamReader`
+the server automatically. Check :class:`~aiohttp.StreamReader`
 for supported format information.
 
 .. seealso:: :ref:`aiohttp-multipart`

@@ -11,7 +11,7 @@ try:
 
     SSLContext = ssl.SSLContext
 except ImportError:  # pragma: no cover
-    ssl = SSLContext = None  # type: ignore
+    ssl = SSLContext = None  # type: ignore[assignment]
 
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -85,7 +85,7 @@ class ClientResponseError(ClientError):
             args += f", message={self.message!r}"
         if self.headers is not None:
             args += f", headers={self.headers!r}"
-        return "{}({})".format(type(self).__name__, args)
+        return f"{type(self).__name__}({args})"
 
 
 class ContentTypeError(ClientResponseError):
@@ -229,7 +229,8 @@ class InvalidURL(ClientError, ValueError):
     """Invalid URL.
 
     URL used for fetching is malformed, e.g. it doesn't contains host
-    part."""
+    part.
+    """
 
     # Derive from ValueError for backward compatibility
 
@@ -270,11 +271,11 @@ else:  # pragma: no cover
     ssl_error_bases = (ClientSSLError,)
 
 
-class ClientConnectorSSLError(*ssl_error_bases):  # type: ignore
+class ClientConnectorSSLError(*ssl_error_bases):  # type: ignore[misc]
     """Response ssl error."""
 
 
-class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore
+class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore[misc]
     """Response certificate error."""
 
     def __init__(

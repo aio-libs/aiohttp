@@ -4,6 +4,7 @@ import asyncio
 import base64
 import binascii
 import cgi
+import dataclasses
 import datetime
 import functools
 import netrc
@@ -12,8 +13,10 @@ import platform
 import re
 import sys
 import time
+import warnings
 from collections import namedtuple
 from contextlib import suppress
+from email.utils import parsedate
 from http.cookies import SimpleCookie
 from math import ceil
 from pathlib import Path
@@ -28,6 +31,7 @@ from typing import (
     Iterator,
     List,
     Mapping,
+    NewType,
     Optional,
     Pattern,
     Tuple,
@@ -37,10 +41,9 @@ from typing import (
     cast,
 )
 from urllib.parse import quote
-from urllib.request import getproxies
+from urllib.request import getproxies, proxy_bypass
 
 import async_timeout
-import attr
 from multidict import CIMultiDict, MultiDict, MultiDictProxy
 from typing_extensions import Protocol, final
 from yarl import URL
@@ -49,10 +52,12 @@ from . import hdrs
 from .log import client_logger
 from .typedefs import PathLike  # noqa
 
-__all__ = ("BasicAuth", "ChainMapProxy")
+__all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
 PY_38 = sys.version_info >= (3, 8)
+PY_310 = sys.version_info >= (3, 10)
 
+COOKIE_MAX_LENGTH = 4096
 
 try:
     from typing import ContextManager
@@ -63,8 +68,9 @@ except ImportError:
 _T = TypeVar("_T")
 _S = TypeVar("_S")
 
+_SENTINEL = NewType("_SENTINEL", object)
 
-sentinel = object()  # type: Any
+sentinel: _SENTINEL = _SENTINEL(object())
 NO_EXTENSIONS = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))  # type: bool
 
 # N.B. sys.flags.dev_mode is available on Python 3.7+, use getattr
@@ -111,13 +117,13 @@ if PY_38:
     iscoroutinefunction = asyncio.iscoroutinefunction
 else:
 
-    def iscoroutinefunction(func: Callable[..., Any]) -> bool:
+    def iscoroutinefunction(func: Any) -> bool:
         while isinstance(func, functools.partial):
             func = func.func
         return asyncio.iscoroutinefunction(func)
 
 
-json_re = re.compile(r"^application/(?:[\w.+-]+?\+)?json")
+json_re = re.compile(r"(?:application/|[\w.-]+/[\w.+-]+?\+)json$", re.IGNORECASE)
 
 
 class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
@@ -190,7 +196,9 @@ def strip_auth_from_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
 
 
 def netrc_from_env() -> Optional[netrc.netrc]:
-    """Attempt to load the netrc file from the path specified by the env-var
+    """Load netrc from file.
+
+    Attempt to load it from the path specified by the env-var
     NETRC or in the default location in the user's home directory.
 
     Returns None if it couldn't be found or fails to parse.
@@ -229,7 +237,7 @@ def netrc_from_env() -> Optional[netrc.netrc]:
     return None
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class ProxyInfo:
     proxy: URL
     proxy_auth: Optional[BasicAuth]
@@ -266,7 +274,21 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
     return ret
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+def get_env_proxy_for_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
+    """Get a permitted proxy for the given URL from the env."""
+    if url.host is not None and proxy_bypass(url.host):
+        raise LookupError(f"Proxying is disallowed for `{url.host!r}`")
+
+    proxies_in_env = proxies_from_env()
+    try:
+        proxy_info = proxies_in_env[url.scheme]
+    except KeyError:
+        raise LookupError(f"No proxies found for `{url!s}` in the env")
+    else:
+        return proxy_info.proxy, proxy_info.proxy_auth
+
+
+@dataclasses.dataclass(frozen=True)
 class MimeType:
     type: str
     subtype: str
@@ -329,13 +351,40 @@ def guess_filename(obj: Any, default: Optional[str] = None) -> Optional[str]:
     return default
 
 
+not_qtext_re = re.compile(r"[^\041\043-\133\135-\176]")
+QCONTENT = {chr(i) for i in range(0x20, 0x7F)} | {"\t"}
+
+
+def quoted_string(content: str) -> str:
+    """Return 7-bit content as quoted-string.
+
+    Format content into a quoted-string as defined in RFC5322 for
+    Internet Message Format. Notice that this is not the 8-bit HTTP
+    format, but the 7-bit email format. Content must be in usascii or
+    a ValueError is raised.
+    """
+    if not (QCONTENT > set(content)):
+        raise ValueError(f"bad content for quoted-string {content!r}")
+    return not_qtext_re.sub(lambda x: "\\" + x.group(0), content)
+
+
 def content_disposition_header(
-    disptype: str, quote_fields: bool = True, **params: str
+    disptype: str, quote_fields: bool = True, _charset: str = "utf-8", **params: str
 ) -> str:
-    """Sets ``Content-Disposition`` header.
+    """Sets ``Content-Disposition`` header for MIME.
+
+    This is the MIME payload Content-Disposition header from RFC 2183
+    and RFC 7579 section 4.2, not the HTTP Content-Disposition from
+    RFC 6266.
 
     disptype is a disposition type: inline, attachment, form-data.
     Should be valid extension token (see RFC 2183)
+
+    quote_fields performs value quoting to 7-bit MIME headers
+    according to RFC 7578. Set to quote_fields to False if recipient
+    can take 8-bit file names and field values.
+
+    _charset specifies the charset to use when quote_fields is True.
 
     params is a dict with disposition params.
     """
@@ -350,10 +399,23 @@ def content_disposition_header(
                 raise ValueError(
                     "bad content disposition parameter" " {!r}={!r}".format(key, val)
                 )
-            qval = quote(val, "") if quote_fields else val
-            lparams.append((key, '"%s"' % qval))
-            if key == "filename":
-                lparams.append(("filename*", "utf-8''" + qval))
+            if quote_fields:
+                if key.lower() == "filename":
+                    qval = quote(val, "", encoding=_charset)
+                    lparams.append((key, '"%s"' % qval))
+                else:
+                    try:
+                        qval = quoted_string(val)
+                    except ValueError:
+                        qval = "".join(
+                            (_charset, "''", quote(val, "", encoding=_charset))
+                        )
+                        lparams.append((key + "*", qval))
+                    else:
+                        lparams.append((key, '"%s"' % qval))
+            else:
+                qval = val.replace("\\", "\\\\").replace('"', '\\"')
+                lparams.append((key, '"%s"' % qval))
         sparams = "; ".join("=".join(pair) for pair in lparams)
         value = "; ".join((value, sparams))
     return value
@@ -362,22 +424,27 @@ def content_disposition_header(
 def is_expected_content_type(
     response_content_type: str, expected_content_type: str
 ) -> bool:
+    """Checks if received content type is processable as an expected one.
+
+    Both arguments should be given without parameters.
+    """
     if expected_content_type == "application/json":
         return json_re.match(response_content_type) is not None
     return expected_content_type in response_content_type
 
 
-class _TSelf(Protocol):
-    _cache: Dict[str, Any]
+class _TSelf(Protocol, Generic[_T]):
+    _cache: Dict[str, _T]
 
 
 class reify(Generic[_T]):
-    """Use as a class method decorator.  It operates almost exactly like
+    """Use as a class method decorator.
+
+    It operates almost exactly like
     the Python `@property` decorator, but it puts the result of the
     method it decorates into the instance dict after the first call,
     effectively replacing the function it decorates with an instance
     variable.  It is, in Python parlance, a data descriptor.
-
     """
 
     def __init__(self, wrapped: Callable[..., _T]) -> None:
@@ -385,7 +452,7 @@ class reify(Generic[_T]):
         self.__doc__ = wrapped.__doc__
         self.name = wrapped.__name__
 
-    def __get__(self, inst: _TSelf, owner: Optional[Type[Any]] = None) -> _T:
+    def __get__(self, inst: _TSelf[_T], owner: Optional[Type[Any]] = None) -> _T:
         try:
             try:
                 return inst._cache[self.name]
@@ -398,7 +465,7 @@ class reify(Generic[_T]):
                 return self
             raise
 
-    def __set__(self, inst: _TSelf, value: _T) -> None:
+    def __set__(self, inst: _TSelf[_T], value: _T) -> None:
         raise AttributeError("reified property is read-only")
 
 
@@ -408,7 +475,7 @@ try:
     from ._helpers import reify as reify_c
 
     if not NO_EXTENSIONS:
-        reify = reify_c  # type: ignore
+        reify = reify_c  # type: ignore[misc,assignment]
 except ImportError:
     pass
 
@@ -442,7 +509,7 @@ def _is_ip_address(
     elif isinstance(host, (bytes, bytearray, memoryview)):
         return bool(regexb.match(host))
     else:
-        raise TypeError("{} [{}] is not a str or bytes".format(host, type(host)))
+        raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
 
 
 is_ipv4_address = functools.partial(_is_ip_address, _ipv4_regex, _ipv4_regexb)
@@ -504,16 +571,19 @@ def rfc822_formatted_time() -> str:
     return _cached_formatted_datetime
 
 
-def call_later(cb, timeout, loop):  # type: ignore
+def call_later(
+    cb: Callable[..., Any], timeout: float, loop: asyncio.AbstractEventLoop
+) -> Optional[asyncio.TimerHandle]:
     if timeout is not None and timeout > 0:
         when = loop.time() + timeout
         if timeout > 5:
             when = ceil(when)
         return loop.call_at(when, cb)
+    return None
 
 
 class TimeoutHandle:
-    """ Timeout handle """
+    """Timeout handle"""
 
     def __init__(
         self, loop: asyncio.AbstractEventLoop, timeout: Optional[float]
@@ -576,7 +646,7 @@ class TimerNoop(BaseTimerContext):
 
 
 class TimerContext(BaseTimerContext):
-    """ Low resolution timeout context manager """
+    """Low resolution timeout context manager"""
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
@@ -592,7 +662,6 @@ class TimerContext(BaseTimerContext):
             )
 
         if self._cancelled:
-            task.cancel()
             raise asyncio.TimeoutError from None
 
         self._tasks.append(task)
@@ -620,15 +689,15 @@ class TimerContext(BaseTimerContext):
 
 
 def ceil_timeout(delay: Optional[float]) -> async_timeout.Timeout:
-    if delay is not None and delay > 0:
-        loop = asyncio.get_running_loop()
-        now = loop.time()
-        when = now + delay
-        if delay > 5:
-            when = ceil(when)
-        return async_timeout.timeout_at(when)
-    else:
+    if delay is None or delay <= 0:
         return async_timeout.timeout(None)
+
+    loop = asyncio.get_running_loop()
+    now = loop.time()
+    when = now + delay
+    if delay > 5:
+        when = ceil(when)
+    return async_timeout.timeout_at(when)
 
 
 class HeadersMixin:
@@ -639,7 +708,7 @@ class HeadersMixin:
         super().__init__()
         self._content_type = None  # type: Optional[str]
         self._content_dict = None  # type: Optional[Dict[str, str]]
-        self._stored_content_type = sentinel
+        self._stored_content_type: Union[str, _SENTINEL] = sentinel
 
     def _parse_content_type(self, raw: str) -> None:
         self._stored_content_type = raw
@@ -653,23 +722,25 @@ class HeadersMixin:
     @property
     def content_type(self) -> str:
         """The value of content part for Content-Type HTTP header."""
-        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore
+        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore[attr-defined]
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
-        return self._content_type  # type: ignore
+        return self._content_type  # type: ignore[return-value]
 
     @property
     def charset(self) -> Optional[str]:
         """The value of charset part for Content-Type HTTP header."""
-        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore
+        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore[attr-defined]
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
-        return self._content_dict.get("charset")  # type: ignore
+        return self._content_dict.get("charset")  # type: ignore[union-attr]
 
     @property
     def content_length(self) -> Optional[int]:
         """The value of Content-Length HTTP header."""
-        content_length = self._headers.get(hdrs.CONTENT_LENGTH)  # type: ignore
+        content_length = self._headers.get(  # type: ignore[attr-defined]
+            hdrs.CONTENT_LENGTH
+        )
 
         if content_length is not None:
             return int(content_length)
@@ -713,7 +784,7 @@ class ChainMapProxy(Mapping[str, Any]):
 
     def __len__(self) -> int:
         # reuses stored hash values if possible
-        return len(set().union(*self._maps))  # type: ignore
+        return len(set().union(*self._maps))  # type: ignore[arg-type]
 
     def __iter__(self) -> Iterator[str]:
         d = {}  # type: Dict[str, Any]
@@ -761,7 +832,6 @@ class CookieMixin:
         Sets new cookie or updates existent with new value.
         Also updates only those params which are not None.
         """
-
         old = self._cookies.get(name)
         if old is not None and old.coded_value == "":
             # deleted cookie
@@ -794,6 +864,15 @@ class CookieMixin:
         if samesite is not None:
             c["samesite"] = samesite
 
+        if DEBUG:
+            cookie_length = len(c.output(header="")[1:])
+            if cookie_length > COOKIE_MAX_LENGTH:
+                warnings.warn(
+                    "The size of is too large, it might get ignored by the client.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
     def del_cookie(
         self, name: str, *, domain: Optional[str] = None, path: str = "/"
     ) -> None:
@@ -819,3 +898,36 @@ def populate_with_cookies(
     for cookie in cookies.values():
         value = cookie.output(header="")[1:]
         headers.add(hdrs.SET_COOKIE, value)
+
+
+# https://tools.ietf.org/html/rfc7232#section-2.3
+_ETAGC = r"[!#-}\x80-\xff]+"
+_ETAGC_RE = re.compile(_ETAGC)
+_QUOTED_ETAG = fr'(W/)?"({_ETAGC})"'
+QUOTED_ETAG_RE = re.compile(_QUOTED_ETAG)
+LIST_QUOTED_ETAG_RE = re.compile(fr"({_QUOTED_ETAG})(?:\s*,\s*|$)|(.)")
+
+ETAG_ANY = "*"
+
+
+@dataclasses.dataclass(frozen=True)
+class ETag:
+    value: str
+    is_weak: bool = False
+
+
+def validate_etag_value(value: str) -> None:
+    if value != ETAG_ANY and not _ETAGC_RE.fullmatch(value):
+        raise ValueError(
+            f"Value {value!r} is not a valid etag. Maybe it contains '\"'?"
+        )
+
+
+def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
+    """Process a date string, return a datetime object"""
+    if date_str is not None:
+        timetuple = parsedate(date_str)
+        if timetuple is not None:
+            with suppress(ValueError):
+                return datetime.datetime(*timetuple[:6], tzinfo=datetime.timezone.utc)
+    return None

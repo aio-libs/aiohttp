@@ -1,10 +1,11 @@
 """WebSocket client for asyncio."""
 
 import asyncio
-from typing import Any, Optional
+import dataclasses
+from typing import Any, Optional, cast
 
 import async_timeout
-import attr
+from typing_extensions import Final
 
 from .client_exceptions import ClientError
 from .client_reqrep import ClientResponse
@@ -27,13 +28,15 @@ from .typedefs import (
 )
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class ClientWSTimeout:
     ws_receive: Optional[float] = None
     ws_close: Optional[float] = None
 
 
-DEFAULT_WS_CLIENT_TIMEOUT = ClientWSTimeout(ws_receive=None, ws_close=10.0)
+DEFAULT_WS_CLIENT_TIMEOUT: Final[ClientWSTimeout] = ClientWSTimeout(
+    ws_receive=None, ws_close=10.0
+)
 
 
 class ClientWebSocketResponse:
@@ -65,10 +68,10 @@ class ClientWebSocketResponse:
         self._autoclose = autoclose
         self._autoping = autoping
         self._heartbeat = heartbeat
-        self._heartbeat_cb = None
+        self._heartbeat_cb: Optional[asyncio.TimerHandle] = None
         if heartbeat is not None:
             self._pong_heartbeat = heartbeat / 2.0
-        self._pong_response_cb = None
+        self._pong_response_cb: Optional[asyncio.TimerHandle] = None
         self._loop = loop
         self._waiting = None  # type: Optional[asyncio.Future[bool]]
         self._exception = None  # type: Optional[BaseException]
@@ -283,13 +286,13 @@ class ClientWebSocketResponse:
         msg = await self.receive(timeout)
         if msg.type != WSMsgType.TEXT:
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not str")
-        return msg.data
+        return cast(str, msg.data)
 
     async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
         if msg.type != WSMsgType.BINARY:
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not bytes")
-        return msg.data
+        return cast(bytes, msg.data)
 
     async def receive_json(
         self,

@@ -7,6 +7,7 @@ import pytest
 
 from aiohttp import log, web
 from aiohttp.test_utils import make_mocked_coro
+from aiohttp.typedefs import Handler
 
 
 async def test_app_ctor() -> None:
@@ -137,7 +138,7 @@ def test_app_run_middlewares() -> None:
     root.freeze()
     assert root._run_middlewares is False
 
-    async def middleware(request, handler):
+    async def middleware(request, handler: Handler):
         return await handler(request)
 
     root = web.Application(middlewares=[middleware])
@@ -250,6 +251,32 @@ async def test_cleanup_ctx_exception_on_cleanup() -> None:
         await app.cleanup()
     assert ctx.value is exc
     assert out == ["pre_1", "pre_2", "pre_3", "post_3", "post_2", "post_1"]
+
+
+async def test_cleanup_ctx_cleanup_after_exception() -> None:
+    app = web.Application()
+    ctx_state = None
+
+    async def success_ctx(app):
+        nonlocal ctx_state
+        ctx_state = "START"
+        yield
+        ctx_state = "CLEAN"
+
+    async def fail_ctx(app):
+        raise Exception()
+        yield
+
+    app.cleanup_ctx.append(success_ctx)
+    app.cleanup_ctx.append(fail_ctx)
+    runner = web.AppRunner(app)
+    try:
+        with pytest.raises(Exception):
+            await runner.setup()
+    finally:
+        await runner.cleanup()
+
+    assert ctx_state == "CLEAN"
 
 
 async def test_cleanup_ctx_exception_on_cleanup_multiple() -> None:

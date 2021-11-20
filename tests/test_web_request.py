@@ -1,5 +1,6 @@
 # type: ignore
 import asyncio
+import datetime
 import socket
 import weakref
 from collections.abc import MutableMapping
@@ -17,6 +18,7 @@ from aiohttp.http_parser import RawRequestMessage
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPRequestEntityTooLarge, HTTPUnsupportedMediaType
+from aiohttp.web_request import ETag
 
 
 @pytest.fixture
@@ -648,6 +650,8 @@ async def test_multipart_formdata_file(protocol: Any) -> None:
     content = result["a_file"].file.read()
     assert content == b"\ff"
 
+    req._finish()
+
 
 async def test_make_too_big_request_limit_None(protocol: Any) -> None:
     payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
@@ -820,3 +824,72 @@ async def test_handler_return_type(aiohttp_client: Any) -> None:
 
     async with client.get("/1") as resp:
         assert 500 == resp.status
+
+
+@pytest.mark.parametrize(
+    ["header", "header_attr"],
+    [
+        pytest.param("If-Match", "if_match"),
+        pytest.param("If-None-Match", "if_none_match"),
+    ],
+)
+@pytest.mark.parametrize(
+    ["header_val", "expected"],
+    [
+        pytest.param(
+            '"67ab43", W/"54ed21", "7892,dd"',
+            (
+                ETag(is_weak=False, value="67ab43"),
+                ETag(is_weak=True, value="54ed21"),
+                ETag(is_weak=False, value="7892,dd"),
+            ),
+        ),
+        pytest.param(
+            '"bfc1ef-5b2c2730249c88ca92d82d"',
+            (ETag(is_weak=False, value="bfc1ef-5b2c2730249c88ca92d82d"),),
+        ),
+        pytest.param(
+            '"valid-tag", "also-valid-tag",somegarbage"last-tag"',
+            (
+                ETag(is_weak=False, value="valid-tag"),
+                ETag(is_weak=False, value="also-valid-tag"),
+            ),
+        ),
+        pytest.param(
+            '"ascii", "это точно не ascii", "ascii again"',
+            (ETag(is_weak=False, value="ascii"),),
+        ),
+        pytest.param(
+            "*",
+            (ETag(is_weak=False, value="*"),),
+        ),
+    ],
+)
+def test_etag_headers(header, header_attr, header_val, expected) -> None:
+    req = make_mocked_request("GET", "/", headers={header: header_val})
+    assert getattr(req, header_attr) == expected
+
+
+@pytest.mark.parametrize(
+    ["header", "header_attr"],
+    [
+        pytest.param("If-Modified-Since", "if_modified_since"),
+        pytest.param("If-Unmodified-Since", "if_unmodified_since"),
+        pytest.param("If-Range", "if_range"),
+    ],
+)
+@pytest.mark.parametrize(
+    ["header_val", "expected"],
+    [
+        pytest.param("xxyyzz", None),
+        pytest.param("Tue, 08 Oct 4446413 00:56:40 GMT", None),
+        pytest.param("Tue, 08 Oct 2000 00:56:80 GMT", None),
+        pytest.param(
+            "Tue, 08 Oct 2000 00:56:40 GMT",
+            datetime.datetime(2000, 10, 8, 0, 56, 40, tzinfo=datetime.timezone.utc),
+        ),
+    ],
+)
+def test_datetime_headers(header, header_attr, header_val, expected) -> None:
+    req = make_mocked_request("GET", "/", headers={header: header_val})
+    assert getattr(req, header_attr) == expected

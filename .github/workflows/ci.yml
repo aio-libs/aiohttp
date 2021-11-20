@@ -13,6 +13,10 @@ on:
   schedule:
     - cron:  '0 6 * * *'  # Daily 6AM UTC build
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
 
 jobs:
 
@@ -22,7 +26,7 @@ jobs:
     timeout-minutes: 5
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v2.4.0
       with:
         submodules: true
     - name: Setup Python 3.8
@@ -30,53 +34,86 @@ jobs:
       with:
         python-version: 3.8
     - name: Cache PyPI
-      uses: actions/cache@v2
+      uses: actions/cache@v2.1.6
       with:
         key: pip-lint-${{ hashFiles('requirements/*.txt') }}
         path: ~/.cache/pip
         restore-keys: |
             pip-lint-
-    - name: Install dependencies
-      uses: py-actions/py-dependency-install@v2
-      with:
-        path: requirements/lint.txt
-    - name: Pre-Commit hooks
-      uses: pre-commit/action@v2.0.0
-    - name: Install itself
+    - name: Update pip, wheel, setuptools, build, twine
       run: |
-        python setup.py install
+        python -m pip install -U pip wheel setuptools build twine
+    - name: Install dependencies
+      run: |
+        python -m pip install -r requirements/lint.txt -c requirements/constraints.txt
+    - name: Install self
+      run: |
+        python -m pip install .
       env:
         AIOHTTP_NO_EXTENSIONS: 1
     - name: Run linters
       run: |
         make mypy
-    - name: Install spell checker
+    - name: Install libenchant-dev
       run: |
         sudo apt install libenchant-dev
-        pip install -r requirements/doc-spelling.txt
+    - name: Install spell checker
+      run: |
+        pip install -r requirements/doc-spelling.txt -c requirements/constraints.txt
     - name: Run docs spelling
       run: |
         # towncrier --yes  # uncomment me after publishing a release
         make doc-spelling
-    - name: Prepare twine checker
+    - name: Build package
       run: |
-        pip install -U twine wheel
-        python setup.py sdist bdist_wheel
+        python -m build
       env:
         AIOHTTP_NO_EXTENSIONS: 1
     - name: Run twine checker
       run: |
-        twine check dist/*
+        twine check --strict dist/*
     - name: Making sure that CONTRIBUTORS.txt remains sorted
       run: |
         LC_ALL=C sort -c CONTRIBUTORS.txt
 
+  gen_llhttp:
+    name: Generate llhttp sources
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2.4.0
+      with:
+        submodules: true
+    - name: Cache llhttp generated files
+      uses: actions/cache@v2
+      id: cache
+      with:
+        key: llhttp-${{ hashFiles('vendor/llhttp/package.json', 'vendor/llhttp/src/**/*') }}
+        path:  vendor/llhttp/build
+    - name: Setup NodeJS
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/setup-node@v2
+      with:
+        node-version: '14'
+    - name: Generate llhttp sources
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        make generate-llhttp
+    - name: Upload llhttp generated files
+      uses: actions/upload-artifact@v2
+      with:
+        name: llhttp
+        path: vendor/llhttp/build
+        if-no-files-found: error
+
   test:
     name: Test
-    needs: lint
+    needs: gen_llhttp
     strategy:
       matrix:
-        pyver: [3.7, 3.8, 3.9]
+        pyver: [3.7, 3.8, 3.9, '3.10']
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         exclude:
@@ -95,10 +132,9 @@ jobs:
         #     os: ubuntu
       fail-fast: true
     runs-on: ${{ matrix.os }}-latest
-    timeout-minutes: 15
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v2.4.0
       with:
         submodules: true
     - name: Setup Python ${{ matrix.pyver }}
@@ -110,16 +146,28 @@ jobs:
       run: |
         echo "::set-output name=dir::$(pip cache dir)"    # - name: Cache
     - name: Cache PyPI
-      uses: actions/cache@v2
+      uses: actions/cache@v2.1.6
       with:
-        key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-{{ matrix.no-extensions }}-${{ hashFiles('requirements/*.txt') }}
+        key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-${{ hashFiles('requirements/*.txt') }}
         path: ${{ steps.pip-cache.outputs.dir }}
         restore-keys: |
-            pip-ci-${{ runner.os }}-${{ matrix.pyver }}-{{ matrix.no-extensions }}-
+            pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-
+    - name: Update pip, wheel, setuptools, build, twine
+      run: |
+        python -m pip install -U pip wheel setuptools build twine
+    - name: Install dependencies
+      run: |
+        python -m pip install -r requirements/test.txt -c requirements/constraints.txt
     - name: Cythonize
       if: ${{ matrix.no-extensions == '' }}
       run: |
         make cythonize
+    - name: Restore llhttp generated files
+      if: ${{ matrix.no-extensions == '' }}
+      uses: actions/download-artifact@v2
+      with:
+        name: llhttp
+        path: vendor/llhttp/build/
     - name: Run unittests
       env:
         COLOR: 'yes'
@@ -128,16 +176,28 @@ jobs:
         make vvtest
         python -m coverage xml
     - name: Upload coverage
-      uses: codecov/codecov-action@v1
+      uses: codecov/codecov-action@v2.1.0
       with:
         file: ./coverage.xml
         flags: unit
         fail_ci_if_error: false
 
+  check:  # This job does nothing and is only used for the branch protection
+    needs:
+    - test
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Report success of the test matrix
+        run: >-
+          print("All's good")
+        shell: python
+
   pre-deploy:
     name: Pre-Deploy
     runs-on: ubuntu-latest
-    needs: test
+    needs: check
     # Run only on pushing a tag
     if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
     steps:
@@ -151,132 +211,126 @@ jobs:
     needs: pre-deploy
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v2.4.0
       with:
         submodules: true
-    - name: Setup Python 3.8
-      uses: actions/setup-python@v2
+    - name: Setup Python
+      uses: actions/setup-python@v2.2.2
+    - name: Update pip, wheel, setuptools, build, twine
+      run: |
+        python -m pip install -U pip wheel setuptools build twine
+    - name: Install cython
+      run: |
+        python -m pip install -r requirements/cython.txt -c requirements/constraints.txt
+    - name: Restore llhttp generated files
+      uses: actions/download-artifact@v2
       with:
-        python-version: 3.8
+        name: llhttp
+        path: vendor/llhttp/build/
     - name: Cythonize
       run: |
         make cythonize
     - name: Make sdist
-      run:
-        python setup.py sdist
+      run: |
+        python -m build --sdist
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
         name: dist
         path: dist
 
-  build-linux:
-    name: Linux
+  build-wheels:
+    name: Build wheels on ${{ matrix.os }} ${{ matrix.qemu }}
+    runs-on: ${{ matrix.os }}-latest
+    needs: pre-deploy
     strategy:
       matrix:
-        pyver: [cp37-cp37m, cp38-cp38, cp39-cp39]
-        arch: [x86_64, aarch64, i686, ppc64le, s390x]
-      fail-fast: false
-    runs-on: ubuntu-latest
-    env:
-      py: /opt/python/${{ matrix.pyver }}/bin/python
-      img: quay.io/pypa/manylinux2014_${{ matrix.arch }}
-    needs: pre-deploy
+        os: [ubuntu, windows, macos]
+        qemu: ['']
+        include:
+          # Split ubuntu job for the sake of speed-up
+        - os: ubuntu
+          qemu: aarch64
+        - os: ubuntu
+          qemu: ppc64le
+        - os: ubuntu
+          qemu: s390x
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v2.4.0
       with:
         submodules: true
     - name: Set up QEMU
-      id: qemu
+      if: ${{ matrix.qemu }}
       uses: docker/setup-qemu-action@v1
-    - name: Available platforms
-      run: echo ${{ steps.qemu.outputs.platforms }}
-    - name: Setup Python 3.8
-      uses: actions/setup-python@v2
       with:
-        python-version: 3.8
+        platforms: all
+      id: qemu
+    - name: Prepare emulation
+      run: |
+        if [[ -n "${{ matrix.qemu }}" ]]; then
+          # Build emulated architectures only if QEMU is set,
+          # use default "auto" otherwise
+          echo "CIBW_ARCHS_LINUX=${{ matrix.qemu }}" >> $GITHUB_ENV
+        fi
+      shell: bash
+    - name: Setup Python
+      uses: actions/setup-python@v2.2.2
+    - name: Update pip, wheel, setuptools, build, twine
+      run: |
+        python -m pip install -U pip wheel setuptools build twine
+    - name: Install cython
+      run: |
+        python -m pip install -r requirements/cython.txt -c requirements/constraints.txt
+    - name: Restore llhttp generated files
+      uses: actions/download-artifact@v2
+      with:
+        name: llhttp
+        path: vendor/llhttp/build/
     - name: Cythonize
-      if: ${{ matrix.no-extensions == '' }}
       run: |
         make cythonize
-    - name: Install tools
-      run: |
-        docker run --rm -v ${{ github.workspace }}:/ws:rw --workdir=/ws \
-          ${{ env.img }} ${{ env.py }} -m pip install -U setuptools wheel
-    - name: Make wheel
-      run: |
-        docker run --rm -v ${{ github.workspace }}:/ws:rw --workdir=/ws \
-          ${{ env.img }} ${{ env.py }} setup.py bdist_wheel
-    - name: Repair wheel wheel
-      run: |
-        docker run --rm -v ${{ github.workspace }}:/ws:rw --workdir=/ws \
-          ${{ env.img }} auditwheel repair dist/*.whl --wheel-dir wheelhouse/
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v2
+    - name: Build wheels
+      uses: pypa/cibuildwheel@v2.2.2
+      env:
+        CIBW_ARCHS_MACOS: x86_64 arm64 universal2
+    - uses: actions/upload-artifact@v2
       with:
         name: dist
-        path: wheelhouse/*
-
-  build-binary:
-    name: Binary wheels
-    strategy:
-      matrix:
-        pyver: [3.7, 3.8, 3.9]
-        os: [macos, windows]
-        arch: [x86, x64]
-        exclude:
-        - os: macos
-          arch: x86
-      fail-fast: false
-    runs-on: ${{ matrix.os }}-latest
-    needs: pre-deploy
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-      with:
-        submodules: true
-    - name: Setup Python 3.8
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.pyver }}
-        architecture: ${{ matrix.arch }}
-    - name: Cythonize
-      if: ${{ matrix.no-extensions == '' }}
-      run: |
-        make cythonize
-    - name: Install dependencies
-      run: |
-        python -m pip install -U setuptools wheel
-    - name: Make wheel
-      run:
-        python setup.py bdist_wheel
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v2
-      with:
-        name: dist
-        path: dist
+        path: ./wheelhouse/*.whl
 
   deploy:
     name: Deploy
-    needs: [build-linux, build-binary, build-tarball]
+    environment: release
+    needs: [build-tarball, build-wheels]
     runs-on: ubuntu-latest
     steps:
-    - name: Setup Python 3.8
-      uses: actions/setup-python@v2
+    - name: Checkout
+      uses: actions/checkout@v2.4.0
       with:
-        python-version: 3.8
-    - name: Install twine
+        submodules: true
+    - name: Update pip, wheel, setuptools, build, twine
       run: |
-        python -m pip install twine
-    - name: Download dists
+        python -m pip install -U pip wheel setuptools build twine
+    - name: Login
+      run: |
+        echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+    - name: Download disctributions
       uses: actions/download-artifact@v2
       with:
         name: dist
         path: dist
-    - name: PyPI upload
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+    - name: Collected dists
       run: |
-        twine upload dist/*
+        tree dist
+    - name: Make Release
+      uses: aio-libs/create-release@v1.2.3
+      with:
+        changes_file: CHANGES.rst
+        name: aiohttp
+        version_file: aiohttp/__init__.py
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        pypi_token: ${{ secrets.PYPI_API_TOKEN }}
+        dist_dir: dist
+        fix_issue_regex: "`#(\\d+) <https://github.com/aio-libs/aiohttp/issues/\\1>`_"
+        fix_issue_repl: "(#\\1)"

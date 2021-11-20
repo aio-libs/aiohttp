@@ -3,6 +3,8 @@ import collections
 import warnings
 from typing import Awaitable, Callable, Generic, List, Optional, Tuple, TypeVar
 
+from typing_extensions import Final
+
 from .base_protocol import BaseProtocol
 from .helpers import BaseTimerContext, set_exception, set_result
 from .log import internal_logger
@@ -60,31 +62,33 @@ class ChunkTupleAsyncStreamIterator:
 
 class AsyncStreamReaderMixin:
     def __aiter__(self) -> AsyncStreamIterator[bytes]:
-        return AsyncStreamIterator(self.readline)  # type: ignore
+        return AsyncStreamIterator(self.readline)  # type: ignore[attr-defined]
 
     def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
         """Returns an asynchronous iterator that yields chunks of size n.
 
         Python-3.5 available for Python 3.5+ only
         """
-        return AsyncStreamIterator(lambda: self.read(n))  # type: ignore
+        return AsyncStreamIterator(
+            lambda: self.read(n)  # type: ignore[attr-defined,no-any-return]
+        )
 
     def iter_any(self) -> AsyncStreamIterator[bytes]:
-        """Returns an asynchronous iterator that yields all the available
-        data as soon as it is received
+        """Yield all available data as soon as it is received.
 
         Python-3.5 available for Python 3.5+ only
         """
-        return AsyncStreamIterator(self.readany)  # type: ignore
+        return AsyncStreamIterator(self.readany)  # type: ignore[attr-defined]
 
     def iter_chunks(self) -> ChunkTupleAsyncStreamIterator:
-        """Returns an asynchronous iterator that yields chunks of data
-        as they are received by the server. The yielded objects are tuples
+        """Yield chunks of data as they are received by the server.
+
+        The yielded objects are tuples
         of (bytes, bool) as returned by the StreamReader.readchunk method.
 
         Python-3.5 available for Python 3.5+ only
         """
-        return ChunkTupleAsyncStreamIterator(self)  # type: ignore
+        return ChunkTupleAsyncStreamIterator(self)  # type: ignore[arg-type]
 
 
 class StreamReader(AsyncStreamReaderMixin):
@@ -109,7 +113,7 @@ class StreamReader(AsyncStreamReaderMixin):
         limit: int,
         *,
         timer: Optional[BaseTimerContext] = None,
-        loop: asyncio.AbstractEventLoop
+        loop: asyncio.AbstractEventLoop,
     ) -> None:
         self._protocol = protocol
         self._low_water = limit
@@ -387,7 +391,9 @@ class StreamReader(AsyncStreamReaderMixin):
         return self._read_nowait(-1)
 
     async def readchunk(self) -> Tuple[bytes, bool]:
-        """Returns a tuple of (data, end_of_http_chunk). When chunked transfer
+        """Returns a tuple of (data, end_of_http_chunk).
+
+        When chunked transfer
         encoding is used, end_of_http_chunk is a boolean indicating if the end
         of the data corresponds to the end of a HTTP chunk , otherwise it is
         always False.
@@ -476,7 +482,7 @@ class StreamReader(AsyncStreamReaderMixin):
         return data
 
     def _read_nowait(self, n: int) -> bytes:
-        """ Read not more than n bytes, or whole buffer if n == -1 """
+        """Read not more than n bytes, or whole buffer if n == -1"""
         chunks = []
 
         while self._buffer:
@@ -490,7 +496,10 @@ class StreamReader(AsyncStreamReaderMixin):
         return b"".join(chunks) if chunks else b""
 
 
-class EmptyStreamReader(AsyncStreamReaderMixin):
+class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
+    def __init__(self) -> None:
+        pass
+
     def exception(self) -> Optional[BaseException]:
         return None
 
@@ -535,11 +544,11 @@ class EmptyStreamReader(AsyncStreamReaderMixin):
     async def readexactly(self, n: int) -> bytes:
         raise asyncio.IncompleteReadError(b"", n)
 
-    def read_nowait(self) -> bytes:
+    def read_nowait(self, n: int = -1) -> bytes:
         return b""
 
 
-EMPTY_PAYLOAD = EmptyStreamReader()
+EMPTY_PAYLOAD: Final[StreamReader] = EmptyStreamReader()
 
 
 class DataQueue(Generic[_T]):
@@ -618,7 +627,8 @@ class DataQueue(Generic[_T]):
 class FlowControlDataQueue(DataQueue[_T]):
     """FlowControlDataQueue resumes and pauses an underlying stream.
 
-    It is a destination for parsed data."""
+    It is a destination for parsed data.
+    """
 
     def __init__(
         self, protocol: BaseProtocol, limit: int, *, loop: asyncio.AbstractEventLoop

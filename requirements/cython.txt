@@ -1,2 +1,3 @@
 -r multidict.txt
-cython==0.29.21
+-r typing-extensions.txt  # required for parsing aiohttp/hdrs.py by tools/gen.py
+cython==0.29.24

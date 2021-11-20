@@ -17,6 +17,7 @@ import aiohttp
 from aiohttp import FormData, HttpVersion10, HttpVersion11, TraceConfig, multipart, web
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
 from aiohttp.test_utils import make_mocked_coro
+from aiohttp.typedefs import Handler
 
 try:
     import ssl
@@ -328,7 +329,8 @@ async def test_post_single_file(aiohttp_client: Any) -> None:
 
     fname = here / "data.unknown_mime_type"
 
-    resp = await client.post("/", data=[fname.open("rb")])
+    with fname.open("rb") as fd:
+        resp = await client.post("/", data=[fd])
     assert 200 == resp.status
 
 
@@ -443,7 +445,7 @@ async def test_post_form_with_duplicate_keys(aiohttp_client: Any) -> None:
 
 def test_repr_for_application() -> None:
     app = web.Application()
-    assert "<Application 0x{:x}>".format(id(app)) == repr(app)
+    assert f"<Application 0x{id(app):x}>" == repr(app)
 
 
 async def test_expect_default_handler_unknown(aiohttp_client: Any) -> None:
@@ -813,12 +815,15 @@ async def test_response_with_async_gen_no_params(
 
 
 async def test_response_with_file(aiohttp_client: Any, fname: Any) -> None:
+    outer_file_descriptor = None
 
     with fname.open("rb") as f:
         data = f.read()
 
     async def handler(request):
-        return web.Response(body=fname.open("rb"))
+        nonlocal outer_file_descriptor
+        outer_file_descriptor = fname.open("rb")
+        return web.Response(body=outer_file_descriptor)
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -827,9 +832,7 @@ async def test_response_with_file(aiohttp_client: Any, fname: Any) -> None:
     resp = await client.get("/")
     assert 200 == resp.status
     resp_data = await resp.read()
-    expected_content_disposition = (
-        "attachment; filename=\"conftest.py\"; filename*=utf-8''conftest.py"
-    )
+    expected_content_disposition = 'attachment; filename="conftest.py"'
     assert resp_data == data
     assert resp.headers.get("Content-Type") in (
         "application/octet-stream",
@@ -839,15 +842,21 @@ async def test_response_with_file(aiohttp_client: Any, fname: Any) -> None:
     assert resp.headers.get("Content-Length") == str(len(resp_data))
     assert resp.headers.get("Content-Disposition") == expected_content_disposition
 
+    outer_file_descriptor.close()
+
 
 async def test_response_with_file_ctype(aiohttp_client: Any, fname: Any) -> None:
+    outer_file_descriptor = None
 
     with fname.open("rb") as f:
         data = f.read()
 
     async def handler(request):
+        nonlocal outer_file_descriptor
+        outer_file_descriptor = fname.open("rb")
+
         return web.Response(
-            body=fname.open("rb"), headers={"content-type": "text/binary"}
+            body=outer_file_descriptor, headers={"content-type": "text/binary"}
         )
 
     app = web.Application()
@@ -857,22 +866,25 @@ async def test_response_with_file_ctype(aiohttp_client: Any, fname: Any) -> None
     resp = await client.get("/")
     assert 200 == resp.status
     resp_data = await resp.read()
-    expected_content_disposition = (
-        "attachment; filename=\"conftest.py\"; filename*=utf-8''conftest.py"
-    )
+    expected_content_disposition = 'attachment; filename="conftest.py"'
     assert resp_data == data
     assert resp.headers.get("Content-Type") == "text/binary"
     assert resp.headers.get("Content-Length") == str(len(resp_data))
     assert resp.headers.get("Content-Disposition") == expected_content_disposition
 
+    outer_file_descriptor.close()
+
 
 async def test_response_with_payload_disp(aiohttp_client: Any, fname: Any) -> None:
+    outer_file_descriptor = None
 
     with fname.open("rb") as f:
         data = f.read()
 
     async def handler(request):
-        pl = aiohttp.get_payload(fname.open("rb"))
+        nonlocal outer_file_descriptor
+        outer_file_descriptor = fname.open("rb")
+        pl = aiohttp.get_payload(outer_file_descriptor)
         pl.set_content_disposition("inline", filename="test.txt")
         return web.Response(body=pl, headers={"content-type": "text/binary"})
 
@@ -886,10 +898,9 @@ async def test_response_with_payload_disp(aiohttp_client: Any, fname: Any) -> No
     assert resp_data == data
     assert resp.headers.get("Content-Type") == "text/binary"
     assert resp.headers.get("Content-Length") == str(len(resp_data))
-    assert (
-        resp.headers.get("Content-Disposition")
-        == "inline; filename=\"test.txt\"; filename*=utf-8''test.txt"
-    )
+    assert resp.headers.get("Content-Disposition") == 'inline; filename="test.txt"'
+
+    outer_file_descriptor.close()
 
 
 async def test_response_with_payload_stringio(aiohttp_client: Any, fname: Any) -> None:
@@ -1203,7 +1214,7 @@ async def test_old_style_subapp_middlewares(aiohttp_client: Any) -> None:
     with pytest.warns(DeprecationWarning, match="Middleware decorator is deprecated"):
 
         @web.middleware
-        async def middleware(request, handler):
+        async def middleware(request, handler: Handler):
             order.append((1, request.app["name"]))
             resp = await handler(request)
             assert 200 == resp.status
@@ -1343,7 +1354,7 @@ async def test_subapp_middleware_context(
     values = []
 
     def show_app_context(appname):
-        async def middleware(request, handler):
+        async def middleware(request, handler: Handler):
             values.append("{}: {}".format(appname, request.app["my_value"]))
             return await handler(request)
 
@@ -1496,6 +1507,7 @@ async def test_post_max_client_size(aiohttp_client: Any) -> None:
     assert (
         "Maximum request body size 10 exceeded, " "actual body size 1024" in resp_text
     )
+    data["file"].close()
 
 
 async def test_post_max_client_size_for_file(aiohttp_client: Any) -> None:
@@ -1531,10 +1543,7 @@ async def test_response_with_bodypart(aiohttp_client: Any) -> None:
     assert body == b"test"
 
     disp = multipart.parse_content_disposition(resp.headers["content-disposition"])
-    assert disp == (
-        "attachment",
-        {"name": "file", "filename": "file", "filename*": "file"},
-    )
+    assert disp == ("attachment", {"name": "file", "filename": "file"})
 
 
 async def test_response_with_bodypart_named(aiohttp_client: Any, tmp_path: Any) -> None:
@@ -1549,18 +1558,16 @@ async def test_response_with_bodypart_named(aiohttp_client: Any, tmp_path: Any) 
 
     f = tmp_path / "foobar.txt"
     f.write_text("test", encoding="utf8")
-    data = {"file": f.open("rb")}
-    resp = await client.post("/", data=data)
+    with f.open("rb") as fd:
+        data = {"file": fd}
+        resp = await client.post("/", data=data)
 
-    assert 200 == resp.status
-    body = await resp.read()
+        assert 200 == resp.status
+        body = await resp.read()
     assert body == b"test"
 
     disp = multipart.parse_content_disposition(resp.headers["content-disposition"])
-    assert disp == (
-        "attachment",
-        {"name": "file", "filename": "foobar.txt", "filename*": "foobar.txt"},
-    )
+    assert disp == ("attachment", {"name": "file", "filename": "foobar.txt"})
 
 
 async def test_response_with_bodypart_invalid_name(aiohttp_client: Any) -> None:
@@ -1631,11 +1638,14 @@ async def test_response_context_manager(aiohttp_server: Any) -> None:
     app = web.Application()
     app.router.add_route("GET", "/", handler)
     server = await aiohttp_server(app)
-    resp = await aiohttp.ClientSession().get(server.make_url("/"))
+    session = aiohttp.ClientSession()
+    resp = await session.get(server.make_url("/"))
     async with resp:
         assert resp.status == 200
         assert resp.connection is None
     assert resp.connection is None
+
+    await session.close()
 
 
 async def test_response_context_manager_error(aiohttp_server: Any) -> None:
@@ -1656,6 +1666,8 @@ async def test_response_context_manager_error(aiohttp_server: Any) -> None:
     assert resp.closed
 
     assert len(session._connector._conns) == 1
+
+    await session.close()
 
 
 async def aiohttp_client_api_context_manager(aiohttp_server: Any):
@@ -1882,6 +1894,32 @@ async def test_read_bufsize(aiohttp_client: Any) -> None:
     resp = await client.post("/", data=b"data")
     assert resp.status == 200
     assert await resp.text() == "data (2, 4)"
+
+
+@pytest.mark.parametrize(
+    "auto_decompress,len_of", [(True, "uncompressed"), (False, "compressed")]
+)
+async def test_auto_decompress(
+    aiohttp_client: Any,
+    auto_decompress: bool,
+    len_of: str,
+) -> None:
+    async def handler(request):
+        data = await request.read()
+        return web.Response(text=str(len(data)))
+
+    app = web.Application(handler_args={"auto_decompress": auto_decompress})
+    app.router.add_post("/", handler)
+
+    client = await aiohttp_client(app)
+    uncompressed = b"dataaaaaaaaaaaaaaaaaaaaaaaaa"
+    compressor = zlib.compressobj(wbits=16 + zlib.MAX_WBITS)
+    compressed = compressor.compress(uncompressed) + compressor.flush()
+    assert len(compressed) != len(uncompressed)
+    headers = {"content-encoding": "gzip"}
+    resp = await client.post("/", data=compressed, headers=headers)
+    assert resp.status == 200
+    assert await resp.text() == str(len(locals()[len_of]))
 
 
 @pytest.mark.parametrize(

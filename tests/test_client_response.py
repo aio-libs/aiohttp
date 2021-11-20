@@ -49,6 +49,7 @@ async def test_http_processing_error(session: Any) -> None:
         await response.start(connection)
 
     assert info.value.request_info is request_info
+    response.close()
 
 
 def test_del(session: Any) -> None:
@@ -957,7 +958,7 @@ def test_response_request_info() -> None:
     response = ClientResponse(
         "get",
         URL(url),
-        request_info=RequestInfo(url, "get", headers),
+        request_info=RequestInfo(url, "get", headers, url),
         writer=mock.Mock(),
         continue100=None,
         timer=TimerNoop(),
@@ -976,7 +977,7 @@ def test_request_info_in_exception() -> None:
     response = ClientResponse(
         "get",
         URL(url),
-        request_info=RequestInfo(url, "get", headers),
+        request_info=RequestInfo(url, "get", headers, url),
         writer=mock.Mock(),
         continue100=None,
         timer=TimerNoop(),
@@ -997,7 +998,7 @@ def test_no_redirect_history_in_exception() -> None:
     response = ClientResponse(
         "get",
         URL(url),
-        request_info=RequestInfo(url, "get", headers),
+        request_info=RequestInfo(url, "get", headers, url),
         writer=mock.Mock(),
         continue100=None,
         timer=TimerNoop(),
@@ -1020,7 +1021,7 @@ def test_redirect_history_in_exception() -> None:
     response = ClientResponse(
         "get",
         URL(url),
-        request_info=RequestInfo(url, "get", headers),
+        request_info=RequestInfo(url, "get", headers, url),
         writer=mock.Mock(),
         continue100=None,
         timer=TimerNoop(),
@@ -1034,7 +1035,7 @@ def test_redirect_history_in_exception() -> None:
     hist_response = ClientResponse(
         "get",
         URL(hist_url),
-        request_info=RequestInfo(url, "get", headers),
+        request_info=RequestInfo(url, "get", headers, url),
         writer=mock.Mock(),
         continue100=None,
         timer=TimerNoop(),
@@ -1243,3 +1244,24 @@ def test_response_links_empty(loop: Any, session: Any) -> None:
     )
     response._headers = CIMultiDict()
     assert response.links == {}
+
+
+def test_response_not_closed_after_get_ok(mocker) -> None:
+    response = ClientResponse(
+        "get",
+        URL("http://del-cl-resp.org"),
+        request_info=mock.Mock(),
+        writer=mock.Mock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=mock.Mock(),
+        session=mock.Mock(),
+    )
+    response.status = 400
+    response.reason = "Bad Request"
+    response._closed = False
+    spy = mocker.spy(response, "raise_for_status")
+    assert not response.ok
+    assert not response.closed
+    assert spy.call_count == 0

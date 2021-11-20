@@ -56,6 +56,17 @@ For *text/plain* ::
 
     await session.post(url, data='Привет, Мир!')
 
+.. note::
+
+   ``Authorization`` header will be removed if you get redirected
+   to a different host or protocol, except the case when  ``HTTP -> HTTPS``
+   redirect is performed on the same host.
+
+.. versionchanged:: 4.0
+
+   Started keeping the ``Authorization`` header during ``HTTP -> HTTPS``
+   redirects when the host remains the same.
+
 Custom Cookies
 --------------
 
@@ -295,7 +306,7 @@ nature are installed to perform their job in each signal handle::
 
 All signals take as a parameters first, the :class:`ClientSession`
 instance used by the specific request related to that signals and
-second, a :class:`SimpleNamespace` instance called
+second, a :class:`~types.SimpleNamespace` instance called
 ``trace_config_ctx``. The ``trace_config_ctx`` object can be used to
 share the state through to the different signals that belong to the
 same request and to the same :class:`TraceConfig` class, perhaps::
@@ -310,7 +321,7 @@ same request and to the same :class:`TraceConfig` class, perhaps::
 
 
 The ``trace_config_ctx`` param is by default a
-:class:`SimpleNampespace` that is initialized at the beginning of the
+:class:`~types.SimpleNamespace` that is initialized at the beginning of the
 request flow. However, the factory used to create this object can be
 overwritten using the ``trace_config_ctx_factory`` constructor param of
 the :class:`TraceConfig` class.
@@ -522,9 +533,11 @@ DER with e.g::
 Proxy support
 -------------
 
-aiohttp supports plain HTTP proxies and HTTP proxies that can be upgraded to HTTPS
-via the HTTP CONNECT method. aiohttp does not support proxies that must be
-connected to via ``https://``. To connect, use the *proxy* parameter::
+aiohttp supports plain HTTP proxies and HTTP proxies that can be
+upgraded to HTTPS via the HTTP CONNECT method. aiohttp has a limited
+support for proxies that must be connected to via ``https://`` — see
+the info box below for more details.
+To connect, use the *proxy* parameter::
 
    async with aiohttp.ClientSession() as session:
        async with session.get("http://python.org",
@@ -559,6 +572,33 @@ variables* (all are case insensitive)::
 Proxy credentials are given from ``~/.netrc`` file if present (see
 :class:`aiohttp.ClientSession` for more details).
 
+.. attention::
+
+   CPython has introduced the support for TLS in TLS around Python 3.7.
+   But, as of now (Python 3.10), it's disabled for the transports that
+   :py:mod:`asyncio` uses. If the further release of Python (say v3.11)
+   toggles one attribute, it'll *just work™*.
+
+   aiohttp v3.8 and higher is ready for this to happen and has code in
+   place supports TLS-in-TLS, hence sending HTTPS requests over HTTPS
+   proxy tunnels.
+
+   ⚠️ For as long as your Python runtime doesn't declare the support for
+   TLS-in-TLS, please don't file bugs with aiohttp but rather try to
+   help the CPython upstream enable this feature. Meanwhile, if you
+   *really* need this to work, there's a patch that may help you make
+   it happen, include it into your app's code base:
+   https://github.com/aio-libs/aiohttp/discussions/6044#discussioncomment-1432443.
+
+.. important::
+
+   When supplying a custom :py:class:`ssl.SSLContext` instance, bear in
+   mind that it will be used not only to establish a TLS session with
+   the HTTPS endpoint you're hitting but also to establish a TLS tunnel
+   to the HTTPS proxy. To avoid surprises, make sure to set up the trust
+   chain that would recognize TLS certificates used by both the endpoint
+   and the proxy.
+
 .. _aiohttp-persistent-session:
 
 Persistent session
@@ -587,7 +627,7 @@ as it results in more compact code::
 
 This approach can be successfully used to define numerous of session given certain
 requirements. It benefits from having a single location where :class:`aiohttp.ClientSession`
-instances are created and where artifacts such as :class:`aiohttp.connector.BaseConnector`
+instances are created and where artifacts such as :class:`aiohttp.BaseConnector`
 can be safely shared between sessions if needed.
 
 In the end all you have to do is to close all sessions after `yield` statement::

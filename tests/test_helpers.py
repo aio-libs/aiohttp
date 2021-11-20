@@ -1,10 +1,11 @@
 # type: ignore
 import asyncio
 import base64
-import os
+import datetime
 import platform
 from math import isclose, modf
 from unittest import mock
+from urllib.request import getproxies_environment
 
 import pytest
 from multidict import CIMultiDict, MultiDict
@@ -12,7 +13,7 @@ from re_assert import Matches
 from yarl import URL
 
 from aiohttp import helpers
-from aiohttp.helpers import is_expected_content_type
+from aiohttp.helpers import is_expected_content_type, parse_http_date
 
 IS_PYPY = platform.python_implementation() == "PyPy"
 
@@ -170,7 +171,7 @@ def test_basic_auth_decode_invalid_credentials() -> None:
     ),
 )
 def test_basic_auth_decode_blank_username(credentials, expected_auth) -> None:
-    header = "Basic {}".format(base64.b64encode(credentials.encode()).decode())
+    header = f"Basic {base64.b64encode(credentials.encode()).decode()}"
     assert helpers.BasicAuth.decode(header) == expected_auth
 
 
@@ -360,7 +361,7 @@ def test_timeout_handle_cb_exc(loop) -> None:
     assert not handle._callbacks
 
 
-def test_timer_context_cancelled() -> None:
+def test_timer_context_not_cancelled() -> None:
     with mock.patch("aiohttp.helpers.asyncio") as m_asyncio:
         m_asyncio.TimeoutError = asyncio.TimeoutError
         loop = mock.Mock()
@@ -371,7 +372,7 @@ def test_timer_context_cancelled() -> None:
             with ctx:
                 pass
 
-        assert m_asyncio.current_task.return_value.cancel.called
+        assert not m_asyncio.current_task.return_value.cancel.called
 
 
 def test_timer_context_no_task(loop) -> None:
@@ -419,11 +420,25 @@ async def test_ceil_timeout_small(loop) -> None:
 # -------------------------------- ContentDisposition -------------------
 
 
-def test_content_disposition() -> None:
-    assert (
-        helpers.content_disposition_header("attachment", foo="bar")
-        == 'attachment; foo="bar"'
-    )
+@pytest.mark.parametrize(
+    "kwargs, result",
+    [
+        (dict(foo="bar"), 'attachment; foo="bar"'),
+        (dict(foo="bar[]"), 'attachment; foo="bar[]"'),
+        (dict(foo=' a""b\\'), 'attachment; foo="\\ a\\"\\"b\\\\"'),
+        (dict(foo="bär"), "attachment; foo*=utf-8''b%C3%A4r"),
+        (dict(foo='bär "\\', quote_fields=False), 'attachment; foo="bär \\"\\\\"'),
+        (dict(foo="bär", _charset="latin-1"), "attachment; foo*=latin-1''b%E4r"),
+        (dict(filename="bär"), 'attachment; filename="b%C3%A4r"'),
+        (dict(filename="bär", _charset="latin-1"), 'attachment; filename="b%E4r"'),
+        (
+            dict(filename='bär "\\', quote_fields=False),
+            'attachment; filename="bär \\"\\\\"',
+        ),
+    ],
+)
+def test_content_disposition(kwargs, result) -> None:
+    assert helpers.content_disposition_header("attachment", **kwargs) == result
 
 
 def test_content_disposition_bad_type() -> None:
@@ -451,38 +466,162 @@ def test_set_content_disposition_bad_param() -> None:
 # --------------------- proxies_from_env ------------------------------
 
 
-@pytest.mark.parametrize("protocol", ["http", "https", "ws", "wss"])
-def test_proxies_from_env(monkeypatch, protocol) -> None:
-    url = URL("http://aiohttp.io/path")
-    monkeypatch.setenv(protocol + "_proxy", str(url))
+@pytest.mark.parametrize(
+    ("proxy_env_vars", "url_input", "expected_scheme"),
+    (
+        ({"http_proxy": "http://aiohttp.io/path"}, "http://aiohttp.io/path", "http"),
+        ({"https_proxy": "http://aiohttp.io/path"}, "http://aiohttp.io/path", "https"),
+        ({"ws_proxy": "http://aiohttp.io/path"}, "http://aiohttp.io/path", "ws"),
+        ({"wss_proxy": "http://aiohttp.io/path"}, "http://aiohttp.io/path", "wss"),
+    ),
+    indirect=["proxy_env_vars"],
+    ids=("http", "https", "ws", "wss"),
+)
+@pytest.mark.usefixtures("proxy_env_vars")
+def test_proxies_from_env(url_input, expected_scheme) -> None:
+    url = URL(url_input)
     ret = helpers.proxies_from_env()
-    assert ret.keys() == {protocol}
-    assert ret[protocol].proxy == url
-    assert ret[protocol].proxy_auth is None
+    assert ret.keys() == {expected_scheme}
+    assert ret[expected_scheme].proxy == url
+    assert ret[expected_scheme].proxy_auth is None
 
 
-@pytest.mark.parametrize("protocol", ["https", "wss"])
-def test_proxies_from_env_skipped(monkeypatch, caplog, protocol) -> None:
-    url = URL(protocol + "://aiohttp.io/path")
-    monkeypatch.setenv(protocol + "_proxy", str(url))
+@pytest.mark.parametrize(
+    ("proxy_env_vars", "url_input", "expected_scheme"),
+    (
+        (
+            {"https_proxy": "https://aiohttp.io/path"},
+            "https://aiohttp.io/path",
+            "https",
+        ),
+        ({"wss_proxy": "wss://aiohttp.io/path"}, "wss://aiohttp.io/path", "wss"),
+    ),
+    indirect=["proxy_env_vars"],
+    ids=("https", "wss"),
+)
+@pytest.mark.usefixtures("proxy_env_vars")
+def test_proxies_from_env_skipped(caplog, url_input, expected_scheme) -> None:
+    url = URL(url_input)
     assert helpers.proxies_from_env() == {}
     assert len(caplog.records) == 1
     log_message = "{proto!s} proxies {url!s} are not supported, ignoring".format(
-        proto=protocol.upper(), url=url
+        proto=expected_scheme.upper(), url=url
     )
     assert caplog.record_tuples == [("aiohttp.client", 30, log_message)]
 
 
-def test_proxies_from_env_http_with_auth(mocker) -> None:
+@pytest.mark.parametrize(
+    ("proxy_env_vars", "url_input", "expected_scheme"),
+    (
+        (
+            {"http_proxy": "http://user:pass@aiohttp.io/path"},
+            "http://user:pass@aiohttp.io/path",
+            "http",
+        ),
+    ),
+    indirect=["proxy_env_vars"],
+    ids=("http",),
+)
+@pytest.mark.usefixtures("proxy_env_vars")
+def test_proxies_from_env_http_with_auth(url_input, expected_scheme) -> None:
     url = URL("http://user:pass@aiohttp.io/path")
-    mocker.patch.dict(os.environ, {"http_proxy": str(url)})
     ret = helpers.proxies_from_env()
-    assert ret.keys() == {"http"}
-    assert ret["http"].proxy == url.with_user(None)
-    proxy_auth = ret["http"].proxy_auth
+    assert ret.keys() == {expected_scheme}
+    assert ret[expected_scheme].proxy == url.with_user(None)
+    proxy_auth = ret[expected_scheme].proxy_auth
     assert proxy_auth.login == "user"
     assert proxy_auth.password == "pass"
     assert proxy_auth.encoding == "latin1"
+
+
+# --------------------- get_env_proxy_for_url ------------------------------
+
+
+@pytest.fixture
+def proxy_env_vars(monkeypatch, request):
+    for schema in getproxies_environment().keys():
+        monkeypatch.delenv(f"{schema}_proxy", False)
+
+    for proxy_type, proxy_list in request.param.items():
+        monkeypatch.setenv(proxy_type, proxy_list)
+
+    return request.param
+
+
+@pytest.mark.parametrize(
+    ("proxy_env_vars", "url_input", "expected_err_msg"),
+    (
+        (
+            {"no_proxy": "aiohttp.io"},
+            "http://aiohttp.io/path",
+            r"Proxying is disallowed for `'aiohttp.io'`",
+        ),
+        (
+            {"no_proxy": "aiohttp.io,proxy.com"},
+            "http://aiohttp.io/path",
+            r"Proxying is disallowed for `'aiohttp.io'`",
+        ),
+        (
+            {"http_proxy": "http://example.com"},
+            "https://aiohttp.io/path",
+            r"No proxies found for `https://aiohttp.io/path` in the env",
+        ),
+        (
+            {"https_proxy": "https://example.com"},
+            "http://aiohttp.io/path",
+            r"No proxies found for `http://aiohttp.io/path` in the env",
+        ),
+        (
+            {},
+            "https://aiohttp.io/path",
+            r"No proxies found for `https://aiohttp.io/path` in the env",
+        ),
+        (
+            {"https_proxy": "https://example.com"},
+            "",
+            r"No proxies found for `` in the env",
+        ),
+    ),
+    indirect=["proxy_env_vars"],
+    ids=(
+        "url_matches_the_no_proxy_list",
+        "url_matches_the_no_proxy_list_multiple",
+        "url_scheme_does_not_match_http_proxy_list",
+        "url_scheme_does_not_match_https_proxy_list",
+        "no_proxies_are_set",
+        "url_is_empty",
+    ),
+)
+@pytest.mark.usefixtures("proxy_env_vars")
+def test_get_env_proxy_for_url_negative(url_input, expected_err_msg) -> None:
+    url = URL(url_input)
+    with pytest.raises(LookupError, match=expected_err_msg):
+        helpers.get_env_proxy_for_url(url)
+
+
+@pytest.mark.parametrize(
+    ("proxy_env_vars", "url_input"),
+    (
+        ({"http_proxy": "http://example.com"}, "http://aiohttp.io/path"),
+        ({"https_proxy": "http://example.com"}, "https://aiohttp.io/path"),
+        (
+            {"http_proxy": "http://example.com,http://proxy.org"},
+            "http://aiohttp.io/path",
+        ),
+    ),
+    indirect=["proxy_env_vars"],
+    ids=(
+        "url_scheme_match_http_proxy_list",
+        "url_scheme_match_https_proxy_list",
+        "url_scheme_match_http_proxy_list_multiple",
+    ),
+)
+def test_get_env_proxy_for_url(proxy_env_vars, url_input) -> None:
+    url = URL(url_input)
+    proxy, proxy_auth = helpers.get_env_proxy_for_url(url)
+    proxy_list = proxy_env_vars[url.scheme + "_proxy"]
+    assert proxy == URL(proxy_list)
+    assert proxy_auth is None
 
 
 # ------------- set_result / set_exception ----------------------
@@ -609,6 +748,39 @@ def test_is_expected_content_type_json_match_partially():
     )
 
 
+def test_is_expected_content_type_non_application_json_suffix():
+    expected_ct = "application/json"
+    response_ct = "model/gltf+json"  # rfc 6839
+    assert is_expected_content_type(
+        response_content_type=response_ct, expected_content_type=expected_ct
+    )
+
+
+def test_is_expected_content_type_non_application_json_private_suffix():
+    expected_ct = "application/json"
+    response_ct = "x-foo/bar+json"  # rfc 6839
+    assert is_expected_content_type(
+        response_content_type=response_ct, expected_content_type=expected_ct
+    )
+
+
+def test_is_expected_content_type_json_non_lowercase():
+    """Per RFC 2045, media type matching is case insensitive."""
+    expected_ct = "application/json"
+    response_ct = "Application/JSON"
+    assert is_expected_content_type(
+        response_content_type=response_ct, expected_content_type=expected_ct
+    )
+
+
+def test_is_expected_content_type_json_trailing_chars():
+    expected_ct = "application/json"
+    response_ct = "application/json-seq"
+    assert not is_expected_content_type(
+        response_content_type=response_ct, expected_content_type=expected_ct
+    )
+
+
 def test_is_expected_content_type_non_json_match_exact():
     expected_ct = "text/javascript"
     response_ct = "text/javascript"
@@ -719,3 +891,28 @@ def test_populate_with_cookies():
 
     helpers.populate_with_cookies(headers, cookies_mixin.cookies)
     assert headers == CIMultiDict({"Set-Cookie": "name=value; Path=/"})
+
+
+@pytest.mark.parametrize(
+    ["value", "expected"],
+    [
+        # email.utils.parsedate returns None
+        pytest.param("xxyyzz", None),
+        # datetime.datetime fails with ValueError("year 4446413 is out of range")
+        pytest.param("Tue, 08 Oct 4446413 00:56:40 GMT", None),
+        # datetime.datetime fails with ValueError("second must be in 0..59")
+        pytest.param("Tue, 08 Oct 2000 00:56:80 GMT", None),
+        # OK
+        pytest.param(
+            "Tue, 08 Oct 2000 00:56:40 GMT",
+            datetime.datetime(2000, 10, 8, 0, 56, 40, tzinfo=datetime.timezone.utc),
+        ),
+        # OK (ignore timezone and overwrite to UTC)
+        pytest.param(
+            "Tue, 08 Oct 2000 00:56:40 +0900",
+            datetime.datetime(2000, 10, 8, 0, 56, 40, tzinfo=datetime.timezone.utc),
+        ),
+    ],
+)
+def test_parse_http_date(value, expected):
+    assert parse_http_date(value) == expected
