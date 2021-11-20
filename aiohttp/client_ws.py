@@ -115,6 +115,7 @@ class ClientWebSocketResponse:
             self._closed = True
             self._close_code = WSCloseCode.ABNORMAL_CLOSURE
             self._exception = asyncio.TimeoutError()
+            # FIXME: resp.close() is async function now
             self._response.close()
 
     @property
@@ -189,16 +190,16 @@ class ClientWebSocketResponse:
                 await self._writer.close(code, message)
             except asyncio.CancelledError:
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
-                self._response.close()
+                await self._response.close()
                 raise
             except Exception as exc:
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 self._exception = exc
-                self._response.close()
+                await self._response.close()
                 return True
 
             if self._closing:
-                self._response.close()
+                await self._response.close()
                 return True
 
             while True:
@@ -207,17 +208,17 @@ class ClientWebSocketResponse:
                         msg = await self._reader.read()
                 except asyncio.CancelledError:
                     self._close_code = WSCloseCode.ABNORMAL_CLOSURE
-                    self._response.close()
+                    await self._response.close()
                     raise
                 except Exception as exc:
                     self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                     self._exception = exc
-                    self._response.close()
+                    await self._response.close()
                     return True
 
                 if msg.type == WSMsgType.CLOSE:
                     self._close_code = msg.data
-                    self._response.close()
+                    await self._response.close()
                     return True
         else:
             return False
