@@ -628,7 +628,7 @@ class BaseConnector:
         if should_close or protocol.should_close:
             transport = protocol.transport
             protocol.close()
-            # Ignore the following protocol exceptions
+            # TODO: Remove once fixed: https://bugs.python.org/issue39951
             # See PR #6321
             set_result(protocol.closed, None)
 
