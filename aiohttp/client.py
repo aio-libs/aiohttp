@@ -211,7 +211,7 @@ class ClientSession:
         raise_for_status: Union[
             bool, Callable[[ClientResponse], Awaitable[None]]
         ] = False,
-        timeout: Union[_SENTINEL, ClientTimeout] = sentinel,
+        timeout: Union[_SENTINEL, ClientTimeout, None] = sentinel,
         auto_decompress: bool = True,
         trust_env: bool = False,
         requote_redirect_url: bool = True,
@@ -256,7 +256,7 @@ class ClientSession:
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
-        if timeout is sentinel:
+        if timeout is sentinel or timeout is None:
             self._timeout = DEFAULT_TIMEOUT
         else:
             self._timeout = timeout
@@ -345,7 +345,7 @@ class ClientSession:
         read_until_eof: bool = True,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
-        timeout: Union[ClientTimeout, _SENTINEL] = sentinel,
+        timeout: Union[ClientTimeout, _SENTINEL, None] = sentinel,
         ssl: Optional[Union[SSLContext, bool, Fingerprint]] = None,
         proxy_headers: Optional[LooseHeaders] = None,
         trace_request_ctx: Optional[SimpleNamespace] = None,
@@ -396,7 +396,7 @@ class ClientSession:
             except ValueError as e:
                 raise InvalidURL(proxy) from e
 
-        if timeout is sentinel:
+        if timeout is sentinel or timeout is None:
             real_timeout: ClientTimeout = self._timeout
         else:
             real_timeout = timeout
@@ -646,7 +646,7 @@ class ClientSession:
         *,
         method: str = hdrs.METH_GET,
         protocols: Iterable[str] = (),
-        timeout: Union[ClientWSTimeout, float, _SENTINEL] = sentinel,
+        timeout: Union[ClientWSTimeout, float, _SENTINEL, None] = sentinel,
         receive_timeout: Optional[float] = None,
         autoclose: bool = True,
         autoping: bool = True,
@@ -692,7 +692,7 @@ class ClientSession:
         *,
         method: str = hdrs.METH_GET,
         protocols: Iterable[str] = (),
-        timeout: Union[ClientWSTimeout, float, _SENTINEL] = sentinel,
+        timeout: Union[ClientWSTimeout, float, _SENTINEL, None] = sentinel,
         receive_timeout: Optional[float] = None,
         autoclose: bool = True,
         autoping: bool = True,
@@ -708,7 +708,9 @@ class ClientSession:
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
     ) -> ClientWebSocketResponse:
-        if timeout is not sentinel:
+        if timeout is sentinel or timeout is None:
+            ws_timeout = DEFAULT_WS_CLIENT_TIMEOUT
+        else:
             if isinstance(timeout, ClientWSTimeout):
                 ws_timeout = timeout
             else:
@@ -720,8 +722,7 @@ class ClientSession:
                     stacklevel=2,
                 )
                 ws_timeout = ClientWSTimeout(ws_close=timeout)
-        else:
-            ws_timeout = DEFAULT_WS_CLIENT_TIMEOUT
+
         if receive_timeout is not None:
             warnings.warn(
                 "float parameter 'receive_timeout' "
