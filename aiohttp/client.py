@@ -259,7 +259,7 @@ class ClientSession:
         if timeout is sentinel:
             self._timeout = DEFAULT_TIMEOUT
         else:
-            self._timeout = timeout  # type: ignore[assignment]
+            self._timeout = timeout
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
@@ -397,9 +397,9 @@ class ClientSession:
                 raise InvalidURL(proxy) from e
 
         if timeout is sentinel:
-            real_timeout = self._timeout  # type: ClientTimeout
+            real_timeout: ClientTimeout = self._timeout
         else:
-            real_timeout = timeout  # type: ignore[assignment]
+            real_timeout = timeout
         # timeout is cumulative for all request operations
         # (request, redirects, responses, data consuming)
         tm = TimeoutHandle(self._loop, real_timeout.total)
@@ -719,7 +719,7 @@ class ClientSession:
                     DeprecationWarning,
                     stacklevel=2,
                 )
-                ws_timeout = ClientWSTimeout(ws_close=timeout)  # type: ignore[arg-type]
+                ws_timeout = ClientWSTimeout(ws_close=timeout)
         else:
             ws_timeout = DEFAULT_WS_CLIENT_TIMEOUT
         if receive_timeout is not None:
