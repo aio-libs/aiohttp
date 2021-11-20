@@ -5,6 +5,7 @@ import base64
 import binascii
 import cgi
 import datetime
+import enum
 import functools
 import inspect
 import netrc
@@ -82,8 +83,9 @@ else:
 _T = TypeVar("_T")
 _S = TypeVar("_S")
 
+_SENTINEL = enum.Enum("_SENTINEL", "sentinel")
+sentinel = _SENTINEL.sentinel
 
-sentinel = object()  # type: Any
 NO_EXTENSIONS = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))  # type: bool
 
 # N.B. sys.flags.dev_mode is available on Python 3.7+, use getattr

@@ -435,10 +435,10 @@ class ClientSession:
                 raise InvalidURL(proxy) from e
 
         if timeout is sentinel:
-            real_timeout = self._timeout  # type: ClientTimeout
+            real_timeout: ClientTimeout = self._timeout
         else:
             if not isinstance(timeout, ClientTimeout):
-                real_timeout = ClientTimeout(total=timeout)  # type: ignore[arg-type]
+                real_timeout = ClientTimeout(total=timeout)
             else:
                 real_timeout = timeout
         # timeout is cumulative for all request operations
