@@ -126,7 +126,7 @@ class Connection:
             await proto.close()
             self._closed = True
 
-    def release(self) -> None:
+    async def release(self) -> None:
         self._notify_release()
 
         if not self._closed:
@@ -290,7 +290,7 @@ class BaseConnector:
 
             assert isinstance(delay, Real), type(delay)
             when = now + delay
-            if delay >= 5:  # type: ignore[operator]
+            if delay >= 5:
                 when = ceil(when)
 
             try:
@@ -1101,7 +1101,7 @@ class TCPConnector(BaseConnector):
                 resp = await proxy_resp.start(conn)
             except BaseException:
                 proxy_resp.close()
-                conn.close()
+                await conn.close()
                 raise
             else:
                 # Forget about connection object, reuse the socket

@@ -75,7 +75,7 @@ class TestProxy(unittest.TestCase):
             ssl=None,
         )
 
-        conn.close()
+        self.loop.run_until_complete(conn.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
     def test_proxy_headers(self, ClientRequestMock: Any) -> None:
@@ -117,7 +117,7 @@ class TestProxy(unittest.TestCase):
             ssl=None,
         )
 
-        conn.close()
+        self.loop.run_until_complete(conn.close())
 
     def test_proxy_auth(self) -> None:
         with self.assertRaises(ValueError) as ctx:
@@ -245,7 +245,7 @@ class TestProxy(unittest.TestCase):
         self.assertEqual(proxy_req.url, URL("https://www.python.org"))
 
         self.loop.run_until_complete(proxy_req.close())
-        proxy_resp.close()
+        self.loop.run_until_complete(proxy_resp.close())
         self.loop.run_until_complete(req.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
@@ -414,7 +414,7 @@ class TestProxy(unittest.TestCase):
             )
 
         self.loop.run_until_complete(proxy_req.close())
-        proxy_resp.close()
+        self.loop.run_until_complete(proxy_resp.close())
         self.loop.run_until_complete(req.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
@@ -593,7 +593,7 @@ class TestProxy(unittest.TestCase):
         self.assertEqual(proxy_req.url, URL("https://www.python.org"))
 
         self.loop.run_until_complete(proxy_req.close())
-        proxy_resp.close()
+        self.loop.run_until_complete(proxy_resp.close())
         self.loop.run_until_complete(req.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
@@ -667,5 +667,5 @@ class TestProxy(unittest.TestCase):
         )
 
         self.loop.run_until_complete(proxy_req.close())
-        proxy_resp.close()
+        self.loop.run_until_complete(proxy_resp.close())
         self.loop.run_until_complete(req.close())

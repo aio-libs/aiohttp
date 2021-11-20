@@ -45,10 +45,10 @@ async def test_keepalive_two_requests_success(aiohttp_client: Any) -> None:
     connector = aiohttp.TCPConnector(limit=1)
     client = await aiohttp_client(app, connector=connector)
 
-    resp1 = await client.get("/")
-    await resp1.read()
-    resp2 = await client.get("/")
-    await resp2.read()
+    async with client.get("/") as resp1:
+        await resp1.read()
+    async with client.get("/") as resp2:
+        await resp2.read()
 
     assert 1 == len(client._session.connector._conns)
 
@@ -76,10 +76,10 @@ async def test_keepalive_after_head_requests_success(aiohttp_client: Any) -> Non
         app, connector=connector, trace_configs=[trace_config]
     )
 
-    resp1 = await client.head("/")
-    await resp1.read()
-    resp2 = await client.get("/")
-    await resp2.read()
+    async with client.head("/") as resp1:
+        await resp1.read()
+    async with client.get("/") as resp2:
+        await resp2.read()
 
     assert 1 == cnt_conn_reuse
 
@@ -97,9 +97,9 @@ async def test_keepalive_response_released(aiohttp_client: Any) -> None:
     client = await aiohttp_client(app, connector=connector)
 
     resp1 = await client.get("/")
-    resp1.release()
+    await resp1.release()
     resp2 = await client.get("/")
-    resp2.release()
+    await resp2.release()
 
     assert 1 == len(client._session.connector._conns)
 
@@ -119,9 +119,9 @@ async def test_keepalive_server_force_close_connection(aiohttp_client: Any) -> N
     client = await aiohttp_client(app, connector=connector)
 
     resp1 = await client.get("/")
-    resp1.close()
+    await resp1.close()
     resp2 = await client.get("/")
-    resp2.close()
+    await resp2.close()
 
     assert 0 == len(client._session.connector._conns)
 
@@ -136,6 +136,7 @@ async def test_release_early(aiohttp_client: Any) -> None:
 
     client = await aiohttp_client(app)
     resp = await client.get("/")
+    await resp.release()
     assert resp.closed
     assert 1 == len(client._session.connector._conns)
 
@@ -332,7 +333,6 @@ async def test_tcp_connector_fingerprint_ok(
 
     resp = await client.get("/")
     assert resp.status == 200
-    resp.close()
 
 
 async def test_tcp_connector_fingerprint_fail(
@@ -371,7 +371,7 @@ async def test_format_task_get(aiohttp_server: Any) -> None:
     task = asyncio.create_task(client.get(server.make_url("/")))
     assert f"{task}".startswith("<Task pending")
     resp = await task
-    resp.close()
+    await resp.close()
     await client.close()
 
 
@@ -471,12 +471,12 @@ async def test_keepalive_closed_by_server(aiohttp_client: Any) -> None:
     connector = aiohttp.TCPConnector(limit=1)
     client = await aiohttp_client(app, connector=connector)
 
-    resp1 = await client.get("/")
-    val1 = await resp1.read()
-    assert val1 == b"OK"
-    resp2 = await client.get("/")
-    val2 = await resp2.read()
-    assert val2 == b"OK"
+    async with client.get("/") as resp1:
+        val1 = await resp1.read()
+        assert val1 == b"OK"
+    async with client.get("/") as resp2:
+        val2 = await resp2.read()
+        assert val2 == b"OK"
 
     assert 0 == len(client._session.connector._conns)
 
@@ -512,7 +512,6 @@ async def test_raw_headers(aiohttp_client: Any) -> None:
         (b"Date", mock.ANY),
         (b"Server", mock.ANY),
     )
-    resp.close()
 
 
 async def test_host_header_first(aiohttp_client: Any) -> None:
@@ -546,7 +545,6 @@ async def test_empty_header_values(aiohttp_client: Any) -> None:
         (b"Date", mock.ANY),
         (b"Server", mock.ANY),
     )
-    resp.close()
 
 
 async def test_204_with_gzipped_content_encoding(aiohttp_client: Any) -> None:
@@ -565,7 +563,6 @@ async def test_204_with_gzipped_content_encoding(aiohttp_client: Any) -> None:
 
     resp = await client.delete("/")
     assert resp.status == 204
-    assert resp.closed
 
 
 async def test_timeout_on_reading_headers(aiohttp_client: Any, mocker: Any) -> None:
@@ -844,7 +841,6 @@ async def test_HTTP_302_REDIRECT_GET(aiohttp_client: Any) -> None:
     resp = await client.get("/redirect")
     assert 200 == resp.status
     assert 1 == len(resp.history)
-    resp.close()
 
 
 async def test_HTTP_302_REDIRECT_HEAD(aiohttp_client: Any) -> None:
@@ -865,7 +861,6 @@ async def test_HTTP_302_REDIRECT_HEAD(aiohttp_client: Any) -> None:
     assert 200 == resp.status
     assert 1 == len(resp.history)
     assert resp.method == "HEAD"
-    resp.close()
 
 
 async def test_HTTP_302_REDIRECT_NON_HTTP(aiohttp_client: Any) -> None:
@@ -897,7 +892,6 @@ async def test_HTTP_302_REDIRECT_POST(aiohttp_client: Any) -> None:
     assert 1 == len(resp.history)
     txt = await resp.text()
     assert txt == "GET"
-    resp.close()
 
 
 async def test_HTTP_302_REDIRECT_POST_with_content_length_hdr(
@@ -923,7 +917,6 @@ async def test_HTTP_302_REDIRECT_POST_with_content_length_hdr(
     assert 1 == len(resp.history)
     txt = await resp.text()
     assert txt == "GET"
-    resp.close()
 
 
 async def test_HTTP_307_REDIRECT_POST(aiohttp_client: Any) -> None:
@@ -944,7 +937,6 @@ async def test_HTTP_307_REDIRECT_POST(aiohttp_client: Any) -> None:
     assert 1 == len(resp.history)
     txt = await resp.text()
     assert txt == "POST"
-    resp.close()
 
 
 async def test_HTTP_308_PERMANENT_REDIRECT_POST(aiohttp_client: Any) -> None:
@@ -965,7 +957,6 @@ async def test_HTTP_308_PERMANENT_REDIRECT_POST(aiohttp_client: Any) -> None:
     assert 1 == len(resp.history)
     txt = await resp.text()
     assert txt == "POST"
-    resp.close()
 
 
 async def test_HTTP_302_max_redirects(aiohttp_client: Any) -> None:
@@ -1005,7 +996,6 @@ async def test_HTTP_200_GET_WITH_PARAMS(aiohttp_client: Any) -> None:
     assert 200 == resp.status
     txt = await resp.text()
     assert txt == "q=test"
-    resp.close()
 
 
 async def test_HTTP_200_GET_WITH_MultiDict_PARAMS(aiohttp_client: Any) -> None:
@@ -1022,7 +1012,6 @@ async def test_HTTP_200_GET_WITH_MultiDict_PARAMS(aiohttp_client: Any) -> None:
     assert 200 == resp.status
     txt = await resp.text()
     assert txt == "q=test&q=test2"
-    resp.close()
 
 
 async def test_HTTP_200_GET_WITH_MIXED_PARAMS(aiohttp_client: Any) -> None:
@@ -1039,7 +1028,6 @@ async def test_HTTP_200_GET_WITH_MIXED_PARAMS(aiohttp_client: Any) -> None:
     assert 200 == resp.status
     txt = await resp.text()
     assert txt == "test=true&q=test"
-    resp.close()
 
 
 async def test_POST_DATA(aiohttp_client: Any) -> None:
@@ -1055,7 +1043,6 @@ async def test_POST_DATA(aiohttp_client: Any) -> None:
     assert 200 == resp.status
     content = await resp.json()
     assert content == {"some": "data"}
-    resp.close()
 
 
 async def test_POST_DATA_with_explicit_formdata(aiohttp_client: Any) -> None:
@@ -1074,7 +1061,6 @@ async def test_POST_DATA_with_explicit_formdata(aiohttp_client: Any) -> None:
     assert 200 == resp.status
     content = await resp.json()
     assert content == {"name": "text"}
-    resp.close()
 
 
 async def test_POST_DATA_with_charset(aiohttp_client: Any) -> None:
@@ -1095,7 +1081,6 @@ async def test_POST_DATA_with_charset(aiohttp_client: Any) -> None:
     assert 200 == resp.status
     content = await resp.text()
     assert content == "текст"
-    resp.close()
 
 
 async def test_POST_DATA_formdats_with_charset(aiohttp_client: Any) -> None:
@@ -1115,7 +1100,6 @@ async def test_POST_DATA_formdats_with_charset(aiohttp_client: Any) -> None:
     assert 200 == resp.status
     content = await resp.text()
     assert content == "текст"
-    resp.close()
 
 
 async def test_POST_DATA_with_charset_post(aiohttp_client: Any) -> None:
@@ -1134,7 +1118,6 @@ async def test_POST_DATA_with_charset_post(aiohttp_client: Any) -> None:
     assert 200 == resp.status
     content = await resp.text()
     assert content == "текст"
-    resp.close()
 
 
 async def test_POST_DATA_with_context_transfer_encoding(aiohttp_client: Any) -> None:
@@ -1154,7 +1137,6 @@ async def test_POST_DATA_with_context_transfer_encoding(aiohttp_client: Any) -> 
     assert 200 == resp.status
     content = await resp.text()
     assert content == "text"
-    resp.close()
 
 
 async def test_POST_DATA_with_content_type_context_transfer_encoding(
@@ -1178,7 +1160,6 @@ async def test_POST_DATA_with_content_type_context_transfer_encoding(
     assert 200 == resp.status
     content = await resp.text()
     assert content == "text"
-    resp.close()
 
 
 async def test_POST_MultiDict(aiohttp_client: Any) -> None:
@@ -1193,7 +1174,6 @@ async def test_POST_MultiDict(aiohttp_client: Any) -> None:
 
     resp = await client.post("/", data=MultiDict([("q", "test1"), ("q", "test2")]))
     assert 200 == resp.status
-    resp.close()
 
 
 async def test_POST_DATA_DEFLATE(aiohttp_client: Any) -> None:
@@ -1209,7 +1189,6 @@ async def test_POST_DATA_DEFLATE(aiohttp_client: Any) -> None:
     assert 200 == resp.status
     content = await resp.json()
     assert content == {"some": "data"}
-    resp.close()
 
 
 async def test_POST_FILES(aiohttp_client: Any, fname: Any) -> None:
@@ -1230,7 +1209,6 @@ async def test_POST_FILES(aiohttp_client: Any, fname: Any) -> None:
     with fname.open("rb") as f:
         resp = await client.post("/", data={"some": f, "test": b"data"}, chunked=True)
         assert 200 == resp.status
-        resp.close()
 
 
 async def test_POST_FILES_DEFLATE(aiohttp_client: Any, fname: Any) -> None:
@@ -1252,7 +1230,6 @@ async def test_POST_FILES_DEFLATE(aiohttp_client: Any, fname: Any) -> None:
             "/", data={"some": f}, chunked=True, compress="deflate"
         )
         assert 200 == resp.status
-        resp.close()
 
 
 async def test_POST_bytes(aiohttp_client: Any) -> None:
@@ -1269,7 +1246,6 @@ async def test_POST_bytes(aiohttp_client: Any) -> None:
 
     resp = await client.post("/", data=body)
     assert 200 == resp.status
-    resp.close()
 
 
 async def test_POST_bytes_too_large(aiohttp_client: Any) -> None:
@@ -1288,7 +1264,6 @@ async def test_POST_bytes_too_large(aiohttp_client: Any) -> None:
         resp = await client.post("/", data=body)
 
     assert 200 == resp.status
-    resp.close()
 
 
 async def test_POST_FILES_STR(aiohttp_client: Any, fname: Any) -> None:
@@ -1307,7 +1282,6 @@ async def test_POST_FILES_STR(aiohttp_client: Any, fname: Any) -> None:
     with fname.open("rb") as f:
         resp = await client.post("/", data={"some": f.read().decode()})
         assert 200 == resp.status
-        resp.close()
 
 
 async def test_POST_FILES_STR_SIMPLE(aiohttp_client: Any, fname: Any) -> None:
@@ -1325,7 +1299,6 @@ async def test_POST_FILES_STR_SIMPLE(aiohttp_client: Any, fname: Any) -> None:
     with fname.open("rb") as f:
         resp = await client.post("/", data=f.read())
         assert 200 == resp.status
-        resp.close()
 
 
 async def test_POST_FILES_LIST(aiohttp_client: Any, fname: Any) -> None:
@@ -1344,7 +1317,6 @@ async def test_POST_FILES_LIST(aiohttp_client: Any, fname: Any) -> None:
     with fname.open("rb") as f:
         resp = await client.post("/", data=[("some", f)])
         assert 200 == resp.status
-        resp.close()
 
 
 async def test_POST_FILES_CT(aiohttp_client: Any, fname: Any) -> None:
@@ -1366,7 +1338,6 @@ async def test_POST_FILES_CT(aiohttp_client: Any, fname: Any) -> None:
         form.add_field("some", f, content_type="text/plain")
         resp = await client.post("/", data=form)
         assert 200 == resp.status
-        resp.close()
 
 
 async def test_POST_FILES_SINGLE(aiohttp_client: Any, fname: Any) -> None:
@@ -1393,7 +1364,6 @@ async def test_POST_FILES_SINGLE(aiohttp_client: Any, fname: Any) -> None:
     with fname.open("rb") as f:
         resp = await client.post("/", data=f)
         assert 200 == resp.status
-        resp.close()
 
 
 async def test_POST_FILES_SINGLE_content_disposition(
@@ -1424,7 +1394,6 @@ async def test_POST_FILES_SINGLE_content_disposition(
     with fname.open("rb") as f:
         resp = await client.post("/", data=aiohttp.get_payload(f, disposition="inline"))
         assert 200 == resp.status
-        resp.close()
 
 
 async def test_POST_FILES_SINGLE_BINARY(aiohttp_client: Any, fname: Any) -> None:
@@ -1450,7 +1419,6 @@ async def test_POST_FILES_SINGLE_BINARY(aiohttp_client: Any, fname: Any) -> None
     with fname.open("rb") as f:
         resp = await client.post("/", data=f)
         assert 200 == resp.status
-        resp.close()
 
 
 async def test_POST_FILES_IO(aiohttp_client: Any) -> None:
@@ -1468,7 +1436,6 @@ async def test_POST_FILES_IO(aiohttp_client: Any) -> None:
     data = io.BytesIO(b"data")
     resp = await client.post("/", data=[data])
     assert 200 == resp.status
-    resp.close()
 
 
 async def test_POST_FILES_IO_WITH_PARAMS(aiohttp_client: Any) -> None:
@@ -1491,7 +1458,6 @@ async def test_POST_FILES_IO_WITH_PARAMS(aiohttp_client: Any) -> None:
         "/", data=(("test", "true"), MultiDict([("q", "t1"), ("q", "t2")]), data)
     )
     assert 200 == resp.status
-    resp.close()
 
 
 async def test_POST_FILES_WITH_DATA(aiohttp_client: Any, fname: Any) -> None:
@@ -1516,7 +1482,6 @@ async def test_POST_FILES_WITH_DATA(aiohttp_client: Any, fname: Any) -> None:
     with fname.open("rb") as f:
         resp = await client.post("/", data={"test": "true", "some": f})
         assert 200 == resp.status
-        resp.close()
 
 
 async def test_POST_STREAM_DATA(aiohttp_client: Any, fname: Any) -> None:
@@ -1548,7 +1513,6 @@ async def test_POST_STREAM_DATA(aiohttp_client: Any, fname: Any) -> None:
         "/", data=gen(fname), headers={"Content-Length": str(data_size)}
     )
     assert 200 == resp.status
-    resp.close()
 
 
 async def test_json(aiohttp_client: Any) -> None:
@@ -1565,7 +1529,7 @@ async def test_json(aiohttp_client: Any) -> None:
     assert 200 == resp.status
     content = await resp.json()
     assert content == {"some": "data"}
-    resp.close()
+    await resp.close()
 
     with pytest.raises(ValueError):
         await client.post("/", data="some data", json={"some": "data"})
@@ -1593,7 +1557,7 @@ async def test_json_custom(aiohttp_client: Any) -> None:
     assert used
     content = await resp.json()
     assert content == {"some": "data"}
-    resp.close()
+    await resp.close()
 
     with pytest.raises(ValueError):
         await client.post("/", data="some data", json={"some": "data"})
@@ -1620,7 +1584,7 @@ async def test_expect_continue(aiohttp_client: Any) -> None:
 
     resp = await client.post("/", data={"some": "data"}, expect100=True)
     assert 200 == resp.status
-    resp.close()
+    await resp.close()
     assert expect_called
 
 
@@ -1639,7 +1603,6 @@ async def test_encoding_deflate(aiohttp_client: Any) -> None:
     assert 200 == resp.status
     txt = await resp.text()
     assert txt == "text"
-    resp.close()
 
 
 async def test_encoding_deflate_nochunk(aiohttp_client: Any) -> None:
@@ -1656,7 +1619,6 @@ async def test_encoding_deflate_nochunk(aiohttp_client: Any) -> None:
     assert 200 == resp.status
     txt = await resp.text()
     assert txt == "text"
-    resp.close()
 
 
 async def test_encoding_gzip(aiohttp_client: Any) -> None:
@@ -1674,7 +1636,6 @@ async def test_encoding_gzip(aiohttp_client: Any) -> None:
     assert 200 == resp.status
     txt = await resp.text()
     assert txt == "text"
-    resp.close()
 
 
 async def test_encoding_gzip_write_by_chunks(aiohttp_client: Any) -> None:
@@ -1694,7 +1655,6 @@ async def test_encoding_gzip_write_by_chunks(aiohttp_client: Any) -> None:
     assert 200 == resp.status
     txt = await resp.text()
     assert txt == "00"
-    resp.close()
 
 
 async def test_encoding_gzip_nochunk(aiohttp_client: Any) -> None:
@@ -1711,7 +1671,6 @@ async def test_encoding_gzip_nochunk(aiohttp_client: Any) -> None:
     assert 200 == resp.status
     txt = await resp.text()
     assert txt == "text"
-    resp.close()
 
 
 async def test_bad_payload_compression(aiohttp_client: Any) -> None:
@@ -1729,8 +1688,6 @@ async def test_bad_payload_compression(aiohttp_client: Any) -> None:
 
     with pytest.raises(aiohttp.ClientPayloadError):
         await resp.read()
-
-    resp.close()
 
 
 async def test_bad_payload_chunked_encoding(aiohttp_client: Any) -> None:
@@ -1754,8 +1711,6 @@ async def test_bad_payload_chunked_encoding(aiohttp_client: Any) -> None:
     with pytest.raises(aiohttp.ClientPayloadError):
         await resp.read()
 
-    resp.close()
-
 
 async def test_bad_payload_content_length(aiohttp_client: Any) -> None:
     async def handler(request):
@@ -1774,8 +1729,6 @@ async def test_bad_payload_content_length(aiohttp_client: Any) -> None:
     with pytest.raises(aiohttp.ClientPayloadError):
         await resp.read()
 
-    resp.close()
-
 
 async def test_payload_content_length_by_chunks(aiohttp_client: Any) -> None:
     async def handler(request):
@@ -1793,7 +1746,6 @@ async def test_payload_content_length_by_chunks(aiohttp_client: Any) -> None:
     resp = await client.get("/")
     data = await resp.read()
     assert data == b"ans"
-    resp.close()
 
 
 async def test_chunked(aiohttp_client: Any) -> None:
@@ -1811,7 +1763,6 @@ async def test_chunked(aiohttp_client: Any) -> None:
     assert resp.headers["Transfer-Encoding"] == "chunked"
     txt = await resp.text()
     assert txt == "text"
-    resp.close()
 
 
 async def test_shortcuts(aiohttp_client: Any) -> None:
@@ -1857,7 +1808,6 @@ async def test_cookies(aiohttp_client: Any) -> None:
 
     resp = await client.get("/")
     assert 200 == resp.status
-    resp.close()
 
 
 async def test_cookies_per_request(aiohttp_client: Any) -> None:
@@ -1881,7 +1831,6 @@ async def test_cookies_per_request(aiohttp_client: Any) -> None:
 
     resp = await client.get("/", cookies={"test4": "789", "test5": rc})
     assert 200 == resp.status
-    resp.close()
 
 
 async def test_cookies_redirect(aiohttp_client: Any) -> None:
@@ -1908,7 +1857,6 @@ async def test_cookies_redirect(aiohttp_client: Any) -> None:
     client = await aiohttp_client(app)
     resp = await client.get("/redirect1")
     assert 200 == resp.status
-    resp.close()
 
 
 async def test_cookies_on_empty_session_jar(aiohttp_client: Any) -> None:
@@ -1923,7 +1871,6 @@ async def test_cookies_on_empty_session_jar(aiohttp_client: Any) -> None:
 
     resp = await client.get("/", cookies={"custom-cookie": "abc"})
     assert 200 == resp.status
-    resp.close()
 
 
 async def test_morsel_with_attributes(aiohttp_client: Any) -> None:
@@ -1953,7 +1900,6 @@ async def test_morsel_with_attributes(aiohttp_client: Any) -> None:
 
     resp = await client.get("/")
     assert 200 == resp.status
-    resp.close()
 
 
 async def test_set_cookies(aiohttp_client: Any) -> None:
@@ -1978,7 +1924,7 @@ async def test_set_cookies(aiohttp_client: Any) -> None:
         assert 200 == resp.status
         cookie_names = {c.key for c in client.session.cookie_jar}
         assert cookie_names == {"c1", "c2"}
-        resp.close()
+        await resp.close()
 
         m_log.warning.assert_called_with("Can not load response cookies: %s", mock.ANY)
 
@@ -2002,7 +1948,6 @@ async def test_set_cookies_expired(aiohttp_client: Any) -> None:
     assert 200 == resp.status
     cookie_names = {c.key for c in client.session.cookie_jar}
     assert cookie_names == {"c1", "c2"}
-    resp.close()
 
 
 async def test_set_cookies_max_age(aiohttp_client: Any) -> None:
@@ -2024,7 +1969,6 @@ async def test_set_cookies_max_age(aiohttp_client: Any) -> None:
     await asyncio.sleep(2)
     cookie_names = {c.key for c in client.session.cookie_jar}
     assert cookie_names == {"c1", "c2"}
-    resp.close()
 
 
 async def test_set_cookies_max_age_overflow(aiohttp_client: Any) -> None:
@@ -2056,7 +2000,6 @@ async def test_set_cookies_max_age_overflow(aiohttp_client: Any) -> None:
     for cookie in client.session.cookie_jar:
         if cookie.key == "overflow":
             assert int(cookie["max-age"]) == int(overflow)
-    resp.close()
 
 
 async def test_request_conn_error() -> None:
@@ -2095,7 +2038,6 @@ async def test_broken_connection_2(aiohttp_client: Any) -> None:
     resp = await client.get("/")
     with pytest.raises(aiohttp.ClientPayloadError):
         await resp.read()
-    resp.close()
 
 
 async def test_custom_headers(aiohttp_client: Any) -> None:
@@ -2127,7 +2069,6 @@ async def test_redirect_to_absolute_url(aiohttp_client: Any) -> None:
     client = await aiohttp_client(app)
     resp = await client.get("/redirect")
     assert 200 == resp.status
-    resp.close()
 
 
 async def test_redirect_without_location_header(aiohttp_client: Any) -> None:
@@ -2204,7 +2145,6 @@ async def test_raise_for_status_disable_per_request(aiohttp_client: Any) -> None
 
     resp = await client.get("/", raise_for_status=False)
     assert 400 == resp.status
-    resp.close()
 
 
 async def test_request_raise_for_status_default(aiohttp_server: Any) -> None:
@@ -2600,7 +2540,7 @@ async def test_close_context_manager(aiohttp_client: Any) -> None:
 
     client = await aiohttp_client(app)
     ctx = client.get("/")
-    ctx.close()
+    await ctx.close()
     assert not ctx._coro.cr_running
 
 
@@ -2765,7 +2705,7 @@ async def test_server_close_keepalive_connection() -> None:
         await r.read()
         assert 0 == len(connector._conns)
     await session.close()
-    connector.close()
+    await connector.close()
     server.close()
     await server.wait_closed()
 
@@ -2807,7 +2747,7 @@ async def test_handle_keepalive_on_closed_connection() -> None:
     assert 0 == len(connector._conns)
 
     await session.close()
-    connector.close()
+    await connector.close()
     server.close()
     await server.wait_closed()
 
@@ -2861,7 +2801,7 @@ async def test_await_after_cancelling(aiohttp_client: Any) -> None:
         fut1.set_result(None)
         with pytest.raises(asyncio.CancelledError):
             await fut2
-        resp.release()
+        await resp.release()
 
     async def fetch2():
         await fut1

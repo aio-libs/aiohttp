@@ -148,7 +148,7 @@ async def test_secure_https_proxy_absolute_path(
     assert response.status == 200
     assert await response.text() == web_server_endpoint_payload
 
-    response.close()
+    await response.close()
     await sess.close()
     await conn.close()
 

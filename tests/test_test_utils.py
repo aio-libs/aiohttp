@@ -250,7 +250,7 @@ async def test_test_server_context_manager(loop: Any) -> None:
         client = aiohttp.ClientSession()
         resp = await client.head(server.make_url("/"))
         assert resp.status == 200
-        resp.close()
+        await resp.close()
         await client.close()
 
 

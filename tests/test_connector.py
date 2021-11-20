@@ -631,7 +631,7 @@ async def test_tcp_connector_multiple_hosts_errors(loop: Any) -> None:
     assert fingerprint_error
     assert connected
 
-    established_connection.close()
+    await established_connection.close()
 
 
 async def test_tcp_connector_resolve_host(loop: Any) -> None:
@@ -1000,7 +1000,7 @@ async def test_connect(loop: Any, key: Any) -> None:
     assert connection._protocol is proto
     assert connection.transport is proto.transport
     assert isinstance(connection, Connection)
-    connection.close()
+    await connection.close()
 
 
 async def test_connect_tracing(loop: Any) -> None:
@@ -1028,7 +1028,7 @@ async def test_connect_tracing(loop: Any) -> None:
     conn._create_connection.return_value.set_result(proto)
 
     conn2 = await conn.connect(req, traces, ClientTimeout())
-    conn2.release()
+    await conn2.release()
 
     on_connection_create_start.assert_called_with(
         session, trace_config_ctx, aiohttp.TraceConnectionCreateStartParams()
@@ -1500,7 +1500,7 @@ async def test_connect_with_limit_cancelled(loop: Any) -> None:
     with pytest.raises(asyncio.TimeoutError):
         # limit exhausted
         await asyncio.wait_for(conn.connect(req, None, ClientTimeout()), 0.01)
-    connection.close()
+    await connection.close()
 
     await conn.close()
 
@@ -1646,7 +1646,7 @@ async def test_close_with_acquired_connection(loop: Any) -> None:
     proto.close.assert_called_with()
 
     assert not connection.closed
-    connection.close()
+    await connection.close()
     assert connection.closed
 
 
@@ -1956,7 +1956,7 @@ async def test_tcp_connector_do_not_raise_connector_ssl_error(
         _sslcontext = first_conn.transport._sslcontext
 
     assert _sslcontext is client_ssl_ctx
-    r.close()
+    await r.close()
 
     await session.close()
     await conn.close()
@@ -1977,11 +1977,11 @@ async def test_tcp_connector_uses_provided_local_addr(aiohttp_server: Any) -> No
     url = srv.make_url("/")
 
     r = await session.get(url)
-    r.release()
+    await r.release()
 
     first_conn = next(iter(conn._conns.values()))[0][0]
     assert first_conn.transport.get_extra_info("sockname") == ("127.0.0.1", port)
-    r.close()
+    await r.close()
     await session.close()
     await conn.close()
 
@@ -2002,7 +2002,7 @@ async def test_unix_connector(unix_server: Any, unix_sockname: Any) -> None:
     session = client.ClientSession(connector=connector)
     r = await session.get(url)
     assert r.status == 200
-    r.close()
+    await r.close()
     await session.close()
 
 
@@ -2027,7 +2027,7 @@ async def test_named_pipe_connector(
     session = client.ClientSession(connector=connector)
     r = await session.get(url)
     assert r.status == 200
-    r.close()
+    await r.close()
     await session.close()
 
 
@@ -2152,7 +2152,7 @@ async def test_connector_does_not_remove_needed_waiters(loop: Any, key: Any) -> 
             assert connection_key in connector._waiters
             assert dummy_waiter in connector._waiters[connection_key]
         finally:
-            connection.close()
+            await connection.close()
 
     async def allow_connection_and_add_dummy_waiter() -> None:
         # `asyncio.gather` may execute coroutines not in order.

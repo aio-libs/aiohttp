@@ -559,7 +559,7 @@ async def test_no_content_length(loop: Any, conn: Any) -> None:
     resp = await req.send(conn)
     assert req.headers.get("CONTENT-LENGTH") is None
     await req.close()
-    resp.close()
+    await resp.close()
 
 
 async def test_no_content_length_head(loop: Any, conn: Any) -> None:
@@ -567,14 +567,14 @@ async def test_no_content_length_head(loop: Any, conn: Any) -> None:
     resp = await req.send(conn)
     assert req.headers.get("CONTENT-LENGTH") is None
     await req.close()
-    resp.close()
+    await resp.close()
 
 
 async def test_content_type_auto_header_get(loop: Any, conn: Any) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
     resp = await req.send(conn)
     assert "CONTENT-TYPE" not in req.headers
-    resp.close()
+    await resp.close()
     await req.close()
 
 
@@ -584,14 +584,14 @@ async def test_content_type_auto_header_form(loop: Any, conn: Any) -> None:
     )
     resp = await req.send(conn)
     assert "application/x-www-form-urlencoded" == req.headers.get("CONTENT-TYPE")
-    resp.close()
+    await resp.close()
 
 
 async def test_content_type_auto_header_bytes(loop: Any, conn: Any) -> None:
     req = ClientRequest("post", URL("http://python.org"), data=b"hey you", loop=loop)
     resp = await req.send(conn)
     assert "application/octet-stream" == req.headers.get("CONTENT-TYPE")
-    resp.close()
+    await resp.close()
 
 
 async def test_content_type_skip_auto_header_bytes(loop: Any, conn: Any) -> None:
@@ -604,7 +604,7 @@ async def test_content_type_skip_auto_header_bytes(loop: Any, conn: Any) -> None
     )
     resp = await req.send(conn)
     assert "CONTENT-TYPE" not in req.headers
-    resp.close()
+    await resp.close()
 
 
 async def test_content_type_skip_auto_header_form(loop: Any, conn: Any) -> None:
@@ -617,7 +617,7 @@ async def test_content_type_skip_auto_header_form(loop: Any, conn: Any) -> None:
     )
     resp = await req.send(conn)
     assert "CONTENT-TYPE" not in req.headers
-    resp.close()
+    await resp.close()
 
 
 async def test_content_type_auto_header_content_length_no_skip(
@@ -632,7 +632,7 @@ async def test_content_type_auto_header_content_length_no_skip(
     )
     resp = await req.send(conn)
     assert req.headers.get("CONTENT-LENGTH") == "3"
-    resp.close()
+    await resp.close()
 
 
 async def test_urlencoded_formdata_charset(loop: Any, conn: Any) -> None:
@@ -673,7 +673,7 @@ async def test_post_data(loop: Any, conn: Any) -> None:
         assert b"life=42" == req.body._value
         assert "application/x-www-form-urlencoded" == req.headers["CONTENT-TYPE"]
         await req.close()
-        resp.close()
+        await resp.close()
 
 
 async def test_pass_falsy_data(loop: Any) -> None:
@@ -722,7 +722,7 @@ async def test_bytes_data(loop: Any, conn: Any) -> None:
         assert b"binary data" == req.body._value
         assert "application/octet-stream" == req.headers["CONTENT-TYPE"]
         await req.close()
-        resp.close()
+        await resp.close()
 
 
 async def test_content_encoding(loop: Any, conn: Any) -> None:
@@ -736,7 +736,7 @@ async def test_content_encoding(loop: Any, conn: Any) -> None:
     assert req.headers["CONTENT-ENCODING"] == "deflate"
     m_writer.return_value.enable_compression.assert_called_with("deflate")
     await req.close()
-    resp.close()
+    await resp.close()
 
 
 async def test_content_encoding_dont_set_headers_if_no_body(
@@ -750,7 +750,7 @@ async def test_content_encoding_dont_set_headers_if_no_body(
     assert "TRANSFER-ENCODING" not in req.headers
     assert "CONTENT-ENCODING" not in req.headers
     await req.close()
-    resp.close()
+    await resp.close()
 
 
 async def test_content_encoding_header(loop: Any, conn: Any) -> None:
@@ -768,7 +768,7 @@ async def test_content_encoding_header(loop: Any, conn: Any) -> None:
     assert not m_writer.return_value.enable_compression.called
     assert not m_writer.return_value.enable_chunking.called
     await req.close()
-    resp.close()
+    await resp.close()
 
 
 async def test_compress_and_content_encoding(loop: Any, conn: Any) -> None:
@@ -806,7 +806,7 @@ async def test_chunked2(loop: Any, conn: Any) -> None:
     resp = await req.send(conn)
     assert "chunked" == req.headers["TRANSFER-ENCODING"]
     await req.close()
-    resp.close()
+    await resp.close()
 
 
 async def test_chunked_explicit(loop: Any, conn: Any) -> None:
@@ -818,7 +818,7 @@ async def test_chunked_explicit(loop: Any, conn: Any) -> None:
     assert "chunked" == req.headers["TRANSFER-ENCODING"]
     m_writer.return_value.enable_chunking.assert_called_with()
     await req.close()
-    resp.close()
+    await resp.close()
 
 
 async def test_chunked_length(loop: Any, conn: Any) -> None:
@@ -894,7 +894,7 @@ async def test_expect100(loop: Any, conn: Any) -> None:
     assert "100-continue" == req.headers["EXPECT"]
     assert req._continue is not None
     req.terminate()
-    resp.close()
+    await resp.close()
 
 
 async def test_expect_100_continue_header(loop: Any, conn: Any) -> None:
@@ -905,7 +905,7 @@ async def test_expect_100_continue_header(loop: Any, conn: Any) -> None:
     assert "100-continue" == req.headers["EXPECT"]
     assert req._continue is not None
     req.terminate()
-    resp.close()
+    await resp.close()
 
 
 async def test_data_stream(loop: Any, buf: Any, conn: Any) -> None:
@@ -1021,7 +1021,7 @@ async def test_data_stream_continue(loop: Any, buf: Any, conn: Any) -> None:
         buf.split(b"\r\n\r\n", 1)[1] == b"b\r\nbinary data\r\n7\r\n result\r\n0\r\n\r\n"
     )
     await req.close()
-    resp.close()
+    await resp.close()
 
 
 async def test_data_continue(loop: Any, buf: Any, conn: Any) -> None:
@@ -1040,7 +1040,7 @@ async def test_data_continue(loop: Any, buf: Any, conn: Any) -> None:
     await req._writer
     assert buf.split(b"\r\n\r\n", 1)[1] == b"data"
     await req.close()
-    resp.close()
+    await resp.close()
 
 
 async def test_close(loop: Any, buf: Any, conn: Any) -> None:
@@ -1053,7 +1053,7 @@ async def test_close(loop: Any, buf: Any, conn: Any) -> None:
     await req.close()
     assert buf.split(b"\r\n\r\n", 1)[1] == b"6\r\nresult\r\n0\r\n\r\n"
     await req.close()
-    resp.close()
+    await resp.close()
 
 
 async def test_custom_response_class(loop: Any, conn: Any) -> None:
@@ -1067,7 +1067,7 @@ async def test_custom_response_class(loop: Any, conn: Any) -> None:
     resp = await req.send(conn)
     assert "customized!" == resp.read()
     await req.close()
-    resp.close()
+    await resp.close()
 
 
 async def test_oserror_on_write_bytes(loop: Any, conn: Any) -> None:
@@ -1092,28 +1092,7 @@ async def test_terminate(loop: Any, conn: Any) -> None:
     req.terminate()
     assert req._writer is None
     writer.cancel.assert_called_with()
-    resp.close()
-
-
-def test_terminate_with_closed_loop(loop: Any, conn: Any) -> None:
-    req = resp = writer = None
-
-    async def go():
-        nonlocal req, resp, writer
-        req = ClientRequest("get", URL("http://python.org"), loop=loop)
-        resp = await req.send(conn)
-        assert req._writer is not None
-        writer = req._writer = mock.Mock()
-
-        await asyncio.sleep(0.05)
-
-    loop.run_until_complete(go())
-
-    loop.close()
-    req.terminate()
-    assert req._writer is None
-    assert not writer.cancel.called
-    resp.close()
+    await resp.close()
 
 
 def test_terminate_without_writer(loop: Any) -> None:
@@ -1171,9 +1150,9 @@ async def test_custom_req_rep(loop: Any, create_mocked_conn: Any) -> None:
     resp = await session.request("get", URL("http://example.com/path/to"))
     assert isinstance(resp, CustomResponse)
     assert called
-    resp.close()
+    await resp.close()
     await session.close()
-    conn.close()
+    await conn.close()
 
 
 def test_bad_fingerprint(loop: Any) -> None:

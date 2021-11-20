@@ -26,7 +26,6 @@ from typing import (
     Any,
     Callable,
     Dict,
-    Generator,
     Generic,
     Iterable,
     Iterator,
@@ -106,11 +105,6 @@ SEPARATORS = {
     chr(9),
 }
 TOKEN = CHAR ^ CTL ^ SEPARATORS
-
-
-class noop:
-    def __await__(self) -> Generator[None, None, None]:
-        yield
 
 
 if PY_38:

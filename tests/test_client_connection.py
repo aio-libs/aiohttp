@@ -55,7 +55,7 @@ async def test_callbacks_on_release(connector: Any, key: Any, protocol: Any) -> 
         notified = True
 
     conn.add_callback(cb)
-    conn.release()
+    await conn.release()
     assert notified
 
 
@@ -88,7 +88,7 @@ async def test_close(connector: Any, key: Any, protocol: Any) -> None:
 async def test_release(connector: Any, key: Any, protocol: Any) -> None:
     conn = Connection(connector, key, protocol)
     assert not conn.closed
-    conn.release()
+    await conn.release()
     assert not protocol.transport.close.called
     # assert conn._protocol is None
     connector._release.assert_called_with(key, protocol, should_close=False)
@@ -101,7 +101,7 @@ async def test_release_proto_should_close(
     protocol.should_close = True
     conn = Connection(connector, key, protocol)
     assert not conn.closed
-    conn.release()
+    await conn.release()
     assert not protocol.transport.close.called
     # assert conn._protocol is None
     connector._release.assert_called_with(key, protocol, should_close=True)
@@ -110,9 +110,9 @@ async def test_release_proto_should_close(
 
 async def test_release_released(connector: Any, key: Any, protocol: Any) -> None:
     conn = Connection(connector, key, protocol)
-    conn.release()
+    await conn.release()
     connector._release.reset_mock()
-    conn.release()
+    await conn.release()
     assert not protocol.transport.close.called
     # assert conn._protocol is None
     assert not connector._release.called

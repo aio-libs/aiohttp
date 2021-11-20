@@ -45,7 +45,6 @@ from .helpers import (
     HeadersMixin,
     TimerNoop,
     is_expected_content_type,
-    noop,
     parse_mimetype,
     reify,
     set_result,
@@ -744,7 +743,6 @@ class ClientResponse(HeadersMixin):
             return
 
         if self._connection is not None:
-            self._connection.release()
             self._cleanup_writer()
 
             if self._loop.get_debug():
@@ -881,18 +879,13 @@ class ClientResponse(HeadersMixin):
                 and self._connection.protocol.upgraded
             ):
                 return
-
-            self._connection.release()
-            self._connection = None
-
-        self._closed = True
-        self._cleanup_writer()
+            self._notify_content()
 
     @property
     def closed(self) -> bool:
         return self._closed
 
-    def close(self) -> None:
+    async def close(self) -> None:
         if not self._released:
             self._notify_content()
         if self._closed:
@@ -903,23 +896,23 @@ class ClientResponse(HeadersMixin):
             return
 
         if self._connection is not None:
-            self._connection.close()
+            await self._connection.close()
             self._connection = None
         self._cleanup_writer()
 
-    def release(self) -> Any:
+    async def release(self) -> Any:
         if not self._released:
             self._notify_content()
         if self._closed:
-            return noop()
+            return
 
         self._closed = True
         if self._connection is not None:
-            self._connection.release()
+            await self._connection.release()
             self._connection = None
 
         self._cleanup_writer()
-        return noop()
+        return
 
     @property
     def ok(self) -> bool:
@@ -934,7 +927,6 @@ class ClientResponse(HeadersMixin):
         if not self.ok:
             # reason should always be not None for a started response
             assert self.reason is not None
-            self.release()
             raise ClientResponseError(
                 self.request_info,
                 self.history,
@@ -961,7 +953,7 @@ class ClientResponse(HeadersMixin):
                 await self._writer
             finally:
                 self._writer = None
-        self.release()
+        await self.release()
 
     async def read(self) -> bytes:
         """Read response payload."""
@@ -973,7 +965,7 @@ class ClientResponse(HeadersMixin):
                         self.method, self.url, self._body
                     )
             except BaseException:
-                self.close()
+                await self.close()
                 raise
         elif self._released:
             raise ClientConnectionError("Connection closed")
@@ -1058,4 +1050,4 @@ class ClientResponse(HeadersMixin):
         # similar to _RequestContextManager, we do not need to check
         # for exceptions, response object can close connection
         # if state is broken
-        self.release()
+        await self.release()

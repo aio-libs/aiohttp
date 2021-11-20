@@ -49,7 +49,7 @@ async def test_http_processing_error(session: Any) -> None:
         await response.start(connection)
 
     assert info.value.request_info is request_info
-    response.close()
+    await response.close()
 
 
 def test_del(session: Any) -> None:
@@ -80,7 +80,7 @@ def test_del(session: Any) -> None:
     connection.release.assert_called_with()
 
 
-def test_close(loop: Any, session: Any) -> None:
+async def test_close(loop: Any, session: Any) -> None:
     response = ClientResponse(
         "get",
         URL("http://def-cl-resp.org"),
@@ -94,13 +94,13 @@ def test_close(loop: Any, session: Any) -> None:
     )
     response._closed = False
     response._connection = mock.Mock()
-    response.close()
+    await response.close()
     assert response.connection is None
-    response.close()
-    response.close()
+    await response.close()
+    await response.close()
 
 
-def test_wait_for_100_1(loop: Any, session: Any) -> None:
+async def test_wait_for_100_1(loop: Any, session: Any) -> None:
     response = ClientResponse(
         "get",
         URL("http://python.org"),
@@ -113,10 +113,10 @@ def test_wait_for_100_1(loop: Any, session: Any) -> None:
         session=session,
     )
     assert response._continue is not None
-    response.close()
+    await response.close()
 
 
-def test_wait_for_100_2(loop: Any, session: Any) -> None:
+async def test_wait_for_100_2(loop: Any, session: Any) -> None:
     response = ClientResponse(
         "get",
         URL("http://python.org"),
@@ -129,7 +129,7 @@ def test_wait_for_100_2(loop: Any, session: Any) -> None:
         session=session,
     )
     assert response._continue is None
-    response.close()
+    await response.close()
 
 
 def test_repr(loop: Any, session: Any) -> None:
@@ -246,7 +246,7 @@ async def test_release(loop: Any, session: Any) -> None:
     content = response.content = mock.Mock()
     content.readany.return_value = fut
 
-    response.release()
+    await response.release()
     assert response._connection is None
 
 

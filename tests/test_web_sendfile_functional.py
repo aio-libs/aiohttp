@@ -186,7 +186,6 @@ async def test_static_file_with_content_type(aiohttp_client: Any, sender: Any) -
         assert content == body
     assert resp.headers["Content-Type"] == "image/jpeg"
     assert resp.headers.get("Content-Encoding") is None
-    resp.close()
 
 
 async def test_static_file_custom_content_type(
@@ -211,7 +210,6 @@ async def test_static_file_custom_content_type(
         assert content == body
     assert resp.headers["Content-Type"] == "application/pdf"
     assert resp.headers.get("Content-Encoding") is None
-    resp.close()
 
 
 async def test_static_file_custom_content_type_compress(
@@ -234,7 +232,6 @@ async def test_static_file_custom_content_type_compress(
     assert b"hello aiohttp\n" == body
     assert resp.headers["Content-Type"] == "application/pdf"
     assert resp.headers.get("Content-Encoding") == "gzip"
-    resp.close()
 
 
 async def test_static_file_with_content_encoding(
@@ -257,7 +254,6 @@ async def test_static_file_with_content_encoding(
     assert "text/plain" == ct
     encoding = resp.headers["CONTENT-ENCODING"]
     assert "gzip" == encoding
-    resp.close()
 
 
 async def test_static_file_if_modified_since(
@@ -269,7 +265,7 @@ async def test_static_file_if_modified_since(
     assert 200 == resp.status
     lastmod = resp.headers.get("Last-Modified")
     assert lastmod is not None
-    resp.close()
+    await resp.close()
 
     resp = await client.get("/", headers={"If-Modified-Since": lastmod})
     body = await resp.read()
@@ -277,7 +273,7 @@ async def test_static_file_if_modified_since(
     assert resp.headers.get("Content-Length") is None
     assert resp.headers.get("Last-Modified") == lastmod
     assert b"" == body
-    resp.close()
+    await resp.close()
 
 
 async def test_static_file_if_modified_since_past_date(
@@ -289,7 +285,6 @@ async def test_static_file_if_modified_since_past_date(
 
     resp = await client.get("/", headers={"If-Modified-Since": lastmod})
     assert 200 == resp.status
-    resp.close()
 
 
 async def test_static_file_if_modified_since_invalid_date(
@@ -301,7 +296,6 @@ async def test_static_file_if_modified_since_invalid_date(
 
     resp = await client.get("/", headers={"If-Modified-Since": lastmod})
     assert 200 == resp.status
-    resp.close()
 
 
 async def test_static_file_if_modified_since_future_date(
@@ -317,7 +311,6 @@ async def test_static_file_if_modified_since_future_date(
     assert resp.headers.get("Content-Length") is None
     assert resp.headers.get("Last-Modified")
     assert b"" == body
-    resp.close()
 
 
 @pytest.mark.parametrize("if_unmodified_since", ("", "Fri, 31 Dec 0000 23:59:59 GMT"))
@@ -333,7 +326,7 @@ async def test_static_file_if_match(
     original_etag = resp.headers.get("ETag")
 
     assert original_etag is not None
-    resp.close()
+    await resp.close()
 
     headers = {"If-Match": original_etag, "If-Unmodified-Since": if_unmodified_since}
     resp = await client.head("/", headers=headers)
@@ -342,7 +335,7 @@ async def test_static_file_if_match(
     assert resp.headers.get("ETag")
     assert resp.headers.get("Last-Modified")
     assert b"" == body
-    resp.close()
+    await resp.close()
 
 
 @pytest.mark.parametrize("if_unmodified_since", ("", "Fri, 31 Dec 0000 23:59:59 GMT"))
@@ -368,7 +361,6 @@ async def test_static_file_if_match_custom_tags(
     body = await resp.read()
     assert expected_status == resp.status
     assert b"" == body
-    resp.close()
 
 
 @pytest.mark.parametrize("if_modified_since", ("", "Fri, 31 Dec 9999 23:59:59 GMT"))
@@ -393,7 +385,7 @@ async def test_static_file_if_none_match(
 
     assert resp.headers.get("Last-Modified") is not None
     assert original_etag is not None
-    resp.close()
+    await resp.close()
 
     etag = ",".join((original_etag, *additional_etags))
 
@@ -405,7 +397,7 @@ async def test_static_file_if_none_match(
     assert resp.headers.get("Content-Length") is None
     assert resp.headers.get("ETag") == original_etag
     assert b"" == body
-    resp.close()
+    await resp.close()
 
 
 async def test_static_file_if_none_match_star(
@@ -421,7 +413,6 @@ async def test_static_file_if_none_match_star(
     assert resp.headers.get("ETag")
     assert resp.headers.get("Last-Modified")
     assert b"" == body
-    resp.close()
 
 
 @pytest.mark.skipif(not ssl, reason="ssl not supported")
@@ -559,9 +550,6 @@ async def test_static_file_range(aiohttp_client: Any, sender: Any) -> None:
     assert len(body[1]) == 1000, "failed 'bytes=1000-1999', received %d bytes" % len(
         body[1]
     )
-    responses[0].close()
-    responses[1].close()
-    responses[2].close()
 
     assert content == b"".join(body)
 
@@ -635,7 +623,7 @@ async def test_static_file_range_tail(aiohttp_client: Any, sender: Any) -> None:
         resp.headers["Content-Range"] == "bytes 54497-54996/54997"
     ), "failed: Content-Range Error"
     body4 = await resp.read()
-    resp.close()
+    await resp.close()
     assert content[-500:] == body4
 
     # Ensure out-of-range tails could be handled
@@ -659,32 +647,32 @@ async def test_static_file_invalid_range(aiohttp_client: Any, sender: Any) -> No
     # range must be in bytes
     resp = await client.get("/", headers={"Range": "blocks=0-10"})
     assert resp.status == 416, "Range must be in bytes"
-    resp.close()
+    await resp.close()
 
     # start > end
     resp = await client.get("/", headers={"Range": "bytes=100-0"})
     assert resp.status == 416, "Range start can't be greater than end"
-    resp.close()
+    await resp.close()
 
     # start > end
     resp = await client.get("/", headers={"Range": "bytes=10-9"})
     assert resp.status == 416, "Range start can't be greater than end"
-    resp.close()
+    await resp.close()
 
     # non-number range
     resp = await client.get("/", headers={"Range": "bytes=a-f"})
     assert resp.status == 416, "Range must be integers"
-    resp.close()
+    await resp.close()
 
     # double dash range
     resp = await client.get("/", headers={"Range": "bytes=0--10"})
     assert resp.status == 416, "double dash in range"
-    resp.close()
+    await resp.close()
 
     # no range
     resp = await client.get("/", headers={"Range": "bytes=-"})
     assert resp.status == 416, "no range given"
-    resp.close()
+    await resp.close()
 
 
 async def test_static_file_if_unmodified_since_past_with_range(
@@ -698,7 +686,6 @@ async def test_static_file_if_unmodified_since_past_with_range(
         "/", headers={"If-Unmodified-Since": lastmod, "Range": "bytes=2-"}
     )
     assert 412 == resp.status
-    resp.close()
 
 
 async def test_static_file_if_unmodified_since_future_with_range(
@@ -714,7 +701,6 @@ async def test_static_file_if_unmodified_since_future_with_range(
     assert 206 == resp.status
     assert resp.headers["Content-Range"] == "bytes 2-12/13"
     assert resp.headers["Content-Length"] == "11"
-    resp.close()
 
 
 async def test_static_file_if_range_past_with_range(
@@ -727,7 +713,6 @@ async def test_static_file_if_range_past_with_range(
     resp = await client.get("/", headers={"If-Range": lastmod, "Range": "bytes=2-"})
     assert 200 == resp.status
     assert resp.headers["Content-Length"] == "13"
-    resp.close()
 
 
 async def test_static_file_if_range_future_with_range(
@@ -741,7 +726,6 @@ async def test_static_file_if_range_future_with_range(
     assert 206 == resp.status
     assert resp.headers["Content-Range"] == "bytes 2-12/13"
     assert resp.headers["Content-Length"] == "11"
-    resp.close()
 
 
 async def test_static_file_if_unmodified_since_past_without_range(
@@ -753,7 +737,6 @@ async def test_static_file_if_unmodified_since_past_without_range(
 
     resp = await client.get("/", headers={"If-Unmodified-Since": lastmod})
     assert 412 == resp.status
-    resp.close()
 
 
 async def test_static_file_if_unmodified_since_future_without_range(
@@ -766,7 +749,6 @@ async def test_static_file_if_unmodified_since_future_without_range(
     resp = await client.get("/", headers={"If-Unmodified-Since": lastmod})
     assert 200 == resp.status
     assert resp.headers["Content-Length"] == "13"
-    resp.close()
 
 
 async def test_static_file_if_range_past_without_range(
@@ -779,7 +761,6 @@ async def test_static_file_if_range_past_without_range(
     resp = await client.get("/", headers={"If-Range": lastmod})
     assert 200 == resp.status
     assert resp.headers["Content-Length"] == "13"
-    resp.close()
 
 
 async def test_static_file_if_range_future_without_range(
@@ -792,7 +773,6 @@ async def test_static_file_if_range_future_without_range(
     resp = await client.get("/", headers={"If-Range": lastmod})
     assert 200 == resp.status
     assert resp.headers["Content-Length"] == "13"
-    resp.close()
 
 
 async def test_static_file_if_unmodified_since_invalid_date(
@@ -804,7 +784,6 @@ async def test_static_file_if_unmodified_since_invalid_date(
 
     resp = await client.get("/", headers={"If-Unmodified-Since": lastmod})
     assert 200 == resp.status
-    resp.close()
 
 
 async def test_static_file_if_range_invalid_date(
@@ -816,7 +795,6 @@ async def test_static_file_if_range_invalid_date(
 
     resp = await client.get("/", headers={"If-Range": lastmod})
     assert 200 == resp.status
-    resp.close()
 
 
 async def test_static_file_compression(aiohttp_client: Any, sender: Any) -> None:
@@ -838,7 +816,6 @@ async def test_static_file_compression(aiohttp_client: Any, sender: Any) -> None
     assert expected_body == await resp.read()
     assert "application/octet-stream" == resp.headers["Content-Type"]
     assert resp.headers.get("Content-Encoding") == "deflate"
-    await resp.release()
 
 
 async def test_static_file_huge_cancel(aiohttp_client: Any, tmp_path: Any) -> None:
@@ -903,4 +880,3 @@ async def test_static_file_huge_error(aiohttp_client: Any, tmp_path: Any) -> Non
     resp = await client.get("/")
     assert resp.status == 200
     # raise an exception on server side
-    resp.close()

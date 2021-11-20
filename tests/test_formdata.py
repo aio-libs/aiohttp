@@ -106,7 +106,7 @@ async def test_mark_formdata_as_processed(aiohttp_client: Any) -> None:
     with pytest.raises(RuntimeError):
         await client.post("/", data=data)
 
-    resp.release()
+    await resp.release()
 
 
 async def test_formdata_boundary_param() -> None:

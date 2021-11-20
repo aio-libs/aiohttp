@@ -517,10 +517,10 @@ class ClientSession:
                             try:
                                 await resp.start(conn)
                             except BaseException:
-                                resp.close()
+                                await resp.close()
                                 raise
                         except BaseException:
-                            conn.close()
+                            await conn.close()
                             raise
                     except ClientError:
                         raise
@@ -540,7 +540,7 @@ class ClientSession:
                         redirects += 1
                         history.append(resp)
                         if max_redirects and redirects >= max_redirects:
-                            resp.close()
+                            await resp.close()
                             raise TooManyRedirects(
                                 history[0].request_info, tuple(history)
                             )
@@ -564,7 +564,7 @@ class ClientSession:
                         else:
                             # reading from correct redirection
                             # response is forbidden
-                            resp.release()
+                            await resp.release()
 
                         try:
                             parsed_url = URL(
@@ -576,7 +576,7 @@ class ClientSession:
 
                         scheme = parsed_url.scheme
                         if scheme not in ("http", "https", ""):
-                            resp.close()
+                            await resp.close()
                             raise ValueError("Can redirect only to http or https")
                         elif not scheme:
                             parsed_url = url.join(parsed_url)
@@ -596,7 +596,7 @@ class ClientSession:
 
                         url = parsed_url
                         params = None
-                        resp.release()
+                        await resp.release()
                         continue
 
                     break
@@ -869,7 +869,7 @@ class ClientSession:
                 notakeover=notakeover,
             )
         except BaseException:
-            resp.close()
+            await resp.close()
             raise
         else:
             return self._ws_response_class(
@@ -1114,7 +1114,7 @@ class _RequestContextManager(_BaseRequestContextManager[ClientResponse]):
         # would like to close a connection you must do that
         # explicitly.  Otherwise connection error handling should kick in
         # and close/recycle the connection as required.
-        self._resp.release()
+        await self._resp.release()
 
 
 class _WSRequestContextManager(_BaseRequestContextManager[ClientWebSocketResponse]):
@@ -1158,7 +1158,7 @@ class _SessionRequestContextManager:
         tb: Optional[TracebackType],
     ) -> None:
         assert self._resp is not None
-        self._resp.close()
+        await self._resp.close()
         await self._session.close()
 
 

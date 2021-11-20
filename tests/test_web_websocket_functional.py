@@ -804,11 +804,11 @@ async def test_bug3380(loop: Any, aiohttp_client: Any) -> None:
 
     resp = await client.get("/api/null")
     assert (await resp.json()) == {"err": None}
-    resp.close()
+    await resp.close()
 
     with pytest.raises(WSServerHandshakeError):
         await client.ws_connect("/ws")
 
     resp = await client.get("/api/null", timeout=aiohttp.ClientTimeout(total=1))
     assert (await resp.json()) == {"err": None}
-    resp.close()
+    await resp.close()
