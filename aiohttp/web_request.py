@@ -211,7 +211,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         if method is not sentinel:
             dct["method"] = method
         if rel_url is not sentinel:
-            new_url = URL(rel_url)
+            new_url: URL = URL(rel_url)
             dct["url"] = new_url
             dct["path"] = str(new_url)
         if headers is not sentinel:
