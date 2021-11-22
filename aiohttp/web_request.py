@@ -72,7 +72,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from .web_protocol import RequestHandler
     from .web_urldispatcher import UrlMappingMatchInfo
 
-_T = TypeVar("_T")
+_T = TypeVar("_T", covariant=True)
 
 
 @dataclasses.dataclass(frozen=True)

@@ -25,6 +25,7 @@ from typing import (
     Sized,
     Tuple,
     Type,
+    TypeVar,
     Union,
     cast,
 )
@@ -81,6 +82,7 @@ ROUTE_RE: Final[Pattern[str]] = re.compile(
 PATH_SEP: Final[str] = re.escape("/")
 
 
+_T = TypeVar("_T")
 _ExpectHandler = Callable[[Request], Awaitable[None]]
 _Resolve = Tuple[Optional[AbstractMatchInfo], Set[str]]
 
@@ -155,7 +157,7 @@ class AbstractRoute(abc.ABC):
     def __init__(
         self,
         method: str,
-        handler: Union[Handler, Type[AbstractView]],
+        handler: Union[Handler, Type[AbstractView[Any]]],
         *,
         expect_handler: Optional[_ExpectHandler] = None,
         resource: Optional[AbstractResource] = None,
@@ -320,7 +322,7 @@ class Resource(AbstractResource):
     def add_route(
         self,
         method: str,
-        handler: Union[Type[AbstractView], Handler],
+        handler: Union[Type[AbstractView[Any]], Handler],
         *,
         expect_handler: Optional[_ExpectHandler] = None,
     ) -> "ResourceRoute":
@@ -862,7 +864,7 @@ class ResourceRoute(AbstractRoute):
     def __init__(
         self,
         method: str,
-        handler: Union[Handler, Type[AbstractView]],
+        handler: Union[Handler, Type[AbstractView[Any]]],
         resource: AbstractResource,
         *,
         expect_handler: Optional[_ExpectHandler] = None,
@@ -922,7 +924,7 @@ class SystemRoute(AbstractRoute):
         return "<SystemRoute {self.status}: {self.reason}>".format(self=self)
 
 
-class View(AbstractView):
+class View(AbstractView[_T]):
     async def _iter(self) -> StreamResponse:
         if self.request.method not in hdrs.METH_ALL:
             self._raise_allowed_methods()
@@ -1072,7 +1074,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self,
         method: str,
         path: str,
-        handler: Union[Handler, Type[AbstractView]],
+        handler: Union[Handler, Type[AbstractView[Any]]],
         *,
         name: Optional[str] = None,
         expect_handler: Optional[_ExpectHandler] = None,
@@ -1169,7 +1171,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         return self.add_route(hdrs.METH_DELETE, path, handler, **kwargs)
 
     def add_view(
-        self, path: str, handler: Type[AbstractView], **kwargs: Any
+        self, path: str, handler: Type[AbstractView[Any]], **kwargs: Any
     ) -> AbstractRoute:
         """
         Shortcut for add_route with ANY methods for a class-based view

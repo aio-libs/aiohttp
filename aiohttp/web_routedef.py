@@ -140,7 +140,7 @@ def delete(path: str, handler: _HandlerType, **kwargs: Any) -> RouteDef:
     return route(hdrs.METH_DELETE, path, handler, **kwargs)
 
 
-def view(path: str, handler: Type[AbstractView], **kwargs: Any) -> RouteDef:
+def view(path: str, handler: Type[AbstractView[Any]], **kwargs: Any) -> RouteDef:
     return route(hdrs.METH_ANY, path, handler, **kwargs)
 
 

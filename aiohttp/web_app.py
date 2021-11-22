@@ -47,7 +47,7 @@ from .web_urldispatcher import (
 
 __all__ = ("Application", "CleanupError")
 
-_T = TypeVar("_T")
+_T = TypeVar("_T", covariant=True)
 
 
 if TYPE_CHECKING:  # pragma: no cover

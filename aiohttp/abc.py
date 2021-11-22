@@ -9,10 +9,12 @@ from typing import (
     Callable,
     Dict,
     Generator,
+    Generic,
     Iterable,
     List,
     Optional,
     Tuple,
+    TypeVar,
 )
 
 from multidict import CIMultiDict
@@ -20,13 +22,17 @@ from yarl import URL
 
 from .typedefs import LooseCookies, _SafeApplication, _SafeRequest
 
+_T = TypeVar("_T")
+
 if TYPE_CHECKING:  # pragma: no cover
     from .web_exceptions import HTTPException
-    from .web_request import BaseRequest
+    from .web_request import BaseRequest, Request
     from .web_response import StreamResponse
 else:
     BaseRequest = StreamResponse = None
     HTTPException = None
+
+    class Request(Generic[_T]): ...
 
 
 class AbstractRouter(ABC):
@@ -98,14 +104,14 @@ class AbstractMatchInfo(ABC):
         """
 
 
-class AbstractView(ABC):
+class AbstractView(ABC, Generic[_T]):
     """Abstract class based view."""
 
-    def __init__(self, request: _SafeRequest) -> None:
+    def __init__(self, request: Request[_T]) -> None:
         self._request = request
 
     @property
-    def request(self) -> _SafeRequest:
+    def request(self) -> Request[_T]:
         """Request instance."""
         return self._request
 

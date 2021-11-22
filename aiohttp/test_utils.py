@@ -18,6 +18,7 @@ from typing import (
     List,
     Optional,
     Type,
+    TypeVar,
     Union,
     cast,
 )
@@ -58,6 +59,8 @@ if PY_38:
     from unittest import IsolatedAsyncioTestCase as TestCase
 else:
     from asynctest import TestCase  # type: ignore[no-redef]
+
+_T = TypeVar("_T")
 
 REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
 
@@ -554,7 +557,7 @@ def make_mocked_request(
     match_info: Any = sentinel,
     version: HttpVersion = HttpVersion(1, 1),
     closing: bool = False,
-    app: Any = None,
+    app: Optional[Application[_T]] = None,
     writer: Any = sentinel,
     protocol: Any = sentinel,
     transport: Any = sentinel,
@@ -562,7 +565,7 @@ def make_mocked_request(
     sslcontext: Optional[SSLContext] = None,
     client_max_size: int = 1024 ** 2,
     loop: Any = ...,
-) -> _SafeRequest:
+) -> Request[_T]:
     """Creates mocked web.Request testing purposes.
 
     Useful in unit tests, when spinning full web server is overkill or
@@ -625,7 +628,7 @@ def make_mocked_request(
     if payload is sentinel:
         payload = mock.Mock()
 
-    req: _SafeRequest = Request(
+    req: Request[_T] = Request(
         message, payload, protocol, writer, task, loop, client_max_size=client_max_size
     )
 
