@@ -198,7 +198,7 @@ class ClientWebSocketResponse:
                 return True
 
             if self._closing:
-                self._response.close()
+                await self._response.abort()
                 return True
 
             while True:
@@ -217,7 +217,7 @@ class ClientWebSocketResponse:
 
                 if msg.type == WSMsgType.CLOSE:
                     self._close_code = msg.data
-                    self._response.close()
+                    await self._response.abort()
                     return True
         else:
             return False

@@ -921,6 +921,13 @@ class ClientResponse(HeadersMixin):
         self._cleanup_writer()
         return noop()
 
+    async def abort(self) -> None:
+        if not self._closed:
+            conn = self._connection
+            self.close()
+            if conn is not None:
+                await conn.cleanup()
+
     @property
     def ok(self) -> bool:
         """Returns ``True`` if ``status`` is less than ``400``, ``False`` if not.

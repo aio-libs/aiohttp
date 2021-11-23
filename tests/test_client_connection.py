@@ -30,7 +30,7 @@ def protocol() -> Any:
 async def test_ctor(connector: Any, key: Any, protocol: Any) -> None:
     conn = Connection(connector, key, protocol)
     assert conn.protocol is protocol
-    await conn.close()
+    conn.close()
 
 
 async def test_callbacks_on_close(connector: Any, key: Any, protocol: Any) -> None:
@@ -42,7 +42,7 @@ async def test_callbacks_on_close(connector: Any, key: Any, protocol: Any) -> No
         notified = True
 
     conn.add_callback(cb)
-    await conn.close()
+    conn.close()
     assert notified
 
 
@@ -72,14 +72,14 @@ async def test_callbacks_exception(connector: Any, key: Any, protocol: Any) -> N
 
     conn.add_callback(cb1)
     conn.add_callback(cb2)
-    await conn.close()
+    conn.close()
     assert notified
 
 
 async def test_close(connector: Any, key: Any, protocol: Any) -> None:
     conn = Connection(connector, key, protocol)
     assert not conn.closed
-    await conn.close()
+    conn.close()
     # assert conn._protocol() is None
     connector._release.assert_called_with(key, protocol, should_close=True)
     assert conn.closed

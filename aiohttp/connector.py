@@ -113,7 +113,7 @@ class Connection:
             with suppress(Exception):
                 cb()
 
-    async def close(self) -> None:
+    def close(self) -> None:
         self._notify_release()
 
         if not self._closed:
@@ -122,8 +122,6 @@ class Connection:
             assert connector is not None
             # schedule cleanup if needed
             connector._release(self._key, proto, should_close=True)
-            # do actual closing, proto.close() supports reentrancy
-            await proto.close()
             self._closed = True
 
     def release(self) -> None:
@@ -139,6 +137,12 @@ class Connection:
     @property
     def closed(self) -> bool:
         return self._closed or not self.protocol.is_connected()
+
+    async def cleanup(self) -> None:
+        proto = self._protocol()
+        if proto is not None:
+            # do actual closing, proto.close() supports reentrancy
+            await proto.close()
 
 
 class _TransportPlaceholder:
@@ -290,7 +294,7 @@ class BaseConnector:
 
             assert isinstance(delay, Real), type(delay)
             when = now + delay
-            if delay >= 5:  # type: ignore[operator]
+            if delay >= 5:
                 when = ceil(when)
 
             try:
