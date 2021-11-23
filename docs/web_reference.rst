@@ -149,6 +149,23 @@ and :ref:`aiohttp-web-signals` handlers.
 
       .. seealso:: :ref:`aiohttp-web-forwarded-support`
 
+   .. attribute:: client_max_size
+
+      The maximum size of the request body.
+
+      The value could be overridden by :meth:`~BaseRequest.clone`.
+
+      Read-only :class:`int` property.
+
+      .. versionchanged:: 3.8
+
+         *Forwarded* and *X-Forwarded-Proto* are not used anymore.
+
+         Call ``.clone(client_max_size=new_size)`` for setting up the value
+         explicitly.
+
+      .. seealso:: :ref:`aiohttp-web-forwarded-support`
+
    .. attribute:: path_qs
 
       The URL including PATH_INFO and the query string. e.g.,
