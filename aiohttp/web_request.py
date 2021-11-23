@@ -197,6 +197,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         scheme: str = sentinel,
         host: str = sentinel,
         remote: str = sentinel,
+        client_max_size: int = sentinel,
     ) -> "BaseRequest":
         """Clone itself with replacement some attributes.
 
@@ -230,6 +231,8 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             kwargs["host"] = host
         if remote is not sentinel:
             kwargs["remote"] = remote
+        if client_max_size is sentinel:
+            client_max_size = self._client_max_size
 
         return self.__class__(
             message,
@@ -238,7 +241,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             self._payload_writer,
             self._task,
             self._loop,
-            client_max_size=self._client_max_size,
+            client_max_size=client_max_size,
             state=self._state.copy(),
             **kwargs,
         )
@@ -260,6 +263,10 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
     @property
     def writer(self) -> AbstractStreamWriter:
         return self._payload_writer
+
+    @property
+    def client_max_size(self) -> int:
+        return self._client_max_size
 
     @reify
     def message(self) -> RawRequestMessage:
@@ -829,6 +836,7 @@ class Request(BaseRequest):
         scheme: str = sentinel,
         host: str = sentinel,
         remote: str = sentinel,
+        client_max_size: int = sentinel,
     ) -> "Request":
         ret = super().clone(
             method=method,
@@ -837,6 +845,7 @@ class Request(BaseRequest):
             scheme=scheme,
             host=host,
             remote=remote,
+            client_max_size=client_max_size,
         )
         new_ret = cast(Request, ret)
         new_ret._match_info = self._match_info
