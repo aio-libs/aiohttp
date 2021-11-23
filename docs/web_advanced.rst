@@ -974,9 +974,9 @@ headers too, pushing non-trusted data values.
 That's why *aiohttp server* should setup *forwarded* headers in custom
 middleware in tight conjunction with *reverse proxy configuration*.
 
-For changing :attr:`BaseRequest.scheme` :attr:`BaseRequest.host` and
-:attr:`BaseRequest.remote` the middleware might use
-:meth:`BaseRequest.clone`.
+For changing :attr:`BaseRequest.scheme` :attr:`BaseRequest.host`
+:attr:`BaseRequest.remote` and :attr:`BaseRequest.client_max_size`
+the middleware might use :meth:`BaseRequest.clone`.
 
 .. seealso::
 
