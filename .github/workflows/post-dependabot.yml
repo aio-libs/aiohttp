@@ -26,7 +26,7 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v2
     - name: Cache PyPI
-      uses: actions/cache@v2.1.6
+      uses: actions/cache@v2.1.7
       with:
         key: post-update-${{ hashFiles('requirements/*.txt') }}
         path: ~/.cache/pip
