@@ -157,7 +157,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
       Read-only :class:`int` property.
 
-      .. versionchanged:: 4.0
+      .. versionchanged:: 3.8
 
          *Forwarded* and *X-Forwarded-Proto* are not used anymore.
 
