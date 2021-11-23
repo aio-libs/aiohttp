@@ -205,7 +205,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         scheme: Union[str, _SENTINEL] = sentinel,
         host: Union[str, _SENTINEL] = sentinel,
         remote: Union[str, _SENTINEL] = sentinel,
-        client_max_size: int = sentinel,
+        client_max_size: int = 1024 ** 2,
     ) -> "BaseRequest":
         """Clone itself with replacement some attributes.
 
@@ -240,8 +240,6 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             kwargs["host"] = host
         if remote is not sentinel:
             kwargs["remote"] = remote
-        if client_max_size is sentinel:
-            client_max_size = self._client_max_size
 
         return self.__class__(
             message,
