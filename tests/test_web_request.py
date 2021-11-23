@@ -513,6 +513,12 @@ def test_clone_client_max_size() -> None:
     assert req2._client_max_size == 1024
 
 
+def test_clone_override_client_max_size() -> None:
+    req = make_mocked_request("GET", "/path", client_max_size=1024)
+    req2 = req.clone(client_max_size=2048)
+    assert req2.client_max_size == 2048
+
+
 def test_clone_method() -> None:
     req = make_mocked_request("GET", "/path")
     req2 = req.clone(method="POST")
