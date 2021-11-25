@@ -1,4 +1,4 @@
-name: Lint
+name: Deploy
 on:
   workflow_call:
     inputs:

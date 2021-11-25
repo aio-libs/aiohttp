@@ -1,4 +1,4 @@
-name: Lint
+name: Test
 on:
   workflow_call:
     inputs:

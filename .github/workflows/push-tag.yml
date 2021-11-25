@@ -1,0 +1,28 @@
+name: Push
+
+on:
+  push:
+    tags: [ 'v*' ]
+
+# Use default concurrency, don't want cancelling commit checks on master/backports
+# anyway
+
+jobs:
+  # NB: No compile-deps on tag pushing.
+
+  lint:
+    name: Lint
+    uses: aio-libs/aiohttp/.github/workflows/lint.yml@master
+  test:
+    name: Test
+    uses: aio-libs/aiohttp/.github/workflows/test.yml@master
+
+  deploy:
+    name: Deploy
+    needs: [lint, test]
+    # Run only on pushing a tag
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+    uses: aio-libs/aiohttp/.github/workflows/deploy.yml@master
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}

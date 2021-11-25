@@ -5,39 +5,26 @@ on:
     branches:
       - 'master'
       - '[0-9].[0-9]+'  # matches to backport branches, e.g. 3.6
-    tags: [ 'v*' ]
 
 # Use default concurrency, don't want cancelling commit checks on master/backports
 # anyway
 
 jobs:
-  # NB: No compile-deps on push, if recompilation is needed it should be done
+  # NB: No compile-deps on push, if the recompilation is needed it should be done
   # explicitly by a separate commit to master or backport branches
 
-  # TODO: replace to @master after the PR merging
   lint:
     name: Lint
-    uses: aio-libs/aiohttp/.github/workflows/lint.yml@0c8a36f3383a4b27ba2facda47944f314d0cf8c2
+    uses: aio-libs/aiohttp/.github/workflows/lint.yml@master
   test:
     name: Test
-    needs: lint
-    uses: aio-libs/aiohttp/.github/workflows/test.yml@0c8a36f3383a4b27ba2facda47944f314d0cf8c2
+    uses: aio-libs/aiohttp/.github/workflows/test.yml@master
 
   check:  # This job does nothing and is only used for the branch protection
-    needs: test
+    needs: [lint, test]
     runs-on: ubuntu-latest
     steps:
       - name: Report success of the test matrix
         run: >-
           print("All's good")
         shell: python
-
-  deploy:
-    name: Deploy
-    needs: check
-    # Run only on pushing a tag
-    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
-    uses: aio-libs/aiohttp/.github/workflows/deploy.yml@0c8a36f3383a4b27ba2facda47944f314d0cf8c2
-    secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
