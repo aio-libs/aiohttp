@@ -281,12 +281,10 @@ class BaseConnector:
 
     @property
     def limit_per_host(self) -> int:
-        """The limit_per_host for simultaneous connections
-        to the same endpoint.
+        """The limit for simultaneous connections to the same endpoint.
 
         Endpoints are the same if they are have equal
         (host, port, is_ssl) triple.
-
         """
         return self._limit_per_host
 
@@ -344,6 +342,7 @@ class BaseConnector:
 
     def _cleanup_closed(self) -> None:
         """Double confirmation for transport close.
+
         Some broken ssl servers may leave socket open without proper close.
         """
         if self._cleanup_closed_handle:
@@ -424,13 +423,13 @@ class BaseConnector:
 
     def _available_connections(self, key: "ConnectionKey") -> int:
         """
-        Return number of available connections taking into account
-        the limit, limit_per_host and the connection key.
+        Return number of available connections.
 
-        If it returns less than 1 means that there is no connections
-        availables.
+        The limit, limit_per_host and the connection key are taken into account.
+
+        If it returns less than 1 means that there are no connections
+        available.
         """
-
         if self._limit:
             # total calc available connections
             available = self._limit - len(self._acquired)
@@ -571,7 +570,9 @@ class BaseConnector:
 
     def _release_waiter(self) -> None:
         """
-        Iterates over all waiters till found one that is not finsihed and
+        Iterates over all waiters until one to be released is found.
+
+        The one to be released is not finsihed and
         belongs to a host that has available connections.
         """
         if not self._waiters:

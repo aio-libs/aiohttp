@@ -211,7 +211,7 @@ class ClientSession:
         raise_for_status: Union[
             bool, Callable[[ClientResponse], Awaitable[None]]
         ] = False,
-        timeout: Union[_SENTINEL, ClientTimeout] = sentinel,
+        timeout: Union[_SENTINEL, ClientTimeout, None] = sentinel,
         auto_decompress: bool = True,
         trust_env: bool = False,
         requote_redirect_url: bool = True,
@@ -256,10 +256,10 @@ class ClientSession:
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
-        if timeout is sentinel:
+        if timeout is sentinel or timeout is None:
             self._timeout = DEFAULT_TIMEOUT
         else:
-            self._timeout = timeout  # type: ignore[assignment]
+            self._timeout = timeout
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
@@ -345,7 +345,7 @@ class ClientSession:
         read_until_eof: bool = True,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
-        timeout: Union[ClientTimeout, _SENTINEL] = sentinel,
+        timeout: Union[ClientTimeout, _SENTINEL, None] = sentinel,
         ssl: Optional[Union[SSLContext, bool, Fingerprint]] = None,
         proxy_headers: Optional[LooseHeaders] = None,
         trace_request_ctx: Optional[SimpleNamespace] = None,
@@ -396,13 +396,10 @@ class ClientSession:
             except ValueError as e:
                 raise InvalidURL(proxy) from e
 
-        if timeout is sentinel:
-            real_timeout = self._timeout  # type: ClientTimeout
+        if timeout is sentinel or timeout is None:
+            real_timeout: ClientTimeout = self._timeout
         else:
-            if not isinstance(timeout, ClientTimeout):
-                real_timeout = ClientTimeout(total=timeout)  # type: ignore[arg-type]
-            else:
-                real_timeout = timeout
+            real_timeout = timeout
         # timeout is cumulative for all request operations
         # (request, redirects, responses, data consuming)
         tm = TimeoutHandle(self._loop, real_timeout.total)
@@ -649,7 +646,7 @@ class ClientSession:
         *,
         method: str = hdrs.METH_GET,
         protocols: Iterable[str] = (),
-        timeout: Union[ClientWSTimeout, float, _SENTINEL] = sentinel,
+        timeout: Union[ClientWSTimeout, float, _SENTINEL, None] = sentinel,
         receive_timeout: Optional[float] = None,
         autoclose: bool = True,
         autoping: bool = True,
@@ -695,7 +692,7 @@ class ClientSession:
         *,
         method: str = hdrs.METH_GET,
         protocols: Iterable[str] = (),
-        timeout: Union[ClientWSTimeout, float, _SENTINEL] = sentinel,
+        timeout: Union[ClientWSTimeout, float, _SENTINEL, None] = sentinel,
         receive_timeout: Optional[float] = None,
         autoclose: bool = True,
         autoping: bool = True,
@@ -711,7 +708,9 @@ class ClientSession:
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
     ) -> ClientWebSocketResponse:
-        if timeout is not sentinel:
+        if timeout is sentinel or timeout is None:
+            ws_timeout = DEFAULT_WS_CLIENT_TIMEOUT
+        else:
             if isinstance(timeout, ClientWSTimeout):
                 ws_timeout = timeout
             else:
@@ -722,9 +721,8 @@ class ClientSession:
                     DeprecationWarning,
                     stacklevel=2,
                 )
-                ws_timeout = ClientWSTimeout(ws_close=timeout)  # type: ignore[arg-type]
-        else:
-            ws_timeout = DEFAULT_WS_CLIENT_TIMEOUT
+                ws_timeout = ClientWSTimeout(ws_close=timeout)
+
         if receive_timeout is not None:
             warnings.warn(
                 "float parameter 'receive_timeout' "
@@ -1032,23 +1030,21 @@ class ClientSession:
     def raise_for_status(
         self,
     ) -> Union[bool, Callable[[ClientResponse], Awaitable[None]]]:
-        """
-        Should `ClientResponse.raise_for_status()`
-        be called for each response
-        """
+        """Should `ClientResponse.raise_for_status()` be called for each response."""
         return self._raise_for_status
 
     @property
     def auto_decompress(self) -> bool:
-        """Should the body response be automatically decompressed"""
+        """Should the body response be automatically decompressed."""
         return self._auto_decompress
 
     @property
     def trust_env(self) -> bool:
         """
-        Should get proxies information
-        from HTTP_PROXY / HTTPS_PROXY environment variables
-        or ~/.netrc file if present
+        Should proxies information from environment or netrc be trusted.
+
+        Information is from HTTP_PROXY / HTTPS_PROXY environment variables
+        or ~/.netrc file if present.
         """
         return self._trust_env
 
@@ -1191,7 +1187,9 @@ def request(
     connector: Optional[BaseConnector] = None,
     read_bufsize: Optional[int] = None,
 ) -> _SessionRequestContextManager:
-    """Constructs and sends a request. Returns response object.
+    """Constructs and sends a request.
+
+    Returns response object.
     method - HTTP method
     url - request url
     params - (optional) Dictionary or bytes to be sent in the query

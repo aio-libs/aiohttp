@@ -1,7 +1,7 @@
 -r base.txt
 Brotli==1.0.9
-coverage==6.1.1
-cryptography==35.0.0; platform_machine!="i686" # no 32-bit wheels; no python 3.9 wheels yet
+coverage==6.1.2
+cryptography==36.0.0; platform_machine!="i686" # no 32-bit wheels; no python 3.9 wheels yet
 freezegun==1.1.0
 mypy==0.910; implementation_name=="cpython"
 mypy-extensions==0.4.3; implementation_name=="cpython"
@@ -9,9 +9,8 @@ proxy.py==2.3.1
 pytest==6.2.5
 pytest-cov==3.0.0
 pytest-mock==3.6.1
-python-on-whales==0.30.0; python_version>="3.7"
+python-on-whales==0.32.0; python_version>="3.7"
 re-assert==1.1.0
 setuptools-git==1.2
 trustme==0.9.0; platform_machine!="i686"    # no 32-bit wheels
-types-chardet==4.0.1
 wait-for-it==2.2.1; python_version>="3.7"

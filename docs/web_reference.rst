@@ -149,6 +149,14 @@ and :ref:`aiohttp-web-signals` handlers.
 
       .. seealso:: :ref:`aiohttp-web-forwarded-support`
 
+   .. attribute:: client_max_size
+
+      The maximum size of the request body.
+
+      The value could be overridden by :meth:`~BaseRequest.clone`.
+
+      Read-only :class:`int` property.
+
    .. attribute:: path_qs
 
       The URL including PATH_INFO and the query string. e.g.,
@@ -2784,13 +2792,15 @@ Utilities
                       reuse_address=None, \
                       reuse_port=None)
 
-   A utility function for running an application, serving it until
+   A high-level function for running an application, serving it until
    keyboard interrupt and performing a
    :ref:`aiohttp-web-graceful-shutdown`.
 
-   Suitable as handy tool for scaffolding aiohttp based projects.
-   Perhaps production config will use more sophisticated runner but it
-   good enough at least at very beginning stage.
+   This is a high-level function very similar to :func:`asyncio.run` and
+   should be used as the main entry point for an application. The
+   :class:`Application` object essentially becomes our `main()` function.
+   If additional tasks need to be run in parallel, see
+   :ref:`aiohttp-web-complex-applications`.
 
    The server will listen on any host or Unix domain socket path you supply.
    If no hosts or paths are supplied, or only a port is supplied, a TCP server

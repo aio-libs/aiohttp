@@ -399,8 +399,7 @@ class TestClient:
 
 
 class AioHTTPTestCase(TestCase):
-    """A base class to allow for unittest web applications using
-    aiohttp.
+    """A base class to allow for unittest web applications using aiohttp.
 
     Provides the following:
 
@@ -415,19 +414,18 @@ class AioHTTPTestCase(TestCase):
     """
 
     async def get_application(self) -> Application:
-        """
+        """Get application.
+
         This method should be overridden
         to return the aiohttp.web.Application
         object to test.
-
         """
         return self.get_app()
 
     def get_app(self) -> Application:
         """Obsolete method used to constructing web application.
 
-        Use .get_application() coroutine instead
-
+        Use .get_application() coroutine instead.
         """
         raise RuntimeError("Did you forget to define get_application()?")
 
@@ -480,8 +478,7 @@ def loop_context(
 def setup_test_loop(
     loop_factory: _LOOP_FACTORY = asyncio.new_event_loop,
 ) -> asyncio.AbstractEventLoop:
-    """Create and return an asyncio.BaseEventLoop
-    instance.
+    """Create and return an asyncio.BaseEventLoop instance.
 
     The caller should also call teardown_test_loop,
     once they are done with the loop.
@@ -513,10 +510,7 @@ def setup_test_loop(
 
 
 def teardown_test_loop(loop: asyncio.AbstractEventLoop, fast: bool = False) -> None:
-    """Teardown and cleanup an event_loop created
-    by setup_test_loop.
-
-    """
+    """Teardown and cleanup an event_loop created by setup_test_loop."""
     closed = loop.is_closed()
     if not closed:
         loop.call_soon(loop.stop)
@@ -580,9 +574,7 @@ def make_mocked_request(
 
     Useful in unit tests, when spinning full web server is overkill or
     specific conditions and errors are hard to trigger.
-
     """
-
     task = mock.Mock()
     if loop is ...:
         loop = mock.Mock()

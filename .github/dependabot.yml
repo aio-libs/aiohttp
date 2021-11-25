@@ -17,6 +17,9 @@ updates:
     schedule:
       interval: "daily"
     open-pull-requests-limit: 10
+    ignore:
+      - dependency-name: "typing-extensions"
+        versions: ["^3.10.0", "^4.0"]
 
   # Maintain dependencies for GitHub Actions aiohttp 3.8
   - package-ecosystem: "github-actions"
@@ -37,6 +40,9 @@ updates:
     schedule:
       interval: "daily"
     open-pull-requests-limit: 10
+    ignore:
+      - dependency-name: "typing-extensions"
+        versions: ["^3.10.0", "^4.0"]
 
   # Maintain dependencies for GitHub Actions aiohttp 3.8
   - package-ecosystem: "github-actions"
@@ -57,3 +63,6 @@ updates:
     schedule:
       interval: "daily"
     open-pull-requests-limit: 10
+    ignore:
+      - dependency-name: "typing-extensions"
+        versions: ["^3.10.0", "^4.0"]

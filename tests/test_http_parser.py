@@ -305,6 +305,15 @@ def test_request_te_chunked_with_content_length(parser: Any) -> None:
         parser.feed_data(text)
 
 
+def test_request_te_chunked123(parser: Any) -> None:
+    text = b"GET /test HTTP/1.1\r\n" b"transfer-encoding: chunked123\r\n\r\n"
+    with pytest.raises(
+        http_exceptions.BadHttpMessage,
+        match="Request has invalid `Transfer-Encoding`",
+    ):
+        parser.feed_data(text)
+
+
 def test_conn_upgrade(parser: Any) -> None:
     text = (
         b"GET /test HTTP/1.1\r\n"
@@ -1007,8 +1016,7 @@ class TestParsePayload:
         assert out.is_eof()
 
     async def test_http_payload_parser_deflate_no_hdrs(self, stream: Any) -> None:
-        """Tests incorrectly formed data (no zlib headers)"""
-
+        """Tests incorrectly formed data (no zlib headers)."""
         # c=compressobj(wbits=-15); b''.join([c.compress(b'data'), c.flush()])
         COMPRESSED = b"KI,I\x04\x00"
 

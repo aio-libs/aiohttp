@@ -54,7 +54,8 @@ def pytest_addoption(parser):  # type: ignore[no-untyped-def]
 
 
 def pytest_fixture_setup(fixturedef):  # type: ignore[no-untyped-def]
-    """
+    """Set up pytest fixture.
+
     Allow fixtures to be coroutines. Run coroutine fixtures in an event loop.
     """
     func = fixturedef.func
@@ -123,8 +124,9 @@ def loop_debug(request):  # type: ignore[no-untyped-def]
 
 @contextlib.contextmanager
 def _runtime_warning_context():  # type: ignore[no-untyped-def]
-    """
-    Context manager which checks for RuntimeWarnings, specifically to
+    """Context manager which checks for RuntimeWarnings.
+
+    This exists specifically to
     avoid "coroutine 'X' was never awaited" warnings being missed.
 
     If RuntimeWarnings occur in the context a RuntimeError is raised.
@@ -152,8 +154,9 @@ def _runtime_warning_context():  # type: ignore[no-untyped-def]
 
 @contextlib.contextmanager
 def _passthrough_loop_context(loop, fast=False):  # type: ignore[no-untyped-def]
-    """
-    setups and tears down a loop unless one is passed in via the loop
+    """Passthrough loop context.
+
+    Sets up and tears down a loop unless one is passed in via the loop
     argument when it's passed straight through.
     """
     if loop:
@@ -167,17 +170,13 @@ def _passthrough_loop_context(loop, fast=False):  # type: ignore[no-untyped-def]
 
 
 def pytest_pycollect_makeitem(collector, name, obj):  # type: ignore[no-untyped-def]
-    """
-    Fix pytest collecting for coroutines.
-    """
+    """Fix pytest collecting for coroutines."""
     if collector.funcnamefilter(name) and asyncio.iscoroutinefunction(obj):
         return list(collector._genfunctions(name, obj))
 
 
 def pytest_pyfunc_call(pyfuncitem):  # type: ignore[no-untyped-def]
-    """
-    Run coroutines in an event loop instead of a normal function call.
-    """
+    """Run coroutines in an event loop instead of a normal function call."""
     fast = pyfuncitem.config.getoption("--aiohttp-fast")
     if asyncio.iscoroutinefunction(pyfuncitem.function):
         existing_loop = pyfuncitem.funcargs.get(

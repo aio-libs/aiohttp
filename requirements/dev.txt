@@ -2,4 +2,4 @@
 -r test.txt
 -r doc.txt
 -r pip-tools.txt
-cherry_picker==2.0.0; python_version>="3.6"
+cherry_picker==2.1.0; python_version>="3.6"

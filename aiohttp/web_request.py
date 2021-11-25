@@ -205,15 +205,14 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         scheme: Union[str, _SENTINEL] = sentinel,
         host: Union[str, _SENTINEL] = sentinel,
         remote: Union[str, _SENTINEL] = sentinel,
+        client_max_size: Union[int, _SENTINEL] = sentinel,
     ) -> "BaseRequest":
         """Clone itself with replacement some attributes.
 
         Creates and returns a new instance of Request object. If no parameters
         are given, an exact copy is returned. If a parameter is not passed, it
         will reuse the one from the current request object.
-
         """
-
         if self._read_bytes:
             raise RuntimeError("Cannot clone request " "after reading its content")
 
@@ -221,14 +220,12 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         if method is not sentinel:
             dct["method"] = method
         if rel_url is not sentinel:
-            new_url: URL = URL(rel_url)  # type: ignore[arg-type]
+            new_url: URL = URL(rel_url)
             dct["url"] = new_url
             dct["path"] = str(new_url)
         if headers is not sentinel:
             # a copy semantic
-            new_headers = CIMultiDictProxy(
-                CIMultiDict(headers)  # type: ignore[arg-type]
-            )
+            new_headers = CIMultiDictProxy(CIMultiDict(headers))
             dct["headers"] = new_headers
             dct["raw_headers"] = tuple(
                 (k.encode("utf-8"), v.encode("utf-8")) for k, v in new_headers.items()
@@ -238,11 +235,13 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
         kwargs: Dict[str, str] = {}
         if scheme is not sentinel:
-            kwargs["scheme"] = scheme  # type: ignore[assignment]
+            kwargs["scheme"] = scheme
         if host is not sentinel:
-            kwargs["host"] = host  # type: ignore[assignment]
+            kwargs["host"] = host
         if remote is not sentinel:
-            kwargs["remote"] = remote  # type: ignore[assignment]
+            kwargs["remote"] = remote
+        if client_max_size is sentinel:
+            client_max_size = self._client_max_size
 
         return self.__class__(
             message,
@@ -251,7 +250,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             self._payload_writer,
             self._task,
             self._loop,
-            client_max_size=self._client_max_size,
+            client_max_size=client_max_size,
             state=self._state.copy(),
             **kwargs,
         )
@@ -273,6 +272,10 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
     @property
     def writer(self) -> AbstractStreamWriter:
         return self._payload_writer
+
+    @property
+    def client_max_size(self) -> int:
+        return self._client_max_size
 
     @reify
     def rel_url(self) -> URL:
@@ -449,6 +452,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
     @reify
     def raw_path(self) -> str:
         """The URL including raw *PATH INFO* without the host or scheme.
+
         Warning, the path is unquoted and may contains non valid URL characters
 
         E.g., ``/my%2Fpath%7Cwith%21some%25strange%24characters``
@@ -855,6 +859,7 @@ class Request(BaseRequest):
         scheme: Union[str, _SENTINEL] = sentinel,
         host: Union[str, _SENTINEL] = sentinel,
         remote: Union[str, _SENTINEL] = sentinel,
+        client_max_size: Union[int, _SENTINEL] = sentinel,
     ) -> "Request":
         ret = super().clone(
             method=method,
@@ -863,6 +868,7 @@ class Request(BaseRequest):
             scheme=scheme,
             host=host,
             remote=remote,
+            client_max_size=client_max_size,
         )
         new_ret = cast(Request, ret)
         new_ret._match_info = self._match_info
