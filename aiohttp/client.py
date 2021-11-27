@@ -72,6 +72,7 @@ from .connector import (
 )
 from .cookiejar import CookieJar
 from .helpers import (
+    _SENTINEL,
     DEBUG,
     PY_36,
     BasicAuth,
@@ -381,7 +382,7 @@ class ClientSession:
         read_until_eof: bool = True,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
-        timeout: Union[ClientTimeout, object] = sentinel,
+        timeout: Union[ClientTimeout, _SENTINEL] = sentinel,
         verify_ssl: Optional[bool] = None,
         fingerprint: Optional[bytes] = None,
         ssl_context: Optional[SSLContext] = None,
@@ -438,6 +439,7 @@ class ClientSession:
             real_timeout: ClientTimeout = self._timeout
         else:
             if not isinstance(timeout, ClientTimeout):
+                assert isinstance(timeout, (int, float))
                 real_timeout = ClientTimeout(total=timeout)
             else:
                 real_timeout = timeout
