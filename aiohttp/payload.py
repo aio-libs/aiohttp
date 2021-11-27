@@ -26,6 +26,7 @@ from multidict import CIMultiDict
 from . import hdrs
 from .abc import AbstractStreamWriter
 from .helpers import (
+    _SENTINEL,
     PY_36,
     content_disposition_header,
     guess_filename,
@@ -141,7 +142,7 @@ class Payload(ABC):
         headers: Optional[
             Union[_CIMultiDict, Dict[str, str], Iterable[Tuple[str, str]]]
         ] = None,
-        content_type: Optional[str] = sentinel,
+        content_type: Union[str, None, _SENTINEL] = sentinel,
         filename: Optional[str] = None,
         encoding: Optional[str] = None,
         **kwargs: Any,
