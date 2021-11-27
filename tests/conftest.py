@@ -13,7 +13,7 @@ from uuid import uuid4
 
 import pytest
 
-from aiohttp.test_utils import loop_context
+from aiohttp.test_utils import loop_context, make_mocked_coro
 
 IS_LINUX: bool
 IS_UNIX: bool
@@ -105,6 +105,7 @@ def create_mocked_conn(loop: Any):
         proto = mock.Mock(**kwargs)
         proto.closed = loop.create_future()
         proto.closed.set_result(conn_closing_result)
+        proto.close = make_mocked_coro(None)
         return proto
 
     yield _proto_factory

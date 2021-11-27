@@ -269,11 +269,11 @@ async def test_close() -> None:
 
 async def test_get(loop: Any) -> None:
     conn = aiohttp.BaseConnector()
-    assert conn._get(1) is None
+    assert await conn._get(1) is None
 
     proto = create_mocked_conn(loop)
     conn._conns[1] = [(proto, loop.time())]
-    assert conn._get(1) == proto
+    assert await conn._get(1) == proto
     await conn.close()
 
 
@@ -312,26 +312,12 @@ async def test_get_unconnected_proto_ssl(loop: Any) -> None:
 async def test_get_expired(loop: Any) -> None:
     conn = aiohttp.BaseConnector()
     key = ConnectionKey("localhost", 80, False, None, None, None, None)
-    assert conn._get(key) is None
+    assert await conn._get(key) is None
 
     proto = create_mocked_conn(loop)
     conn._conns[key] = [(proto, loop.time() - 1000)]
-    assert conn._get(key) is None
+    assert await conn._get(key) is None
     assert not conn._conns
-    await conn.close()
-
-
-async def test_get_expired_ssl(loop: Any) -> None:
-    conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
-    key = ConnectionKey("localhost", 80, True, None, None, None, None)
-    assert conn._get(key) is None
-
-    proto = create_mocked_conn(loop)
-    transport = proto.transport
-    conn._conns[key] = [(proto, loop.time() - 1000)]
-    assert conn._get(key) is None
-    assert not conn._conns
-    assert conn._cleanup_closed_transports == [transport]
     await conn.close()
 
 
@@ -384,20 +370,6 @@ async def test_release(loop: Any, key: Any) -> None:
     assert conn._conns[key][0][0] == proto
     assert conn._conns[key][0][1] == pytest.approx(loop.time(), abs=0.1)
     assert not conn._cleanup_closed_transports
-    await conn.close()
-
-
-async def test_release_ssl_transport(loop: Any, ssl_key: Any) -> None:
-    conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
-    conn._release_waiter = mock.Mock()
-
-    proto = create_mocked_conn(loop)
-    transport = proto.transport
-    conn._acquired.add(proto)
-    conn._acquired_per_host[ssl_key].add(proto)
-
-    conn._release(ssl_key, proto, should_close=True)
-    assert conn._cleanup_closed_transports == [transport]
     await conn.close()
 
 
@@ -955,7 +927,7 @@ async def test_get_pop_empty_conns(loop: Any) -> None:
     conn = aiohttp.BaseConnector()
     key = ("127.0.0.1", 80, False)
     conn._conns[key] = []
-    proto = conn._get(key)
+    proto = await conn._get(key)
     assert proto is None
     assert not conn._conns
 
@@ -1088,12 +1060,9 @@ async def test_close_during_connect(loop: Any) -> None:
     assert proto.close.called
 
 
-async def test_ctor_cleanup() -> None:
-    loop = mock.Mock()
-    loop.time.return_value = 1.5
-    conn = aiohttp.BaseConnector(keepalive_timeout=10, enable_cleanup_closed=True)
-    assert conn._cleanup_handle is None
-    assert conn._cleanup_closed_handle is not None
+async def test_ctor_enable_cleanup_closed_deprecated() -> None:
+    with pytest.warns(DeprecationWarning):
+        aiohttp.BaseConnector(enable_cleanup_closed=True)
 
 
 async def test_cleanup(key: Any) -> None:
@@ -1113,24 +1082,6 @@ async def test_cleanup(key: Any) -> None:
     assert existing_handle.cancel.called
     assert conn._conns == {}
     assert conn._cleanup_handle is None
-
-
-async def test_cleanup_close_ssl_transport(loop: Any, ssl_key: Any) -> None:
-    proto = create_mocked_conn(loop)
-    transport = proto.transport
-    testset = {ssl_key: [(proto, 10)]}
-
-    loop = mock.Mock()
-    loop.time.return_value = asyncio.get_event_loop().time() + 300
-    conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
-    conn._loop = loop
-    conn._conns = testset
-    existing_handle = conn._cleanup_handle = mock.Mock()
-
-    conn._cleanup()
-    assert existing_handle.cancel.called
-    assert conn._conns == {}
-    assert conn._cleanup_closed_transports == [transport]
 
 
 async def test_cleanup2(loop: Any) -> None:
@@ -1166,33 +1117,6 @@ async def test_cleanup3(loop: Any, key: Any) -> None:
     assert conn._cleanup_handle is not None
     conn._loop.call_at.assert_called_with(319, mock.ANY, mock.ANY)
     await conn.close()
-
-
-async def test_cleanup_closed(loop: Any, mocker: Any) -> None:
-    if not hasattr(loop, "__dict__"):
-        pytest.skip("can not override loop attributes")
-
-    mocker.spy(loop, "call_at")
-    conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
-
-    tr = mock.Mock()
-    conn._cleanup_closed_handle = cleanup_closed_handle = mock.Mock()
-    conn._cleanup_closed_transports = [tr]
-    conn._cleanup_closed()
-    assert tr.abort.called
-    assert not conn._cleanup_closed_transports
-    assert loop.call_at.called
-    assert cleanup_closed_handle.cancel.called
-
-
-async def test_cleanup_closed_disabled(loop: Any, mocker: Any) -> None:
-    conn = aiohttp.BaseConnector(enable_cleanup_closed=False)
-
-    tr = mock.Mock()
-    conn._cleanup_closed_transports = [tr]
-    conn._cleanup_closed()
-    assert tr.abort.called
-    assert not conn._cleanup_closed_transports
 
 
 async def test_tcp_connector_ctor(loop: Any) -> None:
@@ -1328,33 +1252,6 @@ async def test_close_twice(loop: Any) -> None:
     conn._conns = "Invalid"  # fill with garbage
     await conn.close()
     assert conn.closed
-
-
-async def test_close_cancels_cleanup_handle(loop: Any) -> None:
-    conn = aiohttp.BaseConnector()
-    conn._release(1, create_mocked_conn(should_close=False))
-    assert conn._cleanup_handle is not None
-    await conn.close()
-    assert conn._cleanup_handle is None
-
-
-async def test_close_abort_closed_transports(loop: Any) -> None:
-    tr = mock.Mock()
-
-    conn = aiohttp.BaseConnector()
-    conn._cleanup_closed_transports.append(tr)
-    await conn.close()
-
-    assert not conn._cleanup_closed_transports
-    assert tr.abort.called
-    assert conn.closed
-
-
-async def test_close_cancels_cleanup_closed_handle(loop: Any) -> None:
-    conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
-    assert conn._cleanup_closed_handle is not None
-    await conn.close()
-    assert conn._cleanup_closed_handle is None
 
 
 async def test_ctor_with_default_loop(loop: Any) -> None:

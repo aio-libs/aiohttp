@@ -15,7 +15,6 @@ import re
 import sys
 import time
 import warnings
-import weakref
 from collections import namedtuple
 from contextlib import suppress
 from email.utils import parsedate
@@ -572,28 +571,8 @@ def rfc822_formatted_time() -> str:
     return _cached_formatted_datetime
 
 
-def _weakref_handle(info: "Tuple[weakref.ref[object], str]") -> None:
-    ref, name = info
-    ob = ref()
-    if ob is not None:
-        with suppress(Exception):
-            getattr(ob, name)()
-
-
-def weakref_handle(
-    ob: object, name: str, timeout: float, loop: asyncio.AbstractEventLoop
-) -> Optional[asyncio.TimerHandle]:
-    if timeout is not None and timeout > 0:
-        when = loop.time() + timeout
-        if timeout >= 5:
-            when = ceil(when)
-
-        return loop.call_at(when, _weakref_handle, (weakref.ref(ob), name))
-    return None
-
-
 def call_later(
-    cb: Callable[[], Any], timeout: float, loop: asyncio.AbstractEventLoop
+    cb: Callable[..., Any], timeout: float, loop: asyncio.AbstractEventLoop
 ) -> Optional[asyncio.TimerHandle]:
     if timeout is not None and timeout > 0:
         when = loop.time() + timeout

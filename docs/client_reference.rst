@@ -932,8 +932,7 @@ BaseConnector
 ^^^^^^^^^^^^^
 
 .. class:: BaseConnector(*, keepalive_timeout=15, \
-                         force_close=False, limit=100, limit_per_host=0, \
-                         enable_cleanup_closed=False, loop=None)
+                         force_close=False, limit=100, limit_per_host=0)
 
    Base class for all connectors.
 
@@ -953,19 +952,6 @@ BaseConnector
 
    :param bool force_close: close underlying sockets after
                             connection releasing (optional).
-
-   :param bool enable_cleanup_closed: some SSL servers do not properly complete
-      SSL shutdown process, in that case asyncio leaks ssl connections.
-      If this parameter is set to True, aiohttp additionally aborts underlining
-      transport after 2 seconds. It is off by default.
-
-
-   :param loop: :ref:`event loop<asyncio-event-loop>`
-      used for handling connections.
-      If param is ``None``, :func:`asyncio.get_event_loop`
-      is used for getting default event loop.
-
-      .. deprecated:: 2.0
 
    .. attribute:: closed
 
@@ -1026,8 +1012,7 @@ TCPConnector
                  use_dns_cache=True, ttl_dns_cache=10, \
                  family=0, ssl_context=None, local_addr=None, \
                  resolver=None, keepalive_timeout=sentinel, \
-                 force_close=False, limit=100, limit_per_host=0, \
-                 enable_cleanup_closed=False, loop=None)
+                 force_close=False, limit=100, limit_per_host=0)
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
@@ -1125,11 +1110,6 @@ TCPConnector
    :param bool force_close: close underlying sockets after
                             connection releasing (optional).
 
-   :param bool enable_cleanup_closed: Some ssl servers do not properly complete
-      SSL shutdown process, in that case asyncio leaks SSL connections.
-      If this parameter is set to True, aiohttp additionally aborts underlining
-      transport after 2 seconds. It is off by default.
-
    .. attribute:: family
 
       *TCP* socket family e.g. :data:`socket.AF_INET` or
@@ -1217,17 +1197,25 @@ Connection
 
       Connection transport
 
-   .. method:: close()
+   .. comethod:: close()
 
       Close connection with forcibly closing underlying socket.
 
-   .. method:: release()
+      .. versionchanged:: 4.0
+
+         The method is converted from a regular function to async one.
+
+   .. comethod:: release()
 
       Release connection back to connector.
 
       Underlying socket is not closed, the connection may be reused
       later if timeout (30 seconds by default) for connection was not
       expired.
+
+      .. versionchanged:: 4.0
+
+         The method is converted from a regular function to async one.
 
 
 Response object

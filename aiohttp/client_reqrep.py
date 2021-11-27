@@ -829,8 +829,7 @@ class ClientResponse(HeadersMixin):
             while True:
                 # read response
                 try:
-                    protocol = self._protocol
-                    message, payload = await protocol.read()  # type: ignore[union-attr]
+                    message, payload = await self._protocol.read()
                 except http.HttpProcessingError as exc:
                     raise ClientResponseError(
                         self.request_info,
@@ -921,6 +920,13 @@ class ClientResponse(HeadersMixin):
 
         self._cleanup_writer()
         return noop()
+
+    async def abort(self) -> None:
+        if not self._closed:
+            conn = self._connection
+            self.close()
+            if conn is not None:
+                await conn.cleanup()
 
     @property
     def ok(self) -> bool:

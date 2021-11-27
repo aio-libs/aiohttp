@@ -709,44 +709,23 @@ async def test_timeout_none(aiohttp_client: Any, mocker: Any) -> None:
 
 
 async def test_readline_error_on_conn_close(aiohttp_client: Any) -> None:
-    loop = asyncio.get_event_loop()
-
     async def handler(request):
         resp_ = web.StreamResponse()
+        resp_.content_length = 4 * 1024 * 1024
         await resp_.prepare(request)
+        await resp_.write(b"12345")
 
-        # make sure connection is closed by client.
-        with pytest.raises(aiohttp.ServerDisconnectedError):
-            for _ in range(10):
-                await resp_.write(b"data\n")
-                await asyncio.sleep(0.5)
-            return resp_
+        # finish response without sending the all declared body
+        return resp_
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
     server = await aiohttp_client(app)
 
-    session = aiohttp.ClientSession()
-    try:
-        timer_started = False
-        url, headers = server.make_url("/"), {"Connection": "Keep-alive"}
-        resp = await session.get(url, headers=headers)
+    async with aiohttp.ClientSession() as session:
+        resp = await session.get(server.make_url("/"))
         with pytest.raises(aiohttp.ClientConnectionError):
-            while True:
-                data = await resp.content.readline()
-                data = data.strip()
-                if not data:
-                    break
-                assert data == b"data"
-                if not timer_started:
-
-                    def do_release():
-                        loop.create_task(resp.release())
-
-                    loop.call_later(1.0, do_release)
-                    timer_started = True
-    finally:
-        await session.close()
+            await resp.content.readline()
 
 
 async def test_no_error_on_conn_close_if_eof(aiohttp_client: Any) -> None:
@@ -2786,7 +2765,7 @@ async def test_server_close_keepalive_connection() -> None:
         await r.read()
         assert 0 == len(connector._conns)
     await session.close()
-    connector.close()
+    await connector.close()
     server.close()
     await server.wait_closed()
 
@@ -2828,7 +2807,7 @@ async def test_handle_keepalive_on_closed_connection() -> None:
     assert 0 == len(connector._conns)
 
     await session.close()
-    connector.close()
+    await connector.close()
     server.close()
     await server.wait_closed()
 

@@ -6,10 +6,13 @@ import random
 import sys
 import traceback
 import warnings
+import weakref
 from collections import defaultdict, deque
 from contextlib import suppress
 from http.cookies import SimpleCookie
 from itertools import cycle, islice
+from math import ceil
+from numbers import Real
 from time import monotonic
 from types import TracebackType
 from typing import (  # noqa
@@ -29,7 +32,9 @@ from typing import (  # noqa
     cast,
 )
 
-from . import hdrs, helpers
+from async_timeout import timeout_at
+
+from . import hdrs
 from .abc import AbstractResolver
 from .client_exceptions import (
     ClientConnectionError,
@@ -68,54 +73,34 @@ if TYPE_CHECKING:  # pragma: no cover
     from .tracing import Trace
 
 
+log = logging.getLogger(__name__)
+
+
 class Connection:
-
-    _source_traceback = None
-    _transport = None
-
     def __init__(
         self,
         connector: "BaseConnector",
         key: "ConnectionKey",
         protocol: ResponseHandler,
-        loop: asyncio.AbstractEventLoop,
     ) -> None:
         self._key = key
-        self._connector = connector
-        self._loop = loop
-        self._protocol = protocol  # type: Optional[ResponseHandler]
-        self._callbacks = []  # type: List[Callable[[], None]]
-
-        if loop.get_debug():
-            self._source_traceback = traceback.extract_stack(sys._getframe(1))
+        self._closed = False
+        self._connector: weakref.ref[BaseConnector] = weakref.ref(connector)
+        self._protocol: weakref.ref[ResponseHandler] = weakref.ref(protocol)
+        self._callbacks: List[Callable[[], None]] = []
 
     def __repr__(self) -> str:
         return f"Connection<{self._key}>"
 
-    def __del__(self, _warnings: Any = warnings) -> None:
-        if self._protocol is not None:
-            _warnings.warn(
-                f"Unclosed connection {self!r}", ResourceWarning, source=self
-            )
-            if self._loop.is_closed():
-                return
-
-            self._connector._release(self._key, self._protocol, should_close=True)
-
-            context = {"client_connection": self, "message": "Unclosed connection"}
-            if self._source_traceback is not None:
-                context["source_traceback"] = self._source_traceback
-            self._loop.call_exception_handler(context)
-
     @property
     def transport(self) -> Optional[asyncio.Transport]:
-        if self._protocol is None:
-            return None
-        return self._protocol.transport
+        return self.protocol.transport
 
     @property
-    def protocol(self) -> Optional[ResponseHandler]:
-        return self._protocol
+    def protocol(self) -> ResponseHandler:
+        ret = self._protocol()
+        assert ret is not None
+        return ret
 
     def add_callback(self, callback: Callable[[], None]) -> None:
         if callback is not None:
@@ -131,22 +116,33 @@ class Connection:
     def close(self) -> None:
         self._notify_release()
 
-        if self._protocol is not None:
-            self._connector._release(self._key, self._protocol, should_close=True)
-            self._protocol = None
+        if not self._closed:
+            proto = self.protocol
+            connector = self._connector()
+            assert connector is not None
+            # schedule cleanup if needed
+            connector._release(self._key, proto, should_close=True)
+            self._closed = True
 
     def release(self) -> None:
         self._notify_release()
 
-        if self._protocol is not None:
-            self._connector._release(
-                self._key, self._protocol, should_close=self._protocol.should_close
-            )
-            self._protocol = None
+        if not self._closed:
+            proto = self.protocol
+            connector = self._connector()
+            assert connector is not None
+            connector._release(self._key, proto, should_close=proto.should_close)
+            self._closed = True
 
     @property
     def closed(self) -> bool:
-        return self._protocol is None or not self._protocol.is_connected()
+        return self._closed or not self.protocol.is_connected()
+
+    async def cleanup(self) -> None:
+        proto = self._protocol()
+        if proto is not None:
+            # do actual closing, proto.close() supports reentrancy
+            await proto.close()
 
 
 class _TransportPlaceholder:
@@ -169,16 +165,11 @@ class BaseConnector:
         after each request (and between redirects).
     limit - The total number of simultaneous connections.
     limit_per_host - Number of simultaneous connections to one host.
-    enable_cleanup_closed - Enables clean-up closed ssl transports.
-                            Disabled by default.
     loop - Optional event loop.
     """
 
     _closed = True  # prevent AttributeError in __del__ if ctor was failed
     _source_traceback = None
-
-    # abort transport after 2 seconds (cleanup broken connections)
-    _cleanup_closed_period = 2.0
 
     def __init__(
         self,
@@ -199,9 +190,20 @@ class BaseConnector:
             if keepalive_timeout is sentinel:
                 keepalive_timeout = 15.0
 
+        if enable_cleanup_closed:
+            warnings.warn(
+                "enable_cleanup_closed argument is deperated "
+                "starting from aoihttp 4.0 "
+                "and scheduled for removal in aiohttp 5.0. "
+                "In aiohttp 4.x it does nothing.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         loop = asyncio.get_running_loop()
 
         self._closed = False
+        self._wakeup = asyncio.Event()
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
@@ -214,7 +216,7 @@ class BaseConnector:
         self._acquired_per_host = defaultdict(
             set
         )  # type: DefaultDict[ConnectionKey, Set[ResponseHandler]]
-        self._keepalive_timeout = cast(float, keepalive_timeout)
+        self._keepalive_timeout = keepalive_timeout
         self._force_close = force_close
 
         # {host_key: FIFO list of waiters}
@@ -226,13 +228,7 @@ class BaseConnector:
         self.cookies = SimpleCookie()  # type: SimpleCookie[str]
 
         # start keep-alive connection cleanup task
-        self._cleanup_handle: Optional[asyncio.TimerHandle] = None
-
-        # start cleanup closed transports task
-        self._cleanup_closed_handle: Optional[asyncio.TimerHandle] = None
-        self._cleanup_closed_disabled = not enable_cleanup_closed
-        self._cleanup_closed_transports = []  # type: List[Optional[asyncio.Transport]]
-        self._cleanup_closed()
+        self._cleanup_task = asyncio.create_task(self._cleanup())
 
     def __del__(self, _warnings: Any = warnings) -> None:
         if self._closed:
@@ -240,14 +236,10 @@ class BaseConnector:
         if not self._conns:
             return
 
-        conns = [repr(c) for c in self._conns.values()]
-
-        self._close_immediately()
-
         _warnings.warn(f"Unclosed connector {self!r}", ResourceWarning, source=self)
         context = {
             "connector": self,
-            "connections": conns,
+            "connections": self._conns,
             "message": "Unclosed connector",
         }
         if self._source_traceback is not None:
@@ -288,46 +280,53 @@ class BaseConnector:
         """
         return self._limit_per_host
 
-    def _cleanup(self) -> None:
+    async def _cleanup(self) -> None:
         """Cleanup unused transports."""
-        if self._cleanup_handle:
-            self._cleanup_handle.cancel()
-            # _cleanup_handle should be unset, otherwise _release() will not
-            # recreate it ever!
-            self._cleanup_handle = None
+        while not self._closed:
+            now = self._loop.time()
+            delay = self._keepalive_timeout
+            if delay is sentinel:
+                # force_close mode,
+                # self._wakeup.set() is called after every request
+                delay = 3600  # sane very long value
+            elif delay is None:
+                delay = 0
 
-        now = self._loop.time()
-        timeout = self._keepalive_timeout
+            assert isinstance(delay, Real), type(delay)
+            when = now + delay
+            if delay >= 5:
+                when = ceil(when)
 
-        if self._conns:
-            connections = {}
-            deadline = now - timeout
-            for key, conns in self._conns.items():
-                alive = []
-                for proto, use_time in conns:
-                    if proto.is_connected():
-                        if use_time - deadline < 0:
-                            transport = proto.transport
-                            proto.close()
-                            if key.is_ssl and not self._cleanup_closed_disabled:
-                                self._cleanup_closed_transports.append(transport)
-                        else:
-                            alive.append((proto, use_time))
-                    else:
-                        transport = proto.transport
-                        proto.close()
-                        if key.is_ssl and not self._cleanup_closed_disabled:
-                            self._cleanup_closed_transports.append(transport)
+            try:
+                async with timeout_at(when):
+                    await self._wakeup.wait()
+            except asyncio.TimeoutError:
+                pass
+            self._wakeup.clear()
 
-                if alive:
-                    connections[key] = alive
+            now = self._loop.time()
 
-            self._conns = connections
+            if self._conns:
+                to_close = []
+                connections = {}
+                deadline = now - delay
+                for key, conns in self._conns.items():
+                    alive = []
+                    for proto, use_time in conns:
+                        if proto.is_connected():
+                            if use_time - deadline < 0 or self._closed:
+                                to_close.append(proto.close())
+                            else:
+                                alive.append((proto, use_time))
 
-        if self._conns:
-            self._cleanup_handle = helpers.weakref_handle(
-                self, "_cleanup", timeout, self._loop
-            )
+                    if alive:
+                        connections[key] = alive
+
+                self._conns = connections
+                results = await asyncio.gather(*to_close, return_exceptions=True)
+                for res in results:
+                    if isinstance(res, BaseException):
+                        log.error("Error while cleaning up connection:", exc_info=res)
 
     def _drop_acquired_per_host(
         self, key: "ConnectionKey", val: ResponseHandler
@@ -340,78 +339,13 @@ class BaseConnector:
         if not conns:
             del self._acquired_per_host[key]
 
-    def _cleanup_closed(self) -> None:
-        """Double confirmation for transport close.
-
-        Some broken ssl servers may leave socket open without proper close.
-        """
-        if self._cleanup_closed_handle:
-            self._cleanup_closed_handle.cancel()
-
-        for transport in self._cleanup_closed_transports:
-            if transport is not None:
-                transport.abort()
-
-        self._cleanup_closed_transports = []
-
-        if not self._cleanup_closed_disabled:
-            self._cleanup_closed_handle = helpers.weakref_handle(
-                self, "_cleanup_closed", self._cleanup_closed_period, self._loop
-            )
-
     async def close(self) -> None:
         """Close all opened transports."""
-        waiters = self._close_immediately()
-        if waiters:
-            results = await asyncio.gather(*waiters, return_exceptions=True)
-            for res in results:
-                if isinstance(res, Exception):
-                    err_msg = "Error while closing connector: " + repr(res)
-                    logging.error(err_msg)
-
-    def _close_immediately(self) -> List["asyncio.Future[None]"]:
-        waiters = []  # type: List['asyncio.Future[None]']
-
         if self._closed:
-            return waiters
-
+            return
         self._closed = True
-
-        try:
-            if self._loop.is_closed():
-                return waiters
-
-            # cancel cleanup task
-            if self._cleanup_handle:
-                self._cleanup_handle.cancel()
-
-            # cancel cleanup close task
-            if self._cleanup_closed_handle:
-                self._cleanup_closed_handle.cancel()
-
-            for data in self._conns.values():
-                for proto, t0 in data:
-                    proto.close()
-                    waiters.append(proto.closed)
-
-            for proto in self._acquired:
-                proto.close()
-                waiters.append(proto.closed)
-
-            # TODO (A.Yushovskiy, 24-May-2019) collect transp. closing futures
-            for transport in self._cleanup_closed_transports:
-                if transport is not None:
-                    transport.abort()
-
-            return waiters
-
-        finally:
-            self._conns.clear()
-            self._acquired.clear()
-            self._waiters.clear()
-            self._cleanup_handle = None
-            self._cleanup_closed_transports.clear()
-            self._cleanup_closed_handle = None
+        self._wakeup.set()
+        await self._cleanup_task
 
     @property
     def closed(self) -> bool:
@@ -493,7 +427,7 @@ class BaseConnector:
                 for trace in traces:
                     await trace.send_connection_queued_end()
 
-        proto = self._get(key)
+        proto = await self._get(key)
         if proto is None:
             placeholder = cast(ResponseHandler, _TransportPlaceholder(self._loop))
             self._acquired.add(placeholder)
@@ -506,7 +440,7 @@ class BaseConnector:
             try:
                 proto = await self._create_connection(req, traces, timeout)
                 if self._closed:
-                    proto.close()
+                    await proto.close()
                     raise ClientConnectionError("Connector is closed.")
             except BaseException:
                 if not self._closed:
@@ -535,34 +469,32 @@ class BaseConnector:
 
         self._acquired.add(proto)
         self._acquired_per_host[key].add(proto)
-        return Connection(self, key, proto, self._loop)
+        return Connection(self, key, proto)
 
-    def _get(self, key: "ConnectionKey") -> Optional[ResponseHandler]:
+    async def _get(self, key: "ConnectionKey") -> Optional[ResponseHandler]:
         try:
             conns = self._conns[key]
         except KeyError:
             return None
 
+        keepalive_timeout = self._keepalive_timeout
+
         t1 = self._loop.time()
         while conns:
             proto, t0 = conns.pop()
             if proto.is_connected():
-                if t1 - t0 > self._keepalive_timeout:
-                    transport = proto.transport
-                    proto.close()
-                    # only for SSL transports
-                    if key.is_ssl and not self._cleanup_closed_disabled:
-                        self._cleanup_closed_transports.append(transport)
+                if (
+                    not isinstance(keepalive_timeout, Real)
+                    or t1 - t0 > keepalive_timeout
+                ):
+                    await proto.close()
                 else:
                     if not conns:
                         # The very last connection was reclaimed: drop the key
                         del self._conns[key]
                     return proto
             else:
-                transport = proto.transport
-                proto.close()
-                if key.is_ssl and not self._cleanup_closed_disabled:
-                    self._cleanup_closed_transports.append(transport)
+                await proto.close()
 
         # No more connections: drop the key
         del self._conns[key]
@@ -626,21 +558,12 @@ class BaseConnector:
             should_close = True
 
         if should_close or protocol.should_close:
-            transport = protocol.transport
-            protocol.close()
-
-            if key.is_ssl and not self._cleanup_closed_disabled:
-                self._cleanup_closed_transports.append(transport)
+            self._wakeup.set()
         else:
             conns = self._conns.get(key)
             if conns is None:
                 conns = self._conns[key] = []
             conns.append((protocol, self._loop.time()))
-
-            if self._cleanup_handle is None:
-                self._cleanup_handle = helpers.weakref_handle(
-                    self, "_cleanup", self._keepalive_timeout, self._loop
-                )
 
     async def _create_connection(
         self, req: "ClientRequest", traces: List["Trace"], timeout: "ClientTimeout"
@@ -709,8 +632,6 @@ class TCPConnector(BaseConnector):
         after each request (and between redirects).
     limit - The total number of simultaneous connections.
     limit_per_host - Number of simultaneous connections to one host.
-    enable_cleanup_closed - Enables clean-up closed ssl transports.
-                            Disabled by default.
     loop - Optional event loop.
     """
 
@@ -754,11 +675,6 @@ class TCPConnector(BaseConnector):
         )  # type: Dict[Tuple[str, int], EventResultOrError]
         self._family = family
         self._local_addr = local_addr
-
-    def _close_immediately(self) -> List["asyncio.Future[None]"]:
-        for ev in self._throttle_dns_events.values():
-            ev.cancel()
-        return super()._close_immediately()
 
     @property
     def family(self) -> int:
@@ -1113,9 +1029,7 @@ class TCPConnector(BaseConnector):
                 try:
                     fingerprint.check(transp)
                 except ServerFingerprintMismatch as exc:
-                    transp.close()
-                    if not self._cleanup_closed_disabled:
-                        self._cleanup_closed_transports.append(transp)
+                    await proto.close()
                     last_exc = exc
                     continue
 
@@ -1176,10 +1090,12 @@ class TCPConnector(BaseConnector):
             key = dataclasses.replace(
                 req.connection_key, proxy=None, proxy_auth=None, proxy_headers_hash=None
             )
-            conn = Connection(self, key, proto, self._loop)
+            conn = Connection(self, key, proto)
             proxy_resp = await proxy_req.send(conn)
             try:
-                protocol = conn._protocol
+                weak_protocol = conn._protocol
+                assert weak_protocol is not None
+                protocol = weak_protocol()
                 assert protocol is not None
 
                 # read_until_eof=True will ensure the connection isn't closed
@@ -1192,8 +1108,7 @@ class TCPConnector(BaseConnector):
                 conn.close()
                 raise
             else:
-                conn._protocol = None
-                conn._transport = None
+                # Forget about connection object, reuse the socket
                 try:
                     if resp.status != 200:
                         message = resp.reason
