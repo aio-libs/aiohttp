@@ -189,12 +189,12 @@ class ClientWebSocketResponse:
                 await self._writer.close(code, message)
             except asyncio.CancelledError:
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
-                self._response.close()
+                await self._response.abort()
                 raise
             except Exception as exc:
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 self._exception = exc
-                self._response.close()
+                await self._response.abort()
                 return True
 
             if self._closing:
@@ -207,12 +207,12 @@ class ClientWebSocketResponse:
                         msg = await self._reader.read()
                 except asyncio.CancelledError:
                     self._close_code = WSCloseCode.ABNORMAL_CLOSURE
-                    self._response.close()
+                    await self._response.abort()
                     raise
                 except Exception as exc:
                     self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                     self._exception = exc
-                    self._response.close()
+                    await self._response.abort()
                     return True
 
                 if msg.type == WSMsgType.CLOSE:
