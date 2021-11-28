@@ -843,7 +843,7 @@ class Request(BaseRequest):
         scheme: Union[str, _SENTINEL] = sentinel,
         host: Union[str, _SENTINEL] = sentinel,
         remote: Union[str, _SENTINEL] = sentinel,
-        client_max_size: [int, _SENTINEL] = sentinel,
+        client_max_size: Union[int, _SENTINEL] = sentinel,
     ) -> "Request":
         ret = super().clone(
             method=method,
