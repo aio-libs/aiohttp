@@ -17,7 +17,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import client, hdrs, web
 from aiohttp.client import ClientSession
-from aiohttp.client_reqrep import ClientRequest
+from aiohttp.client_reqrep import ClientRequest, ConnectionKey
 from aiohttp.connector import BaseConnector, TCPConnector
 from aiohttp.test_utils import make_mocked_coro
 
@@ -29,7 +29,8 @@ def connector(loop: Any, create_mocked_conn: Any):
 
     conn = loop.run_until_complete(make_conn())
     proto = create_mocked_conn()
-    conn._conns["a"] = [(proto, 123)]
+    key = ConnectionKey("localhost", 80, True, None, None, None, None)
+    conn._conns[key] = [(proto, 123)]
     yield conn
     loop.run_until_complete(conn.close())
 

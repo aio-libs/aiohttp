@@ -1,0 +1,1 @@
+Ensure all SSL connections abort the transport when closing the connector.
