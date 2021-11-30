@@ -50,7 +50,7 @@ click==8.0.3
     #   wait-for-it
 click-default-group==1.2.2
     # via towncrier
-coverage==6.1.2
+coverage==6.2
     # via
     #   -r requirements/test.txt
     #   pytest-cov
@@ -185,7 +185,7 @@ six==1.16.0
     #   virtualenv
 snowballstemmer==2.1.0
     # via sphinx
-sphinx==4.3.0
+sphinx==4.3.1
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-asyncio
