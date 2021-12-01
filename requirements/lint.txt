@@ -1,4 +1,4 @@
 -r typing-extensions.txt
 mypy==0.910; implementation_name=="cpython"
-pre-commit==2.15.0
+pre-commit==2.16.0
 pytest==6.2.5
