@@ -49,6 +49,7 @@ repos:
       ^requirements/constraints[.]txt$
   - id: trailing-whitespace
   - id: file-contents-sorter
+    args: ['--ignore-case']
     files: |
       CONTRIBUTORS.txt|
       docs/spelling_wordlist.txt|
