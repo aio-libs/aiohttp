@@ -1,0 +1,1 @@
+Use str.partition() instead of .split() with a limit and a check.
