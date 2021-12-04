@@ -192,7 +192,8 @@ class ClientSession:
         ]
     )
 
-    _source_traceback = None
+    _source_traceback: Optional[traceback.StackSummary] = None
+    _connector: Optional[BaseConnector] = None
 
     def __init__(
         self,
@@ -221,9 +222,6 @@ class ClientSession:
         trace_configs: Optional[List[TraceConfig]] = None,
         read_bufsize: int = 2 ** 16,
     ) -> None:
-        # for safe __del__ if exception is raised below
-        self._connector: Optional[BaseConnector] = None
-
         if loop is None:
             if connector is not None:
                 loop = connector._loop
