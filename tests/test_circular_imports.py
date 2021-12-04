@@ -68,12 +68,7 @@ def _discover_path_importables(
         )
 
 
-# FIXME: Ignore is necessary for as long as pytest hasn't figured out their
-# FIXME: typing for the `parametrize` mark.
-# Refs:
-# * https://github.com/pytest-dev/pytest/issues/7469#issuecomment-918345196
-# * https://github.com/pytest-dev/pytest/issues/3342
-@pytest.mark.parametrize(  # type: ignore[misc]
+@pytest.mark.parametrize(
     "import_path",
     _find_all_importables(aiohttp),
 )
