@@ -167,6 +167,8 @@ jobs:
       with:
         name: llhttp
         path: vendor/llhttp/build/
+    - name: Install dependencies
+        make install
     - name: Run unittests
       env:
         COLOR: 'yes'
