@@ -41,7 +41,7 @@ def normalize_path_middleware(
     remove_slash: bool = False,
     merge_slashes: bool = True,
     redirect_class: Type[_HTTPMove] = HTTPPermanentRedirect,
-) -> _Middleware:
+) -> Middleware:
     """Factory for producing a middleware that normalizes the path of a request.
 
     Normalizing means:
