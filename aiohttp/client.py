@@ -221,7 +221,8 @@ class ClientSession:
         trace_configs: Optional[List[TraceConfig]] = None,
         read_bufsize: int = 2 ** 16,
     ) -> None:
-        self._connector = None  # for safe __del__ if exception is raised below
+        # for safe __del__ if exception is raised below
+        self._connector: Optional[BaseConnector] = None
 
         if loop is None:
             if connector is not None:
@@ -255,7 +256,7 @@ class ClientSession:
         if cookies is not None:
             self._cookie_jar.update_cookies(cookies)
 
-        self._connector = connector  # type: Optional[BaseConnector]
+        self._connector = connector
         self._connector_owner = connector_owner
         self._default_auth = auth
         self._version = version
