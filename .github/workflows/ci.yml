@@ -169,7 +169,7 @@ jobs:
         path: vendor/llhttp/build/
     - name: Install dependencies
       run: |
-        make install
+        make .develop
     - name: Run unittests
       env:
         COLOR: yes
