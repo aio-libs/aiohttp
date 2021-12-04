@@ -439,7 +439,6 @@ class ClientSession:
             real_timeout: ClientTimeout = self._timeout
         else:
             if not isinstance(timeout, ClientTimeout):
-                assert isinstance(timeout, (int, float))
                 real_timeout = ClientTimeout(total=timeout)
             else:
                 real_timeout = timeout
