@@ -221,6 +221,8 @@ class ClientSession:
         trace_configs: Optional[List[TraceConfig]] = None,
         read_bufsize: int = 2 ** 16,
     ) -> None:
+        self._connector = None  # for safe __del__ if exception is raised below
+
         if loop is None:
             if connector is not None:
                 loop = connector._loop
@@ -334,6 +336,9 @@ class ClientSession:
             super().__setattr__(name, val)
 
     def __del__(self, _warnings: Any = warnings) -> None:
+        if self._connector is None:
+            # Exception is raised in the middle of __init__
+            return
         if not self.closed:
             if PY_36:
                 kwargs = {"source": self}
