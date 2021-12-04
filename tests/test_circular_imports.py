@@ -8,14 +8,14 @@ This module is based on an idea that pytest uses for self-testing:
 * https://github.com/pytest-dev/pytest/blob/d18c75b/testing/test_meta.py
 * https://twitter.com/codewithanthony/status/1229445110510735361
 """
-from itertools import chain
-from pathlib import Path
-from types import ModuleType
-from typing import Generator, List
 import os
 import pkgutil
 import subprocess
 import sys
+from itertools import chain
+from pathlib import Path
+from types import ModuleType
+from typing import Generator, List
 
 import pytest
 
@@ -44,7 +44,8 @@ def _find_all_importables(pkg: ModuleType) -> List[str]:
 
 
 def _discover_path_importables(
-        pkg_pth: Path, pkg_name: str,
+    pkg_pth: Path,
+    pkg_name: str,
 ) -> Generator[str, None, None]:
     """Yield all importables under a given path and package."""
     for dir_path, _d, file_names in os.walk(pkg_pth):
@@ -61,7 +62,8 @@ def _discover_path_importables(
         yield from (
             pkg_path
             for _, pkg_path, _ in pkgutil.walk_packages(
-                (str(pkg_dir_path),), prefix=f"{pkg_pref}.",
+                (str(pkg_dir_path),),
+                prefix=f"{pkg_pref}.",
             )
         )
 
