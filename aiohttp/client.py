@@ -337,9 +337,6 @@ class ClientSession:
             super().__setattr__(name, val)
 
     def __del__(self, _warnings: Any = warnings) -> None:
-        if self._connector is None:
-            # Exception is raised in the middle of __init__
-            return
         if not self.closed:
             if PY_36:
                 kwargs = {"source": self}
