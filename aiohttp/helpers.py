@@ -356,23 +356,15 @@ def parse_mimetype(mimetype: str) -> MimeType:
     for item in parts[1:]:
         if not item:
             continue
-        key, value = cast(
-            Tuple[str, str], item.split("=", 1) if "=" in item else (item, "")
-        )
+        key, _, value = item.partition("=")
         params.add(key.lower().strip(), value.strip(' "'))
 
     fulltype = parts[0].strip().lower()
     if fulltype == "*":
         fulltype = "*/*"
 
-    mtype, stype = (
-        cast(Tuple[str, str], fulltype.split("/", 1))
-        if "/" in fulltype
-        else (fulltype, "")
-    )
-    stype, suffix = (
-        cast(Tuple[str, str], stype.split("+", 1)) if "+" in stype else (stype, "")
-    )
+    mtype, _, stype = fulltype.partition("/")
+    stype, _, suffix = stype.partition("+")
 
     return MimeType(
         type=mtype, subtype=stype, suffix=suffix, parameters=MultiDictProxy(params)
