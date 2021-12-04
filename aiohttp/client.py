@@ -72,6 +72,7 @@ from .connector import (
 )
 from .cookiejar import CookieJar
 from .helpers import (
+    _SENTINEL,
     DEBUG,
     PY_36,
     BasicAuth,
@@ -191,7 +192,8 @@ class ClientSession:
         ]
     )
 
-    _source_traceback = None
+    _source_traceback: Optional[traceback.StackSummary] = None
+    _connector: Optional[BaseConnector] = None
 
     def __init__(
         self,
@@ -252,7 +254,7 @@ class ClientSession:
         if cookies is not None:
             self._cookie_jar.update_cookies(cookies)
 
-        self._connector = connector  # type: Optional[BaseConnector]
+        self._connector = connector
         self._connector_owner = connector_owner
         self._default_auth = auth
         self._version = version
@@ -381,7 +383,7 @@ class ClientSession:
         read_until_eof: bool = True,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
-        timeout: Union[ClientTimeout, object] = sentinel,
+        timeout: Union[ClientTimeout, _SENTINEL] = sentinel,
         verify_ssl: Optional[bool] = None,
         fingerprint: Optional[bytes] = None,
         ssl_context: Optional[SSLContext] = None,
