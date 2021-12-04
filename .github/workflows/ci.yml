@@ -126,7 +126,7 @@ jobs:
           - os: windows
             no-extensions: 'Y'
         include:
-          - pyver: pypy3
+          - pyver: pypy-3.8
             no-extensions: 'Y'
             os: ubuntu
       fail-fast: true
@@ -167,9 +167,12 @@ jobs:
       with:
         name: llhttp
         path: vendor/llhttp/build/
+    - name: Install dependencies
+      run: |
+        make .develop
     - name: Run unittests
       env:
-        COLOR: 'yes'
+        COLOR: yes
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
       run: |
         make vvtest

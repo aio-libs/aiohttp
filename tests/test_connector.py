@@ -248,7 +248,7 @@ async def test_create_conn(loop) -> None:
         await conn._create_connection(object(), [], object())
 
 
-async def test_context_manager(loop) -> None:
+async def test_connector_context_manager(loop) -> None:
     conn = aiohttp.BaseConnector(loop=loop)
 
     with pytest.warns(DeprecationWarning):

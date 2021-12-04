@@ -192,7 +192,8 @@ class ClientSession:
         ]
     )
 
-    _source_traceback = None
+    _source_traceback: Optional[traceback.StackSummary] = None
+    _connector: Optional[BaseConnector] = None
 
     def __init__(
         self,
@@ -253,7 +254,7 @@ class ClientSession:
         if cookies is not None:
             self._cookie_jar.update_cookies(cookies)
 
-        self._connector = connector  # type: Optional[BaseConnector]
+        self._connector = connector
         self._connector_owner = connector_owner
         self._default_auth = auth
         self._version = version
@@ -439,7 +440,6 @@ class ClientSession:
             real_timeout: ClientTimeout = self._timeout
         else:
             if not isinstance(timeout, ClientTimeout):
-                assert isinstance(timeout, (int, float))
                 real_timeout = ClientTimeout(total=timeout)
             else:
                 real_timeout = timeout
