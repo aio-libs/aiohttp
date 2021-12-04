@@ -33,7 +33,7 @@ Now, let's try to get a web-page. For example let's query
                 print(resp.status)
                 print(await resp.text())
 
-    asyncio.run(main)
+    asyncio.run(main())
 
 Now, we have a :class:`ClientSession` called ``session`` and a
 :class:`ClientResponse` object called ``resp``. We can get all the
