@@ -126,7 +126,7 @@ jobs:
           - os: windows
             no-extensions: 'Y'
         include:
-          - pyver: pypy3
+          - pyver: pypy-3
             no-extensions: 'Y'
             os: ubuntu
       fail-fast: true
