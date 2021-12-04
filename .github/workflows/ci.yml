@@ -34,7 +34,7 @@ jobs:
       with:
         python-version: 3.8
     - name: Cache PyPI
-      uses: actions/cache@v2.1.6
+      uses: actions/cache@v2.1.7
       with:
         key: pip-lint-${{ hashFiles('requirements/*.txt') }}
         path: ~/.cache/pip
@@ -87,7 +87,7 @@ jobs:
       with:
         submodules: true
     - name: Cache llhttp generated files
-      uses: actions/cache@v2
+      uses: actions/cache@v2.1.7
       id: cache
       with:
         key: llhttp-${{ hashFiles('vendor/llhttp/package.json', 'vendor/llhttp/src/**/*') }}
@@ -113,7 +113,7 @@ jobs:
     needs: gen_llhttp
     strategy:
       matrix:
-        pyver: [3.6, 3.7, 3.8, 3.9, '3.10']
+        pyver: [3.7, 3.8, 3.9, '3.10']
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         exclude:
@@ -126,7 +126,7 @@ jobs:
           - os: windows
             no-extensions: 'Y'
         include:
-          - pyver: pypy3
+          - pyver: pypy-3.8
             no-extensions: 'Y'
             os: ubuntu
       fail-fast: true
@@ -145,7 +145,7 @@ jobs:
       run: |
         echo "::set-output name=dir::$(pip cache dir)"    # - name: Cache
     - name: Cache PyPI
-      uses: actions/cache@v2.1.6
+      uses: actions/cache@v2.1.7
       with:
         key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-${{ hashFiles('requirements/*.txt') }}
         path: ${{ steps.pip-cache.outputs.dir }}
@@ -167,9 +167,12 @@ jobs:
       with:
         name: llhttp
         path: vendor/llhttp/build/
+    - name: Install dependencies
+      run: |
+        make .develop
     - name: Run unittests
       env:
-        COLOR: 'yes'
+        COLOR: yes
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
       run: |
         make vvtest
@@ -182,16 +185,18 @@ jobs:
     #     fail_ci_if_error: false
 
   check:  # This job does nothing and is only used for the branch protection
+    if: always()
+
     needs:
     - test
 
     runs-on: ubuntu-latest
 
     steps:
-      - name: Report success of the test matrix
-        run: >-
-          print("All's good")
-        shell: python
+    - name: Decide whether the needed jobs succeeded or failed
+      uses: re-actors/alls-green@release/v1
+      with:
+        jobs: ${{ toJSON(needs) }}
 
   pre-deploy:
     name: Pre-Deploy
@@ -290,7 +295,7 @@ jobs:
       run: |
         make cythonize
     - name: Build wheels
-      uses: pypa/cibuildwheel@v2.2.2
+      uses: pypa/cibuildwheel@v2.3.0
       env:
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
     - uses: actions/upload-artifact@v2
@@ -323,7 +328,7 @@ jobs:
       run: |
         tree dist
     - name: Make Release
-      uses: aio-libs/create-release@v1.2.3
+      uses: aio-libs/create-release@v1.3.1
       with:
         changes_file: CHANGES.rst
         name: aiohttp

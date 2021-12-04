@@ -5,6 +5,7 @@ import base64
 import binascii
 import cgi
 import datetime
+import enum
 import functools
 import inspect
 import netrc
@@ -46,7 +47,7 @@ from urllib.request import getproxies, proxy_bypass
 
 import async_timeout
 import attr
-from multidict import MultiDict, MultiDictProxy
+from multidict import MultiDict, MultiDictProxy, MultiMapping
 from yarl import URL
 
 from . import hdrs
@@ -82,8 +83,9 @@ else:
 _T = TypeVar("_T")
 _S = TypeVar("_S")
 
+_SENTINEL = enum.Enum("_SENTINEL", "sentinel")
+sentinel = _SENTINEL.sentinel
 
-sentinel = object()  # type: Any
 NO_EXTENSIONS = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))  # type: bool
 
 # N.B. sys.flags.dev_mode is available on Python 3.7+, use getattr
@@ -745,11 +747,13 @@ class HeadersMixin:
 
     ATTRS = frozenset(["_content_type", "_content_dict", "_stored_content_type"])
 
+    _headers: MultiMapping[str]
+
     _content_type = None  # type: Optional[str]
     _content_dict = None  # type: Optional[Dict[str, str]]
-    _stored_content_type = sentinel
+    _stored_content_type: Union[str, None, _SENTINEL] = sentinel
 
-    def _parse_content_type(self, raw: str) -> None:
+    def _parse_content_type(self, raw: Optional[str]) -> None:
         self._stored_content_type = raw
         if raw is None:
             # default value according to RFC 2616
@@ -761,7 +765,7 @@ class HeadersMixin:
     @property
     def content_type(self) -> str:
         """The value of content part for Content-Type HTTP header."""
-        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore[attr-defined]
+        raw = self._headers.get(hdrs.CONTENT_TYPE)
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
         return self._content_type  # type: ignore[return-value]
@@ -769,7 +773,7 @@ class HeadersMixin:
     @property
     def charset(self) -> Optional[str]:
         """The value of charset part for Content-Type HTTP header."""
-        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore[attr-defined]
+        raw = self._headers.get(hdrs.CONTENT_TYPE)
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
         return self._content_dict.get("charset")  # type: ignore[union-attr]
@@ -777,9 +781,7 @@ class HeadersMixin:
     @property
     def content_length(self) -> Optional[int]:
         """The value of Content-Length HTTP header."""
-        content_length = self._headers.get(  # type: ignore[attr-defined]
-            hdrs.CONTENT_LENGTH
-        )
+        content_length = self._headers.get(hdrs.CONTENT_LENGTH)
 
         if content_length is not None:
             return int(content_length)

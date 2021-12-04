@@ -235,7 +235,7 @@ def test_delete_deco(router) -> None:
 def test_options_deco(router) -> None:
     routes = web.RouteTableDef()
 
-    @routes.options('/path')
+    @routes.options("/path")
     async def handler(request):
         pass
 
@@ -244,8 +244,8 @@ def test_options_deco(router) -> None:
     assert len(router.routes()) == 1
 
     route = list(router.routes())[0]
-    assert route.method == 'OPTIONS'
-    assert str(route.url_for()) == '/path'
+    assert route.method == "OPTIONS"
+    assert str(route.url_for()) == "/path"
 
 
 def test_route_deco(router) -> None:
