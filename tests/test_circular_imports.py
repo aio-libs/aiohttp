@@ -7,7 +7,7 @@ This module is based on an idea that pytest uses for self-testing:
 * https://github.com/sanitizers/octomachinery/blob/be18b54/tests/circular_imports_test.py
 * https://github.com/pytest-dev/pytest/blob/d18c75b/testing/test_meta.py
 * https://twitter.com/codewithanthony/status/1229445110510735361
-"""
+"""  # noqa: E501
 import os
 import pkgutil
 import subprocess
