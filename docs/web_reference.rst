@@ -149,6 +149,14 @@ and :ref:`aiohttp-web-signals` handlers.
 
       .. seealso:: :ref:`aiohttp-web-forwarded-support`
 
+   .. attribute:: client_max_size
+
+      The maximum size of the request body.
+
+      The value could be overridden by :meth:`~BaseRequest.clone`.
+
+      Read-only :class:`int` property.
+
    .. attribute:: path_qs
 
       The URL including PATH_INFO and the query string. e.g.,
