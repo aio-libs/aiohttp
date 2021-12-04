@@ -227,19 +227,6 @@ class ClientSession:
 
         loop = get_running_loop(loop)
 
-        if loop.get_debug():
-            self._source_traceback = traceback.extract_stack(sys._getframe(1))
-
-        if connector is None:
-            connector = TCPConnector(loop=loop)
-
-        self._loop = loop
-        self._connector = connector  # type: Optional[BaseConnector]
-        self._connector_owner = connector_owner
-
-        if connector._loop is not loop:
-            raise RuntimeError("Session and connector has to use same event loop")
-
         if base_url is None or isinstance(base_url, URL):
             self._base_url: Optional[URL] = base_url
         else:
@@ -248,6 +235,17 @@ class ClientSession:
                 self._base_url.origin() == self._base_url
             ), "Only absolute URLs without path part are supported"
 
+        if connector is None:
+            connector = TCPConnector(loop=loop)
+
+        if connector._loop is not loop:
+            raise RuntimeError("Session and connector has to use same event loop")
+
+        self._loop = loop
+
+        if loop.get_debug():
+            self._source_traceback = traceback.extract_stack(sys._getframe(1))
+
         if cookie_jar is None:
             cookie_jar = CookieJar(loop=loop)
         self._cookie_jar = cookie_jar
@@ -255,6 +253,8 @@ class ClientSession:
         if cookies is not None:
             self._cookie_jar.update_cookies(cookies)
 
+        self._connector = connector  # type: Optional[BaseConnector]
+        self._connector_owner = connector_owner
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
