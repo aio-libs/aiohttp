@@ -168,10 +168,11 @@ jobs:
         name: llhttp
         path: vendor/llhttp/build/
     - name: Install dependencies
+      run: |
         make install
     - name: Run unittests
       env:
-        COLOR: 'yes'
+        COLOR: yes
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
       run: |
         make vvtest
