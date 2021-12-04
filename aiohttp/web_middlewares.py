@@ -1,7 +1,7 @@
 import re
-from typing import TYPE_CHECKING, Awaitable, Callable, Tuple, Type, TypeVar
+from typing import TYPE_CHECKING, Tuple, Type, TypeVar
 
-from .typedefs import Handler
+from .typedefs import Handler, Middleware
 from .web_exceptions import HTTPPermanentRedirect, _HTTPMove
 from .web_request import Request
 from .web_response import StreamResponse
@@ -35,16 +35,13 @@ def middleware(f: _Func) -> _Func:
     return f
 
 
-_Middleware = Callable[[Request, Handler], Awaitable[StreamResponse]]
-
-
 def normalize_path_middleware(
     *,
     append_slash: bool = True,
     remove_slash: bool = False,
     merge_slashes: bool = True,
     redirect_class: Type[_HTTPMove] = HTTPPermanentRedirect,
-) -> _Middleware:
+) -> Middleware:
     """Factory for producing a middleware that normalizes the path of a request.
 
     Normalizing means:
@@ -110,7 +107,7 @@ def normalize_path_middleware(
     return impl
 
 
-def _fix_request_current_app(app: "Application") -> _Middleware:
+def _fix_request_current_app(app: "Application") -> Middleware:
     @middleware
     async def impl(request: Request, handler: Handler) -> StreamResponse:
         with request.match_info.set_current_app(app):
