@@ -126,7 +126,7 @@ pluggy==1.0.0
     # via pytest
 pre-commit==2.16.0
     # via -r requirements/lint.txt
-proxy.py==2.3.1
+proxy.py==2.4.0rc2
     # via -r requirements/test.txt
 py==1.10.0
     # via pytest
@@ -234,7 +234,6 @@ typing-extensions==3.7.4.3
     #   -r requirements/typing-extensions.txt
     #   async-timeout
     #   mypy
-    #   proxy.py
     #   pydantic
 uritemplate==4.1.1
     # via gidgethub
