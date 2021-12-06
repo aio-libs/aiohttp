@@ -28,16 +28,13 @@ jobs:
     - name: Cache PyPI
       uses: actions/cache@v2.1.7
       with:
-        key: post-update-${{ hashFiles('requirements/*.txt') }}
+        key: post-update
         path: ~/.cache/pip
         restore-keys: |
             post-update-
-    - name: Update pip, wheel, setuptools
+    - name: Update pip-tools
       run: |
-        python -m pip install -U pip wheel setuptools
-    - name: Install dependencies
-      run: |
-        python -m pip install -r requirements/dev.txt -c requirements/constraints.txt
+        python -m pip install -U pip-tools
     - name: Run pip-compile
       run: |
         make compile-deps
