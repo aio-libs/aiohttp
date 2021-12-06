@@ -196,7 +196,7 @@ sphinxcontrib-applehelp==1.0.2
     # via sphinx
 sphinxcontrib-asyncio==0.3.0
     # via -r requirements/doc.txt
-sphinxcontrib-blockdiag==3.0.0
+sphinxcontrib-blockdiag==2.0.0
     # via -r requirements/doc.txt
 sphinxcontrib-devhelp==1.0.2
     # via sphinx
