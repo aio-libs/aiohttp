@@ -43,7 +43,7 @@ jobs:
         python -m pip install -U pip wheel setuptools
     - name: Install dependencies
       run: |
-        python -m pip install -r requirements/lint.txt -c requirements/constraints.txt
+        python -m pip install -r requirements/dev.txt -c requirements/constraints.txt
     - name: Run pip-compile
       run: |
         make compile-deps
