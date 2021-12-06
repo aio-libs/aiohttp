@@ -17,15 +17,9 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2.4.0
-    - name: Generate Token
-      id: generate_token
-      uses: tibdex/github-app-token@v1
-      with:
-        app_id: ${{ secrets.BOT_APP_ID }}
-        private_key: ${{ secrets.BOT_PRIVATE_KEY }}
     - name: Login
       run: |
-        echo "${{ steps.generate_token.outputs.token }}" | gh auth login --with-token
+        echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
     - name: Checkout
       run: |
         gh pr checkout ${{ github.event.pull_request.number }}
@@ -48,7 +42,5 @@ jobs:
       run: |
         make compile-deps
     - name: Commit and push if needed
-      run: |
-        git add requirements/constraints.txt || true
-        git commit -m "Update constraints" || true
-        git push || true
+      uses: stefanzweifel/git-auto-commit-action@v4
+      commit_message: Recompile requirements/constraints.txt
