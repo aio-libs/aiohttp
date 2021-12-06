@@ -43,4 +43,5 @@ jobs:
         make compile-deps
     - name: Commit and push if needed
       uses: stefanzweifel/git-auto-commit-action@v4
-      commit_message: Recompile requirements/constraints.txt
+      with:
+        commit_message: Recompile requirements/constraints.txt
