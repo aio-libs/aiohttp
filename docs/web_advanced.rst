@@ -239,6 +239,13 @@ Data Sharing aka No Singletons Please
 :mod:`aiohttp.web` discourages the use of *global variables*, aka *singletons*.
 Every variable should have its own context that is *not global*.
 
+Global variables are generally considered bad practice due to the complexity
+they add in keeping track of state changes to variables.
+
+*aiohttp* does not use globals by design, which will reduce the number of bugs
+and/or unexpected behaviors for its users. For example, an i18n translated string
+being written for one request and then being served to another.
+
 So, :class:`Application` and :class:`Request`
 support a :class:`collections.abc.MutableMapping` interface (i.e. they are
 dict-like objects), allowing them to be used as data stores.
@@ -271,6 +278,10 @@ For this please use :attr:`Request.config_dict` read-only property::
     async def handler(request):
         data = request.config_dict['my_private_key']
 
+The app object can be used in this way to reuse a database connection or anything
+else needed throughout the application.
+
+See this reference section for more detail: :ref:`aiohttp-web-app-and-router`.
 
 Request's storage
 ^^^^^^^^^^^^^^^^^
@@ -993,9 +1004,9 @@ headers too, pushing non-trusted data values.
 That's why *aiohttp server* should setup *forwarded* headers in custom
 middleware in tight conjunction with *reverse proxy configuration*.
 
-For changing :attr:`BaseRequest.scheme` :attr:`BaseRequest.host` and
-:attr:`BaseRequest.remote` the middleware might use
-:meth:`BaseRequest.clone`.
+For changing :attr:`BaseRequest.scheme` :attr:`BaseRequest.host`
+:attr:`BaseRequest.remote` and :attr:`BaseRequest.client_max_size`
+the middleware might use :meth:`BaseRequest.clone`.
 
 .. seealso::
 
