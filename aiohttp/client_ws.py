@@ -83,7 +83,12 @@ class ClientWebSocketResponse:
 
         if self._heartbeat is not None:
             self._heartbeat_cb = call_later(
-                self._send_heartbeat, self._heartbeat, self._loop
+                self._send_heartbeat,
+                self._heartbeat,
+                self._loop,
+                timeout_ceil_threshold=self._conn._connector._timeout_ceil_threshold
+                if self._conn is not None
+                else 5,
             )
 
     def _send_heartbeat(self) -> None:
@@ -96,7 +101,12 @@ class ClientWebSocketResponse:
             if self._pong_response_cb is not None:
                 self._pong_response_cb.cancel()
             self._pong_response_cb = call_later(
-                self._pong_not_received, self._pong_heartbeat, self._loop
+                self._pong_not_received,
+                self._pong_heartbeat,
+                self._loop,
+                timeout_ceil_threshold=self._conn._connector._timeout_ceil_threshold
+                if self._conn is not None
+                else 5,
             )
 
     def _pong_not_received(self) -> None:
