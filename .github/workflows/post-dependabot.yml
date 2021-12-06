@@ -54,6 +54,7 @@ jobs:
           echo "::set-output name=changed::true"
         else
           echo "::set-output name=changed::false"
+        fi
     - name: Commit and push if needed
       if: ${{ steps.meta.values.changed == 'true' }}
       run: |
