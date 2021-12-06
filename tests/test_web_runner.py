@@ -113,6 +113,36 @@ def test_app_handler_args() -> None:
     assert runner._kwargs == {"access_log_class": web.AccessLogger, "test": True}
 
 
+async def test_app_handler_args_failure() -> None:
+    app = web.Application(handler_args={"unknown_parameter": 5})
+    runner = web.AppRunner(app)
+    await runner.setup()
+    assert runner._server
+    rh = runner._server()
+    assert rh._timeout_ceil_threshold == 5
+    await runner.cleanup()
+    assert app
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    (
+        (2, 2),
+        (None, 5),
+        ("2", 2),
+    ),
+)
+async def test_app_handler_args_ceil_threshold(value: Any, expected: Any) -> None:
+    app = web.Application(handler_args={"timeout_ceil_threshold": value})
+    runner = web.AppRunner(app)
+    await runner.setup()
+    assert runner._server
+    rh = runner._server()
+    assert rh._timeout_ceil_threshold == expected
+    await runner.cleanup()
+    assert app
+
+
 async def test_app_make_handler_access_log_class_bad_type1() -> None:
     class Logger:
         pass
