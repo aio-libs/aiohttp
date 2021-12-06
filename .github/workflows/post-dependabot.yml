@@ -47,17 +47,8 @@ jobs:
     - name: Run pip-compile
       run: |
         make compile-deps
-    - name: Check if compiled deps are changed
-      id: meta
-      run: |
-        if [[ -n "$(git status --porcelain)" ]]; then
-          echo "::set-output name=changed::true"
-        else
-          echo "::set-output name=changed::false"
-        fi
     - name: Commit and push if needed
-      if: ${{ steps.meta.values.changed == 'true' }}
       run: |
-        git add requirements/constraints.txt
-        git commit -m "Update constraints"
-        git push
+        git add requirements/constraints.txt || true
+        git commit -m "Update constraints" || true
+        git push || true
