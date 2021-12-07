@@ -13,15 +13,15 @@ concurrency:
 
 jobs:
   # No compile-deps on cron job.
-  # TODO: Apply run to all active branches by keeping workflows like cron-38.yml etc.
+  # TODO: Apply run to all active branches by keeping workflows like cron-39.yml etc.
 
   lint:
     name: Lint
     uses: aio-libs/aiohttp/.github/workflows/sub-lint.yml@master
     with:
-      ref: ${{ env.ref }}
+      ref: master
   test:
     name: Test
     uses: aio-libs/aiohttp/.github/workflows/sub-test.yml@master
     with:
-      ref: ${{ env.ref }}
+      ref: master
