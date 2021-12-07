@@ -4,6 +4,7 @@ import datetime
 import gc
 import platform
 import tempfile
+import weakref
 from math import ceil, isclose, modf
 from unittest import mock
 from urllib.request import getproxies_environment
