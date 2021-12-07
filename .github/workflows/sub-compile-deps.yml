@@ -16,45 +16,28 @@ jobs:
   post-update:
     runs-on: ubuntu-latest
     steps:
+    - name: Login
+      run: |
+        echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
     - name: Checkout
-      uses: actions/checkout@v2.4.0
+      run: |
+        gh pr checkout ${{ github.event.pull_request.number }}
     - name: Setup Python
       uses: actions/setup-python@v2
     - name: Cache PyPI
       uses: actions/cache@v2.1.7
       with:
-        key: post-update-${{ hashFiles('requirements/*.txt') }}
+        key: post-update
         path: ~/.cache/pip
         restore-keys: |
             post-update-
-    - name: Update pip, wheel, setuptools
+    - name: Update pip-tools
       run: |
-        python -m pip install -U pip wheel setuptools
-    - name: Install dependencies
-      run: |
-        python -m pip install -r requirements/pip-tools.txt -c requirements/constraints.txt
+        python -m pip install -U pip-tools
     - name: Run pip-compile
       run: |
         make compile-deps
-    - name: Check if compiled deps are changed
-      id: meta
-      run: |
-        if [[ -n "$(git status --porcelain)" ]]; then
-          echo "::set-output name=changed::true"
-        else
-          echo "::set-output name=changed::false"
-        fi
-    - name: Commit and push if needed\
-      if: ${{ steps.meta.values.changed == 'true' }}
-      run: |
-        # Cleanup workspace
-        rm -rf ${{ github.workspace }}
-        # Checkout with read-write access
-        echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-        gh pr checkout ${{ github.event.pull_request.number }}
-        # Regenerate dependencies again
-        make compile-deps
-        # push regenerated dependencies back to GitHub PR
-        git add requirements/constraints.txt
-        git commit -m "Update constraints"
-        git push
+    - name: Commit and push if needed
+      uses: stefanzweifel/git-auto-commit-action@v4
+      with:
+        commit_message: Recompile requirements/constraints.txt
