@@ -38,8 +38,6 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
         self._timeout_ceil_threshold = 5  # type: Optional[float]
 
-        self.closed = self._loop.create_future()  # type: asyncio.Future[None]
-
     @property
     def upgraded(self) -> bool:
         return self._upgraded
