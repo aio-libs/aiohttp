@@ -33,7 +33,7 @@ Now, let's try to get a web-page. For example let's query
                 print(resp.status)
                 print(await resp.text())
 
-    asyncio.run(main)
+    asyncio.run(main())
 
 Now, we have a :class:`ClientSession` called ``session`` and a
 :class:`ClientResponse` object called ``resp``. We can get all the
@@ -444,13 +444,17 @@ Supported :class:`ClientTimeout` fields are:
       The maximal number of seconds allowed for period between reading a new
       data portion from a peer.
 
+    ``ceil_threshold``
+
+      The threshold value to trigger ceiling of absolute timeout values.
+
 All fields are floats, ``None`` or ``0`` disables a particular timeout check, see the
 :class:`ClientTimeout` reference for defaults and additional details.
 
 Thus the default timeout is::
 
    aiohttp.ClientTimeout(total=5*60, connect=None,
-                         sock_connect=None, sock_read=None)
+                         sock_connect=None, sock_read=None, ceil_threshold=5)
 
 .. note::
 
@@ -467,4 +471,5 @@ Thus the default timeout is::
    timeout expiration.
 
    Smaller timeouts are not rounded to help testing; in the real life network
-   timeouts usually greater than tens of seconds.
+   timeouts usually greater than tens of seconds. However, the default threshold
+   value of 5 seconds can be configured using the ``ceil_threshold`` parameter.

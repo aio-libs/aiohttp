@@ -30,7 +30,7 @@ cffi==1.15.0
     #   pycares
 cfgv==3.3.1
     # via pre-commit
-charset-normalizer==2.0.8
+charset-normalizer==2.0.9
     # via
     #   -r requirements/base.txt
     #   requests
@@ -46,7 +46,7 @@ click==8.0.3
     #   wait-for-it
 click-default-group==1.2.2
     # via towncrier
-coverage==6.1.2
+coverage==6.2
     # via
     #   -r requirements/test.txt
     #   pytest-cov
@@ -124,9 +124,9 @@ platformdirs==2.4.0
     # via virtualenv
 pluggy==1.0.0
     # via pytest
-pre-commit==2.15.0
+pre-commit==2.16.0
     # via -r requirements/lint.txt
-proxy.py==2.3.1
+proxy.py==2.4.0rc2
     # via -r requirements/test.txt
 py==1.10.0
     # via pytest
@@ -181,7 +181,7 @@ six==1.16.0
     #   virtualenv
 snowballstemmer==2.1.0
     # via sphinx
-sphinx==4.3.0
+sphinx==4.3.1
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-asyncio
@@ -192,7 +192,7 @@ sphinxcontrib-applehelp==1.0.2
     # via sphinx
 sphinxcontrib-asyncio==0.3.0
     # via -r requirements/doc.txt
-sphinxcontrib-blockdiag==2.0.0
+sphinxcontrib-blockdiag==3.0.0
     # via -r requirements/doc.txt
 sphinxcontrib-devhelp==1.0.2
     # via sphinx
@@ -204,7 +204,7 @@ sphinxcontrib-qthelp==1.0.3
     # via sphinx
 sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
-sphinxcontrib-spelling==7.2.1 ; platform_system != "Windows"
+sphinxcontrib-spelling==7.3.0 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.txt
 sphinxcontrib-towncrier==0.2.0a0
     # via -r requirements/doc.txt
@@ -234,7 +234,6 @@ typing-extensions==3.7.4.3
     #   -r requirements/typing-extensions.txt
     #   async-timeout
     #   mypy
-    #   proxy.py
     #   pydantic
 uritemplate==4.1.1
     # via gidgethub

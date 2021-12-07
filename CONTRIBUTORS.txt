@@ -158,6 +158,7 @@ Jakob Ackermann
 Jakub Wilk
 Jan Buchar
 Jashandeep Sohi
+Jean-Baptiste Estival
 Jens Steinhauser
 Jeonghun Lee
 Jeongkyu Shin
@@ -331,6 +332,7 @@ Willem de Groot
 William Grzybowski
 William S.
 Wilson Ong
+wouter bolsterlee
 Yang Zhou
 Yannick Koechlin
 Yannick Péroux
