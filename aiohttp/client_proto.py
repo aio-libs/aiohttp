@@ -35,6 +35,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
         self._read_timeout = None  # type: Optional[float]
         self._read_timeout_handle = None  # type: Optional[asyncio.TimerHandle]
+        self._last_message_status_code = None
 
         self._timeout_ceil_threshold = 5  # type: Optional[float]
 
@@ -205,6 +206,9 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         if not data:
             return
 
+        if not self.is_connected():
+            return
+
         # custom payload parser
         if self._payload_parser is not None:
             eof, tail = self._payload_parser.feed_data(data)
@@ -240,7 +244,13 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
                     if message.should_close:
                         self._should_close = True
 
+                    if self._complete_payload_received() \
+                            and not self._expect_more_payload() \
+                            and self._has_pending_response():
+                        self.close()
+                        return
                     self._payload = payload
+                    self._last_message_status_code = message.code
 
                     if self._skip_payload or message.code in (204, 304):
                         self.feed_data((message, EMPTY_PAYLOAD), 0)
@@ -261,3 +271,15 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
                         self.data_received(tail)
                     else:
                         self._tail = tail
+
+    def _expect_more_payload(self) -> bool:
+        return self._redirected() or self._last_message_status_code == 100
+
+    def _complete_payload_received(self) -> bool:
+        return self._payload is not None and self._payload.is_eof()
+
+    def _redirected(self) -> bool:
+        return self._last_message_status_code in range(300, 400)
+
+    def _has_pending_response(self) -> bool:
+        return self._buffer is not None and len(self._buffer) > 0
