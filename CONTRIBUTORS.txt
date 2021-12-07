@@ -152,6 +152,7 @@ Jakob Ackermann
 Jakub Wilk
 Jan Buchar
 Jashandeep Sohi
+Jean-Baptiste Estival
 Jens Steinhauser
 Jeonghun Lee
 Jeongkyu Shin

@@ -845,6 +845,25 @@ Signal handler may look like::
 Both :func:`run_app` and :meth:`AppRunner.cleanup` call shutdown
 signal handlers.
 
+.. _aiohttp-web-ceil-absolute-timeout:
+
+Ceil of absolute timeout value
+------------------------------
+
+*aiohttp* **ceils** internal timeout values if the value is equal or
+greater than 5 seconds. The timeout expires at the next integer second
+greater than ``current_time + timeout``.
+
+More details about ceiling absolute timeout values is available here
+:ref:`aiohttp-client-timeouts`.
+
+The default threshold can be configured at :class:`aiohttp.web.Application`
+level using the ``handler_args`` parameter.
+
+.. code-block:: python3
+
+    app = web.Application(handler_args={"timeout_ceil_threshold": 1})
+
 .. _aiohttp-web-background-tasks:
 
 Background tasks

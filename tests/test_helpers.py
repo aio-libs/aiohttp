@@ -4,7 +4,8 @@ import datetime
 import gc
 import platform
 import tempfile
-from math import isclose, modf
+import weakref
+from math import ceil, isclose, modf
 from unittest import mock
 from urllib.request import getproxies_environment
 
@@ -341,6 +342,18 @@ def test_when_timeout_smaller_second(loop) -> None:
     assert isclose(when - timer, 0, abs_tol=0.001)
 
 
+def test_when_timeout_smaller_second_with_low_threshold(loop) -> None:
+    timeout = 0.1
+    timer = loop.time() + timeout
+
+    handle = helpers.TimeoutHandle(loop, timeout, 0.01)
+    when = handle.start()._when
+    handle.close()
+
+    assert isinstance(when, int)
+    assert when == ceil(timer)
+
+
 def test_timeout_handle_cb_exc(loop) -> None:
     handle = helpers.TimeoutHandle(loop, 10.2)
     cb = mock.Mock()
@@ -384,6 +397,16 @@ async def test_weakref_handle(loop) -> None:
     assert cb.test.called
 
 
+async def test_weakref_handle_with_small_threshold(loop) -> None:
+    cb = mock.Mock()
+    loop = mock.Mock()
+    loop.time.return_value = 10
+    helpers.weakref_handle(cb, "test", 0.1, loop, 0.01)
+    loop.call_at.assert_called_with(
+        11, helpers._weakref_handle, (weakref.ref(cb), "test")
+    )
+
+
 async def test_weakref_handle_weak(loop) -> None:
     cb = mock.Mock()
     helpers.weakref_handle(cb, "test", 0.01, loop)
@@ -410,6 +433,32 @@ async def test_ceil_timeout_small() -> None:
         frac, integer = modf(cm.deadline)
         # a chance for exact integer with zero fraction is negligible
         assert frac != 0
+
+
+def test_ceil_call_later_with_small_threshold() -> None:
+    cb = mock.Mock()
+    loop = mock.Mock()
+    loop.time.return_value = 10.1
+    helpers.call_later(cb, 4.5, loop, 1)
+    loop.call_at.assert_called_with(15, cb)
+
+
+def test_ceil_call_later_no_timeout() -> None:
+    cb = mock.Mock()
+    loop = mock.Mock()
+    helpers.call_later(cb, 0, loop)
+    assert not loop.call_at.called
+
+
+async def test_ceil_timeout_none(loop) -> None:
+    async with helpers.ceil_timeout(None) as cm:
+        assert cm.deadline is None
+
+
+async def test_ceil_timeout_small_with_overriden_threshold(loop) -> None:
+    async with helpers.ceil_timeout(1.5, ceil_threshold=1) as cm:
+        frac, integer = modf(cm.deadline)
+        assert frac == 0
 
 
 # -------------------------------- ContentDisposition -------------------

@@ -141,6 +141,7 @@ class ClientTimeout:
     connect: Optional[float] = None
     sock_read: Optional[float] = None
     sock_connect: Optional[float] = None
+    ceil_threshold: float = 5
 
     # pool_queue_timeout: Optional[float] = None
     # dns_resolution_timeout: Optional[float] = None
@@ -445,7 +446,9 @@ class ClientSession:
                 real_timeout = timeout
         # timeout is cumulative for all request operations
         # (request, redirects, responses, data consuming)
-        tm = TimeoutHandle(self._loop, real_timeout.total)
+        tm = TimeoutHandle(
+            self._loop, real_timeout.total, ceil_threshold=real_timeout.ceil_threshold
+        )
         handle = tm.start()
 
         if read_bufsize is None:
@@ -532,7 +535,10 @@ class ClientSession:
 
                     # connection timeout
                     try:
-                        async with ceil_timeout(real_timeout.connect):
+                        async with ceil_timeout(
+                            real_timeout.connect,
+                            ceil_threshold=real_timeout.ceil_threshold,
+                        ):
                             assert self._connector is not None
                             conn = await self._connector.connect(
                                 req, traces=traces, timeout=real_timeout
@@ -552,6 +558,7 @@ class ClientSession:
                         auto_decompress=self._auto_decompress,
                         read_timeout=real_timeout.sock_read,
                         read_bufsize=read_bufsize,
+                        timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
                     )
 
                     try:
