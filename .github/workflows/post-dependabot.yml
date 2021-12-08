@@ -17,15 +17,9 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2.4.0
-    - name: Generate Token
-      id: generate_token
-      uses: tibdex/github-app-token@v1
-      with:
-        app_id: ${{ secrets.BOT_APP_ID }}
-        private_key: ${{ secrets.BOT_PRIVATE_KEY }}
     - name: Login
       run: |
-        echo "${{ steps.generate_token.outputs.token }}" | gh auth login --with-token
+        echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
     - name: Checkout
       run: |
         gh pr checkout ${{ github.event.pull_request.number }}
@@ -34,29 +28,17 @@ jobs:
     - name: Cache PyPI
       uses: actions/cache@v2.1.7
       with:
-        key: post-update-${{ hashFiles('requirements/*.txt') }}
+        key: post-update
         path: ~/.cache/pip
         restore-keys: |
             post-update-
-    - name: Update pip, wheel, setuptools
+    - name: Update pip-tools
       run: |
-        python -m pip install -U pip wheel setuptools
-    - name: Install dependencies
-      run: |
-        python -m pip install -r requirements/dev.txt -c requirements/constraints.txt
+        python -m pip install -U pip-tools
     - name: Run pip-compile
       run: |
         make compile-deps
-    - name: Check if compiled deps are changed
-      id: meta
-      run: |
-        if [[ -n "$(git status --porcelain)" ]]; then
-          echo "::set-output name=changed::true"
-        else
-          echo "::set-output name=changed::false"
     - name: Commit and push if needed
-      if: ${{ steps.meta.values.changed == 'true' }}
-      run: |
-        git add requirements/constraints.txt
-        git commit -m "Update constraints"
-        git push
+      uses: stefanzweifel/git-auto-commit-action@v4
+      with:
+        commit_message: Recompile requirements/constraints.txt
