@@ -656,7 +656,7 @@ StreamResponse
 
       .. seealso:: :meth:`enable_compression`
 
-   .. method:: enable_compression(force=None)
+   .. method:: enable_compression(force=None, strategy=zlib.Z_DEFAULT_STRATEGY)
 
       Enable compression.
 
@@ -665,6 +665,10 @@ StreamResponse
 
       *Accept-Encoding* is not checked if *force* is set to a
       :class:`ContentCoding`.
+
+      *strategy* accepts a :mod:`zlib` compression strategy.
+      Possible values are :data:`zlib.Z_DEFAULT_STRATEGY`,
+      :data:`zlib.Z_FILTERED`, :data:`zlib.Z_HUFFMAN_ONLY`, :data:`zlib.Z_RLE` and :data:`zlib.Z_FIXED`.
 
       .. seealso:: :attr:`compression`
 

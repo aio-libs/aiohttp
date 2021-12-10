@@ -40,6 +40,7 @@ from .helpers import (
     validate_etag_value,
 )
 from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
+from .http_writer import StreamWriter
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
 
@@ -108,6 +109,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         self._keep_alive = None  # type: Optional[bool]
         self._chunked = False
         self._compression = False
+        self._compression_strategy: int = zlib.Z_DEFAULT_STRATEGY
         self._compression_force = None  # type: Optional[ContentCoding]
 
         self._req = None  # type: Optional[BaseRequest]
@@ -187,11 +189,16 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
                 "You can't enable chunked encoding when " "a content length is set"
             )
 
-    def enable_compression(self, force: Optional[ContentCoding] = None) -> None:
+    def enable_compression(
+        self,
+        force: Optional[ContentCoding] = None,
+        strategy: int = zlib.Z_DEFAULT_STRATEGY,
+    ) -> None:
         """Enables response compression encoding."""
         # Backwards compatibility for when force was a bool <0.17.
         self._compression = True
         self._compression_force = force
+        self._compression_strategy = strategy
 
     @property
     def headers(self) -> "CIMultiDict[str]":
@@ -323,7 +330,12 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         if coding != ContentCoding.identity:
             assert self._payload_writer is not None
             self._headers[hdrs.CONTENT_ENCODING] = coding.value
-            self._payload_writer.enable_compression(coding.value)
+            if isinstance(self._payload_writer, StreamWriter):
+                self._payload_writer.enable_compression(
+                    coding.value, self._compression_strategy
+                )
+            else:
+                self._payload_writer.enable_compression(coding.value)
             # Compressed payload may have different content length,
             # remove the header
             self._headers.popall(hdrs.CONTENT_LENGTH, None)
