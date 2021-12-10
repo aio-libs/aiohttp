@@ -307,11 +307,14 @@ class StreamReader(AsyncStreamReaderMixin):
         try:
             if self._timer:
                 with self._timer:
-                    await waiter
+                    await asyncio.wait((waiter,))
             else:
-                await waiter
+                await asyncio.wait((waiter,))
         finally:
             self._waiter = None
+            fut_exc = waiter.exception()
+            if fut_exc:
+                raise fut_exc
 
     async def readline(self) -> bytes:
         return await self.readuntil()
