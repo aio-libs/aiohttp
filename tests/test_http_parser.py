@@ -363,6 +363,14 @@ def test_compression_unknown(parser: Any) -> None:
     assert msg.compression is None
 
 
+def test_url_connect(parser: Any) -> None:
+    text = b"CONNECT www.google.com HTTP/1.1\r\n" b"content-length: 0\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    msg, payload = messages[0]
+    assert upgrade
+    assert msg.url == URL.build(authority="www.google.com")
+
+
 def test_headers_connect(parser: Any) -> None:
     text = b"CONNECT www.google.com HTTP/1.1\r\n" b"content-length: 0\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)

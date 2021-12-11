@@ -190,6 +190,7 @@ compile-deps: .update-pip $(REQS)
 .PHONY: install
 install: .update-pip
 	@pip install -r requirements/dev.txt -c requirements/constraints.txt
+	@touch .develop
 
 .PHONY: install-dev
 install-dev: .develop
