@@ -1,0 +1,1 @@
+Retrieve Future exception and break circular reference to fix memory leaks

@@ -129,7 +129,6 @@ class StreamReader(AsyncStreamReaderMixin):
         self._eof = False
         self._waiter = None  # type: Optional[asyncio.Future[None]]
         self._eof_waiter = None  # type: Optional[asyncio.Future[None]]
-        self._exception = None  # type: Optional[BaseException]
         self._timer = timer
         self._eof_callbacks = []  # type: List[Callable[[], None]]
 
@@ -143,18 +142,22 @@ class StreamReader(AsyncStreamReaderMixin):
             info.append("low=%d high=%d" % (self._low_water, self._high_water))
         if self._waiter:
             info.append("w=%r" % self._waiter)
-        if self._exception:
-            info.append("e=%r" % self._exception)
+        if self._waiter:
+            wait_exc = self._waiter.exception()
+            if wait_exc is not None:
+                info.append("e=%r" % wait_exc)
         return "<%s>" % " ".join(info)
 
     def get_read_buffer_limits(self) -> Tuple[int, int]:
         return (self._low_water, self._high_water)
 
     def exception(self) -> Optional[BaseException]:
-        return self._exception
+        if self._waiter is not None:
+            return self._waiter.exception()
+        else:
+            return None
 
     def set_exception(self, exc: BaseException) -> None:
-        self._exception = exc
         self._eof_callbacks.clear()
 
         waiter = self._waiter
@@ -324,8 +327,9 @@ class StreamReader(AsyncStreamReaderMixin):
         if seplen == 0:
             raise ValueError("Separator should be at least one-byte string")
 
-        if self._exception is not None:
-            raise self._exception
+        _exception = self.exception()
+        if _exception is not None:
+            raise _exception
 
         chunk = b""
         chunk_size = 0
@@ -354,8 +358,9 @@ class StreamReader(AsyncStreamReaderMixin):
         return chunk
 
     async def read(self, n: int = -1) -> bytes:
-        if self._exception is not None:
-            raise self._exception
+        _exception = self.exception()
+        if _exception is not None:
+            raise _exception
 
         if not n:
             return b""
@@ -382,8 +387,9 @@ class StreamReader(AsyncStreamReaderMixin):
         return self._read_nowait(n)
 
     async def readany(self) -> bytes:
-        if self._exception is not None:
-            raise self._exception
+        _exception = self.exception()
+        if _exception is not None:
+            raise _exception
 
         # TODO: should be `if` instead of `while`
         # because waiter maybe triggered on chunk end,
@@ -402,8 +408,9 @@ class StreamReader(AsyncStreamReaderMixin):
         always False.
         """
         while True:
-            if self._exception is not None:
-                raise self._exception
+            _exception = self.exception()
+            if _exception is not None:
+                raise _exception
 
             while self._http_chunk_splits:
                 pos = self._http_chunk_splits.pop(0)
@@ -428,8 +435,9 @@ class StreamReader(AsyncStreamReaderMixin):
             await self._wait("readchunk")
 
     async def readexactly(self, n: int) -> bytes:
-        if self._exception is not None:
-            raise self._exception
+        _exception = self.exception()
+        if _exception is not None:
+            raise _exception
 
         blocks = []  # type: List[bytes]
         while n > 0:
@@ -447,8 +455,9 @@ class StreamReader(AsyncStreamReaderMixin):
         #
         # I believe the most users don't know about the method and
         # they are not affected.
-        if self._exception is not None:
-            raise self._exception
+        _exception = self.exception()
+        if _exception is not None:
+            raise _exception
 
         if self._waiter and not self._waiter.done():
             raise RuntimeError(
