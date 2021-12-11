@@ -158,6 +158,14 @@ def test_non_ascii_raw_path() -> None:
     assert "/путь" == req.raw_path
 
 
+def test_absolute_url() -> None:
+    req = make_mocked_request("GET", "https://example.com/path/to?a=1")
+    assert req.url == URL("https://example.com/path/to?a=1")
+    assert req.scheme == "https"
+    assert req.host == "example.com"
+    assert req.rel_url == URL.build(path="/path/to", query={"a": "1"})
+
+
 def test_content_length() -> None:
     req = make_mocked_request("Get", "/", CIMultiDict([("CONTENT-LENGTH", "123")]))
 
