@@ -142,10 +142,9 @@ class StreamReader(AsyncStreamReaderMixin):
             info.append("low=%d high=%d" % (self._low_water, self._high_water))
         if self._waiter:
             info.append("w=%r" % self._waiter)
-        if self._waiter:
-            wait_exc = self._waiter.exception()
-            if wait_exc is not None:
-                info.append("e=%r" % wait_exc)
+        wait_exc = self.exception()
+        if wait_exc is not None:
+            info.append("e=%r" % wait_exc)
         return "<%s>" % " ".join(info)
 
     def get_read_buffer_limits(self) -> Tuple[int, int]:
@@ -153,7 +152,10 @@ class StreamReader(AsyncStreamReaderMixin):
 
     def exception(self) -> Optional[BaseException]:
         if self._waiter is not None:
-            return self._waiter.exception()
+            try:
+                return self._waiter.exception()
+            except asyncio.InvalidStateError:
+                return None
         else:
             return None
 
@@ -314,10 +316,10 @@ class StreamReader(AsyncStreamReaderMixin):
             else:
                 await asyncio.wait((waiter,))
         finally:
+            wait_exc = self.exception()
             self._waiter = None
-            fut_exc = waiter.exception()
-            if fut_exc:
-                raise fut_exc
+            if wait_exc:
+                raise wait_exc
 
     async def readline(self) -> bytes:
         return await self.readuntil()
