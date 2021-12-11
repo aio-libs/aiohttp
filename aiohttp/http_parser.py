@@ -548,8 +548,12 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
             raise BadStatusLine(version)
 
         if method == "CONNECT":
-            url = URL.build(authority=path)
-        else:
+            # authority-form,
+            # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.3
+            url = URL.build(authority=path, encoded=True)
+        elif path.startswith("/"):
+            # origin-form,
+            # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.1
             path_part, _hash_separator, url_fragment = path.partition("#")
             path_part, _question_mark_separator, qs_part = path_part.partition("?")
 
@@ -563,6 +567,10 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
                 fragment=url_fragment,
                 encoded=True,
             )
+        else:
+            # absolute-form for proxy maybe,
+            # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.2
+            url = URL(path, encoded=True)
 
         # read headers
         (

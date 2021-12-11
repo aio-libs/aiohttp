@@ -379,6 +379,18 @@ def test_headers_connect(parser: Any) -> None:
     assert isinstance(payload, streams.StreamReader)
 
 
+def test_url_absolute(parser: Any) -> None:
+    text = (
+        b"GET https://www.google.com/path/to.html HTTP/1.1\r\n"
+        b"content-length: 0\r\n\r\n"
+    )
+    messages, upgrade, tail = parser.feed_data(text)
+    msg, payload = messages[0]
+    assert not upgrade
+    assert msg.method == "GET"
+    assert msg.url == URL("https://www.google.com/path/to.html")
+
+
 def test_headers_old_websocket_key1(parser: Any) -> None:
     text = b"GET /test HTTP/1.1\r\n" b"SEC-WEBSOCKET-KEY1: line\r\n\r\n"
 

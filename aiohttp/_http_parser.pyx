@@ -585,38 +585,46 @@ cdef class HttpRequestParser(HttpParser):
             return
         self._path = self._buf.decode('utf-8', 'surrogateescape')
         try:
+            idx3 = len(self._path)
             if self._cparser.method == cparser.HTTP_CONNECT:
-                self._url = URL.build(authority=self._path)
-            else:
-                    idx3 = len(self._path)
-                    idx1 = self._path.find("?")
-                    if idx1 == -1:
-                        query = ""
-                        idx2 = self._path.find("#")
-                        if idx2 == -1:
-                            path = self._path
-                            fragment = ""
-                        else:
-                            path = self._path[0: idx2]
-                            fragment = self._path[idx2+1:]
-
+                # authority-form,
+                # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.3
+                self._url = URL.build(authority=self._path, encoded=True)
+            elif idx3 > 1 and self._path[0] == '/':
+                # origin-form,
+                # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.1
+                idx1 = self._path.find("?")
+                if idx1 == -1:
+                    query = ""
+                    idx2 = self._path.find("#")
+                    if idx2 == -1:
+                        path = self._path
+                        fragment = ""
                     else:
-                        path = self._path[0:idx1]
-                        idx1 += 1
-                        idx2 = self._path.find("#", idx1+1)
-                        if idx2 == -1:
-                            query = self._path[idx1:]
-                            fragment = ""
-                        else:
-                            query = self._path[idx1: idx2]
-                            fragment = self._path[idx2+1:]
+                        path = self._path[0: idx2]
+                        fragment = self._path[idx2+1:]
 
-                    self._url = URL.build(
-                        path=path,
-                        query_string=query,
-                        fragment=fragment,
-                        encoded=True,
-                    )
+                else:
+                    path = self._path[0:idx1]
+                    idx1 += 1
+                    idx2 = self._path.find("#", idx1+1)
+                    if idx2 == -1:
+                        query = self._path[idx1:]
+                        fragment = ""
+                    else:
+                        query = self._path[idx1: idx2]
+                        fragment = self._path[idx2+1:]
+
+                self._url = URL.build(
+                    path=path,
+                    query_string=query,
+                    fragment=fragment,
+                    encoded=True,
+                )
+            else:
+                # absolute-form for proxy maybe,
+                # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.2
+                self._url = URL(self._path, encoded=True)
         finally:
             PyByteArray_Resize(self._buf, 0)
 
