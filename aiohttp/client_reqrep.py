@@ -652,12 +652,12 @@ class ClientResponse(HeadersMixin):
 
     # from the Status-Line of the response
     version = None  # HTTP-Version
-    status: int = None  # Status-Code
+    status: int = None  # type: ignore[assignment] # Status-Code
     reason = None  # Reason-Phrase
 
-    content: StreamReader = None  # Payload stream
-    _headers: CIMultiDictProxy[str] = None  # Response headers
-    _raw_headers: RawHeaders = None  # Response raw headers
+    content: StreamReader = None  # type: ignore[assignment] # Payload stream
+    _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]
+    _raw_headers: RawHeaders = None  # type: ignore[assignment]
 
     _connection = None  # current connection
     _source_traceback = None
