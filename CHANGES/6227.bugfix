@@ -1,1 +1,1 @@
-Supported authority-form and absolute-form URLs when sent to the server.
+Started supporting ``authority-form`` and ``absolute-form`` URLs on the server-side.
