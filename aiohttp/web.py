@@ -320,7 +320,7 @@ async def _run_app(
 
     await runner.setup()
 
-    sites = []  # type: List[BaseSite]
+    sites: List[BaseSite] = []
 
     try:
         if host is not None:

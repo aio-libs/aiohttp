@@ -252,7 +252,7 @@ class ClientSession:
         if cookies is not None:
             self._cookie_jar.update_cookies(cookies)
 
-        self._connector = connector  # type: Optional[BaseConnector]
+        self._connector: Optional[BaseConnector] = connector
         self._connector_owner = connector_owner
         self._default_auth = auth
         self._version = version
@@ -295,10 +295,10 @@ class ClientSession:
 
         # Convert to list of tuples
         if headers:
-            real_headers = CIMultiDict(headers)  # type: CIMultiDict[str]
+            real_headers: CIMultiDict[str] = CIMultiDict(headers)
         else:
             real_headers = CIMultiDict()
-        self._default_headers = real_headers  # type: CIMultiDict[str]
+        self._default_headers: CIMultiDict[str] = real_headers
         if skip_auto_headers is not None:
             self._skip_auto_headers = frozenset(istr(i) for i in skip_auto_headers)
         else:
@@ -435,7 +435,7 @@ class ClientSession:
                 raise InvalidURL(proxy) from e
 
         if timeout is sentinel:
-            real_timeout = self._timeout  # type: ClientTimeout
+            real_timeout: ClientTimeout = self._timeout
         else:
             if not isinstance(timeout, ClientTimeout):
                 real_timeout = ClientTimeout(total=timeout)  # type: ignore[arg-type]
@@ -746,7 +746,7 @@ class ClientSession:
     ) -> ClientWebSocketResponse:
 
         if headers is None:
-            real_headers = CIMultiDict()  # type: CIMultiDict[str]
+            real_headers: CIMultiDict[str] = CIMultiDict()
         else:
             real_headers = CIMultiDict(headers)
 
@@ -865,9 +865,9 @@ class ClientSession:
             assert conn_proto is not None
             transport = conn.transport
             assert transport is not None
-            reader = FlowControlDataQueue(
+            reader: FlowControlDataQueue[WSMessage] = FlowControlDataQueue(
                 conn_proto, 2 ** 16, loop=self._loop
-            )  # type: FlowControlDataQueue[WSMessage]
+            )
             conn_proto.set_parser(WebSocketReader(reader, max_msg_size), reader)
             writer = WebSocketWriter(
                 conn_proto,
@@ -902,7 +902,7 @@ class ClientSession:
         if headers:
             if not isinstance(headers, (MultiDictProxy, MultiDict)):
                 headers = CIMultiDict(headers)
-            added_names = set()  # type: Set[str]
+            added_names: Set[str] = set()
             for key, value in headers.items():
                 if key in added_names:
                     result.add(key, value)
@@ -1178,7 +1178,7 @@ class _SessionRequestContextManager:
         session: ClientSession,
     ) -> None:
         self._coro = coro
-        self._resp = None  # type: Optional[ClientResponse]
+        self._resp: Optional[ClientResponse] = None
         self._session = session
 
     async def __aenter__(self) -> ClientResponse:
