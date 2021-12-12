@@ -230,7 +230,7 @@ class ClientRequest:
             real_response_class = ClientResponse
         else:
             real_response_class = response_class
-        self.response_class = real_response_class  # type: Type[ClientResponse]
+        self.response_class: Type[ClientResponse] = real_response_class
         self._timer = timer if timer is not None else TimerNoop()
         self._ssl = ssl
 
@@ -265,9 +265,7 @@ class ClientRequest:
     def connection_key(self) -> ConnectionKey:
         proxy_headers = self.proxy_headers
         if proxy_headers:
-            h = hash(
-                tuple((k, v) for k, v in proxy_headers.items())
-            )  # type: Optional[int]
+            h: Optional[int] = hash(tuple((k, v) for k, v in proxy_headers.items()))
         else:
             h = None
         return ConnectionKey(
@@ -292,7 +290,7 @@ class ClientRequest:
 
     @property
     def request_info(self) -> RequestInfo:
-        headers = CIMultiDictProxy(self.headers)  # type: CIMultiDictProxy[str]
+        headers: CIMultiDictProxy[str] = CIMultiDictProxy(self.headers)
         return RequestInfo(self.url, self.method, headers, self.original_url)
 
     def update_host(self, url: URL) -> None:
@@ -323,7 +321,7 @@ class ClientRequest:
 
     def update_headers(self, headers: Optional[LooseHeaders]) -> None:
         """Update request headers."""
-        self.headers = CIMultiDict()  # type: CIMultiDict[str]
+        self.headers: CIMultiDict[str] = CIMultiDict()
 
         # add host
         netloc = cast(str, self.url.raw_host)
@@ -363,7 +361,7 @@ class ClientRequest:
         if not cookies:
             return
 
-        c = SimpleCookie()  # type: SimpleCookie[str]
+        c: SimpleCookie[str] = SimpleCookie()
         if hdrs.COOKIE in self.headers:
             c.load(self.headers.get(hdrs.COOKIE, ""))
             del self.headers[hdrs.COOKIE]
@@ -654,12 +652,12 @@ class ClientResponse(HeadersMixin):
 
     # from the Status-Line of the response
     version = None  # HTTP-Version
-    status = None  # type: int  # Status-Code
+    status: int = None  # Status-Code
     reason = None  # Reason-Phrase
 
-    content = None  # type: StreamReader  # Payload stream
-    _headers = None  # type: CIMultiDictProxy[str]  # Response headers
-    _raw_headers = None  # type: RawHeaders  # Response raw headers
+    content: StreamReader = None  # Payload stream
+    _headers: CIMultiDictProxy[str] = None  # Response headers
+    _raw_headers: RawHeaders = None  # Response raw headers
 
     _connection = None  # current connection
     _source_traceback = None
@@ -685,22 +683,22 @@ class ClientResponse(HeadersMixin):
         super().__init__()
 
         self.method = method
-        self.cookies = SimpleCookie()  # type: SimpleCookie[str]
+        self.cookies: SimpleCookie[str] = SimpleCookie()
 
         self._real_url = url
         self._url = url.with_fragment(None)
-        self._body = None  # type: Optional[bytes]
-        self._writer = writer  # type: Optional[asyncio.Task[None]]
+        self._body: Optional[bytes] = None
+        self._writer: Optional[asyncio.Task[None]] = writer
         self._continue = continue100  # None by default
         self._closed = True
-        self._history = ()  # type: Tuple[ClientResponse, ...]
+        self._history: Tuple[ClientResponse, ...] = ()
         self._request_info = request_info
         self._timer = timer if timer is not None else TimerNoop()
-        self._cache = {}  # type: Dict[str, Any]
+        self._cache: Dict[str, Any] = {}
         self._traces = traces
         self._loop = loop
         # store a reference to session #1985
-        self._session = session  # type: Optional[ClientSession]
+        self._session: Optional[ClientSession] = session
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
@@ -790,7 +788,7 @@ class ClientResponse(HeadersMixin):
         if not links_str:
             return MultiDictProxy(MultiDict())
 
-        links = MultiDict()  # type: MultiDict[MultiDictProxy[Union[str, URL]]]
+        links: MultiDict[MultiDictProxy[Union[str, URL]]] = MultiDict()
 
         for val in re.split(r",(?=\s*<)", links_str):
             match = re.match(r"\s*<(.*)>(.*)", val)
@@ -800,7 +798,7 @@ class ClientResponse(HeadersMixin):
             url, params_str = match.groups()
             params = params_str.split(";")[1:]
 
-            link = MultiDict()  # type: MultiDict[Union[str, URL]]
+            link: MultiDict[Union[str, URL]] = MultiDict()
 
             for param in params:
                 match = re.match(r"^\s*(\S*)\s*=\s*(['\"]?)(.*?)(\2)\s*$", param, re.M)

@@ -155,7 +155,7 @@ class RouteTableDef(Sequence[AbstractRouteDef]):
     """Route definition table"""
 
     def __init__(self) -> None:
-        self._items = []  # type: List[AbstractRouteDef]
+        self._items: List[AbstractRouteDef] = []
 
     def __repr__(self) -> str:
         return f"<RouteTableDef count={len(self._items)}>"

@@ -123,15 +123,15 @@ class StreamReader(AsyncStreamReaderMixin):
         self._loop = loop
         self._size = 0
         self._cursor = 0
-        self._http_chunk_splits = None  # type: Optional[List[int]]
-        self._buffer = collections.deque()  # type: Deque[bytes]
+        self._http_chunk_splits: Optional[List[int]] = None
+        self._buffer: Deque[bytes] = collections.deque()
         self._buffer_offset = 0
         self._eof = False
-        self._waiter = None  # type: Optional[asyncio.Future[None]]
-        self._eof_waiter = None  # type: Optional[asyncio.Future[None]]
-        self._exception = None  # type: Optional[BaseException]
+        self._waiter: Optional[asyncio.Future[None]] = None
+        self._eof_waiter: Optional[asyncio.Future[None]] = None
+        self._exception: Optional[BaseException] = None
         self._timer = timer
-        self._eof_callbacks = []  # type: List[Callable[[], None]]
+        self._eof_callbacks: List[Callable[[], None]] = []
 
     def __repr__(self) -> str:
         info = [self.__class__.__name__]
@@ -428,7 +428,7 @@ class StreamReader(AsyncStreamReaderMixin):
         if self._exception is not None:
             raise self._exception
 
-        blocks = []  # type: List[bytes]
+        blocks: List[bytes] = []
         while n > 0:
             block = await self.read(n)
             if not block:
@@ -557,10 +557,10 @@ class DataQueue(Generic[_T]):
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
         self._eof = False
-        self._waiter = None  # type: Optional[asyncio.Future[None]]
-        self._exception = None  # type: Optional[BaseException]
+        self._waiter: Optional[asyncio.Future[None]] = None
+        self._exception: Optional[BaseException] = None
         self._size = 0
-        self._buffer = collections.deque()  # type: Deque[Tuple[_T, int]]
+        self._buffer: Deque[Tuple[_T, int]] = collections.deque()
 
     def __len__(self) -> int:
         return len(self._buffer)
