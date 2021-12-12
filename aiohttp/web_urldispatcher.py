@@ -238,8 +238,8 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
     def __init__(self, match_dict: Dict[str, str], route: AbstractRoute):
         super().__init__(match_dict)
         self._route = route
-        self._apps = []  # type: List[Application]
-        self._current_app = None  # type: Optional[Application]
+        self._apps: List[Application] = []
+        self._current_app: Optional[Application] = None
         self._frozen = False
 
     @property
@@ -333,7 +333,7 @@ async def _default_expect_handler(request: Request) -> None:
 class Resource(AbstractResource):
     def __init__(self, *, name: Optional[str] = None) -> None:
         super().__init__(name=name)
-        self._routes = []  # type: List[ResourceRoute]
+        self._routes: List[ResourceRoute] = []
 
     def add_route(
         self,
@@ -362,7 +362,7 @@ class Resource(AbstractResource):
         self._routes.append(route)
 
     async def resolve(self, request: Request) -> _Resolve:
-        allowed_methods = set()  # type: Set[str]
+        allowed_methods: Set[str] = set()
 
         match_dict = self._match(request.rel_url.raw_path)
         if match_dict is None:
@@ -978,7 +978,7 @@ class ResourcesView(Sized, Iterable[AbstractResource], Container[AbstractResourc
 
 class RoutesView(Sized, Iterable[AbstractRoute], Container[AbstractRoute]):
     def __init__(self, resources: List[AbstractResource]):
-        self._routes = []  # type: List[AbstractRoute]
+        self._routes: List[AbstractRoute] = []
         for resource in resources:
             for route in resource:
                 self._routes.append(route)
@@ -999,12 +999,12 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
     def __init__(self) -> None:
         super().__init__()
-        self._resources = []  # type: List[AbstractResource]
-        self._named_resources = {}  # type: Dict[str, AbstractResource]
+        self._resources: List[AbstractResource] = []
+        self._named_resources: Dict[str, AbstractResource] = {}
 
     async def resolve(self, request: Request) -> UrlMappingMatchInfo:
         method = request.method
-        allowed_methods = set()  # type: Set[str]
+        allowed_methods: Set[str] = set()
 
         for resource in self._resources:
             match_dict, allowed = await resource.resolve(request)
