@@ -166,7 +166,7 @@ class AbstractStreamWriter(ABC):
 
     buffer_size = 0
     output_size = 0
-    length = 0  # type: Optional[int]
+    length: Optional[int] = 0
 
     @abstractmethod
     async def write(self, chunk: bytes) -> None:
