@@ -650,7 +650,8 @@ class ClientRequest:
 
 class ClientResponse(HeadersMixin):
 
-    # Some of these attributes are None when created, but will be set by the start() method.
+    # Some of these attributes are None when created,
+    # but will be set by the start() method.
     # As the end user will likely never see the None values, we cheat the types below.
     # from the Status-Line of the response
     version = None  # HTTP-Version
