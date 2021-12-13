@@ -280,17 +280,17 @@ async def test_proxy_http_absolute_path(
     assert len(proxy.requests_list) == 1
     assert proxy.request.method == "GET"
     assert proxy.request.host == "aiohttp.io"
-    assert proxy.request.path_qs == "http://aiohttp.io/path?query=yes"
+    assert proxy.request.path_qs == "/path?query=yes"
 
 
 async def test_proxy_http_raw_path(proxy_test_server: Any, get_request: Any) -> None:
     url = "http://aiohttp.io:2561/space sheep?q=can:fly"
-    raw_url = "http://aiohttp.io:2561/space%20sheep?q=can:fly"
+    raw_url = "/space%20sheep?q=can:fly"
     proxy = await proxy_test_server()
 
     await get_request(url=url, proxy=proxy.url)
 
-    assert proxy.request.host == "aiohttp.io:2561"
+    assert proxy.request.host == "aiohttp.io"
     assert proxy.request.path_qs == raw_url
 
 
@@ -298,13 +298,12 @@ async def test_proxy_http_idna_support(
     proxy_test_server: Any, get_request: Any
 ) -> None:
     url = "http://éé.com/"
-    raw_url = "http://xn--9caa.com/"
     proxy = await proxy_test_server()
 
     await get_request(url=url, proxy=proxy.url)
 
-    assert proxy.request.host == "xn--9caa.com"
-    assert proxy.request.path_qs == raw_url
+    assert proxy.request.host == "éé.com"
+    assert proxy.request.path_qs == "/"
 
 
 async def test_proxy_http_connection_error(get_request: Any) -> None:
@@ -716,7 +715,7 @@ async def test_proxy_from_env_http(
     assert len(proxy.requests_list) == 1
     assert proxy.request.method == "GET"
     assert proxy.request.host == "aiohttp.io"
-    assert proxy.request.path_qs == "http://aiohttp.io/path"
+    assert proxy.request.path_qs == "/path"
     assert "Proxy-Authorization" not in proxy.request.headers
 
 
@@ -740,7 +739,7 @@ async def test_proxy_from_env_http_with_auth(
     assert len(proxy.requests_list) == 1
     assert proxy.request.method == "GET"
     assert proxy.request.host == "aiohttp.io"
-    assert proxy.request.path_qs == "http://aiohttp.io/path"
+    assert proxy.request.path_qs == "/path"
     assert proxy.request.headers["Proxy-Authorization"] == auth.encode()
 
 
@@ -766,7 +765,7 @@ async def test_proxy_from_env_http_with_auth_from_netrc(
     assert len(proxy.requests_list) == 1
     assert proxy.request.method == "GET"
     assert proxy.request.host == "aiohttp.io"
-    assert proxy.request.path_qs == "http://aiohttp.io/path"
+    assert proxy.request.path_qs == "/path"
     assert proxy.request.headers["Proxy-Authorization"] == auth.encode()
 
 
@@ -792,7 +791,7 @@ async def test_proxy_from_env_http_without_auth_from_netrc(
     assert len(proxy.requests_list) == 1
     assert proxy.request.method == "GET"
     assert proxy.request.host == "aiohttp.io"
-    assert proxy.request.path_qs == "http://aiohttp.io/path"
+    assert proxy.request.path_qs == "/path"
     assert "Proxy-Authorization" not in proxy.request.headers
 
 
@@ -816,7 +815,7 @@ async def test_proxy_from_env_http_without_auth_from_wrong_netrc(
     assert len(proxy.requests_list) == 1
     assert proxy.request.method == "GET"
     assert proxy.request.host == "aiohttp.io"
-    assert proxy.request.path_qs == "http://aiohttp.io/path"
+    assert proxy.request.path_qs == "/path"
     assert "Proxy-Authorization" not in proxy.request.headers
 
 
@@ -834,7 +833,7 @@ async def xtest_proxy_from_env_https(
     assert len(proxy.requests_list) == 2
     assert proxy.request.method == "GET"
     assert proxy.request.host == "aiohttp.io"
-    assert proxy.request.path_qs == "https://aiohttp.io/path"
+    assert proxy.request.path_qs == "/path"
     assert "Proxy-Authorization" not in proxy.request.headers
 
 
