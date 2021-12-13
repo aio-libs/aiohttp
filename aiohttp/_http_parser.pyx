@@ -425,7 +425,7 @@ cdef class HttpParser:
         raw_headers = tuple(self._raw_headers)
         headers = CIMultiDictProxy(self._headers)
 
-        if upgrade or self._cparser.method == 5: # cparser.CONNECT:
+        if upgrade or self._cparser.method == cparser.HTTP_CONNECT:
             self._upgraded = True
 
         # do not support old websocket spec
@@ -453,7 +453,7 @@ cdef class HttpParser:
 
         if (
             ULLONG_MAX > self._cparser.content_length > 0 or chunked or
-            self._cparser.method == 5 or  # CONNECT: 5
+            self._cparser.method == cparser.HTTP_CONNECT or
             (self._cparser.status_code >= 199 and
              self._cparser.content_length == 0 and
              self._read_until_eof)
@@ -586,34 +586,45 @@ cdef class HttpRequestParser(HttpParser):
         self._path = self._buf.decode('utf-8', 'surrogateescape')
         try:
             idx3 = len(self._path)
-            idx1 = self._path.find("?")
-            if idx1 == -1:
-                query = ""
-                idx2 = self._path.find("#")
-                if idx2 == -1:
-                    path = self._path
-                    fragment = ""
-                else:
-                    path = self._path[0: idx2]
-                    fragment = self._path[idx2+1:]
+            if self._cparser.method == cparser.HTTP_CONNECT:
+                # authority-form,
+                # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.3
+                self._url = URL.build(authority=self._path, encoded=True)
+            elif idx3 > 1 and self._path[0] == '/':
+                # origin-form,
+                # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.1
+                idx1 = self._path.find("?")
+                if idx1 == -1:
+                    query = ""
+                    idx2 = self._path.find("#")
+                    if idx2 == -1:
+                        path = self._path
+                        fragment = ""
+                    else:
+                        path = self._path[0: idx2]
+                        fragment = self._path[idx2+1:]
 
+                else:
+                    path = self._path[0:idx1]
+                    idx1 += 1
+                    idx2 = self._path.find("#", idx1+1)
+                    if idx2 == -1:
+                        query = self._path[idx1:]
+                        fragment = ""
+                    else:
+                        query = self._path[idx1: idx2]
+                        fragment = self._path[idx2+1:]
+
+                self._url = URL.build(
+                    path=path,
+                    query_string=query,
+                    fragment=fragment,
+                    encoded=True,
+                )
             else:
-                path = self._path[0:idx1]
-                idx1 += 1
-                idx2 = self._path.find("#", idx1+1)
-                if idx2 == -1:
-                    query = self._path[idx1:]
-                    fragment = ""
-                else:
-                    query = self._path[idx1: idx2]
-                    fragment = self._path[idx2+1:]
-
-            self._url = URL.build(
-                path=path,
-                query_string=query,
-                fragment=fragment,
-                encoded=True,
-            )
+                # absolute-form for proxy maybe,
+                # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.2
+                self._url = URL(self._path, encoded=True)
         finally:
             PyByteArray_Resize(self._buf, 0)
 
@@ -726,7 +737,10 @@ cdef int cb_on_headers_complete(cparser.llhttp_t* parser) except -1:
         pyparser._last_error = exc
         return -1
     else:
-        if pyparser._cparser.upgrade or pyparser._cparser.method == 5: # CONNECT
+        if (
+            pyparser._cparser.upgrade or
+            pyparser._cparser.method == cparser.HTTP_CONNECT
+        ):
             return 2
         else:
             return 0
