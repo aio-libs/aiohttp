@@ -103,7 +103,7 @@ def parse_content_disposition(
         warnings.warn(BadContentDispositionHeader(header))
         return None, {}
 
-    params = {}  # type: Dict[str, str]
+    params: Dict[str, str] = {}
     while parts:
         item = parts.pop(0)
 
@@ -272,9 +272,9 @@ class BodyPartReader:
         self._read_bytes = 0
         # TODO: typeing.Deque is not supported by Python 3.5
         self._unread: Deque[bytes] = deque()
-        self._prev_chunk = None  # type: Optional[bytes]
+        self._prev_chunk: Optional[bytes] = None
         self._content_eof = 0
-        self._cache = {}  # type: Dict[str, Any]
+        self._cache: Dict[str, Any] = {}
 
     def __aiter__(self) -> AsyncIterator["BodyPartReader"]:
         return self  # type: ignore[return-value]
@@ -541,7 +541,7 @@ class BodyPartReaderPayload(Payload):
     def __init__(self, value: BodyPartReader, *args: Any, **kwargs: Any) -> None:
         super().__init__(value, *args, **kwargs)
 
-        params = {}  # type: Dict[str, str]
+        params: Dict[str, str] = {}
         if value.name is not None:
             params["name"] = value.name
         if value.filename is not None:
@@ -580,12 +580,10 @@ class MultipartReader:
         self._boundary = ("--" + self._get_boundary()).encode()
         self._newline = _newline
         self._content = content
-        self._last_part = (
-            None
-        )  # type: Optional[Union['MultipartReader', BodyPartReader]]
+        self._last_part: Optional[Union["MultipartReader", BodyPartReader]] = None
         self._at_eof = False
         self._at_bof = True
-        self._unread = []  # type: List[bytes]
+        self._unread: List[bytes] = []
 
     def __aiter__(
         self,
@@ -789,7 +787,7 @@ class MultipartWriter(Payload):
 
         super().__init__(None, content_type=ctype)
 
-        self._parts = []  # type: List[_Part]
+        self._parts: List[_Part] = []
 
     def __enter__(self) -> "MultipartWriter":
         return self
@@ -868,20 +866,20 @@ class MultipartWriter(Payload):
     def append_payload(self, payload: Payload) -> Payload:
         """Adds a new body part to multipart writer."""
         # compression
-        encoding = payload.headers.get(
+        encoding: Optional[str] = payload.headers.get(
             CONTENT_ENCODING,
             "",
-        ).lower()  # type: Optional[str]
+        ).lower()
         if encoding and encoding not in ("deflate", "gzip", "identity"):
             raise RuntimeError(f"unknown content encoding: {encoding}")
         if encoding == "identity":
             encoding = None
 
         # te encoding
-        te_encoding = payload.headers.get(
+        te_encoding: Optional[str] = payload.headers.get(
             CONTENT_TRANSFER_ENCODING,
             "",
-        ).lower()  # type: Optional[str]
+        ).lower()
         if te_encoding not in ("", "base64", "quoted-printable", "binary"):
             raise RuntimeError(
                 "unknown content transfer encoding: {}" "".format(te_encoding)
@@ -973,9 +971,9 @@ class MultipartWriter(Payload):
 class MultipartPayloadWriter:
     def __init__(self, writer: Any) -> None:
         self._writer = writer
-        self._encoding = None  # type: Optional[str]
-        self._compress = None  # type: Any
-        self._encoding_buffer = None  # type: Optional[bytearray]
+        self._encoding: Optional[str] = None
+        self._compress: Any = None
+        self._encoding_buffer: Optional[bytearray] = None
 
     def enable_encoding(self, encoding: str) -> None:
         if encoding == "base64":

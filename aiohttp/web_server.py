@@ -28,7 +28,7 @@ class Server:
                 stacklevel=2,
             )
         self._loop = asyncio.get_running_loop()
-        self._connections = {}  # type: Dict[RequestHandler, asyncio.Transport]
+        self._connections: Dict[RequestHandler, asyncio.Transport] = {}
         self._kwargs = kwargs
         self.requests_count = 0
         self.request_handler = handler

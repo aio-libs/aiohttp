@@ -63,8 +63,8 @@ class ClientWebSocketResponse:
         self._protocol = protocol
         self._closed = False
         self._closing = False
-        self._close_code = None  # type: Optional[int]
-        self._timeout = timeout  # type: ClientWSTimeout
+        self._close_code: Optional[int] = None
+        self._timeout: ClientWSTimeout = timeout
         self._autoclose = autoclose
         self._autoping = autoping
         self._heartbeat = heartbeat
@@ -73,8 +73,8 @@ class ClientWebSocketResponse:
             self._pong_heartbeat = heartbeat / 2.0
         self._pong_response_cb: Optional[asyncio.TimerHandle] = None
         self._loop = loop
-        self._waiting = None  # type: Optional[asyncio.Future[bool]]
-        self._exception = None  # type: Optional[BaseException]
+        self._waiting: Optional[asyncio.Future[bool]] = None
+        self._exception: Optional[BaseException] = None
         self._compress = compress
         self._client_notakeover = client_notakeover
 

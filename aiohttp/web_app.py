@@ -105,22 +105,22 @@ class Application(MutableMapping[str, Any]):
         self._handler_args = handler_args
         self.logger = logger
 
-        self._middlewares = FrozenList(middlewares)  # type: _Middlewares
+        self._middlewares: _Middlewares = FrozenList(middlewares)
 
         # initialized on freezing
-        self._middlewares_handlers = tuple()  # type: _MiddlewaresHandlers
+        self._middlewares_handlers: _MiddlewaresHandlers = tuple()
         # initialized on freezing
-        self._run_middlewares = None  # type: Optional[bool]
+        self._run_middlewares: Optional[bool] = None
 
-        self._state = {}  # type: Dict[str, Any]
+        self._state: Dict[str, Any] = {}
         self._frozen = False
         self._pre_frozen = False
-        self._subapps = []  # type: _Subapps
+        self._subapps: _Subapps = []
 
-        self._on_response_prepare = Signal(self)  # type: _RespPrepareSignal
-        self._on_startup = Signal(self)  # type: _AppSignal
-        self._on_shutdown = Signal(self)  # type: _AppSignal
-        self._on_cleanup = Signal(self)  # type: _AppSignal
+        self._on_response_prepare: _RespPrepareSignal = Signal(self)
+        self._on_startup: _AppSignal = Signal(self)
+        self._on_shutdown: _AppSignal = Signal(self)
+        self._on_cleanup: _AppSignal = Signal(self)
         self._cleanup_ctx = CleanupContext()
         self._on_startup.append(self._cleanup_ctx._on_startup)
         self._on_cleanup.append(self._cleanup_ctx._on_cleanup)
@@ -260,7 +260,7 @@ class Application(MutableMapping[str, Any]):
         if not isinstance(domain, str):
             raise TypeError("Domain must be str")
         elif "*" in domain:
-            rule = MaskDomain(domain)  # type: Domain
+            rule: Domain = MaskDomain(domain)
         else:
             rule = Domain(domain)
         factory = partial(MatchedSubAppResource, rule, subapp)
@@ -377,7 +377,7 @@ else:
 class CleanupContext(_CleanupContextBase):
     def __init__(self) -> None:
         super().__init__()
-        self._exits = []  # type: List[AsyncIterator[None]]
+        self._exits: List[AsyncIterator[None]] = []
 
     async def _on_startup(self, app: Application) -> None:
         for cb in self:

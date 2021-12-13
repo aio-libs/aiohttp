@@ -320,7 +320,7 @@ class HTTPMethodNotAllowed(HTTPClientError):
             headers=headers, reason=reason, text=text, content_type=content_type
         )
         self.headers["Allow"] = allow
-        self._allowed = set(allowed_methods)  # type: Set[str]
+        self._allowed: Set[str] = set(allowed_methods)
         self._method = method
 
     @property
