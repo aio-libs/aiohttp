@@ -37,9 +37,9 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
     def __init__(self, *args: Any, **kw: Any) -> None:  # pragma: no cover
         super().__init__(*args, **kw)
 
-        self._task = None  # type: Optional[asyncio.Task[None]]
+        self._task: Optional[asyncio.Task[None]] = None
         self.exit_code = 0
-        self._notify_waiter = None  # type: Optional[asyncio.Future[bool]]
+        self._notify_waiter: Optional[asyncio.Future[bool]] = None
 
     def init_process(self) -> None:
         # create new event_loop after fork

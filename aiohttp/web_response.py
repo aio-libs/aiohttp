@@ -85,20 +85,20 @@ class StreamResponse(BaseClass, HeadersMixin):
         headers: Optional[LooseHeaders] = None,
     ) -> None:
         self._body = None
-        self._keep_alive = None  # type: Optional[bool]
+        self._keep_alive: Optional[bool] = None
         self._chunked = False
         self._compression = False
-        self._compression_force = None  # type: Optional[ContentCoding]
-        self._cookies = SimpleCookie()  # type: SimpleCookie[str]
+        self._compression_force: Optional[ContentCoding] = None
+        self._cookies: SimpleCookie[str] = SimpleCookie()
 
-        self._req = None  # type: Optional[BaseRequest]
-        self._payload_writer = None  # type: Optional[AbstractStreamWriter]
+        self._req: Optional[BaseRequest] = None
+        self._payload_writer: Optional[AbstractStreamWriter] = None
         self._eof_sent = False
         self._body_length = 0
-        self._state = {}  # type: Dict[str, Any]
+        self._state: Dict[str, Any] = {}
 
         if headers is not None:
-            self._headers = CIMultiDict(headers)  # type: CIMultiDict[str]
+            self._headers: CIMultiDict[str] = CIMultiDict(headers)
         else:
             self._headers = CIMultiDict()
 
@@ -589,7 +589,7 @@ class Response(StreamResponse):
             raise ValueError("body and text are not allowed together")
 
         if headers is None:
-            real_headers = CIMultiDict()  # type: CIMultiDict[str]
+            real_headers: CIMultiDict[str] = CIMultiDict()
         elif not isinstance(headers, CIMultiDict):
             real_headers = CIMultiDict(headers)
         else:
@@ -638,7 +638,7 @@ class Response(StreamResponse):
         else:
             self.body = body
 
-        self._compressed_body = None  # type: Optional[bytes]
+        self._compressed_body: Optional[bytes] = None
         self._zlib_executor_size = zlib_executor_size
         self._zlib_executor = zlib_executor
 
@@ -654,8 +654,8 @@ class Response(StreamResponse):
         CONTENT_LENGTH: istr = hdrs.CONTENT_LENGTH,
     ) -> None:
         if body is None:
-            self._body = None  # type: Optional[bytes]
-            self._body_payload = False  # type: bool
+            self._body: Optional[bytes] = None
+            self._body_payload: bool = False
         elif isinstance(body, (bytes, bytearray)):
             self._body = body
             self._body_payload = False
@@ -735,7 +735,7 @@ class Response(StreamResponse):
         if self._eof_sent:
             return
         if self._compressed_body is None:
-            body = self._body  # type: Optional[Union[bytes, Payload]]
+            body: Optional[Union[bytes, Payload]] = self._body
         else:
             body = self._compressed_body
         assert not data, f"data arg is not supported, got {data!r}"

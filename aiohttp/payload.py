@@ -99,9 +99,9 @@ class PayloadRegistry:
     """
 
     def __init__(self) -> None:
-        self._first = []  # type: List[_PayloadRegistryItem]
-        self._normal = []  # type: List[_PayloadRegistryItem]
-        self._last = []  # type: List[_PayloadRegistryItem]
+        self._first: List[_PayloadRegistryItem] = []
+        self._normal: List[_PayloadRegistryItem] = []
+        self._last: List[_PayloadRegistryItem] = []
 
     def get(
         self,
@@ -133,8 +133,8 @@ class PayloadRegistry:
 
 class Payload(ABC):
 
-    _default_content_type = "application/octet-stream"  # type: str
-    _size = None  # type: Optional[int]
+    _default_content_type: str = "application/octet-stream"
+    _size: Optional[int] = None
 
     def __init__(
         self,
@@ -149,7 +149,7 @@ class Payload(ABC):
     ) -> None:
         self._encoding = encoding
         self._filename = filename
-        self._headers = CIMultiDict()  # type: _CIMultiDict
+        self._headers: _CIMultiDict = CIMultiDict()
         self._value = value
         if content_type is not sentinel and content_type is not None:
             self._headers[hdrs.CONTENT_TYPE] = content_type
@@ -418,7 +418,7 @@ else:
 
 class AsyncIterablePayload(Payload):
 
-    _iter = None  # type: Optional[_AsyncIterator]
+    _iter: Optional[_AsyncIterator] = None
 
     def __init__(self, value: _AsyncIterable, *args: Any, **kwargs: Any) -> None:
         if not isinstance(value, AsyncIterable):

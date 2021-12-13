@@ -53,7 +53,7 @@ class BaseSite(ABC):
         self._shutdown_timeout = shutdown_timeout
         self._ssl_context = ssl_context
         self._backlog = backlog
-        self._server = None  # type: Optional[asyncio.AbstractServer]
+        self._server: Optional[asyncio.AbstractServer] = None
 
     @property
     @abstractmethod
@@ -242,8 +242,8 @@ class BaseRunner(ABC):
     def __init__(self, *, handle_signals: bool = False, **kwargs: Any) -> None:
         self._handle_signals = handle_signals
         self._kwargs = kwargs
-        self._server = None  # type: Optional[Server]
-        self._sites = []  # type: List[BaseSite]
+        self._server: Optional[Server] = None
+        self._sites: List[BaseSite] = []
 
     @property
     def server(self) -> Optional[Server]:
@@ -251,7 +251,7 @@ class BaseRunner(ABC):
 
     @property
     def addresses(self) -> List[Any]:
-        ret = []  # type: List[Any]
+        ret: List[Any] = []
         for site in self._sites:
             server = site._server
             if server is not None:
