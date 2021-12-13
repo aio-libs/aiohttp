@@ -83,8 +83,8 @@ class Connection:
         self._key = key
         self._connector = connector
         self._loop = loop
-        self._protocol = protocol  # type: Optional[ResponseHandler]
-        self._callbacks = []  # type: List[Callable[[], None]]
+        self._protocol: Optional[ResponseHandler] = protocol
+        self._callbacks: List[Callable[[], None]] = []
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
@@ -155,7 +155,7 @@ class _TransportPlaceholder:
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         fut = loop.create_future()
         fut.set_result(None)
-        self.closed = fut  # type: asyncio.Future[Optional[Exception]]
+        self.closed: asyncio.Future[Optional[Exception]] = fut
 
     def close(self) -> None:
         pass
@@ -210,15 +210,13 @@ class BaseConnector:
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
-        self._conns = (
-            {}
-        )  # type: Dict[ConnectionKey, List[Tuple[ResponseHandler, float]]]
+        self._conns: Dict[ConnectionKey, List[Tuple[ResponseHandler, float]]] = {}
         self._limit = limit
         self._limit_per_host = limit_per_host
-        self._acquired = set()  # type: Set[ResponseHandler]
-        self._acquired_per_host = defaultdict(
-            set
-        )  # type: DefaultDict[ConnectionKey, Set[ResponseHandler]]
+        self._acquired: Set[ResponseHandler] = set()
+        self._acquired_per_host: DefaultDict[
+            ConnectionKey, Set[ResponseHandler]
+        ] = defaultdict(set)
         self._keepalive_timeout = cast(float, keepalive_timeout)
         self._force_close = force_close
 
@@ -228,7 +226,7 @@ class BaseConnector:
         self._loop = loop
         self._factory = functools.partial(ResponseHandler, loop=loop)
 
-        self.cookies = SimpleCookie()  # type: SimpleCookie[str]
+        self.cookies: SimpleCookie[str] = SimpleCookie()
 
         # start keep-alive connection cleanup task
         self._cleanup_handle: Optional[asyncio.TimerHandle] = None
@@ -236,7 +234,7 @@ class BaseConnector:
         # start cleanup closed transports task
         self._cleanup_closed_handle: Optional[asyncio.TimerHandle] = None
         self._cleanup_closed_disabled = not enable_cleanup_closed
-        self._cleanup_closed_transports = []  # type: List[Optional[asyncio.Transport]]
+        self._cleanup_closed_transports: List[Optional[asyncio.Transport]] = []
         self._cleanup_closed()
 
     def __del__(self, _warnings: Any = warnings) -> None:
@@ -383,7 +381,7 @@ class BaseConnector:
                     logging.error(err_msg)
 
     def _close_immediately(self) -> List["asyncio.Future[None]"]:
-        waiters = []  # type: List['asyncio.Future[None]']
+        waiters: List["asyncio.Future[None]"] = []
 
         if self._closed:
             return waiters
@@ -667,10 +665,8 @@ class BaseConnector:
 
 class _DNSCacheTable:
     def __init__(self, ttl: Optional[float] = None) -> None:
-        self._addrs_rr = (
-            {}
-        )  # type: Dict[Tuple[str, int], Tuple[Iterator[Dict[str, Any]], int]]
-        self._timestamps = {}  # type: Dict[Tuple[str, int], float]
+        self._addrs_rr: Dict[Tuple[str, int], Tuple[Iterator[Dict[str, Any]], int]] = {}
+        self._timestamps: Dict[Tuple[str, int], float] = {}
         self._ttl = ttl
 
     def __contains__(self, host: object) -> bool:
@@ -768,9 +764,7 @@ class TCPConnector(BaseConnector):
 
         self._use_dns_cache = use_dns_cache
         self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache)
-        self._throttle_dns_events = (
-            {}
-        )  # type: Dict[Tuple[str, int], EventResultOrError]
+        self._throttle_dns_events: Dict[Tuple[str, int], EventResultOrError] = {}
         self._family = family
         self._local_addr = local_addr
 
@@ -1107,7 +1101,7 @@ class TCPConnector(BaseConnector):
             # it is problem of resolving proxy ip itself
             raise ClientConnectorError(req.connection_key, exc) from exc
 
-        last_exc = None  # type: Optional[Exception]
+        last_exc: Optional[Exception] = None
 
         for hinfo in hosts:
             host = hinfo["host"]
@@ -1149,7 +1143,7 @@ class TCPConnector(BaseConnector):
     async def _create_proxy_connection(
         self, req: "ClientRequest", traces: List["Trace"], timeout: "ClientTimeout"
     ) -> Tuple[asyncio.BaseTransport, ResponseHandler]:
-        headers = {}  # type: Dict[str, str]
+        headers: Dict[str, str] = {}
         if req.proxy_headers is not None:
             headers = req.proxy_headers  # type: ignore[assignment]
         headers[hdrs.HOST] = req.headers[hdrs.HOST]

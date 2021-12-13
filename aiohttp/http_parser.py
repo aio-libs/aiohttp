@@ -135,7 +135,7 @@ class HeadersParser:
     def parse_headers(
         self, lines: List[bytes]
     ) -> Tuple["CIMultiDictProxy[str]", RawHeaders]:
-        headers = CIMultiDict()  # type: CIMultiDict[str]
+        headers: CIMultiDict[str] = CIMultiDict()
         raw_headers = []
 
         lines_idx = 1
@@ -246,11 +246,11 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         self.response_with_body = response_with_body
         self.read_until_eof = read_until_eof
 
-        self._lines = []  # type: List[bytes]
+        self._lines: List[bytes] = []
         self._tail = b""
         self._upgraded = False
         self._payload = None
-        self._payload_parser = None  # type: Optional[HttpPayloadParser]
+        self._payload_parser: Optional[HttpPayloadParser] = None
         self._auto_decompress = auto_decompress
         self._limit = limit
         self._headers_parser = HeadersParser(max_line_size, max_headers, max_field_size)
@@ -690,9 +690,9 @@ class HttpPayloadParser:
 
         # payload decompression wrapper
         if response_with_body and compression and self._auto_decompress:
-            real_payload = DeflateBuffer(
+            real_payload: Union[StreamReader, DeflateBuffer] = DeflateBuffer(
                 payload, compression
-            )  # type: Union[StreamReader, DeflateBuffer]
+            )
         else:
             real_payload = payload
 
@@ -891,7 +891,7 @@ class DeflateBuffer:
                         return cast(bytes, self._obj.flush())
                     return b""
 
-            self.decompressor = BrotliDecoder()  # type: Any
+            self.decompressor: Any = BrotliDecoder()
         else:
             zlib_mode = 16 + zlib.MAX_WBITS if encoding == "gzip" else zlib.MAX_WBITS
             self.decompressor = zlib.decompressobj(wbits=zlib_mode)
