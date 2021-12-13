@@ -22,7 +22,7 @@ class Server:
         **kwargs: Any
     ) -> None:
         self._loop = get_running_loop(loop)
-        self._connections = {}  # type: Dict[RequestHandler, asyncio.Transport]
+        self._connections: Dict[RequestHandler, asyncio.Transport] = {}
         self._kwargs = kwargs
         self.requests_count = 0
         self.request_handler = handler

@@ -65,10 +65,8 @@ class CookieJar(AbstractCookieJar):
         loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
         super().__init__(loop=loop)
-        self._cookies = defaultdict(
-            SimpleCookie
-        )  # type: DefaultDict[str, SimpleCookie[str]]
-        self._host_only_cookies = set()  # type: Set[Tuple[str, str]]
+        self._cookies: DefaultDict[str, SimpleCookie[str]] = defaultdict(SimpleCookie)
+        self._host_only_cookies: Set[Tuple[str, str]] = set()
         self._unsafe = unsafe
         self._quote_cookie = quote_cookie
         if treat_as_secure_origin is None:
@@ -84,7 +82,7 @@ class CookieJar(AbstractCookieJar):
             ]
         self._treat_as_secure_origin = treat_as_secure_origin
         self._next_expiration = next_whole_second()
-        self._expirations = {}  # type: Dict[Tuple[str, str], datetime.datetime]
+        self._expirations: Dict[Tuple[str, str], datetime.datetime] = {}
         # #4515: datetime.max may not be representable on 32-bit platforms
         self._max_time = self.MAX_TIME
         try:
@@ -166,7 +164,7 @@ class CookieJar(AbstractCookieJar):
 
         for name, cookie in cookies:
             if not isinstance(cookie, Morsel):
-                tmp = SimpleCookie()  # type: SimpleCookie[str]
+                tmp: SimpleCookie[str] = SimpleCookie()
                 tmp[name] = cookie  # type: ignore[assignment]
                 cookie = tmp[name]
 

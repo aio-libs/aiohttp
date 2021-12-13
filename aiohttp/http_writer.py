@@ -44,11 +44,11 @@ class StreamWriter(AbstractStreamWriter):
         self.output_size = 0
 
         self._eof = False
-        self._compress = None  # type: Any
+        self._compress: Any = None
         self._drain_waiter = None
 
-        self._on_chunk_sent = on_chunk_sent  # type: _T_OnChunkSent
-        self._on_headers_sent = on_headers_sent  # type: _T_OnHeadersSent
+        self._on_chunk_sent: _T_OnChunkSent = on_chunk_sent
+        self._on_headers_sent: _T_OnHeadersSent = on_headers_sent
 
     @property
     def transport(self) -> Optional[asyncio.Transport]:

@@ -105,8 +105,8 @@ class BaseTestServer(ABC):
         **kwargs: Any,
     ) -> None:
         self._loop = loop
-        self.runner = None  # type: Optional[BaseRunner]
-        self._root = None  # type: Optional[URL]
+        self.runner: Optional[BaseRunner] = None
+        self._root: Optional[URL] = None
         self.host = host
         self.port = port
         self._closed = False
@@ -284,8 +284,8 @@ class TestClient:
             cookie_jar = aiohttp.CookieJar(unsafe=True, loop=loop)
         self._session = ClientSession(loop=loop, cookie_jar=cookie_jar, **kwargs)
         self._closed = False
-        self._responses = []  # type: List[ClientResponse]
-        self._websockets = []  # type: List[ClientWebSocketResponse]
+        self._responses: List[ClientResponse] = []
+        self._websockets: List[ClientWebSocketResponse] = []
 
     async def start_server(self) -> None:
         await self._server.start_server(loop=self._loop)

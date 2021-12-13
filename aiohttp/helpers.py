@@ -86,13 +86,13 @@ _S = TypeVar("_S")
 _SENTINEL = enum.Enum("_SENTINEL", "sentinel")
 sentinel = _SENTINEL.sentinel
 
-NO_EXTENSIONS = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))  # type: bool
+NO_EXTENSIONS: bool = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))
 
 # N.B. sys.flags.dev_mode is available on Python 3.7+, use getattr
 # for compatibility with older versions
-DEBUG = getattr(sys.flags, "dev_mode", False) or (
+DEBUG: bool = getattr(sys.flags, "dev_mode", False) or (
     not sys.flags.ignore_environment and bool(os.environ.get("PYTHONASYNCIODEBUG"))
-)  # type: bool
+)
 
 
 CHAR = {chr(i) for i in range(0, 128)}
@@ -352,7 +352,7 @@ def parse_mimetype(mimetype: str) -> MimeType:
         )
 
     parts = mimetype.split(";")
-    params = MultiDict()  # type: MultiDict[str]
+    params: MultiDict[str] = MultiDict()
     for item in parts[1:]:
         if not item:
             continue
@@ -542,7 +542,7 @@ def next_whole_second() -> datetime.datetime:
     ) + datetime.timedelta(seconds=0)
 
 
-_cached_current_datetime = None  # type: Optional[int]
+_cached_current_datetime: Optional[int] = None
 _cached_formatted_datetime = ""
 
 
@@ -636,9 +636,9 @@ class TimeoutHandle:
         self._timeout = timeout
         self._loop = loop
         self._ceil_threshold = ceil_threshold
-        self._callbacks = (
-            []
-        )  # type: List[Tuple[Callable[..., None], Tuple[Any, ...], Dict[str, Any]]]
+        self._callbacks: List[
+            Tuple[Callable[..., None], Tuple[Any, ...], Dict[str, Any]]
+        ] = []
 
     def register(
         self, callback: Callable[..., None], *args: Any, **kwargs: Any
@@ -696,7 +696,7 @@ class TimerContext(BaseTimerContext):
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
-        self._tasks = []  # type: List[asyncio.Task[Any]]
+        self._tasks: List[asyncio.Task[Any]] = []
         self._cancelled = False
 
     def __enter__(self) -> BaseTimerContext:
@@ -754,8 +754,8 @@ class HeadersMixin:
 
     _headers: MultiMapping[str]
 
-    _content_type = None  # type: Optional[str]
-    _content_dict = None  # type: Optional[Dict[str, str]]
+    _content_type: Optional[str] = None
+    _content_dict: Optional[Dict[str, str]] = None
     _stored_content_type: Union[str, None, _SENTINEL] = sentinel
 
     def _parse_content_type(self, raw: Optional[str]) -> None:
@@ -832,7 +832,7 @@ class ChainMapProxy(Mapping[str, Any]):
         return len(set().union(*self._maps))  # type: ignore[arg-type]
 
     def __iter__(self) -> Iterator[str]:
-        d = {}  # type: Dict[str, Any]
+        d: Dict[str, Any] = {}
         for mapping in reversed(self._maps):
             # reuses stored hash values if possible
             d.update(mapping)
