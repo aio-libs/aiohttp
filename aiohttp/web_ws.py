@@ -68,16 +68,16 @@ class WebSocketResponse(StreamResponse):
     ) -> None:
         super().__init__(status=101)
         self._protocols = protocols
-        self._ws_protocol = None  # type: Optional[str]
-        self._writer = None  # type: Optional[WebSocketWriter]
-        self._reader = None  # type: Optional[FlowControlDataQueue[WSMessage]]
+        self._ws_protocol: Optional[str] = None
+        self._writer: Optional[WebSocketWriter] = None
+        self._reader: Optional[FlowControlDataQueue[WSMessage]] = None
         self._closed = False
         self._closing = False
         self._conn_lost = 0
-        self._close_code = None  # type: Optional[int]
-        self._loop = None  # type: Optional[asyncio.AbstractEventLoop]
-        self._waiting = None  # type: Optional[asyncio.Future[bool]]
-        self._exception = None  # type: Optional[BaseException]
+        self._close_code: Optional[int] = None
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._waiting: Optional[asyncio.Future[bool]] = None
+        self._exception: Optional[BaseException] = None
         self._timeout = timeout
         self._receive_timeout = receive_timeout
         self._autoclose = autoclose

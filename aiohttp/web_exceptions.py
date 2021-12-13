@@ -273,7 +273,7 @@ class HTTPMethodNotAllowed(HTTPClientError):
             content_type=content_type,
         )
         self.headers["Allow"] = allow
-        self.allowed_methods = set(allowed_methods)  # type: Set[str]
+        self.allowed_methods: Set[str] = set(allowed_methods)
         self.method = method.upper()
 
 

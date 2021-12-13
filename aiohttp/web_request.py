@@ -164,7 +164,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self._headers = message.headers
         self._method = message.method
         self._version = message.version
-        self._cache = {}  # type: Dict[str, Any]
+        self._cache: Dict[str, Any] = {}
         url = message.url
         if url.is_absolute():
             # absolute URL is given,
@@ -176,10 +176,8 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             self._rel_url = url.relative()
         else:
             self._rel_url = message.url
-        self._post = (
-            None
-        )  # type: Optional[MultiDictProxy[Union[str, bytes, FileField]]]
-        self._read_bytes = None  # type: Optional[bytes]
+        self._post: Optional[MultiDictProxy[Union[str, bytes, FileField]]] = None
+        self._read_bytes: Optional[bytes] = None
 
         self._state = state
         self._task = task
@@ -217,7 +215,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         if self._read_bytes:
             raise RuntimeError("Cannot clone request " "after reading its content")
 
-        dct = {}  # type: Dict[str, Any]
+        dct: Dict[str, Any] = {}
         if method is not sentinel:
             dct["method"] = method
         if rel_url is not sentinel:
@@ -336,7 +334,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             length = len(field_value)
             pos = 0
             need_separator = False
-            elem = {}  # type: Dict[str, str]
+            elem: Dict[str, str] = {}
             elems.append(types.MappingProxyType(elem))
             while 0 <= pos < length:
                 match = _FORWARDED_PAIR_RE.match(field_value, pos)
@@ -570,7 +568,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         A read-only dictionary-like object.
         """
         raw = self.headers.get(hdrs.COOKIE, "")
-        parsed = SimpleCookie(raw)  # type: SimpleCookie[str]
+        parsed: SimpleCookie[str] = SimpleCookie(raw)
         return MappingProxyType({key: val.value for key, val in parsed.items()})
 
     @reify
@@ -693,7 +691,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             self._post = MultiDictProxy(MultiDict())
             return self._post
 
-        out = MultiDict()  # type: MultiDict[Union[str, bytes, FileField]]
+        out: MultiDict[Union[str, bytes, FileField]] = MultiDict()
 
         if content_type == "multipart/form-data":
             multipart = await self.multipart()
@@ -816,7 +814,7 @@ class Request(BaseRequest):
         # or information about traversal lookup
 
         # initialized after route resolving
-        self._match_info = None  # type: Optional[UrlMappingMatchInfo]
+        self._match_info: Optional[UrlMappingMatchInfo] = None
 
     if DEBUG:
 
