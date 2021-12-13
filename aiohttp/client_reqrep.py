@@ -718,8 +718,8 @@ class ClientResponse(HeadersMixin):
     reason = None  # Reason-Phrase
 
     content: StreamReader = None  # type: ignore[assignment]  # Payload stream
-    _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]  # Response headers
-    _raw_headers: RawHeaders = None  # type: ignore[assignment]  # Response raw headers
+    _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]
+    _raw_headers: RawHeaders = None  # type: ignore[assignment]
 
     _connection = None  # current connection
     _source_traceback = None
