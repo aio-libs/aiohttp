@@ -532,9 +532,6 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
                 "Status line is too long", str(self.max_line_size), str(len(path))
             )
 
-        path_part, _hash_separator, url_fragment = path.partition("#")
-        path_part, _question_mark_separator, qs_part = path_part.partition("?")
-
         # method
         if not METHRE.match(method):
             raise BadStatusLine(method)
@@ -548,6 +545,31 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
                 raise BadStatusLine(version)
         except Exception:
             raise BadStatusLine(version)
+
+        if method == "CONNECT":
+            # authority-form,
+            # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.3
+            url = URL.build(authority=path, encoded=True)
+        elif path.startswith("/"):
+            # origin-form,
+            # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.1
+            path_part, _hash_separator, url_fragment = path.partition("#")
+            path_part, _question_mark_separator, qs_part = path_part.partition("?")
+
+            # NOTE: `yarl.URL.build()` is used to mimic what the Cython-based
+            # NOTE: parser does, otherwise it results into the same
+            # NOTE: HTTP Request-Line input producing different
+            # NOTE: `yarl.URL()` objects
+            url = URL.build(
+                path=path_part,
+                query_string=qs_part,
+                fragment=url_fragment,
+                encoded=True,
+            )
+        else:
+            # absolute-form for proxy maybe,
+            # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.2
+            url = URL(path, encoded=True)
 
         # read headers
         (
@@ -575,16 +597,7 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
             compression,
             upgrade,
             chunked,
-            # NOTE: `yarl.URL.build()` is used to mimic what the Cython-based
-            # NOTE: parser does, otherwise it results into the same
-            # NOTE: HTTP Request-Line input producing different
-            # NOTE: `yarl.URL()` objects
-            URL.build(
-                path=path_part,
-                query_string=qs_part,
-                fragment=url_fragment,
-                encoded=True,
-            ),
+            url,
         )
 
 

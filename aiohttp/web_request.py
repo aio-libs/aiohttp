@@ -171,14 +171,24 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self._headers = message.headers
         self._method = message.method
         self._version = message.version
-        self._rel_url = message.url
+        self._cache = {}  # type: Dict[str, Any]
+        url = message.url
+        if url.is_absolute():
+            # absolute URL is given,
+            # override auto-calculating url, host, and scheme
+            # all other properties should be good
+            self._cache["url"] = url
+            self._cache["host"] = url.host
+            self._cache["scheme"] = url.scheme
+            self._rel_url = url.relative()
+        else:
+            self._rel_url = message.url
         self._post = (
             None
         )  # type: Optional[MultiDictProxy[Union[str, bytes, FileField]]]
         self._read_bytes = None  # type: Optional[bytes]
 
         self._state = state
-        self._cache = {}  # type: Dict[str, Any]
         self._task = task
         self._client_max_size = client_max_size
         self._loop = loop
