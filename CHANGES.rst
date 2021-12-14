@@ -18,8 +18,8 @@ Bugfixes
 
 - Fix the error in handling the return value of `getaddrinfo`.
   `getaddrinfo` will return an `(int, bytes)` tuple, if CPython could not handle the address family.
-  It will cause a index out of range error in aiohttp. For example, if user compile CPython with
-  `--disable-ipv6` option but his system enable the ipv6.
+  It will cause an index out of range error in aiohttp. For example, if user compile CPython with
+  `--disable-ipv6` option, but his system enable the ipv6.
   `#5901 <https://github.com/aio-libs/aiohttp/issues/5901>`_
 - Do not install "examples" as a top-level package.
   `#6189 <https://github.com/aio-libs/aiohttp/issues/6189>`_
@@ -664,7 +664,7 @@ Bugfixes
   `#3532 <https://github.com/aio-libs/aiohttp/issues/3532>`_
 - Fix an issue where cookies would sometimes not be set during a redirect.
   `#3576 <https://github.com/aio-libs/aiohttp/issues/3576>`_
-- Change normalize_path_middleware to use 308 redirect instead of 301.
+- Change normalize_path_middleware to use '308 Permanent Redirect' instead of 301.
 
   This behavior should prevent clients from being unable to use PUT/POST
   methods on endpoints that are redirected because of a trailing slash.
