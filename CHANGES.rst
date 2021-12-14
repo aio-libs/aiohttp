@@ -25,7 +25,7 @@ Bugfixes
   `#6189 <https://github.com/aio-libs/aiohttp/issues/6189>`_
 - Restored ability to connect IPv6-only host.
   `#6195 <https://github.com/aio-libs/aiohttp/issues/6195>`_
-- Remove ``Signal`` from ``__all__``, replace ``aiohttp. Signal`` with ``aiosignal. Signal`` in docs
+- Remove ``Signal`` from ``__all__``, replace ``aiohttp.Signal`` with ``aiosignal.Signal`` in docs
   `#6201 <https://github.com/aio-libs/aiohttp/issues/6201>`_
 - Made chunked encoding HTTP header check stricter.
   `#6305 <https://github.com/aio-libs/aiohttp/issues/6305>`_
