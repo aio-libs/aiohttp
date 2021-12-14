@@ -664,7 +664,7 @@ Bugfixes
   `#3532 <https://github.com/aio-libs/aiohttp/issues/3532>`_
 - Fix an issue where cookies would sometimes not be set during a redirect.
   `#3576 <https://github.com/aio-libs/aiohttp/issues/3576>`_
-- Change normalize_path_middleware to use 308 redirects instead of 301.
+- Change normalize_path_middleware to use '308 Permanent Redirect' instead of 301.
 
   This behavior should prevent clients from being unable to use PUT/POST
   methods on endpoints that are redirected because of a trailing slash.
