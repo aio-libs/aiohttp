@@ -812,7 +812,7 @@ class ClientResponse(HeadersMixin):
 
                 link.add(key, value)
 
-            key = link.get("rel", url)  # type: ignore[assignment]
+            key = str(link.get("rel", url))
 
             link.add("url", self.url.join(URL(url)))
 
