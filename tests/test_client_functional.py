@@ -2786,7 +2786,7 @@ async def test_server_close_keepalive_connection() -> None:
         await r.read()
         assert 0 == len(connector._conns)
     await session.close()
-    connector.close()
+    await connector.close()
     server.close()
     await server.wait_closed()
 
@@ -2828,7 +2828,7 @@ async def test_handle_keepalive_on_closed_connection() -> None:
     assert 0 == len(connector._conns)
 
     await session.close()
-    connector.close()
+    await connector.close()
     server.close()
     await server.wait_closed()
 
