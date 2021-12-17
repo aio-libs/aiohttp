@@ -312,6 +312,8 @@ async def test_ssl_client(
     txt = await resp.text()
     assert txt == "Test message"
 
+    await connector.close()
+
 
 async def test_tcp_connector_fingerprint_ok(
     aiohttp_server: Any,
@@ -333,6 +335,7 @@ async def test_tcp_connector_fingerprint_ok(
     resp = await client.get("/")
     assert resp.status == 200
     resp.close()
+    await connector.close()
 
 
 async def test_tcp_connector_fingerprint_fail(
@@ -358,6 +361,8 @@ async def test_tcp_connector_fingerprint_fail(
     exc = cm.value
     assert exc.expected == bad_fingerprint
     assert exc.got == tls_certificate_fingerprint_sha256
+
+    await connector.close()
 
 
 async def test_format_task_get(aiohttp_server: Any) -> None:
@@ -2441,6 +2446,8 @@ async def test_drop_auth_on_redirect_to_other_host(
             headers={"Authorization": "Basic dXNlcjpwYXNz"},
         )
         assert resp.status == 200
+
+    await connector.close()
 
 
 async def test_async_with_session() -> None:
