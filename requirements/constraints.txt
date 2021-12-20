@@ -8,7 +8,7 @@ alabaster==0.7.12
     # via sphinx
 async-generator==1.10
     # via -r requirements/base.txt
-async-timeout==4.0.1
+async-timeout==4.0.2
     # via -r requirements/base.txt
 attrs==21.2.0
     # via
@@ -236,7 +236,6 @@ typer==0.4.0
 typing-extensions==3.7.4.3
     # via
     #   -r requirements/typing-extensions.txt
-    #   async-timeout
     #   mypy
     #   pydantic
 uritemplate==4.1.1
