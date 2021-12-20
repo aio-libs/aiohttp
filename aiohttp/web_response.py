@@ -685,7 +685,7 @@ class Response(StreamResponse):
         else:
             await super().write_eof()
 
-    async def _start(self, request: "BaseRequest") -> AbstractStreamWriter:
+    async def _write_headers(self) -> None:
         if not self._chunked and hdrs.CONTENT_LENGTH not in self._headers:
             if not self._body_payload:
                 if self._body is not None:
@@ -693,7 +693,7 @@ class Response(StreamResponse):
                 else:
                     self._headers[hdrs.CONTENT_LENGTH] = "0"
 
-        return await super()._start(request)
+        return await super()._write_headers()
 
     def _compress_body(self, zlib_mode: int) -> None:
         assert zlib_mode > 0
