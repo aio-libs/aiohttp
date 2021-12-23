@@ -31,13 +31,7 @@ def _find_all_importables(pkg: ModuleType) -> List[str]:
         set(
             chain.from_iterable(
                 _discover_path_importables(Path(p), pkg.__name__)
-                # FIXME: Unignore after upgrading to `mypy > 0.910`. The fix
-                # FIXME: is in the `master` branch of upstream since Aug 4,
-                # FIXME: 2021 but has not yet been included in any releases.
-                # Refs:
-                # * https://github.com/python/mypy/issues/1422
-                # * https://github.com/python/mypy/pull/9454
-                for p in pkg.__path__  # type: ignore[attr-defined]
+                for p in pkg.__path__
             ),
         ),
     )
