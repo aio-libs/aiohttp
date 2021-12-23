@@ -23,6 +23,7 @@ from typing import (
     Iterator,
     List,
     Mapping,
+    NoReturn,
     Optional,
     Pattern,
     Set,
@@ -194,8 +195,9 @@ class AbstractRoute(abc.ABC):
             async def handler_wrapper(request: Request) -> StreamResponse:
                 result = old_handler(request)
                 if asyncio.iscoroutine(result):
-                    return await result
-                return result  # type: ignore[return-value]
+                    result = await result
+                assert isinstance(result, StreamResponse)
+                return result
 
             old_handler = handler
             handler = handler_wrapper
@@ -946,19 +948,18 @@ class View(AbstractView):
     async def _iter(self) -> StreamResponse:
         if self.request.method not in hdrs.METH_ALL:
             self._raise_allowed_methods()
-        method: Callable[[], Awaitable[StreamResponse]]
-        method = getattr(  # type: ignore[assignment]
-            self, self.request.method.lower(), None
-        )
+        method: Optional[Callable[[], Awaitable[StreamResponse]]]
+        method = getattr(self, self.request.method.lower(), None)
         if method is None:
             self._raise_allowed_methods()
-        resp = await method()
-        return resp
+        ret = await method()
+        assert isinstance(ret, StreamResponse)
+        return ret
 
     def __await__(self) -> Generator[Any, None, StreamResponse]:
         return self._iter().__await__()
 
-    def _raise_allowed_methods(self) -> None:
+    def _raise_allowed_methods(self) -> NoReturn:
         allowed_methods = {m for m in hdrs.METH_ALL if hasattr(self, m.lower())}
         raise HTTPMethodNotAllowed(self.request.method, allowed_methods)
 
