@@ -810,7 +810,7 @@ class ChainMapProxy(Mapping[str, Any]):
 
     def __len__(self) -> int:
         # reuses stored hash values if possible
-        return len(set().union(*self._maps))  # type: ignore[arg-type]
+        return len(set().union(*self._maps))
 
     def __iter__(self) -> Iterator[str]:
         d: Dict[str, Any] = {}

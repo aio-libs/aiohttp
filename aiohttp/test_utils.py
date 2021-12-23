@@ -133,7 +133,7 @@ class BaseTestServer(ABC):
         await site.start()
         server = site._server
         assert server is not None
-        sockets = server.sockets
+        sockets = server.sockets  # type: ignore[attr-defined]
         assert sockets is not None
         self.port = sockets[0].getsockname()[1]
         if self.scheme is sentinel:

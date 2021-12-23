@@ -812,11 +812,11 @@ class ClientResponse(HeadersMixin):
 
                 link.add(key, value)
 
-            key = link.get("rel", url)  # type: ignore[assignment]
+            key = link.get("rel", url)
 
             link.add("url", self.url.join(URL(url)))
 
-            links.add(key, MultiDictProxy(link))
+            links.add(str(key), MultiDictProxy(link))
 
         return MultiDictProxy(links)
 
