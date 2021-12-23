@@ -255,7 +255,7 @@ class BaseRunner(ABC):
         for site in self._sites:
             server = site._server
             if server is not None:
-                sockets = server.sockets
+                sockets = server.sockets  # type: ignore[attr-defined]
                 if sockets is not None:
                     for sock in sockets:
                         ret.append(sock.getsockname())
