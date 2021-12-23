@@ -946,7 +946,8 @@ class View(AbstractView):
     async def _iter(self) -> StreamResponse:
         if self.request.method not in hdrs.METH_ALL:
             self._raise_allowed_methods()
-        method: Callable[[], Awaitable[StreamResponse]] = getattr(
+        method: Callable[[], Awaitable[StreamResponse]]
+        method = getattr(  # type: ignore[assignment]
             self, self.request.method.lower(), None
         )
         if method is None:
