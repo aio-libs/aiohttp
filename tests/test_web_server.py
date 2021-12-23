@@ -18,6 +18,22 @@ async def test_simple_server(aiohttp_raw_server, aiohttp_client) -> None:
     assert txt == "/path/to"
 
 
+async def test_unsupported_upgrade(aiohttp_raw_server, aiohttp_client) -> None:
+    # don't fail if a client probes for an unsupported protocol upgrade
+    # https://github.com/aio-libs/aiohttp/issues/6446#issuecomment-999032039
+    async def handler(request: web.Request):
+        return web.Response(body=await request.read())
+
+    upgrade_headers = {"Connection": "Upgrade", "Upgrade": "unsupported_proto"}
+    server = await aiohttp_raw_server(handler)
+    cli = await aiohttp_client(server)
+    test_data = b"Test"
+    resp = await cli.post("/path/to", data=test_data, headers=upgrade_headers)
+    assert resp.status == 200
+    data = await resp.read()
+    assert data == test_data
+
+
 async def test_raw_server_not_http_exception(aiohttp_raw_server, aiohttp_client):
     exc = RuntimeError("custom runtime error")
 
