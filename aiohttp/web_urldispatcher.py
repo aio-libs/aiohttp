@@ -930,7 +930,8 @@ class View(AbstractView):
         if self.request.method not in hdrs.METH_ALL:
             self._raise_allowed_methods()
         method: Optional[Callable[[], Awaitable[StreamResponse]]] = getattr(
-            self, self.request.method.lower(), None)
+            self, self.request.method.lower(), None
+        )
         if method is None:
             self._raise_allowed_methods()
         return await method()
