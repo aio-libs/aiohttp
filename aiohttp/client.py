@@ -1089,7 +1089,7 @@ class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType
     def send(self, arg: None) -> "asyncio.Future[Any]":
         return self._coro.send(arg)
 
-    def throw(self, arg: BaseException) -> None:  # type: ignore[arg-type,override]
+    def throw(self, arg: BaseException) -> None:  # type: ignore[override]
         self._coro.throw(arg)
 
     def close(self) -> None:
