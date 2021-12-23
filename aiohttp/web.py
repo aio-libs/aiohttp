@@ -305,7 +305,7 @@ async def _run_app(
 ) -> None:
     # A internal functio to actually do all dirty job for application running
     if asyncio.iscoroutine(app):
-        app = await app  # type: ignore[misc]
+        app = await app
 
     app = cast(Application, app)
 
