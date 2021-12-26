@@ -1120,15 +1120,16 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         if path and not path.startswith("/"):
             raise ValueError("path should be started with / or be empty")
         # Reuse named resource
-        resource = self._named_resources.get(name)
-        if resource is None:
-            pass
-        elif resource.raw_match(path):
-            return cast(Resource, resource)
-        else:
-            raise ValueError(
-                f"Duplicate {name!r}, already handled by {resource!r}"
-            )
+        if name:
+            resource = self._named_resources.get(name)
+            if resource is None:
+                pass
+            elif resource.raw_match(path):
+                return cast(Resource, resource)
+            else:
+                raise ValueError(
+                    f"Duplicate {name!r}, already handled by {resource!r}"
+                )
         if not ("{" in path or "}" in path or ROUTE_RE.search(path)):
             if self._resources and isinstance(self._resources[-1], GroupPlainResource):
                 resource = self._resources[-1]
