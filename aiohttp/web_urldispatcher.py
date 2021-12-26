@@ -1132,11 +1132,11 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
                 )
         if not ("{" in path or "}" in path or ROUTE_RE.search(path)):
             if self._resources and isinstance(self._resources[-1], GroupPlainResource):
-                resource = self._resources[-1]
+                grp = self._resources[-1]
             else:
-                resource = GroupPlainResource()
-                self.register_resource(resource)
-            resource = resource.add_resource(_requote_path(path), name=name)
+                grp = GroupPlainResource()
+                self.register_resource(grp)
+            resource = grp.add_resource(_requote_path(path), name=name)
             if name:
                 self.register_resource(resource, append=False)
             return resource
