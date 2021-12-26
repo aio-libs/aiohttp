@@ -1127,9 +1127,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
             elif resource.raw_match(path):
                 return cast(Resource, resource)
             else:
-                raise ValueError(
-                    f"Duplicate {name!r}, already handled by {resource!r}"
-                )
+                raise ValueError(f"Duplicate {name!r}, already handled by {resource!r}")
         if not ("{" in path or "}" in path or ROUTE_RE.search(path)):
             if self._resources and isinstance(self._resources[-1], GroupPlainResource):
                 grp = self._resources[-1]
