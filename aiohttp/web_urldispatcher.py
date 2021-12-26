@@ -414,6 +414,65 @@ class PlainResource(Resource):
         return f"<PlainResource {name} {self._path}>"
 
 
+class GroupPlainResource(Resource):
+    def __init__(self) -> None:
+        super().__init__()
+        self._resources: Dict[str, Resource] = {}
+
+    @property
+    def canonical(self) -> str:
+        return "/"
+
+    def freeze(self) -> None:
+        self._routes.clear()
+        for resource in self._resources.values():
+            self._routes.extend(resource)
+
+    def add_prefix(self, prefix: str) -> None:
+        assert prefix.startswith("/")
+        assert not prefix.endswith("/")
+        assert len(prefix) > 1
+        old = self._resources.copy()
+        self._resources.clear()
+        for path, resource in old.items():
+            resource.add_prefix(prefix)
+            self._resources[prefix + path] = resource
+
+    async def resolve(self, request: Request) -> _Resolve:
+        allowed_methods: Set[str] = set()
+
+        resource = self._resources.get(request.rel_url.raw_path)
+        if resource is None:
+            return None, allowed_methods
+
+        return await resource.resolve(request)
+
+    def _match(self, path: str) -> Optional[Dict[str, str]]:
+        if path in self._resources:
+            return {}
+        else:
+            return None
+
+    def raw_match(self, path: str) -> bool:
+        return path in self._resources
+
+    def get_info(self) -> _InfoDict:
+        return {}
+
+    def url_for(self) -> URL:  # type: ignore[override]
+        raise RuntimeError(".url_for() is not allowed for GroupPlainResource")
+
+    def __repr__(self) -> str:
+        return f"<GroupPlainResource count={len(self._resources)}>"
+
+    def add_resource(self, path: str, name: Optional[str] = None) -> Resource:
+        result = self._resources.get(path)
+        if result is None:
+            result = PlainResource(path, name=name)
+            self._resources[path] = result
+        return result
+
+
 class DynamicResource(Resource):
 
     DYN = re.compile(r"\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*)\}")
@@ -1021,7 +1080,9 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
     def named_resources(self) -> Mapping[str, AbstractResource]:
         return MappingProxyType(self._named_resources)
 
-    def register_resource(self, resource: AbstractResource) -> None:
+    def register_resource(
+        self, resource: AbstractResource, *, append: bool = True
+    ) -> None:
         assert isinstance(
             resource, AbstractResource
         ), f"Instance of AbstractResource class is required, got {resource!r}"
@@ -1052,20 +1113,37 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
                     "already handled by {!r}".format(name, self._named_resources[name])
                 )
             self._named_resources[name] = resource
-        self._resources.append(resource)
+        if append:
+            self._resources.append(resource)
 
     def add_resource(self, path: str, *, name: Optional[str] = None) -> Resource:
         if path and not path.startswith("/"):
             raise ValueError("path should be started with / or be empty")
+        # Reuse named resource
+        resource = self._named_resources.get(name)
+        if resource is None:
+            pass
+        elif resource.raw_match(path):
+            return cast(Resource, resource)
+        else:
+            raise ValueError(
+                "Duplicate {!r}, already handled by {!r}".format(name, resource)
+            )
+        if not ("{" in path or "}" in path or ROUTE_RE.search(path)):
+            if self._resources and isinstance(self._resources[-1], GroupPlainResource):
+                resource = self._resources[-1]
+            else:
+                resource = GroupPlainResource()
+                self.register_resource(resource)
+            resource = resource.add_resource(_requote_path(path), name=name)
+            if name:
+                self.register_resource(resource, append=False)
+            return resource
         # Reuse last added resource if path and name are the same
         if self._resources:
             resource = self._resources[-1]
             if resource.name == name and resource.raw_match(path):
                 return cast(Resource, resource)
-        if not ("{" in path or "}" in path or ROUTE_RE.search(path)):
-            resource = PlainResource(_requote_path(path), name=name)
-            self.register_resource(resource)
-            return resource
         resource = DynamicResource(path, name=name)
         self.register_resource(resource)
         return resource
