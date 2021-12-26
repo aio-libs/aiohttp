@@ -426,7 +426,7 @@ class GroupPlainResource(Resource):
     def freeze(self) -> None:
         self._routes.clear()
         for resource in self._resources.values():
-            self._routes.extend(iter(resource))
+            self._routes.extend(cast(Iterator[ResourceRoute], resource))
 
     def add_prefix(self, prefix: str) -> None:
         assert prefix.startswith("/")
