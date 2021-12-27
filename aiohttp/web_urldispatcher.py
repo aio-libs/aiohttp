@@ -417,7 +417,7 @@ class PlainResource(Resource):
 class GroupPlainResource(Resource):
     def __init__(self) -> None:
         super().__init__()
-        self._resources: Dict[str, Resource] = {}
+        self._resources: Dict[str, PlainResource] = {}
 
     @property
     def canonical(self) -> str:
@@ -426,7 +426,8 @@ class GroupPlainResource(Resource):
     def freeze(self) -> None:
         self._routes.clear()
         for resource in self._resources.values():
-            self._routes.extend(cast(Iterator[ResourceRoute], resource))
+            resource.freeze()
+            self._routes.extend(resource)
 
     def add_prefix(self, prefix: str) -> None:
         assert prefix.startswith("/")
@@ -439,11 +440,9 @@ class GroupPlainResource(Resource):
             self._resources[prefix + path] = resource
 
     async def resolve(self, request: Request) -> _Resolve:
-        allowed_methods: Set[str] = set()
-
         resource = self._resources.get(request.rel_url.raw_path)
         if resource is None:
-            return None, allowed_methods
+            return None, set()
 
         return await resource.resolve(request)
 
