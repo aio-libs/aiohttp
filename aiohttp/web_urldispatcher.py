@@ -1088,7 +1088,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
     def named_resources(self) -> Mapping[str, AbstractResource]:
         return MappingProxyType(self._named_resources)
 
-    def register_named_resource(self, resource: AbstractResource) -> None:
+    def _register_named_resource(self, resource: AbstractResource) -> None:
         assert isinstance(
             resource, AbstractResource
         ), f"Instance of AbstractResource class is required, got {resource!r}"
@@ -1124,7 +1124,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
     def register_resource(self, resource: AbstractResource) -> None:
         if resource.name:
-            self.register_named_resource(resource)
+            self._register_named_resource(resource)
         self._resources.append(resource)
 
     def add_resource(self, path: str, *, name: Optional[str] = None) -> Resource:
@@ -1147,7 +1147,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
                 self.register_resource(grp)
             resource = grp.add_resource(_requote_path(path), name=name)
             if name:
-                self.register_named_resource(resource)
+                self._register_named_resource(resource)
             return resource
         # Reuse last added resource if path and name are the same
         if self._resources:
