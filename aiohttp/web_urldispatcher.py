@@ -1088,9 +1088,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
     def named_resources(self) -> Mapping[str, AbstractResource]:
         return MappingProxyType(self._named_resources)
 
-    def register_resource(
-        self, resource: AbstractResource, *, append: bool = True
-    ) -> None:
+    def register_named_resource(self, resource: AbstractResource) -> None:
         assert isinstance(
             resource, AbstractResource
         ), f"Instance of AbstractResource class is required, got {resource!r}"
@@ -1099,30 +1097,35 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
         name = resource.name
 
-        if name is not None:
-            parts = self.NAME_SPLIT_RE.split(name)
-            for part in parts:
-                if keyword.iskeyword(part):
-                    raise ValueError(
-                        f"Incorrect route name {name!r}, "
-                        "python keywords cannot be used "
-                        "for route name"
-                    )
-                if not part.isidentifier():
-                    raise ValueError(
-                        "Incorrect route name {!r}, "
-                        "the name should be a sequence of "
-                        "python identifiers separated "
-                        "by dash, dot or column".format(name)
-                    )
-            if name in self._named_resources:
+        if not name:
+            raise ValueError("Cannot register a named resource with empty name.")
+
+        parts = self.NAME_SPLIT_RE.split(name)
+        for part in parts:
+            if keyword.iskeyword(part):
                 raise ValueError(
-                    "Duplicate {!r}, "
-                    "already handled by {!r}".format(name, self._named_resources[name])
+                    f"Incorrect route name {name!r}, "
+                    "python keywords cannot be used "
+                    "for route name"
                 )
-            self._named_resources[name] = resource
-        if append:
-            self._resources.append(resource)
+            if not part.isidentifier():
+                raise ValueError(
+                    "Incorrect route name {!r}, "
+                    "the name should be a sequence of "
+                    "python identifiers separated "
+                    "by dash, dot or column".format(name)
+                )
+        if name in self._named_resources:
+            raise ValueError(
+                "Duplicate {!r}, "
+                "already handled by {!r}".format(name, self._named_resources[name])
+            )
+        self._named_resources[name] = resource
+
+    def register_resource(self, resource: AbstractResource) -> None:
+        if resource.name:
+            self.register_named_resource(resource)
+        self._resources.append(resource)
 
     def add_resource(self, path: str, *, name: Optional[str] = None) -> Resource:
         if path and not path.startswith("/"):
@@ -1144,7 +1147,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
                 self.register_resource(grp)
             resource = grp.add_resource(_requote_path(path), name=name)
             if name:
-                self.register_resource(resource, append=False)
+                self.register_named_resource(resource)
             return resource
         # Reuse last added resource if path and name are the same
         if self._resources:
