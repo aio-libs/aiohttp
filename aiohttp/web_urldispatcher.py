@@ -420,6 +420,10 @@ class GroupPlainResource(Resource):
         self._resources: Dict[str, PlainResource] = {}
 
     @property
+    def resources(self) -> List[AbstractResource]:
+        return list(self._resources.values())
+
+    @property
     def canonical(self) -> str:
         return "/"
 
@@ -1004,7 +1008,12 @@ class View(AbstractView):
 
 class ResourcesView(Sized, Iterable[AbstractResource], Container[AbstractResource]):
     def __init__(self, resources: List[AbstractResource]) -> None:
-        self._resources = resources
+        self._resources = []
+        for resource in resources:
+            if isinstance(resource, GroupPlainResource):
+                self._resources.extend(resource.resources)
+            else:
+                self._resources.append(resource)
 
     def __len__(self) -> int:
         return len(self._resources)
