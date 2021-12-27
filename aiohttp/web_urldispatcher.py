@@ -367,7 +367,7 @@ class Resource(AbstractResource):
     def __len__(self) -> int:
         return len(self._routes)
 
-    def __iter__(self) -> Iterator[ResourceRoute]:
+    def __iter__(self) -> Iterator["ResourceRoute"]:
         return iter(self._routes)
 
     # TODO: implement all abstract methods
