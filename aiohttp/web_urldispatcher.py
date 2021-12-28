@@ -438,7 +438,11 @@ class GroupPlainResource(Resource):
             resource.freeze()
 
     def add_prefix(self, prefix: str) -> None:
-        raise RuntimeError(".add_prefix() is not allowed directly")
+        resources = list(self._resources.values())
+        self._resources.clear()
+        for resource in resources:
+            resource.add_prefix(prefix)
+            self._resources[resource.canonical] = resource
 
     async def resolve(self, request: Request) -> _Resolve:
         resource = self._resources.get(request.rel_url.raw_path)
@@ -781,13 +785,11 @@ class PrefixedSubAppResource(PrefixResource):
     def __init__(self, prefix: str, app: "Application") -> None:
         super().__init__(prefix)
         self._app = app
-        for resource in app.router.resources():
-            resource.add_prefix(prefix)
+        app.router.add_prefix(prefix)
 
     def add_prefix(self, prefix: str) -> None:
         super().add_prefix(prefix)
-        for resource in self._app.router.resources():
-            resource.add_prefix(prefix)
+        self._app.router.add_prefix(prefix)
 
     def url_for(self, *args: str, **kwargs: str) -> URL:
         raise RuntimeError(".url_for() is not supported " "by sub-application root")
@@ -1076,6 +1078,10 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
     def __getitem__(self, name: str) -> AbstractResource:
         return self._named_resources[name]
+
+    def add_prefix(self, prefix: str) -> None:
+        for resource in self._resources:
+            resource.add_prefix(prefix)
 
     def resources(self) -> ResourcesView:
         return ResourcesView(self._resources)
