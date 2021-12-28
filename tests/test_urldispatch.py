@@ -1306,7 +1306,7 @@ def test_group_plain_resource():
     assert "<GroupPlainResource count=1>" == repr(grp)
 
 
-def test_append_routes_in_one_resource(app: Any):
+def test_append_dyn_routes_in_one_resource(app: Any):
     handler = make_handler()
     app.router.add_get('/a/{param}/', handler)
     app.router.add_put('/a/{param}/', handler)
