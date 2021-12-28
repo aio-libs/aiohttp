@@ -435,14 +435,7 @@ class GroupPlainResource(Resource):
                 self._routes.append(route)
 
     def add_prefix(self, prefix: str) -> None:
-        assert prefix.startswith("/")
-        assert not prefix.endswith("/")
-        assert len(prefix) > 1
-        old = self._resources.copy()
-        self._resources.clear()
-        for path, resource in old.items():
-            resource.add_prefix(prefix)
-            self._resources[prefix + path] = resource
+        raise RuntimeError(".add_prefix() is not allowed directly")
 
     async def resolve(self, request: Request) -> _Resolve:
         resource = self._resources.get(request.rel_url.raw_path)
