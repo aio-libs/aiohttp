@@ -664,7 +664,7 @@ class ClientResponse(HeadersMixin):
 
     _connection = None  # current connection
     _source_traceback = None
-    # setted up by ClientRequest after ClientResponse object creation
+    # set up by ClientRequest after ClientResponse object creation
     # post-init stage allows to not change ctor signature
     _closed = True  # to allow __del__ for non-initialized properly response
     _released = False
