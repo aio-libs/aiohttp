@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Run me after the backport branch release to cleanup CHANGES records
-# that was backported and publiched.
+# that was backported and published.
 
 import re
 import subprocess

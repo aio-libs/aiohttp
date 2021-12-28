@@ -583,7 +583,7 @@ class BaseConnector:
         """
         Iterates over all waiters until one to be released is found.
 
-        The one to be released is not finsihed and
+        The one to be released is not finished and
         belongs to a host that has available connections.
         """
         if not self._waiters:

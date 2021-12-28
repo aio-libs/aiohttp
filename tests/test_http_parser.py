@@ -93,7 +93,7 @@ def stream():
     return mock.Mock()
 
 
-@pytest.mark.skipif(NO_EXTENSIONS, reason="Extentions available but not imported")
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Extensions available but not imported")
 def test_c_parser_loaded():
     assert "HttpRequestParserC" in dir(aiohttp.http_parser)
     assert "HttpResponseParserC" in dir(aiohttp.http_parser)
