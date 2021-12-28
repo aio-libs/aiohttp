@@ -151,6 +151,10 @@ class AbstractResource(Sized, Iterable["AbstractRoute"]):
     def raw_match(self, path: str) -> bool:
         """Perform a raw match against path"""
 
+    @abc.abstractmethod
+    def resources(self) -> List["AbstractResource"]:
+        """Return representing resources"""
+
 
 class AbstractRoute(abc.ABC):
     def __init__(
@@ -370,6 +374,9 @@ class Resource(AbstractResource):
     def __iter__(self) -> Iterator["ResourceRoute"]:
         return iter(self._routes)
 
+    def resources(self) -> List[AbstractResource]:
+        return [self]
+
     # TODO: implement all abstract methods
 
 
@@ -419,7 +426,6 @@ class GroupPlainResource(Resource):
         super().__init__()
         self._resources: Dict[str, PlainResource] = {}
 
-    @property
     def resources(self) -> List[AbstractResource]:
         return list(self._resources.values())
 
@@ -567,6 +573,9 @@ class PrefixResource(AbstractResource):
 
     def raw_match(self, prefix: str) -> bool:
         return False
+
+    def resources(self) -> List[AbstractResource]:
+        return [self]
 
     # TODO: impl missing abstract methods
 
@@ -1004,10 +1013,7 @@ class ResourcesView(Sized, Iterable[AbstractResource], Container[AbstractResourc
     def __init__(self, resources: List[AbstractResource]) -> None:
         self._resources = []
         for resource in resources:
-            if isinstance(resource, GroupPlainResource):
-                self._resources.extend(resource.resources)
-            else:
-                self._resources.append(resource)
+            self._resources.extend(resource.resources())
 
     def __len__(self) -> int:
         return len(self._resources)
@@ -1023,8 +1029,9 @@ class RoutesView(Sized, Iterable[AbstractRoute], Container[AbstractRoute]):
     def __init__(self, resources: List[AbstractResource]):
         self._routes: List[AbstractRoute] = []
         for resource in resources:
-            for route in resource:
-                self._routes.append(route)
+            for resource in resource.resources():
+                for route in resource:
+                    self._routes.append(route)
 
     def __len__(self) -> int:
         return len(self._routes)
