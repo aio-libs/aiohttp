@@ -425,7 +425,7 @@ class GroupPlainResource(Resource):
 
     @property
     def canonical(self) -> str:
-        return "/"
+        return f"group_{id(self)}"
 
     def freeze(self) -> None:
         self._routes.clear()
