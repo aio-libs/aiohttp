@@ -434,11 +434,13 @@ class GroupPlainResource(Resource):
         return f"group_{id(self)}"
 
     def freeze(self) -> None:
-        self._routes.clear()
-        for resource in self._resources.values():
+        resources = self.resources()
+
+        # Rebuild index with prefixes
+        self._resources.clear()
+        for resource in resources:
+            self._resources[resource.canonical] = resource
             resource.freeze()
-            for route in resource:
-                self._routes.append(route)
 
     def add_prefix(self, prefix: str) -> None:
         raise RuntimeError(".add_prefix() is not allowed directly")
