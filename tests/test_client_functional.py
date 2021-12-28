@@ -876,8 +876,8 @@ async def test_HTTP_302_REDIRECT_HEAD(aiohttp_client: Any) -> None:
         raise web.HTTPFound(location="/")
 
     app = web.Application()
-    app.router.add_get("/", handler)
-    app.router.add_get("/redirect", redirect)
+    app.router.add_get("/", handler, allow_head=False)
+    app.router.add_get("/redirect", redirect, allow_head=False)
     app.router.add_head("/", handler)
     app.router.add_head("/redirect", redirect)
     client = await aiohttp_client(app)
