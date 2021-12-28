@@ -434,12 +434,7 @@ class GroupPlainResource(Resource):
         return f"group_{id(self)}"
 
     def freeze(self) -> None:
-        resources = list(self._resources.values())
-
-        # Rebuild index with prefixes
-        self._resources.clear()
-        for resource in resources:
-            self._resources[resource.canonical] = resource
+        for resource in self._resources.values():
             resource.freeze()
 
     def add_prefix(self, prefix: str) -> None:
