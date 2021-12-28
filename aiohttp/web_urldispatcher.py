@@ -1089,13 +1089,18 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
     def named_resources(self) -> Mapping[str, AbstractResource]:
         return MappingProxyType(self._named_resources)
 
-    def _register_named_resource(self, resource: AbstractResource) -> None:
+    def register_resource(self, resource: AbstractResource) -> None:
         assert isinstance(
             resource, AbstractResource
         ), f"Instance of AbstractResource class is required, got {resource!r}"
         if self.frozen:
             raise RuntimeError("Cannot register a resource into frozen router.")
 
+        if resource.name:
+            self._register_named_resource(resource)
+        self._resources.append(resource)
+
+    def _register_named_resource(self, resource: AbstractResource) -> None:
         name = resource.name
 
         if not name:
@@ -1122,11 +1127,6 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
                 "already handled by {!r}".format(name, self._named_resources[name])
             )
         self._named_resources[name] = resource
-
-    def register_resource(self, resource: AbstractResource) -> None:
-        if resource.name:
-            self._register_named_resource(resource)
-        self._resources.append(resource)
 
     def add_resource(self, path: str, *, name: Optional[str] = None) -> Resource:
         if path and not path.startswith("/"):
