@@ -184,7 +184,7 @@ and call :meth:`aiohttp.web.WebSocketResponse.close` on all of them in
                       for ws in request.app['websockets'][user_id]
                       if not ws.closed]
 
-        # Watch out, this will keep us from returing the response
+        # Watch out, this will keep us from returning the response
         # until all are closed
         ws_closers and await asyncio.gather(*ws_closers)
 

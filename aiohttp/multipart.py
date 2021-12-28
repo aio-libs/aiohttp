@@ -816,7 +816,7 @@ class MultipartWriter(Payload):
     def _boundary_value(self) -> str:
         """Wrap boundary parameter value in quotes, if necessary.
 
-        Reads self.boundary and returns a unicode sting.
+        Reads self.boundary and returns a unicode string.
         """
         # Refer to RFCs 7231, 7230, 5234.
         #
