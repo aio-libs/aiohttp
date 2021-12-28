@@ -1157,6 +1157,18 @@ def test_invalid_route_name(router) -> None:
         router.add_get("/", make_handler(), name="class")  # identifier
 
 
+def test_register_invalid_named_resource_dup(router):
+    with pytest.raises(ValueError):
+        router.add_resource("/a", name="a")
+        router.add_resource("/b", name="a")
+
+
+def test_register_invalid_named_resource_empty(router):
+    with pytest.raises(ValueError):
+        resource = router.add_resource("/")
+        router._register_named_resource(resource)
+
+
 def test_frozen_router(router: Any) -> None:
     router.freeze()
     with pytest.raises(RuntimeError):
@@ -1304,6 +1316,10 @@ def test_group_plain_resource():
     assert grp._match('/') is not None
     assert grp._match('/no') is None
     assert "<GroupPlainResource count=1>" == repr(grp)
+    assert grp.get_info() == {}
+
+    with pytest.raises(RuntimeError):
+        grp.url_for()
 
 
 def test_append_dyn_routes_in_one_resource(app: Any):
