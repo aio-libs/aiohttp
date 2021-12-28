@@ -434,7 +434,7 @@ class GroupPlainResource(Resource):
         return f"group_{id(self)}"
 
     def freeze(self) -> None:
-        resources = self.resources()
+        resources = list(self._resources.values())
 
         # Rebuild index with prefixes
         self._resources.clear()
