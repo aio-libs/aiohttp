@@ -1310,11 +1310,11 @@ async def test_prefixed_subapp_root_route(app: Any) -> None:
 def test_group_plain_resource():
     grp = GroupPlainResource()
     assert "<GroupPlainResource count=0>" == repr(grp)
-    assert grp.canonical.startswith('group_')
-    resource = grp.add_resource('/')
+    assert grp.canonical.startswith("group_")
+    resource = grp.add_resource("/")
     assert grp.resources() == [resource]
-    assert grp._match('/') is not None
-    assert grp._match('/no') is None
+    assert grp._match("/") is not None
+    assert grp._match("/no") is None
     assert "<GroupPlainResource count=1>" == repr(grp)
     assert grp.get_info() == {}
 
@@ -1324,6 +1324,6 @@ def test_group_plain_resource():
 
 def test_append_dyn_routes_in_one_resource(app: Any):
     handler = make_handler()
-    app.router.add_get('/a/{param}/', handler)
-    app.router.add_put('/a/{param}/', handler)
+    app.router.add_get("/a/{param}/", handler)
+    app.router.add_put("/a/{param}/", handler)
     assert len(list(app.router.resources())) == 1
