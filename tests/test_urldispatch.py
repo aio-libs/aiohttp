@@ -1350,3 +1350,10 @@ def test_convert_to_plain_resource_group(router: Any):
         " <DynamicResource  /d/{p}>,"
         " <_PlainResourceGroup count=2>]" == repr(router._resources)
     )
+
+
+def test_frozen_plain_group(router: Any):
+    router.add_resource("/foo", name="foo")
+    router.freeze()
+    with pytest.raises(RuntimeError):
+        router.add_resource("/bar", name="bar")
