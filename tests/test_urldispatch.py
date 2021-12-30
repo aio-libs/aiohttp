@@ -19,7 +19,6 @@ from aiohttp.web_urldispatcher import (
     AbstractResource,
     Domain,
     DynamicResource,
-    _PlainResourceGroup,
     MaskDomain,
     PlainResource,
     ResourceRoute,
@@ -27,6 +26,7 @@ from aiohttp.web_urldispatcher import (
     SystemRoute,
     View,
     _default_expect_handler,
+    _PlainResourceGroup,
 )
 
 
