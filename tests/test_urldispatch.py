@@ -19,7 +19,7 @@ from aiohttp.web_urldispatcher import (
     AbstractResource,
     Domain,
     DynamicResource,
-    GroupPlainResource,
+    _PlainResourceGroup,
     MaskDomain,
     PlainResource,
     ResourceRoute,
@@ -1308,18 +1308,11 @@ async def test_prefixed_subapp_root_route(app: Any) -> None:
 
 
 def test_group_plain_resource():
-    grp = GroupPlainResource()
+    grp = _PlainResourceGroup()
     assert "<GroupPlainResource count=0>" == repr(grp)
-    assert grp.canonical.startswith("group_")
     resource = grp.add_resource("/")
-    assert grp.resources() == [resource]
-    assert grp._match("/") is not None
-    assert grp._match("/no") is None
+    assert list(grp.resources()) == [resource]
     assert "<GroupPlainResource count=1>" == repr(grp)
-    assert grp.get_info() == {}
-
-    with pytest.raises(RuntimeError):
-        grp.url_for()
 
 
 def test_append_dyn_routes_in_one_resource(app: Any):
