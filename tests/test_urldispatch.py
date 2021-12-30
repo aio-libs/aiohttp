@@ -1157,10 +1157,17 @@ def test_invalid_route_name(router) -> None:
         router.add_get("/", make_handler(), name="class")  # identifier
 
 
-def test_register_invalid_named_resource_dup(router):
+def test_register_invalid_resource_name_dup(router):
     with pytest.raises(ValueError):
         router.add_resource("/a", name="a")
         router.add_resource("/b", name="a")
+
+
+def test_register_invalid_named_resource_dup(router):
+    with pytest.raises(ValueError):
+        resource = router.add_resource("/", name="a")
+        router._register_named_resource(resource)
+        router._register_named_resource(resource)
 
 
 def test_register_invalid_named_resource_empty(router):
