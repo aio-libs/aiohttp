@@ -416,8 +416,10 @@ class PlainResource(Resource):
 
 
 class _PlainResourceGroup:
-    def __init__(self) -> None:
+    def __init__(self, resource: Optional[PlainResource] = None) -> None:
         self._resources: Dict[str, PlainResource] = {}
+        if resource is not None:
+            self._resources[resource.canonical] = resource
 
     def resources(self) -> Iterator[PlainResource]:
         return iter(self._resources.values())
@@ -1124,6 +1126,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         resource: Optional[_InnerResource]
         if path and not path.startswith("/"):
             raise ValueError("path should be started with / or be empty")
+
         # Reuse named resource
         if name:
             resource = self._named_resources.get(name)
@@ -1133,21 +1136,34 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
                 return cast(Resource, resource)
             else:
                 raise ValueError(f"Duplicate {name!r}, already handled by {resource!r}")
+
+        # Plain resource
         if not ("{" in path or "}" in path or ROUTE_RE.search(path)):
-            if self._resources and isinstance(self._resources[-1], _PlainResourceGroup):
-                grp = self._resources[-1]
+            grp = None
+            if self._resources:
+                resource = self._resources[-1]
+                if isinstance(resource, _PlainResourceGroup):
+                    grp = resource
+                elif not name and resource.raw_match(path):
+                    return cast(Resource, resource)
+                elif isinstance(resource, PlainResource):
+                    grp = _PlainResourceGroup(resource)
+                    self._resources[-1] = grp
+            if grp is not None:
+                resource = grp.add_resource(_requote_path(path), name=name)
+                if name:
+                    self._register_named_resource(resource)
             else:
-                grp = _PlainResourceGroup()
-                self._register_inner_resource(grp)
-            resource = grp.add_resource(_requote_path(path), name=name)
-            if name:
-                self._register_named_resource(resource)
+                resource = PlainResource(_requote_path(path), name=name)
+                self.register_resource(resource)
             return resource
+
         # Reuse last added resource if path are the same
         if not name and self._resources:
             resource = self._resources[-1]
             if resource.raw_match(path):
                 return cast(Resource, resource)
+
         resource = DynamicResource(path, name=name)
         self.register_resource(resource)
         return resource

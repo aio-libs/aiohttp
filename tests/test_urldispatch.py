@@ -1322,8 +1322,31 @@ def test_group_plain_resource():
     assert "<_PlainResourceGroup count=1>" == repr(grp)
 
 
-def test_append_dyn_routes_in_one_resource(app: Any):
+def test_append_dyn_routes_in_one_resource(router: Any):
     handler = make_handler()
-    app.router.add_get("/a/{param}/", handler)
-    app.router.add_put("/a/{param}/", handler)
-    assert len(list(app.router.resources())) == 1
+    router.add_get("/a/{param}/", handler)
+    router.add_put("/a/{param}/", handler)
+    assert len(list(router.resources())) == 1
+
+
+def test_convert_to_plain_resource_group(router: Any):
+    router.add_resource("/a")
+    assert "[<PlainResource  /a>]" == repr(router._resources)
+    router.add_resource("/a")
+    assert "[<PlainResource  /a>]" == repr(router._resources)
+
+    router.add_resource("/d/{p}")
+    assert "[<PlainResource  /a>, <DynamicResource  /d/{p}>]" == repr(router._resources)
+
+    router.add_resource("/b")
+    assert (
+        "[<PlainResource  /a>,"
+        " <DynamicResource  /d/{p}>,"
+        " <PlainResource  /b>]" == repr(router._resources)
+    )
+    router.add_resource("/c")
+    assert (
+        "[<PlainResource  /a>,"
+        " <DynamicResource  /d/{p}>,"
+        " <_PlainResourceGroup count=2>]" == repr(router._resources)
+    )
