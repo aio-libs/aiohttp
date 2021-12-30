@@ -444,7 +444,7 @@ class _PlainResourceGroup:
         return path in self._resources
 
     def __repr__(self) -> str:
-        return f"<GroupPlainResource count={len(self._resources)}>"
+        return f"<_PlainResourceGroup count={len(self._resources)}>"
 
     def add_resource(self, path: str, name: Optional[str] = None) -> PlainResource:
         result = self._resources.get(path)

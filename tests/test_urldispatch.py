@@ -1316,10 +1316,10 @@ async def test_prefixed_subapp_root_route(app: Any) -> None:
 
 def test_group_plain_resource():
     grp = _PlainResourceGroup()
-    assert "<GroupPlainResource count=0>" == repr(grp)
+    assert "<_PlainResourceGroup count=0>" == repr(grp)
     resource = grp.add_resource("/")
     assert list(grp.resources()) == [resource]
-    assert "<GroupPlainResource count=1>" == repr(grp)
+    assert "<_PlainResourceGroup count=1>" == repr(grp)
 
 
 def test_append_dyn_routes_in_one_resource(app: Any):
