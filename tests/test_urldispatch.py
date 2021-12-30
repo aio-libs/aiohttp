@@ -1152,7 +1152,7 @@ def test_invalid_route_name(router: Any) -> None:
         router.add_get("/", make_handler(), name="invalid name")
 
 
-def test_invalid_route_name(router) -> None:
+def test_invalid_route_name_keyword(router) -> None:
     with pytest.raises(ValueError):
         router.add_get("/", make_handler(), name="class")  # identifier
 
