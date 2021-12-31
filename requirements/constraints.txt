@@ -204,7 +204,7 @@ sphinxcontrib-qthelp==1.0.3
     # via sphinx
 sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
-sphinxcontrib-spelling==7.3.0 ; platform_system != "Windows"
+sphinxcontrib-spelling==7.3.2 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.txt
 sphinxcontrib-towncrier==0.2.0a0
     # via -r requirements/doc.txt
