@@ -51,7 +51,7 @@ This option is highly recommended:
 Installing speedups altogether
 ------------------------------
 
-The following will get you ``aiohttp`` along with :term:`charset-normalizer`,
+The following will get you ``aiohttp`` along with :term:`cchardet`,
 :term:`aiodns` and ``Brotli`` in one bundle. No need to type
 separate commands anymore!
 
