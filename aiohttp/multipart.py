@@ -552,7 +552,9 @@ class BodyPartReaderPayload(Payload):
         if params:
             self.set_content_disposition("attachment", True, **params)
 
-    def decode(self, encoding: Optional[str] = None, errors: Optional[str] = None) -> str:
+    def decode(
+        self, encoding: Optional[str] = None, errors: Optional[str] = None
+    ) -> str:
         raise TypeError("Unable to decode.")
 
     async def write(self, writer: Any) -> None:
@@ -952,11 +954,13 @@ class MultipartWriter(Payload):
         total += 2 + len(self._boundary) + 4  # b'--'+self._boundary+b'--\r\n'
         return total
 
-    def decode(self, encoding: Optional[str] = None, errors: Optional[str] = None) -> str:
+    def decode(
+        self, encoding: Optional[str] = None, errors: Optional[str] = None
+    ) -> str:
         return "".join(
-            "--" + self.boundary + "\n"
-            + part._binary_headers.decode()
-            + part.decode() for part, _e, _te in self._parts)
+            "--" + self.boundary + "\n" + part._binary_headers.decode() + part.decode()
+            for part, _e, _te in self._parts
+        )
 
     async def write(self, writer: Any, close_boundary: bool = True) -> None:
         """Write body."""

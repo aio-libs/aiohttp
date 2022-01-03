@@ -211,7 +211,9 @@ class Payload(ABC):
         )
 
     @abstractmethod
-    def decode(self, encoding: Optional[str] = None, errors: Optional[str] = None) -> str:
+    def decode(
+        self, encoding: Optional[str] = None, errors: Optional[str] = None
+    ) -> str:
         """Return string representation of the value.
 
         This is named decode() to allow compatibility with bytes objects.
@@ -254,7 +256,9 @@ class BytesPayload(Payload):
                 source=self,
             )
 
-    def decode(self, encoding: Optional[str] = None, errors: Optional[str] = None) -> str:
+    def decode(
+        self, encoding: Optional[str] = None, errors: Optional[str] = None
+    ) -> str:
         return self._value.decode()
 
     async def write(self, writer: AbstractStreamWriter) -> None:
@@ -322,7 +326,9 @@ class IOBasePayload(Payload):
         finally:
             await loop.run_in_executor(None, self._value.close)
 
-    def decode(self, encoding: Optional[str] = None, errors: Optional[str] = None) -> str:
+    def decode(
+        self, encoding: Optional[str] = None, errors: Optional[str] = None
+    ) -> str:
         return "".join(l.decode() for l in self._value.readlines())
 
 
@@ -364,7 +370,9 @@ class TextIOPayload(IOBasePayload):
         except OSError:
             return None
 
-    def decode(self, encoding: Optional[str] = None, errors: Optional[str] = None) -> str:
+    def decode(
+        self, encoding: Optional[str] = None, errors: Optional[str] = None
+    ) -> str:
         return self._value.read()
 
     async def write(self, writer: AbstractStreamWriter) -> None:
@@ -393,7 +401,9 @@ class BytesIOPayload(IOBasePayload):
         self._value.seek(position)
         return end - position
 
-    def decode(self, encoding: Optional[str] = None, errors: Optional[str] = None) -> str:
+    def decode(
+        self, encoding: Optional[str] = None, errors: Optional[str] = None
+    ) -> str:
         return self._value.read().decode()
 
 
@@ -409,7 +419,9 @@ class BufferedReaderPayload(IOBasePayload):
             # io.BufferedReader(io.BytesIO(b'data'))
             return None
 
-    def decode(self, encoding: Optional[str] = None, errors: Optional[str] = None) -> str:
+    def decode(
+        self, encoding: Optional[str] = None, errors: Optional[str] = None
+    ) -> str:
         return self._value.read().decode()
 
 
@@ -476,7 +488,9 @@ class AsyncIterablePayload(Payload):
             except StopAsyncIteration:
                 self._iter = None
 
-    def decode(self, encoding: Optional[str] = None, errors: Optional[str] = None) -> str:
+    def decode(
+        self, encoding: Optional[str] = None, errors: Optional[str] = None
+    ) -> str:
         raise TypeError("Unable to decode.")
 
 
