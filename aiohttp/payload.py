@@ -11,7 +11,6 @@ from typing import (
     IO,
     TYPE_CHECKING,
     Any,
-    BinaryIO,
     ByteString,
     Dict,
     Iterable,
@@ -329,7 +328,7 @@ class IOBasePayload(Payload):
     def decode(
         self, encoding: Optional[str] = None, errors: Optional[str] = None
     ) -> str:
-        return "".join(l.decode() for l in self._value.readlines())
+        return "".join(r.decode() for r in self._value.readlines())
 
 
 class TextIOPayload(IOBasePayload):
