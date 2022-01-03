@@ -95,6 +95,8 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         "__weakref__",
     )
 
+    _body: Union[None, bytes, bytearray, Payload]
+
     def __init__(
         self,
         *,
@@ -504,6 +506,8 @@ class Response(StreamResponse):
         "_zlib_executor",
     )
 
+    _body_payload: bool
+
     def __init__(
         self,
         *,
@@ -581,13 +585,13 @@ class Response(StreamResponse):
     @body.setter
     def body(
         self,
-        body: bytes,
+        body: Any,
         CONTENT_TYPE: istr = hdrs.CONTENT_TYPE,
         CONTENT_LENGTH: istr = hdrs.CONTENT_LENGTH,
     ) -> None:
         if body is None:
-            self._body: Optional[bytes] = None
-            self._body_payload: bool = False
+            self._body = None
+            self._body_payload = False
         elif isinstance(body, (bytes, bytearray)):
             self._body = body
             self._body_payload = False
@@ -698,7 +702,10 @@ class Response(StreamResponse):
     def _compress_body(self, zlib_mode: int) -> None:
         assert zlib_mode > 0
         compressobj = zlib.compressobj(wbits=zlib_mode)
-        body_in = self._body
+        if isinstance(self._body, Payload):
+            body_in: Optional[bytes] = self._body.decode().encode()
+        else:
+            body_in = self._body
         assert body_in is not None
         self._compressed_body = compressobj.compress(body_in) + compressobj.flush()
 

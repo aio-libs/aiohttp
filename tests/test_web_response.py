@@ -922,6 +922,11 @@ def test_assign_nonstr_text() -> None:
     assert 4 == resp.content_length
 
 
+def test_string_body_get_text() -> None:
+    resp = Response(body="test")
+    assert resp.text == "test"
+
+
 def test_response_set_content_length() -> None:
     resp = Response()
     with pytest.raises(RuntimeError):

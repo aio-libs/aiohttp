@@ -1,6 +1,6 @@
 import array
 from io import StringIO
-from typing import Any, AsyncIterator, Iterator
+from typing import Any, AsyncIterator, Optional, Iterator
 
 import pytest
 
@@ -16,6 +16,9 @@ def registry() -> Iterator[payload.PayloadRegistry]:
 
 
 class Payload(payload.Payload):
+    def decode(self, encoding: Optional[str] = None, errors: Optional[str] = None) -> str:
+        return ""
+
     async def write(self, writer: Any) -> None:
         pass
 

@@ -11,6 +11,7 @@ from typing import (
     IO,
     TYPE_CHECKING,
     Any,
+    BinaryIO,
     ByteString,
     Dict,
     Iterable,
@@ -210,14 +211,26 @@ class Payload(ABC):
         )
 
     @abstractmethod
+    def decode(self, encoding: Optional[str] = None, errors: Optional[str] = None) -> str:
+        """Return string representation of the value.
+
+        This is named decode() to allow compatibility with bytes objects.
+        """
+
+    @abstractmethod
     async def write(self, writer: AbstractStreamWriter) -> None:
         """Write payload.
 
         writer is an AbstractStreamWriter instance:
         """
 
+    def __len__(self) -> int:
+        return self.size or 0
+
 
 class BytesPayload(Payload):
+    _value: bytes
+
     def __init__(self, value: ByteString, *args: Any, **kwargs: Any) -> None:
         if not isinstance(value, (bytes, bytearray, memoryview)):
             raise TypeError(f"value argument must be byte-ish, not {type(value)!r}")
@@ -240,6 +253,9 @@ class BytesPayload(Payload):
                 ResourceWarning,
                 source=self,
             )
+
+    def decode(self, encoding: Optional[str] = None, errors: Optional[str] = None) -> str:
+        return self._value.decode()
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         await writer.write(self._value)
@@ -282,7 +298,7 @@ class StringIOPayload(StringPayload):
 
 
 class IOBasePayload(Payload):
-    _value: IO[Any]
+    _value: io.IOBase
 
     def __init__(
         self, value: IO[Any], disposition: str = "attachment", *args: Any, **kwargs: Any
@@ -306,9 +322,12 @@ class IOBasePayload(Payload):
         finally:
             await loop.run_in_executor(None, self._value.close)
 
+    def decode(self, encoding: Optional[str] = None, errors: Optional[str] = None) -> str:
+        return "".join(l.decode() for l in self._value.readlines())
+
 
 class TextIOPayload(IOBasePayload):
-    _value: TextIO
+    _value: io.TextIOBase
 
     def __init__(
         self,
@@ -345,6 +364,9 @@ class TextIOPayload(IOBasePayload):
         except OSError:
             return None
 
+    def decode(self, encoding: Optional[str] = None, errors: Optional[str] = None) -> str:
+        return self._value.read()
+
     async def write(self, writer: AbstractStreamWriter) -> None:
         loop = asyncio.get_event_loop()
         try:
@@ -362,6 +384,8 @@ class TextIOPayload(IOBasePayload):
 
 
 class BytesIOPayload(IOBasePayload):
+    _value: io.BytesIO
+
     @property
     def size(self) -> int:
         position = self._value.tell()
@@ -369,8 +393,13 @@ class BytesIOPayload(IOBasePayload):
         self._value.seek(position)
         return end - position
 
+    def decode(self, encoding: Optional[str] = None, errors: Optional[str] = None) -> str:
+        return self._value.read().decode()
+
 
 class BufferedReaderPayload(IOBasePayload):
+    _value: io.BufferedIOBase
+
     @property
     def size(self) -> Optional[int]:
         try:
@@ -379,6 +408,9 @@ class BufferedReaderPayload(IOBasePayload):
             # data.fileno() is not supported, e.g.
             # io.BufferedReader(io.BytesIO(b'data'))
             return None
+
+    def decode(self, encoding: Optional[str] = None, errors: Optional[str] = None) -> str:
+        return self._value.read().decode()
 
 
 class JsonPayload(BytesPayload):
@@ -416,6 +448,7 @@ else:
 class AsyncIterablePayload(Payload):
 
     _iter: Optional[_AsyncIterator] = None
+    _value: _AsyncIterable
 
     def __init__(self, value: _AsyncIterable, *args: Any, **kwargs: Any) -> None:
         if not isinstance(value, AsyncIterable):
@@ -442,6 +475,9 @@ class AsyncIterablePayload(Payload):
                     await writer.write(chunk)
             except StopAsyncIteration:
                 self._iter = None
+
+    def decode(self, encoding: Optional[str] = None, errors: Optional[str] = None) -> str:
+        raise TypeError("Unable to decode.")
 
 
 class StreamReaderPayload(AsyncIterablePayload):
