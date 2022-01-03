@@ -72,7 +72,7 @@ repos:
   - id: detect-private-key
     exclude: ^examples/
 - repo: https://github.com/asottile/pyupgrade
-  rev: 'v2.29.1'
+  rev: 'v2.31.0'
   hooks:
   - id: pyupgrade
     args: ['--py36-plus']
