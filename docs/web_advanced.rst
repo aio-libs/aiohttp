@@ -890,7 +890,8 @@ will run along with the application's request handler.
 For example there's a need to run one quick task and two long running
 tasks that will live till the application is alive. The appropriate
 background tasks could be registered as an :attr:`Application.on_startup`
-signal handlers as shown in the example below::
+signal handler or :attr:`Application.cleanup_ctx` as shown in the example
+below::
 
 
   async def listen_to_redis(app):
@@ -908,18 +909,17 @@ signal handlers as shown in the example below::
           await sub.quit()
 
 
-  async def start_background_tasks(app):
+  async def background_tasks(app):
       app['redis_listener'] = asyncio.create_task(listen_to_redis(app))
 
+      yield
 
-  async def cleanup_background_tasks(app):
       app['redis_listener'].cancel()
       await app['redis_listener']
 
 
   app = web.Application()
-  app.on_startup.append(start_background_tasks)
-  app.on_cleanup.append(cleanup_background_tasks)
+  app.cleanup_ctx.append(background_tasks)
   web.run_app(app)
 
 
