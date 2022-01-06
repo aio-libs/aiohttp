@@ -1,0 +1,1 @@
+URL credentials with zero-length user now supported, e.g. http://:password@host
