@@ -10,7 +10,7 @@ async-generator==1.10
     # via -r requirements/base.txt
 async-timeout==4.0.2
     # via -r requirements/base.txt
-attrs==21.2.0
+attrs==21.4.0
     # via
     #   -r requirements/base.txt
     #   pytest
