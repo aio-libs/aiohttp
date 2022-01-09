@@ -797,7 +797,7 @@ class AppKey(Generic[_T]):
         frame = inspect.currentframe()
         while frame:
             if frame.f_code.co_name == "<module>":
-                module = frame.f_globals["__name__"]
+                module: str = frame.f_globals["__name__"]
                 break
             frame = frame.f_back
 
