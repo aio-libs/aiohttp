@@ -101,12 +101,31 @@ async def test_on_startup() -> None:
     assert all_long_running_called
 
 
-def test_app_delitem() -> None:
+def test_appkey() -> None:
+    key = web.AppKey("key", str)
     app = web.Application()
-    app["key"] = "value"
+    app[key] = "value"
+    assert app[key] == "value"
     assert len(app) == 1
-    del app["key"]
+    del app[key]
     assert len(app) == 0
+
+
+def test_appkey_repr() -> None:
+    key = web.AppKey("key", int)
+    assert repr(key) == "<AppKey(__main__.key, type=int)>"
+
+
+def test_appkey_nontype() -> None:
+    with pytest.raises(ValueError, match=r"t must be a type"):
+        web.AppKey("key", str())
+
+
+def test_app_str_keys() -> None:
+    app = web.Application()
+    with pytest.warns(UserWarning, match=r"web_advanced\.htmle#application-s-config"):
+        app["key"] = "value"
+    assert app["key"] == "value"
 
 
 def test_app_freeze() -> None:
@@ -332,22 +351,25 @@ async def test_cleanup_ctx_multiple_yields() -> None:
 
 
 async def test_subapp_chained_config_dict_visibility(aiohttp_client: Any) -> None:
+    key1 = web.AppKey("key1", str)
+    key2 = web.AppKey("key2", str)
+
     async def main_handler(request):
-        assert request.config_dict["key1"] == "val1"
-        assert "key2" not in request.config_dict
+        assert request.config_dict[key1] == "val1"
+        assert key2 not in request.config_dict
         return web.Response(status=200)
 
     root = web.Application()
-    root["key1"] = "val1"
+    root[key1] = "val1"
     root.add_routes([web.get("/", main_handler)])
 
     async def sub_handler(request):
-        assert request.config_dict["key1"] == "val1"
-        assert request.config_dict["key2"] == "val2"
+        assert request.config_dict[key1] == "val1"
+        assert request.config_dict[key2] == "val2"
         return web.Response(status=201)
 
     sub = web.Application()
-    sub["key2"] = "val2"
+    sub[key2] = "val2"
     sub.add_routes([web.get("/", sub_handler)])
     root.add_subapp("/sub", sub)
 
@@ -360,20 +382,22 @@ async def test_subapp_chained_config_dict_visibility(aiohttp_client: Any) -> Non
 
 
 async def test_subapp_chained_config_dict_overriding(aiohttp_client: Any) -> None:
+    key = web.AppKey("key", str)
+
     async def main_handler(request):
-        assert request.config_dict["key"] == "val1"
+        assert request.config_dict[key] == "val1"
         return web.Response(status=200)
 
     root = web.Application()
-    root["key"] = "val1"
+    root[key] = "val1"
     root.add_routes([web.get("/", main_handler)])
 
     async def sub_handler(request):
-        assert request.config_dict["key"] == "val2"
+        assert request.config_dict[key] == "val2"
         return web.Response(status=201)
 
     sub = web.Application()
-    sub["key"] = "val2"
+    sub[key] = "val2"
     sub.add_routes([web.get("/", sub_handler)])
     root.add_subapp("/sub", sub)
 
@@ -386,15 +410,16 @@ async def test_subapp_chained_config_dict_overriding(aiohttp_client: Any) -> Non
 
 
 async def test_subapp_on_startup(aiohttp_client: Any) -> None:
-
     subapp = web.Application()
+    startup = web.AppKey("startup", bool)
+    cleanup = web.AppKey("cleanup", bool)
 
     startup_called = False
 
     async def on_startup(app):
         nonlocal startup_called
         startup_called = True
-        app["startup"] = True
+        app[startup] = True
 
     subapp.on_startup.append(on_startup)
 
@@ -404,7 +429,7 @@ async def test_subapp_on_startup(aiohttp_client: Any) -> None:
     async def cleanup_ctx(app):
         nonlocal ctx_pre_called, ctx_post_called
         ctx_pre_called = True
-        app["cleanup"] = True
+        app[cleanup] = True
         yield None
         ctx_post_called = True
 
@@ -459,11 +484,16 @@ async def test_subapp_on_startup(aiohttp_client: Any) -> None:
     assert cleanup_called
 
 
+@pytest.mark.filterwarnings(r"ignore:.*web\.AppKey:UserWarning")
 def test_app_iter() -> None:
     app = web.Application()
-    app["a"] = "1"
-    app["b"] = "2"
-    assert sorted(list(app)) == ["a", "b"]
+    b = web.AppKey("b", str)
+    c = web.AppKey("c", str)
+    app["a"] = "0"
+    app[b] = "1"
+    app[c] = "2"
+    app["d"] = "4"
+    assert sorted(list(app)) == [b, c, "a", "d"]
 
 
 def test_app_forbid_nonslot_attr() -> None:

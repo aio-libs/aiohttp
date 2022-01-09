@@ -8,6 +8,7 @@ import dataclasses
 import datetime
 import enum
 import functools
+import inspect
 import netrc
 import os
 import platform
@@ -40,6 +41,7 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    overload,
 )
 from urllib.parse import quote
 from urllib.request import getproxies, proxy_bypass
@@ -784,11 +786,41 @@ def set_exception(fut: "asyncio.Future[_T]", exc: BaseException) -> None:
         fut.set_exception(exc)
 
 
+@functools.total_ordering
+class AppKey(Generic[_T]):
+    """Keys for static typing support in Application."""
+
+    __slots__ = ("_name", "_t")
+
+    def __init__(self, name: str, t: Type[_T]):
+        # Prefix with module name to help deduplicate key names.
+        frame = inspect.currentframe()
+        while frame:
+            if frame.f_code.co_name == "<module>":
+                module = frame.f_globals["__name__"]
+                break
+            frame = frame.f_back
+
+        self._name = module + "." + name
+        try:
+            self._t = t.__qualname__
+        except AttributeError:
+            raise ValueError("t must be a type/class, not an instance.")
+
+    def __lt__(self, other: object) -> bool:
+        if isinstance(other, AppKey):
+            return self._name < other._name
+        return True  # Order AppKey above other types.
+
+    def __repr__(self) -> str:
+        return "<AppKey({}, type={})>".format(self._name, self._t)
+
+
 @final
-class ChainMapProxy(Mapping[str, Any]):
+class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
     __slots__ = ("_maps",)
 
-    def __init__(self, maps: Iterable[Mapping[str, Any]]) -> None:
+    def __init__(self, maps: Iterable[Mapping[Union[str, AppKey[Any]], Any]]) -> None:
         self._maps = tuple(maps)
 
     def __init_subclass__(cls) -> None:
@@ -797,7 +829,11 @@ class ChainMapProxy(Mapping[str, Any]):
             "is forbidden".format(cls.__name__)
         )
 
-    def __getitem__(self, key: str) -> Any:
+    @overload
+    def __getitem__(self, key: AppKey[_T]) -> _T: ...
+    @overload
+    def __getitem__(self, key: str) -> Any: ...
+    def __getitem__(self, key: Union[str, AppKey[_T]]) -> Any:
         for mapping in self._maps:
             try:
                 return mapping[key]
@@ -805,15 +841,24 @@ class ChainMapProxy(Mapping[str, Any]):
                 pass
         raise KeyError(key)
 
-    def get(self, key: str, default: Any = None) -> Any:
-        return self[key] if key in self else default
+    @overload
+    def get(self, key: AppKey[_T], default: _S) -> Union[_T, _S]: ...
+    @overload
+    def get(self, key: AppKey[_T], default: None = None) -> Optional[_T]: ...
+    @overload
+    def get(self, key: str, default: Any = None) -> Any: ...
+    def get(self, key: Union[str, AppKey[_T]], default: Any = None) -> Any:
+        try:
+            return self[key]
+        except KeyError:
+            return default
 
     def __len__(self) -> int:
         # reuses stored hash values if possible
         return len(set().union(*self._maps))
 
-    def __iter__(self) -> Iterator[str]:
-        d: Dict[str, Any] = {}
+    def __iter__(self) -> Iterator[Union[str, AppKey[Any]]]:
+        d: Dict[Union[str, AppKey[Any]], Any] = {}
         for mapping in reversed(self._maps):
             # reuses stored hash values if possible
             d.update(mapping)
