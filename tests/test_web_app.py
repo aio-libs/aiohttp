@@ -118,7 +118,7 @@ def test_appkey_repr() -> None:
 
 def test_appkey_nontype() -> None:
     with pytest.raises(ValueError, match=r"t must be a type"):
-        web.AppKey("key", str())
+        web.AppKey("key", '')
 
 
 def test_app_str_keys() -> None:

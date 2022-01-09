@@ -813,7 +813,7 @@ class AppKey(Generic[_T]):
         return True  # Order AppKey above other types.
 
     def __repr__(self) -> str:
-        return "<AppKey({}, type={})>".format(self._name, self._t)
+        return f"<AppKey({self._name}, type={self._t})>"
 
 
 @final
@@ -830,9 +830,13 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
         )
 
     @overload
-    def __getitem__(self, key: AppKey[_T]) -> _T: ...
+    def __getitem__(self, key: AppKey[_T]) -> _T:
+        ...
+
     @overload
-    def __getitem__(self, key: str) -> Any: ...
+    def __getitem__(self, key: str) -> Any:
+        ...
+
     def __getitem__(self, key: Union[str, AppKey[_T]]) -> Any:
         for mapping in self._maps:
             try:
@@ -842,11 +846,17 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
         raise KeyError(key)
 
     @overload
-    def get(self, key: AppKey[_T], default: _S) -> Union[_T, _S]: ...
+    def get(self, key: AppKey[_T], default: _S) -> Union[_T, _S]:
+        ...
+
     @overload
-    def get(self, key: AppKey[_T], default: None = None) -> Optional[_T]: ...
+    def get(self, key: AppKey[_T], default: None = None) -> Optional[_T]:
+        ...
+
     @overload
-    def get(self, key: str, default: Any = None) -> Any: ...
+    def get(self, key: str, default: Any = None) -> Any:
+        ...
+
     def get(self, key: Union[str, AppKey[_T]], default: Any = None) -> Any:
         try:
             return self[key]

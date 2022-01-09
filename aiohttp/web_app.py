@@ -143,9 +143,13 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         return self is other
 
     @overload
-    def __getitem__(self, key: AppKey[_T]) -> _T: ...
+    def __getitem__(self, key: AppKey[_T]) -> _T:
+        ...
+
     @overload
-    def __getitem__(self, key: str) -> Any: ...
+    def __getitem__(self, key: str) -> Any:
+        ...
+
     def __getitem__(self, key: Union[str, AppKey[_T]]) -> Any:
         return self._state[key]
 
@@ -156,14 +160,20 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             )
 
     @overload
-    def __setitem__(self, key: AppKey[_T], value: _T) -> None: ...
+    def __setitem__(self, key: AppKey[_T], value: _T) -> None:
+        ...
+
     @overload
-    def __setitem__(self, key: str, value: Any) -> None: ...
+    def __setitem__(self, key: str, value: Any) -> None:
+        ...
+
     def __setitem__(self, key: Union[str, AppKey[_T]], value: Any) -> None:
         self._check_frozen()
         if not isinstance(key, AppKey):
-            warnings.warn("It is recommended to use web.AppKey instances for keys.\n"
-                          + "https://docs.aiohttp.org/en/stable/web_advanced.htmle#application-s-config")
+            warnings.warn(
+                "It is recommended to use web.AppKey instances for keys.\n"
+                + "https://docs.aiohttp.org/en/stable/web_advanced.htmle#application-s-config"
+            )
         self._state[key] = value
 
     def __delitem__(self, key: Union[str, AppKey[_T]]) -> None:
