@@ -104,7 +104,7 @@ multidict==5.2.0
     # via
     #   -r requirements/multidict.txt
     #   yarl
-mypy==0.930 ; implementation_name == "cpython"
+mypy==0.931 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.txt
     #   -r requirements/test.txt
