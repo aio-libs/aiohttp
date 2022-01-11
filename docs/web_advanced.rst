@@ -397,6 +397,20 @@ An example of context vars usage::
 
 .. versionadded:: 3.5
 
+.. _aiohttp-web-error-handling:
+
+Error Handling
+--------------
+
+*aiohttp* deliberately doesn't have a built-in error handling
+mechanism.  While the framework does raise :exc:`HTTPException` exceptions,
+it leaves it up to you to handle those errors per your specific requirements.
+
+You can leverage a third-party middleware library such as
+`aiohttp-catcher <https://github.com/yuvalherziger/aiohttp-catcher>`_. to
+handle errors in a centralized way, or alternatively build your own error-handling
+middleware if **aiohttp-catcher** doesn't satisfy your requirements (see the
+**Examples** section in :ref:`aiohttp-web-middlewares`).
 
 .. _aiohttp-web-middlewares:
 
