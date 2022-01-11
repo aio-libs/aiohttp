@@ -280,3 +280,6 @@ ask to raise the status.
 
 - `aiohttp-socks <https://github.com/romis2012/aiohttp-socks>`_
   SOCKS proxy connector for aiohttp.
+
+- `aiohttp-catcher <https://github.com/yuvalherziger/aiohttp-catcher>`_
+  An aiohttp middleware library for centralized error handling in aiohttp servers.
