@@ -139,9 +139,7 @@ pydantic==1.8.2
 pyenchant==3.2.2
     # via sphinxcontrib-spelling
 pygments==2.11.0
-    # via
-    #   -r requirements/doc.txt
-    #   sphinx
+    # via sphinx
 pyjwt==2.3.0
     # via gidgethub
 pyparsing==2.4.7
