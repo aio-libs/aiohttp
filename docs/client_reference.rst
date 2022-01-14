@@ -642,7 +642,7 @@ The client session supports the context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-   .. comethod:: ws_connect(url, *, method='GET', \
+   .. comethod:: try_ws_connect(url, *, method='GET', \
                             protocols=(), timeout=10.0,\
                             receive_timeout=None,\
                             auth=None,\
@@ -660,7 +660,7 @@ The client session supports the context manager protocol for self closing.
       :coroutine:
 
       Create a websocket connection. Returns a
-      :class:`ClientWebSocketResponse` object.
+      :class:`ClientWebSocketHandshakeResponse` object.
 
       :param url: Websocket server url, :class:`str` or :class:`~yarl.URL`
 
@@ -783,6 +783,25 @@ The client session supports the context manager protocol for self closing.
                          ``'GET'`` by default.
 
          .. versionadded:: 3.5
+
+   .. comethod:: ws_connect(url, *, **kwargs)
+      :async-with:
+      :coroutine:
+
+      Create a websocket connection. Returns a
+      :class:`ClientWebSocketResponse` object.
+
+      This is shortcut to::
+
+        async with session.try_ws_connect(url, **kwargs) as handshake_resp:
+           resp = handshake_resp.upgrade()
+
+      In order to modify inner
+      :meth:`try_ws_connect<aiohttp.ClientSession.try_ws_connect>`
+      parameters, provide `kwargs`.
+
+      :param url: Request URL, :class:`str` or :class:`~yarl.URL`
+
 
 
    .. comethod:: close()
@@ -1661,6 +1680,34 @@ manually.
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
       :raise ValueError: if message is not valid JSON.
+
+
+ClientWebSocketHandshakeResponse
+--------------------------------
+
+
+.. class:: ClientWebSocketHandshakeResponse()
+
+   Class for handling client-side websockets handshake result.
+
+   .. method:: upgrade()
+
+      Get a underlying :class:`ClientWebSocketResponse` if handshake
+      was a successful or raise an exception
+
+      :return:  :class:`ClientWebSocketResponse`.
+
+   .. attribute:: error
+
+      Read-only property, :exc:`WSServerHandshakeError` if handshake
+      failed or ``None`` otherwise.
+
+   .. attribute:: error_response
+
+      Read-only property, :class:`ClientResponse` of initial http
+      request if handshake failed or ``None`` otherwise.
+
+      This property allows to read error response body.
 
 
 Utilities

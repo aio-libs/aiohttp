@@ -7,7 +7,7 @@ from typing import Any, Optional, cast
 import async_timeout
 from typing_extensions import Final
 
-from .client_exceptions import ClientError
+from .client_exceptions import ClientError, WSServerHandshakeError
 from .client_reqrep import ClientResponse
 from .helpers import call_later, set_result
 from .http import (
@@ -37,6 +37,41 @@ class ClientWSTimeout:
 DEFAULT_WS_CLIENT_TIMEOUT: Final[ClientWSTimeout] = ClientWSTimeout(
     ws_receive=None, ws_close=10.0
 )
+
+
+class ClientWebSocketHandshakeResponse:
+    def __init__(
+        self,
+        *,
+        ws_response: Optional["ClientWebSocketResponse"] = None,
+        error: Optional[WSServerHandshakeError] = None,
+        error_response: Optional[ClientResponse] = None,
+    ):
+        self._error = error
+        self._error_response = error_response
+        self._ws_response = ws_response
+
+    def upgrade(self) -> "ClientWebSocketResponse":
+        if self._error:
+            if self._error_response:
+                self._error_response.close()
+            raise self._error
+        assert self._ws_response
+        return self._ws_response
+
+    @property
+    def error(self) -> Optional[WSServerHandshakeError]:
+        return self._error
+
+    @property
+    def error_response(self) -> Optional[ClientResponse]:
+        return self._error_response
+
+    async def close(self) -> None:
+        if self._ws_response:
+            await self._ws_response.close()
+        elif self._error_response:
+            self._error_response.close()
 
 
 class ClientWebSocketResponse:

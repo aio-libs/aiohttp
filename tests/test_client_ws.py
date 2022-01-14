@@ -54,6 +54,31 @@ async def test_ws_connect(ws_key: Any, loop: Any, key_data: Any) -> None:
     assert hdrs.ORIGIN not in m_req.call_args[1]["headers"]
 
 
+async def test_try_ws_connect_upgrade(loop: Any, ws_key: Any, key_data: Any) -> None:
+    resp = mock.Mock()
+    resp.status = 101
+    resp.headers = {
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
+        hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
+        hdrs.SEC_WEBSOCKET_PROTOCOL: "chat",
+    }
+    with mock.patch("aiohttp.client.os") as m_os:
+        with mock.patch("aiohttp.client.ClientSession.request") as m_req:
+            m_os.urandom.return_value = key_data
+            m_req.return_value = loop.create_future()
+            m_req.return_value.set_result(resp)
+
+            try_res = await aiohttp.ClientSession().try_ws_connect(
+                "http://test.org", protocols=("t1", "t2", "chat")
+            )
+            res = try_res.upgrade()
+
+    assert isinstance(res, client.ClientWebSocketResponse)
+    assert res.protocol == "chat"
+    assert hdrs.ORIGIN not in m_req.call_args[1]["headers"]
+
+
 async def test_ws_connect_with_origin(key_data: Any, loop: Any) -> None:
     resp = mock.Mock()
     resp.status = 403
@@ -122,6 +147,29 @@ async def test_ws_connect_custom_response(
             ).ws_connect("http://test.org")
 
     assert res.read() == "customized!"
+
+
+async def test_try_ws_connect_err_access_to_resp(
+    loop: Any, ws_key: Any, key_data: Any
+) -> None:
+    resp = mock.Mock()
+    resp.status = 500
+    resp.headers = {
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
+        hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
+    }
+    with mock.patch("aiohttp.client.os") as m_os:
+        with mock.patch("aiohttp.client.ClientSession.request") as m_req:
+            m_os.urandom.return_value = key_data
+            m_req.return_value = loop.create_future()
+            m_req.return_value.set_result(resp)
+
+            async with aiohttp.ClientSession().try_ws_connect(
+                "http://test.org", protocols=("t1", "t2", "chat")
+            ) as ws_handshake:
+                assert ws_handshake.error
+                assert ws_handshake.error_response is resp
 
 
 async def test_ws_connect_err_status(loop: Any, ws_key: Any, key_data: Any) -> None:
