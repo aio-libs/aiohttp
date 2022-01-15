@@ -1350,6 +1350,8 @@ def test_convert_to_plain_resource_group(router: Any):
         " <_PlainResourceGroup count=2>]" == repr(router._resources)
     )
 
+    assert len(router.resources()) == 4
+
 
 def test_frozen_plain_group(router: Any):
     router.add_resource("/foo", name="foo")
