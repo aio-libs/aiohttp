@@ -1158,21 +1158,20 @@ def test_invalid_route_name_keyword(router) -> None:
 
 
 def test_register_invalid_resource_name_dup(router):
+    router.add_resource("/a", name="a")
     with pytest.raises(ValueError):
-        router.add_resource("/a", name="a")
         router.add_resource("/b", name="a")
 
 
 def test_register_invalid_named_resource_dup(router):
+    resource = router.add_resource("/", name="a")
     with pytest.raises(ValueError):
-        resource = router.add_resource("/", name="a")
-        router._register_named_resource(resource)
         router._register_named_resource(resource)
 
 
 def test_register_invalid_named_resource_empty(router):
+    resource = router.add_resource("/")
     with pytest.raises(ValueError):
-        resource = router.add_resource("/")
         router._register_named_resource(resource)
 
 
