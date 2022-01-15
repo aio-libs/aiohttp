@@ -1158,6 +1158,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         # Reuse last added resource if path are the same
         elif not name and self._resources:
             resource = self._resources[-1]
+            assert isinstance(resource, AbstractResource)
             if resource.raw_match(path):
                 return cast(Resource, resource)
 
