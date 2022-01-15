@@ -442,9 +442,6 @@ class _PlainResourceGroup:
 
         return await resource.resolve(request)
 
-    def raw_match(self, path: str) -> bool:
-        return path in self._resources
-
     def __repr__(self) -> str:
         return f"<_PlainResourceGroup count={len(self._resources)}>"
 
