@@ -41,7 +41,6 @@ from typing import (
     TypeVar,
     Union,
     cast,
-    get_args,
     overload,
 )
 from urllib.parse import quote
@@ -55,6 +54,11 @@ from yarl import URL
 from . import hdrs
 from .log import client_logger
 from .typedefs import PathLike  # noqa
+
+if sys.version_info >= (3, 8):
+    from typing import get_args
+else:
+    from typing_extensions import get_args
 
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
