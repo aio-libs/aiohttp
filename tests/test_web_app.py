@@ -1,6 +1,6 @@
 # type: ignore
 import asyncio
-from typing import Any
+from typing import Any, Iterator
 from unittest import mock
 
 import pytest
@@ -111,14 +111,14 @@ def test_appkey() -> None:
     assert len(app) == 0
 
 
-def test_appkey_repr() -> None:
+def test_appkey_repr_concrete() -> None:
     key = web.AppKey("key", int)
     assert repr(key) == "<AppKey(__main__.key, type=int)>"
 
 
-def test_appkey_nontype() -> None:
-    with pytest.raises(ValueError, match=r"t must be a type"):
-        web.AppKey("key", set())
+def test_appkey_repr_nonconcrete() -> None:
+    key = web.AppKey("key", Iterator[int])
+    assert repr(key) == "<AppKey(__main__.key, type=typing.Iterator[int])>"
 
 
 def test_app_str_keys() -> None:

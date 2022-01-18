@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Example for aiohttp.web websocket server."""
 
-# The extra strict mypy settings are here to help test that `Application[T]` syntax
-# is working correctly. A regression will cause mypy to raise an error.
+# The extra strict mypy settings are here to help test that `Application[AppKey()]`
+# syntax is working correctly. A regression will cause mypy to raise an error.
 # mypy: disallow-any-expr, disallow-any-unimported, disallow-subclassing-any
 
 import os

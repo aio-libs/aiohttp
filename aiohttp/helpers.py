@@ -808,7 +808,10 @@ class AppKey(Generic[_T]):
             frame = frame.f_back
 
         self._name = module + "." + name
-        self._t = t.__qualname__ if t else None
+        try:
+            self._t = t.__qualname__  # type: ignore[union-attr]  # If concrete class
+        except AttributeError:
+            self._t = t
 
     def __lt__(self, other: object) -> bool:
         if isinstance(other, AppKey):
