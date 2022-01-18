@@ -266,7 +266,7 @@ and get it back in the :term:`web-handler`::
     async def handler(request):
         data = request.app['my_private_key']
 
-Rather than using :class:`str` keys, we recommend using :class:`web.AppKey`.
+Rather than using :class:`str` keys, we recommend using :class:`AppKey`.
 This is required for type safety (e.g. when checking with mypy)::
 
     my_private_key = web.AppKey("my_private_key", str)

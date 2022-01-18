@@ -5,7 +5,6 @@ aioes
 aiohttp
 aiohttpdemo
 aiohttp’s
-aiopg
 alives
 api
 api’s
@@ -16,6 +15,7 @@ arg
 Arsenic
 async
 asyncio
+asyncpg
 asynctest
 auth
 autocalculated
