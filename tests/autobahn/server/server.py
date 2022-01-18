@@ -35,8 +35,8 @@ async def wshandler(request: web.Request) -> web.WebSocketResponse:
 
 
 async def on_shutdown(app: web.Application) -> None:
-    l = app[websockets]
-    for ws in set(l):
+    ws_list = app[websockets]
+    for ws in set(ws_list):
         await ws.close(code=WSCloseCode.GOING_AWAY, message=b"Server shutdown")
 
 
