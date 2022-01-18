@@ -5,6 +5,7 @@ aioes
 aiohttp
 aiohttpdemo
 aiohttp’s
+aiopg
 alives
 api
 api’s
