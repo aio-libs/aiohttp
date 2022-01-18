@@ -65,6 +65,7 @@ else:
     _Subapps = List
 
 _T = TypeVar("_T")
+_U = TypeVar("_U")
 
 
 @final
@@ -142,7 +143,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     def __eq__(self, other: object) -> bool:
         return self is other
 
-    @overload
+    @overload  # type: ignore[override]
     def __getitem__(self, key: AppKey[_T]) -> _T:
         ...
 
@@ -159,7 +160,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
                 "Changing state of started or joined " "application is forbidden"
             )
 
-    @overload
+    @overload  # type: ignore[override]
     def __setitem__(self, key: AppKey[_T], value: _T) -> None:
         ...
 
@@ -185,6 +186,21 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
 
     def __iter__(self) -> Iterator[Union[str, AppKey[Any]]]:
         return iter(self._state)
+
+    @overload  # type: ignore[override]
+    def get(self, key: AppKey[_T], default: None = None) -> Optional[_T]:
+        ...
+
+    @overload
+    def get(self, key: AppKey[_T], default: _U) -> Union[_T, _U]:
+        ...
+
+    @overload
+    def get(self, key: str, default: Any = ...) -> Any:
+        ...
+
+    def get(self, key: Union[str, AppKey[_T]], default: Any = None) -> Any:
+        return self._state.get(key, default)
 
     ########
     def _set_loop(self, loop: Optional[asyncio.AbstractEventLoop]) -> None:

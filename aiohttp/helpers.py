@@ -41,6 +41,7 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    get_args,
     overload,
 )
 from urllib.parse import quote
@@ -790,9 +791,14 @@ def set_exception(fut: "asyncio.Future[_T]", exc: BaseException) -> None:
 class AppKey(Generic[_T]):
     """Keys for static typing support in Application."""
 
-    __slots__ = ("_name", "_t")
+    __slots__ = ("_name", "_t", "__orig_class__")
 
-    def __init__(self, name: str, t: Type[_T]):
+    # This may be set by Python when instantiating with a generic type. We need to
+    # support this, in order to support types that are not concrete classes,
+    # like Iterable, which can't be passed as the second parameter to __init__.
+    __orig_class__: Type[object]
+
+    def __init__(self, name: str, t: Optional[Type[_T]] = None):
         # Prefix with module name to help deduplicate key names.
         frame = inspect.currentframe()
         while frame:
@@ -802,10 +808,7 @@ class AppKey(Generic[_T]):
             frame = frame.f_back
 
         self._name = module + "." + name
-        try:
-            self._t = t.__qualname__
-        except AttributeError:
-            raise ValueError("t must be a type/class, not an instance.")
+        self._t = t.__qualname__ if t else None
 
     def __lt__(self, other: object) -> bool:
         if isinstance(other, AppKey):
@@ -813,7 +816,16 @@ class AppKey(Generic[_T]):
         return True  # Order AppKey above other types.
 
     def __repr__(self) -> str:
-        return f"<AppKey({self._name}, type={self._t})>"
+        if self._t:
+            t: object = self._t
+        else:
+            t = "<<Unknown>>"
+            with suppress(AttributeError):
+                # Set to type arg.
+                t = cls = get_args(self.__orig_class__)[0]
+                # If a class, set to the qualname.
+                t = cls.__qualname__
+        return f"<AppKey({self._name}, type={t})>"
 
 
 @final
@@ -829,7 +841,7 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
             "is forbidden".format(cls.__name__)
         )
 
-    @overload
+    @overload  # type: ignore[override]
     def __getitem__(self, key: AppKey[_T]) -> _T:
         ...
 
@@ -845,7 +857,7 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
                 pass
         raise KeyError(key)
 
-    @overload
+    @overload  # type: ignore[override]
     def get(self, key: AppKey[_T], default: _S) -> Union[_T, _S]:
         ...
 
@@ -854,7 +866,7 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
         ...
 
     @overload
-    def get(self, key: str, default: Any = None) -> Any:
+    def get(self, key: str, default: Any = ...) -> Any:
         ...
 
     def get(self, key: Union[str, AppKey[_T]], default: Any = None) -> Any:
