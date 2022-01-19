@@ -1,1 +1,1 @@
-Add HTTP method validation
+Add HTTP method validation.
