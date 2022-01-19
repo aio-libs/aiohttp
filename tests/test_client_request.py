@@ -88,6 +88,11 @@ def test_method3(make_request: Any) -> None:
     assert req.method == "HEAD"
 
 
+def test_method3_invalid(make_request: Any) -> None:
+    with pytest.raises(ValueError):
+        make_request("METHOD WITH\nWHITESPACES", "http://python.org/")
+
+
 def test_version_1_0(make_request: Any) -> None:
     req = make_request("get", "http://python.org/", version="1.0")
     assert req.version == (1, 0)
