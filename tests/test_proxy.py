@@ -14,8 +14,9 @@ from aiohttp.client_reqrep import ClientRequest, ClientResponse
 from aiohttp.helpers import PY_37, TimerNoop
 from aiohttp.test_utils import make_mocked_coro
 
-if sys.platform == "win32":
-    pytest.skip("Proxy tests are unstable on Windows")
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32", reason="Proxy tests are unstable on Windows"
+)
 
 
 class TestProxy(unittest.TestCase):
