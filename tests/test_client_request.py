@@ -88,8 +88,8 @@ def test_method3(make_request: Any) -> None:
     assert req.method == "HEAD"
 
 
-def test_method3_invalid(make_request: Any) -> None:
-    with pytest.raises(ValueError):
+def test_method_invalid(make_request: Any) -> None:
+    with pytest.raises(ValueError, match="Method cannot contain non-token characters"):
         make_request("METHOD WITH\nWHITESPACES", "http://python.org/")
 
 
