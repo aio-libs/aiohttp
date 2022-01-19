@@ -1356,14 +1356,14 @@ async def test_subapp_middleware_context(
 
     def show_app_context(appname):
         async def middleware(request, handler: Handler):
-            values.append("{}: {}".format(appname, request.app[my_value]))
+            values.append(f"{appname}: {request.app[my_value]}")
             return await handler(request)
 
         return middleware
 
     def make_handler(appname):
         async def handler(request):
-            values.append("{}: {}".format(appname, request.app[my_value]))
+            values.append(f"{appname}: {request.app[my_value]}")
             return web.Response(text="Ok")
 
         return handler
