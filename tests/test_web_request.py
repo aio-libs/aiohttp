@@ -46,7 +46,9 @@ def test_base_ctor() -> None:
 
     assert "GET" == req.method
     assert HttpVersion(1, 1) == req.version
-    assert req.host == socket.getfqdn()
+    # FQDN can be wider than host, e.g.
+    # 'fv-az397-495' in 'fv-az397-495.internal.cloudapp.net'
+    assert req.host in socket.getfqdn()
     assert "/path/to?a=1&b=2" == req.path_qs
     assert "/path/to" == req.path
     assert "a=1&b=2" == req.query_string
