@@ -617,20 +617,15 @@ asyncio.sleep(0)``) will suffice::
         async with aiohttp.ClientSession() as session:
             async with session.get('http://example.org/') as resp:
                 await resp.read()
-
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(read_website())
-    # Zero-sleep to allow underlying connections to close
-    loop.run_until_complete(asyncio.sleep(0))
-    loop.close()
+        # Zero-sleep to allow underlying connections to close
+        await asyncio.sleep(0)
 
 For a :class:`ClientSession` with SSL, the application must wait a
 short duration before closing::
 
     ...
     # Wait 250 ms for the underlying SSL connections to close
-    loop.run_until_complete(asyncio.sleep(0.250))
-    loop.close()
+    await asyncio.sleep(0.250)
 
 Note that the appropriate amount of time to wait will vary from
 application to application.
