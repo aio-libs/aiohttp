@@ -3,6 +3,7 @@ import functools
 import os
 import pathlib
 import platform
+import sys
 from re import match as match_regex
 from unittest import mock
 from uuid import uuid4
@@ -15,6 +16,10 @@ import aiohttp
 from aiohttp import web
 from aiohttp.client_exceptions import ClientConnectionError, ClientProxyConnectionError
 from aiohttp.helpers import IS_MACOS, IS_WINDOWS, PY_37, PY_310
+
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32", reason="Proxy tests are unstable on Windows"
+)
 
 secure_proxy_xfail_under_py310_linux = functools.partial(
     pytest.mark.xfail,
