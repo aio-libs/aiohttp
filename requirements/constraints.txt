@@ -65,7 +65,7 @@ filelock==3.3.2
     # via virtualenv
 freezegun==1.1.0
     # via -r requirements/test.txt
-frozenlist==1.2.0
+frozenlist==1.3.0
     # via
     #   -r requirements/base.txt
     #   aiosignal
