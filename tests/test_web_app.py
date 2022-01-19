@@ -123,7 +123,7 @@ def test_appkey_repr_nonconcrete() -> None:
 
 def test_app_str_keys() -> None:
     app = web.Application()
-    with pytest.warns(UserWarning, match=r"web_advanced\.htmle#application-s-config"):
+    with pytest.warns(UserWarning, match=r"web_advanced\.html#application-s-config"):
         app["key"] = "value"
     assert app["key"] == "value"
 
