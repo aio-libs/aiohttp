@@ -508,6 +508,14 @@ async def test_release_close(key: Any) -> None:
     assert proto.close.called
 
 
+async def test_release_proto_closed_future(loop: Any, key: Any):
+    conn = aiohttp.BaseConnector()
+    protocol = mock.Mock(should_close=True, closed=loop.create_future())
+    conn._release(key, protocol)
+    # See PR #6321
+    assert protocol.closed.result() is None
+
+
 async def test__drop_acquire_per_host1(loop: Any) -> None:
     conn = aiohttp.BaseConnector()
     conn._drop_acquired_per_host(123, 456)
