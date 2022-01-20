@@ -197,6 +197,12 @@ def test_make_mocked_request_app_can_store_values() -> None:
     assert req.app["a_field"] == "a_value"
 
 
+def test_make_mocked_request_app_access_non_existing() -> None:
+    req = make_mocked_request("GET", "/")
+    with pytest.raises(AttributeError):
+        req.app.foo
+
+
 def test_make_mocked_request_match_info() -> None:
     req = make_mocked_request("GET", "/", match_info={"a": "1", "b": "2"})
     assert req.match_info == {"a": "1", "b": "2"}
