@@ -71,6 +71,6 @@ def test_no_warnings(import_path: str) -> None:
     This is seeking for any import errors including ones caused
     by circular imports.
     """
-    imp_cmd = sys.executable, "-W", "error"
+    imp_cmd = sys.executable, "-W", "error", "-c", f"import {import_path!s}"
 
     subprocess.check_call(imp_cmd)
