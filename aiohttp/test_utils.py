@@ -569,7 +569,7 @@ def _create_app_mock() -> mock.MagicMock:
     def set_dict(app: Any, key: str, value: Any) -> None:
         app.__app_dict[key] = value
 
-    app = mock.MagicMock()
+    app = mock.MagicMock(spec=Application)
     app.__app_dict = {}
     app.__getitem__ = get_dict
     app.__setitem__ = set_dict
