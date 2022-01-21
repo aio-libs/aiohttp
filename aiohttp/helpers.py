@@ -812,10 +812,7 @@ class AppKey(Generic[_T]):
             frame = frame.f_back
 
         self._name = module + "." + name
-        try:
-            self._t = t.__qualname__  # type: ignore[union-attr]  # If concrete class
-        except AttributeError:
-            self._t = t
+        self._t = t
 
     def __lt__(self, other: object) -> bool:
         if isinstance(other, AppKey):
@@ -823,16 +820,22 @@ class AppKey(Generic[_T]):
         return True  # Order AppKey above other types.
 
     def __repr__(self) -> str:
-        if self._t:
-            t: object = self._t
-        else:
-            t = "<<Unknown>>"
+        t = self._t
+        if t is None:
             with suppress(AttributeError):
                 # Set to type arg.
-                t = cls = get_args(self.__orig_class__)[0]
-                # If a class, set to the qualname.
-                t = cls.__qualname__
-        return f"<AppKey({self._name}, type={t})>"
+                t = get_args(self.__orig_class__)[0]
+
+        if t is None:
+            t_repr = "<<Unkown>>"
+        elif isinstance(t, type):
+            if t.__module__ == "builtins":
+                t_repr = t.__qualname__
+            else:
+                t_repr = f"{t.__module__}.{t.__qualname__}"
+        else:
+            t_repr = repr(t)
+        return f"<AppKey({self._name}, type={t_repr})>"
 
 
 @final
