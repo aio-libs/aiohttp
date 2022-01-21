@@ -114,10 +114,17 @@ def test_appkey() -> None:
 def test_appkey_repr_concrete() -> None:
     key = web.AppKey("key", int)
     assert repr(key) == "<AppKey(__main__.key, type=int)>"
+    key = web.AppKey("key", web.Request)
+    assert repr(key) == "<AppKey(__main__.key, type=aiohttp.web_request.Request)>"
 
 
 def test_appkey_repr_nonconcrete() -> None:
     key = web.AppKey("key", Iterator[int])
+    assert repr(key) == "<AppKey(__main__.key, type=typing.Iterator[int])>"
+
+
+def test_appkey_repr_annotated() -> None:
+    key = web.AppKey[Iterator[int]]("key")
     assert repr(key) == "<AppKey(__main__.key, type=typing.Iterator[int])>"
 
 
@@ -126,6 +133,14 @@ def test_app_str_keys() -> None:
     with pytest.warns(UserWarning, match=r"web_advanced\.html#application-s-config"):
         app["key"] = "value"
     assert app["key"] == "value"
+
+
+def test_app_get() -> None:
+    key = web.AppKey("key", int)
+    app = web.Application()
+    assert app.get(key, "foo") == "foo"
+    app[key] = 5
+    assert app.get(key, "foo") == 5
 
 
 def test_app_freeze() -> None:
