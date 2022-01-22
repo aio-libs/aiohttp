@@ -56,7 +56,10 @@ jobs:
         make mypy
     - name: Run slotscheck
       run: |
-        python -m slotscheck -m aiohttp
+        # Some extra requirements are needed to ensure all modules
+        # can be scanned by slotscheck.
+        pip install -r requirements/base.txt -c requirements/constraints.txt
+        slotscheck -v -m aiohttp
     - name: Install libenchant-dev
       run: |
         sudo apt install libenchant-dev
