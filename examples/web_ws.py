@@ -14,7 +14,7 @@ WS_FILE = os.path.join(os.path.dirname(__file__), "websocket.html")
 sockets = web.AppKey("sockets", List[web.WebSocketResponse])
 
 
-async def wshandler(request):
+async def wshandler(request: web.Request) -> web.StreamResponse:
     resp = web.WebSocketResponse()
     available = resp.can_prepare(request)
     if not available:
@@ -47,12 +47,12 @@ async def wshandler(request):
             await ws.send_str("Someone disconnected.")
 
 
-async def on_shutdown(app):
+async def on_shutdown(app: web.Application) -> None:
     for ws in app[sockets]:
         await ws.close()
 
 
-def init():
+def init() -> web.Application:
     app = web.Application()
     l: List[web.WebSocketResponse] = []
     app[sockets] = l
