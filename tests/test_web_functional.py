@@ -1424,26 +1424,27 @@ async def test_subapp_middleware_context(aiohttp_client, route, expected, middle
     def show_app_context(appname):
         @web.middleware
         async def middleware(request, handler: Handler):
-            values.append("{}: {}".format(appname, request.app["my_value"]))
+            values.append(f"{appname}: {request.app[my_value]}")
             return await handler(request)
 
         return middleware
 
     def make_handler(appname):
         async def handler(request):
-            values.append("{}: {}".format(appname, request.app["my_value"]))
+            values.append(f"{appname}: {request.app[my_value]}")
             return web.Response(text="Ok")
 
         return handler
 
     app = web.Application()
-    app["my_value"] = "root"
+    my_value = web.AppKey("my_value", str)
+    app[my_value] = "root"
     if "A" in middlewares:
         app.middlewares.append(show_app_context("A"))
     app.router.add_get("/", make_handler("B"))
 
     subapp = web.Application()
-    subapp["my_value"] = "sub"
+    subapp[my_value] = "sub"
     if "C" in middlewares:
         subapp.middlewares.append(show_app_context("C"))
     subapp.router.add_get("/", make_handler("D"))
