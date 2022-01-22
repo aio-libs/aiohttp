@@ -604,7 +604,7 @@ Proxy credentials are given from ``~/.netrc`` file if present (see
 Persistent session
 ------------------
 
-Even though creating a session on demand seems like tempting idea, we
+Even though creating a session on demand seems like a tempting idea, we
 advise against it. :class:`aiohttp.ClientSession` maintains a
 connection pool. Contained connections can be reused if necessary to gain some
 performance improvements. If you plan on reusing the session, a.k.a. creating
@@ -613,37 +613,38 @@ performance improvements. If you plan on reusing the session, a.k.a. creating
 as it results in more compact code::
 
     app.cleanup_ctx.append(persistent_session)
+    persistent_session = aiohttp.web.AppKey("persistent_session", aiohttp.ClientSession)
 
     async def persistent_session(app):
-       app['PERSISTENT_SESSION'] = session = aiohttp.ClientSession()
+       app[persistent_session] = session = aiohttp.ClientSession()
        yield
        await session.close()
 
     async def my_request_handler(request):
-       session = request.app['PERSISTENT_SESSION']
+       session = request.app[persistent_session]
        async with session.get("http://python.org") as resp:
            print(resp.status)
 
 
-This approach can be successfully used to define numerous of session given certain
+This approach can be successfully used to define numerous sessions given certain
 requirements. It benefits from having a single location where :class:`aiohttp.ClientSession`
 instances are created and where artifacts such as :class:`aiohttp.BaseConnector`
 can be safely shared between sessions if needed.
 
-In the end all you have to do is to close all sessions after `yield` statement::
+In the end all you have to do is to close all sessions after the `yield` statement::
 
     async def multiple_sessions(app):
-       app['PERSISTENT_SESSION_1'] = session_1 = aiohttp.ClientSession()
-       app['PERSISTENT_SESSION_2'] = session_2 = aiohttp.ClientSession()
-       app['PERSISTENT_SESSION_3'] = session_3 = aiohttp.ClientSession()
+       app[persistent_session_1] = session_1 = aiohttp.ClientSession()
+       app[persistent_session_2] = session_2 = aiohttp.ClientSession()
+       app[persistent_session_3] = session_3 = aiohttp.ClientSession()
 
        yield
 
-       await asyncio.gather(*[
+       await asyncio.gather(
            session_1.close(),
            session_2.close(),
            session_3.close(),
-       ])
+       )
 
 Graceful Shutdown
 -----------------
