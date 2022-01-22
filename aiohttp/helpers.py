@@ -872,7 +872,7 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
         ...
 
     @overload
-    def get(self, key: AppKey[_T], default: None = None) -> Optional[_T]:
+    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]:
         ...
 
     @overload

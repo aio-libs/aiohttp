@@ -189,7 +189,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         return iter(self._state)
 
     @overload  # type: ignore[override]
-    def get(self, key: AppKey[_T], default: None = None) -> Optional[_T]:
+    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]:
         ...
 
     @overload
