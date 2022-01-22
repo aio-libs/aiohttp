@@ -664,6 +664,25 @@ class TestCookieJarSafe(TestCookieJarBase):
         # Assert that there is a cookie.
         assert len(jar) == 1
 
+    def test_path_filter_diff_folder_same_name(self) -> None:
+
+        async def make_jar():
+            return CookieJar(unsafe=True)
+
+        jar = self.loop.run_until_complete(make_jar())
+
+        jar.update_cookies(SimpleCookie("path-cookie=zero; Domain=pathtest.com; Path=/; "))
+        jar.update_cookies(SimpleCookie("path-cookie=one; Domain=pathtest.com; Path=/one; "))
+        self.assertEqual(len(jar), 2)
+
+        jar_filtred = jar.filter_cookies(URL("http://pathtest.com/"))
+        self.assertEqual(len(jar_filtred), 1)
+        self.assertEqual(jar_filtred['path-cookie'].value, "zero")
+
+        jar_filtred = jar.filter_cookies(URL("http://pathtest.com/one"))
+        self.assertEqual(len(jar_filtred), 1)
+        self.assertEqual(jar_filtred['path-cookie'].value, "one")
+
 
 async def test_dummy_cookie_jar() -> None:
     cookie = SimpleCookie("foo=bar; Domain=example.com;")
@@ -771,3 +790,4 @@ async def test_treat_as_secure_origin() -> None:
     assert len(jar) == 1
     filtered_cookies = jar.filter_cookies(request_url=endpoint)
     assert len(filtered_cookies) == 1
+
