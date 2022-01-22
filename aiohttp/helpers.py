@@ -905,7 +905,7 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
 
     def __len__(self) -> int:
         # reuses stored hash values if possible
-        return len(set().union(*self._maps))  # type: ignore[arg-type]
+        return len(set().union(*self._maps))
 
     def __iter__(self) -> Iterator[Union[str, AppKey[Any]]]:
         d: Dict[Union[str, AppKey[Any]], Any] = {}
