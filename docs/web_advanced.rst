@@ -894,7 +894,8 @@ will run along with the application's request handler.
 For example there's a need to run one quick task and two long running
 tasks that will live till the application is alive. The appropriate
 background tasks could be registered as an :attr:`Application.on_startup`
-signal handlers as shown in the example below::
+signal handler or :attr:`Application.cleanup_ctx` as shown in the example
+below::
 
 
   async def listen_to_redis(app):
