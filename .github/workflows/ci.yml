@@ -51,9 +51,12 @@ jobs:
         python -m pip install .
       env:
         AIOHTTP_NO_EXTENSIONS: 1
-    - name: Run linters
+    - name: Run mypy
       run: |
         make mypy
+    - name: Run slotscheck
+      run: |
+        slotscheck -m aiohttp
     - name: Install libenchant-dev
       run: |
         sudo apt install libenchant-dev
