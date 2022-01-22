@@ -1326,7 +1326,7 @@ Application
 
 Application is a synonym for web-server.
 
-To get fully working example, you have to make *application*, register
+To get a fully working example, you have to make *application*, register
 supported urls in *router* and pass it to :func:`aiohttp.web.run_app`
 or :class:`aiohttp.web.AppRunner`.
 
@@ -1339,11 +1339,12 @@ properties for later access from a :ref:`handler<aiohttp-web-handler>` via the
 :attr:`Request.app` property::
 
    app = Application()
-   app['database'] = await aiopg.create_engine(**db_config)
+   database = AppKey("database", AsyncEngine)
+   app[database] = await create_async_engine(db_url)
 
    async def handler(request):
-       with (await request.app['database']) as conn:
-           conn.execute("DELETE * FROM table")
+       async with request.app[database].begin() as conn:
+           await conn.execute("DELETE * FROM table")
 
 Although :class:`Application` is a :obj:`dict`-like object, it can't be
 duplicated like one using :meth:`~aiohttp.web.Application.copy`.
@@ -1630,6 +1631,25 @@ duplicated like one using :meth:`~aiohttp.web.Application.copy`.
       route name). All those are router implementation details (but,
       sure, you need to deal with that methods after choosing the
       router for your application).
+
+
+AppKey
+^^^^^^
+
+:class:`AppKey` should be used for the keys in :class:`Application`. They
+provide type safety when checking your code with a type checker (e.g. mypy).
+
+.. class:: AppKey(name, t)
+
+   The class provides a type-safe alternative to `str` keys. They also avoid
+   name clashes with keys from different libraries etc.
+
+   :param name: A name to help with debugging. This should be the same as
+                the variable name (much like how :class:`typing.TypeVar`
+                is used).
+
+   :param t: The type that should be used for the value in the dict (e.g.
+             `str`, `Iterator[int]` etc.)
 
 
 Server

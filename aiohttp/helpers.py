@@ -41,6 +41,7 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    overload,
 )
 from urllib.parse import quote
 from urllib.request import getproxies, proxy_bypass
@@ -53,6 +54,11 @@ from yarl import URL
 from . import hdrs
 from .log import client_logger, internal_logger
 from .typedefs import PathLike, Protocol  # noqa
+
+if sys.version_info >= (3, 8):
+    from typing import get_args
+else:
+    from typing_extensions import get_args
 
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
@@ -804,10 +810,57 @@ def set_exception(fut: "asyncio.Future[_T]", exc: BaseException) -> None:
         fut.set_exception(exc)
 
 
-class ChainMapProxy(Mapping[str, Any]):
+@functools.total_ordering
+class AppKey(Generic[_T]):
+    """Keys for static typing support in Application."""
+
+    __slots__ = ("_name", "_t", "__orig_class__")
+
+    # This may be set by Python when instantiating with a generic type. We need to
+    # support this, in order to support types that are not concrete classes,
+    # like Iterable, which can't be passed as the second parameter to __init__.
+    __orig_class__: Type[object]
+
+    def __init__(self, name: str, t: Optional[Type[_T]] = None):
+        # Prefix with module name to help deduplicate key names.
+        frame = inspect.currentframe()
+        while frame:
+            if frame.f_code.co_name == "<module>":
+                module: str = frame.f_globals["__name__"]
+                break
+            frame = frame.f_back
+
+        self._name = module + "." + name
+        self._t = t
+
+    def __lt__(self, other: object) -> bool:
+        if isinstance(other, AppKey):
+            return self._name < other._name
+        return True  # Order AppKey above other types.
+
+    def __repr__(self) -> str:
+        t = self._t
+        if t is None:
+            with suppress(AttributeError):
+                # Set to type arg.
+                t = get_args(self.__orig_class__)[0]
+
+        if t is None:
+            t_repr = "<<Unkown>>"
+        elif isinstance(t, type):
+            if t.__module__ == "builtins":
+                t_repr = t.__qualname__
+            else:
+                t_repr = f"{t.__module__}.{t.__qualname__}"
+        else:
+            t_repr = repr(t)
+        return f"<AppKey({self._name}, type={t_repr})>"
+
+
+class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
     __slots__ = ("_maps",)
 
-    def __init__(self, maps: Iterable[Mapping[str, Any]]) -> None:
+    def __init__(self, maps: Iterable[Mapping[Union[str, AppKey[Any]], Any]]) -> None:
         self._maps = tuple(maps)
 
     def __init_subclass__(cls) -> None:
@@ -816,7 +869,15 @@ class ChainMapProxy(Mapping[str, Any]):
             "is forbidden".format(cls.__name__)
         )
 
+    @overload  # type: ignore[override]
+    def __getitem__(self, key: AppKey[_T]) -> _T:
+        ...
+
+    @overload
     def __getitem__(self, key: str) -> Any:
+        ...
+
+    def __getitem__(self, key: Union[str, AppKey[_T]]) -> Any:
         for mapping in self._maps:
             try:
                 return mapping[key]
@@ -824,15 +885,30 @@ class ChainMapProxy(Mapping[str, Any]):
                 pass
         raise KeyError(key)
 
-    def get(self, key: str, default: Any = None) -> Any:
-        return self[key] if key in self else default
+    @overload  # type: ignore[override]
+    def get(self, key: AppKey[_T], default: _S) -> Union[_T, _S]:
+        ...
+
+    @overload
+    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]:
+        ...
+
+    @overload
+    def get(self, key: str, default: Any = ...) -> Any:
+        ...
+
+    def get(self, key: Union[str, AppKey[_T]], default: Any = None) -> Any:
+        try:
+            return self[key]
+        except KeyError:
+            return default
 
     def __len__(self) -> int:
         # reuses stored hash values if possible
         return len(set().union(*self._maps))  # type: ignore[arg-type]
 
-    def __iter__(self) -> Iterator[str]:
-        d: Dict[str, Any] = {}
+    def __iter__(self) -> Iterator[Union[str, AppKey[Any]]]:
+        d: Dict[Union[str, AppKey[Any]], Any] = {}
         for mapping in reversed(self._maps):
             # reuses stored hash values if possible
             d.update(mapping)

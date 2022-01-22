@@ -100,13 +100,15 @@ app test client::
     import pytest
     from aiohttp import web
 
+    value = web.AppKey("value", str)
+
 
     async def previous(request):
         if request.method == 'POST':
-            request.app['value'] = (await request.post())['value']
+            request.app[value] = (await request.post())['value']
             return web.Response(body=b'thanks for the data')
         return web.Response(
-            body='value: {}'.format(request.app['value']).encode('utf-8'))
+            body='value: {}'.format(request.app[value]).encode('utf-8'))
 
     @pytest.fixture
     def cli(loop, aiohttp_client):
@@ -119,10 +121,10 @@ app test client::
         resp = await cli.post('/', data={'value': 'foo'})
         assert resp.status == 200
         assert await resp.text() == 'thanks for the data'
-        assert cli.server.app['value'] == 'foo'
+        assert cli.server.app[value] == 'foo'
 
     async def test_get_value(cli):
-        cli.server.app['value'] = 'bar'
+        cli.server.app[value] = 'bar'
         resp = await cli.get('/')
         assert resp.status == 200
         assert await resp.text() == 'value: bar'
