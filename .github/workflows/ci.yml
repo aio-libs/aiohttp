@@ -56,7 +56,7 @@ jobs:
         make mypy
     - name: Run slotscheck
       run: |
-        slotscheck -m aiohttp
+        python -m slotscheck -m aiohttp
     - name: Install libenchant-dev
       run: |
         sudo apt install libenchant-dev
