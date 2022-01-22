@@ -1,6 +1,6 @@
 import asyncio
 import gc
-from typing import Any, Iterator
+from typing import Iterator
 from unittest import mock
 
 import pytest

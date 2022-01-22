@@ -14,7 +14,6 @@ arguments to the `cli_app:init` function for processing.
 """
 
 from argparse import ArgumentParser, Namespace
-from typing import Optional, Sequence
 
 from aiohttp import web
 

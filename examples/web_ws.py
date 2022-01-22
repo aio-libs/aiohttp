@@ -6,7 +6,7 @@
 # mypy: disallow-any-expr, disallow-any-unimported, disallow-subclassing-any
 
 import os
-from typing import List, Union
+from typing import List
 
 from aiohttp import web
 
