@@ -16,6 +16,7 @@ arg
 Arsenic
 async
 asyncio
+asyncpg
 asynctest
 auth
 autocalculated

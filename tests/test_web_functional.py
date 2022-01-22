@@ -1215,18 +1215,19 @@ async def test_old_style_subapp_middlewares(aiohttp_client: Any) -> None:
 
         @web.middleware
         async def middleware(request, handler: Handler):
-            order.append((1, request.app["name"]))
+            order.append((1, request.app[name]))
             resp = await handler(request)
             assert 200 == resp.status
-            order.append((2, request.app["name"]))
+            order.append((2, request.app[name]))
             return resp
 
     app = web.Application(middlewares=[middleware])
+    name = web.AppKey("app", str)
     subapp1 = web.Application(middlewares=[middleware])
     subapp2 = web.Application(middlewares=[middleware])
-    app["name"] = "app"
-    subapp1["name"] = "subapp1"
-    subapp2["name"] = "subapp2"
+    app[name] = "app"
+    subapp1[name] = "subapp1"
+    subapp2[name] = "subapp2"
 
     subapp2.router.add_get("/to", handler)
     subapp1.add_subapp("/b/", subapp2)
@@ -1355,26 +1356,27 @@ async def test_subapp_middleware_context(
 
     def show_app_context(appname):
         async def middleware(request, handler: Handler):
-            values.append("{}: {}".format(appname, request.app["my_value"]))
+            values.append(f"{appname}: {request.app[my_value]}")
             return await handler(request)
 
         return middleware
 
     def make_handler(appname):
         async def handler(request):
-            values.append("{}: {}".format(appname, request.app["my_value"]))
+            values.append(f"{appname}: {request.app[my_value]}")
             return web.Response(text="Ok")
 
         return handler
 
     app = web.Application()
-    app["my_value"] = "root"
+    my_value = web.AppKey("my_value", str)
+    app[my_value] = "root"
     if "A" in middlewares:
         app.middlewares.append(show_app_context("A"))
     app.router.add_get("/", make_handler("B"))
 
     subapp = web.Application()
-    subapp["my_value"] = "sub"
+    subapp[my_value] = "sub"
     if "C" in middlewares:
         subapp.middlewares.append(show_app_context("C"))
     subapp.router.add_get("/", make_handler("D"))
