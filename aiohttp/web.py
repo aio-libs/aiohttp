@@ -19,7 +19,7 @@ from typing import (
 )
 
 from .abc import AbstractAccessLogger
-from .helpers import all_tasks
+from .helpers import AppKey as AppKey, all_tasks
 from .log import access_logger
 from .web_app import Application as Application, CleanupError as CleanupError
 from .web_exceptions import (
@@ -151,6 +151,7 @@ from .web_ws import (
 
 __all__ = (
     # web_app
+    "AppKey",
     "Application",
     "CleanupError",
     # web_exceptions
