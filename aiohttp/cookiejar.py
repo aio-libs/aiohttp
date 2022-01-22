@@ -65,9 +65,7 @@ class CookieJar(AbstractCookieJar):
         loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
         super().__init__(loop=loop)
-        self._cookies: DefaultDict[Tuple[str, str], SimpleCookie[str]] = defaultdict(
-            SimpleCookie
-        )
+        self._cookies: DefaultDict[Tuple[str, str], SimpleCookie[str]] = defaultdict(SimpleCookie)
         self._host_only_cookies: Set[Tuple[str, str]] = set()
         self._unsafe = unsafe
         self._quote_cookie = quote_cookie
@@ -150,9 +148,7 @@ class CookieJar(AbstractCookieJar):
     def _do_expiration(self) -> None:
         self.clear(lambda x: False)
 
-    def _expire_cookie(
-        self, when: datetime.datetime, domain: str, path: str, name: str
-    ) -> None:
+    def _expire_cookie(self, when: datetime.datetime, domain: str, path: str, name: str) -> None:
         self._next_expiration = min(self._next_expiration, when)
         self._expirations[(domain, path, name)] = when
 
