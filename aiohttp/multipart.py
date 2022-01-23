@@ -257,7 +257,7 @@ class BodyPartReader:
     def __init__(
         self,
         boundary: bytes,
-        headers: "CIMultiDictProxy[str]",
+        headers: CIMultiDictProxy[str, str],
         content: StreamReader,
         *,
         _newline: bytes = b"\r\n",
@@ -651,7 +651,7 @@ class MultipartReader:
 
     def _get_part_reader(
         self,
-        headers: "CIMultiDictProxy[str]",
+        headers: CIMultiDictProxy[str, str],
     ) -> Union["MultipartReader", BodyPartReader]:
         """Dispatches the response by the `Content-Type` header.
 
@@ -741,7 +741,7 @@ class MultipartReader:
         else:
             raise ValueError(f"Invalid boundary {chunk!r}, expected {self._boundary!r}")
 
-    async def _read_headers(self) -> "CIMultiDictProxy[str]":
+    async def _read_headers(self) -> CIMultiDictProxy[str, str]:
         lines = [b""]
         while True:
             chunk = await self._content.readline()
@@ -848,7 +848,7 @@ class MultipartWriter(Payload):
     def boundary(self) -> str:
         return self._boundary.decode("ascii")
 
-    def append(self, obj: Any, headers: Optional[MultiMapping[str]] = None) -> Payload:
+    def append(self, obj: Any, headers: Optional[MultiMapping[str, str]] = None) -> Payload:
         if headers is None:
             headers = CIMultiDict()
 
@@ -896,7 +896,7 @@ class MultipartWriter(Payload):
         return payload
 
     def append_json(
-        self, obj: Any, headers: Optional[MultiMapping[str]] = None
+        self, obj: Any, headers: Optional[MultiMapping[str, str]] = None
     ) -> Payload:
         """Helper to append JSON part."""
         if headers is None:
@@ -907,7 +907,7 @@ class MultipartWriter(Payload):
     def append_form(
         self,
         obj: Union[Sequence[Tuple[str, str]], Mapping[str, str]],
-        headers: Optional[MultiMapping[str]] = None,
+        headers: Optional[MultiMapping[str, str]] = None,
     ) -> Payload:
         """Helper to append form urlencoded part."""
         assert isinstance(obj, (Sequence, Mapping))

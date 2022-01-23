@@ -185,7 +185,7 @@ class AbstractStreamWriter(ABC):
 
     @abstractmethod
     async def write_headers(
-        self, status_line: str, headers: "CIMultiDict[str]"
+        self, status_line: str, headers: CIMultiDict[str, str]
     ) -> None:
         """Write HTTP headers"""
 

@@ -77,7 +77,7 @@ class FileField:
     filename: str
     file: io.BufferedReader
     content_type: str
-    headers: "CIMultiDictProxy[str]"
+    headers: CIMultiDictProxy[str, str]
 
 
 _TCHAR: Final[str] = string.digits + string.ascii_letters + r"!#$%&'*+.^_`|~-"
@@ -183,7 +183,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             self._rel_url = url.relative()
         else:
             self._rel_url = message.url
-        self._post: Optional[MultiDictProxy[Union[str, bytes, FileField]]] = None
+        self._post: Optional[MultiDictProxy[str, Union[str, bytes, FileField]]] = None
         self._read_bytes: Optional[bytes] = None
 
         self._state = state
@@ -468,7 +468,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._message.path
 
     @reify
-    def query(self) -> MultiDictProxy[str]:
+    def query(self) -> MultiDictProxy[str, str]:
         """A multidict with all the variables in the query string."""
         return MultiDictProxy(self._rel_url.query)
 
@@ -481,7 +481,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._rel_url.query_string
 
     @reify
-    def headers(self) -> "CIMultiDictProxy[str]":
+    def headers(self) -> CIMultiDictProxy[str, str]:
         """A case-insensitive multidict proxy with all headers."""
         return self._headers
 
@@ -687,7 +687,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         """Return async iterator to process BODY as multipart."""
         return MultipartReader(self._headers, self._payload)
 
-    async def post(self) -> "MultiDictProxy[Union[str, bytes, FileField]]":
+    async def post(self) -> MultiDictProxy[str, Union[str, bytes, FileField]]:
         """Return POST parameters."""
         if self._post is not None:
             return self._post
@@ -704,7 +704,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             self._post = MultiDictProxy(MultiDict())
             return self._post
 
-        out: MultiDict[Union[str, bytes, FileField]] = MultiDict()
+        out: MultiDict[str, Union[str, bytes, FileField]] = MultiDict()
 
         if content_type == "multipart/form-data":
             multipart = await self.multipart()

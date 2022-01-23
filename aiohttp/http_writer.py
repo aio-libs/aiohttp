@@ -23,7 +23,7 @@ HttpVersion11 = HttpVersion(1, 1)
 
 
 _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
-_T_OnHeadersSent = Optional[Callable[["CIMultiDict[str]"], Awaitable[None]]]
+_T_OnHeadersSent = Optional[Callable[[CIMultiDict[str, str]], Awaitable[None]]]
 
 
 class StreamWriter(AbstractStreamWriter):
@@ -120,7 +120,7 @@ class StreamWriter(AbstractStreamWriter):
                 await self.drain()
 
     async def write_headers(
-        self, status_line: str, headers: "CIMultiDict[str]"
+        self, status_line: str, headers: CIMultiDict[str, str]
     ) -> None:
         """Write request/response status and headers."""
         if self._on_headers_sent is not None:
@@ -182,7 +182,7 @@ def _safe_header(string: str) -> str:
     return string
 
 
-def _py_serialize_headers(status_line: str, headers: "CIMultiDict[str]") -> bytes:
+def _py_serialize_headers(status_line: str, headers: CIMultiDict[str, str]) -> bytes:
     headers_gen = (_safe_header(k) + ": " + _safe_header(v) for k, v in headers.items())
     line = status_line + "\r\n" + "\r\n".join(headers_gen) + "\r\n\r\n"
     return line.encode("utf-8")

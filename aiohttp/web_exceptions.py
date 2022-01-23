@@ -151,7 +151,7 @@ class HTTPException(CookieMixin, Exception):
         return self._text
 
     @property
-    def headers(self) -> "CIMultiDict[str]":
+    def headers(self) -> CIMultiDict[str, str]:
         return self._headers
 
     def __str__(self) -> str:

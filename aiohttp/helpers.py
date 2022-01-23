@@ -301,7 +301,7 @@ class MimeType:
     type: str
     subtype: str
     suffix: str
-    parameters: "MultiDictProxy[str]"
+    parameters: MultiDictProxy[str, str]
 
 
 @functools.lru_cache(maxsize=56)
@@ -325,7 +325,7 @@ def parse_mimetype(mimetype: str) -> MimeType:
         )
 
     parts = mimetype.split(";")
-    params: MultiDict[str] = MultiDict()
+    params: MultiDict[str, str] = MultiDict()
     for item in parts[1:]:
         if not item:
             continue
@@ -996,7 +996,7 @@ class CookieMixin:
 
 
 def populate_with_cookies(
-    headers: "CIMultiDict[str]", cookies: "SimpleCookie[str]"
+    headers: CIMultiDict[str, str], cookies: SimpleCookie[str]
 ) -> None:
     for cookie in cookies.values():
         value = cookie.output(header="")[1:]

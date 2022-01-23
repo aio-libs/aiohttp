@@ -222,7 +222,7 @@ class TraceRequestStartParams:
 
     method: str
     url: URL
-    headers: "CIMultiDict[str]"
+    headers: CIMultiDict[str, str]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -249,7 +249,7 @@ class TraceRequestEndParams:
 
     method: str
     url: URL
-    headers: "CIMultiDict[str]"
+    headers: CIMultiDict[str, str]
     response: ClientResponse
 
 
@@ -259,7 +259,7 @@ class TraceRequestExceptionParams:
 
     method: str
     url: URL
-    headers: "CIMultiDict[str]"
+    headers: CIMultiDict[str, str]
     exception: BaseException
 
 
@@ -269,7 +269,7 @@ class TraceRequestRedirectParams:
 
     method: str
     url: URL
-    headers: "CIMultiDict[str]"
+    headers: CIMultiDict[str, str]
     response: ClientResponse
 
 
@@ -332,7 +332,7 @@ class TraceRequestHeadersSentParams:
 
     method: str
     url: URL
-    headers: "CIMultiDict[str]"
+    headers: CIMultiDict[str, str]
 
 
 class Trace:
@@ -353,7 +353,7 @@ class Trace:
         self._session = session
 
     async def send_request_start(
-        self, method: str, url: URL, headers: "CIMultiDict[str]"
+        self, method: str, url: URL, headers: CIMultiDict[str, str]
     ) -> None:
         return await self._trace_config.on_request_start.send(
             self._session,
@@ -383,7 +383,7 @@ class Trace:
         self,
         method: str,
         url: URL,
-        headers: "CIMultiDict[str]",
+        headers: CIMultiDict[str, str],
         response: ClientResponse,
     ) -> None:
         return await self._trace_config.on_request_end.send(
@@ -396,7 +396,7 @@ class Trace:
         self,
         method: str,
         url: URL,
-        headers: "CIMultiDict[str]",
+        headers: CIMultiDict[str, str],
         exception: BaseException,
     ) -> None:
         return await self._trace_config.on_request_exception.send(
@@ -409,7 +409,7 @@ class Trace:
         self,
         method: str,
         url: URL,
-        headers: "CIMultiDict[str]",
+        headers: CIMultiDict[str, str],
         response: ClientResponse,
     ) -> None:
         return await self._trace_config._on_request_redirect.send(
@@ -464,7 +464,7 @@ class Trace:
         )
 
     async def send_request_headers(
-        self, method: str, url: URL, headers: "CIMultiDict[str]"
+        self, method: str, url: URL, headers: CIMultiDict[str, str]
     ) -> None:
         return await self._trace_config._on_request_headers_sent.send(
             self._session,

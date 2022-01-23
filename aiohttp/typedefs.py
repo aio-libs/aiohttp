@@ -18,10 +18,10 @@ DEFAULT_JSON_ENCODER = json.dumps
 DEFAULT_JSON_DECODER = json.loads
 
 if TYPE_CHECKING:  # pragma: no cover
-    _CIMultiDict = CIMultiDict[str]
-    _CIMultiDictProxy = CIMultiDictProxy[str]
-    _MultiDict = MultiDict[str]
-    _MultiDictProxy = MultiDictProxy[str]
+    _CIMultiDict = CIMultiDict[str, str]
+    _CIMultiDictProxy = CIMultiDictProxy[str, str]
+    _MultiDict = MultiDict[str, str]
+    _MultiDictProxy = MultiDictProxy[str, str]
     from http.cookies import BaseCookie, Morsel
 
     from .web import Request, StreamResponse

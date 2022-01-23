@@ -99,7 +99,7 @@ class ContentDisposition:
 class RequestInfo:
     url: URL
     method: str
-    headers: "CIMultiDictProxy[str]"
+    headers: CIMultiDictProxy[str, str]
     real_url: URL
 
 
@@ -290,7 +290,7 @@ class ClientRequest:
 
     @property
     def request_info(self) -> RequestInfo:
-        headers: CIMultiDictProxy[str] = CIMultiDictProxy(self.headers)
+        headers: CIMultiDictProxy[str, str] = CIMultiDictProxy(self.headers)
         return RequestInfo(self.url, self.method, headers, self.original_url)
 
     def update_host(self, url: URL) -> None:
@@ -321,7 +321,7 @@ class ClientRequest:
 
     def update_headers(self, headers: Optional[LooseHeaders]) -> None:
         """Update request headers."""
-        self.headers: CIMultiDict[str] = CIMultiDict()
+        self.headers: CIMultiDict[str, str] = CIMultiDict()
 
         # add host
         netloc = cast(str, self.url.raw_host)
@@ -343,11 +343,8 @@ class ClientRequest:
                     self.headers.add(key, value)
 
     def update_auto_headers(self, skip_auto_headers: Iterable[str]) -> None:
-        self.skip_auto_headers = CIMultiDict(
-            (hdr, None) for hdr in sorted(skip_auto_headers)
-        )
-        used_headers = self.headers.copy()
-        used_headers.extend(self.skip_auto_headers)  # type: ignore[arg-type]
+        self.skip_auto_headers = set(skip_auto_headers)
+        used_headers = self.skip_auto_headers | self.headers.keys()
 
         for hdr, val in self.DEFAULT_HEADERS.items():
             if hdr not in used_headers:
@@ -642,7 +639,7 @@ class ClientRequest:
             await trace.send_request_chunk_sent(method, url, chunk)
 
     async def _on_headers_request_sent(
-        self, method: str, url: URL, headers: "CIMultiDict[str]"
+        self, method: str, url: URL, headers: CIMultiDict[str, str]
     ) -> None:
         for trace in self._traces:
             await trace.send_request_headers(method, url, headers)
@@ -659,7 +656,7 @@ class ClientResponse(HeadersMixin):
     reason = None  # Reason-Phrase
 
     content: StreamReader = None  # type: ignore[assignment] # Payload stream
-    _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]
+    _headers: CIMultiDictProxy[str, str] = None  # type: ignore[assignment]
     _raw_headers: RawHeaders = None  # type: ignore[assignment]
 
     _connection = None  # current connection
@@ -719,7 +716,7 @@ class ClientResponse(HeadersMixin):
         return self._url.host
 
     @reify
-    def headers(self) -> "CIMultiDictProxy[str]":
+    def headers(self) -> CIMultiDictProxy[str, str]:
         return self._headers
 
     @reify
@@ -785,13 +782,13 @@ class ClientResponse(HeadersMixin):
         return self._history
 
     @reify
-    def links(self) -> "MultiDictProxy[MultiDictProxy[Union[str, URL]]]":
+    def links(self) -> MultiDictProxy[str, MultiDictProxy[str, Union[str, URL]]]:
         links_str = ", ".join(self.headers.getall("link", []))
 
         if not links_str:
             return MultiDictProxy(MultiDict())
 
-        links: MultiDict[MultiDictProxy[Union[str, URL]]] = MultiDict()
+        links: MultiDict[str, MultiDictProxy[str, Union[str, URL]]] = MultiDict()
 
         for val in re.split(r",(?=\s*<)", links_str):
             match = re.match(r"\s*<(.*)>(.*)", val)
@@ -801,7 +798,7 @@ class ClientResponse(HeadersMixin):
             url, params_str = match.groups()
             params = params_str.split(";")[1:]
 
-            link: MultiDict[Union[str, URL]] = MultiDict()
+            link: MultiDict[str, Union[str, URL]] = MultiDict()
 
             for param in params:
                 match = re.match(r"^\s*(\S*)\s*=\s*(['\"]?)(.*?)(\2)\s*$", param, re.M)

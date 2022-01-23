@@ -117,7 +117,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         self._state: Dict[str, Any] = {}
 
         if headers is not None:
-            self._headers: CIMultiDict[str] = CIMultiDict(headers)
+            self._headers: CIMultiDict[str, str] = CIMultiDict(headers)
         else:
             self._headers = CIMultiDict()
 
@@ -194,7 +194,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         self._compression_force = force
 
     @property
-    def headers(self) -> "CIMultiDict[str]":
+    def headers(self) -> CIMultiDict[str, str]:
         return self._headers
 
     @property
@@ -521,7 +521,7 @@ class Response(StreamResponse):
             raise ValueError("body and text are not allowed together")
 
         if headers is None:
-            real_headers: CIMultiDict[str] = CIMultiDict()
+            real_headers: CIMultiDict[str, str] = CIMultiDict()
         elif not isinstance(headers, CIMultiDict):
             real_headers = CIMultiDict(headers)
         else:

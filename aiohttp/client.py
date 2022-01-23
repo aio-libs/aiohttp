@@ -269,10 +269,10 @@ class ClientSession:
 
         # Convert to list of tuples
         if headers:
-            real_headers: CIMultiDict[str] = CIMultiDict(headers)
+            real_headers: CIMultiDict[str, str] = CIMultiDict(headers)
         else:
             real_headers = CIMultiDict()
-        self._default_headers: CIMultiDict[str] = real_headers
+        self._default_headers: CIMultiDict[str, str] = real_headers
         if skip_auto_headers is not None:
             self._skip_auto_headers = frozenset(istr(i) for i in skip_auto_headers)
         else:
@@ -741,7 +741,7 @@ class ClientSession:
             ws_timeout = dataclasses.replace(ws_timeout, ws_receive=receive_timeout)
 
         if headers is None:
-            real_headers: CIMultiDict[str] = CIMultiDict()
+            real_headers: CIMultiDict[str, str] = CIMultiDict()
         else:
             real_headers = CIMultiDict(headers)
 
@@ -893,7 +893,7 @@ class ClientSession:
                 client_notakeover=notakeover,
             )
 
-    def _prepare_headers(self, headers: Optional[LooseHeaders]) -> "CIMultiDict[str]":
+    def _prepare_headers(self, headers: Optional[LooseHeaders]) -> CIMultiDict[str, str]:
         """Add default headers and transform it to CIMultiDict"""
         # Convert headers to MultiDict
         result = CIMultiDict(self._default_headers)
@@ -1009,7 +1009,7 @@ class ClientSession:
         return self._timeout
 
     @property
-    def headers(self) -> "CIMultiDict[str]":
+    def headers(self) -> CIMultiDict[str, str]:
         """The default headers of the client session."""
         return self._default_headers
 

@@ -77,7 +77,7 @@ class RawRequestMessage(NamedTuple):
     method: str
     path: str
     version: HttpVersion
-    headers: CIMultiDictProxy[str]
+    headers: CIMultiDictProxy[str, str]
     raw_headers: RawHeaders
     should_close: bool
     compression: Optional[str]
@@ -134,8 +134,8 @@ class HeadersParser:
 
     def parse_headers(
         self, lines: List[bytes]
-    ) -> Tuple["CIMultiDictProxy[str]", RawHeaders]:
-        headers: CIMultiDict[str] = CIMultiDict()
+    ) -> Tuple[CIMultiDictProxy[str, str], RawHeaders]:
+        headers: CIMultiDict[str, str] = CIMultiDict()
         raw_headers = []
 
         lines_idx = 1
@@ -458,7 +458,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
     def parse_headers(
         self, lines: List[bytes]
     ) -> Tuple[
-        "CIMultiDictProxy[str]", RawHeaders, Optional[bool], Optional[str], bool, bool
+        CIMultiDictProxy[str, str], RawHeaders, Optional[bool], Optional[str], bool, bool
     ]:
         """Parses RFC 5322 headers from a stream.
 
