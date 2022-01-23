@@ -31,7 +31,6 @@ async def on_shutdown(app: web.Application) -> None:
 
 async def listen_to_redis(app: web.Application) -> None:
     try:
-        loop = asyncio.get_event_loop()
         sub = await aioredis.Redis(host="localhost", port=6379)
         ch, *_ = await sub.subscribe("news")
         async for msg in ch.iter(encoding="utf-8"):
