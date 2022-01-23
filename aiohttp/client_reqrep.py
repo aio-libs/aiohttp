@@ -343,11 +343,8 @@ class ClientRequest:
                     self.headers.add(key, value)
 
     def update_auto_headers(self, skip_auto_headers: Iterable[str]) -> None:
-        self.skip_auto_headers = CIMultiDict(
-            (hdr, None) for hdr in sorted(skip_auto_headers)
-        )
-        used_headers = self.headers.copy()
-        used_headers.extend(self.skip_auto_headers)  # type: ignore[arg-type]
+        self.skip_auto_headers = set(skip_auto_headers)
+        used_headers = self.skip_auto_headers | self.headers.keys()
 
         for hdr, val in self.DEFAULT_HEADERS.items():
             if hdr not in used_headers:
