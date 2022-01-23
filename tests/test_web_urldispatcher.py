@@ -1,6 +1,6 @@
 import asyncio
 import pathlib
-from typing import Any, Optional
+from typing import Optional
 from unittest import mock
 from unittest.mock import MagicMock
 

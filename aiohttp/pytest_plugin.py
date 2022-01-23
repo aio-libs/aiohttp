@@ -2,7 +2,7 @@ import asyncio
 import contextlib
 import inspect
 import warnings
-from typing import Any, Awaitable, Callable, Dict, Generator, Iterator, Optional, Type, Union
+from typing import Any, Awaitable, Callable, Dict, Iterator, Optional, Type, Union
 
 import pytest
 

@@ -1,4 +1,3 @@
-from typing import Any
 from unittest import mock
 
 from aiohttp import web

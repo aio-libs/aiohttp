@@ -126,11 +126,11 @@ def test_run_not_app(worker: base_worker.GunicornWebWorker, loop: asyncio.Abstra
 
 
 def test_handle_quit(worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop) -> None:
-    with mock.patch.object(worker, "loop", autospec=True) as mock:
+    with mock.patch.object(worker, "loop", autospec=True) as mloop:
         worker.handle_quit(0, None)
         assert not worker.alive
         assert worker.exit_code == 0
-        mock.call_later.assert_called_with(0.1, worker._notify_waiter_done)
+        mloop.call_later.assert_called_with(0.1, worker._notify_waiter_done)
 
 
 def test_handle_abort(worker: base_worker.GunicornWebWorker) -> None:
