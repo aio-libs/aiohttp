@@ -58,7 +58,9 @@ if uvloop is not None:
 
 
 @pytest.fixture(params=PARAMS)
-def worker(request: SubRequest, loop: asyncio.AbstractEventLoop) -> base_worker.GunicornWebWorker:
+def worker(
+    request: SubRequest, loop: asyncio.AbstractEventLoop
+) -> base_worker.GunicornWebWorker:
     asyncio.set_event_loop(loop)
     ret = request.param()
     ret.notify = mock.Mock()
@@ -76,7 +78,9 @@ def test_init_process(worker: base_worker.GunicornWebWorker) -> None:
         assert m_asyncio.set_event_loop.called
 
 
-def test_run(worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop) -> None:
+def test_run(
+    worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop
+) -> None:
     worker.log = mock.Mock()
     worker.cfg = mock.Mock()
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
@@ -90,7 +94,9 @@ def test_run(worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventL
     assert loop.is_closed()
 
 
-def test_run_async_factory(worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop) -> None:
+def test_run_async_factory(
+    worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop
+) -> None:
     worker.log = mock.Mock()
     worker.cfg = mock.Mock()
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
@@ -111,7 +117,9 @@ def test_run_async_factory(worker: base_worker.GunicornWebWorker, loop: asyncio.
     assert loop.is_closed()
 
 
-def test_run_not_app(worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop) -> None:
+def test_run_not_app(
+    worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop
+) -> None:
     worker.log = mock.Mock()
     worker.cfg = mock.Mock()
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
@@ -125,7 +133,9 @@ def test_run_not_app(worker: base_worker.GunicornWebWorker, loop: asyncio.Abstra
     assert loop.is_closed()
 
 
-def test_handle_quit(worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop) -> None:
+def test_handle_quit(
+    worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop
+) -> None:
     with mock.patch.object(worker, "loop", autospec=True) as mloop:
         worker.handle_quit(0, None)
         assert not worker.alive
@@ -163,7 +173,9 @@ def test__notify_waiter_done(worker: base_worker.GunicornWebWorker) -> None:
     waiter.set_result.assert_called_with(True)
 
 
-def test__notify_waiter_done_explicit_waiter(worker: base_worker.GunicornWebWorker) -> None:
+def test__notify_waiter_done_explicit_waiter(
+    worker: base_worker.GunicornWebWorker,
+) -> None:
     worker._notify_waiter = None
     assert worker._notify_waiter is None
 
@@ -193,7 +205,9 @@ def test_init_signals(worker: base_worker.GunicornWebWorker) -> None:
         ),
     ],
 )
-def test__get_valid_log_format_ok(worker: base_worker.GunicornWebWorker, source: str, result: str) -> None:
+def test__get_valid_log_format_ok(
+    worker: base_worker.GunicornWebWorker, source: str, result: str
+) -> None:
     assert result == worker._get_valid_log_format(source)
 
 
@@ -203,7 +217,11 @@ def test__get_valid_log_format_exc(worker: base_worker.GunicornWebWorker) -> Non
     assert "%(name)s" in str(exc.value)
 
 
-async def test__run_ok_parent_changed(worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop, aiohttp_unused_port: Callable[[], int]) -> None:
+async def test__run_ok_parent_changed(
+    worker: base_worker.GunicornWebWorker,
+    loop: asyncio.AbstractEventLoop,
+    aiohttp_unused_port: Callable[[], int],
+) -> None:
     skip_if_no_dict(loop)
 
     worker.ppid = 0
@@ -224,7 +242,11 @@ async def test__run_ok_parent_changed(worker: base_worker.GunicornWebWorker, loo
     worker.log.info.assert_called_with("Parent changed, shutting down: %s", worker)
 
 
-async def test__run_exc(worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop, aiohttp_unused_port: Callable[[], int]) -> None:
+async def test__run_exc(
+    worker: base_worker.GunicornWebWorker,
+    loop: asyncio.AbstractEventLoop,
+    aiohttp_unused_port: Callable[[], int],
+) -> None:
     skip_if_no_dict(loop)
 
     worker.ppid = os.getppid()

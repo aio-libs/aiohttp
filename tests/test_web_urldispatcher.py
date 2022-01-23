@@ -79,7 +79,9 @@ async def test_access_root_of_static_handler(
         assert read_ == data
 
 
-async def test_follow_symlink(tmp_path: pathlib.Path, aiohttp_client: AiohttpClient) -> None:
+async def test_follow_symlink(
+    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+) -> None:
     # Tests the access to a symlink, in static folder
     data = "hello world"
 
@@ -113,7 +115,11 @@ async def test_follow_symlink(tmp_path: pathlib.Path, aiohttp_client: AiohttpCli
     ],
 )
 async def test_access_to_the_file_with_spaces(
-    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient, dir_name: str, filename: str, data: str
+    tmp_path: pathlib.Path,
+    aiohttp_client: AiohttpClient,
+    dir_name: str,
+    filename: str,
+    data: str,
 ) -> None:
     # Checks operation of static files with spaces
 
@@ -138,7 +144,9 @@ async def test_access_to_the_file_with_spaces(
     await r.release()
 
 
-async def test_access_non_existing_resource(tmp_path: pathlib.Path, aiohttp_client: AiohttpClient) -> None:
+async def test_access_non_existing_resource(
+    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+) -> None:
     # Tests accessing non-existing resource
     # Try to access a non-exiting resource and make sure that 404 HTTP status
     # returned.
@@ -193,7 +201,9 @@ async def test_handler_metadata_persistence() -> None:
             assert route.handler.__doc__ == "Doc"
 
 
-async def test_unauthorized_folder_access(tmp_path: pathlib.Path, aiohttp_client: AiohttpClient) -> None:
+async def test_unauthorized_folder_access(
+    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+) -> None:
     # Tests the unauthorized access to a folder of static file server.
     # Try to list a folder content of static file server when server does not
     # have permissions to do so for the folder.
@@ -218,7 +228,9 @@ async def test_unauthorized_folder_access(tmp_path: pathlib.Path, aiohttp_client
         assert r.status == 403
 
 
-async def test_access_symlink_loop(tmp_path: pathlib.Path, aiohttp_client: AiohttpClient) -> None:
+async def test_access_symlink_loop(
+    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+) -> None:
     # Tests the access to a looped symlink, which could not be resolved.
     my_dir_path = tmp_path / "my_symlink"
     pathlib.Path(str(my_dir_path)).symlink_to(str(my_dir_path), True)
@@ -234,7 +246,9 @@ async def test_access_symlink_loop(tmp_path: pathlib.Path, aiohttp_client: Aioht
     assert r.status == 404
 
 
-async def test_access_special_resource(tmp_path: pathlib.Path, aiohttp_client: AiohttpClient) -> None:
+async def test_access_special_resource(
+    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+) -> None:
     # Tests the access to a resource that is neither a file nor a directory.
     # Checks that if a special resource is accessed (f.e. named pipe or UNIX
     # domain socket) then 404 HTTP status returned.
@@ -261,7 +275,9 @@ async def test_access_special_resource(tmp_path: pathlib.Path, aiohttp_client: A
         assert r.status == 403
 
 
-async def test_static_head(tmp_path: pathlib.Path, aiohttp_client: AiohttpClient) -> None:
+async def test_static_head(
+    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+) -> None:
     # Test HEAD on static route
     my_file_path = tmp_path / "test.txt"
     with my_file_path.open("wb") as fw:
@@ -449,7 +465,9 @@ async def test_web_view(aiohttp_client: AiohttpClient) -> None:
     await r.release()
 
 
-async def test_static_absolute_url(aiohttp_client: AiohttpClient, tmp_path: pathlib.Path) -> None:
+async def test_static_absolute_url(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+) -> None:
     # requested url is an absolute name like
     # /static/\\machine_name\c$ or /static/D:\path
     # where the static dir is totally different
@@ -463,7 +481,9 @@ async def test_static_absolute_url(aiohttp_client: AiohttpClient, tmp_path: path
     assert resp.status == 403
 
 
-async def test_for_issue_5250(aiohttp_client: AiohttpClient, tmp_path: pathlib.Path) -> None:
+async def test_for_issue_5250(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+) -> None:
     app = web.Application()
     app.router.add_static("/foo", tmp_path)
 

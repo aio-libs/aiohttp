@@ -308,13 +308,17 @@ class TestClient:
     def make_url(self, path: StrOrURL) -> URL:
         return self._server.make_url(path)
 
-    async def _request(self, method: str, path: StrOrURL, **kwargs: Any) -> ClientResponse:
+    async def _request(
+        self, method: str, path: StrOrURL, **kwargs: Any
+    ) -> ClientResponse:
         resp = await self._session.request(method, self.make_url(path), **kwargs)
         # save it to close later
         self._responses.append(resp)
         return resp
 
-    def request(self, method: str, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
+    def request(
+        self, method: str, path: StrOrURL, **kwargs: Any
+    ) -> _RequestContextManager:
         """Routes a request to tested http server.
 
         The interface is identical to aiohttp.ClientSession.request,
@@ -360,7 +364,9 @@ class TestClient:
         """
         return _WSRequestContextManager(self._ws_connect(path, **kwargs))
 
-    async def _ws_connect(self, path: StrOrURL, **kwargs: Any) -> ClientWebSocketResponse:
+    async def _ws_connect(
+        self, path: StrOrURL, **kwargs: Any
+    ) -> ClientWebSocketResponse:
         ws = await self._session.ws_connect(self.make_url(path), **kwargs)
         self._websockets.append(ws)
         return ws
