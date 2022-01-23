@@ -848,7 +848,9 @@ class MultipartWriter(Payload):
     def boundary(self) -> str:
         return self._boundary.decode("ascii")
 
-    def append(self, obj: Any, headers: Optional[MultiMapping[str, str]] = None) -> Payload:
+    def append(
+        self, obj: Any, headers: Optional[MultiMapping[str, str]] = None
+    ) -> Payload:
         if headers is None:
             headers = CIMultiDict()
 

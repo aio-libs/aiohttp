@@ -893,7 +893,9 @@ class ClientSession:
                 client_notakeover=notakeover,
             )
 
-    def _prepare_headers(self, headers: Optional[LooseHeaders]) -> CIMultiDict[str, str]:
+    def _prepare_headers(
+        self, headers: Optional[LooseHeaders]
+    ) -> CIMultiDict[str, str]:
         """Add default headers and transform it to CIMultiDict"""
         # Convert headers to MultiDict
         result = CIMultiDict(self._default_headers)

@@ -458,7 +458,12 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
     def parse_headers(
         self, lines: List[bytes]
     ) -> Tuple[
-        CIMultiDictProxy[str, str], RawHeaders, Optional[bool], Optional[str], bool, bool
+        CIMultiDictProxy[str, str],
+        RawHeaders,
+        Optional[bool],
+        Optional[str],
+        bool,
+        bool,
     ]:
         """Parses RFC 5322 headers from a stream.
 
