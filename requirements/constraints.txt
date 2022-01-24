@@ -100,7 +100,7 @@ jinja2==3.0.3
     #   towncrier
 markupsafe==2.0.1
     # via jinja2
-multidict==5.2.0
+multidict==6.0.1
     # via
     #   -r requirements/multidict.txt
     #   yarl
