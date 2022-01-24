@@ -423,6 +423,15 @@ class ClientSession:
         if read_bufsize is None:
             read_bufsize = self._read_bufsize
 
+        if max_line_size is None:
+            max_line_size = self._max_line_size
+
+        if max_headers is None:
+            max_headers = self._max_headers
+
+        if max_field_size is None:
+            max_field_size = self._max_field_size
+
         traces = [
             Trace(
                 self,
