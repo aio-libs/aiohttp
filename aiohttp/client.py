@@ -191,6 +191,9 @@ class ClientSession:
         "_ws_response_class",
         "_trace_configs",
         "_read_bufsize",
+        "_max_line_size",
+        "_max_headers",
+        "_max_field_size",
     )
 
     def __init__(
@@ -218,6 +221,9 @@ class ClientSession:
         requote_redirect_url: bool = True,
         trace_configs: Optional[List[TraceConfig]] = None,
         read_bufsize: int = 2 ** 16,
+        max_line_size: int = 8190,
+        max_headers: int = 32768,
+        max_field_size: int = 8190,
     ) -> None:
         if base_url is None or isinstance(base_url, URL):
             self._base_url: Optional[URL] = base_url
@@ -266,6 +272,9 @@ class ClientSession:
         self._trust_env = trust_env
         self._requote_redirect_url = requote_redirect_url
         self._read_bufsize = read_bufsize
+        self._max_line_size = max_line_size
+        self._max_headers = max_headers
+        self._max_field_size = max_field_size
 
         # Convert to list of tuples
         if headers:
@@ -351,6 +360,9 @@ class ClientSession:
         proxy_headers: Optional[LooseHeaders] = None,
         trace_request_ctx: Optional[SimpleNamespace] = None,
         read_bufsize: Optional[int] = None,
+        max_line_size: Optional[int] = 8190,
+        max_headers: Optional[int] = 32768,
+        max_field_size: Optional[int] = 8190,
     ) -> ClientResponse:
 
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
@@ -516,6 +528,9 @@ class ClientSession:
                         read_timeout=real_timeout.sock_read,
                         read_bufsize=read_bufsize,
                         timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
+                        max_line_size=max_line_size,
+                        max_headers=max_headers,
+                        max_field_size=max_field_size,
                     )
 
                     try:
@@ -1193,6 +1208,9 @@ def request(
     version: HttpVersion = http.HttpVersion11,
     connector: Optional[BaseConnector] = None,
     read_bufsize: Optional[int] = None,
+    max_line_size: Optional[int] = 8190,
+    max_headers: Optional[int] = 32768,
+    max_field_size: Optional[int] = 8190,
 ) -> _SessionRequestContextManager:
     """Constructs and sends a request.
 
@@ -1263,6 +1281,9 @@ def request(
             proxy=proxy,
             proxy_auth=proxy_auth,
             read_bufsize=read_bufsize,
+            max_line_size=max_line_size,
+            max_headers=max_headers,
+            max_field_size=max_field_size,
         ),
         session,
     )
