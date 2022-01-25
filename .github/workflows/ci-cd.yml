@@ -210,9 +210,15 @@ jobs:
         SDIST_PATH: >-
           dist/${{ needs.build-pure-python-dists.outputs.sdist-filename }}
         AIOHTTP_NO_EXTENSIONS: 1
-    - name: Run linters
+    - name: Run mypy
       run: |
         make mypy
+    - name: Run slotscheck
+      run: |
+        # Some extra requirements are needed to ensure all modules
+        # can be scanned by slotscheck.
+        pip install -r requirements/base.txt -c requirements/constraints.txt
+        slotscheck -v -m aiohttp
     - name: Verify CHANGES fragment references PR
       if: github.event_name == 'pull_request'
       env:
