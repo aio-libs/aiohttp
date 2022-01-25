@@ -850,8 +850,14 @@ def test_is_expected_content_type_non_json_not_match():
     )
 
 
+# It's necessary to subclass CookieMixin before using it.
+# See the comments on its __slots__.
+class CookieImplementation(helpers.CookieMixin):
+    pass
+
+
 def test_cookies_mixin():
-    sut = helpers.CookieMixin()
+    sut = CookieImplementation()
 
     assert sut.cookies == {}
     assert str(sut.cookies) == ""
@@ -880,7 +886,7 @@ def test_cookies_mixin():
 
 
 def test_cookies_mixin_path():
-    sut = helpers.CookieMixin()
+    sut = CookieImplementation()
 
     assert sut.cookies == {}
 
@@ -914,7 +920,7 @@ def test_cookies_mixin_path():
 
 
 def test_sutonse_cookie__issue_del_cookie():
-    sut = helpers.CookieMixin()
+    sut = CookieImplementation()
 
     assert sut.cookies == {}
     assert str(sut.cookies) == ""
@@ -928,7 +934,7 @@ def test_sutonse_cookie__issue_del_cookie():
 
 
 def test_cookie_set_after_del():
-    sut = helpers.CookieMixin()
+    sut = CookieImplementation()
 
     sut.del_cookie("name")
     sut.set_cookie("name", "val")
@@ -938,7 +944,7 @@ def test_cookie_set_after_del():
 
 
 def test_populate_with_cookies():
-    cookies_mixin = helpers.CookieMixin()
+    cookies_mixin = CookieImplementation()
     cookies_mixin.set_cookie("name", "value")
     headers = CIMultiDict()
 
