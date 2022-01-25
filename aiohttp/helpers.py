@@ -908,9 +908,17 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
 
 
 class CookieMixin:
+    # The `_cookies` slots is not defined here because non-empty slots cannot
+    # be combined with an Exception base class, as is done in HTTPException.
+    # CookieMixin subclasses with slots should define the `_cookies`
+    # slot themselves.
+    __slots__ = ()
+
     def __init__(self) -> None:
         super().__init__()
-        self._cookies: SimpleCookie[str] = SimpleCookie()
+        # Mypy doesn't like that _cookies isn't in __slots__.
+        # See the comment on this class's __slots__ for why this is OK.
+        self._cookies: SimpleCookie[str] = SimpleCookie()  # type: ignore[misc]
 
     @property
     def cookies(self) -> "SimpleCookie[str]":
