@@ -360,9 +360,9 @@ class ClientSession:
         proxy_headers: Optional[LooseHeaders] = None,
         trace_request_ctx: Optional[SimpleNamespace] = None,
         read_bufsize: Optional[int] = None,
-        max_line_size: Optional[int] = 8190,
-        max_headers: Optional[int] = 32768,
-        max_field_size: Optional[int] = 8190,
+        max_line_size: Optional[int] = None,
+        max_headers: Optional[int] = None,
+        max_field_size: Optional[int] = None,
     ) -> ClientResponse:
 
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
@@ -1217,9 +1217,9 @@ def request(
     version: HttpVersion = http.HttpVersion11,
     connector: Optional[BaseConnector] = None,
     read_bufsize: Optional[int] = None,
-    max_line_size: Optional[int] = 8190,
-    max_headers: Optional[int] = 32768,
-    max_field_size: Optional[int] = 8190,
+    max_line_size: int = 8190,
+    max_headers: int = 32768,
+    max_field_size: int = 8190,
 ) -> _SessionRequestContextManager:
     """Constructs and sends a request.
 
