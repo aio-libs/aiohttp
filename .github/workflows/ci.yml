@@ -328,7 +328,7 @@ jobs:
       run: |
         tree dist
     - name: Make Release
-      uses: aio-libs/create-release@v1.4.0
+      uses: aio-libs/create-release@v1.5.0
       with:
         changes_file: CHANGES.rst
         name: aiohttp
