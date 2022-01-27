@@ -41,6 +41,7 @@ click==8.0.3
     #   cherry-picker
     #   click-default-group
     #   pip-tools
+    #   slotscheck
     #   towncrier
     #   typer
     #   wait-for-it
@@ -177,6 +178,8 @@ six==1.16.0
     # via
     #   python-dateutil
     #   virtualenv
+slotscheck==0.8.0
+    # via -r requirements/lint.txt
 snowballstemmer==2.1.0
     # via sphinx
 sphinx==4.3.2
@@ -217,6 +220,7 @@ tomli==1.2.2
     #   coverage
     #   mypy
     #   pep517
+    #   slotscheck
 towncrier==21.3.0
     # via
     #   -r requirements/doc.txt
