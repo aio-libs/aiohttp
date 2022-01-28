@@ -1192,6 +1192,7 @@ def request(
     cookies: Optional[LooseCookies] = None,
     version: HttpVersion = http.HttpVersion11,
     connector: Optional[BaseConnector] = None,
+    ssl: Optional[Union[SSLContext, bool, Fingerprint]] = None,
     read_bufsize: Optional[int] = None,
 ) -> _SessionRequestContextManager:
     """Constructs and sends a request.
@@ -1262,6 +1263,7 @@ def request(
             read_until_eof=read_until_eof,
             proxy=proxy,
             proxy_auth=proxy_auth,
+            ssl=ssl,
             read_bufsize=read_bufsize,
         ),
         session,
