@@ -92,6 +92,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         "_headers",
         "_status",
         "_reason",
+        "_cookies",
         "__weakref__",
     )
 
