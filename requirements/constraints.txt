@@ -158,7 +158,7 @@ pytest==6.2.5
     #   pytest-mock
 pytest-cov==3.0.0
     # via -r requirements/test.txt
-pytest-mock==3.6.1
+pytest-mock==3.7.0
     # via -r requirements/test.txt
 python-dateutil==2.8.2
     # via freezegun
