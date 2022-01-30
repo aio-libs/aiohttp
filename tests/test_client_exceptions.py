@@ -2,7 +2,6 @@
 
 import errno
 import pickle
-import sys
 from unittest import mock
 
 import pytest
