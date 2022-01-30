@@ -3,7 +3,6 @@
 
 import errno
 import pickle
-import sys
 from typing import Any
 
 from aiohttp import client, client_reqrep
@@ -222,16 +221,10 @@ class TestServerDisconnectedError:
 
     def test_repr(self) -> None:
         err = client.ServerDisconnectedError()
-        if sys.version_info < (3, 7):
-            assert repr(err) == ("ServerDisconnectedError" "('Server disconnected',)")
-        else:
-            assert repr(err) == ("ServerDisconnectedError" "('Server disconnected')")
+        assert repr(err) == ("ServerDisconnectedError" "('Server disconnected')")
 
         err = client.ServerDisconnectedError(message="No connection")
-        if sys.version_info < (3, 7):
-            assert repr(err) == "ServerDisconnectedError('No connection',)"
-        else:
-            assert repr(err) == "ServerDisconnectedError('No connection')"
+        assert repr(err) == "ServerDisconnectedError('No connection')"
 
     def test_str(self) -> None:
         err = client.ServerDisconnectedError()

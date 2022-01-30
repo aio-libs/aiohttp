@@ -2,7 +2,6 @@ import asyncio
 import mimetypes
 import os
 import pathlib
-import sys
 from typing import (  # noqa
     IO,
     TYPE_CHECKING,
@@ -90,7 +89,7 @@ class FileResponse(StreamResponse):
         writer = await super().prepare(request)
         assert writer is not None
 
-        if NOSENDFILE or sys.version_info < (3, 7) or self.compression:
+        if NOSENDFILE or self.compression:
             return await self._sendfile_fallback(writer, fobj, offset, count)
 
         loop = request._loop
