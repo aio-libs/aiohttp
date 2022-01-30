@@ -14,8 +14,8 @@ async def test_repr() -> None:
 
     assert "<RequestHandler disconnected>" == repr(handler)
 
-    handler.transport = None
-    assert "<RequestHandler connected>" == repr(handler)
+    with mock.patch.object(handler, "transport", autospec=True):
+        assert "<RequestHandler connected>" == repr(handler)
 
 
 async def test_connections() -> None:

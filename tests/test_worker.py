@@ -133,16 +133,6 @@ def test_run_not_app(
     assert loop.is_closed()
 
 
-def test_handle_quit(
-    worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop
-) -> None:
-    with mock.patch.object(worker, "loop", autospec=True) as mloop:
-        worker.handle_quit(0, None)
-        assert not worker.alive
-        assert worker.exit_code == 0
-        mloop.call_later.assert_called_with(0.1, worker._notify_waiter_done)
-
-
 def test_handle_abort(worker: base_worker.GunicornWebWorker) -> None:
     with mock.patch("aiohttp.worker.sys") as m_sys:
         worker.handle_abort(0, None)
@@ -152,12 +142,12 @@ def test_handle_abort(worker: base_worker.GunicornWebWorker) -> None:
 
 
 def test__wait_next_notify(worker: base_worker.GunicornWebWorker) -> None:
+    worker.loop = mloop = mock.create_autospec(asyncio.AbstractEventLoop)
     with mock.patch.object(worker, "_notify_waiter_done", autospec=True):
-        with mock.patch.object(worker, "loop", autospec=True) as mloop:
-            fut = worker._wait_next_notify()
+        fut = worker._wait_next_notify()
 
-            assert worker._notify_waiter == fut
-            mloop.call_later.assert_called_with(1.0, worker._notify_waiter_done, fut)
+        assert worker._notify_waiter == fut
+        mloop.call_later.assert_called_with(1.0, worker._notify_waiter_done, fut)
 
 
 def test__notify_waiter_done(worker: base_worker.GunicornWebWorker) -> None:
