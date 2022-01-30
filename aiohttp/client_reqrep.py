@@ -84,6 +84,9 @@ if TYPE_CHECKING:  # pragma: no cover
     from .tracing import Trace
 
 
+_CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
+
+
 def _gen_default_accept_encoding() -> str:
     return "gzip, deflate, br" if HAS_BROTLI else "gzip, deflate"
 
@@ -208,7 +211,12 @@ class ClientRequest:
         proxy_headers: Optional[LooseHeaders] = None,
         traces: Optional[List["Trace"]] = None,
     ):
-
+        match = _CONTAINS_CONTROL_CHAR_RE.search(method)
+        if match:
+            raise ValueError(
+                f"Method cannot contain non-token characters {method!r} "
+                "(found at least {match.group()!r})"
+            )
         assert isinstance(url, URL), url
         assert isinstance(proxy, (URL, type(None))), proxy
         # FIXME: session is None in tests only, need to fix tests
