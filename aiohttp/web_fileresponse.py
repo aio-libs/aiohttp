@@ -2,7 +2,6 @@ import asyncio
 import mimetypes
 import os
 import pathlib
-import sys
 from typing import (  # noqa
     IO,
     TYPE_CHECKING,
@@ -90,7 +89,7 @@ class FileResponse(StreamResponse):
         writer = await super().prepare(request)
         assert writer is not None
 
-        if NOSENDFILE or sys.version_info < (3, 7) or self.compression:
+        if NOSENDFILE or self.compression:
             return await self._sendfile_fallback(writer, fobj, offset, count)
 
         loop = request._loop
@@ -274,7 +273,8 @@ class FileResponse(StreamResponse):
                 real_start, real_start + count - 1, file_size
             )
 
-        if request.method == hdrs.METH_HEAD or self.status in [204, 304]:
+        # If we are sending 0 bytes calling sendfile() will throw a ValueError
+        if count == 0 or request.method == hdrs.METH_HEAD or self.status in [204, 304]:
             return await super().prepare(request)
 
         fobj = await loop.run_in_executor(None, filepath.open, "rb")

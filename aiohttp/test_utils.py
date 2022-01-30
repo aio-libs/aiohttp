@@ -97,15 +97,19 @@ class BaseTestServer(ABC):
         host: str = "127.0.0.1",
         port: Optional[int] = None,
         skip_url_asserts: bool = False,
+        socket_factory: Callable[
+            [str, int, socket.AddressFamily], socket.socket
+        ] = get_port_socket,
         **kwargs: Any,
     ) -> None:
-        self.runner = None  # type: Optional[BaseRunner]
-        self._root = None  # type: Optional[URL]
+        self.runner: Optional[BaseRunner] = None
+        self._root: Optional[URL] = None
         self.host = host
         self.port = port
         self._closed = False
         self.scheme = scheme
         self.skip_url_asserts = skip_url_asserts
+        self.socket_factory = socket_factory
 
     async def start_server(self, **kwargs: Any) -> None:
         if self.runner:
@@ -123,13 +127,13 @@ class BaseTestServer(ABC):
         if version == 6:
             absolute_host = f"[{self.host}]"
         family = socket.AF_INET6 if version == 6 else socket.AF_INET
-        _sock = get_port_socket(self.host, self.port, family=family)
+        _sock = self.socket_factory(self.host, self.port, family)
         self.host, self.port = _sock.getsockname()[:2]
         site = SockSite(self.runner, sock=_sock, ssl_context=self._ssl)
         await site.start()
         server = site._server
         assert server is not None
-        sockets = server.sockets
+        sockets = server.sockets  # type: ignore[attr-defined]
         assert sockets is not None
         self.port = sockets[0].getsockname()[1]
         if self.scheme is sentinel:
@@ -263,8 +267,8 @@ class TestClient:
             cookie_jar = aiohttp.CookieJar(unsafe=True)
         self._session = ClientSession(cookie_jar=cookie_jar, **kwargs)
         self._closed = False
-        self._responses = []  # type: List[ClientResponse]
-        self._websockets = []  # type: List[ClientWebSocketResponse]
+        self._responses: List[ClientResponse] = []
+        self._websockets: List[ClientWebSocketResponse] = []
 
     async def start_server(self) -> None:
         await self._server.start_server()
@@ -395,8 +399,7 @@ class TestClient:
 
 
 class AioHTTPTestCase(TestCase):
-    """A base class to allow for unittest web applications using
-    aiohttp.
+    """A base class to allow for unittest web applications using aiohttp.
 
     Provides the following:
 
@@ -411,25 +414,26 @@ class AioHTTPTestCase(TestCase):
     """
 
     async def get_application(self) -> Application:
-        """
+        """Get application.
+
         This method should be overridden
         to return the aiohttp.web.Application
         object to test.
-
         """
         return self.get_app()
 
     def get_app(self) -> Application:
         """Obsolete method used to constructing web application.
 
-        Use .get_application() coroutine instead
-
+        Use .get_application() coroutine instead.
         """
         raise RuntimeError("Did you forget to define get_application()?")
 
     def setUp(self) -> None:
-        if PY_38:
-            self.loop = asyncio.get_event_loop()
+        try:
+            self.loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self.loop = asyncio.get_event_loop_policy().get_event_loop()
 
         self.loop.run_until_complete(self.setUpAsync())
 
@@ -474,8 +478,7 @@ def loop_context(
 def setup_test_loop(
     loop_factory: _LOOP_FACTORY = asyncio.new_event_loop,
 ) -> asyncio.AbstractEventLoop:
-    """Create and return an asyncio.BaseEventLoop
-    instance.
+    """Create and return an asyncio.BaseEventLoop instance.
 
     The caller should also call teardown_test_loop,
     once they are done with the loop.
@@ -507,10 +510,7 @@ def setup_test_loop(
 
 
 def teardown_test_loop(loop: asyncio.AbstractEventLoop, fast: bool = False) -> None:
-    """Teardown and cleanup an event_loop created
-    by setup_test_loop.
-
-    """
+    """Teardown and cleanup an event_loop created by setup_test_loop."""
     closed = loop.is_closed()
     if not closed:
         loop.call_soon(loop.stop)
@@ -530,7 +530,7 @@ def _create_app_mock() -> mock.MagicMock:
     def set_dict(app: Any, key: str, value: Any) -> None:
         app.__app_dict[key] = value
 
-    app = mock.MagicMock()
+    app = mock.MagicMock(spec=Application)
     app.__app_dict = {}
     app.__getitem__ = get_dict
     app.__setitem__ = set_dict
@@ -574,9 +574,7 @@ def make_mocked_request(
 
     Useful in unit tests, when spinning full web server is overkill or
     specific conditions and errors are hard to trigger.
-
     """
-
     task = mock.Mock()
     if loop is ...:
         loop = mock.Mock()

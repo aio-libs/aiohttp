@@ -1,10 +1,11 @@
 # type: ignore
 import asyncio
 import base64
+import datetime
 import gc
-import os
 import platform
-from math import isclose, modf
+import weakref
+from math import ceil, isclose, modf
 from unittest import mock
 from urllib.request import getproxies_environment
 
@@ -14,7 +15,7 @@ from re_assert import Matches
 from yarl import URL
 
 from aiohttp import helpers
-from aiohttp.helpers import is_expected_content_type
+from aiohttp.helpers import is_expected_content_type, parse_http_date
 
 IS_PYPY = platform.python_implementation() == "PyPy"
 
@@ -172,7 +173,7 @@ def test_basic_auth_decode_invalid_credentials() -> None:
     ),
 )
 def test_basic_auth_decode_blank_username(credentials, expected_auth) -> None:
-    header = "Basic {}".format(base64.b64encode(credentials.encode()).decode())
+    header = f"Basic {base64.b64encode(credentials.encode()).decode()}"
     assert helpers.BasicAuth.decode(header) == expected_auth
 
 
@@ -352,6 +353,18 @@ def test_when_timeout_smaller_second(loop) -> None:
     assert isclose(when - timer, 0, abs_tol=0.001)
 
 
+def test_when_timeout_smaller_second_with_low_threshold(loop) -> None:
+    timeout = 0.1
+    timer = loop.time() + timeout
+
+    handle = helpers.TimeoutHandle(loop, timeout, 0.01)
+    when = handle.start()._when
+    handle.close()
+
+    assert isinstance(when, int)
+    assert when == ceil(timer)
+
+
 def test_timeout_handle_cb_exc(loop) -> None:
     handle = helpers.TimeoutHandle(loop, 10.2)
     cb = mock.Mock()
@@ -362,7 +375,7 @@ def test_timeout_handle_cb_exc(loop) -> None:
     assert not handle._callbacks
 
 
-def test_timer_context_cancelled() -> None:
+def test_timer_context_not_cancelled() -> None:
     with mock.patch("aiohttp.helpers.asyncio") as m_asyncio:
         m_asyncio.TimeoutError = asyncio.TimeoutError
         loop = mock.Mock()
@@ -373,7 +386,7 @@ def test_timer_context_cancelled() -> None:
             with ctx:
                 pass
 
-        assert m_asyncio.current_task.return_value.cancel.called
+        assert not m_asyncio.current_task.return_value.cancel.called
 
 
 def test_timer_context_no_task(loop) -> None:
@@ -387,6 +400,16 @@ async def test_weakref_handle(loop) -> None:
     helpers.weakref_handle(cb, "test", 0.01, loop)
     await asyncio.sleep(0.1)
     assert cb.test.called
+
+
+async def test_weakref_handle_with_small_threshold(loop) -> None:
+    cb = mock.Mock()
+    loop = mock.Mock()
+    loop.time.return_value = 10
+    helpers.weakref_handle(cb, "test", 0.1, loop, 0.01)
+    loop.call_at.assert_called_with(
+        11, helpers._weakref_handle, (weakref.ref(cb), "test")
+    )
 
 
 async def test_weakref_handle_weak(loop) -> None:
@@ -406,6 +429,14 @@ def test_ceil_call_later() -> None:
     loop.time.return_value = 10.1
     helpers.call_later(cb, 10.1, loop)
     loop.call_at.assert_called_with(21.0, cb)
+
+
+def test_ceil_call_later_with_small_threshold() -> None:
+    cb = mock.Mock()
+    loop = mock.Mock()
+    loop.time.return_value = 10.1
+    helpers.call_later(cb, 4.5, loop, 1)
+    loop.call_at.assert_called_with(15, cb)
 
 
 def test_ceil_call_later_no_timeout() -> None:
@@ -431,6 +462,12 @@ async def test_ceil_timeout_small(loop) -> None:
         frac, integer = modf(cm.deadline)
         # a chance for exact integer with zero fraction is negligible
         assert frac != 0
+
+
+async def test_ceil_timeout_small_with_overriden_threshold(loop) -> None:
+    async with helpers.ceil_timeout(1.5, ceil_threshold=1) as cm:
+        frac, integer = modf(cm.deadline)
+        assert frac == 0
 
 
 # -------------------------------- ContentDisposition -------------------
@@ -482,35 +519,69 @@ def test_set_content_disposition_bad_param() -> None:
 # --------------------- proxies_from_env ------------------------------
 
 
-@pytest.mark.parametrize("protocol", ["http", "https", "ws", "wss"])
-def test_proxies_from_env(monkeypatch, protocol) -> None:
-    url = URL("http://aiohttp.io/path")
-    monkeypatch.setenv(protocol + "_proxy", str(url))
+@pytest.mark.parametrize(
+    ("proxy_env_vars", "url_input", "expected_scheme"),
+    (
+        ({"http_proxy": "http://aiohttp.io/path"}, "http://aiohttp.io/path", "http"),
+        ({"https_proxy": "http://aiohttp.io/path"}, "http://aiohttp.io/path", "https"),
+        ({"ws_proxy": "http://aiohttp.io/path"}, "http://aiohttp.io/path", "ws"),
+        ({"wss_proxy": "http://aiohttp.io/path"}, "http://aiohttp.io/path", "wss"),
+    ),
+    indirect=["proxy_env_vars"],
+    ids=("http", "https", "ws", "wss"),
+)
+@pytest.mark.usefixtures("proxy_env_vars")
+def test_proxies_from_env(url_input, expected_scheme) -> None:
+    url = URL(url_input)
     ret = helpers.proxies_from_env()
-    assert ret.keys() == {protocol}
-    assert ret[protocol].proxy == url
-    assert ret[protocol].proxy_auth is None
+    assert ret.keys() == {expected_scheme}
+    assert ret[expected_scheme].proxy == url
+    assert ret[expected_scheme].proxy_auth is None
 
 
-@pytest.mark.parametrize("protocol", ["https", "wss"])
-def test_proxies_from_env_skipped(monkeypatch, caplog, protocol) -> None:
-    url = URL(protocol + "://aiohttp.io/path")
-    monkeypatch.setenv(protocol + "_proxy", str(url))
+@pytest.mark.parametrize(
+    ("proxy_env_vars", "url_input", "expected_scheme"),
+    (
+        (
+            {"https_proxy": "https://aiohttp.io/path"},
+            "https://aiohttp.io/path",
+            "https",
+        ),
+        ({"wss_proxy": "wss://aiohttp.io/path"}, "wss://aiohttp.io/path", "wss"),
+    ),
+    indirect=["proxy_env_vars"],
+    ids=("https", "wss"),
+)
+@pytest.mark.usefixtures("proxy_env_vars")
+def test_proxies_from_env_skipped(caplog, url_input, expected_scheme) -> None:
+    url = URL(url_input)
     assert helpers.proxies_from_env() == {}
     assert len(caplog.records) == 1
     log_message = "{proto!s} proxies {url!s} are not supported, ignoring".format(
-        proto=protocol.upper(), url=url
+        proto=expected_scheme.upper(), url=url
     )
     assert caplog.record_tuples == [("aiohttp.client", 30, log_message)]
 
 
-def test_proxies_from_env_http_with_auth(mocker) -> None:
+@pytest.mark.parametrize(
+    ("proxy_env_vars", "url_input", "expected_scheme"),
+    (
+        (
+            {"http_proxy": "http://user:pass@aiohttp.io/path"},
+            "http://user:pass@aiohttp.io/path",
+            "http",
+        ),
+    ),
+    indirect=["proxy_env_vars"],
+    ids=("http",),
+)
+@pytest.mark.usefixtures("proxy_env_vars")
+def test_proxies_from_env_http_with_auth(url_input, expected_scheme) -> None:
     url = URL("http://user:pass@aiohttp.io/path")
-    mocker.patch.dict(os.environ, {"http_proxy": str(url)})
     ret = helpers.proxies_from_env()
-    assert ret.keys() == {"http"}
-    assert ret["http"].proxy == url.with_user(None)
-    proxy_auth = ret["http"].proxy_auth
+    assert ret.keys() == {expected_scheme}
+    assert ret[expected_scheme].proxy == url.with_user(None)
+    proxy_auth = ret[expected_scheme].proxy_auth
     assert proxy_auth.login == "user"
     assert proxy_auth.password == "pass"
     assert proxy_auth.encoding == "latin1"
@@ -730,6 +801,39 @@ def test_is_expected_content_type_json_match_partially():
     )
 
 
+def test_is_expected_content_type_non_application_json_suffix():
+    expected_ct = "application/json"
+    response_ct = "model/gltf+json"  # rfc 6839
+    assert is_expected_content_type(
+        response_content_type=response_ct, expected_content_type=expected_ct
+    )
+
+
+def test_is_expected_content_type_non_application_json_private_suffix():
+    expected_ct = "application/json"
+    response_ct = "x-foo/bar+json"  # rfc 6839
+    assert is_expected_content_type(
+        response_content_type=response_ct, expected_content_type=expected_ct
+    )
+
+
+def test_is_expected_content_type_json_non_lowercase():
+    """Per RFC 2045, media type matching is case insensitive."""
+    expected_ct = "application/json"
+    response_ct = "Application/JSON"
+    assert is_expected_content_type(
+        response_content_type=response_ct, expected_content_type=expected_ct
+    )
+
+
+def test_is_expected_content_type_json_trailing_chars():
+    expected_ct = "application/json"
+    response_ct = "application/json-seq"
+    assert not is_expected_content_type(
+        response_content_type=response_ct, expected_content_type=expected_ct
+    )
+
+
 def test_is_expected_content_type_non_json_match_exact():
     expected_ct = "text/javascript"
     response_ct = "text/javascript"
@@ -746,8 +850,14 @@ def test_is_expected_content_type_non_json_not_match():
     )
 
 
+# It's necessary to subclass CookieMixin before using it.
+# See the comments on its __slots__.
+class CookieImplementation(helpers.CookieMixin):
+    pass
+
+
 def test_cookies_mixin():
-    sut = helpers.CookieMixin()
+    sut = CookieImplementation()
 
     assert sut.cookies == {}
     assert str(sut.cookies) == ""
@@ -776,7 +886,7 @@ def test_cookies_mixin():
 
 
 def test_cookies_mixin_path():
-    sut = helpers.CookieMixin()
+    sut = CookieImplementation()
 
     assert sut.cookies == {}
 
@@ -810,7 +920,7 @@ def test_cookies_mixin_path():
 
 
 def test_sutonse_cookie__issue_del_cookie():
-    sut = helpers.CookieMixin()
+    sut = CookieImplementation()
 
     assert sut.cookies == {}
     assert str(sut.cookies) == ""
@@ -824,7 +934,7 @@ def test_sutonse_cookie__issue_del_cookie():
 
 
 def test_cookie_set_after_del():
-    sut = helpers.CookieMixin()
+    sut = CookieImplementation()
 
     sut.del_cookie("name")
     sut.set_cookie("name", "val")
@@ -834,9 +944,34 @@ def test_cookie_set_after_del():
 
 
 def test_populate_with_cookies():
-    cookies_mixin = helpers.CookieMixin()
+    cookies_mixin = CookieImplementation()
     cookies_mixin.set_cookie("name", "value")
     headers = CIMultiDict()
 
     helpers.populate_with_cookies(headers, cookies_mixin.cookies)
     assert headers == CIMultiDict({"Set-Cookie": "name=value; Path=/"})
+
+
+@pytest.mark.parametrize(
+    ["value", "expected"],
+    [
+        # email.utils.parsedate returns None
+        pytest.param("xxyyzz", None),
+        # datetime.datetime fails with ValueError("year 4446413 is out of range")
+        pytest.param("Tue, 08 Oct 4446413 00:56:40 GMT", None),
+        # datetime.datetime fails with ValueError("second must be in 0..59")
+        pytest.param("Tue, 08 Oct 2000 00:56:80 GMT", None),
+        # OK
+        pytest.param(
+            "Tue, 08 Oct 2000 00:56:40 GMT",
+            datetime.datetime(2000, 10, 8, 0, 56, 40, tzinfo=datetime.timezone.utc),
+        ),
+        # OK (ignore timezone and overwrite to UTC)
+        pytest.param(
+            "Tue, 08 Oct 2000 00:56:40 +0900",
+            datetime.datetime(2000, 10, 8, 0, 56, 40, tzinfo=datetime.timezone.utc),
+        ),
+    ],
+)
+def test_parse_http_date(value, expected):
+    assert parse_http_date(value) == expected

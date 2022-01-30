@@ -19,6 +19,7 @@ from typing import (
     Iterator,
     List,
     Mapping,
+    NoReturn,
     Optional,
     Pattern,
     Set,
@@ -82,7 +83,7 @@ PATH_SEP: Final[str] = re.escape("/")
 
 
 _ExpectHandler = Callable[[Request], Awaitable[None]]
-_Resolve = Tuple[Optional[AbstractMatchInfo], Set[str]]
+_Resolve = Tuple[Optional["UrlMappingMatchInfo"], Set[str]]
 
 
 class _InfoDict(TypedDict, total=False):
@@ -127,16 +128,16 @@ class AbstractResource(Sized, Iterable["AbstractRoute"]):
 
     @abc.abstractmethod  # pragma: no branch
     async def resolve(self, request: Request) -> _Resolve:
-        """Resolve resource
+        """Resolve resource.
 
-        Return (UrlMappingMatchInfo, allowed_methods) pair."""
+        Return (UrlMappingMatchInfo, allowed_methods) pair.
+        """
 
     @abc.abstractmethod
     def add_prefix(self, prefix: str) -> None:
         """Add a prefix to processed URLs.
 
         Required for subapplications support.
-
         """
 
     @abc.abstractmethod
@@ -220,8 +221,8 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
     def __init__(self, match_dict: Dict[str, str], route: AbstractRoute):
         super().__init__(match_dict)
         self._route = route
-        self._apps = []  # type: List[Application]
-        self._current_app = None  # type: Optional[Application]
+        self._apps: List[Application] = []
+        self._current_app: Optional[Application] = None
         self._frozen = False
 
     @property
@@ -315,7 +316,7 @@ async def _default_expect_handler(request: Request) -> None:
 class Resource(AbstractResource):
     def __init__(self, *, name: Optional[str] = None) -> None:
         super().__init__(name=name)
-        self._routes = []  # type: List[ResourceRoute]
+        self._routes: List[ResourceRoute] = []
 
     def add_route(
         self,
@@ -344,7 +345,7 @@ class Resource(AbstractResource):
         self._routes.append(route)
 
     async def resolve(self, request: Request) -> _Resolve:
-        allowed_methods = set()  # type: Set[str]
+        allowed_methods: Set[str] = set()
 
         match_dict = self._match(request.rel_url.raw_path)
         if match_dict is None:
@@ -366,7 +367,7 @@ class Resource(AbstractResource):
     def __len__(self) -> int:
         return len(self._routes)
 
-    def __iter__(self) -> Iterator[AbstractRoute]:
+    def __iter__(self) -> Iterator["ResourceRoute"]:
         return iter(self._routes)
 
     # TODO: implement all abstract methods
@@ -495,6 +496,7 @@ class PrefixResource(AbstractResource):
         assert prefix in ("", "/") or not prefix.endswith("/"), prefix
         super().__init__(name=name)
         self._prefix = _requote_path(prefix)
+        self._prefix2 = self._prefix + "/"
 
     @property
     def canonical(self) -> str:
@@ -505,6 +507,7 @@ class PrefixResource(AbstractResource):
         assert not prefix.endswith("/")
         assert len(prefix) > 1
         self._prefix = prefix + self._prefix
+        self._prefix2 = self._prefix + "/"
 
     def raw_match(self, prefix: str) -> bool:
         return False
@@ -616,7 +619,7 @@ class StaticResource(PrefixResource):
         path = request.rel_url.raw_path
         method = request.method
         allowed_methods = set(self._routes)
-        if not path.startswith(self._prefix):
+        if not path.startswith(self._prefix2) and path != self._prefix:
             return None, set()
 
         if method not in allowed_methods:
@@ -732,7 +735,7 @@ class PrefixedSubAppResource(PrefixResource):
 
     async def resolve(self, request: Request) -> _Resolve:
         if (
-            not request.url.raw_path.startswith(self._prefix + "/")
+            not request.url.raw_path.startswith(self._prefix2)
             and request.url.raw_path != self._prefix
         ):
             return None, set()
@@ -926,18 +929,17 @@ class View(AbstractView):
     async def _iter(self) -> StreamResponse:
         if self.request.method not in hdrs.METH_ALL:
             self._raise_allowed_methods()
-        method: Callable[[], Awaitable[StreamResponse]] = getattr(
+        method: Optional[Callable[[], Awaitable[StreamResponse]]] = getattr(
             self, self.request.method.lower(), None
         )
         if method is None:
             self._raise_allowed_methods()
-        resp = await method()
-        return resp
+        return await method()
 
     def __await__(self) -> Generator[Any, None, StreamResponse]:
         return self._iter().__await__()
 
-    def _raise_allowed_methods(self) -> None:
+    def _raise_allowed_methods(self) -> NoReturn:
         allowed_methods = {m for m in hdrs.METH_ALL if hasattr(self, m.lower())}
         raise HTTPMethodNotAllowed(self.request.method, allowed_methods)
 
@@ -958,7 +960,7 @@ class ResourcesView(Sized, Iterable[AbstractResource], Container[AbstractResourc
 
 class RoutesView(Sized, Iterable[AbstractRoute], Container[AbstractRoute]):
     def __init__(self, resources: List[AbstractResource]):
-        self._routes = []  # type: List[AbstractRoute]
+        self._routes: List[AbstractRoute] = []
         for resource in resources:
             for route in resource:
                 self._routes.append(route)
@@ -979,12 +981,12 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
     def __init__(self) -> None:
         super().__init__()
-        self._resources = []  # type: List[AbstractResource]
-        self._named_resources = {}  # type: Dict[str, AbstractResource]
+        self._resources: List[AbstractResource] = []
+        self._named_resources: Dict[str, AbstractResource] = {}
 
-    async def resolve(self, request: Request) -> AbstractMatchInfo:
+    async def resolve(self, request: Request) -> UrlMappingMatchInfo:
         method = request.method
-        allowed_methods = set()  # type: Set[str]
+        allowed_methods: Set[str] = set()
 
         for resource in self._resources:
             match_dict, allowed = await resource.resolve(request)
@@ -992,11 +994,11 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
                 return match_dict
             else:
                 allowed_methods |= allowed
+
+        if allowed_methods:
+            return MatchInfoError(HTTPMethodNotAllowed(method, allowed_methods))
         else:
-            if allowed_methods:
-                return MatchInfoError(HTTPMethodNotAllowed(method, allowed_methods))
-            else:
-                return MatchInfoError(HTTPNotFound())
+            return MatchInfoError(HTTPNotFound())
 
     def __iter__(self) -> Iterator[str]:
         return iter(self._named_resources)
@@ -1115,15 +1117,11 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         return resource
 
     def add_head(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
-        """
-        Shortcut for add_route with method HEAD
-        """
+        """Shortcut for add_route with method HEAD."""
         return self.add_route(hdrs.METH_HEAD, path, handler, **kwargs)
 
     def add_options(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
-        """
-        Shortcut for add_route with method OPTIONS
-        """
+        """Shortcut for add_route with method OPTIONS."""
         return self.add_route(hdrs.METH_OPTIONS, path, handler, **kwargs)
 
     def add_get(
@@ -1135,9 +1133,10 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         allow_head: bool = True,
         **kwargs: Any,
     ) -> AbstractRoute:
-        """
-        Shortcut for add_route with method GET, if allow_head is true another
-        route is added allowing head requests to the same endpoint
+        """Shortcut for add_route with method GET.
+
+        If allow_head is true, another
+        route is added allowing head requests to the same endpoint.
         """
         resource = self.add_resource(path, name=name)
         if allow_head:
@@ -1145,35 +1144,25 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         return resource.add_route(hdrs.METH_GET, handler, **kwargs)
 
     def add_post(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
-        """
-        Shortcut for add_route with method POST
-        """
+        """Shortcut for add_route with method POST."""
         return self.add_route(hdrs.METH_POST, path, handler, **kwargs)
 
     def add_put(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
-        """
-        Shortcut for add_route with method PUT
-        """
+        """Shortcut for add_route with method PUT."""
         return self.add_route(hdrs.METH_PUT, path, handler, **kwargs)
 
     def add_patch(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
-        """
-        Shortcut for add_route with method PATCH
-        """
+        """Shortcut for add_route with method PATCH."""
         return self.add_route(hdrs.METH_PATCH, path, handler, **kwargs)
 
     def add_delete(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
-        """
-        Shortcut for add_route with method DELETE
-        """
+        """Shortcut for add_route with method DELETE."""
         return self.add_route(hdrs.METH_DELETE, path, handler, **kwargs)
 
     def add_view(
         self, path: str, handler: Type[AbstractView], **kwargs: Any
     ) -> AbstractRoute:
-        """
-        Shortcut for add_route with ANY methods for a class-based view
-        """
+        """Shortcut for add_route with ANY methods for a class-based view."""
         return self.add_route(hdrs.METH_ANY, path, handler, **kwargs)
 
     def freeze(self) -> None:

@@ -239,6 +239,13 @@ Data Sharing aka No Singletons Please
 :mod:`aiohttp.web` discourages the use of *global variables*, aka *singletons*.
 Every variable should have its own context that is *not global*.
 
+Global variables are generally considered bad practice due to the complexity
+they add in keeping track of state changes to variables.
+
+*aiohttp* does not use globals by design, which will reduce the number of bugs
+and/or unexpected behaviors for its users. For example, an i18n translated string
+being written for one request and then being served to another.
+
 So, :class:`Application` and :class:`Request`
 support a :class:`collections.abc.MutableMapping` interface (i.e. they are
 dict-like objects), allowing them to be used as data stores.
@@ -259,6 +266,16 @@ and get it back in the :term:`web-handler`::
     async def handler(request):
         data = request.app['my_private_key']
 
+Rather than using :class:`str` keys, we recommend using :class:`AppKey`.
+This is required for type safety (e.g. when checking with mypy)::
+
+    my_private_key = web.AppKey("my_private_key", str)
+    app[my_private_key] = data
+
+    async def handler(request: web.Request):
+        data = request.app[my_private_key]
+        # reveal_type(data) -> str
+
 In case of :ref:`nested applications
 <aiohttp-web-nested-applications>` the desired lookup strategy could
 be the following:
@@ -269,8 +286,12 @@ be the following:
 For this please use :attr:`Request.config_dict` read-only property::
 
     async def handler(request):
-        data = request.config_dict['my_private_key']
+        data = request.config_dict[my_private_key]
 
+The app object can be used in this way to reuse a database connection or anything
+else needed throughout the application.
+
+See this reference section for more detail: :ref:`aiohttp-web-app-and-router`.
 
 Request's storage
 ^^^^^^^^^^^^^^^^^
@@ -318,9 +339,8 @@ Otherwise, something based on your company name/url would be satisfactory (i.e.
 ContextVars support
 -------------------
 
-Starting from Python 3.7 asyncio has :mod:`Context Variables <contextvars>` as a
-context-local storage (a generalization of thread-local concept that works with asyncio
-tasks also).
+Asyncio has :mod:`Context Variables <contextvars>` as a context-local storage
+(a generalization of thread-local concept that works with asyncio tasks also).
 
 
 *aiohttp* server supports it in the following way:
@@ -550,26 +570,23 @@ Additionally, the :attr:`Application.on_startup` and
 :attr:`Application.on_cleanup` signals can be subscribed to for
 application component setup and tear down accordingly.
 
-The following example will properly initialize and dispose an aiopg connection
+The following example will properly initialize and dispose an asyncpg connection
 engine::
 
-    from aiopg.sa import create_engine
+    from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-    async def create_aiopg(app):
-        app['pg_engine'] = await create_engine(
-            user='postgre',
-            database='postgre',
-            host='localhost',
-            port=5432,
-            password=''
+    pg_engine = web.AppKey("pg_engine", AsyncEngine)
+
+    async def create_pg(app):
+        app[pg_engine] = await create_async_engine(
+            "postgresql+asyncpg://postgre:@localhost:5432/postgre"
         )
 
-    async def dispose_aiopg(app):
-        app['pg_engine'].close()
-        await app['pg_engine'].wait_closed()
+    async def dispose_pg(app):
+        await app[pg_engine].dispose()
 
-    app.on_startup.append(create_aiopg)
-    app.on_cleanup.append(dispose_aiopg)
+    app.on_startup.append(create_pg)
+    app.on_cleanup.append(dispose_pg)
 
 
 Signal handlers should not return a value but may modify incoming mutable
@@ -597,17 +614,12 @@ knowledge about startup/cleanup pairs and their execution state.
 
 The solution is :attr:`Application.cleanup_ctx` usage::
 
-    async def pg_engine(app):
-        app['pg_engine'] = await create_engine(
-            user='postgre',
-            database='postgre',
-            host='localhost',
-            port=5432,
-            password=''
+    async def pg_engine(app: web.Application):
+        app[pg_engine] = await create_async_engine(
+            "postgresql+asyncpg://postgre:@localhost:5432/postgre"
         )
         yield
-        app['pg_engine'].close()
-        await app['pg_engine'].wait_closed()
+        await app[pg_engine].dispose()
 
     app.cleanup_ctx.append(pg_engine)
 
@@ -682,13 +694,14 @@ If main application should do URL reversing for sub-application it could
 use the following explicit technique::
 
    admin = web.Application()
+   admin_key = web.AppKey('admin_key', web.Application)
    admin.add_routes([web.get('/resource', handler, name='name')])
 
    app.add_subapp('/admin/', admin)
-   app['admin'] = admin
+   app[admin_key] = admin
 
-   async def handler(request):  # main application's handler
-       admin = request.app['admin']
+   async def handler(request: web.Request):  # main application's handler
+       admin = request.app[admin_key]
        url = admin.router['name'].url_for()
 
 .. _aiohttp-web-expect-header:
@@ -805,18 +818,19 @@ handler::
     import weakref
 
     app = web.Application()
-    app['websockets'] = weakref.WeakSet()
+    websockets = web.AppKey("websockets", weakref.WeakSet)
+    app[websockets] = weakref.WeakSet()
 
     async def websocket_handler(request):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
 
-        request.app['websockets'].add(ws)
+        request.app[websockets].add(ws)
         try:
             async for msg in ws:
                 ...
         finally:
-            request.app['websockets'].discard(ws)
+            request.app[websockets].discard(ws)
 
         return ws
 
@@ -825,7 +839,7 @@ Signal handler may look like::
     from aiohttp import WSCloseCode
 
     async def on_shutdown(app):
-        for ws in set(app['websockets']):
+        for ws in set(app[websockets]):
             await ws.close(code=WSCloseCode.GOING_AWAY,
                            message='Server shutdown')
 
@@ -833,6 +847,25 @@ Signal handler may look like::
 
 Both :func:`run_app` and :meth:`AppRunner.cleanup` call shutdown
 signal handlers.
+
+.. _aiohttp-web-ceil-absolute-timeout:
+
+Ceil of absolute timeout value
+------------------------------
+
+*aiohttp* **ceils** internal timeout values if the value is equal or
+greater than 5 seconds. The timeout expires at the next integer second
+greater than ``current_time + timeout``.
+
+More details about ceiling absolute timeout values is available here
+:ref:`aiohttp-client-timeouts`.
+
+The default threshold can be configured at :class:`aiohttp.web.Application`
+level using the ``handler_args`` parameter.
+
+.. code-block:: python3
+
+    app = web.Application(handler_args={"timeout_ceil_threshold": 1})
 
 .. _aiohttp-web-background-tasks:
 
@@ -860,7 +893,8 @@ will run along with the application's request handler.
 For example there's a need to run one quick task and two long running
 tasks that will live till the application is alive. The appropriate
 background tasks could be registered as an :attr:`Application.on_startup`
-signal handlers as shown in the example below::
+signal handler or :attr:`Application.cleanup_ctx` as shown in the example
+below::
 
 
   async def listen_to_redis(app):
@@ -869,7 +903,7 @@ signal handlers as shown in the example below::
           ch, *_ = await sub.subscribe('news')
           async for msg in ch.iter(encoding='utf-8'):
               # Forward message to all connected websockets:
-              for ws in app['websockets']:
+              for ws in app[websockets]:
                   ws.send_str('{}: {}'.format(ch.name, msg))
       except asyncio.CancelledError:
           pass
@@ -878,24 +912,70 @@ signal handlers as shown in the example below::
           await sub.quit()
 
 
-  async def start_background_tasks(app):
-      app['redis_listener'] = asyncio.create_task(listen_to_redis(app))
+  async def background_tasks(app):
+      app[redis_listener] = asyncio.create_task(listen_to_redis(app))
 
+      yield
 
-  async def cleanup_background_tasks(app):
-      app['redis_listener'].cancel()
-      await app['redis_listener']
+      app[redis_listener].cancel()
+      await app[redis_listener]
 
 
   app = web.Application()
-  app.on_startup.append(start_background_tasks)
-  app.on_cleanup.append(cleanup_background_tasks)
+  redis_listener = web.AppKey("redis_listener", asyncio.Task[None])
+  app.cleanup_ctx.append(background_tasks)
   web.run_app(app)
 
 
 The task ``listen_to_redis`` will run forever.
 To shut it down correctly :attr:`Application.on_cleanup` signal handler
 may be used to send a cancellation to it.
+
+.. _aiohttp-web-complex-applications:
+
+Complex Applications
+^^^^^^^^^^^^^^^^^^^^
+
+Sometimes aiohttp is not the sole part of an application and additional
+tasks/processes may need to be run alongside the aiohttp :class:`Application`.
+
+Generally, the best way to achieve this is to use :func:`aiohttp.web.run_app`
+as the entry point for the program. Other tasks can then be run via
+:attr:`Application.startup` and :attr:`Application.on_cleanup`. By having the
+:class:`Application` control the lifecycle of the entire program, the code
+will be more robust and ensure that the tasks are started and stopped along
+with the application.
+
+For example, running a long-lived task alongside the :class:`Application`
+can be done with a :ref:`aiohttp-web-cleanup-ctx` function like::
+
+
+  async def run_other_task(_app):
+      task = asyncio.create_task(other_long_task())
+
+      yield
+
+      task.cancel()
+      with suppress(asyncio.CancelledError):
+          await task  # Ensure any exceptions etc. are raised.
+
+  app.cleanup_ctx.append(run_other_task)
+
+
+Or a separate process can be run with something like::
+
+
+  async def run_process(_app):
+      proc = await asyncio.create_subprocess_exec(path)
+
+      yield
+
+      if proc.returncode is None:
+          proc.terminate()
+      await proc.wait()
+
+  app.cleanup_ctx.append(run_process)
+
 
 Handling error pages
 --------------------
@@ -928,9 +1008,9 @@ headers too, pushing non-trusted data values.
 That's why *aiohttp server* should setup *forwarded* headers in custom
 middleware in tight conjunction with *reverse proxy configuration*.
 
-For changing :attr:`BaseRequest.scheme` :attr:`BaseRequest.host` and
-:attr:`BaseRequest.remote` the middleware might use
-:meth:`BaseRequest.clone`.
+For changing :attr:`BaseRequest.scheme` :attr:`BaseRequest.host`
+:attr:`BaseRequest.remote` and :attr:`BaseRequest.client_max_size`
+the middleware might use :meth:`BaseRequest.clone`.
 
 .. seealso::
 

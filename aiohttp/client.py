@@ -143,6 +143,7 @@ class ClientTimeout:
     connect: Optional[float] = None
     sock_read: Optional[float] = None
     sock_connect: Optional[float] = None
+    ceil_threshold: float = 5
 
     # pool_queue_timeout: Optional[float] = None
     # dns_resolution_timeout: Optional[float] = None
@@ -169,6 +170,7 @@ class ClientSession:
     """First-class interface for making HTTP requests."""
 
     __slots__ = (
+        "_base_url",
         "_source_traceback",
         "_connector",
         "_loop",
@@ -193,6 +195,7 @@ class ClientSession:
 
     def __init__(
         self,
+        base_url: Optional[StrOrURL] = None,
         *,
         connector: Optional[BaseConnector] = None,
         cookies: Optional[LooseCookies] = None,
@@ -209,13 +212,21 @@ class ClientSession:
         raise_for_status: Union[
             bool, Callable[[ClientResponse], Awaitable[None]]
         ] = False,
-        timeout: Union[_SENTINEL, ClientTimeout] = sentinel,
+        timeout: Union[_SENTINEL, ClientTimeout, None] = sentinel,
         auto_decompress: bool = True,
         trust_env: bool = False,
         requote_redirect_url: bool = True,
         trace_configs: Optional[List[TraceConfig]] = None,
         read_bufsize: int = 2 ** 16,
     ) -> None:
+        if base_url is None or isinstance(base_url, URL):
+            self._base_url: Optional[URL] = base_url
+        else:
+            self._base_url = URL(base_url)
+            assert (
+                self._base_url.origin() == self._base_url
+            ), "Only absolute URLs without path part are supported"
+
         loop = asyncio.get_running_loop()
 
         if connector is None:
@@ -223,12 +234,12 @@ class ClientSession:
 
         # Initialize these three attrs before raising any exception,
         # they are used in __del__
-        self._connector = connector  # type: Optional[BaseConnector]
+        self._connector: Optional[BaseConnector] = connector
         self._loop = loop
         if loop.get_debug():
-            self._source_traceback = traceback.extract_stack(
-                sys._getframe(1)
-            )  # type: Optional[traceback.StackSummary]
+            self._source_traceback: Optional[
+                traceback.StackSummary
+            ] = traceback.extract_stack(sys._getframe(1))
         else:
             self._source_traceback = None
 
@@ -246,10 +257,10 @@ class ClientSession:
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
-        if timeout is sentinel:
+        if timeout is sentinel or timeout is None:
             self._timeout = DEFAULT_TIMEOUT
         else:
-            self._timeout = timeout  # type: ignore[assignment]
+            self._timeout = timeout
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
@@ -258,12 +269,12 @@ class ClientSession:
 
         # Convert to list of tuples
         if headers:
-            real_headers = CIMultiDict(headers)  # type: CIMultiDict[str]
+            real_headers: CIMultiDict[str] = CIMultiDict(headers)
         else:
             real_headers = CIMultiDict()
-        self._default_headers = real_headers  # type: CIMultiDict[str]
+        self._default_headers: CIMultiDict[str] = real_headers
         if skip_auto_headers is not None:
-            self._skip_auto_headers = frozenset([istr(i) for i in skip_auto_headers])
+            self._skip_auto_headers = frozenset(istr(i) for i in skip_auto_headers)
         else:
             self._skip_auto_headers = frozenset()
 
@@ -304,6 +315,14 @@ class ClientSession:
         """Perform HTTP request."""
         return _RequestContextManager(self._request(method, url, **kwargs))
 
+    def _build_url(self, str_or_url: StrOrURL) -> URL:
+        url = URL(str_or_url)
+        if self._base_url is None:
+            return url
+        else:
+            assert not url.is_absolute() and url.path.startswith("/")
+            return self._base_url.join(url)
+
     async def _request(
         self,
         method: str,
@@ -327,7 +346,7 @@ class ClientSession:
         read_until_eof: bool = True,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
-        timeout: Union[ClientTimeout, _SENTINEL] = sentinel,
+        timeout: Union[ClientTimeout, _SENTINEL, None] = sentinel,
         ssl: Optional[Union[SSLContext, bool, Fingerprint]] = None,
         proxy_headers: Optional[LooseHeaders] = None,
         trace_request_ctx: Optional[SimpleNamespace] = None,
@@ -363,7 +382,7 @@ class ClientSession:
         proxy_headers = self._prepare_headers(proxy_headers)
 
         try:
-            url = URL(str_or_url)
+            url = self._build_url(str_or_url)
         except ValueError as e:
             raise InvalidURL(str_or_url) from e
 
@@ -378,16 +397,15 @@ class ClientSession:
             except ValueError as e:
                 raise InvalidURL(proxy) from e
 
-        if timeout is sentinel:
-            real_timeout = self._timeout  # type: ClientTimeout
+        if timeout is sentinel or timeout is None:
+            real_timeout: ClientTimeout = self._timeout
         else:
-            if not isinstance(timeout, ClientTimeout):
-                real_timeout = ClientTimeout(total=timeout)  # type: ignore[arg-type]
-            else:
-                real_timeout = timeout
+            real_timeout = timeout
         # timeout is cumulative for all request operations
         # (request, redirects, responses, data consuming)
-        tm = TimeoutHandle(self._loop, real_timeout.total)
+        tm = TimeoutHandle(
+            self._loop, real_timeout.total, ceil_threshold=real_timeout.ceil_threshold
+        )
         handle = tm.start()
 
         if read_bufsize is None:
@@ -403,7 +421,7 @@ class ClientSession:
         ]
 
         for trace in traces:
-            await trace.send_request_start(method, url, headers)
+            await trace.send_request_start(method, url.update_query(params), headers)
 
         timer = tm.timer()
         try:
@@ -474,7 +492,10 @@ class ClientSession:
 
                     # connection timeout
                     try:
-                        async with ceil_timeout(real_timeout.connect):
+                        async with ceil_timeout(
+                            real_timeout.connect,
+                            ceil_threshold=real_timeout.ceil_threshold,
+                        ):
                             assert self._connector is not None
                             conn = await self._connector.connect(
                                 req, traces=traces, timeout=real_timeout
@@ -494,6 +515,7 @@ class ClientSession:
                         auto_decompress=self._auto_decompress,
                         read_timeout=real_timeout.sock_read,
                         read_bufsize=read_bufsize,
+                        timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
                     )
 
                     try:
@@ -519,7 +541,7 @@ class ClientSession:
 
                         for trace in traces:
                             await trace.send_request_redirect(
-                                method, url, headers, resp
+                                method, url.update_query(params), headers, resp
                             )
 
                         redirects += 1
@@ -607,7 +629,9 @@ class ClientSession:
             resp._history = tuple(history)
 
             for trace in traces:
-                await trace.send_request_end(method, url, headers, resp)
+                await trace.send_request_end(
+                    method, url.update_query(params), headers, resp
+                )
             return resp
 
         except BaseException as e:
@@ -618,7 +642,9 @@ class ClientSession:
                 handle = None
 
             for trace in traces:
-                await trace.send_request_exception(method, url, headers, e)
+                await trace.send_request_exception(
+                    method, url.update_query(params), headers, e
+                )
             raise
 
     def ws_connect(
@@ -627,13 +653,14 @@ class ClientSession:
         *,
         method: str = hdrs.METH_GET,
         protocols: Iterable[str] = (),
-        timeout: Union[ClientWSTimeout, float, _SENTINEL] = sentinel,
+        timeout: Union[ClientWSTimeout, float, _SENTINEL, None] = sentinel,
         receive_timeout: Optional[float] = None,
         autoclose: bool = True,
         autoping: bool = True,
         heartbeat: Optional[float] = None,
         auth: Optional[BasicAuth] = None,
         origin: Optional[str] = None,
+        params: Optional[Mapping[str, str]] = None,
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
@@ -655,6 +682,7 @@ class ClientSession:
                 heartbeat=heartbeat,
                 auth=auth,
                 origin=origin,
+                params=params,
                 headers=headers,
                 proxy=proxy,
                 proxy_auth=proxy_auth,
@@ -671,13 +699,14 @@ class ClientSession:
         *,
         method: str = hdrs.METH_GET,
         protocols: Iterable[str] = (),
-        timeout: Union[ClientWSTimeout, float, _SENTINEL] = sentinel,
+        timeout: Union[ClientWSTimeout, float, _SENTINEL, None] = sentinel,
         receive_timeout: Optional[float] = None,
         autoclose: bool = True,
         autoping: bool = True,
         heartbeat: Optional[float] = None,
         auth: Optional[BasicAuth] = None,
         origin: Optional[str] = None,
+        params: Optional[Mapping[str, str]] = None,
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
@@ -686,7 +715,9 @@ class ClientSession:
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
     ) -> ClientWebSocketResponse:
-        if timeout is not sentinel:
+        if timeout is sentinel or timeout is None:
+            ws_timeout = DEFAULT_WS_CLIENT_TIMEOUT
+        else:
             if isinstance(timeout, ClientWSTimeout):
                 ws_timeout = timeout
             else:
@@ -697,9 +728,8 @@ class ClientSession:
                     DeprecationWarning,
                     stacklevel=2,
                 )
-                ws_timeout = ClientWSTimeout(ws_close=timeout)  # type: ignore[arg-type]
-        else:
-            ws_timeout = DEFAULT_WS_CLIENT_TIMEOUT
+                ws_timeout = ClientWSTimeout(ws_close=timeout)
+
         if receive_timeout is not None:
             warnings.warn(
                 "float parameter 'receive_timeout' "
@@ -711,7 +741,7 @@ class ClientSession:
             ws_timeout = dataclasses.replace(ws_timeout, ws_receive=receive_timeout)
 
         if headers is None:
-            real_headers = CIMultiDict()  # type: CIMultiDict[str]
+            real_headers: CIMultiDict[str] = CIMultiDict()
         else:
             real_headers = CIMultiDict(headers)
 
@@ -745,6 +775,7 @@ class ClientSession:
         resp = await self.request(
             method,
             url,
+            params=params,
             headers=real_headers,
             read_until_eof=False,
             auth=auth,
@@ -833,9 +864,9 @@ class ClientSession:
             assert conn_proto is not None
             transport = conn.transport
             assert transport is not None
-            reader = FlowControlDataQueue(
+            reader: FlowControlDataQueue[WSMessage] = FlowControlDataQueue(
                 conn_proto, 2 ** 16, loop=self._loop
-            )  # type: FlowControlDataQueue[WSMessage]
+            )
             conn_proto.set_parser(WebSocketReader(reader, max_msg_size), reader)
             writer = WebSocketWriter(
                 conn_proto,
@@ -869,7 +900,7 @@ class ClientSession:
         if headers:
             if not isinstance(headers, (MultiDictProxy, MultiDict)):
                 headers = CIMultiDict(headers)
-            added_names = set()  # type: Set[str]
+            added_names: Set[str] = set()
             for key, value in headers.items():
                 if key in added_names:
                     result.add(key, value)
@@ -1006,23 +1037,21 @@ class ClientSession:
     def raise_for_status(
         self,
     ) -> Union[bool, Callable[[ClientResponse], Awaitable[None]]]:
-        """
-        Should `ClientResponse.raise_for_status()`
-        be called for each response
-        """
+        """Should `ClientResponse.raise_for_status()` be called for each response."""
         return self._raise_for_status
 
     @property
     def auto_decompress(self) -> bool:
-        """Should the body response be automatically decompressed"""
+        """Should the body response be automatically decompressed."""
         return self._auto_decompress
 
     @property
     def trust_env(self) -> bool:
         """
-        Should get proxies information
-        from HTTP_PROXY / HTTPS_PROXY environment variables
-        or ~/.netrc file if present
+        Should proxies information from environment or netrc be trusted.
+
+        Information is from HTTP_PROXY / HTTPS_PROXY environment variables
+        or ~/.netrc file if present.
         """
         return self._trust_env
 
@@ -1060,7 +1089,7 @@ class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType
     def send(self, arg: None) -> "asyncio.Future[Any]":
         return self._coro.send(arg)
 
-    def throw(self, arg: BaseException) -> None:  # type: ignore[arg-type,override]
+    def throw(self, arg: BaseException) -> None:  # type: ignore[override]
         self._coro.throw(arg)
 
     def close(self) -> None:
@@ -1117,7 +1146,7 @@ class _SessionRequestContextManager:
         session: ClientSession,
     ) -> None:
         self._coro = coro
-        self._resp = None  # type: Optional[ClientResponse]
+        self._resp: Optional[ClientResponse] = None
         self._session = session
 
     async def __aenter__(self) -> ClientResponse:
@@ -1165,7 +1194,9 @@ def request(
     connector: Optional[BaseConnector] = None,
     read_bufsize: Optional[int] = None,
 ) -> _SessionRequestContextManager:
-    """Constructs and sends a request. Returns response object.
+    """Constructs and sends a request.
+
+    Returns response object.
     method - HTTP method
     url - request url
     params - (optional) Dictionary or bytes to be sent in the query

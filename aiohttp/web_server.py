@@ -28,7 +28,7 @@ class Server:
                 stacklevel=2,
             )
         self._loop = asyncio.get_running_loop()
-        self._connections = {}  # type: Dict[RequestHandler, asyncio.Transport]
+        self._connections: Dict[RequestHandler, asyncio.Transport] = {}
         self._kwargs = kwargs
         self.requests_count = 0
         self.request_handler = handler
@@ -65,4 +65,13 @@ class Server:
         self._connections.clear()
 
     def __call__(self) -> RequestHandler:
-        return RequestHandler(self, loop=self._loop, **self._kwargs)
+        try:
+            return RequestHandler(self, loop=self._loop, **self._kwargs)
+        except TypeError:
+            # Failsafe creation: remove all custom handler_args
+            kwargs = {
+                k: v
+                for k, v in self._kwargs.items()
+                if k in ["debug", "access_log_class"]
+            }
+            return RequestHandler(self, loop=self._loop, **kwargs)

@@ -1,5 +1,6 @@
 # type: ignore
 import gzip
+from socket import socket
 from typing import Any
 from unittest import mock
 
@@ -14,6 +15,7 @@ from aiohttp.test_utils import (
     RawTestServer as _RawTestServer,
     TestClient as _TestClient,
     TestServer as _TestServer,
+    get_port_socket,
     loop_context,
     make_mocked_request,
 )
@@ -195,6 +197,12 @@ def test_make_mocked_request_app_can_store_values() -> None:
     assert req.app["a_field"] == "a_value"
 
 
+def test_make_mocked_request_app_access_non_existing() -> None:
+    req = make_mocked_request("GET", "/")
+    with pytest.raises(AttributeError):
+        req.app.foo
+
+
 def test_make_mocked_request_match_info() -> None:
     req = make_mocked_request("GET", "/", match_info={"a": "1", "b": "2"})
     assert req.match_info == {"a": "1", "b": "2"}
@@ -335,3 +343,21 @@ async def test_test_server_hostnames(
     async with server:
         pass
     assert server.host == expected_host
+
+
+@pytest.mark.parametrize("test_server_cls", [_TestServer, _RawTestServer])
+async def test_base_test_server_socket_factory(
+    test_server_cls: type, app: Any, loop: Any
+) -> None:
+    factory_called = False
+
+    def factory(*args, **kwargs) -> socket:
+        nonlocal factory_called
+        factory_called = True
+        return get_port_socket(*args, **kwargs)
+
+    server = test_server_cls(app, loop=loop, socket_factory=factory)
+    async with server:
+        pass
+
+    assert factory_called

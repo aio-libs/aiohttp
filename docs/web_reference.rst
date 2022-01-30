@@ -149,6 +149,14 @@ and :ref:`aiohttp-web-signals` handlers.
 
       .. seealso:: :ref:`aiohttp-web-forwarded-support`
 
+   .. attribute:: client_max_size
+
+      The maximum size of the request body.
+
+      The value could be overridden by :meth:`~BaseRequest.clone`.
+
+      Read-only :class:`int` property.
+
    .. attribute:: path_qs
 
       The URL including PATH_INFO and the query string. e.g.,
@@ -1303,7 +1311,7 @@ Application
 
 Application is a synonym for web-server.
 
-To get fully working example, you have to make *application*, register
+To get a fully working example, you have to make *application*, register
 supported urls in *router* and pass it to :func:`aiohttp.web.run_app`
 or :class:`aiohttp.web.AppRunner`.
 
@@ -1316,11 +1324,12 @@ properties for later access from a :ref:`handler<aiohttp-web-handler>` via the
 :attr:`Request.app` property::
 
    app = Application()
-   app['database'] = await aiopg.create_engine(**db_config)
+   database = AppKey("database", AsyncEngine)
+   app[database] = await create_async_engine(db_url)
 
    async def handler(request):
-       with (await request.app['database']) as conn:
-           conn.execute("DELETE * FROM table")
+       async with request.app[database].begin() as conn:
+           await conn.execute("DELETE * FROM table")
 
 Although :class:`Application` is a :obj:`dict`-like object, it can't be
 duplicated like one using :meth:`~aiohttp.web.Application.copy`.
@@ -1372,7 +1381,7 @@ duplicated like one using :meth:`~aiohttp.web.Application.copy`.
 
    .. attribute:: on_response_prepare
 
-      A :class:`~aiohttp.Signal` that is fired near the end
+      A :class:`~aiosignal.Signal` that is fired near the end
       of :meth:`StreamResponse.prepare` with parameters *request* and
       *response*. It can be used, for example, to add custom headers to each
       response, or to modify the default headers computed by the application,
@@ -1385,7 +1394,7 @@ duplicated like one using :meth:`~aiohttp.web.Application.copy`.
 
    .. attribute:: on_startup
 
-      A :class:`~aiohttp.Signal` that is fired on application start-up.
+      A :class:`~aiosignal.Signal` that is fired on application start-up.
 
       Subscribers may use the signal to run background tasks in the event
       loop along with the application's request handler just after the
@@ -1400,7 +1409,7 @@ duplicated like one using :meth:`~aiohttp.web.Application.copy`.
 
    .. attribute:: on_shutdown
 
-      A :class:`~aiohttp.Signal` that is fired on application shutdown.
+      A :class:`~aiosignal.Signal` that is fired on application shutdown.
 
       Subscribers may use the signal for gracefully closing long running
       connections, e.g. websockets and data streaming.
@@ -1420,7 +1429,7 @@ duplicated like one using :meth:`~aiohttp.web.Application.copy`.
 
    .. attribute:: on_cleanup
 
-      A :class:`~aiohttp.Signal` that is fired on application cleanup.
+      A :class:`~aiosignal.Signal` that is fired on application cleanup.
 
       Subscribers may use the signal for gracefully closing
       connections to database server etc.
@@ -1534,6 +1543,25 @@ duplicated like one using :meth:`~aiohttp.web.Application.copy`.
       route name). All those are router implementation details (but,
       sure, you need to deal with that methods after choosing the
       router for your application).
+
+
+AppKey
+^^^^^^
+
+:class:`AppKey` should be used for the keys in :class:`Application`. They
+provide type safety when checking your code with a type checker (e.g. mypy).
+
+.. class:: AppKey(name, t)
+
+   The class provides a type-safe alternative to `str` keys. They also avoid
+   name clashes with keys from different libraries etc.
+
+   :param name: A name to help with debugging. This should be the same as
+                the variable name (much like how :class:`typing.TypeVar`
+                is used).
+
+   :param t: The type that should be used for the value in the dict (e.g.
+             `str`, `Iterator[int]` etc.)
 
 
 Server
@@ -2583,6 +2611,10 @@ application on specific TCP or Unix socket, e.g.::
                             it means that the session global value is used.
 
       .. versionadded:: 3.7
+   :param bool auto_decompress: Automatically decompress request body,
+      ``True`` by default.
+
+      .. versionadded:: 3.8
 
 
 
@@ -2780,13 +2812,15 @@ Utilities
                       reuse_address=None, \
                       reuse_port=None)
 
-   A utility function for running an application, serving it until
+   A high-level function for running an application, serving it until
    keyboard interrupt and performing a
    :ref:`aiohttp-web-graceful-shutdown`.
 
-   Suitable as handy tool for scaffolding aiohttp based projects.
-   Perhaps production config will use more sophisticated runner but it
-   good enough at least at very beginning stage.
+   This is a high-level function very similar to :func:`asyncio.run` and
+   should be used as the main entry point for an application. The
+   :class:`Application` object essentially becomes our `main()` function.
+   If additional tasks need to be run in parallel, see
+   :ref:`aiohttp-web-complex-applications`.
 
    The server will listen on any host or Unix domain socket path you supply.
    If no hosts or paths are supplied, or only a port is supplied, a TCP server

@@ -91,16 +91,16 @@ class WebSocketResponse(StreamResponse):
         super().__init__(status=101)
         self._length_check = False
         self._protocols = protocols
-        self._ws_protocol = None  # type: Optional[str]
-        self._writer = None  # type: Optional[WebSocketWriter]
-        self._reader = None  # type: Optional[FlowControlDataQueue[WSMessage]]
+        self._ws_protocol: Optional[str] = None
+        self._writer: Optional[WebSocketWriter] = None
+        self._reader: Optional[FlowControlDataQueue[WSMessage]] = None
         self._closed = False
         self._closing = False
         self._conn_lost = 0
-        self._close_code = None  # type: Optional[int]
-        self._loop = None  # type: Optional[asyncio.AbstractEventLoop]
-        self._waiting = None  # type: Optional[asyncio.Future[bool]]
-        self._exception = None  # type: Optional[BaseException]
+        self._close_code: Optional[int] = None
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._waiting: Optional[asyncio.Future[bool]] = None
+        self._exception: Optional[BaseException] = None
         self._timeout = timeout
         self._receive_timeout = receive_timeout
         self._autoclose = autoclose
@@ -128,7 +128,12 @@ class WebSocketResponse(StreamResponse):
         if self._heartbeat is not None:
             assert self._loop is not None
             self._heartbeat_cb = call_later(
-                self._send_heartbeat, self._heartbeat, self._loop
+                self._send_heartbeat,
+                self._heartbeat,
+                self._loop,
+                timeout_ceil_threshold=self._req._protocol._timeout_ceil_threshold
+                if self._req is not None
+                else 5,
             )
 
     def _send_heartbeat(self) -> None:
@@ -142,7 +147,12 @@ class WebSocketResponse(StreamResponse):
             if self._pong_response_cb is not None:
                 self._pong_response_cb.cancel()
             self._pong_response_cb = call_later(
-                self._pong_not_received, self._pong_heartbeat, self._loop
+                self._pong_not_received,
+                self._pong_heartbeat,
+                self._loop,
+                timeout_ceil_threshold=self._req._protocol._timeout_ceil_threshold
+                if self._req is not None
+                else 5,
             )
 
     def _pong_not_received(self) -> None:
@@ -219,9 +229,9 @@ class WebSocketResponse(StreamResponse):
         accept_val = base64.b64encode(
             hashlib.sha1(key.encode() + WS_KEY).digest()
         ).decode()
-        response_headers = CIMultiDict(  # type: ignore[var-annotated]
+        response_headers = CIMultiDict(
             {
-                hdrs.UPGRADE: "websocket",  # type: ignore[arg-type]
+                hdrs.UPGRADE: "websocket",
                 hdrs.CONNECTION: "upgrade",
                 hdrs.SEC_WEBSOCKET_ACCEPT: accept_val,
             }

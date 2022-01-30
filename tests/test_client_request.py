@@ -88,6 +88,11 @@ def test_method3(make_request: Any) -> None:
     assert req.method == "HEAD"
 
 
+def test_method_invalid(make_request: Any) -> None:
+    with pytest.raises(ValueError, match="Method cannot contain non-token characters"):
+        make_request("METHOD WITH\nWHITESPACES", "http://python.org/")
+
+
 def test_version_1_0(make_request: Any) -> None:
     req = make_request("get", "http://python.org/", version="1.0")
     assert req.version == (1, 0)
@@ -117,11 +122,6 @@ def test_request_info_with_fragment(make_request: Any) -> None:
 def test_version_err(make_request: Any) -> None:
     with pytest.raises(ValueError):
         make_request("get", "http://python.org/", version="1.c")
-
-
-def test_https_proxy(make_request: Any) -> None:
-    with pytest.raises(ValueError):
-        make_request("get", "http://python.org/", proxy=URL("https://proxy.org"))
 
 
 def test_keep_alive(make_request: Any) -> None:
@@ -651,6 +651,21 @@ async def test_urlencoded_formdata_charset(loop: Any, conn: Any) -> None:
     assert "application/x-www-form-urlencoded; charset=koi8-r" == req.headers.get(
         "CONTENT-TYPE"
     )
+
+
+async def test_formdata_boundary_from_headers(loop: Any, conn: Any) -> None:
+    boundary = "some_boundary"
+    file_path = pathlib.Path(__file__).parent / "aiohttp.png"
+    with file_path.open("rb") as f:
+        req = ClientRequest(
+            "post",
+            URL("http://python.org"),
+            data={"aiohttp.png": f},
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+            loop=loop,
+        )
+        await req.send(conn)
+        assert req.body._boundary == boundary.encode()
 
 
 async def test_post_data(loop: Any, conn: Any) -> None:

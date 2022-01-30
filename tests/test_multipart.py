@@ -1225,6 +1225,8 @@ class TestMultipartWriter:
             aiohttp.MultipartWriter(boundary="тест")
         with pytest.raises(ValueError):
             aiohttp.MultipartWriter(boundary="test\n")
+        with pytest.raises(ValueError):
+            aiohttp.MultipartWriter(boundary="X" * 71)
 
     def test_default_headers(self, writer: Any) -> None:
         expected = {CONTENT_TYPE: 'multipart/mixed; boundary=":"'}

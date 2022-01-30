@@ -7,10 +7,8 @@ CYS := $(wildcard aiohttp/*.pyx) $(wildcard aiohttp/*.pyi)  $(wildcard aiohttp/*
 PYXS := $(wildcard aiohttp/*.pyx)
 CS := $(wildcard aiohttp/*.c)
 PYS := $(wildcard aiohttp/*.py)
-REQS := $(wildcard requirements/*.txt)
-ALLS := $(sort $(CYS) $(CS) $(PYS) $(REQS))
 IN := doc-spelling lint cython dev
-REQIN := $(foreach fname,$(IN),requirements/$(fname).in)
+ALLS := $(sort $(CYS) $(CS) $(PYS) $(REQS))
 
 
 .PHONY: all
@@ -52,7 +50,7 @@ endif
 	@python -m pip install --upgrade pip
 
 .install-cython: .update-pip $(call to-hash,requirements/cython.txt)
-	@pip install -r requirements/cython.txt
+	@pip install -r requirements/cython.txt -c requirements/constraints.txt
 	@touch .install-cython
 
 aiohttp/_find_header.c: $(call to-hash,aiohttp/hdrs.py ./tools/gen.py)
@@ -62,12 +60,21 @@ aiohttp/_find_header.c: $(call to-hash,aiohttp/hdrs.py ./tools/gen.py)
 aiohttp/%.c: aiohttp/%.pyx $(call to-hash,$(CYS)) aiohttp/_find_header.c
 	cython -3 -o $@ $< -I aiohttp
 
+vendor/llhttp/node_modules: vendor/llhttp/package.json
+	cd vendor/llhttp; npm install
+
+.llhttp-gen: vendor/llhttp/node_modules
+	$(MAKE) -C vendor/llhttp generate
+	@touch .llhttp-gen
+
+.PHONY: generate-llhttp
+generate-llhttp: .llhttp-gen
 
 .PHONY: cythonize
 cythonize: .install-cython $(PYXS:.pyx=.c)
 
 .install-deps: .install-cython $(PYXS:.pyx=.c) $(call to-hash,$(CYS) $(REQS))
-	@pip install -r requirements/dev.txt
+	@pip install -r requirements/dev.txt -c requirements/constraints.txt
 	@touch .install-deps
 
 .PHONY: lint
@@ -81,8 +88,8 @@ fmt format:
 mypy:
 	mypy
 
-.develop: .install-deps $(call to-hash,$(PYS) $(CYS) $(CS))
-	pip install -e .
+.develop: .install-deps generate-llhttp $(call to-hash,$(PYS) $(CYS) $(CS))
+	pip install -e . -c requirements/constraints.txt
 	@touch .develop
 
 .PHONY: test
@@ -92,15 +99,41 @@ test: .develop
 .PHONY: vtest
 vtest: .develop
 	@pytest -s -v
+	@python -X dev -m pytest -s -v -m dev_mode
 
 .PHONY: vvtest
 vvtest: .develop
 	@pytest -vv
+	@python -X dev -m pytest -s -vv -m dev_mode
 
 .PHONY: cov-dev
 cov-dev: .develop
 	@pytest --cov-report=html
 	@echo "xdg-open file://`pwd`/htmlcov/index.html"
+
+
+define run_tests_in_docker
+	DOCKER_BUILDKIT=1 docker build --build-arg PYTHON_VERSION=$(1) --build-arg AIOHTTP_NO_EXTENSIONS=$(2) -t "aiohttp-test-$(1)-$(2)" -f tools/testing/Dockerfile .
+	docker run --rm -ti -v `pwd`:/src -w /src "aiohttp-test-$(1)-$(2)" $(TEST_SPEC)
+endef
+
+.PHONY: test-3.7-no-extensions test-3.7 test-3.8-no-extensions test-3.8 test-3.9-no-extensions test-3.9 test-3.10-no-extensions test-3.10
+test-3.7-no-extensions:
+	$(call run_tests_in_docker,3.7,y)
+test-3.7:
+	$(call run_tests_in_docker,3.7,n)
+test-3.8-no-extensions:
+	$(call run_tests_in_docker,3.8,y)
+test-3.8:
+	$(call run_tests_in_docker,3.8,n)
+test-3.9-no-extensions:
+	$(call run_tests_in_docker,3.9,y)
+test-3.9:
+	$(call run_tests_in_docker,3.9,n)
+test-3.10-no-extensions:
+	$(call run_tests_in_docker,3.10,y)
+test-3.10:
+	$(call run_tests_in_docker,3.10,n)
 
 .PHONY: clean
 clean:
@@ -135,6 +168,9 @@ clean:
 	@rm -rf aiohttp.egg-info
 	@rm -f .install-deps
 	@rm -f .install-cython
+	@rm -rf vendor/llhttp/node_modules
+	@rm -f .llhttp-gen
+	@$(MAKE) -C vendor/llhttp clean
 
 .PHONY: doc
 doc:
@@ -146,13 +182,14 @@ doc-spelling:
 	@make -C docs spelling SPHINXOPTS="-W --keep-going -n -E"
 
 .PHONY: compile-deps
-compile-deps: .update-pip
-	@pip install pip-tools
-	@$(foreach fname,$(REQIN),pip-compile --allow-unsafe -q $(fname);)
+compile-deps: .update-pip $(REQS)
+	pip-compile --no-header --allow-unsafe -q --strip-extras \
+		-o requirements/constraints.txt \
+		requirements/constraints.in
 
 .PHONY: install
 install: .update-pip
-	@pip install -r requirements/dev.txt
+	@pip install -r requirements/dev.txt -c requirements/constraints.txt
 
 .PHONY: install-dev
 install-dev: .develop

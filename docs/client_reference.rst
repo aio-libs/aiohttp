@@ -38,7 +38,8 @@ Usage example::
 
 The client session supports the context manager protocol for self closing.
 
-.. class:: ClientSession(*, connector=None, loop=None, cookies=None, \
+.. class:: ClientSession(base_url=None, *, \
+                         connector=None, cookies=None, \
                          headers=None, skip_auto_headers=None, \
                          auth=None, json_serialize=json.dumps, \
                          version=aiohttp.HttpVersion11, \
@@ -55,6 +56,11 @@ The client session supports the context manager protocol for self closing.
 
    The class for creating client sessions and making requests.
 
+
+   :param base_url: Base part of the URL (optional)
+      If set it allows to skip the base part in request calls.
+
+      .. versionadded:: 3.8
 
    :param aiohttp.BaseConnector connector: BaseConnector
       sub-class instance to support connection pooling.
@@ -644,6 +650,7 @@ The client session supports the context manager protocol for self closing.
                             autoping=True,\
                             heartbeat=None,\
                             origin=None, \
+                            params=None, \
                             headers=None, \
                             proxy=None, proxy_auth=None, ssl=None, \
                             verify_ssl=None, fingerprint=None, \
@@ -684,6 +691,21 @@ The client session supports the context manager protocol for self closing.
                               reception.(optional)
 
       :param str origin: Origin header to send to server(optional)
+
+      :param params: Mapping, iterable of tuple of *key*/*value* pairs or
+                     string to be sent as parameters in the query
+                     string of the new request. Ignored for subsequent
+                     redirected requests (optional)
+
+                     Allowed values are:
+
+                     - :class:`collections.abc.Mapping` e.g. :class:`dict`,
+                       :class:`multidict.MultiDict` or
+                       :class:`multidict.MultiDictProxy`
+                     - :class:`collections.abc.Iterable` e.g. :class:`tuple` or
+                       :class:`list`
+                     - :class:`str` with preferably url-encoded content
+                       (**Warning:** content will not be encoded by *aiohttp*)
 
       :param dict headers: HTTP Headers to send with
                            the request (optional)
@@ -1374,10 +1396,10 @@ Response object
       specified *encoding* parameter.
 
       If *encoding* is ``None`` content encoding is autocalculated
-      using ``Content-Type`` HTTP header and *chardet* tool if the
+      using ``Content-Type`` HTTP header and *charset-normalizer* tool if the
       header is not provided by server.
 
-      :term:`cchardet` is used with fallback to :term:`chardet` if
+      :term:`cchardet` is used with fallback to :term:`charset-normalizer` if
       *cchardet* is not available.
 
       Close underlying connection if data reading gets an error,
@@ -1389,14 +1411,14 @@ Response object
 
       :return str: decoded *BODY*
 
-      :raise LookupError: if the encoding detected by chardet or cchardet is
+      :raise LookupError: if the encoding detected by cchardet is
                           unknown by Python (e.g. VISCII).
 
       .. note::
 
          If response has no ``charset`` info in ``Content-Type`` HTTP
-         header :term:`cchardet` / :term:`chardet` is used for content
-         encoding autodetection.
+         header :term:`cchardet` / :term:`charset-normalizer` is used for
+         content encoding autodetection.
 
          It may hurt performance. If page encoding is known passing
          explicit *encoding* parameter might help::
@@ -1411,7 +1433,7 @@ Response object
       a ``read`` call will be done,
 
       If *encoding* is ``None`` content encoding is autocalculated
-      using :term:`cchardet` or :term:`chardet` as fallback if
+      using :term:`cchardet` or :term:`charset-normalizer` as fallback if
       *cchardet* is not available.
 
       if response's `content-type` does not match `content_type` parameter
@@ -1449,11 +1471,11 @@ Response object
       Automatically detect content encoding using ``charset`` info in
       ``Content-Type`` HTTP header. If this info is not exists or there
       are no appropriate codecs for encoding then :term:`cchardet` /
-      :term:`chardet` is used.
+      :term:`charset-normalizer` is used.
 
       Beware that it is not always safe to use the result of this function to
       decode a response. Some encodings detected by cchardet are not known by
-      Python (e.g. VISCII).
+      Python (e.g. VISCII). *charset-normalizer* is not concerned by that issue.
 
       :raise RuntimeError: if called before the body has been read,
                            for :term:`cchardet` usage
@@ -1688,6 +1710,31 @@ ClientTimeout
 
    .. versionadded:: 3.3
 
+
+   .. note::
+
+      Timeouts larger than 5 seconds are rounded for scheduling on the next
+      second boundary (an absolute time where microseconds part is zero) for the
+      sake of performance.
+
+      E.g., assume a timeout is ``10``, absolute time when timeout should expire
+      is ``loop.time() + 5``, and it points to ``12345.67 + 10`` which is equal
+      to ``12355.67``.
+
+      The absolute time for the timeout cancellation is ``12356``.
+
+      It leads to grouping all close scheduled timeout expirations to exactly
+      the same time to reduce amount of loop wakeups.
+
+      .. versionchanged:: 3.7
+
+         Rounding to the next seconds boundary is disabled for timeouts smaller
+         than 5 seconds for the sake of easy debugging.
+
+         In turn, tiny timeouts can lead to significant performance degradation
+         on production environment.
+
+
 ETag
 ^^^^
 
@@ -1778,7 +1825,7 @@ BasicAuth
 CookieJar
 ^^^^^^^^^
 
-.. class:: CookieJar(*, unsafe=False, quote_cookie=True, loop=None)
+.. class:: CookieJar(*, unsafe=False, quote_cookie=True, treat_as_secure_origin = [])
 
    The cookie jar instance is available as :attr:`ClientSession.cookie_jar`.
 
@@ -1810,11 +1857,17 @@ CookieJar
 
       .. versionadded:: 3.7
 
-   :param bool loop: an :ref:`event loop<asyncio-event-loop>` instance.
-      See :class:`aiohttp.abc.AbstractCookieJar`
+   :param treat_as_secure_origin: (optional) Mark origins as secure
+                                  for cookies marked as Secured. Possible types are
 
-      .. deprecated:: 2.0
+                                  Possible types are:
 
+                                  - :class:`tuple` or :class:`list` of
+                                    :class:`str` or :class:`yarl.URL`
+                                  - :class:`str`
+                                  - :class:`yarl.URL`
+
+      .. versionadded:: 3.8
 
    .. method:: update_cookies(cookies, response_url=None)
 
@@ -2163,7 +2216,7 @@ Connection errors
 
    Server disconnected.
 
-   Derived from :exc:`~aiohttp.ServerDisconnectionError`
+   Derived from :exc:`~aiohttp.ServerConnectionError`
 
    .. attribute:: message
 

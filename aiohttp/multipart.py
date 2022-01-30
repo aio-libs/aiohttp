@@ -103,7 +103,7 @@ def parse_content_disposition(
         warnings.warn(BadContentDispositionHeader(header))
         return None, {}
 
-    params = {}  # type: Dict[str, str]
+    params: Dict[str, str] = {}
     while parts:
         item = parts.pop(0)
 
@@ -154,7 +154,7 @@ def parse_content_disposition(
             elif parts:
                 # maybe just ; in filename, in any case this is just
                 # one case fix, for proper fix we need to redesign parser
-                _value = "{};{}".format(value, parts[0])
+                _value = f"{value};{parts[0]}"
                 if is_quoted(_value):
                     parts.pop(0)
                     value = unescape(_value[1:-1].lstrip("\\/"))
@@ -242,8 +242,10 @@ class MultipartResponseWrapper:
         return item
 
     async def release(self) -> None:
-        """Releases the connection gracefully, reading all the content
-        to the void."""
+        """Release the connection gracefully.
+
+        All remaining content is read to the void.
+        """
         await self.resp.release()
 
 
@@ -268,11 +270,10 @@ class BodyPartReader:
         length = self.headers.get(CONTENT_LENGTH, None)
         self._length = int(length) if length is not None else None
         self._read_bytes = 0
-        # TODO: typeing.Deque is not supported by Python 3.5
         self._unread: Deque[bytes] = deque()
-        self._prev_chunk = None  # type: Optional[bytes]
+        self._prev_chunk: Optional[bytes] = None
         self._content_eof = 0
-        self._cache = {}  # type: Dict[str, Any]
+        self._cache: Dict[str, Any] = {}
 
     def __aiter__(self) -> AsyncIterator["BodyPartReader"]:
         return self  # type: ignore[return-value]
@@ -453,9 +454,7 @@ class BodyPartReader:
         return cast(Dict[str, Any], json.loads(data.decode(encoding)))
 
     async def form(self, *, encoding: Optional[str] = None) -> List[Tuple[str, str]]:
-        """Like read(), but assumes that body parts contains form
-        urlencoded data.
-        """
+        """Like read(), but assumes that body parts contain form urlencoded data."""
         data = await self.read(decode=True)
         if not data:
             return []
@@ -474,7 +473,9 @@ class BodyPartReader:
         return self._at_eof
 
     def decode(self, data: bytes) -> bytes:
-        """Decodes data according the specified Content-Encoding
+        """Decodes data.
+
+        Decoding is done according the specified Content-Encoding
         or Content-Transfer-Encoding headers value.
         """
         if CONTENT_TRANSFER_ENCODING in self.headers:
@@ -517,17 +518,18 @@ class BodyPartReader:
 
     @reify
     def name(self) -> Optional[str]:
-        """Returns name specified in Content-Disposition header or None
-        if missed or header is malformed.
-        """
+        """Returns name specified in Content-Disposition header.
 
+        If the header is missing or malformed, returns None.
+        """
         _, params = parse_content_disposition(self.headers.get(CONTENT_DISPOSITION))
         return content_disposition_filename(params, "name")
 
     @reify
     def filename(self) -> Optional[str]:
-        """Returns filename specified in Content-Disposition header or None
-        if missed or header is malformed.
+        """Returns filename specified in Content-Disposition header.
+
+        Returns None if the header is missing or malformed.
         """
         _, params = parse_content_disposition(self.headers.get(CONTENT_DISPOSITION))
         return content_disposition_filename(params, "filename")
@@ -538,7 +540,7 @@ class BodyPartReaderPayload(Payload):
     def __init__(self, value: BodyPartReader, *args: Any, **kwargs: Any) -> None:
         super().__init__(value, *args, **kwargs)
 
-        params = {}  # type: Dict[str, str]
+        params: Dict[str, str] = {}
         if value.name is not None:
             params["name"] = value.name
         if value.filename is not None:
@@ -577,12 +579,10 @@ class MultipartReader:
         self._boundary = ("--" + self._get_boundary()).encode()
         self._newline = _newline
         self._content = content
-        self._last_part = (
-            None
-        )  # type: Optional[Union['MultipartReader', BodyPartReader]]
+        self._last_part: Optional[Union["MultipartReader", BodyPartReader]] = None
         self._at_eof = False
         self._at_bof = True
-        self._unread = []  # type: List[bytes]
+        self._unread: List[bytes] = []
 
     def __aiter__(
         self,
@@ -612,9 +612,7 @@ class MultipartReader:
         return obj
 
     def at_eof(self) -> bool:
-        """Returns True if the final boundary was reached or
-        False otherwise.
-        """
+        """Returns True if the final boundary was reached, false otherwise."""
         return self._at_eof
 
     async def next(
@@ -654,8 +652,9 @@ class MultipartReader:
         self,
         headers: "CIMultiDictProxy[str]",
     ) -> Union["MultipartReader", BodyPartReader]:
-        """Dispatches the response by the `Content-Type` header, returning
-        suitable reader instance.
+        """Dispatches the response by the `Content-Type` header.
+
+        Returns a suitable reader instance.
 
         :param dict headers: Response headers
         """
@@ -779,11 +778,15 @@ class MultipartWriter(Payload):
             self._boundary = boundary.encode("ascii")
         except UnicodeEncodeError:
             raise ValueError("boundary should contain ASCII only chars") from None
+
+        if len(boundary) > 70:
+            raise ValueError("boundary %r is too long (70 chars max)" % boundary)
+
         ctype = f"multipart/{subtype}; boundary={self._boundary_value}"
 
         super().__init__(None, content_type=ctype)
 
-        self._parts = []  # type: List[_Part]
+        self._parts: List[_Part] = []
 
     def __enter__(self) -> "MultipartWriter":
         return self
@@ -812,7 +815,7 @@ class MultipartWriter(Payload):
     def _boundary_value(self) -> str:
         """Wrap boundary parameter value in quotes, if necessary.
 
-        Reads self.boundary and returns a unicode sting.
+        Reads self.boundary and returns a unicode string.
         """
         # Refer to RFCs 7231, 7230, 5234.
         #
@@ -862,20 +865,20 @@ class MultipartWriter(Payload):
     def append_payload(self, payload: Payload) -> Payload:
         """Adds a new body part to multipart writer."""
         # compression
-        encoding = payload.headers.get(
+        encoding: Optional[str] = payload.headers.get(
             CONTENT_ENCODING,
             "",
-        ).lower()  # type: Optional[str]
+        ).lower()
         if encoding and encoding not in ("deflate", "gzip", "identity"):
             raise RuntimeError(f"unknown content encoding: {encoding}")
         if encoding == "identity":
             encoding = None
 
         # te encoding
-        te_encoding = payload.headers.get(
+        te_encoding: Optional[str] = payload.headers.get(
             CONTENT_TRANSFER_ENCODING,
             "",
-        ).lower()  # type: Optional[str]
+        ).lower()
         if te_encoding not in ("", "base64", "quoted-printable", "binary"):
             raise RuntimeError(
                 "unknown content transfer encoding: {}" "".format(te_encoding)
@@ -967,9 +970,9 @@ class MultipartWriter(Payload):
 class MultipartPayloadWriter:
     def __init__(self, writer: Any) -> None:
         self._writer = writer
-        self._encoding = None  # type: Optional[str]
-        self._compress = None  # type: Any
-        self._encoding_buffer = None  # type: Optional[bytearray]
+        self._encoding: Optional[str] = None
+        self._compress: Any = None
+        self._encoding_buffer: Optional[bytearray] = None
 
     def enable_encoding(self, encoding: str) -> None:
         if encoding == "base64":
@@ -978,9 +981,11 @@ class MultipartPayloadWriter:
         elif encoding == "quoted-printable":
             self._encoding = "quoted-printable"
 
-    def enable_compression(self, encoding: str = "deflate") -> None:
+    def enable_compression(
+        self, encoding: str = "deflate", strategy: int = zlib.Z_DEFAULT_STRATEGY
+    ) -> None:
         zlib_mode = 16 + zlib.MAX_WBITS if encoding == "gzip" else -zlib.MAX_WBITS
-        self._compress = zlib.compressobj(wbits=zlib_mode)
+        self._compress = zlib.compressobj(wbits=zlib_mode, strategy=strategy)
 
     async def write_eof(self) -> None:
         if self._compress is not None:

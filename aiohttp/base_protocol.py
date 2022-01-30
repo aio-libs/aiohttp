@@ -15,13 +15,13 @@ class BaseProtocol(asyncio.Protocol):
     )
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
-        self._loop = loop  # type: asyncio.AbstractEventLoop
+        self._loop: asyncio.AbstractEventLoop = loop
         self._paused = False
-        self._drain_waiter = None  # type: Optional[asyncio.Future[None]]
+        self._drain_waiter: Optional[asyncio.Future[None]] = None
         self._connection_lost = False
         self._reading_paused = False
 
-        self.transport = None  # type: Optional[asyncio.Transport]
+        self.transport: Optional[asyncio.Transport] = None
 
     def pause_writing(self) -> None:
         assert not self._paused
@@ -81,7 +81,7 @@ class BaseProtocol(asyncio.Protocol):
         if not self._paused:
             return
         waiter = self._drain_waiter
-        assert waiter is None or waiter.cancelled()
-        waiter = self._loop.create_future()
-        self._drain_waiter = waiter
-        await waiter
+        if waiter is None:
+            waiter = self._loop.create_future()
+            self._drain_waiter = waiter
+        await asyncio.shield(waiter)

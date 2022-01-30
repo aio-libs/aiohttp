@@ -87,10 +87,7 @@ class PayloadAccessError(Exception):
 
 
 class AccessLoggerWrapper(AbstractAsyncAccessLogger):
-    """
-    Wraps an AbstractAccessLogger so it behaves
-    like an AbstractAsyncAccessLogger.
-    """
+    """Wrap an AbstractAccessLogger so it behaves like an AbstractAsyncAccessLogger."""
 
     def __init__(
         self, access_logger: AbstractAccessLogger, loop: asyncio.AbstractEventLoop
@@ -147,6 +144,10 @@ class RequestHandler(BaseProtocol):
 
     max_headers -- Optional maximum header size
 
+    timeout_ceil_threshold -- Optional value to specify
+                              threshold to ceil() timeout
+                              values
+
     """
 
     KEEPALIVE_RESCHEDULE_DELAY = 1
@@ -169,13 +170,13 @@ class RequestHandler(BaseProtocol):
         "_upgrade",
         "_payload_parser",
         "_request_parser",
-        "_reading_paused",
         "logger",
         "access_log",
         "access_logger",
         "_close",
         "_force_close",
         "_current_request",
+        "_timeout_ceil_threshold",
     )
 
     def __init__(
@@ -194,32 +195,34 @@ class RequestHandler(BaseProtocol):
         max_field_size: int = 8190,
         lingering_time: float = 10.0,
         read_bufsize: int = 2 ** 16,
+        auto_decompress: bool = True,
+        timeout_ceil_threshold: float = 5,
     ):
         super().__init__(loop)
 
         self._request_count = 0
         self._keepalive = False
-        self._current_request = None  # type: Optional[BaseRequest]
-        self._manager = manager  # type: Optional[Server]
+        self._current_request: Optional[BaseRequest] = None
+        self._manager: Optional[Server] = manager
         self._request_handler: Optional[_RequestHandler] = manager.request_handler
         self._request_factory: Optional[_RequestFactory] = manager.request_factory
 
         self._tcp_keepalive = tcp_keepalive
         # placeholder to be replaced on keepalive timeout setup
         self._keepalive_time = 0.0
-        self._keepalive_handle = None  # type: Optional[asyncio.Handle]
+        self._keepalive_handle: Optional[asyncio.Handle] = None
         self._keepalive_timeout = keepalive_timeout
         self._lingering_time = float(lingering_time)
 
         self._messages: Deque[_MsgType] = deque()
         self._message_tail = b""
 
-        self._waiter = None  # type: Optional[asyncio.Future[None]]
-        self._task_handler = None  # type: Optional[asyncio.Task[None]]
+        self._waiter: Optional[asyncio.Future[None]] = None
+        self._task_handler: Optional[asyncio.Task[None]] = None
 
         self._upgrade = False
-        self._payload_parser = None  # type: Any
-        self._request_parser = HttpRequestParser(
+        self._payload_parser: Any = None
+        self._request_parser: Optional[HttpRequestParser] = HttpRequestParser(
             self,
             loop,
             read_bufsize,
@@ -227,15 +230,22 @@ class RequestHandler(BaseProtocol):
             max_field_size=max_field_size,
             max_headers=max_headers,
             payload_exception=RequestPayloadError,
-        )  # type: Optional[HttpRequestParser]
+            auto_decompress=auto_decompress,
+        )
+
+        self._timeout_ceil_threshold: float = 5
+        try:
+            self._timeout_ceil_threshold = float(timeout_ceil_threshold)
+        except (TypeError, ValueError):
+            pass
 
         self.logger = logger
         self.access_log = access_log
         if access_log:
             if issubclass(access_log_class, AbstractAsyncAccessLogger):
-                self.access_logger = (
-                    access_log_class()
-                )  # type: Optional[AbstractAsyncAccessLogger]
+                self.access_logger: Optional[
+                    AbstractAsyncAccessLogger
+                ] = access_log_class()
             else:
                 access_logger = access_log_class(access_log, access_log_format)
                 self.access_logger = AccessLoggerWrapper(
@@ -259,9 +269,11 @@ class RequestHandler(BaseProtocol):
         return self._keepalive_timeout
 
     async def shutdown(self, timeout: Optional[float] = 15.0) -> None:
-        """Worker process is about to exit, we need cleanup everything and
-        stop accepting requests. It is especially important for keep-alive
-        connections."""
+        """Do worker process exit preparations.
+
+        We need to clean up everything and stop accepting requests.
+        It is especially important for keep-alive connections.
+        """
         self._force_close = True
 
         if self._keepalive_handle is not None:
@@ -393,14 +405,17 @@ class RequestHandler(BaseProtocol):
             self._keepalive_handle = None
 
     def close(self) -> None:
-        """Stop accepting new pipelinig messages and close
-        connection when handlers done processing messages"""
+        """Close connection.
+
+        Stop accepting new pipelining messages and close
+        connection when handlers done processing messages.
+        """
         self._close = True
         if self._waiter:
             self._waiter.cancel()
 
     def force_close(self) -> None:
-        """Force close connection"""
+        """Forcefully close connection."""
         self._force_close = True
         if self._waiter:
             self._waiter.cancel()
@@ -436,7 +451,8 @@ class RequestHandler(BaseProtocol):
         # not all request handlers are done,
         # reschedule itself to next second
         self._keepalive_handle = self._loop.call_later(
-            self.KEEPALIVE_RESCHEDULE_DELAY, self._process_keepalive
+            self.KEEPALIVE_RESCHEDULE_DELAY,
+            self._process_keepalive,
         )
 
     async def _handle_request(
@@ -596,8 +612,9 @@ class RequestHandler(BaseProtocol):
     async def finish_response(
         self, request: BaseRequest, resp: StreamResponse, start_time: float
     ) -> bool:
-        """
-        Prepare the response and write_eof, then log access. This has to
+        """Prepare the response and write_eof, then log access.
+
+        This has to
         be called within the context of any exception so the access logger
         can get exception information. Returns True if the client disconnects
         prematurely.
@@ -640,7 +657,8 @@ class RequestHandler(BaseProtocol):
         """Handle errors.
 
         Returns HTTP response with specific status code. Logs additional
-        information. It always closes current connection."""
+        information. It always closes current connection.
+        """
         self.log_exception("Error handling request", exc_info=exc)
 
         # some data already got sent, connection is broken

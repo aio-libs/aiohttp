@@ -6,16 +6,20 @@ import binascii
 import cgi
 import dataclasses
 import datetime
+import enum
 import functools
+import inspect
 import netrc
 import os
 import platform
 import re
 import sys
 import time
+import warnings
 import weakref
 from collections import namedtuple
 from contextlib import suppress
+from email.utils import parsedate
 from http.cookies import SimpleCookie
 from math import ceil
 from pathlib import Path
@@ -30,7 +34,6 @@ from typing import (
     Iterator,
     List,
     Mapping,
-    NewType,
     Optional,
     Pattern,
     Tuple,
@@ -38,6 +41,7 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    overload,
 )
 from urllib.parse import quote
 from urllib.request import getproxies, proxy_bypass
@@ -51,10 +55,17 @@ from . import hdrs
 from .log import client_logger
 from .typedefs import PathLike  # noqa
 
+if sys.version_info >= (3, 8):
+    from typing import get_args
+else:
+    from typing_extensions import get_args
+
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
 PY_38 = sys.version_info >= (3, 8)
+PY_310 = sys.version_info >= (3, 10)
 
+COOKIE_MAX_LENGTH = 4096
 
 try:
     from typing import ContextManager
@@ -65,16 +76,14 @@ except ImportError:
 _T = TypeVar("_T")
 _S = TypeVar("_S")
 
-_SENTINEL = NewType("_SENTINEL", object)
+_SENTINEL = enum.Enum("_SENTINEL", "sentinel")
+sentinel = _SENTINEL.sentinel
 
-sentinel: _SENTINEL = _SENTINEL(object())
-NO_EXTENSIONS = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))  # type: bool
+NO_EXTENSIONS = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))
 
-# N.B. sys.flags.dev_mode is available on Python 3.7+, use getattr
-# for compatibility with older versions
-DEBUG = getattr(sys.flags, "dev_mode", False) or (
+DEBUG = sys.flags.dev_mode or (
     not sys.flags.ignore_environment and bool(os.environ.get("PYTHONASYNCIODEBUG"))
-)  # type: bool
+)
 
 
 CHAR = {chr(i) for i in range(0, 128)}
@@ -120,7 +129,7 @@ else:
         return asyncio.iscoroutinefunction(func)
 
 
-json_re = re.compile(r"^application/(?:[\w.+-]+?\+)?json")
+json_re = re.compile(r"(?:application/|[\w.-]+/[\w.+-]+?\+)json$", re.IGNORECASE)
 
 
 class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
@@ -193,7 +202,9 @@ def strip_auth_from_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
 
 
 def netrc_from_env() -> Optional[netrc.netrc]:
-    """Attempt to load the netrc file from the path specified by the env-var
+    """Load netrc from file.
+
+    Attempt to load it from the path specified by the env-var
     NETRC or in the default location in the user's home directory.
 
     Returns None if it couldn't be found or fails to parse.
@@ -312,27 +323,19 @@ def parse_mimetype(mimetype: str) -> MimeType:
         )
 
     parts = mimetype.split(";")
-    params = MultiDict()  # type: MultiDict[str]
+    params: MultiDict[str] = MultiDict()
     for item in parts[1:]:
         if not item:
             continue
-        key, value = cast(
-            Tuple[str, str], item.split("=", 1) if "=" in item else (item, "")
-        )
+        key, _, value = item.partition("=")
         params.add(key.lower().strip(), value.strip(' "'))
 
     fulltype = parts[0].strip().lower()
     if fulltype == "*":
         fulltype = "*/*"
 
-    mtype, stype = (
-        cast(Tuple[str, str], fulltype.split("/", 1))
-        if "/" in fulltype
-        else (fulltype, "")
-    )
-    stype, suffix = (
-        cast(Tuple[str, str], stype.split("+", 1)) if "+" in stype else (stype, "")
-    )
+    mtype, _, stype = fulltype.partition("/")
+    stype, _, suffix = stype.partition("+")
 
     return MimeType(
         type=mtype, subtype=stype, suffix=suffix, parameters=MultiDictProxy(params)
@@ -419,6 +422,10 @@ def content_disposition_header(
 def is_expected_content_type(
     response_content_type: str, expected_content_type: str
 ) -> bool:
+    """Checks if received content type is processable as an expected one.
+
+    Both arguments should be given without parameters.
+    """
     if expected_content_type == "application/json":
         return json_re.match(response_content_type) is not None
     return expected_content_type in response_content_type
@@ -429,12 +436,13 @@ class _TSelf(Protocol, Generic[_T]):
 
 
 class reify(Generic[_T]):
-    """Use as a class method decorator.  It operates almost exactly like
+    """Use as a class method decorator.
+
+    It operates almost exactly like
     the Python `@property` decorator, but it puts the result of the
     method it decorates into the instance dict after the first call,
     effectively replacing the function it decorates with an instance
     variable.  It is, in Python parlance, a data descriptor.
-
     """
 
     def __init__(self, wrapped: Callable[..., _T]) -> None:
@@ -499,7 +507,7 @@ def _is_ip_address(
     elif isinstance(host, (bytes, bytearray, memoryview)):
         return bool(regexb.match(host))
     else:
-        raise TypeError("{} [{}] is not a str or bytes".format(host, type(host)))
+        raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
 
 
 is_ipv4_address = functools.partial(_is_ip_address, _ipv4_regex, _ipv4_regexb)
@@ -517,7 +525,7 @@ def next_whole_second() -> datetime.datetime:
     ) + datetime.timedelta(seconds=0)
 
 
-_cached_current_datetime = None  # type: Optional[int]
+_cached_current_datetime: Optional[int] = None
 _cached_formatted_datetime = ""
 
 
@@ -570,11 +578,15 @@ def _weakref_handle(info: "Tuple[weakref.ref[object], str]") -> None:
 
 
 def weakref_handle(
-    ob: object, name: str, timeout: float, loop: asyncio.AbstractEventLoop
+    ob: object,
+    name: str,
+    timeout: float,
+    loop: asyncio.AbstractEventLoop,
+    timeout_ceil_threshold: float = 5,
 ) -> Optional[asyncio.TimerHandle]:
     if timeout is not None and timeout > 0:
         when = loop.time() + timeout
-        if timeout >= 5:
+        if timeout >= timeout_ceil_threshold:
             when = ceil(when)
 
         return loop.call_at(when, _weakref_handle, (weakref.ref(ob), name))
@@ -582,27 +594,34 @@ def weakref_handle(
 
 
 def call_later(
-    cb: Callable[[], Any], timeout: float, loop: asyncio.AbstractEventLoop
+    cb: Callable[[], Any],
+    timeout: float,
+    loop: asyncio.AbstractEventLoop,
+    timeout_ceil_threshold: float = 5,
 ) -> Optional[asyncio.TimerHandle]:
     if timeout is not None and timeout > 0:
         when = loop.time() + timeout
-        if timeout > 5:
+        if timeout > timeout_ceil_threshold:
             when = ceil(when)
         return loop.call_at(when, cb)
     return None
 
 
 class TimeoutHandle:
-    """ Timeout handle """
+    """Timeout handle"""
 
     def __init__(
-        self, loop: asyncio.AbstractEventLoop, timeout: Optional[float]
+        self,
+        loop: asyncio.AbstractEventLoop,
+        timeout: Optional[float],
+        ceil_threshold: float = 5,
     ) -> None:
         self._timeout = timeout
         self._loop = loop
-        self._callbacks = (
-            []
-        )  # type: List[Tuple[Callable[..., None], Tuple[Any, ...], Dict[str, Any]]]
+        self._ceil_threshold = ceil_threshold
+        self._callbacks: List[
+            Tuple[Callable[..., None], Tuple[Any, ...], Dict[str, Any]]
+        ] = []
 
     def register(
         self, callback: Callable[..., None], *args: Any, **kwargs: Any
@@ -616,7 +635,7 @@ class TimeoutHandle:
         timeout = self._timeout
         if timeout is not None and timeout > 0:
             when = self._loop.time() + timeout
-            if timeout >= 5:
+            if timeout >= self._ceil_threshold:
                 when = ceil(when)
             return self._loop.call_at(when, self.__call__)
         else:
@@ -656,11 +675,11 @@ class TimerNoop(BaseTimerContext):
 
 
 class TimerContext(BaseTimerContext):
-    """ Low resolution timeout context manager """
+    """Low resolution timeout context manager"""
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
-        self._tasks = []  # type: List[asyncio.Task[Any]]
+        self._tasks: List[asyncio.Task[Any]] = []
         self._cancelled = False
 
     def __enter__(self) -> BaseTimerContext:
@@ -672,7 +691,6 @@ class TimerContext(BaseTimerContext):
             )
 
         if self._cancelled:
-            task.cancel()
             raise asyncio.TimeoutError from None
 
         self._tasks.append(task)
@@ -699,14 +717,16 @@ class TimerContext(BaseTimerContext):
             self._cancelled = True
 
 
-def ceil_timeout(delay: Optional[float]) -> async_timeout.Timeout:
+def ceil_timeout(
+    delay: Optional[float], ceil_threshold: float = 5
+) -> async_timeout.Timeout:
     if delay is None or delay <= 0:
         return async_timeout.timeout(None)
 
     loop = asyncio.get_running_loop()
     now = loop.time()
     when = now + delay
-    if delay > 5:
+    if delay > ceil_threshold:
         when = ceil(when)
     return async_timeout.timeout_at(when)
 
@@ -717,8 +737,8 @@ class HeadersMixin:
 
     def __init__(self) -> None:
         super().__init__()
-        self._content_type = None  # type: Optional[str]
-        self._content_dict = None  # type: Optional[Dict[str, str]]
+        self._content_type: Optional[str] = None
+        self._content_dict: Optional[Dict[str, str]] = None
         self._stored_content_type: Union[str, _SENTINEL] = sentinel
 
     def _parse_content_type(self, raw: str) -> None:
@@ -769,11 +789,58 @@ def set_exception(fut: "asyncio.Future[_T]", exc: BaseException) -> None:
         fut.set_exception(exc)
 
 
+@functools.total_ordering
+class AppKey(Generic[_T]):
+    """Keys for static typing support in Application."""
+
+    __slots__ = ("_name", "_t", "__orig_class__")
+
+    # This may be set by Python when instantiating with a generic type. We need to
+    # support this, in order to support types that are not concrete classes,
+    # like Iterable, which can't be passed as the second parameter to __init__.
+    __orig_class__: Type[object]
+
+    def __init__(self, name: str, t: Optional[Type[_T]] = None):
+        # Prefix with module name to help deduplicate key names.
+        frame = inspect.currentframe()
+        while frame:
+            if frame.f_code.co_name == "<module>":
+                module: str = frame.f_globals["__name__"]
+                break
+            frame = frame.f_back
+
+        self._name = module + "." + name
+        self._t = t
+
+    def __lt__(self, other: object) -> bool:
+        if isinstance(other, AppKey):
+            return self._name < other._name
+        return True  # Order AppKey above other types.
+
+    def __repr__(self) -> str:
+        t = self._t
+        if t is None:
+            with suppress(AttributeError):
+                # Set to type arg.
+                t = get_args(self.__orig_class__)[0]
+
+        if t is None:
+            t_repr = "<<Unkown>>"
+        elif isinstance(t, type):
+            if t.__module__ == "builtins":
+                t_repr = t.__qualname__
+            else:
+                t_repr = f"{t.__module__}.{t.__qualname__}"
+        else:
+            t_repr = repr(t)
+        return f"<AppKey({self._name}, type={t_repr})>"
+
+
 @final
-class ChainMapProxy(Mapping[str, Any]):
+class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
     __slots__ = ("_maps",)
 
-    def __init__(self, maps: Iterable[Mapping[str, Any]]) -> None:
+    def __init__(self, maps: Iterable[Mapping[Union[str, AppKey[Any]], Any]]) -> None:
         self._maps = tuple(maps)
 
     def __init_subclass__(cls) -> None:
@@ -782,7 +849,15 @@ class ChainMapProxy(Mapping[str, Any]):
             "is forbidden".format(cls.__name__)
         )
 
+    @overload  # type: ignore[override]
+    def __getitem__(self, key: AppKey[_T]) -> _T:
+        ...
+
+    @overload
     def __getitem__(self, key: str) -> Any:
+        ...
+
+    def __getitem__(self, key: Union[str, AppKey[_T]]) -> Any:
         for mapping in self._maps:
             try:
                 return mapping[key]
@@ -790,15 +865,30 @@ class ChainMapProxy(Mapping[str, Any]):
                 pass
         raise KeyError(key)
 
-    def get(self, key: str, default: Any = None) -> Any:
-        return self[key] if key in self else default
+    @overload  # type: ignore[override]
+    def get(self, key: AppKey[_T], default: _S) -> Union[_T, _S]:
+        ...
+
+    @overload
+    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]:
+        ...
+
+    @overload
+    def get(self, key: str, default: Any = ...) -> Any:
+        ...
+
+    def get(self, key: Union[str, AppKey[_T]], default: Any = None) -> Any:
+        try:
+            return self[key]
+        except KeyError:
+            return default
 
     def __len__(self) -> int:
         # reuses stored hash values if possible
-        return len(set().union(*self._maps))  # type: ignore[arg-type]
+        return len(set().union(*self._maps))
 
-    def __iter__(self) -> Iterator[str]:
-        d = {}  # type: Dict[str, Any]
+    def __iter__(self) -> Iterator[Union[str, AppKey[Any]]]:
+        d: Dict[Union[str, AppKey[Any]], Any] = {}
         for mapping in reversed(self._maps):
             # reuses stored hash values if possible
             d.update(mapping)
@@ -816,9 +906,17 @@ class ChainMapProxy(Mapping[str, Any]):
 
 
 class CookieMixin:
+    # The `_cookies` slots is not defined here because non-empty slots cannot
+    # be combined with an Exception base class, as is done in HTTPException.
+    # CookieMixin subclasses with slots should define the `_cookies`
+    # slot themselves.
+    __slots__ = ()
+
     def __init__(self) -> None:
         super().__init__()
-        self._cookies = SimpleCookie()  # type: SimpleCookie[str]
+        # Mypy doesn't like that _cookies isn't in __slots__.
+        # See the comment on this class's __slots__ for why this is OK.
+        self._cookies: SimpleCookie[str] = SimpleCookie()  # type: ignore[misc]
 
     @property
     def cookies(self) -> "SimpleCookie[str]":
@@ -843,7 +941,6 @@ class CookieMixin:
         Sets new cookie or updates existent with new value.
         Also updates only those params which are not None.
         """
-
         old = self._cookies.get(name)
         if old is not None and old.coded_value == "":
             # deleted cookie
@@ -875,6 +972,15 @@ class CookieMixin:
             c["version"] = version
         if samesite is not None:
             c["samesite"] = samesite
+
+        if DEBUG:
+            cookie_length = len(c.output(header="")[1:])
+            if cookie_length > COOKIE_MAX_LENGTH:
+                warnings.warn(
+                    "The size of is too large, it might get ignored by the client.",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
     def del_cookie(
         self, name: str, *, domain: Optional[str] = None, path: str = "/"
@@ -924,3 +1030,13 @@ def validate_etag_value(value: str) -> None:
         raise ValueError(
             f"Value {value!r} is not a valid etag. Maybe it contains '\"'?"
         )
+
+
+def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
+    """Process a date string, return a datetime object"""
+    if date_str is not None:
+        timetuple = parsedate(date_str)
+        if timetuple is not None:
+            with suppress(ValueError):
+                return datetime.datetime(*timetuple[:6], tzinfo=datetime.timezone.utc)
+    return None

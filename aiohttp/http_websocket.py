@@ -251,22 +251,22 @@ class WebSocketReader:
         self.queue = queue
         self._max_msg_size = max_msg_size
 
-        self._exc = None  # type: Optional[BaseException]
+        self._exc: Optional[BaseException] = None
         self._partial = bytearray()
         self._state = WSParserState.READ_HEADER
 
-        self._opcode = None  # type: Optional[int]
+        self._opcode: Optional[int] = None
         self._frame_fin = False
-        self._frame_opcode = None  # type: Optional[int]
+        self._frame_opcode: Optional[int] = None
         self._frame_payload = bytearray()
 
         self._tail = b""
         self._has_mask = False
-        self._frame_mask = None  # type: Optional[bytes]
+        self._frame_mask: Optional[bytes] = None
         self._payload_length = 0
         self._payload_length_flag = 0
-        self._compressed = None  # type: Optional[bool]
-        self._decompressobj = None  # type: Any  # zlib.decompressobj actually
+        self._compressed: Optional[bool] = None
+        self._decompressobj: Any = None  # zlib.decompressobj actually
         self._compress = compress
 
     def feed_eof(self) -> None:
@@ -583,7 +583,7 @@ class WebSocketWriter:
         self._closing = False
         self._limit = limit
         self._output_size = 0
-        self._compressobj = None  # type: Any  # actually compressobj
+        self._compressobj: Any = None  # actually compressobj
 
     async def _send_frame(
         self, message: bytes, opcode: int, compress: Optional[int] = None

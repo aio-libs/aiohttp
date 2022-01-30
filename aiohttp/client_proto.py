@@ -31,12 +31,14 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
         self._tail = b""
         self._upgraded = False
-        self._parser = None  # type: Optional[HttpResponseParser]
+        self._parser: Optional[HttpResponseParser] = None
 
-        self._read_timeout = None  # type: Optional[float]
-        self._read_timeout_handle = None  # type: Optional[asyncio.TimerHandle]
+        self._read_timeout: Optional[float] = None
+        self._read_timeout_handle: Optional[asyncio.TimerHandle] = None
 
-        self.closed = self._loop.create_future()  # type: asyncio.Future[None]
+        self._timeout_ceil_threshold: Optional[float] = 5
+
+        self.closed: asyncio.Future[None] = self._loop.create_future()
 
     @property
     def upgraded(self) -> bool:
@@ -150,11 +152,14 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         auto_decompress: bool = True,
         read_timeout: Optional[float] = None,
         read_bufsize: int = 2 ** 16,
+        timeout_ceil_threshold: float = 5,
     ) -> None:
         self._skip_payload = skip_payload
 
         self._read_timeout = read_timeout
         self._reschedule_timeout()
+
+        self._timeout_ceil_threshold = timeout_ceil_threshold
 
         self._parser = HttpResponseParser(
             self,

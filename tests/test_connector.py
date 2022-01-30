@@ -82,7 +82,11 @@ def named_pipe_server(proactor_loop: Any, pipe_name: Any) -> None:
 
 def create_mocked_conn(conn_closing_result: Optional[Any] = None, **kwargs: Any):
     assert "loop" not in kwargs
-    loop = asyncio.get_event_loop()
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.get_event_loop_policy().get_event_loop()
+
     proto = mock.Mock(**kwargs)
     proto.closed = loop.create_future()
     proto.closed.set_result(conn_closing_result)
@@ -503,6 +507,14 @@ async def test_release_close(key: Any) -> None:
     conn._release(key, proto)
     assert not conn._conns
     assert proto.close.called
+
+
+async def test_release_proto_closed_future(loop: Any, key: Any):
+    conn = aiohttp.BaseConnector()
+    protocol = mock.Mock(should_close=True, closed=loop.create_future())
+    conn._release(key, protocol)
+    # See PR #6321
+    assert protocol.closed.result() is None
 
 
 async def test__drop_acquire_per_host1(loop: Any) -> None:
@@ -1268,7 +1280,7 @@ async def test___get_ssl_context1(loop: Any) -> None:
 
 
 async def test___get_ssl_context2(loop: Any) -> None:
-    ctx = ssl.SSLContext()
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     conn = aiohttp.TCPConnector()
     req = mock.Mock()
     req.is_ssl.return_value = True
@@ -1277,7 +1289,7 @@ async def test___get_ssl_context2(loop: Any) -> None:
 
 
 async def test___get_ssl_context3(loop: Any) -> None:
-    ctx = ssl.SSLContext()
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     conn = aiohttp.TCPConnector(ssl=ctx)
     req = mock.Mock()
     req.is_ssl.return_value = True
@@ -1286,7 +1298,7 @@ async def test___get_ssl_context3(loop: Any) -> None:
 
 
 async def test___get_ssl_context4(loop: Any) -> None:
-    ctx = ssl.SSLContext()
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     conn = aiohttp.TCPConnector(ssl=ctx)
     req = mock.Mock()
     req.is_ssl.return_value = True
@@ -1295,7 +1307,7 @@ async def test___get_ssl_context4(loop: Any) -> None:
 
 
 async def test___get_ssl_context5(loop: Any) -> None:
-    ctx = ssl.SSLContext()
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     conn = aiohttp.TCPConnector(ssl=ctx)
     req = mock.Mock()
     req.is_ssl.return_value = True

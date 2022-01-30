@@ -580,7 +580,7 @@ async def test_timeout_on_reading_headers(aiohttp_client: Any, mocker: Any) -> N
     client = await aiohttp_client(app)
 
     with pytest.raises(asyncio.TimeoutError):
-        await client.get("/", timeout=0.01)
+        await client.get("/", timeout=aiohttp.ClientTimeout(total=0.01))
 
 
 async def test_timeout_on_conn_reading_headers(
@@ -601,7 +601,7 @@ async def test_timeout_on_conn_reading_headers(
     client = await aiohttp_client(app, connector=conn)
 
     with pytest.raises(asyncio.TimeoutError):
-        await client.get("/", timeout=0.01)
+        await client.get("/", timeout=aiohttp.ClientTimeout(total=0.01))
 
 
 async def test_timeout_on_session_read_timeout(
@@ -687,7 +687,7 @@ async def test_timeout_on_reading_data(aiohttp_client: Any, mocker: Any) -> None
     app.router.add_route("GET", "/", handler)
     client = await aiohttp_client(app)
 
-    resp = await client.get("/", timeout=1)
+    resp = await client.get("/", timeout=aiohttp.ClientTimeout(1))
     await fut
 
     with pytest.raises(asyncio.TimeoutError):
@@ -996,7 +996,7 @@ async def test_HTTP_302_max_redirects(aiohttp_client: Any) -> None:
     async def redirect(request):
         count = int(request.match_info["count"])
         if count:
-            raise web.HTTPFound(location="/redirect/{}".format(count - 1))
+            raise web.HTTPFound(location=f"/redirect/{count - 1}")
         else:
             raise web.HTTPFound(location="/")
 
@@ -2348,7 +2348,7 @@ def create_server_for_url_and_handler(
             cert = tls_certificate_authority.issue_cert(
                 url.host, "localhost", "127.0.0.1"
             )
-            ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+            ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             cert.configure_cert(ssl_ctx)
             kwargs["ssl"] = ssl_ctx
         return aiohttp_server(app, **kwargs)
@@ -3022,3 +3022,22 @@ async def test_read_bufsize_explicit(aiohttp_client: Any) -> None:
 
     async with await client.get("/", read_bufsize=4) as resp:
         assert resp.content.get_read_buffer_limits() == (4, 8)
+
+
+async def test_http_empty_data_text(aiohttp_client: Any) -> None:
+    async def handler(request):
+        data = await request.read()
+        ret = "ok" if data == b"" else "fail"
+        resp = web.Response(text=ret)
+        resp.headers["Content-Type"] = request.headers["Content-Type"]
+        return resp
+
+    app = web.Application()
+    app.add_routes([web.post("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    async with await client.post("/", data="") as resp:
+        assert resp.status == 200
+        assert await resp.text() == "ok"
+        assert resp.headers["Content-Type"] == "text/plain; charset=utf-8"
