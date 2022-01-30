@@ -27,7 +27,7 @@ async def on_shutdown(app):
 
 async def listen_to_redis(app):
     try:
-        sub = await aioredis.create_redis(("localhost", 6379), loop=app.loop)
+        sub = await aioredis.Redis(host="localhost", port=6379)
         ch, *_ = await sub.subscribe("news")
         async for msg in ch.iter(encoding="utf-8"):
             # Forward message to all connected websockets:
