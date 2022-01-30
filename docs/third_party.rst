@@ -131,7 +131,7 @@ support to aiohttp web servers.
 
 - `rororo <https://github.com/playpauseandstop/rororo>`_
   Implement ``aiohttp.web`` OpenAPI 3 server applications with schema first
-  approach. Python 3.6+ required.
+  approach.
 
 Others
 ------
@@ -142,6 +142,15 @@ We cannot vouch for the quality of these libraries, use them at your own risk.
 
 Please add your library reference here first and after some time
 ask to raise the status.
+
+- `pytest-aiohttp-client <https://github.com/sivakov512/pytest-aiohttp-client>`_
+  Pytest fixture with simpler api, payload decoding and status code assertions.
+
+- `octomachinery <https://octomachinery.dev>`_ A framework for developing
+  GitHub Apps and GitHub Actions.
+
+- `aiomixcloud <https://github.com/amikrop/aiomixcloud>`_
+  Mixcloud API wrapper for Python and Async IO.
 
 - `aiohttp-cache <https://github.com/cr0hn/aiohttp-cache>`_ A cache
   system for aiohttp server.
@@ -232,16 +241,16 @@ ask to raise the status.
   GraphQL and GraphIQL interface for aiohttp.
 
 - `aiohttp-sentry <https://github.com/underyx/aiohttp-sentry>`_
-  An aiohttp middleware for reporting errors to Sentry. Python 3.5+ is required.
+  An aiohttp middleware for reporting errors to Sentry.
 
 - `aiohttp-datadog <https://github.com/underyx/aiohttp-datadog>`_
-  An aiohttp middleware for reporting metrics to DataDog. Python 3.5+ is required.
+  An aiohttp middleware for reporting metrics to DataDog.
 
 - `async-v20 <https://github.com/jamespeterschinner/async_v20>`_
-  Asynchronous FOREX client for OANDA's v20 API. Python 3.6+
+  Asynchronous FOREX client for OANDA's v20 API.
 
 - `aiohttp-jwt <https://github.com/hzlmn/aiohttp-jwt>`_
-  An aiohttp middleware for JWT(JSON Web Token) support. Python 3.5+ is required.
+  An aiohttp middleware for JWT(JSON Web Token) support.
 
 - `AWS Xray Python SDK <https://github.com/aws/aws-xray-sdk-python>`_
   Native tracing support for Aiohttp applications.
@@ -259,24 +268,23 @@ ask to raise the status.
   telemetry.
 
 - `aiogmaps <https://github.com/hzlmn/aiogmaps>`_
-  Asynchronous client for Google Maps API Web Services. Python 3.6+ required.
+  Asynchronous client for Google Maps API Web Services.
 
 - `DBGR <https://github.com/JakubTesarek/dbgr>`_
   Terminal based tool to test and debug HTTP APIs with ``aiohttp``.
 
 - `aiohttp-middlewares <https://github.com/playpauseandstop/aiohttp-middlewares>`_
-  Collection of useful middlewares for ``aiohttp.web`` applications. Python
-  3.6+ required.
+  Collection of useful middlewares for ``aiohttp.web`` applications.
 
 - `aiohttp-tus <https://github.com/pylotcode/aiohttp-tus>`_
   `tus.io <https://tus.io>`_ protocol implementation for ``aiohttp.web``
-  applications. Python 3.6+ required.
+  applications.
 
 - `aiohttp-sse-client <https://github.com/rtfol/aiohttp-sse-client>`_
-  A Server-Sent Event python client base on aiohttp. Python 3.6+ required.
+  A Server-Sent Event python client base on aiohttp.
 
 - `aiohttp-retry <https://github.com/inyutin/aiohttp_retry>`_
-  Wrapper for aiohttp client for retrying requests. Python 3.6+ required.
+  Wrapper for aiohttp client for retrying requests.
 
 - `aiohttp-socks <https://github.com/romis2012/aiohttp-socks>`_
   SOCKS proxy connector for aiohttp.
