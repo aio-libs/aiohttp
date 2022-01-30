@@ -71,6 +71,15 @@ def test_no_warnings(import_path: str) -> None:
     This is seeking for any import errors including ones caused
     by circular imports.
     """
-    imp_cmd = sys.executable, "-W", "error", "-c", f"import {import_path!s}"
+    # fmt: off
+    imp_cmd = (
+        sys.executable,
+        "-W", "error",
+        "-W", "ignore:Creating a LegacyVersion has been deprecated and will "
+        "be removed in the next major release:DeprecationWarning:"
+        "pkg_resources._vendor.packaging.version",
+        "-c", f"import {import_path!s}",
+    )
+    # fmt: on
 
     subprocess.check_call(imp_cmd)
