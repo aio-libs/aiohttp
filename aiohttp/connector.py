@@ -1409,7 +1409,7 @@ class NamedPipeConnector(BaseConnector):
     """Named pipe connector.
 
     Only supported by the proactor event loop.
-    See also: https://docs.python.org/3.7/library/asyncio-eventloop.html
+    See also: https://docs.python.org/3/library/asyncio-eventloop.html
 
     path - Windows named pipe path.
     keepalive_timeout - (optional) Keep-alive timeout.

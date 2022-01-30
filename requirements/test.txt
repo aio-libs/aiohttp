@@ -9,8 +9,8 @@ proxy.py ~= 2.4.0rc4
 pytest==6.2.5
 pytest-cov==3.0.0
 pytest-mock==3.6.1
-python-on-whales==0.34.0; python_version>="3.7"
+python-on-whales==0.36.1
 re-assert==1.1.0
 setuptools-git==1.2
 trustme==0.9.0; platform_machine!="i686"    # no 32-bit wheels
-wait-for-it==2.2.1; python_version>="3.7"
+wait-for-it==2.2.1

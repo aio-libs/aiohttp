@@ -1,4 +1,4 @@
-aiodns==3.0.0 ; sys_platform == "linux" or sys_platform == "darwin" and python_version >= "3.7"
+aiodns==3.0.0 ; sys_platform == "linux" or sys_platform == "darwin"
     # via -r requirements/base.txt
 aiohttp-theme==0.1.6
     # via -r requirements/doc.txt
@@ -38,7 +38,7 @@ charset-normalizer==2.0.9
     # via
     #   -r requirements/base.txt
     #   requests
-cherry_picker==2.1.0 ; python_version >= "3.6"
+cherry_picker==2.1.0
     # via -r requirements/dev.txt
 click==8.0.3
     # via
@@ -162,7 +162,7 @@ pytest-mock==3.6.1
     # via -r requirements/test.txt
 python-dateutil==2.8.2
     # via freezegun
-python-on-whales==0.34.0 ; python_version >= "3.7"
+python-on-whales==0.36.1
     # via -r requirements/test.txt
 pytz==2021.3
     # via babel
@@ -244,7 +244,7 @@ urllib3==1.26.7
     # via requests
 virtualenv==20.10.0
     # via pre-commit
-wait-for-it==2.2.1 ; python_version >= "3.7"
+wait-for-it==2.2.1
     # via -r requirements/test.txt
 webcolors==1.11.1
     # via blockdiag
