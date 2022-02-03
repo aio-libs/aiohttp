@@ -1,5 +1,3 @@
-import time
-
 import pytest
 
 
@@ -31,7 +29,6 @@ def test_import_time(pytester: pytest.Pytester) -> None:
     from time to time, but this should provide an early warning if something is
     added that significantly increases import time.
     """
-
     r = pytester.run("python3", "-c", "import aiohttp", timeout=0.3)
     assert not r.stdout.str()
     assert not r.stderr.str()
