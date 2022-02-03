@@ -270,7 +270,6 @@ class BodyPartReader:
         length = self.headers.get(CONTENT_LENGTH, None)
         self._length = int(length) if length is not None else None
         self._read_bytes = 0
-        # TODO: typeing.Deque is not supported by Python 3.5
         self._unread: Deque[bytes] = deque()
         self._prev_chunk: Optional[bytes] = None
         self._content_eof = 0
