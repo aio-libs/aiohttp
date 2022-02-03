@@ -1,5 +1,6 @@
-import pytest
 import time
+
+import pytest
 
 
 def test___all__(pytester: pytest.Pytester) -> None:
