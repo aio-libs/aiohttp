@@ -74,7 +74,7 @@ generate-llhttp: .llhttp-gen
 cythonize: .install-cython $(PYXS:.pyx=.c)
 
 .install-deps: .install-cython $(PYXS:.pyx=.c) $(call to-hash,$(CYS) $(REQS))
-	@pip install -r requirements/dev.txt -c requirements/constraints.txt --user
+	@pip install -r requirements/dev.txt -c requirements/constraints.txt $INSTALL_ARG
 	@touch .install-deps
 
 .PHONY: lint
