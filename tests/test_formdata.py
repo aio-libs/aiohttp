@@ -31,6 +31,22 @@ def test_formdata_multipart(buf: Any, writer: Any) -> None:
     assert form.is_multipart
 
 
+def test_form_data_is_multipart_param(buf: Any, writer: Any) -> None:
+    form = FormData(is_multipart=True)
+    assert form.is_multipart
+
+    form.add_field("test", "test")
+    assert form.is_multipart
+
+
+def test_formdata_multipart(buf: Any, writer: Any) -> None:
+    form = FormData(is_multipart=False)
+    assert not form.is_multipart
+
+    form.add_field("test", b"test", filename="test.txt")
+    assert form.is_multipart  # Adding binary data convert FormData to multpart
+
+
 def test_invalid_formdata_payload() -> None:
     form = FormData()
     form.add_field("test", object(), filename="test.txt")
