@@ -203,11 +203,20 @@ __all__: Tuple[str, ...] = (
     "TraceRequestRedirectParams",
     "TraceRequestStartParams",
     "TraceResponseChunkReceivedParams",
+    # workers (imported lazily with __getattr__)
+    "GunicornUVLoopWebWorker",
+    "GunicornWebWorker",
 )
 
-try:
-    from .worker import GunicornUVLoopWebWorker, GunicornWebWorker
 
-    __all__ += ("GunicornWebWorker", "GunicornUVLoopWebWorker")
-except ImportError:  # pragma: no cover
-    pass
+def __getattr__(name):
+    global GunicornUVLoopWebWorker, GunicornUVLoopWebWorker
+
+    # Importing gunicorn takes a long time (>100ms), so only import if actually needed.
+    if name in ("GunicornUVLoopWebWorker", "GunicornWebWorker"):
+        from .worker import GunicornUVLoopWebWorker as guv, GunicornWebWorker as gw
+        GunicornUVLoopWebWorker = guv
+        GunicornWebWorker = gw
+        return guv if name == "GunicornUVLoopWebWorker" else gw
+
+    raise AttributeError(f"module {__name__} has no attribute {name}")
