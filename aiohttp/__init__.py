@@ -1,6 +1,6 @@
 __version__ = "4.0.0a1"
 
-from typing import Tuple
+from typing import TYPE_CHECKING, Tuple
 
 from . import hdrs as hdrs
 from .client import (
@@ -102,6 +102,13 @@ from .tracing import (
     TraceRequestStartParams as TraceRequestStartParams,
     TraceResponseChunkReceivedParams as TraceResponseChunkReceivedParams,
 )
+
+if TYPE_CHECKING:
+    # At runtime these are lazy-loaded at the bottom of the file.
+    from .worker import (
+        GunicornUVLoopWebWorker as GunicornUVLoopWebWorker,
+        GunicornWebWorker as GunicornWebWorker,
+    )
 
 __all__: Tuple[str, ...] = (
     "hdrs",
@@ -209,14 +216,15 @@ __all__: Tuple[str, ...] = (
 )
 
 
-def __getattr__(name):
-    global GunicornUVLoopWebWorker, GunicornUVLoopWebWorker
+def __getattr__(name: str) -> object:
+    global GunicornUVLoopWebWorker, GunicornWebWorker
 
     # Importing gunicorn takes a long time (>100ms), so only import if actually needed.
     if name in ("GunicornUVLoopWebWorker", "GunicornWebWorker"):
         from .worker import GunicornUVLoopWebWorker as guv, GunicornWebWorker as gw
-        GunicornUVLoopWebWorker = guv
-        GunicornWebWorker = gw
+
+        GunicornUVLoopWebWorker = guv  # type: ignore[misc]
+        GunicornWebWorker = gw  # type: ignore[misc]
         return guv if name == "GunicornUVLoopWebWorker" else gw
 
     raise AttributeError(f"module {__name__} has no attribute {name}")
