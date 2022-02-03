@@ -1,1 +1,1 @@
-Lazy load Gunicorn workers on import, decreasing import time by ~53%.
+Changed importing Gunicorn to happen on-demand, decreasing import time by ~53% -- :user:`Dreamsorcerer`.
