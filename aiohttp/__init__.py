@@ -215,6 +215,7 @@ def __getattr__(name):
     # Importing gunicorn takes a long time (>100ms), so only import if actually needed.
     if name in ("GunicornUVLoopWebWorker", "GunicornWebWorker"):
         from .worker import GunicornUVLoopWebWorker as guv, GunicornWebWorker as gw
+
         GunicornUVLoopWebWorker = guv
         GunicornWebWorker = gw
         return guv if name == "GunicornUVLoopWebWorker" else gw
