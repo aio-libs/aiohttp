@@ -168,6 +168,8 @@ jobs:
         name: llhttp
         path: vendor/llhttp/build/
     - name: Install dependencies
+      env:
+        PIP_USER: 1
       run: |
         make .develop
     - name: Run unittests
