@@ -178,6 +178,7 @@ jobs:
       env:
         COLOR: 'yes'
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
+        PIP_USER: 1
       run: |
         make vvtest
         python -m coverage xml
