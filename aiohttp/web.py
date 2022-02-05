@@ -42,6 +42,7 @@ from .web_exceptions import (
     HTTPLengthRequired as HTTPLengthRequired,
     HTTPMethodNotAllowed as HTTPMethodNotAllowed,
     HTTPMisdirectedRequest as HTTPMisdirectedRequest,
+    HTTPMove as HTTPMove,
     HTTPMovedPermanently as HTTPMovedPermanently,
     HTTPMultipleChoices as HTTPMultipleChoices,
     HTTPNetworkAuthenticationRequired as HTTPNetworkAuthenticationRequired,
