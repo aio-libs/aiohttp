@@ -175,6 +175,7 @@ __all__ = (
     "HTTPLengthRequired",
     "HTTPMethodNotAllowed",
     "HTTPMisdirectedRequest",
+    "HTTPMove",
     "HTTPMovedPermanently",
     "HTTPMultipleChoices",
     "HTTPNetworkAuthenticationRequired",
