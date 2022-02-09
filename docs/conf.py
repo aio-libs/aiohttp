@@ -99,7 +99,7 @@ github_repo_url = f"{github_url}/{github_repo_slug}"
 github_sponsors_url = f"{github_url}/sponsors"
 
 project = github_repo_name
-copyright = f"2013-2020, {project} maintainers"
+copyright = f"{project} contributors"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
