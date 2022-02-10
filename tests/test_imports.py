@@ -12,7 +12,6 @@ def test___all__(pytester: pytest.Pytester) -> None:
         """
     )
     result = pytester.runpytest("-vv")
-    assert not result.outlines
     assert not result.errlines
     result.assert_outcomes(passed=0, errors=0)
 
