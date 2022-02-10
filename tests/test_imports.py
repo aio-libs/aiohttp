@@ -9,6 +9,7 @@ def test___all__(pytester: pytest.Pytester) -> None:
     pytester.makepyfile(
         test_a="""
             from aiohttp import *
+            assert 'GunicornWebWorker' in globals()
         """
     )
     result = pytester.runpytest("-vv")
