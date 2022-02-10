@@ -24,6 +24,10 @@ def test_web___all__(pytester: pytest.Pytester) -> None:
     result.assert_outcomes(passed=0, errors=0)
 
 
+@pytest.mark.skipif(
+    not sys.platform.startswith("linux") or platform.python_implementation() == "PyPy",
+    reason="Timing is less reliable on other platforms",
+)
 def test_import_time(pytester: pytest.Pytester) -> None:
     """Check that importing aiohttp doesn't take too long.
 
