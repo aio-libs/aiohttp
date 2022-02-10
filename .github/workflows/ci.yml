@@ -181,6 +181,8 @@ jobs:
         PIP_USER: 1
       run: |
         make vvtest
+    - name: Run coverage
+      run: |
         python -m coverage xml
     - name: Upload coverage
       uses: codecov/codecov-action@v2.1.0
