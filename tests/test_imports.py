@@ -12,7 +12,8 @@ def test___all__(pytester: pytest.Pytester) -> None:
         """
     )
     result = pytester.runpytest("-vv")
-    assert not result.errlines
+    if sys.platform == "win32":
+        assert not result.outlines
     result.assert_outcomes(passed=0, errors=0)
 
 
