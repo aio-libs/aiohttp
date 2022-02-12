@@ -1,7 +1,6 @@
 """WebSocket protocol versions 13 and 8."""
 
 import asyncio
-import collections
 import json
 import random
 import re
