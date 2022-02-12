@@ -88,14 +88,12 @@ MSG_SIZE: Final[int] = 2 ** 14
 DEFAULT_LIMIT: Final[int] = 2 ** 16
 
 
-class _WSMessageBase(NamedTuple):
+class WSMessage(NamedTuple):
     type: WSMsgType
     # To type correctly, this would need some kind of tagged union for each type.
     data: Any
     extra: Optional[str]
 
-
-class WSMessage(_WSMessageBase):
     def json(self, *, loads: Callable[[Any], Any] = json.loads) -> Any:
         """Return parsed JSON data.
 
