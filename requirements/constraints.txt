@@ -9,12 +9,14 @@ aiosignal==1.2.0
 alabaster==0.7.12
     # via sphinx
 async-timeout==4.0.2
-    # via -r requirements/base.txt
+    # via
+    #   -r requirements/base.txt
+    #   aioredis
 attrs==21.2.0
     # via pytest
 babel==2.9.1
     # via sphinx
-backports.entry-points-selectable==1.1.0
+backports-entry-points-selectable==1.1.0
     # via virtualenv
 blockdiag==2.0.1
     # via sphinxcontrib-blockdiag
@@ -32,17 +34,18 @@ cffi==1.15.0
     #   pycares
 cfgv==3.3.1
     # via pre-commit
-charset-normalizer==2.0.10
+charset-normalizer==2.0.12
     # via
     #   -r requirements/base.txt
     #   requests
-cherry_picker==2.1.0
+cherry-picker==2.1.0
     # via -r requirements/dev.txt
 click==8.0.3
     # via
     #   cherry-picker
     #   click-default-group
     #   pip-tools
+    #   slotscheck
     #   towncrier
     #   typer
     #   wait-for-it
@@ -128,7 +131,7 @@ pluggy==1.0.0
     # via pytest
 pre-commit==2.17.0
     # via -r requirements/lint.txt
-proxy.py==2.4.0rc6
+proxy-py==2.4.0rc6
     # via -r requirements/test.txt
 py==1.10.0
     # via pytest
@@ -179,6 +182,8 @@ six==1.16.0
     # via
     #   python-dateutil
     #   virtualenv
+slotscheck==0.8.0
+    # via -r requirements/lint.txt
 snowballstemmer==2.1.0
     # via sphinx
 sphinx==4.3.2
@@ -219,6 +224,7 @@ tomli==1.2.2
     #   coverage
     #   mypy
     #   pep517
+    #   slotscheck
 towncrier==21.3.0
     # via
     #   -r requirements/doc.txt
@@ -232,6 +238,7 @@ typer==0.4.0
 typing-extensions==3.10.0.0
     # via
     #   -r requirements/typing-extensions.txt
+    #   aioredis
     #   mypy
     #   pydantic
 uritemplate==4.1.1
