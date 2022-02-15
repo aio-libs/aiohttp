@@ -347,7 +347,7 @@ class Resource(AbstractResource):
     async def resolve(self, request: Request) -> _Resolve:
         allowed_methods: Set[str] = set()
 
-        match_dict = self._match(request.rel_url.raw_path)
+        match_dict = self._match(request.rel_url.path)
         if match_dict is None:
             return None, allowed_methods
 
@@ -616,7 +616,7 @@ class StaticResource(PrefixResource):
         )
 
     async def resolve(self, request: Request) -> _Resolve:
-        path = request.rel_url.raw_path
+        path = request.rel_url.path
         method = request.method
         allowed_methods = set(self._routes)
         if not path.startswith(self._prefix2) and path != self._prefix:
@@ -735,8 +735,8 @@ class PrefixedSubAppResource(PrefixResource):
 
     async def resolve(self, request: Request) -> _Resolve:
         if (
-            not request.url.raw_path.startswith(self._prefix2)
-            and request.url.raw_path != self._prefix
+            not request.url.path.startswith(self._prefix2)
+            and request.url.path != self._prefix
         ):
             return None, set()
         match_info = await self._app.router.resolve(request)
