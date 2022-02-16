@@ -34,7 +34,7 @@ cffi==1.15.0
     #   pycares
 cfgv==3.3.1
     # via pre-commit
-charset-normalizer==2.0.10
+charset-normalizer==2.0.12
     # via
     #   -r requirements/base.txt
     #   requests
