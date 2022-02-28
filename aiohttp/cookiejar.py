@@ -121,8 +121,7 @@ class CookieJar(AbstractCookieJar):
                     to_del.append(key)
 
         for domain, path, name in to_del:
-            key = (domain, name)
-            self._host_only_cookies.discard(key)
+            self._host_only_cookies.discard((domain, name))
             key = (domain, path, name)
             if key in self._expirations:
                 del self._expirations[(domain, path, name)]
