@@ -1044,6 +1044,14 @@ class TCPConnector(BaseConnector):
                     # chance to do this:
                     underlying_transport.close()
                     raise
+                if isinstance(tls_transport, asyncio.Transport):
+                    fingerprint = self._get_fingerprint(req)
+                    if fingerprint:
+                        try:
+                            fingerprint.check(tls_transport)
+                        except ServerFingerprintMismatch:
+                            tls_transport.close()
+                            raise
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:
