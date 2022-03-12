@@ -2,6 +2,7 @@
 
 import argparse
 import asyncio
+import sys
 
 import aiohttp
 
@@ -25,7 +26,7 @@ if __name__ == "__main__":
     )
     options = ARGS.parse_args()
 
-    if options.iocp:
+    if options.iocp and sys.platform == "win32":
         from asyncio import events, windows_events
 
         el = windows_events.ProactorEventLoop()
