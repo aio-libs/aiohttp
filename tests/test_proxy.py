@@ -249,6 +249,70 @@ class TestProxy(unittest.TestCase):
         self.loop.run_until_complete(req.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
+    def test_https_connect_fingerprint_mismatch(self, ClientRequestMock: Any) -> None:
+        proxy_req = ClientRequest(
+            "GET", URL("http://proxy.example.com"), loop=self.loop
+        )
+        ClientRequestMock.return_value = proxy_req
+
+        proxy_resp = ClientResponse(
+            "get",
+            URL("http://proxy.example.com"),
+            request_info=mock.Mock(),
+            writer=mock.Mock(),
+            continue100=None,
+            timer=TimerNoop(),
+            traces=[],
+            loop=self.loop,
+            session=mock.Mock(),
+        )
+        proxy_req.send = make_mocked_coro(proxy_resp)
+        proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
+
+        async def make_conn():
+            return aiohttp.TCPConnector()
+
+        connector = self.loop.run_until_complete(make_conn())
+        connector._resolve_host = make_mocked_coro(
+            [
+                {
+                    "hostname": "hostname",
+                    "host": "127.0.0.1",
+                    "port": 80,
+                    "family": socket.AF_INET,
+                    "proto": 0,
+                    "flags": 0,
+                }
+            ]
+        )
+        fingerprint_mock = mock.Mock()
+        fingerprint_mock.check.side_effect = aiohttp.ServerFingerprintMismatch(
+            b"exp", b"got", "example.com", 8080
+        )
+        connector._get_fingerprint = mock.Mock(return_value=fingerprint_mock)
+
+        # Called on connection to http://proxy.example.com
+        self.loop.create_connection = make_mocked_coro((mock.Mock(), mock.Mock()))
+
+        # Called on connection to https://www.python.org
+        class TransportMock(asyncio.Transport):
+            def close(self):
+                pass
+
+        self.loop.start_tls = make_mocked_coro(TransportMock())
+
+        req = ClientRequest(
+            "GET",
+            URL("https://www.python.org"),
+            proxy=URL("http://proxy.example.com"),
+            loop=self.loop,
+        )
+        with self.assertRaises(aiohttp.ServerFingerprintMismatch):
+            self.loop.run_until_complete(
+                connector._create_connection(req, None, aiohttp.ClientTimeout())
+            )
+
+    @mock.patch("aiohttp.connector.ClientRequest")
     def test_https_connect_certificate_error(self, ClientRequestMock: Any) -> None:
         proxy_req = ClientRequest(
             "GET", URL("http://proxy.example.com"), loop=self.loop
