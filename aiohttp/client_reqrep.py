@@ -585,7 +585,7 @@ class ClientRequest:
         if self.compress:
             writer.enable_compression(self.compress)
 
-        if self.chunked is not None:
+        if self.chunked:
             writer.enable_chunking()
 
         # set default content-type
