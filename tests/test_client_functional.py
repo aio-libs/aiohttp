@@ -2457,12 +2457,6 @@ async def test_session_close_awaitable() -> None:
     assert session.closed
 
 
-async def test_close_run_until_complete_not_deprecated() -> None:
-    session = aiohttp.ClientSession()
-
-    await session.close()
-
-
 async def test_close_resp_on_error_async_with_session(aiohttp_server: Any) -> None:
     async def handler(request):
         resp = web.StreamResponse(headers={"content-length": "100"})
