@@ -1,0 +1,1 @@
+Remove a deprecated misusage of pytest.warns(None)
