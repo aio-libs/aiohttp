@@ -1,1 +1,1 @@
-Remove a deprecated misusage of pytest.warns(None)
+Remove a deprecated mis-usage of pytest.warns(None)
