@@ -83,7 +83,7 @@ repos:
     additional_dependencies:
       - flake8-docstrings==1.6.0
     exclude: "^docs/"
-- repo: git://github.com/Lucas-C/pre-commit-hooks-markup
+- repo: https://github.com/Lucas-C/pre-commit-hooks-markup
   rev: v1.0.1
   hooks:
   - id: rst-linter
