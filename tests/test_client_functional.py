@@ -2428,30 +2428,17 @@ async def test_drop_auth_on_redirect_to_other_host(
 
 
 async def test_async_with_session() -> None:
-    with pytest.warns(None) as cm:
-        async with aiohttp.ClientSession() as session:
-            pass
-    assert len(cm.list) == 0
+    async with aiohttp.ClientSession() as session:
+        pass
 
     assert session.closed
 
 
 async def test_session_close_awaitable() -> None:
     session = aiohttp.ClientSession()
-    with pytest.warns(None) as cm:
-        await session.close()
-    assert len(cm.list) == 0
+    await session.close()
 
     assert session.closed
-
-
-async def test_close_run_until_complete_not_deprecated() -> None:
-    session = aiohttp.ClientSession()
-
-    with pytest.warns(None) as cm:
-        await session.close()
-
-    assert len(cm.list) == 0
 
 
 async def test_close_resp_on_error_async_with_session(aiohttp_server) -> None:
