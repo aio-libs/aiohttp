@@ -74,7 +74,7 @@ jobs:
         twine check --strict dist/*
     - name: Making sure that CONTRIBUTORS.txt remains sorted
       run: |
-        LC_ALL=C sort -c CONTRIBUTORS.txt
+        LC_ALL=C sort --check --ignore-case CONTRIBUTORS.txt
 
   gen_llhttp:
     name: Generate llhttp sources
