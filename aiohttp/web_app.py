@@ -97,7 +97,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         logger: logging.Logger = web_logger,
         middlewares: Iterable[Middleware] = (),
         handler_args: Optional[Mapping[str, Any]] = None,
-        client_max_size: int = 1024 ** 2,
+        client_max_size: int = 1024**2,
         debug: Any = ...,  # mypy doesn't support ellipsis
     ) -> None:
 

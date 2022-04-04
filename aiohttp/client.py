@@ -217,7 +217,7 @@ class ClientSession:
         trust_env: bool = False,
         requote_redirect_url: bool = True,
         trace_configs: Optional[List[TraceConfig]] = None,
-        read_bufsize: int = 2 ** 16,
+        read_bufsize: int = 2**16,
     ) -> None:
         if base_url is None or isinstance(base_url, URL):
             self._base_url: Optional[URL] = base_url
@@ -865,7 +865,7 @@ class ClientSession:
             transport = conn.transport
             assert transport is not None
             reader: FlowControlDataQueue[WSMessage] = FlowControlDataQueue(
-                conn_proto, 2 ** 16, loop=self._loop
+                conn_proto, 2**16, loop=self._loop
             )
             conn_proto.set_parser(WebSocketReader(reader, max_msg_size), reader)
             writer = WebSocketWriter(
