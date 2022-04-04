@@ -81,7 +81,6 @@ if sys.version_info < (3, 7):
         tasks = list(asyncio.Task.all_tasks(loop))
         return {t for t in tasks if not t.done()}
 
-
 else:
     all_tasks = asyncio.all_tasks
 
@@ -926,9 +925,9 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
 # https://tools.ietf.org/html/rfc7232#section-2.3
 _ETAGC = r"[!#-}\x80-\xff]+"
 _ETAGC_RE = re.compile(_ETAGC)
-_QUOTED_ETAG = fr'(W/)?"({_ETAGC})"'
+_QUOTED_ETAG = rf'(W/)?"({_ETAGC})"'
 QUOTED_ETAG_RE = re.compile(_QUOTED_ETAG)
-LIST_QUOTED_ETAG_RE = re.compile(fr"({_QUOTED_ETAG})(?:\s*,\s*|$)|(.)")
+LIST_QUOTED_ETAG_RE = re.compile(rf"({_QUOTED_ETAG})(?:\s*,\s*|$)|(.)")
 
 ETAG_ANY = "*"
 
