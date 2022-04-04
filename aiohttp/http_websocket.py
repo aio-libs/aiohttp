@@ -82,8 +82,8 @@ PACK_LEN1 = Struct("!BB").pack
 PACK_LEN2 = Struct("!BBH").pack
 PACK_LEN3 = Struct("!BBQ").pack
 PACK_CLOSE_CODE = Struct("!H").pack
-MSG_SIZE: Final[int] = 2 ** 14
-DEFAULT_LIMIT: Final[int] = 2 ** 16
+MSG_SIZE: Final[int] = 2**14
+DEFAULT_LIMIT: Final[int] = 2**16
 
 
 _WSMessageBase = collections.namedtuple("_WSMessageBase", ["type", "data", "extra"])

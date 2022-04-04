@@ -108,7 +108,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         router: Optional[UrlDispatcher] = None,
         middlewares: Iterable[Middleware] = (),
         handler_args: Optional[Mapping[str, Any]] = None,
-        client_max_size: int = 1024 ** 2,
+        client_max_size: int = 1024**2,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         debug: Any = ...,  # mypy doesn't support ellipsis
     ) -> None:
