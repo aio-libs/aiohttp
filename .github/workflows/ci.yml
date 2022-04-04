@@ -74,7 +74,7 @@ jobs:
         twine check --strict dist/*
     - name: Making sure that CONTRIBUTORS.txt remains sorted
       run: |
-        LC_ALL=C sort --check --ignore-case CONTRIBUTORS.txt
+        LC_ALL=C sort -c CONTRIBUTORS.txt
 
   gen_llhttp:
     name: Generate llhttp sources
@@ -113,7 +113,7 @@ jobs:
     needs: gen_llhttp
     strategy:
       matrix:
-        pyver: [3.7, 3.8, 3.9, '3.10']
+        pyver: [3.6, 3.7, 3.8, 3.9, '3.10']
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         exclude:
@@ -126,7 +126,7 @@ jobs:
           - os: windows
             no-extensions: 'Y'
         include:
-          - pyver: pypy-3.8
+          - pyver: pypy3
             no-extensions: 'Y'
             os: ubuntu
       fail-fast: true
@@ -167,13 +167,11 @@ jobs:
       with:
         name: llhttp
         path: vendor/llhttp/build/
-    - name: Install dependencies
-      run: |
-        make .develop
     - name: Run unittests
       env:
-        COLOR: yes
+        COLOR: 'yes'
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
+        PIP_USER: 1
       run: |
         make vvtest
     #     python -m coverage xml
@@ -295,7 +293,7 @@ jobs:
       run: |
         make cythonize
     - name: Build wheels
-      uses: pypa/cibuildwheel@v2.3.1
+      uses: pypa/cibuildwheel@v2.3.0
       env:
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
     - uses: actions/upload-artifact@v2
@@ -328,7 +326,7 @@ jobs:
       run: |
         tree dist
     - name: Make Release
-      uses: aio-libs/create-release@v1.4.0
+      uses: aio-libs/create-release@v1.3.1
       with:
         changes_file: CHANGES.rst
         name: aiohttp
