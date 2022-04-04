@@ -560,7 +560,7 @@ def test_clone_headers_dict() -> None:
 
 
 async def test_cannot_clone_after_read(protocol) -> None:
-    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
+    payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
     payload.feed_data(b"data")
     payload.feed_eof()
     req = make_mocked_request("GET", "/path", payload=payload)
@@ -570,8 +570,8 @@ async def test_cannot_clone_after_read(protocol) -> None:
 
 
 async def test_make_too_big_request(protocol) -> None:
-    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
-    large_file = 1024 ** 2 * b"x"
+    payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
+    large_file = 1024**2 * b"x"
     too_large_file = large_file + b"x"
     payload.feed_data(too_large_file)
     payload.feed_eof()
@@ -583,19 +583,19 @@ async def test_make_too_big_request(protocol) -> None:
 
 
 async def test_make_too_big_request_adjust_limit(protocol) -> None:
-    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
-    large_file = 1024 ** 2 * b"x"
+    payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
+    large_file = 1024**2 * b"x"
     too_large_file = large_file + b"x"
     payload.feed_data(too_large_file)
     payload.feed_eof()
-    max_size = 1024 ** 2 + 2
+    max_size = 1024**2 + 2
     req = make_mocked_request("POST", "/", payload=payload, client_max_size=max_size)
     txt = await req.read()
-    assert len(txt) == 1024 ** 2 + 1
+    assert len(txt) == 1024**2 + 1
 
 
 async def test_multipart_formdata(protocol) -> None:
-    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
+    payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
     payload.feed_data(
         b"-----------------------------326931944431359\r\n"
         b'Content-Disposition: form-data; name="a"\r\n'
@@ -620,7 +620,7 @@ async def test_multipart_formdata(protocol) -> None:
 
 async def test_multipart_formdata_file(protocol) -> None:
     # Make sure file uploads work, even without a content type
-    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
+    payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
     payload.feed_data(
         b"-----------------------------326931944431359\r\n"
         b'Content-Disposition: form-data; name="a_file"; filename="binary"\r\n'
@@ -642,15 +642,15 @@ async def test_multipart_formdata_file(protocol) -> None:
 
 
 async def test_make_too_big_request_limit_None(protocol) -> None:
-    payload = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
-    large_file = 1024 ** 2 * b"x"
+    payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
+    large_file = 1024**2 * b"x"
     too_large_file = large_file + b"x"
     payload.feed_data(too_large_file)
     payload.feed_eof()
     max_size = None
     req = make_mocked_request("POST", "/", payload=payload, client_max_size=max_size)
     txt = await req.read()
-    assert len(txt) == 1024 ** 2 + 1
+    assert len(txt) == 1024**2 + 1
 
 
 def test_remote_peername_tcp() -> None:
