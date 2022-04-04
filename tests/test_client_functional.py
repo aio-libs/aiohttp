@@ -1290,7 +1290,7 @@ async def test_POST_bytes(aiohttp_client) -> None:
 
 
 async def test_POST_bytes_too_large(aiohttp_client) -> None:
-    body = b"0" * (2 ** 20 + 1)
+    body = b"0" * (2**20 + 1)
 
     async def handler(request):
         data = await request.content.read()

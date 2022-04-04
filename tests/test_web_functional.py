@@ -1490,7 +1490,7 @@ async def test_app_max_client_size(aiohttp_client) -> None:
         await request.post()
         return web.Response(body=b"ok")
 
-    max_size = 1024 ** 2
+    max_size = 1024**2
     app = web.Application()
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
@@ -1512,7 +1512,7 @@ async def test_app_max_client_size_adjusted(aiohttp_client) -> None:
         await request.post()
         return web.Response(body=b"ok")
 
-    default_max_size = 1024 ** 2
+    default_max_size = 1024**2
     custom_max_size = default_max_size * 2
     app = web.Application(client_max_size=custom_max_size)
     app.router.add_post("/", handler)
@@ -1541,7 +1541,7 @@ async def test_app_max_client_size_none(aiohttp_client) -> None:
         await request.post()
         return web.Response(body=b"ok")
 
-    default_max_size = 1024 ** 2
+    default_max_size = 1024**2
     custom_max_size = None
     app = web.Application(client_max_size=custom_max_size)
     app.router.add_post("/", handler)

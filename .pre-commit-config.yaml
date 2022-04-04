@@ -34,7 +34,7 @@ repos:
   hooks:
   - id: isort
 - repo: https://github.com/psf/black
-  rev: '21.10b0'
+  rev: '22.3.0'
   hooks:
     - id: black
       language_version: python3 # Should be a command that runs python

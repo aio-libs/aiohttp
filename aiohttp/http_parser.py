@@ -219,7 +219,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         self,
         protocol: Optional[BaseProtocol] = None,
         loop: Optional[asyncio.AbstractEventLoop] = None,
-        limit: int = 2 ** 16,
+        limit: int = 2**16,
         max_line_size: int = 8190,
         max_headers: int = 32768,
         max_field_size: int = 8190,
