@@ -92,6 +92,13 @@ class CookieJar(AbstractCookieJar):
         except OverflowError:
             self._max_time = self.MAX_32BIT_TIME
 
+    def clone(self) -> "CookieJar":
+        return self.__class__(
+            unsafe=self._unsafe,
+            quote_cookie=self._quote_cookie,
+            treat_as_secure_origin=self._treat_as_secure_origin,
+        )
+
     def save(self, file_path: PathLike) -> None:
         file_path = pathlib.Path(file_path)
         with file_path.open(mode="wb") as f:
@@ -398,6 +405,9 @@ class DummyCookieJar(AbstractCookieJar):
     It can be used with the ClientSession when no cookie processing is needed.
 
     """
+
+    def clone(self) -> "DummyCookieJar":
+        return self.__class__()
 
     def __iter__(self) -> "Iterator[Morsel[str]]":
         while False:

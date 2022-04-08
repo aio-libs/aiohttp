@@ -13,6 +13,7 @@ from typing import (
     List,
     Optional,
     Tuple,
+    TypeVar,
 )
 
 from multidict import CIMultiDict
@@ -134,10 +135,15 @@ else:
 
 
 ClearCookiePredicate = Callable[["Morsel[str]"], bool]
+_CookieJar = TypeVar("_CookieJar", bound="AbstractCookieJar")
 
 
 class AbstractCookieJar(Sized, IterableBase):
     """Abstract Cookie Jar."""
+
+    @abstractmethod
+    def clone(self: _CookieJar) -> _CookieJar:
+        """Clone."""
 
     @abstractmethod
     def clear(self, predicate: Optional[ClearCookiePredicate] = None) -> None:
