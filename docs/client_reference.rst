@@ -1713,7 +1713,7 @@ ClientTimeout
 
    .. note::
 
-      Timeouts larger than 5 seconds are rounded for scheduling on the next
+      Timeouts larger than or equal to 5 seconds are rounded for scheduling on the next
       second boundary (an absolute time where microseconds part is zero) for the
       sake of performance.
 
