@@ -514,10 +514,10 @@ class BodyPartReaderPayload(Payload):
 
     async def write(self, writer: Any) -> None:
         field = self._value
-        chunk = await field.read_chunk(size=2 ** 16)
+        chunk = await field.read_chunk(size=2**16)
         while chunk:
             await writer.write(field.decode(chunk))
-            chunk = await field.read_chunk(size=2 ** 16)
+            chunk = await field.read_chunk(size=2**16)
 
 
 class MultipartReader:
@@ -746,8 +746,8 @@ class MultipartWriter(Payload):
     def __bool__(self) -> bool:
         return True
 
-    _valid_tchar_regex = re.compile(br"\A[!#$%&'*+\-.^_`|~\w]+\Z")
-    _invalid_qdtext_char_regex = re.compile(br"[\x00-\x08\x0A-\x1F\x7F]")
+    _valid_tchar_regex = re.compile(rb"\A[!#$%&'*+\-.^_`|~\w]+\Z")
+    _invalid_qdtext_char_regex = re.compile(rb"[\x00-\x08\x0A-\x1F\x7F]")
 
     @property
     def _boundary_value(self) -> str:
