@@ -90,21 +90,17 @@ def tls_certificate_fingerprint_sha256(tls_certificate_pem_bytes):
 
 @pytest.fixture
 def pipe_name():
-    name = fr"\\.\pipe\{uuid.uuid4().hex}"
+    name = rf"\\.\pipe\{uuid.uuid4().hex}"
     return name
 
 
 @pytest.fixture
 def selector_loop():
-    if sys.version_info < (3, 7):
-        policy = asyncio.get_event_loop_policy()
-        policy._loop_factory = asyncio.SelectorEventLoop  # type: ignore
+    if sys.version_info >= (3, 8):
+        policy = asyncio.WindowsSelectorEventLoopPolicy()
     else:
-        if sys.version_info >= (3, 8):
-            policy = asyncio.WindowsSelectorEventLoopPolicy()  # type: ignore
-        else:
-            policy = asyncio.DefaultEventLoopPolicy()
-        asyncio.set_event_loop_policy(policy)
+        policy = asyncio.DefaultEventLoopPolicy()
+    asyncio.set_event_loop_policy(policy)
 
     with loop_context(policy.new_event_loop) as _loop:
         asyncio.set_event_loop(_loop)

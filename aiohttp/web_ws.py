@@ -206,9 +206,9 @@ class WebSocketResponse(StreamResponse):
         accept_val = base64.b64encode(
             hashlib.sha1(key.encode() + WS_KEY).digest()
         ).decode()
-        response_headers = CIMultiDict(  # type: ignore[var-annotated]
+        response_headers = CIMultiDict(
             {
-                hdrs.UPGRADE: "websocket",  # type: ignore[arg-type]
+                hdrs.UPGRADE: "websocket",
                 hdrs.CONNECTION: "upgrade",
                 hdrs.SEC_WEBSOCKET_ACCEPT: accept_val,
             }
@@ -263,7 +263,7 @@ class WebSocketResponse(StreamResponse):
 
         loop = self._loop
         assert loop is not None
-        self._reader = FlowControlDataQueue(request._protocol, 2 ** 16, loop=loop)
+        self._reader = FlowControlDataQueue(request._protocol, 2**16, loop=loop)
         request.protocol.set_parser(
             WebSocketReader(self._reader, self._max_msg_size, compress=self._compress)
         )
