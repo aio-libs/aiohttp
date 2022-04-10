@@ -59,7 +59,7 @@ cryptography==36.0.0 ; platform_machine != "i686"
     #   -r requirements/test.txt
     #   pyjwt
     #   trustme
-cython==0.29.26
+cython==0.29.27
     # via -r requirements/cython.txt
 distlib==0.3.3
     # via virtualenv
