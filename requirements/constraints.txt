@@ -218,14 +218,14 @@ toml==0.10.2
     #   cherry-picker
     #   pre-commit
     #   pytest
-    #   towncrier
 tomli==1.2.2
     # via
     #   coverage
     #   mypy
     #   pep517
     #   slotscheck
-towncrier==21.3.0
+    #   towncrier
+towncrier==21.9.0
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-towncrier
@@ -265,3 +265,4 @@ setuptools==58.4.0
     #   gunicorn
     #   pip-tools
     #   sphinx
+    #   towncrier
