@@ -339,9 +339,8 @@ Otherwise, something based on your company name/url would be satisfactory (i.e.
 ContextVars support
 -------------------
 
-Starting from Python 3.7 asyncio has :mod:`Context Variables <contextvars>` as a
-context-local storage (a generalization of thread-local concept that works with asyncio
-tasks also).
+Asyncio has :mod:`Context Variables <contextvars>` as a context-local storage
+(a generalization of thread-local concept that works with asyncio tasks also).
 
 
 *aiohttp* server supports it in the following way:
@@ -1076,8 +1075,7 @@ Install with ``pip``:
     $ pip install aiohttp-devtools
 
 * ``runserver`` provides a development server with auto-reload,
-  live-reload, static file serving and `aiohttp-debugtoolbar`_
-  integration.
+  live-reload, static file serving.
 * ``start`` is a `cookiecutter command which does the donkey work
   of creating new :mod:`aiohttp.web` Applications.
 

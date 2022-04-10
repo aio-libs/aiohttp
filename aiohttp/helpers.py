@@ -79,11 +79,9 @@ _S = TypeVar("_S")
 _SENTINEL = enum.Enum("_SENTINEL", "sentinel")
 sentinel = _SENTINEL.sentinel
 
-NO_EXTENSIONS: bool = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))
+NO_EXTENSIONS = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))
 
-# N.B. sys.flags.dev_mode is available on Python 3.7+, use getattr
-# for compatibility with older versions
-DEBUG: bool = getattr(sys.flags, "dev_mode", False) or (
+DEBUG = sys.flags.dev_mode or (
     not sys.flags.ignore_environment and bool(os.environ.get("PYTHONASYNCIODEBUG"))
 )
 
@@ -1014,9 +1012,9 @@ def populate_with_cookies(
 # https://tools.ietf.org/html/rfc7232#section-2.3
 _ETAGC = r"[!#-}\x80-\xff]+"
 _ETAGC_RE = re.compile(_ETAGC)
-_QUOTED_ETAG = fr'(W/)?"({_ETAGC})"'
+_QUOTED_ETAG = rf'(W/)?"({_ETAGC})"'
 QUOTED_ETAG_RE = re.compile(_QUOTED_ETAG)
-LIST_QUOTED_ETAG_RE = re.compile(fr"({_QUOTED_ETAG})(?:\s*,\s*|$)|(.)")
+LIST_QUOTED_ETAG_RE = re.compile(rf"({_QUOTED_ETAG})(?:\s*,\s*|$)|(.)")
 
 ETAG_ANY = "*"
 

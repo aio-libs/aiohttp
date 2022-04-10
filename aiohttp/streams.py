@@ -65,19 +65,13 @@ class AsyncStreamReaderMixin:
         return AsyncStreamIterator(self.readline)  # type: ignore[attr-defined]
 
     def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
-        """Returns an asynchronous iterator that yields chunks of size n.
-
-        Python-3.5 available for Python 3.5+ only
-        """
+        """Returns an asynchronous iterator that yields chunks of size n."""
         return AsyncStreamIterator(
             lambda: self.read(n)  # type: ignore[attr-defined,no-any-return]
         )
 
     def iter_any(self) -> AsyncStreamIterator[bytes]:
-        """Yield all available data as soon as it is received.
-
-        Python-3.5 available for Python 3.5+ only
-        """
+        """Yield all available data as soon as it is received."""
         return AsyncStreamIterator(self.readany)  # type: ignore[attr-defined]
 
     def iter_chunks(self) -> ChunkTupleAsyncStreamIterator:
@@ -85,8 +79,6 @@ class AsyncStreamReaderMixin:
 
         The yielded objects are tuples
         of (bytes, bool) as returned by the StreamReader.readchunk method.
-
-        Python-3.5 available for Python 3.5+ only
         """
         return ChunkTupleAsyncStreamIterator(self)  # type: ignore[arg-type]
 
@@ -139,7 +131,7 @@ class StreamReader(AsyncStreamReaderMixin):
             info.append("%d bytes" % self._size)
         if self._eof:
             info.append("eof")
-        if self._low_water != 2 ** 16:  # default limit
+        if self._low_water != 2**16:  # default limit
             info.append("low=%d high=%d" % (self._low_water, self._high_water))
         if self._waiter:
             info.append("w=%r" % self._waiter)
