@@ -51,7 +51,7 @@ __all__ = (
     "AsyncIterablePayload",
 )
 
-TOO_LARGE_BYTES_BODY: Final[int] = 2 ** 20  # 1 MB
+TOO_LARGE_BYTES_BODY: Final[int] = 2**20  # 1 MB
 
 if TYPE_CHECKING:  # pragma: no cover
     from typing import List
@@ -301,10 +301,10 @@ class IOBasePayload(Payload):
     async def write(self, writer: AbstractStreamWriter) -> None:
         loop = asyncio.get_event_loop()
         try:
-            chunk = await loop.run_in_executor(None, self._value.read, 2 ** 16)
+            chunk = await loop.run_in_executor(None, self._value.read, 2**16)
             while chunk:
                 await writer.write(chunk)
-                chunk = await loop.run_in_executor(None, self._value.read, 2 ** 16)
+                chunk = await loop.run_in_executor(None, self._value.read, 2**16)
         finally:
             await loop.run_in_executor(None, self._value.close)
 
@@ -350,7 +350,7 @@ class TextIOPayload(IOBasePayload):
     async def write(self, writer: AbstractStreamWriter) -> None:
         loop = asyncio.get_event_loop()
         try:
-            chunk = await loop.run_in_executor(None, self._value.read, 2 ** 16)
+            chunk = await loop.run_in_executor(None, self._value.read, 2**16)
             while chunk:
                 data = (
                     chunk.encode(encoding=self._encoding)
@@ -358,7 +358,7 @@ class TextIOPayload(IOBasePayload):
                     else chunk.encode()
                 )
                 await writer.write(data)
-                chunk = await loop.run_in_executor(None, self._value.read, 2 ** 16)
+                chunk = await loop.run_in_executor(None, self._value.read, 2**16)
         finally:
             await loop.run_in_executor(None, self._value.close)
 
