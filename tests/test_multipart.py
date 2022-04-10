@@ -543,9 +543,9 @@ class TestPartReader:
         assert "foo.html" == part.filename
 
     async def test_reading_long_part(self) -> None:
-        size = 2 * 2 ** 16
+        size = 2 * 2**16
         protocol = mock.Mock(_reading_paused=False)
-        stream = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
+        stream = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
         stream.feed_data(b"0" * size + b"\r\n--:--")
         stream.feed_eof()
         obj = aiohttp.BodyPartReader(BOUNDARY, {}, stream)
