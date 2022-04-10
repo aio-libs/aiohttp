@@ -90,7 +90,7 @@ def tls_certificate_fingerprint_sha256(tls_certificate_pem_bytes):
 
 @pytest.fixture
 def pipe_name():
-    name = fr"\\.\pipe\{uuid.uuid4().hex}"
+    name = rf"\\.\pipe\{uuid.uuid4().hex}"
     return name
 
 

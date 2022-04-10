@@ -607,7 +607,7 @@ def make_mocked_request(
     transport: Any = sentinel,
     payload: Any = sentinel,
     sslcontext: Optional[SSLContext] = None,
-    client_max_size: int = 1024 ** 2,
+    client_max_size: int = 1024**2,
     loop: Any = ...,
 ) -> Request:
     """Creates mocked web.Request testing purposes.
