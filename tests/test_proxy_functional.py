@@ -553,7 +553,7 @@ async def xtest_proxy_https_connect_with_port(proxy_test_server, get_request):
 async def xtest_proxy_https_send_body(proxy_test_server, loop):
     sess = aiohttp.ClientSession(loop=loop)
     proxy = await proxy_test_server()
-    proxy.return_value = {"status": 200, "body": b"1" * (2 ** 20)}
+    proxy.return_value = {"status": 200, "body": b"1" * (2**20)}
     url = "https://www.google.com.ua/search?q=aiohttp proxy"
 
     resp = await sess.get(url, proxy=proxy.url)
@@ -561,7 +561,7 @@ async def xtest_proxy_https_send_body(proxy_test_server, loop):
     await resp.release()
     await sess.close()
 
-    assert body == b"1" * (2 ** 20)
+    assert body == b"1" * (2**20)
 
 
 @pytest.mark.xfail

@@ -84,7 +84,7 @@ class FileField:
 _TCHAR: Final[str] = string.digits + string.ascii_letters + r"!#$%&'*+.^_`|~-"
 # '-' at the end to prevent interpretation as range in a char class
 
-_TOKEN: Final[str] = fr"[{_TCHAR}]+"
+_TOKEN: Final[str] = rf"[{_TCHAR}]+"
 
 _QDTEXT: Final[str] = r"[{}]".format(
     r"".join(chr(c) for c in (0x09, 0x20, 0x21) + tuple(range(0x23, 0x7F)))
@@ -155,7 +155,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         task: "asyncio.Task[None]",
         loop: asyncio.AbstractEventLoop,
         *,
-        client_max_size: int = 1024 ** 2,
+        client_max_size: int = 1024**2,
         state: Optional[Dict[str, Any]] = None,
         scheme: Optional[str] = None,
         host: Optional[str] = None,
@@ -726,7 +726,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
                     if field.filename:
                         # store file in temp file
                         tmp = tempfile.TemporaryFile()
-                        chunk = await field.read_chunk(size=2 ** 16)
+                        chunk = await field.read_chunk(size=2**16)
                         while chunk:
                             chunk = field.decode(chunk)
                             tmp.write(chunk)
@@ -736,7 +736,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
                                 raise HTTPRequestEntityTooLarge(
                                     max_size=max_size, actual_size=size
                                 )
-                            chunk = await field.read_chunk(size=2 ** 16)
+                            chunk = await field.read_chunk(size=2**16)
                         tmp.seek(0)
 
                         if field_ct is None:
