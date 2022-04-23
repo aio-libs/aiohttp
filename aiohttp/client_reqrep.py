@@ -215,7 +215,7 @@ class ClientRequest:
         if match:
             raise ValueError(
                 f"Method cannot contain non-token characters {method!r} "
-                "(found at least {match.group()!r})"
+                f"(found at least {match.group()!r})"
             )
         assert isinstance(url, URL), url
         assert isinstance(proxy, (URL, type(None))), proxy
