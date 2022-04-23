@@ -130,6 +130,7 @@ jobs:
           - pyver: pypy-3.8
             no-extensions: 'Y'
             os: ubuntu
+            experimental: false
           - os: ubuntu
             pyver: "3.11.0-alpha - 3.11.0"
             experimental: true
