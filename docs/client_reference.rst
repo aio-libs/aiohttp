@@ -2077,6 +2077,18 @@ All exceptions are available as members of *aiohttp* module.
 
       Invalid URL, :class:`yarl.URL` instance.
 
+    .. attribute:: description
+
+      Invalid URL description, :class:`str` instance.
+
+.. exception:: InvalidRedirectUrl
+
+   Redirect URL used for fetching is malformed, e.g. it does not contain host
+   part.
+
+   Derived from :exc:`InvalidURL`
+
+
 .. class:: ContentDisposition
 
     Represent Content-Disposition header
@@ -2271,3 +2283,5 @@ Hierarchy of exceptions
   * :exc:`ClientPayloadError`
 
   * :exc:`InvalidURL`
+
+    * :exc:`InvalidRedirectUrl`
