@@ -252,7 +252,7 @@ class InvalidURL(ClientError, ValueError):
         return self.args[0]
 
     @property
-    def description(self) -> Optional[str]:
+    def description(self) -> Any:
         return self.args[1]
 
     def __repr__(self) -> str:
