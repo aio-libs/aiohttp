@@ -38,6 +38,7 @@ __all__ = (
     "ContentTypeError",
     "ClientPayloadError",
     "InvalidURL",
+    "InvalidRedirectUrl",
 )
 
 
@@ -238,17 +239,31 @@ class InvalidURL(ClientError, ValueError):
 
     # Derive from ValueError for backward compatibility
 
-    def __init__(self, url: Any) -> None:
+    def __init__(self, url: Any, description: Optional[str] = None) -> None:
         # The type of url is not yarl.URL because the exception can be raised
         # on URL(url) call
-        super().__init__(url)
+        super_args = [url]
+        if description:
+            super_args.append(description)
+        super().__init__(*super_args)
 
     @property
     def url(self) -> Any:
         return self.args[0]
 
+    @property
+    def description(self) -> Optional[str]:
+        return self.args[1]
+
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {self.url}>"
+        return f"<{self.__class__.__name__} {self}>"
+
+    def __str__(self) -> str:
+        return " - ".join(self.args)
+
+
+class InvalidRedirectUrl(InvalidURL):
+    """Invalid redirect url error"""
 
 
 class ClientSSLError(ClientConnectorError):

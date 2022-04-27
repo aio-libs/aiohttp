@@ -268,8 +268,9 @@ class TestServerFingerprintMismatch:
 
 class TestInvalidURL:
     def test_ctor(self) -> None:
-        err = client.InvalidURL(url=":wrong:url:")
+        err = client.InvalidURL(url=":wrong:url:", description=":description:")
         assert err.url == ":wrong:url:"
+        assert err.description == ":description:"
 
     def test_pickle(self) -> None:
         err = client.InvalidURL(url=":wrong:url:")
@@ -280,10 +281,18 @@ class TestInvalidURL:
             assert err2.url == ":wrong:url:"
             assert err2.foo == "bar"
 
-    def test_repr(self) -> None:
+    def test_repr_no_description(self) -> None:
         err = client.InvalidURL(url=":wrong:url:")
         assert repr(err) == "<InvalidURL :wrong:url:>"
 
-    def test_str(self) -> None:
+    def test_repr_with_description(self) -> None:
+        err = client.InvalidURL(url=":wrong:url:", description=":description:")
+        assert repr(err) == "<InvalidURL :wrong:url: - :description:>"
+
+    def test_str_no_description(self) -> None:
         err = client.InvalidURL(url=":wrong:url:")
         assert str(err) == ":wrong:url:"
+
+    def test_str_with_description(self) -> None:
+        err = client.InvalidURL(url=":wrong:url:", description=":description:")
+        assert str(err) == ":wrong:url: - :description:"
