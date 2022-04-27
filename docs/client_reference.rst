@@ -52,7 +52,10 @@ The client session supports the context manager protocol for self closing.
                          read_bufsize=2**16, \
                          requote_redirect_url=False, \
                          trust_env=False, \
-                         trace_configs=None)
+                         trace_configs=None, \
+                         max_line_size=8190, \
+                         max_headers=32768, \
+                         max_field_size=8190)
 
    The class for creating client sessions and making requests.
 
@@ -201,6 +204,12 @@ The client session supports the context manager protocol for self closing.
                          disabling.  See :ref:`aiohttp-client-tracing-reference` for
                          more information.
 
+   :param max_line_size: The maximum length allowed for the HTTP response reason field.
+
+   :param max_headers: The maximum number of response headers allowed.
+
+   :param max_field_size: The maximum length allowed for response header values.
+
    .. attribute:: closed
 
       ``True`` if the session has been closed, ``False`` otherwise.
@@ -338,7 +347,10 @@ The client session supports the context manager protocol for self closing.
                          proxy=None, proxy_auth=None,\
                          timeout=sentinel, ssl=None, \
                          verify_ssl=None, fingerprint=None, \
-                         ssl_context=None, proxy_headers=None)
+                         ssl_context=None, proxy_headers=None, \
+                         max_line_size=8190, \
+                         max_headers=32768, \
+                         max_field_size=8190)
       :async-with:
       :coroutine:
       :noindex:
@@ -509,6 +521,12 @@ The client session supports the context manager protocol for self closing.
         tracers that is only available at request time.
 
          .. versionadded:: 3.0
+
+      :param max_line_size: The maximum length allowed for the HTTP response reason field.
+
+      :param max_headers: The maximum number of response headers allowed.
+
+      :param max_field_size: The maximum length allowed for response header values.
 
       :return ClientResponse: a :class:`client response <ClientResponse>`
          object.
