@@ -351,5 +351,6 @@ Yusuke Tsutsumi
 Yuval Ofir
 Zeal Wierslee
 Zlatan Sičanica
+Łukasz Setla
 Марк Коренберг
 Семён Марьясин
