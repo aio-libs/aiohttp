@@ -49,6 +49,7 @@ from .client_exceptions import (
     ClientResponseError as ClientResponseError,
     ClientSSLError as ClientSSLError,
     ContentTypeError as ContentTypeError,
+    InvalidRedirectUrl as InvalidRedirectUrl,
     InvalidURL as InvalidURL,
     ServerConnectionError as ServerConnectionError,
     ServerDisconnectedError as ServerDisconnectedError,
@@ -106,6 +107,7 @@ __all__ = (
     "ClientSSLError",
     "ContentTypeError",
     "InvalidURL",
+    "InvalidRedirectUrl",
     "ServerConnectionError",
     "ServerDisconnectedError",
     "ServerFingerprintMismatch",
@@ -574,34 +576,40 @@ class ClientSession:
                             resp.release()
 
                         try:
-                            parsed_url = URL(
+                            parsed_redirect_url = URL(
                                 r_url, encoded=not self._requote_redirect_url
                             )
-
                         except ValueError as e:
-                            raise InvalidURL(r_url) from e
+                            raise InvalidRedirectUrl(r_url) from e
 
-                        scheme = parsed_url.scheme
+                        scheme = parsed_redirect_url.scheme
                         if scheme not in ("http", "https", ""):
                             resp.close()
-                            raise ValueError("Can redirect only to http or https")
+                            raise InvalidRedirectUrl(
+                                r_url, "Can redirect only to http or https"
+                            )
                         elif not scheme:
-                            parsed_url = url.join(parsed_url)
+                            parsed_redirect_url = url.join(parsed_redirect_url)
 
                         is_same_host_https_redirect = (
-                            url.host == parsed_url.host
-                            and parsed_url.scheme == "https"
+                            url.host == parsed_redirect_url.host
+                            and parsed_redirect_url.scheme == "https"
                             and url.scheme == "http"
                         )
 
+                        try:
+                            redirect_origin = parsed_redirect_url.origin()
+                        except ValueError as e:
+                            raise InvalidRedirectUrl(parsed_redirect_url) from e
+
                         if (
-                            url.origin() != parsed_url.origin()
+                            url.origin() != redirect_origin
                             and not is_same_host_https_redirect
                         ):
                             auth = None
                             headers.pop(hdrs.AUTHORIZATION, None)
 
-                        url = parsed_url
+                        url = parsed_redirect_url
                         params = None
                         resp.release()
                         continue
