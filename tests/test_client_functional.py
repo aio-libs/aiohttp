@@ -19,7 +19,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver
-from aiohttp.client_exceptions import TooManyRedirects
+from aiohttp.client_exceptions import InvalidRedirectUrl, TooManyRedirects
 from aiohttp.test_utils import unused_port
 
 
@@ -897,7 +897,7 @@ async def test_HTTP_302_REDIRECT_NON_HTTP(aiohttp_client: Any) -> None:
     app.router.add_get("/redirect", redirect)
     client = await aiohttp_client(app)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidRedirectUrl):
         await client.get("/redirect")
 
 
@@ -2164,6 +2164,38 @@ async def test_redirect_without_location_header(aiohttp_client: Any) -> None:
     resp = await client.get("/redirect")
     data = await resp.read()
     assert data == body
+
+
+async def test_invalid_redirect_yarl_url_host_required(aiohttp_client: Any) -> None:
+    body = b"redirect"
+    headers = {hdrs.LOCATION: "http://:/"}
+
+    async def handler_request(request):
+        return web.Response(status=301, body=body, headers=headers)
+
+    app = web.Application()
+    app.router.add_get("/redirect", handler_request)
+    client = await aiohttp_client(app)
+
+    with pytest.raises(InvalidRedirectUrl):
+        await client.get("/redirect")
+
+
+async def test_invalid_redirect_yarl_url_should_be_absolute(
+    aiohttp_client: Any,
+) -> None:
+    body = b"redirect"
+    headers = {hdrs.LOCATION: "http:/"}
+
+    async def handler_request(request):
+        return web.Response(status=301, body=body, headers=headers)
+
+    app = web.Application()
+    app.router.add_get("/redirect", handler_request)
+    client = await aiohttp_client(app)
+
+    with pytest.raises(InvalidRedirectUrl):
+        await client.get("/redirect")
 
 
 @pytest.mark.parametrize(
