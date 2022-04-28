@@ -248,13 +248,13 @@ class InvalidURL(ClientError, ValueError):
             super().__init__(url)
 
     @property
-    def url(self) -> Any:
-        return self.args[0]
+    def url(self) -> str:
+        return self.args[0]  # type: ignore[no-any-return]
 
     @property
     def description(self) -> Optional[str]:
         try:
-            return self.args[1]
+            return self.args[1]  # type: ignore[no-any-return]
         except KeyError:
             return None
 
