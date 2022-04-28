@@ -2166,26 +2166,24 @@ async def test_redirect_without_location_header(aiohttp_client: Any) -> None:
     assert data == body
 
 
-async def test_invalid_redirect_yarl_url_host_required(aiohttp_client: Any) -> None:
-    body = b"redirect"
-    headers = {hdrs.LOCATION: "http://:/"}
-
-    async def handler_request(request):
-        return web.Response(status=301, body=body, headers=headers)
-
-    app = web.Application()
-    app.router.add_get("/redirect", handler_request)
-    client = await aiohttp_client(app)
-
-    with pytest.raises(InvalidRedirectUrl):
-        await client.get("/redirect")
-
-
-async def test_invalid_redirect_yarl_url_should_be_absolute(
-    aiohttp_client: Any,
+@pytest.mark.parametrize(
+    "invalid_redirect_url",
+    (
+        # yarl.URL.__new__ raises ValueError
+        "http://:/",
+        "http://www.example.com/../filename.html",
+        "http://example.org:non_int_port/",
+        # yarl.URL.origin raises ValueError
+        "http:/",
+        "http:/example.com",
+        "http:///example.com",
+    ),
+)
+async def test_invalid_redirect_url(
+    aiohttp_client: Any, invalid_redirect_url: Any
 ) -> None:
     body = b"redirect"
-    headers = {hdrs.LOCATION: "http:/"}
+    headers = {hdrs.LOCATION: invalid_redirect_url}
 
     async def handler_request(request):
         return web.Response(status=301, body=body, headers=headers)
