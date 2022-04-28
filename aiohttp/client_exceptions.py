@@ -242,18 +242,21 @@ class InvalidURL(ClientError, ValueError):
     def __init__(self, url: Any, description: Optional[str] = None) -> None:
         # The type of url is not yarl.URL because the exception can be raised
         # on URL(url) call
-        super_args = [url]
         if description:
-            super_args.append(description)
-        super().__init__(*super_args)
+            super().__init__(url, description)
+        else:
+            super().__init__(url)
 
     @property
     def url(self) -> Any:
         return self.args[0]
 
     @property
-    def description(self) -> Any:
-        return self.args[1]
+    def description(self) -> Optional[str]:
+        try:
+            return self.args[1]
+        except KeyError:
+            return None
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} {self}>"
