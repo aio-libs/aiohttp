@@ -2182,11 +2182,10 @@ async def test_redirect_without_location_header(aiohttp_client: Any) -> None:
 async def test_invalid_redirect_url(
     aiohttp_client: Any, invalid_redirect_url: Any
 ) -> None:
-    body = b"redirect"
     headers = {hdrs.LOCATION: invalid_redirect_url}
 
     async def handler_request(request):
-        return web.Response(status=301, body=body, headers=headers)
+        return web.Response(status=301, headers=headers)
 
     app = web.Application()
     app.router.add_get("/redirect", handler_request)
