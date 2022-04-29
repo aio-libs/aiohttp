@@ -1,0 +1,1 @@
+Fixed a bug in ``FileResponse`` fallback code when the requested range is smaller than the chunk size.
