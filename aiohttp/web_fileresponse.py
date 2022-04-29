@@ -114,7 +114,7 @@ class FileResponse(StreamResponse):
         chunk_size = self._chunk_size
         loop = asyncio.get_event_loop()
         chunk = await loop.run_in_executor(
-            None, self._seek_and_read, fobj, offset, chunk_size
+            None, self._seek_and_read, fobj, offset, min(chunk_size, count)
         )
         while chunk:
             await writer.write(chunk)

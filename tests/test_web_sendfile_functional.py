@@ -1164,3 +1164,30 @@ async def test_static_file_huge_error(
 
     resp.release()
     await client.close()
+
+
+@pytest.mark.parametrize("chunk_size", (15, 31))
+async def test_a_ranged_request_serves_no_additional_bytes(
+    aiohttp_client: AiohttpClient, sender: _Sender, chunk_size: int
+) -> None:
+    filepath = pathlib.Path(__file__).parent / "aiohttp.jpg"
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        return sender(filepath, chunk_size=chunk_size)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/", headers={"Range": "bytes=20-40"})
+    assert resp.status == 206
+    body = await resp.read()
+
+    # 21 bytes, because http range headers are including both fenceposts.
+    assert len(body) == 21
+
+    # Additionally verify that we are served the right bytes from that file.
+    with filepath.open("rb") as f:
+        f.seek(20)
+        content = f.read(21)
+        assert content == body
