@@ -1,10 +1,10 @@
 """HTTP related errors."""
 
 import asyncio
-from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Optional, Tuple, Union
 
 from .http_parser import RawResponseMessage
-from .typedefs import LooseHeaders
+from .typedefs import LooseHeaders, StrOrURL
 
 try:
     import ssl
@@ -239,7 +239,7 @@ class InvalidURL(ClientError, ValueError):
 
     # Derive from ValueError for backward compatibility
 
-    def __init__(self, url: Any, description: Optional[str] = None) -> None:
+    def __init__(self, url: StrOrURL, description: Optional[str] = None) -> None:
         # The type of url is not yarl.URL because the exception can be raised
         # on URL(url) call
         if description:
@@ -248,7 +248,7 @@ class InvalidURL(ClientError, ValueError):
             super().__init__(url)
 
     @property
-    def url(self) -> str:
+    def url(self) -> StrOrURL:
         return self.args[0]  # type: ignore[no-any-return]
 
     @property
