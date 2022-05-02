@@ -213,7 +213,9 @@ class ClientSession:
         version: HttpVersion = http.HttpVersion11,
         cookie_jar: Optional[AbstractCookieJar] = None,
         connector_owner: bool = True,
-        raise_for_status: Union[bool, Callable[[ClientResponse], Awaitable[None]]] = False,  # noqa
+        raise_for_status: Union[
+            bool, Callable[[ClientResponse], Awaitable[None]]
+        ] = False,  # noqa
         read_timeout: Union[float, object] = sentinel,
         conn_timeout: Optional[float] = None,
         timeout: Union[object, ClientTimeout] = sentinel,
@@ -380,7 +382,9 @@ class ClientSession:
         compress: Optional[str] = None,
         chunked: Optional[bool] = None,
         expect100: bool = False,
-        raise_for_status: Union[None, bool, Callable[[ClientResponse], Awaitable[None]]] = None,  # noqa
+        raise_for_status: Union[
+            None, bool, Callable[[ClientResponse], Awaitable[None]]
+        ] = None,  # noqa
         read_until_eof: bool = True,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
