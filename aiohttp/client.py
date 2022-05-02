@@ -215,7 +215,7 @@ class ClientSession:
         connector_owner: bool = True,
         raise_for_status: Union[
             bool, Callable[[ClientResponse], Awaitable[None]]
-        ] = False,  # noqa
+        ] = False,
         read_timeout: Union[float, object] = sentinel,
         conn_timeout: Optional[float] = None,
         timeout: Union[object, ClientTimeout] = sentinel,
@@ -384,7 +384,7 @@ class ClientSession:
         expect100: bool = False,
         raise_for_status: Union[
             None, bool, Callable[[ClientResponse], Awaitable[None]]
-        ] = None,  # noqa
+        ] = None,
         read_until_eof: bool = True,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
