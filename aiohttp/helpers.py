@@ -3,7 +3,6 @@
 import asyncio
 import base64
 import binascii
-import cgi
 import datetime
 import functools
 import inspect
@@ -17,6 +16,7 @@ import warnings
 import weakref
 from collections import namedtuple
 from contextlib import suppress
+from email.parser import HeaderParser
 from email.utils import parsedate
 from math import ceil
 from pathlib import Path
@@ -755,7 +755,10 @@ class HeadersMixin:
             self._content_type = "application/octet-stream"
             self._content_dict = {}
         else:
-            self._content_type, self._content_dict = cgi.parse_header(raw)
+            msg = HeaderParser().parsestr("Content-Type: " + raw)
+            self._content_type = msg.get_content_type()
+            params = msg.get_params()
+            self._content_dict = dict(params[1:])  # First element is content type again
 
     @property
     def content_type(self) -> str:
