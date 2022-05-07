@@ -823,7 +823,7 @@ class HttpPayloadParser:
                     if head == SEP:
                         # end of stream
                         self.payload.feed_eof()
-                        return True, chunk[2:]
+                        return True, chunk[-2:]
                     # Both CR and LF, or only LF may not be received yet. It is
                     # expected that CRLF or LF will be shown at the very first
                     # byte next time, otherwise trailers should come. The last
