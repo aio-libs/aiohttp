@@ -1,0 +1,1 @@
+Fix regression where ``asyncio.CancelledError`` occurs on client disconnection.
