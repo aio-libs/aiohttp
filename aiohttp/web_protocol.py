@@ -299,8 +299,6 @@ class RequestHandler(BaseProtocol):
                 exc = ConnectionResetError("Connection lost")
             self._current_request._cancel(exc)
 
-        if self._task_handler is not None:
-            self._task_handler.cancel()
         if self._waiter is not None:
             self._waiter.cancel()
 
