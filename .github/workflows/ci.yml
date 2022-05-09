@@ -278,7 +278,7 @@ jobs:
         submodules: true
     - name: Set up QEMU
       if: ${{ matrix.qemu }}
-      uses: docker/setup-qemu-action@v1
+      uses: docker/setup-qemu-action@v2
       with:
         platforms: all
       id: qemu
@@ -307,7 +307,7 @@ jobs:
       run: |
         make cythonize
     - name: Build wheels
-      uses: pypa/cibuildwheel@v2.4.0
+      uses: pypa/cibuildwheel@2.5.0
       env:
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
     - uses: actions/upload-artifact@v2
