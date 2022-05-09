@@ -2598,7 +2598,6 @@ application on specific TCP or Unix socket, e.g.::
         :attr:`helpers.AccessLogger.LOG_FORMAT`.
    :param int max_line_size: Optional maximum header line size. Default:
         ``8190``.
-   :param int max_headers: Optional maximum header size. Default: ``32768``.
    :param int max_field_size: Optional maximum header field size. Default:
         ``8190``.
 

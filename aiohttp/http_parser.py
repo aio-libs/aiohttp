@@ -125,11 +125,9 @@ class HeadersParser:
     def __init__(
         self,
         max_line_size: int = 8190,
-        max_headers: int = 32768,
         max_field_size: int = 8190,
     ) -> None:
         self.max_line_size = max_line_size
-        self.max_headers = max_headers
         self.max_field_size = max_field_size
 
     def parse_headers(
@@ -222,7 +220,6 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         loop: asyncio.AbstractEventLoop,
         limit: int,
         max_line_size: int = 8190,
-        max_headers: int = 32768,
         max_field_size: int = 8190,
         timer: Optional[BaseTimerContext] = None,
         code: Optional[int] = None,
@@ -236,7 +233,6 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         self.protocol = protocol
         self.loop = loop
         self.max_line_size = max_line_size
-        self.max_headers = max_headers
         self.max_field_size = max_field_size
         self.timer = timer
         self.code = code
@@ -253,7 +249,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         self._payload_parser: Optional[HttpPayloadParser] = None
         self._auto_decompress = auto_decompress
         self._limit = limit
-        self._headers_parser = HeadersParser(max_line_size, max_headers, max_field_size)
+        self._headers_parser = HeadersParser(max_line_size, max_field_size)
 
     @abc.abstractmethod
     def parse_message(self, lines: List[bytes]) -> _MsgT:
