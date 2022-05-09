@@ -192,7 +192,6 @@ class ClientSession:
         "_trace_configs",
         "_read_bufsize",
         "_max_line_size",
-        "_max_headers",
         "_max_field_size",
     )
 
@@ -222,7 +221,6 @@ class ClientSession:
         trace_configs: Optional[List[TraceConfig]] = None,
         read_bufsize: int = 2**16,
         max_line_size: int = 8190,
-        max_headers: int = 32768,
         max_field_size: int = 8190,
     ) -> None:
         if base_url is None or isinstance(base_url, URL):
@@ -273,7 +271,6 @@ class ClientSession:
         self._requote_redirect_url = requote_redirect_url
         self._read_bufsize = read_bufsize
         self._max_line_size = max_line_size
-        self._max_headers = max_headers
         self._max_field_size = max_field_size
 
         # Convert to list of tuples
@@ -361,7 +358,6 @@ class ClientSession:
         trace_request_ctx: Optional[SimpleNamespace] = None,
         read_bufsize: Optional[int] = None,
         max_line_size: Optional[int] = None,
-        max_headers: Optional[int] = None,
         max_field_size: Optional[int] = None,
     ) -> ClientResponse:
 
@@ -425,9 +421,6 @@ class ClientSession:
 
         if max_line_size is None:
             max_line_size = self._max_line_size
-
-        if max_headers is None:
-            max_headers = self._max_headers
 
         if max_field_size is None:
             max_field_size = self._max_field_size
@@ -538,7 +531,6 @@ class ClientSession:
                         read_bufsize=read_bufsize,
                         timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
                         max_line_size=max_line_size,
-                        max_headers=max_headers,
                         max_field_size=max_field_size,
                     )
 
@@ -1218,7 +1210,6 @@ def request(
     connector: Optional[BaseConnector] = None,
     read_bufsize: Optional[int] = None,
     max_line_size: int = 8190,
-    max_headers: int = 32768,
     max_field_size: int = 8190,
 ) -> _SessionRequestContextManager:
     """Constructs and sends a request.
@@ -1291,7 +1282,6 @@ def request(
             proxy_auth=proxy_auth,
             read_bufsize=read_bufsize,
             max_line_size=max_line_size,
-            max_headers=max_headers,
             max_field_size=max_field_size,
         ),
         session,

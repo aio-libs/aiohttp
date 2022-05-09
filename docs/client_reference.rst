@@ -54,7 +54,6 @@ The client session supports the context manager protocol for self closing.
                          trust_env=False, \
                          trace_configs=None, \
                          max_line_size=8190, \
-                         max_headers=32768, \
                          max_field_size=8190)
 
    The class for creating client sessions and making requests.
@@ -206,8 +205,6 @@ The client session supports the context manager protocol for self closing.
 
    :param max_line_size: The maximum length allowed for the HTTP response reason field.
 
-   :param max_headers: The maximum number of response headers allowed.
-
    :param max_field_size: The maximum length allowed for response header values.
 
    .. attribute:: closed
@@ -349,7 +346,6 @@ The client session supports the context manager protocol for self closing.
                          verify_ssl=None, fingerprint=None, \
                          ssl_context=None, proxy_headers=None, \
                          max_line_size=8190, \
-                         max_headers=32768, \
                          max_field_size=8190)
       :async-with:
       :coroutine:
@@ -523,8 +519,6 @@ The client session supports the context manager protocol for self closing.
          .. versionadded:: 3.0
 
       :param max_line_size: The maximum length allowed for the HTTP response reason field.
-
-      :param max_headers: The maximum number of response headers allowed.
 
       :param max_field_size: The maximum length allowed for response header values.
 
