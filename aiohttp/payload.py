@@ -375,9 +375,11 @@ class BufferedReaderPayload(IOBasePayload):
     def size(self) -> Optional[int]:
         try:
             return os.fstat(self._value.fileno()).st_size - self._value.tell()
-        except OSError:
+        except (OSError, AttributeError):
             # data.fileno() is not supported, e.g.
             # io.BufferedReader(io.BytesIO(b'data'))
+            # For some file-like objects (e.g. tarfile), the fileno() attribute may not exist at all,
+            # and will instead raise an AttributeError.
             return None
 
 

@@ -9,6 +9,8 @@ import json
 import pathlib
 import socket
 import ssl
+import tarfile
+import zipfile
 from typing import Any
 from unittest import mock
 
@@ -292,6 +294,75 @@ async def test_post_data_textio_encoding(aiohttp_client: Any) -> None:
     pl = aiohttp.TextIOPayload(io.StringIO(data), encoding="koi8-r")
     resp = await client.post("/", data=pl)
     assert 200 == resp.status
+
+
+async def test_post_data_zipfile_filelike(aiohttp_client: Any) -> None:
+    data = b"This is a zip file payload text file."
+
+    async def handler(request):
+        val = await request.read()
+        assert data == val, "Transmitted zipfile member failed to match original data."
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("POST", "/", handler)
+    client = await aiohttp_client(app)
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(file=buf, mode="w") as zf:
+        with zf.open("payload1.txt", mode="w") as zip_filelike_writing:
+            zip_filelike_writing.write(data)
+
+    buf.seek(0)
+    zf = zipfile.ZipFile(file=buf, mode="r")
+    resp = await client.post(
+        "/",
+        data=zf.open("payload1.txt"),
+    )
+    assert 200 == resp.status
+
+
+async def test_post_data_tarfile_filelike(aiohttp_client: Any) -> None:
+    data = b"This is a tar file payload text file."
+
+    async def handler(request):
+        val = await request.read()
+        assert data == val, "Transmitted tarfile member failed to match original data."
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("POST", "/", handler)
+    client = await aiohttp_client(app)
+
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w") as tf:
+        ti = tarfile.TarInfo(
+            name="payload1.txt",
+        )
+        ti.size = len(data)
+        tf.addfile(
+            tarinfo=ti,
+            fileobj=io.BytesIO(data),
+        )
+
+    # Random-access tarfile.
+    buf.seek(0)
+    tf = tarfile.open(fileobj=buf, mode="r:")
+    resp = await client.post(
+        "/",
+        data=tf.extractfile("payload1.txt"),
+    )
+    assert 200 == resp.status
+
+    # Streaming tarfile.
+    buf.seek(0)
+    tf = tarfile.open(fileobj=buf, mode="r|")
+    for entry in tf:
+        resp = await client.post(
+            "/",
+            data=tf.extractfile(entry),
+        )
+        assert 200 == resp.status
 
 
 async def test_ssl_client(

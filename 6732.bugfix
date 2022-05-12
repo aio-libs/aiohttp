@@ -1,0 +1,1 @@
+Some file-like objects (in particular, tarfile.extractfile() objects) raise AttributeErrors instead of OSErrors if `fileno` fails for streaming payload data.
