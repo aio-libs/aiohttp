@@ -1,0 +1,1 @@
+Fixed EmptyStreamReader instances throwing an exception during __repr__ call

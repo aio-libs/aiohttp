@@ -274,6 +274,7 @@ Sebastian Hanula
 Sebastian Hüther
 Sebastien Geffroy
 SeongSoo Cho
+Sergey Chudov
 Sergey Ninua
 Sergey Skripnick
 Serhii Charykov

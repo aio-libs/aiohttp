@@ -1075,6 +1075,7 @@ async def test_empty_stream_reader() -> None:
     with pytest.raises(asyncio.IncompleteReadError):
         await s.readexactly(10)
     assert s.read_nowait() == b""
+    assert "<EmptyStreamReader>" == repr(s)
 
 
 @pytest.fixture
