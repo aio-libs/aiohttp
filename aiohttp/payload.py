@@ -378,8 +378,8 @@ class BufferedReaderPayload(IOBasePayload):
         except (OSError, AttributeError):
             # data.fileno() is not supported, e.g.
             # io.BufferedReader(io.BytesIO(b'data'))
-            # For some file-like objects (e.g. tarfile), the fileno() attribute may not exist at all,
-            # and will instead raise an AttributeError.
+            # For some file-like objects (e.g. tarfile), the fileno() attribute may
+            # not exist at all, and will instead raise an AttributeError.
             return None
 
 
