@@ -211,6 +211,7 @@ Manuel Miranda
 Marat Sharafutdinov
 Marco Paolini
 Mariano Anaya
+Mario Sánchez García
 Mariusz Masztalerczuk
 Marko Kohtala
 Martijn Pieters
