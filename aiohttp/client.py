@@ -49,7 +49,7 @@ from .client_exceptions import (
     ClientResponseError as ClientResponseError,
     ClientSSLError as ClientSSLError,
     ContentTypeError as ContentTypeError,
-    InvalidRedirectUrl as InvalidRedirectUrl,
+    InvalidRedirectURL as InvalidRedirectURL,
     InvalidURL as InvalidURL,
     ServerConnectionError as ServerConnectionError,
     ServerDisconnectedError as ServerDisconnectedError,
@@ -107,7 +107,7 @@ __all__ = (
     "ClientSSLError",
     "ContentTypeError",
     "InvalidURL",
-    "InvalidRedirectUrl",
+    "InvalidRedirectURL",
     "ServerConnectionError",
     "ServerDisconnectedError",
     "ServerFingerprintMismatch",
@@ -580,12 +580,12 @@ class ClientSession:
                                 r_url, encoded=not self._requote_redirect_url
                             )
                         except ValueError as e:
-                            raise InvalidRedirectUrl(r_url) from e
+                            raise InvalidRedirectURL(r_url) from e
 
                         scheme = parsed_redirect_url.scheme
                         if scheme not in ("http", "https", ""):
                             resp.close()
-                            raise InvalidRedirectUrl(
+                            raise InvalidRedirectURL(
                                 r_url, "Can redirect only to http or https"
                             )
                         elif not scheme:
@@ -600,7 +600,7 @@ class ClientSession:
                         try:
                             redirect_origin = parsed_redirect_url.origin()
                         except ValueError as e:
-                            raise InvalidRedirectUrl(parsed_redirect_url) from e
+                            raise InvalidRedirectURL(parsed_redirect_url) from e
 
                         if (
                             url.origin() != redirect_origin

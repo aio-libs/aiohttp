@@ -2284,4 +2284,4 @@ Hierarchy of exceptions
 
   * :exc:`InvalidURL`
 
-    * :exc:`InvalidRedirectUrl`
+    * :exc:`InvalidRedirectURL`

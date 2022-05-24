@@ -38,7 +38,7 @@ __all__ = (
     "ContentTypeError",
     "ClientPayloadError",
     "InvalidURL",
-    "InvalidRedirectUrl",
+    "InvalidRedirectURL",
 )
 
 
@@ -265,7 +265,7 @@ class InvalidURL(ClientError, ValueError):
         return " - ".join(self.args)
 
 
-class InvalidRedirectUrl(InvalidURL):
+class InvalidRedirectURL(InvalidURL):
     """Invalid redirect url error"""
 
 

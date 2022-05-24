@@ -19,7 +19,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver
-from aiohttp.client_exceptions import InvalidRedirectUrl, TooManyRedirects
+from aiohttp.client_exceptions import InvalidRedirectURL, TooManyRedirects
 from aiohttp.test_utils import unused_port
 
 
@@ -897,7 +897,7 @@ async def test_HTTP_302_REDIRECT_NON_HTTP(aiohttp_client: Any) -> None:
     app.router.add_get("/redirect", redirect)
     client = await aiohttp_client(app)
 
-    with pytest.raises(InvalidRedirectUrl):
+    with pytest.raises(InvalidRedirectURL):
         await client.get("/redirect")
 
 
@@ -2191,7 +2191,7 @@ async def test_invalid_redirect_url(
     app.router.add_get("/redirect", handler_request)
     client = await aiohttp_client(app)
 
-    with pytest.raises(InvalidRedirectUrl):
+    with pytest.raises(InvalidRedirectURL):
         await client.get("/redirect")
 
 
