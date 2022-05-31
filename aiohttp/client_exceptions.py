@@ -262,7 +262,7 @@ class InvalidURL(ClientError, ValueError):
         return f"<{self.__class__.__name__} {self}>"
 
     def __str__(self) -> str:
-        return " - ".join(self.args)
+        return " - ".join(map(str, self.args))
 
 
 class InvalidRedirectURL(InvalidURL):

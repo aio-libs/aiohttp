@@ -5,6 +5,8 @@ import errno
 import pickle
 from typing import Any
 
+from yarl import URL
+
 from aiohttp import client, client_reqrep
 
 
@@ -283,6 +285,10 @@ class TestInvalidURL:
 
     def test_repr_no_description(self) -> None:
         err = client.InvalidURL(url=":wrong:url:")
+        assert repr(err) == "<InvalidURL :wrong:url:>"
+
+    def test_repr_yarl_URL(self) -> None:
+        err = client.InvalidURL(url=URL(":wrong:url:"))
         assert repr(err) == "<InvalidURL :wrong:url:>"
 
     def test_repr_with_description(self) -> None:
