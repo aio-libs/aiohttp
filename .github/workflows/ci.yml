@@ -34,7 +34,7 @@ jobs:
       with:
         python-version: 3.8
     - name: Cache PyPI
-      uses: actions/cache@v3.0.3
+      uses: actions/cache@v3.0.4
       with:
         key: pip-lint-${{ hashFiles('requirements/*.txt') }}
         path: ~/.cache/pip
@@ -93,7 +93,7 @@ jobs:
       with:
         submodules: true
     - name: Cache llhttp generated files
-      uses: actions/cache@v3.0.3
+      uses: actions/cache@v3.0.4
       id: cache
       with:
         key: llhttp-${{ hashFiles('vendor/llhttp/package.json', 'vendor/llhttp/src/**/*') }}
@@ -159,7 +159,7 @@ jobs:
       run: |
         echo "::set-output name=dir::$(pip cache dir)"    # - name: Cache
     - name: Cache PyPI
-      uses: actions/cache@v3.0.3
+      uses: actions/cache@v3.0.4
       with:
         key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-${{ hashFiles('requirements/*.txt') }}
         path: ${{ steps.pip-cache.outputs.dir }}
