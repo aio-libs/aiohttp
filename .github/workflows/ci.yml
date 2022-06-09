@@ -30,7 +30,7 @@ jobs:
       with:
         submodules: true
     - name: Setup Python 3.8
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v4
       with:
         python-version: 3.8
     - name: Cache PyPI
@@ -151,7 +151,7 @@ jobs:
       with:
         submodules: true
     - name: Setup Python ${{ matrix.pyver }}
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.pyver }}
     - name: Get pip cache dir
@@ -231,7 +231,7 @@ jobs:
       with:
         submodules: true
     - name: Setup Python
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v4
     - name: Update pip, wheel, setuptools, build, twine
       run: |
         python -m pip install -U pip wheel setuptools build twine
@@ -291,7 +291,7 @@ jobs:
         fi
       shell: bash
     - name: Setup Python
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v4
     - name: Update pip, wheel, setuptools, build, twine
       run: |
         python -m pip install -U pip wheel setuptools build twine
