@@ -57,6 +57,7 @@ from .multipart import (
     content_disposition_filename as content_disposition_filename,
     parse_content_disposition as parse_content_disposition,
 )
+from .options import options
 from .payload import (
     PAYLOAD_REGISTRY as PAYLOAD_REGISTRY,
     AsyncIterablePayload as AsyncIterablePayload,
@@ -102,7 +103,6 @@ from .tracing import (
     TraceRequestStartParams as TraceRequestStartParams,
     TraceResponseChunkReceivedParams as TraceResponseChunkReceivedParams,
 )
-from .options import options
 
 __all__: Tuple[str, ...] = (
     "hdrs",
@@ -204,7 +204,7 @@ __all__: Tuple[str, ...] = (
     "TraceRequestRedirectParams",
     "TraceRequestStartParams",
     "TraceResponseChunkReceivedParams",
-    "options"
+    "options",
 )
 
 try:
