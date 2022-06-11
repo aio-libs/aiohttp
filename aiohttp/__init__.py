@@ -102,6 +102,7 @@ from .tracing import (
     TraceRequestStartParams as TraceRequestStartParams,
     TraceResponseChunkReceivedParams as TraceResponseChunkReceivedParams,
 )
+from .options import options
 
 __all__: Tuple[str, ...] = (
     "hdrs",
@@ -203,6 +204,7 @@ __all__: Tuple[str, ...] = (
     "TraceRequestRedirectParams",
     "TraceRequestStartParams",
     "TraceResponseChunkReceivedParams",
+    "options"
 )
 
 try:
