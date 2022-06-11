@@ -17,4 +17,3 @@ server.py::
     app = web.Application()
     app.add_routes([web.get('/', hello)])
     web.run_app(app)
-

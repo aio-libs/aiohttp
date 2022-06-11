@@ -5,14 +5,25 @@ import re
 import sys
 import textwrap
 from aifc import Error
-from typing import Any, Iterator, Iterable, Tuple, Set, Dict, Callable, Optional, List, Mapping, Union
-
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 from typing.io import TextIO
 
 _TO_UNICODE_TYPES = (str, type(None))
 
 
-class OptionParser(object):
+class OptionParser:
     """A collection of options, a dictionary with object-like access.
 
     Normally accessed via static functions in the `tornado.options` module,
@@ -70,7 +81,7 @@ class OptionParser(object):
 
         .. versionadded:: 3.1
         """
-        return set(opt.group_name for opt in self._options.values())
+        return {opt.group_name for opt in self._options.values()}
 
     def group_dict(self, group: str) -> Dict[str, Any]:
         """The names and values of options in a group.
@@ -89,29 +100,29 @@ class OptionParser(object):
 
         .. versionadded:: 3.1
         """
-        return dict(
-            (opt.name, opt.value())
+        return {
+            opt.name: opt.value()
             for name, opt in self._options.items()
             if not group or group == opt.group_name
-        )
+        }
 
     def as_dict(self) -> Dict[str, Any]:
         """The names and values of all options.
 
         .. versionadded:: 3.1
         """
-        return dict((opt.name, opt.value()) for name, opt in self._options.items())
+        return {opt.name: opt.value() for name, opt in self._options.items()}
 
     def define(
-            self,
-            name: str,
-            default: Any = None,
-            type: type = None,
-            help: str = None,
-            metavar: str = None,
-            multiple: bool = False,
-            group: str = None,
-            callback: Callable[[Any], None] = None,
+        self,
+        name: str,
+        default: Any = None,
+        type: type = None,
+        help: str = None,
+        metavar: str = None,
+        multiple: bool = False,
+        group: str = None,
+        callback: Callable[[Any], None] = None,
     ) -> None:
         """Defines a new command line option.
 
@@ -159,8 +170,8 @@ class OptionParser(object):
         # Can be called directly, or through top level define() fn, in which
         # case, step up above that frame to look for real caller.
         if (
-                frame.f_back.f_code.co_filename == options_file
-                and frame.f_back.f_code.co_name == "define"
+            frame.f_back.f_code.co_filename == options_file
+            and frame.f_back.f_code.co_name == "define"
         ):
             frame = frame.f_back
 
@@ -190,7 +201,7 @@ class OptionParser(object):
         self._options[normalized] = option
 
     def parse_command_line(
-            self, args: List[str] = None, final: bool = True
+        self, args: List[str] = None, final: bool = True
     ) -> List[str]:
         """Parses all options given on the command line (defaults to
         `sys.argv`).
@@ -222,7 +233,7 @@ class OptionParser(object):
                 remaining = args[i:]
                 break
             if args[i] == "--":
-                remaining = args[i + 1:]
+                remaining = args[i + 1 :]
                 break
             arg = args[i].lstrip("-")
             name, equals, value = arg.partition("=")
@@ -373,7 +384,7 @@ class OptionParser(object):
         return _Mockable(self)
 
 
-class _Mockable(object):
+class _Mockable:
     """`mock.patch` compatible wrapper for `OptionParser`.
 
     As of ``mock`` version 1.0.1, when an object uses ``__getattr__``
@@ -403,23 +414,23 @@ class _Mockable(object):
         setattr(self._options, name, self._originals.pop(name))
 
 
-class _Option(object):
+class _Option:
     # This class could almost be made generic, but the way the types
     # interact with the multiple argument makes this tricky. (default
     # and the callback use List[T], but type is still Type[T]).
     UNSET = object()
 
     def __init__(
-            self,
-            name: str,
-            default: Any = None,
-            type: type = None,
-            help: str = None,
-            metavar: str = None,
-            multiple: bool = False,
-            file_name: str = None,
-            group_name: str = None,
-            callback: Callable[[Any], None] = None,
+        self,
+        name: str,
+        default: Any = None,
+        type: type = None,
+        help: str = None,
+        metavar: str = None,
+        multiple: bool = False,
+        file_name: str = None,
+        group_name: str = None,
+        callback: Callable[[Any], None] = None,
     ) -> None:
         if default is None and multiple:
             default = []
@@ -560,14 +571,14 @@ All defined options are available as attributes on this object.
 
 
 def define(
-        name: str,
-        default: Any = None,
-        type: type = None,
-        help: str = None,
-        metavar: str = None,
-        multiple: bool = False,
-        group: str = None,
-        callback: Callable[[Any], None] = None,
+    name: str,
+    default: Any = None,
+    type: type = None,
+    help: str = None,
+    metavar: str = None,
+    multiple: bool = False,
+    group: str = None,
+    callback: Callable[[Any], None] = None,
 ) -> None:
     """Defines an option in the global namespace.
 
@@ -625,7 +636,7 @@ def exec_in(code: Any, glob: Dict[str, Any], loc: Mapping[str, Any] = None) -> N
     exec(code, glob, loc)
 
 
-def to_unicode(value: Union[None, str, bytes]) -> Optional[str]:  # noqa: F811
+def to_unicode(value: Union[None, str, bytes]) -> Optional[str]:
     """Converts a string argument to a unicode string.
 
     If the argument is already a unicode string or None, it is returned
