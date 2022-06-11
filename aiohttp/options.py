@@ -233,7 +233,7 @@ class OptionParser:
                 remaining = args[i:]
                 break
             if args[i] == "--":
-                remaining = args[i + 1:]
+                remaining = args[i + 1 :]
                 break
             arg = args[i].lstrip("-")
             name, equals, value = arg.partition("=")
