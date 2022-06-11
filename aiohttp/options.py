@@ -233,7 +233,7 @@ class OptionParser:
                 remaining = args[i:]
                 break
             if args[i] == "--":
-                remaining = args[i + 1 :]
+                remaining = args[i + 1:]
                 break
             arg = args[i].lstrip("-")
             name, equals, value = arg.partition("=")
@@ -628,7 +628,7 @@ def add_parse_callback(callback: Callable[[], None]) -> None:
     options.add_parse_callback(callback)
 
 
-def exec_in(code: Any, glob: Dict[str, Any], loc: Mapping[str, Any] = None) -> None:
+def exec_in(code: Any, glob: Dict[str, Any], loc: Mapping[str, Any] = {}) -> None:
     if isinstance(code, str):
         # exec(string) inherits the caller's future imports; compile
         # the string first to prevent that.
