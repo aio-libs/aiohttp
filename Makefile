@@ -25,7 +25,7 @@ FORCE:
 # check_sum.py works perfectly fine but slow when called for every file from $(ALLS)
 # (perhaps even several times for each file).
 # That is why much less readable but faster solution exists
-ifneq (, $(shell which sha256sum))
+ifneq (, $(shell command -v sha256sum))
 %.hash: FORCE
 	$(eval $@_ABS := $(abspath $@))
 	$(eval $@_NAME := $($@_ABS))
