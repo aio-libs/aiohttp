@@ -22,7 +22,7 @@ repos:
     entry: ./tools/check_changes.py
     pass_filenames: false
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v4.2.0'
+  rev: 'v4.3.0'
   hooks:
   - id: check-merge-conflict
 - repo: https://github.com/asottile/yesqa
@@ -39,7 +39,7 @@ repos:
     - id: black
       language_version: python3 # Should be a command that runs python
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v4.2.0'
+  rev: 'v4.3.0'
   hooks:
   - id: end-of-file-fixer
     exclude: >-
@@ -72,7 +72,7 @@ repos:
   - id: detect-private-key
     exclude: ^examples/
 - repo: https://github.com/asottile/pyupgrade
-  rev: 'v2.32.1'
+  rev: 'v2.34.0'
   hooks:
   - id: pyupgrade
     args: ['--py36-plus']
