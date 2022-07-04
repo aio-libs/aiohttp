@@ -1,1 +1,1 @@
-Fix work of readuntil with delimiter more than one character
+Fix ``readuntil`` to work with a delimiter of more than one character
