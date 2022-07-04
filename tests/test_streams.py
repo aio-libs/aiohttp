@@ -377,23 +377,24 @@ class TestStreamReader:
         with pytest.raises(ValueError):
             await stream.readline()
 
-    async def test_readuntil(self) -> None:
+    @pytest.mark.parametrize("separator", [b"*", b"**"])
+    async def test_readuntil(self, separator: bytes) -> None:
         loop = asyncio.get_event_loop()
         # Read one chunk. 'readuntil' will need to wait for the data
         # to come from 'cb'
         stream = self._make_one()
         stream.feed_data(b"chunk1 ")
-        read_task = loop.create_task(stream.readuntil(b"*"))
+        read_task = loop.create_task(stream.readuntil(separator))
 
         def cb():
             stream.feed_data(b"chunk2 ")
-            stream.feed_data(b"chunk3 ")
-            stream.feed_data(b"* chunk4")
+            stream.feed_data(b"chunk3 " + separator)
+            stream.feed_data(b" chunk4")
 
         loop.call_soon(cb)
 
         line = await read_task
-        assert b"chunk1 chunk2 chunk3 *" == line
+        assert b"chunk1 chunk2 chunk3 " + separator == line
 
         stream.feed_eof()
         data = await stream.read()
@@ -428,7 +429,7 @@ class TestStreamReader:
 
         loop.call_soon(cb)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match='Chunk too big'):
             await stream.readuntil(b"$")
         data = await stream.read()
         assert b"chunk3#" == data
@@ -484,8 +485,8 @@ class TestStreamReader:
         data = await stream.readuntil(b"#")
         assert b"line#" == data
 
-        stream.set_exception(ValueError())
-        with pytest.raises(ValueError):
+        stream.set_exception(ValueError("Another exception"))
+        with pytest.raises(ValueError, match="Another exception"):
             await stream.readuntil(b"#")
 
     async def test_readexactly_zero_or_less(self) -> None:
