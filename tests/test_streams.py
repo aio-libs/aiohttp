@@ -429,7 +429,7 @@ class TestStreamReader:
 
         loop.call_soon(cb)
 
-        with pytest.raises(ValueError, match='Chunk too big'):
+        with pytest.raises(ValueError, match="Chunk too big"):
             await stream.readuntil(b"$")
         data = await stream.read()
         assert b"chunk3#" == data
