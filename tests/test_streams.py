@@ -377,7 +377,7 @@ class TestStreamReader:
         with pytest.raises(ValueError):
             await stream.readline()
 
-    @pytest.mark.parametrize("separator", [b"&", b"&&"])
+    @pytest.mark.parametrize("separator", [b"*", b"**"])
     async def test_readuntil(self, separator: bytes) -> None:
         loop = asyncio.get_event_loop()
         # Read one chunk. 'readuntil' will need to wait for the data
@@ -416,7 +416,7 @@ class TestStreamReader:
         data = await stream.read()
         assert b"line2" + separator == data
 
-    @pytest.mark.parametrize("separator", [b"&", b"&&"])
+    @pytest.mark.parametrize("separator", [b"$", b"$$"])
     async def test_readuntil_limit(self, separator: bytes) -> None:
         loop = asyncio.get_event_loop()
         # Read one chunk. StreamReaders are fed with data after
@@ -436,7 +436,7 @@ class TestStreamReader:
         data = await stream.read()
         assert b"chunk3#" == data
 
-    @pytest.mark.parametrize("separator", [b"&", b"&&"])
+    @pytest.mark.parametrize("separator", [b"!", b"!!"])
     async def test_readuntil_nolimit_nowait(self, separator: bytes) -> None:
         # All needed data for the first 'readuntil' call will be
         # in the buffer.
@@ -453,7 +453,7 @@ class TestStreamReader:
         data = await stream.read()
         assert b"line2" + separator + b"line3" + separator == data
 
-    @pytest.mark.parametrize("separator", [b"&", b"&&"])
+    @pytest.mark.parametrize("separator", [b"@", b"@@"])
     async def test_readuntil_eof(self, separator: bytes) -> None:
         stream = self._make_one()
         stream.feed_data(b"some data")
@@ -462,7 +462,7 @@ class TestStreamReader:
         line = await stream.readuntil(separator)
         assert b"some data" == line
 
-    @pytest.mark.parametrize("separator", [b"&", b"&&"])
+    @pytest.mark.parametrize("separator", [b"@", b"@@"])
     async def test_readuntil_empty_eof(self, separator: bytes) -> None:
         stream = self._make_one()
         stream.feed_eof()
@@ -470,7 +470,7 @@ class TestStreamReader:
         line = await stream.readuntil(separator)
         assert b"" == line
 
-    @pytest.mark.parametrize("separator", [b"&", b"&&"])
+    @pytest.mark.parametrize("separator", [b"!", b"!!"])
     async def test_readuntil_read_byte_count(self, separator: bytes) -> None:
         seplen = len(separator)
         stream = self._make_one()
@@ -487,7 +487,7 @@ class TestStreamReader:
         data = await stream.read()
         assert b"ine3" + separator == data
 
-    @pytest.mark.parametrize("separator", [b"&", b"&&"])
+    @pytest.mark.parametrize("separator", [b"#", b"##"])
     async def test_readuntil_exception(self, separator: bytes) -> None:
         stream = self._make_one()
         stream.feed_data(b"line" + separator)
