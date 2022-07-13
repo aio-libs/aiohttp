@@ -245,6 +245,8 @@ uritemplate==4.1.1
     # via gidgethub
 urllib3==1.26.7
     # via requests
+uvloop==0.14.0 ; platform_system != "Windows" and implementation_name == "cpython" and python_version < "3.9"
+    # via -r requirements/base.txt
 virtualenv==20.10.0
     # via pre-commit
 wait-for-it==2.2.1
