@@ -399,7 +399,7 @@ def content_disposition_header(
                 )
             if quote_fields:
                 if key.lower() == "filename":
-                    qval = quote(val, "", encoding=_charset)
+                    qval = quote(val, " ", encoding=_charset)
                     lparams.append((key, '"%s"' % qval))
                 else:
                     try:

@@ -483,6 +483,7 @@ async def test_ceil_timeout_small_with_overriden_threshold(loop) -> None:
         (dict(foo='bär "\\', quote_fields=False), 'attachment; foo="bär \\"\\\\"'),
         (dict(foo="bär", _charset="latin-1"), "attachment; foo*=latin-1''b%E4r"),
         (dict(filename="bär"), 'attachment; filename="b%C3%A4r"'),
+        (dict(filename="bar baz"), 'attachment; filename="bar baz"'),
         (dict(filename="bär", _charset="latin-1"), 'attachment; filename="b%E4r"'),
         (
             dict(filename='bär "\\', quote_fields=False),
