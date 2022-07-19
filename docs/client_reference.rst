@@ -357,7 +357,7 @@ The client session supports the context manager protocol for self closing.
                          ssl_context=None, proxy_headers=None)
       :async-with:
       :coroutine:
-      :noindex:
+      :noindexentry:
 
       Performs an asynchronous HTTP request. Returns a response object.
 
