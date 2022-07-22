@@ -390,7 +390,6 @@ nitpick_ignore = [
     ("py:class", "aiohttp.SimpleCookie"),  # undocumented
     ("py:class", "aiohttp.web.RequestHandler"),  # undocumented
     ("py:class", "aiohttp.NamedPipeConnector"),  # undocumented
-    ("py:meth", "aiohttp.ClientSession.request"),  # undocumented
     ("py:class", "aiohttp.protocol.HttpVersion"),  # undocumented
     ("py:class", "aiohttp.ClientRequest"),  # undocumented
     ("py:class", "aiohttp.payload.Payload"),  # undocumented
