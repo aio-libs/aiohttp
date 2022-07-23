@@ -1,6 +1,7 @@
 import abc
 import dataclasses
 import os  # noqa
+from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -57,7 +58,7 @@ _HandlerType = Union[Type[AbstractView], Handler]
 @dataclasses.dataclass(frozen=True, repr=False)
 class RouteDef(AbstractRouteDef):
     method: str
-    path: str
+    path: Optional[Union[str, Path]]
     handler: _HandlerType
     kwargs: Dict[str, Any]
 
@@ -99,20 +100,26 @@ class StaticDef(AbstractRouteDef):
         return list(routes.values())
 
 
-def route(method: str, path: str, handler: _HandlerType, **kwargs: Any) -> RouteDef:
+def route(
+    method: str, path: Optional[Union[str, Path]], handler: _HandlerType, **kwargs: Any
+) -> RouteDef:
     return RouteDef(method, path, handler, kwargs)
 
 
-def head(path: str, handler: _HandlerType, **kwargs: Any) -> RouteDef:
+def head(
+    path: Optional[Union[str, Path]], handler: _HandlerType, **kwargs: Any
+) -> RouteDef:
     return route(hdrs.METH_HEAD, path, handler, **kwargs)
 
 
-def options(path: str, handler: _HandlerType, **kwargs: Any) -> RouteDef:
+def options(
+    path: Optional[Union[str, Path]], handler: _HandlerType, **kwargs: Any
+) -> RouteDef:
     return route(hdrs.METH_OPTIONS, path, handler, **kwargs)
 
 
 def get(
-    path: str,
+    path: Optional[Union[str, Path]],
     handler: _HandlerType,
     *,
     name: Optional[str] = None,
@@ -124,23 +131,33 @@ def get(
     )
 
 
-def post(path: str, handler: _HandlerType, **kwargs: Any) -> RouteDef:
+def post(
+    path: Optional[Union[str, Path]], handler: _HandlerType, **kwargs: Any
+) -> RouteDef:
     return route(hdrs.METH_POST, path, handler, **kwargs)
 
 
-def put(path: str, handler: _HandlerType, **kwargs: Any) -> RouteDef:
+def put(
+    path: Optional[Union[str, Path]], handler: _HandlerType, **kwargs: Any
+) -> RouteDef:
     return route(hdrs.METH_PUT, path, handler, **kwargs)
 
 
-def patch(path: str, handler: _HandlerType, **kwargs: Any) -> RouteDef:
+def patch(
+    path: Optional[Union[str, Path]], handler: _HandlerType, **kwargs: Any
+) -> RouteDef:
     return route(hdrs.METH_PATCH, path, handler, **kwargs)
 
 
-def delete(path: str, handler: _HandlerType, **kwargs: Any) -> RouteDef:
+def delete(
+    path: Optional[Union[str, Path]], handler: _HandlerType, **kwargs: Any
+) -> RouteDef:
     return route(hdrs.METH_DELETE, path, handler, **kwargs)
 
 
-def view(path: str, handler: Type[AbstractView], **kwargs: Any) -> RouteDef:
+def view(
+    path: Optional[Union[str, Path]], handler: Type[AbstractView], **kwargs: Any
+) -> RouteDef:
     return route(hdrs.METH_ANY, path, handler, **kwargs)
 
 
@@ -180,35 +197,37 @@ class RouteTableDef(Sequence[AbstractRouteDef]):
     def __contains__(self, item: object) -> bool:
         return item in self._items
 
-    def route(self, method: str, path: str, **kwargs: Any) -> _Deco:
+    def route(
+        self, method: str, path: Optional[Union[str, Path]], **kwargs: Any
+    ) -> _Deco:
         def inner(handler: _HandlerType) -> _HandlerType:
             self._items.append(RouteDef(method, path, handler, kwargs))
             return handler
 
         return inner
 
-    def head(self, path: str, **kwargs: Any) -> _Deco:
+    def head(self, path: Optional[Union[str, Path]], **kwargs: Any) -> _Deco:
         return self.route(hdrs.METH_HEAD, path, **kwargs)
 
-    def get(self, path: str, **kwargs: Any) -> _Deco:
+    def get(self, path: Optional[Union[str, Path]], **kwargs: Any) -> _Deco:
         return self.route(hdrs.METH_GET, path, **kwargs)
 
-    def post(self, path: str, **kwargs: Any) -> _Deco:
+    def post(self, path: Optional[Union[str, Path]], **kwargs: Any) -> _Deco:
         return self.route(hdrs.METH_POST, path, **kwargs)
 
-    def put(self, path: str, **kwargs: Any) -> _Deco:
+    def put(self, path: Optional[Union[str, Path]], **kwargs: Any) -> _Deco:
         return self.route(hdrs.METH_PUT, path, **kwargs)
 
-    def patch(self, path: str, **kwargs: Any) -> _Deco:
+    def patch(self, path: Optional[Union[str, Path]], **kwargs: Any) -> _Deco:
         return self.route(hdrs.METH_PATCH, path, **kwargs)
 
-    def delete(self, path: str, **kwargs: Any) -> _Deco:
+    def delete(self, path: Optional[Union[str, Path]], **kwargs: Any) -> _Deco:
         return self.route(hdrs.METH_DELETE, path, **kwargs)
 
-    def options(self, path: str, **kwargs: Any) -> _Deco:
+    def options(self, path: Optional[Union[str, Path]], **kwargs: Any) -> _Deco:
         return self.route(hdrs.METH_OPTIONS, path, **kwargs)
 
-    def view(self, path: str, **kwargs: Any) -> _Deco:
+    def view(self, path: Optional[Union[str, Path]], **kwargs: Any) -> _Deco:
         return self.route(hdrs.METH_ANY, path, **kwargs)
 
     def static(self, prefix: str, path: PathLike, **kwargs: Any) -> None:

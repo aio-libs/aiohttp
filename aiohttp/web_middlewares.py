@@ -1,6 +1,7 @@
 import re
 import warnings
-from typing import TYPE_CHECKING, Tuple, Type, TypeVar
+from pathlib import Path
+from typing import TYPE_CHECKING, Optional, Tuple, Type, TypeVar, Union
 
 from .typedefs import Handler, Middleware
 from .web_exceptions import HTTPMove, HTTPPermanentRedirect
@@ -19,7 +20,9 @@ if TYPE_CHECKING:  # pragma: no cover
 _Func = TypeVar("_Func")
 
 
-async def _check_request_resolves(request: Request, path: str) -> Tuple[bool, Request]:
+async def _check_request_resolves(
+    request: Request, path: Optional[Union[str, Path]]
+) -> Tuple[bool, Request]:
     alt_request = request.clone(rel_url=path)
 
     match_info = await request.app.router.resolve(alt_request)

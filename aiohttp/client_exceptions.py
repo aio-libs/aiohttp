@@ -1,6 +1,7 @@
 """HTTP related errors."""
 
 import asyncio
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
 
 from .http_parser import RawResponseMessage
@@ -175,13 +176,16 @@ class UnixClientConnectorError(ClientConnectorError):
     """
 
     def __init__(
-        self, path: str, connection_key: ConnectionKey, os_error: OSError
+        self,
+        path: Optional[Union[str, Path]],
+        connection_key: ConnectionKey,
+        os_error: OSError,
     ) -> None:
         self._path = path
         super().__init__(connection_key, os_error)
 
     @property
-    def path(self) -> str:
+    def path(self) -> Optional[Union[str, Path]]:
         return self._path
 
     def __str__(self) -> str:

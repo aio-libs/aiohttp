@@ -9,6 +9,7 @@ import os
 import socket
 import sys
 from abc import ABC, abstractmethod
+from pathlib import Path
 from types import TracebackType
 from typing import (
     TYPE_CHECKING,
@@ -148,7 +149,7 @@ class BaseTestServer(ABC):
     async def _make_runner(self, **kwargs: Any) -> BaseRunner:
         pass
 
-    def make_url(self, path: str) -> URL:
+    def make_url(self, path: Optional[Union[str, Path]]) -> URL:
         assert self._root is not None
         url = URL(path)
         if not self.skip_url_asserts:
@@ -304,16 +305,20 @@ class TestClient:
         """
         return self._session
 
-    def make_url(self, path: str) -> URL:
+    def make_url(self, path: Optional[Union[str, Path]]) -> URL:
         return self._server.make_url(path)
 
-    async def _request(self, method: str, path: str, **kwargs: Any) -> ClientResponse:
+    async def _request(
+        self, method: str, path: Optional[Union[str, Path]], **kwargs: Any
+    ) -> ClientResponse:
         resp = await self._session.request(method, self.make_url(path), **kwargs)
         # save it to close later
         self._responses.append(resp)
         return resp
 
-    def request(self, method: str, path: str, **kwargs: Any) -> _RequestContextManager:
+    def request(
+        self, method: str, path: Optional[Union[str, Path]], **kwargs: Any
+    ) -> _RequestContextManager:
         """Routes a request to tested http server.
 
         The interface is identical to aiohttp.ClientSession.request,
@@ -323,35 +328,51 @@ class TestClient:
         """
         return _RequestContextManager(self._request(method, path, **kwargs))
 
-    def get(self, path: str, **kwargs: Any) -> _RequestContextManager:
+    def get(
+        self, path: Optional[Union[str, Path]], **kwargs: Any
+    ) -> _RequestContextManager:
         """Perform an HTTP GET request."""
         return _RequestContextManager(self._request(hdrs.METH_GET, path, **kwargs))
 
-    def post(self, path: str, **kwargs: Any) -> _RequestContextManager:
+    def post(
+        self, path: Optional[Union[str, Path]], **kwargs: Any
+    ) -> _RequestContextManager:
         """Perform an HTTP POST request."""
         return _RequestContextManager(self._request(hdrs.METH_POST, path, **kwargs))
 
-    def options(self, path: str, **kwargs: Any) -> _RequestContextManager:
+    def options(
+        self, path: Optional[Union[str, Path]], **kwargs: Any
+    ) -> _RequestContextManager:
         """Perform an HTTP OPTIONS request."""
         return _RequestContextManager(self._request(hdrs.METH_OPTIONS, path, **kwargs))
 
-    def head(self, path: str, **kwargs: Any) -> _RequestContextManager:
+    def head(
+        self, path: Optional[Union[str, Path]], **kwargs: Any
+    ) -> _RequestContextManager:
         """Perform an HTTP HEAD request."""
         return _RequestContextManager(self._request(hdrs.METH_HEAD, path, **kwargs))
 
-    def put(self, path: str, **kwargs: Any) -> _RequestContextManager:
+    def put(
+        self, path: Optional[Union[str, Path]], **kwargs: Any
+    ) -> _RequestContextManager:
         """Perform an HTTP PUT request."""
         return _RequestContextManager(self._request(hdrs.METH_PUT, path, **kwargs))
 
-    def patch(self, path: str, **kwargs: Any) -> _RequestContextManager:
+    def patch(
+        self, path: Optional[Union[str, Path]], **kwargs: Any
+    ) -> _RequestContextManager:
         """Perform an HTTP PATCH request."""
         return _RequestContextManager(self._request(hdrs.METH_PATCH, path, **kwargs))
 
-    def delete(self, path: str, **kwargs: Any) -> _RequestContextManager:
+    def delete(
+        self, path: Optional[Union[str, Path]], **kwargs: Any
+    ) -> _RequestContextManager:
         """Perform an HTTP PATCH request."""
         return _RequestContextManager(self._request(hdrs.METH_DELETE, path, **kwargs))
 
-    def ws_connect(self, path: str, **kwargs: Any) -> _WSRequestContextManager:
+    def ws_connect(
+        self, path: Optional[Union[str, Path]], **kwargs: Any
+    ) -> _WSRequestContextManager:
         """Initiate websocket connection.
 
         The api corresponds to aiohttp.ClientSession.ws_connect.
@@ -359,7 +380,9 @@ class TestClient:
         """
         return _WSRequestContextManager(self._ws_connect(path, **kwargs))
 
-    async def _ws_connect(self, path: str, **kwargs: Any) -> ClientWebSocketResponse:
+    async def _ws_connect(
+        self, path: Optional[Union[str, Path]], **kwargs: Any
+    ) -> ClientWebSocketResponse:
         ws = await self._session.ws_connect(self.make_url(path), **kwargs)
         self._websockets.append(ws)
         return ws
@@ -555,7 +578,7 @@ def _create_transport(sslcontext: Optional[SSLContext] = None) -> mock.Mock:
 
 def make_mocked_request(
     method: str,
-    path: str,
+    path: Optional[Union[str, Path]],
     headers: Any = None,
     *,
     match_info: Any = sentinel,

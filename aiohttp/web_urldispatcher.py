@@ -87,7 +87,7 @@ _Resolve = Tuple[Optional["UrlMappingMatchInfo"], Set[str]]
 
 
 class _InfoDict(TypedDict, total=False):
-    path: str
+    path: Optional[Union[str, Path]]
 
     formatter: str
     pattern: Pattern[str]
@@ -148,7 +148,7 @@ class AbstractResource(Sized, Iterable["AbstractRoute"]):
         pass
 
     @abc.abstractmethod
-    def raw_match(self, path: str) -> bool:
+    def raw_match(self, path: Optional[Union[str, Path]]) -> bool:
         """Perform a raw match against path"""
 
 
@@ -361,7 +361,7 @@ class Resource(AbstractResource):
             return None, allowed_methods
 
     @abc.abstractmethod
-    def _match(self, path: str) -> Optional[Dict[str, str]]:
+    def _match(self, path: Optional[Union[str, Path]]) -> Optional[Dict[str, str]]:
         pass  # pragma: no cover
 
     def __len__(self) -> int:
@@ -374,7 +374,9 @@ class Resource(AbstractResource):
 
 
 class PlainResource(Resource):
-    def __init__(self, path: str, *, name: Optional[str] = None) -> None:
+    def __init__(
+        self, path: Optional[Union[str, Path]], *, name: Optional[str] = None
+    ) -> None:
         super().__init__(name=name)
         assert not path or path.startswith("/")
         self._path = path
@@ -393,14 +395,14 @@ class PlainResource(Resource):
         assert len(prefix) > 1
         self._path = prefix + self._path
 
-    def _match(self, path: str) -> Optional[Dict[str, str]]:
+    def _match(self, path: Optional[Union[str, Path]]) -> Optional[Dict[str, str]]:
         # string comparison is about 10 times faster than regexp matching
         if self._path == path:
             return {}
         else:
             return None
 
-    def raw_match(self, path: str) -> bool:
+    def raw_match(self, path: Optional[Union[str, Path]]) -> bool:
         return self._path == path
 
     def get_info(self) -> _InfoDict:
@@ -420,7 +422,9 @@ class DynamicResource(Resource):
     DYN_WITH_RE = re.compile(r"\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}")
     GOOD = r"[^{}/]+"
 
-    def __init__(self, path: str, *, name: Optional[str] = None) -> None:
+    def __init__(
+        self, path: Optional[Union[str, Path]], *, name: Optional[str] = None
+    ) -> None:
         super().__init__(name=name)
         pattern = ""
         formatter = ""
@@ -464,7 +468,7 @@ class DynamicResource(Resource):
         self._pattern = re.compile(re.escape(prefix) + self._pattern.pattern)
         self._formatter = prefix + self._formatter
 
-    def _match(self, path: str) -> Optional[Dict[str, str]]:
+    def _match(self, path: Optional[Union[str, Path]]) -> Optional[Dict[str, str]]:
         match = self._pattern.fullmatch(path)
         if match is None:
             return None
@@ -473,7 +477,7 @@ class DynamicResource(Resource):
                 key: _unquote_path(value) for key, value in match.groupdict().items()
             }
 
-    def raw_match(self, path: str) -> bool:
+    def raw_match(self, path: Optional[Union[str, Path]]) -> bool:
         return self._formatter == path
 
     def get_info(self) -> _InfoDict:
@@ -1054,7 +1058,9 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
             self._named_resources[name] = resource
         self._resources.append(resource)
 
-    def add_resource(self, path: str, *, name: Optional[str] = None) -> Resource:
+    def add_resource(
+        self, path: Optional[Union[str, Path]], *, name: Optional[str] = None
+    ) -> Resource:
         if path and not path.startswith("/"):
             raise ValueError("path should be started with / or be empty")
         # Reuse last added resource if path and name are the same
@@ -1073,7 +1079,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
     def add_route(
         self,
         method: str,
-        path: str,
+        path: Optional[Union[str, Path]],
         handler: Union[Handler, Type[AbstractView]],
         *,
         name: Optional[str] = None,
@@ -1116,17 +1122,21 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self.register_resource(resource)
         return resource
 
-    def add_head(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
+    def add_head(
+        self, path: Optional[Union[str, Path]], handler: Handler, **kwargs: Any
+    ) -> AbstractRoute:
         """Shortcut for add_route with method HEAD."""
         return self.add_route(hdrs.METH_HEAD, path, handler, **kwargs)
 
-    def add_options(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
+    def add_options(
+        self, path: Optional[Union[str, Path]], handler: Handler, **kwargs: Any
+    ) -> AbstractRoute:
         """Shortcut for add_route with method OPTIONS."""
         return self.add_route(hdrs.METH_OPTIONS, path, handler, **kwargs)
 
     def add_get(
         self,
-        path: str,
+        path: Optional[Union[str, Path]],
         handler: Handler,
         *,
         name: Optional[str] = None,
@@ -1143,24 +1153,35 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
             resource.add_route(hdrs.METH_HEAD, handler, **kwargs)
         return resource.add_route(hdrs.METH_GET, handler, **kwargs)
 
-    def add_post(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
+    def add_post(
+        self, path: Optional[Union[str, Path]], handler: Handler, **kwargs: Any
+    ) -> AbstractRoute:
         """Shortcut for add_route with method POST."""
         return self.add_route(hdrs.METH_POST, path, handler, **kwargs)
 
-    def add_put(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
+    def add_put(
+        self, path: Optional[Union[str, Path]], handler: Handler, **kwargs: Any
+    ) -> AbstractRoute:
         """Shortcut for add_route with method PUT."""
         return self.add_route(hdrs.METH_PUT, path, handler, **kwargs)
 
-    def add_patch(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
+    def add_patch(
+        self, path: Optional[Union[str, Path]], handler: Handler, **kwargs: Any
+    ) -> AbstractRoute:
         """Shortcut for add_route with method PATCH."""
         return self.add_route(hdrs.METH_PATCH, path, handler, **kwargs)
 
-    def add_delete(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
+    def add_delete(
+        self, path: Optional[Union[str, Path]], handler: Handler, **kwargs: Any
+    ) -> AbstractRoute:
         """Shortcut for add_route with method DELETE."""
         return self.add_route(hdrs.METH_DELETE, path, handler, **kwargs)
 
     def add_view(
-        self, path: str, handler: Type[AbstractView], **kwargs: Any
+        self,
+        path: Optional[Union[str, Path]],
+        handler: Type[AbstractView],
+        **kwargs: Any,
     ) -> AbstractRoute:
         """Shortcut for add_route with ANY methods for a class-based view."""
         return self.add_route(hdrs.METH_ANY, path, handler, **kwargs)

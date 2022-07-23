@@ -10,6 +10,7 @@ from collections import defaultdict, deque
 from contextlib import suppress
 from http.cookies import SimpleCookie
 from itertools import cycle, islice
+from pathlib import Path
 from time import monotonic
 from types import TracebackType
 from typing import (  # noqa
@@ -1263,7 +1264,7 @@ class UnixConnector(BaseConnector):
 
     def __init__(
         self,
-        path: str,
+        path: Optional[Union[str, Path]],
         force_close: bool = False,
         keepalive_timeout: Union[_SENTINEL, float, None] = sentinel,
         limit: int = 100,
@@ -1278,7 +1279,7 @@ class UnixConnector(BaseConnector):
         self._path = path
 
     @property
-    def path(self) -> str:
+    def path(self) -> Optional[Union[str, Path]]:
         """Path to unix socket."""
         return self._path
 
@@ -1315,7 +1316,7 @@ class NamedPipeConnector(BaseConnector):
 
     def __init__(
         self,
-        path: str,
+        path: Optional[Union[str, Path]],
         force_close: bool = False,
         keepalive_timeout: Union[_SENTINEL, float, None] = sentinel,
         limit: int = 100,
@@ -1336,7 +1337,7 @@ class NamedPipeConnector(BaseConnector):
         self._path = path
 
     @property
-    def path(self) -> str:
+    def path(self) -> Optional[Union[str, Path]]:
         """Path to the named pipe."""
         return self._path
 

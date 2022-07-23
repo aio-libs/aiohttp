@@ -8,6 +8,7 @@ import re
 import warnings
 from collections import defaultdict
 from http.cookies import BaseCookie, Morsel, SimpleCookie
+from pathlib import Path
 from typing import (  # noqa
     DefaultDict,
     Dict,
@@ -150,7 +151,11 @@ class CookieJar(AbstractCookieJar):
         self.clear(lambda x: False)
 
     def _expire_cookie(
-        self, when: datetime.datetime, domain: str, path: str, name: str
+        self,
+        when: datetime.datetime,
+        domain: str,
+        path: Optional[Union[str, Path]],
+        name: str,
     ) -> None:
         self._next_expiration = min(self._next_expiration, when)
         self._expirations[(domain, path, name)] = when
@@ -307,7 +312,9 @@ class CookieJar(AbstractCookieJar):
         return not is_ip_address(hostname)
 
     @staticmethod
-    def _is_path_match(req_path: str, cookie_path: str) -> bool:
+    def _is_path_match(
+        req_path: Optional[Union[str, Path]], cookie_path: Optional[Union[str, Path]]
+    ) -> bool:
         """Implements path matching adhering to RFC 6265."""
         if not req_path.startswith("/"):
             req_path = "/"

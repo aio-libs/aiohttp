@@ -15,7 +15,7 @@ import sys
 from itertools import chain
 from pathlib import Path
 from types import ModuleType
-from typing import Generator, List
+from typing import Generator, List, Optional, Union
 
 import pytest
 
@@ -65,7 +65,7 @@ def _discover_path_importables(
     "import_path",
     _find_all_importables(aiohttp),
 )
-def test_no_warnings(import_path: str) -> None:
+def test_no_warnings(import_path: Optional[Union[str, Path]]) -> None:
     """Verify that exploding importables doesn't explode.
 
     This is seeking for any import errors including ones caused

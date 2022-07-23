@@ -2,7 +2,8 @@ import asyncio
 import signal
 import socket
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Set, Type
+from pathlib import Path
+from typing import Any, List, Optional, Set, Type, Union
 
 from yarl import URL
 
@@ -141,7 +142,7 @@ class UnixSite(BaseSite):
     def __init__(
         self,
         runner: "BaseRunner",
-        path: str,
+        path: Optional[Union[str, Path]],
         *,
         shutdown_timeout: float = 60.0,
         ssl_context: Optional[SSLContext] = None,
@@ -174,7 +175,11 @@ class NamedPipeSite(BaseSite):
     __slots__ = ("_path",)
 
     def __init__(
-        self, runner: "BaseRunner", path: str, *, shutdown_timeout: float = 60.0
+        self,
+        runner: "BaseRunner",
+        path: Optional[Union[str, Path]],
+        *,
+        shutdown_timeout: float = 60.0,
     ) -> None:
         loop = asyncio.get_event_loop()
         if not isinstance(

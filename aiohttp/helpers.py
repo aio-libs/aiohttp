@@ -933,7 +933,7 @@ class CookieMixin:
         expires: Optional[str] = None,
         domain: Optional[str] = None,
         max_age: Optional[Union[int, str]] = None,
-        path: str = "/",
+        path: Optional[Union[str, Path]] = "/",
         secure: Optional[bool] = None,
         httponly: Optional[bool] = None,
         version: Optional[str] = None,
@@ -986,7 +986,11 @@ class CookieMixin:
                 )
 
     def del_cookie(
-        self, name: str, *, domain: Optional[str] = None, path: str = "/"
+        self,
+        name: str,
+        *,
+        domain: Optional[str] = None,
+        path: Optional[Union[str, Path]] = "/",
     ) -> None:
         """Delete cookie.
 

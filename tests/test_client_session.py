@@ -6,7 +6,8 @@ import json
 import sys
 from http.cookies import SimpleCookie
 from io import BytesIO
-from typing import Any, List
+from pathlib import Path
+from typing import Any, List, Optional, Union
 from unittest import mock
 
 import pytest
@@ -636,7 +637,7 @@ async def test_request_tracing_url_params(loop: Any, aiohttp_client: Any) -> Non
     def to_trace_urls(mock_func: mock.Mock) -> List[URL]:
         return [call_args[0][-1].url for call_args in mock_func.call_args_list]
 
-    def to_url(path: str) -> URL:
+    def to_url(path: Optional[Union[str, Path]]) -> URL:
         return session.make_url(path)
 
     # Standard

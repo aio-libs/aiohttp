@@ -6,6 +6,7 @@ import string
 import zlib
 from contextlib import suppress
 from enum import IntEnum
+from pathlib import Path
 from typing import (
     Any,
     Generic,
@@ -75,7 +76,7 @@ HDRRE: Final[Pattern[bytes]] = re.compile(rb"[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\
 
 class RawRequestMessage(NamedTuple):
     method: str
-    path: str
+    path: Optional[Union[str, Path]]
     version: HttpVersion
     headers: CIMultiDictProxy[str]
     raw_headers: RawHeaders
