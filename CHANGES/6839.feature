@@ -1,1 +1,1 @@
-web.run_app(path=) accept pathlib.Path
+``web.run_app()`` now accept a ``Path`` object for the path parameter.
