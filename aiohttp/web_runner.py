@@ -167,7 +167,7 @@ class UnixSite(BaseSite):
         server = self._runner.server
         assert server is not None
         self._server = await loop.create_unix_server(
-            server, self._path, ssl=self._ssl_context, backlog=self._backlog
+            server, str(self._path), ssl=self._ssl_context, backlog=self._backlog
         )
 
 
@@ -201,7 +201,7 @@ class NamedPipeSite(BaseSite):
         server = self._runner.server
         assert server is not None
         _server = await loop.start_serving_pipe(  # type: ignore[attr-defined]
-            server, self._path
+            server, str(self._path)
         )
         self._server = _server[0]
 
