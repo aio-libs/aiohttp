@@ -2,7 +2,6 @@ import asyncio
 import contextlib
 import datetime
 import os  # noqa
-import pathlib
 import pickle
 import re
 import warnings
@@ -94,12 +93,12 @@ class CookieJar(AbstractCookieJar):
             self._max_time = self.MAX_32BIT_TIME
 
     def save(self, file_path: PathLike) -> None:
-        file_path = pathlib.Path(file_path)
+        file_path = Path(file_path)
         with file_path.open(mode="wb") as f:
             pickle.dump(self._cookies, f, pickle.HIGHEST_PROTOCOL)
 
     def load(self, file_path: PathLike) -> None:
-        file_path = pathlib.Path(file_path)
+        file_path = Path(file_path)
         with file_path.open(mode="rb") as f:
             self._cookies = pickle.load(f)
 
