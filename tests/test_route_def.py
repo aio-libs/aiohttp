@@ -1,5 +1,5 @@
 # type: ignore
-import pathlib
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -122,7 +122,7 @@ def test_route(router: Any) -> None:
 
 
 def test_static(router: Any) -> None:
-    folder = pathlib.Path(__file__).parent
+    folder = Path(__file__).parent
     router.add_routes([web.static("/prefix", folder)])
     assert len(router.resources()) == 1  # 2 routes: for HEAD and GET
 

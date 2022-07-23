@@ -2,13 +2,13 @@
 
 import argparse
 import hashlib
-import pathlib
+from  pathlib import Path
 import sys
 
 PARSER = argparse.ArgumentParser(
     description="Helper for check file hashes in Makefile instead of bare timestamps"
 )
-PARSER.add_argument("dst", metavar="DST", type=pathlib.Path)
+PARSER.add_argument("dst", metavar="DST", type=Path)
 PARSER.add_argument("-d", "--debug", action="store_true", default=False)
 
 

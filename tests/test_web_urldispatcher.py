@@ -1,6 +1,6 @@
 # type: ignore
 import asyncio
-import pathlib
+from pathlib import Path
 from typing import Any
 from unittest import mock
 from unittest.mock import MagicMock
@@ -91,7 +91,7 @@ async def test_follow_symlink(tmp_path: Any, aiohttp_client: Any) -> None:
         fw.write(data)
 
     my_symlink_path = tmp_path / "my_symlink"
-    pathlib.Path(str(my_symlink_path)).symlink_to(str(my_dir_path), True)
+    Path(str(my_symlink_path)).symlink_to(str(my_dir_path), True)
 
     app = web.Application()
 
@@ -127,7 +127,7 @@ async def test_access_to_the_file_with_spaces(
 
     app = web.Application()
 
-    url = "/" + str(pathlib.Path(dir_name, filename))
+    url = "/" + str(Path(dir_name, filename))
 
     app.router.add_static("/", str(tmp_path))
     client = await aiohttp_client(app)
@@ -221,7 +221,7 @@ async def test_unauthorized_folder_access(tmp_path: Any, aiohttp_client: Any) ->
 async def test_access_symlink_loop(tmp_path: Any, aiohttp_client: Any) -> None:
     # Tests the access to a looped symlink, which could not be resolved.
     my_dir_path = tmp_path / "my_symlink"
-    pathlib.Path(str(my_dir_path)).symlink_to(str(my_dir_path), True)
+    Path(str(my_dir_path)).symlink_to(str(my_dir_path), True)
 
     app = web.Application()
 
@@ -454,7 +454,7 @@ async def test_static_absolute_url(aiohttp_client: Any, tmp_path: Any) -> None:
     app = web.Application()
     file_path = tmp_path / "file.txt"
     file_path.write_text("sample text", "ascii")
-    here = pathlib.Path(__file__).parent
+    here = Path(__file__).parent
     app.router.add_static("/static", here)
     client = await aiohttp_client(app)
     resp = await client.get("/static/" + str(file_path.resolve()))

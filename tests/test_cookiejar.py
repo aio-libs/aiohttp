@@ -2,7 +2,7 @@
 import asyncio
 import datetime
 import itertools
-import pathlib
+from pathlib import Path
 import unittest
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from typing import Any
@@ -194,7 +194,7 @@ async def test_constructor_with_expired(
 async def test_save_load(
     tmp_path: Any, loop: Any, cookies_to_send: Any, cookies_to_receive: Any
 ) -> None:
-    file_path = pathlib.Path(str(tmp_path)) / "aiohttp.test.cookie"
+    file_path = Path(str(tmp_path)) / "aiohttp.test.cookie"
 
     # export cookie jar
     jar_save = CookieJar()

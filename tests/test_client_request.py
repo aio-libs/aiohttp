@@ -2,7 +2,7 @@
 import asyncio
 import hashlib
 import io
-import pathlib
+from pathlib import Path
 import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from typing import Any
@@ -655,7 +655,7 @@ async def test_urlencoded_formdata_charset(loop: Any, conn: Any) -> None:
 
 async def test_formdata_boundary_from_headers(loop: Any, conn: Any) -> None:
     boundary = "some_boundary"
-    file_path = pathlib.Path(__file__).parent / "aiohttp.png"
+    file_path = Path(__file__).parent / "aiohttp.png"
     with file_path.open("rb") as f:
         req = ClientRequest(
             "post",
@@ -849,7 +849,7 @@ async def test_chunked_transfer_encoding(loop: Any, conn: Any) -> None:
 
 
 async def test_file_upload_not_chunked(loop: Any) -> None:
-    file_path = pathlib.Path(__file__).parent / "aiohttp.png"
+    file_path = Path(__file__).parent / "aiohttp.png"
     with file_path.open("rb") as f:
         req = ClientRequest("post", URL("http://python.org/"), data=f, loop=loop)
         assert not req.chunked
@@ -874,7 +874,7 @@ async def test_precompressed_data_stays_intact(loop: Any) -> None:
 
 
 async def test_file_upload_not_chunked_seek(loop: Any) -> None:
-    file_path = pathlib.Path(__file__).parent / "aiohttp.png"
+    file_path = Path(__file__).parent / "aiohttp.png"
     with file_path.open("rb") as f:
         f.seek(100)
         req = ClientRequest("post", URL("http://python.org/"), data=f, loop=loop)
@@ -883,7 +883,7 @@ async def test_file_upload_not_chunked_seek(loop: Any) -> None:
 
 
 async def test_file_upload_force_chunked(loop: Any) -> None:
-    file_path = pathlib.Path(__file__).parent / "aiohttp.png"
+    file_path = Path(__file__).parent / "aiohttp.png"
     with file_path.open("rb") as f:
         req = ClientRequest(
             "post", URL("http://python.org/"), data=f, chunked=True, loop=loop

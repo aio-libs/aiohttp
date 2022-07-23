@@ -2,7 +2,7 @@
 import asyncio
 import io
 import json
-import pathlib
+from pathlib import Path
 import socket
 import zlib
 from typing import Any
@@ -27,7 +27,7 @@ except ImportError:
 
 @pytest.fixture
 def here():
-    return pathlib.Path(__file__).parent
+    return Path(__file__).parent
 
 
 @pytest.fixture
@@ -305,7 +305,7 @@ async def test_render_redirect(aiohttp_client: Any) -> None:
 
 async def test_post_single_file(aiohttp_client: Any) -> None:
 
-    here = pathlib.Path(__file__).parent
+    here = Path(__file__).parent
 
     def check_file(fs):
         fullname = here / fs.filename
@@ -368,7 +368,7 @@ async def test_files_upload_with_same_key(aiohttp_client: Any) -> None:
 
 async def test_post_files(aiohttp_client: Any) -> None:
 
-    here = pathlib.Path(__file__).parent
+    here = Path(__file__).parent
 
     def check_file(fs):
         fullname = here / fs.filename
@@ -625,7 +625,7 @@ async def test_http10_keep_alive_with_headers(aiohttp_client: Any) -> None:
 
 async def test_upload_file(aiohttp_client: Any) -> None:
 
-    here = pathlib.Path(__file__).parent
+    here = Path(__file__).parent
     fname = here / "aiohttp.png"
     with fname.open("rb") as f:
         data = f.read()
@@ -645,7 +645,7 @@ async def test_upload_file(aiohttp_client: Any) -> None:
 
 
 async def test_upload_file_object(aiohttp_client: Any) -> None:
-    here = pathlib.Path(__file__).parent
+    here = Path(__file__).parent
     fname = here / "aiohttp.png"
     with fname.open("rb") as f:
         data = f.read()
@@ -1117,7 +1117,7 @@ async def test_subapp_reverse_static_url(aiohttp_client: Any) -> None:
     app = web.Application()
     subapp = web.Application()
     subapp.router.add_get("/to", handler)
-    here = pathlib.Path(__file__).parent
+    here = Path(__file__).parent
     subapp.router.add_static("/static", here, name="name")
     app.add_subapp("/path", subapp)
 

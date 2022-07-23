@@ -2,7 +2,7 @@
 import asyncio
 import io
 import json
-import pathlib
+from pathlib import Path
 import sys
 import zlib
 from typing import Any, Optional
@@ -1328,7 +1328,7 @@ class TestMultipartWriter:
         self, buf: Any, stream: Any
     ) -> None:
         # https://github.com/aio-libs/aiohttp/pull/3475#issuecomment-451072381
-        with pathlib.Path(__file__).open("rb") as fobj:
+        with Path(__file__).open("rb") as fobj:
             with aiohttp.MultipartWriter("form-data", boundary=":") as writer:
                 part = writer.append(
                     fobj,
@@ -1357,7 +1357,7 @@ class TestMultipartWriter:
         self, buf: Any, stream: Any
     ) -> None:
         # https://github.com/aio-libs/aiohttp/pull/3475#issuecomment-451072381
-        with pathlib.Path(__file__).open("rb") as fobj:
+        with Path(__file__).open("rb") as fobj:
             with aiohttp.MultipartWriter("form-data", boundary=":") as writer:
                 part = writer.append(
                     fobj,
@@ -1386,7 +1386,7 @@ class TestMultipartWriter:
         self, buf: Any, stream: Any
     ) -> None:
         # https://github.com/aio-libs/aiohttp/pull/3475#issuecomment-451072381
-        with pathlib.Path(__file__).open("rb") as fobj:
+        with Path(__file__).open("rb") as fobj:
             with aiohttp.MultipartWriter("form-data", boundary=":") as writer:
                 part = writer.append(
                     fobj,

@@ -2,7 +2,7 @@
 import asyncio
 import functools
 import os
-import pathlib
+from pathlib import Path
 import platform
 from re import match as match_regex
 from typing import Any
@@ -691,7 +691,7 @@ def _patch_ssl_transport(monkeypatch):
     )
 
 
-original_is_file: Any = pathlib.Path.is_file
+original_is_file: Any = Path.is_file
 
 
 def mock_is_file(self):

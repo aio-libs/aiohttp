@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
 import io
-import pathlib
+from pathlib import Path
 from collections import defaultdict
 
 import multidict
 
-ROOT = pathlib.Path.cwd()
+ROOT = Path.cwd()
 while ROOT.parent != ROOT and not (ROOT / ".git").exists():
     ROOT = ROOT.parent
 

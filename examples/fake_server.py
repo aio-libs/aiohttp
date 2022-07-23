@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import asyncio
-import pathlib
+from pathlib import Path
 import socket
 import ssl
 from typing import Any, Dict, List, Union
@@ -52,7 +52,7 @@ class FakeFacebook:
             ]
         )
         self.runner = web.AppRunner(self.app)
-        here = pathlib.Path(__file__)
+        here = Path(__file__)
         ssl_cert = here.parent / "server.crt"
         ssl_key = here.parent / "server.key"
         self.ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)

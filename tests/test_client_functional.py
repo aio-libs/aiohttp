@@ -6,7 +6,7 @@ import datetime
 import http.cookies
 import io
 import json
-import pathlib
+from pathlib import Path
 import socket
 import ssl
 from typing import Any
@@ -25,7 +25,7 @@ from aiohttp.test_utils import unused_port
 
 @pytest.fixture
 def here():
-    return pathlib.Path(__file__).parent
+    return Path(__file__).parent
 
 
 @pytest.fixture

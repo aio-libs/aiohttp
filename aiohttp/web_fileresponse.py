@@ -1,7 +1,7 @@
 import asyncio
 import mimetypes
 import os
-import pathlib
+from pathlib import Path
 from typing import (  # noqa
     IO,
     TYPE_CHECKING,
@@ -47,7 +47,7 @@ class FileResponse(StreamResponse):
 
     def __init__(
         self,
-        path: Union[str, pathlib.Path],
+        path: Union[str, Path],
         chunk_size: int = 256 * 1024,
         status: int = 200,
         reason: Optional[str] = None,
@@ -56,7 +56,7 @@ class FileResponse(StreamResponse):
         super().__init__(status=status, reason=reason, headers=headers)
 
         if isinstance(path, str):
-            path = pathlib.Path(path)
+            path = Path(path)
 
         self._path = path
         self._chunk_size = chunk_size
