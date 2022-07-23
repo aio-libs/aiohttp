@@ -178,11 +178,7 @@ class NamedPipeSite(BaseSite):
     __slots__ = ("_path",)
 
     def __init__(
-        self,
-        runner: "BaseRunner",
-        path: Union[str, Path],
-        *,
-        shutdown_timeout: float = 60.0,
+        self, runner: "BaseRunner", path: str, *, shutdown_timeout: float = 60.0
     ) -> None:
         loop = asyncio.get_event_loop()
         if not isinstance(
@@ -204,7 +200,7 @@ class NamedPipeSite(BaseSite):
         server = self._runner.server
         assert server is not None
         _server = await loop.start_serving_pipe(  # type: ignore[attr-defined]
-            server, str(self._path)
+            server, self._path
         )
         self._server = _server[0]
 
