@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from  pathlib import Path
+from pathlib import Path
 
 from aiohttp import web
 

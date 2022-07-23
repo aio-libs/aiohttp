@@ -6,9 +6,9 @@ import datetime
 import http.cookies
 import io
 import json
-from pathlib import Path
 import socket
 import ssl
+from pathlib import Path
 from typing import Any
 from unittest import mock
 

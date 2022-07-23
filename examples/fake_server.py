@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import asyncio
-from pathlib import Path
 import socket
 import ssl
+from pathlib import Path
 from typing import Any, Dict, List, Union
 
 from aiohttp import ClientSession, TCPConnector, resolver, test_utils, web

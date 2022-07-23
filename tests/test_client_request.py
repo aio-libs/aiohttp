@@ -2,9 +2,9 @@
 import asyncio
 import hashlib
 import io
-from pathlib import Path
 import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
+from pathlib import Path
 from typing import Any
 from unittest import mock
 

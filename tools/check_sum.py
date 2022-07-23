@@ -2,8 +2,8 @@
 
 import argparse
 import hashlib
-from  pathlib import Path
 import sys
+from pathlib import Path
 
 PARSER = argparse.ArgumentParser(
     description="Helper for check file hashes in Makefile instead of bare timestamps"

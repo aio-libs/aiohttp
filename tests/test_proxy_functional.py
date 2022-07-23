@@ -2,8 +2,8 @@
 import asyncio
 import functools
 import os
-from pathlib import Path
 import platform
+from pathlib import Path
 from re import match as match_regex
 from typing import Any
 from unittest import mock

@@ -2,9 +2,9 @@
 import asyncio
 import io
 import json
-from pathlib import Path
 import socket
 import zlib
+from pathlib import Path
 from typing import Any
 from unittest import mock
 

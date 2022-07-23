@@ -1,8 +1,8 @@
 # type: ignore
-from pathlib import Path
 import re
 from collections.abc import Container, Iterable, Mapping, MutableMapping, Sized
 from functools import partial
+from pathlib import Path
 from typing import Any
 from urllib.parse import unquote
 
@@ -363,9 +363,7 @@ def test_route_dynamic(router: Any) -> None:
 
 
 def test_add_static(router: Any) -> None:
-    resource = router.add_static(
-        "/st", Path(aiohttp.__file__).parent, name="static"
-    )
+    resource = router.add_static("/st", Path(aiohttp.__file__).parent, name="static")
     assert router["static"] is resource
     url = resource.url_for(filename="/dir/a.txt")
     assert "/st/dir/a.txt" == str(url)
@@ -801,9 +799,7 @@ def test_named_resources_abc(router: Any) -> None:
 def test_named_resources(router: Any) -> None:
     route1 = router.add_route("GET", "/plain", make_handler(), name="route1")
     route2 = router.add_route("GET", "/variable/{name}", make_handler(), name="route2")
-    route3 = router.add_static(
-        "/static", Path(aiohttp.__file__).parent, name="route3"
-    )
+    route3 = router.add_static("/static", Path(aiohttp.__file__).parent, name="route3")
     names = {route1.name, route2.name, route3.name}
 
     assert 3 == len(router.named_resources())
@@ -999,9 +995,7 @@ def test_url_for_in_static_resource(router: Any) -> None:
 
 def test_url_for_in_static_resource_pathlib(router: Any) -> None:
     resource = router.add_static("/static", Path(aiohttp.__file__).parent)
-    assert URL("/static/file.txt") == resource.url_for(
-        filename=Path("file.txt")
-    )
+    assert URL("/static/file.txt") == resource.url_for(filename=Path("file.txt"))
 
 
 def test_url_for_in_resource_route(router: Any) -> None:

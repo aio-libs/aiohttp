@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 import io
-from pathlib import Path
 from collections import defaultdict
+from pathlib import Path
 
 import multidict
 
