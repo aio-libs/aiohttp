@@ -180,7 +180,7 @@ class NamedPipeSite(BaseSite):
     def __init__(
         self,
         runner: "BaseRunner",
-        path: str,
+        path: Union[str, Path],
         *,
         shutdown_timeout: float = 60.0,
     ) -> None:
