@@ -2843,10 +2843,10 @@ Utilities
                     text HTTP and ``8443`` for HTTP via SSL (when
                     *ssl_context* parameter is specified).
 
-   :param str path: file system path for HTTP server Unix domain socket.
+   :param path: file system path for HTTP server Unix domain socket.
                     A sequence of file system paths can be used to bind
                     multiple domain sockets. Listening on Unix domain
-                    sockets is not supported by all operating systems.
+                    sockets is not supported by all operating systems, :class:`str` or :class:`pathlib.Path` .
 
    :param socket.socket sock: a preexisting socket object to accept connections on.
                        A sequence of socket objects can be passed.
