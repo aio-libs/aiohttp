@@ -5,6 +5,7 @@ import sys
 from argparse import ArgumentParser
 from collections.abc import Iterable
 from importlib import import_module
+from pathlib import Path
 from typing import (
     Any,
     Awaitable,
@@ -19,7 +20,7 @@ from typing import (
 )
 
 from .abc import AbstractAccessLogger
-from .helpers import AppKey as AppKey, all_tasks
+from .helpers import AppKey as AppKey
 from .log import access_logger
 from .web_app import Application as Application, CleanupError as CleanupError
 from .web_exceptions import (
@@ -290,12 +291,12 @@ async def _run_app(
     *,
     host: Optional[Union[str, HostSequence]] = None,
     port: Optional[int] = None,
-    path: Optional[str] = None,
+    path: Optional[Union[str, Path]] = None,
     sock: Optional[Union[socket.socket, TypingIterable[socket.socket]]] = None,
     shutdown_timeout: float = 60.0,
     keepalive_timeout: float = 75.0,
     ssl_context: Optional[SSLContext] = None,
-    print: Callable[..., None] = print,
+    print: Optional[Callable[..., None]] = print,
     backlog: int = 128,
     access_log_class: Type[AbstractAccessLogger] = AccessLogger,
     access_log_format: str = AccessLogger.LOG_FORMAT,
@@ -304,7 +305,7 @@ async def _run_app(
     reuse_address: Optional[bool] = None,
     reuse_port: Optional[bool] = None,
 ) -> None:
-    # A internal functio to actually do all dirty job for application running
+    # An internal function to actually do all dirty job for application running
     if asyncio.iscoroutine(app):
         app = await app
 
@@ -366,7 +367,7 @@ async def _run_app(
             )
 
         if path is not None:
-            if isinstance(path, (str, bytes, bytearray, memoryview)):
+            if isinstance(path, (str, bytes, bytearray, memoryview, Path)):
                 sites.append(
                     UnixSite(
                         runner,
@@ -461,14 +462,15 @@ def _cancel_tasks(
 def run_app(
     app: Union[Application, Awaitable[Application]],
     *,
+    debug: bool = False,
     host: Optional[Union[str, HostSequence]] = None,
     port: Optional[int] = None,
-    path: Optional[str] = None,
+    path: Optional[Union[str, Path]] = None,
     sock: Optional[Union[socket.socket, TypingIterable[socket.socket]]] = None,
     shutdown_timeout: float = 60.0,
     keepalive_timeout: float = 75.0,
     ssl_context: Optional[SSLContext] = None,
-    print: Callable[..., None] = print,
+    print: Optional[Callable[..., None]] = print,
     backlog: int = 128,
     access_log_class: Type[AbstractAccessLogger] = AccessLogger,
     access_log_format: str = AccessLogger.LOG_FORMAT,
@@ -481,6 +483,7 @@ def run_app(
     """Run an app locally"""
     if loop is None:
         loop = asyncio.new_event_loop()
+    loop.set_debug(debug)
 
     # Configure if and only if in debugging mode and using the default logger
     if loop.get_debug() and access_log and access_log.name == "aiohttp.access":
@@ -517,9 +520,10 @@ def run_app(
         pass
     finally:
         _cancel_tasks({main_task}, loop)
-        _cancel_tasks(all_tasks(loop), loop)
+        _cancel_tasks(asyncio.all_tasks(loop), loop)
         loop.run_until_complete(loop.shutdown_asyncgens())
         loop.close()
+        asyncio.set_event_loop(None)
 
 
 def main(argv: List[str]) -> None:
