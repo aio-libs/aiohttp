@@ -154,7 +154,7 @@ class ClientConnectorError(ClientOSError):
     """Client connector error.
 
     Raised in :class:`aiohttp.connector.TCPConnector` if
-        connection to proxy can not be established.
+        a connection can not be established.
     """
 
     def __init__(self, connection_key: ConnectionKey, os_error: OSError) -> None:
