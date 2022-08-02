@@ -180,7 +180,7 @@ class RequestHandler(BaseProtocol):
         max_headers: int = 32768,
         max_field_size: int = 8190,
         lingering_time: float = 10.0,
-        read_bufsize: int = 2 ** 16,
+        read_bufsize: int = 2**16,
         auto_decompress: bool = True,
         timeout_ceil_threshold: float = 5,
     ):
@@ -311,8 +311,6 @@ class RequestHandler(BaseProtocol):
                 exc = ConnectionResetError("Connection lost")
             self._current_request._cancel(exc)
 
-        if self._task_handler is not None:
-            self._task_handler.cancel()
         if self._waiter is not None:
             self._waiter.cancel()
 

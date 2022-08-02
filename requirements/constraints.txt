@@ -63,7 +63,7 @@ cryptography==36.0.1 ; platform_machine != "i686"
     #   -r requirements/test.txt
     #   pyjwt
     #   trustme
-cython==0.29.26
+cython==0.29.27
     # via -r requirements/cython.txt
 distlib==0.3.3
     # via virtualenv
@@ -237,7 +237,7 @@ trustme==0.9.0 ; platform_machine != "i686"
     # via -r requirements/test.txt
 typer==0.4.0
     # via python-on-whales
-typing-extensions==3.10.0.0
+typing-extensions==4.1.1
     # via
     #   -r requirements/typing-extensions.txt
     #   aioredis

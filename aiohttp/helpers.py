@@ -3,7 +3,6 @@
 import asyncio
 import base64
 import binascii
-import cgi
 import datetime
 import enum
 import functools
@@ -18,6 +17,7 @@ import warnings
 import weakref
 from collections import namedtuple
 from contextlib import suppress
+from email.parser import HeaderParser
 from email.utils import parsedate
 from math import ceil
 from pathlib import Path
@@ -80,7 +80,6 @@ if sys.version_info < (3, 7):
     ) -> Set["asyncio.Task[Any]"]:
         tasks = list(asyncio.Task.all_tasks(loop))
         return {t for t in tasks if not t.done()}
-
 
 else:
     all_tasks = asyncio.all_tasks
@@ -769,7 +768,10 @@ class HeadersMixin:
             self._content_type = "application/octet-stream"
             self._content_dict = {}
         else:
-            self._content_type, self._content_dict = cgi.parse_header(raw)
+            msg = HeaderParser().parsestr("Content-Type: " + raw)
+            self._content_type = msg.get_content_type()
+            params = msg.get_params()
+            self._content_dict = dict(params[1:])  # First element is content type again
 
     @property
     def content_type(self) -> str:
@@ -926,9 +928,9 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
 # https://tools.ietf.org/html/rfc7232#section-2.3
 _ETAGC = r"[!#-}\x80-\xff]+"
 _ETAGC_RE = re.compile(_ETAGC)
-_QUOTED_ETAG = fr'(W/)?"({_ETAGC})"'
+_QUOTED_ETAG = rf'(W/)?"({_ETAGC})"'
 QUOTED_ETAG_RE = re.compile(_QUOTED_ETAG)
-LIST_QUOTED_ETAG_RE = re.compile(fr"({_QUOTED_ETAG})(?:\s*,\s*|$)|(.)")
+LIST_QUOTED_ETAG_RE = re.compile(rf"({_QUOTED_ETAG})(?:\s*,\s*|$)|(.)")
 
 ETAG_ANY = "*"
 
