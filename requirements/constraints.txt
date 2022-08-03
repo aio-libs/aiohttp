@@ -154,7 +154,7 @@ pyjwt==2.3.0
     # via gidgethub
 pyparsing==2.4.7
     # via packaging
-pytest==6.2.5
+pytest==7.0.1
     # via
     #   -r requirements/lint.txt
     #   -r requirements/test.txt
@@ -220,12 +220,12 @@ toml==0.10.2
     # via
     #   cherry-picker
     #   pre-commit
-    #   pytest
 tomli==1.2.2
     # via
     #   coverage
     #   mypy
     #   pep517
+    #   pytest
     #   towncrier
 towncrier==21.9.0
     # via
