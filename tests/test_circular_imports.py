@@ -78,6 +78,17 @@ def test_no_warnings(import_path: str) -> None:
     This is seeking for any import errors including ones caused
     by circular imports.
     """
-    imp_cmd = sys.executable, "-W", "error"
+    imp_cmd = (
+        # fmt: off
+        sys.executable,
+        "-W", "error",
+        # The following deprecation warning is triggered by importing
+        # `gunicorn.util`. Hopefully, it'll get fixed in the future. See
+        # https://github.com/benoitc/gunicorn/issues/2840 for detail.
+        "-W", "ignore:module 'sre_constants' is "
+        "deprecated:DeprecationWarning:pkg_resources._vendor.pyparsing",
+        "-c", f"import {import_path!s}",
+        # fmt: on
+    )
 
     subprocess.check_call(imp_cmd)
