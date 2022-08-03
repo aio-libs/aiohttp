@@ -2,5 +2,5 @@
 aioredis==2.0.1
 mypy==0.931; implementation_name=="cpython"
 pre-commit==2.20.0
-pytest==7.1.2
+pytest==6.2.5
 slotscheck==0.8.0
