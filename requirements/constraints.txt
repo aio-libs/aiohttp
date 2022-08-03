@@ -59,7 +59,7 @@ cryptography==36.0.0 ; platform_machine != "i686"
     #   -r requirements/test.txt
     #   pyjwt
     #   trustme
-cython==0.29.27
+cython==0.29.32
     # via -r requirements/cython.txt
 distlib==0.3.3
     # via virtualenv
@@ -243,6 +243,8 @@ uritemplate==4.1.1
     # via gidgethub
 urllib3==1.26.7
     # via requests
+uvloop==0.14.0 ; platform_system != "Windows" and implementation_name == "cpython" and python_version < "3.9"
+    # via -r requirements/base.txt
 virtualenv==20.10.0
     # via pre-commit
 wait-for-it==2.2.1 ; python_version >= "3.7"
