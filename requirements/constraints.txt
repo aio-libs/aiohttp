@@ -24,7 +24,7 @@ brotli==1.0.9
     # via
     #   -r requirements/base.txt
     #   -r requirements/test.txt
-cchardet==2.1.7
+cchardet==2.1.7; python_version < '3.11'
     # via -r requirements/base.txt
 certifi==2021.10.8
     # via requests
@@ -60,7 +60,7 @@ cryptography==36.0.1 ; platform_machine != "i686"
     #   -r requirements/test.txt
     #   pyjwt
     #   trustme
-cython==0.29.27
+cython==0.29.32
     # via -r requirements/cython.txt
 distlib==0.3.3
     # via virtualenv
@@ -129,7 +129,7 @@ platformdirs==2.4.0
     # via virtualenv
 pluggy==1.0.0
     # via pytest
-pre-commit==2.17.0
+pre-commit==2.20.0
     # via -r requirements/lint.txt
 proxy-py==2.4.0rc6
     # via -r requirements/test.txt
@@ -149,7 +149,7 @@ pyjwt==2.3.0
     # via gidgethub
 pyparsing==2.4.7
     # via packaging
-pytest==6.2.5
+pytest==7.1.2
     # via
     #   -r requirements/lint.txt
     #   -r requirements/test.txt
@@ -235,7 +235,7 @@ trustme==0.9.0 ; platform_machine != "i686"
     # via -r requirements/test.txt
 typer==0.4.0
     # via python-on-whales
-typing-extensions==4.1.1
+typing-extensions==4.3.0
     # via
     #   -r requirements/typing-extensions.txt
     #   aioredis
@@ -251,7 +251,7 @@ wait-for-it==2.2.1
     # via -r requirements/test.txt
 webcolors==1.11.1
     # via blockdiag
-wheel==0.37.0
+wheel==0.37.1
     # via pip-tools
 yarl==1.8.1
     # via -r requirements/base.txt

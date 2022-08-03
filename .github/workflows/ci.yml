@@ -12,6 +12,7 @@ on:
       - '[0-9].[0-9]+'
   schedule:
     - cron:  '0 6 * * *'  # Daily 6AM UTC build
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
@@ -118,7 +119,7 @@ jobs:
     needs: gen_llhttp
     strategy:
       matrix:
-        pyver: [3.7, 3.8, 3.9, '3.10']
+        pyver: [3.7, 3.8, 3.9, '3.10', '3.11-dev']
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         exclude:
@@ -307,7 +308,7 @@ jobs:
       run: |
         make cythonize
     - name: Build wheels
-      uses: pypa/cibuildwheel@2.7.0
+      uses: pypa/cibuildwheel@2.8.1
       env:
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
     - uses: actions/upload-artifact@v3
