@@ -40,6 +40,8 @@ replacement for :term:`charset-normalizer`:
 
    $ pip install cchardet
 
+.. include:: _snippets/cchardet-unmaintained-admonition.rst
+
 For speeding up DNS resolving by client API you may install
 :term:`aiodns` as well.
 This option is highly recommended:
