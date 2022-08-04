@@ -1,1 +1,1 @@
-Fix ``test_utils.TestClient`` on Python 3.11.+.
+Fix :py:class:`~aiohttp.test_utils.TestClient` compatibility with Python 3.11+, creating a new event loop when there is no active one -- by :user:`felixxm`.
