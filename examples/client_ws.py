@@ -17,7 +17,7 @@ async def start_client(loop: asyncio.AbstractEventLoop, url: str) -> None:
         if not line:
             loop.stop()
         else:
-            ws.send_str(name + ": " + line)
+            await ws.send_str(name + ": " + line)
 
     loop.add_reader(sys.stdin.fileno(), stdin_callback)
 
