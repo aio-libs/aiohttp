@@ -51,7 +51,7 @@ click==8.0.3
     #   wait-for-it
 click-default-group==1.2.2
     # via towncrier
-coverage==6.2
+coverage==6.4.2
     # via
     #   -r requirements/test.txt
     #   pytest-cov
@@ -60,7 +60,7 @@ cryptography==36.0.1 ; platform_machine != "i686"
     #   -r requirements/test.txt
     #   pyjwt
     #   trustme
-cython==0.29.27
+cython==0.29.32
     # via -r requirements/cython.txt
 distlib==0.3.3
     # via virtualenv
