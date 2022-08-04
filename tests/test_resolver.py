@@ -62,8 +62,8 @@ async def test_async_resolver_positive_lookup(loop: Any) -> None:
 @pytest.mark.skipif(not gethostbyname, reason="aiodns 1.1 required")
 async def test_async_resolver_multiple_replies(loop: Any) -> None:
     with patch("aiodns.DNSResolver") as mock:
-        ips = ["127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4"]
-        mock().gethostbyname.return_value = fake_result(ips)
+        ip_strs = ["127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4"]
+        mock().gethostbyname.return_value = fake_result(ip_trs)
         resolver = AsyncResolver()
         real = await resolver.resolve("www.google.com")
         ips = [ipaddress.ip_address(x["host"]) for x in real]
@@ -100,8 +100,8 @@ async def test_threaded_resolver_positive_lookup() -> None:
 
 async def test_threaded_resolver_multiple_replies() -> None:
     loop = Mock()
-    ips = ["127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4"]
-    loop.getaddrinfo = fake_addrinfo(ips)
+    ip_strs = ["127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4"]
+    loop.getaddrinfo = fake_addrinfo(ip_strs)
     resolver = ThreadedResolver()
     resolver._loop = loop
     real = await resolver.resolve("www.google.com")
