@@ -63,7 +63,7 @@ async def test_async_resolver_positive_lookup(loop: Any) -> None:
 async def test_async_resolver_multiple_replies(loop: Any) -> None:
     with patch("aiodns.DNSResolver") as mock:
         ip_strs = ["127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4"]
-        mock().gethostbyname.return_value = fake_result(ip_trs)
+        mock().gethostbyname.return_value = fake_result(ip_strs)
         resolver = AsyncResolver()
         real = await resolver.resolve("www.google.com")
         ips = [ipaddress.ip_address(x["host"]) for x in real]
