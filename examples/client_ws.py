@@ -17,7 +17,8 @@ async def start_client(loop: asyncio.AbstractEventLoop, url: str) -> None:
         if not line:
             loop.stop()
         else:
-            await ws.send_str(name + ": " + line)
+            # TODO(PY311): Use TaskGroup to ensure task is awaited.
+            asyncio.create_task(ws.send_str(name + ": " + line))
 
     loop.add_reader(sys.stdin.fileno(), stdin_callback)
 
