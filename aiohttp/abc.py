@@ -13,6 +13,7 @@ from typing import (
     List,
     Optional,
     Tuple,
+    Union,
 )
 
 from multidict import CIMultiDict
@@ -63,7 +64,7 @@ class AbstractMatchInfo(ABC):
 
     @property
     @abstractmethod
-    def expect_handler(self) -> Callable[[Request], Awaitable[Union[None, StreamResponse]]:
+    def expect_handler(self) -> Callable[[Request], Awaitable[Union[None, StreamResponse]]]:
         """Expect handler for 100-continue processing"""
 
     @property  # pragma: no branch
