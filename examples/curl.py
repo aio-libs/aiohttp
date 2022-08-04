@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-# mypy: platform=win32
 
 import argparse
 import asyncio
+import sys
 
 import aiohttp
 
@@ -27,6 +27,9 @@ if __name__ == "__main__":
     options = ARGS.parse_args()
 
     if options.iocp:
+        if sys.platform != "win32":
+            print("Must be on Windows for --iocp.")
+            sys.exit(1)
         from asyncio import events, windows_events
 
         el = windows_events.ProactorEventLoop()
