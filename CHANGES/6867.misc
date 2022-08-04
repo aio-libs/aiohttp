@@ -1,0 +1,1 @@
+Fix ``test_utils.TestClient`` on Python 3.11.+.
