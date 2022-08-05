@@ -365,10 +365,13 @@ class StreamReader(AsyncStreamReaderMixin):
         # TODO: should be `if` instead of `while`
         # because waiter maybe triggered on chunk end,
         # without feeding any data
-        while not self._buffer and not self._eof:
-            await self._wait("read")
+        ret = b""
+        while len(ret) != n:
+            while not self._buffer and not self._eof:
+                await self._wait("read")
+            ret += self._read_nowait(n - len(ret))
 
-        return self._read_nowait(n)
+        return ret
 
     async def readany(self) -> bytes:
         if self._exception is not None:
