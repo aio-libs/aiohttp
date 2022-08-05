@@ -431,10 +431,12 @@ class StreamReader(AsyncStreamReaderMixin):
         if self._exception is not None:
             raise self._exception
 
-        blocks: List[bytes] = []
+        blocks = []  # type: List[bytes]
         while n > 0:
             block = await self.read(n)
             if not block:
+                if self.at_eof():
+                    break
                 partial = b"".join(blocks)
                 raise asyncio.IncompleteReadError(partial, len(partial) + n)
             blocks.append(block)
