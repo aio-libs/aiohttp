@@ -65,7 +65,8 @@ class AsyncStreamReaderMixin:
         return AsyncStreamIterator(self.readline)  # type: ignore[attr-defined]
 
     def iter_chunked(self, n: int, exactly: bool = True) -> AsyncStreamIterator[bytes]:
-        """Returns an asynchronous iterator that yields chunks of size n (exactly n by default so you can change "exactly" parameter to False to set chunks size as max n).
+        """Returns an asynchronous iterator that yields chunks of size n
+        exactly n by default so you can change "exactly" parameter to False to set chunks size as max n
 
         Python-3.5 available for Python 3.5+ only
         """
