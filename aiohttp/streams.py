@@ -30,15 +30,20 @@ class EofStream(Exception):
 
 
 class AsyncStreamIterator(Generic[_T]):
-    def __init__(self, read_func: Callable[[], Awaitable[_T]]) -> None:
+    def __init__(self, read_func: Callable[[], Awaitable[_T]], n) -> None:
         self.read_func = read_func
+        self.chunk_size = n
 
     def __aiter__(self) -> "AsyncStreamIterator[_T]":
         return self
 
     async def __anext__(self) -> _T:
+        rv = b''
+        last = b' '
         try:
-            rv = await self.read_func()
+            while len(rv) != self.chunk_size and len(last) != len(rv):
+                last = rv
+                rv += await self.read_func(self.chunk_size - len(rv))
         except EofStream:
             raise StopAsyncIteration
         if rv == b"":
@@ -67,7 +72,7 @@ class AsyncStreamReaderMixin:
     def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
         """Returns an asynchronous iterator that yields chunks of size n."""
         return AsyncStreamIterator(
-            lambda: self.read(n)  # type: ignore[attr-defined,no-any-return]
+            lambda n: self.read(n), n  # type: ignore[attr-defined,no-any-return]
         )
 
     def iter_any(self) -> AsyncStreamIterator[bytes]:
