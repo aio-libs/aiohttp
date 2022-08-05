@@ -30,7 +30,7 @@ class EofStream(Exception):
 
 
 class AsyncStreamIterator(Generic[_T]):
-    def __init__(self, read_func: Callable[[], Awaitable[_T]], n) -> None:
+    def __init__(self, read_func: Callable[[], Awaitable[_T]], n = 1024 * 1024) -> None:
         self.read_func = read_func
         self.chunk_size = n
 
