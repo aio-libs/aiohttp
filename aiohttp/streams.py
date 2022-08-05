@@ -66,7 +66,7 @@ class AsyncStreamReaderMixin:
 
     def iter_chunked(self, n: int, exactly: bool = True) -> AsyncStreamIterator[bytes]:
         """Returns an asynchronous iterator that yields chunks of size n
-        
+
         exactly n by default
         you can change "exactly" parameter to False
         to set chunks size as max n
