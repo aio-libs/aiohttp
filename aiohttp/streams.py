@@ -38,8 +38,8 @@ class AsyncStreamIterator(Generic[_T]):
         return self
 
     async def __anext__(self) -> _T:
-        rv = b''
-        last = b' '
+        rv = b""
+        last = b" "
         try:
             while len(rv) != self.chunk_size and len(last) != len(rv):
                 last = rv
