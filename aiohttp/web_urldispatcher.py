@@ -564,9 +564,7 @@ class StaticResource(PrefixResource):
     ) -> URL:
         if append_version is None:
             append_version = self._append_version
-        if isinstance(filename, Path):
-            filename = str(filename)
-        filename = filename.lstrip("/")
+        filename = str(filename).lstrip("/")
 
         url = URL.build(path=self._prefix, encoded=True)
         # filename is not encoded
