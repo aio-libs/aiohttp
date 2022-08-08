@@ -21,16 +21,11 @@ from aiohttp.web_runner import BaseRunner
 # Test for features of OS' socket support
 _has_unix_domain_socks = hasattr(socket, "AF_UNIX")
 if _has_unix_domain_socks:
-    _abstract_path_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    try:
-        _abstract_path_sock.bind(b"\x00" + uuid4().hex.encode("ascii"))  # type: ignore
-    except FileNotFoundError:
-        _abstract_path_failed = True
-    else:
-        _abstract_path_failed = False
-    finally:
-        _abstract_path_sock.close()
-        del _abstract_path_sock
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as _abstract_path_sock:
+        try:
+            _abstract_path_sock.bind(b"\x00" + uuid4().hex.encode("ascii"))  # type: ignore
+        finally:
+            del _abstract_path_sock
 else:
     _abstract_path_failed = True
 
@@ -48,7 +43,8 @@ if HAS_IPV6:
     # support, but the target system still may not have it.
     # So let's ensure that we really have IPv6 support.
     try:
-        socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        with socket.socket(socket.AF_INET6, socket.SOCK_STREAM):
+            pass
     except OSError:
         HAS_IPV6 = False
 
