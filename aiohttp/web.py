@@ -22,6 +22,7 @@ from typing import (
 from .abc import AbstractAccessLogger
 from .helpers import AppKey as AppKey
 from .log import access_logger
+from .typedefs import PathLike
 from .web_app import Application as Application, CleanupError as CleanupError
 from .web_exceptions import (
     HTTPAccepted as HTTPAccepted,
@@ -291,7 +292,7 @@ async def _run_app(
     *,
     host: Optional[Union[str, HostSequence]] = None,
     port: Optional[int] = None,
-    path: Optional[Union[str, Path]] = None,
+    path: Optional[PathLike] = None,
     sock: Optional[Union[socket.socket, TypingIterable[socket.socket]]] = None,
     shutdown_timeout: float = 60.0,
     keepalive_timeout: float = 75.0,
@@ -465,7 +466,7 @@ def run_app(
     debug: bool = False,
     host: Optional[Union[str, HostSequence]] = None,
     port: Optional[int] = None,
-    path: Optional[Union[str, Path]] = None,
+    path: Optional[PathLike] = None,
     sock: Optional[Union[socket.socket, TypingIterable[socket.socket]]] = None,
     shutdown_timeout: float = 60.0,
     keepalive_timeout: float = 75.0,
