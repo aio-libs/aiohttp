@@ -2,8 +2,7 @@ import asyncio
 import signal
 import socket
 from abc import ABC, abstractmethod
-from pathlib import Path
-from typing import Any, List, Optional, Set, Type, Union
+from typing import Any, List, Optional, Set, Type
 
 from yarl import URL
 
