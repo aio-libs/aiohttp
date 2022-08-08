@@ -6,7 +6,6 @@ import sys
 from argparse import ArgumentParser
 from collections.abc import Iterable
 from importlib import import_module
-from pathlib import Path
 from typing import (
     Any,
     Awaitable,
