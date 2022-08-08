@@ -559,7 +559,7 @@ class StaticResource(PrefixResource):
     def url_for(  # type: ignore[override]
         self,
         *,
-        filename: Union[str, Path],
+        filename: PathLike,
         append_version: Optional[bool] = None,
     ) -> URL:
         if append_version is None:
