@@ -55,10 +55,7 @@ class FileResponse(StreamResponse):
     ) -> None:
         super().__init__(status=status, reason=reason, headers=headers)
 
-        if isinstance(path, str):
-            path = pathlib.Path(path)
-
-        self._path = path
+        self._path = pathlib.Path(path)
         self._chunk_size = chunk_size
 
     async def _sendfile_fallback(
