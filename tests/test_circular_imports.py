@@ -80,6 +80,10 @@ def test_no_warnings(import_path: str) -> None:
         # https://github.com/benoitc/gunicorn/issues/2840 for detail.
         "-W", "ignore:module 'sre_constants' is "
         "deprecated:DeprecationWarning:pkg_resources._vendor.pyparsing",
+        # Also caused by `gunicorn.util` importing `pkg_resources`:
+        "-W", "ignore:Creating a LegacyVersion has been deprecated and "
+        "will be removed in the next major release:"
+        "DeprecationWarning:",
         "-c", f"import {import_path!s}",
         # fmt: on
     )
