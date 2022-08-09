@@ -1,0 +1,1 @@
+Fix size of output chunks in ``read`` function into streams.py
