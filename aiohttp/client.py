@@ -531,9 +531,9 @@ class ClientSession:
                             raise
                     except ClientError:
                         raise
-                    except asyncio.TimeoutError:
-                        raise
                     except OSError as exc:
+                        if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                            raise
                         raise ClientOSError(*exc.args) from exc
 
                     self._cookie_jar.update_cookies(resp.cookies, resp.url)
