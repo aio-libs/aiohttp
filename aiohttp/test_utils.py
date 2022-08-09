@@ -429,7 +429,7 @@ class AioHTTPTestCase(TestCase):
         """
         raise RuntimeError("Did you forget to define get_application()?")
 
-    async def asyncSetUp(self):
+    async def asyncSetUp(self) -> None:
         self.loop = asyncio.get_running_loop()
         return await self.setUpAsync()
 
