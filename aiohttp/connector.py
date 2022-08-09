@@ -969,6 +969,8 @@ class TCPConnector(BaseConnector):
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:
             raise ClientConnectorSSLError(req.connection_key, exc) from exc
+        except asyncio.TimeoutError:
+            raise
         except OSError as exc:
             raise client_error(req.connection_key, exc) from exc
 
@@ -1048,6 +1050,8 @@ class TCPConnector(BaseConnector):
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:
             raise ClientConnectorSSLError(req.connection_key, exc) from exc
+        except asyncio.TimeoutError:
+            raise
         except OSError as exc:
             raise client_error(req.connection_key, exc) from exc
         except TypeError as type_err:
@@ -1098,6 +1102,8 @@ class TCPConnector(BaseConnector):
                     fut.result()
 
             host_resolved.add_done_callback(drop_exception)
+            raise
+        except asyncio.TimeoutError:
             raise
         except OSError as exc:
             # in case of proxy it is not ClientProxyConnectionError
@@ -1292,6 +1298,8 @@ class UnixConnector(BaseConnector):
                 _, proto = await self._loop.create_unix_connection(
                     self._factory, self._path
                 )
+        except asyncio.TimeoutError:
+            raise
         except OSError as exc:
             raise UnixClientConnectorError(self.path, req.connection_key, exc) from exc
 
@@ -1357,6 +1365,8 @@ class NamedPipeConnector(BaseConnector):
                 await asyncio.sleep(0)
                 # other option is to manually set transport like
                 # `proto.transport = trans`
+        except asyncio.TimeoutError:
+            raise
         except OSError as exc:
             raise ClientConnectorError(req.connection_key, exc) from exc
 

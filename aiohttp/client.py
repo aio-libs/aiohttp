@@ -531,6 +531,8 @@ class ClientSession:
                             raise
                     except ClientError:
                         raise
+                    except asyncio.TimeoutError:
+                        raise
                     except OSError as exc:
                         raise ClientOSError(*exc.args) from exc
 

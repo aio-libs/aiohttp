@@ -536,6 +536,8 @@ class ClientRequest:
                     await writer.write(chunk)  # type: ignore[arg-type]
 
             await writer.write_eof()
+        except asyncio.TimeoutError:
+            raise
         except OSError as exc:
             new_exc = ClientOSError(
                 exc.errno, "Can not write request body for %s" % self.url
