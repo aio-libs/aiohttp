@@ -429,6 +429,10 @@ class AioHTTPTestCase(TestCase):
         """
         raise RuntimeError("Did you forget to define get_application()?")
 
+    def setUp(self) -> None:
+        if not PY_38:
+            asyncio.get_event_loop().run_until_complete(self.asyncSetUp())
+
     async def asyncSetUp(self) -> None:
         self.loop = asyncio.get_running_loop()
         return await self.setUpAsync()
@@ -439,6 +443,10 @@ class AioHTTPTestCase(TestCase):
         self.client = await self.get_client(self.server)
 
         await self.client.start_server()
+
+    def tearDown(self) -> None:
+        if not PY_38:
+            self.loop.run_until_complete(self.asyncTearDown())
 
     async def asyncTearDown(self) -> None:
         return await self.tearDownAsync()
