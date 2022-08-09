@@ -1,0 +1,1 @@
+work around the changes in 3.11, eg asyncio.TimeoutError is an OSError, and IsolatedAsyncioTestCase calls set_event_loop differently
