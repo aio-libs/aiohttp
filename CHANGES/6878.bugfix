@@ -1,0 +1,1 @@
+fix ``readexaclty`` last chunk eof and make the user decide between ``read`` and ``readexactly`` in ``iter_chunked``
