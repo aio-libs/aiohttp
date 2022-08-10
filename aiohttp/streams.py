@@ -64,8 +64,19 @@ class AsyncStreamReaderMixin:
     def __aiter__(self) -> AsyncStreamIterator[bytes]:
         return AsyncStreamIterator(self.readline)  # type: ignore[attr-defined]
 
-    def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
-        """Returns an asynchronous iterator that yields chunks of size n."""
+    def iter_chunked(self, n: int, exactly: bool = True) -> AsyncStreamIterator[bytes]:
+        """Returns an asynchronous iterator that yields chunks of size n
+
+        exactly n by default
+        you can change "exactly" parameter to False
+        to set chunks size as max n
+
+        Python-3.5 available for Python 3.5+ only
+        """
+        if exactly:
+            return AsyncStreamIterator(
+                lambda: self.readexactly(n)  # type: ignore[attr-defined,no-any-return]
+            )
         return AsyncStreamIterator(
             lambda: self.read(n)  # type: ignore[attr-defined,no-any-return]
         )
@@ -421,7 +432,7 @@ class StreamReader(AsyncStreamReaderMixin):
             raise self._exception
 
         blocks: List[bytes] = []
-        while n > 0:
+        while n > 0 and not self.at_eof():
             block = await self.read(n)
             if not block:
                 partial = b"".join(blocks)
