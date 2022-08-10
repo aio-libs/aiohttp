@@ -257,7 +257,7 @@ ask to raise the status.
 
 - `GINO <https://github.com/fantix/gino>`_
   An asyncio ORM on top of SQLAlchemy core, delivered with an aiohttp extension.
-  
+
 - `New Relic <https://github.com/newrelic/newrelic-quickstarts/tree/main/quickstarts/python/aiohttp>`_ An aiohttp middleware for reporting your `Python application performance <https://newrelic.com/instant-observability/aiohttp/e7948525-8726-46a5-83fa-04732ad42fd1>`_ metrics to New Relic.
 
 - `eider-py <https://github.com/eider-rpc/eider-py>`_ Python implementation of
