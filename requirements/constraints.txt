@@ -28,8 +28,6 @@ brotli==1.0.9
     # via
     #   -r requirements/base.txt
     #   -r requirements/test.txt
-cchardet==2.1.7
-    # via -r requirements/base.txt
 certifi==2021.10.8
     # via requests
 cffi==1.15.0
@@ -220,12 +218,12 @@ toml==0.10.2
     # via
     #   cherry-picker
     #   pre-commit
-    #   pytest
 tomli==1.2.2
     # via
     #   coverage
     #   mypy
     #   pep517
+    #   pytest
     #   towncrier
 towncrier==21.9.0
     # via
@@ -247,8 +245,6 @@ uritemplate==4.1.1
     # via gidgethub
 urllib3==1.26.7
     # via requests
-uvloop==0.14.0 ; platform_system != "Windows" and implementation_name == "cpython" and python_version < "3.9"
-    # via -r requirements/base.txt
 virtualenv==20.10.0
     # via pre-commit
 wait-for-it==2.2.1
