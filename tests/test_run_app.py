@@ -21,16 +21,15 @@ from aiohttp.web_runner import BaseRunner
 
 _has_unix_domain_socks = hasattr(socket, "AF_UNIX")
 if _has_unix_domain_socks:
-    _abstract_path_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    try:
-        _abstract_path_sock.bind(b"\x00" + uuid4().hex.encode("ascii"))
-    except FileNotFoundError:
-        _abstract_path_failed = True
-    else:
-        _abstract_path_failed = False
-    finally:
-        _abstract_path_sock.close()
-        del _abstract_path_sock
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as _abstract_path_sock:
+        try:
+            _abstract_path_sock.bind(b"\x00" + uuid4().hex.encode("ascii"))
+        except FileNotFoundError:
+            _abstract_path_failed = True
+        else:
+            _abstract_path_failed = False
+        finally:
+            del _abstract_path_sock
 else:
     _abstract_path_failed = True
 
@@ -48,7 +47,8 @@ if HAS_IPV6:
     # support, but the target system still may not have it.
     # So let's ensure that we really have IPv6 support.
     try:
-        socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        with socket.socket(socket.AF_INET6, socket.SOCK_STREAM):
+            pass
     except OSError:
         HAS_IPV6 = False
 
@@ -518,7 +518,7 @@ def test_run_app_custom_backlog_unix(patched_loop: Any) -> None:
 def test_run_app_http_unix_socket(patched_loop: Any, tmp_path: Any) -> None:
     app = web.Application()
 
-    sock_path = str(tmp_path / "socket.sock")
+    sock_path = tmp_path / "socket.sock"
     printer = mock.Mock(wraps=stopper(patched_loop))
     web.run_app(app, path=sock_path, print=printer, loop=patched_loop)
 
@@ -532,7 +532,7 @@ def test_run_app_http_unix_socket(patched_loop: Any, tmp_path: Any) -> None:
 def test_run_app_https_unix_socket(patched_loop: Any, tmp_path: Any) -> None:
     app = web.Application()
 
-    sock_path = str(tmp_path / "socket.sock")
+    sock_path = tmp_path / "socket.sock"
     ssl_context = ssl.create_default_context()
     printer = mock.Mock(wraps=stopper(patched_loop))
     web.run_app(
