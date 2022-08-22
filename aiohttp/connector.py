@@ -970,6 +970,8 @@ class TCPConnector(BaseConnector):
         except ssl_errors as exc:
             raise ClientConnectorSSLError(req.connection_key, exc) from exc
         except OSError as exc:
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                raise
             raise client_error(req.connection_key, exc) from exc
 
     def _warn_about_tls_in_tls(
@@ -1049,6 +1051,8 @@ class TCPConnector(BaseConnector):
         except ssl_errors as exc:
             raise ClientConnectorSSLError(req.connection_key, exc) from exc
         except OSError as exc:
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                raise
             raise client_error(req.connection_key, exc) from exc
         except TypeError as type_err:
             # Example cause looks like this:
@@ -1100,6 +1104,8 @@ class TCPConnector(BaseConnector):
             host_resolved.add_done_callback(drop_exception)
             raise
         except OSError as exc:
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                raise
             # in case of proxy it is not ClientProxyConnectionError
             # it is problem of resolving proxy ip itself
             raise ClientConnectorError(req.connection_key, exc) from exc
@@ -1293,6 +1299,8 @@ class UnixConnector(BaseConnector):
                     self._factory, self._path
                 )
         except OSError as exc:
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                raise
             raise UnixClientConnectorError(self.path, req.connection_key, exc) from exc
 
         return cast(ResponseHandler, proto)
@@ -1358,6 +1366,8 @@ class NamedPipeConnector(BaseConnector):
                 # other option is to manually set transport like
                 # `proto.transport = trans`
         except OSError as exc:
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                raise
             raise ClientConnectorError(req.connection_key, exc) from exc
 
         return cast(ResponseHandler, proto)
