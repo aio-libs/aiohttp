@@ -513,7 +513,9 @@ class ClientSession:
                         timer=timer,
                         skip_payload=method.upper() == "HEAD",
                         read_until_eof=read_until_eof,
-                        auto_decompress=auto_decompress if auto_decompress is not None else self._auto_decompress,
+                        auto_decompress=auto_decompress
+                        if auto_decompress is not None
+                        else self._auto_decompress,
                         read_timeout=real_timeout.sock_read,
                         read_bufsize=read_bufsize,
                         timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
