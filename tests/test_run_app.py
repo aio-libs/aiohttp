@@ -23,7 +23,7 @@ _has_unix_domain_socks = hasattr(socket, "AF_UNIX")
 if _has_unix_domain_socks:
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as _abstract_path_sock:
         try:
-            _abstract_path_sock.bind(b"\x00" + uuid4().hex.encode("ascii"))  # type: ignore
+            _abstract_path_sock.bind(b"\x00" + uuid4().hex.encode("ascii"))
         except FileNotFoundError:
             _abstract_path_failed = True
         else:
