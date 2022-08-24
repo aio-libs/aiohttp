@@ -19,7 +19,6 @@ from typing import (
     Callable,
     DefaultDict,
     Dict,
-    Final,
     Iterator,
     List,
     Optional,
@@ -29,6 +28,7 @@ from typing import (
     Union,
     cast,
 )
+from typing_extensions import Final
 
 from . import hdrs, helpers
 from .abc import AbstractResolver
