@@ -2,6 +2,7 @@ import asyncio
 import dataclasses
 import functools
 import logging
+import os
 import random
 import sys
 import traceback
@@ -13,20 +14,20 @@ from itertools import cycle, islice
 from time import monotonic
 from types import TracebackType
 from typing import (  # noqa
-    TYPE_CHECKING,
     Any,
-    Awaitable,
     Callable,
+    cast,
     DefaultDict,
     Dict,
+    Final,
     Iterator,
     List,
     Optional,
     Set,
     Tuple,
+    TYPE_CHECKING,
     Type,
     Union,
-    cast,
 )
 
 from . import hdrs, helpers
@@ -66,6 +67,14 @@ if TYPE_CHECKING:  # pragma: no cover
     from .client import ClientTimeout
     from .client_reqrep import ConnectionKey
     from .tracing import Trace
+
+
+# Read SSL from environment variable
+ENV_SSL_CONTEXT: Final[Optional["SSLContext"]] = (
+    ssl.create_default_context(cafile=os.environ.get("AIOHTTP_CAFILE"))
+    if os.environ.get("AIOHTTP_CAFILE") and ssl is not None
+    else None
+)
 
 
 class Connection:
@@ -760,7 +769,7 @@ class TCPConnector(BaseConnector):
                 "ssl should be SSLContext, bool, Fingerprint, "
                 "or None, got {!r} instead.".format(ssl)
             )
-        self._ssl = ssl
+        self._ssl = ssl or ENV_SSL_CONTEXT
         if resolver is None:
             resolver = DefaultResolver()
         self._resolver: AbstractResolver = resolver
