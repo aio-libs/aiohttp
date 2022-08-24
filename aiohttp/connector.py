@@ -13,10 +13,10 @@ from http.cookies import SimpleCookie
 from itertools import cycle, islice
 from time import monotonic
 from types import TracebackType
-from typing import (  # noqa
+from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
-    cast,
     DefaultDict,
     Dict,
     Final,
@@ -25,9 +25,9 @@ from typing import (  # noqa
     Optional,
     Set,
     Tuple,
-    TYPE_CHECKING,
     Type,
     Union,
+    cast,
 )
 
 from . import hdrs, helpers
