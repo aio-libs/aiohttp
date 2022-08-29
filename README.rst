@@ -166,7 +166,7 @@ Requirements
 - charset-normalizer_
 - multidict_
 - yarl_
-- fozenlist_
+- frozenlist_
 
 Optionally you may install the cChardet_ and aiodns_ libraries (highly
 recommended for sake of speed).
