@@ -171,7 +171,7 @@ Requirements
 Optionally you may install the cChardet_ and aiodns_ libraries (highly
 recommended for sake of speed).
 
-.. _charset-normalizer: https://pypi.python.org/project/charset-normalizer
+.. _charset-normalizer: https://pypi.org/project/charset-normalizer
 .. _aiodns: https://pypi.python.org/pypi/aiodns
 .. _multidict: https://pypi.python.org/pypi/multidict
 .. _frozenlist: https://pypi.org/project/frozenlist/
