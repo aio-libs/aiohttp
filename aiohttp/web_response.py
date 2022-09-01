@@ -8,6 +8,7 @@ import time
 import warnings
 import zlib
 from concurrent.futures import Executor
+from http import HTTPStatus
 from http.cookies import Morsel
 from typing import (
     TYPE_CHECKING,
@@ -39,10 +40,10 @@ from .helpers import (
     sentinel,
     validate_etag_value,
 )
-from .http import  SERVER_SOFTWARE, HttpVersion10, HttpVersion11
+from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
-from http import HTTPStatus
+
 __all__ = ("ContentCoding", "StreamResponse", "Response", "json_response")
 
 
