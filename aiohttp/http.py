@@ -1,6 +1,4 @@
-import http.server
 import sys
-from typing import Mapping, Tuple
 
 from . import __version__
 from .http_exceptions import HttpProcessingError as HttpProcessingError
@@ -34,7 +32,6 @@ from .http_writer import (
 
 __all__ = (
     "HttpProcessingError",
-    "RESPONSES",
     "SERVER_SOFTWARE",
     # .http_writer
     "StreamWriter",
@@ -67,4 +64,4 @@ SERVER_SOFTWARE: str = "Python/{0[0]}.{0[1]} aiohttp/{1}".format(
     sys.version_info, __version__
 )
 
-RESPONSES: Mapping[int, Tuple[str, str]] = http.server.BaseHTTPRequestHandler.responses
+

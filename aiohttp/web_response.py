@@ -39,10 +39,10 @@ from .helpers import (
     sentinel,
     validate_etag_value,
 )
-from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
+from .http import  SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
-
+from http import HTTPStatus
 __all__ = ("ContentCoding", "StreamResponse", "Response", "json_response")
 
 
@@ -155,7 +155,6 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         self,
         status: int,
         reason: Optional[str] = None,
-        _RESPONSES: Mapping[int, Tuple[str, str]] = RESPONSES,
     ) -> None:
         assert not self.prepared, (
             "Cannot change the response status code after " "the headers have been sent"
@@ -163,7 +162,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         self._status = int(status)
         if reason is None:
             try:
-                reason = _RESPONSES[self._status][0]
+                reason = HTTPStatus(self._status).phrase
             except Exception:
                 reason = ""
         self._reason = reason
