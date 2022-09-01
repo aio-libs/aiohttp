@@ -1,5 +1,4 @@
 import sys
-
 from . import __version__
 from .http_exceptions import HttpProcessingError as HttpProcessingError
 from .http_parser import (
@@ -63,5 +62,4 @@ __all__ = (
 SERVER_SOFTWARE: str = "Python/{0[0]}.{0[1]} aiohttp/{1}".format(
     sys.version_info, __version__
 )
-
 
