@@ -162,7 +162,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         if reason is None:
             try:
                 reason = HTTPStatus(self._status).phrase
-            except Exception:
+            except ValueError:
                 reason = ""
         self._reason = reason
 
