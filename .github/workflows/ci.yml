@@ -173,7 +173,12 @@ jobs:
         PIP_USER: 1
       run: |
         make vvtest
-    #     python -m coverage xml
+    - name: Turn coverage into xml
+      env:
+        COLOR: 'yes'
+        PIP_USER: 1
+      run: |
+        python -m coverage xml
     # - name: Upload coverage
     #   uses: codecov/codecov-action@v1
     #   with:
