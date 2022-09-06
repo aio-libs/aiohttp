@@ -29,7 +29,7 @@ from conftest import IS_UNIX  # type: ignore[attr-defined]
 
 def _mark_aiohttp_worker_for_skipping(
     importables: List[str],
-) -> List[Union[str, ParameterSet]]:
+) -> List[Union[str, 'ParameterSet']]:
     return [
         pytest.param(
             importable,
