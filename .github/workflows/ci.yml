@@ -187,6 +187,9 @@ jobs:
         PIP_USER: 1
       run: |
         make vvtest
+    - name: Setup tmate session
+      if: ${{ failure() }}
+      uses: mxschmitt/action-tmate@v3
     - name: Turn coverage into xml
       env:
         COLOR: 'yes'
