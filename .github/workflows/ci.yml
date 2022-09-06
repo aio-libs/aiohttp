@@ -192,6 +192,9 @@ jobs:
     #     file: ./coverage.xml
     #     flags: unit
     #     fail_ci_if_error: false
+    - name: Setup tmate session
+      if: ${{ failure() }}
+      uses: mxschmitt/action-tmate@v3
 
   check:  # This job does nothing and is only used for the branch protection
     if: always()
