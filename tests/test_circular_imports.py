@@ -22,14 +22,14 @@ import pytest
 if TYPE_CHECKING:
     from _pytest.mark.structures import ParameterSet
 
-import aiohttp
-
 from conftest import IS_UNIX  # type: ignore[attr-defined]
+
+import aiohttp
 
 
 def _mark_aiohttp_worker_for_skipping(
     importables: List[str],
-) -> List[Union[str, 'ParameterSet']]:
+) -> List[Union[str, "ParameterSet"]]:
     return [
         pytest.param(
             importable,
