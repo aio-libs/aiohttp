@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 import aiohttp
 
-from .conftest import IS_UNIX
+from conftest import IS_UNIX
 
 
 def _mark_aiohttp_worker_for_skipping(
