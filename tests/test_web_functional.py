@@ -1568,15 +1568,17 @@ async def test_post_max_client_size(aiohttp_client) -> None:
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
-    data = {"long_string": 1024 * "x", "file": io.BytesIO(b"test")}
-    resp = await client.post("/", data=data)
+    with io.BytesIO(b"test") as file_handle:
+        data = {"long_string": 1024 * "x", "file": file_handle}
+        resp = await client.post("/", data=data)
 
-    assert 413 == resp.status
-    resp_text = await resp.text()
-    assert (
-        "Maximum request body size 10 exceeded, " "actual body size 1024" in resp_text
-    )
-    data["file"].close()
+        assert 413 == resp.status
+        resp_text = await resp.text()
+        assert (
+            "Maximum request body size 10 exceeded, "
+            "actual body size 1024" in resp_text
+        )
+        data["file"].close()
 
 
 async def test_post_max_client_size_for_file(aiohttp_client) -> None:
@@ -1588,8 +1590,9 @@ async def test_post_max_client_size_for_file(aiohttp_client) -> None:
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
-    data = {"file": io.BytesIO(b"test")}
-    resp = await client.post("/", data=data)
+    with io.BytesIO(b"test") as file_handle:
+        data = {"file": file_handle}
+        resp = await client.post("/", data=data)
 
     assert 413 == resp.status
 
@@ -1604,15 +1607,16 @@ async def test_response_with_bodypart(aiohttp_client) -> None:
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
-    data = {"file": io.BytesIO(b"test")}
-    resp = await client.post("/", data=data)
+    with io.BytesIO(b"test") as file_handle:
+        data = {"file": file_handle}
+        resp = await client.post("/", data=data)
 
-    assert 200 == resp.status
-    body = await resp.read()
-    assert body == b"test"
+        assert 200 == resp.status
+        body = await resp.read()
+        assert body == b"test"
 
-    disp = multipart.parse_content_disposition(resp.headers["content-disposition"])
-    assert disp == ("attachment", {"name": "file", "filename": "file"})
+        disp = multipart.parse_content_disposition(resp.headers["content-disposition"])
+        assert disp == ("attachment", {"name": "file", "filename": "file"})
 
 
 async def test_response_with_bodypart_named(aiohttp_client, tmpdir) -> None:
