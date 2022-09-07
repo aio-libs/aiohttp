@@ -73,7 +73,7 @@ filelock==3.3.2
     # via virtualenv
 freezegun==1.1.0
     # via -r requirements/test.txt
-frozenlist==1.3.1
+frozenlist==1.2.0
     # via
     #   -r requirements/base.txt
     #   aiosignal
@@ -257,7 +257,7 @@ webcolors==1.11.1
     # via blockdiag
 wheel==0.37.0
     # via pip-tools
-yarl==1.8.1
+yarl==1.7.2
     # via -r requirements/base.txt
 
 # The following packages are considered to be unsafe in a requirements file:
