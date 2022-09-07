@@ -236,7 +236,8 @@ async def test_post_data_bytesio(aiohttp_client) -> None:
     app.router.add_route("POST", "/", handler)
     client = await aiohttp_client(app)
 
-    resp = await client.post("/", data=io.BytesIO(data))
+    with io.BytesIO(data) as file_handle:
+        resp = await client.post("/", data=file_handle)
     assert 200 == resp.status
 
 
@@ -253,7 +254,8 @@ async def test_post_data_with_bytesio_file(aiohttp_client) -> None:
     app.router.add_route("POST", "/", handler)
     client = await aiohttp_client(app)
 
-    resp = await client.post("/", data={"file": io.BytesIO(data)})
+    with io.BytesIO(data) as file_handle:
+        resp = await client.post("/", data={"file": file_handle})
     assert 200 == resp.status
 
 
@@ -1480,10 +1482,10 @@ async def test_POST_FILES_IO(aiohttp_client) -> None:
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
-    data = io.BytesIO(b"data")
-    resp = await client.post("/", data=[data])
-    assert 200 == resp.status
-    resp.close()
+    with io.BytesIO(b"data") as file_handle:
+        resp = await client.post("/", data=[file_handle])
+        assert 200 == resp.status
+        resp.close()
 
 
 async def test_POST_FILES_IO_WITH_PARAMS(aiohttp_client) -> None:
@@ -1501,12 +1503,13 @@ async def test_POST_FILES_IO_WITH_PARAMS(aiohttp_client) -> None:
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
-    data = io.BytesIO(b"data")
-    resp = await client.post(
-        "/", data=(("test", "true"), MultiDict([("q", "t1"), ("q", "t2")]), data)
-    )
-    assert 200 == resp.status
-    resp.close()
+    with io.BytesIO(b"data") as file_handle:
+        resp = await client.post(
+            "/",
+            data=(("test", "true"), MultiDict([("q", "t1"), ("q", "t2")]), file_handle),
+        )
+        assert 200 == resp.status
+        resp.close()
 
 
 async def test_POST_FILES_WITH_DATA(aiohttp_client, fname) -> None:

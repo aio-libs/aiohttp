@@ -666,17 +666,18 @@ async def test_content_type_skip_auto_header_form(loop, conn) -> None:
 
 
 async def test_content_type_auto_header_content_length_no_skip(loop, conn) -> None:
-    req = ClientRequest(
-        "post",
-        URL("http://python.org"),
-        data=io.BytesIO(b"hey"),
-        skip_auto_headers={"Content-Length"},
-        loop=loop,
-    )
-    resp = await req.send(conn)
-    assert req.headers.get("CONTENT-LENGTH") == "3"
-    resp.close()
-    await req.close()
+    with io.BytesIO(b"hey") as file_handle:
+        req = ClientRequest(
+            "post",
+            URL("http://python.org"),
+            data=file_handle,
+            skip_auto_headers={"Content-Length"},
+            loop=loop,
+        )
+        resp = await req.send(conn)
+        assert req.headers.get("CONTENT-LENGTH") == "3"
+        resp.close()
+        await req.close()
 
 
 async def test_urlencoded_formdata_charset(loop, conn) -> None:
@@ -984,22 +985,24 @@ async def test_data_stream_deprecated(loop, buf, conn) -> None:
 
 
 async def test_data_file(loop, buf, conn) -> None:
-    req = ClientRequest(
-        "POST",
-        URL("http://python.org/"),
-        data=io.BufferedReader(io.BytesIO(b"*" * 2)),
-        loop=loop,
-    )
-    assert req.chunked
-    assert isinstance(req.body, payload.BufferedReaderPayload)
-    assert req.headers["TRANSFER-ENCODING"] == "chunked"
+    with io.BufferedReader(io.BytesIO(b"*" * 2)) as file_handle:
+        req = ClientRequest(
+            "POST",
+            URL("http://python.org/"),
+            data=file_handle,
+            loop=loop,
+        )
+        assert req.chunked
+        assert isinstance(req.body, payload.BufferedReaderPayload)
+        assert req.headers["TRANSFER-ENCODING"] == "chunked"
 
-    resp = await req.send(conn)
-    assert asyncio.isfuture(req._writer)
-    await resp.wait_for_close()
-    assert req._writer is None
-    assert buf.split(b"\r\n\r\n", 1)[1] == b"2\r\n" + b"*" * 2 + b"\r\n0\r\n\r\n"
-    await req.close()
+        resp = await req.send(conn)
+        assert asyncio.isfuture(req._writer)
+        await resp.wait_for_close()
+
+        assert req._writer is None
+        assert buf.split(b"\r\n\r\n", 1)[1] == b"2\r\n" + b"*" * 2 + b"\r\n0\r\n\r\n"
+        await req.close()
 
 
 async def test_data_stream_exc(loop, conn) -> None:
