@@ -459,7 +459,11 @@ class AioHTTPTestCase(TestCase):
             asyncio.get_event_loop().run_until_complete(self.asyncSetUp())
 
     async def asyncSetUp(self) -> None:
-        self.loop = asyncio.get_running_loop()
+        try:
+            self.loop = asyncio.get_running_loop()
+        except (AttributeError, RuntimeError):  # AttributeError->py36
+            self.loop = asyncio.get_event_loop_policy().get_event_loop()
+
         return await self.setUpAsync()
 
     async def setUpAsync(self) -> None:
