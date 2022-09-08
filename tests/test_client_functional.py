@@ -248,6 +248,7 @@ async def test_post_data_with_bytesio_file(aiohttp_client) -> None:
         post_data = await request.post()
         assert ["file"] == list(post_data.keys())
         assert data == post_data["file"].file.read()
+        post_data["file"].file.close()  # aiohttp < 4 doesn't autoclose files
         return web.Response()
 
     app = web.Application()
