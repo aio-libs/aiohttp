@@ -637,8 +637,8 @@ async def test_content_type_auto_header_content_length_no_skip(
             loop=loop,
         )
         resp = await req.send(conn)
-    assert req.headers.get("CONTENT-LENGTH") == "3"
-    resp.close()
+        assert req.headers.get("CONTENT-LENGTH") == "3"
+        resp.close()
 
 
 async def test_urlencoded_formdata_charset(loop: Any, conn: Any) -> None:
@@ -949,9 +949,9 @@ async def test_data_file(loop: Any, buf: Any, conn: Any) -> None:
         assert asyncio.isfuture(req._writer)
         await resp.wait_for_close()
 
-    assert req._writer is None
-    assert buf.split(b"\r\n\r\n", 1)[1] == b"2\r\n" + b"*" * 2 + b"\r\n0\r\n\r\n"
-    await req.close()
+        assert req._writer is None
+        assert buf.split(b"\r\n\r\n", 1)[1] == b"2\r\n" + b"*" * 2 + b"\r\n0\r\n\r\n"
+        await req.close()
 
 
 async def test_data_stream_exc(loop: Any, conn: Any) -> None:

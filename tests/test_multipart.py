@@ -133,26 +133,26 @@ class TestPartReader:
         with Stream(data) as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, {}, stream, _newline=newline)
             result = await obj.next()
-        assert b"Hello, world!" == result
-        assert obj.at_eof()
+            assert b"Hello, world!" == result
+            assert obj.at_eof()
 
     async def test_next_next(self, newline: Any) -> None:
         data = b"Hello, world!%s--:" % newline
         with Stream(data) as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, {}, stream, _newline=newline)
             result = await obj.next()
-        assert b"Hello, world!" == result
-        assert obj.at_eof()
-        result = await obj.next()
-        assert result is None
+            assert b"Hello, world!" == result
+            assert obj.at_eof()
+            result = await obj.next()
+            assert result is None
 
     async def test_read(self, newline: Any) -> None:
         data = b"Hello, world!%s--:" % newline
         with Stream(data) as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, {}, stream, _newline=newline)
             result = await obj.read()
-        assert b"Hello, world!" == result
-        assert obj.at_eof()
+            assert b"Hello, world!" == result
+            assert obj.at_eof()
 
     async def test_read_chunk_at_eof(self) -> None:
         with Stream(b"--:") as stream:
@@ -209,7 +209,7 @@ class TestPartReader:
             assert b"Hello, World!" == result
             result = await obj.read_chunk()
             assert b"" == result
-        assert obj.at_eof()
+            assert obj.at_eof()
 
     async def test_read_incomplete_body_chunked(self, newline: Any) -> None:
         data = b"Hello, World!%s--" % newline
@@ -259,7 +259,7 @@ class TestPartReader:
             assert b"Hello," == result
             result = await obj.read_chunk(8)
             assert b"" == result
-        assert obj.at_eof()
+            assert obj.at_eof()
 
     async def test_read_chunk_properly_counts_read_bytes(self, newline: Any) -> None:
         expected = b"." * 10
@@ -298,7 +298,7 @@ class TestPartReader:
             assert b"Hello," == result
             result = await obj.read()
             assert b"" == result
-        assert obj.at_eof()
+            assert obj.at_eof()
 
     async def test_read_multiline(self, newline: Any) -> None:
         data = b"Hello\n,\r\nworld!%s--:--" % newline
@@ -308,7 +308,7 @@ class TestPartReader:
             assert b"Hello\n,\r\nworld!" == result
             result = await obj.read()
             assert b"" == result
-        assert obj.at_eof()
+            assert obj.at_eof()
 
     async def test_read_respects_content_length(self, newline: Any) -> None:
         data = b"." * 100500
@@ -321,8 +321,8 @@ class TestPartReader:
                 _newline=newline,
             )
             result = await obj.read()
-        assert data == result
-        assert obj.at_eof()
+            assert data == result
+            assert obj.at_eof()
 
     async def test_read_with_content_encoding_gzip(self, newline: Any) -> None:
         with Stream(
@@ -651,7 +651,7 @@ class TestPartReader:
             assert b"world!" == result
             result = await obj.readline()
             assert b"" == result
-        assert obj.at_eof()
+            assert obj.at_eof()
 
     async def test_release(self, newline: Any) -> None:
         data = b"Hello,%s--:\r\n\r\nworld!%s--:--" % (newline, newline)
@@ -676,8 +676,8 @@ class TestPartReader:
                 _newline=newline,
             )
             result = await obj.release()
-        assert result is None
-        assert obj.at_eof()
+            assert result is None
+            assert obj.at_eof()
 
     async def test_release_release(self, newline: Any) -> None:
         data = b"Hello,%s--:\r\n\r\nworld!%s--:--" % (newline, newline)
@@ -840,7 +840,7 @@ class TestMultipartReader:
                 stream,
             )
             await reader.release()
-        assert reader.at_eof()
+            assert reader.at_eof()
 
     async def test_release_release(self, newline: Any) -> None:
         with Stream(b"--:%s\r\necho%s--:--" % (newline, newline)) as stream:
@@ -885,8 +885,8 @@ class TestMultipartReader:
             first = await reader.next()
             assert isinstance(first, aiohttp.BodyPartReader)
             second = await reader.next()
-        assert first.at_eof()
-        assert not second.at_eof()
+            assert first.at_eof()
+            assert not second.at_eof()
 
     async def test_release_without_read_the_last_object(self, newline: Any) -> None:
         with Stream(
@@ -910,10 +910,10 @@ class TestMultipartReader:
             second = await reader.next()
             third = await reader.next()
 
-        assert first.at_eof()
-        assert second.at_eof()
-        assert second.at_eof()
-        assert third is None
+            assert first.at_eof()
+            assert second.at_eof()
+            assert second.at_eof()
+            assert third is None
 
     async def test_read_chunk_by_length_doesnt_breaks_reader(
         self, newline: Any
@@ -1007,8 +1007,8 @@ class TestMultipartReader:
             assert isinstance(first, aiohttp.BodyPartReader)
             second = await reader.next()
 
-        assert first.at_eof()
-        assert not second.at_eof()
+            assert first.at_eof()
+            assert not second.at_eof()
 
     async def test_read_mixed_newlines(self) -> None:
         with Stream(

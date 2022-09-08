@@ -1490,8 +1490,8 @@ async def test_POST_FILES_IO(aiohttp_client: Any) -> None:
 
     with io.BytesIO(b"data") as file_handle:
         resp = await client.post("/", data=[file_handle])
-    assert 200 == resp.status
-    resp.close()
+        assert 200 == resp.status
+        resp.close()
 
 
 async def test_POST_FILES_IO_WITH_PARAMS(aiohttp_client: Any) -> None:
@@ -1514,8 +1514,8 @@ async def test_POST_FILES_IO_WITH_PARAMS(aiohttp_client: Any) -> None:
             "/",
             data=(("test", "true"), MultiDict([("q", "t1"), ("q", "t2")]), file_handle),
         )
-    assert 200 == resp.status
-    resp.close()
+        assert 200 == resp.status
+        resp.close()
 
 
 async def test_POST_FILES_WITH_DATA(aiohttp_client: Any, fname: Any) -> None:
