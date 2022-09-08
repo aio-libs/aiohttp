@@ -1508,7 +1508,8 @@ async def test_post_max_client_size(aiohttp_client: Any) -> None:
         assert 413 == resp.status
         resp_text = await resp.text()
         assert (
-            "Maximum request body size 10 exceeded, " "actual body size 1024" in resp_text
+            "Maximum request body size 10 exceeded, "
+            "actual body size 1024" in resp_text
         )
         data["file"].close()
 
