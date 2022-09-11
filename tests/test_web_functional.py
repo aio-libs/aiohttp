@@ -346,6 +346,7 @@ async def test_files_upload_with_same_key(aiohttp_client: Any) -> None:
             if _file.filename == "test2.jpeg":
                 assert _file.file.read() == b"binary data 2"
             file_names.add(_file.filename)
+            _file.file.close()
         assert len(files) == 2
         assert file_names == {"test1.jpeg", "test2.jpeg"}
         resp = web.Response(body=b"OK")
@@ -633,6 +634,7 @@ async def test_upload_file(aiohttp_client: Any) -> None:
     async def handler(request):
         form = await request.post()
         raw_data = form["file"].file.read()
+        form["file"].file.close()
         assert data == raw_data
         return web.Response()
 
@@ -653,6 +655,7 @@ async def test_upload_file_object(aiohttp_client: Any) -> None:
     async def handler(request):
         form = await request.post()
         raw_data = form["file"].file.read()
+        form["file"].file.close()
         assert data == raw_data
         return web.Response()
 

@@ -1244,6 +1244,8 @@ async def test_POST_FILES(aiohttp_client: Any, fname: Any) -> None:
         content2 = data["some"].file.read()
         assert content1 == content2
         assert data["test"].file.read() == b"data"
+        data["some"].file.close()
+        data["test"].file.close()
         return web.Response()
 
     app = web.Application()
@@ -1263,6 +1265,7 @@ async def test_POST_FILES_DEFLATE(aiohttp_client: Any, fname: Any) -> None:
         with fname.open("rb") as f:
             content1 = f.read()
         content2 = data["some"].file.read()
+        data["some"].file.close()
         assert content1 == content2
         return web.Response()
 
@@ -1358,6 +1361,7 @@ async def test_POST_FILES_LIST(aiohttp_client: Any, fname: Any) -> None:
         with fname.open("rb") as f:
             content = f.read()
         assert content == data["some"].file.read()
+        data["some"].file.close()
         return web.Response()
 
     app = web.Application()
@@ -1378,6 +1382,7 @@ async def test_POST_FILES_CT(aiohttp_client: Any, fname: Any) -> None:
         with fname.open("rb") as f:
             content = f.read()
         assert content == data["some"].file.read()
+        data["some"].file.close()
         return web.Response()
 
     app = web.Application()
@@ -1482,6 +1487,7 @@ async def test_POST_FILES_IO(aiohttp_client: Any) -> None:
         assert b"data" == data["unknown"].file.read()
         assert data["unknown"].content_type == "application/octet-stream"
         assert data["unknown"].filename == "unknown"
+        data["unknown"].file.close()
         return web.Response()
 
     app = web.Application()
@@ -1501,6 +1507,7 @@ async def test_POST_FILES_IO_WITH_PARAMS(aiohttp_client: Any) -> None:
         assert data["unknown"].content_type == "application/octet-stream"
         assert data["unknown"].filename == "unknown"
         assert data["unknown"].file.read() == b"data"
+        data["unknown"].file.close()
         assert data.getall("q") == ["t1", "t2"]
 
         return web.Response()
@@ -1530,6 +1537,7 @@ async def test_POST_FILES_WITH_DATA(aiohttp_client: Any, fname: Any) -> None:
         assert data["some"].filename == fname.name
         with fname.open("rb") as f:
             assert data["some"].file.read() == f.read()
+            data["some"].file.close()
 
         return web.Response()
 
