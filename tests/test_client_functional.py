@@ -2579,7 +2579,7 @@ async def test_aiohttp_request_coroutine(aiohttp_server) -> None:
     with pytest.raises(TypeError):
         await aiohttp.request("GET", server.make_url("/"))
 
-    server.close()
+    await server.close()
 
 
 async def test_yield_from_in_session_request(aiohttp_client) -> None:
