@@ -191,7 +191,8 @@ class ClientSession:
         ]
     )
 
-    _source_traceback = None
+    _source_traceback = None  # type: Optional[traceback.StackSummary]
+    _connector = None  # type: Optional[BaseConnector]
 
     def __init__(
         self,
@@ -252,7 +253,7 @@ class ClientSession:
         if cookies is not None:
             self._cookie_jar.update_cookies(cookies)
 
-        self._connector: Optional[BaseConnector] = connector
+        self._connector = connector
         self._connector_owner = connector_owner
         self._default_auth = auth
         self._version = version

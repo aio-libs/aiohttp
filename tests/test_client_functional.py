@@ -2568,20 +2568,6 @@ async def test_aiohttp_request_ctx_manager_not_found() -> None:
             assert False, "never executed"  # pragma: no cover
 
 
-async def test_aiohttp_request_coroutine(aiohttp_server) -> None:
-    async def handler(request):
-        return web.Response()
-
-    app = web.Application()
-    app.router.add_get("/", handler)
-    server = await aiohttp_server(app)
-
-    with pytest.raises(TypeError):
-        await aiohttp.request("GET", server.make_url("/"))
-
-    await server.close()
-
-
 async def test_yield_from_in_session_request(aiohttp_client) -> None:
     # a test for backward compatibility with yield from syntax
     async def handler(request):
