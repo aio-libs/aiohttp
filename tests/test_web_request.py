@@ -640,6 +640,8 @@ async def test_multipart_formdata_file(protocol) -> None:
     content = result["a_file"].file.read()
     assert content == b"\ff"
 
+    result["a_file"].file.close()
+
 
 async def test_make_too_big_request_limit_None(protocol) -> None:
     payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
