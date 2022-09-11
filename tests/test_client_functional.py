@@ -2597,6 +2597,7 @@ async def test_aiohttp_request_coroutine(aiohttp_server: Any) -> None:
 
     await server.close()
 
+
 async def test_yield_from_in_session_request(aiohttp_client: Any) -> None:
     # a test for backward compatibility with yield from syntax
     async def handler(request):
