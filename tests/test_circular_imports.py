@@ -106,6 +106,13 @@ def test_no_warnings(import_path: str) -> None:
         # https://github.com/benoitc/gunicorn/issues/2840 for detail.
         "-W", "ignore:module 'sre_constants' is "
         "deprecated:DeprecationWarning:pkg_resources._vendor.pyparsing",
+        # The following deprecation warning is coming from an old
+        # version of `setuptools` (the last one to support Python 3.6).
+        # It is stepping on it's own toes. But since it doesn't
+        # originate in aiohttp, we don't care much about it.
+        "-W",
+        "ignore:Creating a LegacyVersion has been deprecated and will "
+        "be removed in the next major release:DeprecationWarning:",
         "-c", f"import {import_path!s}",
         # fmt: on
     )
