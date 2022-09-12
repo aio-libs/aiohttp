@@ -130,7 +130,15 @@ jobs:
             no-extensions: 'Y'
             os: ubuntu
             experimental: false
+          - os: macos
+            pyver: "3.11.0-alpha - 3.11.0"
+            experimental: true
+            no-extensions: 'Y'
           - os: ubuntu
+            pyver: "3.11.0-alpha - 3.11.0"
+            experimental: false
+            no-extensions: 'Y'
+          - os: windows
             pyver: "3.11.0-alpha - 3.11.0"
             experimental: true
             no-extensions: 'Y'
