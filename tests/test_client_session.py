@@ -315,7 +315,6 @@ def test_connector_loop(loop: Any) -> None:
 
         connector = another_loop.run_until_complete(make_connector())
 
-        stack.enter_context(contextlib.closing(connector))
         with pytest.raises(RuntimeError) as ctx:
 
             async def make_sess():
@@ -325,6 +324,7 @@ def test_connector_loop(loop: Any) -> None:
         assert Matches("Session and connector have to use same event loop") == str(
             ctx.value
         )
+        another_loop.run_until_complete(connector.close())
 
 
 def test_detach(loop: Any, session: Any) -> None:
