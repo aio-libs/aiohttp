@@ -130,13 +130,11 @@ jobs:
             pyver: 3.8
           - os: windows
             no-extensions: 'Y'
-        # pypy 3.7 exists in beta and doesn't work well yet
-        # include:
-        #   - pyver: pypy3
-        #     no-extensions: 'Y'
-        #     os: ubuntu
         experimental: [false]
         include:
+          - pyver: pypy-3.8
+            no-extensions: 'Y'
+            os: ubuntu
           - os: ubuntu
             pyver: "3.11.0-alpha - 3.11.0"
             experimental: true
