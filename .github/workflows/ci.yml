@@ -186,12 +186,11 @@ jobs:
         PIP_USER: 1
       run: |
         python -m coverage xml
-    # - name: Upload coverage
-    #   uses: codecov/codecov-action@v1
-    #   with:
-    #     file: ./coverage.xml
-    #     flags: unit
-    #     fail_ci_if_error: false
+    - name: Upload coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unit
 
   check:  # This job does nothing and is only used for the branch protection
     if: always()
