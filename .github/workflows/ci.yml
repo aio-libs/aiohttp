@@ -136,6 +136,7 @@ jobs:
       with:
         submodules: true
     - name: Setup Python ${{ matrix.pyver }}
+      id: python-install
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.pyver }}
@@ -183,7 +184,14 @@ jobs:
       uses: codecov/codecov-action@v3
       with:
         file: ./coverage.xml
-        flags: unit
+        flags: >-
+          CI-GHA,OS-${{
+            runner.os
+          }},VM-${{
+            matrix.os
+          }},Py-${{
+            steps.python-install.outputs.python-version
+          }}
 
   check:  # This job does nothing and is only used for the branch protection
     if: always()
