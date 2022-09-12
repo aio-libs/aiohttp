@@ -252,6 +252,8 @@ async def test_connector_context_manager(loop) -> None:
 
     assert conn.closed
 
+    await conn.close()
+
 
 async def test_async_context_manager(loop) -> None:
     conn = aiohttp.BaseConnector(loop=loop)
