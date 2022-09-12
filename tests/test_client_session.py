@@ -325,6 +325,7 @@ def test_connector_loop(loop) -> None:
             Matches("Session and connector has to use same event loop")
             == str(ctx.value).strip()
         )
+        another_loop.run_until_complete(connector.close())
 
         # Cannot use `AsyncExitStack` as it's Python 3.7+:
         another_loop.run_until_complete(connector.close())
