@@ -5,7 +5,7 @@ import gc
 import platform
 import tempfile
 import weakref
-from math import ceil, isclose, modf
+from math import ceil, modf
 from unittest import mock
 from urllib.request import getproxies_environment
 
@@ -339,7 +339,7 @@ def test_when_timeout_smaller_second(loop) -> None:
     handle.close()
 
     assert isinstance(when, float)
-    assert isclose(when - timer, 0, abs_tol=0.001)
+    assert when - timer == pytest.approx(0, abs=0.001)
 
 
 def test_when_timeout_smaller_second_with_low_threshold(loop) -> None:
