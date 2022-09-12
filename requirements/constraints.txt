@@ -124,7 +124,9 @@ packaging==21.2
     #   sphinx
 pep517==0.12.0
     # via pip-tools
-pillow==9.2.0
+pillow==9.2.0; python_version >= "3.7"
+    # via blockdiag
+pillow==8.4.0; python_version < "3.7"
     # via blockdiag
 pip-tools==6.4.0
     # via -r requirements/dev.txt
