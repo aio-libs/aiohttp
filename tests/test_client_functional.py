@@ -2592,9 +2592,15 @@ async def test_aiohttp_request_coroutine(aiohttp_server: Any) -> None:
     app.router.add_get("/", handler)
     server = await aiohttp_server(app)
 
-    with pytest.raises(TypeError):
-        await aiohttp.request("GET", server.make_url("/"))
+    not_an_awaitable = aiohttp.request("GET", server.make_url("/"))
+    with pytest.raises(
+        TypeError,
+        match="^object _SessionRequestContextManager "
+        "can't be used in 'await' expression$",
+    ):
+        await not_an_awaitable
 
+    await not_an_awaitable._coro  # coroutine 'ClientSession._request' was never awaited
     await server.close()
 
 
