@@ -198,7 +198,6 @@ jobs:
       with:
         file: ./coverage.xml
         flags: unit
-        fail_ci_if_error: false
 
   check:  # This job does nothing and is only used for the branch protection
     if: always()
