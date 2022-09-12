@@ -99,12 +99,12 @@ test: .develop
 .PHONY: vtest
 vtest: .develop
 	@pytest -s -v
-	@python -X dev -m pytest -s -v -m dev_mode
+	@python -X dev -m pytest --cov-append -s -v -m dev_mode
 
 .PHONY: vvtest
 vvtest: .develop
 	@pytest -vv
-	@python -X dev -m pytest -s -vv -m dev_mode
+	@python -X dev -m pytest --cov-append -s -vv -m dev_mode
 
 .PHONY: cov-dev
 cov-dev: .develop
