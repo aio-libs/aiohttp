@@ -290,7 +290,7 @@ class BaseConnector:
 
     def __enter__(self) -> "BaseConnector":
         warnings.warn(
-            '"witn Connector():" is deprecated, '
+            '"with Connector():" is deprecated, '
             'use "async with Connector():" instead',
             DeprecationWarning,
         )
