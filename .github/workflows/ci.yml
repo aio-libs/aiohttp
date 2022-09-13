@@ -188,7 +188,8 @@ jobs:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
         PIP_USER: 1
       run: |
-        make vvtest
+        PATH="${HOME}/.local/bin:${PATH}" make vvtest
+      shell: bash
     - name: Turn coverage into xml
       env:
         COLOR: 'yes'
