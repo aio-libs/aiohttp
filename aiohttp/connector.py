@@ -297,7 +297,7 @@ class BaseConnector:
         return self
 
     def __exit__(self, *exc: Any) -> None:
-        self.close()
+        self._close()
 
     async def __aenter__(self) -> "BaseConnector":
         return self
