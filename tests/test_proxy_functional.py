@@ -16,9 +16,16 @@ from aiohttp import web
 from aiohttp.client_exceptions import ClientConnectionError, ClientProxyConnectionError
 from aiohttp.helpers import IS_MACOS, IS_WINDOWS, PY_37, PY_310
 
-pytestmark = pytest.mark.filterwarnings(
-    "ignore:unclosed <socket.socket fd=.*:ResourceWarning"
-)
+pytestmark = [
+    pytest.mark.filterwarnings(
+        "ignore:unclosed <socket.socket fd=.*:ResourceWarning",
+    ),
+    pytest.mark.filterwarnings(
+        "ignore:"
+        "unclosed transport <_SelectorSocketTransport closing fd=.*"
+        ":ResourceWarning",
+    ),
+]
 
 
 secure_proxy_xfail_under_py310_linux = functools.partial(
