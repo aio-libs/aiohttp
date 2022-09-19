@@ -70,7 +70,7 @@ COOKIE_MAX_LENGTH = 4096
 try:
     from typing import ContextManager
 except ImportError:
-    from typing_extensions import ContextManager
+    from typing import ContextManager
 
 
 _T = TypeVar("_T")
