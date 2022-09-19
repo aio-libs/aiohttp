@@ -6,4 +6,4 @@ sphinx==4.3.1
 sphinxcontrib-asyncio==0.3.0
 sphinxcontrib-blockdiag==2.0.0
 sphinxcontrib-towncrier==0.3.0a0
-towncrier==22.8.0
+towncrier==21.3.0
