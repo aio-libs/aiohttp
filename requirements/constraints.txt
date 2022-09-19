@@ -233,7 +233,7 @@ tomli==1.2.2
     # via
     #   coverage
     #   pep517
-towncrier==22.8.0
+towncrier==21.3.0
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-towncrier
