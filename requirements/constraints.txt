@@ -211,7 +211,7 @@ sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
 sphinxcontrib-spelling==7.3.2 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.txt
-sphinxcontrib-towncrier==0.2.1a0
+sphinxcontrib-towncrier==0.3.0a0
     # via -r requirements/doc.txt
 toml==0.10.2
     # via
@@ -225,7 +225,7 @@ tomli==1.2.2
     #   mypy
     #   pep517
     #   slotscheck
-towncrier==21.3.0
+towncrier==22.8.0
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-towncrier
