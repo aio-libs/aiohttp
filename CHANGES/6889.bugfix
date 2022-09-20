@@ -1,4 +1,0 @@
-Export :py:class:`~aiohttp.web.PrefixedSubAppResource` under
-:py:mod:`aiohttp.web` -- by :user:`Dreamsorcerer`.
-
-This fixes a regression introduced by :pr:`3469`.
