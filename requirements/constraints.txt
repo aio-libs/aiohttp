@@ -98,7 +98,9 @@ idna==3.3
     #   yarl
 imagesize==1.2.0
     # via sphinx
-importlib-metadata==4.12.0
+importlib-metadata==4.12.0; python_version >= "3.7"
+    # via sphinx
+importlib-metadata==4.8.3; python_version < "3.7"
     # via sphinx
 incremental==21.3.0
     # via towncrier
