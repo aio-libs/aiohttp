@@ -189,7 +189,15 @@ jobs:
         PIP_USER: 1
       run: >-
         PATH="${HOME}/Library/Python/3.11/bin:${HOME}/.local/bin:${PATH}"
-        make vvtest
+        make test
+      shell: bash
+    - name: Re-run the failing tests with maximum verbosity
+      if: failure()
+      env:
+        COLOR: yes
+        AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
+      run: >-  # `exit 1` makes sure that the job remains red with flaky runs
+        pytest --no-cov -vvvvv --lf && exit 1
       shell: bash
     - name: Turn coverage into xml
       env:
