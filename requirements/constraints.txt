@@ -24,7 +24,9 @@ brotli==1.0.9
     # via
     #   -r requirements/base.txt
     #   -r requirements/test.txt
-cchardet==2.1.7
+build==0.8.0
+    # via pip-tools
+cchardet==2.1.7 ; python_version < "3.10"
     # via -r requirements/base.txt
 certifi==2021.10.8
     # via requests
@@ -117,13 +119,14 @@ nodeenv==1.6.0
     # via pre-commit
 packaging==21.2
     # via
+    #   build
     #   pytest
     #   sphinx
 pep517==0.12.0
-    # via pip-tools
+    # via build
 pillow==9.2.0
     # via blockdiag
-pip-tools==6.5.0
+pip-tools==6.8.0
     # via -r requirements/dev.txt
 platformdirs==2.4.0
     # via virtualenv
@@ -217,14 +220,15 @@ toml==0.10.2
     # via
     #   cherry-picker
     #   pre-commit
-    #   pytest
-    #   towncrier
 tomli==1.2.2
     # via
+    #   build
     #   coverage
     #   mypy
     #   pep517
+    #   pytest
     #   slotscheck
+    #   towncrier
 towncrier==22.8.0
     # via
     #   -r requirements/doc.txt
@@ -267,3 +271,4 @@ setuptools==58.4.0
     #   gunicorn
     #   pip-tools
     #   sphinx
+    #   towncrier
