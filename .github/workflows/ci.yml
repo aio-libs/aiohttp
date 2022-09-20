@@ -361,7 +361,7 @@ jobs:
     - name: Login
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-    - name: Download disctributions
+    - name: Download distributions
       uses: actions/download-artifact@v3
       with:
         name: dist
