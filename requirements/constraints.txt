@@ -267,8 +267,8 @@ yarl==1.8.1; python_version >= "3.7"
     # via -r requirements/base.txt
 yarl==1.7.2; python_version < "3.7"
     # via -r requirements/base.txt
-zipp==3.8.1
-    # via importlib-metadata; python_version >= "3.7"
+zipp==3.8.1; python_version >= "3.7"
+    # via importlib-metadata
 zipp==3.4.1; python_version < "3.7"
     # via importlib-metadata
 
