@@ -24,7 +24,7 @@ brotli==1.0.9
     # via
     #   -r requirements/base.txt
     #   -r requirements/test.txt
-cchardet==2.1.7
+cchardet==2.1.7 ; python_version < "3.10"
     # via -r requirements/base.txt
 certifi==2021.10.8
     # via requests
@@ -97,6 +97,8 @@ idna==3.3
     #   trustme
     #   yarl
 imagesize==1.2.0
+    # via sphinx
+importlib-metadata==4.12.0
     # via sphinx
 incremental==21.3.0
     # via towncrier
@@ -195,7 +197,7 @@ six==1.16.0
     #   virtualenv
 snowballstemmer==2.1.0
     # via sphinx
-sphinx==4.3.1
+sphinx==5.1.1
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-asyncio
@@ -227,8 +229,6 @@ toml==0.10.2
     #   cherry-picker
     #   mypy
     #   pre-commit
-    #   pytest
-    #   towncrier
 tomli==1.2.2
     # via
     #   coverage
@@ -267,6 +267,8 @@ yarl==1.8.1; python_version >= "3.7"
     # via -r requirements/base.txt
 yarl==1.7.2; python_version < "3.7"
     # via -r requirements/base.txt
+zipp==3.8.1
+    # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
 pip==21.3.1
@@ -276,4 +278,4 @@ setuptools==58.4.0
     #   blockdiag
     #   gunicorn
     #   pip-tools
-    #   sphinx
+    #   towncrier
