@@ -17,6 +17,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
+env:
+  COLOR: yes
+  FORCE_COLOR: 1  # Request colored output from CLI tools supporting it
+  MYPY_FORCE_COLOR: 1
+  PY_COLORS: 1
 
 jobs:
 
