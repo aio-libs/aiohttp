@@ -156,11 +156,11 @@ highlight_language = "python3"
 
 # -- Options for extlinks extension ---------------------------------------
 extlinks = {
-    "issue": (f"{github_repo_url}/issues/%s", "#"),
-    "pr": (f"{github_repo_url}/pull/%s", "PR #"),
-    "commit": (f"{github_repo_url}/commit/%s", ""),
-    "gh": (f"{github_url}/%s", "GitHub: "),
-    "user": (f"{github_sponsors_url}/%s", "@"),
+    "issue": (f"{github_repo_url}/issues/%s", "#%s"),
+    "pr": (f"{github_repo_url}/pull/%s", "PR #%s"),
+    "commit": (f"{github_repo_url}/commit/%s", "%s"),
+    "gh": (f"{github_url}/%s", "GitHub: %s"),
+    "user": (f"{github_sponsors_url}/%s", "@%s"),
 }
 
 # -- Options for HTML output ----------------------------------------------
