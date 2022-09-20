@@ -14,6 +14,11 @@
 3.8.2 (2022-09-20)
 ==================
 
+.. note::
+
+   This release has some compatibility fixes for Python 3.11 but it may
+   still have some quirks. Some tests are still flaky in the CI.
+
 Bugfixes
 --------
 
