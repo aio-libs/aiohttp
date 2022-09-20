@@ -23,9 +23,7 @@ from aiohttp.web_runner import BaseRunner
 if IS_UNIX:
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as _abstract_path_sock:
         try:
-            _abstract_path_sock.bind(
-                b"\x00" + uuid4().hex.encode("ascii")
-            )
+            _abstract_path_sock.bind(b"\x00" + uuid4().hex.encode("ascii"))
         except FileNotFoundError:
             _abstract_path_failed = True
         else:
