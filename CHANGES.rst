@@ -28,18 +28,23 @@
 Bugfixes
 --------
 
-- Support registering OPTIONS HTTP method handlers via RouteTableDef.
+- Added support for registering :rfc:`OPTIONS <9110#OPTIONS>`
+  HTTP method handlers via :py:class:`~aiohttp.web.RouteTableDef`.
   `#4663 <https://github.com/aio-libs/aiohttp/issues/4663>`_
-- Started supporting ``authority-form`` and ``absolute-form`` URLs on the server-side.
+- Started supporting :rfc:`authority-form <9112#authority-form>` and
+  :rfc:`absolute-form <9112#absolute-form>` URLs on the server-side.
   `#6227 <https://github.com/aio-libs/aiohttp/issues/6227>`_
-- Fix Python 3.11 alpha incompatibilities by using Cython 0.29.25
+- Fixed Python 3.11 incompatibilities by using Cython 0.29.25.
   `#6396 <https://github.com/aio-libs/aiohttp/issues/6396>`_
-- Remove a deprecated usage of pytest.warns(None)
-  `#6663 <https://github.com/aio-libs/aiohttp/issues/6663>`_
-- Fix regression where ``asyncio.CancelledError`` occurs on client disconnection.
+- Extended the ``sock`` argument typing declaration of the
+  :py:func:`~aiohttp.web.run_app` function as optionally
+  accepting iterables.
+  `#6401 <https://github.com/aio-libs/aiohttp/issues/6401>`_
+- Fixed a regression where :py:exc:`~asyncio.CancelledError`
+  occurs on client disconnection.
   `#6719 <https://github.com/aio-libs/aiohttp/issues/6719>`_
-- Export :py:class:`~aiohttp.web.PrefixedSubAppResource` under
-  :py:mod:`aiohttp.web` -- by :user:`Dreamsorcerer`.
+- Started exporting :py:class:`~aiohttp.web.PrefixedSubAppResource`
+  under :py:mod:`aiohttp.web` -- by :user:`Dreamsorcerer`.
 
   This fixes a regression introduced by :pr:`3469`.
   `#6889 <https://github.com/aio-libs/aiohttp/issues/6889>`_
@@ -53,9 +58,12 @@ Bugfixes
 Improved Documentation
 ----------------------
 
-- Added clarification on configuring the app object with settings such as a db connection.
+- Added clarification on configuring the app object with
+  settings such as a database connection.
   `#4137 <https://github.com/aio-libs/aiohttp/issues/4137>`_
-- Edited the web.run_app declaration.
+- Extended the ``sock`` argument typing declaration of the
+  :py:func:`~aiohttp.web.run_app` function as optionally
+  accepting iterables.
   `#6401 <https://github.com/aio-libs/aiohttp/issues/6401>`_
 - Dropped the :class:`object` type possibility from
   the :py:attr:`aiohttp.ClientSession.timeout`
@@ -67,14 +75,18 @@ Improved Documentation
 Deprecations and Removals
 -------------------------
 
-- Drop Python 3.5 support, aiohttp works on 3.6+ now.
+- Dropped Python 3.5 support, :doc:`aiohttp <index>` only works
+  under Python 3.6 and higher from now on.
   `#4046 <https://github.com/aio-libs/aiohttp/issues/4046>`_
 
 
 Misc
 ----
 
-- `#6369 <https://github.com/aio-libs/aiohttp/issues/6369>`_, `#6399 <https://github.com/aio-libs/aiohttp/issues/6399>`_, `#6550 <https://github.com/aio-libs/aiohttp/issues/6550>`_, `#6708 <https://github.com/aio-libs/aiohttp/issues/6708>`_, `#6757 <https://github.com/aio-libs/aiohttp/issues/6757>`_, `#6857 <https://github.com/aio-libs/aiohttp/issues/6857>`_, `#6872 <https://github.com/aio-libs/aiohttp/issues/6872>`_
+- Removed a deprecated usage of :py:func:`pytest.warns(None)
+  <pytest.warns>` in tests.
+  `#6663 <https://github.com/aio-libs/aiohttp/issues/6663>`_
+- `#6369 <https://github.com/aio-libs/aiohttp/issues/6369>`_, `#6399 <https://github.com/aio-libs/aiohttp/issues/6399>`_, `#6550 <https://github.com/aio-libs/aiohttp/issues/6550>`_, `#6708 <https://github.com/aio-libs/aiohttp/issues/6708>`_, `#6757 <https://github.com/aio-libs/aiohttp/issues/6757>`_, `#6857 <https://github.com/aio-libs/aiohttp/issues/6857>`_, `#6872 <https://github.com/aio-libs/aiohttp/issues/6872>`_.
 
 
 ----
