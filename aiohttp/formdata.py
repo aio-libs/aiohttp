@@ -7,6 +7,7 @@ from multidict import MultiDict, MultiDictProxy
 from . import hdrs, multipart, payload
 from .helpers import guess_filename
 from .payload import Payload
+from .web_request import FileField
 
 __all__ = ("FormData",)
 
@@ -52,6 +53,12 @@ class FormData:
         content_transfer_encoding: Optional[str] = None,
     ) -> None:
 
+        if isinstance(value, FileField):
+            if filename is None:
+                filename = value.filename
+            if content_type is None:
+                content_type = value.content_type
+            value = value.file
         if isinstance(value, io.IOBase):
             self._is_multipart = True
         elif isinstance(value, (bytes, bytearray, memoryview)):
