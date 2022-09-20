@@ -17,6 +17,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
+env:
+  COLOR: yes
+  FORCE_COLOR: 1  # Request colored output from CLI tools supporting it
+  MYPY_FORCE_COLOR: 1
+  PY_COLORS: 1
 
 jobs:
 
@@ -371,7 +376,7 @@ jobs:
       run: |
         tree dist
     - name: Make Release
-      uses: aio-libs/create-release@v1.4.0
+      uses: aio-libs/create-release@v1.6.6
       with:
         changes_file: CHANGES.rst
         name: aiohttp
