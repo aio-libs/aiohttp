@@ -24,7 +24,7 @@ brotli==1.0.9
     # via
     #   -r requirements/base.txt
     #   -r requirements/test.txt
-cchardet==2.1.7
+cchardet==2.1.7 ; python_version < "3.10"
     # via -r requirements/base.txt
 certifi==2021.10.8
     # via requests
@@ -182,7 +182,7 @@ six==1.16.0
     # via
     #   python-dateutil
     #   virtualenv
-slotscheck==0.8.0
+slotscheck==0.15.0
     # via -r requirements/lint.txt
 snowballstemmer==2.1.0
     # via sphinx
@@ -217,14 +217,14 @@ toml==0.10.2
     # via
     #   cherry-picker
     #   pre-commit
-    #   pytest
-    #   towncrier
 tomli==1.2.2
     # via
     #   coverage
     #   mypy
     #   pep517
+    #   pytest
     #   slotscheck
+    #   towncrier
 towncrier==22.8.0
     # via
     #   -r requirements/doc.txt
@@ -267,3 +267,4 @@ setuptools==58.4.0
     #   gunicorn
     #   pip-tools
     #   sphinx
+    #   towncrier
