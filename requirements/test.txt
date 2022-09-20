@@ -8,7 +8,7 @@ mypy-extensions==0.4.3; implementation_name=="cpython"
 proxy.py ~= 2.4.4rc3
 pytest==7.1.2
 pytest-cov==3.0.0
-pytest-mock==3.6.1
+pytest-mock==3.8.2
 python-on-whales==0.36.1
 re-assert==1.1.0
 setuptools-git==1.2
