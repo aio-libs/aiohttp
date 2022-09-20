@@ -19,6 +19,12 @@
    This release has some compatibility fixes for Python 3.11 but it may
    still have some quirks. Some tests are still flaky in the CI.
 
+.. attention::
+
+   This is the last :doc:`aiohttp <index>` release tested under
+   Python 3.6. The 3.9 stream is dropping it from the CI and the
+   distribution package metadata.
+
 Bugfixes
 --------
 
