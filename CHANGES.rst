@@ -10,6 +10,24 @@
 
 .. towncrier release notes start
 
+3.8.3 (2022-09-21)
+==================
+
+Bugfixes
+--------
+
+- Increased the upper boundary of the :doc:`multidict:index` dependency
+  to allow for the version 6 -- by :user:`hugovk`.
+
+  It used to be limited below version 7 in :doc:`aiohttp <index>` v3.8.1 but
+  was lowered in v3.8.2 via :pr:`6550` and never brought back, causing
+  problems with dependency pins when upgrading. :doc:`aiohttp <index>` v3.8.3
+  fixes that by recovering the original boundary of ``< 7``.
+  `#6950 <https://github.com/aio-libs/aiohttp/issues/6950>`_
+
+
+----
+
 
 3.8.2 (2022-09-20)
 ==================
