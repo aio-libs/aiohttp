@@ -13,6 +13,12 @@
 3.8.3 (2022-09-21)
 ==================
 
+.. attention::
+
+   This is the last :doc:`aiohttp <index>` release tested under
+   Python 3.6. The 3.9 stream is dropping it from the CI and the
+   distribution package metadata.
+
 Bugfixes
 --------
 
