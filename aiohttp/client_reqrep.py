@@ -40,6 +40,7 @@ from .client_exceptions import (
 from .formdata import FormData
 from .hdrs import CONTENT_TYPE
 from .helpers import (
+    Auth,
     BaseTimerContext,
     BasicAuth,
     HeadersMixin,
@@ -428,17 +429,13 @@ class ClientRequest:
             if hdrs.CONTENT_LENGTH not in self.headers:
                 self.headers[hdrs.CONTENT_LENGTH] = str(len(self.body))
 
-    def update_auth(self, auth: Optional[BasicAuth]) -> None:
-        """Set basic auth."""
-        if auth is None:
-            auth = self.auth
+    def update_auth(self, auth: Optional[Auth]) -> None:
+        """Validate and set authentication coroutine as a request attribute"""
         if auth is None:
             return
-
-        if not isinstance(auth, helpers.BasicAuth):
-            raise TypeError("BasicAuth() tuple is required instead")
-
-        self.headers[hdrs.AUTHORIZATION] = auth.encode()
+        if not isinstance(auth, Auth):
+            raise TypeError("Auth instance is required instead")
+        self.auth = auth
 
     def update_body_from_data(self, body: Any) -> None:
         if body is None:
@@ -611,6 +608,10 @@ class ClientRequest:
 
         if connection is not None:
             self.headers[hdrs.CONNECTION] = connection
+
+        # Update authentication headers if required
+        if self.auth:
+            await self.auth(request=self)
 
         # status + headers
         status_line = "{0} {1} HTTP/{2[0]}.{2[1]}".format(
