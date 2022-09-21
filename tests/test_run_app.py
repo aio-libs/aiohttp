@@ -14,6 +14,7 @@ from unittest import mock
 from uuid import uuid4
 
 import pytest
+from conftest import needs_unix
 
 from aiohttp import web
 from aiohttp.test_utils import make_mocked_coro
@@ -515,37 +516,39 @@ def test_run_app_custom_backlog_unix(patched_loop: Any) -> None:
 
 
 @skip_if_no_unix_socks
-def test_run_app_http_unix_socket(patched_loop: Any, tmp_path: Any) -> None:
+def test_run_app_http_unix_socket(patched_loop: Any, unix_sockname: Any) -> None:
     app = web.Application()
 
-    sock_path = tmp_path / "socket.sock"
     printer = mock.Mock(wraps=stopper(patched_loop))
-    web.run_app(app, path=sock_path, print=printer, loop=patched_loop)
+    web.run_app(app, path=unix_sockname, print=printer, loop=patched_loop)
 
     patched_loop.create_unix_server.assert_called_with(
-        mock.ANY, sock_path, ssl=None, backlog=128
+        mock.ANY, unix_sockname, ssl=None, backlog=128
     )
-    assert f"http://unix:{sock_path}:" in printer.call_args[0][0]
+    assert f"http://unix:{unix_sockname}:" in printer.call_args[0][0]
 
 
 @skip_if_no_unix_socks
-def test_run_app_https_unix_socket(patched_loop: Any, tmp_path: Any) -> None:
+def test_run_app_https_unix_socket(patched_loop: Any, unix_sockname: Any) -> None:
     app = web.Application()
 
-    sock_path = tmp_path / "socket.sock"
     ssl_context = ssl.create_default_context()
     printer = mock.Mock(wraps=stopper(patched_loop))
     web.run_app(
-        app, path=sock_path, ssl_context=ssl_context, print=printer, loop=patched_loop
+        app,
+        path=unix_sockname,
+        ssl_context=ssl_context,
+        print=printer,
+        loop=patched_loop,
     )
 
     patched_loop.create_unix_server.assert_called_with(
-        mock.ANY, sock_path, ssl=ssl_context, backlog=128
+        mock.ANY, unix_sockname, ssl=ssl_context, backlog=128
     )
-    assert f"https://unix:{sock_path}:" in printer.call_args[0][0]
+    assert f"https://unix:{unix_sockname}:" in printer.call_args[0][0]
 
 
-@skip_if_no_unix_socks
+@needs_unix
 @skip_if_no_abstract_paths
 def test_run_app_abstract_linux_socket(patched_loop: Any) -> None:
     sock_path = b"\x00" + uuid4().hex.encode("ascii")

@@ -1,3 +1,0 @@
-Work around the changes in 3.11, e.g. :py:class:`~asyncio.TimeoutError` is an :py:class:`OSError`,
-and :py:class:`~unittest.IsolatedAsyncioTestCase` calls :py:function:`~asyncio.set_event_loop`
-differently -- by :user:`graingert`.

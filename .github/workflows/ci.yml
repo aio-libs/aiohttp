@@ -126,6 +126,7 @@ jobs:
         pyver: [3.7, 3.8, 3.9, '3.10']
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
+        experimental: [false]
         exclude:
           - os: macos
             no-extensions: 'Y'
@@ -135,7 +136,6 @@ jobs:
             pyver: 3.8
           - os: windows
             no-extensions: 'Y'
-        experimental: [false]
         include:
           - pyver: pypy-3.8
             no-extensions: 'Y'
@@ -195,7 +195,7 @@ jobs:
         path: vendor/llhttp/build/
     - name: Run unittests
       env:
-        COLOR: 'yes'
+        COLOR: yes
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
         PIP_USER: 1
       run: >-
