@@ -1,3 +1,0 @@
-Dropped the :class:`object` type possibility from
-the :py:attr:`aiohttp.ClientSession.timeout`
-property return type declaration.
