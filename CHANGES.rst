@@ -10,20 +10,45 @@
 
 .. towncrier release notes start
 
-
-3.8.2 (2022-09-20)
+3.8.3 (2022-09-21)
 ==================
-
-.. note::
-
-   This release has some compatibility fixes for Python 3.11 but it may
-   still have some quirks. Some tests are still flaky in the CI.
 
 .. attention::
 
    This is the last :doc:`aiohttp <index>` release tested under
    Python 3.6. The 3.9 stream is dropping it from the CI and the
    distribution package metadata.
+
+Bugfixes
+--------
+
+- Increased the upper boundary of the :doc:`multidict:index` dependency
+  to allow for the version 6 -- by :user:`hugovk`.
+
+  It used to be limited below version 7 in :doc:`aiohttp <index>` v3.8.1 but
+  was lowered in v3.8.2 via :pr:`6550` and never brought back, causing
+  problems with dependency pins when upgrading. :doc:`aiohttp <index>` v3.8.3
+  fixes that by recovering the original boundary of ``< 7``.
+  `#6950 <https://github.com/aio-libs/aiohttp/issues/6950>`_
+
+
+----
+
+
+3.8.2 (2022-09-20, subsequently yanked on 2022-09-21)
+=====================================================
+
+.. note::
+
+   This release has some compatibility fixes for Python 3.11 but it may
+   still have some quirks. Some tests are still flaky in the CI.
+
+.. caution::
+
+   This release has been yanked from PyPI. Modern pip will not pick it
+   up automatically. The reason is that is has ``multidict < 6`` set in
+   the distribution package metadata (see :pr:`6950`). Please, use
+   ``aiohttp ~= 3.8.3, != 3.8.1`` instead, if you can.
 
 Bugfixes
 --------
