@@ -1,1 +1,7 @@
-Re-allow multidict version 6 as a dependency.
+Increased the upper boundary of the :doc:`multidict:index` dependency
+to allow for the version 6 -- by :user:`hugovk`.
+
+It used to be limited below version 7 in :doc:`aiohttp <index>` v3.8.1 but
+was lowered in v3.8.2 via :pr:`6550` and never brought back, causing
+the upgrading users problems with their dependency pins. :doc:`aiohttp
+<index>` v3.8.3 fixes that by recovering the original boundary of ``< 7``.
