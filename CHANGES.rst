@@ -43,6 +43,13 @@ Bugfixes
    This release has some compatibility fixes for Python 3.11 but it may
    still have some quirks. Some tests are still flaky in the CI.
 
+.. caution::
+
+   This release has been yanked from PyPI. Modern pip will not pick it
+   up automatically. The reason is that is has ``multidict < 6`` set in
+   the distribution package metadata (see :pr:`6950`). Please, use
+   ``aiohttp ~= 3.8.3, != 3.8.1`` instead, if you can.
+
 Bugfixes
 --------
 
