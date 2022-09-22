@@ -215,7 +215,7 @@ class ClientRequest:
         if match:
             raise ValueError(
                 f"Method cannot contain non-token characters {method!r} "
-                "(found at least {match.group()!r})"
+                f"(found at least {match.group()!r})"
             )
         assert isinstance(url, URL), url
         assert isinstance(proxy, (URL, type(None))), proxy
@@ -537,12 +537,15 @@ class ClientRequest:
 
             await writer.write_eof()
         except OSError as exc:
-            new_exc = ClientOSError(
-                exc.errno, "Can not write request body for %s" % self.url
-            )
-            new_exc.__context__ = exc
-            new_exc.__cause__ = exc
-            protocol.set_exception(new_exc)
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                protocol.set_exception(exc)
+            else:
+                new_exc = ClientOSError(
+                    exc.errno, "Can not write request body for %s" % self.url
+                )
+                new_exc.__context__ = exc
+                new_exc.__cause__ = exc
+                protocol.set_exception(new_exc)
         except asyncio.CancelledError as exc:
             if not conn.closed:
                 protocol.set_exception(exc)

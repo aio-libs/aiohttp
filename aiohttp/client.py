@@ -217,7 +217,7 @@ class ClientSession:
         trust_env: bool = False,
         requote_redirect_url: bool = True,
         trace_configs: Optional[List[TraceConfig]] = None,
-        read_bufsize: int = 2 ** 16,
+        read_bufsize: int = 2**16,
     ) -> None:
         if base_url is None or isinstance(base_url, URL):
             self._base_url: Optional[URL] = base_url
@@ -532,6 +532,8 @@ class ClientSession:
                     except ClientError:
                         raise
                     except OSError as exc:
+                        if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                            raise
                         raise ClientOSError(*exc.args) from exc
 
                     self._cookie_jar.update_cookies(resp.cookies, resp.url)
@@ -865,7 +867,7 @@ class ClientSession:
             transport = conn.transport
             assert transport is not None
             reader: FlowControlDataQueue[WSMessage] = FlowControlDataQueue(
-                conn_proto, 2 ** 16, loop=self._loop
+                conn_proto, 2**16, loop=self._loop
             )
             conn_proto.set_parser(WebSocketReader(reader, max_msg_size), reader)
             writer = WebSocketWriter(
@@ -1004,7 +1006,7 @@ class ClientSession:
         return self._requote_redirect_url
 
     @property
-    def timeout(self) -> Union[object, ClientTimeout]:
+    def timeout(self) -> ClientTimeout:
         """Timeout for the session."""
         return self._timeout
 

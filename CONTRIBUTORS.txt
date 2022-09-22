@@ -52,6 +52,7 @@ Artem Yushkovskiy
 Arthur Darcet
 Austin Scola
 Ben Bader
+Ben Greiner
 Ben Timby
 Benedikt Reinartz
 Bob Haddleton
@@ -63,6 +64,7 @@ Brian Bouterse
 Brian C. Lane
 Brian Muller
 Bruce Merry
+Bruno Souza Cabral
 Bryan Kok
 Bryce Drennan
 Carl George
@@ -265,6 +267,7 @@ Robert Lu
 Robert Nikolich
 Roman Markeloff
 Roman Podoliaka
+Samir Akarioh
 Samuel Colvin
 Sean Hunt
 Sebastian Acuna
