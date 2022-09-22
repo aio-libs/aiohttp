@@ -78,7 +78,7 @@ from .connector import (
 from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
-    BasicAuth,
+    Auth,
     TimeoutHandle,
     ceil_timeout,
     get_env_proxy_for_url,
@@ -201,7 +201,7 @@ class ClientSession:
         cookies: Optional[LooseCookies] = None,
         headers: Optional[LooseHeaders] = None,
         skip_auto_headers: Optional[Iterable[str]] = None,
-        auth: Optional[BasicAuth] = None,
+        auth: Optional[Auth] = None,
         json_serialize: JSONEncoder = json.dumps,
         request_class: Type[ClientRequest] = ClientRequest,
         response_class: Type[ClientResponse] = ClientResponse,
@@ -334,7 +334,7 @@ class ClientSession:
         cookies: Optional[LooseCookies] = None,
         headers: Optional[LooseHeaders] = None,
         skip_auto_headers: Optional[Iterable[str]] = None,
-        auth: Optional[BasicAuth] = None,
+        auth: Optional[Auth] = None,
         allow_redirects: bool = True,
         max_redirects: int = 10,
         compress: Optional[str] = None,
@@ -345,7 +345,7 @@ class ClientSession:
         ] = None,
         read_until_eof: bool = True,
         proxy: Optional[StrOrURL] = None,
-        proxy_auth: Optional[BasicAuth] = None,
+        proxy_auth: Optional[Auth] = None,
         timeout: Union[ClientTimeout, _SENTINEL, None] = sentinel,
         ssl: Optional[Union[SSLContext, bool, Fingerprint]] = None,
         proxy_headers: Optional[LooseHeaders] = None,
@@ -489,6 +489,10 @@ class ClientSession:
                         proxy_headers=proxy_headers,
                         traces=traces,
                     )
+                    # Ideally the request class instantiation would update the auth
+                    # headers. But since ClientRequest.auth is a coroutine we cannot do
+                    # that.
+                    await req.update_auth_headers()
 
                     # connection timeout
                     try:
@@ -660,12 +664,12 @@ class ClientSession:
         autoclose: bool = True,
         autoping: bool = True,
         heartbeat: Optional[float] = None,
-        auth: Optional[BasicAuth] = None,
+        auth: Optional[Auth] = None,
         origin: Optional[str] = None,
         params: Optional[Mapping[str, str]] = None,
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
-        proxy_auth: Optional[BasicAuth] = None,
+        proxy_auth: Optional[Auth] = None,
         ssl: Union[SSLContext, bool, None, Fingerprint] = None,
         proxy_headers: Optional[LooseHeaders] = None,
         compress: int = 0,
@@ -706,12 +710,12 @@ class ClientSession:
         autoclose: bool = True,
         autoping: bool = True,
         heartbeat: Optional[float] = None,
-        auth: Optional[BasicAuth] = None,
+        auth: Optional[Auth] = None,
         origin: Optional[str] = None,
         params: Optional[Mapping[str, str]] = None,
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
-        proxy_auth: Optional[BasicAuth] = None,
+        proxy_auth: Optional[Auth] = None,
         ssl: Union[SSLContext, bool, None, Fingerprint] = None,
         proxy_headers: Optional[LooseHeaders] = None,
         compress: int = 0,
@@ -1021,7 +1025,7 @@ class ClientSession:
         return self._skip_auto_headers
 
     @property
-    def auth(self) -> Optional[BasicAuth]:
+    def auth(self) -> Optional[Auth]:
         """An object that represents HTTP Basic Authorization"""
         return self._default_auth
 
@@ -1180,7 +1184,7 @@ def request(
     json: Any = None,
     headers: Optional[LooseHeaders] = None,
     skip_auto_headers: Optional[Iterable[str]] = None,
-    auth: Optional[BasicAuth] = None,
+    auth: Optional[Auth] = None,
     allow_redirects: bool = True,
     max_redirects: int = 10,
     compress: Optional[str] = None,
@@ -1189,7 +1193,7 @@ def request(
     raise_for_status: Optional[bool] = None,
     read_until_eof: bool = True,
     proxy: Optional[StrOrURL] = None,
-    proxy_auth: Optional[BasicAuth] = None,
+    proxy_auth: Optional[Auth] = None,
     timeout: Union[ClientTimeout, _SENTINEL] = sentinel,
     cookies: Optional[LooseCookies] = None,
     version: HttpVersion = http.HttpVersion11,
@@ -1209,8 +1213,8 @@ def request(
     headers - (optional) Dictionary of HTTP Headers to send with
       the request
     cookies - (optional) Dict object to send with the request
-    auth - (optional) BasicAuth named tuple represent HTTP Basic Auth
-    auth - aiohttp.helpers.BasicAuth
+    auth - (optional) BasicAuth named tuple represent HTTP Basic Auth or more generally
+      an authorization handling co-routine
     allow_redirects - (optional) If set to False, do not follow
       redirects
     version - Request HTTP version.

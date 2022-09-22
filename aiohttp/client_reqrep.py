@@ -429,13 +429,23 @@ class ClientRequest:
             if hdrs.CONTENT_LENGTH not in self.headers:
                 self.headers[hdrs.CONTENT_LENGTH] = str(len(self.body))
 
-    def update_auth(self, auth: Optional[Auth]) -> None:
+    def update_auth(self, auth: Optional[Auth] = None) -> None:
         """Validate and set authentication coroutine as a request attribute"""
         if auth is None:
             return
         if not isinstance(auth, Auth):
             raise TypeError("Auth instance is required instead")
         self.auth = auth
+
+    # TODO: does it make sense to have this separately named async method? Due to the
+    # lack of async __init__ we would need this coroutine to be called after creating
+    # a ClientRequest object. That's quite poor.
+    async def update_auth_headers(self, auth: Optional[Auth] = None) -> None:
+        """Asynchronously update authorization headers"""
+        self.update_auth(auth)
+        if self.auth:
+            # Evaluate the authorization header for this specific request
+            await self.auth(request=self)
 
     def update_body_from_data(self, body: Any) -> None:
         if body is None:
@@ -608,10 +618,6 @@ class ClientRequest:
 
         if connection is not None:
             self.headers[hdrs.CONNECTION] = connection
-
-        # Update authentication headers if required
-        if self.auth:
-            await self.auth(request=self)
 
         # status + headers
         status_line = "{0} {1} HTTP/{2[0]}.{2[1]}".format(

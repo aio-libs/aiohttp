@@ -1167,6 +1167,8 @@ class TCPConnector(BaseConnector):
             loop=self._loop,
             ssl=req.ssl,
         )
+        # Evaluate auth headers async
+        await proxy_req.update_auth_headers()
 
         # create connection to proxy server
         transport, proto = await self._create_direct_connection(
@@ -1178,12 +1180,12 @@ class TCPConnector(BaseConnector):
         # response.
         proto.force_close()
 
-        auth = proxy_req.headers.pop(hdrs.AUTHORIZATION, None)
-        if auth is not None:
+        auth_header = proxy_req.headers.pop(hdrs.AUTHORIZATION, None)
+        if auth_header is not None:
             if not req.is_ssl():
-                req.headers[hdrs.PROXY_AUTHORIZATION] = auth
+                req.headers[hdrs.PROXY_AUTHORIZATION] = auth_header
             else:
-                proxy_req.headers[hdrs.PROXY_AUTHORIZATION] = auth
+                proxy_req.headers[hdrs.PROXY_AUTHORIZATION] = auth_header
 
         if req.is_ssl():
             self._warn_about_tls_in_tls(transport, req)
