@@ -2,7 +2,8 @@ import asyncio
 import signal
 import socket
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Set
+from pathlib import Path
+from typing import Any, List, Optional, Set, Union
 
 from yarl import URL
 
@@ -135,7 +136,7 @@ class UnixSite(BaseSite):
     def __init__(
         self,
         runner: "BaseRunner",
-        path: str,
+        path: Union[str, Path],
         *,
         shutdown_timeout: float = 60.0,
         ssl_context: Optional[SSLContext] = None,
@@ -160,7 +161,10 @@ class UnixSite(BaseSite):
         server = self._runner.server
         assert server is not None
         self._server = await loop.create_unix_server(
-            server, self._path, ssl=self._ssl_context, backlog=self._backlog
+            server,
+            self._path,  # type: ignore[arg-type]
+            ssl=self._ssl_context,
+            backlog=self._backlog,
         )
 
 
