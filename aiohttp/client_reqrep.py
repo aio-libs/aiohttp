@@ -433,6 +433,9 @@ class ClientRequest:
         """Validate and set authentication coroutine as a request attribute"""
         if auth is None:
             return
+        # TODO: we really mean anything that returns an awaitable when called. Do we
+        # need runtime type checking here? Or just try and raise sensibly in
+        # update_auth_headers?
         if not isinstance(auth, Auth):
             raise TypeError("Auth instance is required instead")
         self.auth = auth
