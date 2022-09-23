@@ -750,7 +750,7 @@ def test_eq() -> None:
 async def test_loop_prop() -> None:
     loop = asyncio.get_event_loop()
     req = make_mocked_request("GET", "/path", loop=loop)
-    with pytest.deprecated_call(match=r"^client\.loop property is deprecated$"):
+    with pytest.deprecated_call(match=r"^request\.loop property is deprecated$"):
         assert req.loop is loop
 
 
