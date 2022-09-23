@@ -8,6 +8,7 @@ import sys
 from types import FrameType
 from typing import Any, Awaitable, Callable, Optional, Union  # noqa
 
+from gunicorn.arbiter import Arbiter
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 from gunicorn.workers import base
 
@@ -55,6 +56,9 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
             self.loop.run_until_complete(self._task)
         except Exception:
             self.log.exception("Exception in gunicorn worker")
+            self.booted = False
+            self.exit_code = Arbiter.WORKER_BOOT_ERROR
+
         self.loop.run_until_complete(self.loop.shutdown_asyncgens())
         self.loop.close()
 
