@@ -1822,7 +1822,9 @@ async def test_await(aiohttp_server) -> None:
     async def handler(request):
         resp = web.StreamResponse(headers={"content-length": str(4)})
         await resp.prepare(request)
-        with pytest.warns(DeprecationWarning):
+        with pytest.deprecated_call(
+            match=r"^drain method is deprecated, use await resp\.write\(\)$",
+        ):
             await resp.drain()
         await asyncio.sleep(0.01)
         await resp.write(b"test")
@@ -1901,7 +1903,9 @@ async def test_context_manager_close_on_release(aiohttp_server, mocker) -> None:
     async def handler(request):
         resp = web.StreamResponse()
         await resp.prepare(request)
-        with pytest.warns(DeprecationWarning):
+        with pytest.deprecated_call(
+            match=r"^drain method is deprecated, use await resp\.write\(\)$",
+        ):
             await resp.drain()
         await asyncio.sleep(10)
         return resp
@@ -1919,6 +1923,8 @@ async def test_context_manager_close_on_release(aiohttp_server, mocker) -> None:
             assert resp.connection is not None
         assert resp.connection is None
         assert proto.close.called
+
+        await resp.release()  # Trigger handler completion
 
 
 async def test_iter_any(aiohttp_server) -> None:
