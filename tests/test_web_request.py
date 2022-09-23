@@ -800,7 +800,6 @@ async def test_json_invalid_content_type(aiohttp_client: Any) -> None:
         assert body_text == '{"some": "data"}'
         assert request.headers["Content-Type"] == "text/plain"
         await request.json()  # raises HTTP 400
-        return web.Response()
 
     app = web.Application()
     app.router.add_post("/", handler)
