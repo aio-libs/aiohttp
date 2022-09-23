@@ -239,7 +239,9 @@ async def test_filter_cookie_with_unicode_domain(loop: Any) -> None:
 
 async def test_filter_cookies_str_deprecated(loop: Any) -> None:
     jar = CookieJar()
-    with pytest.warns(DeprecationWarning):
+    with pytest.deprecated_call(
+        match="The method accepts yarl.URL instances only, got <class 'str'>",
+    ):
         jar.filter_cookies("http://éé.com")
 
 

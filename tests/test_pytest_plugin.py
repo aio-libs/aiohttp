@@ -66,7 +66,7 @@ async def test_noop() -> None:
 
 async def previous(request):
     if request.method == 'POST':
-        with pytest.warns(DeprecationWarning):
+        with pytest.deprecated_call():  # FIXME: this isn't actually called
             request.app['value'] = (await request.post())['value']
         return web.Response(body=b'thanks for the data')
     else:
