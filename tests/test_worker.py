@@ -33,6 +33,7 @@ class BaseTestWorker:
     def __init__(self):
         self.servers = {}
         self.exit_code = 0
+        self.started = False
         self._notify_waiter = None
         self.cfg = mock.Mock()
         self.cfg.graceful_timeout = 100
