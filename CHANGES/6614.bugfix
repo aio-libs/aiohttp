@@ -1,0 +1,1 @@
+Fix issue with using invalid error handler for decoding utf8 in :py:class:`~aiohttp.http_parser.HeadersParser`
