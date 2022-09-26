@@ -89,7 +89,7 @@ idna==3.3
     #   requests
     #   trustme
     #   yarl
-imagesize==1.2.0
+imagesize==1.4.1
     # via sphinx
 importlib-metadata==4.12.0
     # via sphinx
@@ -145,7 +145,7 @@ pydantic==1.8.2
     # via python-on-whales
 pyenchant==3.2.2
     # via sphinxcontrib-spelling
-pygments==2.11.0
+pygments==2.13.0
     # via sphinx
 pyjwt==2.3.0
     # via gidgethub
@@ -188,7 +188,7 @@ slotscheck==0.8.0
     # via -r requirements/lint.txt
 snowballstemmer==2.1.0
     # via sphinx
-sphinx==5.1.1
+sphinx==5.2.1
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-asyncio
