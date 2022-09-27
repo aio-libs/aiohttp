@@ -65,7 +65,9 @@ class CookieJar(AbstractCookieJar):
         loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
         super().__init__(loop=loop)
-        self._cookies: DefaultDict[str, SimpleCookie[str]] = defaultdict(SimpleCookie)
+        self._cookies: DefaultDict[Tuple[str, str], SimpleCookie[str]] = defaultdict(
+            SimpleCookie
+        )
         self._host_only_cookies: Set[Tuple[str, str]] = set()
         self._unsafe = unsafe
         self._quote_cookie = quote_cookie
@@ -82,7 +84,7 @@ class CookieJar(AbstractCookieJar):
             ]
         self._treat_as_secure_origin = treat_as_secure_origin
         self._next_expiration = next_whole_second()
-        self._expirations: Dict[Tuple[str, str], datetime.datetime] = {}
+        self._expirations: Dict[Tuple[str, str, str], datetime.datetime] = {}
         # #4515: datetime.max may not be representable on 32-bit platforms
         self._max_time = self.MAX_TIME
         try:
@@ -110,20 +112,20 @@ class CookieJar(AbstractCookieJar):
 
         to_del = []
         now = datetime.datetime.now(datetime.timezone.utc)
-        for domain, cookie in self._cookies.items():
+        for (domain, path), cookie in self._cookies.items():
             for name, morsel in cookie.items():
-                key = (domain, name)
+                key = (domain, path, name)
                 if (
                     key in self._expirations and self._expirations[key] <= now
                 ) or predicate(morsel):
                     to_del.append(key)
 
-        for domain, name in to_del:
-            key = (domain, name)
-            self._host_only_cookies.discard(key)
+        for domain, path, name in to_del:
+            self._host_only_cookies.discard((domain, name))
+            key = (domain, path, name)
             if key in self._expirations:
-                del self._expirations[(domain, name)]
-            self._cookies[domain].pop(name, None)
+                del self._expirations[(domain, path, name)]
+            self._cookies[(domain, path)].pop(name, None)
 
         next_expiration = min(self._expirations.values(), default=self._max_time)
         try:
@@ -147,9 +149,11 @@ class CookieJar(AbstractCookieJar):
     def _do_expiration(self) -> None:
         self.clear(lambda x: False)
 
-    def _expire_cookie(self, when: datetime.datetime, domain: str, name: str) -> None:
+    def _expire_cookie(
+        self, when: datetime.datetime, domain: str, path: str, name: str
+    ) -> None:
         self._next_expiration = min(self._next_expiration, when)
-        self._expirations[(domain, name)] = when
+        self._expirations[(domain, path, name)] = when
 
     def update_cookies(self, cookies: LooseCookies, response_url: URL = URL()) -> None:
         """Update cookies."""
@@ -211,7 +215,7 @@ class CookieJar(AbstractCookieJar):
                         ) + datetime.timedelta(seconds=delta_seconds)
                     except OverflowError:
                         max_age_expiration = self._max_time
-                    self._expire_cookie(max_age_expiration, domain, name)
+                    self._expire_cookie(max_age_expiration, domain, path, name)
                 except ValueError:
                     cookie["max-age"] = ""
 
@@ -220,11 +224,11 @@ class CookieJar(AbstractCookieJar):
                 if expires:
                     expire_time = self._parse_date(expires)
                     if expire_time:
-                        self._expire_cookie(expire_time, domain, name)
+                        self._expire_cookie(expire_time, domain, path, name)
                     else:
                         cookie["expires"] = ""
 
-            self._cookies[domain][name] = cookie
+            self._cookies[(domain, path)][name] = cookie
 
         self._do_expiration()
 
