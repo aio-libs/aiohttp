@@ -12,6 +12,7 @@ from collections import deque
 from unittest import mock
 
 import pytest
+from conftest import needs_unix
 from yarl import URL
 
 import aiohttp
@@ -41,12 +42,6 @@ def key2():
 def ssl_key():
     # Connection key
     return ConnectionKey("localhost", 80, True, None, None, None, None)
-
-
-@pytest.fixture
-def unix_sockname(shorttmpdir):
-    sock_path = shorttmpdir / "socket.sock"
-    return str(sock_path)
 
 
 @pytest.fixture
@@ -256,6 +251,8 @@ async def test_connector_context_manager(loop) -> None:
             assert conn is c
 
     assert conn.closed
+
+    await conn.close()
 
 
 async def test_async_context_manager(loop) -> None:
@@ -1918,7 +1915,7 @@ async def test_tcp_connector(aiohttp_client, loop) -> None:
     assert r.status == 200
 
 
-@pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires unix socket")
+@needs_unix
 async def test_unix_connector_not_found(loop) -> None:
     connector = aiohttp.UnixConnector("/" + uuid.uuid4().hex, loop=loop)
 
@@ -1927,7 +1924,7 @@ async def test_unix_connector_not_found(loop) -> None:
         await connector.connect(req, None, ClientTimeout())
 
 
-@pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires unix socket")
+@needs_unix
 async def test_unix_connector_permission(loop) -> None:
     loop.create_unix_connection = make_mocked_coro(raise_exception=PermissionError())
     connector = aiohttp.UnixConnector("/" + uuid.uuid4().hex, loop=loop)
@@ -2086,7 +2083,6 @@ async def test_tcp_connector_uses_provided_local_addr(aiohttp_server) -> None:
     await conn.close()
 
 
-@pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
 async def test_unix_connector(unix_server, unix_sockname) -> None:
     async def handler(request):
         return web.Response()

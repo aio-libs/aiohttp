@@ -10,7 +10,6 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 from yarl import URL
 
 from aiohttp import HttpVersion
-from aiohttp.helpers import DEBUG
 from aiohttp.http_parser import RawRequestMessage
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
@@ -104,7 +103,7 @@ def test_ctor() -> None:
 
 def test_deprecated_message() -> None:
     req = make_mocked_request("GET", "/path/to?a=1&b=2")
-    with pytest.warns(DeprecationWarning):
+    with pytest.deprecated_call(match=r"^Request\.message is deprecated$"):
         assert req.message == req._message
 
 
@@ -640,6 +639,8 @@ async def test_multipart_formdata_file(protocol) -> None:
     content = result["a_file"].file.read()
     assert content == b"\ff"
 
+    result["a_file"].file.close()
+
 
 async def test_make_too_big_request_limit_None(protocol) -> None:
     payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
@@ -692,13 +693,6 @@ def test_clone_remote() -> None:
     req = make_mocked_request("GET", "/")
     req2 = req.clone(remote="11.11.11.11")
     assert req2.remote == "11.11.11.11"
-
-
-@pytest.mark.skipif(not DEBUG, reason="The check is applied in DEBUG mode only")
-def test_request_custom_attr() -> None:
-    req = make_mocked_request("GET", "/")
-    with pytest.warns(DeprecationWarning):
-        req.custom = None
 
 
 def test_remote_with_closed_transport() -> None:
@@ -756,7 +750,7 @@ def test_eq() -> None:
 async def test_loop_prop() -> None:
     loop = asyncio.get_event_loop()
     req = make_mocked_request("GET", "/path", loop=loop)
-    with pytest.warns(DeprecationWarning):
+    with pytest.deprecated_call(match=r"^request\.loop property is deprecated$"):
         assert req.loop is loop
 
 

@@ -5,6 +5,7 @@ import sys
 from argparse import ArgumentParser
 from collections.abc import Iterable
 from importlib import import_module
+from pathlib import Path
 from typing import (
     Any,
     Awaitable,
@@ -136,6 +137,7 @@ from .web_urldispatcher import (
     AbstractRoute as AbstractRoute,
     DynamicResource as DynamicResource,
     PlainResource as PlainResource,
+    PrefixedSubAppResource as PrefixedSubAppResource,
     Resource as Resource,
     ResourceRoute as ResourceRoute,
     StaticResource as StaticResource,
@@ -262,6 +264,7 @@ __all__ = (
     "AbstractRoute",
     "DynamicResource",
     "PlainResource",
+    "PrefixedSubAppResource",
     "Resource",
     "ResourceRoute",
     "StaticResource",
@@ -290,7 +293,7 @@ async def _run_app(
     *,
     host: Optional[Union[str, HostSequence]] = None,
     port: Optional[int] = None,
-    path: Optional[str] = None,
+    path: Optional[Union[str, Path]] = None,
     sock: Optional[Union[socket.socket, TypingIterable[socket.socket]]] = None,
     shutdown_timeout: float = 60.0,
     keepalive_timeout: float = 75.0,
@@ -366,7 +369,7 @@ async def _run_app(
             )
 
         if path is not None:
-            if isinstance(path, (str, bytes, bytearray, memoryview)):
+            if isinstance(path, (str, bytes, bytearray, memoryview, Path)):
                 sites.append(
                     UnixSite(
                         runner,
@@ -463,7 +466,7 @@ def run_app(
     *,
     host: Optional[Union[str, HostSequence]] = None,
     port: Optional[int] = None,
-    path: Optional[str] = None,
+    path: Optional[Union[str, Path]] = None,
     sock: Optional[Union[socket.socket, TypingIterable[socket.socket]]] = None,
     shutdown_timeout: float = 60.0,
     keepalive_timeout: float = 75.0,

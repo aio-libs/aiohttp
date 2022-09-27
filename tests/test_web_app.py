@@ -4,7 +4,6 @@ from typing import Iterator
 from unittest import mock
 
 import pytest
-from async_generator import async_generator, yield_
 
 from aiohttp import log, web
 from aiohttp.abc import AbstractAccessLogger, AbstractRouter
@@ -258,19 +257,34 @@ def test_appkey() -> None:
 
 def test_appkey_repr_concrete() -> None:
     key = web.AppKey("key", int)
-    assert repr(key) == "<AppKey(__main__.key, type=int)>"
+    assert repr(key) in (
+        "<AppKey(__channelexec__.key, type=int)>",  # pytest-xdist
+        "<AppKey(__main__.key, type=int)>",
+    )
     key = web.AppKey("key", web.Request)
-    assert repr(key) == "<AppKey(__main__.key, type=aiohttp.web_request.Request)>"
+    assert repr(key) in (
+        # pytest-xdist:
+        "<AppKey(__channelexec__.key, type=aiohttp.web_request.Request)>",
+        "<AppKey(__main__.key, type=aiohttp.web_request.Request)>",
+    )
 
 
 def test_appkey_repr_nonconcrete() -> None:
     key = web.AppKey("key", Iterator[int])
-    assert repr(key) == "<AppKey(__main__.key, type=typing.Iterator[int])>"
+    assert repr(key) in (
+        # pytest-xdist:
+        "<AppKey(__channelexec__.key, type=typing.Iterator[int])>",
+        "<AppKey(__main__.key, type=typing.Iterator[int])>",
+    )
 
 
 def test_appkey_repr_annotated() -> None:
     key = web.AppKey[Iterator[int]]("key")
-    assert repr(key) == "<AppKey(__main__.key, type=typing.Iterator[int])>"
+    assert repr(key) in (
+        # pytest-xdist:
+        "<AppKey(__channelexec__.key, type=typing.Iterator[int])>",
+        "<AppKey(__main__.key, type=typing.Iterator[int])>",
+    )
 
 
 def test_app_str_keys() -> None:
@@ -363,10 +377,9 @@ async def test_cleanup_ctx() -> None:
     out = []
 
     def f(num):
-        @async_generator
         async def inner(app):
             out.append("pre_" + str(num))
-            await yield_(None)
+            yield None
             out.append("post_" + str(num))
 
         return inner
@@ -387,12 +400,11 @@ async def test_cleanup_ctx_exception_on_startup() -> None:
     exc = Exception("fail")
 
     def f(num, fail=False):
-        @async_generator
         async def inner(app):
             out.append("pre_" + str(num))
             if fail:
                 raise exc
-            await yield_(None)
+            yield None
             out.append("post_" + str(num))
 
         return inner
@@ -416,10 +428,9 @@ async def test_cleanup_ctx_exception_on_cleanup() -> None:
     exc = Exception("fail")
 
     def f(num, fail=False):
-        @async_generator
         async def inner(app):
             out.append("pre_" + str(num))
-            await yield_(None)
+            yield None
             out.append("post_" + str(num))
             if fail:
                 raise exc
@@ -469,10 +480,9 @@ async def test_cleanup_ctx_exception_on_cleanup_multiple() -> None:
     out = []
 
     def f(num, fail=False):
-        @async_generator
         async def inner(app):
             out.append("pre_" + str(num))
-            await yield_(None)
+            yield None
             out.append("post_" + str(num))
             if fail:
                 raise Exception("fail_" + str(num))
@@ -499,12 +509,11 @@ async def test_cleanup_ctx_multiple_yields() -> None:
     out = []
 
     def f(num):
-        @async_generator
         async def inner(app):
             out.append("pre_" + str(num))
-            await yield_(None)
+            yield None
             out.append("post_" + str(num))
-            await yield_(None)
+            yield None
 
         return inner
 
@@ -594,12 +603,11 @@ async def test_subapp_on_startup(aiohttp_client) -> None:
     ctx_pre_called = False
     ctx_post_called = False
 
-    @async_generator
     async def cleanup_ctx(app):
         nonlocal ctx_pre_called, ctx_post_called
         ctx_pre_called = True
         app[cleanup] = True
-        await yield_(None)
+        yield None
         ctx_post_called = True
 
     subapp.cleanup_ctx.append(cleanup_ctx)
