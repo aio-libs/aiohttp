@@ -57,10 +57,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
             self.loop.run_until_complete(self._task)
         except Exception:
             self.log.exception("Exception in gunicorn worker")
-            if self.started:
-                self.exit_code = 1
-            else:
-                self.exit_code = Arbiter.APP_LOAD_ERROR
+            self.exit_code = 1 if self.started else Arbiter.APP_LOAD_ERROR
 
         self.loop.run_until_complete(self.loop.shutdown_asyncgens())
         self.loop.close()
