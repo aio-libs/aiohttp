@@ -267,12 +267,7 @@ class ClientSession:
         self._requote_redirect_url = requote_redirect_url
         self._read_bufsize = read_bufsize
 
-        # Convert to list of tuples
-        if headers:
-            real_headers: CIMultiDict[str] = CIMultiDict(headers)
-        else:
-            real_headers = CIMultiDict()
-        self._default_headers: CIMultiDict[str] = real_headers
+        self.headers = headers  # See `headers` property setter function
         if skip_auto_headers is not None:
             self._skip_auto_headers = frozenset(istr(i) for i in skip_auto_headers)
         else:
@@ -1014,6 +1009,12 @@ class ClientSession:
     def headers(self) -> "CIMultiDict[str]":
         """The default headers of the client session."""
         return self._default_headers
+
+    @headers.setter
+    def headers(self, value: Optional[LooseHeaders] = None) -> None:
+        """Set or update the default headers of the client session."""
+        value = value or {}
+        self._default_headers = CIMultiDict(value)
 
     @property
     def skip_auto_headers(self) -> FrozenSet[istr]:
