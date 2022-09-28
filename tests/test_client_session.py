@@ -124,8 +124,10 @@ async def test_init_cookies_with_list_of_tuples(create_session: Any) -> None:
 async def test_headers_can_be_updated(create_session: Any) -> None:
     session = await create_session()
     session.headers = {"h1": "header1", "h2": "header2"}
-    assert session.headers == session._default_headers == CIMultiDict(
-        [("h1", "header1"), ("h2", "header2")]
+    assert (
+        session.headers
+        == session._default_headers
+        == CIMultiDict([("h1", "header1"), ("h2", "header2")])
     )
 
 
