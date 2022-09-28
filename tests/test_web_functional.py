@@ -1320,7 +1320,11 @@ async def test_old_style_subapp_middlewares(aiohttp_client: Any) -> None:
     async def handler(request):
         return web.Response(text="OK")
 
-    with pytest.warns(DeprecationWarning, match="Middleware decorator is deprecated"):
+    with pytest.deprecated_call(
+        match=r"^Middleware decorator is deprecated since 4\.0 and "
+        r"its behaviour is default, you can simply remove "
+        r"this decorator\.$",
+    ):
 
         @web.middleware
         async def middleware(request, handler: Handler):
@@ -1757,7 +1761,9 @@ async def test_await(aiohttp_server: Any) -> None:
     async def handler(request):
         resp = web.StreamResponse(headers={"content-length": str(4)})
         await resp.prepare(request)
-        with pytest.warns(DeprecationWarning):
+        with pytest.deprecated_call(
+            match=r"^drain method is deprecated, use await resp\.write\(\)$",
+        ):
             await resp.drain()
         await asyncio.sleep(0.01)
         await resp.write(b"test")
@@ -1838,7 +1844,9 @@ async def test_context_manager_close_on_release(
     async def handler(request):
         resp = web.StreamResponse()
         await resp.prepare(request)
-        with pytest.warns(DeprecationWarning):
+        with pytest.deprecated_call(
+            match=r"^drain method is deprecated, use await resp\.write\(\)$",
+        ):
             await resp.drain()
         await asyncio.sleep(10)
         return resp
@@ -1856,6 +1864,8 @@ async def test_context_manager_close_on_release(
             assert resp.connection is not None
         assert resp.connection is None
         assert proto.close.called
+
+        await resp.release()  # Trigger handler completion
 
 
 async def test_iter_any(aiohttp_server: Any) -> None:

@@ -28,6 +28,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    ContextManager,
     Dict,
     Generator,
     Generic,
@@ -70,12 +71,6 @@ PY_38 = sys.version_info >= (3, 8)
 PY_310 = sys.version_info >= (3, 10)
 
 COOKIE_MAX_LENGTH = 4096
-
-try:
-    from typing import ContextManager
-except ImportError:
-    from typing_extensions import ContextManager
-
 
 _T = TypeVar("_T")
 _S = TypeVar("_S")
