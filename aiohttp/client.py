@@ -267,7 +267,10 @@ class ClientSession:
         self._requote_redirect_url = requote_redirect_url
         self._read_bufsize = read_bufsize
 
-        self.headers = headers  # See `headers` property setter function
+        # See `headers` property setter function. Mypy struggling with the property
+        # returning a stricter type than the setter function allows.
+        # https://github.com/python/mypy/issues/3004
+        self.headers = headers  # type: ignore
         if skip_auto_headers is not None:
             self._skip_auto_headers = frozenset(istr(i) for i in skip_auto_headers)
         else:
