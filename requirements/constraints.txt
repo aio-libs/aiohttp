@@ -157,7 +157,7 @@ pytest==7.1.3
     #   -r requirements/test.txt
     #   pytest-cov
     #   pytest-mock
-pytest-cov==3.0.0
+pytest-cov==4.0.0
     # via -r requirements/test.txt
 pytest-mock==3.6.1
     # via -r requirements/test.txt
