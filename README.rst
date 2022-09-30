@@ -67,7 +67,7 @@ To get something from the web:
               html = await response.text()
               print("Body:", html[:15], "...")
 
-    asyncio.run(main())
+  asyncio.run(main())
 
 This prints:
 
