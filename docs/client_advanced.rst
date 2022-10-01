@@ -46,11 +46,6 @@ You also can set default headers for all session requests::
             assert json_body['headers']['Authorization'] == \
                 'Basic bG9naW46cGFzcw=='
 
-The default headers for a session may be modified as and when required.
-For example::
-
-    session.headers["Authorization"] = "Basic bG9naW46c2VjcmV0"
-
 Typical use case is sending JSON body. You can specify content type
 directly as shown above, but it is more convenient to use special keyword
 ``json``::
@@ -71,6 +66,39 @@ For *text/plain* ::
 
    Started keeping the ``Authorization`` header during ``HTTP -> HTTPS``
    redirects when the host remains the same.
+
+Authentication
+--------------
+
+Instead of setting the ``Authorization`` header directly,
+:class:`ClientSession` and individual request methods provide an ``auth``
+argument. An instance of :class:`BasicAuth` can be passed in like this::
+
+    auth = BasicAuth(login="...", password="...")
+    async with ClientSession(auth=auth) as session:
+        ...
+
+For other authentication flows, the ``Authorization`` header can be set
+directly::
+
+    headers = {"Authorization": "Bearer eyJh...0M30"}
+    async with ClientSession(headers=headers) as session:
+        ...
+
+The authentication header for a session may be updated as and when required.
+For example::
+
+    session.headers["Authorization"] = "Bearer eyJh...1OH0"
+
+Note that a *copy* of the original headers dictionary is set on the
+:class:`ClientSession` instance as a :class:`CIMultiDict` object. Updating the
+original dictionary does not have any effect. Instead, the
+:attr:`ClientSession.headers` property can be updated like a standard
+dictionary.
+
+In cases where the authentication header value expires periodically, an
+:mod:`asyncio` task may be used to update the session's default headers in the
+background.
 
 Custom Cookies
 --------------
