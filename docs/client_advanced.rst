@@ -46,6 +46,11 @@ You also can set default headers for all session requests::
             assert json_body['headers']['Authorization'] == \
                 'Basic bG9naW46cGFzcw=='
 
+The default headers for a session may be modified as and when required.
+For example::
+
+    session.headers["Authorization"] = "Basic bG9naW46c2VjcmV0"
+
 Typical use case is sending JSON body. You can specify content type
 directly as shown above, but it is more convenient to use special keyword
 ``json``::
