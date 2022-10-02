@@ -56,17 +56,6 @@ For *text/plain* ::
 
     await session.post(url, data='Привет, Мир!')
 
-.. note::
-
-   ``Authorization`` header will be removed if you get redirected
-   to a different host or protocol, except the case when  ``HTTP -> HTTPS``
-   redirect is performed on the same host.
-
-.. versionchanged:: 4.0
-
-   Started keeping the ``Authorization`` header during ``HTTP -> HTTPS``
-   redirects when the host remains the same.
-
 Authentication
 --------------
 
@@ -99,6 +88,17 @@ dictionary.
 In cases where the authentication header value expires periodically, an
 :mod:`asyncio` task may be used to update the session's default headers in the
 background.
+
+.. note::
+
+   The ``Authorization`` header will be removed if you get redirected
+   to a different host or protocol, except the case when  HTTP to HTTPS
+   redirect is performed on the same host.
+
+.. versionchanged:: 4.0
+
+   Started keeping the ``Authorization`` header during HTTP to HTTPS
+   redirects when the host remains the same.
 
 Custom Cookies
 --------------
