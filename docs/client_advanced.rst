@@ -80,10 +80,8 @@ For example::
     session.headers["Authorization"] = "Bearer eyJh...1OH0"
 
 Note that a *copy* of the headers dictionary is set as an attribute when
-creating a :class:`ClientSession` instance (as a :class:`CIMultiDict` object).
-Updating the original dictionary does not have any effect. Instead, the
-:attr:`ClientSession.headers` property should be updated like a standard
-dictionary.
+creating a :class:`ClientSession` instance (as a :class:`multidict.CIMultiDict`
+object). Updating the original dictionary does not have any effect.
 
 In cases where the authentication header value expires periodically, an
 :mod:`asyncio` task may be used to update the session's default headers in the
@@ -92,12 +90,12 @@ background.
 .. note::
 
    The ``Authorization`` header will be removed if you get redirected
-   to a different host or protocol, except the case when  HTTP to HTTPS
+   to a different host or protocol, except the case when  HTTP → HTTPS
    redirect is performed on the same host.
 
 .. versionchanged:: 4.0
 
-   Started keeping the ``Authorization`` header during HTTP to HTTPS
+   Started keeping the ``Authorization`` header during HTTP → HTTPS
    redirects when the host remains the same.
 
 Custom Cookies
