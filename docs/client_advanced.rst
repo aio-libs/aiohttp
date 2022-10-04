@@ -80,7 +80,7 @@ For example::
     session.headers["Authorization"] = "Bearer eyJh...1OH0"
 
 Note that a *copy* of the headers dictionary is set as an attribute when
-creating an :class:`ClientSession` instance (as a :class:`CIMultiDict` object).
+creating a :class:`ClientSession` instance (as a :class:`CIMultiDict` object).
 Updating the original dictionary does not have any effect. Instead, the
 :attr:`ClientSession.headers` property should be updated like a standard
 dictionary.
