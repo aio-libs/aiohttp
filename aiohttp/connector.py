@@ -701,6 +701,8 @@ class _DNSCacheTable:
     def expired(self, key: Tuple[str, int]) -> bool:
         if self._ttl is None:
             return False
+        elif self._ttl == 0:
+            return True
 
         return self._timestamps[key] + self._ttl < monotonic()
 
@@ -717,6 +719,7 @@ class TCPConnector(BaseConnector):
         resolver
     use_dns_cache - Use memory cache for DNS lookups.
     ttl_dns_cache - Max seconds having cached a DNS entry, None forever.
+        0 expire immediately (use use_dns_cache=False instead). 10 by default.
     family - socket address family
     local_addr - local tuple of (host, port) to bind socket to
 

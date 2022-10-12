@@ -2185,6 +2185,17 @@ class TestDNSCacheTable:
         await asyncio.sleep(0.02)
         assert dns_cache_table.expired("localhost")
 
+    async def test_never_expire(self, loop: Any) -> None:
+        dns_cache_table = _DNSCacheTable(ttl=None)
+        dns_cache_table.add("localhost", ["127.0.0.1"])
+        await asyncio.sleep(0.02)
+        assert not dns_cache_table.expired("localhost")
+
+    async def test_always_expire(self, loop: Any) -> None:
+        dns_cache_table = _DNSCacheTable(ttl=0)
+        dns_cache_table.add("localhost", ["127.0.0.1"])
+        assert dns_cache_table.expired("localhost")
+
     def test_next_addrs(self, dns_cache_table: Any) -> None:
         dns_cache_table.add("foo", ["127.0.0.1", "127.0.0.2", "127.0.0.3"])
 
