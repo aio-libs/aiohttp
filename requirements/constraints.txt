@@ -56,7 +56,7 @@ coverage==6.4.2
     # via
     #   -r requirements/test.txt
     #   pytest-cov
-cryptography==36.0.1 ; platform_machine != "i686"
+cryptography==38.0.2 ; platform_machine != "i686"
     # via
     #   -r requirements/test.txt
     #   pyjwt
