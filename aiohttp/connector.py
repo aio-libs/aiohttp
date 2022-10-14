@@ -678,13 +678,13 @@ class _DNSCacheTable:
     def add(self, key: Tuple[str, int], addrs: List[Dict[str, Any]]) -> None:
         self._addrs_rr[key] = (cycle(addrs), len(addrs))
 
-        if self._ttl:
+        if self._ttl is not None:
             self._timestamps[key] = monotonic()
 
     def remove(self, key: Tuple[str, int]) -> None:
         self._addrs_rr.pop(key, None)
 
-        if self._ttl:
+        if self._ttl is not None:
             self._timestamps.pop(key, None)
 
     def clear(self) -> None:
@@ -701,8 +701,6 @@ class _DNSCacheTable:
     def expired(self, key: Tuple[str, int]) -> bool:
         if self._ttl is None:
             return False
-        elif self._ttl == 0:
-            return True
 
         return self._timestamps[key] + self._ttl < monotonic()
 
@@ -719,7 +717,6 @@ class TCPConnector(BaseConnector):
         resolver
     use_dns_cache - Use memory cache for DNS lookups.
     ttl_dns_cache - Max seconds having cached a DNS entry, None forever.
-        0 expire immediately (use use_dns_cache=False instead). 10 by default.
     family - socket address family
     local_addr - local tuple of (host, port) to bind socket to
 
