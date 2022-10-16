@@ -39,9 +39,8 @@ async def start_client(url: str) -> None:
             # send request
             dispatch_task = asyncio.create_task(dispatch(ws))
 
-            while line := await asyncio.to_thread(
-                sys.stdin.readline
-            ):  # Exit with Ctrl+D
+            # Exit with Ctrl+D
+            while line := await asyncio.to_thread(sys.stdin.readline):
                 await ws.send_str(name + ": " + line)
 
             dispatch_task.cancel()
