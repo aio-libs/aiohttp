@@ -24,9 +24,9 @@ jobs:
       run: |
         gh pr checkout ${{ github.event.pull_request.number }}
     - name: Setup Python
-      uses: actions/setup-python@v3.1.2
+      uses: actions/setup-python@v4.3.0
     - name: Cache PyPI
-      uses: actions/cache@v3.0.8
+      uses: actions/cache@v3.0.11
       with:
         key: post-update
         path: ~/.cache/pip
