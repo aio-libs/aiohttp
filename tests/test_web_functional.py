@@ -577,7 +577,7 @@ async def test_100_continue_custom_response(aiohttp_client: Any) -> None:
 
 
 async def test_expect_handler_custom_response(aiohttp_client: Any) -> None:
-    cache = {"foo": "bar"}
+    cache = {b"foo": "bar"}
 
     async def handler(request: web.Request) -> web.Response:
         return web.Response(text="handler")
