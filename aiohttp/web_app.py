@@ -374,25 +374,21 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         match_info.add_app(self)
         match_info.freeze()
 
-        resp = None
         request._match_info = match_info
         expect = request.headers.get(hdrs.EXPECT)
         if expect:
-            resp = await match_info.expect_handler(request)
+            await match_info.expect_handler(request)
             await request.writer.drain()
 
-        if resp is None:
-            handler = match_info.handler
+        handler = match_info.handler
 
-            if self._run_middlewares:
-                for app in match_info.apps[::-1]:
-                    assert app.pre_frozen, "middleware handlers are not ready"
-                    for m in app._middlewares_handlers:
-                        handler = update_wrapper(partial(m, handler=handler), handler)
+        if self._run_middlewares:
+            for app in match_info.apps[::-1]:
+                assert app.pre_frozen, "middleware handlers are not ready"
+                for m in app._middlewares_handlers:
+                    handler = update_wrapper(partial(m, handler=handler), handler)
 
-            resp = await handler(request)
-
-        return resp
+        return await handler(request)
 
     def __call__(self) -> "Application":
         """gunicorn compatibility"""
