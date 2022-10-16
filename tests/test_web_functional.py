@@ -586,7 +586,7 @@ async def test_expect_handler_custom_response(aiohttp_client: Any) -> None:
         k = request.headers.get("X-Key")
         cached_value = cache.get(k)
         if cached_value:
-            return web.Response(text=cache_value)
+            return web.Response(text=cached_value)
 
     app = web.Application()
     app.router.add_post("/", handler, expect_handler=expect_handler)
