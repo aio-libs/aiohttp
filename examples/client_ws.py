@@ -17,7 +17,7 @@ async def start_client(loop, url):
         if not line:
             loop.stop()
         else:
-            ws.send_str(name + ": " + line)
+            await ws.send_str(name + ": " + line)
 
     loop.add_reader(sys.stdin.fileno(), stdin_callback)
 
@@ -30,7 +30,7 @@ async def start_client(loop, url):
             elif msg.type == aiohttp.WSMsgType.BINARY:
                 print("Binary: ", msg.data)
             elif msg.type == aiohttp.WSMsgType.PING:
-                ws.pong()
+                await ws.pong()
             elif msg.type == aiohttp.WSMsgType.PONG:
                 print("Pong received")
             else:
