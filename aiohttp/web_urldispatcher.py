@@ -82,7 +82,7 @@ ROUTE_RE: Final[Pattern[str]] = re.compile(
 PATH_SEP: Final[str] = re.escape("/")
 
 
-_ExpectHandler = Callable[[Request], Awaitable[None]]
+_ExpectHandler = Callable[[Request], Awaitable[Optional[StreamResponse]]]
 _Resolve = Tuple[Optional["UrlMappingMatchInfo"], Set[str]]
 
 
