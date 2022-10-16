@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """websocket cmd client for web_ws.py example."""
 
-# mypy: python-version=3.9
-
 import argparse
 import asyncio
 import sys
