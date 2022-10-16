@@ -2,7 +2,6 @@
 """websocket cmd client for web_ws.py example."""
 import argparse
 import asyncio
-import signal
 import sys
 from contextlib import suppress
 
