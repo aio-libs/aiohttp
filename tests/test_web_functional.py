@@ -589,7 +589,8 @@ async def test_expect_handler_custom_response(aiohttp_client: Any) -> None:
             return web.Response(text=cached_value)
 
     app = web.Application()
-    app.router.add_post("/", handler, expect_handler=expect_handler)
+    # expect_handler is only typed on add_route().
+    app.router.add_route("POST", "/", handler, expect_handler=expect_handler)
     client = await aiohttp_client(app)
 
     async with client.post("/", expect100=True, headers={"X-Key": "foo"}) as resp:
