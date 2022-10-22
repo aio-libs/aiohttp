@@ -678,13 +678,13 @@ class _DNSCacheTable:
     def add(self, key: Tuple[str, int], addrs: List[Dict[str, Any]]) -> None:
         self._addrs_rr[key] = (cycle(addrs), len(addrs))
 
-        if self._ttl:
+        if self._ttl is not None:
             self._timestamps[key] = monotonic()
 
     def remove(self, key: Tuple[str, int]) -> None:
         self._addrs_rr.pop(key, None)
 
-        if self._ttl:
+        if self._ttl is not None:
             self._timestamps.pop(key, None)
 
     def clear(self) -> None:
