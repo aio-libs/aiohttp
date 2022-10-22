@@ -2190,7 +2190,9 @@ class TestDNSCacheTable:
 
     def test_never_expire(self) -> None:
         dns_cache_table = _DNSCacheTable(ttl=None)
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 1)
         dns_cache_table.add("localhost", ["127.0.0.1"])
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 10000000)
         assert not dns_cache_table.expired("localhost")
 
     def test_always_expire(self, monkeypatch: pytest.MonkeyPatch) -> None:
