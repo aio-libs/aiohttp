@@ -2577,7 +2577,9 @@ application on specific TCP or Unix socket, e.g.::
    :param bool handle_signals: add signal handlers for
                                :data:`signal.SIGINT` and
                                :data:`signal.SIGTERM` (``False`` by
-                               default).
+                               default). These signals will raise
+                               :class:`GracefulExit`, which needs to
+                               be handled manually.
 
    :param kwargs: named parameters to pass into
                   web protocol.
@@ -2648,7 +2650,9 @@ application on specific TCP or Unix socket, e.g.::
    :param bool handle_signals: add signal handlers for
                                :data:`signal.SIGINT` and
                                :data:`signal.SIGTERM` (``False`` by
-                               default).
+                               default). These signals will raise
+                               :class:`GracefulExit`, which needs to
+                               be handled manually.
 
    :param kwargs: named parameters to pass into
                   web protocol.

@@ -1,0 +1,1 @@
+Clarify that `GracefulExit` needs to be handled in `AppRunner` and `ServerRunner` when using `handle_signals=True`.
