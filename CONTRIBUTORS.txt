@@ -126,6 +126,7 @@ Florian Scheffler
 Franek Magiera
 Frederik Gladhorn
 Frederik Peter Aalund
+Gabriel Machado
 Gabriel Tremblay
 Gary Wilson Jr.
 Gennady Andreyev
