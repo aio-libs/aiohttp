@@ -19,12 +19,12 @@ jobs:
     - name: Run pre-commit autoupdate
       run: pre-commit autoupdate
     - id: generate_token
-      uses: tibdex/github-app-token@v1.5
+      uses: tibdex/github-app-token@v1
       with:
         app_id: ${{ secrets.BOT_APP_ID }}
         private_key: ${{ secrets.BOT_PRIVATE_KEY }}
     - name: Create Pull Request
-      uses: peter-evans/create-pull-request@v4.0.4
+      uses: peter-evans/create-pull-request@v4
       with:
         token: ${{ steps.generate_token.outputs.token }}
         branch: update/pre-commit-autoupdate
