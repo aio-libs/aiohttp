@@ -599,6 +599,21 @@ class TestPartReader:
             result = await obj.form()
         assert [("foo", "bar"), ("foo", "baz"), ("boo", "")] == result
 
+    async def test_read_form_invalid_utf8(self, newline: Any) -> None:
+        invalid_unicode_byte = b"\xff"
+        data = invalid_unicode_byte + b"%s--:--" % newline
+        with Stream(data) as stream:
+            obj = aiohttp.BodyPartReader(
+                BOUNDARY,
+                {CONTENT_TYPE: "application/x-www-form-urlencoded"},
+                stream,
+                _newline=newline,
+            )
+            with pytest.raises(
+                ValueError, match="data cannot be decoded with utf-8 encoding"
+            ):
+                await obj.form()
+
     async def test_read_form_encoding(self, newline: Any) -> None:
         data = b"foo=bar&foo=baz&boo=%s--:--" % newline
         with Stream(data) as stream:
