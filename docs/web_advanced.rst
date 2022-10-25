@@ -906,7 +906,7 @@ below::
                   msg = await pubsub.get_message(ignore_subscribe_messages=True)
                   if msg is not None:
                       for ws in app['websockets']:
-                          ws.send_str('{}: {}'.format(channel, msg))
+                          await ws.send_str('{}: {}'.format(channel, msg))
               except asyncio.CancelledError:
                   break
 
