@@ -179,11 +179,6 @@ recommended for sake of speed).
 .. _async-timeout: https://pypi.python.org/pypi/async_timeout
 .. _cChardet: https://pypi.python.org/pypi/cchardet
 
-License
-=======
-
-``aiohttp`` is offered under the Apache 2 license.
-
 
 Keepsafe
 ========
