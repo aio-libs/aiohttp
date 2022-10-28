@@ -512,7 +512,7 @@ The client session supports the context manager protocol for self closing.
 
       :param bool auto_decompress: Automatically decompress response body.
          Overrides :attr:`ClientSession.auto_decompress`.
-         May be used to disable auto decompression on a per-request basis.
+         May be used to enable/disable auto decompression on a per-request basis.
 
       :return ClientResponse: a :class:`client response <ClientResponse>`
          object.
