@@ -313,6 +313,8 @@ class RequestHandler(BaseProtocol):
 
         super().connection_lost(exc)
 
+        should_cancel_task_handler = self._manager.cancel_when_connection_lost
+
         self._manager = None
         self._force_close = True
         self._request_factory = None
@@ -329,6 +331,9 @@ class RequestHandler(BaseProtocol):
 
         if self._waiter is not None:
             self._waiter.cancel()
+
+        if should_cancel_task_handler and self._task_handler is not None:
+            self._task_handler.cancel()
 
         self._task_handler = None
 
