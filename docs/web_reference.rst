@@ -2577,7 +2577,7 @@ application on specific TCP or Unix socket, e.g.::
    :param bool handle_signals: add signal handlers for
                                :data:`signal.SIGINT` and
                                :data:`signal.SIGTERM` (``False`` by
-                               default). These signals will raise
+                               default). These handlers will raise
                                :exc:`GracefulExit`.
 
    :param kwargs: named parameters to pass into
@@ -2649,7 +2649,7 @@ application on specific TCP or Unix socket, e.g.::
    :param bool handle_signals: add signal handlers for
                                :data:`signal.SIGINT` and
                                :data:`signal.SIGTERM` (``False`` by
-                               default). These signals will raise
+                               default). These handlers will raise
                                :exc:`GracefulExit`.
 
    :param kwargs: named parameters to pass into
@@ -2781,7 +2781,7 @@ application on specific TCP or Unix socket, e.g.::
    the ``handle_signals`` parameter is set to ``True``.
 
    Inherited from :exc:`SystemExit`,
-   which exits with error code 1 if not handled.
+   which exits with error code ``1`` if not handled.
 
 
 Utilities
