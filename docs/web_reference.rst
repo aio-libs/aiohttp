@@ -2578,8 +2578,7 @@ application on specific TCP or Unix socket, e.g.::
                                :data:`signal.SIGINT` and
                                :data:`signal.SIGTERM` (``False`` by
                                default). These signals will raise
-                               :class:`GracefulExit`, which needs to
-                               be handled manually.
+                               :exc:`GracefulExit`.
 
    :param kwargs: named parameters to pass into
                   web protocol.
@@ -2651,8 +2650,7 @@ application on specific TCP or Unix socket, e.g.::
                                :data:`signal.SIGINT` and
                                :data:`signal.SIGTERM` (``False`` by
                                default). These signals will raise
-                               :class:`GracefulExit`, which needs to
-                               be handled manually.
+                               :exc:`GracefulExit`.
 
    :param kwargs: named parameters to pass into
                   web protocol.
@@ -2776,6 +2774,15 @@ application on specific TCP or Unix socket, e.g.::
                        connections, see :meth:`socket.socket.listen` for details.
 
                        ``128`` by default.
+
+.. exception:: GracefulExit
+
+   Raised by classes which inherit from :class:`BaseRunner` whenever
+   the ``handle_signals`` parameter is set to ``True``.
+
+   Inherited from :exc:`SystemExit`,
+   which exits with error code 1 if not handled.
+
 
 Utilities
 ---------
