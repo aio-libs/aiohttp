@@ -4,7 +4,7 @@ import json
 import pathlib
 import socket
 import zlib
-from typing import Any, Optional
+from typing import Optional
 from unittest import mock
 
 import pytest
