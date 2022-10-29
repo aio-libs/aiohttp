@@ -572,7 +572,7 @@ async def test_100_continue_custom_response(aiohttp_client) -> None:
     await resp.release()
 
 
-async def test_expect_handler_custom_response(aiohttp_client: Any) -> None:
+async def test_expect_handler_custom_response(aiohttp_client) -> None:
     cache = {"foo": "bar"}
 
     async def handler(request: web.Request) -> web.Response:
@@ -598,7 +598,7 @@ async def test_expect_handler_custom_response(aiohttp_client: Any) -> None:
         assert await resp.text() == "handler"
 
 
-async def test_100_continue_for_not_found(aiohttp_client: Any) -> None:
+async def test_100_continue_for_not_found(aiohttp_client) -> None:
 
     app = web.Application()
     client = await aiohttp_client(app)
