@@ -4,6 +4,7 @@ import json
 import pathlib
 import socket
 import zlib
+from typing import Optional
 from unittest import mock
 
 import pytest
@@ -569,6 +570,32 @@ async def test_100_continue_custom_response(aiohttp_client) -> None:
     resp = await client.post("/", data=new_dummy_form(), expect100=True)
     assert 403 == resp.status
     await resp.release()
+
+
+async def test_expect_handler_custom_response(aiohttp_client) -> None:
+    cache = {"foo": "bar"}
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(text="handler")
+
+    async def expect_handler(request: web.Request) -> Optional[web.Response]:
+        k = request.headers.get("X-Key")
+        cached_value = cache.get(k)
+        if cached_value:
+            return web.Response(text=cached_value)
+
+    app = web.Application()
+    # expect_handler is only typed on add_route().
+    app.router.add_route("POST", "/", handler, expect_handler=expect_handler)
+    client = await aiohttp_client(app)
+
+    async with client.post("/", expect100=True, headers={"X-Key": "foo"}) as resp:
+        assert resp.status == 200
+        assert await resp.text() == "bar"
+
+    async with client.post("/", expect100=True, headers={"X-Key": "spam"}) as resp:
+        assert resp.status == 200
+        assert await resp.text() == "handler"
 
 
 async def test_100_continue_for_not_found(aiohttp_client) -> None:
