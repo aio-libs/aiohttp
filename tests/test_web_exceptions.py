@@ -47,7 +47,10 @@ async def test_ctor_content_type() -> None:
 
 
 async def test_ctor_content_type_without_text() -> None:
-    with pytest.warns(DeprecationWarning):
+    with pytest.deprecated_call(
+        match=r"^content_type without text is deprecated since "
+        r"4\.0 and scheduled for removal in 5\.0 \(#3462\)$",
+    ):
         resp = web.HTTPResetContent(content_type="custom")
     assert resp.text is None
     assert resp.headers == {"Content-Type": "custom"}
@@ -57,7 +60,11 @@ async def test_ctor_content_type_without_text() -> None:
 
 
 async def test_ctor_text_for_empty_body() -> None:
-    with pytest.warns(DeprecationWarning):
+    with pytest.deprecated_call(
+        match=r"^text argument is deprecated for HTTP status 205 since "
+        r"4\.0 and scheduled for removal in 5\.0 \(#3462\),the "
+        r"response should be provided without a body$",
+    ):
         resp = web.HTTPResetContent(text="text")
     assert resp.text == "text"
     assert resp.headers == {"Content-Type": "text/plain"}
