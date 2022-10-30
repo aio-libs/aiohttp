@@ -95,7 +95,7 @@ async def test_resume_drain_waited() -> None:
 
     assert pr._drain_waiter is not None
     pr.resume_writing()
-    assert (await t) is None
+    await t
     assert pr._drain_waiter is None
 
 
@@ -111,7 +111,7 @@ async def test_lost_drain_waited_ok() -> None:
 
     assert pr._drain_waiter is not None
     pr.connection_lost(None)
-    assert (await t) is None
+    await t
     assert pr._drain_waiter is None
 
 
