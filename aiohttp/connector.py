@@ -1410,7 +1410,7 @@ class UnixConnector(BaseConnector):
                 raise
             raise UnixClientConnectorError(self.path, req.connection_key, exc) from exc
 
-        return cast(ResponseHandler, proto)
+        return proto
 
 
 class NamedPipeConnector(BaseConnector):
