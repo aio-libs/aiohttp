@@ -2777,8 +2777,9 @@ application on specific TCP or Unix socket, e.g.::
 
 .. exception:: GracefulExit
 
-   Raised by classes which inherit from :class:`BaseRunner` whenever
-   the ``handle_signals`` parameter is set to ``True``.
+   Raised by signal handlers for :data:`signal.SIGINT` and :data:`signal.SIGTERM`
+   defined in :class:`AppRunner` and :class:`ServerRunner`
+   when ``handle_signals`` is set to ``True``.
 
    Inherited from :exc:`SystemExit`,
    which exits with error code ``1`` if not handled.
