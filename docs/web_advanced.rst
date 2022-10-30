@@ -897,16 +897,16 @@ signal handler or :attr:`Application.cleanup_ctx` as shown in the example
 below::
 
   async def listen_to_redis(app: web.Application):
-      client = redis.from_url('redis://localhost:6379')
-      channel = 'news'
+      client = redis.from_url("redis://localhost:6379")
+      channel = "news"
       async with client.pubsub() as pubsub:
           await pubsub.subscribe(channel)
           while True:
               try:
                   msg = await pubsub.get_message(ignore_subscribe_messages=True)
                   if msg is not None:
-                      for ws in app['websockets']:
-                          await ws.send_str('{}: {}'.format(channel, msg))
+                      for ws in app["websockets"]:
+                          await ws.send_str("{}: {}".format(channel, msg))
               except asyncio.CancelledError:
                   break
 
