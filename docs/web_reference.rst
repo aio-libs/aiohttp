@@ -2910,6 +2910,11 @@ Utilities
                                                   handler task if the client
                                                   connection has been closed.
 
+   .. warning::
+
+      Always set the ``cancel_handler_on_connection_lost`` option to ``True``
+      to avoid denial of service attacks.
+
    .. versionadded:: 3.0
 
       Support *access_log_class* parameter.
