@@ -39,7 +39,7 @@ def test_import_time(pytester: pytest.Pytester) -> None:
     added that significantly increases import time.
     """
     env = os.environ.copy()
-    os.environ["PYTHONPATH"] = os.pathsep.join(filter(None, sys.path))
+    os.environ["PYTHONPATH"] = os.pathsep.join(["."] + sys.path)
     r = pytester.run(sys.executable, "-We", "-c", "import aiohttp", timeout=0.45)
     os.environ = env
 
