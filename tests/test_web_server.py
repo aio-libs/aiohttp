@@ -250,10 +250,3 @@ async def test_cancel_handler_on_connection_lost(aiohttp_unused_port) -> None:
         assert event.is_set(), "Request handler hasn't been cancelled"
     finally:
         await asyncio.gather(runner.shutdown(), site.stop())
-
-
-async def test_cancel_handler_on_connection_lost_flag_on_runner() -> None:
-    runner = web.AppRunner(web.Application(), cancel_handler_on_connection_lost=True)
-    await runner.setup()
-    assert runner.server.cancel_handler_on_connection_lost, "Flag was not propagated"
-    await runner.shutdown()
