@@ -30,7 +30,7 @@ if __name__ == "__main__":
         from asyncio import events, windows_events
 
         # https://github.com/python/mypy/issues/12286
-        el = windows_events.ProactorEventLoop()
+        el = windows_events.ProactorEventLoop()  # type: ignore[attr-defined]
         events.set_event_loop(el)
 
     loop = asyncio.get_event_loop()

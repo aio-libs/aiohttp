@@ -39,7 +39,7 @@ class FakeResolver(AbstractResolver):
             return await self._resolver.resolve(host, port, family)
 
     async def close(self) -> None:
-        self._resolver.close()
+        await self._resolver.close()
 
 
 class FakeFacebook:
