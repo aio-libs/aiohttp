@@ -215,8 +215,10 @@ __all__: Tuple[str, ...] = (
     "GunicornWebWorker",
 )
 
+
 def __dir__():
-    return __all__ + ('__author__', '__doc__')
+    return __all__ + ("__author__", "__doc__")
+
 
 def __getattr__(name: str) -> object:
     global GunicornUVLoopWebWorker, GunicornWebWorker
