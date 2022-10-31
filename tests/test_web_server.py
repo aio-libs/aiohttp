@@ -5,8 +5,7 @@ from unittest import mock
 
 import pytest
 
-import aiohttp
-from aiohttp import client, helpers, web
+from aiohttp import ClientSession, client, helpers, web
 
 
 async def test_simple_server(aiohttp_raw_server: Any, aiohttp_client: Any) -> None:
@@ -235,7 +234,7 @@ async def test_cancel_handler_on_connection_lost(aiohttp_unused_port) -> None:
     await site.start()
 
     async def client_request_maker():
-        async with aiohttp.ClientSession(
+        async with ClientSession(
             base_url=f"http://localhost:{port}"
         ) as session:
             request = session.get("/")
