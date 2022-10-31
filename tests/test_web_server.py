@@ -250,3 +250,41 @@ async def test_cancel_handler_on_connection_lost(aiohttp_unused_port) -> None:
         assert event.is_set(), "Request handler hasn't been cancelled"
     finally:
         await asyncio.gather(runner.shutdown(), site.stop())
+
+
+async def test_no_cancel_handler_on_connection_lost(aiohttp_unused_port) -> None:
+    timeout_event = asyncio.Event()
+    done_event = asyncio.Event()
+    port = aiohttp_unused_port()
+
+    async def on_request(_: web.Request) -> web.Response:
+        nonlocal done_event, timeout_event
+        await timeout_event.wait()
+        done_event.set()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("GET", "/", on_request)
+
+    runner = web.AppRunner(app, cancel_handler_on_connection_lost=False)
+    await runner.setup()
+
+    site = web.TCPSite(runner, host="localhost", port=port)
+
+    await site.start()
+
+    async def client_request_maker():
+        async with ClientSession(base_url=f"http://localhost:{port}") as session:
+            request = session.get("/")
+
+            with pytest.raises(asyncio.TimeoutError):
+                await asyncio.wait_for(request, timeout=0.1)
+
+    try:
+        await client_request_maker()
+        timeout_event.set()
+
+        await asyncio.wait_for(done_event.wait(), timeout=1)
+        assert done_event.is_set()
+    finally:
+        await asyncio.gather(runner.shutdown(), site.stop())
