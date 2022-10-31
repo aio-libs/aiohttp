@@ -1,3 +1,4 @@
+import os
 import platform
 import sys
 
@@ -37,7 +38,10 @@ def test_import_time(pytester: pytest.Pytester) -> None:
     from time to time, but this should provide an early warning if something is
     added that significantly increases import time.
     """
+    env = os.environ.copy()
+    os.environ["PYTHONPATH"] = os.pathsep.join(filter(None, sys.path))
     r = pytester.run(sys.executable, "-We", "-c", "import aiohttp", timeout=0.45)
+    os.environ = env
 
     assert not r.stdout.str()
     assert not r.stderr.str()
