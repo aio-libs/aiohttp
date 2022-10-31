@@ -216,7 +216,7 @@ __all__: Tuple[str, ...] = (
 )
 
 
-def __dir__():
+def __dir__() -> Tuple[str, ...]:
     return __all__ + ("__author__", "__doc__")
 
 
