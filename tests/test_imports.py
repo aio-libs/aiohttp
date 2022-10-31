@@ -42,7 +42,7 @@ def test_import_time(pytester: pytest.Pytester) -> None:
     root = Path(__file__).parent.parent
     old_path = os.environ.get("PYTHONPATH")
     os.environ["PYTHONPATH"] = os.pathsep.join([str(root)] + sys.path)
-    r = pytester.run(sys.executable, "-We", "-c", "import aiohttp", timeout=0.4)
+    r = pytester.run(sys.executable, "-We", "-c", "import aiohttp", timeout=0.41)
     if old_path is None:
         os.environ.pop("PYTHONPATH")
     else:
