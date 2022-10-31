@@ -234,9 +234,7 @@ async def test_cancel_handler_on_connection_lost(aiohttp_unused_port) -> None:
     await site.start()
 
     async def client_request_maker():
-        async with ClientSession(
-            base_url=f"http://localhost:{port}"
-        ) as session:
+        async with ClientSession(base_url=f"http://localhost:{port}") as session:
             request = session.get("/")
 
             with pytest.raises(asyncio.TimeoutError):
