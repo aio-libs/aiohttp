@@ -2809,7 +2809,8 @@ Utilities
                       access_log=aiohttp.log.access_logger, \
                       handle_signals=True, \
                       reuse_address=None, \
-                      reuse_port=None)
+                      reuse_port=None, \
+                      cancel_handler_on_connection_lost=False)
 
    A high-level function for running an application, serving it until
    keyboard interrupt and performing a
@@ -2903,6 +2904,11 @@ Utilities
                            endpoints are bound to, so long as they all set
                            this flag when being created. This option is not
                            supported on Windows.
+
+   :param bool cancel_handler_on_connection_lost: tells the runner whether to
+                                                  cancel the execution of the
+                                                  handler task if the client
+                                                  connection has been closed.
 
    .. versionadded:: 3.0
 

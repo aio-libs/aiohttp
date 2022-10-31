@@ -5,6 +5,7 @@ from unittest import mock
 
 import pytest
 
+import aiohttp
 from aiohttp import client, helpers, web
 
 
@@ -207,3 +208,53 @@ async def test_raw_server_html_exception_debug(
     )
 
     logger.exception.assert_called_with("Error handling request", exc_info=exc)
+
+
+async def test_cancel_handler_on_connection_lost(aiohttp_unused_port) -> None:
+    event = asyncio.Event()
+    port = aiohttp_unused_port()
+
+    async def on_request(_: web.Request) -> web.Response:
+        nonlocal event
+        try:
+            await asyncio.sleep(10)
+        except asyncio.CancelledError:
+            event.set()
+            raise
+        else:
+            raise web.HTTPInternalServerError()
+
+    app = web.Application()
+    app.router.add_route("GET", "/", on_request)
+
+    runner = web.AppRunner(app, cancel_handler_on_connection_lost=True)
+    await runner.setup()
+
+    site = web.TCPSite(runner, host="localhost", port=port)
+
+    await site.start()
+
+    async def client_request_maker():
+        async with aiohttp.ClientSession(
+            base_url=f"http://localhost:{port}"
+        ) as session:
+            request = session.get("/")
+
+            with pytest.raises(asyncio.TimeoutError):
+                await asyncio.wait_for(request, timeout=0.1)
+
+    try:
+        assert runner.server.cancel_handler_on_connection_lost, "Flag was not propagated"
+        await client_request_maker()
+
+        await asyncio.wait_for(event.wait(), timeout=1)
+        assert event.is_set(), "Request handler hasn't been cancelled"
+    finally:
+        await asyncio.gather(runner.shutdown(), site.stop())
+
+
+async def test_cancel_handler_on_connection_lost_flag_on_runner() -> None:
+    runner = web.AppRunner(web.Application(), cancel_handler_on_connection_lost=True)
+    await runner.setup()
+    assert runner.server.cancel_handler_on_connection_lost, "Flag was not propagated"
+    await runner.shutdown()

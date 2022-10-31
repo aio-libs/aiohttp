@@ -313,7 +313,7 @@ class RequestHandler(BaseProtocol):
 
         super().connection_lost(exc)
 
-        should_cancel_task_handler = self._manager.cancel_when_connection_lost
+        should_cancel_task_handler = self._manager.cancel_handler_on_connection_lost
 
         self._manager = None
         self._force_close = True

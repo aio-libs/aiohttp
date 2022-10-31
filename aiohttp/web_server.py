@@ -19,7 +19,7 @@ class Server:
         *,
         request_factory: Optional[_RequestFactory] = None,
         debug: Optional[bool] = None,
-        cancel_when_connection_lost: bool = False,
+        cancel_handler_on_connection_lost: bool = False,
         **kwargs: Any,
     ) -> None:
         if debug is not None:
@@ -34,7 +34,7 @@ class Server:
         self.requests_count = 0
         self.request_handler = handler
         self.request_factory = request_factory or self._make_request
-        self.cancel_when_connection_lost = cancel_when_connection_lost
+        self.cancel_handler_on_connection_lost = cancel_handler_on_connection_lost
 
     @property
     def connections(self) -> List[RequestHandler]:
