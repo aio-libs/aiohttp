@@ -306,7 +306,7 @@ async def _run_app(
     handle_signals: bool = True,
     reuse_address: Optional[bool] = None,
     reuse_port: Optional[bool] = None,
-    cancel_handler_on_connection_lost: bool = False
+    cancel_handler_on_connection_lost: bool = False,
 ) -> None:
     # An internal function to actually do all dirty job for application running
     if asyncio.iscoroutine(app):

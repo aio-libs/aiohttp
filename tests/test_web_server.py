@@ -244,7 +244,9 @@ async def test_cancel_handler_on_connection_lost(aiohttp_unused_port) -> None:
                 await asyncio.wait_for(request, timeout=0.1)
 
     try:
-        assert runner.server.cancel_handler_on_connection_lost, "Flag was not propagated"
+        assert (
+            runner.server.cancel_handler_on_connection_lost
+        ), "Flag was not propagated"
         await client_request_maker()
 
         await asyncio.wait_for(event.wait(), timeout=1)
