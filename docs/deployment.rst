@@ -300,6 +300,17 @@ worker processes.
    `uvloop <https://github.com/MagicStack/uvloop>`_, you can use the
    ``aiohttp.GunicornUVLoopWebWorker`` worker class.
 
+.. warning::
+
+    As :ref:`explained here<run_app_cancel_handler_on_connection_lost>` to
+    prevent denial of service attacks, the most secure behavior is selected
+    by default for the option ``cancel_handler_on_connection_lost``. Since the
+    user does not have the ability to explicitly specify this option in the
+    case of launching through gunicorn, an option is provided to disable it
+    through an environment variable.
+
+    For disable just export: ``AIOHTTP_CANCEL_HANDLER_ON_CONNECTION_LOST=0``
+
 Proxy through NGINX
 ----------------------
 
