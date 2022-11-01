@@ -19,7 +19,7 @@ class Server:
         *,
         request_factory: Optional[_RequestFactory] = None,
         debug: Optional[bool] = None,
-        cancel_handler_on_connection_lost: bool = False,
+        cancel_handler_on_connection_lost: bool = True,
         **kwargs: Any,
     ) -> None:
         if debug is not None:

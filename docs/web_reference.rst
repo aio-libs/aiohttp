@@ -2810,7 +2810,7 @@ Utilities
                       handle_signals=True, \
                       reuse_address=None, \
                       reuse_port=None, \
-                      cancel_handler_on_connection_lost=False)
+                      cancel_handler_on_connection_lost=True)
 
    A high-level function for running an application, serving it until
    keyboard interrupt and performing a
