@@ -93,7 +93,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
                 access_log_format=self._get_valid_log_format(
                     self.cfg.access_log_format
                 ),
-                cancel_handler_on_connection_lost=(CANCEL_HANDLER_ON_CONNECTION_LOST),
+                cancel_handler_on_connection_lost=CANCEL_HANDLER_ON_CONNECTION_LOST,
             )
         await runner.setup()
 
