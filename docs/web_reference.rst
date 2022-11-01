@@ -2912,8 +2912,25 @@ Utilities
 
    .. warning::
 
+      .. _run_app_cancel_handler_on_connection_lost:
+
       Always set the ``cancel_handler_on_connection_lost`` option to ``True``
       to avoid denial of service attacks.
+
+      The reason for this is that an attacker can create tasks by sending
+      requests and cancel connections with little effort, with little traffic,
+      while the tasks will never know that they are doing useless work, and
+      there is no need to send a response, since the connection is closed
+      anyway. Thus, an attacker can exhaust resources, create thousands of
+      tasks, and lead to a denial of service. For many proxies and WAF systems,
+      this behavior may not be considered unusual, and there is no complete
+      defense against this kind of attack.
+
+      If you set this flag to ``False``, then tasks will not be canceled and
+      you will not encounter a CancelledError while the handler is running
+      when the client connection will be closed.
+
+      The most safe default has been selected by default.
 
    .. versionadded:: 3.0
 
