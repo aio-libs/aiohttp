@@ -2810,7 +2810,7 @@ Utilities
                       handle_signals=True, \
                       reuse_address=None, \
                       reuse_port=None, \
-                      cancel_handler_on_connection_lost=True)
+                      cancel_handler_on_connection_lost=False)
 
    A high-level function for running an application, serving it until
    keyboard interrupt and performing a
@@ -2929,8 +2929,6 @@ Utilities
       If you set this flag to ``False``, then tasks will not be canceled and
       you will not encounter a CancelledError while the handler is running
       when the client connection will be closed.
-
-      The most safe default has been selected by default.
 
    .. versionadded:: 3.0
 

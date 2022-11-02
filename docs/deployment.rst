@@ -303,13 +303,13 @@ worker processes.
 .. warning::
 
     As :ref:`explained here<run_app_cancel_handler_on_connection_lost>` to
-    prevent denial of service attacks, the most secure behavior is selected
-    by default for the option ``cancel_handler_on_connection_lost``. Since the
-    user does not have the ability to explicitly specify this option in the
-    case of launching through gunicorn, an option is provided to disable it
-    through an environment variable.
+    prevent denial of service attacks, you should set the option
+    ``cancel_handler_on_connection_lost`` to ``True``. Since the user does not
+    have the ability to explicitly specify this option in the case of launching
+    through gunicorn, an option is provided to enable it through an environment
+    variable.
 
-    For disable just export: ``AIOHTTP_CANCEL_HANDLER_ON_CONNECTION_LOST=0``
+    For enable just export: ``AIOHTTP_CANCEL_HANDLER_ON_CONNECTION_LOST=1``
 
 Proxy through NGINX
 ----------------------

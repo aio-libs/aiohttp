@@ -29,10 +29,10 @@ except ImportError:  # pragma: no cover
 __all__ = ("GunicornWebWorker", "GunicornUVLoopWebWorker", "GunicornTokioWebWorker")
 
 
-# Opt-out for cancel_handler_on_connection_lost
+# Opt-in for cancel_handler_on_connection_lost
 CANCEL_HANDLER_ON_CONNECTION_LOST = os.getenv(
-    "AIOHTTP_CANCEL_HANDLER_ON_CONNECTION_LOST", "1"
-).lower() not in ("0", "false", "disable", "disabled", "no")
+    "AIOHTTP_CANCEL_HANDLER_ON_CONNECTION_LOST", "0"
+).lower() in ("1", "true", "enable", "enabled", "yes")
 
 
 class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
