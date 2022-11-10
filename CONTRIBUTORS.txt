@@ -153,6 +153,7 @@ Illia Volochii
 Ilya Chichak
 Ilya Gruzinov
 Ingmar Steen
+Ivan Lakovic
 Ivan Larin
 Jacob Champion
 Jaesung Lee
@@ -268,6 +269,7 @@ Robert Lu
 Robert Nikolich
 Roman Markeloff
 Roman Podoliaka
+Samir Akarioh
 Samuel Colvin
 Sean Hunt
 Sebastian Acuna

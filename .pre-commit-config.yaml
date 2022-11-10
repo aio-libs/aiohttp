@@ -26,7 +26,7 @@ repos:
   hooks:
   - id: check-merge-conflict
 - repo: https://github.com/asottile/yesqa
-  rev: v1.3.0
+  rev: v1.4.0
   hooks:
   - id: yesqa
 - repo: https://github.com/PyCQA/isort
@@ -34,7 +34,7 @@ repos:
   hooks:
   - id: isort
 - repo: https://github.com/psf/black
-  rev: '22.3.0'
+  rev: '22.10.0'
   hooks:
     - id: black
       language_version: python3 # Should be a command that runs python
@@ -72,12 +72,12 @@ repos:
   - id: detect-private-key
     exclude: ^examples/
 - repo: https://github.com/asottile/pyupgrade
-  rev: 'v2.34.0'
+  rev: 'v3.2.0'
   hooks:
   - id: pyupgrade
     args: ['--py36-plus']
 - repo: https://github.com/PyCQA/flake8
-  rev: '4.0.1'
+  rev: '5.0.4'
   hooks:
   - id: flake8
     additional_dependencies:
