@@ -319,7 +319,9 @@ class StreamReader(AsyncStreamReaderMixin):
                 offset = self._buffer_offset
                 ichar = self._buffer[0].find(separator, offset) + 1
                 # Read from current offset to found separator or to the end.
-                data = self._read_nowait_chunk(ichar - offset if ichar else -1)
+                data = self._read_nowait_chunk(
+                    ichar - offset + seplen - 1 if ichar else -1
+                )
                 chunk += data
                 chunk_size += len(data)
                 if ichar:
