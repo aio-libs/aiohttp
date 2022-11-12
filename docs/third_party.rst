@@ -294,4 +294,4 @@ ask to raise the status.
   An aiohttp middleware library for centralized error handling in aiohttp servers.
 
 - `rsocket <https://github.com/rsocket/rsocket-py>`_
-  Python implementation of `RSocket <https://rsocket.io>`_ protocol.
+  Python implementation of `RSocket protocol<https://rsocket.io>`_.
