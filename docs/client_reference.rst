@@ -50,7 +50,7 @@ The client session supports the context manager protocol for self closing.
                          connector_owner=True, \
                          auto_decompress=True, \
                          read_bufsize=2**16, \
-                         requote_redirect_url=False, \
+                         requote_redirect_url=True, \
                          trust_env=False, \
                          trace_configs=None)
 
