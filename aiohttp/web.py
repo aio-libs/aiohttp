@@ -368,27 +368,15 @@ async def _run_app(
             )
 
         if path is not None:
-            if isinstance(path, (str, bytes, bytearray, memoryview, os.PathLike)):
-                sites.append(
-                    UnixSite(
-                        runner,
-                        path,
-                        shutdown_timeout=shutdown_timeout,
-                        ssl_context=ssl_context,
-                        backlog=backlog,
-                    )
+            sites.append(
+                UnixSite(
+                    runner,
+                    path,
+                    shutdown_timeout=shutdown_timeout,
+                    ssl_context=ssl_context,
+                    backlog=backlog,
                 )
-            else:
-                for p in path:
-                    sites.append(
-                        UnixSite(
-                            runner,
-                            p,
-                            shutdown_timeout=shutdown_timeout,
-                            ssl_context=ssl_context,
-                            backlog=backlog,
-                        )
-                    )
+            )
 
         if sock is not None:
             if not isinstance(sock, Iterable):
