@@ -168,7 +168,7 @@ class UnixSite(BaseSite):
         assert server is not None
         self._server = await loop.create_unix_server(
             server,
-            self._path,  # type: ignore[arg-type]
+            self._path,
             ssl=self._ssl_context,
             backlog=self._backlog,
         )

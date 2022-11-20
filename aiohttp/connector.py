@@ -678,13 +678,13 @@ class _DNSCacheTable:
     def add(self, key: Tuple[str, int], addrs: List[Dict[str, Any]]) -> None:
         self._addrs_rr[key] = (cycle(addrs), len(addrs))
 
-        if self._ttl:
+        if self._ttl is not None:
             self._timestamps[key] = monotonic()
 
     def remove(self, key: Tuple[str, int]) -> None:
         self._addrs_rr.pop(key, None)
 
-        if self._ttl:
+        if self._ttl is not None:
             self._timestamps.pop(key, None)
 
     def clear(self) -> None:
@@ -970,6 +970,8 @@ class TCPConnector(BaseConnector):
         except ssl_errors as exc:
             raise ClientConnectorSSLError(req.connection_key, exc) from exc
         except OSError as exc:
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                raise
             raise client_error(req.connection_key, exc) from exc
 
     def _warn_about_tls_in_tls(
@@ -1049,6 +1051,8 @@ class TCPConnector(BaseConnector):
         except ssl_errors as exc:
             raise ClientConnectorSSLError(req.connection_key, exc) from exc
         except OSError as exc:
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                raise
             raise client_error(req.connection_key, exc) from exc
         except TypeError as type_err:
             # Example cause looks like this:
@@ -1100,6 +1104,8 @@ class TCPConnector(BaseConnector):
             host_resolved.add_done_callback(drop_exception)
             raise
         except OSError as exc:
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                raise
             # in case of proxy it is not ClientProxyConnectionError
             # it is problem of resolving proxy ip itself
             raise ClientConnectorError(req.connection_key, exc) from exc
@@ -1293,9 +1299,11 @@ class UnixConnector(BaseConnector):
                     self._factory, self._path
                 )
         except OSError as exc:
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                raise
             raise UnixClientConnectorError(self.path, req.connection_key, exc) from exc
 
-        return cast(ResponseHandler, proto)
+        return proto
 
 
 class NamedPipeConnector(BaseConnector):
@@ -1358,6 +1366,8 @@ class NamedPipeConnector(BaseConnector):
                 # other option is to manually set transport like
                 # `proto.transport = trans`
         except OSError as exc:
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                raise
             raise ClientConnectorError(req.connection_key, exc) from exc
 
         return cast(ResponseHandler, proto)

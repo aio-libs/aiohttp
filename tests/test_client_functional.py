@@ -237,7 +237,8 @@ async def test_post_data_bytesio(aiohttp_client: Any) -> None:
     app.router.add_route("POST", "/", handler)
     client = await aiohttp_client(app)
 
-    resp = await client.post("/", data=io.BytesIO(data))
+    with io.BytesIO(data) as file_handle:
+        resp = await client.post("/", data=file_handle)
     assert 200 == resp.status
 
 
@@ -254,7 +255,8 @@ async def test_post_data_with_bytesio_file(aiohttp_client: Any) -> None:
     app.router.add_route("POST", "/", handler)
     client = await aiohttp_client(app)
 
-    resp = await client.post("/", data={"file": io.BytesIO(data)})
+    with io.BytesIO(data) as file_handle:
+        resp = await client.post("/", data={"file": file_handle})
     assert 200 == resp.status
 
 
@@ -1242,6 +1244,8 @@ async def test_POST_FILES(aiohttp_client: Any, fname: Any) -> None:
         content2 = data["some"].file.read()
         assert content1 == content2
         assert data["test"].file.read() == b"data"
+        data["some"].file.close()
+        data["test"].file.close()
         return web.Response()
 
     app = web.Application()
@@ -1261,6 +1265,7 @@ async def test_POST_FILES_DEFLATE(aiohttp_client: Any, fname: Any) -> None:
         with fname.open("rb") as f:
             content1 = f.read()
         content2 = data["some"].file.read()
+        data["some"].file.close()
         assert content1 == content2
         return web.Response()
 
@@ -1356,6 +1361,7 @@ async def test_POST_FILES_LIST(aiohttp_client: Any, fname: Any) -> None:
         with fname.open("rb") as f:
             content = f.read()
         assert content == data["some"].file.read()
+        data["some"].file.close()
         return web.Response()
 
     app = web.Application()
@@ -1376,6 +1382,7 @@ async def test_POST_FILES_CT(aiohttp_client: Any, fname: Any) -> None:
         with fname.open("rb") as f:
             content = f.read()
         assert content == data["some"].file.read()
+        data["some"].file.close()
         return web.Response()
 
     app = web.Application()
@@ -1480,16 +1487,17 @@ async def test_POST_FILES_IO(aiohttp_client: Any) -> None:
         assert b"data" == data["unknown"].file.read()
         assert data["unknown"].content_type == "application/octet-stream"
         assert data["unknown"].filename == "unknown"
+        data["unknown"].file.close()
         return web.Response()
 
     app = web.Application()
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
-    data = io.BytesIO(b"data")
-    resp = await client.post("/", data=[data])
-    assert 200 == resp.status
-    resp.close()
+    with io.BytesIO(b"data") as file_handle:
+        resp = await client.post("/", data=[file_handle])
+        assert 200 == resp.status
+        resp.close()
 
 
 async def test_POST_FILES_IO_WITH_PARAMS(aiohttp_client: Any) -> None:
@@ -1499,6 +1507,7 @@ async def test_POST_FILES_IO_WITH_PARAMS(aiohttp_client: Any) -> None:
         assert data["unknown"].content_type == "application/octet-stream"
         assert data["unknown"].filename == "unknown"
         assert data["unknown"].file.read() == b"data"
+        data["unknown"].file.close()
         assert data.getall("q") == ["t1", "t2"]
 
         return web.Response()
@@ -1507,12 +1516,13 @@ async def test_POST_FILES_IO_WITH_PARAMS(aiohttp_client: Any) -> None:
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
-    data = io.BytesIO(b"data")
-    resp = await client.post(
-        "/", data=(("test", "true"), MultiDict([("q", "t1"), ("q", "t2")]), data)
-    )
-    assert 200 == resp.status
-    resp.close()
+    with io.BytesIO(b"data") as file_handle:
+        resp = await client.post(
+            "/",
+            data=(("test", "true"), MultiDict([("q", "t1"), ("q", "t2")]), file_handle),
+        )
+        assert 200 == resp.status
+        resp.close()
 
 
 async def test_POST_FILES_WITH_DATA(aiohttp_client: Any, fname: Any) -> None:
@@ -1527,6 +1537,7 @@ async def test_POST_FILES_WITH_DATA(aiohttp_client: Any, fname: Any) -> None:
         assert data["some"].filename == fname.name
         with fname.open("rb") as f:
             assert data["some"].file.read() == f.read()
+            data["some"].file.close()
 
         return web.Response()
 
@@ -2581,8 +2592,16 @@ async def test_aiohttp_request_coroutine(aiohttp_server: Any) -> None:
     app.router.add_get("/", handler)
     server = await aiohttp_server(app)
 
-    with pytest.raises(TypeError):
-        await aiohttp.request("GET", server.make_url("/"))
+    not_an_awaitable = aiohttp.request("GET", server.make_url("/"))
+    with pytest.raises(
+        TypeError,
+        match="^object _SessionRequestContextManager "
+        "can't be used in 'await' expression$",
+    ):
+        await not_an_awaitable
+
+    await not_an_awaitable._coro  # coroutine 'ClientSession._request' was never awaited
+    await server.close()
 
 
 async def test_yield_from_in_session_request(aiohttp_client: Any) -> None:
@@ -2773,7 +2792,7 @@ async def test_server_close_keepalive_connection() -> None:
         await r.read()
         assert 0 == len(connector._conns)
     await session.close()
-    connector.close()
+    await connector.close()
     server.close()
     await server.wait_closed()
 
@@ -2815,7 +2834,7 @@ async def test_handle_keepalive_on_closed_connection() -> None:
     assert 0 == len(connector._conns)
 
     await session.close()
-    connector.close()
+    await connector.close()
     server.close()
     await server.wait_closed()
 
