@@ -180,8 +180,7 @@ The client session supports the context manager protocol for self closing.
       connection pool between sessions without sharing session state:
       cookies etc.
 
-   :param bool auto_decompress: Automatically decompress response body,
-       ``True`` by default
+   :param bool auto_decompress: Automatically decompress response body (``True`` by default).
 
       .. versionadded:: 2.3
 
@@ -354,7 +353,8 @@ The client session supports the context manager protocol for self closing.
                          proxy=None, proxy_auth=None,\
                          timeout=sentinel, ssl=None, \
                          verify_ssl=None, fingerprint=None, \
-                         ssl_context=None, proxy_headers=None)
+                         ssl_context=None, proxy_headers=None, \
+                         auto_decompress=None)
       :async-with:
       :coroutine:
       :noindexentry:
@@ -525,6 +525,10 @@ The client session supports the context manager protocol for self closing.
         tracers that is only available at request time.
 
          .. versionadded:: 3.0
+
+      :param bool auto_decompress: Automatically decompress response body.
+         Overrides :attr:`ClientSession.auto_decompress`.
+         May be used to enable/disable auto decompression on a per-request basis.
 
       :return ClientResponse: a :class:`client response <ClientResponse>`
          object.
