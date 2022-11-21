@@ -5,7 +5,7 @@ import json
 import pathlib
 import socket
 import zlib
-from typing import Any
+from typing import Any, Optional
 from unittest import mock
 
 import brotli
@@ -574,6 +574,32 @@ async def test_100_continue_custom_response(aiohttp_client: Any) -> None:
     resp = await client.post("/", data=new_dummy_form(), expect100=True)
     assert 403 == resp.status
     await resp.release()
+
+
+async def test_expect_handler_custom_response(aiohttp_client: Any) -> None:
+    cache = {"foo": "bar"}
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(text="handler")
+
+    async def expect_handler(request: web.Request) -> Optional[web.Response]:
+        k = request.headers.get("X-Key")
+        cached_value = cache.get(k)
+        if cached_value:
+            return web.Response(text=cached_value)
+
+    app = web.Application()
+    # expect_handler is only typed on add_route().
+    app.router.add_route("POST", "/", handler, expect_handler=expect_handler)
+    client = await aiohttp_client(app)
+
+    async with client.post("/", expect100=True, headers={"X-Key": "foo"}) as resp:
+        assert resp.status == 200
+        assert await resp.text() == "bar"
+
+    async with client.post("/", expect100=True, headers={"X-Key": "spam"}) as resp:
+        assert resp.status == 200
+        assert await resp.text() == "handler"
 
 
 async def test_100_continue_for_not_found(aiohttp_client: Any) -> None:
@@ -1320,7 +1346,11 @@ async def test_old_style_subapp_middlewares(aiohttp_client: Any) -> None:
     async def handler(request):
         return web.Response(text="OK")
 
-    with pytest.warns(DeprecationWarning, match="Middleware decorator is deprecated"):
+    with pytest.deprecated_call(
+        match=r"^Middleware decorator is deprecated since 4\.0 and "
+        r"its behaviour is default, you can simply remove "
+        r"this decorator\.$",
+    ):
 
         @web.middleware
         async def middleware(request, handler: Handler):
@@ -1757,7 +1787,9 @@ async def test_await(aiohttp_server: Any) -> None:
     async def handler(request):
         resp = web.StreamResponse(headers={"content-length": str(4)})
         await resp.prepare(request)
-        with pytest.warns(DeprecationWarning):
+        with pytest.deprecated_call(
+            match=r"^drain method is deprecated, use await resp\.write\(\)$",
+        ):
             await resp.drain()
         await asyncio.sleep(0.01)
         await resp.write(b"test")
@@ -1838,7 +1870,9 @@ async def test_context_manager_close_on_release(
     async def handler(request):
         resp = web.StreamResponse()
         await resp.prepare(request)
-        with pytest.warns(DeprecationWarning):
+        with pytest.deprecated_call(
+            match=r"^drain method is deprecated, use await resp\.write\(\)$",
+        ):
             await resp.drain()
         await asyncio.sleep(10)
         return resp
@@ -1856,6 +1890,8 @@ async def test_context_manager_close_on_release(
             assert resp.connection is not None
         assert resp.connection is None
         assert proto.close.called
+
+        await resp.release()  # Trigger handler completion
 
 
 async def test_iter_any(aiohttp_server: Any) -> None:
