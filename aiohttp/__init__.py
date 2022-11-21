@@ -1,6 +1,6 @@
 __version__ = "3.9.0.dev0"
 
-from typing import Tuple
+from typing import TYPE_CHECKING, Tuple
 
 from . import hdrs as hdrs
 from .client import (
@@ -104,6 +104,13 @@ from .tracing import (
     TraceResponseChunkReceivedParams as TraceResponseChunkReceivedParams,
 )
 
+if TYPE_CHECKING:
+    # At runtime these are lazy-loaded at the bottom of the file.
+    from .worker import (
+        GunicornUVLoopWebWorker as GunicornUVLoopWebWorker,
+        GunicornWebWorker as GunicornWebWorker,
+    )
+
 __all__: Tuple[str, ...] = (
     "hdrs",
     # client
@@ -206,11 +213,28 @@ __all__: Tuple[str, ...] = (
     "TraceRequestRedirectParams",
     "TraceRequestStartParams",
     "TraceResponseChunkReceivedParams",
+    # workers (imported lazily with __getattr__)
+    "GunicornUVLoopWebWorker",
+    "GunicornWebWorker",
 )
 
-try:
-    from .worker import GunicornUVLoopWebWorker, GunicornWebWorker
 
-    __all__ += ("GunicornWebWorker", "GunicornUVLoopWebWorker")
-except ImportError:  # pragma: no cover
-    pass
+def __dir__() -> Tuple[str, ...]:
+    return __all__ + ("__author__", "__doc__")
+
+
+def __getattr__(name: str) -> object:
+    global GunicornUVLoopWebWorker, GunicornWebWorker
+
+    # Importing gunicorn takes a long time (>100ms), so only import if actually needed.
+    if name in ("GunicornUVLoopWebWorker", "GunicornWebWorker"):
+        try:
+            from .worker import GunicornUVLoopWebWorker as guv, GunicornWebWorker as gw
+        except ImportError:
+            return None
+
+        GunicornUVLoopWebWorker = guv  # type: ignore[misc]
+        GunicornWebWorker = gw  # type: ignore[misc]
+        return guv if name == "GunicornUVLoopWebWorker" else gw
+
+    raise AttributeError(f"module {__name__} has no attribute {name}")
