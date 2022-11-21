@@ -59,4 +59,4 @@ def test_import_time(pytester: pytest.Pytester) -> None:
         else:
             os.environ["PYTHONPATH"] = old_path
 
-    assert best_time_ms < 50
+    assert best_time_ms < 250
