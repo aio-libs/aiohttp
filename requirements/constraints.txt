@@ -219,12 +219,12 @@ toml==0.10.2
     # via
     #   cherry-picker
     #   pre-commit
+    #   pytest
 tomli==1.2.2
     # via
     #   coverage
     #   mypy
     #   pep517
-    #   pytest
     #   slotscheck
     #   towncrier
 towncrier==22.8.0
