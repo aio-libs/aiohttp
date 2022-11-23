@@ -155,7 +155,7 @@ class HeadersParser:
             if len(bname) > self.max_field_size:
                 raise LineTooLong(
                     "request header name {}".format(
-                        bname.decode("utf8", "xmlcharrefreplace")
+                        bname.decode("utf8", "backslashreplace")
                     ),
                     str(self.max_field_size),
                     str(len(bname)),
@@ -177,7 +177,7 @@ class HeadersParser:
                     if header_length > self.max_field_size:
                         raise LineTooLong(
                             "request header field {}".format(
-                                bname.decode("utf8", "xmlcharrefreplace")
+                                bname.decode("utf8", "backslashreplace")
                             ),
                             str(self.max_field_size),
                             str(header_length),
@@ -198,7 +198,7 @@ class HeadersParser:
                 if header_length > self.max_field_size:
                     raise LineTooLong(
                         "request header field {}".format(
-                            bname.decode("utf8", "xmlcharrefreplace")
+                            bname.decode("utf8", "backslashreplace")
                         ),
                         str(self.max_field_size),
                         str(header_length),
