@@ -1100,6 +1100,7 @@ async def test_response_with_precompressed_body_brotli(aiohttp_client) -> None:
 
     await resp.release()
 
+
 async def test_bad_request_payload(aiohttp_client) -> None:
     async def handler(request):
         assert request.method == "POST"
