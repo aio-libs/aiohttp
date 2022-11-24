@@ -84,6 +84,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 json_re = re.compile(r"^application/(?:[\w.+-]+?\+)?json")
 
+
 def _gen_default_accept_encoding() -> str:
     return "gzip, deflate, br" if HAS_BROTLI else "gzip, deflate"
 

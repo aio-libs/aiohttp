@@ -1289,6 +1289,7 @@ def test_loose_cookies_types(loop) -> None:
 
     loop.run_until_complete(req.close())
 
+
 @pytest.mark.parametrize(
     "has_brotli,expected",
     [
