@@ -433,7 +433,7 @@ class AioHTTPTestCase(TestCase):
 
     def tearDown(self) -> None:
         if not PY_38:
-            asyncio.get_running_loop().run_until_complete(self.asyncTearDown())
+            asyncio.get_event_loop().run_until_complete(self.asyncTearDown())
 
     async def asyncTearDown(self) -> None:
         await self.client.close()
