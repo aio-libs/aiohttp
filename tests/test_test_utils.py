@@ -88,7 +88,7 @@ async def test_aiohttp_client_close_is_idempotent() -> None:
 
 
 class TestAioHTTPTestCase(AioHTTPTestCase):
-    def get_app(self):
+    def get_application(self):
         return _create_example_app()
 
     async def test_example_with_loop(self) -> None:
