@@ -425,8 +425,13 @@ class BodyPartReader:
             real_encoding = encoding
         else:
             real_encoding = self.get_charset(default="utf-8")
+        try:
+            decoded_data = data.rstrip().decode(real_encoding)
+        except UnicodeDecodeError:
+            raise ValueError("data cannot be decoded with %s encoding" % real_encoding)
+
         return parse_qsl(
-            data.rstrip().decode(real_encoding),
+            decoded_data,
             keep_blank_values=True,
             encoding=real_encoding,
         )
