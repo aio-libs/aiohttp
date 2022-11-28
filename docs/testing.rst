@@ -321,7 +321,7 @@ functionality, the AioHTTPTestCase is provided::
     Derived from :class:`unittest.IsolatedAsyncioTestCase`
 
     See :class:`unittest.TestCase` and :class:`unittest.IsolatedAsyncioTestCase`
-    for inherited methods and behaviour.
+    for inherited methods and behavior.
 
     This class additionally provides the following:
 
