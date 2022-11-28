@@ -502,6 +502,9 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     def __init__(self) -> None:
         pass
 
+    def __repr__(self) -> str:
+        return "<%s>" % self.__class__.__name__
+
     def exception(self) -> Optional[BaseException]:
         return None
 
