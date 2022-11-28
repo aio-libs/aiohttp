@@ -68,6 +68,5 @@ SERVER_SOFTWARE: str = "Python/{0[0]}.{0[1]} aiohttp/{1}".format(
 )
 
 RESPONSES: Mapping[int, Tuple[str, str]] = {
-    v: (v.phrase, v.description)
-    for v in HTTPStatus.__members__.values()
+    v: (v.phrase, v.description) for v in HTTPStatus.__members__.values()
 }
