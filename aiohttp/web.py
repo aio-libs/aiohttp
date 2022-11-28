@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import socket
 import sys
 from argparse import ArgumentParser
@@ -369,7 +370,7 @@ async def _run_app(
             )
 
         if path is not None:
-            if isinstance(path, PathLike):
+            if isinstance(path, (str, os.PathLike)):
                 sites.append(
                     UnixSite(
                         runner,
