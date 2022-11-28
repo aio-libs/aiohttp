@@ -27,6 +27,7 @@ from types import TracebackType
 from typing import (
     Any,
     Callable,
+    ContextManager,
     Dict,
     Generator,
     Generic,
@@ -66,12 +67,6 @@ PY_38 = sys.version_info >= (3, 8)
 PY_310 = sys.version_info >= (3, 10)
 
 COOKIE_MAX_LENGTH = 4096
-
-try:
-    from typing import ContextManager
-except ImportError:
-    from typing_extensions import ContextManager
-
 
 _T = TypeVar("_T")
 _S = TypeVar("_S")
@@ -123,7 +118,7 @@ if PY_38:
     iscoroutinefunction = asyncio.iscoroutinefunction
 else:
 
-    def iscoroutinefunction(func: Any) -> bool:
+    def iscoroutinefunction(func: Any) -> bool:  # type: ignore[misc]
         while isinstance(func, functools.partial):
             func = func.func
         return asyncio.iscoroutinefunction(func)
