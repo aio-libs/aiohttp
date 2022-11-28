@@ -2,6 +2,7 @@
 
 import asyncio
 import collections
+import functools
 import json
 import random
 import re
@@ -121,7 +122,9 @@ native_byteorder: Final[str] = sys.byteorder
 
 
 # Used by _websocket_mask_python
-_XOR_TABLE: Final[List[bytes]] = [bytes(a ^ b for a in range(256)) for b in range(256)]
+@functools.lru_cache()
+def _xor_table() -> List[bytes]:
+    return [bytes(a ^ b for a in range(256)) for b in range(256)]
 
 
 def _websocket_mask_python(mask: bytes, data: bytearray) -> None:
@@ -141,6 +144,7 @@ def _websocket_mask_python(mask: bytes, data: bytearray) -> None:
     assert len(mask) == 4, mask
 
     if data:
+        _XOR_TABLE = _xor_table()
         a, b, c, d = (_XOR_TABLE[n] for n in mask)
         data[::4] = data[::4].translate(a)
         data[1::4] = data[1::4].translate(b)
