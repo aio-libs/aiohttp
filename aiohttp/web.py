@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import os
 import socket
 import sys
 from argparse import ArgumentParser
