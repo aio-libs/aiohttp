@@ -42,11 +42,21 @@ def test_import_time(pytester: pytest.Pytester) -> None:
     root = Path(__file__).parent.parent
     old_path = os.environ.get("PYTHONPATH")
     os.environ["PYTHONPATH"] = os.pathsep.join([str(root)] + sys.path)
-    r = pytester.run(sys.executable, "-We", "-c", "import aiohttp", timeout=0.41)
-    if old_path is None:
-        os.environ.pop("PYTHONPATH")
-    else:
-        os.environ["PYTHONPATH"] = old_path
 
-    assert not r.stdout.str()
-    assert not r.stderr.str()
+    best_time_ms = 1000
+    cmd = "import timeit; print(int(timeit.timeit('import aiohttp', number=1) * 1000))"
+    try:
+        for _ in range(3):
+            r = pytester.run(sys.executable, "-We", "-c", cmd)
+
+            assert not r.stderr.str()
+            runtime_ms = int(r.stdout.str())
+            if runtime_ms < best_time_ms:
+                best_time_ms = runtime_ms
+    finally:
+        if old_path is None:
+            os.environ.pop("PYTHONPATH")
+        else:
+            os.environ["PYTHONPATH"] = old_path
+
+    assert best_time_ms < 200
