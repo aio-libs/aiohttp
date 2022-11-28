@@ -54,7 +54,6 @@ from .helpers import (
     noop,
     sentinel,
 )
-from .http import RESPONSES
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
