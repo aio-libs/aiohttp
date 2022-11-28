@@ -293,7 +293,7 @@ async def _run_app(
     *,
     host: Optional[Union[str, HostSequence]] = None,
     port: Optional[int] = None,
-    path: Optional[PathLike] = None,
+    path: Union[PathLike, TypingIterable[PathLike], None] = None,
     sock: Optional[Union[socket.socket, TypingIterable[socket.socket]]] = None,
     shutdown_timeout: float = 60.0,
     keepalive_timeout: float = 75.0,
@@ -369,15 +369,27 @@ async def _run_app(
             )
 
         if path is not None:
-            sites.append(
-                UnixSite(
-                    runner,
-                    path,
-                    shutdown_timeout=shutdown_timeout,
-                    ssl_context=ssl_context,
-                    backlog=backlog,
+            if isinstance(path, PathLike):
+                sites.append(
+                    UnixSite(
+                        runner,
+                        path,
+                        shutdown_timeout=shutdown_timeout,
+                        ssl_context=ssl_context,
+                        backlog=backlog,
+                    )
                 )
-            )
+            else:
+                for p in path:
+                    sites.append(
+                        UnixSite(
+                            runner,
+                            p,
+                            shutdown_timeout=shutdown_timeout,
+                            ssl_context=ssl_context,
+                            backlog=backlog,
+                        )
+                    )
 
         if sock is not None:
             if not isinstance(sock, Iterable):
@@ -455,7 +467,7 @@ def run_app(
     debug: bool = False,
     host: Optional[Union[str, HostSequence]] = None,
     port: Optional[int] = None,
-    path: Optional[PathLike] = None,
+    path: Union[PathLike, TypingIterable[PathLike], None] = None,
     sock: Optional[Union[socket.socket, TypingIterable[socket.socket]]] = None,
     shutdown_timeout: float = 60.0,
     keepalive_timeout: float = 75.0,
