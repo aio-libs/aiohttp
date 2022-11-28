@@ -319,7 +319,7 @@ functionality, the AioHTTPTestCase is provided::
     A base class to allow for unittest web applications using aiohttp.
 
     Derived from :class:`unittest.IsolatedAsyncioTestCase`
-    
+
     See :class:`unittest.TestCase` and :class:`unittest.IsolatedAsyncioTestCase`
     for inherited methods and behaviour.
 
