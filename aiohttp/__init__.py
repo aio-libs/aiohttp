@@ -101,6 +101,7 @@ from .tracing import (
     TraceRequestRedirectParams as TraceRequestRedirectParams,
     TraceRequestStartParams as TraceRequestStartParams,
     TraceResponseChunkReceivedParams as TraceResponseChunkReceivedParams,
+    TraceRequestHeadersSentParams as TraceRequestHeadersSentParams,
 )
 
 if TYPE_CHECKING:
@@ -210,6 +211,7 @@ __all__: Tuple[str, ...] = (
     "TraceRequestRedirectParams",
     "TraceRequestStartParams",
     "TraceResponseChunkReceivedParams",
+    "TraceRequestHeadersSentParams",
     # workers (imported lazily with __getattr__)
     "GunicornUVLoopWebWorker",
     "GunicornWebWorker",
