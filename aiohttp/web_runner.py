@@ -2,14 +2,14 @@ import asyncio
 import signal
 import socket
 from abc import ABC, abstractmethod
-from pathlib import Path
-from typing import Any, List, Optional, Set, Type, Union
+from typing import Any, List, Optional, Set, Type
 
 from yarl import URL
 
 from .abc import AbstractAccessLogger, AbstractStreamWriter
 from .http_parser import RawRequestMessage
 from .streams import StreamReader
+from .typedefs import PathLike
 from .web_app import Application
 from .web_log import AccessLogger
 from .web_protocol import RequestHandler
@@ -142,7 +142,7 @@ class UnixSite(BaseSite):
     def __init__(
         self,
         runner: "BaseRunner",
-        path: Union[str, Path],
+        path: PathLike,
         *,
         shutdown_timeout: float = 60.0,
         ssl_context: Optional[SSLContext] = None,

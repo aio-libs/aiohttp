@@ -559,14 +559,12 @@ class StaticResource(PrefixResource):
     def url_for(  # type: ignore[override]
         self,
         *,
-        filename: Union[str, Path],
+        filename: PathLike,
         append_version: Optional[bool] = None,
     ) -> URL:
         if append_version is None:
             append_version = self._append_version
-        if isinstance(filename, Path):
-            filename = str(filename)
-        filename = filename.lstrip("/")
+        filename = str(filename).lstrip("/")
 
         url = URL.build(path=self._prefix, encoded=True)
         # filename is not encoded
