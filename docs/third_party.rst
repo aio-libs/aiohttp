@@ -292,3 +292,6 @@ ask to raise the status.
 
 - `aiohttp-catcher <https://github.com/yuvalherziger/aiohttp-catcher>`_
   An aiohttp middleware library for centralized error handling in aiohttp servers.
+
+- `rsocket <https://github.com/rsocket/rsocket-py>`_
+  Python implementation of `RSocket protocol <https://rsocket.io>`_.
