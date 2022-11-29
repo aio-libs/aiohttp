@@ -98,10 +98,10 @@ from .tracing import (
     TraceRequestChunkSentParams as TraceRequestChunkSentParams,
     TraceRequestEndParams as TraceRequestEndParams,
     TraceRequestExceptionParams as TraceRequestExceptionParams,
+    TraceRequestHeadersSentParams as TraceRequestHeadersSentParams,
     TraceRequestRedirectParams as TraceRequestRedirectParams,
     TraceRequestStartParams as TraceRequestStartParams,
     TraceResponseChunkReceivedParams as TraceResponseChunkReceivedParams,
-    TraceRequestHeadersSentParams as TraceRequestHeadersSentParams,
 )
 
 if TYPE_CHECKING:
