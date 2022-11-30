@@ -1,1 +1,0 @@
-TraceRequestHeadersSentParams is not exposed to clients. Exposing it by updating `aiohttp/__init__.py`.
