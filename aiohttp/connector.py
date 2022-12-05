@@ -6,6 +6,7 @@ import traceback
 import warnings
 from collections import defaultdict, deque
 from contextlib import suppress
+from http import HTTPStatus
 from http.cookies import SimpleCookie
 from itertools import cycle, islice
 from time import monotonic
@@ -53,7 +54,6 @@ from .helpers import (
     noop,
     sentinel,
 )
-from .http import RESPONSES
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
@@ -709,13 +709,13 @@ class _DNSCacheTable:
     def add(self, key: Tuple[str, int], addrs: List[Dict[str, Any]]) -> None:
         self._addrs_rr[key] = (cycle(addrs), len(addrs))
 
-        if self._ttl:
+        if self._ttl is not None:
             self._timestamps[key] = monotonic()
 
     def remove(self, key: Tuple[str, int]) -> None:
         self._addrs_rr.pop(key, None)
 
-        if self._ttl:
+        if self._ttl is not None:
             self._timestamps.pop(key, None)
 
     def clear(self) -> None:
@@ -1309,7 +1309,7 @@ class TCPConnector(BaseConnector):
                     if resp.status != 200:
                         message = resp.reason
                         if message is None:
-                            message = RESPONSES[resp.status][0]
+                            message = HTTPStatus(resp.status).phrase
                         raise ClientHttpProxyError(
                             proxy_resp.request_info,
                             resp.history,
@@ -1410,7 +1410,7 @@ class UnixConnector(BaseConnector):
                 raise
             raise UnixClientConnectorError(self.path, req.connection_key, exc) from exc
 
-        return cast(ResponseHandler, proto)
+        return proto
 
 
 class NamedPipeConnector(BaseConnector):

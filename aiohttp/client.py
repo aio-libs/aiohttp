@@ -396,6 +396,7 @@ class ClientSession:
         proxy_headers: Optional[LooseHeaders] = None,
         trace_request_ctx: Optional[SimpleNamespace] = None,
         read_bufsize: Optional[int] = None,
+        auto_decompress: Optional[bool] = None,
     ) -> ClientResponse:
 
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
@@ -457,6 +458,9 @@ class ClientSession:
 
         if read_bufsize is None:
             read_bufsize = self._read_bufsize
+
+        if auto_decompress is None:
+            auto_decompress = self._auto_decompress
 
         traces = [
             Trace(
@@ -559,7 +563,7 @@ class ClientSession:
                         timer=timer,
                         skip_payload=method.upper() == "HEAD",
                         read_until_eof=read_until_eof,
-                        auto_decompress=self._auto_decompress,
+                        auto_decompress=auto_decompress,
                         read_timeout=real_timeout.sock_read,
                         read_bufsize=read_bufsize,
                         timeout_ceil_threshold=self._connector._timeout_ceil_threshold,

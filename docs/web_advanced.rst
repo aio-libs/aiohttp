@@ -892,20 +892,19 @@ background tasks could be registered as an :attr:`Application.on_startup`
 signal handler or :attr:`Application.cleanup_ctx` as shown in the example
 below::
 
-
-  async def listen_to_redis(app):
-      try:
-          sub = await aioredis.create_redis(('localhost', 6379))
-          ch, *_ = await sub.subscribe('news')
-          async for msg in ch.iter(encoding='utf-8'):
-              # Forward message to all connected websockets:
-              for ws in app[websockets]:
-                  ws.send_str('{}: {}'.format(ch.name, msg))
-      except asyncio.CancelledError:
-          pass
-      finally:
-          await sub.unsubscribe(ch.name)
-          await sub.quit()
+  async def listen_to_redis(app: web.Application):
+      client = redis.from_url("redis://localhost:6379")
+      channel = "news"
+      async with client.pubsub() as pubsub:
+          await pubsub.subscribe(channel)
+          while True:
+              try:
+                  msg = await pubsub.get_message(ignore_subscribe_messages=True)
+                  if msg is not None:
+                      for ws in app["websockets"]:
+                          await ws.send_str("{}: {}".format(channel, msg))
+              except asyncio.CancelledError:
+                  break
 
 
   async def background_tasks(app):

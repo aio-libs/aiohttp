@@ -34,12 +34,12 @@ jobs:
       uses: actions/checkout@v3.0.2
       with:
         submodules: true
-    - name: Setup Python 3.8
-      uses: actions/setup-python@v4
+    - name: Setup Python
+      uses: actions/setup-python@v4.3.0
       with:
-        python-version: 3.8
+        python-version: 3.9
     - name: Cache PyPI
-      uses: actions/cache@v3.0.10
+      uses: actions/cache@v3.0.11
       with:
         key: pip-lint-${{ hashFiles('requirements/*.txt') }}
         path: ~/.cache/pip
@@ -91,7 +91,7 @@ jobs:
       with:
         submodules: true
     - name: Cache llhttp generated files
-      uses: actions/cache@v3.0.10
+      uses: actions/cache@v3.0.11
       id: cache
       with:
         key: llhttp-${{ hashFiles('vendor/llhttp/package.json', 'vendor/llhttp/src/**/*') }}
@@ -157,7 +157,7 @@ jobs:
         submodules: true
     - name: Setup Python ${{ matrix.pyver }}
       id: python-install
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v4.3.0
       with:
         python-version: ${{ matrix.pyver }}
     - name: Get pip cache dir
@@ -165,7 +165,7 @@ jobs:
       run: |
         echo "::set-output name=dir::$(pip cache dir)"    # - name: Cache
     - name: Cache PyPI
-      uses: actions/cache@v3.0.10
+      uses: actions/cache@v3.0.11
       with:
         key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-${{ hashFiles('requirements/*.txt') }}
         path: ${{ steps.pip-cache.outputs.dir }}
@@ -259,7 +259,7 @@ jobs:
       with:
         submodules: true
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v4.3.0
     - name: Update pip, wheel, setuptools, build, twine
       run: |
         python -m pip install -U pip wheel setuptools build twine
@@ -319,7 +319,7 @@ jobs:
         fi
       shell: bash
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v4.3.0
       with:
         python-version: 3.x
     - name: Update pip, wheel, setuptools, build, twine
@@ -337,7 +337,7 @@ jobs:
       run: |
         make cythonize
     - name: Build wheels
-      uses: pypa/cibuildwheel@v2.10.2
+      uses: pypa/cibuildwheel@v2.11.0
       env:
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
     - uses: actions/upload-artifact@v3

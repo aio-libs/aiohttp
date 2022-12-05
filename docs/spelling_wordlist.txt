@@ -38,6 +38,7 @@ BodyPartReader
 boolean
 botocore
 brotli
+Brotli
 brotlipy
 bugfix
 Bugfixes
