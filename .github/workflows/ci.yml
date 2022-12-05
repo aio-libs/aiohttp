@@ -23,9 +23,13 @@ env:
   MYPY_FORCE_COLOR: 1
   PY_COLORS: 1
 
+permissions: {}
 jobs:
 
   lint:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
     name: Linter
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -34,10 +38,10 @@ jobs:
       uses: actions/checkout@v3
       with:
         submodules: true
-    - name: Setup Python 3.8
+    - name: Setup Python
       uses: actions/setup-python@v4
       with:
-        python-version: 3.8
+        python-version: 3.9
     - name: Cache PyPI
       uses: actions/cache@v3.0.4
       with:
@@ -88,6 +92,9 @@ jobs:
         LC_ALL=C sort --check --ignore-case CONTRIBUTORS.txt
 
   gen_llhttp:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
     name: Generate llhttp sources
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -119,6 +126,9 @@ jobs:
         if-no-files-found: error
 
   test:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
     name: Test
     needs: gen_llhttp
     strategy:
@@ -256,6 +266,9 @@ jobs:
             echo "Predeploy step"
 
   build-tarball:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
     name: Tarball
     runs-on: ubuntu-latest
     needs: pre-deploy
@@ -290,6 +303,9 @@ jobs:
         path: dist
 
   build-wheels:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
     name: Build wheels on ${{ matrix.os }} ${{ matrix.qemu }}
     runs-on: ${{ matrix.os }}-latest
     needs: pre-deploy
@@ -352,6 +368,9 @@ jobs:
         path: ./wheelhouse/*.whl
 
   deploy:
+    permissions:
+      contents: write # to make release
+
     name: Deploy
     environment: release
     needs: [build-tarball, build-wheels]
