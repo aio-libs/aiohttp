@@ -426,12 +426,9 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 try:
                     eof, data = self._payload_parser.feed_data(data[start_pos:])
                 except BaseException as exc:
-                    if self.payload_exception is not None:
-                        self._payload_parser.payload.set_exception(
-                            self.payload_exception(str(exc))
-                        )
-                    else:
-                        self._payload_parser.payload.set_exception(exc)
+                    if isinstance(exc, Exception) and self.payload_exception is not None:
+                        exc = self.payload_exception(str(exc))
+                    self._payload_parser.payload.set_exception(exc)
 
                     eof = True
                     data = b""
