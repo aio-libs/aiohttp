@@ -2910,7 +2910,7 @@ Utilities
                                      drops the connection. This is recommended
                                      if familiar with asyncio behaviour or
                                      scalability is a concern.
-                                     :ref:`web-advanced.peer-disconnection`
+                                     :ref:`aiohttp-web-peer-disconnection`
 
    .. versionadded:: 3.0
 
