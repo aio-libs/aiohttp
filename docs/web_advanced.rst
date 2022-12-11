@@ -130,7 +130,7 @@ internal data structures and can terminate them gracefully::
    should be awaited at some point in your code (aiojobs handles
    this for you), otherwise you will hide legitimate exceptions
    and result in warnings being emitted.
-   
+
    A good case for using :func:`asyncio.create_task` is when
    you want to run something while you are processing other data,
    but still want to ensure the task is complete before returning::
