@@ -233,18 +233,15 @@ async def test_handler_cancellation(aiohttp_unused_port) -> None:
 
     await site.start()
 
-    async def client_request_maker():
-        async with ClientSession(base_url=f"http://localhost:{port}") as session:
-            request = session.get("/")
-
-            with pytest.raises(asyncio.TimeoutError):
-                await asyncio.wait_for(request, timeout=0.1)
-
     try:
         assert runner.server.handler_cancellation, "Flag was not propagated"
-        await client_request_maker()
 
-        await asyncio.wait_for(event.wait(), timeout=1)
+        async with client.ClientSession(timeout=client.ClientTimeout(total=.1)) as sess:
+            with pytest.raises(asyncio.TimeoutError):
+                await sess.get(f"http://localhost:{port}/")
+
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(event.wait(), timeout=1)
         assert event.is_set(), "Request handler hasn't been cancelled"
     finally:
         await asyncio.gather(runner.shutdown(), site.stop())
@@ -257,7 +254,7 @@ async def test_no_handler_cancellation(aiohttp_unused_port) -> None:
 
     async def on_request(_: web.Request) -> web.Response:
         nonlocal done_event, timeout_event
-        await timeout_event.wait()
+        await asyncio.wait_for(timeout_event.wait(), timeout=5)
         done_event.set()
         return web.Response()
 
@@ -271,18 +268,15 @@ async def test_no_handler_cancellation(aiohttp_unused_port) -> None:
 
     await site.start()
 
-    async def client_request_maker():
-        async with ClientSession(base_url=f"http://localhost:{port}") as session:
-            request = session.get("/")
-
-            with pytest.raises(asyncio.TimeoutError):
-                await asyncio.wait_for(request, timeout=0.1)
-
     try:
-        await client_request_maker()
+        async with client.ClientSession(timeout=client.ClientTimeout(total=.1)) as sess:
+            with pytest.raises(asyncio.TimeoutError):
+                await sess.get(f"http://localhost:{port}/")
+        await asyncio.sleep(.1)
         timeout_event.set()
 
-        await asyncio.wait_for(done_event.wait(), timeout=1)
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(done_event.wait(), timeout=1)
         assert done_event.is_set()
     finally:
         await asyncio.gather(runner.shutdown(), site.stop())
