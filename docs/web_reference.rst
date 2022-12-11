@@ -2898,7 +2898,8 @@ Utilities
                       access_log=aiohttp.log.access_logger, \
                       handle_signals=True, \
                       reuse_address=None, \
-                      reuse_port=None)
+                      reuse_port=None, \
+                      handler_cancellation=False)
 
    A high-level function for running an application, serving it until
    keyboard interrupt and performing a
@@ -2992,6 +2993,9 @@ Utilities
                            this flag when being created. This option is not
                            supported on Windows.
 
+   :param bool handler_cancellation: cancels the web handler task if the client
+                                     drops the connection.
+
    .. versionadded:: 3.0
 
       Support *access_log_class* parameter.
@@ -3001,6 +3005,11 @@ Utilities
    .. versionadded:: 3.1
 
       Accept a coroutine as *app* parameter.
+
+   .. versionadded:: 3.9
+
+      Support handler_cancellation parameter (this was the default behaviour
+      in aiohttp <3.7).
 
 Constants
 ---------

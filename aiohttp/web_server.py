@@ -18,6 +18,7 @@ class Server:
         handler: _RequestHandler,
         *,
         request_factory: Optional[_RequestFactory] = None,
+        handler_cancellation: bool = False,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         **kwargs: Any
     ) -> None:
@@ -27,6 +28,7 @@ class Server:
         self.requests_count = 0
         self.request_handler = handler
         self.request_factory = request_factory or self._make_request
+        self.handler_cancellation = handler_cancellation
 
     @property
     def connections(self) -> List[RequestHandler]:
