@@ -307,6 +307,7 @@ async def _run_app(
     handle_signals: bool = True,
     reuse_address: Optional[bool] = None,
     reuse_port: Optional[bool] = None,
+    handler_cancellation: bool = False,
 ) -> None:
     # An internal function to actually do all dirty job for application running
     if asyncio.iscoroutine(app):
@@ -321,6 +322,7 @@ async def _run_app(
         access_log_format=access_log_format,
         access_log=access_log,
         keepalive_timeout=keepalive_timeout,
+        handler_cancellation=handler_cancellation,
     )
 
     await runner.setup()
@@ -481,6 +483,7 @@ def run_app(
     handle_signals: bool = True,
     reuse_address: Optional[bool] = None,
     reuse_port: Optional[bool] = None,
+    handler_cancellation: bool = False,
     loop: Optional[asyncio.AbstractEventLoop] = None,
 ) -> None:
     """Run an app locally"""
@@ -513,6 +516,7 @@ def run_app(
             handle_signals=handle_signals,
             reuse_address=reuse_address,
             reuse_port=reuse_port,
+            handler_cancellation=handler_cancellation,
         )
     )
 

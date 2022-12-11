@@ -1,5 +1,6 @@
 # type: ignore
 import asyncio
+from contextlib import suppress
 from typing import Any
 from unittest import mock
 
@@ -207,3 +208,80 @@ async def test_raw_server_html_exception_debug(
     )
 
     logger.exception.assert_called_with("Error handling request", exc_info=exc)
+
+
+async def test_handler_cancellation(aiohttp_unused_port) -> None:
+    event = asyncio.Event()
+    port = aiohttp_unused_port()
+
+    async def on_request(_: web.Request) -> web.Response:
+        nonlocal event
+        try:
+            await asyncio.sleep(10)
+        except asyncio.CancelledError:
+            event.set()
+            raise
+        else:
+            raise web.HTTPInternalServerError()
+
+    app = web.Application()
+    app.router.add_route("GET", "/", on_request)
+
+    runner = web.AppRunner(app, handler_cancellation=True)
+    await runner.setup()
+
+    site = web.TCPSite(runner, host="localhost", port=port)
+
+    await site.start()
+
+    try:
+        assert runner.server.handler_cancellation, "Flag was not propagated"
+
+        async with client.ClientSession(
+            timeout=client.ClientTimeout(total=0.1)
+        ) as sess:
+            with pytest.raises(asyncio.TimeoutError):
+                await sess.get(f"http://localhost:{port}/")
+
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(event.wait(), timeout=1)
+        assert event.is_set(), "Request handler hasn't been cancelled"
+    finally:
+        await asyncio.gather(runner.shutdown(), site.stop())
+
+
+async def test_no_handler_cancellation(aiohttp_unused_port) -> None:
+    timeout_event = asyncio.Event()
+    done_event = asyncio.Event()
+    port = aiohttp_unused_port()
+
+    async def on_request(_: web.Request) -> web.Response:
+        nonlocal done_event, timeout_event
+        await asyncio.wait_for(timeout_event.wait(), timeout=5)
+        done_event.set()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("GET", "/", on_request)
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+
+    site = web.TCPSite(runner, host="localhost", port=port)
+
+    await site.start()
+
+    try:
+        async with client.ClientSession(
+            timeout=client.ClientTimeout(total=0.1)
+        ) as sess:
+            with pytest.raises(asyncio.TimeoutError):
+                await sess.get(f"http://localhost:{port}/")
+        await asyncio.sleep(0.1)
+        timeout_event.set()
+
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(done_event.wait(), timeout=1)
+        assert done_event.is_set()
+    finally:
+        await asyncio.gather(runner.shutdown(), site.stop())
