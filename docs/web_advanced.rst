@@ -19,6 +19,8 @@ But in case of custom regular expressions for
 *percent encoded*: if you pass Unicode patterns they don't match to
 *requoted* path.
 
+.. _aiohttp-web-peer-disconnection:
+
 Peer disconnection
 ------------------
 
