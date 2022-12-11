@@ -2847,7 +2847,8 @@ Utilities
    :param path: file system path for HTTP server Unix domain socket.
                     A sequence of file system paths can be used to bind
                     multiple domain sockets. Listening on Unix domain
-                    sockets is not supported by all operating systems, :class:`str` or :class:`pathlib.Path` .
+                    sockets is not supported by all operating systems,
+                    :class:`str`, :class:`pathlib.Path` or an iterable of these.
 
    :param socket.socket sock: a preexisting socket object to accept connections on.
                        A sequence of socket objects can be passed.

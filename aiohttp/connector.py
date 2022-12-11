@@ -8,6 +8,7 @@ import traceback
 import warnings
 from collections import defaultdict, deque
 from contextlib import suppress
+from http import HTTPStatus
 from http.cookies import SimpleCookie
 from itertools import cycle, islice
 from time import monotonic
@@ -46,7 +47,6 @@ from .client_exceptions import (
 from .client_proto import ResponseHandler
 from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
 from .helpers import _SENTINEL, ceil_timeout, is_ip_address, sentinel, set_result
-from .http import RESPONSES
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
@@ -1227,7 +1227,7 @@ class TCPConnector(BaseConnector):
                     if resp.status != 200:
                         message = resp.reason
                         if message is None:
-                            message = RESPONSES[resp.status][0]
+                            message = HTTPStatus(resp.status).phrase
                         raise ClientHttpProxyError(
                             proxy_resp.request_info,
                             resp.history,
