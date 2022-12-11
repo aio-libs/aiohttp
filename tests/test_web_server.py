@@ -209,7 +209,7 @@ async def test_raw_server_html_exception_debug(
     logger.exception.assert_called_with("Error handling request", exc_info=exc)
 
 
-async def test_cancel_handler_on_connection_lost(aiohttp_unused_port) -> None:
+async def test_handler_cancellation(aiohttp_unused_port) -> None:
     event = asyncio.Event()
     port = aiohttp_unused_port()
 
@@ -226,7 +226,7 @@ async def test_cancel_handler_on_connection_lost(aiohttp_unused_port) -> None:
     app = web.Application()
     app.router.add_route("GET", "/", on_request)
 
-    runner = web.AppRunner(app, cancel_handler_on_connection_lost=True)
+    runner = web.AppRunner(app, handler_cancellation=True)
     await runner.setup()
 
     site = web.TCPSite(runner, host="localhost", port=port)
@@ -241,9 +241,7 @@ async def test_cancel_handler_on_connection_lost(aiohttp_unused_port) -> None:
                 await asyncio.wait_for(request, timeout=0.1)
 
     try:
-        assert (
-            runner.server.cancel_handler_on_connection_lost
-        ), "Flag was not propagated"
+        assert runner.server.handler_cancellation, "Flag was not propagated"
         await client_request_maker()
 
         await asyncio.wait_for(event.wait(), timeout=1)
@@ -252,7 +250,7 @@ async def test_cancel_handler_on_connection_lost(aiohttp_unused_port) -> None:
         await asyncio.gather(runner.shutdown(), site.stop())
 
 
-async def test_no_cancel_handler_on_connection_lost(aiohttp_unused_port) -> None:
+async def test_no_handler_cancellation(aiohttp_unused_port) -> None:
     timeout_event = asyncio.Event()
     done_event = asyncio.Event()
     port = aiohttp_unused_port()
@@ -266,7 +264,7 @@ async def test_no_cancel_handler_on_connection_lost(aiohttp_unused_port) -> None
     app = web.Application()
     app.router.add_route("GET", "/", on_request)
 
-    runner = web.AppRunner(app, cancel_handler_on_connection_lost=False)
+    runner = web.AppRunner(app)
     await runner.setup()
 
     site = web.TCPSite(runner, host="localhost", port=port)
