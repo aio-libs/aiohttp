@@ -29,12 +29,6 @@ except ImportError:  # pragma: no cover
 __all__ = ("GunicornWebWorker", "GunicornUVLoopWebWorker", "GunicornTokioWebWorker")
 
 
-# Opt-in for cancel_handler_on_connection_lost
-CANCEL_HANDLER_ON_CONNECTION_LOST = os.getenv(
-    "AIOHTTP_CANCEL_HANDLER_ON_CONNECTION_LOST", "0"
-).lower() in ("1", "true", "enable", "enabled", "yes")
-
-
 class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
 
     DEFAULT_AIOHTTP_LOG_FORMAT = AccessLogger.LOG_FORMAT
@@ -93,7 +87,6 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
                 access_log_format=self._get_valid_log_format(
                     self.cfg.access_log_format
                 ),
-                cancel_handler_on_connection_lost=CANCEL_HANDLER_ON_CONNECTION_LOST,
             )
         await runner.setup()
 
