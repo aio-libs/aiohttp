@@ -211,6 +211,7 @@ class ClientRequest:
         ssl: Union[SSLContext, bool, Fingerprint, None] = None,
         proxy_headers: Optional[LooseHeaders] = None,
         traces: Optional[List["Trace"]] = None,
+        trust_env: bool = False,
     ):
         match = _CONTAINS_CONTROL_CHAR_RE.search(method)
         if match:
@@ -252,7 +253,7 @@ class ClientRequest:
         self.update_auto_headers(skip_auto_headers)
         self.update_cookies(cookies)
         self.update_content_encoding(data)
-        self.update_auth(auth)
+        self.update_auth(auth, trust_env)
         self.update_proxy(proxy, proxy_auth, proxy_headers)
 
         self.update_body_from_data(data)
@@ -429,21 +430,22 @@ class ClientRequest:
             if hdrs.CONTENT_LENGTH not in self.headers:
                 self.headers[hdrs.CONTENT_LENGTH] = str(len(self.body))
 
-    def update_auth(self, auth: Optional[BasicAuth]) -> None:
+    def update_auth(self, auth: Optional[BasicAuth], trust_env: bool = False) -> None:
         """Set basic auth."""
         if auth is None:
             auth = self.auth
         if auth is None:
-            # If no auth is specified, we read from netrc.
-            # FIXME: This should only be the case if a `trust_env` flag is passed
-            netrc_obj = netrc_from_env()
-            if netrc_obj:
-                auth_from_netrc = netrc_obj.authenticators(self.url.host)
-                if auth_from_netrc:
-                    *logins, password = auth_from_netrc
-                    login = logins[0] if logins[0] else logins[-1]
-                    auth = BasicAuth(cast(str, login), cast(str, password))
-                    self.headers[hdrs.AUTHORIZATION] = auth.encode()
+            if trust_env:
+                # If no auth is specified, we read from netrc.
+
+                netrc_obj = netrc_from_env()
+                if netrc_obj:
+                    auth_from_netrc = netrc_obj.authenticators(self.url.host)
+                    if auth_from_netrc:
+                        *logins, password = auth_from_netrc
+                        login = logins[0] if logins[0] else logins[-1]
+                        auth = BasicAuth(cast(str, login), cast(str, password))
+                        self.headers[hdrs.AUTHORIZATION] = auth.encode()
 
             return
 

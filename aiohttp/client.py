@@ -492,6 +492,7 @@ class ClientSession:
                         ssl=ssl,
                         proxy_headers=proxy_headers,
                         traces=traces,
+                        trust_env=self.trust_env,
                     )
 
                     # connection timeout
