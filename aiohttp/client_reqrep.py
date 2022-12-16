@@ -45,6 +45,7 @@ from .helpers import (
     HeadersMixin,
     TimerNoop,
     is_expected_content_type,
+    netrc_from_env,
     noop,
     parse_mimetype,
     reify,
@@ -433,6 +434,17 @@ class ClientRequest:
         if auth is None:
             auth = self.auth
         if auth is None:
+            # If no auth is specified, we read from netrc.
+            # FIXME: This should only be the case if a `trust_env` flag is passed
+            netrc_obj = netrc_from_env()
+            if netrc_obj:
+                auth_from_netrc = netrc_obj.authenticators(self.url.host)
+                if auth_from_netrc:
+                    *logins, password = auth_from_netrc
+                    login = logins[0] if logins[0] else logins[-1]
+                    auth = BasicAuth(cast(str, login), cast(str, password))
+                    self.headers[hdrs.AUTHORIZATION] = auth.encode()
+
             return
 
         if not isinstance(auth, helpers.BasicAuth):
