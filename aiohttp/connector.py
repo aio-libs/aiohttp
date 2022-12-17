@@ -973,12 +973,16 @@ class TCPConnector(BaseConnector):
             ):
                 if self._network_interface:
                     kwargs["sock"] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    kwargs["sock"].setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, self._network_interface.encode())
+                    kwargs["sock"].setsockopt(
+                        socket.SOL_SOCKET,
+                        socket.SO_BINDTODEVICE,
+                        self._network_interface.encode(),
+                    )
                     if self._local_addr:
                         kwargs["sock"].bind(self._local_addr)
                     kwargs["sock"].setblocking(False)
                     kwargs["sock"].connect_ex((args[-2], args[-1]))
-                    args = args[: -2]  # only send socket instead host/ip
+                    args = args[:-2]  # only send socket instead host/ip
                 return await self._loop.create_connection(*args, **kwargs)  # type: ignore[return-value]  # noqa
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
