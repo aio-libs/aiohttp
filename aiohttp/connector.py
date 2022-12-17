@@ -720,7 +720,7 @@ class TCPConnector(BaseConnector):
     ttl_dns_cache - Max seconds having cached a DNS entry, None forever.
     family - socket address family
     local_addr - local tuple of (host, port) to bind socket to
-    network_interface - String of the network interface to bind socket to.
+    network_interface - Name of network interface to bind socket to (e.g. "eth0").
 
 
     keepalive_timeout - (optional) Keep-alive timeout.
