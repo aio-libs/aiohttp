@@ -777,7 +777,7 @@ class TCPConnector(BaseConnector):
         self._network_interface = network_interface
         if self._local_addr and self._network_interface:
             raise ValueError("local_addr and network_interface can't be defined at the same time.")
-        if not hasattr(socket, "SO_BINDTODEVICE"):
+        if self._network_interface and not hasattr(socket, "SO_BINDTODEVICE"):
             raise OSError("Binding to interface is not supported by your OS.")
 
     def _close_immediately(self) -> List["asyncio.Future[None]"]:
