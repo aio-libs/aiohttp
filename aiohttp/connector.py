@@ -741,7 +741,7 @@ class TCPConnector(BaseConnector):
         family: int = 0,
         ssl: Union[None, bool, Fingerprint, SSLContext] = None,
         local_addr: Optional[Tuple[str, int]] = None,
-        network_interface: Optional[str],
+        network_interface: Optional[str] = None,
         resolver: Optional[AbstractResolver] = None,
         keepalive_timeout: Union[None, float, _SENTINEL] = sentinel,
         force_close: bool = False,
@@ -978,7 +978,7 @@ class TCPConnector(BaseConnector):
                     kwargs["sock"].setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, kwargs['network_interface'])
                     kwargs["sock"].setblocking(False)
                     kwargs["sock"].connect_ex((args[-2], args[-1]))
-                    args = args[: -2]  # asyncio does not support sending a socket and host/ip at the same time.
+                    args = args[: -2]  # only send socket instead host/ip
                 return await self._loop.create_connection(*args, **kwargs)  # type: ignore[return-value]  # noqa
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
