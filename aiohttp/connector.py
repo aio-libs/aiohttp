@@ -776,7 +776,9 @@ class TCPConnector(BaseConnector):
         self._local_addr = local_addr
         self._network_interface = network_interface.encode()
         if self._local_addr and self._network_interface:
-            raise ValueError("local_addr and network_interface can't be defined at the same time.")
+            raise ValueError(
+                "local_addr and network_interface can't be defined at the same time."
+            )
         if not hasattr(socket, "SO_BINDTODEVICE"):
             raise OSError("Binding to interface is not supported by your OS.")
 
@@ -973,12 +975,18 @@ class TCPConnector(BaseConnector):
             async with ceil_timeout(
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
             ):
-                if kwargs['network_interface']:
+                if kwargs["network_interface"]:
                     kwargs["sock"] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    kwargs["sock"].setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, kwargs['network_interface'])
+                    kwargs["sock"].setsockopt(
+                        socket.SOL_SOCKET,
+                        socket.SO_BINDTODEVICE,
+                        kwargs["network_interface"],
+                    )
                     kwargs["sock"].setblocking(False)
                     kwargs["sock"].connect_ex((args[-2], args[-1]))
-                    args = args[: -2]  # asyncio does not support sending a socket and host/ip at the same time.
+                    args = args[
+                        :-2
+                    ]  # asyncio does not support sending a socket and host/ip at the same time.
                 return await self._loop.create_connection(*args, **kwargs)  # type: ignore[return-value]  # noqa
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
