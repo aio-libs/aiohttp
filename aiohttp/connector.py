@@ -775,8 +775,6 @@ class TCPConnector(BaseConnector):
         self._family = family
         self._local_addr = local_addr
         self._network_interface = network_interface
-        if self._local_addr and self._network_interface:
-            raise ValueError("local_addr and network_interface can't be defined at the same time.")
         if self._network_interface and not hasattr(socket, "SO_BINDTODEVICE"):
             raise OSError("Binding to interface is not supported by your OS.")
 
@@ -976,6 +974,8 @@ class TCPConnector(BaseConnector):
                 if self._network_interface:
                     kwargs["sock"] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     kwargs["sock"].setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, self._network_interface.encode())
+                    if self._local_addr:
+                        kwargs["sock"].bind(self._local_addr)
                     kwargs["sock"].setblocking(False)
                     kwargs["sock"].connect_ex((args[-2], args[-1]))
                     args = args[: -2]  # only send socket instead host/ip
