@@ -244,6 +244,18 @@ class ProxyInfo:
     proxy_auth: Optional[BasicAuth]
 
 
+def basicauth_from_netrc(netrc_obj: netrc.netrc, host: str) -> Optional[BasicAuth]:
+    auth_from_netrc = netrc_obj.authenticators(host)
+    if auth_from_netrc is not None:
+        # auth_from_netrc is a (`user`, `account`, `password`) tuple,
+        # `user` and `account` both can be username,
+        # if `user` is None, use `account`
+        *logins, password = auth_from_netrc
+        login = logins[0] if logins[0] else logins[-1]
+        auth = BasicAuth(cast(str, login), cast(str, password))
+        return auth
+
+
 def proxies_from_env() -> Dict[str, ProxyInfo]:
     proxy_urls = {
         k: URL(v)
@@ -261,16 +273,8 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
             )
             continue
         if netrc_obj and auth is None:
-            auth_from_netrc = None
             if proxy.host is not None:
-                auth_from_netrc = netrc_obj.authenticators(proxy.host)
-            if auth_from_netrc is not None:
-                # auth_from_netrc is a (`user`, `account`, `password`) tuple,
-                # `user` and `account` both can be username,
-                # if `user` is None, use `account`
-                *logins, password = auth_from_netrc
-                login = logins[0] if logins[0] else logins[-1]
-                auth = BasicAuth(cast(str, login), cast(str, password))
+                auth = basicauth_from_netrc(netrc_obj, proxy.host)
         ret[proto] = ProxyInfo(proxy, auth)
     return ret
 
