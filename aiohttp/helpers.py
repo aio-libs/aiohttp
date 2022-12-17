@@ -41,7 +41,6 @@ from typing import (
     Type,
     TypeVar,
     Union,
-    cast,
     overload,
 )
 from urllib.parse import quote
@@ -252,7 +251,7 @@ def basicauth_from_netrc(netrc_obj: netrc.netrc, host: str) -> Optional[BasicAut
         # if `user` is None, use `account`
         *logins, password = auth_from_netrc
         login = logins[0] if logins[0] else logins[-1]
-        auth = BasicAuth(cast(str, login), cast(str, password))
+        auth = BasicAuth(login, password)
         return auth
 
 
