@@ -1029,9 +1029,9 @@ TCPConnector
 .. class:: TCPConnector(*, ssl=None, verify_ssl=True, fingerprint=None, \
                  use_dns_cache=True, ttl_dns_cache=10, \
                  family=0, ssl_context=None, local_addr=None, \
-                 resolver=None, keepalive_timeout=sentinel, \
-                 force_close=False, limit=100, limit_per_host=0, \
-                 enable_cleanup_closed=False, loop=None)
+                 network_interface=None, resolver=None, \
+                 keepalive_timeout=sentinel, \ force_close=False, limit=100, \
+                 limit_per_host=0, enable_cleanup_closed=False, loop=None)
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
@@ -1125,6 +1125,10 @@ TCPConnector
 
    :param tuple local_addr: tuple of ``(local_host, local_port)`` used to bind
       socket locally if specified.
+
+   :param str network_interface: Name of the network interface used to bind
+      socket locally if specified (e.g. "eth0"). Note that this feature is not
+      supported by all systems.
 
    :param bool force_close: close underlying sockets after
                             connection releasing (optional).
