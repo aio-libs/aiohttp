@@ -973,9 +973,9 @@ class TCPConnector(BaseConnector):
             async with ceil_timeout(
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
             ):
-                if kwargs['network_interface']:
+                if self._network_interface:
                     kwargs["sock"] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    kwargs["sock"].setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, kwargs['network_interface'].encode())
+                    kwargs["sock"].setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, self._network_interface.encode())
                     kwargs["sock"].setblocking(False)
                     kwargs["sock"].connect_ex((args[-2], args[-1]))
                     args = args[: -2]  # only send socket instead host/ip
@@ -1143,7 +1143,6 @@ class TCPConnector(BaseConnector):
                     flags=hinfo["flags"],
                     server_hostname=hinfo["hostname"] if sslcontext else None,
                     local_addr=self._local_addr,
-                    network_interface=self._network_interface,
                     req=req,
                     client_error=client_error,
                 )
