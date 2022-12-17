@@ -3,6 +3,7 @@ import dataclasses
 import functools
 import logging
 import random
+import socket
 import sys
 import traceback
 import warnings
@@ -719,6 +720,8 @@ class TCPConnector(BaseConnector):
     ttl_dns_cache - Max seconds having cached a DNS entry, None forever.
     family - socket address family
     local_addr - local tuple of (host, port) to bind socket to
+    network_interface - String of the network interface to bind socket to.
+
 
     keepalive_timeout - (optional) Keep-alive timeout.
     force_close - Set to True to force close and do reconnect
@@ -738,6 +741,7 @@ class TCPConnector(BaseConnector):
         family: int = 0,
         ssl: Union[None, bool, Fingerprint, SSLContext] = None,
         local_addr: Optional[Tuple[str, int]] = None,
+        network_interface: Optional[str],
         resolver: Optional[AbstractResolver] = None,
         keepalive_timeout: Union[None, float, _SENTINEL] = sentinel,
         force_close: bool = False,
@@ -770,6 +774,11 @@ class TCPConnector(BaseConnector):
         self._throttle_dns_events: Dict[Tuple[str, int], EventResultOrError] = {}
         self._family = family
         self._local_addr = local_addr
+        self._network_interface = network_interface.encode()
+        if self._local_addr and self._network_interface:
+            raise ValueError("local_addr and network_interface can't be defined at the same time.")
+        if not hasattr(socket, "SO_BINDTODEVICE"):
+            raise OSError("Binding to interface is not supported by your OS.")
 
     def _close_immediately(self) -> List["asyncio.Future[None]"]:
         for ev in self._throttle_dns_events.values():
@@ -964,6 +973,12 @@ class TCPConnector(BaseConnector):
             async with ceil_timeout(
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
             ):
+                if kwargs['network_interface']:
+                    kwargs["sock"] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    kwargs["sock"].setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, kwargs['network_interface'])
+                    kwargs["sock"].setblocking(False)
+                    kwargs["sock"].connect_ex((args[-2], args[-1]))
+                    args = args[: -2]  # asyncio does not support sending a socket and host/ip at the same time.
                 return await self._loop.create_connection(*args, **kwargs)  # type: ignore[return-value]  # noqa
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
@@ -1128,6 +1143,7 @@ class TCPConnector(BaseConnector):
                     flags=hinfo["flags"],
                     server_hostname=hinfo["hostname"] if sslcontext else None,
                     local_addr=self._local_addr,
+                    network_interface=self._network_interface,
                     req=req,
                     client_error=client_error,
                 )

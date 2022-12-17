@@ -1,0 +1,1 @@
+- Added a optional keyword argument to TCPConnector that allows binding directly to a interface.
