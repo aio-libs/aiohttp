@@ -459,14 +459,14 @@ default route, to change the source interface, you'll have to specifiy it.
 This requires that you OS supports it.
 :class:`~aiohttp.TCPConnector`::
 
-  conn = aiohttp.TCPConnector(network_interface='eth0')
+  conn = aiohttp.TCPConnector(network_interface="eth0")
   session = aiohttp.ClientSession(connector=conn)
 
 
 If you get a message that your OS does not support the function, you may
 specify the source IP instead::
 
-  conn = aiohttp.TCPConnector(local_addr=('127.0.0.1', 0))
+  conn = aiohttp.TCPConnector(local_addr=("127.0.0.1", 0))
   session = aiohttp.ClientSession(connector=conn)
 Unix domain sockets
 ^^^^^^^^^^^^^^^^^^^
