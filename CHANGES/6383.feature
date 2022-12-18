@@ -1,1 +1,1 @@
-- Added a optional keyword argument to TCPConnector that allows binding directly to a interface.
+Added ``network_interface`` parameter to TCPConnector to allow binding directly to an interface.
