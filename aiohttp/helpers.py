@@ -9,6 +9,7 @@ import enum
 import functools
 import inspect
 import netrc
+import socket
 import os
 import platform
 import re
@@ -80,7 +81,6 @@ DEBUG = sys.flags.dev_mode or (
     not sys.flags.ignore_environment and bool(os.environ.get("PYTHONASYNCIODEBUG"))
 )
 
-
 CHAR = {chr(i) for i in range(0, 128)}
 CTL = {chr(i) for i in range(0, 32)} | {
     chr(127),
@@ -108,6 +108,8 @@ SEPARATORS = {
 }
 TOKEN = CHAR ^ CTL ^ SEPARATORS
 
+SOCKET_SUPPORTS_BINDING_TO_DEVICE = hasattr(socket, "SO_BINDTODEVICE")
+
 
 class noop:
     def __await__(self) -> Generator[None, None, None]:
@@ -122,7 +124,6 @@ else:
         while isinstance(func, functools.partial):
             func = func.func
         return asyncio.iscoroutinefunction(func)
-
 
 json_re = re.compile(r"(?:application/|[\w.-]+/[\w.+-]+?\+)json$", re.IGNORECASE)
 
@@ -727,7 +728,6 @@ def ceil_timeout(
 
 
 class HeadersMixin:
-
     __slots__ = ("_content_type", "_content_dict", "_stored_content_type")
 
     def __init__(self) -> None:
@@ -1038,3 +1038,16 @@ def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
             with suppress(ValueError):
                 return datetime.datetime(*timetuple[:6], tzinfo=datetime.timezone.utc)
     return None
+
+
+# Addresses can be either tuples of varying lengths (AF_INET, AF_INET6,
+# AF_NETLINK, AF_TIPC) or strings (AF_UNIX).
+def connect_socket_with_interface(network_interface: str, family: int = socket.AF_INET,
+                                  local_addr: Optional[Union[tuple[Any, ...], str]] = None) -> socket.socket:
+    """Prepares a pre-connected socket to asyncio"""
+    s = socket.socket(family, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, network_interface.encode())
+    if local_addr:
+        s.bind(local_addr)
+    s.setblocking(False)
+    return s

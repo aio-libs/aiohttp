@@ -3,7 +3,6 @@ import dataclasses
 import functools
 import logging
 import random
-import socket
 import sys
 import traceback
 import warnings
@@ -47,7 +46,8 @@ from .client_exceptions import (
 )
 from .client_proto import ResponseHandler
 from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
-from .helpers import _SENTINEL, ceil_timeout, is_ip_address, sentinel, set_result
+from .helpers import _SENTINEL, ceil_timeout, is_ip_address, sentinel, set_result, SOCKET_SUPPORTS_BINDING_TO_DEVICE, \
+    connect_socket_with_interface
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
@@ -59,9 +59,7 @@ except ImportError:  # pragma: no cover
     ssl = None  # type: ignore[assignment]
     SSLContext = object  # type: ignore[misc,assignment]
 
-
 __all__ = ("BaseConnector", "TCPConnector", "UnixConnector", "NamedPipeConnector")
-
 
 if TYPE_CHECKING:  # pragma: no cover
     from .client import ClientTimeout
@@ -70,7 +68,6 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class Connection:
-
     _source_traceback = None
     _transport = None
 
@@ -775,8 +772,8 @@ class TCPConnector(BaseConnector):
         self._family = family
         self._local_addr = local_addr
         self._network_interface = network_interface
-        if self._network_interface and not hasattr(socket, "SO_BINDTODEVICE"):
-            raise OSError("Binding to interface is not supported by your OS.")
+        if self._network_interface and not SOCKET_SUPPORTS_BINDING_TO_DEVICE:
+            raise RuntimeError("Binding to interface is not supported by your OS.")
 
     def _close_immediately(self) -> List["asyncio.Future[None]"]:
         for ev in self._throttle_dns_events.values():
@@ -972,18 +969,11 @@ class TCPConnector(BaseConnector):
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
             ):
                 if self._network_interface:
-                    kwargs["sock"] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    kwargs["sock"].setsockopt(
-                        socket.SOL_SOCKET,
-                        socket.SO_BINDTODEVICE,
-                        self._network_interface.encode(),
-                    )
-                    if self._local_addr:
-                        kwargs["sock"].bind(self._local_addr)
-                    kwargs["sock"].setblocking(False)
-                    kwargs["sock"].connect_ex((args[-2], args[-1]))
-                    args = args[:-2]  # only send socket instead host/ip
-                return await self._loop.create_connection(*args, **kwargs)  # type: ignore[return-value]  # noqa
+                    *args, sock_hostname, sock_port = args
+                    s = connect_socket_with_interface(self._network_interface, family=kwargs["family"],
+                                                      local_addr=self._local_addr)
+                    await self._loop.sock_connect(s, (sock_hostname, sock_port))
+                return await self._loop.create_connection(*args, **kwargs, sock=s)  # type: ignore[return-value]  # noqa
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:
