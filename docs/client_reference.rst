@@ -179,6 +179,11 @@ The client session supports the context manager protocol for self closing.
 
       Get proxy credentials from ``~/.netrc`` file if present.
 
+      Get HTTP Basic Auth credentials from ``~/.netrc`` file if present.
+
+      If ``NETRC`` environment variable is set, read from file specified
+      there rather than from ``~/.netrc``
+
       .. seealso::
 
          ``.netrc`` documentation: https://www.gnu.org/software/inetutils/manual/html_node/The-_002enetrc-file.html
@@ -188,6 +193,10 @@ The client session supports the context manager protocol for self closing.
       .. versionchanged:: 3.0
 
          Added support for ``~/.netrc`` file.
+
+      .. versionchanged:: 4.0
+
+         Added support for reading HTTP Basic Auth credentials from ``~/.netrc`` file.
 
    :param bool requote_redirect_url: Apply *URL requoting* for redirection URLs if
                                      automatic redirection is enabled (``True`` by
