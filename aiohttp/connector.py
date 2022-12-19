@@ -46,8 +46,15 @@ from .client_exceptions import (
 )
 from .client_proto import ResponseHandler
 from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
-from .helpers import _SENTINEL, ceil_timeout, is_ip_address, sentinel, set_result, SOCKET_SUPPORTS_BINDING_TO_DEVICE, \
-    connect_socket_with_interface
+from .helpers import (
+    _SENTINEL,
+    SOCKET_SUPPORTS_BINDING_TO_DEVICE,
+    ceil_timeout,
+    connect_socket_with_interface,
+    is_ip_address,
+    sentinel,
+    set_result,
+)
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
@@ -970,8 +977,11 @@ class TCPConnector(BaseConnector):
             ):
                 if self._network_interface:
                     *args, sock_hostname, sock_port = args
-                    s = connect_socket_with_interface(self._network_interface, family=kwargs["family"],
-                                                      local_addr=self._local_addr)
+                    s = connect_socket_with_interface(
+                        self._network_interface,
+                        family=kwargs["family"],
+                        local_addr=self._local_addr,
+                    )
                     await self._loop.sock_connect(s, (sock_hostname, sock_port))
                 return await self._loop.create_connection(*args, **kwargs, sock=s)  # type: ignore[return-value]  # noqa
         except cert_errors as exc:
