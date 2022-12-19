@@ -2,7 +2,6 @@
 import asyncio
 import hashlib
 import io
-import os
 import pathlib
 import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
@@ -1254,6 +1253,7 @@ def test_gen_default_accept_encoding(has_brotli: Any, expected: Any) -> None:
 )
 def test_basicauth_from_netrc(
     tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
     make_request: Any,
     netrc_contents: str,
     hostname: str,
@@ -1265,16 +1265,11 @@ def test_basicauth_from_netrc(
     with open(netrc_file_path, "w") as f:
         f.write(netrc_contents)
         f.flush()
-    try:
-        # save and restore NETRC env variable if already set
-        old_netrc = os.environ.get("NETRC")
-        os.environ["NETRC"] = str(netrc_file_path)
 
-        req = make_request("get", f"http://{hostname}", trust_env=trust_env)
-        if expected_auth:
-            assert req.headers[hdrs.AUTHORIZATION] == expected_auth.encode()
-        else:
-            assert hdrs.AUTHORIZATION not in req.headers
-    finally:
-        if old_netrc:
-            os.environ["NETRC"] = old_netrc
+    monkeypatch.setenv("NETRC", str(netrc_file_path))
+
+    req = make_request("get", f"http://{hostname}", trust_env=trust_env)
+    if expected_auth:
+        assert req.headers[hdrs.AUTHORIZATION] == expected_auth.encode()
+    else:
+        assert hdrs.AUTHORIZATION not in req.headers

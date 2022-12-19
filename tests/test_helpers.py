@@ -3,7 +3,6 @@ import asyncio
 import base64
 import datetime
 import gc
-import os
 import pathlib
 import platform
 import weakref
@@ -979,21 +978,16 @@ def test_parse_http_date(value, expected):
     assert parse_http_date(value) == expected
 
 
-def test_netrc_from_env(tmp_path: pathlib.Path):
+def test_netrc_from_env(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch):
     netrc_file_path = tmp_path / ".netrc"
     with open(netrc_file_path, "w") as f:
         f.write("machine example.com login username password pass\n")
         f.flush()
 
-    try:
-        # save and restore NETRC env variable if already set
-        old_netrc = os.environ.get("NETRC")
-        os.environ["NETRC"] = str(netrc_file_path)
-        netrc_obj = helpers.netrc_from_env()
-        assert netrc_obj.authenticators("example.com")[0] == "username"
-    finally:
-        if old_netrc:
-            os.environ["NETRC"] = old_netrc
+    monkeypatch.setenv("NETRC", str(netrc_file_path))
+
+    netrc_obj = helpers.netrc_from_env()
+    assert netrc_obj.authenticators("example.com")[0] == "username"
 
 
 @pytest.mark.parametrize(
@@ -1019,6 +1013,7 @@ def test_netrc_from_env(tmp_path: pathlib.Path):
 )
 def test_basicauth_from_netrc(
     tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
     netrc_contents: str,
     hostname: str,
     expected_auth: helpers.BasicAuth,
@@ -1028,13 +1023,8 @@ def test_basicauth_from_netrc(
         f.write(netrc_contents)
         f.flush()
 
-    try:
-        # save and restore NETRC env variable if already set
-        old_netrc = os.environ.get("NETRC")
-        os.environ["NETRC"] = str(netrc_file_path)
-        netrc_obj = helpers.netrc_from_env()
+    monkeypatch.setenv("NETRC", str(netrc_file_path))
 
-        assert expected_auth == helpers.basicauth_from_netrc(netrc_obj, hostname)
-    finally:
-        if old_netrc:
-            os.environ["NETRC"] = old_netrc
+    netrc_obj = helpers.netrc_from_env()
+
+    assert expected_auth == helpers.basicauth_from_netrc(netrc_obj, hostname)
