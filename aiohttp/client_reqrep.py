@@ -435,16 +435,11 @@ class ClientRequest:
         """Set basic auth."""
         if auth is None:
             auth = self.auth
+        if auth is None and trust_env:
+            netrc_obj = netrc_from_env()
+            if netrc_obj:
+                auth = basicauth_from_netrc(netrc_obj, self.url.host)
         if auth is None:
-            if trust_env:
-                # If no auth is specified, we read from netrc.
-
-                netrc_obj = netrc_from_env()
-                if netrc_obj:
-                    auth = basicauth_from_netrc(netrc_obj, self.url.host)
-                    if auth:
-                        self.headers[hdrs.AUTHORIZATION] = auth.encode()
-
             return
 
         if not isinstance(auth, helpers.BasicAuth):
