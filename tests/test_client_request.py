@@ -2,10 +2,12 @@
 import asyncio
 import hashlib
 import io
+import os
 import pathlib
+import tempfile
 import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
-from typing import Any
+from typing import Any, Optional
 from unittest import mock
 
 import pytest
@@ -13,7 +15,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
 
 import aiohttp
-from aiohttp import BaseConnector, hdrs, payload
+from aiohttp import BaseConnector, hdrs, helpers, payload
 from aiohttp.client_reqrep import (
     ClientRequest,
     ClientResponse,
@@ -1230,3 +1232,47 @@ def test_loose_cookies_types(loop: Any) -> None:
 def test_gen_default_accept_encoding(has_brotli: Any, expected: Any) -> None:
     with mock.patch("aiohttp.client_reqrep.HAS_BROTLI", has_brotli):
         assert _gen_default_accept_encoding() == expected
+
+
+@pytest.mark.parametrize(
+    ["netrc_contents", "hostname", "trust_env", "expected_auth"],
+    [
+        (
+            "machine example.com login username password pass\n",
+            "example.com",
+            True,
+            helpers.BasicAuth("username", "pass"),
+        ),
+        (
+            "machine example.com login username password pass\n",
+            "example.com",
+            False,
+            None,
+        ),
+        ("", "example.com", True, None),
+        ("", "example.com", False, None),
+    ],
+)
+def test_basicauth_from_netrc(
+    make_request: Any,
+    netrc_contents: str,
+    hostname: str,
+    trust_env: bool,
+    expected_auth: Optional[helpers.BasicAuth],
+):
+    with tempfile.NamedTemporaryFile() as f:
+        f.write(netrc_contents.encode())
+        f.flush()
+        try:
+            # save and restore NETRC env variable if already set
+            old_netrc = os.environ.get("NETRC")
+            os.environ["NETRC"] = f.name
+
+            req = make_request("get", f"http://{hostname}", trust_env=trust_env)
+            if expected_auth:
+                assert req.headers[hdrs.AUTHORIZATION] == expected_auth.encode()
+            else:
+                assert hdrs.AUTHORIZATION not in req.headers
+        finally:
+            if old_netrc:
+                os.environ["NETRC"] = old_netrc
