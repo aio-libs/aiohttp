@@ -454,7 +454,7 @@ In order to specify the nameservers to when resolving the hostnames,
 Changing source interface
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you wish to specify where the packets should originate from, you should 
+If you wish to specify where the packets should originate from, you should
 specify the interface you wish to use. This requires that you OS supports it.
 :class:`~aiohttp.TCPConnector`::
 
