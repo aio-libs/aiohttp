@@ -3,7 +3,9 @@ import asyncio
 import base64
 import datetime
 import gc
+import os
 import platform
+import tempfile
 import weakref
 from math import ceil, modf
 from unittest import mock
@@ -975,3 +977,51 @@ def test_populate_with_cookies():
 )
 def test_parse_http_date(value, expected):
     assert parse_http_date(value) == expected
+
+
+def test_netrc_from_env():
+    with tempfile.NamedTemporaryFile() as f:
+        f.write(b"machine testhost login username password pass\n")
+        f.flush()
+        try:
+            # save and restore NETRC env variable if already set
+            old_netrc = os.environ.get("NETRC")
+            os.environ["NETRC"] = f.name
+            netrc_obj = helpers.netrc_from_env()
+            assert netrc_obj.authenticators("testhost")[0] == "username"
+        finally:
+            if old_netrc:
+                os.environ["NETRC"] = old_netrc
+
+
+@pytest.mark.parametrize(
+    ["netrc_contents", "hostname", "expected_auth"],
+    [
+        (
+            "machine testhost login username password pass\n",
+            "testhost",
+            helpers.BasicAuth("username", "pass"),
+        ),
+        (
+            "machine testhost account username password pass\n",
+            "testhost",
+            helpers.BasicAuth("username", "pass"),
+        ),
+        ("machine testhost password pass\n", "testhost", helpers.BasicAuth("", "pass")),
+        ("", "testhost", None),
+    ],
+)
+def test_basicauth_from_netrc(netrc_contents, hostname, expected_auth):
+    with tempfile.NamedTemporaryFile() as f:
+        f.write(netrc_contents.encode())
+        f.flush()
+        try:
+            # save and restore NETRC env variable if already set
+            old_netrc = os.environ.get("NETRC")
+            os.environ["NETRC"] = f.name
+            netrc_obj = helpers.netrc_from_env()
+
+            assert expected_auth == helpers.basicauth_from_netrc(netrc_obj, hostname)
+        finally:
+            if old_netrc:
+                os.environ["NETRC"] = old_netrc
