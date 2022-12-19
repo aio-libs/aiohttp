@@ -4,8 +4,8 @@ import base64
 import datetime
 import gc
 import os
+import pathlib
 import platform
-import tempfile
 import weakref
 from math import ceil, modf
 from unittest import mock
@@ -979,49 +979,62 @@ def test_parse_http_date(value, expected):
     assert parse_http_date(value) == expected
 
 
-def test_netrc_from_env():
-    with tempfile.NamedTemporaryFile() as f:
-        f.write(b"machine testhost login username password pass\n")
+def test_netrc_from_env(tmp_path: pathlib.Path):
+    netrc_file_path = tmp_path / ".netrc"
+    with open(netrc_file_path, "w") as f:
+        f.write("machine example.com login username password pass\n")
         f.flush()
-        try:
-            # save and restore NETRC env variable if already set
-            old_netrc = os.environ.get("NETRC")
-            os.environ["NETRC"] = f.name
-            netrc_obj = helpers.netrc_from_env()
-            assert netrc_obj.authenticators("testhost")[0] == "username"
-        finally:
-            if old_netrc:
-                os.environ["NETRC"] = old_netrc
+
+    try:
+        # save and restore NETRC env variable if already set
+        old_netrc = os.environ.get("NETRC")
+        os.environ["NETRC"] = str(netrc_file_path)
+        netrc_obj = helpers.netrc_from_env()
+        assert netrc_obj.authenticators("example.com")[0] == "username"
+    finally:
+        if old_netrc:
+            os.environ["NETRC"] = old_netrc
 
 
 @pytest.mark.parametrize(
     ["netrc_contents", "hostname", "expected_auth"],
     [
         (
-            "machine testhost login username password pass\n",
-            "testhost",
+            "machine example.com login username password pass\n",
+            "example.com",
             helpers.BasicAuth("username", "pass"),
         ),
         (
-            "machine testhost account username password pass\n",
-            "testhost",
+            "machine example.com account username password pass\n",
+            "example.com",
             helpers.BasicAuth("username", "pass"),
         ),
-        ("machine testhost password pass\n", "testhost", helpers.BasicAuth("", "pass")),
-        ("", "testhost", None),
+        (
+            "machine example.com password pass\n",
+            "example.com",
+            helpers.BasicAuth("", "pass"),
+        ),
+        ("", "example.com", None),
     ],
 )
-def test_basicauth_from_netrc(netrc_contents, hostname, expected_auth):
-    with tempfile.NamedTemporaryFile() as f:
-        f.write(netrc_contents.encode())
+def test_basicauth_from_netrc(
+    tmp_path: pathlib.Path,
+    netrc_contents: str,
+    hostname: str,
+    expected_auth: helpers.BasicAuth,
+):
+    netrc_file_path = tmp_path / ".netrc"
+    with open(netrc_file_path, "w") as f:
+        f.write(netrc_contents)
         f.flush()
-        try:
-            # save and restore NETRC env variable if already set
-            old_netrc = os.environ.get("NETRC")
-            os.environ["NETRC"] = f.name
-            netrc_obj = helpers.netrc_from_env()
 
-            assert expected_auth == helpers.basicauth_from_netrc(netrc_obj, hostname)
-        finally:
-            if old_netrc:
-                os.environ["NETRC"] = old_netrc
+    try:
+        # save and restore NETRC env variable if already set
+        old_netrc = os.environ.get("NETRC")
+        os.environ["NETRC"] = str(netrc_file_path)
+        netrc_obj = helpers.netrc_from_env()
+
+        assert expected_auth == helpers.basicauth_from_netrc(netrc_obj, hostname)
+    finally:
+        if old_netrc:
+            os.environ["NETRC"] = old_netrc

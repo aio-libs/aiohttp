@@ -4,7 +4,6 @@ import hashlib
 import io
 import os
 import pathlib
-import tempfile
 import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from typing import Any, Optional
@@ -1254,25 +1253,28 @@ def test_gen_default_accept_encoding(has_brotli: Any, expected: Any) -> None:
     ],
 )
 def test_basicauth_from_netrc(
+    tmp_path: pathlib.Path,
     make_request: Any,
     netrc_contents: str,
     hostname: str,
     trust_env: bool,
     expected_auth: Optional[helpers.BasicAuth],
 ):
-    with tempfile.NamedTemporaryFile() as f:
-        f.write(netrc_contents.encode())
-        f.flush()
-        try:
-            # save and restore NETRC env variable if already set
-            old_netrc = os.environ.get("NETRC")
-            os.environ["NETRC"] = f.name
 
-            req = make_request("get", f"http://{hostname}", trust_env=trust_env)
-            if expected_auth:
-                assert req.headers[hdrs.AUTHORIZATION] == expected_auth.encode()
-            else:
-                assert hdrs.AUTHORIZATION not in req.headers
-        finally:
-            if old_netrc:
-                os.environ["NETRC"] = old_netrc
+    netrc_file_path = tmp_path / ".netrc"
+    with open(netrc_file_path, "w") as f:
+        f.write(netrc_contents)
+        f.flush()
+    try:
+        # save and restore NETRC env variable if already set
+        old_netrc = os.environ.get("NETRC")
+        os.environ["NETRC"] = str(netrc_file_path)
+
+        req = make_request("get", f"http://{hostname}", trust_env=trust_env)
+        if expected_auth:
+            assert req.headers[hdrs.AUTHORIZATION] == expected_auth.encode()
+        else:
+            assert hdrs.AUTHORIZATION not in req.headers
+    finally:
+        if old_netrc:
+            os.environ["NETRC"] = old_netrc
