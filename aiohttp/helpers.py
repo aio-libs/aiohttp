@@ -1043,7 +1043,7 @@ def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
 # Addresses can be either tuples of varying lengths (AF_INET, AF_INET6,
 # AF_NETLINK, AF_TIPC) or strings (AF_UNIX).
 def connect_socket_with_interface(network_interface: str, family: int = socket.AF_INET,
-                                  local_addr: Optional[Union[tuple[Any, ...], str]] = None) -> socket.socket:
+                                  local_addr: Optional[Union[Tuple[Any, ...], str]] = None) -> socket.socket:
     """Prepares a pre-connected socket to asyncio"""
     s = socket.socket(family, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, network_interface.encode())
