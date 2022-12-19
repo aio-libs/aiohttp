@@ -50,8 +50,8 @@ from .helpers import (
     _SENTINEL,
     SOCKET_SUPPORTS_BINDING_TO_DEVICE,
     ceil_timeout,
-    connect_socket_with_interface,
     is_ip_address,
+    make_an_interface_bound_socket,
     sentinel,
     set_result,
 )
@@ -780,7 +780,8 @@ class TCPConnector(BaseConnector):
         self._network_interface = network_interface
         if self._network_interface and not SOCKET_SUPPORTS_BINDING_TO_DEVICE:
             raise RuntimeError(
-                "Binding to interface is not supported by the current runtime (kernel or OS)."
+                "Binding to interface is not supported "
+                "by the current runtime (kernel or OS)."
             )
 
     def _close_immediately(self) -> List["asyncio.Future[None]"]:
@@ -976,19 +977,16 @@ class TCPConnector(BaseConnector):
             async with ceil_timeout(
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
             ):
-                conn_args: Sequence[Any]
                 if self._network_interface:
-                    *conn_args, sock_hostname, sock_port = args
-                    s = connect_socket_with_interface(
+                    args, sock_hostname, sock_port = args
+                    sock = make_an_interface_bound_socket(
                         self._network_interface,
                         family=kwargs["family"],
                         local_addr=self._local_addr,
                     )
-                    await self._loop.sock_connect(s, (sock_hostname, sock_port))
-                    kwargs["sock"] = s
-                else:
-                    conn_args = args
-                return await self._loop.create_connection(*conn_args, **kwargs)  # type: ignore[return-value]  # noqa
+                    await self._loop.sock_connect(sock, (sock_hostname, sock_port))
+                    kwargs["sock"] = sock
+                return await self._loop.create_connection(*args, **kwargs)  # type: ignore[return-value]  # noqa
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:

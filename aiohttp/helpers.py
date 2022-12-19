@@ -1041,17 +1041,22 @@ def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
     return None
 
 
-# Addresses can be either tuples of varying lengths (AF_INET, AF_INET6,
-# AF_NETLINK, AF_TIPC) or strings (AF_UNIX).
 def make_an_interface_bound_socket(
     network_interface: str,
     family: int = socket.AF_INET,
     local_addr: Optional[Union[Tuple[Any, ...], str]] = None,
 ) -> socket.socket:
-    """Prepares a socket to asyncio"""
-    s = socket.socket(family, socket.SOCK_STREAM)
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, network_interface.encode())
+    """Prepares a socket to asyncio.
+
+    Addresses can be either tuples of varying lengths
+    (AF_INET, AF_INET6, AF_NETLINK, AF_TIPC)
+    or strings (AF_UNIX).
+    """
+    sock = socket.socket(family, socket.SOCK_STREAM)
+    sock.setsockopt(
+        socket.SOL_SOCKET, socket.SO_BINDTODEVICE, network_interface.encode()
+    )
     if local_addr:
-        s.bind(local_addr)
-    s.setblocking(False)
-    return s
+        sock.bind(local_addr)
+    sock.setblocking(False)
+    return sock
