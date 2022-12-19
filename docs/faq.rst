@@ -201,7 +201,7 @@ and call :meth:`aiohttp.web.WebSocketResponse.close` on all of them in
 
 
 How do I make a request from a specific IP address or network interface?
----------------------------------------------------
+------------------------------------------------------------------------
 
 If your system has several IP interfaces, you may choose one which will
 be used used to bind a socket locally::
@@ -212,10 +212,14 @@ be used used to bind a socket locally::
 
 If your OS supports it, you may also bind directly to the interface ::
 
-    conn = aiohttp.TCPConnector(network_interface="eth0")
-    async with aiohttp.ClientSession(connector=conn) as session:
+    try:
+        conn = aiohttp.TCPConnector(network_interface="eth0")
+        async with aiohttp.ClientSession(connector=conn) as session:
+            ...
+    except RuntimeError:
+        # fallback to local_addr as the runtime kernel is unsupported.
+        conn = aiohttp.TCPConnector(local_addr=('127.0.0.1', 0))
         ...
-
 
 .. seealso::
    ``local_addr`` and ``network_interface`` arguments of :class:`~aiohttp.TCPConnector`.

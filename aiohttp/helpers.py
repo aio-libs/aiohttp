@@ -1046,7 +1046,7 @@ def make_an_interface_bound_socket(
     family: int = socket.AF_INET,
     local_addr: Optional[Union[Tuple[Any, ...], str]] = None,
 ) -> socket.socket:
-    """Prepares a socket to asyncio.
+    """Returns a socket, bounded to a network interface.
 
     Addresses can be either tuples of varying lengths
     (AF_INET, AF_INET6, AF_NETLINK, AF_TIPC)

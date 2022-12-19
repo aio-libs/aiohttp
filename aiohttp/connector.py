@@ -66,7 +66,9 @@ except ImportError:  # pragma: no cover
     ssl = None  # type: ignore[assignment]
     SSLContext = object  # type: ignore[misc,assignment]
 
+
 __all__ = ("BaseConnector", "TCPConnector", "UnixConnector", "NamedPipeConnector")
+
 
 if TYPE_CHECKING:  # pragma: no cover
     from .client import ClientTimeout
@@ -75,6 +77,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class Connection:
+
     _source_traceback = None
     _transport = None
 
