@@ -212,13 +212,19 @@ be used used to bind a socket locally::
 
 If your OS supports it, you may also bind directly to the interface ::
 
+    conn = aiohttp.TCPConnector(network_interface="eth0")
+    async with aiohttp.ClientSession(connector=conn) as session:
+        ...
+
+It is also possible to have a fallback by catching the ``RuntimeError`` on creation:
+
     try:
         conn = aiohttp.TCPConnector(network_interface="eth0")
-        async with aiohttp.ClientSession(connector=conn) as session:
-            ...
     except RuntimeError:
         # fallback to local_addr as the runtime kernel is unsupported.
-        conn = aiohttp.TCPConnector(local_addr=('127.0.0.1', 0))
+        conn = aiohttp.TCPConnector(local_addr=("127.0.0.1", 0))
+
+    async with aiohttp.ClientSession(connector=conn) as session:
         ...
 
 .. seealso::
