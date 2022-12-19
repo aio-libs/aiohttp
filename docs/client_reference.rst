@@ -194,7 +194,7 @@ The client session supports the context manager protocol for self closing.
 
          Added support for ``~/.netrc`` file.
 
-      .. versionchanged:: 4.0
+      .. versionchanged:: 3.9
 
          Added support for reading HTTP Basic Auth credentials from ``~/.netrc`` file.
 
