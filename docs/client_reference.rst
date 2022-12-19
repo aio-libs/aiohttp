@@ -1127,7 +1127,7 @@ TCPConnector
       socket locally if specified.
 
    :param str network_interface: Name of the network interface used to bind
-      socket locally if specified (e.g. "eth0"). Note that this feature is not
+      socket locally if specified (e.g. ``eth0``). Note that this feature is not
       supported by all systems.
 
    :param bool force_close: close underlying sockets after
