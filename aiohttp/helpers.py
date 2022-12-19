@@ -1048,7 +1048,7 @@ def connect_socket_with_interface(
     family: int = socket.AF_INET,
     local_addr: Optional[Union[Tuple[Any, ...], str]] = None,
 ) -> socket.socket:
-    """Prepares a pre-connected socket to asyncio"""
+    """Prepares a socket to asyncio"""
     s = socket.socket(family, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, network_interface.encode())
     if local_addr:
