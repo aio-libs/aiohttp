@@ -983,7 +983,8 @@ class TCPConnector(BaseConnector):
                         local_addr=self._local_addr,
                     )
                     await self._loop.sock_connect(s, (sock_hostname, sock_port))
-                return await self._loop.create_connection(*args, **kwargs, sock=s)  # type: ignore[return-value]  # noqa
+                    kwargs["sock"] = s
+                return await self._loop.create_connection(*args, **kwargs)  # type: ignore[return-value]  # noqa
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:
