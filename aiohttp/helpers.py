@@ -245,27 +245,24 @@ class ProxyInfo:
 
 def basicauth_from_netrc(netrc_obj: netrc.netrc, host: str) -> Optional[BasicAuth]:
     auth_from_netrc = netrc_obj.authenticators(host)
-    if auth_from_netrc is not None:
-        login, account, password = auth_from_netrc
-        if not login:
-            # login is provided, we just use it as username.
-            # If login and account are both provided, only login is used
-            username = login
-        elif account:
-            # login is not provided, but account is
-            username = account
-        else:
-            # neither login nore account are provided, we use blank username
-            # this matches python 3.11 behavior
-            username = ""
+    if auth_from_netrc is None:
+        return None
 
-        if password is None:
-            # Password is not provided, we use blank string.
-            # this matches python 3.11 behavior
-            password = ""
+    login, account, password = auth_from_netrc
 
-        auth = BasicAuth(username, password)
-        return auth
+    # TODO(PY311): username = login or account
+    # Upto python 3.10, account could be None if not specified,
+    # and login will be empty string if not specified. From 3.11,
+    # login and account will be empty string if not specified.
+    # If login is present, we prefer that over account as username
+    username = login if (login or account is None) else account
+
+    # TODO(PY311): Remove this, as password will be empty string
+    # if not specified
+    if password is None:
+        password = ""
+
+    return BasicAuth(username, password)
 
 
 def proxies_from_env() -> Dict[str, ProxyInfo]:
