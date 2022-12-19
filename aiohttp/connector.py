@@ -779,7 +779,9 @@ class TCPConnector(BaseConnector):
         self._local_addr = local_addr
         self._network_interface = network_interface
         if self._network_interface and not SOCKET_SUPPORTS_BINDING_TO_DEVICE:
-            raise RuntimeError("Binding to interface is not supported by the current runtime (kernel or OS).")
+            raise RuntimeError(
+                "Binding to interface is not supported by the current runtime (kernel or OS)."
+            )
 
     def _close_immediately(self) -> List["asyncio.Future[None]"]:
         for ev in self._throttle_dns_events.values():
