@@ -217,7 +217,8 @@ If your OS supports it, you may also bind directly to the interface ::
         ...
 
 
-.. seealso:: :class:`aiohttp.TCPConnector`, ``local_addr`` and ``network_interface`` parameter.
+.. seealso::
+   ``local_addr`` and ``network_interface`` arguments of :class:`~aiohttp.TCPConnector`.
 
 What is the API stability and deprecation policy?
 -------------------------------------------------
