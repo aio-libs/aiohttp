@@ -452,19 +452,18 @@ In order to specify the nameservers to when resolving the hostnames,
 
 
 Changing source interface
-^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
-By default, if you have multiple internet connections, aiohttp will choose the
-default route, to change the source interface, you'll have to specifiy it.
-This requires that you OS supports it.
+If you wish to specify where the packets should originate from, you should
+specify the interface you wish to use. This requires that you OS supports it.
 :class:`~aiohttp.TCPConnector`::
 
     conn = aiohttp.TCPConnector(network_interface="eth0")
     session = aiohttp.ClientSession(connector=conn)
 
 
-If you get a message that your OS does not support the function, you may
-specify the source IP instead::
+If your OS does not support the function, you may specify
+the source IP instead::
 
     conn = aiohttp.TCPConnector(local_addr=("127.0.0.1", 0))
     session = aiohttp.ClientSession(connector=conn)
