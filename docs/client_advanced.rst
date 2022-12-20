@@ -459,7 +459,7 @@ set a specific network interface when initializing the :class:`~aiohttp.TCPConne
 
 .. warning::
    This may cause a :exc:`RuntimeError` if the OS kernel does not support this feature.
-   
+
 Here's an example of how to do this::
 
     conn = aiohttp.TCPConnector(network_interface="eth0")
