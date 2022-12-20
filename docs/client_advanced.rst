@@ -454,16 +454,19 @@ In order to specify the nameservers to when resolving the hostnames,
 Changing source interface
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you wish to specify where the packets should originate from, you should
-specify the interface you wish to use.
-Raises :exc:`RuntimeError` if the OS does not support this feature.
-:class:`~aiohttp.TCPConnector`::
+If it is necessary to specify where the packets should originate from, it is possible to
+set a specific network interface when initializing the :class:`~aiohttp.TCPConnector` instance.
+
+.. warning::
+   This may cause a :exc:`RuntimeError` if the OS kernel does not support this feature.
+   
+Here's an example of how to do this::
 
     conn = aiohttp.TCPConnector(network_interface="eth0")
     session = aiohttp.ClientSession(connector=conn)
 
 
-If your OS does not support the function, you may specify
+If the runtime OS does not support the function, you may specify
 the source IP instead::
 
     conn = aiohttp.TCPConnector(local_addr=("127.0.0.1", 0))
