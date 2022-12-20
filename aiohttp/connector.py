@@ -981,7 +981,7 @@ class TCPConnector(BaseConnector):
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
             ):
                 if self._network_interface:
-                    args, sock_hostname, sock_port = args
+                    *args, sock_hostname, sock_port = args  # type: ignore[assignment]
                     sock = make_an_interface_bound_socket(
                         self._network_interface,
                         family=kwargs["family"],

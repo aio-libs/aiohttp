@@ -204,19 +204,9 @@ How do I make a request from a specific IP address or network interface?
 ------------------------------------------------------------------------
 
 If your system has several IP interfaces, you may choose one which will
-be used used to bind a socket locally::
-
-    conn = aiohttp.TCPConnector(local_addr=('127.0.0.1', 0))
-    async with aiohttp.ClientSession(connector=conn) as session:
-        ...
-
-If your OS supports it, you may also bind directly to the interface::
-
-    conn = aiohttp.TCPConnector(network_interface="eth0")
-    async with aiohttp.ClientSession(connector=conn) as session:
-        ...
-
-It is also possible to have a fallback by catching the :exc:`RuntimeError` on creation::
+be used used to bind a socket locally, either by specifying the source IP, or
+source network interface. It is also possible to have a
+fallback by catching the :exc:`RuntimeError` on creation::
 
     try:
         conn = aiohttp.TCPConnector(network_interface="eth0")
