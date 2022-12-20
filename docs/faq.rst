@@ -210,13 +210,13 @@ be used used to bind a socket locally::
     async with aiohttp.ClientSession(connector=conn) as session:
         ...
 
-If your OS supports it, you may also bind directly to the interface ::
+If your OS supports it, you may also bind directly to the interface::
 
     conn = aiohttp.TCPConnector(network_interface="eth0")
     async with aiohttp.ClientSession(connector=conn) as session:
         ...
 
-It is also possible to have a fallback by catching the ``RuntimeError`` on creation:
+It is also possible to have a fallback by catching the :exc:`RuntimeError` on creation::
 
     try:
         conn = aiohttp.TCPConnector(network_interface="eth0")

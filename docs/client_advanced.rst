@@ -456,7 +456,7 @@ Changing source interface
 
 If you wish to specify where the packets should originate from, you should
 specify the interface you wish to use.
-Raises ``RuntimeError`` if the OS does not support this feature.
+Raises :exc:`RuntimeError` if the OS does not support this feature.
 :class:`~aiohttp.TCPConnector`::
 
     conn = aiohttp.TCPConnector(network_interface="eth0")
