@@ -3,7 +3,6 @@ import asyncio
 import base64
 import datetime
 import gc
-import pathlib
 import platform
 import weakref
 from math import ceil, modf
@@ -978,16 +977,22 @@ def test_parse_http_date(value, expected):
     assert parse_http_date(value) == expected
 
 
-def test_netrc_from_env(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch):
-    netrc_file_path = tmp_path / ".netrc"
-    with open(netrc_file_path, "w") as f:
-        f.write("machine example.com login username password pass\n")
-        f.flush()
-
-    monkeypatch.setenv("NETRC", str(netrc_file_path))
-
+@pytest.mark.parametrize(
+    ["netrc_contents", "hostname", "expected_username"],
+    [
+        (
+            "machine example.com login username password pass\n",
+            "example.com",
+            "username",
+        ),
+    ],
+    indirect=("netrc_contents",),
+)
+@pytest.mark.usefixtures("netrc_contents")
+def test_netrc_from_env(netrc_contents: str, hostname: str, expected_username: str):
+    """Test that reading netrc files from env works as expected"""
     netrc_obj = helpers.netrc_from_env()
-    assert netrc_obj.authenticators("example.com")[0] == "username"
+    assert netrc_obj.authenticators(hostname)[0] == expected_username
 
 
 @pytest.mark.parametrize(
@@ -1010,21 +1015,15 @@ def test_netrc_from_env(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch)
         ),
         ("", "example.com", None),
     ],
+    indirect=("netrc_contents",),
 )
+@pytest.mark.usefixtures("netrc_contents")
 def test_basicauth_from_netrc(
-    tmp_path: pathlib.Path,
-    monkeypatch: pytest.MonkeyPatch,
     netrc_contents: str,
     hostname: str,
     expected_auth: helpers.BasicAuth,
 ):
-    netrc_file_path = tmp_path / ".netrc"
-    with open(netrc_file_path, "w") as f:
-        f.write(netrc_contents)
-        f.flush()
-
-    monkeypatch.setenv("NETRC", str(netrc_file_path))
-
+    """Test that netrc file contents are properly parsed into BasicAuth tuples"""
     netrc_obj = helpers.netrc_from_env()
 
     assert expected_auth == helpers.basicauth_from_netrc(netrc_obj, hostname)

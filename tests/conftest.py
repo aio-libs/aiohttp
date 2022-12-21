@@ -1,6 +1,7 @@
 # type: ignore
 import asyncio
 import os
+import pathlib
 import socket
 import ssl
 import sys
@@ -197,3 +198,23 @@ def selector_loop() -> None:
     with loop_context(policy.new_event_loop) as _loop:
         asyncio.set_event_loop(_loop)
         yield _loop
+
+
+@pytest.fixture
+def netrc_contents(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+    request: pytest.FixtureRequest,
+):
+    """
+    Prepare a ``.netrc`` file with given contents.
+
+    monkeypatches the NETRC environment variable to point to created
+    file.
+    """
+    netrc_contents = request.param
+
+    netrc_file_path = tmp_path / ".netrc"
+    netrc_file_path.write_text(netrc_contents)
+
+    monkeypatch.setenv("NETRC", str(netrc_file_path))

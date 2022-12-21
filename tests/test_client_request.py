@@ -1247,29 +1247,44 @@ def test_gen_default_accept_encoding(has_brotli: Any, expected: Any) -> None:
             False,
             None,
         ),
-        ("", "example.com", True, None),
-        ("", "example.com", False, None),
     ],
+    indirect=("netrc_contents",),
 )
-def test_basicauth_from_netrc(
-    tmp_path: pathlib.Path,
-    monkeypatch: pytest.MonkeyPatch,
+@pytest.mark.usefixtures("netrc_contents")
+def test_basicauth_from_netrc_present(
     make_request: Any,
     netrc_contents: str,
     hostname: str,
     trust_env: bool,
     expected_auth: Optional[helpers.BasicAuth],
 ):
+    """
+    Test appropriate Authorization header is sent when netrc is not empty.
 
-    netrc_file_path = tmp_path / ".netrc"
-    with open(netrc_file_path, "w") as f:
-        f.write(netrc_contents)
-        f.flush()
-
-    monkeypatch.setenv("NETRC", str(netrc_file_path))
-
+    No authorization header should be sent when trust_env is false, even if
+    netrc is not empty.
+    """
     req = make_request("get", f"http://{hostname}", trust_env=trust_env)
-    if expected_auth:
+    if trust_env:
         assert req.headers[hdrs.AUTHORIZATION] == expected_auth.encode()
-    else:
-        assert hdrs.AUTHORIZATION not in req.headers
+
+
+@pytest.mark.parametrize(
+    ["netrc_contents", "hostname", "trust_env", "expected_auth"],
+    [
+        ("", "example.com", True, None),
+        ("", "example.com", False, None),
+    ],
+    indirect=("netrc_contents",),
+)
+@pytest.mark.usefixtures("netrc_contents")
+def test_basicauth_from_netrc_absent(
+    make_request: Any,
+    netrc_contents: str,
+    hostname: str,
+    trust_env: bool,
+    expected_auth: Optional[helpers.BasicAuth],
+):
+    """Test that no Authorization header is sent when netrc is empty"""
+    req = make_request("get", f"http://{hostname}", trust_env=trust_env)
+    assert hdrs.AUTHORIZATION not in req.headers
