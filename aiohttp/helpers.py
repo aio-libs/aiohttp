@@ -251,7 +251,7 @@ def basicauth_from_netrc(netrc_obj: netrc.netrc, host: str) -> Optional[BasicAut
     login, account, password = auth_from_netrc
 
     # TODO(PY311): username = login or account
-    # Upto python 3.10, account could be None if not specified,
+    # Up to python 3.10, account could be None if not specified,
     # and login will be empty string if not specified. From 3.11,
     # login and account will be empty string if not specified.
     # If login is present, we prefer that over account as username
