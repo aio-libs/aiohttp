@@ -243,11 +243,18 @@ class ProxyInfo:
     proxy_auth: Optional[BasicAuth]
 
 
-def basicauth_from_netrc(netrc_obj: netrc.netrc, host: str) -> Optional[BasicAuth]:
-    auth_from_netrc = netrc_obj.authenticators(host)
-    if auth_from_netrc is None:
-        return None
+def basicauth_from_netrc(netrc_obj: netrc.netrc, host: str) -> BasicAuth:
+    """
+    Return BasicAuth tuple with credentials for given host from netrc_obj.
 
+    Raises LookupError if netrc_obj is None or if no entry is found for the host.
+    """
+    if netrc_obj is None:
+        raise LookupError("No .netrc file found")
+    auth_from_netrc = netrc_obj.authenticators(host)
+
+    if auth_from_netrc is None:
+        raise LookupError(f"No entry for {host!s} found in the `.netrc` file.")
     login, account, password = auth_from_netrc
 
     # TODO(PY311): username = login or account
@@ -283,7 +290,10 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
             continue
         if netrc_obj and auth is None:
             if proxy.host is not None:
-                auth = basicauth_from_netrc(netrc_obj, proxy.host)
+                try:
+                    auth = basicauth_from_netrc(netrc_obj, proxy.host)
+                except LookupError:
+                    auth = None
         ret[proto] = ProxyInfo(proxy, auth)
     return ret
 

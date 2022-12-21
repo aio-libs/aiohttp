@@ -1026,4 +1026,8 @@ def test_basicauth_from_netrc(
     """Test that netrc file contents are properly parsed into BasicAuth tuples"""
     netrc_obj = helpers.netrc_from_env()
 
-    assert expected_auth == helpers.basicauth_from_netrc(netrc_obj, hostname)
+    if expected_auth:
+        assert expected_auth == helpers.basicauth_from_netrc(netrc_obj, hostname)
+    else:
+        with pytest.raises(LookupError):
+            helpers.basicauth_from_netrc(netrc_obj, hostname)
