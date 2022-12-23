@@ -435,7 +435,7 @@ class ClientRequest:
         """Set basic auth."""
         if auth is None:
             auth = self.auth
-        if auth is None and trust_env:
+        if auth is None and trust_env and self.url.host is not None:
             netrc_obj = netrc_from_env()
             if netrc_obj:
                 auth = basicauth_from_netrc(netrc_obj, self.url.host)
