@@ -1,5 +1,6 @@
 import asyncio
 import codecs
+import contextlib
 import dataclasses
 import functools
 import io
@@ -437,7 +438,7 @@ class ClientRequest:
             auth = self.auth
         if auth is None and trust_env and self.url.host is not None:
             netrc_obj = netrc_from_env()
-            if netrc_obj:
+            with contextlib.suppress(LookupError):
                 auth = basicauth_from_netrc(netrc_obj, self.url.host)
         if auth is None:
             return
