@@ -261,8 +261,8 @@ def basicauth_from_netrc(netrc_obj: netrc.netrc, host: str) -> BasicAuth:
     # Up to python 3.10, account could be None if not specified,
     # and login will be empty string if not specified. From 3.11,
     # login and account will be empty string if not specified.
-    # If login is present, we prefer that over account as username
-    username = login if (login or account is None) else account
+    prefer_login_over_account = login or account is None
+    username = login if prefer_login_over_account else account
 
     # TODO(PY311): Remove this, as password will be empty string
     # if not specified
