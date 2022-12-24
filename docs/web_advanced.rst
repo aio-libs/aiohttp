@@ -29,7 +29,7 @@ If you are familiar with asyncio, or scalability is a concern for
 your application, we recommend using the handler cancellation method.
 
 Raise on read/write (default)
-+++++++++++++++++++++++++++++
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 When a client peer is gone, a subsequent reading or writing raises :exc:`OSError`
 or a more specific exception like :exc:`ConnectionResetError`.
@@ -48,7 +48,7 @@ socket closing on the peer side without reading the full server response.
            # disconnected
 
 Web handler cancellation
-++++++++++++++++++++++++
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 This method can be enabled using the ``handler_cancellation`` parameter
 to :func:`run_app`.
