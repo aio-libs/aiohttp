@@ -137,11 +137,11 @@ internal data structures and can terminate them gracefully::
    you want to run something while you are processing other data,
    but still want to ensure the task is complete before returning::
 
-   async def handler(request):
-       t = asyncio.create_task(get_some_data())
-       ...  # Do some other things, while data is being fetched.
-       data = await t
-       return web.Response(text=data)
+       async def handler(request):
+           t = asyncio.create_task(get_some_data())
+           ...  # Do some other things, while data is being fetched.
+           data = await t
+           return web.Response(text=data)
 
 One more approach would be to use :func:`aiojobs.aiohttp.atomic`
 decorator to execute the entire handler as a new job. Essentially
