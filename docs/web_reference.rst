@@ -2908,7 +2908,7 @@ Utilities
 
    :param bool handler_cancellation: cancels the web handler task if the client
                                      drops the connection. This is recommended
-                                     if familiar with asyncio behaviour or
+                                     if familiar with asyncio behavior or
                                      scalability is a concern.
                                      :ref:`aiohttp-web-peer-disconnection`
 
