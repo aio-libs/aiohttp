@@ -101,7 +101,7 @@ Cancellation might occur while saving data in REDIS, so
 ``write_to_postgres`` will not be called, potentially
 leaving your data in an inconsistent state.
 
-Instead, you would need to write something like:
+Instead, you would need to write something like::
 
    async def write_data(request):
        await write_to_redis(request)
@@ -129,7 +129,7 @@ internal data structures and can terminate them gracefully::
 .. warning::
 
    Don't use :func:`asyncio.create_task` for this. All tasks
-   should be awaited at some point in your code (aiojobs handles
+   should be awaited at some point in your code (``aiojobs`` handles
    this for you), otherwise you will hide legitimate exceptions
    and result in warnings being emitted.
 
@@ -145,7 +145,7 @@ internal data structures and can terminate them gracefully::
 
 One more approach would be to use :func:`aiojobs.aiohttp.atomic`
 decorator to execute the entire handler as a new job. Essentially
-restoring the default disconnection behaviour only for specific handlers::
+restoring the default disconnection behavior only for specific handlers::
 
    from aiojobs.aiohttp import atomic
 
