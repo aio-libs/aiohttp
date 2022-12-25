@@ -201,12 +201,6 @@ html_theme_options = {
             "alt": "Latest PyPI package version",
         },
         {
-            "image": f"https://img.shields.io/discourse/status?server=https%3A%2F%2F{github_repo_org}.discourse.group",
-            "target": f"https://{github_repo_org}.discourse.group",
-            "height": "20",
-            "alt": "Discourse status",
-        },
-        {
             "image": "https://badges.gitter.im/Join%20Chat.svg",
             "target": f"https://gitter.im/{github_repo_org}/Lobby",
             "height": "20",
