@@ -59,9 +59,9 @@ jobs:
     - name: Run linters
       run: |
         make mypy
-    - name: Install libenchant-dev
+    - name: Install libenchant
       run: |
-        sudo apt install libenchant-dev
+        sudo apt install libenchant-2-dev
     - name: Install spell checker
       run: |
         pip install -r requirements/doc-spelling.txt -c requirements/constraints.txt

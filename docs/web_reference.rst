@@ -3008,7 +3008,7 @@ Utilities
 
    .. versionadded:: 3.9
 
-      Support handler_cancellation parameter (this was the default behaviour
+      Support handler_cancellation parameter (this was the default behavior
       in aiohttp <3.7).
 
 Constants
