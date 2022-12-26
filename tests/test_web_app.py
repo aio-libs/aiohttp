@@ -7,7 +7,7 @@ import pytest
 
 from aiohttp import log, web
 from aiohttp.abc import AbstractAccessLogger, AbstractRouter
-from aiohttp.helpers import DEBUG, PY_36, PY_310
+from aiohttp.helpers import DEBUG, PY_36, PY_311
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.typedefs import Handler
 
@@ -40,6 +40,12 @@ async def test_set_loop() -> None:
         assert app.loop is loop
 
 
+@pytest.mark.xfail(
+    PY_311,
+    reason="No idea why _set_loop() is constructed out of loop "
+    "but it calls `asyncio.get_event_loop()`",
+    raises=DeprecationWarning,
+)
 def test_set_loop_default_loop() -> None:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
