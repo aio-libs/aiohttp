@@ -180,7 +180,7 @@ Dependencies
 Communication channels
 ======================
 
-*aio-libs discourse group*: https://aio-libs.discourse.group
+*aio-libs Discussions*: https://github.com/aio-libs/aiohttp/discussions
 
 Feel free to post your questions and ideas here.
 
