@@ -20,7 +20,7 @@ from aiohttp.client_reqrep import (
     _gen_default_accept_encoding,
     _merge_ssl_params,
 )
-from aiohttp.helpers import PY_310
+from aiohttp.helpers import PY_311
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -277,7 +277,7 @@ def test_host_header_ipv6_with_port(make_request) -> None:
 
 
 @pytest.mark.xfail(
-    PY_310,
+    PY_311,
     reason="No idea why ClientRequest() is constructed out of loop but "
     "it calls `asyncio.get_event_loop()`",
     raises=DeprecationWarning,
