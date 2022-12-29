@@ -98,6 +98,7 @@ from .tracing import (
     TraceRequestChunkSentParams as TraceRequestChunkSentParams,
     TraceRequestEndParams as TraceRequestEndParams,
     TraceRequestExceptionParams as TraceRequestExceptionParams,
+    TraceRequestHeadersSentParams as TraceRequestHeadersSentParams,
     TraceRequestRedirectParams as TraceRequestRedirectParams,
     TraceRequestStartParams as TraceRequestStartParams,
     TraceResponseChunkReceivedParams as TraceResponseChunkReceivedParams,
@@ -210,6 +211,7 @@ __all__: Tuple[str, ...] = (
     "TraceRequestRedirectParams",
     "TraceRequestStartParams",
     "TraceResponseChunkReceivedParams",
+    "TraceRequestHeadersSentParams",
     # workers (imported lazily with __getattr__)
     "GunicornUVLoopWebWorker",
     "GunicornWebWorker",
