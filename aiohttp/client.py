@@ -66,6 +66,7 @@ from .client_reqrep import (
 )
 from .client_ws import (
     DEFAULT_WS_CLIENT_TIMEOUT,
+    ClientWebSocketHandshakeResponse,
     ClientWebSocketResponse as ClientWebSocketResponse,
     ClientWSTimeout,
 )
@@ -720,7 +721,97 @@ class ClientSession:
         proxy_headers: Optional[LooseHeaders] = None,
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
-    ) -> ClientWebSocketResponse:
+    ) -> "ClientWebSocketResponse":
+        ws_handshake_resp = await self.try_ws_connect(
+            url,
+            method=method,
+            protocols=protocols,
+            timeout=timeout,
+            receive_timeout=receive_timeout,
+            autoclose=autoclose,
+            autoping=autoping,
+            heartbeat=heartbeat,
+            auth=auth,
+            origin=origin,
+            params=params,
+            headers=headers,
+            proxy=proxy,
+            proxy_auth=proxy_auth,
+            ssl=ssl,
+            proxy_headers=proxy_headers,
+            compress=compress,
+            max_msg_size=max_msg_size,
+        )
+        return ws_handshake_resp.upgrade()
+
+    def try_ws_connect(
+        self,
+        url: StrOrURL,
+        *,
+        method: str = hdrs.METH_GET,
+        protocols: Iterable[str] = (),
+        timeout: Union[ClientWSTimeout, float, _SENTINEL, None] = sentinel,
+        receive_timeout: Optional[float] = None,
+        autoclose: bool = True,
+        autoping: bool = True,
+        heartbeat: Optional[float] = None,
+        auth: Optional[BasicAuth] = None,
+        origin: Optional[str] = None,
+        params: Optional[Mapping[str, str]] = None,
+        headers: Optional[LooseHeaders] = None,
+        proxy: Optional[StrOrURL] = None,
+        proxy_auth: Optional[BasicAuth] = None,
+        ssl: Union[SSLContext, bool, None, Fingerprint] = None,
+        proxy_headers: Optional[LooseHeaders] = None,
+        compress: int = 0,
+        max_msg_size: int = 4 * 1024 * 1024,
+    ) -> "_WSTryRequestContextManager":
+        """Initiate websocket connection."""
+        return _WSTryRequestContextManager(
+            self._try_ws_connect(
+                url,
+                method=method,
+                protocols=protocols,
+                timeout=timeout,
+                receive_timeout=receive_timeout,
+                autoclose=autoclose,
+                autoping=autoping,
+                heartbeat=heartbeat,
+                auth=auth,
+                origin=origin,
+                params=params,
+                headers=headers,
+                proxy=proxy,
+                proxy_auth=proxy_auth,
+                ssl=ssl,
+                proxy_headers=proxy_headers,
+                compress=compress,
+                max_msg_size=max_msg_size,
+            )
+        )
+
+    async def _try_ws_connect(
+        self,
+        url: StrOrURL,
+        *,
+        method: str = hdrs.METH_GET,
+        protocols: Iterable[str] = (),
+        timeout: Union[ClientWSTimeout, float, _SENTINEL, None] = sentinel,
+        receive_timeout: Optional[float] = None,
+        autoclose: bool = True,
+        autoping: bool = True,
+        heartbeat: Optional[float] = None,
+        auth: Optional[BasicAuth] = None,
+        origin: Optional[str] = None,
+        params: Optional[Mapping[str, str]] = None,
+        headers: Optional[LooseHeaders] = None,
+        proxy: Optional[StrOrURL] = None,
+        proxy_auth: Optional[BasicAuth] = None,
+        ssl: Union[SSLContext, bool, None, Fingerprint] = None,
+        proxy_headers: Optional[LooseHeaders] = None,
+        compress: int = 0,
+        max_msg_size: int = 4 * 1024 * 1024,
+    ) -> ClientWebSocketHandshakeResponse:
         if timeout is sentinel or timeout is None:
             ws_timeout = DEFAULT_WS_CLIENT_TIMEOUT
         else:
@@ -794,42 +885,54 @@ class ClientSession:
         try:
             # check handshake
             if resp.status != 101:
-                raise WSServerHandshakeError(
-                    resp.request_info,
-                    resp.history,
-                    message="Invalid response status",
-                    status=resp.status,
-                    headers=resp.headers,
+                return ClientWebSocketHandshakeResponse(
+                    error=WSServerHandshakeError(
+                        resp.request_info,
+                        resp.history,
+                        message="Invalid response status",
+                        status=resp.status,
+                        headers=resp.headers,
+                    ),
+                    error_response=resp,
                 )
 
             if resp.headers.get(hdrs.UPGRADE, "").lower() != "websocket":
-                raise WSServerHandshakeError(
-                    resp.request_info,
-                    resp.history,
-                    message="Invalid upgrade header",
-                    status=resp.status,
-                    headers=resp.headers,
+                return ClientWebSocketHandshakeResponse(
+                    error=WSServerHandshakeError(
+                        resp.request_info,
+                        resp.history,
+                        message="Invalid upgrade header",
+                        status=resp.status,
+                        headers=resp.headers,
+                    ),
+                    error_response=resp,
                 )
 
             if resp.headers.get(hdrs.CONNECTION, "").lower() != "upgrade":
-                raise WSServerHandshakeError(
-                    resp.request_info,
-                    resp.history,
-                    message="Invalid connection header",
-                    status=resp.status,
-                    headers=resp.headers,
+                return ClientWebSocketHandshakeResponse(
+                    error=WSServerHandshakeError(
+                        resp.request_info,
+                        resp.history,
+                        message="Invalid connection header",
+                        status=resp.status,
+                        headers=resp.headers,
+                    ),
+                    error_response=resp,
                 )
 
             # key calculation
             r_key = resp.headers.get(hdrs.SEC_WEBSOCKET_ACCEPT, "")
             match = base64.b64encode(hashlib.sha1(sec_key + WS_KEY).digest()).decode()
             if r_key != match:
-                raise WSServerHandshakeError(
-                    resp.request_info,
-                    resp.history,
-                    message="Invalid challenge response",
-                    status=resp.status,
-                    headers=resp.headers,
+                return ClientWebSocketHandshakeResponse(
+                    error=WSServerHandshakeError(
+                        resp.request_info,
+                        resp.history,
+                        message="Invalid challenge response",
+                        status=resp.status,
+                        headers=resp.headers,
+                    ),
+                    error_response=resp,
                 )
 
             # websocket protocol
@@ -853,13 +956,18 @@ class ClientSession:
                     try:
                         compress, notakeover = ws_ext_parse(compress_hdrs)
                     except WSHandshakeError as exc:
-                        raise WSServerHandshakeError(
+                        error = WSServerHandshakeError(
                             resp.request_info,
                             resp.history,
                             message=exc.args[0],
                             status=resp.status,
                             headers=resp.headers,
-                        ) from exc
+                        )
+                        error.__cause__ = exc
+                        return ClientWebSocketHandshakeResponse(
+                            error=error,
+                            error_response=resp,
+                        )
                 else:
                     compress = 0
                     notakeover = False
@@ -885,18 +993,20 @@ class ClientSession:
             resp.close()
             raise
         else:
-            return self._ws_response_class(
-                reader,
-                writer,
-                protocol,
-                resp,
-                ws_timeout,
-                autoclose,
-                autoping,
-                self._loop,
-                heartbeat=heartbeat,
-                compress=compress,
-                client_notakeover=notakeover,
+            return ClientWebSocketHandshakeResponse(
+                ws_response=self._ws_response_class(
+                    reader,
+                    writer,
+                    protocol,
+                    resp,
+                    ws_timeout,
+                    autoclose,
+                    autoping,
+                    self._loop,
+                    heartbeat=heartbeat,
+                    compress=compress,
+                    client_notakeover=notakeover,
+                )
             )
 
     def _prepare_headers(self, headers: Optional[LooseHeaders]) -> "CIMultiDict[str]":
@@ -1131,6 +1241,20 @@ class _RequestContextManager(_BaseRequestContextManager[ClientResponse]):
 
 
 class _WSRequestContextManager(_BaseRequestContextManager[ClientWebSocketResponse]):
+    __slots__ = ()
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc: Optional[BaseException],
+        tb: Optional[TracebackType],
+    ) -> None:
+        await self._resp.close()
+
+
+class _WSTryRequestContextManager(
+    _BaseRequestContextManager[ClientWebSocketHandshakeResponse]
+):
     __slots__ = ()
 
     async def __aexit__(
