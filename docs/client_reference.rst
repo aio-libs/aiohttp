@@ -2085,7 +2085,7 @@ All exceptions are available as members of *aiohttp* module.
 
     Represent Content-Disposition header
 
-    .. attribute:: value
+    .. attribute:: type
 
     A :class:`str` instance. Value of Content-Disposition header
     itself, e.g. ``attachment``.
