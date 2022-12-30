@@ -673,6 +673,25 @@ async def test_read_timeout_on_reading_chunks(aiohttp_client: Any, mocker: Any) 
             await resp.content.read()
 
 
+async def test_read_timeout_on_write(aiohttp_client: Any) -> None:
+    async def gen_payload() -> AsyncIterator[str]:
+        # Delay writing to ensure read timeout isn't triggered before writing completes.
+        await asyncio.sleep(0.5)
+        yield b"foo"
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=await request.read())
+
+    app = web.Application()
+    app.router.add_put("/", handler)
+
+    timeout = aiohttp.ClientTimeout(total=None, sock_read=0.1)
+    client = await aiohttp_client(app)
+    async with client.put("/", data=gen_payload(), timeout=timeout) as resp:
+        result = await resp.read()  # Should not trigger a read timeout.
+    assert result == b"foo"
+
+
 async def test_timeout_on_reading_data(aiohttp_client: Any, mocker: Any) -> None:
     loop = asyncio.get_event_loop()
 
