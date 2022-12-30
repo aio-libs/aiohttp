@@ -243,6 +243,7 @@ def proxy_test_server(aiohttp_raw_server: Any, loop: Any, monkeypatch: Any):
 
         if request.method == "CONNECT":
             response["body"] = None
+            response["headers"] = {"proxy-agent": "TestProxy/1.0"}
 
         response["headers"] = headers
 
@@ -879,6 +880,21 @@ async def xtest_proxy_from_env_https_with_auth(
     assert r2.host == "aiohttp.io"
     assert r2.path_qs == "/path"
     assert r2.headers["Proxy-Authorization"] == auth.encode()
+
+
+@pytest.mark.xfail
+async def xtest_proxy_https_proxy_headers(proxy_test_server: Any, loop: Any) -> None:
+    sess = aiohttp.ClientSession()
+    proxy = await proxy_test_server()
+    proxy.return_value = {"status": 200, "body": b"1" * (2**20)}
+    url = "https://www.google.com.ua/search?q=aiohttp proxy"
+
+    resp = await sess.get(url, proxy=proxy.url)
+    await resp.release()
+    await sess.close()
+
+    assert resp.proxy_headers == {"proxy-agent": "TestProxy/1.0"}
+    assert resp.headers == {}
 
 
 async def test_proxy_auth() -> None:

@@ -1242,13 +1242,15 @@ class TCPConnector(BaseConnector):
                     transport.close()
                     raise
 
-                return await self._start_tls_connection(
+                tls_transport, tls_proto = await self._start_tls_connection(
                     # Access the old transport for the last time before it's
                     # closed and forgotten forever:
                     transport,
                     req=req,
                     timeout=timeout,
                 )
+                tls_proto.connection_proxied(resp.headers, resp.raw_headers)
+                return tls_transport, tls_proto
             finally:
                 proxy_resp.close()
 

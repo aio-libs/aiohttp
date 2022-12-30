@@ -2,6 +2,8 @@ import asyncio
 from contextlib import suppress
 from typing import Any, Optional, Tuple
 
+from multidict import CIMultiDictProxy
+
 from .base_protocol import BaseProtocol
 from .client_exceptions import (
     ClientOSError,
@@ -12,6 +14,7 @@ from .client_exceptions import (
 from .helpers import BaseTimerContext, set_exception, set_result
 from .http import HttpResponseParser, RawResponseMessage
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamReader
+from .typedefs import RawHeaders
 
 
 class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamReader]]):
@@ -36,6 +39,9 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         self._read_timeout: Optional[float] = None
         self._read_timeout_handle: Optional[asyncio.TimerHandle] = None
 
+        self._proxy_headers: Optional[CIMultiDictProxy[str]] = None
+        self._raw_proxy_headers: Optional[RawHeaders] = None
+
         self._timeout_ceil_threshold: Optional[float] = 5
 
         self.closed: asyncio.Future[None] = self._loop.create_future()
@@ -57,6 +63,14 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
             or len(self) > 0
             or bool(self._tail)
         )
+
+    @property
+    def proxy_headers(self) -> Optional[CIMultiDictProxy[str]]:
+        return self._proxy_headers
+
+    @property
+    def raw_proxy_headers(self) -> Optional[RawHeaders]:
+        return self._raw_proxy_headers
 
     def force_close(self) -> None:
         self._should_close = True
@@ -261,3 +275,9 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
                         self.data_received(tail)
                     else:
                         self._tail = tail
+
+    def connection_proxied(
+        self, headers: CIMultiDictProxy[str], raw_headers: RawHeaders
+    ) -> None:
+        self._proxy_headers = headers
+        self._raw_proxy_headers = raw_headers

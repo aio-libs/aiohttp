@@ -673,6 +673,9 @@ class ClientResponse(HeadersMixin):
     _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]
     _raw_headers: RawHeaders = None  # type: ignore[assignment]
 
+    _proxy_headers: Optional[CIMultiDictProxy[str]] = None
+    _raw_proxy_headers: Optional[RawHeaders] = None
+
     _connection = None  # current connection
     _source_traceback = None
     # set up by ClientRequest after ClientResponse object creation
@@ -736,6 +739,14 @@ class ClientResponse(HeadersMixin):
     @reify
     def raw_headers(self) -> RawHeaders:
         return self._raw_headers
+
+    @reify
+    def proxy_headers(self) -> "Optional[CIMultiDictProxy[str]]":
+        return self._proxy_headers
+
+    @reify
+    def raw_proxy_headers(self) -> Optional[RawHeaders]:
+        return self._raw_proxy_headers
 
     @reify
     def request_info(self) -> RequestInfo:
@@ -870,6 +881,13 @@ class ClientResponse(HeadersMixin):
         # headers
         self._headers = message.headers  # type is CIMultiDictProxy
         self._raw_headers = message.raw_headers  # type is Tuple[bytes, bytes]
+
+        # proxy headers
+        protocol = self._protocol
+        self._proxy_headers = protocol.proxy_headers if protocol is not None else None
+        self._raw_proxy_headers = (
+            protocol.raw_proxy_headers if protocol is not None else None
+        )
 
         # payload
         self.content = payload
