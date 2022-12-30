@@ -3,6 +3,7 @@
 
 import asyncio
 from typing import Any
+from unittest import mock
 
 import pytest
 
@@ -82,13 +83,15 @@ async def test_websocket_json_invalid_message(loop: Any, aiohttp_client: Any) ->
     assert "ValueError was raised" in data
 
 
-async def test_websocket_send_json(loop: Any, aiohttp_client: Any) -> None:
+async def test_websocket_send_json(
+    loop: Any, aiohttp_client: Any, json_serialize: mock.Mock
+) -> None:
     async def handler(request):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
 
         data = await ws.receive_json()
-        await ws.send_json(data)
+        await ws.send_json(data, dumps=json_serialize)
 
         await ws.close()
         return ws
@@ -99,10 +102,12 @@ async def test_websocket_send_json(loop: Any, aiohttp_client: Any) -> None:
 
     ws = await client.ws_connect("/")
     expected_value = "value"
-    await ws.send_json({"test": expected_value})
+    payload = {"test": expected_value}
+    await ws.send_json(payload, dumps=json_serialize)
 
     data = await ws.receive_json()
     assert data["test"] == expected_value
+    json_serialize.assert_called_with(payload)
 
 
 async def test_websocket_receive_json(loop: Any, aiohttp_client: Any) -> None:

@@ -2,7 +2,6 @@ import asyncio
 import collections.abc
 import datetime
 import enum
-import json
 import math
 import time
 import warnings
@@ -40,7 +39,7 @@ from .helpers import (
 )
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
-from .typedefs import JSONEncoder, LooseHeaders
+from .typedefs import DEFAULT_JSON_ENCODER, JSONEncoder, LooseHeaders
 
 __all__ = ("ContentCoding", "StreamResponse", "Response", "json_response")
 
@@ -739,13 +738,15 @@ def json_response(
     reason: Optional[str] = None,
     headers: Optional[LooseHeaders] = None,
     content_type: str = "application/json",
-    dumps: JSONEncoder = json.dumps,
+    dumps: JSONEncoder = DEFAULT_JSON_ENCODER,
 ) -> Response:
     if data is not sentinel:
         if text or body:
             raise ValueError("only one of data, text, or body should be specified")
         else:
-            text = dumps(data)
+            text = dumps(data)  # type: ignore[assignment]
+            if isinstance(text, bytes):
+                text = text.decode("utf-8")
     return Response(
         text=text,
         body=body,

@@ -183,7 +183,9 @@ class ClientWebSocketResponse:
         *,
         dumps: JSONEncoder = DEFAULT_JSON_ENCODER,
     ) -> None:
-        await self.send_str(dumps(data), compress=compress)
+        data = dumps(data)
+        data = data if isinstance(data, str) else data.decode("utf-8")
+        await self.send_str(data, compress=compress)
 
     async def close(self, *, code: int = WSCloseCode.OK, message: bytes = b"") -> bool:
         # we need to break `receive()` cycle first,

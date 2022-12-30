@@ -1,5 +1,6 @@
 # type: ignore
 import asyncio
+import json
 import os
 import socket
 import ssl
@@ -197,3 +198,16 @@ def selector_loop() -> None:
     with loop_context(policy.new_event_loop) as _loop:
         asyncio.set_event_loop(_loop)
         yield _loop
+
+
+@pytest.fixture(
+    params=[
+        lambda x: json.dumps(x),
+        lambda x: json.dumps(x).encode(
+            "utf-8"
+        ),  # emulate json-encoder that return bytes (for example as orjson)
+    ],
+    ids=["json_serialize(obj) -> string", "json_serialize(obj) -> bytes"],
+)
+def json_serialize(request) -> mock.Mock:
+    return mock.Mock(wraps=request.param)
