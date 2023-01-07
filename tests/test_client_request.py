@@ -1274,7 +1274,7 @@ def test_basicauth_from_netrc_present(
 @pytest.mark.parametrize("trust_env", (True, False))
 @pytest.mark.parametrize(
     "netrc_contents",
-    ("", ),
+    ("",),
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
