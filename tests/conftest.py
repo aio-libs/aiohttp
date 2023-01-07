@@ -1,7 +1,6 @@
 # type: ignore
 import asyncio
 import os
-import pathlib
 import socket
 import ssl
 import sys
@@ -202,7 +201,7 @@ def selector_loop() -> None:
 
 @pytest.fixture
 def netrc_contents(
-    tmp_path: pathlib.Path,
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     request: pytest.FixtureRequest,
 ):
