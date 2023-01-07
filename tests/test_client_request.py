@@ -1273,12 +1273,10 @@ def test_basicauth_from_netrc_present(
         assert req.headers[hdrs.AUTHORIZATION] == expected_auth.encode()
 
 
+@pytest.mark.parametrize("trust_env", (True, False))
 @pytest.mark.parametrize(
-    ["netrc_contents", "hostname", "trust_env", "expected_auth"],
-    [
-        ("", "example.com", True, None),
-        ("", "example.com", False, None),
-    ],
+    "netrc_contents",
+    ("", ),
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
