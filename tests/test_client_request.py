@@ -1233,21 +1233,25 @@ def test_gen_default_accept_encoding(has_brotli: Any, expected: Any) -> None:
 
 
 @pytest.mark.parametrize(
-    ["netrc_contents", "hostname", "trust_env", "expected_auth"],
-    [
-        (
-            "machine example.com login username password pass\n",
-            "example.com",
+    ("trust_env", "expected_auth"),
+    (
+        pytest.param(
             True,
             helpers.BasicAuth("username", "pass"),
+            id='reading netrc requested',
         ),
-        (
-            "machine example.com login username password pass\n",
-            "example.com",
+        pytest.param(
             False,
             None,
+            id='reading netrc disabled',
         ),
-    ],
+    ),
+)
+@pytest.mark.parametrize(
+    "netrc_contents",
+    (
+        "machine example.com login username password pass\n",
+    ),
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
