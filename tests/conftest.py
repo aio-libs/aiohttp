@@ -215,7 +215,8 @@ def netrc_contents(
     netrc_contents = request.param
 
     netrc_file_path = tmp_path / ".netrc"
-    netrc_file_path.write_text(netrc_contents)
+    if netrc_contents is not None:
+        netrc_file_path.write_text(netrc_contents)
 
     monkeypatch.setenv("NETRC", str(netrc_file_path))
 
