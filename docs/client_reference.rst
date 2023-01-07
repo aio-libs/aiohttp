@@ -179,10 +179,10 @@ The client session supports the context manager protocol for self closing.
 
       Get proxy credentials from ``~/.netrc`` file if present.
 
-      Get HTTP Basic Auth credentials from ``~/.netrc`` file if present.
+      Get HTTP Basic Auth credentials from :file:`~/.netrc` file if present.
 
-      If ``NETRC`` environment variable is set, read from file specified
-      there rather than from ``~/.netrc``
+      If :envvar:`NETRC` environment variable is set, read from file specified
+      there rather than from :file:`~/.netrc`.
 
       .. seealso::
 
