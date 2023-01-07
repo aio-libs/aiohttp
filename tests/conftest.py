@@ -218,3 +218,5 @@ def netrc_contents(
     netrc_file_path.write_text(netrc_contents)
 
     monkeypatch.setenv("NETRC", str(netrc_file_path))
+
+    return netrc_file_path
