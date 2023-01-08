@@ -19,14 +19,25 @@ But in case of custom regular expressions for
 *percent encoded*: if you pass Unicode patterns they don't match to
 *requoted* path.
 
+.. _aiohttp-web-peer-disconnection:
+
 Peer disconnection
 ------------------
 
-When a client peer is gone a subsequent reading or writing raises :exc:`OSError`
-or more specific exception like :exc:`ConnectionResetError`.
+*aiohttp* has 2 approaches to handling client disconnections.
+If you are familiar with asyncio, or scalability is a concern for
+your application, we recommend using the handler cancellation method.
 
-The reason for disconnection is vary; it can be a network issue or explicit
-socket closing on the peer side without reading the whole server response.
+Raise on read/write (default)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When a client peer is gone, a subsequent reading or writing raises :exc:`OSError`
+or a more specific exception like :exc:`ConnectionResetError`.
+
+This behavior is similar to classic WSGI frameworks like Flask and Django.
+
+The reason for disconnection varies; it can be a network issue or explicit
+socket closing on the peer side without reading the full server response.
 
 *aiohttp* handles disconnection properly but you can handle it explicitly, e.g.::
 
@@ -35,6 +46,122 @@ socket closing on the peer side without reading the whole server response.
            text = await request.text()
        except OSError:
            # disconnected
+
+Web handler cancellation
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+This method can be enabled using the ``handler_cancellation`` parameter
+to :func:`run_app`.
+
+When a client disconnects, the web handler task will be cancelled. This
+is recommended as it can reduce the load on your server when there is no
+client to receive a response. It can also help make your application
+more resilient to DoS attacks (by requiring an attacker to keep a
+connection open in order to waste server resources).
+
+This behavior is very different from classic WSGI frameworks like
+Flask and Django. It requires a reasonable level of asyncio knowledge to
+use correctly without causing issues in your code. We provide some
+examples here to help understand the complexity and methods
+needed to deal with them.
+
+.. warning::
+
+   :term:`web-handler` execution could be canceled on every ``await``
+   if client drops connection without reading entire response's BODY.
+
+Sometimes it is a desirable behavior: on processing ``GET`` request the
+code might fetch data from a database or other web resource, the
+fetching is potentially slow.
+
+Canceling this fetch is a good idea: the peer dropped connection
+already, so there is no reason to waste time and resources (memory etc)
+by getting data from a DB without any chance to send it back to peer.
+
+But sometimes the cancellation is bad: on ``POST`` request very often
+it is needed to save data to a DB regardless of peer closing.
+
+Cancellation prevention could be implemented in several ways:
+
+* Applying :func:`asyncio.shield` to a coroutine that saves data.
+* Using aiojobs_ or another third party library.
+
+:func:`asyncio.shield` can work well. The only disadvantage is you
+need to split web handler into exactly two async functions: one
+for handler itself and other for protected code.
+
+For example the following snippet is not safe::
+
+   async def handler(request):
+       await asyncio.shield(write_to_redis(request))
+       await asyncio.shield(write_to_postgres(request))
+       return web.Response(text="OK")
+
+Cancellation might occur while saving data in REDIS, so
+``write_to_postgres`` will not be called, potentially
+leaving your data in an inconsistent state.
+
+Instead, you would need to write something like::
+
+   async def write_data(request):
+       await write_to_redis(request)
+       await write_to_postgres(request)
+
+   async def handler(request):
+       await asyncio.shield(write_data(request))
+       return web.Response(text="OK")
+
+Alternatively, if you want to spawn a task without waiting for
+its completion, you can use aiojobs_ which provides an API for
+spawning new background jobs. It stores all scheduled activity in
+internal data structures and can terminate them gracefully::
+
+   from aiojobs.aiohttp import setup, spawn
+
+   async def handler(request):
+       await spawn(request, write_data())
+       return web.Response()
+
+   app = web.Application()
+   setup(app)
+   app.router.add_get("/", handler)
+
+.. warning::
+
+   Don't use :func:`asyncio.create_task` for this. All tasks
+   should be awaited at some point in your code (``aiojobs`` handles
+   this for you), otherwise you will hide legitimate exceptions
+   and result in warnings being emitted.
+
+   A good case for using :func:`asyncio.create_task` is when
+   you want to run something while you are processing other data,
+   but still want to ensure the task is complete before returning::
+
+       async def handler(request):
+           t = asyncio.create_task(get_some_data())
+           ...  # Do some other things, while data is being fetched.
+           data = await t
+           return web.Response(text=data)
+
+One more approach would be to use :func:`aiojobs.aiohttp.atomic`
+decorator to execute the entire handler as a new job. Essentially
+restoring the default disconnection behavior only for specific handlers::
+
+   from aiojobs.aiohttp import atomic
+
+   @atomic
+   async def handler(request):
+       await write_to_db()
+       return web.Response()
+
+   app = web.Application()
+   setup(app)
+   app.router.add_post("/", handler)
+
+It prevents all of the ``handler`` async function from cancellation,
+so ``write_to_db`` will be never interrupted.
+
+.. _aiojobs: http://aiojobs.readthedocs.io/en/latest/
 
 Passing a coroutine into run_app and Gunicorn
 ---------------------------------------------
