@@ -2907,7 +2907,10 @@ Utilities
                            supported on Windows.
 
    :param bool handler_cancellation: cancels the web handler task if the client
-                                     drops the connection.
+                                     drops the connection. This is recommended
+                                     if familiar with asyncio behavior or
+                                     scalability is a concern.
+                                     :ref:`aiohttp-web-peer-disconnection`
 
    .. versionadded:: 3.0
 
