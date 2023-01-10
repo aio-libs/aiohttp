@@ -970,7 +970,9 @@ class TCPConnector(BaseConnector):
 
     async def _wrap_create_connection(
         self,
-        *args: Any,
+        factory: functools.partial[ResponseHandler],
+        host: str,
+        port: int,
         req: "ClientRequest",
         timeout: "ClientTimeout",
         client_error: Type[Exception] = ClientConnectorError,
@@ -981,15 +983,14 @@ class TCPConnector(BaseConnector):
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
             ):
                 if self._network_interface:
-                    *args, sock_hostname, sock_port = args  # type: ignore[assignment]
                     sock = make_an_interface_bound_socket(
                         self._network_interface,
                         family=kwargs["family"],
                         local_addr=self._local_addr,
                     )
-                    await self._loop.sock_connect(sock, (sock_hostname, sock_port))
-                    kwargs["sock"] = sock
-                return await self._loop.create_connection(*args, **kwargs)  # type: ignore[return-value]  # noqa
+                    await self._loop.sock_connect(sock, (host, port))
+                    return await self._loop.create_connection(factory, sock=sock, **kwargs)  # type: ignore[return-value]  # noqa
+                return await self._loop.create_connection(factory, host, port, **kwargs)  # type: ignore[return-value]  # noqa
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:
