@@ -7,6 +7,7 @@ import re
 import sys
 import traceback
 import warnings
+import requests_toolbelt
 from hashlib import md5, sha1, sha256
 from http.cookies import CookieError, Morsel, SimpleCookie
 from types import MappingProxyType, TracebackType
@@ -435,10 +436,18 @@ class ClientRequest:
         if auth is None:
             return
 
+        if isinstance(auth, requests_toolbelt.auth.guess.GuessAuth):
+            auth = helpers.BasicAuth(login=auth.username, password=auth.password)
+
         if not isinstance(auth, helpers.BasicAuth):
             raise TypeError("BasicAuth() tuple is required instead")
 
-        self.headers[hdrs.AUTHORIZATION] = auth.encode()
+        try:
+            encoded_auth = auth.encode()
+        except:
+            raise TypeError("Problem with BasicAuth object.")
+
+        self.headers[hdrs.AUTHORIZATION] = encoded_auth
 
     def update_body_from_data(self, body: Any) -> None:
         if body is None:
