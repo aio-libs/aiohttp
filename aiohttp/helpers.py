@@ -25,6 +25,7 @@ from math import ceil
 from pathlib import Path
 from types import TracebackType
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     ContextManager,
@@ -60,6 +61,9 @@ if sys.version_info >= (3, 8):
     from typing import get_args
 else:
     from typing_extensions import get_args
+
+if TYPE_CHECKING:
+    from . import client_reqrep
 
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
@@ -127,7 +131,14 @@ else:
 json_re = re.compile(r"(?:application/|[\w.-]+/[\w.+-]+?\+)json$", re.IGNORECASE)
 
 
-class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
+class Auth:
+    """Authorization handler base class"""
+
+    async def __call__(self, request) -> None:
+        """Modify the request adding any authentication headers"""
+
+
+class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"]), Auth):
     """Http basic authentication helper."""
 
     def __new__(
@@ -143,6 +154,10 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
             raise ValueError('A ":" is not allowed in login (RFC 1945#section-11.1)')
 
         return super().__new__(cls, login, password, encoding)
+
+    async def __call__(self, request: "client_reqrep.ClientRequest") -> None:
+        """Modify the request adding basic authentication headers"""
+        request.headers[hdrs.AUTHORIZATION] = self.encode()
 
     @classmethod
     def decode(cls, auth_header: str, encoding: str = "latin1") -> "BasicAuth":

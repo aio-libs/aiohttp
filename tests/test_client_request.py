@@ -366,18 +366,22 @@ def test_ipv6_nondefault_https_port(make_request: Any) -> None:
     assert req.is_ssl()
 
 
-def test_basic_auth(make_request: Any) -> None:
+async def test_basic_auth(make_request: Any) -> None:
     req = make_request(
         "get", "http://python.org", auth=aiohttp.BasicAuth("nkim", "1234")
     )
+    # Authorization headers evaluated only at ClientRequest.update_auth_headers
+    await req.update_auth_headers()
     assert "AUTHORIZATION" in req.headers
     assert "Basic bmtpbToxMjM0" == req.headers["AUTHORIZATION"]
 
 
-def test_basic_auth_utf8(make_request: Any) -> None:
+async def test_basic_auth_utf8(make_request: Any) -> None:
     req = make_request(
         "get", "http://python.org", auth=aiohttp.BasicAuth("nkim", "секрет", "utf-8")
     )
+    # Authorization headers evaluated only at ClientRequest.update_auth_headers
+    await req.update_auth_headers()
     assert "AUTHORIZATION" in req.headers
     assert "Basic bmtpbTrRgdC10LrRgNC10YI=" == req.headers["AUTHORIZATION"]
 
@@ -387,17 +391,21 @@ def test_basic_auth_tuple_forbidden(make_request: Any) -> None:
         make_request("get", "http://python.org", auth=("nkim", "1234"))
 
 
-def test_basic_auth_from_url(make_request: Any) -> None:
+async def test_basic_auth_from_url(make_request: Any) -> None:
     req = make_request("get", "http://nkim:1234@python.org")
+    # Authorization headers evaluated only at ClientRequest.update_auth_headers
+    await req.update_auth_headers()
     assert "AUTHORIZATION" in req.headers
     assert "Basic bmtpbToxMjM0" == req.headers["AUTHORIZATION"]
     assert "python.org" == req.host
 
 
-def test_basic_auth_from_url_overridden(make_request: Any) -> None:
+async def test_basic_auth_from_url_overridden(make_request: Any) -> None:
     req = make_request(
         "get", "http://garbage@python.org", auth=aiohttp.BasicAuth("nkim", "1234")
     )
+    # Authorization headers evaluated only at ClientRequest.update_auth_headers
+    await req.update_auth_headers()
     assert "AUTHORIZATION" in req.headers
     assert "Basic bmtpbToxMjM0" == req.headers["AUTHORIZATION"]
     assert "python.org" == req.host

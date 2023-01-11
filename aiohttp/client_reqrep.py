@@ -40,6 +40,7 @@ from .client_exceptions import (
 from .formdata import FormData
 from .hdrs import CONTENT_TYPE
 from .helpers import (
+    Auth,
     BaseTimerContext,
     BasicAuth,
     HeadersMixin,
@@ -428,17 +429,26 @@ class ClientRequest:
             if hdrs.CONTENT_LENGTH not in self.headers:
                 self.headers[hdrs.CONTENT_LENGTH] = str(len(self.body))
 
-    def update_auth(self, auth: Optional[BasicAuth]) -> None:
-        """Set basic auth."""
-        if auth is None:
-            auth = self.auth
+    def update_auth(self, auth: Optional[Auth] = None) -> None:
+        """Validate and set authentication coroutine as a request attribute"""
         if auth is None:
             return
+        # TODO: we really mean anything that returns an awaitable when called. Do we
+        # need runtime type checking here? Or just try and raise sensibly in
+        # update_auth_headers?
+        if not isinstance(auth, Auth):
+            raise TypeError("Auth instance is required instead")
+        self.auth = auth
 
-        if not isinstance(auth, helpers.BasicAuth):
-            raise TypeError("BasicAuth() tuple is required instead")
-
-        self.headers[hdrs.AUTHORIZATION] = auth.encode()
+    # TODO: does it make sense to have this separately named async method? Due to the
+    # lack of async __init__ we would need this coroutine to be called after creating
+    # a ClientRequest object. That's quite poor.
+    async def update_auth_headers(self, auth: Optional[Auth] = None) -> None:
+        """Asynchronously update authorization headers"""
+        self.update_auth(auth)
+        if self.auth:
+            # Evaluate the authorization header for this specific request
+            await self.auth(request=self)
 
     def update_body_from_data(self, body: Any) -> None:
         if body is None:
