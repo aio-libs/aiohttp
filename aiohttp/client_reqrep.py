@@ -7,7 +7,6 @@ import re
 import sys
 import traceback
 import warnings
-import requests_toolbelt
 from hashlib import md5, sha1, sha256
 from http.cookies import CookieError, Morsel, SimpleCookie
 from types import MappingProxyType, TracebackType
@@ -25,6 +24,7 @@ from typing import (
     cast,
 )
 
+import requests_toolbelt
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
