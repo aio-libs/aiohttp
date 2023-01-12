@@ -9,7 +9,7 @@ import json
 import pathlib
 import socket
 import ssl
-from typing import Any
+from typing import Any, AsyncIterator
 from unittest import mock
 
 import pytest
