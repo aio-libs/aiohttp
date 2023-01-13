@@ -1,0 +1,1 @@
+Fix make_mocked_request behavior for empty payload

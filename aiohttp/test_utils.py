@@ -36,6 +36,7 @@ from .client_reqrep import ClientResponse
 from .client_ws import ClientWebSocketResponse
 from .helpers import _SENTINEL, PY_38, sentinel
 from .http import HttpVersion, RawRequestMessage
+from .streams import EMPTY_PAYLOAD
 from .web import (
     Application,
     AppRunner,
@@ -632,7 +633,7 @@ def make_mocked_request(
     protocol.writer = writer
 
     if payload is sentinel:
-        payload = mock.Mock()
+        payload = EMPTY_PAYLOAD
 
     req = Request(
         message, payload, protocol, writer, task, loop, client_max_size=client_max_size

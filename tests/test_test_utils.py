@@ -10,6 +10,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import web
+from aiohttp.streams import EmptyStreamReader
 from aiohttp.test_utils import (
     AioHTTPTestCase,
     RawTestServer as _RawTestServer,
@@ -212,6 +213,11 @@ def test_make_mocked_request_content() -> None:
     payload = mock.Mock()
     req = make_mocked_request("GET", "/", payload=payload)
     assert req.content is payload
+
+
+def test_make_mocked_request_empty_payload() -> None:
+    req = make_mocked_request("GET", "/")
+    assert isinstance(req.content, EmptyStreamReader)
 
 
 def test_make_mocked_request_transport() -> None:
