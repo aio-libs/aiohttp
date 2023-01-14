@@ -37,44 +37,39 @@ from yarl import URL
 from . import hdrs, http, payload
 from .abc import AbstractCookieJar
 from .client_exceptions import (
-    ClientConnectionError as ClientConnectionError,
-    ClientConnectorCertificateError as ClientConnectorCertificateError,
-    ClientConnectorError as ClientConnectorError,
-    ClientConnectorSSLError as ClientConnectorSSLError,
-    ClientError as ClientError,
-    ClientHttpProxyError as ClientHttpProxyError,
-    ClientOSError as ClientOSError,
-    ClientPayloadError as ClientPayloadError,
-    ClientProxyConnectionError as ClientProxyConnectionError,
-    ClientResponseError as ClientResponseError,
-    ClientSSLError as ClientSSLError,
-    ContentTypeError as ContentTypeError,
-    InvalidURL as InvalidURL,
-    ServerConnectionError as ServerConnectionError,
-    ServerDisconnectedError as ServerDisconnectedError,
-    ServerFingerprintMismatch as ServerFingerprintMismatch,
-    ServerTimeoutError as ServerTimeoutError,
-    TooManyRedirects as TooManyRedirects,
-    WSServerHandshakeError as WSServerHandshakeError,
+    ClientConnectionError,
+    ClientConnectorCertificateError,
+    ClientConnectorError,
+    ClientConnectorSSLError,
+    ClientError,
+    ClientHttpProxyError,
+    ClientOSError,
+    ClientPayloadError,
+    ClientProxyConnectionError,
+    ClientResponseError,
+    ClientSSLError,
+    ContentTypeError,
+    InvalidURL,
+    ServerConnectionError,
+    ServerDisconnectedError,
+    ServerFingerprintMismatch,
+    ServerTimeoutError,
+    TooManyRedirects,
+    WSServerHandshakeError,
 )
 from .client_reqrep import (
-    SSL_ALLOWED_TYPES as SSL_ALLOWED_TYPES,
-    ClientRequest as ClientRequest,
-    ClientResponse as ClientResponse,
-    Fingerprint as Fingerprint,
-    RequestInfo as RequestInfo,
+    SSL_ALLOWED_TYPES,
+    ClientRequest,
+    ClientResponse,
+    Fingerprint,
+    RequestInfo,
 )
 from .client_ws import (
     DEFAULT_WS_CLIENT_TIMEOUT,
-    ClientWebSocketResponse as ClientWebSocketResponse,
+    ClientWebSocketResponse,
     ClientWSTimeout,
 )
-from .connector import (
-    BaseConnector as BaseConnector,
-    NamedPipeConnector as NamedPipeConnector,
-    TCPConnector as TCPConnector,
-    UnixConnector as UnixConnector,
-)
+from .connector import BaseConnector, NamedPipeConnector, TCPConnector, UnixConnector
 from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
