@@ -245,9 +245,10 @@ class ProxyInfo:
 
 def basicauth_from_netrc(netrc_obj: netrc.netrc, host: str) -> BasicAuth:
     """
-    Return :py:class:`~aiohttp.BasicAuth` tuple with credentials for given ``host`` from ``netrc_obj``.
+    Return :py:class:`~aiohttp.BasicAuth` credentials for ``host`` from ``netrc_obj``.
 
-    :raises LookupError: if ``netrc_obj`` is :py:data:`None` or if no entry is found for the ``host``.
+    :raises LookupError: if ``netrc_obj`` is :py:data:`None` or if no
+            entry is found for the ``host``.
     """
     if netrc_obj is None:
         raise LookupError("No .netrc file found")
