@@ -1009,21 +1009,32 @@ def test_netrc_from_env(expected_username: str):
             "machine example.com password pass\n",
             helpers.BasicAuth("", "pass"),
         ),
-        ("", None),
     ],
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-def test_basicauth_from_netrc(
+def est_basicauth_present_in_netrc(
     expected_auth: helpers.BasicAuth,
 ):
     """Test that netrc file contents are properly parsed into BasicAuth tuples"""
     netrc_obj = helpers.netrc_from_env()
 
-    if expected_auth:
-        assert expected_auth == helpers.basicauth_from_netrc(netrc_obj, "example.com")
-    else:
-        with pytest.raises(
-            LookupError, match="No entry for example.com found in the `.netrc` file."
-        ):
-            helpers.basicauth_from_netrc(netrc_obj, "example.com")
+    assert expected_auth == helpers.basicauth_from_netrc(netrc_obj, "example.com")
+
+
+@pytest.mark.parametrize(
+    ["netrc_contents"],
+    [
+        ("",),
+    ],
+    indirect=("netrc_contents",),
+)
+@pytest.mark.usefixtures("netrc_contents")
+def test_read_basicauth_from_empty_netrc():
+    """Test that an error is raised if netrc doesn't have an entry for our host"""
+    netrc_obj = helpers.netrc_from_env()
+
+    with pytest.raises(
+        LookupError, match="No entry for example.com found in the `.netrc` file."
+    ):
+        helpers.basicauth_from_netrc(netrc_obj, "example.com")
