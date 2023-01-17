@@ -196,7 +196,7 @@ The client session supports the context manager protocol for self closing.
 
       .. versionchanged:: 3.9
 
-         Added support for reading HTTP Basic Auth credentials from ``~/.netrc`` file.
+         Added support for reading HTTP Basic Auth credentials from :file:`~/.netrc` file.
 
    :param bool requote_redirect_url: Apply *URL requoting* for redirection URLs if
                                      automatic redirection is enabled (``True`` by

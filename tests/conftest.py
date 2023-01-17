@@ -208,8 +208,7 @@ def netrc_contents(
     """
     Prepare a ``.netrc`` file with given contents.
 
-    monkeypatches the NETRC environment variable to point to created
-    file.
+    Monkey-patches :envvar:`NETRC` to point to created file.
     """
     netrc_contents = request.param
 
