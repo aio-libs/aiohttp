@@ -243,7 +243,7 @@ class ProxyInfo:
     proxy_auth: Optional[BasicAuth]
 
 
-def basicauth_from_netrc(netrc_obj: netrc.netrc, host: str) -> BasicAuth:
+def basicauth_from_netrc(netrc_obj: Optional[netrc.netrc], host: str) -> BasicAuth:
     """
     Return :py:class:`~aiohttp.BasicAuth` credentials for ``host`` from ``netrc_obj``.
 
