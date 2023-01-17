@@ -1255,7 +1255,6 @@ def test_gen_default_accept_encoding(has_brotli: Any, expected: Any) -> None:
 @pytest.mark.usefixtures("netrc_contents")
 def test_basicauth_from_netrc_present(
     make_request: Any,
-    hostname: str,
     trust_env: bool,
     expected_auth: Optional[helpers.BasicAuth],
 ):
@@ -1265,12 +1264,13 @@ def test_basicauth_from_netrc_present(
     No authorization header should be sent when trust_env is false, even if
     netrc is not empty.
     """
-    req = make_request("get", f"http://{hostname}", trust_env=trust_env)
+    req = make_request("get", "http://example.com", trust_env=trust_env)
     if trust_env:
         assert req.headers[hdrs.AUTHORIZATION] == expected_auth.encode()
+    else:
+        assert hdrs.AUTHORIZATION not in req.headers
 
 
-@pytest.mark.parametrize("trust_env", (True, False))
 @pytest.mark.parametrize(
     "netrc_contents",
     ("",),
@@ -1279,11 +1279,7 @@ def test_basicauth_from_netrc_present(
 @pytest.mark.usefixtures("netrc_contents")
 def test_basicauth_from_netrc_absent(
     make_request: Any,
-    netrc_contents: str,
-    hostname: str,
-    trust_env: bool,
-    expected_auth: Optional[helpers.BasicAuth],
 ):
     """Test that no Authorization header is sent when netrc is empty"""
-    req = make_request("get", f"http://{hostname}", trust_env=trust_env)
+    req = make_request("get", "http://example.com", trust_env=True)
     assert hdrs.AUTHORIZATION not in req.headers
