@@ -1255,7 +1255,6 @@ def test_gen_default_accept_encoding(has_brotli: Any, expected: Any) -> None:
 @pytest.mark.usefixtures("netrc_contents")
 def test_basicauth_from_netrc_present(
     make_request: Any,
-    netrc_contents: str,
     hostname: str,
     trust_env: bool,
     expected_auth: Optional[helpers.BasicAuth],

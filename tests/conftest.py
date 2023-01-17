@@ -210,7 +210,7 @@ def netrc_contents(
 
     Monkey-patches :envvar:`NETRC` to point to created file.
     """
-    netrc_contents = request.param
+    netrc_contents = getattr(request, 'param', None)
 
     netrc_file_path = tmp_path / ".netrc"
     if netrc_contents is not None:

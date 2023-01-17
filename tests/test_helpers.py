@@ -989,7 +989,7 @@ def test_parse_http_date(value, expected):
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-def test_netrc_from_env(netrc_contents: str, hostname: str, expected_username: str):
+def test_netrc_from_env(hostname: str, expected_username: str):
     """Test that reading netrc files from env works as expected"""
     netrc_obj = helpers.netrc_from_env()
     assert netrc_obj.authenticators(hostname)[0] == expected_username
