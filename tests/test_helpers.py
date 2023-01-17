@@ -1029,5 +1029,7 @@ def test_basicauth_from_netrc(
     if expected_auth:
         assert expected_auth == helpers.basicauth_from_netrc(netrc_obj, hostname)
     else:
-        with pytest.raises(match=LookupError):
+        with pytest.raises(
+            LookupError, match="No entry for example.com found in the `.netrc` file."
+        ):
             helpers.basicauth_from_netrc(netrc_obj, hostname)
