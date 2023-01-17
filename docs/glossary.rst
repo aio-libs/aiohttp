@@ -157,6 +157,9 @@
       https://pypi.python.org/pypi/yarl
 
 
+Enviornment Variables
+=====================
+
 .. envvar:: NETRC
 
    If set, HTTP Basic Auth will be read from the file pointed to by this environment variable,
