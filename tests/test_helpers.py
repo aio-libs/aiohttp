@@ -1029,5 +1029,5 @@ def test_basicauth_from_netrc(
     if expected_auth:
         assert expected_auth == helpers.basicauth_from_netrc(netrc_obj, hostname)
     else:
-        with pytest.raises(LookupError):
+        with pytest.raises(match=LookupError):
             helpers.basicauth_from_netrc(netrc_obj, hostname)
