@@ -1019,7 +1019,6 @@ def test_netrc_from_env(hostname: str, expected_username: str):
 )
 @pytest.mark.usefixtures("netrc_contents")
 def test_basicauth_from_netrc(
-    netrc_contents: str,
     hostname: str,
     expected_auth: helpers.BasicAuth,
 ):
