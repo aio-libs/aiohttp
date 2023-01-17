@@ -1233,42 +1233,37 @@ def test_gen_default_accept_encoding(has_brotli: Any, expected: Any) -> None:
 
 
 @pytest.mark.parametrize(
-    ("trust_env", "expected_auth"),
-    (
-        pytest.param(
-            True,
+    ("netrc_contents", "expected_auth"),
+    [
+        (
+            "machine example.com login username password pass\n",
             helpers.BasicAuth("username", "pass"),
-            id="reading netrc requested",
-        ),
-        pytest.param(
-            False,
-            None,
-            id="reading netrc disabled",
-        ),
-    ),
+        )
+    ],
+    indirect=("netrc_contents",),
 )
+@pytest.mark.usefixtures("netrc_contents")
+def test_basicauth_from_netrc_present(
+    make_request: Any,
+    expected_auth: Optional[helpers.BasicAuth],
+):
+    """Test appropriate Authorization header is sent when netrc is not empty."""
+    req = make_request("get", "http://example.com", trust_env=True)
+    assert req.headers[hdrs.AUTHORIZATION] == expected_auth.encode()
+
+
 @pytest.mark.parametrize(
     "netrc_contents",
     ("machine example.com login username password pass\n",),
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-def test_basicauth_from_netrc_present(
+def test_basicauth_from_netrc_present_untrusted_env(
     make_request: Any,
-    trust_env: bool,
-    expected_auth: Optional[helpers.BasicAuth],
 ):
-    """
-    Test appropriate Authorization header is sent when netrc is not empty.
-
-    No authorization header should be sent when trust_env is false, even if
-    netrc is not empty.
-    """
-    req = make_request("get", "http://example.com", trust_env=trust_env)
-    if trust_env:
-        assert req.headers[hdrs.AUTHORIZATION] == expected_auth.encode()
-    else:
-        assert hdrs.AUTHORIZATION not in req.headers
+    """Test no authorization header is sent via netrc if trust_env is False"""
+    req = make_request("get", "http://example.com", trust_env=False)
+    assert hdrs.AUTHORIZATION not in req.headers
 
 
 @pytest.mark.parametrize(
