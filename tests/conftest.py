@@ -206,7 +206,7 @@ def netrc_contents(
     request: pytest.FixtureRequest,
 ):
     """
-    Prepare a ``.netrc`` file with given contents.
+    Prepare :file:`.netrc` with given contents.
 
     Monkey-patches :envvar:`NETRC` to point to created file.
     """
