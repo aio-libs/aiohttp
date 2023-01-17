@@ -1277,7 +1277,7 @@ def test_basicauth_from_netrc_present(
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-def test_basicauth_from_netrc_absent(
+def test_basicauth_from_empty_netrc(
     make_request: Any,
 ):
     """Test that no Authorization header is sent when netrc is empty"""
