@@ -375,10 +375,7 @@ def test_timer_context_not_cancelled() -> None:
             with ctx:
                 pass
 
-        if helpers.PY_37:
-            assert not m_asyncio.current_task.return_value.cancel.called
-        else:
-            assert not m_asyncio.Task.current_task.return_value.cancel.called
+        assert not m_asyncio.current_task.return_value.cancel.called
 
 
 def test_timer_context_no_task(loop) -> None:
@@ -718,7 +715,6 @@ async def test_set_exception_cancelled(loop) -> None:
 
 
 class TestChainMapProxy:
-    @pytest.mark.skipif(not helpers.PY_36, reason="Requires Python 3.6+")
     def test_inheritance(self) -> None:
         with pytest.raises(TypeError):
 

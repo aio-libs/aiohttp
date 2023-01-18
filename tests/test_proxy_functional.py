@@ -14,7 +14,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import web
 from aiohttp.client_exceptions import ClientConnectionError, ClientProxyConnectionError
-from aiohttp.helpers import IS_MACOS, IS_WINDOWS, PY_37, PY_310
+from aiohttp.helpers import IS_MACOS, IS_WINDOWS, PY_310
 
 pytestmark = [
     pytest.mark.filterwarnings(
@@ -131,20 +131,7 @@ def _pretend_asyncio_supports_tls_in_tls(
 
 
 @secure_proxy_xfail_under_py310_linux(raises=ClientProxyConnectionError)
-@pytest.mark.parametrize(
-    "web_server_endpoint_type",
-    (
-        "http",
-        pytest.param(
-            "https",
-            marks=pytest.mark.xfail(
-                not PY_37,
-                raises=RuntimeError,
-                reason="`asyncio.loop.start_tls()` is only implemeneted in Python 3.7",
-            ),
-        ),
-    ),
-)
+@pytest.mark.parametrize("web_server_endpoint_type", ("http", pytest.param("https")))
 @pytest.mark.usefixtures("_pretend_asyncio_supports_tls_in_tls", "loop")
 async def test_secure_https_proxy_absolute_path(
     client_ssl_ctx,
@@ -174,11 +161,6 @@ async def test_secure_https_proxy_absolute_path(
 
 
 @secure_proxy_xfail_under_py310_linux(raises=AssertionError)
-@pytest.mark.xfail(
-    not PY_37,
-    raises=RuntimeError,
-    reason="`asyncio.loop.start_tls()` is only implemeneted in Python 3.7",
-)
 @pytest.mark.parametrize("web_server_endpoint_type", ("https",))
 @pytest.mark.usefixtures("loop")
 async def test_https_proxy_unsupported_tls_in_tls(
@@ -240,8 +222,8 @@ async def test_https_proxy_unsupported_tls_in_tls(
 
 
 @pytest.mark.skipif(
-    PY_37,
-    reason="This test checks an error we emit below Python 3.7",
+    sys.version_info >= (3, 11),
+    reason="This test checks an error we emit below Python 3.11",
 )
 @pytest.mark.usefixtures("loop")
 async def test_https_proxy_missing_start_tls() -> None:

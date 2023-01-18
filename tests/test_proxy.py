@@ -11,7 +11,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
-from aiohttp.helpers import PY_37, TimerNoop
+from aiohttp.helpers import TimerNoop
 from aiohttp.test_utils import make_mocked_coro
 
 pytestmark = pytest.mark.skipif(
@@ -362,8 +362,8 @@ class TestProxy(unittest.TestCase):
             )
 
     @pytest.mark.skipif(
-        PY_37,
-        reason="The tested code path is only reachable below Python 3.7 because those "
+        sys.version_info >= (3, 11),
+        reason="The tested code path is only reachable below Python 3.11 because those "
         "versions don't yet have `asyncio.loop.start_tls()` implemeneted",
     )
     @mock.patch("aiohttp.connector.ClientRequest")
