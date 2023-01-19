@@ -20,7 +20,6 @@ from aiohttp import client, web
 from aiohttp.client import ClientRequest, ClientTimeout
 from aiohttp.client_reqrep import ConnectionKey
 from aiohttp.connector import Connection, TCPConnector, _DNSCacheTable
-from aiohttp.helpers import PY_37
 from aiohttp.locks import EventResultOrError
 from aiohttp.test_utils import make_mocked_coro, unused_port
 from aiohttp.tracing import Trace
@@ -81,7 +80,7 @@ def named_pipe_server(proactor_loop, pipe_name):
 def create_mocked_conn(conn_closing_result=None, **kwargs):
     try:
         loop = asyncio.get_running_loop()
-    except (AttributeError, RuntimeError):  # AttributeError->py36
+    except RuntimeError:
         loop = asyncio.get_event_loop_policy().get_event_loop()
 
     proto = mock.Mock(**kwargs)
@@ -2007,19 +2006,11 @@ async def test_tcp_connector_raise_connector_ssl_error(
     session = aiohttp.ClientSession(connector=conn)
     url = srv.make_url("/")
 
-    if PY_37:
-        err = aiohttp.ClientConnectorCertificateError
-    else:
-        err = aiohttp.ClientConnectorSSLError
-    with pytest.raises(err) as ctx:
+    with pytest.raises(aiohttp.ClientConnectorCertificateError) as ctx:
         await session.get(url)
 
-    if PY_37:
-        assert isinstance(ctx.value, aiohttp.ClientConnectorCertificateError)
-        assert isinstance(ctx.value.certificate_error, ssl.SSLError)
-    else:
-        assert isinstance(ctx.value, aiohttp.ClientSSLError)
-        assert isinstance(ctx.value.os_error, ssl.SSLError)
+    assert isinstance(ctx.value, aiohttp.ClientConnectorCertificateError)
+    assert isinstance(ctx.value.certificate_error, ssl.SSLError)
 
     await session.close()
 

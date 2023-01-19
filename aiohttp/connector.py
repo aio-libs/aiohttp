@@ -46,14 +46,7 @@ from .client_exceptions import (
 )
 from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest, Fingerprint, _merge_ssl_params
-from .helpers import (
-    PY_36,
-    ceil_timeout,
-    get_running_loop,
-    is_ip_address,
-    noop,
-    sentinel,
-)
+from .helpers import ceil_timeout, get_running_loop, is_ip_address, noop, sentinel
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
@@ -121,10 +114,7 @@ class Connection:
 
     def __del__(self, _warnings: Any = warnings) -> None:
         if self._protocol is not None:
-            if PY_36:
-                kwargs = {"source": self}
-            else:
-                kwargs = {}
+            kwargs = {"source": self}
             _warnings.warn(f"Unclosed connection {self!r}", ResourceWarning, **kwargs)
             if self._loop.is_closed():
                 return
@@ -278,10 +268,7 @@ class BaseConnector:
 
         self._close()
 
-        if PY_36:
-            kwargs = {"source": self}
-        else:
-            kwargs = {}
+        kwargs = {"source": self}
         _warnings.warn(f"Unclosed connector {self!r}", ResourceWarning, **kwargs)
         context = {
             "connector": self,
@@ -1010,9 +997,8 @@ class TCPConnector(BaseConnector):
     def _fail_on_no_start_tls(self, req: "ClientRequest") -> None:
         """Raise a :py:exc:`RuntimeError` on missing ``start_tls()``.
 
-        One case is that :py:meth:`asyncio.loop.start_tls` is not yet
-        implemented under Python 3.6. It is necessary for TLS-in-TLS so
-        that it is possible to send HTTPS queries through HTTPS proxies.
+        It is necessary for TLS-in-TLS so that it is possible to
+        send HTTPS queries through HTTPS proxies.
 
         This doesn't affect regular HTTP requests, though.
         """
@@ -1034,7 +1020,7 @@ class TCPConnector(BaseConnector):
                 "An HTTPS request is being sent through an HTTPS proxy. "
                 "This needs support for TLS in TLS but it is not implemented "
                 "in your runtime for the stdlib asyncio.\n\n"
-                "Please upgrade to Python 3.7 or higher. For more details, "
+                "Please upgrade to Python 3.11 or higher. For more details, "
                 "please see:\n"
                 "* https://bugs.python.org/issue37179\n"
                 "* https://github.com/python/cpython/pull/28073\n"
@@ -1072,10 +1058,10 @@ class TCPConnector(BaseConnector):
         warnings.warn(
             "An HTTPS request is being sent through an HTTPS proxy. "
             "This support for TLS in TLS is known to be disabled "
-            "in the stdlib asyncio. This is why you'll probably see "
+            "in the stdlib asyncio (Python <3.11). This is why you'll probably see "
             "an error in the log below.\n\n"
-            "It is possible to enable it via monkeypatching under "
-            "Python 3.7 or higher. For more details, see:\n"
+            "It is possible to enable it via monkeypatching. "
+            "For more details, see:\n"
             "* https://bugs.python.org/issue37179\n"
             "* https://github.com/python/cpython/pull/28073\n\n"
             "You can temporarily patch this as follows:\n"

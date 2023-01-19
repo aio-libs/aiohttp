@@ -5,12 +5,8 @@ from pathlib import Path
 from typing import Any, Dict, Generator, List
 
 import pytest
+import python_on_whales
 from pytest import TempPathFactory
-
-python_on_whales = pytest.importorskip(
-    "python_on_whales",
-    reason="'python-on-whales' requires Python 3.7+",
-)
 
 
 @pytest.fixture(scope="session")

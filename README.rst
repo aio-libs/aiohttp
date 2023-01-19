@@ -153,7 +153,6 @@ Please add *aiohttp* tag to your question there.
 Requirements
 ============
 
-- Python >= 3.6
 - async-timeout_
 - attrs_
 - charset-normalizer_

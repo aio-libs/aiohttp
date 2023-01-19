@@ -35,7 +35,6 @@ from typing import (
     Mapping,
     Optional,
     Pattern,
-    Set,
     Tuple,
     Type,
     TypeVar,
@@ -65,25 +64,9 @@ __all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 IS_MACOS = platform.system() == "Darwin"
 IS_WINDOWS = platform.system() == "Windows"
 
-PY_36 = sys.version_info >= (3, 6)
-PY_37 = sys.version_info >= (3, 7)
 PY_38 = sys.version_info >= (3, 8)
 PY_310 = sys.version_info >= (3, 10)
 PY_311 = sys.version_info >= (3, 11)
-
-if sys.version_info < (3, 7):
-    import idna_ssl
-
-    idna_ssl.patch_match_hostname()
-
-    def all_tasks(
-        loop: Optional[asyncio.AbstractEventLoop] = None,
-    ) -> Set["asyncio.Task[Any]"]:
-        tasks = list(asyncio.Task.all_tasks(loop))
-        return {t for t in tasks if not t.done()}
-
-else:
-    all_tasks = asyncio.all_tasks
 
 
 _T = TypeVar("_T")
@@ -281,10 +264,7 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
 def current_task(
     loop: Optional[asyncio.AbstractEventLoop] = None,
 ) -> "Optional[asyncio.Task[Any]]":
-    if sys.version_info >= (3, 7):
-        return asyncio.current_task(loop=loop)
-    else:
-        return asyncio.Task.current_task(loop=loop)
+    return asyncio.current_task(loop=loop)
 
 
 def get_running_loop(

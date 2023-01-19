@@ -7,7 +7,7 @@ import pytest
 
 from aiohttp import log, web
 from aiohttp.abc import AbstractAccessLogger, AbstractRouter
-from aiohttp.helpers import DEBUG, PY_36, PY_311
+from aiohttp.helpers import DEBUG, PY_311
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.typedefs import Handler
 
@@ -357,7 +357,6 @@ def test_subapp_pre_frozen_after_adding() -> None:
     assert not subapp.frozen
 
 
-@pytest.mark.skipif(not PY_36, reason="Python 3.6+ required")
 def test_app_inheritance() -> None:
     with pytest.warns(DeprecationWarning):
 

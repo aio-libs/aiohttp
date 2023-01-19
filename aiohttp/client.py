@@ -74,7 +74,6 @@ from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
     DEBUG,
-    PY_36,
     BasicAuth,
     TimeoutHandle,
     ceil_timeout,
@@ -339,10 +338,7 @@ class ClientSession:
 
     def __del__(self, _warnings: Any = warnings) -> None:
         if not self.closed:
-            if PY_36:
-                kwargs = {"source": self}
-            else:
-                kwargs = {}
+            kwargs = {"source": self}
             _warnings.warn(
                 f"Unclosed client session {self!r}", ResourceWarning, **kwargs
             )
