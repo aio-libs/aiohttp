@@ -33,7 +33,7 @@ secure_proxy_xfail_under_py310_linux = functools.partial(
     PY_310 and platform.system() == "Linux",
     reason=(
         "The secure proxy fixture does not seem to work "
-        "under Python 3.10 on Linux and any Python on Windows. "
+        "under Python 3.10 on Linux. "
         "See https://github.com/abhinavsingh/proxy.py/issues/622."
     ),
 )
