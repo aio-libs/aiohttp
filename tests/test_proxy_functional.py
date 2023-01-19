@@ -185,7 +185,7 @@ async def test_https_proxy_unsupported_tls_in_tls(
         r"^"
         r"An HTTPS request is being sent through an HTTPS proxy\. "
         "This support for TLS in TLS is known to be disabled "
-        r"in the stdlib asyncio (Python <3.11)\. This is why you'll probably see "
+        r"in the stdlib asyncio \(Python <3\.11\)\. This is why you'll probably see "
         r"an error in the log below\.\n\n"
         "It is possible to enable it via monkeypatching. "
         r"For more details, see:\n"
