@@ -159,6 +159,66 @@ async def test_secure_https_proxy_absolute_path(
     await asyncio.sleep(0.1)
 
 
+@secure_proxy_xfail_under_py310_linux(raises=AssertionError)
+@pytest.mark.parametrize("web_server_endpoint_type", ("https",))
+@pytest.mark.usefixtures("loop")
+async def test_https_proxy_unsupported_tls_in_tls(
+    client_ssl_ctx,
+    secure_proxy_url,
+    web_server_endpoint_type,
+) -> None:
+    """Ensure connecting to TLS endpoints w/ HTTPS proxy needs patching.
+    This also checks that a helpful warning on how to patch the env
+    is displayed.
+    """
+    url = URL.build(scheme=web_server_endpoint_type, host="python.org")
+
+    escaped_host_port = ":".join((url.host.replace(".", r"\."), str(url.port)))
+    escaped_proxy_url = str(secure_proxy_url).replace(".", r"\.")
+
+    conn = aiohttp.TCPConnector()
+    sess = aiohttp.ClientSession(connector=conn)
+
+    expected_warning_text = (
+        r"^"
+        r"An HTTPS request is being sent through an HTTPS proxy\. "
+        "This support for TLS in TLS is known to be disabled "
+        r"in the stdlib asyncio\. This is why you'll probably see "
+        r"an error in the log below\.\n\n"
+        "It is possible to enable it via monkeypatching under "
+        r"Python 3\.7 or higher\. For more details, see:\n"
+        r"\* https://bugs\.python\.org/issue37179\n"
+        r"\* https://github\.com/python/cpython/pull/28073\n\n"
+        r"You can temporarily patch this as follows:\n"
+        r"\* https://docs\.aiohttp\.org/en/stable/client_advanced\.html#proxy-support\n"
+        r"\* https://github\.com/aio-libs/aiohttp/discussions/6044\n$"
+    )
+    type_err = (
+        r"transport <asyncio\.sslproto\._SSLProtocolTransport object at "
+        r"0x[\d\w]+> is not supported by start_tls\(\)"
+    )
+    expected_exception_reason = (
+        r"^"
+        "Cannot initialize a TLS-in-TLS connection to host "
+        f"{escaped_host_port!s} through an underlying connection "
+        f"to an HTTPS proxy {escaped_proxy_url!s} ssl:{client_ssl_ctx!s} "
+        f"[{type_err!s}]"
+        r"$"
+    )
+
+    with pytest.warns(RuntimeWarning, match=expected_warning_text,), pytest.raises(
+        ClientConnectionError,
+        match=expected_exception_reason,
+    ) as conn_err:
+        await sess.get(url, proxy=secure_proxy_url, ssl=client_ssl_ctx)
+
+    assert type(conn_err.value.__cause__) == TypeError
+    assert match_regex(f"^{type_err!s}$", str(conn_err.value.__cause__))
+
+    await sess.close()
+    await conn.close()
+
+
 @pytest.fixture
 def proxy_test_server(aiohttp_raw_server, loop, monkeypatch):
     # Handle all proxy requests and imitate remote server response.
