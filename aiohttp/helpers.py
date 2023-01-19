@@ -35,7 +35,6 @@ from typing import (
     Mapping,
     Optional,
     Pattern,
-    Set,
     Tuple,
     Type,
     TypeVar,
