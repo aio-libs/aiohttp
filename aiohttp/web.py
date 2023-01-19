@@ -20,7 +20,7 @@ from typing import (
 )
 
 from .abc import AbstractAccessLogger
-from .helpers import AppKey as AppKey, all_tasks
+from .helpers import AppKey as AppKey
 from .log import access_logger
 from .typedefs import PathLike
 from .web_app import Application as Application, CleanupError as CleanupError
@@ -525,7 +525,7 @@ def run_app(
         pass
     finally:
         _cancel_tasks({main_task}, loop)
-        _cancel_tasks(all_tasks(loop), loop)
+        _cancel_tasks(asyncio.all_tasks(loop), loop)
         loop.run_until_complete(loop.shutdown_asyncgens())
         loop.close()
 

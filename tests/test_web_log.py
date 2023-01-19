@@ -7,7 +7,6 @@ import pytest
 import aiohttp
 from aiohttp import web
 from aiohttp.abc import AbstractAccessLogger
-from aiohttp.helpers import PY_37
 from aiohttp.typedefs import Handler
 from aiohttp.web_log import AccessLogger
 
@@ -170,7 +169,6 @@ def test_logger_abc() -> None:
     mock_logger.info.assert_called_with("request response 1")
 
 
-@pytest.mark.skipif(not PY_37, reason="contextvars support is required")
 async def test_contextvars_logger(aiohttp_server, aiohttp_client):
     VAR = ContextVar("VAR")
 

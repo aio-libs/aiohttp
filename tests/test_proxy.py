@@ -11,7 +11,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
-from aiohttp.helpers import PY_37, TimerNoop
+from aiohttp.helpers import TimerNoop
 from aiohttp.test_utils import make_mocked_coro
 
 pytestmark = pytest.mark.skipif(
@@ -360,70 +360,6 @@ class TestProxy(unittest.TestCase):
             self.loop.run_until_complete(
                 connector._create_connection(req, None, aiohttp.ClientTimeout())
             )
-
-    @pytest.mark.skipif(
-        PY_37,
-        reason="The tested code path is only reachable below Python 3.7 because those "
-        "versions don't yet have `asyncio.loop.start_tls()` implemeneted",
-    )
-    @mock.patch("aiohttp.connector.ClientRequest")
-    def test_https_connect_runtime_error(self, ClientRequestMock) -> None:
-        proxy_req = ClientRequest(
-            "GET", URL("http://proxy.example.com"), loop=self.loop
-        )
-        ClientRequestMock.return_value = proxy_req
-
-        proxy_resp = ClientResponse(
-            "get",
-            URL("http://proxy.example.com"),
-            request_info=mock.Mock(),
-            writer=mock.Mock(),
-            continue100=None,
-            timer=TimerNoop(),
-            traces=[],
-            loop=self.loop,
-            session=mock.Mock(),
-        )
-        proxy_req.send = make_mocked_coro(proxy_resp)
-        proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
-
-        async def make_conn():
-            return aiohttp.TCPConnector()
-
-        connector = self.loop.run_until_complete(make_conn())
-        connector._resolve_host = make_mocked_coro(
-            [
-                {
-                    "hostname": "hostname",
-                    "host": "127.0.0.1",
-                    "port": 80,
-                    "family": socket.AF_INET,
-                    "proto": 0,
-                    "flags": 0,
-                }
-            ]
-        )
-
-        tr, proto = mock.Mock(), mock.Mock()
-        tr.get_extra_info.return_value = None
-        self.loop.create_connection = make_mocked_coro((tr, proto))
-
-        req = ClientRequest(
-            "GET",
-            URL("https://www.python.org"),
-            proxy=URL("http://proxy.example.com"),
-            loop=self.loop,
-        )
-        with self.assertRaisesRegex(
-            RuntimeError, "Transport does not expose socket instance"
-        ):
-            self.loop.run_until_complete(
-                connector._create_connection(req, None, aiohttp.ClientTimeout())
-            )
-
-        self.loop.run_until_complete(proxy_req.close())
-        proxy_resp.close()
-        self.loop.run_until_complete(req.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
     def test_https_connect_http_proxy_error(self, ClientRequestMock) -> None:

@@ -18,7 +18,7 @@ from aiohttp import client, hdrs, web
 from aiohttp.client import ClientSession
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import BaseConnector, TCPConnector
-from aiohttp.helpers import DEBUG, PY_36
+from aiohttp.helpers import DEBUG
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -325,9 +325,6 @@ def test_connector_loop(loop) -> None:
             Matches("Session and connector has to use same event loop")
             == str(ctx.value).strip()
         )
-        another_loop.run_until_complete(connector.close())
-
-        # Cannot use `AsyncExitStack` as it's Python 3.7+:
         another_loop.run_until_complete(connector.close())
 
 
@@ -789,7 +786,6 @@ async def test_request_tracing_interpose_headers(loop, aiohttp_client) -> None:
     assert MyClientRequest.headers["foo"] == "bar"
 
 
-@pytest.mark.skipif(not PY_36, reason="Python 3.6+ required")
 def test_client_session_inheritance() -> None:
     with pytest.warns(DeprecationWarning):
 

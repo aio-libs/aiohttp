@@ -27,7 +27,6 @@ from . import hdrs
 from .abc import AbstractStreamWriter
 from .helpers import (
     _SENTINEL,
-    PY_36,
     content_disposition_header,
     guess_filename,
     parse_mimetype,
@@ -232,10 +231,7 @@ class BytesPayload(Payload):
             self._size = len(value)
 
         if self._size > TOO_LARGE_BYTES_BODY:
-            if PY_36:
-                kwargs = {"source": self}
-            else:
-                kwargs = {}
+            kwargs = {"source": self}
             warnings.warn(
                 "Sending a large body directly with raw bytes might"
                 " lock the event loop. You should probably pass an "
