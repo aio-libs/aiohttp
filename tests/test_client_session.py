@@ -306,7 +306,7 @@ async def test_create_connector(create_session, loop, mocker) -> None:
 
 
 def test_connector_loop(loop) -> None:
-    with contextlib.AsyncExitStack() as stack:
+    with contextlib.ExitStack() as stack:
         another_loop = asyncio.new_event_loop()
         stack.enter_context(contextlib.closing(another_loop))
 
@@ -325,6 +325,7 @@ def test_connector_loop(loop) -> None:
             Matches("Session and connector has to use same event loop")
             == str(ctx.value).strip()
         )
+        another_loop.run_until_complete(connector.close())
 
 
 def test_detach(loop, session) -> None:
