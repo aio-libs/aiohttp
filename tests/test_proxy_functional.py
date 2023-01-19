@@ -3,6 +3,7 @@ import functools
 import os
 import pathlib
 import platform
+from re import match as match_regex
 from unittest import mock
 from uuid import uuid4
 
@@ -12,7 +13,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import web
-from aiohttp.client_exceptions import ClientProxyConnectionError
+from aiohttp.client_exceptions import ClientConnectionError, ClientProxyConnectionError
 from aiohttp.helpers import IS_MACOS, IS_WINDOWS, PY_310
 
 pytestmark = [
@@ -168,6 +169,7 @@ async def test_https_proxy_unsupported_tls_in_tls(
     web_server_endpoint_type,
 ) -> None:
     """Ensure connecting to TLS endpoints w/ HTTPS proxy needs patching.
+
     This also checks that a helpful warning on how to patch the env
     is displayed.
     """
