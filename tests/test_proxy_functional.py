@@ -3,6 +3,7 @@ import functools
 import os
 import pathlib
 import platform
+import sys
 from re import match as match_regex
 from unittest import mock
 from uuid import uuid4
