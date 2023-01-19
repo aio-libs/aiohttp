@@ -30,7 +30,7 @@ pytestmark = [
 
 secure_proxy_xfail_under_py310_linux = functools.partial(
     pytest.mark.xfail,
-    PY_310 and platform.system() != "Darwin",
+    PY_310 and platform.system() == "Linux",
     reason=(
         "The secure proxy fixture does not seem to work "
         "under Python 3.10 on Linux and any Python on Windows. "
