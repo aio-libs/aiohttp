@@ -3,8 +3,6 @@ import functools
 import os
 import pathlib
 import platform
-import sys
-from re import match as match_regex
 from unittest import mock
 from uuid import uuid4
 
@@ -14,7 +12,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import web
-from aiohttp.client_exceptions import ClientConnectionError, ClientProxyConnectionError
+from aiohttp.client_exceptions import ClientProxyConnectionError
 from aiohttp.helpers import IS_MACOS, IS_WINDOWS, PY_310
 
 pytestmark = [
