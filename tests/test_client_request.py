@@ -280,6 +280,7 @@ def test_host_header_ipv6_with_port(make_request) -> None:
     reason="No idea why ClientRequest() is constructed out of loop but "
     "it calls `asyncio.get_event_loop()`",
     raises=DeprecationWarning,
+    strict=False,
 )
 def test_default_loop(loop) -> None:
     asyncio.set_event_loop(loop)
