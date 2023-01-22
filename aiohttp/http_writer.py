@@ -75,7 +75,7 @@ class StreamWriter(AbstractStreamWriter):
         #
         # self._protocol.transport will be None if the connection is closed
         #
-        # We cannot check if self._transport here because
+        # We cannot check self._transport here because
         # we hold a reference to it even after the connection is closed.
         #
         transport = self._protocol.transport
