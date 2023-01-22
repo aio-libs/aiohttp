@@ -78,9 +78,10 @@ class StreamWriter(AbstractStreamWriter):
         # We cannot check if self._transport is None here because
         # we hold a reference to it even after the connection is closed.
         #
-        if self._protocol.transport is None or self._protocol.transport.is_closing():
+        transport = self._protocol.transport
+        if transport is None or transport.is_closing():
             raise ConnectionResetError("Cannot write to closing transport")
-        self._transport.write(chunk)
+        transport.write(chunk)
 
     async def write(
         self, chunk: bytes, *, drain: bool = True, LIMIT: int = 0x10000
