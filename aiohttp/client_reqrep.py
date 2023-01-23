@@ -697,6 +697,7 @@ class ClientResponse(HeadersMixin):
 
         self.method = method
         self.cookies: SimpleCookie[str] = SimpleCookie()
+        self.certificate: Optional[Dict[str, Union[Tuple[Any, ...], int, str]]] = None
 
         self._real_url = url
         self._url = url.with_fragment(None)
@@ -879,6 +880,10 @@ class ClientResponse(HeadersMixin):
                 self.cookies.load(hdr)
             except CookieError as exc:
                 client_logger.warning("Can not load response cookies: %s", exc)
+
+        # certificate
+        if self._connection is not None and self._connection.transport is not None:
+            self.certificate = self._connection.transport.get_extra_info("peercert")
         return self
 
     def _response_eof(self) -> None:

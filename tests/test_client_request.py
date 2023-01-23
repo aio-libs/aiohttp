@@ -1230,3 +1230,9 @@ def test_loose_cookies_types(loop: Any) -> None:
 def test_gen_default_accept_encoding(has_brotli: Any, expected: Any) -> None:
     with mock.patch("aiohttp.client_reqrep.HAS_BROTLI", has_brotli):
         assert _gen_default_accept_encoding() == expected
+
+
+async def test_certificate(loop: Any, conn: Any) -> None:
+    req = ClientRequest("get", URL("https://www.python.org"), loop=loop)
+    resp = await req.send(conn)
+    assert resp.certificate is not None

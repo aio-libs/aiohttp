@@ -1360,6 +1360,10 @@ Response object
       objects of preceding requests (earliest request first) if there were
       redirects, an empty sequence otherwise.
 
+   .. attribute:: certificate
+
+      The server certificate, if available.
+
    .. method:: close()
 
       Close response and underlying connection.
