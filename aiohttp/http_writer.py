@@ -35,7 +35,6 @@ class StreamWriter(AbstractStreamWriter):
         on_headers_sent: _T_OnHeadersSent = None,
     ) -> None:
         self._protocol = protocol
-        self._transport = protocol.transport
 
         self.loop = loop
         self.length = None
@@ -52,7 +51,7 @@ class StreamWriter(AbstractStreamWriter):
 
     @property
     def transport(self) -> Optional[asyncio.Transport]:
-        return self._transport
+        return self._protocol.transport
 
     @property
     def protocol(self) -> BaseProtocol:
@@ -166,7 +165,6 @@ class StreamWriter(AbstractStreamWriter):
         await self.drain()
 
         self._eof = True
-        self._transport = None
 
     async def drain(self) -> None:
         """Flush the write buffer.
