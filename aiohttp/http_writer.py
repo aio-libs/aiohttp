@@ -70,13 +70,6 @@ class StreamWriter(AbstractStreamWriter):
         size = len(chunk)
         self.buffer_size += size
         self.output_size += size
-
-        #
-        # self._protocol.transport will be None if the connection is closed
-        #
-        # We cannot check self._transport here because
-        # we hold a reference to it even after the connection is closed.
-        #
         transport = self._protocol.transport
         if transport is None or transport.is_closing():
             raise ConnectionResetError("Cannot write to closing transport")
