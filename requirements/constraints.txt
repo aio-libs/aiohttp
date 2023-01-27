@@ -24,8 +24,6 @@ brotli==1.0.9
     # via
     #   -r requirements/base.txt
     #   -r requirements/test.txt
-cchardet==2.1.7 ; python_version < "3.10"
-    # via -r requirements/base.txt
 certifi==2021.10.8
     # via requests
 cffi==1.15.0
@@ -91,8 +89,6 @@ idna==3.3
     #   yarl
 imagesize==1.2.0
     # via sphinx
-importlib-metadata==4.12.0
-    # via sphinx
 incremental==21.3.0
     # via towncrier
 iniconfig==1.1.1
@@ -125,6 +121,8 @@ pep517==0.12.0
     # via pip-tools
 pillow==9.2.0
     # via blockdiag
+pip==21.3.1
+    # via pip-tools
 pip-tools==6.5.0
     # via -r requirements/dev.txt
 platformdirs==2.4.0
@@ -178,6 +176,12 @@ requests==2.26.0
     #   cherry-picker
     #   python-on-whales
     #   sphinx
+setuptools==58.4.0
+    # via
+    #   blockdiag
+    #   gunicorn
+    #   pip-tools
+    #   towncrier
 setuptools-git==1.2
     # via -r requirements/test.txt
 six==1.16.0
@@ -219,12 +223,12 @@ toml==0.10.2
     # via
     #   cherry-picker
     #   pre-commit
+    #   pytest
 tomli==1.2.2
     # via
     #   coverage
     #   mypy
     #   pep517
-    #   pytest
     #   slotscheck
     #   towncrier
 towncrier==22.8.0
@@ -247,8 +251,6 @@ uritemplate==4.1.1
     # via gidgethub
 urllib3==1.26.7
     # via requests
-uvloop==0.14.0 ; platform_system != "Windows" and implementation_name == "cpython" and python_version < "3.9"
-    # via -r requirements/base.txt
 virtualenv==20.10.0
     # via pre-commit
 wait-for-it==2.2.1
@@ -259,15 +261,3 @@ wheel==0.37.0
     # via pip-tools
 yarl==1.8.1
     # via -r requirements/base.txt
-zipp==3.8.1
-    # via importlib-metadata
-
-# The following packages are considered to be unsafe in a requirements file:
-pip==21.3.1
-    # via pip-tools
-setuptools==58.4.0
-    # via
-    #   blockdiag
-    #   gunicorn
-    #   pip-tools
-    #   towncrier
