@@ -1,1 +1,1 @@
-`ConnectionResetError` will always be raised when `StreamWriter.write` is called after `connection_lost` has been called on the `BaseProtocol`
+``ConnectionResetError`` will always be raised when ``StreamWriter.write`` is called after ``connection_lost`` has been called on the ``BaseProtocol``
