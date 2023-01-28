@@ -1077,7 +1077,7 @@ class TestShutdown:
                 async with ClientSession() as sess:
                     async with sess.get(f"http://localhost:{port}/"):
                         pass
-                print("BAR", time.time())
+            print("BAR", time.time())
             assert finished is False
 
         t = self.run_app(port, 6, task, test)
