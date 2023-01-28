@@ -1063,12 +1063,12 @@ class TestShutdown:
 
         async def task() -> None:
             nonlocal finished
-            await asyncio.sleep(3)
+            await asyncio.sleep(5)
             finished = True
 
         async def test(sess: ClientSession) -> None:
             # Ensure we are in the middle of shutdown (waiting for task()).
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(1)
             with pytest.raises(ClientConnectorError):
                 # Use a new session to try and open a new connection.
                 async with ClientSession() as sess:
@@ -1076,7 +1076,7 @@ class TestShutdown:
                         pass
             assert finished is False
 
-        t = self.run_app(port, 4, task, test)
+        t = self.run_app(port, 6, task, test)
 
         assert finished is True
         assert t.done()
