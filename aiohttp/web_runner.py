@@ -84,15 +84,15 @@ class BaseSite(ABC):
 
         # Wait for pending tasks for a given time limit.
         with suppress(asyncio.TimeoutError):
-            await asyncio.wait_for(self._wait(), timeout=self._shutdown_timeout)
+            await asyncio.wait_for(self._wait(asyncio.current_task()), timeout=self._shutdown_timeout)
 
         await self._runner.shutdown()
         assert self._runner.server
         await self._runner.server.shutdown(self._shutdown_timeout)
         self._runner._unreg_site(self)
 
-    async def _wait(self) -> None:
-        exclude = self._runner.starting_tasks | {asyncio.current_task()}
+    async def _wait(self, parent_task: asyncio.Task) -> None:
+        exclude = self._runner.starting_tasks | {asyncio.current_task(), parent_task}
         # TODO(PY38): while tasks := asyncio.all_tasks() - exclude:
         tasks = asyncio.all_tasks() - exclude
         while tasks:
