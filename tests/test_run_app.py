@@ -1072,6 +1072,7 @@ class TestShutdown:
             with pytest.raises(ClientConnectorError):
                 # Use a new session to try and open a new connection.
                 import time
+
                 print("FOO", time.time())
                 async with ClientSession() as sess:
                     async with sess.get(f"http://localhost:{port}/"):
