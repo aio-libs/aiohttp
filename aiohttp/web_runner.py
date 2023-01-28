@@ -2,6 +2,7 @@ import asyncio
 import signal
 import socket
 from abc import ABC, abstractmethod
+from contextlib import suppress
 from typing import Any, List, Optional, Set, Type
 
 from yarl import URL
@@ -80,10 +81,20 @@ class BaseSite(ABC):
         # named pipes do not have wait_closed property
         if hasattr(self._server, "wait_closed"):
             await self._server.wait_closed()
+
+        # Wait for pending tasks for a given time limit.
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(self._wait(), timeout=self._shutdown_timeout)
+
         await self._runner.shutdown()
         assert self._runner.server
         await self._runner.server.shutdown(self._shutdown_timeout)
         self._runner._unreg_site(self)
+
+    async def _wait(self) -> None:
+        exclude = self._runner.starting_tasks | {asyncio.current_task()}
+        while tasks := asyncio.all_tasks() - exclude:
+            await asyncio.wait(tasks)
 
 
 class TCPSite(BaseSite):
@@ -247,7 +258,7 @@ class SockSite(BaseSite):
 
 
 class BaseRunner(ABC):
-    __slots__ = ("_handle_signals", "_kwargs", "_server", "_sites")
+    __slots__ = ("starting_tasks", "_handle_signals", "_kwargs", "_server", "_sites")
 
     def __init__(self, *, handle_signals: bool = False, **kwargs: Any) -> None:
         self._handle_signals = handle_signals
@@ -287,6 +298,11 @@ class BaseRunner(ABC):
                 pass
 
         self._server = await self._make_server()
+        # On shutdown we want to avoid waiting on tasks which run forever.
+        # It's very likely that all tasks which run forever will have been created by
+        # the time we have completed the application startup (in self._make_server()),
+        # so we just record all running tasks here and exclude them later.
+        self.starting_tasks = asyncio.all_tasks()
 
     @abstractmethod
     async def shutdown(self) -> None:
