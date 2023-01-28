@@ -1071,13 +1071,9 @@ class TestShutdown:
             await asyncio.sleep(1)
             with pytest.raises(ClientConnectorError):
                 # Use a new session to try and open a new connection.
-                import time
-
-                print("FOO", time.time())
                 async with ClientSession() as sess:
                     async with sess.get(f"http://localhost:{port}/"):
                         pass
-            print("BAR", time.time())
             assert finished is False
 
         t = self.run_app(port, 10, task, test)
