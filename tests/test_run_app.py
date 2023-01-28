@@ -1068,7 +1068,7 @@ class TestShutdown:
 
         async def test(sess: ClientSession) -> None:
             # Ensure we are in the middle of shutdown (waiting for task()).
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.5)
             with pytest.raises(ClientConnectorError):
                 # Use a new session to try and open a new connection.
                 async with ClientSession() as sess:
