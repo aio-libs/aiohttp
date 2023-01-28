@@ -18,10 +18,14 @@ class BaseProtocol(asyncio.Protocol):
         self._loop: asyncio.AbstractEventLoop = loop
         self._paused = False
         self._drain_waiter: Optional[asyncio.Future[None]] = None
-        self._connection_lost = False
         self._reading_paused = False
 
         self.transport: Optional[asyncio.Transport] = None
+
+    @property
+    def connected(self) -> bool:
+        """Return True if the connection is open."""
+        return bool(self.transport)
 
     def pause_writing(self) -> None:
         assert not self._paused
@@ -59,7 +63,6 @@ class BaseProtocol(asyncio.Protocol):
         self.transport = tr
 
     def connection_lost(self, exc: Optional[BaseException]) -> None:
-        self._connection_lost = True
         # Wake up the writer if currently paused.
         self.transport = None
         if not self._paused:
@@ -76,8 +79,8 @@ class BaseProtocol(asyncio.Protocol):
             waiter.set_exception(exc)
 
     async def _drain_helper(self) -> None:
-        if self._connection_lost:
-            raise ConnectionResetError("Connection lost")
+        if not self.connected:
+            raise ConnectionResetError("Not connected")
         if not self._paused:
             return
         waiter = self._drain_waiter
