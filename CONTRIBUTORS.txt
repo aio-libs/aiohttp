@@ -104,6 +104,7 @@ Dmitry Shamov
 Dmitry Trofimov
 Dmytro Bohomiakov
 Dmytro Kuznetsov
+Donggyu Damon Lee
 Dustin J. Mitchell
 Eduard Iskandarov
 Eli Ribble
