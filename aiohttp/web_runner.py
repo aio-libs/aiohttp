@@ -93,7 +93,7 @@ class BaseSite(ABC):
         await self._runner.server.shutdown(self._shutdown_timeout)
         self._runner._unreg_site(self)
 
-    async def _wait(self, parent_task: asyncio.Task) -> None:
+    async def _wait(self, parent_task: Optional[asyncio.Task[object]]) -> None:
         exclude = self._runner.starting_tasks | {asyncio.current_task(), parent_task}
         # TODO(PY38): while tasks := asyncio.all_tasks() - exclude:
         tasks = asyncio.all_tasks() - exclude
