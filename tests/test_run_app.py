@@ -1063,7 +1063,7 @@ class TestShutdown:
 
         async def task() -> None:
             nonlocal finished
-            await asyncio.sleep(2)
+            await asyncio.sleep(3)
             finished = True
 
         async def test(sess: ClientSession) -> None:
@@ -1076,7 +1076,7 @@ class TestShutdown:
                         pass
             assert finished is False
 
-        t = self.run_app(port, 3, task, test)
+        t = self.run_app(port, 4, task, test)
 
         assert finished is True
         assert t.done()
