@@ -70,9 +70,10 @@ class StreamWriter(AbstractStreamWriter):
         size = len(chunk)
         self.buffer_size += size
         self.output_size += size
-        if not self._protocol.connected:
+        transport = self.transport
+        if not self._protocol.connected and transport is not None:
             raise ConnectionResetError("Cannot write to closing transport")
-        self.transport.write(chunk)
+        transport.write(chunk)
 
     async def write(
         self, chunk: bytes, *, drain: bool = True, LIMIT: int = 0x10000
