@@ -933,7 +933,7 @@ seconds to allow any pending tasks to complete before continuing
 with application shutdown. The timeout can be adjusted with
 ``shutdown_timeout`` in :func:`run_app`.
 
-Another problem is if the application supports :term:`websocket`\s or
+Another problem is if the application supports :term:`websockets <websocket>` or
 *data streaming* it most likely has open connections at server
 shutdown time.
 
