@@ -937,7 +937,9 @@ class TestShutdown:
         asyncio.get_running_loop().call_soon(self.raiser)
         return web.Response()
 
-    def run_app(self, port: int, timeout: int, task, extra_test = None, cleanup = None) -> asyncio.Task:
+    def run_app(
+        self, port: int, timeout: int, task, extra_test=None, cleanup=None
+    ) -> asyncio.Task:
         async def test() -> None:
             await asyncio.sleep(1)
             async with ClientSession() as sess:
@@ -972,9 +974,12 @@ class TestShutdown:
         assert test_task.exception() is None
         return t
 
-    def test_shutdown_wait_for_task(self, aiohttp_unused_port: Callable[[], int]) -> None:
+    def test_shutdown_wait_for_task(
+        self, aiohttp_unused_port: Callable[[], int]
+    ) -> None:
         port = aiohttp_unused_port()
         finished = False
+
         async def task():
             nonlocal finished
             await asyncio.sleep(2)
@@ -986,9 +991,12 @@ class TestShutdown:
         assert t.done()
         assert not t.cancelled()
 
-    def test_shutdown_timeout_task(self, aiohttp_unused_port: Callable[[], int]) -> None:
+    def test_shutdown_timeout_task(
+        self, aiohttp_unused_port: Callable[[], int]
+    ) -> None:
         port = aiohttp_unused_port()
         finished = False
+
         async def task():
             nonlocal finished
             await asyncio.sleep(2)
@@ -1000,11 +1008,14 @@ class TestShutdown:
         assert t.done()
         assert t.cancelled()
 
-    def test_shutdown_wait_for_spawned_task(self, aiohttp_unused_port: Callable[[], int]) -> None:
+    def test_shutdown_wait_for_spawned_task(
+        self, aiohttp_unused_port: Callable[[], int]
+    ) -> None:
         port = aiohttp_unused_port()
         finished = False
         finished_sub = False
         sub_t = None
+
         async def sub_task():
             nonlocal finished_sub
             await asyncio.sleep(1.5)
@@ -1012,7 +1023,7 @@ class TestShutdown:
 
         async def task():
             nonlocal finished, sub_t
-            await asyncio.sleep(.5)
+            await asyncio.sleep(0.5)
             sub_t = asyncio.create_task(sub_task())
             finished = True
 
@@ -1025,9 +1036,12 @@ class TestShutdown:
         assert sub_t.done()
         assert not sub_t.cancelled()
 
-    def test_shutdown_timeout_not_reached(self, aiohttp_unused_port: Callable[[], int]) -> None:
+    def test_shutdown_timeout_not_reached(
+        self, aiohttp_unused_port: Callable[[], int]
+    ) -> None:
         port = aiohttp_unused_port()
         finished = False
+
         async def task():
             nonlocal finished
             await asyncio.sleep(1)
@@ -1041,9 +1055,12 @@ class TestShutdown:
         # Verify run_app has not waited for timeout.
         assert time.time() - start_time < 10
 
-    def test_shutdown_new_conn_rejected(self, aiohttp_unused_port: Callable[[], int]) -> None:
+    def test_shutdown_new_conn_rejected(
+        self, aiohttp_unused_port: Callable[[], int]
+    ) -> None:
         port = aiohttp_unused_port()
         finished = False
+
         async def task() -> None:
             nonlocal finished
             await asyncio.sleep(2)
@@ -1064,9 +1081,12 @@ class TestShutdown:
         assert finished is True
         assert t.done()
 
-    def test_shutdown_pending_handler_responds(self, aiohttp_unused_port: Callable[[], int]) -> None:
+    def test_shutdown_pending_handler_responds(
+        self, aiohttp_unused_port: Callable[[], int]
+    ) -> None:
         port = aiohttp_unused_port()
         finished = False
+
         async def test() -> None:
             async def test_resp(sess):
                 async with sess.get(f"http://localhost:{port}/") as resp:
