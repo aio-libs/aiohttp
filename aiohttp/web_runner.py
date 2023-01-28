@@ -84,7 +84,9 @@ class BaseSite(ABC):
 
         # Wait for pending tasks for a given time limit.
         with suppress(asyncio.TimeoutError):
-            await asyncio.wait_for(self._wait(asyncio.current_task()), timeout=self._shutdown_timeout)
+            await asyncio.wait_for(
+                self._wait(asyncio.current_task()), timeout=self._shutdown_timeout
+            )
 
         await self._runner.shutdown()
         assert self._runner.server
