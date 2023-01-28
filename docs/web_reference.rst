@@ -2860,7 +2860,7 @@ Utilities
    :param int shutdown_timeout: a delay to wait for graceful server
                                 shutdown before disconnecting all
                                 open client sockets hard way.
-                                
+
                                 This is used as a delay to wait for
                                 pending tasks to complete and then
                                 again to close and pending connections.
