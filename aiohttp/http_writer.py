@@ -71,7 +71,7 @@ class StreamWriter(AbstractStreamWriter):
         self.buffer_size += size
         self.output_size += size
         transport = self.transport
-        if not self._protocol.connected and transport is not None:
+        if not self._protocol.connected or transport is None:
             raise ConnectionResetError("Cannot write to closing transport")
         transport.write(chunk)
 
