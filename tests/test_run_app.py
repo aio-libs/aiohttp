@@ -943,9 +943,9 @@ class TestShutdown:
         async def test() -> None:
             await asyncio.sleep(1)
             async with ClientSession() as sess:
-                async with sess.get(f"http://localhost:{port}/") as resp:
+                async with sess.get(f"http://localhost:{port}/"):
                     pass
-                async with sess.get(f"http://localhost:{port}/stop") as resp:
+                async with sess.get(f"http://localhost:{port}/stop"):
                     pass
 
                 if extra_test:
@@ -1072,7 +1072,7 @@ class TestShutdown:
             with pytest.raises(ClientConnectorError):
                 # Use a new session to try and open a new connection.
                 async with ClientSession() as sess:
-                    async with sess.get(f"http://localhost:{port}/") as resp:
+                    async with sess.get(f"http://localhost:{port}/"):
                         pass
             assert finished is False
 
@@ -1097,10 +1097,10 @@ class TestShutdown:
                 t = asyncio.create_task(test_resp(sess))
                 await asyncio.sleep(1)
                 # Handler is in-progress while we trigger server shutdown.
-                async with sess.get(f"http://localhost:{port}/stop") as resp:
+                async with sess.get(f"http://localhost:{port}/stop"):
                     pass
 
-                assert finished == False
+                assert finished is False
                 # Handler should still complete and produce a response.
                 await t
 
