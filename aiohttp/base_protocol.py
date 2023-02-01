@@ -80,7 +80,7 @@ class BaseProtocol(asyncio.Protocol):
 
     async def _drain_helper(self) -> None:
         if not self.connected:
-            raise ConnectionResetError("Not connected")
+            raise ConnectionResetError("Connection lost")
         if not self._paused:
             return
         waiter = self._drain_waiter
