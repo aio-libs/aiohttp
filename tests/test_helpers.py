@@ -1013,7 +1013,7 @@ def test_netrc_from_env(expected_username: str):
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-def est_basicauth_present_in_netrc(
+def test_basicauth_present_in_netrc(
     expected_auth: helpers.BasicAuth,
 ):
     """Test that netrc file contents are properly parsed into BasicAuth tuples"""
