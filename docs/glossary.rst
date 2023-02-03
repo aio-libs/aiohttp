@@ -157,7 +157,7 @@
       https://pypi.python.org/pypi/yarl
 
 
-Enviornment Variables
+Environment Variables
 =====================
 
 .. envvar:: NETRC
