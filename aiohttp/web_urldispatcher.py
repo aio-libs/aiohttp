@@ -161,7 +161,6 @@ class AbstractRoute(abc.ABC):
         expect_handler: Optional[_ExpectHandler] = None,
         resource: Optional[AbstractResource] = None,
     ) -> None:
-
         if expect_handler is None:
             expect_handler = _default_expect_handler
 
@@ -325,7 +324,6 @@ class Resource(AbstractResource):
         *,
         expect_handler: Optional[_ExpectHandler] = None,
     ) -> "ResourceRoute":
-
         for route_obj in self._routes:
             if route_obj.method == method or route_obj.method == hdrs.METH_ANY:
                 raise RuntimeError(
@@ -415,7 +413,6 @@ class PlainResource(Resource):
 
 
 class DynamicResource(Resource):
-
     DYN = re.compile(r"\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*)\}")
     DYN_WITH_RE = re.compile(r"\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}")
     GOOD = r"[^{}/]+"
@@ -974,7 +971,6 @@ class RoutesView(Sized, Iterable[AbstractRoute], Container[AbstractRoute]):
 
 
 class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
-
     NAME_SPLIT_RE = re.compile(r"[.:-]")
 
     def __init__(self) -> None:
