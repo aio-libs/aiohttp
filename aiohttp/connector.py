@@ -69,7 +69,6 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class Connection:
-
     _source_traceback = None
     _transport = None
 
@@ -192,7 +191,6 @@ class BaseConnector:
         enable_cleanup_closed: bool = False,
         timeout_ceil_threshold: float = 5,
     ) -> None:
-
         if force_close:
             if keepalive_timeout is not None and keepalive_timeout is not sentinel:
                 raise ValueError(
@@ -813,7 +811,6 @@ class TCPConnector(BaseConnector):
             ]
 
         if not self._use_dns_cache:
-
             if traces:
                 for trace in traces:
                     await trace.send_dns_resolvehost_start(host)
@@ -851,7 +848,6 @@ class TCPConnector(BaseConnector):
                 for trace in traces:
                     await trace.send_dns_cache_miss(host)
             try:
-
                 if traces:
                     for trace in traces:
                         await trace.send_dns_resolvehost_start(host)

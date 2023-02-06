@@ -368,7 +368,6 @@ class AppRunner(BaseRunner):
         access_log_class: Type[AbstractAccessLogger] = AccessLogger,
         **kwargs: Any,
     ) -> None:
-
         if not isinstance(app, Application):
             raise TypeError(
                 "The first argument should be web.Application "

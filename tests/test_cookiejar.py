@@ -520,7 +520,6 @@ class TestCookieJarSafe(TestCookieJarBase):
         )
 
     def test_path_filter_folder(self) -> None:
-
         cookies_sent, _ = self.request_reply_with_same_url("http://pathtest.com/one/")
 
         self.assertEqual(
@@ -529,7 +528,6 @@ class TestCookieJarSafe(TestCookieJarBase):
         )
 
     def test_path_filter_file(self) -> None:
-
         cookies_sent, _ = self.request_reply_with_same_url(
             "http://pathtest.com/one/two"
         )
@@ -546,7 +544,6 @@ class TestCookieJarSafe(TestCookieJarBase):
         )
 
     def test_path_filter_subfolder(self) -> None:
-
         cookies_sent, _ = self.request_reply_with_same_url(
             "http://pathtest.com/one/two/"
         )
@@ -564,7 +561,6 @@ class TestCookieJarSafe(TestCookieJarBase):
         )
 
     def test_path_filter_subsubfolder(self) -> None:
-
         cookies_sent, _ = self.request_reply_with_same_url(
             "http://pathtest.com/one/two/three/"
         )
@@ -582,7 +578,6 @@ class TestCookieJarSafe(TestCookieJarBase):
         )
 
     def test_path_filter_different_folder(self) -> None:
-
         cookies_sent, _ = self.request_reply_with_same_url(
             "http://pathtest.com/hundred/"
         )
