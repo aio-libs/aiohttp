@@ -180,7 +180,6 @@ def test_equality() -> None:
 
 
 def test_app_run_middlewares() -> None:
-
     root = web.Application()
     sub = web.Application()
     root.add_subapp("/sub", sub)

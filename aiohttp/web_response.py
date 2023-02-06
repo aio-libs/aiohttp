@@ -75,7 +75,6 @@ class ContentCoding(enum.Enum):
 
 
 class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
-
     __slots__ = (
         "_length_check",
         "_body",
@@ -495,7 +494,6 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
 
 
 class Response(StreamResponse):
-
     __slots__ = (
         "_body_payload",
         "_compressed_body",
@@ -612,7 +610,7 @@ class Response(StreamResponse):
 
             # copy payload headers
             if body.headers:
-                for (key, value) in body.headers.items():
+                for key, value in body.headers.items():
                     if key not in headers:
                         headers[key] = value
 

@@ -106,7 +106,6 @@ _MsgT = TypeVar("_MsgT", RawRequestMessage, RawResponseMessage)
 
 
 class ParseState(IntEnum):
-
     PARSE_NONE = 0
     PARSE_LENGTH = 1
     PARSE_CHUNKED = 2
@@ -280,7 +279,6 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         METH_CONNECT: str = hdrs.METH_CONNECT,
         SEC_WEBSOCKET_KEY1: istr = hdrs.SEC_WEBSOCKET_KEY1,
     ) -> Tuple[List[Tuple[_MsgT, StreamReader]], bool, bytes]:
-
         messages = []
 
         if self._tail:
@@ -291,7 +289,6 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         loop = self.loop
 
         while start_pos < data_len:
-
             # read HTTP message (request/response line + headers), \r\n\r\n
             # and split by lines
             if self._payload_parser is None and not self._upgraded:
@@ -759,7 +756,6 @@ class HttpPayloadParser:
                 self._chunk_tail = b""
 
             while chunk:
-
                 # read next chunk size
                 if self._chunk == ChunkState.PARSE_CHUNKED_SIZE:
                     pos = chunk.find(SEP)

@@ -114,7 +114,6 @@ _FORWARDED_PAIR_RE: Final[Pattern[str]] = re.compile(_FORWARDED_PAIR)
 
 
 class BaseRequest(MutableMapping[str, Any], HeadersMixin):
-
     POST_METHODS = {
         hdrs.METH_PATCH,
         hdrs.METH_POST,
@@ -846,7 +845,6 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
 
 class Request(BaseRequest):
-
     __slots__ = ("_match_info",)
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:

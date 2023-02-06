@@ -30,7 +30,6 @@ def _create_example_app():
         return web.Response(body=_hello_world_bytes)
 
     async def websocket_handler(request):
-
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         msg = await ws.receive()

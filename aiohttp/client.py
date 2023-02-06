@@ -348,7 +348,6 @@ class ClientSession:
         read_bufsize: Optional[int] = None,
         auto_decompress: Optional[bool] = None,
     ) -> ClientResponse:
-
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
         # to use the existing timeouts by setting timeout to None.
@@ -539,7 +538,6 @@ class ClientSession:
 
                     # redirects
                     if resp.status in (301, 302, 303, 307, 308) and allow_redirects:
-
                         for trace in traces:
                             await trace.send_request_redirect(
                                 method, url.update_query(params), headers, resp
@@ -1081,7 +1079,6 @@ class ClientSession:
 
 
 class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType]):
-
     __slots__ = ("_coro", "_resp")
 
     def __init__(self, coro: Coroutine["asyncio.Future[Any]", None, _RetType]) -> None:
@@ -1138,7 +1135,6 @@ class _WSRequestContextManager(_BaseRequestContextManager[ClientWebSocketRespons
 
 
 class _SessionRequestContextManager:
-
     __slots__ = ("_coro", "_resp", "_session")
 
     def __init__(

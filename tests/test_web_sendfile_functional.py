@@ -145,7 +145,6 @@ async def test_static_file_ok_string_path(
 
 
 async def test_static_file_not_exists(aiohttp_client: Any) -> None:
-
     app = web.Application()
     client = await aiohttp_client(app)
 
@@ -156,7 +155,6 @@ async def test_static_file_not_exists(aiohttp_client: Any) -> None:
 
 
 async def test_static_file_name_too_long(aiohttp_client: Any) -> None:
-
     app = web.Application()
     client = await aiohttp_client(app)
 
@@ -167,7 +165,6 @@ async def test_static_file_name_too_long(aiohttp_client: Any) -> None:
 
 
 async def test_static_file_upper_directory(aiohttp_client: Any) -> None:
-
     app = web.Application()
     client = await aiohttp_client(app)
 

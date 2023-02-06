@@ -77,7 +77,6 @@ __all__ = (
 
 
 class HTTPException(CookieMixin, Exception):
-
     # You should set in subclasses:
     # status = 200
 

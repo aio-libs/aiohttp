@@ -342,7 +342,6 @@ class CookieJar(AbstractCookieJar):
         year = 0
 
         for token_match in cls.DATE_TOKENS_RE.finditer(date_str):
-
             token = token_match.group("token")
 
             if not found_time:

@@ -42,7 +42,6 @@ class HttpProcessingError(Exception):
 
 
 class BadHttpMessage(HttpProcessingError):
-
     code = 400
     message = "Bad Request"
 
@@ -52,7 +51,6 @@ class BadHttpMessage(HttpProcessingError):
 
 
 class HttpBadRequest(BadHttpMessage):
-
     code = 400
     message = "Bad Request"
 

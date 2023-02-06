@@ -125,7 +125,6 @@ async def test_write_payload_chunked_filter_mutiple_chunks(
 async def test_write_payload_deflate_compression(
     protocol: Any, transport: Any, loop: Any
 ) -> None:
-
     COMPRESSED = b"x\x9cKI,I\x04\x00\x04\x00\x01\x9b"
     write = transport.write = mock.Mock()
     msg = http.StreamWriter(protocol, loop)
@@ -157,7 +156,6 @@ async def test_write_payload_deflate_and_chunked(
 async def test_write_payload_bytes_memoryview(
     buf: Any, protocol: Any, transport: Any, loop: Any
 ) -> None:
-
     msg = http.StreamWriter(protocol, loop)
 
     mv = memoryview(b"abcd")

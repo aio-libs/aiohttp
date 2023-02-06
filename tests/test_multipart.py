@@ -394,7 +394,6 @@ class TestPartReader:
     async def test_decode_with_content_transfer_encoding_base64(
         self, newline: Any
     ) -> None:
-
         with Stream(b"VG\r\r\nltZSB0byBSZ\r\nWxheCE=%s--:--" % newline) as stream:
             obj = aiohttp.BodyPartReader(
                 BOUNDARY,

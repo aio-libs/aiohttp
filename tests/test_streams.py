@@ -70,7 +70,6 @@ def get_memory_usage(obj: Any):
 
 
 class TestStreamReader:
-
     DATA: bytes = b"line1\nline2\nline3\n"
 
     def _make_one(self, *args, **kwargs) -> streams.StreamReader:
