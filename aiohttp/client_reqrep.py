@@ -882,7 +882,9 @@ class ClientResponse(HeadersMixin):
                 client_logger.warning("Can not load response cookies: %s", exc)
 
         # certificate
-        is_tls_transport = self._connection is not None and self._connection.transport is not None
+        is_tls_transport = (
+            self._connection is not None and self._connection.transport is not None
+        )
         if is_tls_transport:
             self.certificate = self._connection.transport.get_extra_info("peercert")
         return self
