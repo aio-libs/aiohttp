@@ -1232,7 +1232,9 @@ def test_gen_default_accept_encoding(has_brotli: Any, expected: Any) -> None:
         assert _gen_default_accept_encoding() == expected
 
 
-async def test_certificate(loop: Any, conn: Any) -> None:
+async def test_certificate_exists(loop: Any, conn: Any) -> None:
     req = ClientRequest("get", URL("https://www.python.org"), loop=loop)
     resp = await req.send(conn)
     assert resp.certificate is not None
+    await req.close()
+    resp.close()

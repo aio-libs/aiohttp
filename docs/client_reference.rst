@@ -1362,7 +1362,9 @@ Response object
 
    .. attribute:: certificate
 
-      The server certificate, if available.
+      The server certificate. This is available with TLS connections,
+      if the certificate is retrieved before the connection or the TLS session are
+      closed, otherwise it is ``None``.
 
    .. method:: close()
 

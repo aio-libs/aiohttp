@@ -1,1 +1,1 @@
-Add `ClientResponse.certificate` and populate it, if appropriate.
+Added ``ClientResponse.certificate``, which is populated, if appropriate, with the certificate of the server.
