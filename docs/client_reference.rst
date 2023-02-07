@@ -1316,6 +1316,20 @@ Response object
       Unmodified HTTP headers of response as unconverted bytes, a sequence of
       ``(key, value)`` pairs.
 
+   .. attribute:: proxy_headers
+
+      A case-insensitive multidict proxy with HTTP headers of the CONNECT
+      response in a proxied HTTPS request, :class:`~multidict.CIMultiDictProxy` (optional).
+
+      .. versionadded:: 3.9
+
+   .. attribute:: raw_proxy_headers
+
+      Unmodified HTTP headers of the CONNECT response in a proxied HTTPS request
+      as unconverted bytes, a sequence of ``(key, value)`` pairs (optional).
+
+      .. versionadded:: 3.9
+
    .. attribute:: links
 
       Link HTTP header parsed into a :class:`~multidict.MultiDictProxy`.
