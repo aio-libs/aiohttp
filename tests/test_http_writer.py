@@ -236,9 +236,7 @@ async def test_write_to_closing_transport(protocol, transport, loop) -> None:
         await msg.write(b"After closing")
 
 
-async def test_write_to_closed_transport(
-    protocol: Any, transport: Any, loop: Any
-) -> None:
+async def test_write_to_closed_transport(protocol, transport, loop) -> None:
     """Test that writing to a closed transport raises ConnectionResetError.
 
     The StreamWriter checks to see if protocol.transport is None before
