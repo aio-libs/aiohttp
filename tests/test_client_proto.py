@@ -134,3 +134,17 @@ async def test_eof_received(loop) -> None:
     assert proto._read_timeout_handle is not None
     proto.eof_received()
     assert proto._read_timeout_handle is None
+
+
+async def test_connection_lost_sets_transport_to_none(loop, mocker) -> None:
+    """Ensure that the transport is set to None when the connection is lost.
+
+    This ensures the writer knows that the connection is closed.
+    """
+    proto = ResponseHandler(loop=loop)
+    proto.connection_made(mocker.Mock())
+    assert proto.transport is not None
+
+    proto.connection_lost(OSError())
+
+    assert proto.transport is None
