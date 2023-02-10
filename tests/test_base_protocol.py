@@ -45,10 +45,10 @@ async def test_connection_lost_not_paused() -> None:
     pr = BaseProtocol(loop=loop)
     tr = mock.Mock()
     pr.connection_made(tr)
-    assert not pr._connection_lost
+    assert pr.connected
     pr.connection_lost(None)
     assert pr.transport is None
-    assert pr._connection_lost
+    assert not pr.connected
 
 
 async def test_connection_lost_paused_without_waiter() -> None:
@@ -56,11 +56,11 @@ async def test_connection_lost_paused_without_waiter() -> None:
     pr = BaseProtocol(loop=loop)
     tr = mock.Mock()
     pr.connection_made(tr)
-    assert not pr._connection_lost
+    assert pr.connected
     pr.pause_writing()
     pr.connection_lost(None)
     assert pr.transport is None
-    assert pr._connection_lost
+    assert not pr.connected
 
 
 async def test_drain_lost() -> None:
