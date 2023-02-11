@@ -606,6 +606,8 @@ class ClientRequest:
                 protocol.set_exception(exc)
         except Exception as exc:
             protocol.set_exception(exc)
+        else:
+            protocol.start_timeout()
         finally:
             self._writer = None
 

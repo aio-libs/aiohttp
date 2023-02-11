@@ -150,7 +150,6 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         self._skip_payload = skip_payload
 
         self._read_timeout = read_timeout
-        self._reschedule_timeout()
 
         self._timeout_ceil_threshold = timeout_ceil_threshold
 
@@ -185,6 +184,9 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
             )
         else:
             self._read_timeout_handle = None
+
+    def start_timeout(self) -> None:
+        self._reschedule_timeout()
 
     def _on_read_timeout(self) -> None:
         exc = ServerTimeoutError("Timeout on reading data from socket")
