@@ -2863,7 +2863,7 @@ Utilities
 
                                 This is used as a delay to wait for
                                 pending tasks to complete and then
-                                again to close and pending connections.
+                                again to close any pending connections.
 
                                 A system with properly
                                 :ref:`aiohttp-web-graceful-shutdown`
