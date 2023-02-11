@@ -937,9 +937,7 @@ class TestShutdown:
         asyncio.get_running_loop().call_soon(self.raiser)
         return web.Response()
 
-    def run_app(
-        self, port: int, timeout: int, task, extra_test=None
-    ) -> asyncio.Task:
+    def run_app(self, port: int, timeout: int, task, extra_test=None) -> asyncio.Task:
         async def test() -> None:
             await asyncio.sleep(1)
             async with ClientSession() as sess:
