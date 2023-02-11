@@ -114,10 +114,6 @@ mypy==0.982 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.txt
     #   -r requirements/test.txt
-mypy-extensions==0.4.3 ; implementation_name == "cpython"
-    # via
-    #   -r requirements/test.txt
-    #   mypy
 nodeenv==1.6.0
     # via pre-commit
 packaging==21.2
