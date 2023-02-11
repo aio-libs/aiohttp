@@ -938,7 +938,7 @@ class TestShutdown:
         return web.Response()
 
     def run_app(
-        self, port: int, timeout: int, task, extra_test=None, cleanup=None
+        self, port: int, timeout: int, task, extra_test=None
     ) -> asyncio.Task:
         async def test() -> None:
             await asyncio.sleep(1)
@@ -965,8 +965,6 @@ class TestShutdown:
         t = test_task = None
         app = web.Application()
         app.cleanup_ctx.append(run_test)
-        if cleanup:
-            app.on_shutdown.append(cleanup)
         app.router.add_get("/", handler)
         app.router.add_get("/stop", self.stop)
 
