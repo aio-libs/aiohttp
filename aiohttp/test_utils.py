@@ -115,7 +115,7 @@ class BaseTestServer(ABC):
         if self.runner:
             return
         self._ssl = kwargs.pop("ssl", None)
-        self.runner = await self._make_runner(**kwargs)
+        self.runner = await self._make_runner(handler_cancellation=True, **kwargs)
         await self.runner.setup()
         if not self.port:
             self.port = 0

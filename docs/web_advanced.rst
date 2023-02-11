@@ -927,8 +927,14 @@ Graceful shutdown
 Stopping *aiohttp web server* by just closing all connections is not
 always satisfactory.
 
-The problem is: if application supports :term:`websocket`\s or *data
-streaming* it most likely has open connections at server
+The first thing aiohttp will do is to stop listening on the sockets,
+so new connections will be rejected. It will then wait a few
+seconds to allow any pending tasks to complete before continuing
+with application shutdown. The timeout can be adjusted with
+``shutdown_timeout`` in :func:`run_app`.
+
+Another problem is if the application supports :term:`websockets <websocket>` or
+*data streaming* it most likely has open connections at server
 shutdown time.
 
 The *library* has no knowledge how to close them gracefully but
