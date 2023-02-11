@@ -12,7 +12,7 @@ import pytest
 from re_assert import Matches
 
 from aiohttp import streams
-from aiohttp.helpers import PY_310
+from aiohttp.helpers import PY_311
 
 DATA = b"line1\nline2\nline3\n"
 
@@ -84,7 +84,7 @@ class TestStreamReader:
             await stream._wait("test")
 
     @pytest.mark.xfail(
-        PY_310,
+        PY_311,
         reason="No idea why ClientRequest() is constructed out of loop but "
         "it calls `asyncio.get_event_loop()`",
         raises=DeprecationWarning,

@@ -62,6 +62,7 @@ PY_36 = sys.version_info >= (3, 6)
 PY_37 = sys.version_info >= (3, 7)
 PY_38 = sys.version_info >= (3, 8)
 PY_310 = sys.version_info >= (3, 10)
+PY_311 = sys.version_info >= (3, 11)
 
 if sys.version_info < (3, 7):
     import idna_ssl
