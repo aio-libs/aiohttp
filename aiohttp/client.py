@@ -288,21 +288,16 @@ class ClientSession:
         )
 
     def __del__(self, _warnings: Any = warnings) -> None:
-        try:
-            if not self.closed:
-                _warnings.warn(
-                    f"Unclosed client session {self!r}",
-                    ResourceWarning,
-                    source=self,
-                )
-                context = {"client_session": self, "message": "Unclosed client session"}
-                if self._source_traceback is not None:
-                    context["source_traceback"] = self._source_traceback
-                self._loop.call_exception_handler(context)
-        except AttributeError:
-            # loop was not initialized yet,
-            # either self._connector or self._loop doesn't exist
-            pass
+        if not self.closed:
+            _warnings.warn(
+                f"Unclosed client session {self!r}",
+                ResourceWarning,
+                source=self,
+            )
+            context = {"client_session": self, "message": "Unclosed client session"}
+            if self._source_traceback is not None:
+                context["source_traceback"] = self._source_traceback
+            self._loop.call_exception_handler(context)
 
     def request(
         self, method: str, url: StrOrURL, **kwargs: Any
