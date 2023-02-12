@@ -10,6 +10,21 @@
 
 .. towncrier release notes start
 
+3.8.4 (2023-02-12)
+==================
+
+Bugfixes
+--------
+
+- Fixed incorrectly overwriting cookies with the same name and domain, but different path.
+  `#6638 <https://github.com/aio-libs/aiohttp/issues/6638>`_
+- Fixed ``ConnectionResetError`` not being raised after client disconnection in SSL environments.
+  `#7180 <https://github.com/aio-libs/aiohttp/issues/7180>`_
+
+
+----
+
+
 3.8.3 (2022-09-21)
 ==================
 
