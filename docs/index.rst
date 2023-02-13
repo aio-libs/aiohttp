@@ -148,7 +148,6 @@ Continuous Integration.
 Dependencies
 ============
 
-- Python 3.7+
 - *async_timeout*
 - *charset-normalizer*
 - *multidict*

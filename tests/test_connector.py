@@ -2023,8 +2023,7 @@ async def test_tcp_connector_raise_connector_ssl_error(
     session = aiohttp.ClientSession(connector=conn)
     url = srv.make_url("/")
 
-    err = aiohttp.ClientConnectorCertificateError
-    with pytest.raises(err) as ctx:
+    with pytest.raises(aiohttp.ClientConnectorCertificateError) as ctx:
         await session.get(url)
 
     assert isinstance(ctx.value, aiohttp.ClientConnectorCertificateError)

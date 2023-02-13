@@ -157,7 +157,6 @@ Please add *aiohttp* tag to your question there.
 Requirements
 ============
 
-- Python >= 3.7
 - async-timeout_
 - charset-normalizer_
 - multidict_
