@@ -1245,7 +1245,15 @@ async def test_certificate_exists(ssl_ctx, client_ssl_ctx) -> None:
     async with aiohttp.ClientSession() as session:
         resp = await session.get("https://127.0.0.1:8443", ssl=client_ssl_ctx)
     assert frozenset(resp.certificate) >= frozenset(
-        ("subject", "issuer", "version", "serialNumber", "notBefore", "notAfter", "subjectAltName")
+        (
+            "subject",
+            "issuer",
+            "version",
+            "serialNumber",
+            "notBefore",
+            "notAfter",
+            "subjectAltName",
+        )
     )
     resp.close()
     await site.stop()
