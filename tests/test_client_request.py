@@ -13,7 +13,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
 
 import aiohttp
-from aiohttp import BaseConnector, hdrs, payload
+from aiohttp import BaseConnector, hdrs, payload, web
 from aiohttp.client_reqrep import (
     ClientRequest,
     ClientResponse,
@@ -1232,9 +1232,21 @@ def test_gen_default_accept_encoding(has_brotli: Any, expected: Any) -> None:
         assert _gen_default_accept_encoding() == expected
 
 
-async def test_certificate_exists(loop: Any, conn: Any) -> None:
-    req = ClientRequest("get", URL("https://www.python.org"), loop=loop)
-    resp = await req.send(conn)
-    assert resp.certificate is not None
-    await req.close()
+async def test_certificate_exists(ssl_ctx, client_ssl_ctx) -> None:
+    async def handler(request):
+        return web.Response(text="ok")
+
+    server = web.Server(handler)
+    runner = web.ServerRunner(server)
+    await runner.setup()
+    site = web.TCPSite(runner, ssl_context=ssl_ctx)
+    await site.start()
+
+    async with aiohttp.ClientSession() as session:
+        resp = await session.get("https://127.0.0.1:8443", ssl=client_ssl_ctx)
+    assert frozenset(resp.certificate) >= frozenset(
+        ("subject", "issuer", "version", "serialNumber", "notBefore", "notAfter", "subjectAltName")
+    )
     resp.close()
+    await site.stop()
+    await server.shutdown()
