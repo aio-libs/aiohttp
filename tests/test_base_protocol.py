@@ -22,6 +22,42 @@ async def test_pause_writing() -> None:
     assert pr._paused
 
 
+async def test_pause_reading_no_transport() -> None:
+    loop = asyncio.get_event_loop()
+    pr = BaseProtocol(loop)
+    assert not pr._reading_paused
+    pr.pause_reading()
+    assert not pr._reading_paused
+
+
+async def test_pause_reading_stub_transport() -> None:
+    loop = asyncio.get_event_loop()
+    pr = BaseProtocol(loop)
+    tr = asyncio.Transport()
+    pr.transport = tr
+    assert not pr._reading_paused
+    pr.pause_reading()
+    assert pr._reading_paused
+
+
+async def test_resume_reading_no_transport() -> None:
+    loop = asyncio.get_event_loop()
+    pr = BaseProtocol(loop)
+    pr._reading_paused = True
+    pr.resume_reading()
+    assert pr._reading_paused
+
+
+async def test_resume_reading_stub_transport() -> None:
+    loop = asyncio.get_event_loop()
+    pr = BaseProtocol(loop)
+    tr = asyncio.Transport()
+    pr.transport = tr
+    pr._reading_paused = True
+    pr.resume_reading()
+    assert not pr._reading_paused
+
+
 async def test_resume_writing_no_waiters() -> None:
     loop = asyncio.get_event_loop()
     pr = BaseProtocol(loop=loop)
@@ -29,6 +65,17 @@ async def test_resume_writing_no_waiters() -> None:
     assert pr._paused
     pr.resume_writing()
     assert not pr._paused
+
+
+async def test_resume_writing_waiter_done() -> None:
+    loop = asyncio.get_event_loop()
+    pr = BaseProtocol(loop=loop)
+    waiter = mock.Mock(done=mock.Mock(return_value=True))
+    pr._drain_waiter = waiter
+    pr._paused = True
+    pr.resume_writing()
+    assert not pr._paused
+    assert waiter.mock_calls == [mock.call.done()]
 
 
 async def test_connection_made() -> None:
@@ -61,6 +108,17 @@ async def test_connection_lost_paused_without_waiter() -> None:
     pr.connection_lost(None)
     assert pr.transport is None
     assert not pr.connected
+
+
+async def test_connection_lost_waiter_done() -> None:
+    loop = asyncio.get_event_loop()
+    pr = BaseProtocol(loop=loop)
+    pr._paused = True
+    waiter = mock.Mock(done=mock.Mock(return_value=True))
+    pr._drain_waiter = waiter
+    pr.connection_lost(None)
+    assert pr._drain_waiter is None
+    assert waiter.mock_calls == [mock.call.done()]
 
 
 async def test_drain_lost() -> None:
