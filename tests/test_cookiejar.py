@@ -173,9 +173,7 @@ def test_path_matching() -> None:
     assert not test_func("/different-folder/", "/folder/")
 
 
-async def test_constructor(
-    loop: Any, cookies_to_send: Any, cookies_to_receive: Any
-) -> None:
+async def test_constructor(cookies_to_send: Any, cookies_to_receive: Any) -> None:
     jar = CookieJar()
     jar.update_cookies(cookies_to_send)
     jar_cookies = SimpleCookie()
@@ -183,11 +181,10 @@ async def test_constructor(
         dict.__setitem__(jar_cookies, cookie.key, cookie)
     expected_cookies = cookies_to_send
     assert jar_cookies == expected_cookies
-    assert jar._loop is loop
 
 
 async def test_constructor_with_expired(
-    loop: Any, cookies_to_send_with_expired: Any, cookies_to_receive: Any
+    cookies_to_send_with_expired: Any, cookies_to_receive: Any
 ) -> None:
     jar = CookieJar()
     jar.update_cookies(cookies_to_send_with_expired)
@@ -196,7 +193,6 @@ async def test_constructor_with_expired(
         dict.__setitem__(jar_cookies, cookie.key, cookie)
     expected_cookies = cookies_to_send_with_expired
     assert jar_cookies != expected_cookies
-    assert jar._loop is loop
 
 
 async def test_save_load(
