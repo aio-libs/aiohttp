@@ -165,9 +165,7 @@ def test_path_matching() -> None:
     assert not test_func("/different-folder/", "/folder/")
 
 
-async def test_constructor(
-    cookies_to_send: Any, cookies_to_receive: Any
-) -> None:
+async def test_constructor(cookies_to_send: Any, cookies_to_receive: Any) -> None:
     jar = CookieJar()
     jar.update_cookies(cookies_to_send)
     jar_cookies = SimpleCookie()
