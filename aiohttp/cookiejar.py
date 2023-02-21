@@ -1,4 +1,3 @@
-import asyncio
 import contextlib
 import datetime
 import os  # noqa
