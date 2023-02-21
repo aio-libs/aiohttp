@@ -1,4 +1,3 @@
-import asyncio
 import contextlib
 import datetime
 import os  # noqa
@@ -64,7 +63,6 @@ class CookieJar(AbstractCookieJar):
         quote_cookie: bool = True,
         treat_as_secure_origin: Union[StrOrURL, List[StrOrURL], None] = None
     ) -> None:
-        self._loop = asyncio.get_running_loop()
         self._cookies: DefaultDict[Tuple[str, str], SimpleCookie[str]] = defaultdict(
             SimpleCookie
         )
