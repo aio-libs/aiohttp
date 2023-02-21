@@ -792,7 +792,7 @@ def test_pickle_format(cookies_to_send) -> None:
         2. Try to include a migration script in the release notes (example below).
         3. Use dump_cookiejar() at the top of this file to update `pickled`.
 
-    Depending on the changes made, a migration script might look this:
+    Depending on the changes made, a migration script might look like:
         import pickle
         with file_path.open("rb") as f:
             cookies = pickle.load(f)
