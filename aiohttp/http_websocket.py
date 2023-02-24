@@ -17,7 +17,7 @@ from typing_extensions import Final
 from .base_protocol import BaseProtocol
 from .helpers import NO_EXTENSIONS
 from .streams import DataQueue
-from .zlib_utils import ZLibDecompressor, ZLibCompressor
+from .zlib_utils import ZLibCompressor, ZLibDecompressor
 
 __all__ = (
     "WS_CLOSED_MESSAGE",

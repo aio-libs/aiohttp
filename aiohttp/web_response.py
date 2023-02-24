@@ -719,7 +719,9 @@ class Response(StreamResponse):
                     "might block the async event loop. Consider providing a custom value to zlib_executor_size/"
                     "zlib_executor response properties or disabling compression on it."
                 )
-            self._compressed_body = await compressor.compress(self._body) + compressor.flush()
+            self._compressed_body = (
+                await compressor.compress(self._body) + compressor.flush()
+            )
             assert self._compressed_body is not None
 
             self._headers[hdrs.CONTENT_ENCODING] = coding.value

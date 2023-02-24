@@ -56,8 +56,13 @@ try:
 
     class Decompressor(Protocol):
         eof: bool
-        def decompress_sync(self, data: bytes, max_length: int = ...) -> bytes: ...
-        def flush(self, length: int = ...) -> bytes: ...
+
+        def decompress_sync(self, data: bytes, max_length: int = ...) -> bytes:
+            ...
+
+        def flush(self, length: int = ...) -> bytes:
+            ...
+
 except ImportError:
     Decompressor = Any
 
