@@ -715,8 +715,9 @@ class Response(StreamResponse):
             assert self._body is not None
             if self._zlib_executor_size is None and len(self._body) > 1024 * 1024:
                 warnings.warn(
-                    f"Synchronous compression of large response bodies ({len(self._body)} bytes) "
-                    "might block the async event loop. Consider providing a custom value to zlib_executor_size/"
+                    "Synchronous compression of large response bodies "
+                    f"({len(self._body)} bytes) might block the async event loop. "
+                    "Consider providing a custom value to zlib_executor_size/"
                     "zlib_executor response properties or disabling compression on it."
                 )
             self._compressed_body = (

@@ -80,7 +80,8 @@ class ZLibCompressor(ZlibBaseHandler):
             self._max_sync_chunk_size is not None
             and len(data) > self._max_sync_chunk_size
         ):
-            # TODO: Replace with asyncio.to_thread as soon as we drop Python 3.8 and below
+            # TODO: Replace with asyncio.to_thread as soon as we
+            # TODO: drop Python 3.8 and below
             return await asyncio.get_event_loop().run_in_executor(
                 self._executor, self.compress_sync, data
             )
