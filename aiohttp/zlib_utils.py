@@ -61,7 +61,9 @@ class ZLibCompressor(ZlibBaseHandler):
         executor: Optional[Executor] = None,
         max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
     ):
-        assert not (encoding is None and wbits is None), "Either encoding or wbits must be provided"
+        assert not (
+            encoding is None and wbits is None
+        ), "Either encoding or wbits must be provided"
         super().__init__(
             encoding=encoding,
             suppress_deflate_header=suppress_deflate_header,
@@ -73,7 +75,7 @@ class ZLibCompressor(ZlibBaseHandler):
         self._compressor: Compressor = zlib.compressobj(
             wbits=self._mode,
             strategy=strategy,
-            **({'level': level} if level is not None else {})
+            **({"level": level} if level is not None else {})
         )
 
     def compress_sync(self, data: bytes) -> bytes:
