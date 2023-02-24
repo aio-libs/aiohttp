@@ -291,7 +291,7 @@ class WebSocketReader:
     def _feed_data(self, data: bytes) -> Tuple[bool, bytes]:
         for fin, opcode, payload, compressed in self.parse_frame(data):
             if compressed and not self._decompressobj:
-                self._decompressobj = ZLibDecompressor(mode=-zlib.MAX_WBITS)
+                self._decompressobj = ZLibDecompressor(suppress_deflate_header=True)
             if opcode == WSMsgType.CLOSE:
                 if len(payload) >= 2:
                     close_code = UNPACK_CLOSE_CODE(payload[:2])[0]
@@ -606,11 +606,11 @@ class WebSocketWriter:
         if (compress or self.compress) and opcode < 8:
             if compress:
                 # Do not set self._compress if compressing is for this frame
-                compressobj = ZLibCompressor(level=zlib.Z_BEST_SPEED, mode=-compress)
+                compressobj = ZLibCompressor(level=zlib.Z_BEST_SPEED, wbits=-compress)
             else:  # self.compress
                 if not self._compressobj:
                     self._compressobj = ZLibCompressor(
-                        level=zlib.Z_BEST_SPEED, mode=-self.compress
+                        level=zlib.Z_BEST_SPEED, wbits=-self.compress
                     )
                 compressobj = self._compressobj
 

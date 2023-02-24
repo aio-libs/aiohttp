@@ -924,7 +924,9 @@ class DeflateBuffer:
         ):
             # Change the decoder to decompress incorrectly compressed data
             # Actually we should issue a warning about non-RFC-compliant data.
-            self.decompressor = ZLibDecompressor(encoding=self.encoding)
+            self.decompressor = ZLibDecompressor(
+                encoding=self.encoding, suppress_deflate_header=True
+            )
 
         try:
             chunk = self.decompressor.decompress_sync(chunk)

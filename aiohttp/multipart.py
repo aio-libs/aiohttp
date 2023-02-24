@@ -495,7 +495,10 @@ class BodyPartReader:
         if encoding == "identity":
             return data
         if encoding in ("deflate", "gzip"):
-            return ZLibDecompressor(encoding=encoding).decompress_sync(data)
+            return ZLibDecompressor(
+                encoding=encoding,
+                suppress_deflate_header=True,
+            ).decompress_sync(data)
 
         raise RuntimeError(f"unknown content encoding: {encoding}")
 
@@ -987,7 +990,11 @@ class MultipartPayloadWriter:
     def enable_compression(
         self, encoding: str = "deflate", strategy: int = zlib.Z_DEFAULT_STRATEGY
     ) -> None:
-        self._compress = ZLibCompressor(encoding=encoding, strategy=strategy)
+        self._compress = ZLibCompressor(
+            encoding=encoding,
+            suppress_deflate_header=True,
+            strategy=strategy,
+        )
 
     async def write_eof(self) -> None:
         if self._compress is not None:
