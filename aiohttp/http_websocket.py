@@ -376,8 +376,9 @@ class WebSocketReader:
                     # Decompress process must to be done after all packets
                     # received.
                     if compressed:
+                        assert self._decompressobj is not None
                         self._partial.extend(_WS_DEFLATE_TRAILING)
-                        payload_merged = self._decompressobj.decompress(
+                        payload_merged = self._decompressobj.decompress_sync(
                             self._partial, self._max_msg_size
                         )
                         if self._decompressobj.unconsumed_tail:

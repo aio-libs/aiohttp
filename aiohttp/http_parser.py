@@ -6,7 +6,6 @@ import string
 from contextlib import suppress
 from enum import IntEnum
 from typing import (
-    Any,
     Generic,
     List,
     NamedTuple,
@@ -21,7 +20,7 @@ from typing import (
 )
 
 from multidict import CIMultiDict, CIMultiDictProxy, istr
-from typing_extensions import Final
+from typing_extensions import Final, Protocol
 from yarl import URL
 
 from . import hdrs
@@ -49,22 +48,17 @@ try:
 except ImportError:  # pragma: no cover
     HAS_BROTLI = False
 
-try:
-    # Protocol has been added to Python 3.8
-    # noinspection PyUnresolvedReferences
-    from typing import Protocol
 
-    class Decompressor(Protocol):
-        eof: bool
+class Decompressor(Protocol):
+    @property
+    def eof(self) -> bool:
+        ...
 
-        def decompress_sync(self, data: bytes, max_length: int = ...) -> bytes:
-            ...
+    def decompress_sync(self, data: bytes, max_length: int = ...) -> bytes:
+        ...
 
-        def flush(self, length: int = ...) -> bytes:
-            ...
-
-except ImportError:
-    Decompressor = Any
+    def flush(self, length: int = ...) -> bytes:
+        ...
 
 
 __all__ = (

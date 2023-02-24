@@ -1,42 +1,37 @@
 import asyncio
 import zlib
 from concurrent.futures import Executor
-from typing import Any, Optional
+from typing import Optional
 
-try:
-    # Protocol has been added to Python 3.8
-    # noinspection PyUnresolvedReferences
-    from typing import Protocol
+from typing_extensions import Protocol
 
-    class Compressor(Protocol):
-        def compress(self, data: bytes) -> bytes:
-            ...
-
-        def flush(self, mode: int = ...) -> bytes:
-            ...
-
-        def copy(self) -> "Compressor":
-            ...
-
-    class Decompressor(Protocol):
-        unused_data: bytes
-        unconsumed_tail: bytes
-        eof: bool
-
-        def decompress(self, data: bytes, max_length: int = ...) -> bytes:
-            ...
-
-        def flush(self, length: int = ...) -> bytes:
-            ...
-
-        def copy(self) -> "Decompressor":
-            ...
-
-except ImportError:
-    Compressor = Any
-    Decompressor = Any
 
 MAX_SYNC_CHUNK_SIZE = 1024
+
+class Compressor(Protocol):
+    def compress(self, data: bytes) -> bytes:
+        ...
+
+    def flush(self, mode: int = ...) -> bytes:
+        ...
+
+    def copy(self) -> "Compressor":
+        ...
+
+
+class Decompressor(Protocol):
+    unused_data: bytes
+    unconsumed_tail: bytes
+    eof: bool
+
+    def decompress(self, data: bytes, max_length: int = ...) -> bytes:
+        ...
+
+    def flush(self, length: int = ...) -> bytes:
+        ...
+
+    def copy(self) -> "Decompressor":
+        ...
 
 
 class ZlibBaseHandler:
@@ -129,3 +124,11 @@ class ZLibDecompressor(ZlibBaseHandler):
     @property
     def eof(self) -> bool:
         return self._decompressor.eof
+
+    @property
+    def unconsumed_tail(self) -> bytes:
+        return self._decompressor.unconsumed_tail
+
+    @property
+    def unused_data(self) -> bytes:
+        return self._decompressor.unused_data
