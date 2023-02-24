@@ -45,6 +45,7 @@ class ZlibBaseHandler:
         if encoding == "gzip":
             self._mode = 16 + zlib.MAX_WBITS
         else:
+            # deflate
             self._mode = -zlib.MAX_WBITS if suppress_deflate_header else zlib.MAX_WBITS
         self._executor = executor
         self._max_sync_chunk_size = max_sync_chunk_size
@@ -61,9 +62,6 @@ class ZLibCompressor(ZlibBaseHandler):
         executor: Optional[Executor] = None,
         max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
     ):
-        assert not (
-            encoding is None and wbits is None
-        ), "Either encoding or wbits must be provided"
         super().__init__(
             encoding=encoding,
             suppress_deflate_header=suppress_deflate_header,
@@ -75,7 +73,7 @@ class ZLibCompressor(ZlibBaseHandler):
         self._compressor: Compressor = zlib.compressobj(
             wbits=self._mode,
             strategy=strategy,
-            **({"level": level} if level is not None else {})
+            **({"level": level} if level is not None else {})  # type: ignore
         )
 
     def compress_sync(self, data: bytes) -> bytes:
@@ -100,7 +98,7 @@ class ZLibCompressor(ZlibBaseHandler):
 class ZLibDecompressor(ZlibBaseHandler):
     def __init__(
         self,
-        encoding: str = "deflate",
+        encoding: Optional[str],
         suppress_deflate_header: bool = False,
         executor: Optional[Executor] = None,
         max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
