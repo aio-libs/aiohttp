@@ -3,7 +3,6 @@ import asyncio
 import collections
 import re
 import string
-import zlib
 from contextlib import suppress
 from enum import IntEnum
 from typing import (
@@ -41,6 +40,7 @@ from .http_writer import HttpVersion, HttpVersion10
 from .log import internal_logger
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import RawHeaders
+from .zlib_utils import ZLibDecompressor
 
 try:
     import brotli
@@ -48,6 +48,18 @@ try:
     HAS_BROTLI = True
 except ImportError:  # pragma: no cover
     HAS_BROTLI = False
+
+try:
+    # Protocol has been added to Python 3.8
+    # noinspection PyUnresolvedReferences
+    from typing import Protocol
+
+    class Decompressor(Protocol):
+        eof: bool
+        def decompress_sync(self, data: bytes, max_length: int = ...) -> bytes: ...
+        def flush(self, length: int = ...) -> bytes: ...
+except ImportError:
+    Decompressor = Any
 
 
 __all__ = (
@@ -859,6 +871,7 @@ class DeflateBuffer:
         self.encoding = encoding
         self._started_decoding = False
 
+        self.decompressor: Decompressor
         if encoding == "br":
             if not HAS_BROTLI:  # pragma: no cover
                 raise ContentEncodingError(
@@ -872,21 +885,26 @@ class DeflateBuffer:
                 # are for 'brotlipy' and bottom branches for 'Brotli'
                 def __init__(self) -> None:
                     self._obj = brotli.Decompressor()
+                    self._is_at_eof = False
 
-                def decompress(self, data: bytes) -> bytes:
+                def decompress_sync(self, data: bytes, max_length: int = 0) -> bytes:
                     if hasattr(self._obj, "decompress"):
                         return cast(bytes, self._obj.decompress(data))
                     return cast(bytes, self._obj.process(data))
 
-                def flush(self) -> bytes:
+                def flush(self, length: int = 0) -> bytes:
+                    self._is_at_eof = True
                     if hasattr(self._obj, "flush"):
                         return cast(bytes, self._obj.flush())
                     return b""
 
-            self.decompressor: Any = BrotliDecoder()
+                @property
+                def eof(self) -> bool:
+                    return self._is_at_eof
+
+            self.decompressor = BrotliDecoder()
         else:
-            zlib_mode = 16 + zlib.MAX_WBITS if encoding == "gzip" else zlib.MAX_WBITS
-            self.decompressor = zlib.decompressobj(wbits=zlib_mode)
+            self.decompressor = ZLibDecompressor(encoding=encoding)
 
     def set_exception(self, exc: BaseException) -> None:
         self.out.set_exception(exc)
@@ -907,10 +925,10 @@ class DeflateBuffer:
         ):
             # Change the decoder to decompress incorrectly compressed data
             # Actually we should issue a warning about non-RFC-compliant data.
-            self.decompressor = zlib.decompressobj(wbits=-zlib.MAX_WBITS)
+            self.decompressor = ZLibDecompressor(encoding=self.encoding)
 
         try:
-            chunk = self.decompressor.decompress(chunk)
+            chunk = self.decompressor.decompress_sync(chunk)
         except Exception:
             raise ContentEncodingError(
                 "Can not decode content-encoding: %s" % self.encoding

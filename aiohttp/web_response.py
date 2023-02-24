@@ -41,6 +41,7 @@ from .helpers import (
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
+from .zlib_utils import ZLibCompressor
 
 __all__ = ("ContentCoding", "StreamResponse", "Response", "json_response")
 
@@ -706,26 +707,23 @@ class Response(StreamResponse):
         if coding != ContentCoding.identity:
             # Instead of using _payload_writer.enable_compression,
             # compress the whole body
-            zlib_mode = (
-                16 + zlib.MAX_WBITS if coding == ContentCoding.gzip else zlib.MAX_WBITS
+            compressor = ZLibCompressor(
+                encoding=str(coding.value),
+                max_sync_chunk_size=self._zlib_executor_size,
+                executor=self._zlib_executor,
             )
-            body_in = self._body
-            assert body_in is not None
-            if (
-                self._zlib_executor_size is not None
-                and len(body_in) > self._zlib_executor_size
-            ):
-                await asyncio.get_event_loop().run_in_executor(
-                    self._zlib_executor, self._compress_body, zlib_mode
+            assert self._body is not None
+            if self._zlib_executor_size is None and len(self._body) > 1024 * 1024:
+                warnings.warn(
+                    f"Synchronous compression of large response bodies ({len(self._body)} bytes) "
+                    "might block the async event loop. Consider providing a custom value to zlib_executor_size/"
+                    "zlib_executor response properties or disabling compression on it."
                 )
-            else:
-                self._compress_body(zlib_mode)
-
-            body_out = self._compressed_body
-            assert body_out is not None
+            self._compressed_body = await compressor.compress(self._body) + compressor.flush()
+            assert self._compressed_body is not None
 
             self._headers[hdrs.CONTENT_ENCODING] = coding.value
-            self._headers[hdrs.CONTENT_LENGTH] = str(len(body_out))
+            self._headers[hdrs.CONTENT_LENGTH] = str(len(self._compressed_body))
 
 
 def json_response(

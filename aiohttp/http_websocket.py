@@ -17,6 +17,7 @@ from typing_extensions import Final
 from .base_protocol import BaseProtocol
 from .helpers import NO_EXTENSIONS
 from .streams import DataQueue
+from .zlib_utils import ZLibDecompressor, ZLibCompressor
 
 __all__ = (
     "WS_CLOSED_MESSAGE",
@@ -270,7 +271,7 @@ class WebSocketReader:
         self._payload_length = 0
         self._payload_length_flag = 0
         self._compressed: Optional[bool] = None
-        self._decompressobj: Any = None  # zlib.decompressobj actually
+        self._decompressobj: Optional[ZLibDecompressor] = None
         self._compress = compress
 
     def feed_eof(self) -> None:
@@ -290,7 +291,7 @@ class WebSocketReader:
     def _feed_data(self, data: bytes) -> Tuple[bool, bytes]:
         for fin, opcode, payload, compressed in self.parse_frame(data):
             if compressed and not self._decompressobj:
-                self._decompressobj = zlib.decompressobj(wbits=-zlib.MAX_WBITS)
+                self._decompressobj = ZLibDecompressor(mode=-zlib.MAX_WBITS)
             if opcode == WSMsgType.CLOSE:
                 if len(payload) >= 2:
                     close_code = UNPACK_CLOSE_CODE(payload[:2])[0]
@@ -604,16 +605,16 @@ class WebSocketWriter:
         if (compress or self.compress) and opcode < 8:
             if compress:
                 # Do not set self._compress if compressing is for this frame
-                compressobj = zlib.compressobj(level=zlib.Z_BEST_SPEED, wbits=-compress)
+                compressobj = ZLibCompressor(level=zlib.Z_BEST_SPEED, mode=-compress)
             else:  # self.compress
                 if not self._compressobj:
-                    self._compressobj = zlib.compressobj(
-                        level=zlib.Z_BEST_SPEED, wbits=-self.compress
+                    self._compressobj = ZLibCompressor(
+                        level=zlib.Z_BEST_SPEED, mode=-self.compress
                     )
                 compressobj = self._compressobj
 
-            message = compressobj.compress(message)
-            message = message + compressobj.flush(
+            message = await compressobj.compress(message)
+            message += compressobj.flush(
                 zlib.Z_FULL_FLUSH if self.notakeover else zlib.Z_SYNC_FLUSH
             )
             if message.endswith(_WS_DEFLATE_TRAILING):
