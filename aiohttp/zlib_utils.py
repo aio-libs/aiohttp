@@ -5,8 +5,8 @@ from typing import Optional
 
 from typing_extensions import Protocol
 
-
 MAX_SYNC_CHUNK_SIZE = 1024
+
 
 class Compressor(Protocol):
     def compress(self, data: bytes) -> bytes:
