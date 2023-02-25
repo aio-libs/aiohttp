@@ -98,7 +98,7 @@ class ZLibCompressor(ZlibBaseHandler):
 class ZLibDecompressor(ZlibBaseHandler):
     def __init__(
         self,
-        encoding: Optional[str],
+        encoding: Optional[str] = None,
         suppress_deflate_header: bool = False,
         executor: Optional[Executor] = None,
         max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
