@@ -6,19 +6,24 @@ from typing import Optional
 MAX_SYNC_CHUNK_SIZE = 1024
 
 
+def encoding_to_mode(
+    encoding: Optional[str] = None,
+    suppress_deflate_header: bool = False,
+) -> int:
+    if encoding == "gzip":
+        return 16 + zlib.MAX_WBITS
+    # deflate
+    return -zlib.MAX_WBITS if suppress_deflate_header else zlib.MAX_WBITS
+
+
 class ZlibBaseHandler:
     def __init__(
         self,
-        encoding: Optional[str] = None,
-        suppress_deflate_header: bool = False,
+        mode: int,
         executor: Optional[Executor] = None,
         max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
     ):
-        if encoding == "gzip":
-            self._mode = 16 + zlib.MAX_WBITS
-        else:
-            # deflate
-            self._mode = -zlib.MAX_WBITS if suppress_deflate_header else zlib.MAX_WBITS
+        self._mode = mode
         self._executor = executor
         self._max_sync_chunk_size = max_sync_chunk_size
 
@@ -35,13 +40,10 @@ class ZLibCompressor(ZlibBaseHandler):
         max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
     ):
         super().__init__(
-            encoding=encoding,
-            suppress_deflate_header=suppress_deflate_header,
+            mode=encoding_to_mode(encoding, suppress_deflate_header) if wbits is None else wbits,
             executor=executor,
             max_sync_chunk_size=max_sync_chunk_size,
         )
-        if wbits is not None:
-            self._mode = wbits
         self._compressor = zlib.compressobj(
             wbits=self._mode,
             strategy=strategy,
@@ -74,8 +76,7 @@ class ZLibDecompressor(ZlibBaseHandler):
         max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
     ):
         super().__init__(
-            encoding=encoding,
-            suppress_deflate_header=suppress_deflate_header,
+            mode=encoding_to_mode(encoding, suppress_deflate_header),
             executor=executor,
             max_sync_chunk_size=max_sync_chunk_size,
         )
