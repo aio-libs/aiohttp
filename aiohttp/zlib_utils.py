@@ -3,35 +3,7 @@ import zlib
 from concurrent.futures import Executor
 from typing import Optional
 
-from typing_extensions import Protocol
-
 MAX_SYNC_CHUNK_SIZE = 1024
-
-
-class Compressor(Protocol):
-    def compress(self, data: bytes) -> bytes:
-        ...
-
-    def flush(self, mode: int = ...) -> bytes:
-        ...
-
-    def copy(self) -> "Compressor":
-        ...
-
-
-class Decompressor(Protocol):
-    unused_data: bytes
-    unconsumed_tail: bytes
-    eof: bool
-
-    def decompress(self, data: bytes, max_length: int = ...) -> bytes:
-        ...
-
-    def flush(self, length: int = ...) -> bytes:
-        ...
-
-    def copy(self) -> "Decompressor":
-        ...
 
 
 class ZlibBaseHandler:
@@ -70,7 +42,7 @@ class ZLibCompressor(ZlibBaseHandler):
         )
         if wbits is not None:
             self._mode = wbits
-        self._compressor: Compressor = zlib.compressobj(
+        self._compressor = zlib.compressobj(
             wbits=self._mode,
             strategy=strategy,
             **({"level": level} if level is not None else {})  # type: ignore
@@ -84,8 +56,6 @@ class ZLibCompressor(ZlibBaseHandler):
             self._max_sync_chunk_size is not None
             and len(data) > self._max_sync_chunk_size
         ):
-            # TODO: Replace with asyncio.to_thread as soon as we
-            # TODO: drop Python 3.8 and below
             return await asyncio.get_event_loop().run_in_executor(
                 self._executor, self.compress_sync, data
             )
@@ -109,7 +79,7 @@ class ZLibDecompressor(ZlibBaseHandler):
             executor=executor,
             max_sync_chunk_size=max_sync_chunk_size,
         )
-        self._decompressor: Decompressor = zlib.decompressobj(wbits=self._mode)
+        self._decompressor = zlib.decompressobj(wbits=self._mode)
 
     def decompress_sync(self, data: bytes, max_length: int = 0) -> bytes:
         return self._decompressor.decompress(data, max_length)
