@@ -6,7 +6,6 @@ import json
 import math
 import time
 import warnings
-import zlib
 from concurrent.futures import Executor
 from http import HTTPStatus
 from http.cookies import Morsel
@@ -692,13 +691,6 @@ class Response(StreamResponse):
                     self._headers[hdrs.CONTENT_LENGTH] = "0"
 
         return await super()._start(request)
-
-    def _compress_body(self, zlib_mode: int) -> None:
-        assert zlib_mode > 0
-        compressobj = zlib.compressobj(wbits=zlib_mode)
-        body_in = self._body
-        assert body_in is not None
-        self._compressed_body = compressobj.compress(body_in) + compressobj.flush()
 
     async def _do_start_compression(self, coding: ContentCoding) -> None:
         if self._body_payload or self._chunked:
