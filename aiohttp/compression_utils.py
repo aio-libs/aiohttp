@@ -129,7 +129,7 @@ class BrotliDecompressor:
     # Supports both 'brotlipy' and 'Brotli' packages
     # since they share an import name. The top branches
     # are for 'brotlipy' and bottom branches for 'Brotli'
-    def __init__(self):
+    def __init__(self) -> None:
         if not HAS_BROTLI:
             raise RuntimeError(
                 "The brotli decompression is not available. "
