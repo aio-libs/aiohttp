@@ -24,6 +24,7 @@ from yarl import URL
 
 from . import hdrs
 from .base_protocol import BaseProtocol
+from .compression_utils import HAS_BROTLI, BrotliDecompressor, ZLibDecompressor
 from .helpers import NO_EXTENSIONS, BaseTimerContext
 from .http_exceptions import (
     BadHttpMessage,
@@ -38,8 +39,6 @@ from .http_writer import HttpVersion, HttpVersion10
 from .log import internal_logger
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import RawHeaders
-from .compression_utils import ZLibDecompressor, BrotliDecompressor, HAS_BROTLI
-
 
 __all__ = (
     "HeadersParser",

@@ -15,9 +15,9 @@ from typing import Any, Callable, List, Optional, Pattern, Set, Tuple, Union, ca
 from typing_extensions import Final
 
 from .base_protocol import BaseProtocol
+from .compression_utils import ZLibCompressor, ZLibDecompressor
 from .helpers import NO_EXTENSIONS
 from .streams import DataQueue
-from .compression_utils import ZLibCompressor, ZLibDecompressor
 
 __all__ = (
     "WS_CLOSED_MESSAGE",

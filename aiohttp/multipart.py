@@ -27,6 +27,7 @@ from urllib.parse import parse_qsl, unquote, urlencode
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiMapping
 
+from .compression_utils import ZLibCompressor, ZLibDecompressor
 from .hdrs import (
     CONTENT_DISPOSITION,
     CONTENT_ENCODING,
@@ -46,7 +47,6 @@ from .payload import (
     payload_type,
 )
 from .streams import StreamReader
-from .compression_utils import ZLibCompressor, ZLibDecompressor
 
 __all__ = (
     "MultipartReader",

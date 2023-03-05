@@ -24,6 +24,7 @@ from multidict import CIMultiDict, istr
 
 from . import hdrs, payload
 from .abc import AbstractStreamWriter
+from .compression_utils import ZLibCompressor
 from .helpers import (
     ETAG_ANY,
     PY_38,
@@ -40,7 +41,6 @@ from .helpers import (
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
-from .compression_utils import ZLibCompressor
 
 __all__ = ("ContentCoding", "StreamResponse", "Response", "json_response")
 
