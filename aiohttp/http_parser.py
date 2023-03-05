@@ -902,7 +902,7 @@ class DeflateBuffer:
             self.out.feed_data(chunk, len(chunk))
             if (
                 self.encoding == "deflate"
-                and hasattr(self.decompressor, 'eof')
+                and hasattr(self.decompressor, "eof")
                 and not self.decompressor.eof
             ):
                 raise ContentEncodingError("deflate")
