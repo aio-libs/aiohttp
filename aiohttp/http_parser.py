@@ -16,11 +16,10 @@ from typing import (
     Type,
     TypeVar,
     Union,
-    cast,
 )
 
 from multidict import CIMultiDict, CIMultiDictProxy, istr
-from typing_extensions import Final, Protocol
+from typing_extensions import Final
 from yarl import URL
 
 from . import hdrs
@@ -39,26 +38,7 @@ from .http_writer import HttpVersion, HttpVersion10
 from .log import internal_logger
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import RawHeaders
-from .zlib_utils import ZLibDecompressor
-
-try:
-    import brotli
-
-    HAS_BROTLI = True
-except ImportError:  # pragma: no cover
-    HAS_BROTLI = False
-
-
-class Decompressor(Protocol):
-    @property
-    def eof(self) -> bool:
-        ...
-
-    def decompress_sync(self, data: bytes, max_length: int = ...) -> bytes:
-        ...
-
-    def flush(self, length: int = ...) -> bytes:
-        ...
+from .compression_utils import ZLibDecompressor, BrotliDecompressor, HAS_BROTLI
 
 
 __all__ = (
@@ -870,38 +850,14 @@ class DeflateBuffer:
         self.encoding = encoding
         self._started_decoding = False
 
-        self.decompressor: Decompressor
+        self.decompressor: Union[BrotliDecompressor, ZLibDecompressor]
         if encoding == "br":
             if not HAS_BROTLI:  # pragma: no cover
                 raise ContentEncodingError(
                     "Can not decode content-encoding: brotli (br). "
                     "Please install `Brotli`"
                 )
-
-            class BrotliDecoder:
-                # Supports both 'brotlipy' and 'Brotli' packages
-                # since they share an import name. The top branches
-                # are for 'brotlipy' and bottom branches for 'Brotli'
-                def __init__(self) -> None:
-                    self._obj = brotli.Decompressor()
-                    self._is_at_eof = False
-
-                def decompress_sync(self, data: bytes, max_length: int = 0) -> bytes:
-                    if hasattr(self._obj, "decompress"):
-                        return cast(bytes, self._obj.decompress(data))
-                    return cast(bytes, self._obj.process(data))
-
-                def flush(self, length: int = 0) -> bytes:
-                    self._is_at_eof = True
-                    if hasattr(self._obj, "flush"):
-                        return cast(bytes, self._obj.flush())
-                    return b""
-
-                @property
-                def eof(self) -> bool:
-                    return self._is_at_eof
-
-            self.decompressor = BrotliDecoder()
+            self.decompressor = BrotliDecompressor()
         else:
             self.decompressor = ZLibDecompressor(encoding=encoding)
 
@@ -945,7 +901,11 @@ class DeflateBuffer:
 
         if chunk or self.size > 0:
             self.out.feed_data(chunk, len(chunk))
-            if self.encoding == "deflate" and not self.decompressor.eof:
+            if (
+                self.encoding == "deflate"
+                and isinstance(self.decompressor, ZLibDecompressor)
+                and not self.decompressor.eof
+            ):
                 raise ContentEncodingError("deflate")
 
         self.out.feed_eof()

@@ -40,7 +40,7 @@ from .helpers import (
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
-from .zlib_utils import ZLibCompressor
+from .compression_utils import ZLibCompressor
 
 __all__ = ("ContentCoding", "StreamResponse", "Response", "json_response")
 

@@ -9,7 +9,7 @@ from multidict import CIMultiDict
 from .abc import AbstractStreamWriter
 from .base_protocol import BaseProtocol
 from .helpers import NO_EXTENSIONS
-from .zlib_utils import ZLibCompressor
+from .compression_utils import ZLibCompressor
 
 __all__ = ("StreamWriter", "HttpVersion", "HttpVersion10", "HttpVersion11")
 

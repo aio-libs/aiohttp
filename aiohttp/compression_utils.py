@@ -1,7 +1,15 @@
 import asyncio
 import zlib
 from concurrent.futures import Executor
-from typing import Optional
+from typing import Optional, cast
+
+try:
+    # noinspection PyPackageRequirements,PyUnresolvedReferences
+    import brotli
+
+    HAS_BROTLI = True
+except ImportError:  # pragma: no cover
+    HAS_BROTLI = False
 
 MAX_SYNC_CHUNK_SIZE = 1024
 
@@ -115,3 +123,26 @@ class ZLibDecompressor(ZlibBaseHandler):
     @property
     def unused_data(self) -> bytes:
         return self._decompressor.unused_data
+
+
+class BrotliDecompressor:
+    # Supports both 'brotlipy' and 'Brotli' packages
+    # since they share an import name. The top branches
+    # are for 'brotlipy' and bottom branches for 'Brotli'
+    def __init__(self):
+        if not HAS_BROTLI:
+            raise RuntimeError(
+                "The brotli decompression is not available. "
+                "Please install `Brotli` module"
+            )
+        self._obj = brotli.Decompressor()
+
+    def decompress_sync(self, data: bytes) -> bytes:
+        if hasattr(self._obj, "decompress"):
+            return cast(bytes, self._obj.decompress(data))
+        return cast(bytes, self._obj.process(data))
+
+    def flush(self) -> bytes:
+        if hasattr(self._obj, "flush"):
+            return cast(bytes, self._obj.flush())
+        return b""

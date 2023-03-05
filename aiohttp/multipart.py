@@ -46,7 +46,7 @@ from .payload import (
     payload_type,
 )
 from .streams import StreamReader
-from .zlib_utils import ZLibCompressor, ZLibDecompressor
+from .compression_utils import ZLibCompressor, ZLibDecompressor
 
 __all__ = (
     "MultipartReader",
