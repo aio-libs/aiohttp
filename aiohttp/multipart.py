@@ -494,7 +494,7 @@ class BodyPartReader:
         encoding = self.headers.get(CONTENT_ENCODING, "").lower()
         if encoding == "identity":
             return data
-        if encoding in ("deflate", "gzip"):
+        if encoding in {"deflate", "gzip"}:
             return ZLibDecompressor(
                 encoding=encoding,
                 suppress_deflate_header=True,
