@@ -57,9 +57,7 @@ class ZLibCompressor(ZlibBaseHandler):
             self._compressor = zlib.compressobj(wbits=self._mode, strategy=strategy)
         else:
             self._compressor = zlib.compressobj(
-                wbits=self._mode,
-                strategy=strategy,
-                level=level
+                wbits=self._mode, strategy=strategy, level=level
             )
 
     def compress_sync(self, data: bytes) -> bytes:
