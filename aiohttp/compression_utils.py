@@ -19,7 +19,7 @@ def encoding_to_mode(
 ) -> int:
     if encoding == "gzip":
         return 16 + zlib.MAX_WBITS
-    # deflate
+
     return -zlib.MAX_WBITS if suppress_deflate_header else zlib.MAX_WBITS
 
 
