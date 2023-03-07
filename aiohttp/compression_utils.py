@@ -53,11 +53,14 @@ class ZLibCompressor(ZlibBaseHandler):
             executor=executor,
             max_sync_chunk_size=max_sync_chunk_size,
         )
-        self._compressor = zlib.compressobj(
-            wbits=self._mode,
-            strategy=strategy,
-            **({"level": level} if level is not None else {})  # type: ignore
-        )
+        if level is None:
+            self._compressor = zlib.compressobj(wbits=self._mode, strategy=strategy)
+        else:
+            self._compressor = zlib.compressobj(
+                wbits=self._mode,
+                strategy=strategy,
+                level=level
+            )
 
     def compress_sync(self, data: bytes) -> bytes:
         return self._compressor.compress(data)
