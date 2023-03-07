@@ -4,7 +4,6 @@ from concurrent.futures import Executor
 from typing import Optional, cast
 
 try:
-    # noinspection PyPackageRequirements,PyUnresolvedReferences
     import brotli
 
     HAS_BROTLI = True
