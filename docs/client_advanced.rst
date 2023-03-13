@@ -593,7 +593,7 @@ Contrary to the ``requests`` library, it won't read environment
 variables by default. But you can do so by passing
 ``trust_env=True`` into :class:`aiohttp.ClientSession`
 constructor for extracting proxy configuration from
-*HTTP_PROXY*, *HTTPS_PROXY*, *WS_PROXY* or *WSS_PROXY* *environment
+*HTTP_PROXY*, *HTTPS_PROXY*, *WS_PROXY*, *WSS_PROXY* or *NO_PROXY* *environment
 variables* (all are case insensitive)::
 
    async with aiohttp.ClientSession(trust_env=True) as session:

@@ -173,8 +173,8 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 3.7
 
-   :param bool trust_env: Get proxies information from *HTTP_PROXY* /
-      *HTTPS_PROXY* environment variables if the parameter is ``True``
+   :param bool trust_env: Get proxies information from *HTTP_PROXY*, *HTTPS_PROXY*,
+      *WS_PROXY*, *WSS_PROXY* or *NO_PROXY* environment variables if the parameter is ``True``
       (``False`` by default).
 
       Get proxy credentials from ``~/.netrc`` file if present.
