@@ -699,6 +699,7 @@ class ClientResponse(HeadersMixin):
 
         self.method = method
         self.cookies: SimpleCookie[str] = SimpleCookie()
+        self.certificate: Optional[Dict[str, Union[Tuple[Any, ...], int, str]]] = None
 
         self._real_url = url
         self._url = url.with_fragment(None)
@@ -859,6 +860,9 @@ class ClientResponse(HeadersMixin):
                 if self._continue is not None:
                     set_result(self._continue, True)
                     self._continue = None
+
+        if self._connection is not None and self._connection.transport is not None:
+            self.certificate = self._connection.transport.get_extra_info("peercert")
 
         # payload eof handler
         payload.on_eof(self._response_eof)

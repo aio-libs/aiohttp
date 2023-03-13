@@ -13,7 +13,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
 
 import aiohttp
-from aiohttp import BaseConnector, hdrs, payload
+from aiohttp import BaseConnector, hdrs, payload, web
 from aiohttp.client_reqrep import (
     ClientRequest,
     ClientResponse,
@@ -1230,3 +1230,28 @@ def test_loose_cookies_types(loop: Any) -> None:
 def test_gen_default_accept_encoding(has_brotli: Any, expected: Any) -> None:
     with mock.patch("aiohttp.client_reqrep.HAS_BROTLI", has_brotli):
         assert _gen_default_accept_encoding() == expected
+
+
+async def test_certificate_exists(
+    ssl_ctx: Any, client_ssl_ctx: Any, aiohttp_client: Any, aiohttp_raw_server: Any
+) -> None:
+    async def handler(request):
+        return web.Response(text="ok")
+
+    server = await aiohttp_raw_server(handler, ssl=ssl_ctx)
+
+    async with await aiohttp_client(
+        server, connector=aiohttp.TCPConnector(ssl=client_ssl_ctx)
+    ) as client:
+        async with await client.get("/") as resp:
+            assert frozenset(resp.certificate) >= frozenset(
+                (
+                    "subject",
+                    "issuer",
+                    "version",
+                    "serialNumber",
+                    "notBefore",
+                    "notAfter",
+                    "subjectAltName",
+                )
+            )

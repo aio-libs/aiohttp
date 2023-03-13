@@ -1360,6 +1360,12 @@ Response object
       objects of preceding requests (earliest request first) if there were
       redirects, an empty sequence otherwise.
 
+   .. attribute:: certificate
+
+      The server certificate. This is available with TLS connections,
+      if the certificate is retrieved before the connection or the TLS session is
+      closed, otherwise it is ``None``.
+
    .. method:: close()
 
       Close response and underlying connection.
