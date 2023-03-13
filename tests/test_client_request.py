@@ -1232,29 +1232,26 @@ def test_gen_default_accept_encoding(has_brotli: Any, expected: Any) -> None:
         assert _gen_default_accept_encoding() == expected
 
 
-async def test_certificate_exists(ssl_ctx, client_ssl_ctx) -> None:
+async def test_certificate_exists(
+    ssl_ctx: Any, client_ssl_ctx: Any, aiohttp_client: Any, aiohttp_raw_server: Any
+) -> None:
     async def handler(request):
         return web.Response(text="ok")
 
-    server = web.Server(handler)
-    runner = web.ServerRunner(server)
-    await runner.setup()
-    site = web.TCPSite(runner, ssl_context=ssl_ctx)
-    await site.start()
+    server = await aiohttp_raw_server(handler, ssl=ssl_ctx)
 
-    async with aiohttp.ClientSession() as session:
-        resp = await session.get("https://127.0.0.1:8443", ssl=client_ssl_ctx)
-    assert frozenset(resp.certificate) >= frozenset(
-        (
-            "subject",
-            "issuer",
-            "version",
-            "serialNumber",
-            "notBefore",
-            "notAfter",
-            "subjectAltName",
-        )
-    )
-    resp.close()
-    await site.stop()
-    await server.shutdown()
+    async with await aiohttp_client(
+        server, connector=aiohttp.TCPConnector(ssl=client_ssl_ctx)
+    ) as client:
+        async with await client.get("/") as resp:
+            assert frozenset(resp.certificate) >= frozenset(
+                (
+                    "subject",
+                    "issuer",
+                    "version",
+                    "serialNumber",
+                    "notBefore",
+                    "notAfter",
+                    "subjectAltName",
+                )
+            )

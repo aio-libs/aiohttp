@@ -861,11 +861,7 @@ class ClientResponse(HeadersMixin):
                     set_result(self._continue, True)
                     self._continue = None
 
-        # certificate
-        is_tls_transport = (
-            self._connection is not None and self._connection.transport is not None
-        )
-        if is_tls_transport:
+        if self._connection is not None and self._connection.transport is not None:
             self.certificate = self._connection.transport.get_extra_info("peercert")
 
         # payload eof handler
