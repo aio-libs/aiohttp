@@ -89,6 +89,8 @@
        It makes communication faster by getting rid of connection
        establishment for every request.
 
+
+
    nginx
 
       Nginx [engine x] is an HTTP and reverse proxy server, a mail
@@ -153,3 +155,16 @@
       A library for operating with URL objects.
 
       https://pypi.python.org/pypi/yarl
+
+
+Environment Variables
+=====================
+
+.. envvar:: NETRC
+
+   If set, HTTP Basic Auth will be read from the file pointed to by this environment variable,
+   rather than from :file:`~/.netrc`.
+
+   .. seealso::
+
+      ``.netrc`` documentation: https://www.gnu.org/software/inetutils/manual/html_node/The-_002enetrc-file.html

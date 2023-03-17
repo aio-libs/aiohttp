@@ -184,3 +184,25 @@ def selector_loop():
     with loop_context(policy.new_event_loop) as _loop:
         asyncio.set_event_loop(_loop)
         yield _loop
+
+
+@pytest.fixture
+def netrc_contents(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    request: pytest.FixtureRequest,
+):
+    """
+    Prepare :file:`.netrc` with given contents.
+
+    Monkey-patches :envvar:`NETRC` to point to created file.
+    """
+    netrc_contents = getattr(request, "param", None)
+
+    netrc_file_path = tmp_path / ".netrc"
+    if netrc_contents is not None:
+        netrc_file_path.write_text(netrc_contents)
+
+    monkeypatch.setenv("NETRC", str(netrc_file_path))
+
+    return netrc_file_path
