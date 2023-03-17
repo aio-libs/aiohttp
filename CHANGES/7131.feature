@@ -1,0 +1,1 @@
+Added support for using Basic Auth credentials from :file:`.netrc` file when making HTTP requests with the :py:class:`~aiohttp.ClientSession` ``trust_env`` argument is set to ``True`` -- by :user:`yuvipanda`.

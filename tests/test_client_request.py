@@ -5,7 +5,7 @@ import io
 import pathlib
 import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
-from typing import Any
+from typing import Any, Optional
 from unittest import mock
 
 import pytest
@@ -13,7 +13,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
 
 import aiohttp
-from aiohttp import BaseConnector, hdrs, payload
+from aiohttp import BaseConnector, hdrs, helpers, payload
 from aiohttp.client_reqrep import (
     ClientRequest,
     ClientResponse,
@@ -1230,3 +1230,51 @@ def test_loose_cookies_types(loop: Any) -> None:
 def test_gen_default_accept_encoding(has_brotli: Any, expected: Any) -> None:
     with mock.patch("aiohttp.client_reqrep.HAS_BROTLI", has_brotli):
         assert _gen_default_accept_encoding() == expected
+
+
+@pytest.mark.parametrize(
+    ("netrc_contents", "expected_auth"),
+    [
+        (
+            "machine example.com login username password pass\n",
+            helpers.BasicAuth("username", "pass"),
+        )
+    ],
+    indirect=("netrc_contents",),
+)
+@pytest.mark.usefixtures("netrc_contents")
+def test_basicauth_from_netrc_present(
+    make_request: Any,
+    expected_auth: Optional[helpers.BasicAuth],
+):
+    """Test appropriate Authorization header is sent when netrc is not empty."""
+    req = make_request("get", "http://example.com", trust_env=True)
+    assert req.headers[hdrs.AUTHORIZATION] == expected_auth.encode()
+
+
+@pytest.mark.parametrize(
+    "netrc_contents",
+    ("machine example.com login username password pass\n",),
+    indirect=("netrc_contents",),
+)
+@pytest.mark.usefixtures("netrc_contents")
+def test_basicauth_from_netrc_present_untrusted_env(
+    make_request: Any,
+):
+    """Test no authorization header is sent via netrc if trust_env is False"""
+    req = make_request("get", "http://example.com", trust_env=False)
+    assert hdrs.AUTHORIZATION not in req.headers
+
+
+@pytest.mark.parametrize(
+    "netrc_contents",
+    ("",),
+    indirect=("netrc_contents",),
+)
+@pytest.mark.usefixtures("netrc_contents")
+def test_basicauth_from_empty_netrc(
+    make_request: Any,
+):
+    """Test that no Authorization header is sent when netrc is empty"""
+    req = make_request("get", "http://example.com", trust_env=True)
+    assert hdrs.AUTHORIZATION not in req.headers
