@@ -1,0 +1,1 @@
+Reduce access log overhead when the logger is not enabled.
