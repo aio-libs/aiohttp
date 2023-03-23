@@ -262,10 +262,10 @@ def test_logger_does_nothing_when_disabled(caplog: pytest.LogCaptureFixture) -> 
     access_logger.log(
         mock.Mock(name="mock_request"), mock.Mock(name="mock_response"), 42
     )
-    assert "mock_request" in caplog.text
+    assert "mock_response" in caplog.text
     caplog.clear()
     mock_logger.setLevel(logging.WARNING)
     access_logger.log(
         mock.Mock(name="mock_request"), mock.Mock(name="mock_response"), 42
     )
-    assert "mock_request" not in caplog.text
+    assert "mock_response" not in caplog.text
