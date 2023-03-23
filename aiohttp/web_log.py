@@ -189,6 +189,8 @@ class AccessLogger(AbstractAccessLogger):
         return [(key, method(request, response, time)) for key, method in self._methods]
 
     def log(self, request: BaseRequest, response: StreamResponse, time: float) -> None:
+        if not self.logger.isEnabledFor(logging.INFO):
+            return
         try:
             fmt_info = self._format_line(request, response, time)
 

@@ -1,5 +1,6 @@
 # type: ignore
 import datetime
+import logging
 import platform
 import sys
 from typing import Any
@@ -251,3 +252,16 @@ async def test_contextvars_logger(aiohttp_server: Any, aiohttp_client: Any):
     resp = await client.get("/")
     assert 200 == resp.status
     assert msg == "contextvars: uuid"
+
+
+def test_logger_does_nothing_when_disabled(caplog: pytest.LogCaptureFixture) -> None:
+    """Test that the logger does nothing when the log level is disabled."""
+    mock_logger = logging.getLogger("test.aiohttp.log")
+    mock_logger.setLevel(logging.INFO)
+    access_logger = AccessLogger(mock_logger, "%a")
+    access_logger.log(None, None, 42)
+    assert "42" in caplog.text
+    caplog.clear()
+    mock_logger.setLevel(logging.WARNING)
+    access_logger.log(None, None, 42)
+    assert "42" not in caplog.text
