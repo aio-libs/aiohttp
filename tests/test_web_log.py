@@ -258,7 +258,7 @@ def test_logger_does_nothing_when_disabled(caplog: pytest.LogCaptureFixture) -> 
     """Test that the logger does nothing when the log level is disabled."""
     mock_logger = logging.getLogger("test.aiohttp.log")
     mock_logger.setLevel(logging.INFO)
-    access_logger = AccessLogger(mock_logger)
+    access_logger = AccessLogger(mock_logger, "%b")
     access_logger.log(None, None, 42)
     assert "42" in caplog.text
     caplog.clear()
