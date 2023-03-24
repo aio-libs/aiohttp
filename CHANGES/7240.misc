@@ -1,1 +1,1 @@
-Reduce access log overhead when the logger is not enabled.
+Turned access log into no-op when the logger is disabled.
