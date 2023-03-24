@@ -190,6 +190,7 @@ class AccessLogger(AbstractAccessLogger):
 
     def log(self, request: BaseRequest, response: StreamResponse, time: float) -> None:
         if not self.logger.isEnabledFor(logging.INFO):
+            # Avoid formatting the log line if it will not be emitted.
             return
         try:
             fmt_info = self._format_line(request, response, time)
