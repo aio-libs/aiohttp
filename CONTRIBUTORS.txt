@@ -202,6 +202,7 @@ Krzysztof Blazewicz
 Kyrylo Perevozchikov
 Kyungmin Lee
 Lars P. Søndergaard
+Lee LieWhite
 Liu Hua
 Louis-Philippe Huberdeau
 Loïc Lajeanne
