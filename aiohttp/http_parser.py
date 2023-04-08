@@ -6,6 +6,7 @@ import string
 from contextlib import suppress
 from enum import IntEnum
 from typing import (
+    Any,
     Generic,
     List,
     NamedTuple,
