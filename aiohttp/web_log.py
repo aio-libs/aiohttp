@@ -107,9 +107,6 @@ class AccessLogger(AbstractAccessLogger):
             _compiled_format = self.compile_format(log_format)
             AccessLogger._FORMAT_CACHE[log_format] = _compiled_format
 
-        for filer in logger.filters:
-            if isinstance(filer, AccessLogFilter):
-                logger.removeFilter(filer)
         logger.addFilter(AccessLogFilter(self))
 
         self._log_format, self._methods = _compiled_format
