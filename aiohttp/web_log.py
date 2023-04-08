@@ -24,9 +24,9 @@ class AccessLogFilter(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> bool:
         """Reprocess the log record and replace extra and the original args"""
-        request: BaseRequest = record.request
-        response: StreamResponse = record.response
-        time: float = record.time
+        request: BaseRequest = getattr(record, "request")
+        response: StreamResponse = getattr(record, "response")
+        time: float = getattr(record, "time")
         delattr(record, "request")
         delattr(record, "response")
         delattr(record, "time")
@@ -34,6 +34,7 @@ class AccessLogFilter(logging.Filter):
         record.args = args
         for key, value in extra.items():
             setattr(record, key, value)
+        return True
 
 
 class AccessLogger(AbstractAccessLogger):
