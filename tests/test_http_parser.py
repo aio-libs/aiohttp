@@ -1107,7 +1107,7 @@ class TestDeflateBuffer:
         dbuf = DeflateBuffer(buf, "deflate")
 
         dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.decompress.return_value = b"line"
+        dbuf.decompressor.decompress_sync.return_value = b"line"
 
         # First byte should be b'x' in order code not to change the decoder.
         dbuf.feed_data(b"xxxx", 4)
@@ -1121,7 +1121,7 @@ class TestDeflateBuffer:
 
         exc = ValueError()
         dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.decompress.side_effect = exc
+        dbuf.decompressor.decompress_sync.side_effect = exc
 
         with pytest.raises(http_exceptions.ContentEncodingError):
             # Should be more than 4 bytes to trigger deflate FSM error.

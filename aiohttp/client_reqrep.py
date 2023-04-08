@@ -38,6 +38,7 @@ from .client_exceptions import (
     InvalidURL,
     ServerFingerprintMismatch,
 )
+from .compression_utils import HAS_BROTLI
 from .formdata import FormData
 from .helpers import (
     BaseTimerContext,
@@ -51,7 +52,6 @@ from .helpers import (
     set_result,
 )
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, StreamWriter
-from .http_parser import HAS_BROTLI
 from .log import client_logger
 from .streams import StreamReader
 from .typedefs import (
