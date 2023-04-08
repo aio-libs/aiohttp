@@ -5,13 +5,35 @@ import os
 import re
 import time as time_mod
 from collections import namedtuple
-from typing import Any, Callable, Dict, Iterable, List, Tuple  # noqa
+from typing import Any, Callable, Dict, Iterable, List, Tuple
 
 from .abc import AbstractAccessLogger
 from .web_request import BaseRequest
 from .web_response import StreamResponse
 
 KeyMethod = namedtuple("KeyMethod", "key method")
+
+
+class AccessLogFilter(logging.Filter):
+    """Filter to add args and extra attributes to log records."""
+
+    def __init__(self, access_log: "AccessLogger") -> None:
+        """Initialise the filter."""
+        super().__init__()
+        self.access_log = access_log
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """Reprocess the log record and replace extra and the original args"""
+        request: BaseRequest = record.request
+        response: StreamResponse = record.response
+        time: float = record.time
+        delattr(record, "request")
+        delattr(record, "response")
+        delattr(record, "time")
+        args, extra = self.access_log.format_arguments(request, response, time)
+        record.args = args
+        for key, value in extra.items():
+            setattr(record, key, value)
 
 
 class AccessLogger(AbstractAccessLogger):
@@ -22,6 +44,12 @@ class AccessLogger(AbstractAccessLogger):
         log_format = "%a %{User-Agent}i"
         access_logger = AccessLogger(log, log_format)
         access_logger.log(request, response, time)
+
+    Warning:
+        This module will add a log filter to the logger object
+        that is passed in which will affect logging for all
+        handlers attached to that logger. Be sure to generate
+        a unique logger object for each instance of AccessLogger.
 
     Format:
         %%  The percent sign
@@ -73,6 +101,8 @@ class AccessLogger(AbstractAccessLogger):
         if not _compiled_format:
             _compiled_format = self.compile_format(log_format)
             AccessLogger._FORMAT_CACHE[log_format] = _compiled_format
+
+        logger.addFilter(AccessLogFilter(self))
 
         self._log_format, self._methods = _compiled_format
 
@@ -189,25 +219,29 @@ class AccessLogger(AbstractAccessLogger):
         return [(key, method(request, response, time)) for key, method in self._methods]
 
     def log(self, request: BaseRequest, response: StreamResponse, time: float) -> None:
-        if not self.logger.isEnabledFor(logging.INFO):
-            # Avoid formatting the log line if it will not be emitted.
-            return
-        try:
-            fmt_info = self._format_line(request, response, time)
+        """Log request and response."""
+        self.logger.info(
+            self._log_format,
+            extra={"request": request, "response": response, "time": time},
+        )
 
-            values = list()
-            extra = dict()
-            for key, value in fmt_info:
-                values.append(value)
+    def format_arguments(
+        self, request: BaseRequest, response: StreamResponse, time: float
+    ) -> tuple[tuple[Any, ...], Dict[str, Any]]:
+        """Return a tuple of values and a dict of extra values to log."""
+        fmt_info = self._format_line(request, response, time)
 
-                if key.__class__ is str:
-                    extra[key] = value
-                else:
-                    k1, k2 = key  # type: ignore[misc]
-                    dct = extra.get(k1, {})  # type: ignore[var-annotated,has-type]
-                    dct[k2] = value  # type: ignore[index,has-type]
-                    extra[k1] = dct  # type: ignore[has-type,assignment]
+        values = list()
+        extra = dict()
+        for key, value in fmt_info:
+            values.append(value)
 
-            self.logger.info(self._log_format % tuple(values), extra=extra)
-        except Exception:
-            self.logger.exception("Error in logging")
+            if key.__class__ is str:
+                extra[key] = value
+            else:
+                k1, k2 = key  # type: ignore[misc]
+                dct = extra.get(k1, {})  # type: ignore[var-annotated,has-type]
+                dct[k2] = value  # type: ignore[index,has-type]
+                extra[k1] = dct  # type: ignore[has-type,assignment]
+
+        return tuple(values), extra
