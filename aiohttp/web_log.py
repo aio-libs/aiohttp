@@ -52,6 +52,10 @@ class AccessLogger(AbstractAccessLogger):
         handlers attached to that logger. Be sure to generate
         a unique logger object for each instance of AccessLogger.
 
+        If multiple aiohttp instances use the same logger object
+        then the log filter from the last instance to be created
+        will be used.
+
     Format:
         %%  The percent sign
         %a  Remote IP-address (IP-address of proxy if using reverse proxy)
@@ -103,6 +107,9 @@ class AccessLogger(AbstractAccessLogger):
             _compiled_format = self.compile_format(log_format)
             AccessLogger._FORMAT_CACHE[log_format] = _compiled_format
 
+        for filer in logger.filters:
+            if isinstance(filer, AccessLogFilter):
+                logger.removeFilter(filer)
         logger.addFilter(AccessLogFilter(self))
 
         self._log_format, self._methods = _compiled_format
