@@ -910,7 +910,7 @@ class DeflateBuffer:
 
         if chunk or self.size > 0:
             self.out.feed_data(chunk, len(chunk))
-            if self.encoding == "deflate" and not self.decompressor.eof:  # type: ignore
+            if self.encoding == "deflate" and not self.decompressor.eof:
                 raise ContentEncodingError("deflate")
 
         self.out.feed_eof()
