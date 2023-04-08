@@ -227,7 +227,7 @@ class AccessLogger(AbstractAccessLogger):
 
     def format_arguments(
         self, request: BaseRequest, response: StreamResponse, time: float
-    ) -> tuple[tuple[Any, ...], Dict[str, Any]]:
+    ) -> Tuple[Tuple[Any, ...], Dict[str, Any]]:
         """Return a tuple of values and a dict of extra values to log."""
         fmt_info = self._format_line(request, response, time)
 
