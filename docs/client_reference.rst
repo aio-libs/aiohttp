@@ -173,9 +173,9 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 3.7
 
-   :param bool trust_env: Get proxies information from *HTTP_PROXY*, *HTTPS_PROXY*,
-      *WS_PROXY*, *WSS_PROXY* or *NO_PROXY* environment variables if the parameter is ``True``
-      (``False`` by default).
+   :param bool trust_env: Trust environment settings for proxy configuration if the parameter
+      is ``True`` (``False`` by default). See :ref:`aiohttp-client-proxy-support` for
+      more information.
 
       Get proxy credentials from ``~/.netrc`` file if present.
 
@@ -312,8 +312,9 @@ The client session supports the context manager protocol for self closing.
 
    .. attribute:: trust_env
 
-      Should get proxies information from HTTP_PROXY / HTTPS_PROXY environment
-      variables or ~/.netrc file if present
+      Trust environment settings for proxy configuration
+      or ~/.netrc file if present. See :ref:`aiohttp-client-proxy-support` for
+      more information.
 
       :class:`bool` default is ``False``
 
