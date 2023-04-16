@@ -561,6 +561,8 @@ DER with e.g::
    to :class:`TCPConnector` as default, the value from
    :meth:`ClientSession.get` and others override default.
 
+.. _aiohttp-client-proxy-support:
+
 Proxy support
 -------------
 
@@ -592,13 +594,17 @@ Authentication credentials can be passed in proxy URL::
 Contrary to the ``requests`` library, it won't read environment
 variables by default. But you can do so by passing
 ``trust_env=True`` into :class:`aiohttp.ClientSession`
-constructor for extracting proxy configuration from
-*HTTP_PROXY*, *HTTPS_PROXY*, *WS_PROXY* or *WSS_PROXY* *environment
-variables* (all are case insensitive)::
+constructor.::
 
    async with aiohttp.ClientSession(trust_env=True) as session:
        async with session.get("http://python.org") as resp:
            print(resp.status)
+
+.. note::
+    aiohttp uses :func:`urllib.request.getproxies`
+    for reading the proxy configuration (e.g. from the *HTTP_PROXY* etc. environment variables) and applies them for the *HTTP*, *HTTPS*, *WS* and *WSS* schemes.
+
+    Hosts defined in ``no_proxy`` will bypass the proxy.
 
 Proxy credentials are given from ``~/.netrc`` file if present (see
 :class:`aiohttp.ClientSession` for more details).
