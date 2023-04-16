@@ -602,7 +602,7 @@ constructor.::
 
 .. note::
     aiohttp uses :func:`urllib.request.getproxies`
-    for reading the proxy configuration and applies them for the schemas ``http``, ``https``, ``ws`` and ``wss``
+    for reading the proxy configuration (e.g. from the *HTTP_PROXY* etc. environment variables) and applies them for the *HTTP*, *HTTPS*, *WS* and *WSS* schemes.
 
     Hosts defined in ``no_proxy`` will bypass the proxy.
 
