@@ -601,7 +601,7 @@ constructor.::
            print(resp.status)
 
 .. note::
-    ``aiohttp`` uses `urllib.request.getproxies <https://docs.python.org/3/library/urllib.request.html#urllib.request.getproxies>`_
+    aiohttp uses :func:`urllib.request.getproxies`
     for reading the proxy configuration and applies them for the schemas ``http``, ``https``, ``ws`` and ``wss``
 
     Hosts defined in ``no_proxy`` will bypass the proxy.
