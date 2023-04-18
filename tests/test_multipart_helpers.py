@@ -87,7 +87,7 @@ class TestParseContentDisposition:
             r'attachment; filename="f\oo.html"'
         )
         assert "attachment" == disptype
-        assert {"filename": "foo.html"} == params
+        assert {"filename": r"f\oo.html"} == params
 
     def test_attwithasciifnescapedquote(self) -> None:
         disptype, params = parse_content_disposition(
@@ -194,7 +194,7 @@ class TestParseContentDisposition:
             r'attachment; filename="foo-%\41.html"'
         )
         assert "attachment" == disptype
-        assert {"filename": r"foo-%41.html"} == params
+        assert {"filename": r"foo-%\41.html"} == params
 
     def test_attwithnamepct(self) -> None:
         disptype, params = parse_content_disposition(
@@ -551,7 +551,7 @@ class TestParseContentDisposition:
             r'attachment; filename*0="foo"; filename*1="\b\a\r.html"'
         )
         assert "attachment" == disptype
-        assert {"filename*0": "foo", "filename*1": "bar.html"} == params
+        assert {"filename*0": "foo", "filename*1": r"\b\a\r.html"} == params
 
     def test_attfncontenc(self) -> None:
         disptype, params = parse_content_disposition(

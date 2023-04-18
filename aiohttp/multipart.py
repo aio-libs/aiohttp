@@ -35,7 +35,7 @@ from .hdrs import (
     CONTENT_TRANSFER_ENCODING,
     CONTENT_TYPE,
 )
-from .helpers import CHAR, TOKEN, parse_mimetype, reify
+from .helpers import TOKEN, parse_mimetype, reify
 from .http import HeadersParser
 from .payload import (
     JsonPayload,
@@ -93,9 +93,6 @@ def parse_content_disposition(
         substring = string[pos:-1] if string.endswith("*") else string[pos:]
         return substring.isdigit()
 
-    def unescape(text: str, *, chars: str = "".join(map(re.escape, CHAR))) -> str:
-        return re.sub(f"\\\\([{chars}])", "\\1", text)
-
     if not header:
         return None, {}
 
@@ -126,7 +123,7 @@ def parse_content_disposition(
 
         elif is_continuous_param(key):
             if is_quoted(value):
-                value = unescape(value[1:-1])
+                value = value[1:-1]
             elif not is_token(value):
                 warnings.warn(BadContentDispositionParam(item))
                 continue
@@ -149,7 +146,7 @@ def parse_content_disposition(
             failed = True
             if is_quoted(value):
                 failed = False
-                value = unescape(value[1:-1].lstrip("\\/"))
+                value = value[1:-1].lstrip("\\/")
             elif is_token(value):
                 failed = False
             elif parts:
@@ -158,7 +155,7 @@ def parse_content_disposition(
                 _value = f"{value};{parts[0]}"
                 if is_quoted(_value):
                     parts.pop(0)
-                    value = unescape(_value[1:-1].lstrip("\\/"))
+                    value = _value[1:-1].lstrip("\\/")
                     failed = False
 
             if failed:
