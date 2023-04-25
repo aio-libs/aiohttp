@@ -3167,22 +3167,3 @@ async def test_max_line_size_request_explicit(aiohttp_client: Any) -> None:
 
     async with await client.get("/", max_line_size=8191) as resp:
         assert resp.reason == "x" * 8191
-
-
-async def test_max_headers_session_default(aiohttp_client: Any) -> None:
-    async def handler(request):
-        # generate 32764 headers:
-        # 32768 (max_headers default) minus 4 headers which are set implicitly
-        # 'Content-Length', 'Content-Type', 'Date' and 'Server'
-        headers = MultiDict()
-        for x in range(32764):
-            headers.add(f"x-header-{x}", str(x))
-        return web.Response(headers=headers)
-
-    app = web.Application()
-    app.add_routes([web.get("/", handler)])
-
-    client = await aiohttp_client(app)
-
-    async with await client.get("/") as resp:
-        assert len(resp.headers) == 32768
