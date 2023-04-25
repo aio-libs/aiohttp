@@ -667,11 +667,15 @@ class WebSocketWriter:
             message = message.encode("utf-8")
         await self._send_frame(message, WSMsgType.PONG)
 
-    async def ping(self, message: bytes = b"") -> None:
+    async def ping(self, message: bytes = b"", consume_errors: bool = False) -> None:
         """Send ping message."""
         if isinstance(message, str):
             message = message.encode("utf-8")
-        await self._send_frame(message, WSMsgType.PING)
+        try:
+            await self._send_frame(message, WSMsgType.PING)
+        except ConnectionResetError:
+            if not consume_errors:
+                raise
 
     async def send(
         self,
