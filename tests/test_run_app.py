@@ -9,28 +9,29 @@ import socket
 import ssl
 import subprocess
 import sys
-from typing import Any
+import time
+from typing import Any, Callable, NoReturn
 from unittest import mock
 from uuid import uuid4
 
 import pytest
+from conftest import needs_unix
 
-from aiohttp import web
+from aiohttp import ClientConnectorError, ClientSession, web
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.web_runner import BaseRunner
 
 _has_unix_domain_socks = hasattr(socket, "AF_UNIX")
 if _has_unix_domain_socks:
-    _abstract_path_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    try:
-        _abstract_path_sock.bind(b"\x00" + uuid4().hex.encode("ascii"))
-    except FileNotFoundError:
-        _abstract_path_failed = True
-    else:
-        _abstract_path_failed = False
-    finally:
-        _abstract_path_sock.close()
-        del _abstract_path_sock
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as _abstract_path_sock:
+        try:
+            _abstract_path_sock.bind(b"\x00" + uuid4().hex.encode("ascii"))
+        except FileNotFoundError:
+            _abstract_path_failed = True
+        else:
+            _abstract_path_failed = False
+        finally:
+            del _abstract_path_sock
 else:
     _abstract_path_failed = True
 
@@ -48,7 +49,8 @@ if HAS_IPV6:
     # support, but the target system still may not have it.
     # So let's ensure that we really have IPv6 support.
     try:
-        socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        with socket.socket(socket.AF_INET6, socket.SOCK_STREAM):
+            pass
     except OSError:
         HAS_IPV6 = False
 
@@ -515,37 +517,39 @@ def test_run_app_custom_backlog_unix(patched_loop: Any) -> None:
 
 
 @skip_if_no_unix_socks
-def test_run_app_http_unix_socket(patched_loop: Any, tmp_path: Any) -> None:
+def test_run_app_http_unix_socket(patched_loop: Any, unix_sockname: Any) -> None:
     app = web.Application()
 
-    sock_path = str(tmp_path / "socket.sock")
     printer = mock.Mock(wraps=stopper(patched_loop))
-    web.run_app(app, path=sock_path, print=printer, loop=patched_loop)
+    web.run_app(app, path=unix_sockname, print=printer, loop=patched_loop)
 
     patched_loop.create_unix_server.assert_called_with(
-        mock.ANY, sock_path, ssl=None, backlog=128
+        mock.ANY, unix_sockname, ssl=None, backlog=128
     )
-    assert f"http://unix:{sock_path}:" in printer.call_args[0][0]
+    assert f"http://unix:{unix_sockname}:" in printer.call_args[0][0]
 
 
 @skip_if_no_unix_socks
-def test_run_app_https_unix_socket(patched_loop: Any, tmp_path: Any) -> None:
+def test_run_app_https_unix_socket(patched_loop: Any, unix_sockname: Any) -> None:
     app = web.Application()
 
-    sock_path = str(tmp_path / "socket.sock")
     ssl_context = ssl.create_default_context()
     printer = mock.Mock(wraps=stopper(patched_loop))
     web.run_app(
-        app, path=sock_path, ssl_context=ssl_context, print=printer, loop=patched_loop
+        app,
+        path=unix_sockname,
+        ssl_context=ssl_context,
+        print=printer,
+        loop=patched_loop,
     )
 
     patched_loop.create_unix_server.assert_called_with(
-        mock.ANY, sock_path, ssl=ssl_context, backlog=128
+        mock.ANY, unix_sockname, ssl=ssl_context, backlog=128
     )
-    assert f"https://unix:{sock_path}:" in printer.call_args[0][0]
+    assert f"https://unix:{unix_sockname}:" in printer.call_args[0][0]
 
 
-@skip_if_no_unix_socks
+@needs_unix
 @skip_if_no_abstract_paths
 def test_run_app_abstract_linux_socket(patched_loop: Any) -> None:
     sock_path = b"\x00" + uuid4().hex.encode("ascii")
@@ -923,3 +927,197 @@ def test_run_app_context_vars(patched_loop: Any):
 
     web.run_app(init(), print=stopper(patched_loop), loop=patched_loop)
     assert count == 3
+
+
+class TestShutdown:
+    def raiser(self) -> NoReturn:
+        raise KeyboardInterrupt
+
+    async def stop(self, request: web.Request) -> web.Response:
+        asyncio.get_running_loop().call_soon(self.raiser)
+        return web.Response()
+
+    def run_app(self, port: int, timeout: int, task, extra_test=None) -> asyncio.Task:
+        async def test() -> None:
+            await asyncio.sleep(1)
+            async with ClientSession() as sess:
+                async with sess.get(f"http://localhost:{port}/"):
+                    pass
+                async with sess.get(f"http://localhost:{port}/stop"):
+                    pass
+
+                if extra_test:
+                    await extra_test(sess)
+
+        async def run_test(app: web.Application) -> None:
+            nonlocal test_task
+            test_task = asyncio.create_task(test())
+            yield
+            await test_task
+
+        async def handler(request: web.Request) -> web.Response:
+            nonlocal t
+            t = asyncio.create_task(task())
+            return web.Response(text="FOO")
+
+        t = test_task = None
+        app = web.Application()
+        app.cleanup_ctx.append(run_test)
+        app.router.add_get("/", handler)
+        app.router.add_get("/stop", self.stop)
+
+        web.run_app(app, port=port, shutdown_timeout=timeout)
+        assert test_task.exception() is None
+        return t
+
+    def test_shutdown_wait_for_task(
+        self, aiohttp_unused_port: Callable[[], int]
+    ) -> None:
+        port = aiohttp_unused_port()
+        finished = False
+
+        async def task():
+            nonlocal finished
+            await asyncio.sleep(2)
+            finished = True
+
+        t = self.run_app(port, 3, task)
+
+        assert finished is True
+        assert t.done()
+        assert not t.cancelled()
+
+    def test_shutdown_timeout_task(
+        self, aiohttp_unused_port: Callable[[], int]
+    ) -> None:
+        port = aiohttp_unused_port()
+        finished = False
+
+        async def task():
+            nonlocal finished
+            await asyncio.sleep(2)
+            finished = True
+
+        t = self.run_app(port, 1, task)
+
+        assert finished is False
+        assert t.done()
+        assert t.cancelled()
+
+    def test_shutdown_wait_for_spawned_task(
+        self, aiohttp_unused_port: Callable[[], int]
+    ) -> None:
+        port = aiohttp_unused_port()
+        finished = False
+        finished_sub = False
+        sub_t = None
+
+        async def sub_task():
+            nonlocal finished_sub
+            await asyncio.sleep(1.5)
+            finished_sub = True
+
+        async def task():
+            nonlocal finished, sub_t
+            await asyncio.sleep(0.5)
+            sub_t = asyncio.create_task(sub_task())
+            finished = True
+
+        t = self.run_app(port, 3, task)
+
+        assert finished is True
+        assert t.done()
+        assert not t.cancelled()
+        assert finished_sub is True
+        assert sub_t.done()
+        assert not sub_t.cancelled()
+
+    def test_shutdown_timeout_not_reached(
+        self, aiohttp_unused_port: Callable[[], int]
+    ) -> None:
+        port = aiohttp_unused_port()
+        finished = False
+
+        async def task():
+            nonlocal finished
+            await asyncio.sleep(1)
+            finished = True
+
+        start_time = time.time()
+        t = self.run_app(port, 15, task)
+
+        assert finished is True
+        assert t.done()
+        # Verify run_app has not waited for timeout.
+        assert time.time() - start_time < 10
+
+    def test_shutdown_new_conn_rejected(
+        self, aiohttp_unused_port: Callable[[], int]
+    ) -> None:
+        port = aiohttp_unused_port()
+        finished = False
+
+        async def task() -> None:
+            nonlocal finished
+            await asyncio.sleep(9)
+            finished = True
+
+        async def test(sess: ClientSession) -> None:
+            # Ensure we are in the middle of shutdown (waiting for task()).
+            await asyncio.sleep(1)
+            with pytest.raises(ClientConnectorError):
+                # Use a new session to try and open a new connection.
+                async with ClientSession() as sess:
+                    async with sess.get(f"http://localhost:{port}/"):
+                        pass
+            assert finished is False
+
+        t = self.run_app(port, 10, task, test)
+
+        assert finished is True
+        assert t.done()
+
+    def test_shutdown_pending_handler_responds(
+        self, aiohttp_unused_port: Callable[[], int]
+    ) -> None:
+        port = aiohttp_unused_port()
+        finished = False
+
+        async def test() -> None:
+            async def test_resp(sess):
+                async with sess.get(f"http://localhost:{port}/") as resp:
+                    assert await resp.text() == "FOO"
+
+            await asyncio.sleep(1)
+            async with ClientSession() as sess:
+                t = asyncio.create_task(test_resp(sess))
+                await asyncio.sleep(1)
+                # Handler is in-progress while we trigger server shutdown.
+                async with sess.get(f"http://localhost:{port}/stop"):
+                    pass
+
+                assert finished is False
+                # Handler should still complete and produce a response.
+                await t
+
+        async def run_test(app: web.Application) -> None:
+            nonlocal t
+            t = asyncio.create_task(test())
+            yield
+            await t
+
+        async def handler(request: web.Request) -> web.Response:
+            nonlocal finished
+            await asyncio.sleep(3)
+            finished = True
+            return web.Response(text="FOO")
+
+        t = None
+        app = web.Application()
+        app.cleanup_ctx.append(run_test)
+        app.router.add_get("/", handler)
+        app.router.add_get("/stop", self.stop)
+
+        web.run_app(app, port=port, shutdown_timeout=5)
+        assert t.exception() is None
+        assert finished is True

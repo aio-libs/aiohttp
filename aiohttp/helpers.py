@@ -3,7 +3,6 @@
 import asyncio
 import base64
 import binascii
-import cgi
 import dataclasses
 import datetime
 import enum
@@ -19,6 +18,7 @@ import warnings
 import weakref
 from collections import namedtuple
 from contextlib import suppress
+from email.parser import HeaderParser
 from email.utils import parsedate
 from http.cookies import SimpleCookie
 from math import ceil
@@ -27,6 +27,7 @@ from types import TracebackType
 from typing import (
     Any,
     Callable,
+    ContextManager,
     Dict,
     Generator,
     Generic,
@@ -40,7 +41,6 @@ from typing import (
     Type,
     TypeVar,
     Union,
-    cast,
     overload,
 )
 from urllib.parse import quote
@@ -67,23 +67,15 @@ PY_310 = sys.version_info >= (3, 10)
 
 COOKIE_MAX_LENGTH = 4096
 
-try:
-    from typing import ContextManager
-except ImportError:
-    from typing_extensions import ContextManager
-
-
 _T = TypeVar("_T")
 _S = TypeVar("_S")
 
 _SENTINEL = enum.Enum("_SENTINEL", "sentinel")
 sentinel = _SENTINEL.sentinel
 
-NO_EXTENSIONS: bool = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))
+NO_EXTENSIONS = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))
 
-# N.B. sys.flags.dev_mode is available on Python 3.7+, use getattr
-# for compatibility with older versions
-DEBUG: bool = getattr(sys.flags, "dev_mode", False) or (
+DEBUG = sys.flags.dev_mode or (
     not sys.flags.ignore_environment and bool(os.environ.get("PYTHONASYNCIODEBUG"))
 )
 
@@ -125,7 +117,7 @@ if PY_38:
     iscoroutinefunction = asyncio.iscoroutinefunction
 else:
 
-    def iscoroutinefunction(func: Any) -> bool:
+    def iscoroutinefunction(func: Any) -> bool:  # type: ignore[misc]
         while isinstance(func, functools.partial):
             func = func.func
         return asyncio.iscoroutinefunction(func)
@@ -251,6 +243,35 @@ class ProxyInfo:
     proxy_auth: Optional[BasicAuth]
 
 
+def basicauth_from_netrc(netrc_obj: Optional[netrc.netrc], host: str) -> BasicAuth:
+    """
+    Return :py:class:`~aiohttp.BasicAuth` credentials for ``host`` from ``netrc_obj``.
+
+    :raises LookupError: if ``netrc_obj`` is :py:data:`None` or if no
+            entry is found for the ``host``.
+    """
+    if netrc_obj is None:
+        raise LookupError("No .netrc file found")
+    auth_from_netrc = netrc_obj.authenticators(host)
+
+    if auth_from_netrc is None:
+        raise LookupError(f"No entry for {host!s} found in the `.netrc` file.")
+    login, account, password = auth_from_netrc
+
+    # TODO(PY311): username = login or account
+    # Up to python 3.10, account could be None if not specified,
+    # and login will be empty string if not specified. From 3.11,
+    # login and account will be empty string if not specified.
+    username = login if (login or account is None) else account
+
+    # TODO(PY311): Remove this, as password will be empty string
+    # if not specified
+    if password is None:
+        password = ""
+
+    return BasicAuth(username, password)
+
+
 def proxies_from_env() -> Dict[str, ProxyInfo]:
     proxy_urls = {
         k: URL(v)
@@ -268,16 +289,11 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
             )
             continue
         if netrc_obj and auth is None:
-            auth_from_netrc = None
             if proxy.host is not None:
-                auth_from_netrc = netrc_obj.authenticators(proxy.host)
-            if auth_from_netrc is not None:
-                # auth_from_netrc is a (`user`, `account`, `password`) tuple,
-                # `user` and `account` both can be username,
-                # if `user` is None, use `account`
-                *logins, password = auth_from_netrc
-                login = logins[0] if logins[0] else logins[-1]
-                auth = BasicAuth(cast(str, login), cast(str, password))
+                try:
+                    auth = basicauth_from_netrc(netrc_obj, proxy.host)
+                except LookupError:
+                    auth = None
         ret[proto] = ProxyInfo(proxy, auth)
     return ret
 
@@ -734,7 +750,6 @@ def ceil_timeout(
 
 
 class HeadersMixin:
-
     __slots__ = ("_content_type", "_content_dict", "_stored_content_type")
 
     def __init__(self) -> None:
@@ -750,7 +765,10 @@ class HeadersMixin:
             self._content_type = "application/octet-stream"
             self._content_dict = {}
         else:
-            self._content_type, self._content_dict = cgi.parse_header(raw)
+            msg = HeaderParser().parsestr("Content-Type: " + raw)
+            self._content_type = msg.get_content_type()
+            params = msg.get_params()
+            self._content_dict = dict(params[1:])  # First element is content type again
 
     @property
     def content_type(self) -> str:
@@ -908,9 +926,17 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
 
 
 class CookieMixin:
+    # The `_cookies` slots is not defined here because non-empty slots cannot
+    # be combined with an Exception base class, as is done in HTTPException.
+    # CookieMixin subclasses with slots should define the `_cookies`
+    # slot themselves.
+    __slots__ = ()
+
     def __init__(self) -> None:
         super().__init__()
-        self._cookies: SimpleCookie[str] = SimpleCookie()
+        # Mypy doesn't like that _cookies isn't in __slots__.
+        # See the comment on this class's __slots__ for why this is OK.
+        self._cookies: SimpleCookie[str] = SimpleCookie()  # type: ignore[misc]
 
     @property
     def cookies(self) -> "SimpleCookie[str]":
@@ -1006,9 +1032,9 @@ def populate_with_cookies(
 # https://tools.ietf.org/html/rfc7232#section-2.3
 _ETAGC = r"[!#-}\x80-\xff]+"
 _ETAGC_RE = re.compile(_ETAGC)
-_QUOTED_ETAG = fr'(W/)?"({_ETAGC})"'
+_QUOTED_ETAG = rf'(W/)?"({_ETAGC})"'
 QUOTED_ETAG_RE = re.compile(_QUOTED_ETAG)
-LIST_QUOTED_ETAG_RE = re.compile(fr"({_QUOTED_ETAG})(?:\s*,\s*|$)|(.)")
+LIST_QUOTED_ETAG_RE = re.compile(rf"({_QUOTED_ETAG})(?:\s*,\s*|$)|(.)")
 
 ETAG_ANY = "*"
 

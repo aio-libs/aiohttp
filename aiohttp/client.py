@@ -37,44 +37,39 @@ from yarl import URL
 from . import hdrs, http, payload
 from .abc import AbstractCookieJar
 from .client_exceptions import (
-    ClientConnectionError as ClientConnectionError,
-    ClientConnectorCertificateError as ClientConnectorCertificateError,
-    ClientConnectorError as ClientConnectorError,
-    ClientConnectorSSLError as ClientConnectorSSLError,
-    ClientError as ClientError,
-    ClientHttpProxyError as ClientHttpProxyError,
-    ClientOSError as ClientOSError,
-    ClientPayloadError as ClientPayloadError,
-    ClientProxyConnectionError as ClientProxyConnectionError,
-    ClientResponseError as ClientResponseError,
-    ClientSSLError as ClientSSLError,
-    ContentTypeError as ContentTypeError,
-    InvalidURL as InvalidURL,
-    ServerConnectionError as ServerConnectionError,
-    ServerDisconnectedError as ServerDisconnectedError,
-    ServerFingerprintMismatch as ServerFingerprintMismatch,
-    ServerTimeoutError as ServerTimeoutError,
-    TooManyRedirects as TooManyRedirects,
-    WSServerHandshakeError as WSServerHandshakeError,
+    ClientConnectionError,
+    ClientConnectorCertificateError,
+    ClientConnectorError,
+    ClientConnectorSSLError,
+    ClientError,
+    ClientHttpProxyError,
+    ClientOSError,
+    ClientPayloadError,
+    ClientProxyConnectionError,
+    ClientResponseError,
+    ClientSSLError,
+    ContentTypeError,
+    InvalidURL,
+    ServerConnectionError,
+    ServerDisconnectedError,
+    ServerFingerprintMismatch,
+    ServerTimeoutError,
+    TooManyRedirects,
+    WSServerHandshakeError,
 )
 from .client_reqrep import (
-    SSL_ALLOWED_TYPES as SSL_ALLOWED_TYPES,
-    ClientRequest as ClientRequest,
-    ClientResponse as ClientResponse,
-    Fingerprint as Fingerprint,
-    RequestInfo as RequestInfo,
+    SSL_ALLOWED_TYPES,
+    ClientRequest,
+    ClientResponse,
+    Fingerprint,
+    RequestInfo,
 )
 from .client_ws import (
     DEFAULT_WS_CLIENT_TIMEOUT,
-    ClientWebSocketResponse as ClientWebSocketResponse,
+    ClientWebSocketResponse,
     ClientWSTimeout,
 )
-from .connector import (
-    BaseConnector as BaseConnector,
-    NamedPipeConnector as NamedPipeConnector,
-    TCPConnector as TCPConnector,
-    UnixConnector as UnixConnector,
-)
+from .connector import BaseConnector, NamedPipeConnector, TCPConnector, UnixConnector
 from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
@@ -220,7 +215,7 @@ class ClientSession:
         trust_env: bool = False,
         requote_redirect_url: bool = True,
         trace_configs: Optional[List[TraceConfig]] = None,
-        read_bufsize: int = 2 ** 16,
+        read_bufsize: int = 2**16,
         max_line_size: int = 8190,
         max_headers: int = 32768,
         max_field_size: int = 8190,
@@ -302,21 +297,16 @@ class ClientSession:
         )
 
     def __del__(self, _warnings: Any = warnings) -> None:
-        try:
-            if not self.closed:
-                _warnings.warn(
-                    f"Unclosed client session {self!r}",
-                    ResourceWarning,
-                    source=self,
-                )
-                context = {"client_session": self, "message": "Unclosed client session"}
-                if self._source_traceback is not None:
-                    context["source_traceback"] = self._source_traceback
-                self._loop.call_exception_handler(context)
-        except AttributeError:
-            # loop was not initialized yet,
-            # either self._connector or self._loop doesn't exist
-            pass
+        if not self.closed:
+            _warnings.warn(
+                f"Unclosed client session {self!r}",
+                ResourceWarning,
+                source=self,
+            )
+            context = {"client_session": self, "message": "Unclosed client session"}
+            if self._source_traceback is not None:
+                context["source_traceback"] = self._source_traceback
+            self._loop.call_exception_handler(context)
 
     def request(
         self, method: str, url: StrOrURL, **kwargs: Any
@@ -360,11 +350,11 @@ class ClientSession:
         proxy_headers: Optional[LooseHeaders] = None,
         trace_request_ctx: Optional[SimpleNamespace] = None,
         read_bufsize: Optional[int] = None,
+        auto_decompress: Optional[bool] = None,
         max_line_size: Optional[int] = None,
         max_headers: Optional[int] = None,
         max_field_size: Optional[int] = None,
     ) -> ClientResponse:
-
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
         # to use the existing timeouts by setting timeout to None.
@@ -422,6 +412,9 @@ class ClientSession:
 
         if read_bufsize is None:
             read_bufsize = self._read_bufsize
+
+        if auto_decompress is None:
+            auto_decompress = self._auto_decompress
 
         if max_line_size is None:
             max_line_size = self._max_line_size
@@ -509,6 +502,7 @@ class ClientSession:
                         ssl=ssl,
                         proxy_headers=proxy_headers,
                         traces=traces,
+                        trust_env=self.trust_env,
                     )
 
                     # connection timeout
@@ -533,7 +527,7 @@ class ClientSession:
                         timer=timer,
                         skip_payload=method.upper() == "HEAD",
                         read_until_eof=read_until_eof,
-                        auto_decompress=self._auto_decompress,
+                        auto_decompress=auto_decompress,
                         read_timeout=real_timeout.sock_read,
                         read_bufsize=read_bufsize,
                         timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
@@ -556,13 +550,14 @@ class ClientSession:
                     except ClientError:
                         raise
                     except OSError as exc:
+                        if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                            raise
                         raise ClientOSError(*exc.args) from exc
 
                     self._cookie_jar.update_cookies(resp.cookies, resp.url)
 
                     # redirects
                     if resp.status in (301, 302, 303, 307, 308) and allow_redirects:
-
                         for trace in traces:
                             await trace.send_request_redirect(
                                 method, url.update_query(params), headers, resp
@@ -771,7 +766,7 @@ class ClientSession:
 
         default_headers = {
             hdrs.UPGRADE: "websocket",
-            hdrs.CONNECTION: "upgrade",
+            hdrs.CONNECTION: "Upgrade",
             hdrs.SEC_WEBSOCKET_VERSION: "13",
         }
 
@@ -889,7 +884,7 @@ class ClientSession:
             transport = conn.transport
             assert transport is not None
             reader: FlowControlDataQueue[WSMessage] = FlowControlDataQueue(
-                conn_proto, 2 ** 16, loop=self._loop
+                conn_proto, 2**16, loop=self._loop
             )
             conn_proto.set_parser(WebSocketReader(reader, max_msg_size), reader)
             writer = WebSocketWriter(
@@ -1028,7 +1023,7 @@ class ClientSession:
         return self._requote_redirect_url
 
     @property
-    def timeout(self) -> Union[object, ClientTimeout]:
+    def timeout(self) -> ClientTimeout:
         """Timeout for the session."""
         return self._timeout
 
@@ -1104,7 +1099,6 @@ class ClientSession:
 
 
 class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType]):
-
     __slots__ = ("_coro", "_resp")
 
     def __init__(self, coro: Coroutine["asyncio.Future[Any]", None, _RetType]) -> None:
@@ -1161,7 +1155,6 @@ class _WSRequestContextManager(_BaseRequestContextManager[ClientWebSocketRespons
 
 
 class _SessionRequestContextManager:
-
     __slots__ = ("_coro", "_resp", "_session")
 
     def __init__(

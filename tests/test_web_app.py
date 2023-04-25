@@ -113,19 +113,34 @@ def test_appkey() -> None:
 
 def test_appkey_repr_concrete() -> None:
     key = web.AppKey("key", int)
-    assert repr(key) == "<AppKey(__main__.key, type=int)>"
+    assert repr(key) in (
+        "<AppKey(__channelexec__.key, type=int)>",  # pytest-xdist
+        "<AppKey(__main__.key, type=int)>",
+    )
     key = web.AppKey("key", web.Request)
-    assert repr(key) == "<AppKey(__main__.key, type=aiohttp.web_request.Request)>"
+    assert repr(key) in (
+        # pytest-xdist:
+        "<AppKey(__channelexec__.key, type=aiohttp.web_request.Request)>",
+        "<AppKey(__main__.key, type=aiohttp.web_request.Request)>",
+    )
 
 
 def test_appkey_repr_nonconcrete() -> None:
     key = web.AppKey("key", Iterator[int])
-    assert repr(key) == "<AppKey(__main__.key, type=typing.Iterator[int])>"
+    assert repr(key) in (
+        # pytest-xdist:
+        "<AppKey(__channelexec__.key, type=typing.Iterator[int])>",
+        "<AppKey(__main__.key, type=typing.Iterator[int])>",
+    )
 
 
 def test_appkey_repr_annotated() -> None:
     key = web.AppKey[Iterator[int]]("key")
-    assert repr(key) == "<AppKey(__main__.key, type=typing.Iterator[int])>"
+    assert repr(key) in (
+        # pytest-xdist:
+        "<AppKey(__channelexec__.key, type=typing.Iterator[int])>",
+        "<AppKey(__main__.key, type=typing.Iterator[int])>",
+    )
 
 
 def test_app_str_keys() -> None:
@@ -165,7 +180,6 @@ def test_equality() -> None:
 
 
 def test_app_run_middlewares() -> None:
-
     root = web.Application()
     sub = web.Application()
     root.add_subapp("/sub", sub)

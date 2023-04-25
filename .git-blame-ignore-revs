@@ -18,6 +18,9 @@
 # - Because you must use a hash, you need to append to this list in a follow-up
 #   CL to the actual reformatting CL that you are trying to ignore.
 
+# Black
+6ab76b084bf5012b7185046162ed92bedcf073b5
+
 # Apply new hooks
 41c5467a62fb1041b77356ea22b81a74305941ef
 

@@ -40,6 +40,8 @@ replacement for :term:`charset-normalizer`:
 
    $ pip install cchardet
 
+.. include:: _snippets/cchardet-unmaintained-admonition.rst
+
 For speeding up DNS resolving by client API you may install
 :term:`aiodns` as well.
 This option is highly recommended:
@@ -146,7 +148,6 @@ Continuous Integration.
 Dependencies
 ============
 
-- Python 3.7+
 - *async_timeout*
 - *charset-normalizer*
 - *multidict*
@@ -177,7 +178,7 @@ Dependencies
 Communication channels
 ======================
 
-*aio-libs discourse group*: https://aio-libs.discourse.group
+*aio-libs Discussions*: https://github.com/aio-libs/aiohttp/discussions
 
 Feel free to post your questions and ideas here.
 
@@ -211,18 +212,17 @@ Policy for Backward Incompatible Changes
 
 *aiohttp* keeps backward compatibility.
 
-After deprecating some *Public API* (method, class, function argument,
-etc.) the library guarantees the usage of *deprecated API* is still
-allowed at least for a year and half after publishing new release with
-deprecation.
+When a new release is published that deprecates a *Public API* (method, class,
+function argument, etc.), the library will guarantee its usage for at least
+a year and half from the date of release.
 
-All deprecations are reflected in documentation and raises
+Deprecated APIs are reflected in their documentation, and their use will raise
 :exc:`DeprecationWarning`.
 
-Sometimes we are forced to break our own rule for the sake of very strong
-reason.  Most likely the reason is a critical bug which cannot be
-solved without major API change, but we are working hard for keeping
-these changes as rare as possible.
+However, if there is a strong reason, we may be forced to break this guarantee.
+The most likely reason would be a critical bug, such as a security issue, which
+cannot be solved without a major API change. We are working hard to keep these
+breaking changes as rare as possible.
 
 
 Table Of Contents

@@ -17,24 +17,33 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
+env:
+  COLOR: yes
+  FORCE_COLOR: 1  # Request colored output from CLI tools supporting it
+  MYPY_FORCE_COLOR: 1
+  PY_COLORS: 1
 
+permissions: {}
 jobs:
 
   lint:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
     name: Linter
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.4.0
+      uses: actions/checkout@v3
       with:
         submodules: true
-    - name: Setup Python 3.8
-      uses: actions/setup-python@v2
+    - name: Setup Python
+      uses: actions/setup-python@v4
       with:
-        python-version: 3.8
+        python-version: 3.9
     - name: Cache PyPI
-      uses: actions/cache@v2.1.7
+      uses: actions/cache@v3.0.4
       with:
         key: pip-lint-${{ hashFiles('requirements/*.txt') }}
         path: ~/.cache/pip
@@ -51,12 +60,18 @@ jobs:
         python -m pip install .
       env:
         AIOHTTP_NO_EXTENSIONS: 1
-    - name: Run linters
+    - name: Run mypy
       run: |
         make mypy
-    - name: Install libenchant-dev
+    - name: Run slotscheck
       run: |
-        sudo apt install libenchant-dev
+        # Some extra requirements are needed to ensure all modules
+        # can be scanned by slotscheck.
+        pip install -r requirements/base.txt -c requirements/constraints.txt
+        slotscheck -v -m aiohttp
+    - name: Install libenchant
+      run: |
+        sudo apt install libenchant-2-dev
     - name: Install spell checker
       run: |
         pip install -r requirements/doc-spelling.txt -c requirements/constraints.txt
@@ -77,24 +92,26 @@ jobs:
         LC_ALL=C sort --check --ignore-case CONTRIBUTORS.txt
 
   gen_llhttp:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
     name: Generate llhttp sources
-    needs: lint
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.4.0
+      uses: actions/checkout@v3
       with:
         submodules: true
     - name: Cache llhttp generated files
-      uses: actions/cache@v2.1.7
+      uses: actions/cache@v3.0.4
       id: cache
       with:
         key: llhttp-${{ hashFiles('vendor/llhttp/package.json', 'vendor/llhttp/src/**/*') }}
         path:  vendor/llhttp/build
     - name: Setup NodeJS
       if: steps.cache.outputs.cache-hit != 'true'
-      uses: actions/setup-node@v2
+      uses: actions/setup-node@v3
       with:
         node-version: '14'
     - name: Generate llhttp sources
@@ -102,13 +119,16 @@ jobs:
       run: |
         make generate-llhttp
     - name: Upload llhttp generated files
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: llhttp
         path: vendor/llhttp/build
         if-no-files-found: error
 
   test:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
     name: Test
     needs: gen_llhttp
     strategy:
@@ -116,6 +136,7 @@ jobs:
         pyver: [3.7, 3.8, 3.9, '3.10']
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
+        experimental: [false]
         exclude:
           - os: macos
             no-extensions: 'Y'
@@ -125,20 +146,34 @@ jobs:
             pyver: 3.8
           - os: windows
             no-extensions: 'Y'
-        # pypy 3.7 exists in beta and doesn't work well yet
-        # include:
-        #   - pyver: pypy3
-        #     no-extensions: 'Y'
-        #     os: ubuntu
+        include:
+          - pyver: pypy-3.8
+            no-extensions: 'Y'
+            os: ubuntu
+            experimental: false
+          - os: macos
+            pyver: "3.11.0-alpha - 3.11.0"
+            experimental: true
+            no-extensions: 'Y'
+          - os: ubuntu
+            pyver: "3.11.0-alpha - 3.11.0"
+            experimental: false
+            no-extensions: 'Y'
+          - os: windows
+            pyver: "3.11.0-alpha - 3.11.0"
+            experimental: true
+            no-extensions: 'Y'
       fail-fast: true
     runs-on: ${{ matrix.os }}-latest
+    continue-on-error: ${{ matrix.experimental }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.4.0
+      uses: actions/checkout@v3
       with:
         submodules: true
     - name: Setup Python ${{ matrix.pyver }}
-      uses: actions/setup-python@v2
+      id: python-install
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.pyver }}
     - name: Get pip cache dir
@@ -146,7 +181,7 @@ jobs:
       run: |
         echo "::set-output name=dir::$(pip cache dir)"    # - name: Cache
     - name: Cache PyPI
-      uses: actions/cache@v2.1.7
+      uses: actions/cache@v3.0.4
       with:
         key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-${{ hashFiles('requirements/*.txt') }}
         path: ${{ steps.pip-cache.outputs.dir }}
@@ -164,28 +199,51 @@ jobs:
         make cythonize
     - name: Restore llhttp generated files
       if: ${{ matrix.no-extensions == '' }}
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: llhttp
         path: vendor/llhttp/build/
     - name: Run unittests
       env:
-        COLOR: 'yes'
+        COLOR: yes
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
+        PIP_USER: 1
+      run: >-
+        PATH="${HOME}/Library/Python/3.11/bin:${HOME}/.local/bin:${PATH}"
+        make test
+      shell: bash
+    - name: Re-run the failing tests with maximum verbosity
+      if: failure()
+      env:
+        COLOR: yes
+        AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
+      run: >-  # `exit 1` makes sure that the job remains red with flaky runs
+        pytest --no-cov -vvvvv --lf && exit 1
+      shell: bash
+    - name: Turn coverage into xml
+      env:
+        COLOR: 'yes'
+        PIP_USER: 1
       run: |
-        make vvtest
         python -m coverage xml
     - name: Upload coverage
-      uses: codecov/codecov-action@v2.1.0
+      uses: codecov/codecov-action@v3
       with:
         file: ./coverage.xml
-        flags: unit
-        fail_ci_if_error: false
+        flags: >-
+          CI-GHA,OS-${{
+            runner.os
+          }},VM-${{
+            matrix.os
+          }},Py-${{
+            steps.python-install.outputs.python-version
+          }}
 
   check:  # This job does nothing and is only used for the branch protection
     if: always()
 
     needs:
+    - lint
     - test
 
     runs-on: ubuntu-latest
@@ -208,16 +266,19 @@ jobs:
             echo "Predeploy step"
 
   build-tarball:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
     name: Tarball
     runs-on: ubuntu-latest
     needs: pre-deploy
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.4.0
+      uses: actions/checkout@v3
       with:
         submodules: true
     - name: Setup Python
-      uses: actions/setup-python@v2.2.2
+      uses: actions/setup-python@v4
     - name: Update pip, wheel, setuptools, build, twine
       run: |
         python -m pip install -U pip wheel setuptools build twine
@@ -225,7 +286,7 @@ jobs:
       run: |
         python -m pip install -r requirements/cython.txt -c requirements/constraints.txt
     - name: Restore llhttp generated files
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: llhttp
         path: vendor/llhttp/build/
@@ -236,12 +297,15 @@ jobs:
       run: |
         python -m build --sdist
     - name: Upload artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: dist
         path: dist
 
   build-wheels:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
     name: Build wheels on ${{ matrix.os }} ${{ matrix.qemu }}
     runs-on: ${{ matrix.os }}-latest
     needs: pre-deploy
@@ -259,12 +323,12 @@ jobs:
           qemu: s390x
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.4.0
+      uses: actions/checkout@v3
       with:
         submodules: true
     - name: Set up QEMU
       if: ${{ matrix.qemu }}
-      uses: docker/setup-qemu-action@v1
+      uses: docker/setup-qemu-action@v2
       with:
         platforms: all
       id: qemu
@@ -277,7 +341,9 @@ jobs:
         fi
       shell: bash
     - name: Setup Python
-      uses: actions/setup-python@v2.2.2
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.x
     - name: Update pip, wheel, setuptools, build, twine
       run: |
         python -m pip install -U pip wheel setuptools build twine
@@ -285,7 +351,7 @@ jobs:
       run: |
         python -m pip install -r requirements/cython.txt -c requirements/constraints.txt
     - name: Restore llhttp generated files
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: llhttp
         path: vendor/llhttp/build/
@@ -293,22 +359,25 @@ jobs:
       run: |
         make cythonize
     - name: Build wheels
-      uses: pypa/cibuildwheel@v2.3.1
+      uses: pypa/cibuildwheel@v2.10.1
       env:
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       with:
         name: dist
         path: ./wheelhouse/*.whl
 
   deploy:
+    permissions:
+      contents: write # to make release
+
     name: Deploy
     environment: release
     needs: [build-tarball, build-wheels]
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.4.0
+      uses: actions/checkout@v3
       with:
         submodules: true
     - name: Update pip, wheel, setuptools, build, twine
@@ -317,8 +386,8 @@ jobs:
     - name: Login
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-    - name: Download disctributions
-      uses: actions/download-artifact@v2
+    - name: Download distributions
+      uses: actions/download-artifact@v3
       with:
         name: dist
         path: dist
@@ -326,7 +395,7 @@ jobs:
       run: |
         tree dist
     - name: Make Release
-      uses: aio-libs/create-release@v1.4.0
+      uses: aio-libs/create-release@v1.6.6
       with:
         changes_file: CHANGES.rst
         name: aiohttp

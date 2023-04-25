@@ -46,9 +46,13 @@ class ClientError(Exception):
 
 
 class ClientResponseError(ClientError):
-    """Connection error during reading response.
+    """Base class for exceptions that occur after getting a response.
 
-    request_info: instance of RequestInfo
+    request_info: An instance of RequestInfo.
+    history: A sequence of responses, if redirects occurred.
+    status: HTTP status code.
+    message: Error message.
+    headers: Response headers.
     """
 
     def __init__(
@@ -121,7 +125,7 @@ class ClientConnectorError(ClientOSError):
     """Client connector error.
 
     Raised in :class:`aiohttp.connector.TCPConnector` if
-        connection to proxy can not be established.
+        a connection can not be established.
     """
 
     def __init__(self, connection_key: ConnectionKey, os_error: OSError) -> None:

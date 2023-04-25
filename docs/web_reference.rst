@@ -2598,7 +2598,6 @@ application on specific TCP or Unix socket, e.g.::
         :attr:`helpers.AccessLogger.LOG_FORMAT`.
    :param int max_line_size: Optional maximum header line size. Default:
         ``8190``.
-   :param int max_headers: Optional maximum header size. Default: ``32768``.
    :param int max_field_size: Optional maximum header field size. Default:
         ``8190``.
 
@@ -2689,9 +2688,10 @@ application on specific TCP or Unix socket, e.g.::
 
    :param int port: PORT to listed on, ``8080`` if ``None`` (default).
 
-   :param float shutdown_timeout: a timeout for closing opened
-                                  connections on :meth:`BaseSite.stop`
-                                  call.
+   :param float shutdown_timeout: a timeout used for both waiting on pending
+                                  tasks before application shutdown and for
+                                  closing opened connections on
+                                  :meth:`BaseSite.stop` call.
 
    :param ssl_context: a :class:`ssl.SSLContext` instance for serving
                        SSL/TLS secure server, ``None`` for plain HTTP
@@ -2724,9 +2724,10 @@ application on specific TCP or Unix socket, e.g.::
 
    :param str path: PATH to UNIX socket to listen.
 
-   :param float shutdown_timeout: a timeout for closing opened
-                                  connections on :meth:`BaseSite.stop`
-                                  call.
+   :param float shutdown_timeout: a timeout used for both waiting on pending
+                                  tasks before application shutdown and for
+                                  closing opened connections on
+                                  :meth:`BaseSite.stop` call.
 
    :param ssl_context: a :class:`ssl.SSLContext` instance for serving
                        SSL/TLS secure server, ``None`` for plain HTTP
@@ -2746,9 +2747,10 @@ application on specific TCP or Unix socket, e.g.::
 
    :param str path: PATH of named pipe to listen.
 
-   :param float shutdown_timeout: a timeout for closing opened
-                                  connections on :meth:`BaseSite.stop`
-                                  call.
+   :param float shutdown_timeout: a timeout used for both waiting on pending
+                                  tasks before application shutdown and for
+                                  closing opened connections on
+                                  :meth:`BaseSite.stop` call.
 
 .. class:: SockSite(runner, sock, *, \
                    shutdown_timeout=60.0, ssl_context=None, \
@@ -2760,9 +2762,10 @@ application on specific TCP or Unix socket, e.g.::
 
    :param sock: A :ref:`socket instance <socket-objects>` to listen to.
 
-   :param float shutdown_timeout: a timeout for closing opened
-                                  connections on :meth:`BaseSite.stop`
-                                  call.
+   :param float shutdown_timeout: a timeout used for both waiting on pending
+                                  tasks before application shutdown and for
+                                  closing opened connections on
+                                  :meth:`BaseSite.stop` call.
 
    :param ssl_context: a :class:`ssl.SSLContext` instance for serving
                        SSL/TLS secure server, ``None`` for plain HTTP
@@ -2810,7 +2813,8 @@ Utilities
                       access_log=aiohttp.log.access_logger, \
                       handle_signals=True, \
                       reuse_address=None, \
-                      reuse_port=None)
+                      reuse_port=None, \
+                      handler_cancellation=False)
 
    A high-level function for running an application, serving it until
    keyboard interrupt and performing a
@@ -2844,10 +2848,11 @@ Utilities
                     text HTTP and ``8443`` for HTTP via SSL (when
                     *ssl_context* parameter is specified).
 
-   :param str path: file system path for HTTP server Unix domain socket.
+   :param path: file system path for HTTP server Unix domain socket.
                     A sequence of file system paths can be used to bind
                     multiple domain sockets. Listening on Unix domain
-                    sockets is not supported by all operating systems.
+                    sockets is not supported by all operating systems,
+                    :class:`str`, :class:`pathlib.Path` or an iterable of these.
 
    :param socket.socket sock: a preexisting socket object to accept connections on.
                        A sequence of socket objects can be passed.
@@ -2856,9 +2861,13 @@ Utilities
                                 shutdown before disconnecting all
                                 open client sockets hard way.
 
+                                This is used as a delay to wait for
+                                pending tasks to complete and then
+                                again to close any pending connections.
+
                                 A system with properly
                                 :ref:`aiohttp-web-graceful-shutdown`
-                                implemented never waits for this
+                                implemented never waits for the second
                                 timeout but closes a server in a few
                                 milliseconds.
 
@@ -2905,6 +2914,12 @@ Utilities
                            this flag when being created. This option is not
                            supported on Windows.
 
+   :param bool handler_cancellation: cancels the web handler task if the client
+                                     drops the connection. This is recommended
+                                     if familiar with asyncio behavior or
+                                     scalability is a concern.
+                                     :ref:`aiohttp-web-peer-disconnection`
+
    .. versionadded:: 3.0
 
       Support *access_log_class* parameter.
@@ -2914,6 +2929,11 @@ Utilities
    .. versionadded:: 3.1
 
       Accept a coroutine as *app* parameter.
+
+   .. versionadded:: 3.9
+
+      Support handler_cancellation parameter (this was the default behavior
+      in aiohttp <3.7).
 
 Constants
 ---------
