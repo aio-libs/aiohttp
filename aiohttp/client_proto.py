@@ -146,6 +146,8 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         read_timeout: Optional[float] = None,
         read_bufsize: int = 2**16,
         timeout_ceil_threshold: float = 5,
+        max_line_size: int = 8190,
+        max_field_size: int = 8190,
     ) -> None:
         self._skip_payload = skip_payload
 
@@ -162,6 +164,8 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
             response_with_body=not skip_payload,
             read_until_eof=read_until_eof,
             auto_decompress=auto_decompress,
+            max_line_size=max_line_size,
+            max_field_size=max_field_size,
         )
 
         if self._tail:
