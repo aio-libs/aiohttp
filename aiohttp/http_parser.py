@@ -725,17 +725,9 @@ class HttpPayloadParser:
         # Read specified amount of bytes
         if self._type == ParseState.PARSE_LENGTH:
             required = self._length
-            chunk_len = len(chunk)
-
-            if required >= chunk_len:
-                self._length = required - chunk_len
-                self.payload.feed_data(chunk)
-                if self._length == 0:
-                    self.payload.feed_eof()
-                    return True, b""
-            else:
-                self._length = 0
-                self.payload.feed_data(chunk[:required])
+            self._length = max(required - len(chunk), 0)
+            self.payload.feed_data(chunk[:required])
+            if self._length == 0:
                 self.payload.feed_eof()
                 return True, chunk[required:]
 
@@ -779,18 +771,12 @@ class HttpPayloadParser:
                 # read chunk and feed buffer
                 if self._chunk == ChunkState.PARSE_CHUNKED_CHUNK:
                     required = self._chunk_size
-                    chunk_len = len(chunk)
+                    self._chunk_size = max(required - len(chunk), 0)
+                    self.payload.feed_data(chunk[:required])
 
-                    if required > chunk_len:
-                        self._chunk_size = required - chunk_len
-                        self.payload.feed_data(chunk)
+                    if self._chunk_size:
                         return False, b""
-                    else:
-                        self._chunk_size = 0
-                        self.payload.feed_data(chunk[:required])
-                        chunk = chunk[required:]
-                        self._chunk = ChunkState.PARSE_CHUNKED_CHUNK_EOF
-                        self.payload.end_http_chunk_receiving()
+                    chunk = chunk[required:]
 
                 # toss the CRLF at the end of the chunk
                 if self._chunk == ChunkState.PARSE_CHUNKED_CHUNK_EOF:
@@ -803,7 +789,7 @@ class HttpPayloadParser:
 
                 # if stream does not contain trailer, after 0\r\n
                 # we should get another \r\n otherwise
-                # trailers needs to be skiped until \r\n\r\n
+                # trailers needs to be skipped until \r\n\r\n
                 if self._chunk == ChunkState.PARSE_MAYBE_TRAILERS:
                     head = chunk[:2]
                     if head == SEP:
