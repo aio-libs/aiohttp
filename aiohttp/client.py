@@ -189,6 +189,8 @@ class ClientSession:
             "_ws_response_class",
             "_trace_configs",
             "_read_bufsize",
+            "_max_line_size",
+            "_max_field_size",
         ]
     )
 
@@ -223,6 +225,8 @@ class ClientSession:
         requote_redirect_url: bool = True,
         trace_configs: Optional[List[TraceConfig]] = None,
         read_bufsize: int = 2**16,
+        max_line_size: int = 8190,
+        max_field_size: int = 8190,
     ) -> None:
         if loop is None:
             if connector is not None:
@@ -296,6 +300,8 @@ class ClientSession:
         self._trust_env = trust_env
         self._requote_redirect_url = requote_redirect_url
         self._read_bufsize = read_bufsize
+        self._max_line_size = max_line_size
+        self._max_field_size = max_field_size
 
         # Convert to list of tuples
         if headers:
@@ -393,6 +399,8 @@ class ClientSession:
         trace_request_ctx: Optional[SimpleNamespace] = None,
         read_bufsize: Optional[int] = None,
         auto_decompress: Optional[bool] = None,
+        max_line_size: Optional[int] = None,
+        max_field_size: Optional[int] = None,
     ) -> ClientResponse:
 
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
@@ -457,6 +465,12 @@ class ClientSession:
 
         if auto_decompress is None:
             auto_decompress = self._auto_decompress
+
+        if max_line_size is None:
+            max_line_size = self._max_line_size
+
+        if max_field_size is None:
+            max_field_size = self._max_field_size
 
         traces = [
             Trace(
@@ -564,6 +578,8 @@ class ClientSession:
                         read_timeout=real_timeout.sock_read,
                         read_bufsize=read_bufsize,
                         timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
+                        max_line_size=max_line_size,
+                        max_field_size=max_field_size,
                     )
 
                     try:
@@ -1247,6 +1263,8 @@ def request(
     connector: Optional[BaseConnector] = None,
     read_bufsize: Optional[int] = None,
     loop: Optional[asyncio.AbstractEventLoop] = None,
+    max_line_size: int = 8190,
+    max_field_size: int = 8190,
 ) -> _SessionRequestContextManager:
     """Constructs and sends a request.
 
@@ -1318,6 +1336,8 @@ def request(
             proxy=proxy,
             proxy_auth=proxy_auth,
             read_bufsize=read_bufsize,
+            max_line_size=max_line_size,
+            max_field_size=max_field_size,
         ),
         session,
     )
