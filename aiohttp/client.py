@@ -170,6 +170,7 @@ class ClientSession:
             "_base_url",
             "_source_traceback",
             "_connector",
+            "requote_redirect_url",
             "_loop",
             "_cookie_jar",
             "_connector_owner",
