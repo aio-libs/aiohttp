@@ -622,7 +622,9 @@ def test_http_request_max_status_line(parser: Any, size: Any) -> None:
 
 def test_http_request_max_status_line_under_limit(parser: Any) -> None:
     path = b"t" * (8190 - 5)
-    messages, upgraded, tail = parser.feed_data(b"GET /path" + path + b" HTTP/1.1\r\n\r\n")
+    messages, upgraded, tail = parser.feed_data(
+        b"GET /path" + path + b" HTTP/1.1\r\n\r\n"
+    )
     msg = messages[0][0]
 
     assert msg.method == "GET"
@@ -665,7 +667,9 @@ def test_http_response_parser_bad_status_line_too_long(
 
 def test_http_response_parser_status_line_under_limit(response: Any) -> None:
     reason = b"O" * 8190
-    messages, upgraded, tail = response.feed_data(b"HTTP/1.1 200 " + reason + b"\r\n\r\n")
+    messages, upgraded, tail = response.feed_data(
+        b"HTTP/1.1 200 " + reason + b"\r\n\r\n"
+    )
     msg = messages[0][0]
     assert msg.version == (1, 1)
     assert msg.code == 200
@@ -724,9 +728,11 @@ def test_http_request_chunked_payload_and_next_message(parser: Any) -> None:
     text = b"GET /test HTTP/1.1\r\n" b"transfer-encoding: chunked\r\n\r\n"
     msg, payload = parser.feed_data(text)[0][0]
 
-    messages, upgraded, tail = parser.feed_data(b"4\r\ndata\r\n4\r\nline\r\n0\r\n\r\n"
-                                                b"POST /test2 HTTP/1.1\r\n"
-                                                b"transfer-encoding: chunked\r\n\r\n")
+    messages, upgraded, tail = parser.feed_data(
+        b"4\r\ndata\r\n4\r\nline\r\n0\r\n\r\n"
+        b"POST /test2 HTTP/1.1\r\n"
+        b"transfer-encoding: chunked\r\n\r\n"
+    )
 
     assert b"dataline" == b"".join(d for d in payload._buffer)
     assert [4, 8] == payload._http_chunk_splits

@@ -446,7 +446,7 @@ class TestStreamReader:
         stream = self._make_one()
         data = b"line1" + separator + b"line2" + separator + b"line3" + separator
         stream.feed_data(data[: 5 + seplen])
-        stream.feed_data(data[5 + seplen:])
+        stream.feed_data(data[5 + seplen :])
 
         line = await stream.readuntil(separator)
         assert b"line1" + separator == line
@@ -476,7 +476,9 @@ class TestStreamReader:
     async def test_readuntil_read_byte_count(self, separator: bytes) -> None:
         seplen = len(separator)
         stream = self._make_one()
-        stream.feed_data(b"line1" + separator + b"line2" + separator + b"line3" + separator)
+        stream.feed_data(
+            b"line1" + separator + b"line2" + separator + b"line3" + separator
+        )
 
         await stream.readuntil(separator)
 
