@@ -729,13 +729,13 @@ class HttpPayloadParser:
 
             if required >= chunk_len:
                 self._length = required - chunk_len
-                self.payload.feed_data(chunk, chunk_len)
+                self.payload.feed_data(chunk)
                 if self._length == 0:
                     self.payload.feed_eof()
                     return True, b""
             else:
                 self._length = 0
-                self.payload.feed_data(chunk[:required], required)
+                self.payload.feed_data(chunk[:required])
                 self.payload.feed_eof()
                 return True, chunk[required:]
 
@@ -783,11 +783,11 @@ class HttpPayloadParser:
 
                     if required > chunk_len:
                         self._chunk_size = required - chunk_len
-                        self.payload.feed_data(chunk, chunk_len)
+                        self.payload.feed_data(chunk)
                         return False, b""
                     else:
                         self._chunk_size = 0
-                        self.payload.feed_data(chunk[:required], required)
+                        self.payload.feed_data(chunk[:required])
                         chunk = chunk[required:]
                         self._chunk = ChunkState.PARSE_CHUNKED_CHUNK_EOF
                         self.payload.end_http_chunk_receiving()
@@ -835,7 +835,7 @@ class HttpPayloadParser:
 
         # Read all bytes until eof
         elif self._type == ParseState.PARSE_UNTIL_EOF:
-            self.payload.feed_data(chunk, len(chunk))
+            self.payload.feed_data(chunk)
 
         return False, b""
 
@@ -893,13 +893,13 @@ class DeflateBuffer:
         self._started_decoding = True
 
         if chunk:
-            self.out.feed_data(chunk, len(chunk))
+            self.out.feed_data(chunk)
 
     def feed_eof(self) -> None:
         chunk = self.decompressor.flush()
 
         if chunk or self.size > 0:
-            self.out.feed_data(chunk, len(chunk))
+            self.out.feed_data(chunk)
             if self.encoding == "deflate" and not self.decompressor.eof:  # type: ignore
                 raise ContentEncodingError("deflate")
 

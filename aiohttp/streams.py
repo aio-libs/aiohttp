@@ -228,7 +228,7 @@ class StreamReader(AsyncStreamReaderMixin):
         self._eof_counter = 0
 
     # TODO: size is ignored, remove the param later
-    def feed_data(self, data: bytes, size: int = 0) -> None:
+    def feed_data(self, data: bytes) -> None:
         assert not self._eof, "feed_data after feed_eof"
 
         if not data:
@@ -521,7 +521,7 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     async def wait_eof(self) -> None:
         return
 
-    def feed_data(self, data: bytes, n: int = 0) -> None:
+    def feed_data(self, data: bytes) -> None:
         pass
 
     async def readline(self) -> bytes:

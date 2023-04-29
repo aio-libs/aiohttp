@@ -446,7 +446,7 @@ class TestStreamReader:
         stream = self._make_one()
         data = b"line1" + separator + b"line2" + separator + b"line3" + separator
         stream.feed_data(data[: 5 + seplen])
-        stream.feed_data(data[5 + seplen :])
+        stream.feed_data(data[5 + seplen:])
 
         line = await stream.readuntil(separator)
         assert b"line1" + separator == line
@@ -476,9 +476,7 @@ class TestStreamReader:
     async def test_readuntil_read_byte_count(self, separator: bytes) -> None:
         seplen = len(separator)
         stream = self._make_one()
-        stream.feed_data(
-            b"line1" + separator + b"line2" + separator + b"line3" + separator
-        )
+        stream.feed_data(b"line1" + separator + b"line2" + separator + b"line3" + separator)
 
         await stream.readuntil(separator)
 
@@ -1135,7 +1133,7 @@ class TestDataQueue:
 
     def test_feed_data(self, buffer: Any) -> None:
         item = object()
-        buffer.feed_data(item, 1)
+        buffer.feed_data(item)
         assert [(item, 1)] == list(buffer._buffer)
 
     def test_feed_eof(self, buffer: Any) -> None:
@@ -1147,7 +1145,7 @@ class TestDataQueue:
         item = object()
 
         def cb():
-            buffer.feed_data(item, 1)
+            buffer.feed_data(item)
 
         loop.call_soon(cb)
 
@@ -1178,12 +1176,12 @@ class TestDataQueue:
         assert waiter.cancelled()
         assert buffer._waiter is None
 
-        buffer.feed_data(b"test", 4)
+        buffer.feed_data(b"test")
         assert buffer._waiter is None
 
     async def test_read_until_eof(self, buffer: Any) -> None:
         item = object()
-        buffer.feed_data(item, 1)
+        buffer.feed_data(item)
         buffer.feed_eof()
 
         data = await buffer.read()
@@ -1211,7 +1209,7 @@ class TestDataQueue:
 
     async def test_read_exception_with_data(self, buffer: Any) -> None:
         val = object()
-        buffer.feed_data(val, 1)
+        buffer.feed_data(val)
         buffer.set_exception(ValueError())
 
         assert val is (await buffer.read())
