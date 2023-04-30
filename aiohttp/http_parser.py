@@ -775,10 +775,10 @@ class HttpPayloadParser:
                     self.payload.feed_data(chunk[:required])
 
                     if self._chunk_size:
-                        self._chunk = ChunkState.PARSE_CHUNKED_CHUNK_EOF
-                        self.payload.end_http_chunk_receiving()
                         return False, b""
                     chunk = chunk[required:]
+                    self._chunk = ChunkState.PARSE_CHUNKED_CHUNK_EOF
+                    self.payload.end_http_chunk_receiving()
 
                 # toss the CRLF at the end of the chunk
                 if self._chunk == ChunkState.PARSE_CHUNKED_CHUNK_EOF:
