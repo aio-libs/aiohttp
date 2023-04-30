@@ -669,13 +669,13 @@ class WebSocketWriter:
             raise ConnectionResetError("Cannot write to closing transport")
         self.transport.write(data)
 
-    async def pong(self, message: bytes = b"") -> None:
+    async def pong(self, message: Union[bytes, str] = b"") -> None:
         """Send pong message."""
         if isinstance(message, str):
             message = message.encode("utf-8")
         await self._send_frame(message, WSMsgType.PONG)
 
-    async def ping(self, message: bytes = b"") -> None:
+    async def ping(self, message: Union[bytes, str] = b"") -> None:
         """Send ping message."""
         if isinstance(message, str):
             message = message.encode("utf-8")
@@ -695,7 +695,7 @@ class WebSocketWriter:
         else:
             await self._send_frame(message, WSMsgType.TEXT, compress)
 
-    async def close(self, code: int = 1000, message: bytes = b"") -> None:
+    async def close(self, code: int = 1000, message: Union[bytes, str] = b"") -> None:
         """Close the websocket, sending the specified code and message."""
         if isinstance(message, str):
             message = message.encode("utf-8")
