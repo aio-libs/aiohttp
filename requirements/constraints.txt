@@ -255,7 +255,7 @@ webcolors==1.11.1
     # via blockdiag
 wheel==0.37.0
     # via pip-tools
-yarl==1.8.1
+yarl==1.9.2
     # via -r requirements/base.txt
 zipp==3.10.0
     # via importlib-metadata

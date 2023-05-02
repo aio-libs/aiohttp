@@ -425,6 +425,7 @@ class ClientSession:
         redirects = 0
         history = []
         version = self._version
+        params = params or {}
 
         # Merge with default headers and transform to CIMultiDict
         headers = self._prepare_headers(headers)
@@ -659,7 +660,7 @@ class ClientSession:
                             headers.pop(hdrs.AUTHORIZATION, None)
 
                         url = parsed_url
-                        params = None
+                        params = {}
                         resp.release()
                         continue
 
