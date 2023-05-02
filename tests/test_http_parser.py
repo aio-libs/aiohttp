@@ -921,13 +921,14 @@ class TestParsePayload:
         p.feed_eof()
 
         assert out.is_eof()
-        assert [(bytearray(b"data"), 4)] == list(out._buffer)
+        assert [(b"data",)] == [(data,) for (data, _) in out._buffer]
 
     async def test_parse_no_body(self, stream: Any) -> None:
         out = aiohttp.FlowControlDataQueue(
             stream, 2**16, loop=asyncio.get_event_loop()
         )
         p = HttpPayloadParser(out, method="PUT")
+        p.feed_eof()
 
         assert out.is_eof()
         assert p.done
@@ -1074,7 +1075,7 @@ class TestParsePayload:
         p = HttpPayloadParser(out, compression="deflate", readall=True)
         # Feeding one correct byte should be enough to choose exact
         # deflate decompressor
-        p.feed_data(b"x", 1)
+        p.feed_data(b"x")
         p.feed_data(b"\x9cKI,I\x04\x00\x04\x00\x01\x9b", 11)
         p.feed_eof()
         assert b"data" == b"".join(d for d, _ in out._buffer)
@@ -1086,8 +1087,8 @@ class TestParsePayload:
         p = HttpPayloadParser(out, compression="deflate", readall=True)
         # Feeding one wrong byte should be enough to choose exact
         # deflate decompressor
-        p.feed_data(b"K", 1)
-        p.feed_data(b"I,I\x04\x00", 5)
+        p.feed_data(b"K")
+        p.feed_data(b"I,I\x04\x00")
         p.feed_eof()
         assert b"data" == b"".join(d for d, _ in out._buffer)
 
@@ -1122,7 +1123,7 @@ class TestDeflateBuffer:
         dbuf.decompressor.decompress_sync.return_value = b"line"
 
         # First byte should be b'x' in order code not to change the decoder.
-        dbuf.feed_data(b"xxxx", 4)
+        dbuf.feed_data(b"xxxx")
         assert [b"line"] == list(d for d, _ in buf._buffer)
 
     async def test_feed_data_err(self, stream: Any) -> None:
@@ -1138,7 +1139,7 @@ class TestDeflateBuffer:
         with pytest.raises(http_exceptions.ContentEncodingError):
             # Should be more than 4 bytes to trigger deflate FSM error.
             # Should start with b'x', otherwise code switch mocked decoder.
-            dbuf.feed_data(b"xsomedata", 9)
+            dbuf.feed_data(b"xsomedata")
 
     async def test_feed_eof(self, stream: Any) -> None:
         buf = aiohttp.FlowControlDataQueue(

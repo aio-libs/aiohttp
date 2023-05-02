@@ -851,10 +851,11 @@ class DeflateBuffer:
     def set_exception(self, exc: BaseException) -> None:
         self.out.set_exception(exc)
 
-    def feed_data(self, chunk: bytes, size: int) -> None:
-        if not size:
+    def feed_data(self, chunk: bytes) -> None:
+        if not chunk:
             return
 
+        size = len(chunk)
         self.size += size
 
         # RFC1950
