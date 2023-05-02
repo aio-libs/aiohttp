@@ -316,7 +316,7 @@ To upload Multipart-encoded files::
 You can set the ``filename`` and ``content_type`` explicitly::
 
     url = 'http://httpbin.org/post'
-    data = FormData()
+    data = aiohttp.FormData()
     data.add_field('file',
                    open('report.xls', 'rb'),
                    filename='report.xls',
