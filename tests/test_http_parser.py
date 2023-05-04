@@ -928,7 +928,6 @@ class TestParsePayload:
             stream, 2**16, loop=asyncio.get_event_loop()
         )
         p = HttpPayloadParser(out, method="PUT")
-        p.feed_eof()
 
         assert out.is_eof()
         assert p.done
