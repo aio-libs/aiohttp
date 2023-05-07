@@ -84,6 +84,7 @@ Dan Xu
 Daniel García
 Daniel Grossmann-Kavanagh
 Daniel Nelson
+Daniele Trifirò
 Danny Song
 David Bibb
 David Michael Brown
@@ -154,13 +155,16 @@ Illia Volochii
 Ilya Chichak
 Ilya Gruzinov
 Ingmar Steen
+Ivan Lakovic
 Ivan Larin
+J. Nick Koston
 Jacob Champion
 Jaesung Lee
 Jake Davis
 Jakob Ackermann
 Jakub Wilk
 Jan Buchar
+Jarno Elonen
 Jashandeep Sohi
 Jean-Baptiste Estival
 Jens Steinhauser
@@ -199,6 +203,7 @@ Krzysztof Blazewicz
 Kyrylo Perevozchikov
 Kyungmin Lee
 Lars P. Søndergaard
+Lee LieWhite
 Liu Hua
 Louis-Philippe Huberdeau
 Loïc Lajeanne
@@ -222,6 +227,7 @@ Mathieu Dugré
 Matt VanEseltine
 Matthieu Hauglustaine
 Matthieu Rigal
+Matvey Tingaev
 Meet Mangukiya
 Michael Ihnatenko
 Michał Górny
@@ -351,6 +357,8 @@ Yury Pliner
 Yury Selivanov
 Yusuke Tsutsumi
 Yuval Ofir
+Yuvi Panda
+Zainab Lawal
 Zeal Wierslee
 Zlatan Sičanica
 Марк Коренберг

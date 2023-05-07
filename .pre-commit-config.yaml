@@ -22,7 +22,7 @@ repos:
     entry: ./tools/check_changes.py
     pass_filenames: false
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v4.3.0'
+  rev: 'v4.4.0'
   hooks:
   - id: check-merge-conflict
 - repo: https://github.com/asottile/yesqa
@@ -30,16 +30,16 @@ repos:
   hooks:
   - id: yesqa
 - repo: https://github.com/PyCQA/isort
-  rev: '5.10.1'
+  rev: '5.12.0'
   hooks:
   - id: isort
 - repo: https://github.com/psf/black
-  rev: '22.8.0'
+  rev: '23.1.0'
   hooks:
     - id: black
       language_version: python3 # Should be a command that runs python
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v4.3.0'
+  rev: 'v4.4.0'
   hooks:
   - id: end-of-file-fixer
     exclude: >-
@@ -72,12 +72,12 @@ repos:
   - id: detect-private-key
     exclude: ^examples/
 - repo: https://github.com/asottile/pyupgrade
-  rev: 'v2.38.2'
+  rev: 'v3.3.1'
   hooks:
   - id: pyupgrade
     args: ['--py36-plus']
 - repo: https://github.com/PyCQA/flake8
-  rev: '5.0.4'
+  rev: '6.0.0'
   hooks:
   - id: flake8
     additional_dependencies:

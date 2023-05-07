@@ -117,6 +117,14 @@ test2: data\r
     assert not msg.upgrade
 
 
+def test_parse_headers_longline(parser: Any) -> None:
+    invalid_unicode_byte = b"\xd9"
+    header_name = b"Test" + invalid_unicode_byte + b"Header" + b"A" * 8192
+    text = b"GET /test HTTP/1.1\r\n" + header_name + b": test\r\n" + b"\r\n" + b"\r\n"
+    with pytest.raises((http_exceptions.LineTooLong, http_exceptions.BadHttpMessage)):
+        parser.feed_data(text)
+
+
 def test_parse(parser: Any) -> None:
     text = b"GET /test HTTP/1.1\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)
@@ -1111,7 +1119,7 @@ class TestDeflateBuffer:
         dbuf = DeflateBuffer(buf, "deflate")
 
         dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.decompress.return_value = b"line"
+        dbuf.decompressor.decompress_sync.return_value = b"line"
 
         # First byte should be b'x' in order code not to change the decoder.
         dbuf.feed_data(b"xxxx", 4)
@@ -1125,7 +1133,7 @@ class TestDeflateBuffer:
 
         exc = ValueError()
         dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.decompress.side_effect = exc
+        dbuf.decompressor.decompress_sync.side_effect = exc
 
         with pytest.raises(http_exceptions.ContentEncodingError):
             # Should be more than 4 bytes to trigger deflate FSM error.

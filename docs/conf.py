@@ -75,6 +75,7 @@ intersphinx_mapping = {
     "aiohttpremotes": ("https://aiohttp-remotes.readthedocs.io/en/stable/", None),
     "aiohttpsession": ("https://aiohttp-session.readthedocs.io/en/stable/", None),
     "aiohttpdemos": ("https://aiohttp-demos.readthedocs.io/en/latest/", None),
+    "aiojobs": ("https://aiojobs.readthedocs.io/en/stable/", None),
     "asynctest": ("https://asynctest.readthedocs.io/en/latest/", None),
 }
 
@@ -199,12 +200,6 @@ html_theme_options = {
             "target": f"https://badge.fury.io/py/{project}",
             "height": "20",
             "alt": "Latest PyPI package version",
-        },
-        {
-            "image": f"https://img.shields.io/discourse/status?server=https%3A%2F%2F{github_repo_org}.discourse.group",
-            "target": f"https://{github_repo_org}.discourse.group",
-            "height": "20",
-            "alt": "Discourse status",
         },
         {
             "image": "https://badges.gitter.im/Join%20Chat.svg",

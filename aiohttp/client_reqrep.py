@@ -1,5 +1,6 @@
 import asyncio
 import codecs
+import contextlib
 import dataclasses
 import functools
 import io
@@ -37,6 +38,7 @@ from .client_exceptions import (
     InvalidURL,
     ServerFingerprintMismatch,
 )
+from .compression_utils import HAS_BROTLI
 from .formdata import FormData
 from .hdrs import CONTENT_TYPE
 from .helpers import (
@@ -44,14 +46,15 @@ from .helpers import (
     BasicAuth,
     HeadersMixin,
     TimerNoop,
+    basicauth_from_netrc,
     is_expected_content_type,
+    netrc_from_env,
     noop,
     parse_mimetype,
     reify,
     set_result,
 )
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, StreamWriter
-from .http_parser import HAS_BROTLI
 from .log import client_logger
 from .streams import StreamReader
 from .typedefs import (
@@ -210,6 +213,7 @@ class ClientRequest:
         ssl: Union[SSLContext, bool, Fingerprint, None] = None,
         proxy_headers: Optional[LooseHeaders] = None,
         traces: Optional[List["Trace"]] = None,
+        trust_env: bool = False,
     ):
         match = _CONTAINS_CONTROL_CHAR_RE.search(method)
         if match:
@@ -251,7 +255,7 @@ class ClientRequest:
         self.update_auto_headers(skip_auto_headers)
         self.update_cookies(cookies)
         self.update_content_encoding(data)
-        self.update_auth(auth)
+        self.update_auth(auth, trust_env)
         self.update_proxy(proxy, proxy_auth, proxy_headers)
 
         self.update_body_from_data(data)
@@ -428,10 +432,14 @@ class ClientRequest:
             if hdrs.CONTENT_LENGTH not in self.headers:
                 self.headers[hdrs.CONTENT_LENGTH] = str(len(self.body))
 
-    def update_auth(self, auth: Optional[BasicAuth]) -> None:
+    def update_auth(self, auth: Optional[BasicAuth], trust_env: bool = False) -> None:
         """Set basic auth."""
         if auth is None:
             auth = self.auth
+        if auth is None and trust_env and self.url.host is not None:
+            netrc_obj = netrc_from_env()
+            with contextlib.suppress(LookupError):
+                auth = basicauth_from_netrc(netrc_obj, self.url.host)
         if auth is None:
             return
 
@@ -472,7 +480,7 @@ class ClientRequest:
 
         # copy payload headers
         assert body.headers
-        for (key, value) in body.headers.items():
+        for key, value in body.headers.items():
             if key in self.headers:
                 continue
             if key in self.skip_auto_headers:
@@ -551,6 +559,8 @@ class ClientRequest:
                 protocol.set_exception(exc)
         except Exception as exc:
             protocol.set_exception(exc)
+        else:
+            protocol.start_timeout()
         finally:
             self._writer = None
 
@@ -660,7 +670,6 @@ class ClientRequest:
 
 
 class ClientResponse(HeadersMixin):
-
     # Some of these attributes are None when created,
     # but will be set by the start() method.
     # As the end user will likely never see the None values, we cheat the types below.

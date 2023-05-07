@@ -572,7 +572,6 @@ async def test_request_tracing(loop: Any, aiohttp_client: Any) -> None:
         async with session.post(
             "/", data=body, trace_request_ctx=trace_request_ctx
         ) as resp:
-
             await resp.json()
 
             on_request_start.assert_called_once_with(
