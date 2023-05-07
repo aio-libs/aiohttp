@@ -1,1 +1,1 @@
-Changed exit code of Gunicorn worker when an error occurs on startup to avoid infinite respawning.
+Changed exit code of Gunicorn worker when an error occurs on startup to avoid endless spawning.
