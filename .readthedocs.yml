@@ -10,6 +10,9 @@ submodules:
   exclude: []
   recursive: true
 
+build:
+  os: ubuntu-22.04
+
 python:
   install:
   - method: pip
