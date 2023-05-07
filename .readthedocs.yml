@@ -6,14 +6,11 @@
 version: 2
 
 submodules:
-  include: all  # []
+  include: all
   exclude: []
   recursive: true
 
-build:
-  image: latest
 python:
-  version: 3.8
   install:
   - method: pip
     path: .
