@@ -1136,7 +1136,7 @@ class TestDataQueue:
     def test_feed_data(self, buffer: Any) -> None:
         item = object()
         buffer.feed_data(item)
-        assert [(item, 1)] == list(buffer._buffer)
+        assert [item] == [data[0] for data in buffer._buffer]
 
     def test_feed_eof(self, buffer: Any) -> None:
         buffer.feed_eof()

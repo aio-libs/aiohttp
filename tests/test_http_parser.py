@@ -921,7 +921,7 @@ class TestParsePayload:
         p.feed_eof()
 
         assert out.is_eof()
-        assert [(b"data",)] == [(data,) for (data, _) in out._buffer]
+        assert [bytearray(b"data")] == [item[0] for item in out._buffer]
 
     async def test_parse_no_body(self, stream: Any) -> None:
         out = aiohttp.FlowControlDataQueue(
