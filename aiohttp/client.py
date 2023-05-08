@@ -31,7 +31,7 @@ from typing import (
 )
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
-from typing_extensions import Final, final
+from typing_extensions import final
 from yarl import URL
 
 from . import hdrs, http, payload
@@ -134,7 +134,7 @@ except ImportError:  # pragma: no cover
 
 @dataclasses.dataclass(frozen=True)
 class ClientTimeout:
-    total: Optional[float] = None
+    total: Optional[float] = 5 * 60  # 5 minute default timeout
     connect: Optional[float] = None
     sock_read: Optional[float] = None
     sock_connect: Optional[float] = None
@@ -153,9 +153,6 @@ class ClientTimeout:
     # - or use https://docs.python.org/3/library/dataclasses.html#dataclasses.replace
     # to overwrite the defaults
 
-
-# 5 Minute default read timeout
-DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60)
 
 _RetType = TypeVar("_RetType")
 
@@ -257,7 +254,7 @@ class ClientSession:
         self._version = version
         self._json_serialize = json_serialize
         if timeout is sentinel or timeout is None:
-            self._timeout = DEFAULT_TIMEOUT
+            self._timeout = ClientTimeout()
         else:
             self._timeout = timeout
         self._raise_for_status = raise_for_status

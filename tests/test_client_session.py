@@ -790,7 +790,7 @@ async def test_client_session_custom_attr() -> None:
 
 async def test_client_session_timeout_default_args(loop: Any) -> None:
     session1 = ClientSession()
-    assert session1.timeout == client.DEFAULT_TIMEOUT
+    assert session1.timeout == client.ClientTimeout(total=5 * 60)
     await session1.close()
 
 
