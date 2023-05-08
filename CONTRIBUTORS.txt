@@ -351,6 +351,7 @@ Ye Cao
 Yegor Roganov
 Yifei Kong
 Young-Ho Cha
+Yuri Sukhov
 Yuriy Shatrov
 Yury Pliner
 Yury Selivanov
