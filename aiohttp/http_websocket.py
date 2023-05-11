@@ -10,7 +10,18 @@ import sys
 import zlib
 from enum import IntEnum
 from struct import Struct
-from typing import Any, Callable, List, NamedTuple, Optional, Pattern, Set, Tuple, Union, cast
+from typing import (
+    Any,
+    Callable,
+    List,
+    NamedTuple,
+    Optional,
+    Pattern,
+    Set,
+    Tuple,
+    Union,
+    cast,
+)
 
 from typing_extensions import Final
 

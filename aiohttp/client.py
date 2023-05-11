@@ -131,6 +131,7 @@ if TYPE_CHECKING:
 else:
     SSLContext = None
 
+
 @dataclasses.dataclass(frozen=True)
 class ClientTimeout:
     total: Optional[float] = None
