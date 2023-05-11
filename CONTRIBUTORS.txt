@@ -43,6 +43,7 @@ Andrew Svetlov
 Andrew Zhou
 Andrii Soldatenko
 Anes Abismail
+Angelo Kontaxis
 Antoine Pietri
 Anton Kasyanov
 Anton Zhdan-Pushkin
