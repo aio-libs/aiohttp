@@ -10,7 +10,7 @@ import sys
 import zlib
 from enum import IntEnum
 from struct import Struct
-from typing import Any, Callable, List, Optional, Pattern, Set, Tuple, Union, cast
+from typing import Any, Callable, List, NamedTuple, Optional, Pattern, Set, Tuple, Union, cast
 
 from typing_extensions import Final
 
@@ -80,10 +80,11 @@ MSG_SIZE: Final[int] = 2**14
 DEFAULT_LIMIT: Final[int] = 2**16
 
 
-_WSMessageBase = collections.namedtuple("_WSMessageBase", ["type", "data", "extra"])
+class WSMessage(NamedTuple):
+    type: WSMsgType
+    data: Any
+    extra: str | None
 
-
-class WSMessage(_WSMessageBase):
     def json(self, *, loads: Callable[[Any], Any] = json.loads) -> Any:
         """Return parsed JSON data.
 

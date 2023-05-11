@@ -12,6 +12,7 @@ import warnings
 from contextlib import suppress
 from types import SimpleNamespace, TracebackType
 from typing import (
+    TYPE_CHECKING,
     Any,
     Awaitable,
     Callable,
@@ -125,12 +126,10 @@ __all__ = (
     "request",
 )
 
-
-try:
+if TYPE_CHECKING:
     from ssl import SSLContext
-except ImportError:  # pragma: no cover
-    SSLContext = object  # type: ignore[misc,assignment]
-
+else:
+    SSLContext = None
 
 @dataclasses.dataclass(frozen=True)
 class ClientTimeout:
