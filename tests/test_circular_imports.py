@@ -15,11 +15,30 @@ import sys
 from itertools import chain
 from pathlib import Path
 from types import ModuleType
-from typing import Generator, List
+from typing import TYPE_CHECKING, Generator, List, Union
 
 import pytest
 
+if TYPE_CHECKING:
+    from _pytest.mark.structures import ParameterSet
+
+from conftest import IS_UNIX  # type: ignore[attr-defined]
+
 import aiohttp
+
+
+def _mark_aiohttp_worker_for_skipping(
+    importables: List[str],
+) -> List[Union[str, "ParameterSet"]]:
+    return [
+        pytest.param(
+            importable,
+            marks=pytest.mark.skipif(not IS_UNIX, reason="It's a UNIX-only module"),
+        )
+        if importable == "aiohttp.worker"
+        else importable
+        for importable in importables
+    ]
 
 
 def _find_all_importables(pkg: ModuleType) -> List[str]:
@@ -30,14 +49,7 @@ def _find_all_importables(pkg: ModuleType) -> List[str]:
     return sorted(
         set(
             chain.from_iterable(
-                _discover_path_importables(Path(p), pkg.__name__)
-                # FIXME: Unignore after upgrading to `mypy > 0.910`. The fix
-                # FIXME: is in the `master` branch of upstream since Aug 4,
-                # FIXME: 2021 but has not yet been included in any releases.
-                # Refs:
-                # * https://github.com/python/mypy/issues/1422
-                # * https://github.com/python/mypy/pull/9454
-                for p in pkg.__path__  # type: ignore[attr-defined]
+                _discover_path_importables(Path(p), pkg.__name__) for p in pkg.__path__
             ),
         ),
     )
@@ -70,7 +82,7 @@ def _discover_path_importables(
 
 @pytest.mark.parametrize(
     "import_path",
-    _find_all_importables(aiohttp),
+    _mark_aiohttp_worker_for_skipping(_find_all_importables(aiohttp)),
 )
 def test_no_warnings(import_path: str) -> None:
     """Verify that exploding importables doesn't explode.
@@ -78,6 +90,21 @@ def test_no_warnings(import_path: str) -> None:
     This is seeking for any import errors including ones caused
     by circular imports.
     """
-    imp_cmd = sys.executable, "-W", "error"
+    imp_cmd = (
+        # fmt: off
+        sys.executable,
+        "-W", "error",
+        # The following deprecation warning is triggered by importing
+        # `gunicorn.util`. Hopefully, it'll get fixed in the future. See
+        # https://github.com/benoitc/gunicorn/issues/2840 for detail.
+        "-W", "ignore:module 'sre_constants' is "
+        "deprecated:DeprecationWarning:pkg_resources._vendor.pyparsing",
+        # Also caused by `gunicorn.util` importing `pkg_resources`:
+        "-W", "ignore:Creating a LegacyVersion has been deprecated and "
+        "will be removed in the next major release:"
+        "DeprecationWarning:",
+        "-c", f"import {import_path!s}",
+        # fmt: on
+    )
 
     subprocess.check_call(imp_cmd)

@@ -10,6 +10,104 @@
 
 .. towncrier release notes start
 
+3.8.4 (2023-02-12)
+==================
+
+Bugfixes
+--------
+
+- Fixed incorrectly overwriting cookies with the same name and domain, but different path.
+  `#6638 <https://github.com/aio-libs/aiohttp/issues/6638>`_
+- Fixed ``ConnectionResetError`` not being raised after client disconnection in SSL environments.
+  `#7180 <https://github.com/aio-libs/aiohttp/issues/7180>`_
+
+
+----
+
+
+3.8.3 (2022-09-21)
+==================
+
+.. attention::
+
+   This is the last :doc:`aiohttp <index>` release tested under
+   Python 3.6. The 3.9 stream is dropping it from the CI and the
+   distribution package metadata.
+
+Bugfixes
+--------
+
+- Increased the upper boundary of the :doc:`multidict:index` dependency
+  to allow for the version 6 -- by :user:`hugovk`.
+
+  It used to be limited below version 7 in :doc:`aiohttp <index>` v3.8.1 but
+  was lowered in v3.8.2 via :pr:`6550` and never brought back, causing
+  problems with dependency pins when upgrading. :doc:`aiohttp <index>` v3.8.3
+  fixes that by recovering the original boundary of ``< 7``.
+  `#6950 <https://github.com/aio-libs/aiohttp/issues/6950>`_
+
+
+----
+
+
+3.8.2 (2022-09-20, subsequently yanked on 2022-09-21)
+=====================================================
+
+Bugfixes
+--------
+
+- Support registering OPTIONS HTTP method handlers via RouteTableDef.
+  `#4663 <https://github.com/aio-libs/aiohttp/issues/4663>`_
+- Started supporting ``authority-form`` and ``absolute-form`` URLs on the server-side.
+  `#6227 <https://github.com/aio-libs/aiohttp/issues/6227>`_
+- Fix Python 3.11 alpha incompatibilities by using Cython 0.29.25
+  `#6396 <https://github.com/aio-libs/aiohttp/issues/6396>`_
+- Remove a deprecated usage of pytest.warns(None)
+  `#6663 <https://github.com/aio-libs/aiohttp/issues/6663>`_
+- Fix regression where ``asyncio.CancelledError`` occurs on client disconnection.
+  `#6719 <https://github.com/aio-libs/aiohttp/issues/6719>`_
+- Export :py:class:`~aiohttp.web.PrefixedSubAppResource` under
+  :py:mod:`aiohttp.web` -- by :user:`Dreamsorcerer`.
+
+  This fixes a regression introduced by :pr:`3469`.
+  `#6889 <https://github.com/aio-libs/aiohttp/issues/6889>`_
+- Dropped the :class:`object` type possibility from
+  the :py:attr:`aiohttp.ClientSession.timeout`
+  property return type declaration.
+  `#6917 <https://github.com/aio-libs/aiohttp/issues/6917>`_,
+  `#6923 <https://github.com/aio-libs/aiohttp/issues/6923>`_
+
+
+Improved Documentation
+----------------------
+
+- Added clarification on configuring the app object with settings such as a db connection.
+  `#4137 <https://github.com/aio-libs/aiohttp/issues/4137>`_
+- Edited the web.run_app declaration.
+  `#6401 <https://github.com/aio-libs/aiohttp/issues/6401>`_
+- Dropped the :class:`object` type possibility from
+  the :py:attr:`aiohttp.ClientSession.timeout`
+  property return type declaration.
+  `#6917 <https://github.com/aio-libs/aiohttp/issues/6917>`_,
+  `#6923 <https://github.com/aio-libs/aiohttp/issues/6923>`_
+
+
+Deprecations and Removals
+-------------------------
+
+- Drop Python 3.5 support, aiohttp works on 3.6+ now.
+  `#4046 <https://github.com/aio-libs/aiohttp/issues/4046>`_
+
+
+Misc
+----
+
+- `#6369 <https://github.com/aio-libs/aiohttp/issues/6369>`_, `#6399 <https://github.com/aio-libs/aiohttp/issues/6399>`_, `#6550 <https://github.com/aio-libs/aiohttp/issues/6550>`_, `#6708 <https://github.com/aio-libs/aiohttp/issues/6708>`_, `#6757 <https://github.com/aio-libs/aiohttp/issues/6757>`_, `#6857 <https://github.com/aio-libs/aiohttp/issues/6857>`_, `#6872 <https://github.com/aio-libs/aiohttp/issues/6872>`_
+
+
+----
+
+
 3.8.1 (2021-11-14)
 ==================
 

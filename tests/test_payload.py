@@ -115,6 +115,5 @@ def test_async_iterable_payload_explicit_content_type() -> None:
 
 
 def test_async_iterable_payload_not_async_iterable() -> None:
-
     with pytest.raises(TypeError):
         payload.AsyncIterablePayload(object())  # type: ignore[arg-type]

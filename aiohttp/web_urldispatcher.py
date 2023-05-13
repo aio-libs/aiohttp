@@ -19,6 +19,7 @@ from typing import (
     Iterator,
     List,
     Mapping,
+    NoReturn,
     Optional,
     Pattern,
     Set,
@@ -81,7 +82,7 @@ ROUTE_RE: Final[Pattern[str]] = re.compile(
 PATH_SEP: Final[str] = re.escape("/")
 
 
-_ExpectHandler = Callable[[Request], Awaitable[None]]
+_ExpectHandler = Callable[[Request], Awaitable[Optional[StreamResponse]]]
 _Resolve = Tuple[Optional["UrlMappingMatchInfo"], Set[str]]
 
 
@@ -160,7 +161,6 @@ class AbstractRoute(abc.ABC):
         expect_handler: Optional[_ExpectHandler] = None,
         resource: Optional[AbstractResource] = None,
     ) -> None:
-
         if expect_handler is None:
             expect_handler = _default_expect_handler
 
@@ -212,8 +212,8 @@ class AbstractRoute(abc.ABC):
     def url_for(self, *args: str, **kwargs: str) -> URL:
         """Construct url for route with additional params."""
 
-    async def handle_expect_header(self, request: Request) -> None:
-        await self._expect_handler(request)
+    async def handle_expect_header(self, request: Request) -> Optional[StreamResponse]:
+        return await self._expect_handler(request)
 
 
 class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
@@ -324,7 +324,6 @@ class Resource(AbstractResource):
         *,
         expect_handler: Optional[_ExpectHandler] = None,
     ) -> "ResourceRoute":
-
         for route_obj in self._routes:
             if route_obj.method == method or route_obj.method == hdrs.METH_ANY:
                 raise RuntimeError(
@@ -366,7 +365,7 @@ class Resource(AbstractResource):
     def __len__(self) -> int:
         return len(self._routes)
 
-    def __iter__(self) -> Iterator[AbstractRoute]:
+    def __iter__(self) -> Iterator["ResourceRoute"]:
         return iter(self._routes)
 
     # TODO: implement all abstract methods
@@ -414,7 +413,6 @@ class PlainResource(Resource):
 
 
 class DynamicResource(Resource):
-
     DYN = re.compile(r"\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*)\}")
     DYN_WITH_RE = re.compile(r"\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}")
     GOOD = r"[^{}/]+"
@@ -558,14 +556,12 @@ class StaticResource(PrefixResource):
     def url_for(  # type: ignore[override]
         self,
         *,
-        filename: Union[str, Path],
+        filename: PathLike,
         append_version: Optional[bool] = None,
     ) -> URL:
         if append_version is None:
             append_version = self._append_version
-        if isinstance(filename, Path):
-            filename = str(filename)
-        filename = filename.lstrip("/")
+        filename = str(filename).lstrip("/")
 
         url = URL.build(path=self._prefix, encoded=True)
         # filename is not encoded
@@ -928,18 +924,17 @@ class View(AbstractView):
     async def _iter(self) -> StreamResponse:
         if self.request.method not in hdrs.METH_ALL:
             self._raise_allowed_methods()
-        method: Callable[[], Awaitable[StreamResponse]] = getattr(
+        method: Optional[Callable[[], Awaitable[StreamResponse]]] = getattr(
             self, self.request.method.lower(), None
         )
         if method is None:
             self._raise_allowed_methods()
-        resp = await method()
-        return resp
+        return await method()
 
     def __await__(self) -> Generator[Any, None, StreamResponse]:
         return self._iter().__await__()
 
-    def _raise_allowed_methods(self) -> None:
+    def _raise_allowed_methods(self) -> NoReturn:
         allowed_methods = {m for m in hdrs.METH_ALL if hasattr(self, m.lower())}
         raise HTTPMethodNotAllowed(self.request.method, allowed_methods)
 
@@ -976,7 +971,6 @@ class RoutesView(Sized, Iterable[AbstractRoute], Container[AbstractRoute]):
 
 
 class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
-
     NAME_SPLIT_RE = re.compile(r"[.:-]")
 
     def __init__(self) -> None:

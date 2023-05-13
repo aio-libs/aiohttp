@@ -6,14 +6,16 @@
 version: 2
 
 submodules:
-  include: all  # []
+  include: all
   exclude: []
   recursive: true
 
 build:
-  image: latest
+  os: ubuntu-22.04
+  tools:
+    python: "3.11"
+
 python:
-  version: 3.8
   install:
   - method: pip
     path: .
