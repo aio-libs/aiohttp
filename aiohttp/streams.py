@@ -382,7 +382,7 @@ class StreamReader(AsyncStreamReaderMixin):
         while not self._buffer and not self._eof:
             await self._wait("readany")
 
-        return await self._read_nowait(-1)
+        return self._read_nowait(-1)
 
     async def readchunk(self) -> Tuple[bytes, bool]:
         """Returns a tuple of (data, end_of_http_chunk).
