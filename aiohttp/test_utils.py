@@ -116,7 +116,7 @@ class BaseTestServer(ABC):
         if self.runner:
             return
         self._ssl = kwargs.pop("ssl", None)
-        self.runner = await self._make_runner(**kwargs)
+        self.runner = await self._make_runner(handler_cancellation=True, **kwargs)
         await self.runner.setup()
         if not self.port:
             self.port = 0
@@ -437,12 +437,12 @@ class AioHTTPTestCase(TestCase):
         raise RuntimeError("Did you forget to define get_application()?")
 
     def setUp(self) -> None:
-        try:
-            self.loop = asyncio.get_running_loop()
-        except RuntimeError:
-            self.loop = asyncio.get_event_loop_policy().get_event_loop()
+        if not PY_38:
+            asyncio.get_event_loop().run_until_complete(self.asyncSetUp())
 
-        self.loop.run_until_complete(self.setUpAsync())
+    async def asyncSetUp(self) -> None:
+        self.loop = asyncio.get_running_loop()
+        return await self.setUpAsync()
 
     async def setUpAsync(self) -> None:
         self.app = await self.get_application()
@@ -452,7 +452,11 @@ class AioHTTPTestCase(TestCase):
         await self.client.start_server()
 
     def tearDown(self) -> None:
-        self.loop.run_until_complete(self.tearDownAsync())
+        if not PY_38:
+            self.loop.run_until_complete(self.asyncTearDown())
+
+    async def asyncTearDown(self) -> None:
+        return await self.tearDownAsync()
 
     async def tearDownAsync(self) -> None:
         await self.client.close()
@@ -574,7 +578,7 @@ def make_mocked_request(
     transport: Any = sentinel,
     payload: Any = sentinel,
     sslcontext: Optional[SSLContext] = None,
-    client_max_size: int = 1024 ** 2,
+    client_max_size: int = 1024**2,
     loop: Any = ...,
 ) -> Request:
     """Creates mocked web.Request testing purposes.

@@ -27,12 +27,6 @@ WRONG_LOG_FORMAT = '%a "%{Referrer}i" %(h)s %(l)s %s'
 ACCEPTABLE_LOG_FORMAT = '%a "%{Referrer}i" %s'
 
 
-# tokio event loop does not allow to override attributes
-def skip_if_no_dict(loop: asyncio.AbstractEventLoop) -> None:
-    if not hasattr(loop, "__dict__"):
-        pytest.skip("can not override loop attributes")
-
-
 class BaseTestWorker:
     def __init__(self) -> None:
         self.servers: Dict[object, object] = {}
@@ -212,8 +206,6 @@ async def test__run_ok_parent_changed(
     loop: asyncio.AbstractEventLoop,
     aiohttp_unused_port: Callable[[], int],
 ) -> None:
-    skip_if_no_dict(loop)
-
     worker.ppid = 0
     worker.alive = True
     sock = socket.socket()
@@ -237,8 +229,6 @@ async def test__run_exc(
     loop: asyncio.AbstractEventLoop,
     aiohttp_unused_port: Callable[[], int],
 ) -> None:
-    skip_if_no_dict(loop)
-
     worker.ppid = os.getppid()
     worker.alive = True
     sock = socket.socket()

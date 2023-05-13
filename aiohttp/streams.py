@@ -131,7 +131,7 @@ class StreamReader(AsyncStreamReaderMixin):
             info.append("%d bytes" % self._size)
         if self._eof:
             info.append("eof")
-        if self._low_water != 2 ** 16:  # default limit
+        if self._low_water != 2**16:  # default limit
             info.append("low=%d high=%d" % (self._low_water, self._high_water))
         if self._waiter:
             info.append("w=%r" % self._waiter)
@@ -325,7 +325,9 @@ class StreamReader(AsyncStreamReaderMixin):
                 offset = self._buffer_offset
                 ichar = self._buffer[0].find(separator, offset) + 1
                 # Read from current offset to found separator or to the end.
-                data = self._read_nowait_chunk(ichar - offset if ichar else -1)
+                data = self._read_nowait_chunk(
+                    ichar - offset + seplen - 1 if ichar else -1
+                )
                 chunk += data
                 chunk_size += len(data)
                 if ichar:
@@ -491,6 +493,9 @@ class StreamReader(AsyncStreamReaderMixin):
 class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     def __init__(self) -> None:
         pass
+
+    def __repr__(self) -> str:
+        return "<%s>" % self.__class__.__name__
 
     def exception(self) -> Optional[BaseException]:
         return None

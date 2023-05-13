@@ -1,6 +1,6 @@
 -r typing-extensions.txt
 aioredis==2.0.1
-mypy==0.931; implementation_name=="cpython"
+mypy==0.982; implementation_name=="cpython"
 pre-commit==2.17.0
 pytest==6.2.5
 slotscheck==0.8.0

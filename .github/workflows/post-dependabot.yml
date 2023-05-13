@@ -10,13 +10,18 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+permissions: {}
 jobs:
   post-update:
+    permissions:
+      pull-requests: read # for gh pr checkout
+      contents: write # to push code in repo (stefanzweifel/git-auto-commit-action)
+
     if: ${{ github.actor == 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v2.4.0
+      uses: actions/checkout@v3
     - name: Login
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
@@ -24,9 +29,9 @@ jobs:
       run: |
         gh pr checkout ${{ github.event.pull_request.number }}
     - name: Setup Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
     - name: Cache PyPI
-      uses: actions/cache@v2.1.7
+      uses: actions/cache@v3.0.4
       with:
         key: post-update
         path: ~/.cache/pip

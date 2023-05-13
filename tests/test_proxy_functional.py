@@ -18,12 +18,24 @@ from aiohttp import web
 from aiohttp.client_exceptions import ClientConnectionError, ClientProxyConnectionError
 from aiohttp.helpers import PY_310
 
-secure_proxy_xfail_under_py310_except_macos = functools.partial(
+pytestmark = [
+    pytest.mark.filterwarnings(
+        "ignore:unclosed <socket.socket fd=.*:ResourceWarning",
+    ),
+    pytest.mark.filterwarnings(
+        "ignore:"
+        "unclosed transport <_SelectorSocketTransport closing fd=.*"
+        ":ResourceWarning",
+    ),
+]
+
+
+secure_proxy_xfail = functools.partial(
     pytest.mark.xfail,
-    PY_310 and platform.system() != "Darwin",
+    (PY_310 and platform.system() != "Darwin") or platform.system() == "Windows",
     reason=(
         "The secure proxy fixture does not seem to work "
-        "under Python 3.10 on Linux or Windows. "
+        "under Python 3.10 on Linux and any Python on Windows. "
         "See https://github.com/abhinavsingh/proxy.py/issues/622."
     ),
 )
@@ -119,7 +131,7 @@ def _pretend_asyncio_supports_tls_in_tls(
     )
 
 
-@secure_proxy_xfail_under_py310_except_macos(raises=ClientProxyConnectionError)
+@secure_proxy_xfail(raises=ClientProxyConnectionError)
 @pytest.mark.parametrize("web_server_endpoint_type", ("http", "https"))
 @pytest.mark.usefixtures("_pretend_asyncio_supports_tls_in_tls", "loop")
 async def test_secure_https_proxy_absolute_path(
@@ -146,7 +158,7 @@ async def test_secure_https_proxy_absolute_path(
     await conn.close()
 
 
-@secure_proxy_xfail_under_py310_except_macos(raises=AssertionError)
+@secure_proxy_xfail(raises=AssertionError)
 @pytest.mark.parametrize("web_server_endpoint_type", ("https",))
 @pytest.mark.usefixtures("loop")
 async def test_https_proxy_unsupported_tls_in_tls(
@@ -194,7 +206,10 @@ async def test_https_proxy_unsupported_tls_in_tls(
         r"$"
     )
 
-    with pytest.warns(RuntimeWarning, match=expected_warning_text,), pytest.raises(
+    with pytest.warns(
+        RuntimeWarning,
+        match=expected_warning_text,
+    ), pytest.raises(
         ClientConnectionError,
         match=expected_exception_reason,
     ) as conn_err:
@@ -497,7 +512,7 @@ async def xtest_proxy_https_connect_with_port(
 async def xtest_proxy_https_send_body(proxy_test_server: Any, loop: Any) -> None:
     sess = aiohttp.ClientSession()
     proxy = await proxy_test_server()
-    proxy.return_value = {"status": 200, "body": b"1" * (2 ** 20)}
+    proxy.return_value = {"status": 200, "body": b"1" * (2**20)}
     url = "https://www.google.com.ua/search?q=aiohttp proxy"
 
     resp = await sess.get(url, proxy=proxy.url)
@@ -505,7 +520,7 @@ async def xtest_proxy_https_send_body(proxy_test_server: Any, loop: Any) -> None
     await resp.release()
     await sess.close()
 
-    assert body == b"1" * (2 ** 20)
+    assert body == b"1" * (2**20)
 
 
 @pytest.mark.xfail
