@@ -678,8 +678,8 @@ class Response(StreamResponse):
                 if size is not None:
                     self._headers[hdrs.CONTENT_LENGTH] = str(size)
             else:
-                size = len(self._body) if self._body else "0"
-                self._headers[hdrs.CONTENT_LENGTH] = str(size)
+                body_len = len(self._body) if self._body else "0"
+                self._headers[hdrs.CONTENT_LENGTH] = str(body_len)
 
         return await super()._start(request)
 
