@@ -855,8 +855,7 @@ class DeflateBuffer:
         if not chunk:
             return
 
-        size = len(chunk)
-        self.size += size
+        self.size += len(chunk)
 
         # RFC1950
         # bits 0..3 = CM = 0b1000 = 8 = "deflate"
