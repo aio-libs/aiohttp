@@ -10,6 +10,7 @@ This module is based on an idea that pytest uses for self-testing:
 """  # noqa: E501
 import os
 import pkgutil
+import socket
 import subprocess
 import sys
 from itertools import chain
