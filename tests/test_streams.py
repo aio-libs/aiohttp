@@ -1136,7 +1136,7 @@ class TestDataQueue:
     def test_feed_data(self, buffer: Any) -> None:
         item = object()
         buffer.feed_data(item)
-        assert [item] == [data[0] for data in buffer._buffer]
+        assert [item] == list(buffer._buffer)
 
     def test_feed_eof(self, buffer: Any) -> None:
         buffer.feed_eof()
@@ -1466,8 +1466,8 @@ async def test_data_queue_items() -> None:
     buffer = streams.DataQueue(loop)
 
     items = [object(), object()]
-    buffer.feed_data(items[0], 1)
-    buffer.feed_data(items[1], 1)
+    buffer.feed_data(items[0])
+    buffer.feed_data(items[1])
     buffer.feed_eof()
 
     item_iter = iter(items)

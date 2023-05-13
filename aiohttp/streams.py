@@ -579,9 +579,8 @@ class DataQueue(Generic[_T]):
             self._waiter = None
             set_exception(waiter, exc)
 
-    def feed_data(self, data: _T, size: int = 0) -> None:
-        self._size += size
-        self._buffer.append((data, size))
+    def feed_data(self, data: _T) -> None:
+        self._buffer.append(data)
 
         waiter = self._waiter
         if waiter is not None:
@@ -607,8 +606,7 @@ class DataQueue(Generic[_T]):
                 raise
 
         if self._buffer:
-            data, size = self._buffer.popleft()
-            self._size -= size
+            data = self._buffer.popleft()
             return data
         else:
             if self._exception is not None:
@@ -634,10 +632,10 @@ class FlowControlDataQueue(DataQueue[_T]):
         self._protocol = protocol
         self._limit = limit * 2
 
-    def feed_data(self, data: _T, size: int = 0) -> None:
-        super().feed_data(data, size)
+    def feed_data(self, data: _T) -> None:
+        super().feed_data(data)
 
-        if self._size > self._limit and not self._protocol._reading_paused:
+        if self._size < self._limit and not self._protocol._reading_paused:
             self._protocol.pause_reading()
 
     async def read(self) -> _T:

@@ -249,9 +249,9 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
                     self._payload = payload
 
                     if self._skip_payload or message.code in (204, 304):
-                        self.feed_data((message, EMPTY_PAYLOAD), 0)
+                        self.feed_data((message, EMPTY_PAYLOAD))
                     else:
-                        self.feed_data((message, payload), 0)
+                        self.feed_data((message, payload))
                 if payload is not None:
                     # new message(s) was processed
                     # register timeout handler unsubscribing

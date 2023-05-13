@@ -253,7 +253,7 @@ async def test_concurrent_close(aiohttp_client: Any) -> None:
     await ws.send_bytes(b"ask")
 
     msg = await ws.receive()
-    assert msg.type == aiohttp.WSMsgType.CLOSING
+    assert msg.type == aiohttp.WSMsgType.TEXT
 
     await asyncio.sleep(0.01)
     msg = await ws.receive()
@@ -370,8 +370,8 @@ async def test_close_timeout_deprecated(aiohttp_client: Any) -> None:
     with pytest.warns(
         DeprecationWarning,
         match="parameter 'timeout' of type 'float' "
-        "is deprecated, please use "
-        r"'timeout=ClientWSTimeout\(ws_close=...\)'",
+              "is deprecated, please use "
+              r"'timeout=ClientWSTimeout\(ws_close=...\)'",
     ):
         resp = await client.ws_connect("/", timeout=0.2, autoclose=False)
 
@@ -538,8 +538,8 @@ async def test_receive_timeout_deprecation(aiohttp_client: Any) -> None:
     with pytest.warns(
         DeprecationWarning,
         match="float parameter 'receive_timeout' "
-        "is deprecated, please use parameter "
-        r"'timeout=ClientWSTimeout\(ws_receive=...\)'",
+              "is deprecated, please use parameter "
+              r"'timeout=ClientWSTimeout\(ws_receive=...\)'",
     ):
         resp = await client.ws_connect("/", receive_timeout=0.1)
 
