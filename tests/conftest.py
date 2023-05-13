@@ -15,9 +15,6 @@ import pytest
 
 from aiohttp.test_utils import loop_context
 
-IS_LINUX: bool
-IS_UNIX: bool
-needs_unix: bool
 try:
     import trustme
 
@@ -30,14 +27,8 @@ except ImportError:
 
 pytest_plugins: List[str] = ["aiohttp.pytest_plugin", "pytester"]
 
-IS_HPUX: bool = sys.platform.startswith("hp-ux")
-# Specifies whether the current runtime is HP-UX.
+IS_HPUX = sys.platform.startswith("hp-ux")
 IS_LINUX = sys.platform.startswith("linux")
-# Specifies whether the current runtime is HP-UX.
-IS_UNIX = hasattr(socket, "AF_UNIX")
-# Specifies whether the current runtime is *NIX.
-
-needs_unix = pytest.mark.skipif(not IS_UNIX, reason="requires UNIX sockets")
 
 
 @pytest.fixture

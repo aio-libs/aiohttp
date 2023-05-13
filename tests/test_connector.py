@@ -25,8 +25,6 @@ from aiohttp.locks import EventResultOrError
 from aiohttp.test_utils import make_mocked_coro, unused_port
 from aiohttp.tracing import Trace
 
-from .conftest import needs_unix
-
 
 @pytest.fixture()
 def key():
@@ -1932,7 +1930,7 @@ async def test_tcp_connector(aiohttp_client: Any, loop: Any) -> None:
     assert r.status == 200
 
 
-@needs_unix
+@pytest.mark.skipif(hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
 async def test_unix_connector_not_found(loop: Any) -> None:
     connector = aiohttp.UnixConnector("/" + uuid.uuid4().hex)
 
@@ -1941,7 +1939,7 @@ async def test_unix_connector_not_found(loop: Any) -> None:
         await connector.connect(req, None, ClientTimeout())
 
 
-@needs_unix
+@pytest.mark.skipif(hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
 async def test_unix_connector_permission(loop: Any) -> None:
     loop.create_unix_connection = make_mocked_coro(raise_exception=PermissionError())
     connector = aiohttp.UnixConnector("/" + uuid.uuid4().hex)
