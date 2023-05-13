@@ -1392,6 +1392,13 @@ duplicated like one using :meth:`~aiohttp.web.Application.copy`.
           async def on_prepare(request, response):
               pass
 
+      .. note::
+
+         The headers are written immediately after these callbacks are run.
+         Therefore, if you modify the content of the response, you may need to
+         adjust the `Content-Length` header or similar to match. Aiohttp will
+         not make any updates to the headers at this point.
+
    .. attribute:: on_startup
 
       A :class:`~aiosignal.Signal` that is fired on application start-up.
