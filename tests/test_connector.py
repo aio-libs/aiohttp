@@ -1923,7 +1923,7 @@ async def test_tcp_connector(aiohttp_client: Any, loop: Any) -> None:
     assert r.status == 200
 
 
-@pytest.mark.skipif(hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
+@pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
 async def test_unix_connector_not_found(loop: Any) -> None:
     connector = aiohttp.UnixConnector("/" + uuid.uuid4().hex)
 
@@ -1932,7 +1932,7 @@ async def test_unix_connector_not_found(loop: Any) -> None:
         await connector.connect(req, None, ClientTimeout())
 
 
-@pytest.mark.skipif(hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
+@pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
 async def test_unix_connector_permission(loop: Any) -> None:
     loop.create_unix_connection = make_mocked_coro(raise_exception=PermissionError())
     connector = aiohttp.UnixConnector("/" + uuid.uuid4().hex)

@@ -22,8 +22,6 @@ import pytest
 if TYPE_CHECKING:
     from _pytest.mark.structures import ParameterSet
 
-from conftest import IS_UNIX  # type: ignore[attr-defined]
-
 import aiohttp
 
 
@@ -33,7 +31,7 @@ def _mark_aiohttp_worker_for_skipping(
     return [
         pytest.param(
             importable,
-            marks=pytest.mark.skipif(not IS_UNIX, reason="It's a UNIX-only module"),
+            marks=pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="It's a UNIX-only module"),
         )
         if importable == "aiohttp.worker"
         else importable
