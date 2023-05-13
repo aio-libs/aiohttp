@@ -3028,11 +3028,13 @@ async def test_timeout_with_full_buffer(aiohttp_client: Any) -> None:
         resp = web.StreamResponse()
         await resp.prepare(request)
         while True:
-            await resp.write(b"1" * 100)
+            await resp.write(b"1" * 1000)
+            await asyncio.sleep(0.01)
 
     async def request(client):
+        timeout = aiohttp.ClientTimeout(total=0.5)
         with pytest.raises(asyncio.TimeoutError):
-            async with await client.get("/", timeout=0.5) as resp:
+            async with await client.get("/", timeout=timeout) as resp:
                 async for data in resp.content.iter_chunked(1):
                     await asyncio.sleep(0.01)
 

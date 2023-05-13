@@ -434,6 +434,12 @@ class StreamReader(AsyncStreamReaderMixin):
         return b"".join(blocks)
 
     async def read_nowait(self, n: int = -1) -> bytes:
+        """Read data from the buffer without waiting.
+
+        While this function does not wait for incoming data, it will yield to the event
+        loop to avoid blocking the program in a busy loop when a large amount of
+        incoming data is available without waiting.
+        """
         # default was changed to be consistent with .read(-1)
         #
         # I believe the most users don't know about the method and
