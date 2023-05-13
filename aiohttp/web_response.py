@@ -673,7 +673,10 @@ class Response(StreamResponse):
 
     async def _start(self, request: "BaseRequest") -> AbstractStreamWriter:
         if not self._chunked and hdrs.CONTENT_LENGTH not in self._headers:
-            size = body.size if self._body_payload else len(self._body) if self._body else 0
+            if self._body_payload:
+                size = self._body.size
+            else:
+                size = len(self._body) if self._body else "0"
             self._headers[hdrs.CONTENT_LENGTH] = str(size)
 
         return await super()._start(request)
