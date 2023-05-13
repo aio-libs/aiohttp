@@ -29,10 +29,6 @@ Async http client/server framework
    :target: https://docs.aiohttp.org/
    :alt: Latest Read The Docs
 
-.. image:: https://img.shields.io/discourse/status?server=https%3A%2F%2Faio-libs.discourse.group
-   :target: https://aio-libs.discourse.group
-   :alt: Discourse status
-
 .. image:: https://badges.gitter.im/Join%20Chat.svg
    :target: https://gitter.im/aio-libs/Lobby
    :alt: Chat on Gitter
@@ -71,8 +67,7 @@ To get something from the web:
               html = await response.text()
               print("Body:", html[:15], "...")
 
-  loop = asyncio.get_event_loop()
-  loop.run_until_complete(main())
+  asyncio.run(main())
 
 This prints:
 
@@ -151,7 +146,7 @@ Feel free to make a Pull Request for adding your link to these pages!
 Communication channels
 ======================
 
-*aio-libs discourse group*: https://aio-libs.discourse.group
+*aio-libs Discussions*: https://github.com/aio-libs/aiohttp/discussions
 
 *gitter chat* https://gitter.im/aio-libs/Lobby
 
@@ -162,11 +157,11 @@ Please add *aiohttp* tag to your question there.
 Requirements
 ============
 
-- Python >= 3.7
 - async-timeout_
 - charset-normalizer_
 - multidict_
 - yarl_
+- frozenlist_
 
 Optionally you may install the cChardet_ and aiodns_ libraries (highly
 recommended for sake of speed).
@@ -174,6 +169,7 @@ recommended for sake of speed).
 .. _charset-normalizer: https://pypi.org/project/charset-normalizer
 .. _aiodns: https://pypi.python.org/pypi/aiodns
 .. _multidict: https://pypi.python.org/pypi/multidict
+.. _frozenlist: https://pypi.org/project/frozenlist/
 .. _yarl: https://pypi.python.org/pypi/yarl
 .. _async-timeout: https://pypi.python.org/pypi/async_timeout
 .. _cChardet: https://pypi.python.org/pypi/cchardet

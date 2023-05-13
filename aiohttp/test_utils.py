@@ -36,6 +36,7 @@ from .client_reqrep import ClientResponse
 from .client_ws import ClientWebSocketResponse
 from .helpers import _SENTINEL, PY_38, sentinel
 from .http import HttpVersion, RawRequestMessage
+from .typedefs import StrOrURL
 from .web import (
     Application,
     AppRunner,
@@ -115,7 +116,7 @@ class BaseTestServer(ABC):
         if self.runner:
             return
         self._ssl = kwargs.pop("ssl", None)
-        self.runner = await self._make_runner(**kwargs)
+        self.runner = await self._make_runner(handler_cancellation=True, **kwargs)
         await self.runner.setup()
         if not self.port:
             self.port = 0
@@ -148,14 +149,14 @@ class BaseTestServer(ABC):
     async def _make_runner(self, **kwargs: Any) -> BaseRunner:
         pass
 
-    def make_url(self, path: str) -> URL:
+    def make_url(self, path: StrOrURL) -> URL:
         assert self._root is not None
         url = URL(path)
         if not self.skip_url_asserts:
             assert not url.is_absolute()
             return self._root.join(url)
         else:
-            return URL(str(self._root) + path)
+            return URL(str(self._root) + str(path))
 
     @property
     def started(self) -> bool:
@@ -304,16 +305,20 @@ class TestClient:
         """
         return self._session
 
-    def make_url(self, path: str) -> URL:
+    def make_url(self, path: StrOrURL) -> URL:
         return self._server.make_url(path)
 
-    async def _request(self, method: str, path: str, **kwargs: Any) -> ClientResponse:
+    async def _request(
+        self, method: str, path: StrOrURL, **kwargs: Any
+    ) -> ClientResponse:
         resp = await self._session.request(method, self.make_url(path), **kwargs)
         # save it to close later
         self._responses.append(resp)
         return resp
 
-    def request(self, method: str, path: str, **kwargs: Any) -> _RequestContextManager:
+    def request(
+        self, method: str, path: StrOrURL, **kwargs: Any
+    ) -> _RequestContextManager:
         """Routes a request to tested http server.
 
         The interface is identical to aiohttp.ClientSession.request,
@@ -323,35 +328,35 @@ class TestClient:
         """
         return _RequestContextManager(self._request(method, path, **kwargs))
 
-    def get(self, path: str, **kwargs: Any) -> _RequestContextManager:
+    def get(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
         """Perform an HTTP GET request."""
         return _RequestContextManager(self._request(hdrs.METH_GET, path, **kwargs))
 
-    def post(self, path: str, **kwargs: Any) -> _RequestContextManager:
+    def post(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
         """Perform an HTTP POST request."""
         return _RequestContextManager(self._request(hdrs.METH_POST, path, **kwargs))
 
-    def options(self, path: str, **kwargs: Any) -> _RequestContextManager:
+    def options(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
         """Perform an HTTP OPTIONS request."""
         return _RequestContextManager(self._request(hdrs.METH_OPTIONS, path, **kwargs))
 
-    def head(self, path: str, **kwargs: Any) -> _RequestContextManager:
+    def head(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
         """Perform an HTTP HEAD request."""
         return _RequestContextManager(self._request(hdrs.METH_HEAD, path, **kwargs))
 
-    def put(self, path: str, **kwargs: Any) -> _RequestContextManager:
+    def put(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
         """Perform an HTTP PUT request."""
         return _RequestContextManager(self._request(hdrs.METH_PUT, path, **kwargs))
 
-    def patch(self, path: str, **kwargs: Any) -> _RequestContextManager:
+    def patch(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
         """Perform an HTTP PATCH request."""
         return _RequestContextManager(self._request(hdrs.METH_PATCH, path, **kwargs))
 
-    def delete(self, path: str, **kwargs: Any) -> _RequestContextManager:
+    def delete(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
         """Perform an HTTP PATCH request."""
         return _RequestContextManager(self._request(hdrs.METH_DELETE, path, **kwargs))
 
-    def ws_connect(self, path: str, **kwargs: Any) -> _WSRequestContextManager:
+    def ws_connect(self, path: StrOrURL, **kwargs: Any) -> _WSRequestContextManager:
         """Initiate websocket connection.
 
         The api corresponds to aiohttp.ClientSession.ws_connect.
@@ -359,7 +364,9 @@ class TestClient:
         """
         return _WSRequestContextManager(self._ws_connect(path, **kwargs))
 
-    async def _ws_connect(self, path: str, **kwargs: Any) -> ClientWebSocketResponse:
+    async def _ws_connect(
+        self, path: StrOrURL, **kwargs: Any
+    ) -> ClientWebSocketResponse:
         ws = await self._session.ws_connect(self.make_url(path), **kwargs)
         self._websockets.append(ws)
         return ws
@@ -430,12 +437,12 @@ class AioHTTPTestCase(TestCase):
         raise RuntimeError("Did you forget to define get_application()?")
 
     def setUp(self) -> None:
-        try:
-            self.loop = asyncio.get_running_loop()
-        except RuntimeError:
-            self.loop = asyncio.get_event_loop_policy().get_event_loop()
+        if not PY_38:
+            asyncio.get_event_loop().run_until_complete(self.asyncSetUp())
 
-        self.loop.run_until_complete(self.setUpAsync())
+    async def asyncSetUp(self) -> None:
+        self.loop = asyncio.get_running_loop()
+        return await self.setUpAsync()
 
     async def setUpAsync(self) -> None:
         self.app = await self.get_application()
@@ -445,7 +452,11 @@ class AioHTTPTestCase(TestCase):
         await self.client.start_server()
 
     def tearDown(self) -> None:
-        self.loop.run_until_complete(self.tearDownAsync())
+        if not PY_38:
+            self.loop.run_until_complete(self.asyncTearDown())
+
+    async def asyncTearDown(self) -> None:
+        return await self.tearDownAsync()
 
     async def tearDownAsync(self) -> None:
         await self.client.close()
@@ -567,7 +578,7 @@ def make_mocked_request(
     transport: Any = sentinel,
     payload: Any = sentinel,
     sslcontext: Optional[SSLContext] = None,
-    client_max_size: int = 1024 ** 2,
+    client_max_size: int = 1024**2,
     loop: Any = ...,
 ) -> Request:
     """Creates mocked web.Request testing purposes.

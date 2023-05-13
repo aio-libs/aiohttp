@@ -27,6 +27,7 @@ from urllib.parse import parse_qsl, unquote, urlencode
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiMapping
 
+from .compression_utils import ZLibCompressor, ZLibDecompressor
 from .hdrs import (
     CONTENT_DISPOSITION,
     CONTENT_ENCODING,
@@ -462,8 +463,13 @@ class BodyPartReader:
             real_encoding = encoding
         else:
             real_encoding = self.get_charset(default="utf-8")
+        try:
+            decoded_data = data.rstrip().decode(real_encoding)
+        except UnicodeDecodeError:
+            raise ValueError("data cannot be decoded with %s encoding" % real_encoding)
+
         return parse_qsl(
-            data.rstrip().decode(real_encoding),
+            decoded_data,
             keep_blank_values=True,
             encoding=real_encoding,
         )
@@ -486,15 +492,15 @@ class BodyPartReader:
 
     def _decode_content(self, data: bytes) -> bytes:
         encoding = self.headers.get(CONTENT_ENCODING, "").lower()
-
-        if encoding == "deflate":
-            return zlib.decompress(data, -zlib.MAX_WBITS)
-        elif encoding == "gzip":
-            return zlib.decompress(data, 16 + zlib.MAX_WBITS)
-        elif encoding == "identity":
+        if encoding == "identity":
             return data
-        else:
-            raise RuntimeError(f"unknown content encoding: {encoding}")
+        if encoding in {"deflate", "gzip"}:
+            return ZLibDecompressor(
+                encoding=encoding,
+                suppress_deflate_header=True,
+            ).decompress_sync(data)
+
+        raise RuntimeError(f"unknown content encoding: {encoding}")
 
     def _decode_content_transfer(self, data: bytes) -> bytes:
         encoding = self.headers.get(CONTENT_TRANSFER_ENCODING, "").lower()
@@ -551,10 +557,10 @@ class BodyPartReaderPayload(Payload):
 
     async def write(self, writer: Any) -> None:
         field = self._value
-        chunk = await field.read_chunk(size=2 ** 16)
+        chunk = await field.read_chunk(size=2**16)
         while chunk:
             await writer.write(field.decode(chunk))
-            chunk = await field.read_chunk(size=2 ** 16)
+            chunk = await field.read_chunk(size=2**16)
 
 
 class MultipartReader:
@@ -808,8 +814,8 @@ class MultipartWriter(Payload):
     def __bool__(self) -> bool:
         return True
 
-    _valid_tchar_regex = re.compile(br"\A[!#$%&'*+\-.^_`|~\w]+\Z")
-    _invalid_qdtext_char_regex = re.compile(br"[\x00-\x08\x0A-\x1F\x7F]")
+    _valid_tchar_regex = re.compile(rb"\A[!#$%&'*+\-.^_`|~\w]+\Z")
+    _invalid_qdtext_char_regex = re.compile(rb"[\x00-\x08\x0A-\x1F\x7F]")
 
     @property
     def _boundary_value(self) -> str:
@@ -971,7 +977,7 @@ class MultipartPayloadWriter:
     def __init__(self, writer: Any) -> None:
         self._writer = writer
         self._encoding: Optional[str] = None
-        self._compress: Any = None
+        self._compress: Optional[ZLibCompressor] = None
         self._encoding_buffer: Optional[bytearray] = None
 
     def enable_encoding(self, encoding: str) -> None:
@@ -984,8 +990,11 @@ class MultipartPayloadWriter:
     def enable_compression(
         self, encoding: str = "deflate", strategy: int = zlib.Z_DEFAULT_STRATEGY
     ) -> None:
-        zlib_mode = 16 + zlib.MAX_WBITS if encoding == "gzip" else -zlib.MAX_WBITS
-        self._compress = zlib.compressobj(wbits=zlib_mode, strategy=strategy)
+        self._compress = ZLibCompressor(
+            encoding=encoding,
+            suppress_deflate_header=True,
+            strategy=strategy,
+        )
 
     async def write_eof(self) -> None:
         if self._compress is not None:
@@ -1001,7 +1010,7 @@ class MultipartPayloadWriter:
     async def write(self, chunk: bytes) -> None:
         if self._compress is not None:
             if chunk:
-                chunk = self._compress.compress(chunk)
+                chunk = await self._compress.compress(chunk)
                 if not chunk:
                     return
 
