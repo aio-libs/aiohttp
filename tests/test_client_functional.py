@@ -3028,7 +3028,7 @@ async def test_timeout_with_full_buffer(aiohttp_client: Any) -> None:
         resp = web.StreamResponse()
         await resp.prepare(request)
         while True:
-            await resp.write(b'1' * 100)
+            await resp.write(b"1" * 100)
 
     async def request(client):
         with pytest.raises(asyncio.TimeoutError):
@@ -3042,7 +3042,6 @@ async def test_timeout_with_full_buffer(aiohttp_client: Any) -> None:
     client = await aiohttp_client(app)
     # wait_for() timeout should not be reached.
     await asyncio.wait_for(request(client), 1)
-
 
 
 async def test_read_bufsize_session_default(aiohttp_client: Any) -> None:
