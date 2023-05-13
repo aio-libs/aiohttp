@@ -1344,7 +1344,7 @@ async def test_close_cancels_cleanup_handle(loop: Any) -> None:
     assert conn._cleanup_handle is None
 
 
-async def test_close_abort_closed_transports(loop: Any) -> None:
+async def test_close_abort_closed_transports(loop: Any, mocker: Any) -> None:
     tr = mocker.create_autospec(asyncio.Transport, spec_set=True, instance=True)
     tr.is_closing.return_value = True
 
