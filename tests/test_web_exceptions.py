@@ -1,7 +1,6 @@
 import collections
 import re
 from traceback import format_exception
-from typing import Mapping, NoReturn
 from unittest import mock
 
 import aiosignal
