@@ -111,7 +111,7 @@ def unix_sockname(tmp_path: Any, tmp_path_factory: Any):
     # mostly 104 but sometimes it can be down to 100.
 
     # Ref: https://github.com/aio-libs/aiohttp/issues/3572
-    if not IS_UNIX:
+    if not hasattr(socket, "AF_UNIX"):
         pytest.skip("requires UNIX sockets")
 
     max_sock_len = 92 if IS_HPUX else 108 if IS_LINUX else 100
