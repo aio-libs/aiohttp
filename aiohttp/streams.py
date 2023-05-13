@@ -580,6 +580,8 @@ class DataQueue(Generic[_T]):
             set_exception(waiter, exc)
 
     def feed_data(self, data: _T) -> None:
+        if isinstance(data, (bytes, bytearray, memoryview)):
+            self._size += len(data)
         self._buffer.append(data)
 
         waiter = self._waiter
@@ -607,6 +609,8 @@ class DataQueue(Generic[_T]):
 
         if self._buffer:
             data = self._buffer.popleft()
+            if isinstance(data, (bytes, bytearray, memoryview)):
+                self._size -= len(data)
             return data
         else:
             if self._exception is not None:
