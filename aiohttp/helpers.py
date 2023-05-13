@@ -700,6 +700,11 @@ class TimerContext(BaseTimerContext):
         self._tasks: List[asyncio.Task[Any]] = []
         self._cancelled = False
 
+    def check_timeout(self) -> None:
+        """Raise TimeoutError if timer has already been cancelled."""
+        if self._cancelled:
+            raise asyncio.TimeoutError from None
+
     def __enter__(self) -> BaseTimerContext:
         task = asyncio.current_task(loop=self._loop)
 
