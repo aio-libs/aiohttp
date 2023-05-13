@@ -52,7 +52,7 @@ __all__ = (
     "AsyncIterablePayload",
 )
 
-TOO_LARGE_BYTES_BODY: Final[int] = 2 ** 20  # 1 MB
+TOO_LARGE_BYTES_BODY: Final[int] = 2**20  # 1 MB
 
 if TYPE_CHECKING:  # pragma: no cover
     from typing import List
@@ -132,7 +132,6 @@ class PayloadRegistry:
 
 
 class Payload(ABC):
-
     _default_content_type: str = "application/octet-stream"
     _size: Optional[int] = None
 
@@ -254,7 +253,6 @@ class StringPayload(BytesPayload):
         content_type: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
-
         if encoding is None:
             if content_type is None:
                 real_encoding = "utf-8"
@@ -299,10 +297,10 @@ class IOBasePayload(Payload):
     async def write(self, writer: AbstractStreamWriter) -> None:
         loop = asyncio.get_event_loop()
         try:
-            chunk = await loop.run_in_executor(None, self._value.read, 2 ** 16)
+            chunk = await loop.run_in_executor(None, self._value.read, 2**16)
             while chunk:
                 await writer.write(chunk)
-                chunk = await loop.run_in_executor(None, self._value.read, 2 ** 16)
+                chunk = await loop.run_in_executor(None, self._value.read, 2**16)
         finally:
             await loop.run_in_executor(None, self._value.close)
 
@@ -318,7 +316,6 @@ class TextIOPayload(IOBasePayload):
         content_type: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
-
         if encoding is None:
             if content_type is None:
                 encoding = "utf-8"
@@ -348,7 +345,7 @@ class TextIOPayload(IOBasePayload):
     async def write(self, writer: AbstractStreamWriter) -> None:
         loop = asyncio.get_event_loop()
         try:
-            chunk = await loop.run_in_executor(None, self._value.read, 2 ** 16)
+            chunk = await loop.run_in_executor(None, self._value.read, 2**16)
             while chunk:
                 data = (
                     chunk.encode(encoding=self._encoding)
@@ -356,7 +353,7 @@ class TextIOPayload(IOBasePayload):
                     else chunk.encode()
                 )
                 await writer.write(data)
-                chunk = await loop.run_in_executor(None, self._value.read, 2 ** 16)
+                chunk = await loop.run_in_executor(None, self._value.read, 2**16)
         finally:
             await loop.run_in_executor(None, self._value.close)
 
@@ -391,7 +388,6 @@ class JsonPayload(BytesPayload):
         *args: Any,
         **kwargs: Any,
     ) -> None:
-
         super().__init__(
             dumps(value).encode(encoding),
             content_type=content_type,
@@ -414,7 +410,6 @@ else:
 
 
 class AsyncIterablePayload(Payload):
-
     _iter: Optional[_AsyncIterator] = None
 
     def __init__(self, value: _AsyncIterable, *args: Any, **kwargs: Any) -> None:

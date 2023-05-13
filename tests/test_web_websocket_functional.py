@@ -131,7 +131,6 @@ async def test_websocket_receive_json(loop: Any, aiohttp_client: Any) -> None:
 
 
 async def test_send_recv_text(loop: Any, aiohttp_client: Any) -> None:
-
     closed = loop.create_future()
 
     async def handler(request):
@@ -165,7 +164,6 @@ async def test_send_recv_text(loop: Any, aiohttp_client: Any) -> None:
 
 
 async def test_send_recv_bytes(loop: Any, aiohttp_client: Any) -> None:
-
     closed = loop.create_future()
 
     async def handler(request):
@@ -275,7 +273,6 @@ async def test_close_timeout(loop: Any, aiohttp_client: Any) -> None:
 
 
 async def test_concurrent_close(loop: Any, aiohttp_client: Any) -> None:
-
     srv_ws = None
 
     async def handler(request):
@@ -313,7 +310,6 @@ async def test_concurrent_close(loop: Any, aiohttp_client: Any) -> None:
 
 
 async def test_auto_pong_with_closing_by_peer(loop: Any, aiohttp_client: Any) -> None:
-
     closed = loop.create_future()
 
     async def handler(request):
@@ -343,7 +339,6 @@ async def test_auto_pong_with_closing_by_peer(loop: Any, aiohttp_client: Any) ->
 
 
 async def test_ping(loop: Any, aiohttp_client: Any) -> None:
-
     closed = loop.create_future()
 
     async def handler(request):
@@ -370,7 +365,6 @@ async def test_ping(loop: Any, aiohttp_client: Any) -> None:
 
 
 async def aiohttp_client_ping(loop: Any, aiohttp_client: Any):
-
     closed = loop.create_future()
 
     async def handler(request):
@@ -396,7 +390,6 @@ async def aiohttp_client_ping(loop: Any, aiohttp_client: Any):
 
 
 async def test_pong(loop: Any, aiohttp_client: Any) -> None:
-
     closed = loop.create_future()
 
     async def handler(request):
@@ -431,7 +424,6 @@ async def test_pong(loop: Any, aiohttp_client: Any) -> None:
 
 
 async def test_change_status(loop: Any, aiohttp_client: Any) -> None:
-
     closed = loop.create_future()
 
     async def handler(request):
@@ -456,7 +448,6 @@ async def test_change_status(loop: Any, aiohttp_client: Any) -> None:
 
 
 async def test_handle_protocol(loop: Any, aiohttp_client: Any) -> None:
-
     closed = loop.create_future()
 
     async def handler(request):
@@ -478,7 +469,6 @@ async def test_handle_protocol(loop: Any, aiohttp_client: Any) -> None:
 
 
 async def test_server_close_handshake(loop: Any, aiohttp_client: Any) -> None:
-
     closed = loop.create_future()
 
     async def handler(request):
@@ -501,7 +491,6 @@ async def test_server_close_handshake(loop: Any, aiohttp_client: Any) -> None:
 
 
 async def aiohttp_client_close_handshake(loop: Any, aiohttp_client: Any):
-
     closed = loop.create_future()
 
     async def handler(request):
@@ -674,7 +663,6 @@ async def test_server_ws_async_for(loop: Any, aiohttp_server: Any) -> None:
 
     async with aiohttp.ClientSession() as sm:
         async with sm.ws_connect(server.make_url("/")) as resp:
-
             items = ["q1", "q2", "q3"]
             for item in items:
                 await resp.send_str(item)
@@ -687,7 +675,6 @@ async def test_server_ws_async_for(loop: Any, aiohttp_server: Any) -> None:
 
 
 async def test_closed_async_for(loop: Any, aiohttp_client: Any) -> None:
-
     closed = loop.create_future()
 
     async def handler(request):

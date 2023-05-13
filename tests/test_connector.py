@@ -761,7 +761,6 @@ async def test_tcp_connector_dns_throttle_requests_exception_spread(loop: Any) -
 async def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
     loop: Any, dns_response: Any
 ) -> None:
-
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         conn = aiohttp.TCPConnector(use_dns_cache=True, ttl_dns_cache=10)
         m_resolver().resolve.return_value = dns_response()
@@ -788,7 +787,6 @@ def dns_response_error(loop: Any):
 async def test_tcp_connector_cancel_dns_error_captured(
     loop: Any, dns_response_error: Any
 ) -> None:
-
     exception_handler_called = False
 
     def exception_handler(loop, context):
@@ -917,7 +915,6 @@ async def test_tcp_connector_dns_tracing_cache_disabled(
 async def test_tcp_connector_dns_tracing_throttle_requests(
     loop: Any, dns_response: Any
 ) -> None:
-
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
     on_dns_cache_hit = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
@@ -981,7 +978,6 @@ async def test_release_close_do_not_add_to_pool(loop: Any, key: Any) -> None:
 async def test_release_close_do_not_delete_existing_connections(
     loop: Any, key: Any
 ) -> None:
-
     proto1 = create_mocked_conn(loop)
 
     conn = aiohttp.BaseConnector()
@@ -1489,7 +1485,6 @@ async def test_connect_reuseconn_tracing(loop: Any, key: Any) -> None:
 
 
 async def test_connect_with_limit_and_limit_per_host(loop: Any, key: Any) -> None:
-
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
 
@@ -1588,7 +1583,6 @@ async def test_connect_with_no_limits(loop: Any, key: Any) -> None:
 
 
 async def test_connect_with_limit_cancelled(loop: Any) -> None:
-
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
 
@@ -1868,7 +1862,6 @@ async def test_cancelled_waiter(loop: Any) -> None:
 
 
 async def test_error_on_connection_with_cancelled_waiter(loop: Any, key: Any) -> None:
-
     conn = aiohttp.BaseConnector(limit=1)
 
     req = mock.Mock()
@@ -2029,8 +2022,7 @@ async def test_tcp_connector_raise_connector_ssl_error(
     session = aiohttp.ClientSession(connector=conn)
     url = srv.make_url("/")
 
-    err = aiohttp.ClientConnectorCertificateError
-    with pytest.raises(err) as ctx:
+    with pytest.raises(aiohttp.ClientConnectorCertificateError) as ctx:
         await session.get(url)
 
     assert isinstance(ctx.value, aiohttp.ClientConnectorCertificateError)
@@ -2178,10 +2170,27 @@ class TestDNSCacheTable:
         dns_cache_table.add("localhost", ["127.0.0.1"])
         assert not dns_cache_table.expired("localhost")
 
-    async def test_expired_ttl(self, loop: Any) -> None:
-        dns_cache_table = _DNSCacheTable(ttl=0.01)
+    def test_expired_ttl(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        dns_cache_table = _DNSCacheTable(ttl=1)
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 1)
         dns_cache_table.add("localhost", ["127.0.0.1"])
-        await asyncio.sleep(0.02)
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 2)
+        assert not dns_cache_table.expired("localhost")
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 3)
+        assert dns_cache_table.expired("localhost")
+
+    def test_never_expire(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        dns_cache_table = _DNSCacheTable(ttl=None)
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 1)
+        dns_cache_table.add("localhost", ["127.0.0.1"])
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 10000000)
+        assert not dns_cache_table.expired("localhost")
+
+    def test_always_expire(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        dns_cache_table = _DNSCacheTable(ttl=0)
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 1)
+        dns_cache_table.add("localhost", ["127.0.0.1"])
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 1.00001)
         assert dns_cache_table.expired("localhost")
 
     def test_next_addrs(self, dns_cache_table: Any) -> None:
