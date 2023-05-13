@@ -4,7 +4,6 @@ import os  # noqa
 from typing import (
     TYPE_CHECKING,
     Any,
-    Awaitable,
     Callable,
     Dict,
     Iterator,
@@ -18,7 +17,7 @@ from typing import (
 
 from . import hdrs
 from .abc import AbstractView
-from .typedefs import PathLike
+from .typedefs import Handler, PathLike
 
 if TYPE_CHECKING:  # pragma: no cover
     from .web_request import Request
@@ -52,8 +51,7 @@ class AbstractRouteDef(abc.ABC):
         pass  # pragma: no cover
 
 
-_SimpleHandler = Callable[[Request], Awaitable[StreamResponse]]
-_HandlerType = Union[Type[AbstractView], _SimpleHandler]
+_HandlerType = Union[Type[AbstractView], Handler]
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
@@ -157,10 +155,10 @@ class RouteTableDef(Sequence[AbstractRouteDef]):
     """Route definition table"""
 
     def __init__(self) -> None:
-        self._items = []  # type: List[AbstractRouteDef]
+        self._items: List[AbstractRouteDef] = []
 
     def __repr__(self) -> str:
-        return "<RouteTableDef count={}>".format(len(self._items))
+        return f"<RouteTableDef count={len(self._items)}>"
 
     @overload
     def __getitem__(self, index: int) -> AbstractRouteDef:

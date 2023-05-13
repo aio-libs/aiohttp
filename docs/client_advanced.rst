@@ -52,9 +52,51 @@ directly as shown above, but it is more convenient to use special keyword
 
     await session.post(url, json={'example': 'text'})
 
-For *text/plain* ::
+For ``text/plain``::
 
     await session.post(url, data='Привет, Мир!')
+
+Authentication
+--------------
+
+Instead of setting the ``Authorization`` header directly,
+:class:`ClientSession` and individual request methods provide an ``auth``
+argument. An instance of :class:`BasicAuth` can be passed in like this::
+
+    auth = BasicAuth(login="...", password="...")
+    async with ClientSession(auth=auth) as session:
+        ...
+
+For other authentication flows, the ``Authorization`` header can be set
+directly::
+
+    headers = {"Authorization": "Bearer eyJh...0M30"}
+    async with ClientSession(headers=headers) as session:
+        ...
+
+The authentication header for a session may be updated as and when required.
+For example::
+
+    session.headers["Authorization"] = "Bearer eyJh...1OH0"
+
+Note that a *copy* of the headers dictionary is set as an attribute when
+creating a :class:`ClientSession` instance (as a :class:`multidict.CIMultiDict`
+object). Updating the original dictionary does not have any effect.
+
+In cases where the authentication header value expires periodically, an
+:mod:`asyncio` task may be used to update the session's default headers in the
+background.
+
+.. note::
+
+   The ``Authorization`` header will be removed if you get redirected
+   to a different host or protocol, except the case when  HTTP → HTTPS
+   redirect is performed on the same host.
+
+.. versionchanged:: 4.0
+
+   Started keeping the ``Authorization`` header during HTTP → HTTPS
+   redirects when the host remains the same.
 
 Custom Cookies
 --------------
@@ -519,12 +561,16 @@ DER with e.g::
    to :class:`TCPConnector` as default, the value from
    :meth:`ClientSession.get` and others override default.
 
+.. _aiohttp-client-proxy-support:
+
 Proxy support
 -------------
 
-aiohttp supports plain HTTP proxies and HTTP proxies that can be upgraded to HTTPS
-via the HTTP CONNECT method. aiohttp does not support proxies that must be
-connected to via ``https://``. To connect, use the *proxy* parameter::
+aiohttp supports plain HTTP proxies and HTTP proxies that can be
+upgraded to HTTPS via the HTTP CONNECT method. aiohttp has a limited
+support for proxies that must be connected to via ``https://`` — see
+the info box below for more details.
+To connect, use the *proxy* parameter::
 
    async with aiohttp.ClientSession() as session:
        async with session.get("http://python.org",
@@ -548,23 +594,54 @@ Authentication credentials can be passed in proxy URL::
 Contrary to the ``requests`` library, it won't read environment
 variables by default. But you can do so by passing
 ``trust_env=True`` into :class:`aiohttp.ClientSession`
-constructor for extracting proxy configuration from
-*HTTP_PROXY*, *HTTPS_PROXY*, *WS_PROXY* or *WSS_PROXY* *environment
-variables* (all are case insensitive)::
+constructor.::
 
    async with aiohttp.ClientSession(trust_env=True) as session:
        async with session.get("http://python.org") as resp:
            print(resp.status)
 
+.. note::
+    aiohttp uses :func:`urllib.request.getproxies`
+    for reading the proxy configuration (e.g. from the *HTTP_PROXY* etc. environment variables) and applies them for the *HTTP*, *HTTPS*, *WS* and *WSS* schemes.
+
+    Hosts defined in ``no_proxy`` will bypass the proxy.
+
 Proxy credentials are given from ``~/.netrc`` file if present (see
 :class:`aiohttp.ClientSession` for more details).
+
+.. attention::
+
+   CPython has introduced the support for TLS in TLS around Python 3.7.
+   But, as of now (Python 3.10), it's disabled for the transports that
+   :py:mod:`asyncio` uses. If the further release of Python (say v3.11)
+   toggles one attribute, it'll *just work™*.
+
+   aiohttp v3.8 and higher is ready for this to happen and has code in
+   place supports TLS-in-TLS, hence sending HTTPS requests over HTTPS
+   proxy tunnels.
+
+   ⚠️ For as long as your Python runtime doesn't declare the support for
+   TLS-in-TLS, please don't file bugs with aiohttp but rather try to
+   help the CPython upstream enable this feature. Meanwhile, if you
+   *really* need this to work, there's a patch that may help you make
+   it happen, include it into your app's code base:
+   https://github.com/aio-libs/aiohttp/discussions/6044#discussioncomment-1432443.
+
+.. important::
+
+   When supplying a custom :py:class:`ssl.SSLContext` instance, bear in
+   mind that it will be used not only to establish a TLS session with
+   the HTTPS endpoint you're hitting but also to establish a TLS tunnel
+   to the HTTPS proxy. To avoid surprises, make sure to set up the trust
+   chain that would recognize TLS certificates used by both the endpoint
+   and the proxy.
 
 .. _aiohttp-persistent-session:
 
 Persistent session
 ------------------
 
-Even though creating a session on demand seems like tempting idea, we
+Even though creating a session on demand seems like a tempting idea, we
 advise against it. :class:`aiohttp.ClientSession` maintains a
 connection pool. Contained connections can be reused if necessary to gain some
 performance improvements. If you plan on reusing the session, a.k.a. creating
@@ -573,37 +650,38 @@ performance improvements. If you plan on reusing the session, a.k.a. creating
 as it results in more compact code::
 
     app.cleanup_ctx.append(persistent_session)
+    persistent_session = aiohttp.web.AppKey("persistent_session", aiohttp.ClientSession)
 
     async def persistent_session(app):
-       app['PERSISTENT_SESSION'] = session = aiohttp.ClientSession()
+       app[persistent_session] = session = aiohttp.ClientSession()
        yield
        await session.close()
 
     async def my_request_handler(request):
-       session = request.app['PERSISTENT_SESSION']
+       session = request.app[persistent_session]
        async with session.get("http://python.org") as resp:
            print(resp.status)
 
 
-This approach can be successfully used to define numerous of session given certain
+This approach can be successfully used to define numerous sessions given certain
 requirements. It benefits from having a single location where :class:`aiohttp.ClientSession`
 instances are created and where artifacts such as :class:`aiohttp.BaseConnector`
 can be safely shared between sessions if needed.
 
-In the end all you have to do is to close all sessions after `yield` statement::
+In the end all you have to do is to close all sessions after the `yield` statement::
 
     async def multiple_sessions(app):
-       app['PERSISTENT_SESSION_1'] = session_1 = aiohttp.ClientSession()
-       app['PERSISTENT_SESSION_2'] = session_2 = aiohttp.ClientSession()
-       app['PERSISTENT_SESSION_3'] = session_3 = aiohttp.ClientSession()
+       app[persistent_session_1] = session_1 = aiohttp.ClientSession()
+       app[persistent_session_2] = session_2 = aiohttp.ClientSession()
+       app[persistent_session_3] = session_3 = aiohttp.ClientSession()
 
        yield
 
-       await asyncio.gather(*[
+       await asyncio.gather(
            session_1.close(),
            session_2.close(),
            session_3.close(),
-       ])
+       )
 
 Graceful Shutdown
 -----------------
@@ -626,20 +704,15 @@ asyncio.sleep(0)``) will suffice::
         async with aiohttp.ClientSession() as session:
             async with session.get('http://example.org/') as resp:
                 await resp.read()
-
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(read_website())
-    # Zero-sleep to allow underlying connections to close
-    loop.run_until_complete(asyncio.sleep(0))
-    loop.close()
+        # Zero-sleep to allow underlying connections to close
+        await asyncio.sleep(0)
 
 For a :class:`ClientSession` with SSL, the application must wait a
 short duration before closing::
 
     ...
     # Wait 250 ms for the underlying SSL connections to close
-    loop.run_until_complete(asyncio.sleep(0.250))
-    loop.close()
+    await asyncio.sleep(0.250)
 
 Note that the appropriate amount of time to wait will vary from
 application to application.

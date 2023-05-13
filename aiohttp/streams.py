@@ -65,28 +65,20 @@ class AsyncStreamReaderMixin:
         return AsyncStreamIterator(self.readline)  # type: ignore[attr-defined]
 
     def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
-        """Returns an asynchronous iterator that yields chunks of size n.
-
-        Python-3.5 available for Python 3.5+ only
-        """
+        """Returns an asynchronous iterator that yields chunks of size n."""
         return AsyncStreamIterator(
             lambda: self.read(n)  # type: ignore[attr-defined,no-any-return]
         )
 
     def iter_any(self) -> AsyncStreamIterator[bytes]:
-        """Returns an asynchronous iterator that yields all the available
-        data as soon as it is received
-
-        Python-3.5 available for Python 3.5+ only
-        """
+        """Yield all available data as soon as it is received."""
         return AsyncStreamIterator(self.readany)  # type: ignore[attr-defined]
 
     def iter_chunks(self) -> ChunkTupleAsyncStreamIterator:
-        """Returns an asynchronous iterator that yields chunks of data
-        as they are received by the server. The yielded objects are tuples
-        of (bytes, bool) as returned by the StreamReader.readchunk method.
+        """Yield chunks of data as they are received by the server.
 
-        Python-3.5 available for Python 3.5+ only
+        The yielded objects are tuples
+        of (bytes, bool) as returned by the StreamReader.readchunk method.
         """
         return ChunkTupleAsyncStreamIterator(self)  # type: ignore[arg-type]
 
@@ -123,15 +115,15 @@ class StreamReader(AsyncStreamReaderMixin):
         self._loop = loop
         self._size = 0
         self._cursor = 0
-        self._http_chunk_splits = None  # type: Optional[List[int]]
-        self._buffer = collections.deque()  # type: Deque[bytes]
+        self._http_chunk_splits: Optional[List[int]] = None
+        self._buffer: Deque[bytes] = collections.deque()
         self._buffer_offset = 0
         self._eof = False
-        self._waiter = None  # type: Optional[asyncio.Future[None]]
-        self._eof_waiter = None  # type: Optional[asyncio.Future[None]]
-        self._exception = None  # type: Optional[BaseException]
+        self._waiter: Optional[asyncio.Future[None]] = None
+        self._eof_waiter: Optional[asyncio.Future[None]] = None
+        self._exception: Optional[BaseException] = None
         self._timer = timer
-        self._eof_callbacks = []  # type: List[Callable[[], None]]
+        self._eof_callbacks: List[Callable[[], None]] = []
 
     def __repr__(self) -> str:
         info = [self.__class__.__name__]
@@ -139,7 +131,7 @@ class StreamReader(AsyncStreamReaderMixin):
             info.append("%d bytes" % self._size)
         if self._eof:
             info.append("eof")
-        if self._low_water != 2 ** 16:  # default limit
+        if self._low_water != 2**16:  # default limit
             info.append("low=%d high=%d" % (self._low_water, self._high_water))
         if self._waiter:
             info.append("w=%r" % self._waiter)
@@ -333,7 +325,9 @@ class StreamReader(AsyncStreamReaderMixin):
                 offset = self._buffer_offset
                 ichar = self._buffer[0].find(separator, offset) + 1
                 # Read from current offset to found separator or to the end.
-                data = self._read_nowait_chunk(ichar - offset if ichar else -1)
+                data = self._read_nowait_chunk(
+                    ichar - offset + seplen - 1 if ichar else -1
+                )
                 chunk += data
                 chunk_size += len(data)
                 if ichar:
@@ -391,7 +385,9 @@ class StreamReader(AsyncStreamReaderMixin):
         return await self._read_nowait(-1)
 
     async def readchunk(self) -> Tuple[bytes, bool]:
-        """Returns a tuple of (data, end_of_http_chunk). When chunked transfer
+        """Returns a tuple of (data, end_of_http_chunk).
+
+        When chunked transfer
         encoding is used, end_of_http_chunk is a boolean indicating if the end
         of the data corresponds to the end of a HTTP chunk , otherwise it is
         always False.
@@ -426,7 +422,7 @@ class StreamReader(AsyncStreamReaderMixin):
         if self._exception is not None:
             raise self._exception
 
-        blocks = []  # type: List[bytes]
+        blocks: List[bytes] = []
         while n > 0:
             block = await self.read(n)
             if not block:
@@ -486,7 +482,7 @@ class StreamReader(AsyncStreamReaderMixin):
         return await self._read_nowait_internal(n)
 
     async def _read_nowait_internal(self, n: int) -> bytes:
-        """ Read not more than n bytes, or whole buffer if n == -1 """
+        """Read not more than n bytes, or whole buffer if n == -1"""
         chunks = []
 
         while self._buffer:
@@ -504,6 +500,9 @@ class StreamReader(AsyncStreamReaderMixin):
 class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     def __init__(self) -> None:
         pass
+
+    def __repr__(self) -> str:
+        return "<%s>" % self.__class__.__name__
 
     def exception(self) -> Optional[BaseException]:
         return None
@@ -562,10 +561,10 @@ class DataQueue(Generic[_T]):
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
         self._eof = False
-        self._waiter = None  # type: Optional[asyncio.Future[None]]
-        self._exception = None  # type: Optional[BaseException]
+        self._waiter: Optional[asyncio.Future[None]] = None
+        self._exception: Optional[BaseException] = None
         self._size = 0
-        self._buffer = collections.deque()  # type: Deque[Tuple[_T, int]]
+        self._buffer: Deque[Tuple[_T, int]] = collections.deque()
 
     def __len__(self) -> int:
         return len(self._buffer)
@@ -632,7 +631,8 @@ class DataQueue(Generic[_T]):
 class FlowControlDataQueue(DataQueue[_T]):
     """FlowControlDataQueue resumes and pauses an underlying stream.
 
-    It is a destination for parsed data."""
+    It is a destination for parsed data.
+    """
 
     def __init__(
         self, protocol: BaseProtocol, limit: int, *, loop: asyncio.AbstractEventLoop

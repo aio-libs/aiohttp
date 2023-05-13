@@ -1,5 +1,23 @@
+# Read the Docs configuration file
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html
+# for details
+
+---
+version: 2
+
+submodules:
+  include: all
+  exclude: []
+  recursive: true
+
 build:
-  image: latest
+  os: ubuntu-22.04
+  tools:
+    python: "3.11"
+
 python:
-  version: 3.6
-  pip_install: false
+  install:
+  - method: pip
+    path: .
+  - requirements: requirements/doc.txt
+...

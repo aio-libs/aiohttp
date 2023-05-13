@@ -38,7 +38,8 @@ Usage example::
 
 The client session supports the context manager protocol for self closing.
 
-.. class:: ClientSession(*, connector=None, loop=None, cookies=None, \
+.. class:: ClientSession(base_url=None, *, \
+                         connector=None, cookies=None, \
                          headers=None, skip_auto_headers=None, \
                          auth=None, json_serialize=json.dumps, \
                          version=aiohttp.HttpVersion11, \
@@ -49,12 +50,17 @@ The client session supports the context manager protocol for self closing.
                          connector_owner=True, \
                          auto_decompress=True, \
                          read_bufsize=2**16, \
-                         requote_redirect_url=False, \
+                         requote_redirect_url=True, \
                          trust_env=False, \
                          trace_configs=None)
 
    The class for creating client sessions and making requests.
 
+
+   :param base_url: Base part of the URL (optional)
+      If set it allows to skip the base part in request calls.
+
+      .. versionadded:: 3.8
 
    :param aiohttp.BaseConnector connector: BaseConnector
       sub-class instance to support connection pooling.
@@ -158,8 +164,7 @@ The client session supports the context manager protocol for self closing.
       connection pool between sessions without sharing session state:
       cookies etc.
 
-   :param bool auto_decompress: Automatically decompress response body,
-       ``True`` by default
+   :param bool auto_decompress: Automatically decompress response body (``True`` by default).
 
       .. versionadded:: 2.3
 
@@ -168,11 +173,16 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 3.7
 
-   :param bool trust_env: Get proxies information from *HTTP_PROXY* /
-      *HTTPS_PROXY* environment variables if the parameter is ``True``
-      (``False`` by default).
+   :param bool trust_env: Trust environment settings for proxy configuration if the parameter
+      is ``True`` (``False`` by default). See :ref:`aiohttp-client-proxy-support` for
+      more information.
 
       Get proxy credentials from ``~/.netrc`` file if present.
+
+      Get HTTP Basic Auth credentials from :file:`~/.netrc` file if present.
+
+      If :envvar:`NETRC` environment variable is set, read from file specified
+      there rather than from :file:`~/.netrc`.
 
       .. seealso::
 
@@ -183,6 +193,10 @@ The client session supports the context manager protocol for self closing.
       .. versionchanged:: 3.0
 
          Added support for ``~/.netrc`` file.
+
+      .. versionchanged:: 3.9
+
+         Added support for reading HTTP Basic Auth credentials from :file:`~/.netrc` file.
 
    :param bool requote_redirect_url: Apply *URL requoting* for redirection URLs if
                                      automatic redirection is enabled (``True`` by
@@ -307,8 +321,9 @@ The client session supports the context manager protocol for self closing.
 
    .. attribute:: trust_env
 
-      Should get proxies information from HTTP_PROXY / HTTPS_PROXY environment
-      variables or ~/.netrc file if present
+      Trust environment settings for proxy configuration
+      or ~/.netrc file if present. See :ref:`aiohttp-client-proxy-support` for
+      more information.
 
       :class:`bool` default is ``False``
 
@@ -332,10 +347,11 @@ The client session supports the context manager protocol for self closing.
                          proxy=None, proxy_auth=None,\
                          timeout=sentinel, ssl=None, \
                          verify_ssl=None, fingerprint=None, \
-                         ssl_context=None, proxy_headers=None)
+                         ssl_context=None, proxy_headers=None, \
+                         auto_decompress=None)
       :async-with:
       :coroutine:
-      :noindex:
+      :noindexentry:
 
       Performs an asynchronous HTTP request. Returns a response object.
 
@@ -504,6 +520,10 @@ The client session supports the context manager protocol for self closing.
 
          .. versionadded:: 3.0
 
+      :param bool auto_decompress: Automatically decompress response body.
+         Overrides :attr:`ClientSession.auto_decompress`.
+         May be used to enable/disable auto decompression on a per-request basis.
+
       :return ClientResponse: a :class:`client response <ClientResponse>`
          object.
 
@@ -644,6 +664,7 @@ The client session supports the context manager protocol for self closing.
                             autoping=True,\
                             heartbeat=None,\
                             origin=None, \
+                            params=None, \
                             headers=None, \
                             proxy=None, proxy_auth=None, ssl=None, \
                             verify_ssl=None, fingerprint=None, \
@@ -684,6 +705,21 @@ The client session supports the context manager protocol for self closing.
                               reception.(optional)
 
       :param str origin: Origin header to send to server(optional)
+
+      :param params: Mapping, iterable of tuple of *key*/*value* pairs or
+                     string to be sent as parameters in the query
+                     string of the new request. Ignored for subsequent
+                     redirected requests (optional)
+
+                     Allowed values are:
+
+                     - :class:`collections.abc.Mapping` e.g. :class:`dict`,
+                       :class:`multidict.MultiDict` or
+                       :class:`multidict.MultiDictProxy`
+                     - :class:`collections.abc.Iterable` e.g. :class:`tuple` or
+                       :class:`list`
+                     - :class:`str` with preferably url-encoded content
+                       (**Warning:** content will not be encoded by *aiohttp*)
 
       :param dict headers: HTTP Headers to send with
                            the request (optional)
@@ -1374,10 +1410,10 @@ Response object
       specified *encoding* parameter.
 
       If *encoding* is ``None`` content encoding is autocalculated
-      using ``Content-Type`` HTTP header and *chardet* tool if the
+      using ``Content-Type`` HTTP header and *charset-normalizer* tool if the
       header is not provided by server.
 
-      :term:`cchardet` is used with fallback to :term:`chardet` if
+      :term:`cchardet` is used with fallback to :term:`charset-normalizer` if
       *cchardet* is not available.
 
       Close underlying connection if data reading gets an error,
@@ -1389,14 +1425,14 @@ Response object
 
       :return str: decoded *BODY*
 
-      :raise LookupError: if the encoding detected by chardet or cchardet is
+      :raise LookupError: if the encoding detected by cchardet is
                           unknown by Python (e.g. VISCII).
 
       .. note::
 
          If response has no ``charset`` info in ``Content-Type`` HTTP
-         header :term:`cchardet` / :term:`chardet` is used for content
-         encoding autodetection.
+         header :term:`cchardet` / :term:`charset-normalizer` is used for
+         content encoding autodetection.
 
          It may hurt performance. If page encoding is known passing
          explicit *encoding* parameter might help::
@@ -1411,7 +1447,7 @@ Response object
       a ``read`` call will be done,
 
       If *encoding* is ``None`` content encoding is autocalculated
-      using :term:`cchardet` or :term:`chardet` as fallback if
+      using :term:`cchardet` or :term:`charset-normalizer` as fallback if
       *cchardet* is not available.
 
       if response's `content-type` does not match `content_type` parameter
@@ -1449,11 +1485,11 @@ Response object
       Automatically detect content encoding using ``charset`` info in
       ``Content-Type`` HTTP header. If this info is not exists or there
       are no appropriate codecs for encoding then :term:`cchardet` /
-      :term:`chardet` is used.
+      :term:`charset-normalizer` is used.
 
       Beware that it is not always safe to use the result of this function to
       decode a response. Some encodings detected by cchardet are not known by
-      Python (e.g. VISCII).
+      Python (e.g. VISCII). *charset-normalizer* is not concerned by that issue.
 
       :raise RuntimeError: if called before the body has been read,
                            for :term:`cchardet` usage
@@ -1688,6 +1724,31 @@ ClientTimeout
 
    .. versionadded:: 3.3
 
+
+   .. note::
+
+      Timeouts of 5 seconds or more are rounded for scheduling on the next
+      second boundary (an absolute time where microseconds part is zero) for the
+      sake of performance.
+
+      E.g., assume a timeout is ``10``, absolute time when timeout should expire
+      is ``loop.time() + 5``, and it points to ``12345.67 + 10`` which is equal
+      to ``12355.67``.
+
+      The absolute time for the timeout cancellation is ``12356``.
+
+      It leads to grouping all close scheduled timeout expirations to exactly
+      the same time to reduce amount of loop wakeups.
+
+      .. versionchanged:: 3.7
+
+         Rounding to the next seconds boundary is disabled for timeouts smaller
+         than 5 seconds for the sake of easy debugging.
+
+         In turn, tiny timeouts can lead to significant performance degradation
+         on production environment.
+
+
 ETag
 ^^^^
 
@@ -1778,7 +1839,7 @@ BasicAuth
 CookieJar
 ^^^^^^^^^
 
-.. class:: CookieJar(*, unsafe=False, quote_cookie=True, loop=None)
+.. class:: CookieJar(*, unsafe=False, quote_cookie=True, treat_as_secure_origin = [])
 
    The cookie jar instance is available as :attr:`ClientSession.cookie_jar`.
 
@@ -1810,11 +1871,17 @@ CookieJar
 
       .. versionadded:: 3.7
 
-   :param bool loop: an :ref:`event loop<asyncio-event-loop>` instance.
-      See :class:`aiohttp.abc.AbstractCookieJar`
+   :param treat_as_secure_origin: (optional) Mark origins as secure
+                                  for cookies marked as Secured. Possible types are
 
-      .. deprecated:: 2.0
+                                  Possible types are:
 
+                                  - :class:`tuple` or :class:`list` of
+                                    :class:`str` or :class:`yarl.URL`
+                                  - :class:`str`
+                                  - :class:`yarl.URL`
+
+      .. versionadded:: 3.8
 
    .. method:: update_cookies(cookies, response_url=None)
 
@@ -2028,7 +2095,7 @@ All exceptions are available as members of *aiohttp* module.
 
     Represent Content-Disposition header
 
-    .. attribute:: value
+    .. attribute:: type
 
     A :class:`str` instance. Value of Content-Disposition header
     itself, e.g. ``attachment``.
@@ -2163,7 +2230,7 @@ Connection errors
 
    Server disconnected.
 
-   Derived from :exc:`~aiohttp.ServerDisconnectionError`
+   Derived from :exc:`~aiohttp.ServerConnectionError`
 
    .. attribute:: message
 

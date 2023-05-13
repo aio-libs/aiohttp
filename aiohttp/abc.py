@@ -63,7 +63,9 @@ class AbstractMatchInfo(ABC):
 
     @property
     @abstractmethod
-    def expect_handler(self) -> Callable[[Request], Awaitable[None]]:
+    def expect_handler(
+        self,
+    ) -> Callable[[Request], Awaitable[Optional[StreamResponse]]]:
         """Expect handler for 100-continue processing"""
 
     @property  # pragma: no branch
@@ -161,7 +163,7 @@ class AbstractStreamWriter(ABC):
 
     buffer_size = 0
     output_size = 0
-    length = 0  # type: Optional[int]
+    length: Optional[int] = 0
 
     @abstractmethod
     async def write(self, chunk: bytes) -> None:

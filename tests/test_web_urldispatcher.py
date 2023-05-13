@@ -461,6 +461,21 @@ async def test_static_absolute_url(aiohttp_client: Any, tmp_path: Any) -> None:
     assert resp.status == 403
 
 
+async def test_for_issue_5250(aiohttp_client: Any, tmp_path: Any) -> None:
+    app = web.Application()
+    app.router.add_static("/foo", tmp_path)
+
+    async def get_foobar(request):
+        return web.Response(body="success!")
+
+    app.router.add_get("/foobar", get_foobar)
+
+    client = await aiohttp_client(app)
+    async with await client.get("/foobar") as resp:
+        assert resp.status == 200
+        assert (await resp.text()) == "success!"
+
+
 @pytest.mark.xfail(
     raises=AssertionError,
     reason="Regression in v3.7: https://github.com/aio-libs/aiohttp/issues/5621",

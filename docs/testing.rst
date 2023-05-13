@@ -100,13 +100,15 @@ app test client::
     import pytest
     from aiohttp import web
 
+    value = web.AppKey("value", str)
+
 
     async def previous(request):
         if request.method == 'POST':
-            request.app['value'] = (await request.post())['value']
+            request.app[value] = (await request.post())['value']
             return web.Response(body=b'thanks for the data')
         return web.Response(
-            body='value: {}'.format(request.app['value']).encode('utf-8'))
+            body='value: {}'.format(request.app[value]).encode('utf-8'))
 
     @pytest.fixture
     def cli(loop, aiohttp_client):
@@ -119,10 +121,10 @@ app test client::
         resp = await cli.post('/', data={'value': 'foo'})
         assert resp.status == 200
         assert await resp.text() == 'thanks for the data'
-        assert cli.server.app['value'] == 'foo'
+        assert cli.server.app[value] == 'foo'
 
     async def test_get_value(cli):
-        cli.server.app['value'] = 'bar'
+        cli.server.app[value] = 'bar'
         resp = await cli.get('/')
         assert resp.status == 200
         assert await resp.text() == 'value: bar'
@@ -369,17 +371,33 @@ functionality, the AioHTTPTestCase is provided::
 
     .. comethod:: setUpAsync()
 
-       This async method do nothing by default and can be overridden to execute
-       asynchronous code during the ``setUp`` stage of the ``TestCase``.
+       This async method can be overridden to execute asynchronous code during
+       the ``setUp`` stage of the ``TestCase``::
+
+           async def setUpAsync(self):
+               await super().setUpAsync()
+               await foo()
 
        .. versionadded:: 2.3
+
+       .. versionchanged:: 3.8
+
+          ``await super().setUpAsync()`` call is required.
 
     .. comethod:: tearDownAsync()
 
-       This async method do nothing by default and can be overridden to execute
-       asynchronous code during the ``tearDown`` stage of the ``TestCase``.
+       This async method can be overridden to execute asynchronous code during
+       the ``tearDown`` stage of the ``TestCase``::
+
+           async def tearDownAsync(self):
+               await super().tearDownAsync()
+               await foo()
 
        .. versionadded:: 2.3
+
+       .. versionchanged:: 3.8
+
+          ``await super().tearDownAsync()`` call is required.
 
     .. method:: setUp()
 
@@ -631,7 +649,7 @@ Test server usually works in conjunction with
 :class:`aiohttp.test_utils.TestClient` which provides handy client methods
 for accessing to the server.
 
-.. class:: BaseTestServer(*, scheme='http', host='127.0.0.1', port=None)
+.. class:: BaseTestServer(*, scheme='http', host='127.0.0.1', port=None, socket_factory=get_port_socket)
 
    Base class for test servers.
 
@@ -644,6 +662,13 @@ for accessing to the server.
       random unused port is used.
 
       .. versionadded:: 3.0
+
+   :param collections.abc.Callable[[str,int,socket.AddressFamily],socket.socket] socket_factory: optional
+                          Factory to create a socket for the server.
+                          By default creates a TCP socket and binds it
+                          to ``host`` and ``port``.
+
+      .. versionadded:: 3.8
 
    .. attribute:: scheme
 
@@ -665,6 +690,12 @@ for accessing to the server.
    .. attribute:: server
 
       :class:`asyncio.AbstractServer` used for managing accepted connections.
+
+   .. attribute:: socket_factory
+
+      *socket_factory* used to create and bind a server socket.
+
+      .. versionadded:: 3.8
 
    .. comethod:: start_server(**kwargs)
 
@@ -744,7 +775,8 @@ Test Client
                          first with ``TestServer(app)``.
 
    :param cookie_jar: an optional :class:`aiohttp.CookieJar` instance,
-                      may be useful with ``CookieJar(unsafe=True)``
+                      may be useful with
+                      ``CookieJar(unsafe=True, treat_as_secure_origin="http://127.0.0.1")``
                       option.
 
    :param str scheme: HTTP scheme, non-protected ``"http"`` by default.

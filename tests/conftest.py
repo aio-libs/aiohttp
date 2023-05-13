@@ -21,6 +21,9 @@ needs_unix: bool
 try:
     import trustme
 
+    # Check if the CA is available in runtime, MacOS on Py3.10 fails somehow
+    trustme.CA()
+
     TRUSTME: bool = True
 except ImportError:
     TRUSTME = False
@@ -40,7 +43,7 @@ needs_unix = pytest.mark.skipif(not IS_UNIX, reason="requires UNIX sockets")
 @pytest.fixture
 def tls_certificate_authority() -> Any:
     if not TRUSTME:
-        pytest.xfail("trustme fails on 32bit Linux")
+        pytest.xfail("trustme is not supported")
     return trustme.CA()
 
 
@@ -55,7 +58,7 @@ def tls_certificate(tls_certificate_authority: Any) -> Any:
 
 @pytest.fixture
 def ssl_ctx(tls_certificate: Any) -> ssl.SSLContext:
-    ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+    ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     tls_certificate.configure_cert(ssl_ctx)
     return ssl_ctx
 
@@ -92,7 +95,7 @@ def tls_certificate_fingerprint_sha256(tls_certificate_pem_bytes: Any) -> str:
 
 @pytest.fixture
 def pipe_name() -> str:
-    name = fr"\\.\pipe\{uuid4().hex}"
+    name = rf"\\.\pipe\{uuid4().hex}"
     return name
 
 
@@ -185,16 +188,34 @@ def unix_sockname(tmp_path: Any, tmp_path_factory: Any):
 
 @pytest.fixture
 def selector_loop() -> None:
-    if sys.version_info < (3, 7):
-        policy = asyncio.get_event_loop_policy()
-        policy._loop_factory = asyncio.SelectorEventLoop
+    if sys.version_info >= (3, 8):
+        policy = asyncio.WindowsSelectorEventLoopPolicy()
     else:
-        if sys.version_info >= (3, 8):
-            policy = asyncio.WindowsSelectorEventLoopPolicy()
-        else:
-            policy = asyncio.DefaultEventLoopPolicy()
-        asyncio.set_event_loop_policy(policy)
+        policy = asyncio.DefaultEventLoopPolicy()
+    asyncio.set_event_loop_policy(policy)
 
     with loop_context(policy.new_event_loop) as _loop:
         asyncio.set_event_loop(_loop)
         yield _loop
+
+
+@pytest.fixture
+def netrc_contents(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    request: pytest.FixtureRequest,
+):
+    """
+    Prepare :file:`.netrc` with given contents.
+
+    Monkey-patches :envvar:`NETRC` to point to created file.
+    """
+    netrc_contents = getattr(request, "param", None)
+
+    netrc_file_path = tmp_path / ".netrc"
+    if netrc_contents is not None:
+        netrc_file_path.write_text(netrc_contents)
+
+    monkeypatch.setenv("NETRC", str(netrc_file_path))
+
+    return netrc_file_path

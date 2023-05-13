@@ -33,9 +33,7 @@ Now, let's try to get a web-page. For example let's query
                 print(resp.status)
                 print(await resp.text())
 
-
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    asyncio.run(main())
 
 Now, we have a :class:`ClientSession` called ``session`` and a
 :class:`ClientResponse` object called ``resp``. We can get all the
@@ -54,6 +52,18 @@ Other HTTP methods are available as well::
     session.head('http://httpbin.org/get')
     session.options('http://httpbin.org/get')
     session.patch('http://httpbin.org/patch', data=b'data')
+
+To make several requests to the same site more simple, the parameter ``base_url``
+of :class:`ClientSession` constructor can be used. For example to request different
+endpoints of ``http://httpbin.org`` can be used the following code::
+
+    async with aiohttp.ClientSession('http://httpbin.org') as session:
+        async with session.get('/get'):
+            pass
+        async with session.post('/post', data=b'data'):
+            pass
+        async with session.put('/put', data=b'data'):
+            pass
 
 .. note::
 
@@ -245,10 +255,7 @@ In general, however, you should use a pattern like this to save what is being
 streamed to a file::
 
     with open(filename, 'wb') as fd:
-        while True:
-            chunk = await resp.content.read(chunk_size)
-            if not chunk:
-                break
+        async for chunk in resp.content.iter_chunked(chunk_size):
             fd.write(chunk)
 
 It is not possible to use :meth:`~ClientResponse.read`,
@@ -309,7 +316,7 @@ To upload Multipart-encoded files::
 You can set the ``filename`` and ``content_type`` explicitly::
 
     url = 'http://httpbin.org/post'
-    data = FormData()
+    data = aiohttp.FormData()
     data.add_field('file',
                    open('report.xls', 'rb'),
                    filename='report.xls',
@@ -437,13 +444,17 @@ Supported :class:`ClientTimeout` fields are:
       The maximal number of seconds allowed for period between reading a new
       data portion from a peer.
 
+    ``ceil_threshold``
+
+      The threshold value to trigger ceiling of absolute timeout values.
+
 All fields are floats, ``None`` or ``0`` disables a particular timeout check, see the
 :class:`ClientTimeout` reference for defaults and additional details.
 
 Thus the default timeout is::
 
    aiohttp.ClientTimeout(total=5*60, connect=None,
-                         sock_connect=None, sock_read=None)
+                         sock_connect=None, sock_read=None, ceil_threshold=5)
 
 .. note::
 
@@ -460,4 +471,5 @@ Thus the default timeout is::
    timeout expiration.
 
    Smaller timeouts are not rounded to help testing; in the real life network
-   timeouts usually greater than tens of seconds.
+   timeouts usually greater than tens of seconds. However, the default threshold
+   value of 5 seconds can be configured using the ``ceil_threshold`` parameter.

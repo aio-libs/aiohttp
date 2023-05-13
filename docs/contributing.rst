@@ -17,7 +17,7 @@ Workflow is pretty straightforward:
 
   1. Clone the GitHub_ repo using the ``--recurse-submodules`` argument
 
-  2. Setup your machine with the required dev environment
+  2. Setup your machine with the required development environment
 
   3. Make a change
 
@@ -141,6 +141,18 @@ Please take a look on the produced output.
 
 Any extra texts (print statements and so on) should be removed.
 
+.. note::
+
+   If you see that CI build is failing on a specific Python version and
+   you don't have this version on your computer, you can use the helper to
+   run it (only if you have docker)::
+
+     make test-<python-version>[-no-extensions]
+
+   For example, if you want to run tests for python3.7
+   without extensions, you can run this command::
+
+     make test-3.7-no-extensions
 
 Tests coverage
 --------------
@@ -303,7 +315,7 @@ The rules for committers are simple:
 4. Keep test suite comprehensive. In practice it means leveling up
    coverage. 97% is not bad but we wish to have 100% someday. Well, 99%
    is good target too.
-5. Don't hesitate to improve our docs. Documentation is very important
+5. Don't hesitate to improve our docs. Documentation is a very important
    thing, it's the key for project success. The documentation should
    not only cover our public API but help newbies to start using the
    project and shed a light on non-obvious gotchas.

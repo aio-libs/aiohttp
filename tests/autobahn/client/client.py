@@ -5,7 +5,7 @@ import asyncio
 import aiohttp
 
 
-async def client(url, name):
+async def client(url: str, name: str) -> None:
     async with aiohttp.ClientSession() as session:
         async with session.ws_connect(url + "/getCaseCount") as ws:
             num_tests = int((await ws.receive()).data)
@@ -28,7 +28,7 @@ async def client(url, name):
             print("finally requesting %s" % url)
 
 
-async def run(url, name):
+async def run(url: str, name: str) -> None:
     try:
         await client(url, name)
     except Exception:
@@ -38,4 +38,4 @@ async def run(url, name):
 
 
 if __name__ == "__main__":
-    asyncio.run(run("http://autobahn:9001", "aiohttp"))
+    asyncio.run(run("http://localhost:9001", "aiohttp"))

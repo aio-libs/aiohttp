@@ -5,7 +5,7 @@ import io
 import pathlib
 import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
-from typing import Any
+from typing import Any, Optional
 from unittest import mock
 
 import pytest
@@ -13,7 +13,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
 
 import aiohttp
-from aiohttp import BaseConnector, hdrs, payload
+from aiohttp import BaseConnector, hdrs, helpers, payload
 from aiohttp.client_reqrep import (
     ClientRequest,
     ClientResponse,
@@ -88,6 +88,11 @@ def test_method3(make_request: Any) -> None:
     assert req.method == "HEAD"
 
 
+def test_method_invalid(make_request: Any) -> None:
+    with pytest.raises(ValueError, match="Method cannot contain non-token characters"):
+        make_request("METHOD WITH\nWHITESPACES", "http://python.org/")
+
+
 def test_version_1_0(make_request: Any) -> None:
     req = make_request("get", "http://python.org/", version="1.0")
     assert req.version == (1, 0)
@@ -117,11 +122,6 @@ def test_request_info_with_fragment(make_request: Any) -> None:
 def test_version_err(make_request: Any) -> None:
     with pytest.raises(ValueError):
         make_request("get", "http://python.org/", version="1.c")
-
-
-def test_https_proxy(make_request: Any) -> None:
-    with pytest.raises(ValueError):
-        make_request("get", "http://python.org/", proxy=URL("https://proxy.org"))
 
 
 def test_keep_alive(make_request: Any) -> None:
@@ -628,16 +628,17 @@ async def test_content_type_skip_auto_header_form(loop: Any, conn: Any) -> None:
 async def test_content_type_auto_header_content_length_no_skip(
     loop: Any, conn: Any
 ) -> None:
-    req = ClientRequest(
-        "post",
-        URL("http://python.org"),
-        data=io.BytesIO(b"hey"),
-        skip_auto_headers={"Content-Length"},
-        loop=loop,
-    )
-    resp = await req.send(conn)
-    assert req.headers.get("CONTENT-LENGTH") == "3"
-    resp.close()
+    with io.BytesIO(b"hey") as file_handle:
+        req = ClientRequest(
+            "post",
+            URL("http://python.org"),
+            data=file_handle,
+            skip_auto_headers={"Content-Length"},
+            loop=loop,
+        )
+        resp = await req.send(conn)
+        assert req.headers.get("CONTENT-LENGTH") == "3"
+        resp.close()
 
 
 async def test_urlencoded_formdata_charset(loop: Any, conn: Any) -> None:
@@ -651,6 +652,21 @@ async def test_urlencoded_formdata_charset(loop: Any, conn: Any) -> None:
     assert "application/x-www-form-urlencoded; charset=koi8-r" == req.headers.get(
         "CONTENT-TYPE"
     )
+
+
+async def test_formdata_boundary_from_headers(loop: Any, conn: Any) -> None:
+    boundary = "some_boundary"
+    file_path = pathlib.Path(__file__).parent / "aiohttp.png"
+    with file_path.open("rb") as f:
+        req = ClientRequest(
+            "post",
+            URL("http://python.org"),
+            data={"aiohttp.png": f},
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+            loop=loop,
+        )
+        await req.send(conn)
+        assert req.body._boundary == boundary.encode()
 
 
 async def test_post_data(loop: Any, conn: Any) -> None:
@@ -918,22 +934,24 @@ async def test_data_stream(loop: Any, buf: Any, conn: Any) -> None:
 
 
 async def test_data_file(loop: Any, buf: Any, conn: Any) -> None:
-    req = ClientRequest(
-        "POST",
-        URL("http://python.org/"),
-        data=io.BufferedReader(io.BytesIO(b"*" * 2)),
-        loop=loop,
-    )
-    assert req.chunked
-    assert isinstance(req.body, payload.BufferedReaderPayload)
-    assert req.headers["TRANSFER-ENCODING"] == "chunked"
+    with io.BufferedReader(io.BytesIO(b"*" * 2)) as file_handle:
+        req = ClientRequest(
+            "POST",
+            URL("http://python.org/"),
+            data=file_handle,
+            loop=loop,
+        )
+        assert req.chunked
+        assert isinstance(req.body, payload.BufferedReaderPayload)
+        assert req.headers["TRANSFER-ENCODING"] == "chunked"
 
-    resp = await req.send(conn)
-    assert asyncio.isfuture(req._writer)
-    await resp.wait_for_close()
-    assert req._writer is None
-    assert buf.split(b"\r\n\r\n", 1)[1] == b"2\r\n" + b"*" * 2 + b"\r\n0\r\n\r\n"
-    await req.close()
+        resp = await req.send(conn)
+        assert asyncio.isfuture(req._writer)
+        await resp.wait_for_close()
+
+        assert req._writer is None
+        assert buf.split(b"\r\n\r\n", 1)[1] == b"2\r\n" + b"*" * 2 + b"\r\n0\r\n\r\n"
+        await req.close()
 
 
 async def test_data_stream_exc(loop: Any, conn: Any) -> None:
@@ -1212,3 +1230,51 @@ def test_loose_cookies_types(loop: Any) -> None:
 def test_gen_default_accept_encoding(has_brotli: Any, expected: Any) -> None:
     with mock.patch("aiohttp.client_reqrep.HAS_BROTLI", has_brotli):
         assert _gen_default_accept_encoding() == expected
+
+
+@pytest.mark.parametrize(
+    ("netrc_contents", "expected_auth"),
+    [
+        (
+            "machine example.com login username password pass\n",
+            helpers.BasicAuth("username", "pass"),
+        )
+    ],
+    indirect=("netrc_contents",),
+)
+@pytest.mark.usefixtures("netrc_contents")
+def test_basicauth_from_netrc_present(
+    make_request: Any,
+    expected_auth: Optional[helpers.BasicAuth],
+):
+    """Test appropriate Authorization header is sent when netrc is not empty."""
+    req = make_request("get", "http://example.com", trust_env=True)
+    assert req.headers[hdrs.AUTHORIZATION] == expected_auth.encode()
+
+
+@pytest.mark.parametrize(
+    "netrc_contents",
+    ("machine example.com login username password pass\n",),
+    indirect=("netrc_contents",),
+)
+@pytest.mark.usefixtures("netrc_contents")
+def test_basicauth_from_netrc_present_untrusted_env(
+    make_request: Any,
+):
+    """Test no authorization header is sent via netrc if trust_env is False"""
+    req = make_request("get", "http://example.com", trust_env=False)
+    assert hdrs.AUTHORIZATION not in req.headers
+
+
+@pytest.mark.parametrize(
+    "netrc_contents",
+    ("",),
+    indirect=("netrc_contents",),
+)
+@pytest.mark.usefixtures("netrc_contents")
+def test_basicauth_from_empty_netrc(
+    make_request: Any,
+):
+    """Test that no Authorization header is sent when netrc is empty"""
+    req = make_request("get", "http://example.com", trust_env=True)
+    assert hdrs.AUTHORIZATION not in req.headers

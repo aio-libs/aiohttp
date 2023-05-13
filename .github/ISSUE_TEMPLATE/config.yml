@@ -4,8 +4,8 @@ contact_links:
 - name: 🤷💻🤦 StackOverflow
   url: https://stackoverflow.com/questions/tagged/aiohttp
   about: Please ask typical Q&A here
-- name: 💬 Discourse
-  url: https://aio-libs.discourse.group/
+- name: 💬 Github Discussions
+  url: https://github.com/aio-libs/aiohttp/discussions
   about: Please start usage discussions here
 - name: 💬 Gitter Chat
   url: https://gitter.im/aio-libs/Lobby

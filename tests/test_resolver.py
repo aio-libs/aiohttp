@@ -44,7 +44,7 @@ def fake_addrinfo(hosts: Any) -> Callable[..., Awaitable[Any]]:
         if not hosts:
             raise socket.gaierror
 
-        return list([(None, None, None, None, [h, 0]) for h in hosts])
+        return [(socket.AF_INET, None, socket.SOCK_STREAM, None, [h, 0]) for h in hosts]
 
     return fake
 
@@ -66,8 +66,8 @@ async def test_async_resolver_multiple_replies(loop: Any) -> None:
         mock().gethostbyname.return_value = fake_result(ips)
         resolver = AsyncResolver()
         real = await resolver.resolve("www.google.com")
-        ips = [ipaddress.ip_address(x["host"]) for x in real]
-        assert len(ips) > 3, "Expecting multiple addresses"
+        ipaddrs = [ipaddress.ip_address(x["host"]) for x in real]
+        assert len(ipaddrs) > 3, "Expecting multiple addresses"
 
 
 @pytest.mark.skipif(not gethostbyname, reason="aiodns 1.1 required")
@@ -105,8 +105,8 @@ async def test_threaded_resolver_multiple_replies() -> None:
     resolver = ThreadedResolver()
     resolver._loop = loop
     real = await resolver.resolve("www.google.com")
-    ips = [ipaddress.ip_address(x["host"]) for x in real]
-    assert len(ips) > 3, "Expecting multiple addresses"
+    ipaddrs = [ipaddress.ip_address(x["host"]) for x in real]
+    assert len(ipaddrs) > 3, "Expecting multiple addresses"
 
 
 async def test_threaded_negative_lookup() -> None:
@@ -117,6 +117,30 @@ async def test_threaded_negative_lookup() -> None:
     resolver._loop = loop
     with pytest.raises(socket.gaierror):
         await resolver.resolve("doesnotexist.bla")
+
+
+async def test_threaded_negative_lookup_with_unknown_result() -> None:
+    loop = Mock()
+
+    # If compile CPython with `--disable-ipv6` option,
+    # we will get an (int, bytes) tuple, instead of a Exception.
+    async def unknown_addrinfo(*args: Any, **kwargs: Any) -> List[Any]:
+        return [
+            (
+                socket.AF_INET6,
+                socket.SOCK_STREAM,
+                6,
+                "",
+                (10, b"\x01\xbb\x00\x00\x00\x00*\x04NB\x00\x1a\x00\x00"),
+            )
+        ]
+
+    loop.getaddrinfo = unknown_addrinfo
+    resolver = ThreadedResolver()
+    resolver._loop = loop
+    with patch("socket.has_ipv6", False):
+        res = await resolver.resolve("www.python.org")
+    assert len(res) == 0
 
 
 async def test_close_for_threaded_resolver(loop: Any) -> None:

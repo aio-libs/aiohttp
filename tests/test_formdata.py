@@ -4,7 +4,7 @@ from unittest import mock
 
 import pytest
 
-from aiohttp import ClientSession, FormData
+from aiohttp import FormData, web
 
 
 @pytest.fixture
@@ -88,14 +88,28 @@ async def test_formdata_field_name_is_not_quoted(buf: Any, writer: Any) -> None:
     assert b'name="email 1"' in buf
 
 
-async def test_mark_formdata_as_processed() -> None:
-    async with ClientSession() as session:
-        url = "http://httpbin.org/anything"
-        data = FormData()
-        data.add_field("test", "test_value", content_type="application/json")
+async def test_mark_formdata_as_processed(aiohttp_client: Any) -> None:
+    async def handler(request):
+        return web.Response()
 
-        await session.post(url, data=data)
-        assert len(data._writer._parts) == 1
+    app = web.Application()
+    app.add_routes([web.post("/", handler)])
 
-        with pytest.raises(RuntimeError):
-            await session.post(url, data=data)
+    client = await aiohttp_client(app)
+
+    data = FormData()
+    data.add_field("test", "test_value", content_type="application/json")
+
+    resp = await client.post("/", data=data)
+    assert len(data._writer._parts) == 1
+
+    with pytest.raises(RuntimeError):
+        await client.post("/", data=data)
+
+    resp.release()
+
+
+async def test_formdata_boundary_param() -> None:
+    boundary = "some_boundary"
+    form = FormData(boundary=boundary)
+    assert form._writer.boundary == boundary

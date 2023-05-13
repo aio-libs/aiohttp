@@ -77,7 +77,6 @@ __all__ = (
 
 
 class HTTPException(CookieMixin, Exception):
-
     # You should set in subclasses:
     # status = 200
 
@@ -320,7 +319,7 @@ class HTTPMethodNotAllowed(HTTPClientError):
             headers=headers, reason=reason, text=text, content_type=content_type
         )
         self.headers["Allow"] = allow
-        self._allowed = set(allowed_methods)  # type: Set[str]
+        self._allowed: Set[str] = set(allowed_methods)
         self._method = method
 
     @property
@@ -431,7 +430,7 @@ class HTTPUnavailableForLegalReasons(HTTPClientError):
         super().__init__(
             headers=headers, reason=reason, text=text, content_type=content_type
         )
-        self.headers["Link"] = '<{}>; rel="blocked-by"'.format(str(link))
+        self.headers["Link"] = f'<{str(link)}>; rel="blocked-by"'
         self._link = URL(link)
 
     @property

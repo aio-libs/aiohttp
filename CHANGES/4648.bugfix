@@ -1,1 +1,0 @@
-Fix supporting WebSockets proxies configured via environment variables.
