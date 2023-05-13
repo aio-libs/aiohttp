@@ -64,7 +64,7 @@ def tmp_dir_path(request):
     ],
 )
 async def test_access_root_of_static_handler(
-    tmp_path: pathlib.Path,
+    tmp_dir_path: pathlib.Path,
     aiohttp_client: AiohttpClient,
     show_index: bool,
     status: int,
@@ -104,7 +104,7 @@ async def test_access_root_of_static_handler(
 
 
 async def test_follow_symlink(
-    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+    tmp_dir_path: pathlib.Path, aiohttp_client: AiohttpClient
 ) -> None:
     # Tests the access to a symlink, in static folder
     data = "hello world"
@@ -139,7 +139,7 @@ async def test_follow_symlink(
     ],
 )
 async def test_access_to_the_file_with_spaces(
-    tmp_path: pathlib.Path,
+    tmp_dir_path: pathlib.Path,
     aiohttp_client: AiohttpClient,
     dir_name: str,
     filename: str,
@@ -171,7 +171,7 @@ async def test_access_to_the_file_with_spaces(
 
 
 async def test_access_non_existing_resource(
-    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+    tmp_dir_path: pathlib.Path, aiohttp_client: AiohttpClient
 ) -> None:
     # Tests accessing non-existing resource
     # Try to access a non-exiting resource and make sure that 404 HTTP status
@@ -233,7 +233,7 @@ async def test_handler_metadata_persistence() -> None:
 
 
 async def test_unauthorized_folder_access(
-    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+    tmp_dir_path: pathlib.Path, aiohttp_client: AiohttpClient
 ) -> None:
     # Tests the unauthorized access to a folder of static file server.
     # Try to list a folder content of static file server when server does not
@@ -260,7 +260,7 @@ async def test_unauthorized_folder_access(
 
 
 async def test_access_symlink_loop(
-    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+    tmp_dir_path: pathlib.Path, aiohttp_client: AiohttpClient
 ) -> None:
     # Tests the access to a looped symlink, which could not be resolved.
     my_dir_path = os.path.join(tmp_dir_path, "my_symlink")
@@ -278,7 +278,7 @@ async def test_access_symlink_loop(
 
 
 async def test_access_special_resource(
-    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+    tmp_dir_path: pathlib.Path, aiohttp_client: AiohttpClient
 ) -> None:
     # Tests the access to a resource that is neither a file nor a directory.
     # Checks that if a special resource is accessed (f.e. named pipe or UNIX
@@ -326,15 +326,15 @@ async def test_partially_applied_handler(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_static_head(
-    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+    tmp_dir_path: pathlib.Path, aiohttp_client: AiohttpClient
 ) -> None:
     # Test HEAD on static route
-    my_file_path = tmp_path / "test.txt"
+    my_file_path = tmp_dir_path / "test.txt"
     with my_file_path.open("wb") as fw:
         fw.write(b"should_not_see_this\n")
 
     app = web.Application()
-    app.router.add_static("/", str(tmp_path))
+    app.router.add_static("/", str(tmp_dir_path))
     client = await aiohttp_client(app)
 
     r = await client.head("/test.txt")
@@ -547,10 +547,10 @@ async def test_static_absolute_url(
 
 
 async def test_for_issue_5250(
-    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+    aiohttp_client: AiohttpClient, tmp_dir_path: pathlib.Path
 ) -> None:
     app = web.Application()
-    app.router.add_static("/foo", tmp_path)
+    app.router.add_static("/foo", tmp_dir_path)
 
     async def get_foobar(request: web.Request) -> web.Response:
         return web.Response(body="success!")
