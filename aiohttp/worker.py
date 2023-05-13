@@ -26,7 +26,7 @@ except ImportError:  # pragma: no cover
     SSLContext = object  # type: ignore[misc,assignment]
 
 
-__all__ = ("GunicornWebWorker", "GunicornUVLoopWebWorker", "GunicornTokioWebWorker")
+__all__ = ("GunicornWebWorker", "GunicornUVLoopWebWorker")
 
 
 class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
@@ -249,21 +249,5 @@ class GunicornUVLoopWebWorker(GunicornWebWorker):
         # asyncio.get_event_loop() will create an instance
         # of uvloop event loop.
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-
-        super().init_process()
-
-
-class GunicornTokioWebWorker(GunicornWebWorker):
-    def init_process(self) -> None:  # pragma: no cover
-        import tokio
-
-        # Close any existing event loop before setting a
-        # new policy.
-        asyncio.get_event_loop().close()
-
-        # Setup tokio policy, so that every
-        # asyncio.get_event_loop() will create an instance
-        # of tokio event loop.
-        asyncio.set_event_loop_policy(tokio.EventLoopPolicy())
 
         super().init_process()

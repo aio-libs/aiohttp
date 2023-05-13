@@ -51,12 +51,6 @@ if HAS_IPV6:
         HAS_IPV6 = False
 
 
-# tokio event loop does not allow to override attributes
-def skip_if_no_dict(loop):
-    if not hasattr(loop, "__dict__"):
-        pytest.skip("can not override loop attributes")
-
-
 def skip_if_on_windows():
     if platform.system() == "Windows":
         pytest.skip("the test is not valid for Windows")
@@ -64,7 +58,6 @@ def skip_if_on_windows():
 
 @pytest.fixture
 def patched_loop(loop):
-    skip_if_no_dict(loop)
     server = mock.Mock()
     server.wait_closed = make_mocked_coro(None)
     loop.create_server = make_mocked_coro(server)
