@@ -32,7 +32,9 @@ def _mark_aiohttp_worker_for_skipping(
     return [
         pytest.param(
             importable,
-            marks=pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="It's a UNIX-only module"),
+            marks=pytest.mark.skipif(
+                not hasattr(socket, "AF_UNIX"), reason="It's a UNIX-only module"
+            ),
         )
         if importable == "aiohttp.worker"
         else importable
