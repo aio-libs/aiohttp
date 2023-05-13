@@ -531,7 +531,7 @@ async def test_web_view(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_static_absolute_url(
-    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+    aiohttp_client: AiohttpClient, tmpdir: pathlib.Path
 ) -> None:
     # requested url is an absolute name like
     # /static/\\machine_name\c$ or /static/D:\path
