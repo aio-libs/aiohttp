@@ -24,11 +24,6 @@ try:
 except ImportError:  # pragma: no cover
     uvloop = None
 
-try:
-    import tokio
-except ImportError:  # pragma: no cover
-    tokio = None
-
 AiohttpClient = Callable[[Union[Application, BaseTestServer]], Awaitable[TestClient]]
 
 
@@ -43,7 +38,7 @@ def pytest_addoption(parser):  # type: ignore[no-untyped-def]
         "--aiohttp-loop",
         action="store",
         default="pyloop",
-        help="run tests with specific loop: pyloop, uvloop, tokio or all",
+        help="run tests with specific loop: pyloop, uvloop or all",
     )
     parser.addoption(
         "--aiohttp-enable-loop-debug",
@@ -203,11 +198,8 @@ def pytest_generate_tests(metafunc):  # type: ignore[no-untyped-def]
     if uvloop is not None:  # pragma: no cover
         avail_factories["uvloop"] = uvloop.EventLoopPolicy
 
-    if tokio is not None:  # pragma: no cover
-        avail_factories["tokio"] = tokio.EventLoopPolicy
-
     if loops == "all":
-        loops = "pyloop,uvloop?,tokio?"
+        loops = "pyloop,uvloop?"
 
     factories = {}  # type: ignore[var-annotated]
     for name in loops.split(","):
