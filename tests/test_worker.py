@@ -20,7 +20,7 @@ else:
 try:
     import uvloop
 except ImportError:
-    uvloop = None
+    uvloop = None  # type: ignore[assignment]
 
 
 WRONG_LOG_FORMAT = '%a "%{Referrer}i" %(h)s %(l)s %s'

@@ -116,8 +116,8 @@ def test_appkey_repr_concrete() -> None:
         "<AppKey(__channelexec__.key, type=int)>",  # pytest-xdist
         "<AppKey(__main__.key, type=int)>",
     )
-    key = web.AppKey("key", web.Request)
-    assert repr(key) in (
+    key2 = web.AppKey("key", web.Request)
+    assert repr(key2) in (
         # pytest-xdist:
         "<AppKey(__channelexec__.key, type=aiohttp.web_request.Request)>",
         "<AppKey(__main__.key, type=aiohttp.web_request.Request)>",

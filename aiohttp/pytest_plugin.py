@@ -22,7 +22,7 @@ from .test_utils import (
 try:
     import uvloop
 except ImportError:  # pragma: no cover
-    uvloop = None
+    uvloop = None  # type: ignore[assignment]
 
 AiohttpClient = Callable[[Union[Application, BaseTestServer]], Awaitable[TestClient]]
 AiohttpRawServer = Callable[[Application], Awaitable[RawTestServer]]
@@ -195,6 +195,7 @@ def pytest_generate_tests(metafunc):  # type: ignore[no-untyped-def]
         return
 
     loops = metafunc.config.option.aiohttp_loop
+    avail_factories: Dict[str, Type[asyncio.AbstractEventLoopPolicy]]
     avail_factories = {"pyloop": asyncio.DefaultEventLoopPolicy}
 
     if uvloop is not None:  # pragma: no cover
