@@ -1179,7 +1179,8 @@ async def test_cleanup_closed(loop: Any, mocker: Any) -> None:
     mocker.spy(loop, "call_at")
     conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
 
-    tr = mock.Mock()
+    tr = mocker.create_autospec(asyncio.Transport, spec_set=True, instance=True)
+    tr.is_closing.return_value = False
     conn._cleanup_closed_handle = cleanup_closed_handle = mock.Mock()
     conn._cleanup_closed_transports = [tr]
     conn._cleanup_closed()
@@ -1192,7 +1193,8 @@ async def test_cleanup_closed(loop: Any, mocker: Any) -> None:
 async def test_cleanup_closed_disabled(loop: Any, mocker: Any) -> None:
     conn = aiohttp.BaseConnector(enable_cleanup_closed=False)
 
-    tr = mock.Mock()
+    tr = mocker.create_autospec(asyncio.Transport, spec_set=True, instance=True)
+    tr.is_closing.return_value = False
     conn._cleanup_closed_transports = [tr]
     conn._cleanup_closed()
     assert tr.abort.called
@@ -1343,14 +1345,15 @@ async def test_close_cancels_cleanup_handle(loop: Any) -> None:
 
 
 async def test_close_abort_closed_transports(loop: Any) -> None:
-    tr = mock.Mock()
+    tr = mocker.create_autospec(asyncio.Transport, spec_set=True, instance=True)
+    tr.is_closing.return_value = True
 
     conn = aiohttp.BaseConnector()
     conn._cleanup_closed_transports.append(tr)
     await conn.close()
 
     assert not conn._cleanup_closed_transports
-    assert tr.abort.called
+    assert not tr.abort.called
     assert conn.closed
 
 
