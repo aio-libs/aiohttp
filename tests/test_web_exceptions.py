@@ -1,17 +1,19 @@
 import collections
 import re
 from traceback import format_exception
+from typing import Mapping, NoReturn
 from unittest import mock
 
 import aiosignal
 import pytest
 
 from aiohttp import helpers, web
+from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.test_utils import make_mocked_request
 
 
 @pytest.fixture
-def buf():
+def buf() -> bytearray:
     return bytearray()
 
 
@@ -206,7 +208,7 @@ def test_HTTPException_retains_cause() -> None:
     assert "direct cause" in tb
 
 
-async def test_HTTPException_retains_cookie(aiohttp_client):
+async def test_HTTPException_retains_cookie(aiohttp_client: AiohttpClient) -> None:
     @web.middleware
     async def middleware(request, handler):
         try:
