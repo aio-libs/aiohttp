@@ -1,7 +1,6 @@
 """WebSocket protocol versions 13 and 8."""
 
 import asyncio
-import collections
 import functools
 import json
 import random
@@ -10,7 +9,18 @@ import sys
 import zlib
 from enum import IntEnum
 from struct import Struct
-from typing import Any, Callable, List, Optional, Pattern, Set, Tuple, Union, cast
+from typing import (
+    Any,
+    Callable,
+    List,
+    NamedTuple,
+    Optional,
+    Pattern,
+    Set,
+    Tuple,
+    Union,
+    cast,
+)
 
 from typing_extensions import Final
 
@@ -80,10 +90,12 @@ MSG_SIZE: Final[int] = 2**14
 DEFAULT_LIMIT: Final[int] = 2**16
 
 
-_WSMessageBase = collections.namedtuple("_WSMessageBase", ["type", "data", "extra"])
+class WSMessage(NamedTuple):
+    type: WSMsgType
+    # To type correctly, this would need some kind of tagged union for each type.
+    data: Any
+    extra: Optional[str]
 
-
-class WSMessage(_WSMessageBase):
     def json(self, *, loads: Callable[[Any], Any] = json.loads) -> Any:
         """Return parsed JSON data.
 
@@ -318,14 +330,10 @@ class WebSocketReader:
                 self.queue.feed_data(msg)
 
             elif opcode == WSMsgType.PING:
-                self.queue.feed_data(
-                    WSMessage(WSMsgType.PING, payload, "")
-                )
+                self.queue.feed_data(WSMessage(WSMsgType.PING, payload, ""))
 
             elif opcode == WSMsgType.PONG:
-                self.queue.feed_data(
-                    WSMessage(WSMsgType.PONG, payload, "")
-                )
+                self.queue.feed_data(WSMessage(WSMsgType.PONG, payload, ""))
 
             elif (
                 opcode not in (WSMsgType.TEXT, WSMsgType.BINARY)
@@ -397,9 +405,7 @@ class WebSocketReader:
                     if opcode == WSMsgType.TEXT:
                         try:
                             text = payload_merged.decode("utf-8")
-                            self.queue.feed_data(
-                                WSMessage(WSMsgType.TEXT, text, "")
-                            )
+                            self.queue.feed_data(WSMessage(WSMsgType.TEXT, text, ""))
                         except UnicodeDecodeError as exc:
                             raise WebSocketError(
                                 WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
@@ -407,7 +413,6 @@ class WebSocketReader:
                     else:
                         self.queue.feed_data(
                             WSMessage(WSMsgType.BINARY, payload_merged, ""),
-
                         )
 
         return False, b""

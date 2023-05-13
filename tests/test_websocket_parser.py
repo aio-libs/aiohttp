@@ -319,7 +319,7 @@ def test_continuation_with_close(out: Any, parser: Any) -> None:
 
     parser.feed_data(b"")
     res = out._buffer[0]
-    assert res, (WSMessage(WSMsgType.CLOSE, 1002, "test"))
+    assert res, WSMessage(WSMsgType.CLOSE, 1002, "test")
     res = out._buffer[1]
     assert res == (WSMessage(WSMsgType.TEXT, "line1line2", ""))
 
@@ -381,7 +381,7 @@ def test_continuation_with_close_empty(out: Any, parser: Any) -> None:
 
     parser.feed_data(b"")
     res = out._buffer[0]
-    assert res, (WSMessage(WSMsgType.CLOSE, 0, ""))
+    assert res, WSMessage(WSMsgType.CLOSE, 0, "")
     res = out._buffer[1]
     assert res == (WSMessage(WSMsgType.TEXT, "line1line2", ""))
 
