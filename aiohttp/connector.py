@@ -354,7 +354,7 @@ class BaseConnector:
             self._cleanup_closed_handle.cancel()
 
         for transport in self._cleanup_closed_transports:
-            if transport is not None:
+            if transport is not None and not transport.is_closing():
                 transport.abort()
 
         self._cleanup_closed_transports = []
@@ -409,7 +409,7 @@ class BaseConnector:
 
             # TODO (A.Yushovskiy, 24-May-2019) collect transp. closing futures
             for transport in self._cleanup_closed_transports:
-                if transport is not None:
+                if transport is not None and not transport.is_closing():
                     transport.abort()
 
             return waiters
