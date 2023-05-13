@@ -185,7 +185,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
             # there is no need to reset it.
             signal.signal(signal.SIGCHLD, signal.SIG_DFL)
 
-    def handle_quit(self, sig: int, frame: FrameType) -> None:
+    def handle_quit(self, sig: int, frame: Optional[FrameType]) -> None:
         self.alive = False
 
         # worker_int callback
@@ -194,7 +194,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         # wakeup closing process
         self._notify_waiter_done()
 
-    def handle_abort(self, sig: int, frame: FrameType) -> None:
+    def handle_abort(self, sig: int, frame: Optional[FrameType]) -> None:
         self.alive = False
         self.exit_code = 1
         self.cfg.worker_abort(self)
