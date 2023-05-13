@@ -39,7 +39,6 @@ BodyPartReader
 boolean
 botocore
 brotli
-brotli
 Brotli
 brotlipy
 bugfix
@@ -102,6 +101,7 @@ dns
 DNSResolver
 docstring
 docstrings
+DoS
 Dup
 elasticsearch
 encodings

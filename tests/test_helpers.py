@@ -5,7 +5,7 @@ import datetime
 import gc
 import platform
 import weakref
-from math import ceil, isclose, modf
+from math import ceil, modf
 from unittest import mock
 from urllib.request import getproxies_environment
 
@@ -190,7 +190,6 @@ def test_basic_auth_from_not_url() -> None:
 
 
 class ReifyMixin:
-
     reify = NotImplemented
 
     def test_reify(self) -> None:
@@ -350,7 +349,7 @@ def test_when_timeout_smaller_second(loop) -> None:
     handle.close()
 
     assert isinstance(when, float)
-    assert isclose(when - timer, 0, abs_tol=0.001)
+    assert when - timer == pytest.approx(0, abs=0.001)
 
 
 def test_when_timeout_smaller_second_with_low_threshold(loop) -> None:
@@ -975,3 +974,66 @@ def test_populate_with_cookies():
 )
 def test_parse_http_date(value, expected):
     assert parse_http_date(value) == expected
+
+
+@pytest.mark.parametrize(
+    ["netrc_contents", "expected_username"],
+    [
+        (
+            "machine example.com login username password pass\n",
+            "username",
+        ),
+    ],
+    indirect=("netrc_contents",),
+)
+@pytest.mark.usefixtures("netrc_contents")
+def test_netrc_from_env(expected_username: str):
+    """Test that reading netrc files from env works as expected"""
+    netrc_obj = helpers.netrc_from_env()
+    assert netrc_obj.authenticators("example.com")[0] == expected_username
+
+
+@pytest.mark.parametrize(
+    ["netrc_contents", "expected_auth"],
+    [
+        (
+            "machine example.com login username password pass\n",
+            helpers.BasicAuth("username", "pass"),
+        ),
+        (
+            "machine example.com account username password pass\n",
+            helpers.BasicAuth("username", "pass"),
+        ),
+        (
+            "machine example.com password pass\n",
+            helpers.BasicAuth("", "pass"),
+        ),
+    ],
+    indirect=("netrc_contents",),
+)
+@pytest.mark.usefixtures("netrc_contents")
+def test_basicauth_present_in_netrc(
+    expected_auth: helpers.BasicAuth,
+):
+    """Test that netrc file contents are properly parsed into BasicAuth tuples"""
+    netrc_obj = helpers.netrc_from_env()
+
+    assert expected_auth == helpers.basicauth_from_netrc(netrc_obj, "example.com")
+
+
+@pytest.mark.parametrize(
+    ["netrc_contents"],
+    [
+        ("",),
+    ],
+    indirect=("netrc_contents",),
+)
+@pytest.mark.usefixtures("netrc_contents")
+def test_read_basicauth_from_empty_netrc():
+    """Test that an error is raised if netrc doesn't have an entry for our host"""
+    netrc_obj = helpers.netrc_from_env()
+
+    with pytest.raises(
+        LookupError, match="No entry for example.com found in the `.netrc` file."
+    ):
+        helpers.basicauth_from_netrc(netrc_obj, "example.com")

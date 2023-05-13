@@ -1,8 +1,8 @@
 aiohttp-theme==0.1.6
 # Temp fix till updated: https://github.com/blockdiag/blockdiag/pull/148
 funcparserlib==1.0.0a0
-sphinx==4.3.2
+sphinx==5.1.1
 sphinxcontrib-asyncio==0.3.0
 sphinxcontrib-blockdiag==3.0.0
-sphinxcontrib-towncrier==0.2.1a0
-towncrier==21.3.0
+sphinxcontrib-towncrier==0.3.0a0
+towncrier==22.8.0

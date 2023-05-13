@@ -59,6 +59,8 @@
 
        https://pypi.python.org/pypi/cchardet/
 
+       .. include:: _snippets/cchardet-unmaintained-admonition.rst
+
    gunicorn
 
        Gunicorn 'Green Unicorn' is a Python WSGI HTTP Server for
@@ -86,6 +88,8 @@
 
        It makes communication faster by getting rid of connection
        establishment for every request.
+
+
 
    nginx
 
@@ -151,3 +155,16 @@
       A library for operating with URL objects.
 
       https://pypi.python.org/pypi/yarl
+
+
+Environment Variables
+=====================
+
+.. envvar:: NETRC
+
+   If set, HTTP Basic Auth will be read from the file pointed to by this environment variable,
+   rather than from :file:`~/.netrc`.
+
+   .. seealso::
+
+      ``.netrc`` documentation: https://www.gnu.org/software/inetutils/manual/html_node/The-_002enetrc-file.html
