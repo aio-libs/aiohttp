@@ -676,7 +676,7 @@ class TimeoutHandle:
 
 
 class BaseTimerContext(ContextManager["BaseTimerContext"]):
-    def check_timeout(self) -> None:
+    def assert_timeout(self) -> None:
         """Raise TimeoutError if timeout has been exceeded."""
 
 
@@ -701,7 +701,7 @@ class TimerContext(BaseTimerContext):
         self._tasks: List[asyncio.Task[Any]] = []
         self._cancelled = False
 
-    def check_timeout(self) -> None:
+    def assert_timeout(self) -> None:
         """Raise TimeoutError if timer has already been cancelled."""
         if self._cancelled:
             raise asyncio.TimeoutError from None
