@@ -2,7 +2,7 @@ import re
 from typing import TYPE_CHECKING, Tuple, Type, TypeVar
 
 from .typedefs import Handler, Middleware
-from .web_exceptions import HTTPPermanentRedirect, _HTTPMove
+from .web_exceptions import HTTPMove, HTTPPermanentRedirect
 from .web_request import Request
 from .web_response import StreamResponse
 from .web_urldispatcher import SystemRoute
@@ -40,7 +40,7 @@ def normalize_path_middleware(
     append_slash: bool = True,
     remove_slash: bool = False,
     merge_slashes: bool = True,
-    redirect_class: Type[_HTTPMove] = HTTPPermanentRedirect,
+    redirect_class: Type[HTTPMove] = HTTPPermanentRedirect,
 ) -> Middleware:
     """Factory for producing a middleware that normalizes the path of a request.
 
