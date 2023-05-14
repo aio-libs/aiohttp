@@ -326,10 +326,10 @@ async def test_partially_applied_handler(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_static_head(
-    tmp_dir_path: pathlib.Path, aiohttp_client: AiohttpClient
+    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
 ) -> None:
     # Test HEAD on static route
-    my_file_path = tmp_dir_path / "test.txt"
+    my_file_path = tmp_path / "test.txt"
     with my_file_path.open("wb") as fw:
         fw.write(b"should_not_see_this\n")
 
