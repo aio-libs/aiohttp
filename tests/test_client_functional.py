@@ -3033,8 +3033,8 @@ async def test_timeout_with_full_buffer(aiohttp_client: Any) -> None:
 
     async def request(client):
         timeout = aiohttp.ClientTimeout(total=0.5)
-        with pytest.raises(asyncio.TimeoutError):
-            async with await client.get("/", timeout=timeout) as resp:
+        async with await client.get("/", timeout=timeout) as resp:
+            with pytest.raises(asyncio.TimeoutError):
                 async for data in resp.content.iter_chunked(1):
                     await asyncio.sleep(0.01)
 
@@ -3042,7 +3042,7 @@ async def test_timeout_with_full_buffer(aiohttp_client: Any) -> None:
     app.add_routes([web.get("/", handler)])
 
     client = await aiohttp_client(app)
-    # wait_for() timeout should not be reached.
+    # wait_for() used just to ensure that a failing test doesn't hang.
     await asyncio.wait_for(request(client), 1)
 
 
