@@ -34,7 +34,7 @@ repos:
   hooks:
   - id: isort
 - repo: https://github.com/psf/black
-  rev: '23.1.0'
+  rev: '23.3.0'
   hooks:
     - id: black
       language_version: python3 # Should be a command that runs python
@@ -72,7 +72,7 @@ repos:
   - id: detect-private-key
     exclude: ^examples/
 - repo: https://github.com/asottile/pyupgrade
-  rev: 'v3.3.1'
+  rev: 'v3.4.0'
   hooks:
   - id: pyupgrade
     args: ['--py36-plus']
