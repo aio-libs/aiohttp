@@ -253,7 +253,7 @@ async def test_concurrent_close(aiohttp_client: Any) -> None:
     await ws.send_bytes(b"ask")
 
     msg = await ws.receive()
-    assert msg.type == aiohttp.WSMsgType.TEXT
+    assert msg.type == aiohttp.WSMsgType.CLOSING
 
     await asyncio.sleep(0.01)
     msg = await ws.receive()
