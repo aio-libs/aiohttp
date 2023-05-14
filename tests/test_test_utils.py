@@ -30,7 +30,6 @@ def _create_example_app():
         return web.Response(body=_hello_world_bytes)
 
     async def websocket_handler(request):
-
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         msg = await ws.receive()
@@ -195,6 +194,12 @@ def test_make_mocked_request_app_can_store_values() -> None:
     req = make_mocked_request("GET", "/")
     req.app["a_field"] = "a_value"
     assert req.app["a_field"] == "a_value"
+
+
+def test_make_mocked_request_app_access_non_existing() -> None:
+    req = make_mocked_request("GET", "/")
+    with pytest.raises(AttributeError):
+        req.app.foo
 
 
 def test_make_mocked_request_match_info() -> None:

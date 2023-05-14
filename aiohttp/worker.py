@@ -26,11 +26,10 @@ except ImportError:  # pragma: no cover
     SSLContext = object  # type: ignore[misc,assignment]
 
 
-__all__ = ("GunicornWebWorker", "GunicornUVLoopWebWorker", "GunicornTokioWebWorker")
+__all__ = ("GunicornWebWorker", "GunicornUVLoopWebWorker")
 
 
 class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
-
     DEFAULT_AIOHTTP_LOG_FORMAT = AccessLogger.LOG_FORMAT
     DEFAULT_GUNICORN_LOG_FORMAT = GunicornAccessLogFormat.default
 
@@ -186,7 +185,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
             # there is no need to reset it.
             signal.signal(signal.SIGCHLD, signal.SIG_DFL)
 
-    def handle_quit(self, sig: int, frame: FrameType) -> None:
+    def handle_quit(self, sig: int, frame: Optional[FrameType]) -> None:
         self.alive = False
 
         # worker_int callback
@@ -195,7 +194,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         # wakeup closing process
         self._notify_waiter_done()
 
-    def handle_abort(self, sig: int, frame: FrameType) -> None:
+    def handle_abort(self, sig: int, frame: Optional[FrameType]) -> None:
         self.alive = False
         self.exit_code = 1
         self.cfg.worker_abort(self)
@@ -242,17 +241,5 @@ class GunicornUVLoopWebWorker(GunicornWebWorker):
         # asyncio.get_event_loop() will create an instance
         # of uvloop event loop.
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-
-        super().init_process()
-
-
-class GunicornTokioWebWorker(GunicornWebWorker):
-    def init_process(self) -> None:  # pragma: no cover
-        import tokio
-
-        # Setup tokio policy, so that every
-        # asyncio.get_event_loop() will create an instance
-        # of tokio event loop.
-        asyncio.set_event_loop_policy(tokio.EventLoopPolicy())
 
         super().init_process()

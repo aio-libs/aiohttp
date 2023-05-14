@@ -18,8 +18,10 @@ from typing import (  # noqa
     Sequence,
     Tuple,
     Type,
+    TypeVar,
     Union,
     cast,
+    overload,
 )
 
 from aiosignal import Signal
@@ -27,6 +29,7 @@ from frozenlist import FrozenList
 from typing_extensions import final
 
 from . import hdrs
+from .helpers import AppKey
 from .log import web_logger
 from .typedefs import Middleware
 from .web_middlewares import _fix_request_current_app
@@ -61,9 +64,12 @@ else:
     _MiddlewaresHandlers = Sequence
     _Subapps = List
 
+_T = TypeVar("_T")
+_U = TypeVar("_U")
+
 
 @final
-class Application(MutableMapping[str, Any]):
+class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     __slots__ = (
         "logger",
         "_debug",
@@ -91,10 +97,9 @@ class Application(MutableMapping[str, Any]):
         logger: logging.Logger = web_logger,
         middlewares: Iterable[Middleware] = (),
         handler_args: Optional[Mapping[str, Any]] = None,
-        client_max_size: int = 1024 ** 2,
+        client_max_size: int = 1024**2,
         debug: Any = ...,  # mypy doesn't support ellipsis
     ) -> None:
-
         if debug is not ...:
             warnings.warn(
                 "debug argument is no-op since 4.0 " "and scheduled for removal in 5.0",
@@ -112,7 +117,7 @@ class Application(MutableMapping[str, Any]):
         # initialized on freezing
         self._run_middlewares: Optional[bool] = None
 
-        self._state: Dict[str, Any] = {}
+        self._state: Dict[Union[AppKey[Any], str], object] = {}
         self._frozen = False
         self._pre_frozen = False
         self._subapps: _Subapps = []
@@ -137,7 +142,15 @@ class Application(MutableMapping[str, Any]):
     def __eq__(self, other: object) -> bool:
         return self is other
 
+    @overload  # type: ignore[override]
+    def __getitem__(self, key: AppKey[_T]) -> _T:
+        ...
+
+    @overload
     def __getitem__(self, key: str) -> Any:
+        ...
+
+    def __getitem__(self, key: Union[str, AppKey[_T]]) -> Any:
         return self._state[key]
 
     def _check_frozen(self) -> None:
@@ -146,19 +159,48 @@ class Application(MutableMapping[str, Any]):
                 "Changing state of started or joined " "application is forbidden"
             )
 
+    @overload  # type: ignore[override]
+    def __setitem__(self, key: AppKey[_T], value: _T) -> None:
+        ...
+
+    @overload
     def __setitem__(self, key: str, value: Any) -> None:
+        ...
+
+    def __setitem__(self, key: Union[str, AppKey[_T]], value: Any) -> None:
         self._check_frozen()
+        if not isinstance(key, AppKey):
+            warnings.warn(
+                "It is recommended to use web.AppKey instances for keys.\n"
+                + "https://docs.aiohttp.org/en/stable/web_advanced.html"
+                + "#application-s-config"
+            )
         self._state[key] = value
 
-    def __delitem__(self, key: str) -> None:
+    def __delitem__(self, key: Union[str, AppKey[_T]]) -> None:
         self._check_frozen()
         del self._state[key]
 
     def __len__(self) -> int:
         return len(self._state)
 
-    def __iter__(self) -> Iterator[str]:
+    def __iter__(self) -> Iterator[Union[str, AppKey[Any]]]:
         return iter(self._state)
+
+    @overload  # type: ignore[override]
+    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]:
+        ...
+
+    @overload
+    def get(self, key: AppKey[_T], default: _U) -> Union[_T, _U]:
+        ...
+
+    @overload
+    def get(self, key: str, default: Any = ...) -> Any:
+        ...
+
+    def get(self, key: Union[str, AppKey[_T]], default: Any = None) -> Any:
+        return self._state.get(key, default)
 
     ########
     def _set_loop(self, loop: Optional[asyncio.AbstractEventLoop]) -> None:
