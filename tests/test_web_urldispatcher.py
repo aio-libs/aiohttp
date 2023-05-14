@@ -334,7 +334,7 @@ async def test_static_head(
         fw.write(b"should_not_see_this\n")
 
     app = web.Application()
-    app.router.add_static("/", str(tmp_dir_path))
+    app.router.add_static("/", str(tmp_path))
     client = await aiohttp_client(app)
 
     r = await client.head("/test.txt")
