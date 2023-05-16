@@ -91,6 +91,7 @@ def unix_sockname(tmp_path, tmp_path_factory):
     mostly 104 but sometimes it can be down to 100.
 
     # Ref: https://github.com/aio-libs/aiohttp/issues/3572
+    """
     if not hasattr(socket, "AF_UNIX"):
         pytest.skip("requires UNIX sockets")
 
