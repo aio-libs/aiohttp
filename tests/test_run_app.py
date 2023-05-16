@@ -15,7 +15,6 @@ from unittest import mock
 from uuid import uuid4
 
 import pytest
-from conftest import needs_unix
 
 from aiohttp import ClientConnectorError, ClientSession, web
 from aiohttp.test_utils import make_mocked_coro
@@ -542,7 +541,7 @@ def test_run_app_https_unix_socket(patched_loop: Any, unix_sockname: Any) -> Non
     assert f"https://unix:{unix_sockname}:" in printer.call_args[0][0]
 
 
-@needs_unix
+@pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
 @skip_if_no_abstract_paths
 def test_run_app_abstract_linux_socket(patched_loop: Any) -> None:
     sock_path = b"\x00" + uuid4().hex.encode("ascii")
