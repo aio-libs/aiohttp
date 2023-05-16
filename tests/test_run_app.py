@@ -14,14 +14,13 @@ from unittest import mock
 from uuid import uuid4
 
 import pytest
-from conftest import IS_UNIX, needs_unix
 
 from aiohttp import ClientConnectorError, ClientSession, web
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.web_runner import BaseRunner
 
 # Test for features of OS' socket support
-if IS_UNIX:
+if hasattr(socket, "AF_UNIX"):
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as _abstract_path_sock:
         try:
             _abstract_path_sock.bind(b"\x00" + uuid4().hex.encode("ascii"))
@@ -37,7 +36,7 @@ else:
 skip_if_no_abstract_paths = pytest.mark.skipif(
     _abstract_path_failed, reason="Linux-style abstract paths are not supported."
 )
-del IS_UNIX, _abstract_path_failed
+del _abstract_path_failed
 
 HAS_IPV6 = socket.has_ipv6
 if HAS_IPV6:
@@ -531,7 +530,7 @@ def test_run_app_https_unix_socket(patched_loop, unix_sockname) -> None:
     assert f"https://unix:{unix_sockname}:" in printer.call_args[0][0]
 
 
-@needs_unix
+@pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
 @skip_if_no_abstract_paths
 def test_run_app_abstract_linux_socket(patched_loop) -> None:
     sock_path = b"\x00" + uuid4().hex.encode("ascii")
@@ -583,7 +582,7 @@ def test_run_app_preexisting_inet6_socket(patched_loop) -> None:
         assert f"http://[::]:{port}" in printer.call_args[0][0]
 
 
-@needs_unix
+@pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
 def test_run_app_preexisting_unix_socket(patched_loop, mocker) -> None:
     app = web.Application()
 
