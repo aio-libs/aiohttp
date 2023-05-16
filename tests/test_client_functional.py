@@ -3034,7 +3034,7 @@ async def test_read_timeout_on_prepared_response(aiohttp_client) -> None:
             await resp.read()
 
 
-async def test_timeout_with_full_buffer(aiohttp_client: Any) -> None:
+async def test_timeout_with_full_buffer(aiohttp_client) -> None:
     async def handler(request):
         """Server response that never ends and always has more data available."""
         resp = web.StreamResponse()
