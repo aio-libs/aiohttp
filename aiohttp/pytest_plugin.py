@@ -2,7 +2,7 @@ import asyncio
 import contextlib
 import inspect
 import warnings
-from typing import Any, Awaitable, Callable, Dict, Generator, Optional, Type, Union
+from typing import Any, Awaitable, Callable, Dict, Iterator, Optional, Type, Union
 
 import pytest
 
@@ -22,9 +22,11 @@ from .test_utils import (
 try:
     import uvloop
 except ImportError:  # pragma: no cover
-    uvloop = None
+    uvloop = None  # type: ignore[assignment]
 
 AiohttpClient = Callable[[Union[Application, BaseTestServer]], Awaitable[TestClient]]
+AiohttpRawServer = Callable[[Application], Awaitable[RawTestServer]]
+AiohttpServer = Callable[[Application], Awaitable[TestServer]]
 
 
 def pytest_addoption(parser):  # type: ignore[no-untyped-def]
@@ -193,6 +195,7 @@ def pytest_generate_tests(metafunc):  # type: ignore[no-untyped-def]
         return
 
     loops = metafunc.config.option.aiohttp_loop
+    avail_factories: Dict[str, Type[asyncio.AbstractEventLoopPolicy]]
     avail_factories = {"pyloop": asyncio.DefaultEventLoopPolicy}
 
     if uvloop is not None:  # pragma: no cover
@@ -242,13 +245,13 @@ def proactor_loop():  # type: ignore[no-untyped-def]
 
 
 @pytest.fixture
-def aiohttp_unused_port():  # type: ignore[no-untyped-def]
+def aiohttp_unused_port() -> Callable[[], int]:
     """Return a port that is unused on the current host."""
     return _unused_port
 
 
 @pytest.fixture
-def aiohttp_server(loop):  # type: ignore[no-untyped-def]
+def aiohttp_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpServer]:
     """Factory to create a TestServer instance, given an app.
 
     aiohttp_server(app, **kwargs)
@@ -271,7 +274,7 @@ def aiohttp_server(loop):  # type: ignore[no-untyped-def]
 
 
 @pytest.fixture
-def aiohttp_raw_server(loop):  # type: ignore[no-untyped-def]
+def aiohttp_raw_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpRawServer]:
     """Factory to create a RawTestServer instance, given a web handler.
 
     aiohttp_raw_server(handler, **kwargs)
@@ -323,7 +326,7 @@ def aiohttp_client_cls() -> Type[TestClient]:
 @pytest.fixture
 def aiohttp_client(
     loop: asyncio.AbstractEventLoop, aiohttp_client_cls: Type[TestClient]
-) -> Generator[AiohttpClient, None, None]:
+) -> Iterator[AiohttpClient]:
     """Factory to create a TestClient instance.
 
     aiohttp_client(app, **kwargs)
