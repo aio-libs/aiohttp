@@ -460,7 +460,7 @@ async def test_old_style_middleware_class(loop, aiohttp_client) -> None:
             continue
         assert re.match(
             "^old-style middleware "
-            '"<test_web_middleware.test_old_style_middleware_class.'
+            '"<.*test_web_middleware.test_old_style_middleware_class.'
             "<locals>.Middleware object "
             'at 0x[0-9a-fA-F]+>" deprecated, see #2252$',
             msg,
