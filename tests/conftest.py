@@ -24,15 +24,8 @@ except ImportError:
 
 pytest_plugins = ["aiohttp.pytest_plugin", "pytester"]
 
-
 IS_HPUX = sys.platform.startswith("hp-ux")
-"""Specifies whether the current runtime is HP-UX."""
 IS_LINUX = sys.platform.startswith("linux")
-"""Specifies whether the current runtime is HP-UX."""
-IS_UNIX = hasattr(socket, "AF_UNIX")
-"""Specifies whether the current runtime is *NIX."""
-
-needs_unix = pytest.mark.skipif(not IS_UNIX, reason="requires UNIX sockets")
 
 
 @pytest.fixture
@@ -97,9 +90,8 @@ def unix_sockname(tmp_path, tmp_path_factory):
     on its version. For for most of the BSDs (Open, Free, macOS) it's
     mostly 104 but sometimes it can be down to 100.
 
-    Ref: https://github.com/aio-libs/aiohttp/issues/3572
-    """
-    if not IS_UNIX:
+    # Ref: https://github.com/aio-libs/aiohttp/issues/3572
+    if not hasattr(socket, "AF_UNIX"):
         pytest.skip("requires UNIX sockets")
 
     max_sock_len = 92 if IS_HPUX else 108 if IS_LINUX else 100
