@@ -682,7 +682,8 @@ class TimeoutHandle:
 
 
 class BaseTimerContext(ContextManager["BaseTimerContext"]):
-    pass
+    def assert_timeout(self) -> None:
+        """Raise TimeoutError if timeout has been exceeded."""
 
 
 class TimerNoop(BaseTimerContext):
@@ -705,6 +706,11 @@ class TimerContext(BaseTimerContext):
         self._loop = loop
         self._tasks: List[asyncio.Task[Any]] = []
         self._cancelled = False
+
+    def assert_timeout(self) -> None:
+        """Raise TimeoutError if timer has already been cancelled."""
+        if self._cancelled:
+            raise asyncio.TimeoutError from None
 
     def __enter__(self) -> BaseTimerContext:
         task = current_task(loop=self._loop)
