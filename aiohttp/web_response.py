@@ -645,12 +645,7 @@ class Response(StreamResponse):
         return self._body
 
     @body.setter
-    def body(
-        self,
-        body: bytes,
-        CONTENT_TYPE: istr = hdrs.CONTENT_TYPE,
-        CONTENT_LENGTH: istr = hdrs.CONTENT_LENGTH,
-    ) -> None:
+    def body(self, body: bytes) -> None:
         if body is None:
             self._body: Optional[bytes] = None
             self._body_payload: bool = False
@@ -667,15 +662,9 @@ class Response(StreamResponse):
 
             headers = self._headers
 
-            # set content-length header if needed
-            if not self._chunked and CONTENT_LENGTH not in headers:
-                size = body.size
-                if size is not None:
-                    headers[CONTENT_LENGTH] = str(size)
-
             # set content-type
-            if CONTENT_TYPE not in headers:
-                headers[CONTENT_TYPE] = body.content_type
+            if hdrs.CONTENT_TYPE not in headers:
+                headers[hdrs.CONTENT_TYPE] = body.content_type
 
             # copy payload headers
             if body.headers:
@@ -753,11 +742,13 @@ class Response(StreamResponse):
 
     async def _start(self, request: "BaseRequest") -> AbstractStreamWriter:
         if not self._chunked and hdrs.CONTENT_LENGTH not in self._headers:
-            if not self._body_payload:
-                if self._body is not None:
-                    self._headers[hdrs.CONTENT_LENGTH] = str(len(self._body))
-                else:
-                    self._headers[hdrs.CONTENT_LENGTH] = "0"
+            if self._body_payload:
+                size = cast(Payload, self._body).size
+                if size is not None:
+                    self._headers[hdrs.CONTENT_LENGTH] = str(size)
+            else:
+                body_len = len(self._body) if self._body else "0"
+                self._headers[hdrs.CONTENT_LENGTH] = str(body_len)
 
         return await super()._start(request)
 
