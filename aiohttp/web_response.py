@@ -94,6 +94,8 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         "__weakref__",
     )
 
+    _body: Union[None, bytes, bytearray, Payload]
+
     def __init__(
         self,
         *,
@@ -501,6 +503,8 @@ class Response(StreamResponse):
         "_zlib_executor",
     )
 
+    _body_payload: bool
+
     def __init__(
         self,
         *,
@@ -578,13 +582,13 @@ class Response(StreamResponse):
     @body.setter
     def body(
         self,
-        body: bytes,
+        body: Any,
         CONTENT_TYPE: istr = hdrs.CONTENT_TYPE,
         CONTENT_LENGTH: istr = hdrs.CONTENT_LENGTH,
     ) -> None:
         if body is None:
-            self._body: Optional[bytes] = None
-            self._body_payload: bool = False
+            self._body = None
+            self._body_payload = False
         elif isinstance(body, (bytes, bytearray)):
             self._body = body
             self._body_payload = False
@@ -712,8 +716,12 @@ class Response(StreamResponse):
                     "Consider providing a custom value to zlib_executor_size/"
                     "zlib_executor response properties or disabling compression on it."
                 )
+            if isinstance(self._body, Payload):
+                body_in = self._body.decode().encode()
+            else:
+                body_in = self._body
             self._compressed_body = (
-                await compressor.compress(self._body) + compressor.flush()
+                await compressor.compress(body_in) + compressor.flush()
             )
             assert self._compressed_body is not None
 
