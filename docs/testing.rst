@@ -318,9 +318,12 @@ functionality, the AioHTTPTestCase is provided::
 
     A base class to allow for unittest web applications using aiohttp.
 
-    Derived from :class:`unittest.TestCase`
+    Derived from :class:`unittest.IsolatedAsyncioTestCase`
 
-    Provides the following:
+    See :class:`unittest.TestCase` and :class:`unittest.IsolatedAsyncioTestCase`
+    for inherited methods and behavior.
+
+    This class additionally provides the following:
 
     .. attribute:: client
 
@@ -331,12 +334,6 @@ functionality, the AioHTTPTestCase is provided::
        an aiohttp test server, :class:`TestServer` instance.
 
        .. versionadded:: 2.3
-
-    .. attribute:: loop
-
-       The event loop in which the application and server are running.
-
-       .. deprecated:: 3.5
 
     .. attribute:: app
 
@@ -369,55 +366,35 @@ functionality, the AioHTTPTestCase is provided::
 
        :return: :class:`aiohttp.web.Application` instance.
 
-    .. comethod:: setUpAsync()
+    .. comethod:: asyncSetUp()
 
        This async method can be overridden to execute asynchronous code during
        the ``setUp`` stage of the ``TestCase``::
 
-           async def setUpAsync(self):
-               await super().setUpAsync()
+           async def asyncSetUp(self):
+               await super().asyncSetUp()
                await foo()
 
        .. versionadded:: 2.3
 
        .. versionchanged:: 3.8
 
-          ``await super().setUpAsync()`` call is required.
+          ``await super().asyncSetUp()`` call is required.
 
-    .. comethod:: tearDownAsync()
+    .. comethod:: asyncTearDown()
 
        This async method can be overridden to execute asynchronous code during
        the ``tearDown`` stage of the ``TestCase``::
 
-           async def tearDownAsync(self):
-               await super().tearDownAsync()
+           async def asyncTearDown(self):
+               await super().asyncTearDown()
                await foo()
 
        .. versionadded:: 2.3
 
        .. versionchanged:: 3.8
 
-          ``await super().tearDownAsync()`` call is required.
-
-    .. method:: setUp()
-
-       Standard test initialization method.
-
-    .. method:: tearDown()
-
-       Standard test finalization method.
-
-
-   .. note::
-
-      The ``TestClient``'s methods are asynchronous: you have to
-      execute functions on the test client using asynchronous methods.::
-
-         class TestA(AioHTTPTestCase):
-
-             async def test_f(self):
-                 async with self.client.get('/') as resp:
-                     body = await resp.text()
+          ``await super().asyncTearDown()`` call is required.
 
 Patching unittest test cases
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
