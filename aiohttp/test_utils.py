@@ -405,7 +405,7 @@ class TestClient:
         await self.close()
 
 
-class AioHTTPTestCase(TestCase):
+class AioHTTPTestCase(TestCase, ABC):
     """A base class to allow for unittest web applications using aiohttp.
 
     Provides the following:
@@ -418,14 +418,13 @@ class AioHTTPTestCase(TestCase):
     execute function on the test client using asynchronous methods.
     """
 
+    @abstractmethod
     async def get_application(self) -> Application:
         """Get application.
 
-        This method should be overridden
-        to return the aiohttp.web.Application
+        This method should be overridden to return the aiohttp.web.Application
         object to test.
         """
-        raise RuntimeError("Did you forget to define get_application()?")
 
     def setUp(self) -> None:
         if not PY_38:
