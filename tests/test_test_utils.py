@@ -282,7 +282,7 @@ def test_testcase_no_app(testdir: Any, loop: Any) -> None:
         """
     )
     result = testdir.runpytest()
-    result.stdout.fnmatch_lines(["*RuntimeError*"])
+    result.stdout.fnmatch_lines(["*TypeError*"])
 
 
 async def test_server_context_manager(app: Any, loop: Any) -> None:
