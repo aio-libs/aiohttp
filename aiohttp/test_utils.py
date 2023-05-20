@@ -405,14 +405,12 @@ class TestClient:
         await self.close()
 
 
-class AioHTTPTestCase(TestCase):
+class AioHTTPTestCase(TestCase, ABC):
     """A base class to allow for unittest web applications using aiohttp.
 
     Provides the following:
 
     * self.client (aiohttp.test_utils.TestClient): an aiohttp test client.
-    * self.loop (asyncio.BaseEventLoop): the event loop in which the
-        application and server are running.
     * self.app (aiohttp.web.Application): the application returned by
         self.get_application()
 
@@ -420,31 +418,19 @@ class AioHTTPTestCase(TestCase):
     execute function on the test client using asynchronous methods.
     """
 
+    @abstractmethod
     async def get_application(self) -> Application:
         """Get application.
 
-        This method should be overridden
-        to return the aiohttp.web.Application
+        This method should be overridden to return the aiohttp.web.Application
         object to test.
         """
-        return self.get_app()
-
-    def get_app(self) -> Application:
-        """Obsolete method used to constructing web application.
-
-        Use .get_application() coroutine instead.
-        """
-        raise RuntimeError("Did you forget to define get_application()?")
 
     def setUp(self) -> None:
         if not PY_38:
             asyncio.get_event_loop().run_until_complete(self.asyncSetUp())
 
     async def asyncSetUp(self) -> None:
-        self.loop = asyncio.get_running_loop()
-        return await self.setUpAsync()
-
-    async def setUpAsync(self) -> None:
         self.app = await self.get_application()
         self.server = await self.get_server(self.app)
         self.client = await self.get_client(self.server)
@@ -453,12 +439,9 @@ class AioHTTPTestCase(TestCase):
 
     def tearDown(self) -> None:
         if not PY_38:
-            self.loop.run_until_complete(self.asyncTearDown())
+            asyncio.get_event_loop().run_until_complete(self.asyncTearDown())
 
     async def asyncTearDown(self) -> None:
-        return await self.tearDownAsync()
-
-    async def tearDownAsync(self) -> None:
         await self.client.close()
 
     async def get_server(self, app: Application) -> TestServer:

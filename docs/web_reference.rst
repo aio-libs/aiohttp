@@ -900,30 +900,15 @@ Response
       Read-write attribute for storing response's content aka BODY,
       :class:`bytes`.
 
-      Setting :attr:`body` also recalculates
-      :attr:`~StreamResponse.content_length` value.
-
       Assigning :class:`str` to :attr:`body` will make the :attr:`body`
       type of :class:`aiohttp.payload.StringPayload`, which tries to encode
       the given data based on *Content-Type* HTTP header, while defaulting
       to ``UTF-8``.
 
-      Resetting :attr:`body` (assigning ``None``) sets
-      :attr:`~StreamResponse.content_length` to ``None`` too, dropping
-      *Content-Length* HTTP header.
-
    .. attribute:: text
 
-      Read-write attribute for storing response's content, represented as
-      string, :class:`str`.
-
-      Setting :attr:`text` also recalculates
-      :attr:`~StreamResponse.content_length` value and
-      :attr:`~aiohttp.StreamResponse.body` value
-
-      Resetting :attr:`text` (assigning ``None``) sets
-      :attr:`~StreamResponse.content_length` to ``None`` too, dropping
-      *Content-Length* HTTP header.
+      Read-write attribute for storing response's
+      :attr:`~aiohttp.StreamResponse.body`, represented as :class:`str`.
 
 
 FileResponse
@@ -1391,6 +1376,13 @@ duplicated like one using :meth:`~aiohttp.web.Application.copy`.
 
           async def on_prepare(request, response):
               pass
+
+      .. note::
+
+         The headers are written immediately after these callbacks are run.
+         Therefore, if you modify the content of the response, you may need to
+         adjust the `Content-Length` header or similar to match. Aiohttp will
+         not make any updates to the headers from this point.
 
    .. attribute:: on_startup
 

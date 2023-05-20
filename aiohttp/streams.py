@@ -6,7 +6,7 @@ from typing import Awaitable, Callable, Generic, List, Optional, Tuple, TypeVar
 from typing_extensions import Final
 
 from .base_protocol import BaseProtocol
-from .helpers import BaseTimerContext, set_exception, set_result
+from .helpers import BaseTimerContext, TimerNoop, set_exception, set_result
 from .log import internal_logger
 
 try:  # pragma: no cover
@@ -122,7 +122,7 @@ class StreamReader(AsyncStreamReaderMixin):
         self._waiter: Optional[asyncio.Future[None]] = None
         self._eof_waiter: Optional[asyncio.Future[None]] = None
         self._exception: Optional[BaseException] = None
-        self._timer = timer
+        self._timer = TimerNoop() if timer is None else timer
         self._eof_callbacks: List[Callable[[], None]] = []
 
     def __repr__(self) -> str:
@@ -296,10 +296,7 @@ class StreamReader(AsyncStreamReaderMixin):
 
         waiter = self._waiter = self._loop.create_future()
         try:
-            if self._timer:
-                with self._timer:
-                    await waiter
-            else:
+            with self._timer:
                 await waiter
         finally:
             self._waiter = None
@@ -476,8 +473,9 @@ class StreamReader(AsyncStreamReaderMixin):
 
     def _read_nowait(self, n: int) -> bytes:
         """Read not more than n bytes, or whole buffer if n == -1"""
-        chunks = []
+        self._timer.assert_timeout()
 
+        chunks = []
         while self._buffer:
             chunk = self._read_nowait_chunk(n)
             chunks.append(chunk)
