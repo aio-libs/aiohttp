@@ -16,7 +16,6 @@ def report_dir(tmp_path_factory: TempPathFactory) -> Path:
 
 @pytest.fixture(scope="session", autouse=True)
 def build_autobahn_testsuite() -> Generator[None, None, None]:
-
     try:
         docker.build(
             file="tests/autobahn/Dockerfile.autobahn",

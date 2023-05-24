@@ -52,19 +52,50 @@ directly as shown above, but it is more convenient to use special keyword
 
     await session.post(url, json={'example': 'text'})
 
-For *text/plain* ::
+For ``text/plain``::
 
     await session.post(url, data='Привет, Мир!')
 
+Authentication
+--------------
+
+Instead of setting the ``Authorization`` header directly,
+:class:`ClientSession` and individual request methods provide an ``auth``
+argument. An instance of :class:`BasicAuth` can be passed in like this::
+
+    auth = BasicAuth(login="...", password="...")
+    async with ClientSession(auth=auth) as session:
+        ...
+
+For other authentication flows, the ``Authorization`` header can be set
+directly::
+
+    headers = {"Authorization": "Bearer eyJh...0M30"}
+    async with ClientSession(headers=headers) as session:
+        ...
+
+The authentication header for a session may be updated as and when required.
+For example::
+
+    session.headers["Authorization"] = "Bearer eyJh...1OH0"
+
+Note that a *copy* of the headers dictionary is set as an attribute when
+creating a :class:`ClientSession` instance (as a :class:`multidict.CIMultiDict`
+object). Updating the original dictionary does not have any effect.
+
+In cases where the authentication header value expires periodically, an
+:mod:`asyncio` task may be used to update the session's default headers in the
+background.
+
 .. note::
 
-   ``Authorization`` header will be removed if you get redirected
-   to a different host or protocol, except the case when  ``HTTP -> HTTPS``
+   The ``Authorization`` header will be removed if you get redirected
+   to a different host or protocol, except the case when  HTTP → HTTPS
    redirect is performed on the same host.
 
 .. versionchanged:: 4.0
 
-   Started keeping the ``Authorization`` header during ``HTTP -> HTTPS``
+   Started keeping the ``Authorization`` header during HTTP → HTTPS
    redirects when the host remains the same.
 
 Custom Cookies
@@ -530,6 +561,8 @@ DER with e.g::
    to :class:`TCPConnector` as default, the value from
    :meth:`ClientSession.get` and others override default.
 
+.. _aiohttp-client-proxy-support:
+
 Proxy support
 -------------
 
@@ -561,13 +594,17 @@ Authentication credentials can be passed in proxy URL::
 Contrary to the ``requests`` library, it won't read environment
 variables by default. But you can do so by passing
 ``trust_env=True`` into :class:`aiohttp.ClientSession`
-constructor for extracting proxy configuration from
-*HTTP_PROXY*, *HTTPS_PROXY*, *WS_PROXY* or *WSS_PROXY* *environment
-variables* (all are case insensitive)::
+constructor.::
 
    async with aiohttp.ClientSession(trust_env=True) as session:
        async with session.get("http://python.org") as resp:
            print(resp.status)
+
+.. note::
+    aiohttp uses :func:`urllib.request.getproxies`
+    for reading the proxy configuration (e.g. from the *HTTP_PROXY* etc. environment variables) and applies them for the *HTTP*, *HTTPS*, *WS* and *WSS* schemes.
+
+    Hosts defined in ``no_proxy`` will bypass the proxy.
 
 Proxy credentials are given from ``~/.netrc`` file if present (see
 :class:`aiohttp.ClientSession` for more details).

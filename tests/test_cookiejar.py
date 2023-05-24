@@ -3,6 +3,8 @@ import asyncio
 import datetime
 import itertools
 import pathlib
+import pickle
+import sys
 import unittest
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from typing import Any
@@ -13,6 +15,13 @@ from freezegun import freeze_time
 from yarl import URL
 
 from aiohttp import CookieJar, DummyCookieJar
+
+
+def dump_cookiejar() -> bytes:  # pragma: no cover
+    """Create pickled data for test_pickle_format()."""
+    cj = CookieJar()
+    cj.update_cookies(cookies_to_send.__pytest_wrapped__.obj())
+    return pickle.dumps(cj._cookies, pickle.HIGHEST_PROTOCOL)
 
 
 @pytest.fixture
@@ -31,7 +40,7 @@ def cookies_to_send():
         "path3-cookie=eleventh; Domain=pathtest.com; Path=/one/two; "
         "path4-cookie=twelfth; Domain=pathtest.com; Path=/one/two/; "
         "expires-cookie=thirteenth; Domain=expirestest.com; Path=/;"
-        " Expires=Tue, 1 Jan 2039 12:00:00 GMT; "
+        " Expires=Tue, 1 Jan 2999 12:00:00 GMT; "
         "max-age-cookie=fourteenth; Domain=maxagetest.com; Path=/;"
         " Max-Age=60; "
         "invalid-max-age-cookie=fifteenth; Domain=invalid-values.com; "
@@ -165,9 +174,7 @@ def test_path_matching() -> None:
     assert not test_func("/different-folder/", "/folder/")
 
 
-async def test_constructor(
-    loop: Any, cookies_to_send: Any, cookies_to_receive: Any
-) -> None:
+async def test_constructor(cookies_to_send: Any, cookies_to_receive: Any) -> None:
     jar = CookieJar()
     jar.update_cookies(cookies_to_send)
     jar_cookies = SimpleCookie()
@@ -175,11 +182,10 @@ async def test_constructor(
         dict.__setitem__(jar_cookies, cookie.key, cookie)
     expected_cookies = cookies_to_send
     assert jar_cookies == expected_cookies
-    assert jar._loop is loop
 
 
 async def test_constructor_with_expired(
-    loop: Any, cookies_to_send_with_expired: Any, cookies_to_receive: Any
+    cookies_to_send_with_expired: Any, cookies_to_receive: Any
 ) -> None:
     jar = CookieJar()
     jar.update_cookies(cookies_to_send_with_expired)
@@ -188,7 +194,6 @@ async def test_constructor_with_expired(
         dict.__setitem__(jar_cookies, cookie.key, cookie)
     expected_cookies = cookies_to_send_with_expired
     assert jar_cookies != expected_cookies
-    assert jar._loop is loop
 
 
 async def test_save_load(
@@ -239,7 +244,9 @@ async def test_filter_cookie_with_unicode_domain(loop: Any) -> None:
 
 async def test_filter_cookies_str_deprecated(loop: Any) -> None:
     jar = CookieJar()
-    with pytest.warns(DeprecationWarning):
+    with pytest.deprecated_call(
+        match="The method accepts yarl.URL instances only, got <class 'str'>",
+    ):
         jar.filter_cookies("http://éé.com")
 
 
@@ -518,7 +525,6 @@ class TestCookieJarSafe(TestCookieJarBase):
         )
 
     def test_path_filter_folder(self) -> None:
-
         cookies_sent, _ = self.request_reply_with_same_url("http://pathtest.com/one/")
 
         self.assertEqual(
@@ -527,7 +533,6 @@ class TestCookieJarSafe(TestCookieJarBase):
         )
 
     def test_path_filter_file(self) -> None:
-
         cookies_sent, _ = self.request_reply_with_same_url(
             "http://pathtest.com/one/two"
         )
@@ -544,7 +549,6 @@ class TestCookieJarSafe(TestCookieJarBase):
         )
 
     def test_path_filter_subfolder(self) -> None:
-
         cookies_sent, _ = self.request_reply_with_same_url(
             "http://pathtest.com/one/two/"
         )
@@ -562,7 +566,6 @@ class TestCookieJarSafe(TestCookieJarBase):
         )
 
     def test_path_filter_subsubfolder(self) -> None:
-
         cookies_sent, _ = self.request_reply_with_same_url(
             "http://pathtest.com/one/two/three/"
         )
@@ -580,7 +583,6 @@ class TestCookieJarSafe(TestCookieJarBase):
         )
 
     def test_path_filter_different_folder(self) -> None:
-
         cookies_sent, _ = self.request_reply_with_same_url(
             "http://pathtest.com/hundred/"
         )
@@ -778,6 +780,38 @@ async def test_cookie_jar_clear_domain() -> None:
     assert morsel.value == "bar"
     with pytest.raises(StopIteration):
         next(iterator)
+
+
+@pytest.mark.skipif(sys.version_info < (3, 8), reason="Requires latest protocol")
+def test_pickle_format(cookies_to_send) -> None:
+    """Test if cookiejar pickle format breaks.
+
+    If this test fails, it may indicate that saved cookiejars will stop working.
+    If that happens then:
+        1. Avoid releasing the change in a bugfix release.
+        2. Try to include a migration script in the release notes (example below).
+        3. Use dump_cookiejar() at the top of this file to update `pickled`.
+
+    Depending on the changes made, a migration script might look like:
+        import pickle
+        with file_path.open("rb") as f:
+            cookies = pickle.load(f)
+
+        morsels = [(name, m) for c in cookies.values() for name, m in c.items()]
+        cookies.clear()
+        for name, m in morsels:
+            cookies[(m["domain"], m["path"])][name] = m
+
+        with file_path.open("wb") as f:
+            pickle.dump(cookies, f, pickle.HIGHEST_PROTOCOL)
+    """
+    pickled = b"\x80\x05\x95\xc5\x07\x00\x00\x00\x00\x00\x00\x8c\x0bcollections\x94\x8c\x0bdefaultdict\x94\x93\x94\x8c\x0chttp.cookies\x94\x8c\x0cSimpleCookie\x94\x93\x94\x85\x94R\x94(\x8c\x00\x94\x8c\x01/\x94\x86\x94h\x05)\x81\x94\x8c\rshared-cookie\x94h\x03\x8c\x06Morsel\x94\x93\x94)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\t\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\x08\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(\x8c\x03key\x94h\x0c\x8c\x05value\x94\x8c\x05first\x94\x8c\x0bcoded_value\x94h\x1cubs\x8c\x0bexample.com\x94h\t\x86\x94h\x05)\x81\x94(\x8c\rdomain-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h\th\x12h\x08h\x13h\x1eh\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ah!h\x1b\x8c\x06second\x94h\x1dh$ub\x8c\x14dotted-domain-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h\th\x12h\x08h\x13\x8c\x0bexample.com\x94h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ah%h\x1b\x8c\x05fifth\x94h\x1dh)ubu\x8c\x11test1.example.com\x94h\t\x86\x94h\x05)\x81\x94\x8c\x11subdomain1-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h\th\x12h\x08h\x13h*h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ah-h\x1b\x8c\x05third\x94h\x1dh0ubs\x8c\x11test2.example.com\x94h\t\x86\x94h\x05)\x81\x94\x8c\x11subdomain2-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h\th\x12h\x08h\x13h1h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ah4h\x1b\x8c\x06fourth\x94h\x1dh7ubs\x8c\rdifferent.org\x94h\t\x86\x94h\x05)\x81\x94\x8c\x17different-domain-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h\th\x12h\x08h\x13h8h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ah;h\x1b\x8c\x05sixth\x94h\x1dh>ubs\x8c\nsecure.com\x94h\t\x86\x94h\x05)\x81\x94\x8c\rsecure-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h\th\x12h\x08h\x13h?h\x14h\x08h\x15\x88h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ahBh\x1b\x8c\x07seventh\x94h\x1dhEubs\x8c\x0cpathtest.com\x94h\t\x86\x94h\x05)\x81\x94(\x8c\x0eno-path-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h\th\x12h\x08h\x13hFh\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ahIh\x1b\x8c\x06eighth\x94h\x1dhLub\x8c\x0cpath1-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h\th\x12h\x08h\x13\x8c\x0cpathtest.com\x94h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ahMh\x1b\x8c\x05ninth\x94h\x1dhQubu\x8c\x0cpathtest.com\x94\x8c\x04/one\x94\x86\x94h\x05)\x81\x94\x8c\x0cpath2-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11hSh\x12h\x08h\x13hRh\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ahVh\x1b\x8c\x05tenth\x94h\x1dhYubs\x8c\x0cpathtest.com\x94\x8c\x08/one/two\x94\x86\x94h\x05)\x81\x94\x8c\x0cpath3-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h[h\x12h\x08h\x13hZh\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ah^h\x1b\x8c\x08eleventh\x94h\x1dhaubs\x8c\x0cpathtest.com\x94\x8c\t/one/two/\x94\x86\x94h\x05)\x81\x94\x8c\x0cpath4-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11hch\x12h\x08h\x13hbh\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ahfh\x1b\x8c\x07twelfth\x94h\x1dhiubs\x8c\x0fexpirestest.com\x94h\t\x86\x94h\x05)\x81\x94\x8c\x0eexpires-cookie\x94h\x0e)\x81\x94(h\x10\x8c\x1cTue, 1 Jan 2999 12:00:00 GMT\x94h\x11h\th\x12h\x08h\x13hjh\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ahmh\x1b\x8c\nthirteenth\x94h\x1dhqubs\x8c\x0emaxagetest.com\x94h\t\x86\x94h\x05)\x81\x94\x8c\x0emax-age-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h\th\x12h\x08h\x13hrh\x14\x8c\x0260\x94h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ahuh\x1b\x8c\nfourteenth\x94h\x1dhyubs\x8c\x12invalid-values.com\x94h\t\x86\x94h\x05)\x81\x94(\x8c\x16invalid-max-age-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h\th\x12h\x08h\x13hzh\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ah}h\x1b\x8c\tfifteenth\x94h\x1dh\x80ub\x8c\x16invalid-expires-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h\th\x12h\x08h\x13\x8c\x12invalid-values.com\x94h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ah\x81h\x1b\x8c\tsixteenth\x94h\x1dh\x85ubuu."  # noqa: E501
+    cookies = pickle.loads(pickled)
+
+    cj = CookieJar()
+    cj.update_cookies(cookies_to_send)
+
+    assert cookies == cj._cookies
 
 
 @pytest.mark.parametrize(

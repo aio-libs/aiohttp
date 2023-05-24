@@ -10,16 +10,36 @@ This module is based on an idea that pytest uses for self-testing:
 """  # noqa: E501
 import os
 import pkgutil
+import socket
 import subprocess
 import sys
 from itertools import chain
 from pathlib import Path
 from types import ModuleType
-from typing import Generator, List
+from typing import TYPE_CHECKING, Generator, List, Union
 
 import pytest
 
+if TYPE_CHECKING:
+    from _pytest.mark.structures import ParameterSet
+
 import aiohttp
+
+
+def _mark_aiohttp_worker_for_skipping(
+    importables: List[str],
+) -> List[Union[str, "ParameterSet"]]:
+    return [
+        pytest.param(
+            importable,
+            marks=pytest.mark.skipif(
+                not hasattr(socket, "AF_UNIX"), reason="It's a UNIX-only module"
+            ),
+        )
+        if importable == "aiohttp.worker"
+        else importable
+        for importable in importables
+    ]
 
 
 def _find_all_importables(pkg: ModuleType) -> List[str]:
@@ -63,7 +83,7 @@ def _discover_path_importables(
 
 @pytest.mark.parametrize(
     "import_path",
-    _find_all_importables(aiohttp),
+    _mark_aiohttp_worker_for_skipping(_find_all_importables(aiohttp)),
 )
 def test_no_warnings(import_path: str) -> None:
     """Verify that exploding importables doesn't explode.

@@ -30,7 +30,6 @@ def _create_example_app():
         return web.Response(body=_hello_world_bytes)
 
     async def websocket_handler(request):
-
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         msg = await ws.receive()
@@ -88,7 +87,7 @@ async def test_aiohttp_client_close_is_idempotent() -> None:
 
 
 class TestAioHTTPTestCase(AioHTTPTestCase):
-    def get_app(self):
+    async def get_application(self):
         return _create_example_app()
 
     async def test_example_with_loop(self) -> None:
@@ -97,22 +96,13 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
         text = await request.text()
         assert _hello_world_str == text
 
-    def test_inner_example(self) -> None:
-        async def test_get_route() -> None:
-            resp = await self.client.request("GET", "/")
-            assert resp.status == 200
-            text = await resp.text()
-            assert _hello_world_str == text
-
-        self.loop.run_until_complete(test_get_route())
-
     async def test_example_without_explicit_loop(self) -> None:
         request = await self.client.request("GET", "/")
         assert request.status == 200
         text = await request.text()
         assert _hello_world_str == text
 
-    async def test_inner_example_without_explicit_loop(self) -> None:
+    async def test_inner_example(self) -> None:
         async def test_get_route() -> None:
             resp = await self.client.request("GET", "/")
             assert resp.status == 200
@@ -292,7 +282,7 @@ def test_testcase_no_app(testdir: Any, loop: Any) -> None:
         """
     )
     result = testdir.runpytest()
-    result.stdout.fnmatch_lines(["*RuntimeError*"])
+    result.stdout.fnmatch_lines(["*TypeError*"])
 
 
 async def test_server_context_manager(app: Any, loop: Any) -> None:
