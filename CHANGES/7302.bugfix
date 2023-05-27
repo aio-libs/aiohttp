@@ -1,0 +1,1 @@
+Changed max 32-bit timestamp to an aware datetime object, for consistency with the non-32-bit one, and to avoid a DeprecationWarning on Python 3.12.
