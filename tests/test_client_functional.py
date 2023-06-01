@@ -9,6 +9,7 @@ import json
 import pathlib
 import socket
 import ssl
+import time
 from typing import Any, AsyncIterator
 from unittest import mock
 
@@ -124,6 +125,63 @@ async def test_keepalive_server_force_close_connection(aiohttp_client: Any) -> N
     resp2.close()
 
     assert 0 == len(client._session.connector._conns)
+
+
+async def test_keepalive_timeout_async_sleep() -> None:
+    async def handler(request):
+        body = await request.read()
+        assert b"" == body
+        return web.Response(body=b"OK")
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    runner = web.AppRunner(app, tcp_keepalive=True, keepalive_timeout=0.001)
+    await runner.setup()
+
+    port = unused_port()
+    site = web.TCPSite(runner, host="localhost", port=port)
+    await site.start()
+
+    try:
+        async with aiohttp.client.ClientSession() as sess:
+            resp1 = await sess.get(f"http://localhost:{port}/")
+            await resp1.read()
+            # wait for server keepalive_timeout
+            await asyncio.sleep(0.01)
+            resp2 = await sess.get(f"http://localhost:{port}/")
+            await resp2.read()
+    finally:
+        await asyncio.gather(runner.shutdown(), site.stop())
+
+
+async def test_keepalive_timeout_sync_sleep() -> None:
+    async def handler(request):
+        body = await request.read()
+        assert b"" == body
+        return web.Response(body=b"OK")
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    runner = web.AppRunner(app, tcp_keepalive=True, keepalive_timeout=0.001)
+    await runner.setup()
+
+    port = unused_port()
+    site = web.TCPSite(runner, host="localhost", port=port)
+    await site.start()
+
+    try:
+        async with aiohttp.client.ClientSession() as sess:
+            resp1 = await sess.get(f"http://localhost:{port}/")
+            await resp1.read()
+            # wait for server keepalive_timeout
+            # time.sleep is a more challenging scenario than asyncio.sleep
+            time.sleep(0.01)
+            resp2 = await sess.get(f"http://localhost:{port}/")
+            await resp2.read()
+    finally:
+        await asyncio.gather(runner.shutdown(), site.stop())
 
 
 async def test_release_early(aiohttp_client: Any) -> None:
