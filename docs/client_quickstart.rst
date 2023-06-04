@@ -68,7 +68,7 @@ endpoints of ``http://httpbin.org`` can be used the following code::
 .. note::
 
    Don't create a session per request. Most likely you need a session
-   per application which performs all requests altogether.
+   per application which performs all requests together.
 
    More complex cases may require a session per site, e.g. one for
    Github and other one for Facebook APIs. Anyway making a session for
