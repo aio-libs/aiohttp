@@ -119,7 +119,7 @@ jobs:
     needs: gen_llhttp
     strategy:
       matrix:
-        pyver: [3.7, 3.8, 3.9, '3.10']
+        pyver: [3.7, 3.8, 3.9, '3.10', '3.11']
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         exclude:
@@ -139,7 +139,11 @@ jobs:
         experimental: [false]
         include:
           - os: ubuntu
-            pyver: "3.11.0-alpha - 3.11.0"
+            pyver: "3.12-dev"
+            experimental: true
+            no-extensions: ''
+          - os: ubuntu
+            pyver: "3.12-dev"
             experimental: true
             no-extensions: 'Y'
       fail-fast: true

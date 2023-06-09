@@ -1,0 +1,1 @@
+Use cython 3.0.0b2, fixing Python 3.12 compatibility.
