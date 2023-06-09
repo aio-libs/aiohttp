@@ -8,6 +8,7 @@ import traceback
 import warnings
 from collections import defaultdict, deque
 from contextlib import suppress
+from http import HTTPStatus
 from http.cookies import SimpleCookie
 from itertools import cycle, islice
 from time import monotonic
@@ -46,7 +47,6 @@ from .client_exceptions import (
 from .client_proto import ResponseHandler
 from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
 from .helpers import _SENTINEL, ceil_timeout, is_ip_address, sentinel, set_result
-from .http import RESPONSES
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
@@ -69,7 +69,6 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class Connection:
-
     _source_traceback = None
     _transport = None
 
@@ -192,7 +191,6 @@ class BaseConnector:
         enable_cleanup_closed: bool = False,
         timeout_ceil_threshold: float = 5,
     ) -> None:
-
         if force_close:
             if keepalive_timeout is not None and keepalive_timeout is not sentinel:
                 raise ValueError(
@@ -678,13 +676,13 @@ class _DNSCacheTable:
     def add(self, key: Tuple[str, int], addrs: List[Dict[str, Any]]) -> None:
         self._addrs_rr[key] = (cycle(addrs), len(addrs))
 
-        if self._ttl:
+        if self._ttl is not None:
             self._timestamps[key] = monotonic()
 
     def remove(self, key: Tuple[str, int]) -> None:
         self._addrs_rr.pop(key, None)
 
-        if self._ttl:
+        if self._ttl is not None:
             self._timestamps.pop(key, None)
 
     def clear(self) -> None:
@@ -813,7 +811,6 @@ class TCPConnector(BaseConnector):
             ]
 
         if not self._use_dns_cache:
-
             if traces:
                 for trace in traces:
                     await trace.send_dns_resolvehost_start(host)
@@ -851,7 +848,6 @@ class TCPConnector(BaseConnector):
                 for trace in traces:
                     await trace.send_dns_cache_miss(host)
             try:
-
                 if traces:
                     for trace in traces:
                         await trace.send_dns_resolvehost_start(host)
@@ -970,6 +966,8 @@ class TCPConnector(BaseConnector):
         except ssl_errors as exc:
             raise ClientConnectorSSLError(req.connection_key, exc) from exc
         except OSError as exc:
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                raise
             raise client_error(req.connection_key, exc) from exc
 
     def _warn_about_tls_in_tls(
@@ -1049,6 +1047,8 @@ class TCPConnector(BaseConnector):
         except ssl_errors as exc:
             raise ClientConnectorSSLError(req.connection_key, exc) from exc
         except OSError as exc:
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                raise
             raise client_error(req.connection_key, exc) from exc
         except TypeError as type_err:
             # Example cause looks like this:
@@ -1100,6 +1100,8 @@ class TCPConnector(BaseConnector):
             host_resolved.add_done_callback(drop_exception)
             raise
         except OSError as exc:
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                raise
             # in case of proxy it is not ClientProxyConnectionError
             # it is problem of resolving proxy ip itself
             raise ClientConnectorError(req.connection_key, exc) from exc
@@ -1221,7 +1223,7 @@ class TCPConnector(BaseConnector):
                     if resp.status != 200:
                         message = resp.reason
                         if message is None:
-                            message = RESPONSES[resp.status][0]
+                            message = HTTPStatus(resp.status).phrase
                         raise ClientHttpProxyError(
                             proxy_resp.request_info,
                             resp.history,
@@ -1293,9 +1295,11 @@ class UnixConnector(BaseConnector):
                     self._factory, self._path
                 )
         except OSError as exc:
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                raise
             raise UnixClientConnectorError(self.path, req.connection_key, exc) from exc
 
-        return cast(ResponseHandler, proto)
+        return proto
 
 
 class NamedPipeConnector(BaseConnector):
@@ -1358,6 +1362,8 @@ class NamedPipeConnector(BaseConnector):
                 # other option is to manually set transport like
                 # `proto.transport = trans`
         except OSError as exc:
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                raise
             raise ClientConnectorError(req.connection_key, exc) from exc
 
         return cast(ResponseHandler, proto)

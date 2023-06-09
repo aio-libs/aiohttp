@@ -258,6 +258,8 @@ ask to raise the status.
 - `GINO <https://github.com/fantix/gino>`_
   An asyncio ORM on top of SQLAlchemy core, delivered with an aiohttp extension.
 
+- `New Relic <https://github.com/newrelic/newrelic-quickstarts/tree/main/quickstarts/python/aiohttp>`_ An aiohttp middleware for reporting your `Python application performance <https://newrelic.com/instant-observability/aiohttp>`_ metrics to New Relic.
+
 - `eider-py <https://github.com/eider-rpc/eider-py>`_ Python implementation of
   the `Eider RPC protocol <http://eider.readthedocs.io/>`_.
 
@@ -292,3 +294,6 @@ ask to raise the status.
 
 - `aiohttp-catcher <https://github.com/yuvalherziger/aiohttp-catcher>`_
   An aiohttp middleware library for centralized error handling in aiohttp servers.
+
+- `rsocket <https://github.com/rsocket/rsocket-py>`_
+  Python implementation of `RSocket protocol <https://rsocket.io>`_.

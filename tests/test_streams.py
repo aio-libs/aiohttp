@@ -70,7 +70,6 @@ def get_memory_usage(obj: Any):
 
 
 class TestStreamReader:
-
     DATA: bytes = b"line1\nline2\nline3\n"
 
     def _make_one(self, *args, **kwargs) -> streams.StreamReader:
@@ -232,7 +231,10 @@ class TestStreamReader:
             await stream.read()
             await stream.read()
             await stream.read()
-        with pytest.warns(DeprecationWarning):
+        with pytest.deprecated_call(
+            match=r"^unread_data\(\) is deprecated and will be "
+            r"removed in future releases \(#3260\)$",
+        ):
             stream.unread_data(b"data")
         await stream.read()
         await stream.read()
@@ -377,44 +379,47 @@ class TestStreamReader:
         with pytest.raises(ValueError):
             await stream.readline()
 
-    async def test_readuntil(self) -> None:
+    @pytest.mark.parametrize("separator", [b"*", b"**"])
+    async def test_readuntil(self, separator: bytes) -> None:
         loop = asyncio.get_event_loop()
         # Read one chunk. 'readuntil' will need to wait for the data
         # to come from 'cb'
         stream = self._make_one()
         stream.feed_data(b"chunk1 ")
-        read_task = loop.create_task(stream.readuntil(b"*"))
+        read_task = loop.create_task(stream.readuntil(separator))
 
         def cb():
             stream.feed_data(b"chunk2 ")
             stream.feed_data(b"chunk3 ")
-            stream.feed_data(b"* chunk4")
+            stream.feed_data(separator + b" chunk4")
 
         loop.call_soon(cb)
 
         line = await read_task
-        assert b"chunk1 chunk2 chunk3 *" == line
+        assert b"chunk1 chunk2 chunk3 " + separator == line
 
         stream.feed_eof()
         data = await stream.read()
         assert b" chunk4" == data
 
-    async def test_readuntil_limit_with_existing_data(self) -> None:
+    @pytest.mark.parametrize("separator", [b"&", b"&&"])
+    async def test_readuntil_limit_with_existing_data(self, separator: bytes) -> None:
         # Read one chunk. The data is in StreamReader's buffer
         # before the event loop is run.
 
         stream = self._make_one(limit=2)
         stream.feed_data(b"li")
-        stream.feed_data(b"ne1&line2&")
+        stream.feed_data(b"ne1" + separator + b"line2" + separator)
 
         with pytest.raises(ValueError):
-            await stream.readuntil(b"&")
+            await stream.readuntil(separator)
         # The buffer should contain the remaining data after exception
         stream.feed_eof()
         data = await stream.read()
-        assert b"line2&" == data
+        assert b"line2" + separator == data
 
-    async def test_readuntil_limit(self) -> None:
+    @pytest.mark.parametrize("separator", [b"$", b"$$"])
+    async def test_readuntil_limit(self, separator: bytes) -> None:
         loop = asyncio.get_event_loop()
         # Read one chunk. StreamReaders are fed with data after
         # their 'readuntil' methods are called.
@@ -422,71 +427,79 @@ class TestStreamReader:
 
         def cb():
             stream.feed_data(b"chunk1")
-            stream.feed_data(b"chunk2$")
+            stream.feed_data(b"chunk2" + separator)
             stream.feed_data(b"chunk3#")
             stream.feed_eof()
 
         loop.call_soon(cb)
 
-        with pytest.raises(ValueError):
-            await stream.readuntil(b"$")
+        with pytest.raises(ValueError, match="Chunk too big"):
+            await stream.readuntil(separator)
         data = await stream.read()
         assert b"chunk3#" == data
 
-    async def test_readuntil_nolimit_nowait(self) -> None:
+    @pytest.mark.parametrize("separator", [b"!", b"!!"])
+    async def test_readuntil_nolimit_nowait(self, separator: bytes) -> None:
         # All needed data for the first 'readuntil' call will be
         # in the buffer.
+        seplen = len(separator)
         stream = self._make_one()
-        data = b"line1!line2!line3!"
-        stream.feed_data(data[:6])
-        stream.feed_data(data[6:])
+        data = b"line1" + separator + b"line2" + separator + b"line3" + separator
+        stream.feed_data(data[: 5 + seplen])
+        stream.feed_data(data[5 + seplen :])
 
-        line = await stream.readuntil(b"!")
-        assert b"line1!" == line
+        line = await stream.readuntil(separator)
+        assert b"line1" + separator == line
 
         stream.feed_eof()
         data = await stream.read()
-        assert b"line2!line3!" == data
+        assert b"line2" + separator + b"line3" + separator == data
 
-    async def test_readuntil_eof(self) -> None:
+    @pytest.mark.parametrize("separator", [b"@", b"@@"])
+    async def test_readuntil_eof(self, separator: bytes) -> None:
         stream = self._make_one()
         stream.feed_data(b"some data")
         stream.feed_eof()
 
-        line = await stream.readuntil(b"@")
+        line = await stream.readuntil(separator)
         assert b"some data" == line
 
-    async def test_readuntil_empty_eof(self) -> None:
+    @pytest.mark.parametrize("separator", [b"@", b"@@"])
+    async def test_readuntil_empty_eof(self, separator: bytes) -> None:
         stream = self._make_one()
         stream.feed_eof()
 
-        line = await stream.readuntil(b"@")
+        line = await stream.readuntil(separator)
         assert b"" == line
 
-    async def test_readuntil_read_byte_count(self) -> None:
+    @pytest.mark.parametrize("separator", [b"!", b"!!"])
+    async def test_readuntil_read_byte_count(self, separator: bytes) -> None:
+        seplen = len(separator)
         stream = self._make_one()
-        data = b"line1!line2!line3!"
-        stream.feed_data(data)
+        stream.feed_data(
+            b"line1" + separator + b"line2" + separator + b"line3" + separator
+        )
 
-        await stream.readuntil(b"!")
+        await stream.readuntil(separator)
 
-        data = await stream.read(7)
-        assert b"line2!l" == data
+        data = await stream.read(6 + seplen)
+        assert b"line2" + separator + b"l" == data
 
         stream.feed_eof()
         data = await stream.read()
-        assert b"ine3!" == data
+        assert b"ine3" + separator == data
 
-    async def test_readuntil_exception(self) -> None:
+    @pytest.mark.parametrize("separator", [b"#", b"##"])
+    async def test_readuntil_exception(self, separator: bytes) -> None:
         stream = self._make_one()
-        stream.feed_data(b"line#")
+        stream.feed_data(b"line" + separator)
 
-        data = await stream.readuntil(b"#")
-        assert b"line#" == data
+        data = await stream.readuntil(separator)
+        assert b"line" + separator == data
 
-        stream.set_exception(ValueError())
-        with pytest.raises(ValueError):
-            await stream.readuntil(b"#")
+        stream.set_exception(ValueError("Another exception"))
+        with pytest.raises(ValueError, match="Another exception"):
+            await stream.readuntil(separator)
 
     async def test_readexactly_zero_or_less(self) -> None:
         # Read exact number of bytes (zero or less).
@@ -571,7 +584,10 @@ class TestStreamReader:
         data = await stream.read(5)
         assert b"line1" == data
 
-        with pytest.warns(DeprecationWarning):
+        with pytest.deprecated_call(
+            match=r"^unread_data\(\) is deprecated and will be "
+            r"removed in future releases \(#3260\)$",
+        ):
             stream.unread_data(data)
 
         data = await stream.read(5)
@@ -580,7 +596,10 @@ class TestStreamReader:
         data = await stream.read(4)
         assert b"line" == data
 
-        with pytest.warns(DeprecationWarning):
+        with pytest.deprecated_call(
+            match=r"^unread_data\(\) is deprecated and will be "
+            r"removed in future releases \(#3260\)$",
+        ):
             stream.unread_data(b"line1line")
 
         data = b""
@@ -591,7 +610,10 @@ class TestStreamReader:
         data = await stream.read(7)
         assert b"onemore" == data
 
-        with pytest.warns(DeprecationWarning):
+        with pytest.deprecated_call(
+            match=r"^unread_data\(\) is deprecated and will be "
+            r"removed in future releases \(#3260\)$",
+        ):
             stream.unread_data(data)
 
         data = b""
@@ -599,13 +621,19 @@ class TestStreamReader:
             data += await stream.read(11)
         assert b"onemoreline" == data
 
-        with pytest.warns(DeprecationWarning):
+        with pytest.deprecated_call(
+            match=r"^unread_data\(\) is deprecated and will be "
+            r"removed in future releases \(#3260\)$",
+        ):
             stream.unread_data(b"line")
         data = await stream.read(4)
         assert b"line" == data
 
         stream.feed_eof()
-        with pytest.warns(DeprecationWarning):
+        with pytest.deprecated_call(
+            match=r"^unread_data\(\) is deprecated and will be "
+            r"removed in future releases \(#3260\)$",
+        ):
             stream.unread_data(b"at_eof")
         data = await stream.read(6)
         assert b"at_eof" == data
@@ -841,7 +869,10 @@ class TestStreamReader:
         data, end_of_chunk = await stream.readchunk()
 
         # Try to unread a part of the first chunk
-        with pytest.warns(DeprecationWarning):
+        with pytest.deprecated_call(
+            match=r"^unread_data\(\) is deprecated and will be "
+            r"removed in future releases \(#3260\)$",
+        ):
             stream.unread_data(b"rt1")
 
         # The end_of_chunk signal was already received for the first chunk,
@@ -851,7 +882,10 @@ class TestStreamReader:
         assert end_of_chunk
 
         # Unread a part of the second chunk
-        with pytest.warns(DeprecationWarning):
+        with pytest.deprecated_call(
+            match=r"^unread_data\(\) is deprecated and will be "
+            r"removed in future releases \(#3260\)$",
+        ):
             stream.unread_data(b"rt2")
 
         data, end_of_chunk = await stream.readchunk()
@@ -1052,7 +1086,10 @@ class TestStreamReader:
         stream = self._make_one()
         stream.feed_data(b"line1")
         stream.feed_eof()
-        with pytest.warns(DeprecationWarning):
+        with pytest.deprecated_call(
+            match=r"^unread_data\(\) is deprecated and will be "
+            r"removed in future releases \(#3260\)$",
+        ):
             stream.unread_data(b"")
 
         data = await stream.read(5)
@@ -1062,6 +1099,7 @@ class TestStreamReader:
 
 async def test_empty_stream_reader() -> None:
     s = streams.EmptyStreamReader()
+    assert str(s) is not None
     assert s.set_exception(ValueError()) is None
     assert s.exception() is None
     assert s.feed_eof() is None

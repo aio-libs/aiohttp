@@ -2,6 +2,7 @@ name: Pre-commit auto-update
 on:
   schedule:
   - cron: '0 0 * * *'
+permissions: {}
 jobs:
   auto-update:
     if: github.repository_owner == 'aiohttp'
@@ -9,7 +10,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v4
       with:
         python-version: 3.8
     - name: Install dependencies
