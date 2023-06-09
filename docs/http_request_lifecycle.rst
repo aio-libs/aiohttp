@@ -77,8 +77,7 @@ So you are expected to reuse a session object and make many requests from it. Fo
                 html = await response.text()
                 print(html)
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    asyncio.run(main())
 
 
 Can become this:
@@ -98,8 +97,7 @@ Can become this:
             html = await fetch(session, 'http://python.org')
             print(html)
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    asyncio.run(main())
 
 On more complex code bases, you can even create a central registry to hold the session object from anywhere in the code, or a higher level ``Client`` class that holds a reference to it.
 
