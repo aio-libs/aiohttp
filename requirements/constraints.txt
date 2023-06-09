@@ -133,7 +133,7 @@ proxy-py==2.4.4rc3
     # via -r requirements/test.txt
 py==1.11.0
     # via pytest
-pycares==4.1.2
+pycares==4.3.0
     # via aiodns
 pycparser==2.20
     # via cffi
