@@ -69,13 +69,7 @@ The following code demonstrates very trivial usage example::
        await asyncio.sleep(100*3600)
 
 
-   loop = asyncio.get_event_loop()
-
-   try:
-       loop.run_until_complete(main())
-   except KeyboardInterrupt:
-       pass
-   loop.close()
+   asyncio.run(main())
 
 
 In the snippet we have ``handler`` which returns a regular
