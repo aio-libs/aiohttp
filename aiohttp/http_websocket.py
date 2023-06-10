@@ -7,19 +7,24 @@ import random
 import re
 import sys
 import zlib
+from dataclasses import dataclass
 from enum import IntEnum
 from struct import Struct
 from typing import (
     Any,
     Callable,
+    Generic,
     List,
+    Literal,
     NamedTuple,
     Optional,
     Pattern,
     Set,
     Tuple,
+    TypeVar,
     Union,
     cast,
+    overload,
 )
 
 from typing_extensions import Final
@@ -90,22 +95,68 @@ MSG_SIZE: Final[int] = 2**14
 DEFAULT_LIMIT: Final[int] = 2**16
 
 
-class WSMessage(NamedTuple):
+@dataclass
+class _WSMessage:
+    data: object
     type: WSMsgType
-    # To type correctly, this would need some kind of tagged union for each type.
-    data: Any
-    extra: Optional[str]
+    extra: Optional[str] = None
 
-    def json(self, *, loads: Callable[[Any], Any] = json.loads) -> Any:
-        """Return parsed JSON data.
+@dataclass
+class WSMessageContinuation(_WSMessage):
+    data: bytes
+    type: Literal[WSMsgType.CONTINUATION] = WSMsgType.CONTINUATION
 
-        .. versionadded:: 0.22
-        """
+@dataclass
+class WSMessageText(_WSMessage):
+    data: str
+    type: Literal[WSMsgType.TEXT] = WSMsgType.TEXT
+
+    def json(self, *, loads: Callable[[Union[str, bytes, bytearray]], Any] = json.loads) -> Any:
+        """Return parsed JSON data."""
         return loads(self.data)
 
+@dataclass
+class WSMessageBinary(_WSMessage):
+    data: bytes
+    type: Literal[WSMsgType.BINARY] = WSMsgType.BINARY
 
-WS_CLOSED_MESSAGE = WSMessage(WSMsgType.CLOSED, None, None)
-WS_CLOSING_MESSAGE = WSMessage(WSMsgType.CLOSING, None, None)
+    def json(self, *, loads: Callable[[Union[str, bytes, bytearray]], Any] = json.loads) -> Any:
+        """Return parsed JSON data."""
+        return loads(self.data)
+
+@dataclass
+class WSMessagePing(_WSMessage):
+    data: bytes
+    type: Literal[WSMsgType.PING] = WSMsgType.PING
+
+@dataclass
+class WSMessagePong(_WSMessage):
+    data: bytes
+    type: Literal[WSMsgType.PONG] = WSMsgType.PONG
+
+@dataclass
+class WSMessageClose(_WSMessage):
+    data: int
+    type: Literal[WSMsgType.CLOSE] = WSMsgType.CLOSE
+
+@dataclass
+class WSMessageClosing(_WSMessage):
+    data: None = None
+    type: Literal[WSMsgType.CLOSING] = WSMsgType.CLOSING
+
+@dataclass
+class WSMessageClosed(_WSMessage):
+    data: None = None
+    type: Literal[WSMsgType.CLOSED] = WSMsgType.CLOSED
+
+@dataclass
+class WSMessageError(_WSMessage):
+    data: Exception
+    type: Literal[WSMsgType.ERROR] = WSMsgType.ERROR
+
+WSMessageType = Union[WSMessageContinuation, WSMessageText, WSMessageBinary, WSMessagePing,
+                      WSMessagePong, WSMessageClose, WSMessageClosing, WSMessageClosed,
+                      WSMessageError]
 
 
 class WebSocketError(Exception):
@@ -263,7 +314,7 @@ class WSParserState(IntEnum):
 
 class WebSocketReader:
     def __init__(
-        self, queue: DataQueue[WSMessage], max_msg_size: int, compress: bool = True
+        self, queue: DataQueue[WSMessageType], max_msg_size: int, compress: bool = True
     ) -> None:
         self.queue = queue
         self._max_msg_size = max_msg_size
@@ -318,25 +369,25 @@ class WebSocketReader:
                         raise WebSocketError(
                             WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
                         ) from exc
-                    msg = WSMessage(WSMsgType.CLOSE, close_code, close_message)
+                    msg = WSMessageClose(data=close_code, extra=close_message)
                 elif payload:
                     raise WebSocketError(
                         WSCloseCode.PROTOCOL_ERROR,
                         f"Invalid close frame: {fin} {opcode} {payload!r}",
                     )
                 else:
-                    msg = WSMessage(WSMsgType.CLOSE, 0, "")
+                    msg = WSMessageClose(data=0, extra="")
 
                 self.queue.feed_data(msg, 0)
 
             elif opcode == WSMsgType.PING:
                 self.queue.feed_data(
-                    WSMessage(WSMsgType.PING, payload, ""), len(payload)
+                    WSMessagePing(data=payload, extra=""), len(payload)
                 )
 
             elif opcode == WSMsgType.PONG:
                 self.queue.feed_data(
-                    WSMessage(WSMsgType.PONG, payload, ""), len(payload)
+                    WSMessagePong(data=payload, extra=""), len(payload)
                 )
 
             elif (
@@ -410,7 +461,7 @@ class WebSocketReader:
                         try:
                             text = payload_merged.decode("utf-8")
                             self.queue.feed_data(
-                                WSMessage(WSMsgType.TEXT, text, ""), len(text)
+                                WSMessageText(data=text, extra=""), len(text)
                             )
                         except UnicodeDecodeError as exc:
                             raise WebSocketError(
@@ -418,7 +469,7 @@ class WebSocketReader:
                             ) from exc
                     else:
                         self.queue.feed_data(
-                            WSMessage(WSMsgType.BINARY, payload_merged, ""),
+                            WSMessageBinary(data=payload_merged, extra=""),
                             len(payload_merged),
                         )
 

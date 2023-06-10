@@ -21,11 +21,11 @@ async def wshandler(request: web.Request) -> web.WebSocketResponse:
     while True:
         msg = await ws.receive()
 
-        if msg.type == web.WSMsgType.TEXT:
+        if msg.type is web.WSMsgType.TEXT:
             await ws.send_str(msg.data)
-        elif msg.type == web.WSMsgType.BINARY:
+        elif msg.type is web.WSMsgType.BINARY:
             await ws.send_bytes(msg.data)
-        elif msg.type == web.WSMsgType.CLOSE:
+        elif msg.type is web.WSMsgType.CLOSE:
             await ws.close()
             break
         else:

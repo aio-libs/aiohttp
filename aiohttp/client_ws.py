@@ -11,14 +11,13 @@ from .client_exceptions import ClientError
 from .client_reqrep import ClientResponse
 from .helpers import call_later, set_result
 from .http import (
-    WS_CLOSED_MESSAGE,
-    WS_CLOSING_MESSAGE,
     WebSocketError,
     WSCloseCode,
-    WSMessage,
+    WSMessageClosed,
+    WSMessageClosing,
     WSMsgType,
 )
-from .http_websocket import WebSocketWriter  # WSMessage
+from .http_websocket import WSMessageError, WSMessageType, WebSocketWriter
 from .streams import EofStream, FlowControlDataQueue
 from .typedefs import (
     DEFAULT_JSON_DECODER,
@@ -42,7 +41,7 @@ DEFAULT_WS_CLIENT_TIMEOUT: Final[ClientWSTimeout] = ClientWSTimeout(
 class ClientWebSocketResponse:
     def __init__(
         self,
-        reader: "FlowControlDataQueue[WSMessage]",
+        reader: "FlowControlDataQueue[WSMessageType]",
         writer: WebSocketWriter,
         protocol: Optional[str],
         response: ClientResponse,
@@ -189,7 +188,7 @@ class ClientWebSocketResponse:
         # we need to break `receive()` cycle first,
         # `close()` may be called from different task
         if self._waiting is not None and not self._closed:
-            self._reader.feed_data(WS_CLOSING_MESSAGE, 0)
+            self._reader.feed_data(WSMessageClosing(), 0)
             await self._waiting
 
         if not self._closed:
@@ -225,23 +224,23 @@ class ClientWebSocketResponse:
                     self._response.close()
                     return True
 
-                if msg.type == WSMsgType.CLOSE:
+                if msg.type is WSMsgType.CLOSE:
                     self._close_code = msg.data
                     self._response.close()
                     return True
         else:
             return False
 
-    async def receive(self, timeout: Optional[float] = None) -> WSMessage:
+    async def receive(self, timeout: Optional[float] = None) -> WSMessageType:
         while True:
             if self._waiting is not None:
                 raise RuntimeError("Concurrent call to receive() is not allowed")
 
             if self._closed:
-                return WS_CLOSED_MESSAGE
+                return WSMessageClosed()
             elif self._closing:
                 await self.close()
-                return WS_CLOSED_MESSAGE
+                return WSMessageClosed()
 
             try:
                 self._waiting = self._loop.create_future()
@@ -261,23 +260,23 @@ class ClientWebSocketResponse:
             except EofStream:
                 self._close_code = WSCloseCode.OK
                 await self.close()
-                return WSMessage(WSMsgType.CLOSED, None, None)
+                return WSMessageClosed()
             except ClientError:
                 self._closed = True
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
-                return WS_CLOSED_MESSAGE
+                return WSMessageClosed()
             except WebSocketError as exc:
                 self._close_code = exc.code
                 await self.close(code=exc.code)
-                return WSMessage(WSMsgType.ERROR, exc, None)
+                return WSMessageError(data=exc)
             except Exception as exc:
                 self._exception = exc
                 self._closing = True
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 await self.close()
-                return WSMessage(WSMsgType.ERROR, exc, None)
+                return WSMessageError(data=exc)
 
-            if msg.type == WSMsgType.CLOSE:
+            if msg.type is WSMsgType.CLOSE:
                 self._closing = True
                 self._close_code = msg.data
                 if not self._closed and self._autoclose:
@@ -316,7 +315,7 @@ class ClientWebSocketResponse:
     def __aiter__(self) -> "ClientWebSocketResponse":
         return self
 
-    async def __anext__(self) -> WSMessage:
+    async def __anext__(self) -> WSMessageType:
         msg = await self.receive()
         if msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSING, WSMsgType.CLOSED):
             raise StopAsyncIteration

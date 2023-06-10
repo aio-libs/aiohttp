@@ -31,11 +31,11 @@ async def wshandler(request: web.Request) -> Union[web.WebSocketResponse, web.Re
             await ws.send_str("Someone joined")
         request.app[sockets].append(resp)
 
-        async for msg in resp:  # type: ignore[misc]
-            if msg.type == web.WSMsgType.TEXT:  # type: ignore[misc]
+        async for msg in resp:
+            if msg.type is web.WSMsgType.TEXT:
                 for ws in request.app[sockets]:
                     if ws is not resp:
-                        await ws.send_str(msg.data)  # type: ignore[misc]
+                        await ws.send_str(msg.data)
             else:
                 return resp
         return resp
