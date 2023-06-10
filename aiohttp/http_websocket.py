@@ -101,62 +101,84 @@ class _WSMessage:
     type: WSMsgType
     extra: Optional[str] = None
 
+
 @dataclass
 class WSMessageContinuation(_WSMessage):
     data: bytes
     type: Literal[WSMsgType.CONTINUATION] = WSMsgType.CONTINUATION
+
 
 @dataclass
 class WSMessageText(_WSMessage):
     data: str
     type: Literal[WSMsgType.TEXT] = WSMsgType.TEXT
 
-    def json(self, *, loads: Callable[[Union[str, bytes, bytearray]], Any] = json.loads) -> Any:
+    def json(
+        self, *, loads: Callable[[Union[str, bytes, bytearray]], Any] = json.loads
+    ) -> Any:
         """Return parsed JSON data."""
         return loads(self.data)
+
 
 @dataclass
 class WSMessageBinary(_WSMessage):
     data: bytes
     type: Literal[WSMsgType.BINARY] = WSMsgType.BINARY
 
-    def json(self, *, loads: Callable[[Union[str, bytes, bytearray]], Any] = json.loads) -> Any:
+    def json(
+        self, *, loads: Callable[[Union[str, bytes, bytearray]], Any] = json.loads
+    ) -> Any:
         """Return parsed JSON data."""
         return loads(self.data)
+
 
 @dataclass
 class WSMessagePing(_WSMessage):
     data: bytes
     type: Literal[WSMsgType.PING] = WSMsgType.PING
 
+
 @dataclass
 class WSMessagePong(_WSMessage):
     data: bytes
     type: Literal[WSMsgType.PONG] = WSMsgType.PONG
+
 
 @dataclass
 class WSMessageClose(_WSMessage):
     data: int
     type: Literal[WSMsgType.CLOSE] = WSMsgType.CLOSE
 
+
 @dataclass
 class WSMessageClosing(_WSMessage):
     data: None = None
     type: Literal[WSMsgType.CLOSING] = WSMsgType.CLOSING
+
 
 @dataclass
 class WSMessageClosed(_WSMessage):
     data: None = None
     type: Literal[WSMsgType.CLOSED] = WSMsgType.CLOSED
 
+
 @dataclass
 class WSMessageError(_WSMessage):
     data: Exception
     type: Literal[WSMsgType.ERROR] = WSMsgType.ERROR
 
-WSMessageType = Union[WSMessageContinuation, WSMessageText, WSMessageBinary, WSMessagePing,
-                      WSMessagePong, WSMessageClose, WSMessageClosing, WSMessageClosed,
-                      WSMessageError]
+
+WSMessageType = Union[
+    WSMessageContinuation,
+    WSMessageText,
+    WSMessageBinary,
+    WSMessagePing,
+    WSMessagePong,
+    WSMessageClose,
+    WSMessageClosing,
+    WSMessageClosed,
+    WSMessageError,
+]
 
 
 class WebSocketError(Exception):

@@ -17,7 +17,7 @@ from .http import (
     WSMessageClosing,
     WSMsgType,
 )
-from .http_websocket import WSMessageError, WSMessageType, WebSocketWriter
+from .http_websocket import WebSocketWriter, WSMessageError, WSMessageType
 from .streams import EofStream, FlowControlDataQueue
 from .typedefs import (
     DEFAULT_JSON_DECODER,

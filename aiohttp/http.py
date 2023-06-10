@@ -11,13 +11,13 @@ from .http_parser import (
     RawResponseMessage,
 )
 from .http_websocket import (
-    WSMessageClosed,
-    WSMessageClosing,
     WS_KEY,
     WebSocketError,
     WebSocketReader,
     WebSocketWriter,
     WSCloseCode,
+    WSMessageClosed,
+    WSMessageClosing,
     WSMessageType,
     WSMsgType,
     ws_ext_gen,
