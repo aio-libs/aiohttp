@@ -782,7 +782,6 @@ async def test_cookie_jar_clear_domain() -> None:
         next(iterator)
 
 
-@pytest.mark.skipif(sys.version_info < (3, 8), reason="Requires latest protocol")
 def test_pickle_format(cookies_to_send) -> None:
     """Test if cookiejar pickle format breaks.
 

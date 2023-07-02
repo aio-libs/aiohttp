@@ -21,7 +21,7 @@ from typing import (
     Union,
     cast,
 )
-from unittest import mock
+from unittest import IsolatedAsyncioTestCase, mock
 
 from aiosignal import Signal
 from multidict import CIMultiDict, CIMultiDictProxy
@@ -34,7 +34,7 @@ from . import ClientSession, hdrs
 from .abc import AbstractCookieJar
 from .client_reqrep import ClientResponse
 from .client_ws import ClientWebSocketResponse
-from .helpers import _SENTINEL, PY_38, sentinel
+from .helpers import _SENTINEL, sentinel
 from .http import HttpVersion, RawRequestMessage
 from .typedefs import StrOrURL
 from .web import (
@@ -53,11 +53,6 @@ if TYPE_CHECKING:  # pragma: no cover
     from ssl import SSLContext
 else:
     SSLContext = None
-
-if PY_38:
-    from unittest import IsolatedAsyncioTestCase as TestCase
-else:
-    from asynctest import TestCase  # type: ignore[no-redef]
 
 REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
 
@@ -405,7 +400,7 @@ class TestClient:
         await self.close()
 
 
-class AioHTTPTestCase(TestCase, ABC):
+class AioHTTPTestCase(IsolatedAsyncioTestCase, ABC):
     """A base class to allow for unittest web applications using aiohttp.
 
     Provides the following:
@@ -426,20 +421,12 @@ class AioHTTPTestCase(TestCase, ABC):
         object to test.
         """
 
-    def setUp(self) -> None:
-        if not PY_38:
-            asyncio.get_event_loop().run_until_complete(self.asyncSetUp())
-
     async def asyncSetUp(self) -> None:
         self.app = await self.get_application()
         self.server = await self.get_server(self.app)
         self.client = await self.get_client(self.server)
 
         await self.client.start_server()
-
-    def tearDown(self) -> None:
-        if not PY_38:
-            asyncio.get_event_loop().run_until_complete(self.asyncTearDown())
 
     async def asyncTearDown(self) -> None:
         await self.client.close()
@@ -487,16 +474,7 @@ def setup_test_loop(
     asyncio.set_event_loop(loop)
     if sys.platform != "win32" and not skip_watcher:
         policy = asyncio.get_event_loop_policy()
-        watcher: asyncio.AbstractChildWatcher
-        try:  # Python >= 3.8
-            # Refs:
-            # * https://github.com/pytest-dev/pytest-xdist/issues/620
-            # * https://stackoverflow.com/a/58614689/595220
-            # * https://bugs.python.org/issue35621
-            # * https://github.com/python/cpython/pull/14344
-            watcher = asyncio.ThreadedChildWatcher()
-        except AttributeError:  # Python < 3.8
-            watcher = asyncio.SafeChildWatcher()
+        watcher = asyncio.ThreadedChildWatcher()
         watcher.attach_loop(loop)
         with contextlib.suppress(NotImplementedError):
             policy.set_child_watcher(watcher)

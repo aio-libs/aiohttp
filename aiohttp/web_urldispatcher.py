@@ -35,7 +35,7 @@ from yarl import URL, __version__ as yarl_version  # type: ignore[attr-defined]
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
-from .helpers import DEBUG, iscoroutinefunction
+from .helpers import DEBUG
 from .http import HttpVersion11
 from .typedefs import Handler, PathLike
 from .web_exceptions import (
@@ -164,7 +164,7 @@ class AbstractRoute(abc.ABC):
         if expect_handler is None:
             expect_handler = _default_expect_handler
 
-        assert iscoroutinefunction(
+        assert asyncio.iscoroutinefunction(
             expect_handler
         ), f"Coroutine is expected, got {expect_handler!r}"
 
@@ -172,7 +172,7 @@ class AbstractRoute(abc.ABC):
         if not HTTP_METHOD_RE.match(method):
             raise ValueError(f"{method} is not allowed HTTP method")
 
-        if iscoroutinefunction(handler):
+        if asyncio.iscoroutinefunction(handler):
             pass
         elif isinstance(handler, type) and issubclass(handler, AbstractView):
             pass

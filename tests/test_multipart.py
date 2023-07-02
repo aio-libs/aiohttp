@@ -173,15 +173,8 @@ class TestPartReader:
 
     async def test_read_incomplete_chunk(self, newline: Any) -> None:
         with Stream(b"") as stream:
-            if sys.version_info >= (3, 8, 1):
-                # Workaround for a weird behavior of patch.object
-                def prepare(data):
-                    return data
-
-            else:
-
-                async def prepare(data):
-                    return data
+            def prepare(data):
+                return data]
 
             with mock.patch.object(
                 stream,
@@ -223,15 +216,8 @@ class TestPartReader:
 
     async def test_read_boundary_with_incomplete_chunk(self, newline: Any) -> None:
         with Stream(b"") as stream:
-            if sys.version_info >= (3, 8, 1):
-                # Workaround for weird 3.8.1 patch.object() behavior
-                def prepare(data):
-                    return data
-
-            else:
-
-                async def prepare(data):
-                    return data
+            def prepare(data):
+                return data
 
             with mock.patch.object(
                 stream,

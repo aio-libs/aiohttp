@@ -27,7 +27,6 @@ from .abc import AbstractStreamWriter
 from .compression_utils import ZLibCompressor
 from .helpers import (
     ETAG_ANY,
-    PY_38,
     QUOTED_ETAG_RE,
     CookieMixin,
     ETag,
@@ -51,12 +50,6 @@ if TYPE_CHECKING:  # pragma: no cover
     BaseClass = MutableMapping[str, Any]
 else:
     BaseClass = collections.abc.MutableMapping
-
-
-if not PY_38:
-    # allow samesite to be used in python < 3.8
-    # already permitted in python 3.8, see https://bugs.python.org/issue29613
-    Morsel._reserved["samesite"] = "SameSite"  # type: ignore[attr-defined]
 
 
 class ContentCoding(enum.Enum):
