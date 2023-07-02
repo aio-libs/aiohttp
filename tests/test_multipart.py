@@ -173,6 +173,7 @@ class TestPartReader:
 
     async def test_read_incomplete_chunk(self, newline: Any) -> None:
         with Stream(b"") as stream:
+
             def prepare(data):
                 return data
 
@@ -216,6 +217,7 @@ class TestPartReader:
 
     async def test_read_boundary_with_incomplete_chunk(self, newline: Any) -> None:
         with Stream(b"") as stream:
+
             def prepare(data):
                 return data
 
