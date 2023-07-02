@@ -271,7 +271,7 @@ class ClientRequest:
         return self.url.scheme in ("https", "wss")
 
     @property
-    def ssl(self) -> Union["SSLContext", None, bool, Fingerprint]:
+    def ssl(self) -> Union["SSLContext", None, Literal[False], Fingerprint]:
         return self._ssl
 
     @property
