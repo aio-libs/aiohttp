@@ -4,7 +4,6 @@ import contextlib
 import gc
 import io
 import json
-import sys
 from http.cookies import SimpleCookie
 from typing import Any, List
 from unittest import mock
