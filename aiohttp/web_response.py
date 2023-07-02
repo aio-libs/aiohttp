@@ -8,7 +8,6 @@ import time
 import warnings
 from concurrent.futures import Executor
 from http import HTTPStatus
-from http.cookies import Morsel
 from typing import (
     TYPE_CHECKING,
     Any,
