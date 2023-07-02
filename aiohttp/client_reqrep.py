@@ -17,6 +17,7 @@ from typing import (
     Dict,
     Iterable,
     List,
+    Literal,
     Mapping,
     Optional,
     Tuple,
@@ -156,7 +157,7 @@ class ConnectionKey:
     host: str
     port: Optional[int]
     is_ssl: bool
-    ssl: Union[SSLContext, None, bool, Fingerprint]
+    ssl: Union[SSLContext, None, Literal[False], Fingerprint]
     proxy: Optional[URL]
     proxy_auth: Optional[BasicAuth]
     proxy_headers_hash: Optional[int]  # hash(CIMultiDict)
@@ -210,7 +211,7 @@ class ClientRequest:
         proxy_auth: Optional[BasicAuth] = None,
         timer: Optional[BaseTimerContext] = None,
         session: Optional["ClientSession"] = None,
-        ssl: Union[SSLContext, bool, Fingerprint, None] = None,
+        ssl: Union[SSLContext, Literal[False], Fingerprint, None] = None,
         proxy_headers: Optional[LooseHeaders] = None,
         traces: Optional[List["Trace"]] = None,
         trust_env: bool = False,
