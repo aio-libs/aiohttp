@@ -174,7 +174,7 @@ class TestPartReader:
     async def test_read_incomplete_chunk(self, newline: Any) -> None:
         with Stream(b"") as stream:
             def prepare(data):
-                return data]
+                return data
 
             with mock.patch.object(
                 stream,
