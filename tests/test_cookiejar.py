@@ -4,7 +4,6 @@ import datetime
 import itertools
 import pathlib
 import pickle
-import sys
 import unittest
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from typing import Any
