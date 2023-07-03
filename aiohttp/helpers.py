@@ -35,6 +35,7 @@ from typing import (
     Mapping,
     Optional,
     Pattern,
+    Protocol,
     Tuple,
     Type,
     TypeVar,
@@ -52,7 +53,7 @@ from yarl import URL
 
 from . import hdrs
 from .log import client_logger, internal_logger
-from .typedefs import PathLike, Protocol  # noqa
+from .typedefs import PathLike
 
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
