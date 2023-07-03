@@ -1,12 +1,21 @@
 import asyncio
 import collections
 import warnings
-from typing import Awaitable, Callable, Deque, Generic, List, Optional, Tuple, TypeVar
+from typing import (
+    Awaitable,
+    Callable,
+    Deque,
+    Final,
+    Generic,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+)
 
 from .base_protocol import BaseProtocol
 from .helpers import BaseTimerContext, TimerNoop, set_exception, set_result
 from .log import internal_logger
-from .typedefs import Final
 
 __all__ = (
     "EMPTY_PAYLOAD",

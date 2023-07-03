@@ -18,6 +18,7 @@ from typing import (
     Callable,
     Container,
     Dict,
+    Final,
     Generator,
     Iterable,
     Iterator,
@@ -30,6 +31,7 @@ from typing import (
     Sized,
     Tuple,
     Type,
+    TypedDict,
     Union,
     cast,
 )
@@ -40,7 +42,7 @@ from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
 from .helpers import DEBUG
 from .http import HttpVersion11
-from .typedefs import Final, Handler, PathLike, TypedDict
+from .typedefs import Handler, PathLike
 from .web_exceptions import (
     HTTPException,
     HTTPExpectationFailed,
