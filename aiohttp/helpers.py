@@ -39,6 +39,7 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    get_args,
     overload,
 )
 from urllib.parse import quote
@@ -53,17 +54,11 @@ from . import hdrs
 from .log import client_logger, internal_logger
 from .typedefs import PathLike, Protocol  # noqa
 
-if sys.version_info >= (3, 8):
-    from typing import get_args
-else:
-    from typing_extensions import get_args
-
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
 IS_MACOS = platform.system() == "Darwin"
 IS_WINDOWS = platform.system() == "Windows"
 
-PY_38 = sys.version_info >= (3, 8)
 PY_310 = sys.version_info >= (3, 10)
 PY_311 = sys.version_info >= (3, 11)
 

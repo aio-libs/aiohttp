@@ -5,7 +5,6 @@ import threading
 import pytest
 
 from aiohttp import web
-from aiohttp.helpers import PY_38
 from aiohttp.test_utils import AioHTTPTestCase, loop_context
 
 
@@ -13,7 +12,6 @@ from aiohttp.test_utils import AioHTTPTestCase, loop_context
     platform.system() == "Windows", reason="the test is not valid for Windows"
 )
 async def test_subprocess_co(loop) -> None:
-    assert PY_38 or isinstance(threading.current_thread(), threading._MainThread)
     proc = await asyncio.create_subprocess_shell(
         "exit 0",
         stdin=asyncio.subprocess.DEVNULL,
@@ -43,7 +41,6 @@ def test_default_loop(loop) -> None:
     assert asyncio.get_event_loop_policy().get_event_loop() is loop
 
 
-@pytest.mark.xfail(not PY_38, reason="ThreadedChildWatcher is only available in 3.8+")
 def test_setup_loop_non_main_thread() -> None:
     child_exc = None
 
