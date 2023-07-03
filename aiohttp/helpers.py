@@ -41,6 +41,7 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    get_args,
     overload,
 )
 from urllib.parse import quote
@@ -55,14 +56,8 @@ from . import hdrs
 from .log import client_logger
 from .typedefs import PathLike  # noqa
 
-if sys.version_info >= (3, 8):
-    from typing import get_args
-else:
-    from typing_extensions import get_args
-
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
-PY_38 = sys.version_info >= (3, 8)
 PY_310 = sys.version_info >= (3, 10)
 
 COOKIE_MAX_LENGTH = 4096
@@ -111,16 +106,6 @@ TOKEN = CHAR ^ CTL ^ SEPARATORS
 class noop:
     def __await__(self) -> Generator[None, None, None]:
         yield
-
-
-if PY_38:
-    iscoroutinefunction = asyncio.iscoroutinefunction
-else:
-
-    def iscoroutinefunction(func: Any) -> bool:  # type: ignore[misc]
-        while isinstance(func, functools.partial):
-            func = func.func
-        return asyncio.iscoroutinefunction(func)
 
 
 json_re = re.compile(r"(?:application/|[\w.-]+/[\w.+-]+?\+)json$", re.IGNORECASE)

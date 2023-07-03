@@ -112,8 +112,7 @@ support to aiohttp web servers.
 
 - `aiohttp-pydantic <https://github.com/Maillol/aiohttp-pydantic>`_
   An ``aiohttp.View`` to validate the HTTP request's body, query-string, and
-  headers regarding function annotations and generate OpenAPI doc. Python 3.8+
-  required.
+  headers regarding function annotations and generate OpenAPI doc.
 
 - `aiohttp-swagger <https://github.com/cr0hn/aiohttp-swagger>`_
   Swagger API Documentation builder for aiohttp server.

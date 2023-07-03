@@ -179,10 +179,7 @@ def unix_sockname(tmp_path: Any, tmp_path_factory: Any):
 
 @pytest.fixture
 def selector_loop() -> None:
-    if sys.version_info >= (3, 8):
-        policy = asyncio.WindowsSelectorEventLoopPolicy()
-    else:
-        policy = asyncio.DefaultEventLoopPolicy()
+    policy = asyncio.WindowsSelectorEventLoopPolicy()
     asyncio.set_event_loop_policy(policy)
 
     with loop_context(policy.new_event_loop) as _loop:
