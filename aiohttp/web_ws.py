@@ -3,7 +3,7 @@ import base64
 import binascii
 import hashlib
 import json
-from typing import Any, Iterable, Optional, Tuple, cast
+from typing import Any, Final, Iterable, Optional, Tuple, cast
 
 import async_timeout
 import attr
@@ -27,7 +27,7 @@ from .http import (
 )
 from .log import ws_logger
 from .streams import EofStream, FlowControlDataQueue
-from .typedefs import Final, JSONDecoder, JSONEncoder
+from .typedefs import JSONDecoder, JSONEncoder
 from .web_exceptions import HTTPBadRequest, HTTPException
 from .web_request import BaseRequest
 from .web_response import StreamResponse

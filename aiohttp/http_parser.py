@@ -7,6 +7,7 @@ from contextlib import suppress
 from enum import IntEnum
 from typing import (
     Any,
+    Final,
     Generic,
     List,
     NamedTuple,
@@ -38,7 +39,7 @@ from .http_exceptions import (
 from .http_writer import HttpVersion, HttpVersion10
 from .log import internal_logger
 from .streams import EMPTY_PAYLOAD, StreamReader
-from .typedefs import Final, RawHeaders
+from .typedefs import RawHeaders
 
 __all__ = (
     "HeadersParser",

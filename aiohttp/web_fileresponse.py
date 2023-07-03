@@ -8,6 +8,7 @@ from typing import (  # noqa
     Any,
     Awaitable,
     Callable,
+    Final,
     Iterator,
     List,
     Optional,
@@ -19,7 +20,7 @@ from typing import (  # noqa
 from . import hdrs
 from .abc import AbstractStreamWriter
 from .helpers import ETAG_ANY, ETag
-from .typedefs import Final, LooseHeaders, PathLike
+from .typedefs import LooseHeaders, PathLike
 from .web_exceptions import (
     HTTPNotModified,
     HTTPPartialContent,

@@ -89,11 +89,8 @@ class BaseSite(ABC):
 
     async def _wait(self, parent_task: Optional["asyncio.Task[object]"]) -> None:
         exclude = self._runner.starting_tasks | {asyncio.current_task(), parent_task}
-        # TODO(PY38): while tasks := asyncio.all_tasks() - exclude:
-        tasks = asyncio.all_tasks() - exclude
-        while tasks:
+        while tasks := asyncio.all_tasks() - exclude:
             await asyncio.wait(tasks)
-            tasks = asyncio.all_tasks() - exclude
 
 
 class TCPSite(BaseSite):

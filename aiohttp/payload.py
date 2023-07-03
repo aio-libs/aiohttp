@@ -13,6 +13,7 @@ from typing import (
     Any,
     ByteString,
     Dict,
+    Final,
     Iterable,
     Optional,
     TextIO,
@@ -33,7 +34,7 @@ from .helpers import (
     sentinel,
 )
 from .streams import StreamReader
-from .typedefs import Final, JSONEncoder, _CIMultiDict
+from .typedefs import JSONEncoder, _CIMultiDict
 
 __all__ = (
     "PAYLOAD_REGISTRY",

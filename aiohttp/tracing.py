@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Awaitable, Optional, Type, TypeVar
+from typing import TYPE_CHECKING, Awaitable, Optional, Protocol, Type, TypeVar
 
 import attr
 from aiosignal import Signal
@@ -10,7 +10,6 @@ from .client_reqrep import ClientResponse
 
 if TYPE_CHECKING:  # pragma: no cover
     from .client import ClientSession
-    from .typedefs import Protocol
 
     _ParamT_contra = TypeVar("_ParamT_contra", contravariant=True)
 

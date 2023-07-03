@@ -12,6 +12,7 @@ from struct import Struct
 from typing import (
     Any,
     Callable,
+    Final,
     List,
     NamedTuple,
     Optional,
@@ -26,7 +27,6 @@ from .base_protocol import BaseProtocol
 from .compression_utils import ZLibCompressor, ZLibDecompressor
 from .helpers import NO_EXTENSIONS
 from .streams import DataQueue
-from .typedefs import Final
 
 __all__ = (
     "WS_CLOSED_MESSAGE",

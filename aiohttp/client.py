@@ -16,6 +16,7 @@ from typing import (
     Awaitable,
     Callable,
     Coroutine,
+    Final,
     FrozenSet,
     Generator,
     Generic,
@@ -87,7 +88,7 @@ from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, WSMessage, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
 from .tracing import Trace, TraceConfig
-from .typedefs import Final, JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
+from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
 
 __all__ = (
     # client_exceptions

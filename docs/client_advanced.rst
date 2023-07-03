@@ -576,8 +576,7 @@ Proxy credentials are given from ``~/.netrc`` file if present (see
 
 .. attention::
 
-   CPython has introduced the support for TLS in TLS around Python 3.7.
-   But, as of now (Python 3.10), it's disabled for the transports that
+   As of now (Python 3.10), support for TLS in TLS is disabled for the transports that
    :py:mod:`asyncio` uses. If the further release of Python (say v3.11)
    toggles one attribute, it'll *just work™*.
 
