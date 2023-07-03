@@ -53,7 +53,6 @@ from yarl import URL
 
 from . import hdrs
 from .log import client_logger, internal_logger
-from .typedefs import PathLike
 
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
