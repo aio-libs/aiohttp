@@ -310,7 +310,7 @@ async def test_partially_applied_handler(aiohttp_client: AiohttpClient) -> None:
 
     async def handler(data, request):
         return web.Response(body=data)
-]
+
     app.router.add_route("GET", "/", functools.partial(handler, b"hello"))
 
     client = await aiohttp_client(app)
