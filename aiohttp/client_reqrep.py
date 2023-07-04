@@ -152,7 +152,7 @@ else:  # pragma: no cover
 
 
 def _merge_ssl_params(
-    ssl: Union["SSLContext", bool, Fingerprint, None],
+    ssl: Union["SSLContext", Literal[False], Fingerprint, None],
     verify_ssl: Optional[bool],
     ssl_context: Optional["SSLContext"],
     fingerprint: Optional[bytes],
