@@ -16,6 +16,7 @@ from typing import (
     Dict,
     Iterable,
     List,
+    Literal,
     Mapping,
     Optional,
     Tuple,
@@ -151,11 +152,11 @@ else:  # pragma: no cover
 
 
 def _merge_ssl_params(
-    ssl: Union["SSLContext", bool, Fingerprint, None],
+    ssl: Union["SSLContext", Literal[False], Fingerprint, None],
     verify_ssl: Optional[bool],
     ssl_context: Optional["SSLContext"],
     fingerprint: Optional[bytes],
-) -> Union["SSLContext", bool, Fingerprint, None]:
+) -> Union["SSLContext", Literal[False], Fingerprint, None]:
     if verify_ssl is not None and not verify_ssl:
         warnings.warn(
             "verify_ssl is deprecated, use ssl=False instead",
@@ -210,7 +211,7 @@ class ConnectionKey:
     host: str
     port: Optional[int]
     is_ssl: bool
-    ssl: Union[SSLContext, None, bool, Fingerprint]
+    ssl: Union[SSLContext, None, Literal[False], Fingerprint]
     proxy: Optional[URL]
     proxy_auth: Optional[BasicAuth]
     proxy_headers_hash: Optional[int]  # hash(CIMultiDict)
@@ -272,7 +273,7 @@ class ClientRequest:
         proxy_auth: Optional[BasicAuth] = None,
         timer: Optional[BaseTimerContext] = None,
         session: Optional["ClientSession"] = None,
-        ssl: Union[SSLContext, bool, Fingerprint, None] = None,
+        ssl: Union[SSLContext, Literal[False], Fingerprint, None] = None,
         proxy_headers: Optional[LooseHeaders] = None,
         traces: Optional[List["Trace"]] = None,
         trust_env: bool = False,
@@ -330,7 +331,7 @@ class ClientRequest:
         return self.url.scheme in ("https", "wss")
 
     @property
-    def ssl(self) -> Union["SSLContext", None, bool, Fingerprint]:
+    def ssl(self) -> Union["SSLContext", None, Literal[False], Fingerprint]:
         return self._ssl
 
     @property
