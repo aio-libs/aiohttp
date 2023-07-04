@@ -442,26 +442,12 @@ checks can be relaxed by setting *ssl* to ``False``::
 
   r = await session.get('https://example.com', ssl=False)
 
-
 If you need to setup custom ssl parameters (use own certification
 files for example) you can create a :class:`ssl.SSLContext` instance and
-pass it into the proper :class:`ClientSession` method::
+pass it into the :meth:`ClientSession.request` methods or set it for the
+entire session with ``ClientSession(connector=TCPConnector(ssl=ssl_context))``.
 
-  sslcontext = ssl.create_default_context(
-     cafile='/path/to/ca-bundle.crt')
-  r = await session.get('https://example.com', ssl=sslcontext)
-
-If you need to verify *self-signed* certificates, you can do the
-same thing as the previous example, but add another call to
-:meth:`ssl.SSLContext.load_cert_chain` with the key pair::
-
-  sslcontext = ssl.create_default_context(
-     cafile='/path/to/ca-bundle.crt')
-  sslcontext.load_cert_chain('/path/to/client/public/device.pem',
-                             '/path/to/client/private/device.key')
-  r = await session.get('https://example.com', ssl=sslcontext)
-
-There is explicit errors when ssl verification fails
+There are explicit errors when ssl verification fails
 
 :class:`aiohttp.ClientConnectorSSLError`::
 
@@ -490,6 +476,34 @@ If you need to skip both ssl related errors
       await session.get('https://wrong.host.badssl.com/')
   except aiohttp.ClientSSLError as e:
       assert isinstance(e, ssl.CertificateError)
+
+Example: Use certifi
+^^^^^^^^^^^^^^^^^^^^
+
+By default, Python uses the system CA certificates. In rare cases, these may not be
+installed or Python is unable to find them, resulting in a error like
+`ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate`
+
+One way to work around this problem is to use the `certifi` package::
+
+  ssl_context = ssl.create_default_context(cafile=certifi.where())
+  async with ClientSession(connector=TCPConnector(ssl=ssl_context)) as sess:
+      ...
+
+Example: Use self-signed certificate
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you need to verify *self-signed* certificates, you need to add a call to
+:meth:`ssl.SSLContext.load_cert_chain` with the key pair::
+
+  ssl_context = ssl.create_default_context()
+  ssl_context.load_cert_chain("/path/to/client/public/device.pem",
+                              "/path/to/client/private/device.key")
+  async with sess.get("https://example.com", ssl=ssl_context) as resp:
+      ...
+
+Example: Verify certificate fingerprint
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You may also verify certificates via *SHA256* fingerprint::
 
