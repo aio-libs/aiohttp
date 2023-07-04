@@ -20,6 +20,7 @@ from typing import (
     Dict,
     Iterator,
     List,
+    Literal,
     Optional,
     Set,
     Tuple,
@@ -487,7 +488,7 @@ class BaseConnector:
         return available
 
     async def connect(
-        self, req: "ClientRequest", traces: List["Trace"], timeout: "ClientTimeout"
+        self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
     ) -> Connection:
         """Get from pool or create new connection."""
         key = req.connection_key
@@ -679,7 +680,7 @@ class BaseConnector:
                 )
 
     async def _create_connection(
-        self, req: "ClientRequest", traces: List["Trace"], timeout: "ClientTimeout"
+        self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
     ) -> ResponseHandler:
         raise NotImplementedError()
 
@@ -757,7 +758,7 @@ class TCPConnector(BaseConnector):
         ttl_dns_cache: Optional[int] = 10,
         family: int = 0,
         ssl_context: Optional[SSLContext] = None,
-        ssl: Union[None, bool, Fingerprint, SSLContext] = None,
+        ssl: Union[None, Literal[False], Fingerprint, SSLContext] = None,
         local_addr: Optional[Tuple[str, int]] = None,
         resolver: Optional[AbstractResolver] = None,
         keepalive_timeout: Union[None, float, object] = sentinel,
@@ -894,7 +895,7 @@ class TCPConnector(BaseConnector):
         return self._cached_hosts.next_addrs(key)
 
     async def _create_connection(
-        self, req: "ClientRequest", traces: List["Trace"], timeout: "ClientTimeout"
+        self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
     ) -> ResponseHandler:
         """Create connection.
 
@@ -930,7 +931,7 @@ class TCPConnector(BaseConnector):
             sslcontext.set_default_verify_paths()
             return sslcontext
 
-    def _get_ssl_context(self, req: "ClientRequest") -> Optional[SSLContext]:
+    def _get_ssl_context(self, req: ClientRequest) -> Optional[SSLContext]:
         """Logic to get the correct SSL context
 
         0. if req.ssl is false, return None
@@ -963,7 +964,7 @@ class TCPConnector(BaseConnector):
         else:
             return None
 
-    def _get_fingerprint(self, req: "ClientRequest") -> Optional["Fingerprint"]:
+    def _get_fingerprint(self, req: ClientRequest) -> Optional["Fingerprint"]:
         ret = req.ssl
         if isinstance(ret, Fingerprint):
             return ret
@@ -975,7 +976,7 @@ class TCPConnector(BaseConnector):
     async def _wrap_create_connection(
         self,
         *args: Any,
-        req: "ClientRequest",
+        req: ClientRequest,
         timeout: "ClientTimeout",
         client_error: Type[Exception] = ClientConnectorError,
         **kwargs: Any,
@@ -1040,7 +1041,7 @@ class TCPConnector(BaseConnector):
     def _warn_about_tls_in_tls(
         self,
         underlying_transport: asyncio.Transport,
-        req: "ClientRequest",
+        req: ClientRequest,
     ) -> None:
         """Issue a warning if the requested URL has HTTPS scheme."""
         if req.request_info.url.scheme != "https":
@@ -1077,7 +1078,7 @@ class TCPConnector(BaseConnector):
     async def _start_tls_connection(
         self,
         underlying_transport: asyncio.Transport,
-        req: "ClientRequest",
+        req: ClientRequest,
         timeout: "ClientTimeout",
         client_error: Type[Exception] = ClientConnectorError,
     ) -> Tuple[asyncio.BaseTransport, ResponseHandler]:
@@ -1137,7 +1138,7 @@ class TCPConnector(BaseConnector):
 
     async def _create_direct_connection(
         self,
-        req: "ClientRequest",
+        req: ClientRequest,
         traces: List["Trace"],
         timeout: "ClientTimeout",
         *,
@@ -1214,7 +1215,7 @@ class TCPConnector(BaseConnector):
             raise last_exc
 
     async def _create_proxy_connection(
-        self, req: "ClientRequest", traces: List["Trace"], timeout: "ClientTimeout"
+        self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
     ) -> Tuple[asyncio.BaseTransport, ResponseHandler]:
         self._fail_on_no_start_tls(req)
         runtime_has_start_tls = self._loop_supports_start_tls()
@@ -1382,7 +1383,7 @@ class UnixConnector(BaseConnector):
         return self._path
 
     async def _create_connection(
-        self, req: "ClientRequest", traces: List["Trace"], timeout: "ClientTimeout"
+        self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
     ) -> ResponseHandler:
         try:
             async with ceil_timeout(
@@ -1444,7 +1445,7 @@ class NamedPipeConnector(BaseConnector):
         return self._path
 
     async def _create_connection(
-        self, req: "ClientRequest", traces: List["Trace"], timeout: "ClientTimeout"
+        self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
     ) -> ResponseHandler:
         try:
             async with ceil_timeout(
