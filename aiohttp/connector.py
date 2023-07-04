@@ -46,7 +46,15 @@ from .client_exceptions import (
 )
 from .client_proto import ResponseHandler
 from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
-from .helpers import _SENTINEL, ceil_timeout, is_ip_address, sentinel, set_result
+from .helpers import (
+    _SENTINEL,
+    SOCKET_SUPPORTS_BINDING_TO_DEVICE,
+    ceil_timeout,
+    is_ip_address,
+    make_an_interface_bound_socket,
+    sentinel,
+    set_result,
+)
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
@@ -717,6 +725,7 @@ class TCPConnector(BaseConnector):
     ttl_dns_cache - Max seconds having cached a DNS entry, None forever.
     family - socket address family
     local_addr - local tuple of (host, port) to bind socket to
+    network_interface - Name of network interface to bind socket to (e.g. "eth0").
 
     keepalive_timeout - (optional) Keep-alive timeout.
     force_close - Set to True to force close and do reconnect
@@ -736,6 +745,7 @@ class TCPConnector(BaseConnector):
         family: int = 0,
         ssl: Union[None, bool, Fingerprint, SSLContext] = None,
         local_addr: Optional[Tuple[str, int]] = None,
+        network_interface: Optional[str] = None,
         resolver: Optional[AbstractResolver] = None,
         keepalive_timeout: Union[None, float, _SENTINEL] = sentinel,
         force_close: bool = False,
@@ -768,6 +778,12 @@ class TCPConnector(BaseConnector):
         self._throttle_dns_events: Dict[Tuple[str, int], EventResultOrError] = {}
         self._family = family
         self._local_addr = local_addr
+        self._network_interface = network_interface
+        if self._network_interface and not SOCKET_SUPPORTS_BINDING_TO_DEVICE:
+            raise RuntimeError(
+                "Binding to interface is not supported "
+                "by the current runtime (kernel or OS)."
+            )
 
     def _close_immediately(self) -> List["asyncio.Future[None]"]:
         for ev in self._throttle_dns_events.values():
@@ -950,7 +966,9 @@ class TCPConnector(BaseConnector):
 
     async def _wrap_create_connection(
         self,
-        *args: Any,
+        factory: functools.partial[ResponseHandler],
+        host: str,
+        port: int,
         req: "ClientRequest",
         timeout: "ClientTimeout",
         client_error: Type[Exception] = ClientConnectorError,
@@ -960,7 +978,15 @@ class TCPConnector(BaseConnector):
             async with ceil_timeout(
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
             ):
-                return await self._loop.create_connection(*args, **kwargs)  # type: ignore[return-value]  # noqa
+                if self._network_interface:
+                    sock = make_an_interface_bound_socket(
+                        self._network_interface,
+                        family=kwargs["family"],
+                        local_addr=self._local_addr,
+                    )
+                    await self._loop.sock_connect(sock, (host, port))
+                    return await self._loop.create_connection(factory, sock=sock, **kwargs)  # type: ignore[return-value]  # noqa
+                return await self._loop.create_connection(factory, host, port, **kwargs)  # type: ignore[return-value]  # noqa
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:

@@ -12,6 +12,7 @@ import netrc
 import os
 import platform
 import re
+import socket
 import sys
 import time
 import warnings
@@ -101,6 +102,8 @@ SEPARATORS = {
     chr(9),
 }
 TOKEN = CHAR ^ CTL ^ SEPARATORS
+
+SOCKET_SUPPORTS_BINDING_TO_DEVICE = hasattr(socket, "SO_BINDTODEVICE")
 
 
 class noop:
@@ -1051,3 +1054,24 @@ def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
             with suppress(ValueError):
                 return datetime.datetime(*timetuple[:6], tzinfo=datetime.timezone.utc)
     return None
+
+
+def make_an_interface_bound_socket(
+    network_interface: str,
+    family: int = socket.AF_INET,
+    local_addr: Optional[Union[Tuple[Any, ...], str]] = None,
+) -> socket.socket:
+    """Return a socket, bounded to a network interface.
+
+    Addresses can be either tuples of varying lengths
+    (AF_INET, AF_INET6, AF_NETLINK, AF_TIPC)
+    or strings (AF_UNIX).
+    """
+    sock = socket.socket(family, socket.SOCK_STREAM)
+    sock.setsockopt(
+        socket.SOL_SOCKET, socket.SO_BINDTODEVICE, network_interface.encode()
+    )
+    if local_addr:
+        sock.bind(local_addr)
+    sock.setblocking(False)
+    return sock
