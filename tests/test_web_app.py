@@ -44,6 +44,7 @@ async def test_set_loop() -> None:
     reason="No idea why _set_loop() is constructed out of loop "
     "but it calls `asyncio.get_event_loop()`",
     raises=DeprecationWarning,
+    strict=False,
 )
 def test_set_loop_default_loop() -> None:
     loop = asyncio.new_event_loop()
