@@ -88,6 +88,7 @@ class TestStreamReader:
         reason="No idea why ClientRequest() is constructed out of loop but "
         "it calls `asyncio.get_event_loop()`",
         raises=DeprecationWarning,
+        strict=False,
     )
     def test_ctor_global_loop(self) -> None:
         loop = asyncio.new_event_loop()
