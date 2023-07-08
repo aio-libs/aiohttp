@@ -339,6 +339,7 @@ utils
 uvloop
 uWSGI
 vcvarsall
+vendored
 waituntil
 wakeup
 wakeups
