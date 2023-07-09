@@ -10,6 +10,45 @@
 
 .. towncrier release notes start
 
+3.8.5 (2023-07-19)
+==================
+
+Security bugfixes
+-----------------
+
+- Upgraded the vendored copy of llhttp_ to v8.1.1 -- by :user:`webknjaz`
+  and :user:`Dreamsorcerer`.
+
+  Thanks to :user:`sethmlarson` for reporting this and providing us with
+  comprehensive reproducer, workarounds and fixing details! For more
+  information, see
+  https://github.com/aio-libs/aiohttp/security/advisories/GHSA-45c4-8wx5-qw6w.
+
+  .. _llhttp: https://llhttp.org
+
+  `#7346 <https://github.com/aio-libs/aiohttp/issues/7346>`_
+
+
+Features
+--------
+
+- Added information to C parser exceptions to show which character caused the error. -- by :user:`Dreamsorcerer`
+
+  `#7366 <https://github.com/aio-libs/aiohttp/issues/7366>`_
+
+
+Bugfixes
+--------
+
+- Fixed a transport is :data:`None` error -- by :user:`Dreamsorcerer`.
+
+  `#3355 <https://github.com/aio-libs/aiohttp/issues/3355>`_
+
+
+
+----
+
+
 3.8.4 (2023-02-12)
 ==================
 

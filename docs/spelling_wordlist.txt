@@ -39,6 +39,7 @@ botocore
 brotli
 brotlipy
 bugfix
+bugfixes
 Bugfixes
 builtin
 BytesIO
