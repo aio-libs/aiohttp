@@ -1121,6 +1121,9 @@ class TCPConnector(BaseConnector):
                 f"[{type_err!s}]"
             ) from type_err
         else:
+            if tls_transport is None:
+                msg = "Failed to start TLS (possibly caused by closing transport)"
+                raise client_error(req.connection_key, OSError(msg))
             tls_proto.connection_made(
                 tls_transport
             )  # Kick the state machine of the new TLS protocol
