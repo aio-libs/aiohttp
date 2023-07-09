@@ -346,7 +346,9 @@ The client session supports the context manager protocol for self closing.
 
       :param str method: HTTP method
 
-      :param url: Request URL, :class:`str` or :class:`~yarl.URL`.
+      :param url: Request URL, :class:`~yarl.URL` or :class:`str` that will
+                  be encoded with :class:`~yarl.URL` (see :class:`~yarl.URL`
+                  to skip encoding).
 
       :param params: Mapping, iterable of tuple of *key*/*value* pairs or
                      string to be sent as parameters in the query
@@ -661,7 +663,9 @@ The client session supports the context manager protocol for self closing.
       Create a websocket connection. Returns a
       :class:`ClientWebSocketResponse` object.
 
-      :param url: Websocket server url, :class:`str` or :class:`~yarl.URL`
+      :param url: Websocket server url, :class:`~yarl.URL` or :class:`str` that
+                  will be encoded with :class:`~yarl.URL` (see :class:`~yarl.URL`
+                  to skip encoding).
 
       :param tuple protocols: Websocket protocols
 
@@ -826,7 +830,9 @@ certification chaining.
 
    :param str method: HTTP method
 
-   :param url: Requested URL, :class:`str` or :class:`~yarl.URL`
+   :param url: Request URL, :class:`~yarl.URL` or :class:`str` that will
+               be encoded with :class:`~yarl.URL` (see :class:`~yarl.URL`
+               to skip encoding).
 
    :param dict params: Parameters to be sent in the query
                        string of the new request (optional)
