@@ -435,6 +435,9 @@ class ClientSession:
         timer = tm.timer()
         try:
             with timer:
+                # https://www.rfc-editor.org/rfc/rfc9112.html#name-retrying-requests
+                retry_persistent_connection = method in {"GET", "HEAD", "OPTIONS",
+                                                         "TRACE", "PUT", "DELETE"}
                 while True:
                     url, auth_from_url = strip_auth_from_url(url)
                     if auth and auth_from_url:
@@ -541,6 +544,11 @@ class ClientSession:
                         except BaseException:
                             conn.close()
                             raise
+                    except ServerDisconnectedError:
+                        if retry_persistent_connection:
+                            retry_persistent_connection = False
+                            continue
+                        raise
                     except ClientError:
                         raise
                     except OSError as exc:

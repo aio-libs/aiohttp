@@ -155,7 +155,8 @@ async def test_keepalive_timeout_async_sleep() -> None:
         await asyncio.gather(runner.shutdown(), site.stop())
 
 
-@pytest.mark.xfail(reason="Reproducer for #7297")
+@pytest.skipif(sys.version_info[:2] == (3, 11),
+               reason="https://github.com/pytest-dev/pytest/issues/10763")
 async def test_keepalive_timeout_sync_sleep() -> None:
     async def handler(request):
         body = await request.read()
