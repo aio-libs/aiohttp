@@ -1117,6 +1117,13 @@ class TCPConnector(BaseConnector):
             port = hinfo["port"]
 
             try:
+                server_hostname = None
+                if sslcontext:
+                    server_hostname = hinfo["hostname"]
+                    if server_hostname.endswith("."):
+                        # Strip trailing dot, certificates contain FQDN without dot.
+                        # See https://github.com/aio-libs/aiohttp/issues/3636
+                        server_hostname = server_hostname[:-1]
                 transp, proto = await self._wrap_create_connection(
                     self._factory,
                     host,
@@ -1126,7 +1133,7 @@ class TCPConnector(BaseConnector):
                     family=hinfo["family"],
                     proto=hinfo["proto"],
                     flags=hinfo["flags"],
-                    server_hostname=hinfo["hostname"] if sslcontext else None,
+                    server_hostname=server_hostname,
                     local_addr=self._local_addr,
                     req=req,
                     client_error=client_error,
