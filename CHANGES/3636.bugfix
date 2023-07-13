@@ -1,2 +1,3 @@
-Strip trailing dot in Host header and TLS context from fully-qualified domain names.
-This allows the client to connect to URLs with FQDN hostname like `https://example.com./`
+Implemented stripping the trailing dots from fully-qualified domain names in ``Host`` headers and TLS context when acting as an HTTP client.
+This allows the client to connect to URLs with FQDN hostname like ``https://example.com./``.
+-- by :user:`martin-sucha`.
