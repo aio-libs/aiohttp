@@ -340,9 +340,9 @@ class ClientRequest:
         netloc = cast(str, self.url.raw_host)
         if helpers.is_ipv6_address(netloc):
             netloc = f"[{netloc}]"
-        elif netloc.endswith("."):
-            # Strip trailing dot. See https://github.com/aio-libs/aiohttp/issues/3636.
-            netloc = netloc[:-1]
+        else:
+            # See https://github.com/aio-libs/aiohttp/issues/3636.
+            netloc = netloc.rstrip(".")
         if self.url.port is not None and not self.url.is_default_port():
             netloc += ":" + str(self.url.port)
         self.headers[hdrs.HOST] = netloc
