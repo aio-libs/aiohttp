@@ -2064,6 +2064,39 @@ async def test_tcp_connector_do_not_raise_connector_ssl_error(
     await conn.close()
 
 
+async def test_tcp_connector_fqdn(
+    aiohttp_server: Any, ssl_ctx: Any, client_ssl_ctx: Any
+) -> None:
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    srv = await aiohttp_server(app, ssl=ssl_ctx)
+    port = unused_port()
+    conn = aiohttp.TCPConnector(local_addr=("127.0.0.1", port))
+
+    session = aiohttp.ClientSession(connector=conn)
+    url = srv.make_url("/")
+
+    r = await session.get(url.with_host("localhost."), ssl=client_ssl_ctx)
+
+    r.release()
+    first_conn = next(iter(conn._conns.values()))[0][0]
+
+    try:
+        _sslcontext = first_conn.transport._ssl_protocol._sslcontext
+    except AttributeError:
+        _sslcontext = first_conn.transport._sslcontext
+
+    assert _sslcontext is client_ssl_ctx
+    r.close()
+
+    await session.close()
+    await conn.close()
+
+
 async def test_tcp_connector_uses_provided_local_addr(aiohttp_server: Any) -> None:
     async def handler(request):
         return web.Response()
