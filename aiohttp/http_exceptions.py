@@ -40,7 +40,7 @@ class HttpProcessingError(Exception):
         return f"{self.code}, message:\n{msg}"
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__}: {self}>"
+        return f"<{self.__class__.__name__}: {self.code}, message={self.message!r}>"
 
 
 class BadHttpMessage(HttpProcessingError):
