@@ -15,7 +15,6 @@ from cpython cimport (
 from cpython.mem cimport PyMem_Free, PyMem_Malloc
 from libc.limits cimport ULLONG_MAX
 from libc.string cimport memcpy
-from textwrap import indent
 
 from multidict import CIMultiDict as _CIMultiDict, CIMultiDictProxy as _CIMultiDictProxy
 from yarl import URL as _URL
