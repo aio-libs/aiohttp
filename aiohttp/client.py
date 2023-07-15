@@ -550,7 +550,7 @@ class ClientSession:
                         except BaseException:
                             conn.close()
                             raise
-                    except ServerDisconnectedError:
+                    except (ClientOSError, ServerDisconnectedError):
                         if retry_persistent_connection:
                             retry_persistent_connection = False
                             continue
