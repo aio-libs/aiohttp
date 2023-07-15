@@ -2904,12 +2904,12 @@ async def test_handle_keepalive_on_closed_connection() -> None:
     async with aiohttp.TCPConnector(limit=1) as connector:
         async with aiohttp.ClientSession(connector=connector) as session:
             url = "http://{}:{}/".format(*addr)
-        
+
             r = await session.request("GET", url)
             await r.read()
             assert 1 == len(connector._conns)
             closed_conn = next(iter(connector._conns.values()))
-        
+
             await session.request("GET", url)
             assert 1 == len(connector._conns)
             new_conn = next(iter(connector._conns.values()))
