@@ -117,6 +117,7 @@ test2: data\r
     assert msg.compression is None
     assert not msg.upgrade
 
+
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
 def test_invalid_character(loop: Any, protocol: Any, request: Any) -> None:
     parser = HttpRequestParserC(
@@ -127,10 +128,12 @@ def test_invalid_character(loop: Any, protocol: Any, request: Any) -> None:
         max_field_size=8190,
     )
     text = b"POST / HTTP/1.1\r\nHost: localhost:8080\r\nSet-Cookie: abc\x01def\r\n\r\n"
-    error_detail = re.escape(r""":
+    error_detail = re.escape(
+        r""":
 
     b'Set-Cookie: abc\x01def\r'
-                     ^""")
+                     ^"""
+    )
     with pytest.raises(http_exceptions.BadHttpMessage, match=error_detail):
         parser.feed_data(text)
 
