@@ -2909,10 +2909,12 @@ async def test_handle_keepalive_on_closed_connection() -> None:
     r = await session.request("GET", url)
     await r.read()
     assert 1 == len(connector._conns)
+    closed_conn = next(iter(connector._conns.values()))
 
-    with pytest.raises(aiohttp.ClientConnectionError):
-        await session.request("GET", url)
-    assert 0 == len(connector._conns)
+    await session.request("GET", url)
+    assert 1 == len(connector._conns)
+    new_conn = next(iter(connector._conns.values()))
+    assert closed_conn is not new_conn
 
     await session.close()
     await connector.close()
