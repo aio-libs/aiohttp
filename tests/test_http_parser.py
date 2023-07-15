@@ -2,6 +2,7 @@
 # Tests for aiohttp/protocol.py
 
 import asyncio
+import re
 from typing import Any, List
 from unittest import mock
 from urllib.parse import quote
@@ -115,6 +116,23 @@ test2: data\r
     assert not msg.should_close
     assert msg.compression is None
     assert not msg.upgrade
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+def test_invalid_character(loop: Any, protocol: Any, request: Any) -> None:
+    parser = HttpRequestParserC(
+        protocol,
+        loop,
+        2**16,
+        max_line_size=8190,
+        max_field_size=8190,
+    )
+    text = b"POST / HTTP/1.1\r\nHost: localhost:8080\r\nSet-Cookie: abc\x01def\r\n\r\n"
+    error_detail = re.escape(r""":
+
+    b'Set-Cookie: abc\x01def\r'
+                     ^""")
+    with pytest.raises(http_exceptions.BadHttpMessage, match=error_detail):
+        parser.feed_data(text)
 
 
 def test_parse_headers_longline(parser: Any) -> None:
