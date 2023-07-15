@@ -807,7 +807,6 @@ cdef int cb_on_chunk_complete(cparser.llhttp_t* parser) except -1:
 cdef parser_error_from_errno(cparser.llhttp_t* parser, data, pointer):
     cdef cparser.llhttp_errno_t errno = cparser.llhttp_get_errno(parser)
     cdef bytes desc = cparser.llhttp_get_error_reason(parser)
-    cdef bytes after = cparser.llhttp_get_error_pos(parser)
 
     if errno in (cparser.HPE_CB_MESSAGE_BEGIN,
                  cparser.HPE_CB_HEADERS_COMPLETE,
