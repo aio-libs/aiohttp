@@ -9,6 +9,7 @@ import json
 import pathlib
 import socket
 import ssl
+import sys
 import time
 from typing import Any, AsyncIterator
 from unittest import mock
