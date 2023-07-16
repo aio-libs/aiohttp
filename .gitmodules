@@ -1,4 +1,4 @@
 [submodule "vendor/llhttp"]
     path = vendor/llhttp
     url = https://github.com/nodejs/llhttp.git
-    branch = tags/v8.1.1
+    branch = v8.x
