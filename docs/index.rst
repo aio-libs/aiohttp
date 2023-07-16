@@ -140,9 +140,6 @@ Please feel free to file an issue on the `bug tracker
 <https://github.com/aio-libs/aiohttp/issues>`_ if you have found a bug
 or have some suggestion in order to improve the library.
 
-The library uses `Azure Pipelines <https://dev.azure.com/aio-libs/aiohttp/_build>`_ for
-Continuous Integration.
-
 
 Dependencies
 ============
@@ -173,6 +170,7 @@ Dependencies
 
      $ pip install Brotli
 
+.. include:: ../vendor/README.rst
 
 Communication channels
 ======================
