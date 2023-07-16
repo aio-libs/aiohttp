@@ -4,12 +4,12 @@ LLHTTP
 When building aiohttp from source, there is a pure Python parser used by default.
 For better performance, you may want to build the higher performance C parser.
 
-To build this llhttp parser, first get/update the submodule (to update to a
-newer release, add ``--remote`` and check the branch in .gitmodules)::
+To build this :term:`llhttp` parser, first get/update the :term:`submodule` (to update
+to a newer release, add ``--remote`` and check the branch in ``.gitmodules``)::
 
     git submodule update --init --recursive
 
-Then build llhttp::
+Then build :term:`llhttp`::
 
     cd vendor/llhttp/
     npm install
