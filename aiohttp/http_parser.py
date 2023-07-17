@@ -1,6 +1,5 @@
 import abc
 import asyncio
-import collections
 import re
 import string
 from contextlib import suppress
@@ -76,20 +75,16 @@ class RawRequestMessage(NamedTuple):
     url: URL
 
 
-RawResponseMessage = collections.namedtuple(
-    "RawResponseMessage",
-    [
-        "version",
-        "code",
-        "reason",
-        "headers",
-        "raw_headers",
-        "should_close",
-        "compression",
-        "upgrade",
-        "chunked",
-    ],
-)
+class RawResponseMessage(NamedTuple):
+    version: HttpVersion
+    code: int
+    reason: str
+    headers: CIMultiDictProxy[str]
+    raw_headers: RawHeaders
+    should_close: bool
+    compression: Optional[str]
+    upgrade: bool
+    chunked: bool
 
 
 _MsgT = TypeVar("_MsgT", RawRequestMessage, RawResponseMessage)
