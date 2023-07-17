@@ -1,6 +1,5 @@
 import abc
 import asyncio
-import collections
 import re
 import string
 from contextlib import suppress
