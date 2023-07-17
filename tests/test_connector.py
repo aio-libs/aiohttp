@@ -669,6 +669,81 @@ async def test_tcp_connector_multiple_hosts_errors(loop: Any) -> None:
     established_connection.close()
 
 
+async def test_tcp_connector_multiple_hosts_one_timeout(loop: Any) -> None:
+    conn = aiohttp.TCPConnector()
+
+    ip1 = "192.168.1.1"
+    ip2 = "192.168.1.2"
+    ips = [ip1, ip2]
+    ips_tried = []
+
+    req = ClientRequest(
+        "GET",
+        URL("https://mocked.host"),
+        loop=loop,
+    )
+
+    async def _resolve_host(host, port, traces=None):
+        return [
+            {
+                "hostname": host,
+                "host": ip,
+                "port": port,
+                "family": socket.AF_INET,
+                "proto": 0,
+                "flags": socket.AI_NUMERICHOST,
+            }
+            for ip in ips
+        ]
+
+    conn._resolve_host = _resolve_host
+
+    timeout_error = False
+    connected = False
+
+    async def create_connection(*args, **kwargs):
+        nonlocal timeout_error, connected
+
+        ip = args[1]
+
+        ips_tried.append(ip)
+
+        if ip == ip1:
+            timeout_error = True
+            raise asyncio.TimeoutError
+
+        if ip == ip2:
+            connected = True
+            tr = create_mocked_conn(loop)
+            pr = create_mocked_conn(loop)
+
+            def get_extra_info(param):
+                if param == "sslcontext":
+                    return True
+
+                if param == "ssl_object":
+                    s = create_mocked_conn(loop)
+                    s.getpeercert.return_value = b"foo"
+                    return s
+
+                assert False
+
+            tr.get_extra_info = get_extra_info
+            return tr, pr
+
+        assert False
+
+    conn._loop.create_connection = create_connection
+
+    established_connection = await conn.connect(req, [], ClientTimeout())
+    assert ips == ips_tried
+
+    assert timeout_error
+    assert connected
+
+    established_connection.close()
+
+
 async def test_tcp_connector_resolve_host(loop: Any) -> None:
     conn = aiohttp.TCPConnector(use_dns_cache=True)
 

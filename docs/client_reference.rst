@@ -135,7 +135,7 @@ The client session supports the context manager protocol for self closing.
       higher.
 
    :param timeout: a :class:`ClientTimeout` settings structure, 300 seconds (5min)
-        total timeout by default.
+        total timeout, 30 seconds socket connect timeout by default.
 
       .. versionadded:: 3.3
 
@@ -905,7 +905,7 @@ certification chaining.
       .. versionadded:: 3.7
 
    :param timeout: a :class:`ClientTimeout` settings structure, 300 seconds (5min)
-        total timeout by default.
+        total timeout, 30 seconds socket connect timeout by default.
 
    :param loop: :ref:`event loop<asyncio-event-loop>`
                 used for processing HTTP requests.

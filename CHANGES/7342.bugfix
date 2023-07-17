@@ -1,0 +1,3 @@
+Fixed failure to try next host after single-host connection timeout.
+Also updated the default ``ClientTimeout`` params to include ``sock_connect``
+so that this correct behavior happens by default.

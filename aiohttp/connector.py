@@ -1131,7 +1131,7 @@ class TCPConnector(BaseConnector):
                     req=req,
                     client_error=client_error,
                 )
-            except ClientConnectorError as exc:
+            except (ClientConnectorError, asyncio.TimeoutError) as exc:
                 last_exc = exc
                 continue
 
