@@ -170,8 +170,6 @@ Dependencies
 
      $ pip install Brotli
 
-.. include:: ../vendor/README.rst
-
 Communication channels
 ======================
 
