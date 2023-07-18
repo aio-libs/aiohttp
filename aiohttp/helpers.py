@@ -3,6 +3,7 @@
 import asyncio
 import base64
 import binascii
+import contextlib
 import dataclasses
 import datetime
 import enum
@@ -213,8 +214,11 @@ def netrc_from_env() -> Optional[netrc.netrc]:
     except netrc.NetrcParseError as e:
         client_logger.warning("Could not parse .netrc file: %s", e)
     except OSError as e:
+        netrc_exists = False
+        with contextlib.suppress(OSError):
+            netrc_exists = netrc_path.is_file()
         # we couldn't read the file (doesn't exist, permissions, etc.)
-        if netrc_env or netrc_path.is_file():
+        if netrc_env or netrc_exists:
             # only warn if the environment wanted us to load it,
             # or it appears like the default file does actually exist
             client_logger.warning("Could not read .netrc file: %s", e)
