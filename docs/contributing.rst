@@ -110,6 +110,8 @@ Install pre-commit hooks:
 
 Congratulations, you are ready to run the test suite!
 
+.. include:: ../vendor/README.rst
+
 
 Run autoformatter
 -----------------
