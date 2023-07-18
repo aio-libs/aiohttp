@@ -685,6 +685,7 @@ def test_http_response_parser_bad(response) -> None:
         response.feed_data(b"HTT/1\r\n\r\n")
 
 
+@pytest.mark.skipif(not NO_EXTENSIONS, reason="Behaviour has changed in C parser")
 def test_http_response_parser_code_under_100(response) -> None:
     msg = response.feed_data(b"HTTP/1.1 99 test\r\n\r\n")[0][0][0]
     assert msg.code == 99
