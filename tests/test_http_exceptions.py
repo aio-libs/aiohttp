@@ -32,13 +32,13 @@ class TestHttpProcessingError:
         err = http_exceptions.HttpProcessingError(
             code=500, message="Internal error", headers={}
         )
-        assert str(err) == "500, message='Internal error'"
+        assert str(err) == "500, message:\n  Internal error"
 
     def test_repr(self) -> None:
         err = http_exceptions.HttpProcessingError(
             code=500, message="Internal error", headers={}
         )
-        assert repr(err) == ("<HttpProcessingError: 500, " "message='Internal error'>")
+        assert repr(err) == ("<HttpProcessingError: 500, message='Internal error'>")
 
 
 class TestBadHttpMessage:
@@ -61,7 +61,7 @@ class TestBadHttpMessage:
 
     def test_str(self) -> None:
         err = http_exceptions.BadHttpMessage(message="Bad HTTP message", headers={})
-        assert str(err) == "400, message='Bad HTTP message'"
+        assert str(err) == "400, message:\n  Bad HTTP message"
 
     def test_repr(self) -> None:
         err = http_exceptions.BadHttpMessage(message="Bad HTTP message", headers={})
@@ -88,9 +88,8 @@ class TestLineTooLong:
 
     def test_str(self) -> None:
         err = http_exceptions.LineTooLong(line="spam", limit="10", actual_size="12")
-        assert str(err) == (
-            "400, message='Got more than 10 bytes (12) " "when reading spam.'"
-        )
+        expected = "400, message:\n  Got more than 10 bytes (12) when reading spam."
+        assert str(err) == expected
 
     def test_repr(self) -> None:
         err = http_exceptions.LineTooLong(line="spam", limit="10", actual_size="12")
@@ -120,25 +119,24 @@ class TestInvalidHeader:
 
     def test_str(self) -> None:
         err = http_exceptions.InvalidHeader(hdr="X-Spam")
-        assert str(err) == "400, message='Invalid HTTP Header: X-Spam'"
+        assert str(err) == "400, message:\n  Invalid HTTP Header: X-Spam"
 
     def test_repr(self) -> None:
         err = http_exceptions.InvalidHeader(hdr="X-Spam")
-        assert repr(err) == (
-            "<InvalidHeader: 400, " "message='Invalid HTTP Header: X-Spam'>"
-        )
+        expected = "<InvalidHeader: 400, message='Invalid HTTP Header: X-Spam'>"
+        assert repr(err) == expected
 
 
 class TestBadStatusLine:
     def test_ctor(self) -> None:
         err = http_exceptions.BadStatusLine("Test")
         assert err.line == "Test"
-        assert str(err) == "400, message=\"Bad status line 'Test'\""
+        assert str(err) == "400, message:\n  Bad status line 'Test'"
 
     def test_ctor2(self) -> None:
         err = http_exceptions.BadStatusLine(b"")
         assert err.line == "b''"
-        assert str(err) == "400, message='Bad status line \"b\\'\\'\"'"
+        assert str(err) == "400, message:\n  Bad status line \"b''\""
 
     def test_pickle(self) -> None:
         err = http_exceptions.BadStatusLine("Test")
