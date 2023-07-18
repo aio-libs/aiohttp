@@ -423,7 +423,7 @@ class AsyncIterablePayload(Payload):
         if not isinstance(value, AsyncIterable):
             raise TypeError(
                 "value argument must support "
-                "collections.abc.AsyncIterablebe interface, "
+                "collections.abc.AsyncIterable interface, "
                 "got {!r}".format(type(value))
             )
 
