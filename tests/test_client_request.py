@@ -5,7 +5,7 @@ import io
 import pathlib
 import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 from unittest import mock
 
 import pytest
@@ -279,21 +279,32 @@ def test_host_header_ipv6_with_port(make_request: Any) -> None:
     assert req.headers["HOST"] == "[::2]:99"
 
 
-def test_host_header_fqdn(make_request: Any) -> None:
-    req = make_request("get", "http://python.org.:99")
-    assert req.headers["HOST"] == "python.org:99"
-
-
-def test_host_header_fqdn_multiple_dots(make_request: Any) -> None:
-    req = make_request("get", "http://python.org...:99")
-    assert req.headers["HOST"] == "python.org:99"
-
-
-def test_host_header_explicit_fqdn(make_request: Any) -> None:
-    req = make_request(
-        "get", "http://python.org.:99", headers={"host": "example.com.:99"}
-    )
-    assert req.headers["HOST"] == "example.com.:99"
+@pytest.mark.parametrize(
+    "url,headers,expected",
+    [
+        ("http://localhost.", None, "localhost"),
+        ("http://python.org.", None, "python.org"),
+        ("http://python.org.:99", None, "python.org:99"),
+        ("http://python.org...:99", None, "python.org:99"),
+        ("http://python.org.:99", {"host": "example.com.:99"}, "example.com.:99"),
+        ("https://python.org.", None, "python.org"),
+        ("https://...", None, ""),
+    ],
+    ids=(
+        "dot only at the end",
+        "single dot",
+        "single dot with port",
+        "multiple dots with port",
+        "explicit host header",
+        "https",
+        "only dots",
+    ),
+)
+def test_host_header_fqdn(
+    make_request: Any, url: str, headers: Dict[str, str], expected: str
+) -> None:
+    req = make_request("get", url, headers=headers)
+    assert req.headers["HOST"] == expected
 
 
 def test_default_headers_useragent(make_request: Any) -> None:
