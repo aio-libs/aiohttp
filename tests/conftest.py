@@ -42,7 +42,6 @@ def tls_certificate_authority() -> Any:
 def tls_certificate(tls_certificate_authority: Any) -> Any:
     return tls_certificate_authority.issue_cert(
         "localhost",
-        "example.org",
         "127.0.0.1",
         "::1",
     )
