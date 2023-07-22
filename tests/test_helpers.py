@@ -6,6 +6,7 @@ import platform
 import tempfile
 import weakref
 from math import ceil, modf
+from pathlib import Path
 from unittest import mock
 from urllib.request import getproxies_environment
 
@@ -825,6 +826,26 @@ def test_netrc_from_env(expected_username: str):
     """Test that reading netrc files from env works as expected"""
     netrc_obj = helpers.netrc_from_env()
     assert netrc_obj.authenticators("example.com")[0] == expected_username
+
+
+@pytest.fixture
+def protected_dir(tmp_path: Path):
+    protected_dir = tmp_path / "protected"
+    protected_dir.mkdir()
+    try:
+        protected_dir.chmod(0o600)
+        yield protected_dir
+    finally:
+        protected_dir.rmdir()
+
+
+def test_netrc_from_home_does_not_raise_if_access_denied(
+    protected_dir: Path, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setattr(Path, "home", lambda: protected_dir)
+    monkeypatch.delenv("NETRC", raising=False)
+
+    helpers.netrc_from_env()
 
 
 @pytest.mark.parametrize(
