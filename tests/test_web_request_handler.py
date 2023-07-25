@@ -1,12 +1,10 @@
-# type: ignore
-from typing import Any
 from unittest import mock
 
 from aiohttp import web
 from aiohttp.test_utils import make_mocked_coro
 
 
-async def serve(request: Any):
+async def serve(request: web.BaseRequest) -> web.Response:
     return web.Response()
 
 
@@ -16,8 +14,8 @@ async def test_repr() -> None:
 
     assert "<RequestHandler disconnected>" == repr(handler)
 
-    handler.transport = object()
-    assert "<RequestHandler connected>" == repr(handler)
+    with mock.patch.object(handler, "transport", autospec=True):
+        assert "<RequestHandler connected>" == repr(handler)
 
 
 async def test_connections() -> None:
@@ -26,10 +24,10 @@ async def test_connections() -> None:
 
     handler = object()
     transport = object()
-    manager.connection_made(handler, transport)
+    manager.connection_made(handler, transport)  # type: ignore[arg-type]
     assert manager.connections == [handler]
 
-    manager.connection_lost(handler, None)
+    manager.connection_lost(handler, None)  # type: ignore[arg-type]
     assert manager.connections == []
 
 

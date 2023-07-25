@@ -1,6 +1,7 @@
 """Low-level http related exceptions."""
 
 
+from textwrap import indent
 from typing import Optional, Union
 
 from .typedefs import _CIMultiDict
@@ -35,14 +36,14 @@ class HttpProcessingError(Exception):
         self.message = message
 
     def __str__(self) -> str:
-        return f"{self.code}, message={self.message!r}"
+        msg = indent(self.message, "  ")
+        return f"{self.code}, message:\n{msg}"
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__}: {self}>"
+        return f"<{self.__class__.__name__}: {self.code}, message={self.message!r}>"
 
 
 class BadHttpMessage(HttpProcessingError):
-
     code = 400
     message = "Bad Request"
 
@@ -52,7 +53,6 @@ class BadHttpMessage(HttpProcessingError):
 
 
 class HttpBadRequest(BadHttpMessage):
-
     code = 400
     message = "Bad Request"
 
