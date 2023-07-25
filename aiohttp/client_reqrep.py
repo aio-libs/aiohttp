@@ -1,5 +1,6 @@
 import asyncio
 import codecs
+import contextlib
 import functools
 import io
 import re
@@ -15,6 +16,7 @@ from typing import (
     Dict,
     Iterable,
     List,
+    Literal,
     Mapping,
     Optional,
     Tuple,
@@ -37,13 +39,15 @@ from .client_exceptions import (
     InvalidURL,
     ServerFingerprintMismatch,
 )
+from .compression_utils import HAS_BROTLI
 from .formdata import FormData
 from .helpers import (
-    PY_36,
     BaseTimerContext,
     BasicAuth,
     HeadersMixin,
     TimerNoop,
+    basicauth_from_netrc,
+    netrc_from_env,
     noop,
     reify,
     set_result,
@@ -82,6 +86,10 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 json_re = re.compile(r"^application/(?:[\w.+-]+?\+)?json")
+
+
+def _gen_default_accept_encoding() -> str:
+    return "gzip, deflate, br" if HAS_BROTLI else "gzip, deflate"
 
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
@@ -144,11 +152,11 @@ else:  # pragma: no cover
 
 
 def _merge_ssl_params(
-    ssl: Union["SSLContext", bool, Fingerprint, None],
+    ssl: Union["SSLContext", Literal[False], Fingerprint, None],
     verify_ssl: Optional[bool],
     ssl_context: Optional["SSLContext"],
     fingerprint: Optional[bytes],
-) -> Union["SSLContext", bool, Fingerprint, None]:
+) -> Union["SSLContext", Literal[False], Fingerprint, None]:
     if verify_ssl is not None and not verify_ssl:
         warnings.warn(
             "verify_ssl is deprecated, use ssl=False instead",
@@ -203,7 +211,7 @@ class ConnectionKey:
     host: str
     port: Optional[int]
     is_ssl: bool
-    ssl: Union[SSLContext, None, bool, Fingerprint]
+    ssl: Union[SSLContext, None, Literal[False], Fingerprint]
     proxy: Optional[URL]
     proxy_auth: Optional[BasicAuth]
     proxy_headers_hash: Optional[int]  # hash(CIMultiDict)
@@ -229,7 +237,7 @@ class ClientRequest:
 
     DEFAULT_HEADERS = {
         hdrs.ACCEPT: "*/*",
-        hdrs.ACCEPT_ENCODING: "gzip, deflate",
+        hdrs.ACCEPT_ENCODING: _gen_default_accept_encoding(),
     }
 
     body = b""
@@ -265,9 +273,10 @@ class ClientRequest:
         proxy_auth: Optional[BasicAuth] = None,
         timer: Optional[BaseTimerContext] = None,
         session: Optional["ClientSession"] = None,
-        ssl: Union[SSLContext, bool, Fingerprint, None] = None,
+        ssl: Union[SSLContext, Literal[False], Fingerprint, None] = None,
         proxy_headers: Optional[LooseHeaders] = None,
         traces: Optional[List["Trace"]] = None,
+        trust_env: bool = False,
     ):
 
         if loop is None:
@@ -307,7 +316,7 @@ class ClientRequest:
         self.update_auto_headers(skip_auto_headers)
         self.update_cookies(cookies)
         self.update_content_encoding(data)
-        self.update_auth(auth)
+        self.update_auth(auth, trust_env)
         self.update_proxy(proxy, proxy_auth, proxy_headers)
 
         self.update_body_from_data(data)
@@ -322,7 +331,7 @@ class ClientRequest:
         return self.url.scheme in ("https", "wss")
 
     @property
-    def ssl(self) -> Union["SSLContext", None, bool, Fingerprint]:
+    def ssl(self) -> Union["SSLContext", None, Literal[False], Fingerprint]:
         return self._ssl
 
     @property
@@ -484,10 +493,14 @@ class ClientRequest:
             if hdrs.CONTENT_LENGTH not in self.headers:
                 self.headers[hdrs.CONTENT_LENGTH] = str(len(self.body))
 
-    def update_auth(self, auth: Optional[BasicAuth]) -> None:
+    def update_auth(self, auth: Optional[BasicAuth], trust_env: bool = False) -> None:
         """Set basic auth."""
         if auth is None:
             auth = self.auth
+        if auth is None and trust_env and self.url.host is not None:
+            netrc_obj = netrc_from_env()
+            with contextlib.suppress(LookupError):
+                auth = basicauth_from_netrc(netrc_obj, self.url.host)
         if auth is None:
             return
 
@@ -602,6 +615,8 @@ class ClientRequest:
                 protocol.set_exception(exc)
         except Exception as exc:
             protocol.set_exception(exc)
+        else:
+            protocol.start_timeout()
         finally:
             self._writer = None
 
@@ -815,10 +830,7 @@ class ClientResponse(HeadersMixin):
             self._cleanup_writer()
 
             if self._loop.get_debug():
-                if PY_36:
-                    kwargs = {"source": self}
-                else:
-                    kwargs = {}
+                kwargs = {"source": self}
                 _warnings.warn(f"Unclosed response {self!r}", ResourceWarning, **kwargs)
                 context = {"client_response": self, "message": "Unclosed response"}
                 if self._source_traceback:

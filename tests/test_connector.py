@@ -12,7 +12,6 @@ from collections import deque
 from unittest import mock
 
 import pytest
-from conftest import needs_unix
 from yarl import URL
 
 import aiohttp
@@ -20,7 +19,6 @@ from aiohttp import client, web
 from aiohttp.client import ClientRequest, ClientTimeout
 from aiohttp.client_reqrep import ConnectionKey
 from aiohttp.connector import Connection, TCPConnector, _DNSCacheTable
-from aiohttp.helpers import PY_37
 from aiohttp.locks import EventResultOrError
 from aiohttp.test_utils import make_mocked_coro, unused_port
 from aiohttp.tracing import Trace
@@ -81,7 +79,7 @@ def named_pipe_server(proactor_loop, pipe_name):
 def create_mocked_conn(conn_closing_result=None, **kwargs):
     try:
         loop = asyncio.get_running_loop()
-    except (AttributeError, RuntimeError):  # AttributeError->py36
+    except RuntimeError:
         loop = asyncio.get_event_loop_policy().get_event_loop()
 
     proto = mock.Mock(**kwargs)
@@ -1915,16 +1913,16 @@ async def test_tcp_connector(aiohttp_client, loop) -> None:
     assert r.status == 200
 
 
-@needs_unix
+@pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
 async def test_unix_connector_not_found(loop) -> None:
-    connector = aiohttp.UnixConnector("/" + uuid.uuid4().hex, loop=loop)
+    connector = aiohttp.UnixConnector("/" + uuid.uuid4().hex)
 
     req = ClientRequest("GET", URL("http://www.python.org"), loop=loop)
     with pytest.raises(aiohttp.ClientConnectorError):
         await connector.connect(req, None, ClientTimeout())
 
 
-@needs_unix
+@pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
 async def test_unix_connector_permission(loop) -> None:
     loop.create_unix_connection = make_mocked_coro(raise_exception=PermissionError())
     connector = aiohttp.UnixConnector("/" + uuid.uuid4().hex, loop=loop)
@@ -2007,19 +2005,11 @@ async def test_tcp_connector_raise_connector_ssl_error(
     session = aiohttp.ClientSession(connector=conn)
     url = srv.make_url("/")
 
-    if PY_37:
-        err = aiohttp.ClientConnectorCertificateError
-    else:
-        err = aiohttp.ClientConnectorSSLError
-    with pytest.raises(err) as ctx:
+    with pytest.raises(aiohttp.ClientConnectorCertificateError) as ctx:
         await session.get(url)
 
-    if PY_37:
-        assert isinstance(ctx.value, aiohttp.ClientConnectorCertificateError)
-        assert isinstance(ctx.value.certificate_error, ssl.SSLError)
-    else:
-        assert isinstance(ctx.value, aiohttp.ClientSSLError)
-        assert isinstance(ctx.value.os_error, ssl.SSLError)
+    assert isinstance(ctx.value, aiohttp.ClientConnectorCertificateError)
+    assert isinstance(ctx.value.certificate_error, ssl.SSLError)
 
     await session.close()
 
@@ -2165,10 +2155,27 @@ class TestDNSCacheTable:
         dns_cache_table.add("localhost", ["127.0.0.1"])
         assert not dns_cache_table.expired("localhost")
 
-    async def test_expired_ttl(self, loop) -> None:
-        dns_cache_table = _DNSCacheTable(ttl=0.01)
+    def test_expired_ttl(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        dns_cache_table = _DNSCacheTable(ttl=1)
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 1)
         dns_cache_table.add("localhost", ["127.0.0.1"])
-        await asyncio.sleep(0.02)
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 2)
+        assert not dns_cache_table.expired("localhost")
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 3)
+        assert dns_cache_table.expired("localhost")
+
+    def test_never_expire(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        dns_cache_table = _DNSCacheTable(ttl=None)
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 1)
+        dns_cache_table.add("localhost", ["127.0.0.1"])
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 10000000)
+        assert not dns_cache_table.expired("localhost")
+
+    def test_always_expire(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        dns_cache_table = _DNSCacheTable(ttl=0)
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 1)
+        dns_cache_table.add("localhost", ["127.0.0.1"])
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 1.00001)
         assert dns_cache_table.expired("localhost")
 
     def test_next_addrs(self, dns_cache_table) -> None:

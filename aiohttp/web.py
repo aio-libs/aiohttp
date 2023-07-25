@@ -1,11 +1,11 @@
 import asyncio
 import logging
+import os
 import socket
 import sys
 from argparse import ArgumentParser
 from collections.abc import Iterable
 from importlib import import_module
-from pathlib import Path
 from typing import (
     Any,
     Awaitable,
@@ -20,8 +20,9 @@ from typing import (
 )
 
 from .abc import AbstractAccessLogger
-from .helpers import AppKey as AppKey, all_tasks
+from .helpers import AppKey as AppKey
 from .log import access_logger
+from .typedefs import PathLike
 from .web_app import Application as Application, CleanupError as CleanupError
 from .web_exceptions import (
     HTTPAccepted as HTTPAccepted,
@@ -43,6 +44,7 @@ from .web_exceptions import (
     HTTPLengthRequired as HTTPLengthRequired,
     HTTPMethodNotAllowed as HTTPMethodNotAllowed,
     HTTPMisdirectedRequest as HTTPMisdirectedRequest,
+    HTTPMove as HTTPMove,
     HTTPMovedPermanently as HTTPMovedPermanently,
     HTTPMultipleChoices as HTTPMultipleChoices,
     HTTPNetworkAuthenticationRequired as HTTPNetworkAuthenticationRequired,
@@ -176,6 +178,7 @@ __all__ = (
     "HTTPLengthRequired",
     "HTTPMethodNotAllowed",
     "HTTPMisdirectedRequest",
+    "HTTPMove",
     "HTTPMovedPermanently",
     "HTTPMultipleChoices",
     "HTTPNetworkAuthenticationRequired",
@@ -293,12 +296,12 @@ async def _run_app(
     *,
     host: Optional[Union[str, HostSequence]] = None,
     port: Optional[int] = None,
-    path: Optional[Union[str, Path]] = None,
+    path: Union[PathLike, TypingIterable[PathLike], None] = None,
     sock: Optional[Union[socket.socket, TypingIterable[socket.socket]]] = None,
     shutdown_timeout: float = 60.0,
     keepalive_timeout: float = 75.0,
     ssl_context: Optional[SSLContext] = None,
-    print: Callable[..., None] = print,
+    print: Optional[Callable[..., None]] = print,
     backlog: int = 128,
     access_log_class: Type[AbstractAccessLogger] = AccessLogger,
     access_log_format: str = AccessLogger.LOG_FORMAT,
@@ -306,6 +309,7 @@ async def _run_app(
     handle_signals: bool = True,
     reuse_address: Optional[bool] = None,
     reuse_port: Optional[bool] = None,
+    handler_cancellation: bool = False,
 ) -> None:
     # A internal functio to actually do all dirty job for application running
     if asyncio.iscoroutine(app):
@@ -320,6 +324,7 @@ async def _run_app(
         access_log_format=access_log_format,
         access_log=access_log,
         keepalive_timeout=keepalive_timeout,
+        handler_cancellation=handler_cancellation,
     )
 
     await runner.setup()
@@ -369,7 +374,7 @@ async def _run_app(
             )
 
         if path is not None:
-            if isinstance(path, (str, bytes, bytearray, memoryview, Path)):
+            if isinstance(path, (str, os.PathLike)):
                 sites.append(
                     UnixSite(
                         runner,
@@ -424,15 +429,8 @@ async def _run_app(
             )
 
         # sleep forever by 1 hour intervals,
-        # on Windows before Python 3.8 wake up every 1 second to handle
-        # Ctrl+C smoothly
-        if sys.platform == "win32" and sys.version_info < (3, 8):
-            delay = 1
-        else:
-            delay = 3600
-
         while True:
-            await asyncio.sleep(delay)
+            await asyncio.sleep(3600)
     finally:
         await runner.cleanup()
 
@@ -466,12 +464,12 @@ def run_app(
     *,
     host: Optional[Union[str, HostSequence]] = None,
     port: Optional[int] = None,
-    path: Optional[Union[str, Path]] = None,
+    path: Union[PathLike, TypingIterable[PathLike], None] = None,
     sock: Optional[Union[socket.socket, TypingIterable[socket.socket]]] = None,
     shutdown_timeout: float = 60.0,
     keepalive_timeout: float = 75.0,
     ssl_context: Optional[SSLContext] = None,
-    print: Callable[..., None] = print,
+    print: Optional[Callable[..., None]] = print,
     backlog: int = 128,
     access_log_class: Type[AbstractAccessLogger] = AccessLogger,
     access_log_format: str = AccessLogger.LOG_FORMAT,
@@ -479,6 +477,7 @@ def run_app(
     handle_signals: bool = True,
     reuse_address: Optional[bool] = None,
     reuse_port: Optional[bool] = None,
+    handler_cancellation: bool = False,
     loop: Optional[asyncio.AbstractEventLoop] = None,
 ) -> None:
     """Run an app locally"""
@@ -510,6 +509,7 @@ def run_app(
             handle_signals=handle_signals,
             reuse_address=reuse_address,
             reuse_port=reuse_port,
+            handler_cancellation=handler_cancellation,
         )
     )
 
@@ -520,7 +520,7 @@ def run_app(
         pass
     finally:
         _cancel_tasks({main_task}, loop)
-        _cancel_tasks(all_tasks(loop), loop)
+        _cancel_tasks(asyncio.all_tasks(loop), loop)
         loop.run_until_complete(loop.shutdown_asyncgens())
         loop.close()
 

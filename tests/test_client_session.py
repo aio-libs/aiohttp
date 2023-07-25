@@ -3,7 +3,6 @@ import contextlib
 import gc
 import io
 import json
-import sys
 from http.cookies import SimpleCookie
 from typing import Any, List
 from unittest import mock
@@ -18,7 +17,7 @@ from aiohttp import client, hdrs, web
 from aiohttp.client import ClientSession
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import BaseConnector, TCPConnector
-from aiohttp.helpers import DEBUG, PY_36
+from aiohttp.helpers import DEBUG
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -160,7 +159,6 @@ async def test_merge_headers_with_list_of_tuples_duplicated_names(
 
 
 def test_http_GET(session, params) -> None:
-    # Python 3.8 will auto use mock.AsyncMock, it has different behavior
     with mock.patch(
         "aiohttp.client.ClientSession._request", new_callable=mock.MagicMock
     ) as patched:
@@ -325,9 +323,6 @@ def test_connector_loop(loop) -> None:
             Matches("Session and connector has to use same event loop")
             == str(ctx.value).strip()
         )
-        another_loop.run_until_complete(connector.close())
-
-        # Cannot use `AsyncExitStack` as it's Python 3.7+:
         another_loop.run_until_complete(connector.close())
 
 
@@ -698,14 +693,7 @@ async def test_request_tracing_url_params(loop: Any, aiohttp_client: Any) -> Non
 
     # Exception
     with mock.patch("aiohttp.client.TCPConnector.connect") as connect_patched:
-        error = Exception()
-        if sys.version_info >= (3, 8, 1):
-            connect_patched.side_effect = error
-        else:
-            loop = asyncio.get_event_loop()
-            f = loop.create_future()
-            f.set_exception(error)
-            connect_patched.return_value = f
+        connect_patched.side_effect = Exception()
 
         for req in [
             lambda: session.get("/?x=0"),
@@ -734,13 +722,7 @@ async def test_request_tracing_exception() -> None:
 
     with mock.patch("aiohttp.client.TCPConnector.connect") as connect_patched:
         error = Exception()
-        if sys.version_info >= (3, 8, 1):
-            connect_patched.side_effect = error
-        else:
-            loop = asyncio.get_event_loop()
-            f = loop.create_future()
-            f.set_exception(error)
-            connect_patched.return_value = f
+        connect_patched.side_effect = error
 
         session = aiohttp.ClientSession(loop=loop, trace_configs=[trace_config])
 
@@ -789,7 +771,6 @@ async def test_request_tracing_interpose_headers(loop, aiohttp_client) -> None:
     assert MyClientRequest.headers["foo"] == "bar"
 
 
-@pytest.mark.skipif(not PY_36, reason="Python 3.6+ required")
 def test_client_session_inheritance() -> None:
     with pytest.warns(DeprecationWarning):
 

@@ -8,6 +8,7 @@ from typing import (  # noqa
     Any,
     Awaitable,
     Callable,
+    Final,
     Iterator,
     List,
     Optional,
@@ -19,7 +20,7 @@ from typing import (  # noqa
 from . import hdrs
 from .abc import AbstractStreamWriter
 from .helpers import ETAG_ANY, ETag
-from .typedefs import Final, LooseHeaders
+from .typedefs import LooseHeaders, PathLike
 from .web_exceptions import (
     HTTPNotModified,
     HTTPPartialContent,
@@ -45,7 +46,7 @@ class FileResponse(StreamResponse):
 
     def __init__(
         self,
-        path: Union[str, pathlib.Path],
+        path: PathLike,
         chunk_size: int = 256 * 1024,
         status: int = 200,
         reason: Optional[str] = None,
@@ -53,10 +54,7 @@ class FileResponse(StreamResponse):
     ) -> None:
         super().__init__(status=status, reason=reason, headers=headers)
 
-        if isinstance(path, str):
-            path = pathlib.Path(path)
-
-        self._path = path
+        self._path = pathlib.Path(path)
         self._chunk_size = chunk_size
 
     async def _sendfile_fallback(
@@ -284,4 +282,4 @@ class FileResponse(StreamResponse):
         try:
             return await self._sendfile(request, fobj, offset, count)
         finally:
-            await loop.run_in_executor(None, fobj.close)
+            await asyncio.shield(loop.run_in_executor(None, fobj.close))

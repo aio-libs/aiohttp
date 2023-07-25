@@ -1,0 +1,1 @@
+Fixed ``PermissionError`` when .netrc is unreadable due to permissions.
