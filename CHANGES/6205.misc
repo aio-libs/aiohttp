@@ -1,2 +1,0 @@
-Declared the minimum required version of ``setuptools`` v46.4.0
-in the :pep:`517` configuration file -- :user:`jameshilliard`.

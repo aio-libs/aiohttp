@@ -4,8 +4,8 @@ import sys
 
 from setuptools import Extension, setup
 
-if sys.version_info < (3, 6):
-    raise RuntimeError("aiohttp 3.x requires Python 3.6+")
+if sys.version_info < (3, 8):
+    raise RuntimeError("aiohttp 3.x requires Python 3.8+")
 
 
 NO_EXTENSIONS: bool = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))
