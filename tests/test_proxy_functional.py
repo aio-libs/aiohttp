@@ -185,8 +185,8 @@ async def test_https_proxy_unsupported_tls_in_tls(
         "This support for TLS in TLS is known to be disabled "
         r"in the stdlib asyncio\. This is why you'll probably see "
         r"an error in the log below\.\n\n"
-        "It is possible to enable it via monkeypatching under "
-        r"Python 3\.7 or higher\. For more details, see:\n"
+        r"It is possible to enable it via monkeypatching\. "
+        r"For more details, see:\n"
         r"\* https://bugs\.python\.org/issue37179\n"
         r"\* https://github\.com/python/cpython/pull/28073\n\n"
         r"You can temporarily patch this as follows:\n"
@@ -206,7 +206,10 @@ async def test_https_proxy_unsupported_tls_in_tls(
         r"$"
     )
 
-    with pytest.warns(RuntimeWarning, match=expected_warning_text,), pytest.raises(
+    with pytest.warns(
+        RuntimeWarning,
+        match=expected_warning_text,
+    ), pytest.raises(
         ClientConnectionError,
         match=expected_exception_reason,
     ) as conn_err:

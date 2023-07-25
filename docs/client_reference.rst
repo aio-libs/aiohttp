@@ -32,8 +32,7 @@ Usage example::
              html = await fetch(client)
              print(html)
 
-     loop = asyncio.get_event_loop()
-     loop.run_until_complete(main())
+     asyncio.run(main())
 
 
 The client session supports the context manager protocol for self closing.
@@ -50,7 +49,7 @@ The client session supports the context manager protocol for self closing.
                          connector_owner=True, \
                          auto_decompress=True, \
                          read_bufsize=2**16, \
-                         requote_redirect_url=False, \
+                         requote_redirect_url=True, \
                          trust_env=False, \
                          trace_configs=None)
 
@@ -164,8 +163,7 @@ The client session supports the context manager protocol for self closing.
       connection pool between sessions without sharing session state:
       cookies etc.
 
-   :param bool auto_decompress: Automatically decompress response body,
-       ``True`` by default
+   :param bool auto_decompress: Automatically decompress response body (``True`` by default).
 
       .. versionadded:: 2.3
 
@@ -174,11 +172,16 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 3.7
 
-   :param bool trust_env: Get proxies information from *HTTP_PROXY* /
-      *HTTPS_PROXY* environment variables if the parameter is ``True``
-      (``False`` by default).
+   :param bool trust_env: Trust environment settings for proxy configuration if the parameter
+      is ``True`` (``False`` by default). See :ref:`aiohttp-client-proxy-support` for
+      more information.
 
       Get proxy credentials from ``~/.netrc`` file if present.
+
+      Get HTTP Basic Auth credentials from :file:`~/.netrc` file if present.
+
+      If :envvar:`NETRC` environment variable is set, read from file specified
+      there rather than from :file:`~/.netrc`.
 
       .. seealso::
 
@@ -189,6 +192,10 @@ The client session supports the context manager protocol for self closing.
       .. versionchanged:: 3.0
 
          Added support for ``~/.netrc`` file.
+
+      .. versionchanged:: 3.9
+
+         Added support for reading HTTP Basic Auth credentials from :file:`~/.netrc` file.
 
    :param bool requote_redirect_url: Apply *URL requoting* for redirection URLs if
                                      automatic redirection is enabled (``True`` by
@@ -313,8 +320,9 @@ The client session supports the context manager protocol for self closing.
 
    .. attribute:: trust_env
 
-      Should get proxies information from HTTP_PROXY / HTTPS_PROXY environment
-      variables or ~/.netrc file if present
+      Trust environment settings for proxy configuration
+      or ~/.netrc file if present. See :ref:`aiohttp-client-proxy-support` for
+      more information.
 
       :class:`bool` default is ``False``
 
@@ -338,7 +346,8 @@ The client session supports the context manager protocol for self closing.
                          proxy=None, proxy_auth=None,\
                          timeout=sentinel, ssl=None, \
                          verify_ssl=None, fingerprint=None, \
-                         ssl_context=None, proxy_headers=None)
+                         ssl_context=None, proxy_headers=None, \
+                         auto_decompress=None)
       :async-with:
       :coroutine:
       :noindexentry:
@@ -347,7 +356,9 @@ The client session supports the context manager protocol for self closing.
 
       :param str method: HTTP method
 
-      :param url: Request URL, :class:`str` or :class:`~yarl.URL`.
+      :param url: Request URL, :class:`~yarl.URL` or :class:`str` that will
+                  be encoded with :class:`~yarl.URL` (see :class:`~yarl.URL`
+                  to skip encoding).
 
       :param params: Mapping, iterable of tuple of *key*/*value* pairs or
                      string to be sent as parameters in the query
@@ -510,6 +521,10 @@ The client session supports the context manager protocol for self closing.
 
          .. versionadded:: 3.0
 
+      :param bool auto_decompress: Automatically decompress response body.
+         Overrides :attr:`ClientSession.auto_decompress`.
+         May be used to enable/disable auto decompression on a per-request basis.
+
       :return ClientResponse: a :class:`client response <ClientResponse>`
          object.
 
@@ -662,7 +677,9 @@ The client session supports the context manager protocol for self closing.
       Create a websocket connection. Returns a
       :class:`ClientWebSocketResponse` object.
 
-      :param url: Websocket server url, :class:`str` or :class:`~yarl.URL`
+      :param url: Websocket server url, :class:`~yarl.URL` or :class:`str` that
+                  will be encoded with :class:`~yarl.URL` (see :class:`~yarl.URL`
+                  to skip encoding).
 
       :param tuple protocols: Websocket protocols
 
@@ -827,7 +844,9 @@ certification chaining.
 
    :param str method: HTTP method
 
-   :param url: Requested URL, :class:`str` or :class:`~yarl.URL`
+   :param url: Request URL, :class:`~yarl.URL` or :class:`str` that will
+               be encoded with :class:`~yarl.URL` (see :class:`~yarl.URL`
+               to skip encoding).
 
    :param dict params: Parameters to be sent in the query
                        string of the new request (optional)
@@ -2081,7 +2100,7 @@ All exceptions are available as members of *aiohttp* module.
 
     Represent Content-Disposition header
 
-    .. attribute:: value
+    .. attribute:: type
 
     A :class:`str` instance. Value of Content-Disposition header
     itself, e.g. ``attachment``.
