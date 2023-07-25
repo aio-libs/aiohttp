@@ -35,7 +35,7 @@ jobs:
       with:
         submodules: true
     - name: Setup Python
-      uses: actions/setup-python@v4.3.0
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
     - name: Cache PyPI
@@ -134,15 +134,27 @@ jobs:
             os: ubuntu
             experimental: false
           - os: macos
-            pyver: "3.11.0-alpha - 3.11.0"
+            pyver: "3.11"
             experimental: true
             no-extensions: 'Y'
           - os: ubuntu
-            pyver: "3.11.0-alpha - 3.11.0"
+            pyver: "3.11"
             experimental: false
             no-extensions: 'Y'
           - os: windows
-            pyver: "3.11.0-alpha - 3.11.0"
+            pyver: "3.11"
+            experimental: true
+            no-extensions: 'Y'
+          - os: ubuntu
+            pyver: "3.12"
+            experimental: true
+            no-extensions: 'Y'
+          - os: macos
+            pyver: "3.12"
+            experimental: true
+            no-extensions: 'Y'
+          - os: windows
+            pyver: "3.12"
             experimental: true
             no-extensions: 'Y'
       fail-fast: true
@@ -155,8 +167,9 @@ jobs:
         submodules: true
     - name: Setup Python ${{ matrix.pyver }}
       id: python-install
-      uses: actions/setup-python@v4.3.0
+      uses: actions/setup-python@v4
       with:
+        allow-prereleases: true
         python-version: ${{ matrix.pyver }}
     - name: Get pip cache dir
       id: pip-cache
@@ -257,7 +270,7 @@ jobs:
       with:
         submodules: true
     - name: Setup Python
-      uses: actions/setup-python@v4.3.0
+      uses: actions/setup-python@v4
     - name: Update pip, wheel, setuptools, build, twine
       run: |
         python -m pip install -U pip wheel setuptools build twine
@@ -317,7 +330,7 @@ jobs:
         fi
       shell: bash
     - name: Setup Python
-      uses: actions/setup-python@v4.3.0
+      uses: actions/setup-python@v4
       with:
         python-version: 3.x
     - name: Update pip, wheel, setuptools, build, twine
