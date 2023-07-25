@@ -13,6 +13,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Dict,
+    Final,
     Iterator,
     Mapping,
     MutableMapping,
@@ -54,7 +55,6 @@ from .multipart import BodyPartReader, MultipartReader
 from .streams import EmptyStreamReader, StreamReader
 from .typedefs import (
     DEFAULT_JSON_DECODER,
-    Final,
     JSONDecoder,
     LooseHeaders,
     RawHeaders,

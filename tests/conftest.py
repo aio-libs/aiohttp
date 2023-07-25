@@ -24,15 +24,8 @@ except ImportError:
 
 pytest_plugins = ["aiohttp.pytest_plugin", "pytester"]
 
-
 IS_HPUX = sys.platform.startswith("hp-ux")
-"""Specifies whether the current runtime is HP-UX."""
 IS_LINUX = sys.platform.startswith("linux")
-"""Specifies whether the current runtime is HP-UX."""
-IS_UNIX = hasattr(socket, "AF_UNIX")
-"""Specifies whether the current runtime is *NIX."""
-
-needs_unix = pytest.mark.skipif(not IS_UNIX, reason="requires UNIX sockets")
 
 
 @pytest.fixture
@@ -99,7 +92,7 @@ def unix_sockname(tmp_path, tmp_path_factory):
 
     Ref: https://github.com/aio-libs/aiohttp/issues/3572
     """
-    if not IS_UNIX:
+    if not hasattr(socket, "AF_UNIX"):
         pytest.skip("requires UNIX sockets")
 
     max_sock_len = 92 if IS_HPUX else 108 if IS_LINUX else 100
@@ -175,12 +168,31 @@ def pipe_name():
 
 @pytest.fixture
 def selector_loop():
-    if sys.version_info >= (3, 8):
-        policy = asyncio.WindowsSelectorEventLoopPolicy()
-    else:
-        policy = asyncio.DefaultEventLoopPolicy()
+    policy = asyncio.WindowsSelectorEventLoopPolicy()
     asyncio.set_event_loop_policy(policy)
 
     with loop_context(policy.new_event_loop) as _loop:
         asyncio.set_event_loop(_loop)
         yield _loop
+
+
+@pytest.fixture
+def netrc_contents(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    request: pytest.FixtureRequest,
+):
+    """
+    Prepare :file:`.netrc` with given contents.
+
+    Monkey-patches :envvar:`NETRC` to point to created file.
+    """
+    netrc_contents = getattr(request, "param", None)
+
+    netrc_file_path = tmp_path / ".netrc"
+    if netrc_contents is not None:
+        netrc_file_path.write_text(netrc_contents)
+
+    monkeypatch.setenv("NETRC", str(netrc_file_path))
+
+    return netrc_file_path

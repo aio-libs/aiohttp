@@ -50,8 +50,8 @@ This option is highly recommended:
 
    $ pip install aiodns
 
-Installing speedups altogether
-------------------------------
+Installing all speedups in one command
+--------------------------------------
 
 The following will get you ``aiohttp`` along with :term:`cchardet`,
 :term:`aiodns` and ``Brotli`` in one bundle. No need to type
@@ -83,8 +83,7 @@ Client example
               html = await response.text()
               print("Body:", html[:15], "...")
 
-  loop = asyncio.get_event_loop()
-  loop.run_until_complete(main())
+  asyncio.run(main())
 
 This prints:
 
@@ -141,14 +140,10 @@ Please feel free to file an issue on the `bug tracker
 <https://github.com/aio-libs/aiohttp/issues>`_ if you have found a bug
 or have some suggestion in order to improve the library.
 
-The library uses `Azure Pipelines <https://dev.azure.com/aio-libs/aiohttp/_build>`_ for
-Continuous Integration.
-
 
 Dependencies
 ============
 
-- Python 3.6+
 - *async_timeout*
 - *attrs*
 - *charset-normalizer*
@@ -170,11 +165,17 @@ Dependencies
 
      $ pip install aiodns
 
+- *Optional* :term:`Brotli` for brotli (:rfc:`7932`) client compression support.
+
+  .. code-block:: bash
+
+     $ pip install Brotli
+
 
 Communication channels
 ======================
 
-*aio-libs discourse group*: https://aio-libs.discourse.group
+*aio-libs Discussions*: https://github.com/aio-libs/aiohttp/discussions
 
 Feel free to post your questions and ideas here.
 

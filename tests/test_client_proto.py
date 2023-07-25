@@ -107,12 +107,15 @@ async def test_empty_data(loop) -> None:
 async def test_schedule_timeout(loop) -> None:
     proto = ResponseHandler(loop=loop)
     proto.set_response_params(read_timeout=1)
+    assert proto._read_timeout_handle is None
+    proto.start_timeout()
     assert proto._read_timeout_handle is not None
 
 
 async def test_drop_timeout(loop) -> None:
     proto = ResponseHandler(loop=loop)
     proto.set_response_params(read_timeout=1)
+    proto.start_timeout()
     assert proto._read_timeout_handle is not None
     proto._drop_timeout()
     assert proto._read_timeout_handle is None
@@ -121,6 +124,7 @@ async def test_drop_timeout(loop) -> None:
 async def test_reschedule_timeout(loop) -> None:
     proto = ResponseHandler(loop=loop)
     proto.set_response_params(read_timeout=1)
+    proto.start_timeout()
     assert proto._read_timeout_handle is not None
     h = proto._read_timeout_handle
     proto._reschedule_timeout()
@@ -131,6 +135,21 @@ async def test_reschedule_timeout(loop) -> None:
 async def test_eof_received(loop) -> None:
     proto = ResponseHandler(loop=loop)
     proto.set_response_params(read_timeout=1)
+    proto.start_timeout()
     assert proto._read_timeout_handle is not None
     proto.eof_received()
     assert proto._read_timeout_handle is None
+
+
+async def test_connection_lost_sets_transport_to_none(loop, mocker) -> None:
+    """Ensure that the transport is set to None when the connection is lost.
+
+    This ensures the writer knows that the connection is closed.
+    """
+    proto = ResponseHandler(loop=loop)
+    proto.connection_made(mocker.Mock())
+    assert proto.transport is not None
+
+    proto.connection_lost(OSError())
+
+    assert proto.transport is None

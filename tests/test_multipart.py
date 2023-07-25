@@ -1,7 +1,6 @@
 import asyncio
 import io
 import json
-import sys
 import zlib
 from unittest import mock
 
@@ -163,15 +162,9 @@ class TestPartReader:
 
     async def test_read_incomplete_chunk(self) -> None:
         with Stream(b"") as stream:
-            if sys.version_info >= (3, 8, 1):
-                # Workaround for a weird behavior of patch.object
-                def prepare(data):
-                    return data
 
-            else:
-
-                async def prepare(data):
-                    return data
+            def prepare(data):
+                return data
 
             with mock.patch.object(
                 stream,
@@ -213,15 +206,9 @@ class TestPartReader:
 
     async def test_read_boundary_with_incomplete_chunk(self) -> None:
         with Stream(b"") as stream:
-            if sys.version_info >= (3, 8, 1):
-                # Workaround for weird 3.8.1 patch.object() behavior
-                def prepare(data):
-                    return data
 
-            else:
-
-                async def prepare(data):
-                    return data
+            def prepare(data):
+                return data
 
             with mock.patch.object(
                 stream,
@@ -545,6 +532,20 @@ class TestPartReader:
             )
             result = await obj.form()
         assert [("foo", "bar"), ("foo", "baz"), ("boo", "")] == result
+
+    async def test_read_form_invalid_utf8(self) -> None:
+        invalid_unicode_byte = b"\xff"
+        data = invalid_unicode_byte + b"%s--:--" % newline
+        with Stream(data) as stream:
+            obj = aiohttp.BodyPartReader(
+                BOUNDARY,
+                {CONTENT_TYPE: "application/x-www-form-urlencoded"},
+                stream,
+            )
+            with pytest.raises(
+                ValueError, match="data cannot be decoded with utf-8 encoding"
+            ):
+                await obj.form()
 
     async def test_read_form_encoding(self) -> None:
         data = b"foo=bar&foo=baz&boo=%s--:--" % newline

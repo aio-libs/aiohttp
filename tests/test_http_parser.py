@@ -1,6 +1,7 @@
 # Tests for aiohttp/protocol.py
 
 import asyncio
+import re
 from typing import Any, List
 from unittest import mock
 from urllib.parse import quote
@@ -116,6 +117,34 @@ test2: data\r
     assert not msg.should_close
     assert msg.compression is None
     assert not msg.upgrade
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+def test_invalid_character(loop: Any, protocol: Any, request: Any) -> None:
+    parser = HttpRequestParserC(
+        protocol,
+        loop,
+        2**16,
+        max_line_size=8190,
+        max_field_size=8190,
+    )
+    text = b"POST / HTTP/1.1\r\nHost: localhost:8080\r\nSet-Cookie: abc\x01def\r\n\r\n"
+    error_detail = re.escape(
+        r""":
+
+    b'Set-Cookie: abc\x01def\r'
+                     ^"""
+    )
+    with pytest.raises(http_exceptions.BadHttpMessage, match=error_detail):
+        parser.feed_data(text)
+
+
+def test_parse_headers_longline(parser: Any) -> None:
+    invalid_unicode_byte = b"\xd9"
+    header_name = b"Test" + invalid_unicode_byte + b"Header" + b"A" * 8192
+    text = b"GET /test HTTP/1.1\r\n" + header_name + b": test\r\n" + b"\r\n" + b"\r\n"
+    with pytest.raises((http_exceptions.LineTooLong, http_exceptions.BadHttpMessage)):
+        parser.feed_data(text)
 
 
 def test_parse(parser) -> None:
@@ -429,7 +458,7 @@ def test_max_header_field_size(parser, size) -> None:
     name = b"t" * size
     text = b"GET /test HTTP/1.1\r\n" + name + b":data\r\n\r\n"
 
-    match = f"400, message='Got more than 8190 bytes \\({size}\\) when reading"
+    match = f"400, message:\n  Got more than 8190 bytes \\({size}\\) when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         parser.feed_data(text)
 
@@ -457,7 +486,7 @@ def test_max_header_value_size(parser, size) -> None:
     name = b"t" * size
     text = b"GET /test HTTP/1.1\r\n" b"data:" + name + b"\r\n\r\n"
 
-    match = f"400, message='Got more than 8190 bytes \\({size}\\) when reading"
+    match = f"400, message:\n  Got more than 8190 bytes \\({size}\\) when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         parser.feed_data(text)
 
@@ -485,7 +514,7 @@ def test_max_header_value_size_continuation(parser, size) -> None:
     name = b"T" * (size - 5)
     text = b"GET /test HTTP/1.1\r\n" b"data: test\r\n " + name + b"\r\n\r\n"
 
-    match = f"400, message='Got more than 8190 bytes \\({size}\\) when reading"
+    match = f"400, message:\n  Got more than 8190 bytes \\({size}\\) when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         parser.feed_data(text)
 
@@ -608,7 +637,7 @@ def test_http_request_parser_bad_version(parser) -> None:
 @pytest.mark.parametrize("size", [40965, 8191])
 def test_http_request_max_status_line(parser, size) -> None:
     path = b"t" * (size - 5)
-    match = f"400, message='Got more than 8190 bytes \\({size}\\) when reading"
+    match = f"400, message:\n  Got more than 8190 bytes \\({size}\\) when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         parser.feed_data(b"GET /path" + path + b" HTTP/1.1\r\n\r\n")
 
@@ -651,7 +680,7 @@ def test_http_response_parser_utf8(response) -> None:
 @pytest.mark.parametrize("size", [40962, 8191])
 def test_http_response_parser_bad_status_line_too_long(response, size) -> None:
     reason = b"t" * (size - 2)
-    match = f"400, message='Got more than 8190 bytes \\({size}\\) when reading"
+    match = f"400, message:\n  Got more than 8190 bytes \\({size}\\) when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         response.feed_data(b"HTTP/1.1 200 Ok" + reason + b"\r\n\r\n")
 
@@ -685,6 +714,7 @@ def test_http_response_parser_bad(response) -> None:
         response.feed_data(b"HTT/1\r\n\r\n")
 
 
+@pytest.mark.skipif(not NO_EXTENSIONS, reason="Behaviour has changed in C parser")
 def test_http_response_parser_code_under_100(response) -> None:
     msg = response.feed_data(b"HTTP/1.1 99 test\r\n\r\n")[0][0][0]
     assert msg.code == 99
@@ -1099,7 +1129,7 @@ class TestDeflateBuffer:
         dbuf = DeflateBuffer(buf, "deflate")
 
         dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.decompress.return_value = b"line"
+        dbuf.decompressor.decompress_sync.return_value = b"line"
 
         # First byte should be b'x' in order code not to change the decoder.
         dbuf.feed_data(b"xxxx", 4)
@@ -1113,7 +1143,7 @@ class TestDeflateBuffer:
 
         exc = ValueError()
         dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.decompress.side_effect = exc
+        dbuf.decompressor.decompress_sync.side_effect = exc
 
         with pytest.raises(http_exceptions.ContentEncodingError):
             # Should be more than 4 bytes to trigger deflate FSM error.
