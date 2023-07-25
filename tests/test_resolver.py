@@ -66,8 +66,8 @@ async def test_async_resolver_multiple_replies(loop: Any) -> None:
         mock().gethostbyname.return_value = fake_result(ips)
         resolver = AsyncResolver()
         real = await resolver.resolve("www.google.com")
-        ips = [ipaddress.ip_address(x["host"]) for x in real]
-        assert len(ips) > 3, "Expecting multiple addresses"
+        ipaddrs = [ipaddress.ip_address(x["host"]) for x in real]
+        assert len(ipaddrs) > 3, "Expecting multiple addresses"
 
 
 @pytest.mark.skipif(not gethostbyname, reason="aiodns 1.1 required")
@@ -105,8 +105,8 @@ async def test_threaded_resolver_multiple_replies() -> None:
     resolver = ThreadedResolver()
     resolver._loop = loop
     real = await resolver.resolve("www.google.com")
-    ips = [ipaddress.ip_address(x["host"]) for x in real]
-    assert len(ips) > 3, "Expecting multiple addresses"
+    ipaddrs = [ipaddress.ip_address(x["host"]) for x in real]
+    assert len(ipaddrs) > 3, "Expecting multiple addresses"
 
 
 async def test_threaded_negative_lookup() -> None:

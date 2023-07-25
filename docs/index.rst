@@ -50,8 +50,8 @@ This option is highly recommended:
 
    $ pip install aiodns
 
-Installing speedups altogether
-------------------------------
+Installing all speedups in one command
+--------------------------------------
 
 The following will get you ``aiohttp`` along with :term:`cchardet`,
 :term:`aiodns` and ``Brotli`` in one bundle. No need to type
@@ -83,8 +83,7 @@ Client example
               html = await response.text()
               print("Body:", html[:15], "...")
 
-  loop = asyncio.get_event_loop()
-  loop.run_until_complete(main())
+  asyncio.run(main())
 
 This prints:
 
@@ -141,14 +140,10 @@ Please feel free to file an issue on the `bug tracker
 <https://github.com/aio-libs/aiohttp/issues>`_ if you have found a bug
 or have some suggestion in order to improve the library.
 
-The library uses `Azure Pipelines <https://dev.azure.com/aio-libs/aiohttp/_build>`_ for
-Continuous Integration.
-
 
 Dependencies
 ============
 
-- Python 3.7+
 - *async_timeout*
 - *charset-normalizer*
 - *multidict*
@@ -179,7 +174,7 @@ Dependencies
 Communication channels
 ======================
 
-*aio-libs discourse group*: https://aio-libs.discourse.group
+*aio-libs Discussions*: https://github.com/aio-libs/aiohttp/discussions
 
 Feel free to post your questions and ideas here.
 
@@ -213,18 +208,17 @@ Policy for Backward Incompatible Changes
 
 *aiohttp* keeps backward compatibility.
 
-After deprecating some *Public API* (method, class, function argument,
-etc.) the library guarantees the usage of *deprecated API* is still
-allowed at least for a year and half after publishing new release with
-deprecation.
+When a new release is published that deprecates a *Public API* (method, class,
+function argument, etc.), the library will guarantee its usage for at least
+a year and half from the date of release.
 
-All deprecations are reflected in documentation and raises
+Deprecated APIs are reflected in their documentation, and their use will raise
 :exc:`DeprecationWarning`.
 
-Sometimes we are forced to break our own rule for the sake of very strong
-reason.  Most likely the reason is a critical bug which cannot be
-solved without major API change, but we are working hard for keeping
-these changes as rare as possible.
+However, if there is a strong reason, we may be forced to break this guarantee.
+The most likely reason would be a critical bug, such as a security issue, which
+cannot be solved without a major API change. We are working hard to keep these
+breaking changes as rare as possible.
 
 
 Table Of Contents

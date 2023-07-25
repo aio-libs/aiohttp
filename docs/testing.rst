@@ -318,9 +318,12 @@ functionality, the AioHTTPTestCase is provided::
 
     A base class to allow for unittest web applications using aiohttp.
 
-    Derived from :class:`unittest.TestCase`
+    Derived from :class:`unittest.IsolatedAsyncioTestCase`
 
-    Provides the following:
+    See :class:`unittest.TestCase` and :class:`unittest.IsolatedAsyncioTestCase`
+    for inherited methods and behavior.
+
+    This class additionally provides the following:
 
     .. attribute:: client
 
@@ -331,12 +334,6 @@ functionality, the AioHTTPTestCase is provided::
        an aiohttp test server, :class:`TestServer` instance.
 
        .. versionadded:: 2.3
-
-    .. attribute:: loop
-
-       The event loop in which the application and server are running.
-
-       .. deprecated:: 3.5
 
     .. attribute:: app
 
@@ -369,123 +366,38 @@ functionality, the AioHTTPTestCase is provided::
 
        :return: :class:`aiohttp.web.Application` instance.
 
-    .. comethod:: setUpAsync()
+    .. comethod:: asyncSetUp()
 
        This async method can be overridden to execute asynchronous code during
        the ``setUp`` stage of the ``TestCase``::
 
-           async def setUpAsync(self):
-               await super().setUpAsync()
+           async def asyncSetUp(self):
+               await super().asyncSetUp()
                await foo()
 
        .. versionadded:: 2.3
 
        .. versionchanged:: 3.8
 
-          ``await super().setUpAsync()`` call is required.
+          ``await super().asyncSetUp()`` call is required.
 
-    .. comethod:: tearDownAsync()
+    .. comethod:: asyncTearDown()
 
        This async method can be overridden to execute asynchronous code during
        the ``tearDown`` stage of the ``TestCase``::
 
-           async def tearDownAsync(self):
-               await super().tearDownAsync()
+           async def asyncTearDown(self):
+               await super().asyncTearDown()
                await foo()
 
        .. versionadded:: 2.3
 
        .. versionchanged:: 3.8
 
-          ``await super().tearDownAsync()`` call is required.
-
-    .. method:: setUp()
-
-       Standard test initialization method.
-
-    .. method:: tearDown()
-
-       Standard test finalization method.
-
-
-   .. note::
-
-      The ``TestClient``'s methods are asynchronous: you have to
-      execute functions on the test client using asynchronous methods.::
-
-         class TestA(AioHTTPTestCase):
-
-             async def test_f(self):
-                 async with self.client.get('/') as resp:
-                     body = await resp.text()
-
-Patching unittest test cases
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Patching test cases is tricky, when using python older than 3.8  :py:func:`~unittest.mock.patch` does not behave as it has to.
-We recommend using :py:mod:`asynctest` that provides :py:func:`~asynctest.patch` that is capable of creating
-a magic mock that supports async. It can be used with a decorator as well as with a context manager:
-
-.. code-block:: python
-   :emphasize-lines: 1,37,46
-
-    from asynctest.mock import patch as async_patch
-
-    from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
-    from aiohttp.web_app import Application
-    from aiohttp.web_request import Request
-    from aiohttp.web_response import Response
-    from aiohttp.web_routedef import get
-
-
-    async def do_something():
-        print('something')
-
-
-    async def ping(request: Request) -> Response:
-        await do_something()
-        return Response(text='pong')
-
-
-    class TestApplication(AioHTTPTestCase):
-        def get_app(self) -> Application:
-            app = Application()
-            app.router.add_routes([
-                get('/ping/', ping)
-            ])
-
-            return app
-
-        @unittest_run_loop
-        async def test_ping(self):
-            resp = await self.client.get('/ping/')
-
-            self.assertEqual(resp.status, 200)
-            self.assertEqual(await resp.text(), 'pong')
-
-        @unittest_run_loop
-        async def test_ping_mocked_do_something(self):
-            with async_patch('tests.do_something') as do_something_patch:
-                resp = await self.client.get('/ping/')
-
-                self.assertEqual(resp.status, 200)
-                self.assertEqual(await resp.text(), 'pong')
-
-                self.assertTrue(do_something_patch.called)
-
-        @unittest_run_loop
-        @async_patch('tests.do_something')
-        async def test_ping_mocked_do_something_decorated(self, do_something_patch):
-            resp = await self.client.get('/ping/')
-
-            self.assertEqual(resp.status, 200)
-            self.assertEqual(await resp.text(), 'pong')
-
-            self.assertTrue(do_something_patch.called)
-
+          ``await super().asyncTearDown()`` call is required.
 
 Faking request object
----------------------
+^^^^^^^^^^^^^^^^^^^^^
 
 aiohttp provides test utility for creating fake
 :class:`aiohttp.web.Request` objects:
@@ -584,7 +496,7 @@ conditions that hard to reproduce on real server::
 
 
 Framework Agnostic Utilities
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------
 
 High level test creation::
 
