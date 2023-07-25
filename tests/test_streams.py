@@ -12,7 +12,6 @@ import pytest
 from re_assert import Matches
 
 from aiohttp import streams
-from aiohttp.helpers import PY_311
 
 DATA = b"line1\nline2\nline3\n"
 
