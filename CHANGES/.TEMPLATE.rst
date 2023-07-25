@@ -12,8 +12,8 @@
 
 {% if definitions[category]['showcontent'] %}
 {% for text, values in sections[section][category].items() %}
-- {{ text }}
-  {{ values|join(',\n  ') }}
+- {{ text + '\n' }}
+  {{ values|join(',\n  ') + '\n' }}
 {% endfor %}
 
 {% else %}

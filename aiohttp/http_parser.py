@@ -1,13 +1,10 @@
 import abc
 import asyncio
-import collections
 import re
 import string
-import zlib
 from contextlib import suppress
 from enum import IntEnum
 from typing import (
-    Any,
     Generic,
     List,
     NamedTuple,
@@ -18,7 +15,6 @@ from typing import (
     Type,
     TypeVar,
     Union,
-    cast,
 )
 
 from multidict import CIMultiDict, CIMultiDictProxy, istr
@@ -27,6 +23,7 @@ from yarl import URL
 
 from . import hdrs
 from .base_protocol import BaseProtocol
+from .compression_utils import HAS_BROTLI, BrotliDecompressor, ZLibDecompressor
 from .helpers import NO_EXTENSIONS, BaseTimerContext
 from .http_exceptions import (
     BadHttpMessage,
@@ -41,14 +38,6 @@ from .http_writer import HttpVersion, HttpVersion10
 from .log import internal_logger
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import RawHeaders
-
-try:
-    import brotli
-
-    HAS_BROTLI = True
-except ImportError:  # pragma: no cover
-    HAS_BROTLI = False
-
 
 __all__ = (
     "HeadersParser",
@@ -86,27 +75,22 @@ class RawRequestMessage(NamedTuple):
     url: URL
 
 
-RawResponseMessage = collections.namedtuple(
-    "RawResponseMessage",
-    [
-        "version",
-        "code",
-        "reason",
-        "headers",
-        "raw_headers",
-        "should_close",
-        "compression",
-        "upgrade",
-        "chunked",
-    ],
-)
+class RawResponseMessage(NamedTuple):
+    version: HttpVersion
+    code: int
+    reason: str
+    headers: CIMultiDictProxy[str]
+    raw_headers: RawHeaders
+    should_close: bool
+    compression: Optional[str]
+    upgrade: bool
+    chunked: bool
 
 
 _MsgT = TypeVar("_MsgT", RawRequestMessage, RawResponseMessage)
 
 
 class ParseState(IntEnum):
-
     PARSE_NONE = 0
     PARSE_LENGTH = 1
     PARSE_CHUNKED = 2
@@ -280,7 +264,6 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         METH_CONNECT: str = hdrs.METH_CONNECT,
         SEC_WEBSOCKET_KEY1: istr = hdrs.SEC_WEBSOCKET_KEY1,
     ) -> Tuple[List[Tuple[_MsgT, StreamReader]], bool, bytes]:
-
         messages = []
 
         if self._tail:
@@ -291,7 +274,6 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         loop = self.loop
 
         while start_pos < data_len:
-
             # read HTTP message (request/response line + headers), \r\n\r\n
             # and split by lines
             if self._payload_parser is None and not self._upgraded:
@@ -759,7 +741,6 @@ class HttpPayloadParser:
                 self._chunk_tail = b""
 
             while chunk:
-
                 # read next chunk size
                 if self._chunk == ChunkState.PARSE_CHUNKED_SIZE:
                     pos = chunk.find(SEP)
@@ -863,34 +844,16 @@ class DeflateBuffer:
         self.encoding = encoding
         self._started_decoding = False
 
+        self.decompressor: Union[BrotliDecompressor, ZLibDecompressor]
         if encoding == "br":
             if not HAS_BROTLI:  # pragma: no cover
                 raise ContentEncodingError(
                     "Can not decode content-encoding: brotli (br). "
                     "Please install `Brotli`"
                 )
-
-            class BrotliDecoder:
-                # Supports both 'brotlipy' and 'Brotli' packages
-                # since they share an import name. The top branches
-                # are for 'brotlipy' and bottom branches for 'Brotli'
-                def __init__(self) -> None:
-                    self._obj = brotli.Decompressor()
-
-                def decompress(self, data: bytes) -> bytes:
-                    if hasattr(self._obj, "decompress"):
-                        return cast(bytes, self._obj.decompress(data))
-                    return cast(bytes, self._obj.process(data))
-
-                def flush(self) -> bytes:
-                    if hasattr(self._obj, "flush"):
-                        return cast(bytes, self._obj.flush())
-                    return b""
-
-            self.decompressor: Any = BrotliDecoder()
+            self.decompressor = BrotliDecompressor()
         else:
-            zlib_mode = 16 + zlib.MAX_WBITS if encoding == "gzip" else zlib.MAX_WBITS
-            self.decompressor = zlib.decompressobj(wbits=zlib_mode)
+            self.decompressor = ZLibDecompressor(encoding=encoding)
 
     def set_exception(self, exc: BaseException) -> None:
         self.out.set_exception(exc)
@@ -911,10 +874,12 @@ class DeflateBuffer:
         ):
             # Change the decoder to decompress incorrectly compressed data
             # Actually we should issue a warning about non-RFC-compliant data.
-            self.decompressor = zlib.decompressobj(wbits=-zlib.MAX_WBITS)
+            self.decompressor = ZLibDecompressor(
+                encoding=self.encoding, suppress_deflate_header=True
+            )
 
         try:
-            chunk = self.decompressor.decompress(chunk)
+            chunk = self.decompressor.decompress_sync(chunk)
         except Exception:
             raise ContentEncodingError(
                 "Can not decode content-encoding: %s" % self.encoding
@@ -930,7 +895,7 @@ class DeflateBuffer:
 
         if chunk or self.size > 0:
             self.out.feed_data(chunk, len(chunk))
-            if self.encoding == "deflate" and not self.decompressor.eof:
+            if self.encoding == "deflate" and not self.decompressor.eof:  # type: ignore
                 raise ContentEncodingError("deflate")
 
         self.out.feed_eof()

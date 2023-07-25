@@ -2,6 +2,7 @@ name: Pre-commit auto-update
 on:
   schedule:
   - cron: '0 0 * * *'
+permissions: {}
 jobs:
   auto-update:
     if: github.repository_owner == 'aiohttp'
