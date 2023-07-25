@@ -35,7 +35,7 @@ jobs:
       with:
         submodules: true
     - name: Setup Python
-      uses: actions/setup-python@v4.3.0
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
     - name: Cache PyPI
