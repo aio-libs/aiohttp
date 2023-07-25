@@ -147,15 +147,15 @@ pyjwt==2.3.0
     # via gidgethub
 pyparsing==2.4.7
     # via packaging
-pytest==6.2.5
+pytest==7.4.0
     # via
     #   -r requirements/lint.txt
     #   -r requirements/test.txt
     #   pytest-cov
     #   pytest-mock
-pytest-cov==3.0.0
+pytest-cov==4.1.0
     # via -r requirements/test.txt
-pytest-mock==3.6.1
+pytest-mock==3.11.1
     # via -r requirements/test.txt
 python-dateutil==2.8.2
     # via freezegun
