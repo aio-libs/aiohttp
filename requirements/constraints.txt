@@ -214,7 +214,6 @@ toml==0.10.2
     # via
     #   cherry-picker
     #   pre-commit
-    #   pytest
 tomli==1.2.2
     # via
     #   build
