@@ -51,7 +51,6 @@ class FormData:
         filename: Optional[str] = None,
         content_transfer_encoding: Optional[str] = None,
     ) -> None:
-
         if isinstance(value, io.IOBase):
             self._is_multipart = True
         elif isinstance(value, (bytes, bytearray, memoryview)):

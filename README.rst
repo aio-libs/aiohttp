@@ -29,13 +29,13 @@ Async http client/server framework
    :target: https://docs.aiohttp.org/
    :alt: Latest Read The Docs
 
-.. image:: https://img.shields.io/discourse/status?server=https%3A%2F%2Faio-libs.discourse.group
-   :target: https://aio-libs.discourse.group
-   :alt: Discourse status
+.. image:: https://img.shields.io/matrix/aio-libs:matrix.org?label=Discuss%20on%20Matrix%20at%20%23aio-libs%3Amatrix.org&logo=matrix&server_fqdn=matrix.org&style=flat
+   :target: https://matrix.to/#/%23aio-libs:matrix.org
+   :alt: Matrix Room — #aio-libs:matrix.org
 
-.. image:: https://badges.gitter.im/Join%20Chat.svg
-   :target: https://gitter.im/aio-libs/Lobby
-   :alt: Chat on Gitter
+.. image:: https://img.shields.io/matrix/aio-libs-space:matrix.org?label=Discuss%20on%20Matrix%20at%20%23aio-libs-space%3Amatrix.org&logo=matrix&server_fqdn=matrix.org&style=flat
+   :target: https://matrix.to/#/%23aio-libs-space:matrix.org
+   :alt: Matrix Space — #aio-libs-space:matrix.org
 
 
 Key Features
@@ -71,7 +71,7 @@ To get something from the web:
               html = await response.text()
               print("Body:", html[:15], "...")
 
-    asyncio.run(main())
+  asyncio.run(main())
 
 This prints:
 
@@ -150,7 +150,7 @@ Feel free to make a Pull Request for adding your link to these pages!
 Communication channels
 ======================
 
-*aio-libs discourse group*: https://aio-libs.discourse.group
+*aio-libs Discussions*: https://github.com/aio-libs/aiohttp/discussions
 
 *gitter chat* https://gitter.im/aio-libs/Lobby
 
@@ -161,7 +161,6 @@ Please add *aiohttp* tag to your question there.
 Requirements
 ============
 
-- Python >= 3.7
 - async-timeout_
 - charset-normalizer_
 - multidict_

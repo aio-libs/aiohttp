@@ -63,7 +63,9 @@ class AbstractMatchInfo(ABC):
 
     @property
     @abstractmethod
-    def expect_handler(self) -> Callable[[Request], Awaitable[None]]:
+    def expect_handler(
+        self,
+    ) -> Callable[[Request], Awaitable[Optional[StreamResponse]]]:
         """Expect handler for 100-continue processing"""
 
     @property  # pragma: no branch
