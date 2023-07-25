@@ -2,6 +2,6 @@
 aioredis==2.0.1
 mypy==0.982; implementation_name=="cpython"
 pre-commit==2.17.0
-pytest==6.2.5
+pytest==7.4.0
 slotscheck==0.8.0
 uvloop==0.17.0; platform_system!="Windows"
