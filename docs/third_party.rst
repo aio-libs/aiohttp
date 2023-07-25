@@ -112,8 +112,7 @@ support to aiohttp web servers.
 
 - `aiohttp-pydantic <https://github.com/Maillol/aiohttp-pydantic>`_
   An ``aiohttp.View`` to validate the HTTP request's body, query-string, and
-  headers regarding function annotations and generate OpenAPI doc. Python 3.8+
-  required.
+  headers regarding function annotations and generate OpenAPI doc.
 
 - `aiohttp-swagger <https://github.com/cr0hn/aiohttp-swagger>`_
   Swagger API Documentation builder for aiohttp server.
@@ -257,6 +256,8 @@ ask to raise the status.
 
 - `GINO <https://github.com/fantix/gino>`_
   An asyncio ORM on top of SQLAlchemy core, delivered with an aiohttp extension.
+
+- `New Relic <https://github.com/newrelic/newrelic-quickstarts/tree/main/quickstarts/python/aiohttp>`_ An aiohttp middleware for reporting your `Python application performance <https://newrelic.com/instant-observability/aiohttp>`_ metrics to New Relic.
 
 - `eider-py <https://github.com/eider-rpc/eider-py>`_ Python implementation of
   the `Eider RPC protocol <http://eider.readthedocs.io/>`_.

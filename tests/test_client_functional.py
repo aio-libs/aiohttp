@@ -9,7 +9,7 @@ import json
 import pathlib
 import socket
 import ssl
-from typing import Any
+from typing import Any, AsyncIterator
 from unittest import mock
 
 import pytest
@@ -671,6 +671,25 @@ async def test_read_timeout_on_reading_chunks(aiohttp_client: Any, mocker: Any) 
         assert (await resp.content.read(5)) == b"data\n"
         with pytest.raises(asyncio.TimeoutError):
             await resp.content.read()
+
+
+async def test_read_timeout_on_write(aiohttp_client: Any) -> None:
+    async def gen_payload() -> AsyncIterator[str]:
+        # Delay writing to ensure read timeout isn't triggered before writing completes.
+        await asyncio.sleep(0.5)
+        yield b"foo"
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=await request.read())
+
+    app = web.Application()
+    app.router.add_put("/", handler)
+
+    timeout = aiohttp.ClientTimeout(total=None, sock_read=0.1)
+    client = await aiohttp_client(app)
+    async with client.put("/", data=gen_payload(), timeout=timeout) as resp:
+        result = await resp.read()  # Should not trigger a read timeout.
+    assert result == b"foo"
 
 
 async def test_timeout_on_reading_data(aiohttp_client: Any, mocker: Any) -> None:
@@ -2578,7 +2597,6 @@ async def test_aiohttp_request_ctx_manager_close_sess_on_error(
 
 
 async def test_aiohttp_request_ctx_manager_not_found() -> None:
-
     with pytest.raises(aiohttp.ClientConnectionError):
         async with aiohttp.request("GET", "http://wrong-dns-name.com"):
             assert False, "never executed"  # pragma: no cover
@@ -3004,6 +3022,30 @@ async def test_read_timeout_on_prepared_response(aiohttp_client: Any) -> None:
             await resp.read()
 
 
+async def test_timeout_with_full_buffer(aiohttp_client: Any) -> None:
+    async def handler(request):
+        """Server response that never ends and always has more data available."""
+        resp = web.StreamResponse()
+        await resp.prepare(request)
+        while True:
+            await resp.write(b"1" * 1000)
+            await asyncio.sleep(0.01)
+
+    async def request(client):
+        timeout = aiohttp.ClientTimeout(total=0.5)
+        async with await client.get("/", timeout=timeout) as resp:
+            with pytest.raises(asyncio.TimeoutError):
+                async for data in resp.content.iter_chunked(1):
+                    await asyncio.sleep(0.01)
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+    # wait_for() used just to ensure that a failing test doesn't hang.
+    await asyncio.wait_for(request(client), 1)
+
+
 async def test_read_bufsize_session_default(aiohttp_client: Any) -> None:
     async def handler(request):
         return web.Response(body=b"1234567")
@@ -3047,3 +3089,105 @@ async def test_http_empty_data_text(aiohttp_client: Any) -> None:
         assert resp.status == 200
         assert await resp.text() == "ok"
         assert resp.headers["Content-Type"] == "text/plain; charset=utf-8"
+
+
+async def test_max_field_size_session_default(aiohttp_client: Any) -> None:
+    async def handler(request):
+        return web.Response(headers={"Custom": "x" * 8190})
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    async with await client.get("/") as resp:
+        assert resp.headers["Custom"] == "x" * 8190
+
+
+async def test_max_field_size_session_default_fail(aiohttp_client: Any) -> None:
+    async def handler(request):
+        return web.Response(headers={"Custom": "x" * 8191})
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+    with pytest.raises(aiohttp.ClientResponseError):
+        await client.get("/")
+
+
+async def test_max_field_size_session_explicit(aiohttp_client: Any) -> None:
+    async def handler(request):
+        return web.Response(headers={"Custom": "x" * 8191})
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app, max_field_size=8191)
+
+    async with await client.get("/") as resp:
+        assert resp.headers["Custom"] == "x" * 8191
+
+
+async def test_max_field_size_request_explicit(aiohttp_client: Any) -> None:
+    async def handler(request):
+        return web.Response(headers={"Custom": "x" * 8191})
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    async with await client.get("/", max_field_size=8191) as resp:
+        assert resp.headers["Custom"] == "x" * 8191
+
+
+async def test_max_line_size_session_default(aiohttp_client: Any) -> None:
+    async def handler(request):
+        return web.Response(status=200, reason="x" * 8190)
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    async with await client.get("/") as resp:
+        assert resp.reason == "x" * 8190
+
+
+async def test_max_line_size_session_default_fail(aiohttp_client: Any) -> None:
+    async def handler(request):
+        return web.Response(status=200, reason="x" * 8192)
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+    with pytest.raises(aiohttp.ClientResponseError):
+        await client.get("/")
+
+
+async def test_max_line_size_session_explicit(aiohttp_client: Any) -> None:
+    async def handler(request):
+        return web.Response(status=200, reason="x" * 8191)
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app, max_line_size=8191)
+
+    async with await client.get("/") as resp:
+        assert resp.reason == "x" * 8191
+
+
+async def test_max_line_size_request_explicit(aiohttp_client: Any) -> None:
+    async def handler(request):
+        return web.Response(status=200, reason="x" * 8191)
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    async with await client.get("/", max_line_size=8191) as resp:
+        assert resp.reason == "x" * 8191

@@ -148,6 +148,12 @@ for a ``GET`` request. You can also deny ``HEAD`` requests on a route::
 Here ``handler`` won't be called on ``HEAD`` request and the server
 will respond with ``405: Method Not Allowed``.
 
+.. seealso::
+
+   :ref:`aiohttp-web-peer-disconnection` section explains how handlers
+   behave when a client connection drops and ways to optimize handling
+   of this.
+
 .. _aiohttp-web-resource-and-route:
 
 Resources and Routes
