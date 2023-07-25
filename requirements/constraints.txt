@@ -184,7 +184,7 @@ slotscheck==0.8.0
     # via -r requirements/lint.txt
 snowballstemmer==2.1.0
     # via sphinx
-sphinx==5.2.1
+sphinx==5.3.0
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-asyncio
