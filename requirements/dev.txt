@@ -2,4 +2,4 @@
 -r test.txt
 -r doc.txt
 cherry_picker==2.1.0
-pip-tools==6.4.0
+pip-tools==6.9.0
