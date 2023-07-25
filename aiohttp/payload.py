@@ -13,6 +13,7 @@ from typing import (
     Any,
     ByteString,
     Dict,
+    Final,
     Iterable,
     Optional,
     TextIO,
@@ -27,14 +28,13 @@ from . import hdrs
 from .abc import AbstractStreamWriter
 from .helpers import (
     _SENTINEL,
-    PY_36,
     content_disposition_header,
     guess_filename,
     parse_mimetype,
     sentinel,
 )
 from .streams import StreamReader
-from .typedefs import Final, JSONEncoder, _CIMultiDict
+from .typedefs import JSONEncoder, _CIMultiDict
 
 __all__ = (
     "PAYLOAD_REGISTRY",
@@ -232,10 +232,7 @@ class BytesPayload(Payload):
             self._size = len(value)
 
         if self._size > TOO_LARGE_BYTES_BODY:
-            if PY_36:
-                kwargs = {"source": self}
-            else:
-                kwargs = {}
+            kwargs = {"source": self}
             warnings.warn(
                 "Sending a large body directly with raw bytes might"
                 " lock the event loop. You should probably pass an "
@@ -424,7 +421,7 @@ class AsyncIterablePayload(Payload):
         if not isinstance(value, AsyncIterable):
             raise TypeError(
                 "value argument must support "
-                "collections.abc.AsyncIterablebe interface, "
+                "collections.abc.AsyncIterable interface, "
                 "got {!r}".format(type(value))
             )
 

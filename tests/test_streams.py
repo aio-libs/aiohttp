@@ -12,7 +12,6 @@ import pytest
 from re_assert import Matches
 
 from aiohttp import streams
-from aiohttp.helpers import PY_310
 
 DATA = b"line1\nline2\nline3\n"
 
@@ -83,12 +82,6 @@ class TestStreamReader:
         with pytest.raises(RuntimeError):
             await stream._wait("test")
 
-    @pytest.mark.xfail(
-        PY_310,
-        reason="No idea why ClientRequest() is constructed out of loop but "
-        "it calls `asyncio.get_event_loop()`",
-        raises=DeprecationWarning,
-    )
     def test_ctor_global_loop(self) -> None:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -1132,6 +1125,7 @@ class TestStreamReader:
 
 async def test_empty_stream_reader() -> None:
     s = streams.EmptyStreamReader()
+    assert str(s) is not None
     assert s.set_exception(ValueError()) is None
     assert s.exception() is None
     assert s.feed_eof() is None

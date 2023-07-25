@@ -90,6 +90,7 @@ Denis Moshensky
 Dennis Kliban
 Dima Veselov
 Dimitar Dimitrov
+Diogo Dutra da Mata
 Dmitriy Safonov
 Dmitry Doroshev
 Dmitry Erlikh
@@ -149,12 +150,15 @@ Ilya Gruzinov
 Ingmar Steen
 Ivan Lakovic
 Ivan Larin
+J. Nick Koston
 Jacob Champion
 Jaesung Lee
 Jake Davis
 Jakob Ackermann
 Jakub Wilk
 Jan Buchar
+Jan Gosmann
+Jarno Elonen
 Jashandeep Sohi
 Jean-Baptiste Estival
 Jens Steinhauser
@@ -193,6 +197,7 @@ Krzysztof Blazewicz
 Kyrylo Perevozchikov
 Kyungmin Lee
 Lars P. Søndergaard
+Lee LieWhite
 Liu Hua
 Louis-Philippe Huberdeau
 Loïc Lajeanne
@@ -342,6 +347,8 @@ Yury Pliner
 Yury Selivanov
 Yusuke Tsutsumi
 Yuval Ofir
+Yuvi Panda
+Zainab Lawal
 Zeal Wierslee
 Zlatan Sičanica
 Марк Коренберг
