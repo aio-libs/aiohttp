@@ -39,7 +39,6 @@ BodyPartReader
 boolean
 botocore
 brotli
-brotli
 Brotli
 brotlipy
 bugfix
@@ -102,6 +101,7 @@ dns
 DNSResolver
 docstring
 docstrings
+DoS
 Dup
 elasticsearch
 encodings
@@ -340,6 +340,7 @@ utils
 uvloop
 uWSGI
 vcvarsall
+vendored
 waituntil
 wakeup
 wakeups

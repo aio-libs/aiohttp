@@ -364,7 +364,6 @@ async def test_concurrent_receive(make_request: Any) -> None:
 
 
 async def test_close_exc(make_request: Any) -> None:
-
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
