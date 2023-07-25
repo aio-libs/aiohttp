@@ -5,6 +5,7 @@ import os.path
 import urllib.parse
 import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
+from typing import Any, Optional
 from unittest import mock
 
 import pytest
@@ -12,7 +13,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
 
 import aiohttp
-from aiohttp import BaseConnector, hdrs, payload
+from aiohttp import BaseConnector, hdrs, helpers, payload
 from aiohttp.client_reqrep import (
     ClientRequest,
     ClientResponse,
@@ -20,7 +21,6 @@ from aiohttp.client_reqrep import (
     _gen_default_accept_encoding,
     _merge_ssl_params,
 )
-from aiohttp.helpers import PY_310
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -276,12 +276,6 @@ def test_host_header_ipv6_with_port(make_request) -> None:
     assert req.headers["HOST"] == "[::2]:99"
 
 
-@pytest.mark.xfail(
-    PY_310,
-    reason="No idea why ClientRequest() is constructed out of loop but "
-    "it calls `asyncio.get_event_loop()`",
-    raises=DeprecationWarning,
-)
 def test_default_loop(loop) -> None:
     asyncio.set_event_loop(loop)
     req = ClientRequest("get", URL("http://python.org/"))
@@ -1300,3 +1294,51 @@ def test_loose_cookies_types(loop) -> None:
 def test_gen_default_accept_encoding(has_brotli, expected) -> None:
     with mock.patch("aiohttp.client_reqrep.HAS_BROTLI", has_brotli):
         assert _gen_default_accept_encoding() == expected
+
+
+@pytest.mark.parametrize(
+    ("netrc_contents", "expected_auth"),
+    [
+        (
+            "machine example.com login username password pass\n",
+            helpers.BasicAuth("username", "pass"),
+        )
+    ],
+    indirect=("netrc_contents",),
+)
+@pytest.mark.usefixtures("netrc_contents")
+def test_basicauth_from_netrc_present(
+    make_request: Any,
+    expected_auth: Optional[helpers.BasicAuth],
+):
+    """Test appropriate Authorization header is sent when netrc is not empty."""
+    req = make_request("get", "http://example.com", trust_env=True)
+    assert req.headers[hdrs.AUTHORIZATION] == expected_auth.encode()
+
+
+@pytest.mark.parametrize(
+    "netrc_contents",
+    ("machine example.com login username password pass\n",),
+    indirect=("netrc_contents",),
+)
+@pytest.mark.usefixtures("netrc_contents")
+def test_basicauth_from_netrc_present_untrusted_env(
+    make_request: Any,
+):
+    """Test no authorization header is sent via netrc if trust_env is False"""
+    req = make_request("get", "http://example.com", trust_env=False)
+    assert hdrs.AUTHORIZATION not in req.headers
+
+
+@pytest.mark.parametrize(
+    "netrc_contents",
+    ("",),
+    indirect=("netrc_contents",),
+)
+@pytest.mark.usefixtures("netrc_contents")
+def test_basicauth_from_empty_netrc(
+    make_request: Any,
+):
+    """Test that no Authorization header is sent when netrc is empty"""
+    req = make_request("get", "http://example.com", trust_env=True)
+    assert hdrs.AUTHORIZATION not in req.headers

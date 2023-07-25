@@ -110,6 +110,8 @@ Install pre-commit hooks:
 
 Congratulations, you are ready to run the test suite!
 
+.. include:: ../vendor/README.rst
+
 
 Run autoformatter
 -----------------
@@ -149,10 +151,10 @@ Any extra texts (print statements and so on) should be removed.
 
      make test-<python-version>[-no-extensions]
 
-   For example, if you want to run tests for python3.7
+   For example, if you want to run tests for python3.10
    without extensions, you can run this command::
 
-     make test-3.7-no-extensions
+     make test-3.10-no-extensions
 
 Tests coverage
 --------------
@@ -315,7 +317,7 @@ The rules for committers are simple:
 4. Keep test suite comprehensive. In practice it means leveling up
    coverage. 97% is not bad but we wish to have 100% someday. Well, 99%
    is good target too.
-5. Don't hesitate to improve our docs. Documentation is very important
+5. Don't hesitate to improve our docs. Documentation is a very important
    thing, it's the key for project success. The documentation should
    not only cover our public API but help newbies to start using the
    project and shed a light on non-obvious gotchas.
