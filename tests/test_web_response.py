@@ -603,7 +603,6 @@ async def test_rm_content_length_if_compression_http11() -> None:
     req = make_request("GET", "/", writer=writer)
     payload = BytesPayload(b"answer", headers={"X-Test-Header": "test"})
     resp = Response(body=payload)
-    assert resp.content_length == 6
     resp.body = payload
     resp.enable_compression(ContentCoding.gzip)
     await resp.prepare(req)

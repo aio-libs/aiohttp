@@ -900,30 +900,15 @@ Response
       Read-write attribute for storing response's content aka BODY,
       :class:`bytes`.
 
-      Setting :attr:`body` also recalculates
-      :attr:`~StreamResponse.content_length` value.
-
       Assigning :class:`str` to :attr:`body` will make the :attr:`body`
       type of :class:`aiohttp.payload.StringPayload`, which tries to encode
       the given data based on *Content-Type* HTTP header, while defaulting
       to ``UTF-8``.
 
-      Resetting :attr:`body` (assigning ``None``) sets
-      :attr:`~StreamResponse.content_length` to ``None`` too, dropping
-      *Content-Length* HTTP header.
-
    .. attribute:: text
 
-      Read-write attribute for storing response's content, represented as
-      string, :class:`str`.
-
-      Setting :attr:`text` also recalculates
-      :attr:`~StreamResponse.content_length` value and
-      :attr:`~aiohttp.StreamResponse.body` value
-
-      Resetting :attr:`text` (assigning ``None``) sets
-      :attr:`~StreamResponse.content_length` to ``None`` too, dropping
-      *Content-Length* HTTP header.
+      Read-write attribute for storing response's
+      :attr:`~aiohttp.StreamResponse.body`, represented as :class:`str`.
 
 
 FileResponse
@@ -1391,6 +1376,13 @@ duplicated like one using :meth:`~aiohttp.web.Application.copy`.
 
           async def on_prepare(request, response):
               pass
+
+      .. note::
+
+         The headers are written immediately after these callbacks are run.
+         Therefore, if you modify the content of the response, you may need to
+         adjust the `Content-Length` header or similar to match. Aiohttp will
+         not make any updates to the headers from this point.
 
    .. attribute:: on_startup
 
@@ -2688,9 +2680,10 @@ application on specific TCP or Unix socket, e.g.::
 
    :param int port: PORT to listed on, ``8080`` if ``None`` (default).
 
-   :param float shutdown_timeout: a timeout for closing opened
-                                  connections on :meth:`BaseSite.stop`
-                                  call.
+   :param float shutdown_timeout: a timeout used for both waiting on pending
+                                  tasks before application shutdown and for
+                                  closing opened connections on
+                                  :meth:`BaseSite.stop` call.
 
    :param ssl_context: a :class:`ssl.SSLContext` instance for serving
                        SSL/TLS secure server, ``None`` for plain HTTP
@@ -2723,9 +2716,10 @@ application on specific TCP or Unix socket, e.g.::
 
    :param str path: PATH to UNIX socket to listen.
 
-   :param float shutdown_timeout: a timeout for closing opened
-                                  connections on :meth:`BaseSite.stop`
-                                  call.
+   :param float shutdown_timeout: a timeout used for both waiting on pending
+                                  tasks before application shutdown and for
+                                  closing opened connections on
+                                  :meth:`BaseSite.stop` call.
 
    :param ssl_context: a :class:`ssl.SSLContext` instance for serving
                        SSL/TLS secure server, ``None`` for plain HTTP
@@ -2745,9 +2739,10 @@ application on specific TCP or Unix socket, e.g.::
 
    :param str path: PATH of named pipe to listen.
 
-   :param float shutdown_timeout: a timeout for closing opened
-                                  connections on :meth:`BaseSite.stop`
-                                  call.
+   :param float shutdown_timeout: a timeout used for both waiting on pending
+                                  tasks before application shutdown and for
+                                  closing opened connections on
+                                  :meth:`BaseSite.stop` call.
 
 .. class:: SockSite(runner, sock, *, \
                    shutdown_timeout=60.0, ssl_context=None, \
@@ -2759,9 +2754,10 @@ application on specific TCP or Unix socket, e.g.::
 
    :param sock: A :ref:`socket instance <socket-objects>` to listen to.
 
-   :param float shutdown_timeout: a timeout for closing opened
-                                  connections on :meth:`BaseSite.stop`
-                                  call.
+   :param float shutdown_timeout: a timeout used for both waiting on pending
+                                  tasks before application shutdown and for
+                                  closing opened connections on
+                                  :meth:`BaseSite.stop` call.
 
    :param ssl_context: a :class:`ssl.SSLContext` instance for serving
                        SSL/TLS secure server, ``None`` for plain HTTP
@@ -2857,9 +2853,13 @@ Utilities
                                 shutdown before disconnecting all
                                 open client sockets hard way.
 
+                                This is used as a delay to wait for
+                                pending tasks to complete and then
+                                again to close any pending connections.
+
                                 A system with properly
                                 :ref:`aiohttp-web-graceful-shutdown`
-                                implemented never waits for this
+                                implemented never waits for the second
                                 timeout but closes a server in a few
                                 milliseconds.
 

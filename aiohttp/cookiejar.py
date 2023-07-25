@@ -1,4 +1,3 @@
-import asyncio
 import contextlib
 import datetime
 import os  # noqa
@@ -55,7 +54,7 @@ class CookieJar(AbstractCookieJar):
 
     MAX_TIME = datetime.datetime.max.replace(tzinfo=datetime.timezone.utc)
 
-    MAX_32BIT_TIME = datetime.datetime.utcfromtimestamp(2**31 - 1)
+    MAX_32BIT_TIME = datetime.datetime.fromtimestamp(2**31 - 1, datetime.timezone.utc)
 
     def __init__(
         self,
@@ -64,7 +63,6 @@ class CookieJar(AbstractCookieJar):
         quote_cookie: bool = True,
         treat_as_secure_origin: Union[StrOrURL, List[StrOrURL], None] = None
     ) -> None:
-        self._loop = asyncio.get_running_loop()
         self._cookies: DefaultDict[Tuple[str, str], SimpleCookie[str]] = defaultdict(
             SimpleCookie
         )

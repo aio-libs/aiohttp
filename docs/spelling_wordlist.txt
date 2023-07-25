@@ -39,7 +39,6 @@ BodyPartReader
 boolean
 botocore
 brotli
-brotli
 Brotli
 brotlipy
 bugfix
@@ -341,6 +340,7 @@ utils
 uvloop
 uWSGI
 vcvarsall
+vendored
 waituntil
 wakeup
 wakeups

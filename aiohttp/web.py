@@ -44,6 +44,7 @@ from .web_exceptions import (
     HTTPLengthRequired,
     HTTPMethodNotAllowed,
     HTTPMisdirectedRequest,
+    HTTPMove,
     HTTPMovedPermanently,
     HTTPMultipleChoices,
     HTTPNetworkAuthenticationRequired,
@@ -157,6 +158,7 @@ __all__ = (
     "HTTPLengthRequired",
     "HTTPMethodNotAllowed",
     "HTTPMisdirectedRequest",
+    "HTTPMove",
     "HTTPMovedPermanently",
     "HTTPMultipleChoices",
     "HTTPNetworkAuthenticationRequired",
@@ -407,15 +409,8 @@ async def _run_app(
             )
 
         # sleep forever by 1 hour intervals,
-        # on Windows before Python 3.8 wake up every 1 second to handle
-        # Ctrl+C smoothly
-        if sys.platform == "win32" and sys.version_info < (3, 8):
-            delay = 1
-        else:
-            delay = 3600
-
         while True:
-            await asyncio.sleep(delay)
+            await asyncio.sleep(3600)
     finally:
         await runner.cleanup()
 
