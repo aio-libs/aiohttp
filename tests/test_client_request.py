@@ -21,7 +21,6 @@ from aiohttp.client_reqrep import (
     _gen_default_accept_encoding,
     _merge_ssl_params,
 )
-from aiohttp.helpers import PY_311
 from aiohttp.test_utils import make_mocked_coro
 
 
