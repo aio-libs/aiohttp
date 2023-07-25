@@ -100,7 +100,6 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         client_max_size: int = 1024**2,
         debug: Any = ...,  # mypy doesn't support ellipsis
     ) -> None:
-
         if debug is not ...:
             warnings.warn(
                 "debug argument is no-op since 4.0 " "and scheduled for removal in 5.0",

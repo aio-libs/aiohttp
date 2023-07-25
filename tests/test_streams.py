@@ -70,7 +70,6 @@ def get_memory_usage(obj: Any):
 
 
 class TestStreamReader:
-
     DATA: bytes = b"line1\nline2\nline3\n"
 
     def _make_one(self, *args, **kwargs) -> streams.StreamReader:
@@ -1100,6 +1099,7 @@ class TestStreamReader:
 
 async def test_empty_stream_reader() -> None:
     s = streams.EmptyStreamReader()
+    assert str(s) is not None
     assert s.set_exception(ValueError()) is None
     assert s.exception() is None
     assert s.feed_eof() is None

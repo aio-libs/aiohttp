@@ -23,9 +23,13 @@ env:
   MYPY_FORCE_COLOR: 1
   PY_COLORS: 1
 
+permissions: {}
 jobs:
 
   lint:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
     name: Linter
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -65,9 +69,9 @@ jobs:
         # can be scanned by slotscheck.
         pip install -r requirements/base.txt -c requirements/constraints.txt
         slotscheck -v -m aiohttp
-    - name: Install libenchant-dev
+    - name: Install libenchant
       run: |
-        sudo apt install libenchant-dev
+        sudo apt install libenchant-2-dev
     - name: Install spell checker
       run: |
         pip install -r requirements/doc-spelling.txt -c requirements/constraints.txt
@@ -88,6 +92,9 @@ jobs:
         LC_ALL=C sort --check --ignore-case CONTRIBUTORS.txt
 
   gen_llhttp:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
     name: Generate llhttp sources
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -119,19 +126,20 @@ jobs:
         if-no-files-found: error
 
   test:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
     name: Test
     needs: gen_llhttp
     strategy:
       matrix:
-        pyver: [3.7, 3.8, 3.9, '3.10']
+        pyver: [3.8, 3.9, '3.10']
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         experimental: [false]
         exclude:
           - os: macos
             no-extensions: 'Y'
-          - os: macos
-            pyver: 3.7
           - os: macos
             pyver: 3.8
           - os: windows
@@ -142,15 +150,27 @@ jobs:
             os: ubuntu
             experimental: false
           - os: macos
-            pyver: "3.11.0-alpha - 3.11.0"
+            pyver: "3.11"
             experimental: true
             no-extensions: 'Y'
           - os: ubuntu
-            pyver: "3.11.0-alpha - 3.11.0"
+            pyver: "3.11"
             experimental: false
             no-extensions: 'Y'
           - os: windows
-            pyver: "3.11.0-alpha - 3.11.0"
+            pyver: "3.11"
+            experimental: true
+            no-extensions: 'Y'
+          - os: ubuntu
+            pyver: "3.12"
+            experimental: true
+            no-extensions: 'Y'
+          - os: macos
+            pyver: "3.12"
+            experimental: true
+            no-extensions: 'Y'
+          - os: windows
+            pyver: "3.12"
             experimental: true
             no-extensions: 'Y'
       fail-fast: true
@@ -165,6 +185,7 @@ jobs:
       id: python-install
       uses: actions/setup-python@v4
       with:
+        allow-prereleases: true
         python-version: ${{ matrix.pyver }}
     - name: Get pip cache dir
       id: pip-cache
@@ -256,6 +277,9 @@ jobs:
             echo "Predeploy step"
 
   build-tarball:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
     name: Tarball
     runs-on: ubuntu-latest
     needs: pre-deploy
@@ -290,6 +314,9 @@ jobs:
         path: dist
 
   build-wheels:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
     name: Build wheels on ${{ matrix.os }} ${{ matrix.qemu }}
     runs-on: ${{ matrix.os }}-latest
     needs: pre-deploy
@@ -343,7 +370,7 @@ jobs:
       run: |
         make cythonize
     - name: Build wheels
-      uses: pypa/cibuildwheel@v2.10.1
+      uses: pypa/cibuildwheel@v2.14.1
       env:
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
     - uses: actions/upload-artifact@v3
@@ -353,9 +380,17 @@ jobs:
 
   deploy:
     name: Deploy
-    environment: release
     needs: [build-tarball, build-wheels]
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # IMPORTANT: mandatory for making GitHub Releases
+      id-token: write  # IMPORTANT: mandatory for trusted publishing & sigstore
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/aiohttp
+
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -382,7 +417,27 @@ jobs:
         name: aiohttp
         version_file: aiohttp/__init__.py
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        pypi_token: ${{ secrets.PYPI_API_TOKEN }}
         dist_dir: dist
         fix_issue_regex: "`#(\\d+) <https://github.com/aio-libs/aiohttp/issues/\\1>`_"
         fix_issue_repl: "(#\\1)"
+
+    - name: >-
+        Publish 🐍📦 to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+
+    - name: Sign the dists with Sigstore
+      uses: sigstore/gh-action-sigstore-python@v1.2.3
+      with:
+        inputs: >-
+          ./dist/*.tar.gz
+          ./dist/*.whl
+
+    - name: Upload artifact signatures to GitHub Release
+      # Confusingly, this action also supports updating releases, not
+      # just creating them. This is what we want here, since we've manually
+      # created the release above.
+      uses: softprops/action-gh-release@v1
+      with:
+        # dist/ contains the built packages, which smoketest-artifacts/
+        # contains the signatures and certificates.
+        files: dist/**
