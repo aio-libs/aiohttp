@@ -68,7 +68,7 @@ endpoints of ``http://httpbin.org`` can be used the following code::
 .. note::
 
    Don't create a session per request. Most likely you need a session
-   per application which performs all requests altogether.
+   per application which performs all requests together.
 
    More complex cases may require a session per site, e.g. one for
    Github and other one for Facebook APIs. Anyway making a session for
@@ -316,7 +316,7 @@ To upload Multipart-encoded files::
 You can set the ``filename`` and ``content_type`` explicitly::
 
     url = 'http://httpbin.org/post'
-    data = FormData()
+    data = aiohttp.FormData()
     data.add_field('file',
                    open('report.xls', 'rb'),
                    filename='report.xls',

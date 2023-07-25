@@ -4,7 +4,6 @@ import contextlib
 import gc
 import io
 import json
-import sys
 from http.cookies import SimpleCookie
 from typing import Any, List
 from unittest import mock
@@ -160,7 +159,6 @@ async def test_merge_headers_with_list_of_tuples_duplicated_names(
 
 
 def test_http_GET(session: Any, params: Any) -> None:
-    # Python 3.8 will auto use mock.AsyncMock, it has different behavior
     with mock.patch(
         "aiohttp.client.ClientSession._request", new_callable=mock.MagicMock
     ) as patched:
@@ -572,7 +570,6 @@ async def test_request_tracing(loop: Any, aiohttp_client: Any) -> None:
         async with session.post(
             "/", data=body, trace_request_ctx=trace_request_ctx
         ) as resp:
-
             await resp.json()
 
             on_request_start.assert_called_once_with(
@@ -683,14 +680,7 @@ async def test_request_tracing_url_params(loop: Any, aiohttp_client: Any) -> Non
 
     # Exception
     with mock.patch("aiohttp.client.TCPConnector.connect") as connect_patched:
-        error = Exception()
-        if sys.version_info >= (3, 8, 1):
-            connect_patched.side_effect = error
-        else:
-            loop = asyncio.get_event_loop()
-            f = loop.create_future()
-            f.set_exception(error)
-            connect_patched.return_value = f
+        connect_patched.side_effect = Exception()
 
         for req in [
             lambda: session.get("/?x=0"),
@@ -718,13 +708,7 @@ async def test_request_tracing_exception() -> None:
 
     with mock.patch("aiohttp.client.TCPConnector.connect") as connect_patched:
         error = Exception()
-        if sys.version_info >= (3, 8, 1):
-            connect_patched.side_effect = error
-        else:
-            loop = asyncio.get_event_loop()
-            f = loop.create_future()
-            f.set_exception(error)
-            connect_patched.return_value = f
+        connect_patched.side_effect = error
 
         session = aiohttp.ClientSession(trace_configs=[trace_config])
 
