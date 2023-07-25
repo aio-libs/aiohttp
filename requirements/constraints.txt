@@ -173,12 +173,6 @@ requests==2.26.0
     #   cherry-picker
     #   python-on-whales
     #   sphinx
-setuptools==58.4.0
-    # via
-    #   blockdiag
-    #   gunicorn
-    #   pip-tools
-    #   towncrier
 setuptools-git==1.2
     # via -r requirements/test.txt
 six==1.16.0
@@ -220,7 +214,6 @@ toml==0.10.2
     # via
     #   cherry-picker
     #   pre-commit
-    #   pytest
 tomli==1.2.2
     # via
     #   build
