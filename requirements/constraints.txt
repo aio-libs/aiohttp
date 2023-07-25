@@ -12,8 +12,6 @@ async-timeout==4.0.2
     # via
     #   -r requirements/base.txt
     #   aioredis
-attrs==21.2.0
-    # via pytest
 babel==2.9.1
     # via sphinx
 backports-entry-points-selectable==1.1.0
@@ -24,8 +22,8 @@ brotli==1.0.9
     # via
     #   -r requirements/base.txt
     #   -r requirements/test.txt
-cchardet==2.1.7 ; python_version < "3.10"
-    # via -r requirements/base.txt
+build==0.10.0
+    # via pip-tools
 certifi==2021.10.8
     # via requests
 cffi==1.15.0
@@ -55,7 +53,7 @@ coverage==6.5.0
     # via
     #   -r requirements/test.txt
     #   pytest-cov
-cryptography==36.0.1 ; platform_machine != "i686"
+cryptography==38.0.2 ; platform_machine != "i686"
     # via
     #   -r requirements/test.txt
     #   pyjwt
@@ -66,6 +64,8 @@ distlib==0.3.3
     # via virtualenv
 docutils==0.17.1
     # via sphinx
+exceptiongroup==1.1.2
+    # via pytest
 filelock==3.3.2
     # via virtualenv
 freezegun==1.1.0
@@ -91,8 +91,6 @@ idna==3.3
     #   yarl
 imagesize==1.4.1
     # via sphinx
-importlib-metadata==4.12.0
-    # via sphinx
 incremental==21.3.0
     # via towncrier
 iniconfig==1.1.1
@@ -111,17 +109,18 @@ mypy==0.982 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.txt
     #   -r requirements/test.txt
+mypy-extensions==1.0.0
+    # via mypy
 nodeenv==1.6.0
     # via pre-commit
 packaging==21.2
     # via
+    #   build
     #   pytest
     #   sphinx
-pep517==0.12.0
-    # via pip-tools
 pillow==9.3.0
     # via blockdiag
-pip-tools==6.5.0
+pip-tools==7.1.0
     # via -r requirements/dev.txt
 platformdirs==2.4.0
     # via virtualenv
@@ -131,8 +130,6 @@ pre-commit==2.17.0
     # via -r requirements/lint.txt
 proxy-py==2.4.4rc3
     # via -r requirements/test.txt
-py==1.11.0
-    # via pytest
 pycares==4.3.0
     # via aiodns
 pycparser==2.20
@@ -147,6 +144,8 @@ pyjwt==2.3.0
     # via gidgethub
 pyparsing==2.4.7
     # via packaging
+pyproject-hooks==1.0.0
+    # via build
 pytest==7.4.0
     # via
     #   -r requirements/lint.txt
@@ -159,7 +158,7 @@ pytest-mock==3.11.1
     # via -r requirements/test.txt
 python-dateutil==2.8.2
     # via freezegun
-python-on-whales==0.36.1
+python-on-whales==0.53.0
     # via -r requirements/test.txt
 pytz==2021.3
     # via babel
@@ -217,9 +216,11 @@ toml==0.10.2
     #   pre-commit
 tomli==1.2.2
     # via
+    #   build
     #   coverage
     #   mypy
-    #   pep517
+    #   pip-tools
+    #   pyproject-hooks
     #   pytest
     #   slotscheck
     #   towncrier
@@ -231,7 +232,7 @@ tqdm==4.62.3
     # via python-on-whales
 trustme==0.9.0 ; platform_machine != "i686"
     # via -r requirements/test.txt
-typer==0.4.0
+typer==0.6.1
     # via python-on-whales
 typing-extensions==4.1.1
     # via
@@ -239,12 +240,13 @@ typing-extensions==4.1.1
     #   aioredis
     #   mypy
     #   pydantic
+    #   python-on-whales
 uritemplate==4.1.1
     # via gidgethub
 urllib3==1.26.7
     # via requests
-uvloop==0.17.0 ; platform_system != "Windows" and implementation_name == "cpython" and python_version < "3.9"
-    # via -r requirements/base.txt
+uvloop==0.17.0 ; platform_system != "Windows"
+    # via -r requirements/lint.txt
 virtualenv==20.10.0
     # via pre-commit
 wait-for-it==2.2.1
@@ -255,11 +257,9 @@ wheel==0.37.0
     # via pip-tools
 yarl==1.9.2
     # via -r requirements/base.txt
-zipp==3.8.1
-    # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
-pip==21.3.1
+pip==23.2.1
     # via pip-tools
 setuptools==58.4.0
     # via
