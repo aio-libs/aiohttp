@@ -14,18 +14,19 @@ from . import hdrs
 from .abc import AbstractStreamWriter
 from .helpers import call_later, set_result
 from .http import (
-    WS_CLOSED_MESSAGE,
-    WS_CLOSING_MESSAGE,
     WS_KEY,
     WebSocketError,
     WebSocketReader,
     WebSocketWriter,
     WSCloseCode,
-    WSMessage,
-    WSMsgType as WSMsgType,
+    WSMessageClosed,
+    WSMessageClosing,
+    WSMessageType,
+    WSMsgType,
     ws_ext_gen,
     ws_ext_parse,
 )
+from .http_websocket import WSMessageError
 from .log import ws_logger
 from .streams import EofStream, FlowControlDataQueue
 from .typedefs import JSONDecoder, JSONEncoder
@@ -93,7 +94,7 @@ class WebSocketResponse(StreamResponse):
         self._protocols = protocols
         self._ws_protocol: Optional[str] = None
         self._writer: Optional[WebSocketWriter] = None
-        self._reader: Optional[FlowControlDataQueue[WSMessage]] = None
+        self._reader: Optional[FlowControlDataQueue[WSMessageType]] = None
         self._closed = False
         self._closing = False
         self._conn_lost = 0
@@ -376,7 +377,7 @@ class WebSocketResponse(StreamResponse):
         # we need to break `receive()` cycle first,
         # `close()` may be called from different task
         if self._waiting is not None and not self._closed:
-            reader.feed_data(WS_CLOSING_MESSAGE, 0)
+            reader.feed_data(WSMessageClosing(), 0)
             await self._waiting
 
         if not self._closed:
@@ -410,7 +411,7 @@ class WebSocketResponse(StreamResponse):
                 self._exception = exc
                 return True
 
-            if msg.type == WSMsgType.CLOSE:
+            if msg.type is WSMsgType.CLOSE:
                 self._close_code = msg.data
                 return True
 
@@ -420,7 +421,7 @@ class WebSocketResponse(StreamResponse):
         else:
             return False
 
-    async def receive(self, timeout: Optional[float] = None) -> WSMessage:
+    async def receive(self, timeout: Optional[float] = None) -> WSMessageType:
         if self._reader is None:
             raise RuntimeError("Call .prepare() first")
 
@@ -434,9 +435,9 @@ class WebSocketResponse(StreamResponse):
                 self._conn_lost += 1
                 if self._conn_lost >= THRESHOLD_CONNLOST_ACCESS:
                     raise RuntimeError("WebSocket connection is closed.")
-                return WS_CLOSED_MESSAGE
+                return WSMessageClosed()
             elif self._closing:
-                return WS_CLOSING_MESSAGE
+                return WSMessageClosing()
 
             try:
                 self._waiting = loop.create_future()
@@ -454,19 +455,19 @@ class WebSocketResponse(StreamResponse):
             except EofStream:
                 self._close_code = WSCloseCode.OK
                 await self.close()
-                return WSMessage(WSMsgType.CLOSED, None, None)
+                return WSMessageClosed()
             except WebSocketError as exc:
                 self._close_code = exc.code
                 await self.close(code=exc.code)
-                return WSMessage(WSMsgType.ERROR, exc, None)
+                return WSMessageError(data=exc)
             except Exception as exc:
                 self._exception = exc
                 self._closing = True
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 await self.close()
-                return WSMessage(WSMsgType.ERROR, exc, None)
+                return WSMessageError(data=exc)
 
-            if msg.type == WSMsgType.CLOSE:
+            if msg.type is WSMsgType.CLOSE:
                 self._closing = True
                 self._close_code = msg.data
                 if not self._closed and self._autoclose:
@@ -509,7 +510,7 @@ class WebSocketResponse(StreamResponse):
     def __aiter__(self) -> "WebSocketResponse":
         return self
 
-    async def __anext__(self) -> WSMessage:
+    async def __anext__(self) -> WSMessageType:
         msg = await self.receive()
         if msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSING, WSMsgType.CLOSED):
             raise StopAsyncIteration
