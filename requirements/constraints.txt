@@ -77,7 +77,7 @@ frozenlist==1.4.0
     # via
     #   -r requirements/base.txt
     #   aiosignal
-funcparserlib==1.0.0a0
+funcparserlib==1.0.1
     # via
     #   -r requirements/doc.txt
     #   blockdiag
