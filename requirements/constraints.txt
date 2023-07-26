@@ -56,7 +56,7 @@ coverage==6.5.0
     # via
     #   -r requirements/test.txt
     #   pytest-cov
-cryptography==38.0.2 ; platform_machine != "i686"
+cryptography==41.0.2 ; platform_machine != "i686"
     # via
     #   -r requirements/test.txt
     #   pyjwt
@@ -77,7 +77,7 @@ frozenlist==1.4.0
     # via
     #   -r requirements/base.txt
     #   aiosignal
-funcparserlib==1.0.0a0
+funcparserlib==1.0.1
     # via
     #   -r requirements/doc.txt
     #   blockdiag
@@ -104,7 +104,7 @@ jinja2==3.0.3
     #   towncrier
 markupsafe==2.0.1
     # via jinja2
-multidict==5.2.0
+multidict==6.0.4
     # via
     #   -r requirements/multidict.txt
     #   yarl
@@ -209,7 +209,7 @@ sphinxcontrib-qthelp==1.0.3
     # via sphinx
 sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
-sphinxcontrib-spelling==7.6.1 ; platform_system != "Windows"
+sphinxcontrib-spelling==8.0.0 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.txt
 sphinxcontrib-towncrier==0.3.0a0
     # via -r requirements/doc.txt
