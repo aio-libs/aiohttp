@@ -53,9 +53,8 @@ coverage==6.5.0
     # via
     #   -r requirements/test.txt
     #   pytest-cov
-cryptography==39.0.1 ; platform_machine != "i686"
+cryptography==39.0.1
     # via
-    #   -r requirements/test.txt
     #   pyjwt
     #   trustme
 cython==3.0.0
@@ -224,7 +223,7 @@ tomli==1.2.2
     #   pytest
     #   slotscheck
     #   towncrier
-towncrier==22.8.0
+towncrier==23.6.0
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-towncrier
@@ -266,4 +265,3 @@ setuptools==58.4.0
     #   blockdiag
     #   gunicorn
     #   pip-tools
-    #   towncrier
