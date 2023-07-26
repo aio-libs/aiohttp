@@ -118,7 +118,7 @@ packaging==21.2
     #   build
     #   pytest
     #   sphinx
-pillow==9.2.0
+pillow==9.3.0
     # via blockdiag
 pip-tools==7.1.0
     # via -r requirements/dev.txt
