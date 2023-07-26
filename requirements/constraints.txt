@@ -168,7 +168,7 @@ re-assert==1.1.0
     # via -r requirements/test.txt
 regex==2021.11.2
     # via re-assert
-requests==2.26.0
+requests==2.31.0
     # via
     #   cherry-picker
     #   python-on-whales
