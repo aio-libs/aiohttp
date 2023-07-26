@@ -252,7 +252,7 @@ wait-for-it==2.2.1
     # via -r requirements/test.txt
 webcolors==1.11.1
     # via blockdiag
-wheel==0.37.0
+wheel==0.38.1
     # via pip-tools
 yarl==1.9.2
     # via -r requirements/base.txt
@@ -260,7 +260,7 @@ yarl==1.9.2
 # The following packages are considered to be unsafe in a requirements file:
 pip==23.2.1
     # via pip-tools
-setuptools==58.4.0
+setuptools==65.5.1
     # via
     #   blockdiag
     #   gunicorn
