@@ -53,9 +53,8 @@ coverage==6.5.0
     # via
     #   -r requirements/test.txt
     #   pytest-cov
-cryptography==39.0.1 ; platform_machine != "i686"
+cryptography==39.0.1
     # via
-    #   -r requirements/test.txt
     #   pyjwt
     #   trustme
 cython==3.0.0
@@ -230,7 +229,7 @@ towncrier==22.8.0
     #   sphinxcontrib-towncrier
 tqdm==4.62.3
     # via python-on-whales
-trustme==0.9.0 ; platform_machine != "i686"
+trustme==1.1.0 ; platform_machine != "i686"
     # via -r requirements/test.txt
 typer==0.6.1
     # via python-on-whales
