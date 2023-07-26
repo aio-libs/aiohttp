@@ -14,7 +14,7 @@ jobs:
       with:
         python-version: 3.8
     - name: Install dependencies
-      uses: py-actions/py-dependency-install@v3
+      uses: py-actions/py-dependency-install@v4
       with:
         path: requirements/lint.txt
     - name: Run pre-commit autoupdate
