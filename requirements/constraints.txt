@@ -61,7 +61,7 @@ cython==3.0.0
     # via -r requirements/cython.txt
 distlib==0.3.3
     # via virtualenv
-docutils==0.17.1
+docutils==0.20.1
     # via sphinx
 exceptiongroup==1.1.2
     # via pytest
@@ -183,7 +183,7 @@ slotscheck==0.8.0
     # via -r requirements/lint.txt
 snowballstemmer==2.1.0
     # via sphinx
-sphinx==5.3.0
+sphinx==7.1.0
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-asyncio
