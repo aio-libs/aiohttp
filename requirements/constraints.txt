@@ -53,9 +53,8 @@ coverage==6.5.0
     # via
     #   -r requirements/test.txt
     #   pytest-cov
-cryptography==39.0.1 ; platform_machine != "i686"
+cryptography==39.0.1
     # via
-    #   -r requirements/test.txt
     #   pyjwt
     #   trustme
 cython==3.0.0
@@ -74,7 +73,7 @@ frozenlist==1.4.0
     # via
     #   -r requirements/base.txt
     #   aiosignal
-funcparserlib==1.0.0a0
+funcparserlib==1.0.1
     # via
     #   -r requirements/doc.txt
     #   blockdiag
