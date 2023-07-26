@@ -53,9 +53,8 @@ coverage==6.5.0
     # via
     #   -r requirements/test.txt
     #   pytest-cov
-cryptography==39.0.1 ; platform_machine != "i686"
+cryptography==39.0.1
     # via
-    #   -r requirements/test.txt
     #   pyjwt
     #   trustme
 cython==3.0.0
@@ -80,7 +79,7 @@ funcparserlib==1.0.0a0
     #   blockdiag
 gidgethub==5.0.1
     # via cherry-picker
-gunicorn==20.1.0
+gunicorn==21.2.0
     # via -r requirements/base.txt
 identify==2.3.3
     # via pre-commit
@@ -116,6 +115,7 @@ nodeenv==1.6.0
 packaging==21.2
     # via
     #   build
+    #   gunicorn
     #   pytest
     #   sphinx
 pillow==9.3.0
@@ -264,6 +264,5 @@ pip==23.2.1
 setuptools==58.4.0
     # via
     #   blockdiag
-    #   gunicorn
     #   pip-tools
     #   towncrier
