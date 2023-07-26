@@ -24,7 +24,7 @@ brotli==1.0.9
     #   -r requirements/test.txt
 build==0.10.0
     # via pip-tools
-certifi==2021.10.8
+certifi==2022.12.7
     # via requests
 cffi==1.15.0
     # via
@@ -53,7 +53,7 @@ coverage==6.5.0
     # via
     #   -r requirements/test.txt
     #   pytest-cov
-cryptography==38.0.2
+cryptography==39.0.1 ; platform_machine != "i686"
     # via
     #   pyjwt
     #   trustme
@@ -117,7 +117,7 @@ packaging==21.2
     #   build
     #   pytest
     #   sphinx
-pillow==9.2.0
+pillow==9.3.0
     # via blockdiag
 pip-tools==7.1.0
     # via -r requirements/dev.txt
@@ -137,7 +137,7 @@ pydantic==1.8.2
     # via python-on-whales
 pyenchant==3.2.2
     # via sphinxcontrib-spelling
-pygments==2.13.0
+pygments==2.15.0
     # via sphinx
 pyjwt==2.3.0
     # via gidgethub
@@ -167,7 +167,7 @@ re-assert==1.1.0
     # via -r requirements/test.txt
 regex==2021.11.2
     # via re-assert
-requests==2.26.0
+requests==2.31.0
     # via
     #   cherry-picker
     #   python-on-whales
@@ -205,7 +205,7 @@ sphinxcontrib-qthelp==1.0.3
     # via sphinx
 sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
-sphinxcontrib-spelling==7.3.2 ; platform_system != "Windows"
+sphinxcontrib-spelling==7.6.1 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.txt
 sphinxcontrib-towncrier==0.3.0a0
     # via -r requirements/doc.txt
@@ -252,7 +252,7 @@ wait-for-it==2.2.1
     # via -r requirements/test.txt
 webcolors==1.11.1
     # via blockdiag
-wheel==0.37.0
+wheel==0.38.1
     # via pip-tools
 yarl==1.9.2
     # via -r requirements/base.txt
