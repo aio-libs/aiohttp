@@ -53,9 +53,8 @@ coverage==6.5.0
     # via
     #   -r requirements/test.txt
     #   pytest-cov
-cryptography==39.0.1 ; platform_machine != "i686"
+cryptography==39.0.1
     # via
-    #   -r requirements/test.txt
     #   pyjwt
     #   trustme
 cython==3.0.0
@@ -208,7 +207,7 @@ sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
 sphinxcontrib-spelling==7.6.1 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.txt
-sphinxcontrib-towncrier==0.3.0a0
+sphinxcontrib-towncrier==0.3.2a0
     # via -r requirements/doc.txt
 toml==0.10.2
     # via
