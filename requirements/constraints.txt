@@ -79,7 +79,7 @@ funcparserlib==1.0.1
     #   blockdiag
 gidgethub==5.0.1
     # via cherry-picker
-gunicorn==20.1.0
+gunicorn==21.2.0
     # via -r requirements/base.txt
 identify==2.3.3
     # via pre-commit
@@ -115,6 +115,7 @@ nodeenv==1.6.0
 packaging==21.2
     # via
     #   build
+    #   gunicorn
     #   pytest
     #   sphinx
 pillow==9.3.0
@@ -261,6 +262,5 @@ pip==23.2.1
 setuptools==65.5.1
     # via
     #   blockdiag
-    #   gunicorn
     #   pip-tools
     #   towncrier
