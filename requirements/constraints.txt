@@ -53,9 +53,8 @@ coverage==6.5.0
     # via
     #   -r requirements/test.txt
     #   pytest-cov
-cryptography==39.0.1 ; platform_machine != "i686"
+cryptography==39.0.1
     # via
-    #   -r requirements/test.txt
     #   pyjwt
     #   trustme
 cython==3.0.0
@@ -126,7 +125,7 @@ platformdirs==2.4.0
     # via virtualenv
 pluggy==1.0.0
     # via pytest
-pre-commit==2.17.0
+pre-commit==3.3.3
     # via -r requirements/lint.txt
 proxy-py==2.4.4rc3
     # via -r requirements/test.txt
@@ -211,9 +210,7 @@ sphinxcontrib-spelling==7.6.1 ; platform_system != "Windows"
 sphinxcontrib-towncrier==0.3.0a0
     # via -r requirements/doc.txt
 toml==0.10.2
-    # via
-    #   cherry-picker
-    #   pre-commit
+    # via cherry-picker
 tomli==1.2.2
     # via
     #   build
