@@ -73,13 +73,13 @@ frozenlist==1.4.0
     # via
     #   -r requirements/base.txt
     #   aiosignal
-funcparserlib==1.0.0a0
+funcparserlib==1.0.1
     # via
     #   -r requirements/doc.txt
     #   blockdiag
 gidgethub==5.0.1
     # via cherry-picker
-gunicorn==20.1.0
+gunicorn==21.2.0
     # via -r requirements/base.txt
 identify==2.3.3
     # via pre-commit
@@ -100,7 +100,7 @@ jinja2==3.0.2
     #   towncrier
 markupsafe==2.0.1
     # via jinja2
-multidict==5.2.0
+multidict==6.0.4
     # via
     #   -r requirements/multidict.txt
     #   yarl
@@ -115,6 +115,7 @@ nodeenv==1.6.0
 packaging==21.2
     # via
     #   build
+    #   gunicorn
     #   pytest
     #   sphinx
 pillow==9.3.0
@@ -125,7 +126,7 @@ platformdirs==2.4.0
     # via virtualenv
 pluggy==1.0.0
     # via pytest
-pre-commit==2.17.0
+pre-commit==3.3.3
     # via -r requirements/lint.txt
 proxy-py==2.4.4rc3
     # via -r requirements/test.txt
@@ -205,14 +206,12 @@ sphinxcontrib-qthelp==1.0.3
     # via sphinx
 sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
-sphinxcontrib-spelling==7.6.1 ; platform_system != "Windows"
+sphinxcontrib-spelling==8.0.0 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.txt
-sphinxcontrib-towncrier==0.3.0a0
+sphinxcontrib-towncrier==0.3.2a0
     # via -r requirements/doc.txt
 toml==0.10.2
-    # via
-    #   cherry-picker
-    #   pre-commit
+    # via cherry-picker
 tomli==1.2.2
     # via
     #   build
@@ -229,7 +228,7 @@ towncrier==22.8.0
     #   sphinxcontrib-towncrier
 tqdm==4.62.3
     # via python-on-whales
-trustme==0.9.0 ; platform_machine != "i686"
+trustme==1.1.0 ; platform_machine != "i686"
     # via -r requirements/test.txt
 typer==0.6.1
     # via python-on-whales
@@ -260,9 +259,8 @@ yarl==1.9.2
 # The following packages are considered to be unsafe in a requirements file:
 pip==23.2.1
     # via pip-tools
-setuptools==58.4.0
+setuptools==65.5.1
     # via
     #   blockdiag
-    #   gunicorn
     #   pip-tools
     #   towncrier
