@@ -55,7 +55,6 @@ coverage==6.5.0
     #   pytest-cov
 cryptography==39.0.1 ; platform_machine != "i686"
     # via
-    #   -r requirements/test.txt
     #   pyjwt
     #   trustme
 cython==3.0.0
@@ -261,7 +260,7 @@ yarl==1.9.2
 # The following packages are considered to be unsafe in a requirements file:
 pip==23.2.1
     # via pip-tools
-setuptools==58.4.0
+setuptools==65.5.1
     # via
     #   blockdiag
     #   gunicorn
