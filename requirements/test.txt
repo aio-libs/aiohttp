@@ -10,5 +10,5 @@ pytest-mock==3.11.1
 python-on-whales==0.53.0
 re-assert==1.1.0
 setuptools-git==1.2
-trustme==0.9.0; platform_machine!="i686"    # no 32-bit wheels
+trustme==1.1.0; platform_machine!="i686"    # no 32-bit wheels
 wait-for-it==2.2.1

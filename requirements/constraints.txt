@@ -227,7 +227,7 @@ towncrier==22.8.0
     #   sphinxcontrib-towncrier
 tqdm==4.62.3
     # via python-on-whales
-trustme==0.9.0 ; platform_machine != "i686"
+trustme==1.1.0 ; platform_machine != "i686"
     # via -r requirements/test.txt
 typer==0.6.1
     # via python-on-whales
