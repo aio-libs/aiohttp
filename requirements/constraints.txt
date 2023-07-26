@@ -32,7 +32,7 @@ cffi==1.15.0
     #   pycares
 cfgv==3.3.1
     # via pre-commit
-charset-normalizer==2.0.12
+charset-normalizer==3.2.0
     # via
     #   -r requirements/base.txt
     #   requests
@@ -53,9 +53,8 @@ coverage==6.5.0
     # via
     #   -r requirements/test.txt
     #   pytest-cov
-cryptography==39.0.1 ; platform_machine != "i686"
+cryptography==39.0.1
     # via
-    #   -r requirements/test.txt
     #   pyjwt
     #   trustme
 cython==3.0.0
