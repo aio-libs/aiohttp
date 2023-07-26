@@ -53,9 +53,8 @@ coverage==6.5.0
     # via
     #   -r requirements/test.txt
     #   pytest-cov
-cryptography==39.0.1 ; platform_machine != "i686"
+cryptography==39.0.1
     # via
-    #   -r requirements/test.txt
     #   pyjwt
     #   trustme
 cython==3.0.0
@@ -101,7 +100,7 @@ jinja2==3.0.2
     #   towncrier
 markupsafe==2.0.1
     # via jinja2
-multidict==5.2.0
+multidict==6.0.4
     # via
     #   -r requirements/multidict.txt
     #   yarl
