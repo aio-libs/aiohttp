@@ -24,7 +24,7 @@ brotli==1.0.9
     #   -r requirements/test.txt
 build==0.10.0
     # via pip-tools
-certifi==2021.10.8
+certifi==2022.12.7
     # via requests
 cffi==1.15.0
     # via
