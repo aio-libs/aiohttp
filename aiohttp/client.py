@@ -16,6 +16,7 @@ from typing import (
     Any,
     Awaitable,
     Callable,
+    Collection,
     Coroutine,
     FrozenSet,
     Generator,
@@ -450,11 +451,7 @@ class ClientSession:
                         auth = self._default_auth
                     # It would be confusing if we support explicit
                     # Authorization header with auth argument
-                    if (
-                        headers is not None
-                        and auth is not None
-                        and hdrs.AUTHORIZATION in headers
-                    ):
+                    if auth is not None and hdrs.AUTHORIZATION in headers:
                         raise ValueError(
                             "Cannot combine AUTHORIZATION header "
                             "with AUTH argument or credentials "
@@ -666,7 +663,7 @@ class ClientSession:
         url: StrOrURL,
         *,
         method: str = hdrs.METH_GET,
-        protocols: Iterable[str] = (),
+        protocols: Collection[str] = (),
         timeout: Union[ClientWSTimeout, float, _SENTINEL, None] = sentinel,
         receive_timeout: Optional[float] = None,
         autoclose: bool = True,
@@ -712,7 +709,7 @@ class ClientSession:
         url: StrOrURL,
         *,
         method: str = hdrs.METH_GET,
-        protocols: Iterable[str] = (),
+        protocols: Collection[str] = (),
         timeout: Union[ClientWSTimeout, float, _SENTINEL, None] = sentinel,
         receive_timeout: Optional[float] = None,
         autoclose: bool = True,
@@ -1103,7 +1100,7 @@ class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType
         return self._coro.send(arg)
 
     def throw(self, arg: BaseException) -> None:  # type: ignore[override]
-        self._coro.throw(arg)
+        self._coro.throw(arg)  # type: ignore[unused-awaitable]
 
     def close(self) -> None:
         return self._coro.close()

@@ -104,7 +104,7 @@ multidict==6.0.4
     # via
     #   -r requirements/multidict.txt
     #   yarl
-mypy==0.982 ; implementation_name == "cpython"
+mypy==1.4.1 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.txt
     #   -r requirements/test.txt
@@ -158,7 +158,7 @@ pytest-mock==3.11.1
     # via -r requirements/test.txt
 python-dateutil==2.8.2
     # via freezegun
-python-on-whales==0.53.0
+python-on-whales==0.63.0
     # via -r requirements/test.txt
 pytz==2021.3
     # via babel
