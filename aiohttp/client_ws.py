@@ -189,7 +189,7 @@ class ClientWebSocketResponse:
         # we need to break `receive()` cycle first,
         # `close()` may be called from different task
         if self._waiting is not None and not self._closed:
-            self._reader.feed_data(WS_CLOSING_MESSAGE, 0)
+            self._reader.feed_data(WS_CLOSING_MESSAGE)
             await self._waiting
 
         if not self._closed:

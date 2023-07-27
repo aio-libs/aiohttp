@@ -227,8 +227,7 @@ class StreamReader(AsyncStreamReaderMixin):
         self._buffer.appendleft(data)
         self._eof_counter = 0
 
-    # TODO: size is ignored, remove the param later
-    def feed_data(self, data: bytes, size: int = 0) -> None:
+    def feed_data(self, data: bytes) -> None:
         assert not self._eof, "feed_data after feed_eof"
 
         if not data:
@@ -519,7 +518,7 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     async def wait_eof(self) -> None:
         return
 
-    def feed_data(self, data: bytes, n: int = 0) -> None:
+    def feed_data(self, data: bytes) -> None:
         pass
 
     async def readline(self) -> bytes:
@@ -555,7 +554,7 @@ class DataQueue(Generic[_T]):
         self._waiter: Optional[asyncio.Future[None]] = None
         self._exception: Optional[BaseException] = None
         self._size = 0
-        self._buffer: Deque[Tuple[_T, int]] = collections.deque()
+        self._buffer: Deque[_T] = collections.deque()
 
     def __len__(self) -> int:
         return len(self._buffer)
@@ -578,9 +577,10 @@ class DataQueue(Generic[_T]):
             self._waiter = None
             set_exception(waiter, exc)
 
-    def feed_data(self, data: _T, size: int = 0) -> None:
-        self._size += size
-        self._buffer.append((data, size))
+    def feed_data(self, data: _T) -> None:
+        if isinstance(data, (bytes, bytearray, memoryview)):
+            self._size += len(data)
+        self._buffer.append(data)
 
         waiter = self._waiter
         if waiter is not None:
@@ -606,8 +606,9 @@ class DataQueue(Generic[_T]):
                 raise
 
         if self._buffer:
-            data, size = self._buffer.popleft()
-            self._size -= size
+            data = self._buffer.popleft()
+            if isinstance(data, (bytes, bytearray, memoryview)):
+                self._size -= len(data)
             return data
         else:
             if self._exception is not None:
@@ -633,8 +634,8 @@ class FlowControlDataQueue(DataQueue[_T]):
         self._protocol = protocol
         self._limit = limit * 2
 
-    def feed_data(self, data: _T, size: int = 0) -> None:
-        super().feed_data(data, size)
+    def feed_data(self, data: _T) -> None:
+        super().feed_data(data)
 
         if self._size > self._limit and not self._protocol._reading_paused:
             self._protocol.pause_reading()

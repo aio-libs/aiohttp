@@ -26,7 +26,6 @@ try:
 except ImportError:
     brotli = None
 
-
 REQUEST_PARSERS: Any = [HttpRequestParserPy]
 RESPONSE_PARSERS: Any = [HttpResponseParserPy]
 
@@ -943,7 +942,7 @@ class TestParsePayload:
         p.feed_eof()
 
         assert out.is_eof()
-        assert [(bytearray(b"data"), 4)] == list(out._buffer)
+        assert [(bytearray(b"data"))] == list(out._buffer)
 
     async def test_parse_no_body(self, stream: Any) -> None:
         out = aiohttp.FlowControlDataQueue(
@@ -1046,7 +1045,7 @@ class TestParsePayload:
         eof, tail = p.feed_data(b"1245")
         assert eof
 
-        assert b"12" == b"".join(d for d, _ in out._buffer)
+        assert b"12" == out._buffer[0]
         assert b"45" == tail
 
     async def test_http_payload_parser_deflate(self, stream: Any) -> None:
@@ -1059,7 +1058,7 @@ class TestParsePayload:
         )
         p = HttpPayloadParser(out, length=length, compression="deflate")
         p.feed_data(COMPRESSED)
-        assert b"data" == b"".join(d for d, _ in out._buffer)
+        assert b"data" == out._buffer[0]
         assert out.is_eof()
 
     async def test_http_payload_parser_deflate_no_hdrs(self, stream: Any) -> None:
@@ -1073,7 +1072,7 @@ class TestParsePayload:
         )
         p = HttpPayloadParser(out, length=length, compression="deflate")
         p.feed_data(COMPRESSED)
-        assert b"data" == b"".join(d for d, _ in out._buffer)
+        assert b"data" == out._buffer[0]
         assert out.is_eof()
 
     async def test_http_payload_parser_deflate_light(self, stream: Any) -> None:
@@ -1086,7 +1085,8 @@ class TestParsePayload:
         )
         p = HttpPayloadParser(out, length=length, compression="deflate")
         p.feed_data(COMPRESSED)
-        assert b"data" == b"".join(d for d, _ in out._buffer)
+
+        assert b"data" == out._buffer[0]
         assert out.is_eof()
 
     async def test_http_payload_parser_deflate_split(self, stream: Any) -> None:
@@ -1096,10 +1096,10 @@ class TestParsePayload:
         p = HttpPayloadParser(out, compression="deflate", readall=True)
         # Feeding one correct byte should be enough to choose exact
         # deflate decompressor
-        p.feed_data(b"x", 1)
-        p.feed_data(b"\x9cKI,I\x04\x00\x04\x00\x01\x9b", 11)
+        p.feed_data(b"x")
+        p.feed_data(b"\x9cKI,I\x04\x00\x04\x00\x01\x9b")
         p.feed_eof()
-        assert b"data" == b"".join(d for d, _ in out._buffer)
+        assert b"data" == out._buffer[0]
 
     async def test_http_payload_parser_deflate_split_err(self, stream: Any) -> None:
         out = aiohttp.FlowControlDataQueue(
@@ -1108,10 +1108,10 @@ class TestParsePayload:
         p = HttpPayloadParser(out, compression="deflate", readall=True)
         # Feeding one wrong byte should be enough to choose exact
         # deflate decompressor
-        p.feed_data(b"K", 1)
-        p.feed_data(b"I,I\x04\x00", 5)
+        p.feed_data(b"K")
+        p.feed_data(b"I,I\x04\x00")
         p.feed_eof()
-        assert b"data" == b"".join(d for d, _ in out._buffer)
+        assert b"data" == out._buffer[0]
 
     async def test_http_payload_parser_length_zero(self, stream: Any) -> None:
         out = aiohttp.FlowControlDataQueue(
@@ -1129,7 +1129,7 @@ class TestParsePayload:
         )
         p = HttpPayloadParser(out, length=len(compressed), compression="br")
         p.feed_data(compressed)
-        assert b"brotli data" == b"".join(d for d, _ in out._buffer)
+        assert b"brotli data" == out._buffer[0]
         assert out.is_eof()
 
 
@@ -1144,8 +1144,8 @@ class TestDeflateBuffer:
         dbuf.decompressor.decompress_sync.return_value = b"line"
 
         # First byte should be b'x' in order code not to change the decoder.
-        dbuf.feed_data(b"xxxx", 4)
-        assert [b"line"] == list(d for d, _ in buf._buffer)
+        dbuf.feed_data(b"xxxx")
+        assert [b"line"] == list(buf._buffer)
 
     async def test_feed_data_err(self, stream: Any) -> None:
         buf = aiohttp.FlowControlDataQueue(
@@ -1160,7 +1160,7 @@ class TestDeflateBuffer:
         with pytest.raises(http_exceptions.ContentEncodingError):
             # Should be more than 4 bytes to trigger deflate FSM error.
             # Should start with b'x', otherwise code switch mocked decoder.
-            dbuf.feed_data(b"xsomedata", 9)
+            dbuf.feed_data(b"xsomedata")
 
     async def test_feed_eof(self, stream: Any) -> None:
         buf = aiohttp.FlowControlDataQueue(
@@ -1172,7 +1172,7 @@ class TestDeflateBuffer:
         dbuf.decompressor.flush.return_value = b"line"
 
         dbuf.feed_eof()
-        assert [b"line"] == list(d for d, _ in buf._buffer)
+        assert [b"line"] == list(buf._buffer)
         assert buf._eof
 
     async def test_feed_eof_err_deflate(self, stream: Any) -> None:
@@ -1199,7 +1199,7 @@ class TestDeflateBuffer:
         dbuf.decompressor.eof = False
 
         dbuf.feed_eof()
-        assert [b"line"] == list(d for d, _ in buf._buffer)
+        assert [b"line"] == list(buf._buffer)
 
     async def test_feed_eof_no_err_brotli(self, stream: Any) -> None:
         buf = aiohttp.FlowControlDataQueue(
@@ -1212,7 +1212,7 @@ class TestDeflateBuffer:
         dbuf.decompressor.eof = False
 
         dbuf.feed_eof()
-        assert [b"line"] == list(d for d, _ in buf._buffer)
+        assert [b"line"] == list(buf._buffer)
 
     async def test_empty_body(self, stream: Any) -> None:
         buf = aiohttp.FlowControlDataQueue(
