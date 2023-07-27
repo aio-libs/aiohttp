@@ -348,11 +348,11 @@ The client session supports the context manager protocol for self closing.
                          verify_ssl=None, fingerprint=None, \
                          ssl_context=None, proxy_headers=None, \
                          auto_decompress=None)
-      :async-with:
       :async:
       :noindexentry:
 
-      Performs an asynchronous HTTP request. Returns a response object.
+      Performs an asynchronous HTTP request. Returns a response object that
+      should be used as an async context manager.
 
       :param str method: HTTP method
 
@@ -529,10 +529,9 @@ The client session supports the context manager protocol for self closing.
          object.
 
    .. method:: get(url, *, allow_redirects=True, **kwargs)
-      :async-with:
       :async:
 
-      Perform a ``GET`` request.
+      Perform a ``GET`` request. Returns an async context manager.
 
       In order to modify inner
       :meth:`request<aiohttp.ClientSession.request>`
@@ -547,10 +546,9 @@ The client session supports the context manager protocol for self closing.
                               <ClientResponse>` object.
 
    .. method:: post(url, *, data=None, **kwargs)
-      :async-with:
       :async:
 
-      Perform a ``POST`` request.
+      Perform a ``POST`` request. Returns an async context manager.
 
       In order to modify inner
       :meth:`request<aiohttp.ClientSession.request>`
@@ -567,10 +565,9 @@ The client session supports the context manager protocol for self closing.
                               <ClientResponse>` object.
 
    .. method:: put(url, *, data=None, **kwargs)
-      :async-with:
       :async:
 
-      Perform a ``PUT`` request.
+      Perform a ``PUT`` request. Returns an async context manager.
 
       In order to modify inner
       :meth:`request<aiohttp.ClientSession.request>`
@@ -587,10 +584,9 @@ The client session supports the context manager protocol for self closing.
                               <ClientResponse>` object.
 
    .. method:: delete(url, **kwargs)
-      :async-with:
       :async:
 
-      Perform a ``DELETE`` request.
+      Perform a ``DELETE`` request. Returns an async context manager.
 
       In order to modify inner
       :meth:`request<aiohttp.ClientSession.request>`
@@ -602,10 +598,9 @@ The client session supports the context manager protocol for self closing.
                               <ClientResponse>` object.
 
    .. method:: head(url, *, allow_redirects=False, **kwargs)
-      :async-with:
       :async:
 
-      Perform a ``HEAD`` request.
+      Perform a ``HEAD`` request. Returns an async context manager.
 
       In order to modify inner
       :meth:`request<aiohttp.ClientSession.request>`
@@ -620,10 +615,9 @@ The client session supports the context manager protocol for self closing.
                               <ClientResponse>` object.
 
    .. method:: options(url, *, allow_redirects=True, **kwargs)
-      :async-with:
       :async:
 
-      Perform an ``OPTIONS`` request.
+      Perform an ``OPTIONS`` request. Returns an async context manager.
 
       In order to modify inner
       :meth:`request<aiohttp.ClientSession.request>`
@@ -639,10 +633,9 @@ The client session supports the context manager protocol for self closing.
                               <ClientResponse>` object.
 
    .. method:: patch(url, *, data=None, **kwargs)
-      :async-with:
       :async:
 
-      Perform a ``PATCH`` request.
+      Perform a ``PATCH`` request. Returns an async context manager.
 
       In order to modify inner
       :meth:`request<aiohttp.ClientSession.request>`
@@ -671,11 +664,10 @@ The client session supports the context manager protocol for self closing.
                             verify_ssl=None, fingerprint=None, \
                             ssl_context=None, proxy_headers=None, \
                             compress=0, max_msg_size=4194304)
-      :async-with:
       :async:
 
       Create a websocket connection. Returns a
-      :class:`ClientWebSocketResponse` object.
+      :class:`ClientWebSocketResponse` async context manager object.
 
       :param url: Websocket server url, :class:`~yarl.URL` or :class:`str` that
                   will be encoded with :class:`~yarl.URL` (see :class:`~yarl.URL`
@@ -838,11 +830,11 @@ certification chaining.
                         read_bufsize=None, \
                         connector=None, loop=None,\
                         read_until_eof=True, timeout=sentinel)
-   :async-with:
    :async:
 
    Asynchronous context manager for performing an asynchronous HTTP
-   request. Returns a :class:`ClientResponse` response object.
+   request. Returns a :class:`ClientResponse` response object. Use as
+   an async context manager.
 
    :param str method: HTTP method
 
