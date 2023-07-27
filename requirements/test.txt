@@ -4,7 +4,7 @@ coverage==7.2.7
 cryptography==41.0.2; platform_machine!="i686" # no 32-bit wheels; no python 3.9 wheels yet
 freezegun==1.1.0
 mypy==0.982; implementation_name=="cpython"
-proxy.py ~= 2.4.4rc3
+proxy.py==2.4.4rc4
 pytest==7.4.0
 pytest-cov==4.1.0
 pytest-mock==3.11.1
