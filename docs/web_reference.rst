@@ -410,8 +410,8 @@ and :ref:`aiohttp-web-signals` handlers.
          :meth:`~aiohttp.web.BaseRequest.text` call will return the same value.
 
    .. method:: json(*, loads=json.loads, \
-      :async:
                     content_type='application/json')
+      :async:
 
       Read request body decoded as *json*. If request's content-type does not
       match `content_type` parameter, :exc:`aiohttp.web.HTTPBadRequest` get raised.
