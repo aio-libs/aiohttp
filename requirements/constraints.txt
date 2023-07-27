@@ -125,7 +125,7 @@ pep517==0.12.0
     # via build
 pillow==9.2.0
     # via blockdiag
-pip-tools==6.9.0
+pip-tools==7.1.0
     # via -r requirements/dev.txt
 platformdirs==2.4.0
     # via virtualenv
@@ -223,6 +223,7 @@ tomli==1.2.2
     #   coverage
     #   mypy
     #   pep517
+    #   pip-tools
     #   pytest
     #   towncrier
 towncrier==22.8.0
@@ -260,7 +261,7 @@ yarl==1.9.2
     # via -r requirements/base.txt
 
 # The following packages are considered to be unsafe in a requirements file:
-pip==21.3.1
+pip==23.2.1
     # via pip-tools
 setuptools==59.1.0
     # via
