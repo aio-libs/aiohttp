@@ -51,7 +51,6 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     # Third-party extensions:
-    "sphinxcontrib.asyncio",
     "sphinxcontrib.blockdiag",
     "sphinxcontrib.towncrier",  # provides `towncrier-draft-entries` directive
 ]
