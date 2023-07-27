@@ -1,0 +1,1 @@
+Raise SystemExit or KeyboardInterrupt instead of wrapping them.
