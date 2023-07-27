@@ -587,7 +587,7 @@ def _weakref_handle(info: "Tuple[weakref.ref[object], str]") -> None:
 def weakref_handle(
     ob: object,
     name: str,
-    timeout: float,
+    timeout: Optional[float],
     loop: asyncio.AbstractEventLoop,
     timeout_ceil_threshold: float = 5,
 ) -> Optional[asyncio.TimerHandle]:
@@ -602,7 +602,7 @@ def weakref_handle(
 
 def call_later(
     cb: Callable[[], Any],
-    timeout: float,
+    timeout: Optional[float],
     loop: asyncio.AbstractEventLoop,
     timeout_ceil_threshold: float = 5,
 ) -> Optional[asyncio.TimerHandle]:
@@ -716,7 +716,7 @@ class TimerContext(BaseTimerContext):
         exc_tb: Optional[TracebackType],
     ) -> Optional[bool]:
         if self._tasks:
-            self._tasks.pop()
+            self._tasks.pop()  # type: ignore[unused-awaitable]
 
         if exc_type is asyncio.CancelledError and self._cancelled:
             raise asyncio.TimeoutError from None
@@ -762,7 +762,7 @@ class HeadersMixin:
         else:
             msg = HeaderParser().parsestr("Content-Type: " + raw)
             self._content_type = msg.get_content_type()
-            params = msg.get_params()
+            params = msg.get_params(())
             self._content_dict = dict(params[1:])  # First element is content type again
 
     @property
@@ -823,8 +823,11 @@ class AppKey(Generic[_T]):
                 module: str = frame.f_globals["__name__"]
                 break
             frame = frame.f_back
+        else:
+            raise RuntimeError("Failed to get module name.")
 
-        self._name = module + "." + name
+        # https://github.com/python/mypy/issues/14209
+        self._name = module + "." + name  # type: ignore[possibly-undefined]
         self._t = t
 
     def __lt__(self, other: object) -> bool:

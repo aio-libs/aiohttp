@@ -961,7 +961,7 @@ class TCPConnector(BaseConnector):
             async with ceil_timeout(
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
             ):
-                return await self._loop.create_connection(*args, **kwargs)  # type: ignore[return-value]  # noqa
+                return await self._loop.create_connection(*args, **kwargs)
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:
@@ -1355,7 +1355,7 @@ class NamedPipeConnector(BaseConnector):
             async with ceil_timeout(
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
             ):
-                _, proto = await self._loop.create_pipe_connection(  # type: ignore[attr-defined] # noqa: E501
+                _, proto = await self._loop.create_pipe_connection(  # type: ignore[attr-defined]
                     self._factory, self._path
                 )
                 # the drain is required so that the connection_made is called
