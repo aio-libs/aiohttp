@@ -1,15 +1,15 @@
 -r base.txt
 Brotli==1.0.9
-coverage==6.5.0
+coverage==7.2.7
 cryptography==41.0.2; platform_machine!="i686" # no 32-bit wheels; no python 3.9 wheels yet
 freezegun==1.1.0
 mypy==0.982; implementation_name=="cpython"
-proxy.py ~= 2.4.4rc3
+proxy.py==2.4.4rc4
 pytest==7.4.0
 pytest-cov==4.1.0
 pytest-mock==3.11.1
 python-on-whales==0.63.0
 re-assert==1.1.0
 setuptools-git==1.2
-trustme==0.9.0; platform_machine!="i686"    # no 32-bit wheels
+trustme==1.1.0; platform_machine!="i686"    # no 32-bit wheels
 wait-for-it==2.2.2
