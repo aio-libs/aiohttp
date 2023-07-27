@@ -10,7 +10,7 @@ from .client_exceptions import (
     ServerTimeoutError,
 )
 from .helpers import BaseTimerContext, set_exception, set_result
-from .http import HttpResponseParser, RawResponseMessage
+from .http import HttpResponseParser, RawResponseMessage, WebSocketReader
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamReader
 
 
@@ -25,7 +25,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
         self._payload: Optional[StreamReader] = None
         self._skip_payload = False
-        self._payload_parser = None
+        self._payload_parser: Optional[WebSocketReader] = None
 
         self._timer = None
 
@@ -46,7 +46,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
     @property
     def should_close(self) -> bool:
-        if self._payload is not None and not self._payload.is_eof() or self._upgraded:
+        if self._payload is not None and not self._payload.is_eof():
             return True
 
         return (

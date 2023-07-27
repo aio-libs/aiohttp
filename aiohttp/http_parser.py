@@ -895,7 +895,8 @@ class DeflateBuffer:
 
         if chunk or self.size > 0:
             self.out.feed_data(chunk, len(chunk))
-            if self.encoding == "deflate" and not self.decompressor.eof:  # type: ignore
+            # decompressor is not brotli unless encoding is "br"
+            if self.encoding == "deflate" and not self.decompressor.eof:  # type: ignore[union-attr]
                 raise ContentEncodingError("deflate")
 
         self.out.feed_eof()

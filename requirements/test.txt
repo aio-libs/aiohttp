@@ -2,7 +2,7 @@
 Brotli==1.0.9
 coverage==6.5.0
 freezegun==1.1.0
-mypy==0.982; implementation_name=="cpython"
+mypy==1.4.1; implementation_name=="cpython"
 proxy.py ~= 2.4.4rc3
 pytest==7.4.0
 pytest-cov==4.1.0
