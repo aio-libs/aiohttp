@@ -336,7 +336,7 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 3.7
 
-   .. comethod:: request(method, url, *, params=None, data=None, json=None,\
+   .. method:: request(method, url, *, params=None, data=None, json=None,\
                          cookies=None, headers=None, skip_auto_headers=None, \
                          auth=None, allow_redirects=True,\
                          max_redirects=10,\
@@ -349,7 +349,7 @@ The client session supports the context manager protocol for self closing.
                          ssl_context=None, proxy_headers=None, \
                          auto_decompress=None)
       :async-with:
-      :coroutine:
+      :async:
       :noindexentry:
 
       Performs an asynchronous HTTP request. Returns a response object.
@@ -528,9 +528,9 @@ The client session supports the context manager protocol for self closing.
       :return ClientResponse: a :class:`client response <ClientResponse>`
          object.
 
-   .. comethod:: get(url, *, allow_redirects=True, **kwargs)
+   .. method:: get(url, *, allow_redirects=True, **kwargs)
       :async-with:
-      :coroutine:
+      :async:
 
       Perform a ``GET`` request.
 
@@ -546,9 +546,9 @@ The client session supports the context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-   .. comethod:: post(url, *, data=None, **kwargs)
+   .. method:: post(url, *, data=None, **kwargs)
       :async-with:
-      :coroutine:
+      :async:
 
       Perform a ``POST`` request.
 
@@ -566,9 +566,9 @@ The client session supports the context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-   .. comethod:: put(url, *, data=None, **kwargs)
+   .. method:: put(url, *, data=None, **kwargs)
       :async-with:
-      :coroutine:
+      :async:
 
       Perform a ``PUT`` request.
 
@@ -586,9 +586,9 @@ The client session supports the context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-   .. comethod:: delete(url, **kwargs)
+   .. method:: delete(url, **kwargs)
       :async-with:
-      :coroutine:
+      :async:
 
       Perform a ``DELETE`` request.
 
@@ -601,9 +601,9 @@ The client session supports the context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-   .. comethod:: head(url, *, allow_redirects=False, **kwargs)
+   .. method:: head(url, *, allow_redirects=False, **kwargs)
       :async-with:
-      :coroutine:
+      :async:
 
       Perform a ``HEAD`` request.
 
@@ -619,9 +619,9 @@ The client session supports the context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-   .. comethod:: options(url, *, allow_redirects=True, **kwargs)
+   .. method:: options(url, *, allow_redirects=True, **kwargs)
       :async-with:
-      :coroutine:
+      :async:
 
       Perform an ``OPTIONS`` request.
 
@@ -638,9 +638,9 @@ The client session supports the context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-   .. comethod:: patch(url, *, data=None, **kwargs)
+   .. method:: patch(url, *, data=None, **kwargs)
       :async-with:
-      :coroutine:
+      :async:
 
       Perform a ``PATCH`` request.
 
@@ -657,7 +657,7 @@ The client session supports the context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-   .. comethod:: ws_connect(url, *, method='GET', \
+   .. method:: ws_connect(url, *, method='GET', \
                             protocols=(), timeout=10.0,\
                             receive_timeout=None,\
                             auth=None,\
@@ -672,7 +672,7 @@ The client session supports the context manager protocol for self closing.
                             ssl_context=None, proxy_headers=None, \
                             compress=0, max_msg_size=4194304)
       :async-with:
-      :coroutine:
+      :async:
 
       Create a websocket connection. Returns a
       :class:`ClientWebSocketResponse` object.
@@ -802,7 +802,8 @@ The client session supports the context manager protocol for self closing.
          .. versionadded:: 3.5
 
 
-   .. comethod:: close()
+   .. method:: close()
+      :async:
 
       Close underlying connector.
 
@@ -827,7 +828,7 @@ keepaliving, cookies and complex connection stuff like properly configured SSL
 certification chaining.
 
 
-.. cofunction:: request(method, url, *, params=None, data=None, \
+.. function:: request(method, url, *, params=None, data=None, \
                         json=None,\
                         headers=None, cookies=None, auth=None, \
                         allow_redirects=True, max_redirects=10, \
@@ -838,6 +839,7 @@ certification chaining.
                         connector=None, loop=None,\
                         read_until_eof=True, timeout=sentinel)
    :async-with:
+   :async:
 
    Asynchronous context manager for performing an asynchronous HTTP
    request. Returns a :class:`ClientResponse` response object.
@@ -1012,11 +1014,13 @@ BaseConnector
 
       Read-only property.
 
-   .. comethod:: close()
+   .. method:: close()
+      :async:
 
       Close all opened connections.
 
-   .. comethod:: connect(request)
+   .. method:: connect(request)
+      :async:
 
       Get a free connection from pool or create new one if connection
       is absent in the pool.
@@ -1030,7 +1034,8 @@ BaseConnector
 
       :return: :class:`Connection` object.
 
-   .. comethod:: _create_connection(req)
+   .. method:: _create_connection(req)
+      :async:
 
       Abstract method for actual connection establishing, should be
       overridden in subclasses.
@@ -1381,7 +1386,8 @@ Response object
 
       For :term:`keep-alive` support see :meth:`release`.
 
-   .. comethod:: read()
+   .. method:: read()
+      :async:
 
       Read the whole response's body as :class:`bytes`.
 
@@ -1409,7 +1415,8 @@ Response object
 
       Do nothing for success responses (less than 400).
 
-   .. comethod:: text(encoding=None)
+   .. method:: text(encoding=None)
+      :async:
 
       Read response's body and return decoded :class:`str` using
       specified *encoding* parameter.
@@ -1444,8 +1451,9 @@ Response object
 
             await resp.text('ISO-8859-1')
 
-   .. comethod:: json(*, encoding=None, loads=json.loads, \
+   .. method:: json(*, encoding=None, loads=json.loads, \
                       content_type='application/json')
+      :async:
 
       Read response's body as *JSON*, return :class:`dict` using
       specified *encoding* and *loader*. If data is not still available
@@ -1534,7 +1542,8 @@ manually.
 
       Returns exception if any occurs or returns None.
 
-   .. comethod:: ping(message=b'')
+   .. method:: ping(message=b'')
+      :async:
 
       Send :const:`~aiohttp.WSMsgType.PING` to peer.
 
@@ -1546,7 +1555,8 @@ manually.
 
          The method is converted into :term:`coroutine`
 
-   .. comethod:: pong(message=b'')
+   .. method:: pong(message=b'')
+      :async:
 
       Send :const:`~aiohttp.WSMsgType.PONG` to peer.
 
@@ -1558,7 +1568,8 @@ manually.
 
          The method is converted into :term:`coroutine`
 
-   .. comethod:: send_str(data, compress=None)
+   .. method:: send_str(data, compress=None)
+      :async:
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.TEXT` message.
 
@@ -1575,7 +1586,8 @@ manually.
          The method is converted into :term:`coroutine`,
          *compress* parameter added.
 
-   .. comethod:: send_bytes(data, compress=None)
+   .. method:: send_bytes(data, compress=None)
+      :async:
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.BINARY` message.
 
@@ -1593,7 +1605,8 @@ manually.
          The method is converted into :term:`coroutine`,
          *compress* parameter added.
 
-   .. comethod:: send_json(data, compress=None, *, dumps=json.dumps)
+   .. method:: send_json(data, compress=None, *, dumps=json.dumps)
+      :async:
 
       Send *data* to peer as JSON string.
 
@@ -1619,7 +1632,8 @@ manually.
          The method is converted into :term:`coroutine`,
          *compress* parameter added.
 
-   .. comethod:: close(*, code=WSCloseCode.OK, message=b'')
+   .. method:: close(*, code=WSCloseCode.OK, message=b'')
+      :async:
 
       A :ref:`coroutine<coroutine>` that initiates closing handshake by sending
       :const:`~aiohttp.WSMsgType.CLOSE` message. It waits for
@@ -1631,7 +1645,8 @@ manually.
       :param message: optional payload of *close* message,
          :class:`str` (converted to *UTF-8* encoded bytes) or :class:`bytes`.
 
-   .. comethod:: receive()
+   .. method:: receive()
+      :async:
 
       A :ref:`coroutine<coroutine>` that waits upcoming *data*
       message from peer and returns it.
