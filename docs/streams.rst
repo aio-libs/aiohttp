@@ -120,8 +120,7 @@ Also there are methods for iterating over data chunks with maximum
 size limit and over any available data.
 
 .. method:: StreamReader.iter_chunked(n)
-      :async:
-   :async-for:
+   :async:
 
    Iterates over data chunks with maximum size limit::
 
@@ -129,8 +128,7 @@ size limit and over any available data.
           print(data)
 
 .. method:: StreamReader.iter_any()
-      :async:
-   :async-for:
+   :async:
 
    Iterates over data chunks in order of intaking them into the stream::
 
@@ -138,8 +136,7 @@ size limit and over any available data.
           print(data)
 
 .. method:: StreamReader.iter_chunks()
-      :async:
-   :async-for:
+   :async:
 
    Iterates over data chunks as received from the server::
 

@@ -1653,7 +1653,8 @@ manually.
 
       :return: :class:`~aiohttp.WSMessage`
 
-   .. coroutinemethod:: receive_str()
+   .. method:: receive_str()
+      :async:
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is
@@ -1663,7 +1664,8 @@ manually.
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
 
-   .. coroutinemethod:: receive_bytes()
+   .. method:: receive_bytes()
+      :async:
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is
@@ -1673,7 +1675,8 @@ manually.
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.TEXT`.
 
-   .. coroutinemethod:: receive_json(*, loads=json.loads)
+   .. method:: receive_json(*, loads=json.loads)
+      :async:
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive_str` and loads
       the JSON string to a Python dict.
