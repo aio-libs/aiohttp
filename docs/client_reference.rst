@@ -941,9 +941,6 @@ By default all *connectors* support *keep-alive connections* (behavior
 is controlled by *force_close* constructor's parameter).
 
 
-BaseConnector
-^^^^^^^^^^^^^
-
 .. class:: BaseConnector(*, keepalive_timeout=15, \
                          force_close=False, limit=100, limit_per_host=0, \
                          enable_cleanup_closed=False, loop=None)
@@ -1032,11 +1029,6 @@ BaseConnector
       Abstract method for actual connection establishing, should be
       overridden in subclasses.
 
-
-
-
-TCPConnector
-^^^^^^^^^^^^
 
 .. class:: TCPConnector(*, ssl=None, verify_ssl=True, fingerprint=None, \
                  use_dns_cache=True, ttl_dns_cache=10, \
@@ -1173,9 +1165,6 @@ TCPConnector
       clear all cache otherwise.
 
 
-UnixConnector
-^^^^^^^^^^^^^
-
 .. class:: UnixConnector(path, *, conn_timeout=None, \
                          keepalive_timeout=30, limit=100, \
                          force_close=False, loop=None)
@@ -1207,9 +1196,6 @@ UnixConnector
 
       Path to *UNIX socket*, read-only :class:`str` property.
 
-
-Connection
-^^^^^^^^^^
 
 .. class:: Connection
 
@@ -1696,9 +1682,6 @@ Utilities
 ---------
 
 
-ClientTimeout
-^^^^^^^^^^^^^
-
 .. class:: ClientTimeout(*, total=None, connect=None, \
                          sock_connect=None, sock_read=None)
 
@@ -1764,9 +1747,6 @@ ClientTimeout
          on production environment.
 
 
-ETag
-^^^^
-
 .. class:: ETag(name, is_weak=False)
 
    Represents `ETag` identifier.
@@ -1781,8 +1761,6 @@ ETag
 
    .. versionadded:: 3.8
 
-RequestInfo
-^^^^^^^^^^^
 
 .. class:: RequestInfo()
 
@@ -1807,9 +1785,6 @@ RequestInfo
 
       .. versionadded:: 3.2
 
-
-BasicAuth
-^^^^^^^^^
 
 .. class:: BasicAuth(login, password='', encoding='latin1')
 
@@ -1850,9 +1825,6 @@ BasicAuth
 
       :return: encoded authentication data, :class:`str`.
 
-
-CookieJar
-^^^^^^^^^
 
 .. class:: CookieJar(*, unsafe=False, quote_cookie=True, treat_as_secure_origin = [])
 
