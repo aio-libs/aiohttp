@@ -973,8 +973,10 @@ class ClientResponse(HeadersMixin):
         self._session = None
 
     def _notify_content(self) -> None:
-        if self.content.exception() is None:
-            self.content.set_exception(ClientConnectionError("Connection closed"))
+        content = self.content
+        # content can be None here, but the types are cheated elsewhere.
+        if content and content.exception() is None:  # type: ignore[truthy-bool]
+            content.set_exception(ClientConnectionError("Connection closed"))
         self._released = True
 
     async def wait_for_close(self) -> None:
