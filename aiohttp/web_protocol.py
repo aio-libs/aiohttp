@@ -186,7 +186,7 @@ class RequestHandler(BaseProtocol):
         tcp_keepalive: bool = True,
         logger: Logger = server_logger,
         access_log_class: _AnyAbstractAccessLogger = AccessLogger,
-        access_log: Logger = access_logger,
+        access_log: Optional[Logger] = access_logger,
         access_log_format: str = AccessLogger.LOG_FORMAT,
         max_line_size: int = 8190,
         max_field_size: int = 8190,
@@ -545,7 +545,8 @@ class RequestHandler(BaseProtocol):
 
                 # Drop the processed task from asyncio.Task.all_tasks() early
                 del task
-                if reset:
+                # https://github.com/python/mypy/issues/14309
+                if reset:  # type: ignore[possibly-undefined]
                     self.log_debug("Ignored premature client disconnection 2")
                     break
 
@@ -555,7 +556,8 @@ class RequestHandler(BaseProtocol):
                 # check payload
                 if not payload.is_eof():
                     lingering_time = self._lingering_time
-                    if not self._force_close and lingering_time:
+                    # Could be force closed while awaiting above tasks.
+                    if not self._force_close and lingering_time:  # type: ignore[redundant-expr]
                         self.log_debug(
                             "Start lingering close timer for %s sec.", lingering_time
                         )
