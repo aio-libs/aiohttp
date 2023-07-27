@@ -190,14 +190,11 @@ snowballstemmer==2.1.0
 sphinx==7.1.0
     # via
     #   -r requirements/doc.txt
-    #   sphinxcontrib-asyncio
     #   sphinxcontrib-blockdiag
     #   sphinxcontrib-spelling
     #   sphinxcontrib-towncrier
 sphinxcontrib-applehelp==1.0.2
     # via sphinx
-sphinxcontrib-asyncio==0.3.0
-    # via -r requirements/doc.txt
 sphinxcontrib-blockdiag==3.0.0
     # via -r requirements/doc.txt
 sphinxcontrib-devhelp==1.0.2
