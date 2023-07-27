@@ -1551,7 +1551,6 @@ duplicated like one using :meth:`~aiohttp.web.Application.copy`.
          Return value updated from ``None`` to :class:`list` of
          :class:`AbstractRoute` instances.
 
-<<<<<<< HEAD
    .. method:: make_handler(loop=None, **kwargs)
 
       Creates HTTP protocol factory for handling requests.
