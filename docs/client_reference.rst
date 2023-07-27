@@ -1409,7 +1409,8 @@ Response object
 
       .. seealso:: :meth:`close`, :meth:`release`.
 
-   .. comethod:: release()
+   .. method:: release()
+      :async:
 
       It is not required to call `release` on the response
       object. When the client fully receives the payload, the
