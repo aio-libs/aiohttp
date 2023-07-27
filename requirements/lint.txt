@@ -1,7 +1,7 @@
 -r typing-extensions.txt
 aioredis==2.0.1
-mypy==0.982; implementation_name=="cpython"
+mypy==1.4.1; implementation_name=="cpython"
 pre-commit==3.3.3
 pytest==7.4.0
-slotscheck==0.8.0
+slotscheck==0.16.5
 uvloop==0.17.0; platform_system!="Windows"
