@@ -293,7 +293,8 @@ functionality, the AioHTTPTestCase is provided::
        The application returned by :meth:`~aiohttp.test_utils.AioHTTPTestCase.get_application`
        (:class:`aiohttp.web.Application` instance).
 
-    .. comethod:: get_client()
+    .. method:: get_client()
+      :async:
 
        This async method can be overridden to return the :class:`TestClient`
        object used in the test.
@@ -302,7 +303,8 @@ functionality, the AioHTTPTestCase is provided::
 
        .. versionadded:: 2.3
 
-    .. comethod:: get_server()
+    .. method:: get_server()
+      :async:
 
        This async method can be overridden to return the :class:`TestServer`
        object used in the test.
@@ -311,7 +313,8 @@ functionality, the AioHTTPTestCase is provided::
 
        .. versionadded:: 2.3
 
-    .. comethod:: get_application()
+    .. method:: get_application()
+      :async:
 
        This async method should be overridden
        to return the :class:`aiohttp.web.Application`
@@ -319,7 +322,8 @@ functionality, the AioHTTPTestCase is provided::
 
        :return: :class:`aiohttp.web.Application` instance.
 
-    .. comethod:: asyncSetUp()
+    .. method:: asyncSetUp()
+      :async:
 
        This async method can be overridden to execute asynchronous code during
        the ``setUp`` stage of the ``TestCase``::
@@ -334,7 +338,8 @@ functionality, the AioHTTPTestCase is provided::
 
           ``await super().asyncSetUp()`` call is required.
 
-    .. comethod:: asyncTearDown()
+    .. method:: asyncTearDown()
+      :async:
 
        This async method can be overridden to execute asynchronous code during
        the ``tearDown`` stage of the ``TestCase``::
@@ -408,7 +413,7 @@ conditions that hard to reproduce on real server::
 
    :param headers: mapping containing the headers. Can be anything accepted
        by the multidict.CIMultiDict constructor.
-   :type headers: dict, multidict.CIMultiDict, list of pairs
+   :type headers: dict, multidict.CIMultiDict, list of tuple(str, str)
 
    :param match_info: mapping containing the info to match with url parameters.
    :type match_info: dict
@@ -562,14 +567,16 @@ for accessing to the server.
 
       .. versionadded:: 3.8
 
-   .. comethod:: start_server(loop=None, **kwargs)
+   .. method:: start_server(loop=None, **kwargs)
+      :async:
 
       :param loop: the event_loop to use
       :type loop: asyncio.AbstractEventLoop
 
       Start a test server.
 
-   .. comethod:: close()
+   .. method:: close()
+      :async:
 
       Stop and finish executed test server.
 
@@ -686,11 +693,13 @@ Test Client
       requests do not automatically include the host in the url
       queried, and will require an absolute path to the resource.
 
-   .. comethod:: start_server(**kwargs)
+   .. method:: start_server(**kwargs)
+      :async:
 
       Start a test server.
 
-   .. comethod:: close()
+   .. method:: close()
+      :async:
 
       Stop and finish executed test server.
 
@@ -698,7 +707,8 @@ Test Client
 
       Return an *absolute* :class:`~yarl.URL` for given *path*.
 
-   .. comethod:: request(method, path, *args, **kwargs)
+   .. method:: request(method, path, *args, **kwargs)
+      :async:
 
       Routes a request to tested http server.
 
@@ -706,35 +716,43 @@ Test Client
       :meth:`aiohttp.ClientSession.request`, except the loop kwarg is
       overridden by the instance used by the test server.
 
-   .. comethod:: get(path, *args, **kwargs)
+   .. method:: get(path, *args, **kwargs)
+      :async:
 
       Perform an HTTP GET request.
 
-   .. comethod:: post(path, *args, **kwargs)
+   .. method:: post(path, *args, **kwargs)
+      :async:
 
       Perform an HTTP POST request.
 
-   .. comethod:: options(path, *args, **kwargs)
+   .. method:: options(path, *args, **kwargs)
+      :async:
 
       Perform an HTTP OPTIONS request.
 
-   .. comethod:: head(path, *args, **kwargs)
+   .. method:: head(path, *args, **kwargs)
+      :async:
 
       Perform an HTTP HEAD request.
 
-   .. comethod:: put(path, *args, **kwargs)
+   .. method:: put(path, *args, **kwargs)
+      :async:
 
       Perform an HTTP PUT request.
 
-   .. comethod:: patch(path, *args, **kwargs)
+   .. method:: patch(path, *args, **kwargs)
+      :async:
 
       Perform an HTTP PATCH request.
 
-   .. comethod:: delete(path, *args, **kwargs)
+   .. method:: delete(path, *args, **kwargs)
+      :async:
 
       Perform an HTTP DELETE request.
 
-   .. comethod:: ws_connect(path, *args, **kwargs)
+   .. method:: ws_connect(path, *args, **kwargs)
+      :async:
 
       Initiate websocket connection.
 
