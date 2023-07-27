@@ -413,7 +413,7 @@ conditions that hard to reproduce on real server::
 
    :param headers: mapping containing the headers. Can be anything accepted
        by the multidict.CIMultiDict constructor.
-   :type headers: dict, multidict.CIMultiDict, list of pairs
+   :type headers: dict, multidict.CIMultiDict, list of tuple(str, str)
 
    :param match_info: mapping containing the info to match with url parameters.
    :type match_info: dict
