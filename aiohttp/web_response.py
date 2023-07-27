@@ -287,7 +287,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         elif isinstance(value, str):
             validate_etag_value(value)
             self._headers[hdrs.ETAG] = f'"{value}"'
-        elif isinstance(value, ETag) and isinstance(value.value, str):
+        elif isinstance(value, ETag) and isinstance(value.value, str):  # type: ignore[redundant-expr]
             validate_etag_value(value.value)
             hdr_value = f'W/"{value.value}"' if value.is_weak else f'"{value.value}"'
             self._headers[hdrs.ETAG] = hdr_value
@@ -605,9 +605,7 @@ class Response(StreamResponse):
 
     @text.setter
     def text(self, text: str) -> None:
-        assert text is None or isinstance(
-            text, str
-        ), "text argument must be str (%r)" % type(text)
+        assert isinstance(text, str), "text argument must be str (%r)" % type(text)
 
         if self.content_type == "application/octet-stream":
             self.content_type = "text/plain"

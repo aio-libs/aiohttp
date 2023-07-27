@@ -76,7 +76,7 @@ except ImportError:  # pragma: no cover
 try:
     import cchardet as chardet
 except ImportError:  # pragma: no cover
-    import charset_normalizer as chardet  # type: ignore[no-redef]
+    import charset_normalizer as chardet
 
 
 __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
@@ -697,7 +697,7 @@ class ClientResponse(HeadersMixin):
         *,
         writer: "asyncio.Task[None]",
         continue100: Optional["asyncio.Future[bool]"],
-        timer: BaseTimerContext,
+        timer: Optional[BaseTimerContext],
         request_info: RequestInfo,
         traces: List["Trace"],
         loop: asyncio.AbstractEventLoop,
@@ -922,7 +922,7 @@ class ClientResponse(HeadersMixin):
             return
 
         self._closed = True
-        if self._loop is None or self._loop.is_closed():
+        if self._loop.is_closed():
             return
 
         if self._connection is not None:
@@ -973,9 +973,8 @@ class ClientResponse(HeadersMixin):
         self._session = None
 
     def _notify_content(self) -> None:
-        content = self.content
-        if content and content.exception() is None:
-            content.set_exception(ClientConnectionError("Connection closed"))
+        if self.content.exception() is None:
+            self.content.set_exception(ClientConnectionError("Connection closed"))
         self._released = True
 
     async def wait_for_close(self) -> None:
