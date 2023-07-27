@@ -10,7 +10,6 @@ The page contains all information about aiohttp Client API:
 
 .. toctree::
    :name: client
-   :maxdepth: 3
 
    Quickstart <client_quickstart>
    Advanced Usage <client_advanced>
