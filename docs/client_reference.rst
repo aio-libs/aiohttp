@@ -58,8 +58,8 @@ The client session supports the context manager protocol for self closing.
 
    :param base_url: Base part of the URL (optional)
       If set, it allows to skip the base part (https://docs.aiohttp.org) in
-	  request calls. If base_url includes a path (as in
-	  https://docs.aiohttp.org/en/stable) the path is ignored/discarded.
+      request calls. If base_url includes a path (as in
+      https://docs.aiohttp.org/en/stable) the path is ignored/discarded.
 
       .. versionadded:: 3.8
 
