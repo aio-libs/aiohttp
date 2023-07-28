@@ -535,7 +535,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
                                 partial(m, handler=handler), handler
                             )
                         else:
-                            handler = await m(app, handler)  # type: ignore[arg-type]
+                            handler = await m(app, handler)  # type: ignore[arg-type,assignment]
 
             resp = await handler(request)
 

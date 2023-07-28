@@ -70,7 +70,7 @@ class AsyncStreamReaderMixin:
     def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
         """Returns an asynchronous iterator that yields chunks of size n."""
         return AsyncStreamIterator(
-            lambda: self.read(n)  # type: ignore[attr-defined,no-any-return]
+            lambda: self.read(n)  # type: ignore[attr-defined]
         )
 
     def iter_any(self) -> AsyncStreamIterator[bytes]:
