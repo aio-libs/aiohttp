@@ -4,4 +4,4 @@ funcparserlib==1.0.1
 sphinx==7.1.0
 sphinxcontrib-blockdiag==3.0.0
 sphinxcontrib-towncrier==0.3.2a0
-towncrier==22.8.0
+towncrier==23.6.0
