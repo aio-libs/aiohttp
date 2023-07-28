@@ -183,7 +183,7 @@ slotscheck==0.16.5
     # via -r requirements/lint.txt
 snowballstemmer==2.1.0
     # via sphinx
-sphinx==7.1.0
+sphinx==7.1.1
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-blockdiag
