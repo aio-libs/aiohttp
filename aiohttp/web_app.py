@@ -529,7 +529,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
 
             if self._run_middlewares:
                 for app in match_info.apps[::-1]:
-                    for m, new_style in app._middlewares_handlers:  # type: ignore[union-attr] # noqa
+                    for m, new_style in app._middlewares_handlers:  # type: ignore[union-attr]
                         if new_style:
                             handler = update_wrapper(
                                 partial(m, handler=handler), handler

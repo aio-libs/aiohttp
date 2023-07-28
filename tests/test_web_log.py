@@ -49,7 +49,7 @@ def test_access_logger_format() -> None:
     Ref: https://bitbucket.org/pypy/pypy/issues/1187/call-to-isinstance-in-__sub__-self-other
     Ref: https://github.com/celery/celery/issues/811
     Ref: https://stackoverflow.com/a/46102240/595220
-    """,  # noqa: E501
+    """,
 )
 def test_access_logger_atoms(mocker) -> None:
     utcnow = datetime.datetime(1843, 1, 1, 0, 30)
