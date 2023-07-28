@@ -30,13 +30,9 @@ jobs:
         gh pr checkout ${{ github.event.pull_request.number }}
     - name: Setup Python
       uses: actions/setup-python@v4
-    - name: Cache PyPI
-      uses: actions/cache@v3.0.4
       with:
-        key: post-update
-        path: ~/.cache/pip
-        restore-keys: |
-            post-update-
+        cache: 'pip'
+        cache-dependency-path: 'requirements/*.txt'
     - name: Update pip-tools
       run: |
         python -m pip install -U pip-tools
