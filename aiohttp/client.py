@@ -220,7 +220,7 @@ class ClientSession:
         raise_for_status: Union[
             bool, Callable[[ClientResponse], Awaitable[None]]
         ] = False,
-        read_timeout: Union[float, object] = sentinel,
+        read_timeout: Union[float, _SENTINEL] = sentinel,
         conn_timeout: Optional[float] = None,
         timeout: Union[object, ClientTimeout] = sentinel,
         auto_decompress: bool = True,
