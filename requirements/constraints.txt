@@ -219,7 +219,7 @@ tomli==1.2.2
     #   pytest
     #   slotscheck
     #   towncrier
-towncrier==22.8.0
+towncrier==23.6.0
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-towncrier
@@ -260,4 +260,3 @@ setuptools==65.5.1
     # via
     #   blockdiag
     #   pip-tools
-    #   towncrier
