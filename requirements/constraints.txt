@@ -222,7 +222,7 @@ tomli==1.2.2
     #   pip-tools
     #   pytest
     #   towncrier
-towncrier==22.8.0
+towncrier==23.6.0
     # via
     #   -r requirements/doc.txt
     #   sphinxcontrib-towncrier
@@ -263,4 +263,3 @@ setuptools==68.0.0
     # via
     #   blockdiag
     #   pip-tools
-    #   towncrier
