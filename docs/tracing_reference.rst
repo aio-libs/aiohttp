@@ -121,6 +121,9 @@ DNS resolving
    }
 
 
+Classes
+-------
+
 .. class:: TraceConfig(trace_config_ctx_factory=SimpleNamespace)
 
    Trace config is the configuration object used to trace requests
