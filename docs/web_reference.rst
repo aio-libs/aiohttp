@@ -1543,7 +1543,7 @@ Application and Router
 
 
 .. class:: AppKey(name, t)
- 
+
    This class should be used for the keys in :class:`Application`. They
    provide a type-safe alternative to `str` keys when checking your code
    with a type checker (e.g. mypy). They also avoid name clashes with keys
