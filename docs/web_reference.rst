@@ -588,8 +588,6 @@ and :ref:`aiohttp-web-signals` handlers::
 
    Dict-like interface support.
 
-StreamResponse
-^^^^^^^^^^^^^^
 
 .. class:: StreamResponse(*, status=200, reason=None)
 
@@ -865,9 +863,6 @@ StreamResponse
       object are forbidden.
 
 
-Response
-^^^^^^^^
-
 .. class:: Response(*, body=None, status=200, reason=None, text=None, \
                     headers=None, content_type=None, charset=None, \
                     zlib_executor_size=sentinel, zlib_executor=None)
@@ -921,9 +916,6 @@ Response
       :attr:`~aiohttp.StreamResponse.body`, represented as :class:`str`.
 
 
-FileResponse
-^^^^^^^^^^^^^^
-
 .. class:: FileResponse(*, path, chunk_size=256*1024, status=200, reason=None, headers=None)
 
    The response class used to send files, inherited from :class:`StreamResponse`.
@@ -948,8 +940,6 @@ FileResponse
                            response's ones. The ``Content-Type`` response header
                            will be overridden if provided.
 
-WebSocketResponse
-^^^^^^^^^^^^^^^^^
 
 .. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, \
                              autoclose=True, autoping=True, heartbeat=None, \
@@ -1267,9 +1257,6 @@ WebSocketResponse
 .. seealso:: :ref:`WebSockets handling<aiohttp-web-websockets>`
 
 
-WebSocketReady
-^^^^^^^^^^^^^^
-
 .. class:: WebSocketReady
 
    A named tuple for returning result from
@@ -1293,9 +1280,6 @@ WebSocketReady
    .. seealso:: :meth:`WebSocketResponse.can_prepare`
 
 
-json_response
-^^^^^^^^^^^^^
-
 .. function:: json_response([data], *, text=None, body=None, \
                             status=200, reason=None, headers=None, \
                             content_type='application/json', \
@@ -1312,37 +1296,34 @@ Application and Router
 ----------------------
 
 
-Application
-^^^^^^^^^^^
-
-Application is a synonym for web-server.
-
-To get a fully working example, you have to make *application*, register
-supported urls in *router* and pass it to :func:`aiohttp.web.run_app`
-or :class:`aiohttp.web.AppRunner`.
-
-*Application* contains a *router* instance and a list of callbacks that
-will be called during application finishing.
-
-:class:`Application` is a :obj:`dict`-like object, so you can use it for
-:ref:`sharing data<aiohttp-web-data-sharing>` globally by storing arbitrary
-properties for later access from a :ref:`handler<aiohttp-web-handler>` via the
-:attr:`Request.app` property::
-
-   app = Application()
-   database = AppKey("database", AsyncEngine)
-   app[database] = await create_async_engine(db_url)
-
-   async def handler(request):
-       async with request.app[database].begin() as conn:
-           await conn.execute("DELETE * FROM table")
-
-Although :class:`Application` is a :obj:`dict`-like object, it can't be
-duplicated like one using :meth:`~aiohttp.web.Application.copy`.
-
 .. class:: Application(*, logger=<default>, middlewares=(), \
                        handler_args=None, client_max_size=1024**2, \
                        debug=...)
+
+   Application is a synonym for web-server.
+
+   To get a fully working example, you have to make an *application*, register
+   supported urls in the *router* and pass it to :func:`aiohttp.web.run_app`
+   or :class:`aiohttp.web.AppRunner`.
+
+   *Application* contains a *router* instance and a list of callbacks that
+   will be called during application finishing.
+
+   This class is a :obj:`dict`-like object, so you can use it for
+   :ref:`sharing data<aiohttp-web-data-sharing>` globally by storing arbitrary
+   properties for later access from a :ref:`handler<aiohttp-web-handler>` via the
+   :attr:`Request.app` property::
+
+       app = Application()
+       database = AppKey("database", AsyncEngine)
+       app[database] = await create_async_engine(db_url)
+
+       async def handler(request):
+           async with request.app[database].begin() as conn:
+               await conn.execute("DELETE * FROM table")
+
+   Although it` is a :obj:`dict`-like object, it can't be duplicated like one
+   using :meth:`~aiohttp.web.Application.copy`.
 
    The class inherits :class:`dict`.
 
@@ -1561,16 +1542,12 @@ duplicated like one using :meth:`~aiohttp.web.Application.copy`.
       router for your application).
 
 
-AppKey
-^^^^^^
-
-:class:`AppKey` should be used for the keys in :class:`Application`. They
-provide type safety when checking your code with a type checker (e.g. mypy).
-
 .. class:: AppKey(name, t)
 
-   The class provides a type-safe alternative to `str` keys. They also avoid
-   name clashes with keys from different libraries etc.
+   This class should be used for the keys in :class:`Application`. They
+   provide a type-safe alternative to `str` keys when checking your code
+   with a type checker (e.g. mypy). They also avoid name clashes with keys
+   from different libraries etc.
 
    :param name: A name to help with debugging. This should be the same as
                 the variable name (much like how :class:`typing.TypeVar`
@@ -1579,14 +1556,10 @@ provide type safety when checking your code with a type checker (e.g. mypy).
    :param t: The type that should be used for the value in the dict (e.g.
              `str`, `Iterator[int]` etc.)
 
-
-Server
-^^^^^^
-
-A protocol factory compatible with
-:meth:`~asyncio.AbstractEventLoop.create_server`.
-
 .. class:: Server
+
+   A protocol factory compatible with
+   :meth:`~asyncio.AbstractEventLoop.create_server`.
 
    The class is responsible for creating HTTP protocol
    objects that can handle HTTP connections.
@@ -1606,35 +1579,30 @@ A protocol factory compatible with
       connections.
 
 
-Router
-^^^^^^
-
-For dispatching URLs to :ref:`handlers<aiohttp-web-handler>`
-:mod:`aiohttp.web` uses *routers*.
-
-Router is any object that implements :class:`~aiohttp.abc.AbstractRouter` interface.
-
-:mod:`aiohttp.web` provides an implementation called :class:`UrlDispatcher`.
-
-:class:`Application` uses :class:`UrlDispatcher` as :meth:`~aiohttp.web.Application.router` by default.
-
 .. class:: UrlDispatcher()
 
-   Straightforward url-matching router, implements
+   For dispatching URLs to :ref:`handlers<aiohttp-web-handler>`
+   :mod:`aiohttp.web` uses *routers*, which is any object that implements
+   :class:`~aiohttp.abc.AbstractRouter` interface.
+
+   This class is a straightforward url-matching router, implementing
    :class:`collections.abc.Mapping` for access to *named routes*.
 
-   Before running :class:`Application` you should fill *route
+   :class:`Application` uses this class as
+   :meth:`~aiohttp.web.Application.router` by default.
+
+   Before running an :class:`Application` you should fill *route
    table* first by calling :meth:`add_route` and :meth:`add_static`.
 
    :ref:`Handler<aiohttp-web-handler>` lookup is performed by iterating on
    added *routes* in FIFO order. The first matching *route* will be used
-   to call corresponding *handler*.
+   to call the corresponding *handler*.
 
-   If on route creation you specify *name* parameter the result is
+   If during route creation you specify *name* parameter the result is a
    *named route*.
 
-   *Named route* can be retrieved by ``app.router[name]`` call, checked for
-   existence by ``name in app.router`` etc.
+   A *named route* can be retrieved by a ``app.router[name]`` call, checking for
+   existence can be done with ``name in app.router`` etc.
 
    .. seealso:: :ref:`Route classes <aiohttp-web-route>`
 
@@ -2983,9 +2951,6 @@ Constants
 
 Middlewares
 -----------
-
-Normalize path middleware
-^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. function:: normalize_path_middleware(*, \
                                         append_slash=True, \

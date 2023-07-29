@@ -121,9 +121,8 @@ DNS resolving
    }
 
 
-TraceConfig
------------
-
+Classes
+-------
 
 .. class:: TraceConfig(trace_config_ctx_factory=SimpleNamespace)
 
@@ -278,8 +277,6 @@ TraceConfig
 
       .. versionadded:: 3.8
 
-TraceRequestStartParams
------------------------
 
 .. class:: TraceRequestStartParams
 
@@ -297,9 +294,6 @@ TraceRequestStartParams
 
        Headers that will be used for the request, can be mutated.
 
-
-TraceRequestChunkSentParams
----------------------------
 
 .. class:: TraceRequestChunkSentParams
 
@@ -320,9 +314,6 @@ TraceRequestChunkSentParams
        Bytes of chunk sent
 
 
-TraceResponseChunkReceivedParams
---------------------------------
-
 .. class:: TraceResponseChunkReceivedParams
 
    .. versionadded:: 3.1
@@ -341,9 +332,6 @@ TraceResponseChunkReceivedParams
 
        Bytes of chunk received
 
-
-TraceRequestEndParams
----------------------
 
 .. class:: TraceRequestEndParams
 
@@ -366,9 +354,6 @@ TraceRequestEndParams
        Response :class:`ClientResponse`.
 
 
-TraceRequestExceptionParams
----------------------------
-
 .. class:: TraceRequestExceptionParams
 
    See :attr:`TraceConfig.on_request_exception` for details.
@@ -389,8 +374,6 @@ TraceRequestExceptionParams
 
        Exception raised during the request.
 
-TraceRequestRedirectParams
---------------------------
 
 .. class:: TraceRequestRedirectParams
 
@@ -412,8 +395,6 @@ TraceRequestRedirectParams
 
        Response :class:`ClientResponse` got from the redirect.
 
-TraceConnectionQueuedStartParams
---------------------------------
 
 .. class:: TraceConnectionQueuedStartParams
 
@@ -421,8 +402,6 @@ TraceConnectionQueuedStartParams
 
    There are no attributes right now.
 
-TraceConnectionQueuedEndParams
-------------------------------
 
 .. class:: TraceConnectionQueuedEndParams
 
@@ -430,8 +409,6 @@ TraceConnectionQueuedEndParams
 
    There are no attributes right now.
 
-TraceConnectionCreateStartParams
---------------------------------
 
 .. class:: TraceConnectionCreateStartParams
 
@@ -439,8 +416,6 @@ TraceConnectionCreateStartParams
 
    There are no attributes right now.
 
-TraceConnectionCreateEndParams
-------------------------------
 
 .. class:: TraceConnectionCreateEndParams
 
@@ -448,8 +423,6 @@ TraceConnectionCreateEndParams
 
    There are no attributes right now.
 
-TraceConnectionReuseconnParams
-------------------------------
 
 .. class:: TraceConnectionReuseconnParams
 
@@ -457,8 +430,6 @@ TraceConnectionReuseconnParams
 
    There are no attributes right now.
 
-TraceDnsResolveHostStartParams
-------------------------------
 
 .. class:: TraceDnsResolveHostStartParams
 
@@ -468,8 +439,6 @@ TraceDnsResolveHostStartParams
 
        Host that will be resolved.
 
-TraceDnsResolveHostEndParams
-----------------------------
 
 .. class:: TraceDnsResolveHostEndParams
 
@@ -479,8 +448,6 @@ TraceDnsResolveHostEndParams
 
        Host that has been resolved.
 
-TraceDnsCacheHitParams
-----------------------
 
 .. class:: TraceDnsCacheHitParams
 
@@ -490,8 +457,6 @@ TraceDnsCacheHitParams
 
        Host found in the cache.
 
-TraceDnsCacheMissParams
------------------------
 
 .. class:: TraceDnsCacheMissParams
 
@@ -501,8 +466,6 @@ TraceDnsCacheMissParams
 
        Host didn't find the cache.
 
-TraceRequestHeadersSentParams
------------------------------
 
 .. class:: TraceRequestHeadersSentParams
 
