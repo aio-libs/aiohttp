@@ -778,7 +778,7 @@ class HeadersMixin:
         else:
             msg = HeaderParser().parsestr("Content-Type: " + raw)
             self._content_type = msg.get_content_type()
-            params = msg.get_params()
+            params = msg.get_params(())
             self._content_dict = dict(params[1:])  # First element is content type again
 
     @property
