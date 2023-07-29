@@ -73,7 +73,7 @@ except ImportError:  # pragma: no cover
 try:
     import cchardet as chardet
 except ImportError:  # pragma: no cover
-    import charset_normalizer as chardet  # type: ignore[no-redef]
+    import charset_normalizer as chardet
 
 
 __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
