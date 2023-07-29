@@ -162,7 +162,7 @@ python-on-whales==0.63.0
     # via -r requirements/test.txt
 pytz==2021.3
     # via babel
-pyyaml==6.0
+pyyaml==6.0.1
     # via pre-commit
 re-assert==1.1.0
     # via -r requirements/test.txt
@@ -256,7 +256,7 @@ yarl==1.9.2
 # The following packages are considered to be unsafe in a requirements file:
 pip==23.2.1
     # via pip-tools
-setuptools==65.5.1
+setuptools==68.0.0
     # via
     #   blockdiag
     #   pip-tools
