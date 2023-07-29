@@ -174,7 +174,7 @@ re-assert==1.1.0
     # via -r requirements/test.txt
 regex==2021.11.10
     # via re-assert
-requests==2.26.0
+requests==2.31.0
     # via
     #   cherry-picker
     #   python-on-whales
@@ -259,7 +259,7 @@ yarl==1.9.2
 # The following packages are considered to be unsafe in a requirements file:
 pip==23.2.1
     # via pip-tools
-setuptools==59.1.0
+setuptools==68.0.0
     # via
     #   blockdiag
     #   pip-tools
