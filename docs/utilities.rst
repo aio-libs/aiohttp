@@ -10,6 +10,7 @@ Miscellaneous API Shared between Client And Server.
 
 .. toctree::
    :name: utilities
+   :maxdepth: 2
 
    abc
    multipart
