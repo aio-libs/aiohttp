@@ -14,6 +14,7 @@ from types import MappingProxyType, TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
+    AsyncIterator,
     Dict,
     Iterable,
     List,
@@ -985,6 +986,18 @@ class ClientResponse(HeadersMixin):
             finally:
                 self._writer = None
         self.release()
+
+    async def iter_chunked(self, n) -> AsyncIterator[bytes]:
+        async for data in self.content.iter_chunked(n):
+            yield data
+            for trace in self._traces:
+                await trace.send_response_chunk_received(self.method, self.url, data)
+
+    async def iter_chunks(self) -> AsyncIterator[bytes]:
+        async for data, _ in self.content.iter_chunks():
+            yield data
+            for trace in self._traces:
+                await trace.send_response_chunk_received(self.method, self.url, data)
 
     async def read(self) -> bytes:
         """Read response payload."""
