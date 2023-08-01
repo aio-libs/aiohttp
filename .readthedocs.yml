@@ -15,9 +15,11 @@ build:
   tools:
     python: "3.11"
 
-python:
-  install:
-  - method: pip
-    path: .
-  - requirements: requirements/doc.txt
+  jobs:
+    post_create_environment:
+    - >-
+      pip install
+      . -c requirements/runtime-deps.txt
+      -r requirements/doc.in -c requirements/doc.txt
+
 ...
