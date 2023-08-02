@@ -1,0 +1,8 @@
+-r typing-extensions.in
+
+aioredis
+mypy; implementation_name == "cpython"
+pre-commit
+pytest
+slotscheck
+uvloop; platform_system != "Windows"

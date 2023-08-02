@@ -1,0 +1,6 @@
+-r lint.in
+-r test.in
+-r doc.in
+
+cherry_picker
+pip-tools
