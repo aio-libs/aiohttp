@@ -14,9 +14,8 @@ jobs:
       with:
         python-version: 3.8
     - name: Install dependencies
-      uses: py-actions/py-dependency-install@v4
-      with:
-        path: requirements/lint.txt
+      run: >-
+        pip install -r requirements/lint.in -c requirements/lint.txt
     - name: Run pre-commit autoupdate
       run: pre-commit autoupdate
     - id: generate_token
