@@ -1,0 +1,8 @@
+-c broken-projects.in
+
+aiohttp-theme
+sphinx
+sphinxcontrib-asyncio
+sphinxcontrib-blockdiag
+sphinxcontrib-towncrier
+towncrier

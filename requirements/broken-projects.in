@@ -1,0 +1,9 @@
+attrs < 23  # Python 3.6 compat
+charset-normalizer < 3.1  # Python 3.6 support
+funcparserlib == 1.0.0a0  # https://github.com/blockdiag/blockdiag/pull/148
+Jinja2 < 3.1  # https://github.com/readthedocs/readthedocs.org/issues/9038
+Pillow < 10  # https://github.com/blockdiag/sphinxcontrib-blockdiag/issues/26
+pydantic < 2  # looks like `python-on-whales` hasn't upgraded to support v2
+Sphinx < 5.2.3  # compat with `sphinxcontrib-asyncio` and no warnings
+typing-extensions <= 4.1.1  # last version supporting Python 3.6
+virtualenv < 20.16.3; python_version < "3.7"  # `importlib-resources` conflict

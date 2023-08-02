@@ -11,11 +11,36 @@ submodules:
   recursive: true
 
 build:
-  image: latest
-python:
-  version: 3.8
-  install:
-  - method: pip
-    path: .
-  - requirements: requirements/doc.txt
+  os: ubuntu-22.04
+  tools:
+    python: "3.11"
+
+  commands:
+  - >-
+    python -m
+    venv "${READTHEDOCS_VIRTUALENV_PATH}"
+  - >-
+    "${READTHEDOCS_VIRTUALENV_PATH}"/bin/python -m
+    pip install
+    . -c requirements/runtime-deps.txt
+    -r requirements/doc.in -c requirements/doc.txt
+    readthedocs-sphinx-ext
+  - >-
+    pwd
+  - >-
+    ls -lah . docs/
+  - >-
+    cat docs/conf.py
+  - >-
+    "${READTHEDOCS_VIRTUALENV_PATH}"/bin/python -m
+    sphinx
+    -j auto
+    -T
+    -E
+    -b html
+    -d "${READTHEDOCS_OUTPUT}"/_build/doctrees
+    -D language=en
+    docs/
+    "${READTHEDOCS_OUTPUT}"/html
+
 ...

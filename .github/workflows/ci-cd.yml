@@ -34,7 +34,14 @@ jobs:
       uses: actions/checkout@v2.4.0
       with:
         submodules: true
-    - name: Setup Python 3.8
+    - name: >-
+        Verify that `requirements/runtime-deps.in`
+        is in sync with `setup.cfg`
+      run: |
+        set -eEuo pipefail
+        make sync-direct-runtime-deps
+        git diff --exit-code -- requirements/runtime-deps.in
+    - name: Setup Python
       uses: actions/setup-python@v4
       with:
         python-version: 3.8
@@ -50,10 +57,10 @@ jobs:
         python -m pip install -U pip wheel setuptools build twine
     - name: Install dependencies
       run: |
-        python -m pip install -r requirements/lint.txt -c requirements/constraints.txt
+        python -m pip install -r requirements/lint.in -c requirements/lint.txt
     - name: Install self
       run: |
-        python -m pip install .
+        python -m pip install . -c requirements/runtime-deps.txt
       env:
         AIOHTTP_NO_EXTENSIONS: 1
     - name: Run linters
@@ -64,7 +71,7 @@ jobs:
         sudo apt install libenchant-2-dev
     - name: Install spell checker
       run: |
-        pip install -r requirements/doc-spelling.txt -c requirements/constraints.txt
+        pip install -r requirements/doc-spelling.in -c requirements/doc-spelling.txt
     - name: Run docs spelling
       run: |
         # towncrier --yes  # uncomment me after publishing a release
@@ -176,7 +183,7 @@ jobs:
         python -m pip install -U pip wheel setuptools build twine
     - name: Install dependencies
       run: |
-        python -m pip install -r requirements/test.txt -c requirements/constraints.txt
+        python -m pip install -r requirements/test.in -c requirements/test.txt
     - name: Cythonize
       if: ${{ matrix.no-extensions == '' }}
       run: |
@@ -264,8 +271,9 @@ jobs:
       run: |
         python -m pip install -U pip wheel setuptools build twine
     - name: Install cython
-      run: |
-        python -m pip install -r requirements/cython.txt -c requirements/constraints.txt
+      run: >-
+        python -m
+        pip install -r requirements/cython.in -c requirements/cython.txt
     - name: Restore llhttp generated files
       uses: actions/download-artifact@v2
       with:
@@ -326,8 +334,9 @@ jobs:
       run: |
         python -m pip install -U pip wheel setuptools build twine
     - name: Install cython
-      run: |
-        python -m pip install -r requirements/cython.txt -c requirements/constraints.txt
+      run: >-
+        python -m
+        pip install -r requirements/cython.in -c requirements/cython.txt
     - name: Restore llhttp generated files
       uses: actions/download-artifact@v2
       with:
@@ -363,9 +372,6 @@ jobs:
       uses: actions/checkout@v2.4.0
       with:
         submodules: true
-    - name: Update pip, wheel, setuptools, build, twine
-      run: |
-        python -m pip install -U pip wheel setuptools build twine
     - name: Login
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
