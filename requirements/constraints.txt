@@ -18,6 +18,8 @@ async-timeout==4.0.2
     # via
     #   -r requirements/runtime-deps.in
     #   aioredis
+attrs==23.1.0
+    # via -r requirements/runtime-deps.in
 babel==2.9.1
     # via sphinx
 backports-entry-points-selectable==1.1.1
@@ -127,10 +129,8 @@ packaging==21.2
     #   sphinx
 pep517==0.12.0
     # via build
-pillow==9.2.0
-    # via
-    #   -c requirements/broken-projects.in
-    #   blockdiag
+pillow==10.0.0
+    # via blockdiag
 pip-tools==7.1.0
     # via -r requirements/dev.in
 platformdirs==2.4.0

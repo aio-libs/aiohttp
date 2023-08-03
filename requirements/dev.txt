@@ -124,10 +124,8 @@ packaging==23.1
     #   gunicorn
     #   pytest
     #   sphinx
-pillow==9.5.0
-    # via
-    #   -c requirements/broken-projects.in
-    #   blockdiag
+pillow==10.0.0
+    # via blockdiag
 pip-tools==7.1.0
     # via -r requirements/dev.in
 platformdirs==3.10.0
@@ -166,8 +164,6 @@ python-dateutil==2.8.2
     # via freezegun
 python-on-whales==0.64.0
     # via -r requirements/test.in
-pytz==2023.3
-    # via babel
 pyyaml==6.0.1
     # via pre-commit
 re-assert==1.1.0
