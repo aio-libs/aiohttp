@@ -73,10 +73,8 @@ pycares==4.3.0
     # via aiodns
 pycparser==2.21
     # via cffi
-pydantic==1.10.12
-    # via
-    #   -c requirements/broken-projects.in
-    #   python-on-whales
+pydantic==1.10.2
+    # via python-on-whales
 pytest==7.4.0
     # via
     #   -r requirements/test.in

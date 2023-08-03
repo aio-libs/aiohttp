@@ -147,10 +147,8 @@ pycares==4.3.0
     # via aiodns
 pycparser==2.21
     # via cffi
-pydantic==1.8.2
-    # via
-    #   -c requirements/broken-projects.in
-    #   python-on-whales
+pydantic==1.10.2
+    # via python-on-whales
 pyenchant==3.2.2
     # via sphinxcontrib-spelling
 pygments==2.15.1
