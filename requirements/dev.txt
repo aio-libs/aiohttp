@@ -142,10 +142,8 @@ pycares==4.3.0
     # via aiodns
 pycparser==2.21
     # via cffi
-pydantic==1.10.12
-    # via
-    #   -c requirements/broken-projects.in
-    #   python-on-whales
+pydantic==1.10.2
+    # via python-on-whales
 pygments==2.15.1
     # via sphinx
 pyjwt==2.8.0
@@ -166,8 +164,6 @@ python-dateutil==2.8.2
     # via freezegun
 python-on-whales==0.64.0
     # via -r requirements/test.in
-pytz==2023.3
-    # via babel
 pyyaml==6.0.1
     # via pre-commit
 re-assert==1.1.0
