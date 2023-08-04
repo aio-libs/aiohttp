@@ -129,10 +129,8 @@ packaging==21.2
     #   sphinx
 pep517==0.12.0
     # via build
-pillow==9.2.0
-    # via
-    #   -c requirements/broken-projects.in
-    #   blockdiag
+pillow==9.5.0
+    # via blockdiag
 pip-tools==7.2.0
     # via -r requirements/dev.in
 platformdirs==2.4.0
@@ -148,7 +146,9 @@ pycares==4.3.0
 pycparser==2.21
     # via cffi
 pydantic==1.10.2
-    # via python-on-whales
+    # via
+    #   -c requirements/broken-projects.in
+    #   python-on-whales
 pyenchant==3.2.2
     # via sphinxcontrib-spelling
 pygments==2.15.1
