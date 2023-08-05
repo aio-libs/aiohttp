@@ -131,7 +131,7 @@ def test_invalid_character(loop: Any, protocol: Any, request: Any) -> None:
     error_detail = re.escape(
         r""":
 
-    b'Set-Cookie: abc\x01def\r'
+    b'Set-Cookie: abc\x01def'
                      ^"""
     )
     with pytest.raises(http_exceptions.BadHttpMessage, match=error_detail):
