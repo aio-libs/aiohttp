@@ -131,7 +131,27 @@ def test_invalid_character(loop: Any, protocol: Any, request: Any) -> None:
     error_detail = re.escape(
         r""":
 
-    b'Set-Cookie: abc\x01def\r'
+    b'Set-Cookie: abc\x01def'
+                     ^"""
+    )
+    with pytest.raises(http_exceptions.BadHttpMessage, match=error_detail):
+        parser.feed_data(text)
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+def test_invalid_linebreak(loop: Any, protocol: Any, request: Any) -> None:
+    parser = HttpRequestParserC(
+        protocol,
+        loop,
+        2**16,
+        max_line_size=8190,
+        max_field_size=8190,
+    )
+    text = b"GET /world HTTP/1.1\r\nHost: 127.0.0.1\n\r\n"
+    error_detail = re.escape(
+        r""":
+
+    b'Host: 127.0.0.1\n'
                      ^"""
     )
     with pytest.raises(http_exceptions.BadHttpMessage, match=error_detail):
