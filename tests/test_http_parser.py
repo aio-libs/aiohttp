@@ -138,6 +138,26 @@ def test_invalid_character(loop: Any, protocol: Any, request: Any) -> None:
         parser.feed_data(text)
 
 
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+def test_invalid_linebreak(loop: Any, protocol: Any, request: Any) -> None:
+    parser = HttpRequestParserC(
+        protocol,
+        loop,
+        2**16,
+        max_line_size=8190,
+        max_field_size=8190,
+    )
+    text = b"GET /world HTTP/1.1\r\nHost: 127.0.0.1\n\r\n"
+    error_detail = re.escape(
+        r""":
+
+    b'Host: 127.0.0.1\n'
+                     ^"""
+    )
+    with pytest.raises(http_exceptions.BadHttpMessage, match=error_detail):
+        parser.feed_data(text)
+
+
 def test_parse_headers_longline(parser: Any) -> None:
     invalid_unicode_byte = b"\xd9"
     header_name = b"Test" + invalid_unicode_byte + b"Header" + b"A" * 8192
