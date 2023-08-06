@@ -898,7 +898,7 @@ def test_parse_uri_percent_encoded(
 
 
 def test_parse_uri_utf8(parser: Any) -> None:
-    if isinstance(parser, HttpRequestParserC):
+    if not isinstance(parser, HttpRequestParserPy):
         pytest.xfail("Not valid HTTP. Maybe update py-parser to reject later.")
     text = ("GET /путь?ключ=знач#фраг HTTP/1.1\r\n\r\n").encode()
     messages, upgrade, tail = parser.feed_data(text)
