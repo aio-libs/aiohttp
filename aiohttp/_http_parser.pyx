@@ -548,8 +548,8 @@ cdef class HttpParser:
                 else:
                     after = cparser.llhttp_get_error_pos(self._cparser)
                     before = data[:after - <char*>self.py_buf.buf]
-                    after_b = after.split(b"\n", 1)[0]
-                    before = before.rsplit(b"\n", 1)[-1]
+                    after_b = after.split(b"\r\n", 1)[0]
+                    before = before.rsplit(b"\r\n", 1)[-1]
                     data = before + after_b
                     pointer = " " * (len(repr(before))-1) + "^"
                     ex = parser_error_from_errno(self._cparser, data, pointer)
