@@ -731,7 +731,9 @@ def test_http_response_parser_no_reason(response: Any) -> None:
 
 
 def test_http_response_parser_lenient_headers(response: Any) -> None:
-    messages, upgrade, tail = response.feed_data(b"HTTP/1.1 200 test\r\nFoo: abc\x01def\r\n\r\n")
+    messages, upgrade, tail = response.feed_data(
+        b"HTTP/1.1 200 test\r\nFoo: abc\x01def\r\n\r\n"
+    )
     msg = messages[0][0]
 
     assert msg.headers["Foo"] == "abc\x01def"
