@@ -735,19 +735,18 @@ def test_http_response_parser_bad(response: Any) -> None:
         response.feed_data(b"HTT/1\r\n\r\n")
 
 
-@pytest.mark.skipif(not NO_EXTENSIONS, reason="Behaviour has changed in C parser")
 def test_http_response_parser_code_under_100(response: Any) -> None:
-    msg = response.feed_data(b"HTTP/1.1 99 test\r\n\r\n")[0][0][0]
-    assert msg.code == 99
+    with pytest.raises(http_exceptions.BadStatusLine):
+        msg = response.feed_data(b"HTTP/1.1 99 test\r\n\r\n")[0][0][0]
 
 
 def test_http_response_parser_code_above_999(response: Any) -> None:
-    with pytest.raises(http_exceptions.BadHttpMessage):
+    with pytest.raises(http_exceptions.BadStatusLine):
         response.feed_data(b"HTTP/1.1 9999 test\r\n\r\n")
 
 
 def test_http_response_parser_code_not_int(response: Any) -> None:
-    with pytest.raises(http_exceptions.BadHttpMessage):
+    with pytest.raises(http_exceptions.BadStatusLine):
         response.feed_data(b"HTTP/1.1 ttt test\r\n\r\n")
 
 
@@ -872,19 +871,6 @@ def test_partial_url(parser: Any) -> None:
     assert payload.is_eof()
 
 
-def test_url_parse_non_strict_mode(parser: Any) -> None:
-    payload = "GET /test/тест HTTP/1.1\r\n\r\n".encode()
-    messages, upgrade, tail = parser.feed_data(payload)
-    assert len(messages) == 1
-
-    msg, payload = messages[0]
-
-    assert msg.method == "GET"
-    assert msg.path == "/test/тест"
-    assert msg.version == (1, 1)
-    assert payload.is_eof()
-
-
 @pytest.mark.parametrize(
     ("uri", "path", "query", "fragment"),
     [
@@ -911,6 +897,8 @@ def test_parse_uri_percent_encoded(
 
 
 def test_parse_uri_utf8(parser: Any) -> None:
+    if isinstance(parser, HttpRequestParserC):
+        pytest.xfail("Not valid HTTP. Maybe update py-parser to reject later.")
     text = ("GET /путь?ключ=знач#фраг HTTP/1.1\r\n\r\n").encode()
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
