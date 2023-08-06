@@ -161,7 +161,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             "Inheritance class {} from web.Application "
             "is discouraged".format(cls.__name__),
             DeprecationWarning,
-            stacklevel=2,
+            stacklevel=3,
         )
 
     if DEBUG:  # pragma: no cover
