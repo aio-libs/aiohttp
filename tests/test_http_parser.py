@@ -741,7 +741,7 @@ def test_http_response_parser_lenient_headers(response: Any) -> None:
 
 @pytest.mark.dev_mode
 def test_http_response_parser_strict_headers(response: Any) -> None:
-    if isinstance(parser, HttpRequestParserPy):
+    if isinstance(response, HttpResponseParserPy):
         pytest.xfail("Py parser is lenient. May update py-parser later.")
     with pytest.raises(http_exceptions.BadHttpMessage):
         response.feed_data(b"HTTP/1.1 200 test\r\nFoo: abc\x01def\r\n\r\n")
