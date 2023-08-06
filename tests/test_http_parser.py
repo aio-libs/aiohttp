@@ -872,19 +872,6 @@ def test_partial_url(parser: Any) -> None:
     assert payload.is_eof()
 
 
-def test_url_parse_non_strict_mode(parser: Any) -> None:
-    payload = "GET /test/тест HTTP/1.1\r\n\r\n".encode()
-    messages, upgrade, tail = parser.feed_data(payload)
-    assert len(messages) == 1
-
-    msg, payload = messages[0]
-
-    assert msg.method == "GET"
-    assert msg.path == "/test/тест"
-    assert msg.version == (1, 1)
-    assert payload.is_eof()
-
-
 @pytest.mark.parametrize(
     ("uri", "path", "query", "fragment"),
     [
@@ -911,6 +898,8 @@ def test_parse_uri_percent_encoded(
 
 
 def test_parse_uri_utf8(parser: Any) -> None:
+    if not isinstance(parser, HttpRequestParserPy):
+        pytest.xfail("Not valid HTTP. Maybe update py-parser to reject later.")
     text = ("GET /путь?ключ=знач#фраг HTTP/1.1\r\n\r\n").encode()
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]

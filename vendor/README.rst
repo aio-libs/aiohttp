@@ -5,7 +5,7 @@ When building aiohttp from source, there is a pure Python parser used by default
 For better performance, you may want to build the higher performance C parser.
 
 To build this ``llhttp`` parser, first get/update the submodules (to update to a
-newer release, add ``--remote`` and check the branch in ``.gitmodules``)::
+newer release, add ``--remote``)::
 
     git submodule update --init --recursive
 
