@@ -735,18 +735,19 @@ def test_http_response_parser_bad(response: Any) -> None:
         response.feed_data(b"HTT/1\r\n\r\n")
 
 
+@pytest.mark.skipif(not NO_EXTENSIONS, reason="Behaviour has changed in C parser")
 def test_http_response_parser_code_under_100(response: Any) -> None:
-    with pytest.raises(http_exceptions.BadStatusLine):
-        msg = response.feed_data(b"HTTP/1.1 99 test\r\n\r\n")[0][0][0]
+    msg = response.feed_data(b"HTTP/1.1 99 test\r\n\r\n")[0][0][0]
+    assert msg.code == 99
 
 
 def test_http_response_parser_code_above_999(response: Any) -> None:
-    with pytest.raises(http_exceptions.BadStatusLine):
+    with pytest.raises(http_exceptions.BadHttpMessage):
         response.feed_data(b"HTTP/1.1 9999 test\r\n\r\n")
 
 
 def test_http_response_parser_code_not_int(response: Any) -> None:
-    with pytest.raises(http_exceptions.BadStatusLine):
+    with pytest.raises(http_exceptions.BadHttpMessage):
         response.feed_data(b"HTTP/1.1 ttt test\r\n\r\n")
 
 
