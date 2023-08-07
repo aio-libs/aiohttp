@@ -20,6 +20,7 @@ from multidict import CIMultiDict as _CIMultiDict, CIMultiDictProxy as _CIMultiD
 from yarl import URL as _URL
 
 from aiohttp import hdrs
+from aiohttp.helpers import DEBUG
 
 from .http_exceptions import (
     BadHttpMessage,
@@ -648,6 +649,9 @@ cdef class HttpResponseParser(HttpParser):
                    max_line_size, max_headers, max_field_size,
                    payload_exception, response_with_body, read_until_eof,
                    auto_decompress)
+        # Use strict parsing on dev mode, so users are warned about broken servers.
+        if not DEBUG:
+            cparser.llhttp_set_lenient_headers(self._cparser, 1)
 
     cdef object _on_status_complete(self):
         if self._buf:
