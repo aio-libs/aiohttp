@@ -204,6 +204,13 @@ jobs:
       run: >-  # `exit 1` makes sure that the job remains red with flaky runs
         pytest --no-cov -vvvvv --lf && exit 1
       shell: bash
+    - name: Run dev_mode tests
+      env:
+        COLOR: yes
+        AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
+        PIP_USER: 1
+      run: python -X dev -m pytest -m dev_mode --cov-append
+      shell: bash
     - name: Turn coverage into xml
       env:
         COLOR: 'yes'
