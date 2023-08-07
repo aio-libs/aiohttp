@@ -118,6 +118,18 @@ Server example:
 For more information please visit :ref:`aiohttp-client` and
 :ref:`aiohttp-web` pages.
 
+Development mode
+================
+
+When writing your code, we recommend enabling Python's
+`development mode <https://docs.python.org/3/library/devmode.html>`_
+(``python -X dev``). In addition to the extra features enabled for asyncio, aiohttp
+will:
+
+- Use a strict parser in the client code (which can help detect malformed responses
+  from a server).
+- Enable some additional checks (resulting in warnings in certain situations).
+
 What's new in aiohttp 3?
 ========================
 

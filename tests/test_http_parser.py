@@ -730,6 +730,23 @@ def test_http_response_parser_no_reason(response: Any) -> None:
     assert msg.reason == ""
 
 
+def test_http_response_parser_lenient_headers(response: Any) -> None:
+    messages, upgrade, tail = response.feed_data(
+        b"HTTP/1.1 200 test\r\nFoo: abc\x01def\r\n\r\n"
+    )
+    msg = messages[0][0]
+
+    assert msg.headers["Foo"] == "abc\x01def"
+
+
+@pytest.mark.dev_mode
+def test_http_response_parser_strict_headers(response: Any) -> None:
+    if isinstance(response, HttpResponseParserPy):
+        pytest.xfail("Py parser is lenient. May update py-parser later.")
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        response.feed_data(b"HTTP/1.1 200 test\r\nFoo: abc\x01def\r\n\r\n")
+
+
 def test_http_response_parser_bad(response: Any) -> None:
     with pytest.raises(http_exceptions.BadHttpMessage):
         response.feed_data(b"HTT/1\r\n\r\n")
