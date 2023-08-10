@@ -243,8 +243,10 @@ uritemplate==4.1.1
     # via gidgethub
 urllib3==2.0.4
     # via requests
-uvloop==0.17.0 ; platform_system != "Windows"
-    # via -r requirements/lint.in
+uvloop==0.17.0 ; platform_system != "Windows" and python_version < "3.12"
+    # via
+    #   -r requirements/base.in
+    #   -r requirements/lint.in
 virtualenv==20.24.2
     # via pre-commit
 wait-for-it==2.2.2
