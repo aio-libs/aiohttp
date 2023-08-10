@@ -13,6 +13,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Dict,
+    Final,
     Iterator,
     Mapping,
     MutableMapping,
@@ -26,7 +27,6 @@ from typing import (
 from urllib.parse import parse_qsl
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
-from typing_extensions import Final
 from yarl import URL
 
 from . import hdrs

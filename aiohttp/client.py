@@ -18,6 +18,7 @@ from typing import (
     Callable,
     Collection,
     Coroutine,
+    Final,
     FrozenSet,
     Generator,
     Generic,
@@ -31,10 +32,10 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    final,
 )
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
-from typing_extensions import Final, final
 from yarl import URL
 
 from . import hdrs, http, payload
