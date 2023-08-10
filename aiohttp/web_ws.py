@@ -4,11 +4,10 @@ import binascii
 import dataclasses
 import hashlib
 import json
-from typing import Any, Iterable, Optional, Tuple, cast
+from typing import Any, Final, Iterable, Optional, Tuple, cast
 
 import async_timeout
 from multidict import CIMultiDict
-from typing_extensions import Final
 
 from . import hdrs
 from .abc import AbstractStreamWriter

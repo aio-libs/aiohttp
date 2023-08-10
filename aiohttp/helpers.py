@@ -38,10 +38,12 @@ from typing import (
     Mapping,
     Optional,
     Pattern,
+    Protocol,
     Tuple,
     Type,
     TypeVar,
     Union,
+    final,
     get_args,
     overload,
 )
@@ -50,7 +52,6 @@ from urllib.request import getproxies, proxy_bypass
 
 import async_timeout
 from multidict import CIMultiDict, MultiDict, MultiDictProxy
-from typing_extensions import Protocol, final
 from yarl import URL
 
 from . import hdrs

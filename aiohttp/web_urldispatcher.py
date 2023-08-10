@@ -15,6 +15,7 @@ from typing import (
     Callable,
     Container,
     Dict,
+    Final,
     Generator,
     Iterable,
     Iterator,
@@ -27,11 +28,11 @@ from typing import (
     Sized,
     Tuple,
     Type,
+    TypedDict,
     Union,
     cast,
 )
 
-from typing_extensions import Final, TypedDict
 from yarl import URL, __version__ as yarl_version  # type: ignore[attr-defined]
 
 from . import hdrs

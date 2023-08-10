@@ -2,10 +2,9 @@
 
 import asyncio
 import dataclasses
-from typing import Any, Optional, cast
+from typing import Any, Final, Optional, cast
 
 import async_timeout
-from typing_extensions import Final
 
 from .client_exceptions import ClientError
 from .client_reqrep import ClientResponse

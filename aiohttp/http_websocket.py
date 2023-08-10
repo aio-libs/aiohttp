@@ -12,6 +12,7 @@ from struct import Struct
 from typing import (
     Any,
     Callable,
+    Final,
     List,
     NamedTuple,
     Optional,
@@ -21,8 +22,6 @@ from typing import (
     Union,
     cast,
 )
-
-from typing_extensions import Final
 
 from .base_protocol import BaseProtocol
 from .compression_utils import ZLibCompressor, ZLibDecompressor

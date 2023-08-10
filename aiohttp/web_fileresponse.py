@@ -2,21 +2,17 @@ import asyncio
 import mimetypes
 import os
 import pathlib
-from typing import (  # noqa
+from typing import (
     IO,
     TYPE_CHECKING,
     Any,
     Awaitable,
     Callable,
-    Iterator,
-    List,
+    Final,
     Optional,
     Tuple,
-    Union,
     cast,
 )
-
-from typing_extensions import Final
 
 from . import hdrs
 from .abc import AbstractStreamWriter

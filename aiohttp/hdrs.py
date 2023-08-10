@@ -2,10 +2,9 @@
 
 # After changing the file content call ./tools/gen.py
 # to regenerate the headers parser
-from typing import Set
+from typing import Final, Set
 
 from multidict import istr
-from typing_extensions import Final
 
 METH_ANY: Final[str] = "*"
 METH_CONNECT: Final[str] = "CONNECT"
