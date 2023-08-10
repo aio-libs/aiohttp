@@ -215,7 +215,7 @@ async def test_https_proxy_unsupported_tls_in_tls(
     ) as conn_err:
         await sess.get(url, proxy=secure_proxy_url, ssl=client_ssl_ctx)
 
-    assert type(conn_err.value.__cause__) == TypeError
+    assert isinstance(conn_err.value.__cause__, TypeError)
     assert match_regex(f"^{type_err!s}$", str(conn_err.value.__cause__))
 
     await sess.close()
