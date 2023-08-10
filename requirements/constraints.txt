@@ -130,8 +130,10 @@ packaging==21.2
 pep517==0.12.0
     # via build
 pillow==9.5.0
-    # via blockdiag
-pip-tools==7.2.0
+    # via
+    #   -c requirements/broken-projects.in
+    #   blockdiag
+pip-tools==7.3.0
     # via -r requirements/dev.in
 platformdirs==2.4.0
     # via virtualenv

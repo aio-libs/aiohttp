@@ -125,8 +125,10 @@ packaging==23.1
     #   pytest
     #   sphinx
 pillow==9.5.0
-    # via blockdiag
-pip-tools==7.2.0
+    # via
+    #   -c requirements/broken-projects.in
+    #   blockdiag
+pip-tools==7.3.0
     # via -r requirements/dev.in
 platformdirs==3.10.0
     # via virtualenv
