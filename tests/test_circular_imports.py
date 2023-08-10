@@ -104,6 +104,10 @@ def test_no_warnings(import_path: str) -> None:
         "-W", "ignore:Creating a LegacyVersion has been deprecated and "
         "will be removed in the next major release:"
         "DeprecationWarning:",
+        # Deprecation warning emitted by setuptools v67.5.0+ triggered by importing
+        # `gunicorn.util`.
+        "-W", "ignore:pkg_resources is deprecated as an API:"
+        "DeprecationWarning",
         "-c", f"import {import_path!s}",
         # fmt: on
     )
