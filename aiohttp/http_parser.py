@@ -5,6 +5,7 @@ import string
 from contextlib import suppress
 from enum import IntEnum
 from typing import (
+    Final,
     Generic,
     List,
     NamedTuple,
@@ -18,7 +19,6 @@ from typing import (
 )
 
 from multidict import CIMultiDict, CIMultiDictProxy, istr
-from typing_extensions import Final
 from yarl import URL
 
 from . import hdrs
