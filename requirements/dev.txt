@@ -240,7 +240,7 @@ uritemplate==4.1.1
     # via gidgethub
 urllib3==2.0.4
     # via requests
-uvloop==0.17.0 ; platform_system != "Windows" and implementation_name == "cpython"
+uvloop==0.17.0 ; platform_system != "Windows" and implementation_name == "cpython" and python_version < "3.12"
     # via
     #   -r requirements/base.in
     #   -r requirements/lint.in

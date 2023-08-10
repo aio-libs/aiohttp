@@ -52,7 +52,7 @@ typing-extensions==4.7.1
     #   -r requirements/typing-extensions.in
     #   aioredis
     #   mypy
-uvloop==0.17.0 ; platform_system != "Windows"
+uvloop==0.17.0 ; platform_system != "Windows" and python_version < "3.12"
     # via -r requirements/lint.in
 virtualenv==20.24.2
     # via pre-commit
