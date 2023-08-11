@@ -6,7 +6,7 @@
 #
 aioredis==2.0.1
     # via -r requirements/lint.in
-async-timeout==4.0.2
+async-timeout==4.0.3
     # via aioredis
 cfgv==3.3.1
     # via pre-commit
