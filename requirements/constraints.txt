@@ -111,7 +111,7 @@ multidict==6.0.4
     #   -r requirements/multidict.in
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.4.1 ; implementation_name == "cpython"
+mypy==1.5.0 ; implementation_name == "cpython"
     # via -r requirements/lint.in
 mypy-extensions==1.0.0
     # via mypy
@@ -244,9 +244,7 @@ uritemplate==4.1.1
 urllib3==2.0.4
     # via requests
 uvloop==0.17.0 ; platform_system != "Windows" and python_version < "3.12"
-    # via
-    #   -r requirements/base.in
-    #   -r requirements/lint.in
+    # via -r requirements/lint.in
 virtualenv==20.24.2
     # via pre-commit
 wait-for-it==2.2.2
