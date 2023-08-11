@@ -14,7 +14,7 @@ aiosignal==1.3.1
     # via -r requirements/runtime-deps.in
 alabaster==0.7.13
     # via sphinx
-async-timeout==4.0.2
+async-timeout==4.0.3
     # via
     #   -r requirements/runtime-deps.in
     #   aioredis
