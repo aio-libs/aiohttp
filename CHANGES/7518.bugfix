@@ -1,0 +1,1 @@
+Fix GunicornWebWorker max_requests_jitter not work
