@@ -114,7 +114,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
                 self.notify()
 
                 cnt = server.requests_count
-                if self.cfg.max_requests and cnt > self.cfg.max_requests:
+                if self.max_requests and cnt > self.max_requests:
                     self.alive = False
                     self.log.info("Max requests, shutting down: %s", self)
 
