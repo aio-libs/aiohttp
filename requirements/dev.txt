@@ -109,7 +109,9 @@ multidict==6.0.4
     #   -r requirements/runtime-deps.in
     #   yarl
 mypy==1.5.0 ; implementation_name == "cpython"
-    # via -r requirements/lint.in
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/test.in
 mypy-extensions==1.0.0
     # via mypy
 nodeenv==1.8.0
@@ -160,7 +162,7 @@ pytest-mock==3.11.1
     # via -r requirements/test.in
 python-dateutil==2.8.2
     # via freezegun
-python-on-whales==0.64.0
+python-on-whales==0.64.1
     # via -r requirements/test.in
 pyyaml==6.0.1
     # via pre-commit
