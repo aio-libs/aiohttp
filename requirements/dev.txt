@@ -53,7 +53,7 @@ click==8.1.6
     #   wait-for-it
 click-default-group==1.2.2
     # via towncrier
-coverage==7.2.7
+coverage==7.3.0
     # via
     #   -r requirements/test.in
     #   pytest-cov
@@ -109,7 +109,9 @@ multidict==6.0.4
     #   -r requirements/runtime-deps.in
     #   yarl
 mypy==1.5.0 ; implementation_name == "cpython"
-    # via -r requirements/lint.in
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/test.in
 mypy-extensions==1.0.0
     # via mypy
 nodeenv==1.8.0
