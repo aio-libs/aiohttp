@@ -14,6 +14,8 @@ aiosignal==1.3.1
     # via -r requirements/runtime-deps.in
 alabaster==0.7.12
     # via sphinx
+annotated-types==0.5.0
+    # via pydantic
 async-timeout==4.0.3
     # via
     #   -r requirements/runtime-deps.in
@@ -147,10 +149,10 @@ pycares==4.3.0
     # via aiodns
 pycparser==2.21
     # via cffi
-pydantic==1.10.2
-    # via
-    #   -c requirements/broken-projects.in
-    #   python-on-whales
+pydantic==2.1.1
+    # via python-on-whales
+pydantic-core==2.4.0
+    # via pydantic
 pyenchant==3.2.2
     # via sphinxcontrib-spelling
 pygments==2.15.1
@@ -241,12 +243,13 @@ trustme==1.1.0 ; platform_machine != "i686"
     # via -r requirements/test.in
 typer==0.6.1
     # via python-on-whales
-typing-extensions==4.1.1
+typing-extensions==4.7.1
     # via
     #   -r requirements/typing-extensions.in
     #   aioredis
     #   mypy
     #   pydantic
+    #   pydantic-core
     #   python-on-whales
 uritemplate==4.1.1
     # via gidgethub
