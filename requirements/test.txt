@@ -86,7 +86,7 @@ pytest-mock==3.11.1
     # via -r requirements/test.in
 python-dateutil==2.8.2
     # via freezegun
-python-on-whales==0.64.1
+python-on-whales==0.64.2
     # via -r requirements/test.in
 re-assert==1.1.0
     # via -r requirements/test.in
