@@ -1,2 +1,1 @@
 Pillow < 10  # https://github.com/blockdiag/sphinxcontrib-blockdiag/issues/26
-pydantic < 2  # looks like `python-on-whales` hasn't upgraded to support v2
