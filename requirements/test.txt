@@ -8,6 +8,8 @@ aiodns==3.0.0 ; sys_platform == "linux" or sys_platform == "darwin"
     # via -r requirements/runtime-deps.in
 aiosignal==1.3.1
     # via -r requirements/runtime-deps.in
+annotated-types==0.5.0
+    # via pydantic
 async-timeout==4.0.3
     # via -r requirements/runtime-deps.in
 attrs==23.1.0
@@ -73,10 +75,10 @@ pycares==4.3.0
     # via aiodns
 pycparser==2.21
     # via cffi
-pydantic==1.10.2
-    # via
-    #   -c requirements/broken-projects.in
-    #   python-on-whales
+pydantic==2.2.0
+    # via python-on-whales
+pydantic-core==2.6.0
+    # via pydantic
 pytest==7.4.0
     # via
     #   -r requirements/test.in
@@ -116,6 +118,7 @@ typing-extensions==4.7.1
     #   -r requirements/typing-extensions.in
     #   mypy
     #   pydantic
+    #   pydantic-core
     #   python-on-whales
     #   typer
 urllib3==2.0.4
