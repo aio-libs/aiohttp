@@ -115,7 +115,7 @@ multidict==6.0.4
     #   -r requirements/multidict.in
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.5.0 ; implementation_name == "cpython"
+mypy==1.5.1 ; implementation_name == "cpython"
     # via -r requirements/lint.in
 mypy-extensions==1.0.0
     # via mypy
