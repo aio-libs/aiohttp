@@ -1085,6 +1085,10 @@ class TCPConnector(BaseConnector):
 
         host = req.url.raw_host
         assert host is not None
+        # Replace multiple trailing dots with a single one.
+        # See https://github.com/aio-libs/aiohttp/pull/7364.
+        while host.endswith(".."):
+            host = host[:-1]
         port = req.port
         assert port is not None
         host_resolved = asyncio.ensure_future(
