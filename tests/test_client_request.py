@@ -280,24 +280,15 @@ def test_host_header_ipv6_with_port(make_request: Any) -> None:
 
 
 @pytest.mark.parametrize(
-    "url,headers,expected",
-    [
-        ("http://localhost.", None, "localhost"),
-        ("http://python.org.", None, "python.org"),
-        ("http://python.org.:99", None, "python.org:99"),
-        ("http://python.org...:99", None, "python.org:99"),
-        ("http://python.org.:99", {"host": "example.com.:99"}, "example.com.:99"),
-        ("https://python.org.", None, "python.org"),
-        ("https://...", None, ""),
-    ],
-    ids=(
-        "dot only at the end",
-        "single dot",
-        "single dot with port",
-        "multiple dots with port",
-        "explicit host header",
-        "https",
-        "only dots",
+    ("url", "headers", "expected"),
+    (
+        pytest.param("http://localhost.", None, "localhost", id="dot only at the end"),
+        pytest.param("http://python.org.", None, "python.org", id="single dot"),
+        pytest.param("http://python.org.:99", None, "python.org:99", id="single dot with port"),
+        pytest.param("http://python.org...:99", None, "python.org:99", id="multiple dots with port"),
+        pytest.param("http://python.org.:99", {"host": "example.com.:99"}, "example.com.:99", id="explicit host header"),
+        pytest.param("https://python.org.", None, "python.org", id="https"),
+        pytest.param("https://...", None, "", id="only dots"),
     ),
 )
 def test_host_header_fqdn(

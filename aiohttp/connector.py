@@ -1116,10 +1116,10 @@ class TCPConnector(BaseConnector):
             host = hinfo["host"]
             port = hinfo["port"]
 
+            # Strip trailing dots, certificates contain FQDN without dots.
+            # See https://github.com/aio-libs/aiohttp/issues/3636
+            server_hostname = hinfo["hostname"].rstrip(".") if sslcontext else None
             try:
-                # Strip trailing dots, certificates contain FQDN without dots.
-                # See https://github.com/aio-libs/aiohttp/issues/3636
-                server_hostname = hinfo["hostname"].rstrip(".") if sslcontext else None
                 transp, proto = await self._wrap_create_connection(
                     self._factory,
                     host,
