@@ -112,7 +112,9 @@ multidict==6.0.4
     #   -r requirements/runtime-deps.in
     #   yarl
 mypy==1.5.1 ; implementation_name == "cpython"
-    # via -r requirements/lint.in
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/test.in
 mypy-extensions==1.0.0
     # via mypy
 nodeenv==1.8.0
@@ -142,9 +144,7 @@ pycares==4.3.0
 pycparser==2.21
     # via cffi
 pydantic==1.10.12
-    # via
-    #   -c requirements/broken-projects.in
-    #   python-on-whales
+    # via python-on-whales
 pyenchant==3.2.2
     # via sphinxcontrib-spelling
 pygments==2.15.1
@@ -156,6 +156,7 @@ pyproject-hooks==1.0.0
 pytest==7.4.0
     # via
     #   -r requirements/lint.in
+    #   -r requirements/test.in
     #   pytest-cov
     #   pytest-mock
 pytest-cov==4.1.0
@@ -185,7 +186,7 @@ slotscheck==0.17.0
     # via -r requirements/lint.in
 snowballstemmer==2.2.0
     # via sphinx
-sphinx==7.1.2
+sphinx==7.2.2
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-blockdiag
@@ -244,7 +245,9 @@ uritemplate==4.1.1
 urllib3==2.0.4
     # via requests
 uvloop==0.17.0 ; platform_system != "Windows" and python_version < "3.12"
-    # via -r requirements/lint.in
+    # via
+    #   -r requirements/base.in
+    #   -r requirements/lint.in
 virtualenv==20.24.2
     # via pre-commit
 wait-for-it==2.2.2

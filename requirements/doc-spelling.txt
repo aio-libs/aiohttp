@@ -52,13 +52,11 @@ pyenchant==3.2.2
     # via sphinxcontrib-spelling
 pygments==2.15.1
     # via sphinx
-pytz==2023.3
-    # via babel
 requests==2.31.0
     # via sphinx
 snowballstemmer==2.2.0
     # via sphinx
-sphinx==7.1.2
+sphinx==7.2.2
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-blockdiag
