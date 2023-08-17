@@ -45,14 +45,16 @@ markupsafe==2.1.3
 packaging==23.1
     # via sphinx
 pillow==9.5.0
-    # via blockdiag
+    # via
+    #   -c requirements/broken-projects.in
+    #   blockdiag
 pygments==2.15.1
     # via sphinx
 requests==2.31.0
     # via sphinx
 snowballstemmer==2.2.0
     # via sphinx
-sphinx==7.1.2
+sphinx==7.2.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-blockdiag
