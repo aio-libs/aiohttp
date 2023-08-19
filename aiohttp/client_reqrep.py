@@ -215,6 +215,7 @@ class ClientRequest:
         proxy_headers: Optional[LooseHeaders] = None,
         traces: Optional[List["Trace"]] = None,
         trust_env: bool = False,
+        server_hostname: Optional[str] = None,
     ):
         match = _CONTAINS_CONTROL_CHAR_RE.search(method)
         if match:
@@ -246,6 +247,7 @@ class ClientRequest:
         self.response_class: Type[ClientResponse] = real_response_class
         self._timer = timer if timer is not None else TimerNoop()
         self._ssl = ssl
+        self.server_hostname = server_hostname
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))

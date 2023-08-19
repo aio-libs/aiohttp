@@ -347,7 +347,7 @@ The client session supports the context manager protocol for self closing.
                          timeout=sentinel, ssl=None, \
                          verify_ssl=None, fingerprint=None, \
                          ssl_context=None, proxy_headers=None, \
-                         auto_decompress=None)
+                         server_hostname=None, auto_decompress=None)
       :async:
       :noindexentry:
 
@@ -496,6 +496,13 @@ The client session supports the context manager protocol for self closing.
          .. deprecated:: 3.0
 
             Use ``ssl=aiohttp.Fingerprint(digest)``
+
+      :param str server_hostname: Sets or overrides the hostname that the
+         target server’s certificate will be matched against.
+
+         See :method:`asyncio.loop.create_connection` for more information.
+
+         .. versionadded:: 3.9
 
       :param ssl.SSLContext ssl_context: ssl context used for processing
          *HTTPS* requests (optional).

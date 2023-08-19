@@ -1034,7 +1034,7 @@ class TCPConnector(BaseConnector):
                         underlying_transport,
                         tls_proto,
                         sslcontext,
-                        server_hostname=req.host,
+                        server_hostname=req.server_hostname or req.host,
                         ssl_handshake_timeout=timeout.total,
                     )
                 except BaseException:
@@ -1116,6 +1116,10 @@ class TCPConnector(BaseConnector):
             host = hinfo["host"]
             port = hinfo["port"]
 
+            server_hostname = (
+                (req.server_hostname or hinfo["hostname"]) if sslcontext else None
+            )
+
             try:
                 transp, proto = await self._wrap_create_connection(
                     self._factory,
@@ -1126,7 +1130,7 @@ class TCPConnector(BaseConnector):
                     family=hinfo["family"],
                     proto=hinfo["proto"],
                     flags=hinfo["flags"],
-                    server_hostname=hinfo["hostname"] if sslcontext else None,
+                    server_hostname=server_hostname,
                     local_addr=self._local_addr,
                     req=req,
                     client_error=client_error,
