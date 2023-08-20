@@ -10,8 +10,8 @@ import ssl
 import sys
 import uuid
 from collections import deque
-from typing import Any, Optional
 from contextlib import closing
+from typing import Any, Optional
 from unittest import mock
 
 import pytest
@@ -583,6 +583,7 @@ async def test_tcp_connector_server_hostname_override(loop: Any) -> None:
 
         with closing(await conn.connect(req, [], ClientTimeout())):
             assert create_connection.call_args.kwargs["server_hostname"] == "localhost"
+
 
 async def test_tcp_connector_multiple_hosts_errors(loop: Any) -> None:
     conn = aiohttp.TCPConnector()
