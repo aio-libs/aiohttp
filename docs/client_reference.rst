@@ -500,7 +500,7 @@ The client session supports the context manager protocol for self closing.
       :param str server_hostname: Sets or overrides the host name that the
          target server’s certificate will be matched against.
 
-         See :method:`asyncio.loop.create_connection` for more information.
+         See :py:meth:`asyncio.loop.create_connection` for more information.
 
          .. versionadded:: 3.9
 
