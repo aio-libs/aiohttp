@@ -9,6 +9,7 @@ import ssl
 import sys
 import uuid
 from collections import deque
+from contextlib import closing
 from unittest import mock
 
 import pytest
@@ -553,6 +554,36 @@ async def test_tcp_connector_certificate_error(loop) -> None:
     assert isinstance(ctx.value, ssl.CertificateError)
     assert isinstance(ctx.value.certificate_error, ssl.CertificateError)
     assert isinstance(ctx.value, aiohttp.ClientSSLError)
+
+
+async def test_tcp_connector_server_hostname_default(loop) -> None:
+    conn = aiohttp.TCPConnector(loop=loop)
+
+    with mock.patch.object(
+        conn._loop, "create_connection", autospec=True, spec_set=True
+    ) as create_connection:
+        create_connection.return_value = mock.Mock(), mock.Mock()
+
+        req = ClientRequest("GET", URL("https://127.0.0.1:443"), loop=loop)
+
+        with closing(await conn.connect(req, [], ClientTimeout())):
+            assert create_connection.call_args.kwargs["server_hostname"] == "127.0.0.1"
+
+
+async def test_tcp_connector_server_hostname_override(loop) -> None:
+    conn = aiohttp.TCPConnector(loop=loop)
+
+    with mock.patch.object(
+        conn._loop, "create_connection", autospec=True, spec_set=True
+    ) as create_connection:
+        create_connection.return_value = mock.Mock(), mock.Mock()
+
+        req = ClientRequest(
+            "GET", URL("https://127.0.0.1:443"), loop=loop, server_hostname="localhost"
+        )
+
+        with closing(await conn.connect(req, [], ClientTimeout())):
+            assert create_connection.call_args.kwargs["server_hostname"] == "localhost"
 
 
 async def test_tcp_connector_multiple_hosts_errors(loop) -> None:
