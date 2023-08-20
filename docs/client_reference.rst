@@ -497,7 +497,7 @@ The client session supports the context manager protocol for self closing.
 
             Use ``ssl=aiohttp.Fingerprint(digest)``
 
-      :param str server_hostname: Sets or overrides the hostname that the
+      :param str server_hostname: Sets or overrides the host name that the
          target server’s certificate will be matched against.
 
          See :method:`asyncio.loop.create_connection` for more information.
