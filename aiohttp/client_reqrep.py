@@ -76,7 +76,7 @@ except ImportError:  # pragma: no cover
 try:
     import cchardet as chardet
 except ImportError:  # pragma: no cover
-    import charset_normalizer as chardet  # type: ignore[no-redef]
+    import charset_normalizer as chardet
 
 
 __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
@@ -215,6 +215,7 @@ class ClientRequest:
         proxy_headers: Optional[LooseHeaders] = None,
         traces: Optional[List["Trace"]] = None,
         trust_env: bool = False,
+        server_hostname: Optional[str] = None,
     ):
         match = _CONTAINS_CONTROL_CHAR_RE.search(method)
         if match:
@@ -246,6 +247,7 @@ class ClientRequest:
         self.response_class: Type[ClientResponse] = real_response_class
         self._timer = timer if timer is not None else TimerNoop()
         self._ssl = ssl
+        self.server_hostname = server_hostname
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
@@ -699,7 +701,7 @@ class ClientResponse(HeadersMixin):
         *,
         writer: "asyncio.Task[None]",
         continue100: Optional["asyncio.Future[bool]"],
-        timer: BaseTimerContext,
+        timer: Optional[BaseTimerContext],
         request_info: RequestInfo,
         traces: List["Trace"],
         loop: asyncio.AbstractEventLoop,
@@ -924,7 +926,7 @@ class ClientResponse(HeadersMixin):
             return
 
         self._closed = True
-        if self._loop is None or self._loop.is_closed():
+        if self._loop.is_closed():
             return
 
         if self._connection is not None:
@@ -976,7 +978,8 @@ class ClientResponse(HeadersMixin):
 
     def _notify_content(self) -> None:
         content = self.content
-        if content and content.exception() is None:
+        # content can be None here, but the types are cheated elsewhere.
+        if content and content.exception() is None:  # type: ignore[truthy-bool]
             content.set_exception(ClientConnectionError("Connection closed"))
         self._released = True
 

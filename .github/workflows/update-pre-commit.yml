@@ -14,9 +14,8 @@ jobs:
       with:
         python-version: 3.8
     - name: Install dependencies
-      uses: py-actions/py-dependency-install@v3
-      with:
-        path: requirements/lint.txt
+      run: >-
+        pip install -r requirements/lint.in -c requirements/lint.txt
     - name: Run pre-commit autoupdate
       run: pre-commit autoupdate
     - id: generate_token
@@ -25,7 +24,7 @@ jobs:
         app_id: ${{ secrets.BOT_APP_ID }}
         private_key: ${{ secrets.BOT_PRIVATE_KEY }}
     - name: Create Pull Request
-      uses: peter-evans/create-pull-request@v4.0.4
+      uses: peter-evans/create-pull-request@v5
       with:
         token: ${{ steps.generate_token.outputs.token }}
         branch: update/pre-commit-autoupdate

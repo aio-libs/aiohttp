@@ -118,6 +118,18 @@ Server example:
 For more information please visit :ref:`aiohttp-client` and
 :ref:`aiohttp-web` pages.
 
+Development mode
+================
+
+When writing your code, we recommend enabling Python's
+`development mode <https://docs.python.org/3/library/devmode.html>`_
+(``python -X dev``). In addition to the extra features enabled for asyncio, aiohttp
+will:
+
+- Use a strict parser in the client code (which can help detect malformed responses
+  from a server).
+- Enable some additional checks (resulting in warnings in certain situations).
+
 What's new in aiohttp 3?
 ========================
 
@@ -139,9 +151,6 @@ The project is hosted on GitHub_
 Please feel free to file an issue on the `bug tracker
 <https://github.com/aio-libs/aiohttp/issues>`_ if you have found a bug
 or have some suggestion in order to improve the library.
-
-The library uses `Azure Pipelines <https://dev.azure.com/aio-libs/aiohttp/_build>`_ for
-Continuous Integration.
 
 
 Dependencies

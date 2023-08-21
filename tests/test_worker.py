@@ -214,8 +214,8 @@ async def test__run_ok_parent_changed(
     worker.sockets = [sock]
     worker.log = mock.Mock()
     worker.loop = loop
+    worker.max_requests = 0
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
-    worker.cfg.max_requests = 0
     worker.cfg.is_ssl = False
 
     await worker._run()
@@ -237,8 +237,8 @@ async def test__run_exc(
     worker.sockets = [sock]
     worker.log = mock.Mock()
     worker.loop = loop
+    worker.max_requests = 0
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
-    worker.cfg.max_requests = 0
     worker.cfg.is_ssl = False
 
     def raiser() -> None:

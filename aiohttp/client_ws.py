@@ -2,10 +2,9 @@
 
 import asyncio
 import dataclasses
-from typing import Any, Optional, cast
+from typing import Any, Final, Optional, cast
 
 import async_timeout
-from typing_extensions import Final
 
 from .client_exceptions import ClientError
 from .client_reqrep import ClientResponse
@@ -107,7 +106,7 @@ class ClientWebSocketResponse:
             # fire-and-forget a task is not perfect but maybe ok for
             # sending ping. Otherwise we need a long-living heartbeat
             # task in the class.
-            self._loop.create_task(self._writer.ping())
+            self._loop.create_task(self._writer.ping())  # type: ignore[unused-awaitable]
 
             if self._pong_response_cb is not None:
                 self._pong_response_cb.cancel()
@@ -280,7 +279,8 @@ class ClientWebSocketResponse:
             if msg.type == WSMsgType.CLOSE:
                 self._closing = True
                 self._close_code = msg.data
-                if not self._closed and self._autoclose:
+                # Could be closed elsewhere while awaiting reader
+                if not self._closed and self._autoclose:  # type: ignore[redundant-expr]
                     await self.close()
             elif msg.type == WSMsgType.CLOSING:
                 self._closing = True

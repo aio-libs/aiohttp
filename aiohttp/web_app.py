@@ -2,7 +2,7 @@ import asyncio
 import logging
 import warnings
 from functools import partial, update_wrapper
-from typing import (  # noqa
+from typing import (
     TYPE_CHECKING,
     Any,
     AsyncIterator,
@@ -16,17 +16,16 @@ from typing import (  # noqa
     MutableMapping,
     Optional,
     Sequence,
-    Tuple,
     Type,
     TypeVar,
     Union,
     cast,
+    final,
     overload,
 )
 
 from aiosignal import Signal
 from frozenlist import FrozenList
-from typing_extensions import final
 
 from . import hdrs
 from .helpers import AppKey
@@ -173,7 +172,8 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             warnings.warn(
                 "It is recommended to use web.AppKey instances for keys.\n"
                 + "https://docs.aiohttp.org/en/stable/web_advanced.html"
-                + "#application-s-config"
+                + "#application-s-config",
+                stacklevel=2,
             )
         self._state[key] = value
 

@@ -2,21 +2,17 @@ import asyncio
 import mimetypes
 import os
 import pathlib
-from typing import (  # noqa
+from typing import (
     IO,
     TYPE_CHECKING,
     Any,
     Awaitable,
     Callable,
-    Iterator,
-    List,
+    Final,
     Optional,
     Tuple,
-    Union,
     cast,
 )
-
-from typing_extensions import Final
 
 from . import hdrs
 from .abc import AbstractStreamWriter
@@ -167,14 +163,13 @@ class FileResponse(StreamResponse):
         ):
             return await self._not_modified(request, etag_value, last_modified)
 
+        ct = None
         if hdrs.CONTENT_TYPE not in self.headers:
             ct, encoding = mimetypes.guess_type(str(filepath))
             if not ct:
                 ct = "application/octet-stream"
-            should_set_ct = True
         else:
             encoding = "gzip" if gzip else None
-            should_set_ct = False
 
         status = self._status
         file_size = st.st_size
@@ -250,8 +245,8 @@ class FileResponse(StreamResponse):
                 # return a HTTP 206 for a Range request.
                 self.set_status(status)
 
-        if should_set_ct:
-            self.content_type = ct  # type: ignore[assignment]
+        if ct:
+            self.content_type = ct
         if encoding:
             self.headers[hdrs.CONTENT_ENCODING] = encoding
         if gzip:

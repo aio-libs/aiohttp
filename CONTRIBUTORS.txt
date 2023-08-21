@@ -163,6 +163,7 @@ Jake Davis
 Jakob Ackermann
 Jakub Wilk
 Jan Buchar
+Jan Gosmann
 Jarno Elonen
 Jashandeep Sohi
 Jean-Baptiste Estival
@@ -177,6 +178,7 @@ Joel Watts
 Jon Nabozny
 Jonas Krüger Svensson
 Jonas Obrist
+Jonathan Ballet
 Jonathan Wright
 Jonny Tan
 Joongi Kim
@@ -214,6 +216,7 @@ Lukasz Marcin Dobrzanski
 Makc Belousow
 Manuel Miranda
 Marat Sharafutdinov
+Marc Mueller
 Marco Paolini
 Mariano Anaya
 Mariusz Masztalerczuk

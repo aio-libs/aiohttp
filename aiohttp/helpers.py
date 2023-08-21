@@ -3,6 +3,7 @@
 import asyncio
 import base64
 import binascii
+import contextlib
 import dataclasses
 import datetime
 import enum
@@ -37,10 +38,12 @@ from typing import (
     Mapping,
     Optional,
     Pattern,
+    Protocol,
     Tuple,
     Type,
     TypeVar,
     Union,
+    final,
     get_args,
     overload,
 )
@@ -49,7 +52,6 @@ from urllib.request import getproxies, proxy_bypass
 
 import async_timeout
 from multidict import CIMultiDict, MultiDict, MultiDictProxy
-from typing_extensions import Protocol, final
 from yarl import URL
 
 from . import hdrs
@@ -213,8 +215,11 @@ def netrc_from_env() -> Optional[netrc.netrc]:
     except netrc.NetrcParseError as e:
         client_logger.warning("Could not parse .netrc file: %s", e)
     except OSError as e:
+        netrc_exists = False
+        with contextlib.suppress(OSError):
+            netrc_exists = netrc_path.is_file()
         # we couldn't read the file (doesn't exist, permissions, etc.)
-        if netrc_env or netrc_path.is_file():
+        if netrc_env or netrc_exists:
             # only warn if the environment wanted us to load it,
             # or it appears like the default file does actually exist
             client_logger.warning("Could not read .netrc file: %s", e)
@@ -583,7 +588,7 @@ def _weakref_handle(info: "Tuple[weakref.ref[object], str]") -> None:
 def weakref_handle(
     ob: object,
     name: str,
-    timeout: float,
+    timeout: Optional[float],
     loop: asyncio.AbstractEventLoop,
     timeout_ceil_threshold: float = 5,
 ) -> Optional[asyncio.TimerHandle]:
@@ -598,7 +603,7 @@ def weakref_handle(
 
 def call_later(
     cb: Callable[[], Any],
-    timeout: float,
+    timeout: Optional[float],
     loop: asyncio.AbstractEventLoop,
     timeout_ceil_threshold: float = 5,
 ) -> Optional[asyncio.TimerHandle]:
@@ -712,7 +717,7 @@ class TimerContext(BaseTimerContext):
         exc_tb: Optional[TracebackType],
     ) -> Optional[bool]:
         if self._tasks:
-            self._tasks.pop()
+            self._tasks.pop()  # type: ignore[unused-awaitable]
 
         if exc_type is asyncio.CancelledError and self._cancelled:
             raise asyncio.TimeoutError from None
@@ -758,7 +763,7 @@ class HeadersMixin:
         else:
             msg = HeaderParser().parsestr("Content-Type: " + raw)
             self._content_type = msg.get_content_type()
-            params = msg.get_params()
+            params = msg.get_params(())
             self._content_dict = dict(params[1:])  # First element is content type again
 
     @property
@@ -819,8 +824,11 @@ class AppKey(Generic[_T]):
                 module: str = frame.f_globals["__name__"]
                 break
             frame = frame.f_back
+        else:
+            raise RuntimeError("Failed to get module name.")
 
-        self._name = module + "." + name
+        # https://github.com/python/mypy/issues/14209
+        self._name = module + "." + name  # type: ignore[possibly-undefined]
         self._t = t
 
     def __lt__(self, other: object) -> bool:

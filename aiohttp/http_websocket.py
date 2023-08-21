@@ -12,6 +12,7 @@ from struct import Struct
 from typing import (
     Any,
     Callable,
+    Final,
     List,
     NamedTuple,
     Optional,
@@ -21,8 +22,6 @@ from typing import (
     Union,
     cast,
 )
-
-from typing_extensions import Final
 
 from .base_protocol import BaseProtocol
 from .compression_utils import ZLibCompressor, ZLibDecompressor
@@ -669,7 +668,7 @@ class WebSocketWriter:
             await self.protocol._drain_helper()
 
     def _write(self, data: bytes) -> None:
-        if self.transport is None or self.transport.is_closing():
+        if self.transport.is_closing():
             raise ConnectionResetError("Cannot write to closing transport")
         self.transport.write(data)
 

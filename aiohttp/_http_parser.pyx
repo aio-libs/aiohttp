@@ -20,6 +20,7 @@ from multidict import CIMultiDict as _CIMultiDict, CIMultiDictProxy as _CIMultiD
 from yarl import URL as _URL
 
 from aiohttp import hdrs
+from aiohttp.helpers import DEBUG
 
 from .http_exceptions import (
     BadHttpMessage,
@@ -546,7 +547,13 @@ cdef class HttpParser:
                     ex = self._last_error
                     self._last_error = None
                 else:
-                    ex = parser_error_from_errno(self._cparser)
+                    after = cparser.llhttp_get_error_pos(self._cparser)
+                    before = data[:after - <char*>self.py_buf.buf]
+                    after_b = after.split(b"\r\n", 1)[0]
+                    before = before.rsplit(b"\r\n", 1)[-1]
+                    data = before + after_b
+                    pointer = " " * (len(repr(before))-1) + "^"
+                    ex = parser_error_from_errno(self._cparser, data, pointer)
                 self._payload = None
                 raise ex
 
@@ -642,6 +649,9 @@ cdef class HttpResponseParser(HttpParser):
                    max_line_size, max_headers, max_field_size,
                    payload_exception, response_with_body, read_until_eof,
                    auto_decompress)
+        # Use strict parsing on dev mode, so users are warned about broken servers.
+        if not DEBUG:
+            cparser.llhttp_set_lenient_headers(self._cparser, 1)
 
     cdef object _on_status_complete(self):
         if self._buf:
@@ -797,7 +807,7 @@ cdef int cb_on_chunk_complete(cparser.llhttp_t* parser) except -1:
         return 0
 
 
-cdef parser_error_from_errno(cparser.llhttp_t* parser):
+cdef parser_error_from_errno(cparser.llhttp_t* parser, data, pointer):
     cdef cparser.llhttp_errno_t errno = cparser.llhttp_get_errno(parser)
     cdef bytes desc = cparser.llhttp_get_error_reason(parser)
 
@@ -829,4 +839,4 @@ cdef parser_error_from_errno(cparser.llhttp_t* parser):
     else:
         cls = BadHttpMessage
 
-    return cls(desc.decode('latin-1'))
+    return cls("{}:\n\n  {!r}\n  {}".format(desc.decode("latin-1"), data, pointer))

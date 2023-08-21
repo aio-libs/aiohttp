@@ -1,11 +1,11 @@
 import abc
 import asyncio
-import collections
 import re
 import string
 from contextlib import suppress
 from enum import IntEnum
 from typing import (
+    Final,
     Generic,
     List,
     NamedTuple,
@@ -19,7 +19,6 @@ from typing import (
 )
 
 from multidict import CIMultiDict, CIMultiDictProxy, istr
-from typing_extensions import Final
 from yarl import URL
 
 from . import hdrs
@@ -76,20 +75,16 @@ class RawRequestMessage(NamedTuple):
     url: URL
 
 
-RawResponseMessage = collections.namedtuple(
-    "RawResponseMessage",
-    [
-        "version",
-        "code",
-        "reason",
-        "headers",
-        "raw_headers",
-        "should_close",
-        "compression",
-        "upgrade",
-        "chunked",
-    ],
-)
+class RawResponseMessage(NamedTuple):
+    version: HttpVersion
+    code: int
+    reason: str
+    headers: CIMultiDictProxy[str]
+    raw_headers: RawHeaders
+    should_close: bool
+    compression: Optional[str]
+    upgrade: bool
+    chunked: bool
 
 
 _MsgT = TypeVar("_MsgT", RawRequestMessage, RawResponseMessage)
@@ -900,7 +895,8 @@ class DeflateBuffer:
 
         if chunk or self.size > 0:
             self.out.feed_data(chunk, len(chunk))
-            if self.encoding == "deflate" and not self.decompressor.eof:  # type: ignore
+            # decompressor is not brotli unless encoding is "br"
+            if self.encoding == "deflate" and not self.decompressor.eof:  # type: ignore[union-attr]
                 raise ContentEncodingError("deflate")
 
         self.out.feed_eof()

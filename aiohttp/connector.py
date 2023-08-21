@@ -961,7 +961,7 @@ class TCPConnector(BaseConnector):
             async with ceil_timeout(
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
             ):
-                return await self._loop.create_connection(*args, **kwargs)  # type: ignore[return-value]  # noqa
+                return await self._loop.create_connection(*args, **kwargs)
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:
@@ -1034,7 +1034,7 @@ class TCPConnector(BaseConnector):
                         underlying_transport,
                         tls_proto,
                         sslcontext,
-                        server_hostname=req.host,
+                        server_hostname=req.server_hostname or req.host,
                         ssl_handshake_timeout=timeout.total,
                     )
                 except BaseException:
@@ -1123,7 +1123,12 @@ class TCPConnector(BaseConnector):
 
             # Strip trailing dots, certificates contain FQDN without dots.
             # See https://github.com/aio-libs/aiohttp/issues/3636
-            server_hostname = hinfo["hostname"].rstrip(".") if sslcontext else None
+            server_hostname = (
+                (req.server_hostname or hinfo["hostname"]).rstrip(".")
+                if sslcontext
+                else None
+            )
+
             try:
                 transp, proto = await self._wrap_create_connection(
                     self._factory,
@@ -1363,7 +1368,7 @@ class NamedPipeConnector(BaseConnector):
             async with ceil_timeout(
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
             ):
-                _, proto = await self._loop.create_pipe_connection(  # type: ignore[attr-defined] # noqa: E501
+                _, proto = await self._loop.create_pipe_connection(  # type: ignore[attr-defined]
                     self._factory, self._path
                 )
                 # the drain is required so that the connection_made is called
