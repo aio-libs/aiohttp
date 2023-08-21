@@ -2037,7 +2037,7 @@ async def test_tcp_connector_raise_connector_ssl_error(
         pytest.param("127.0.0.1", id="ip address"),
         pytest.param("localhost", id="domain name"),
         pytest.param("localhost.", id="fully-qualified domain name"),
-        pytest.param("localhost...", id="fully-qualified domain name"),
+        pytest.param("localhost...", id="fully-qualified domain name with multiple trailing dots"),
     ),
 )
 async def test_tcp_connector_do_not_raise_connector_ssl_error(
