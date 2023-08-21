@@ -1,6 +1,8 @@
 # type: ignore
 import asyncio
+import time
 from typing import Any
+from unittest import mock
 
 import async_timeout
 import pytest
@@ -617,6 +619,44 @@ async def test_heartbeat_no_pong(aiohttp_client: Any) -> None:
     await resp.receive()
 
     assert ping_received
+
+
+async def test_heartbeat_network_down(aiohttp_client: Any) -> None:
+    pong_should_received = 0
+
+    async def handler(request):
+        nonlocal pong_should_received
+        ws = web.WebSocketResponse(autoping=False)
+        await ws.prepare(request)
+        start_at = time.time()
+        async for msg in ws:
+            if time.time() - start_at >= 0.2:
+                # Server is not responding
+                await asyncio.sleep(0.5)
+                break
+            if msg.type == aiohttp.WSMsgType.PING:
+                await ws.pong()
+                pong_should_received += 1
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/", heartbeat=0.05, autoping=False)
+
+    pong_received = 0
+    # keep the connection
+    with mock.patch("aiohttp.streams.DataQueue.feed_eof"):
+        with pytest.raises(asyncio.TimeoutError):
+            async for msg in resp:
+                if msg.type == aiohttp.WSMsgType.PONG:
+                    pong_received += 1
+                    continue
+
+    assert pong_should_received == pong_received
+    await resp.close()
 
 
 async def test_send_recv_compress(aiohttp_client: Any) -> None:
