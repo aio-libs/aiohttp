@@ -1088,7 +1088,7 @@ class TCPConnector(BaseConnector):
         # Replace multiple trailing dots with a single one.
         # A trailing dot is only present for fully-qualified domain names.
         # See https://github.com/aio-libs/aiohttp/pull/7364.
-        if host.endswith("."):
+        if host.endswith(".."):
             host = host.rstrip(".") + "."
         port = req.port
         assert port is not None
