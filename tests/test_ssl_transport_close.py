@@ -1,13 +1,16 @@
 import asyncio
+import warnings
+from typing import Any, Tuple, cast
 
-import aiohttp
-from aiohttp import web
+from aiohttp import TCPConnector, web
+from aiohttp.client import ServerDisconnectedError
+
+TestServer = Any
+TestClient = Any
 
 
-async def handle_root(request):
-    """
-    respond after server was restarted, forcing connection_lost
-    """
+async def handle_root(request: web.Request) -> web.Response:
+    """respond after server was restarted, forcing connection_lost"""
     cq = request.app["cq"]
     dq = request.app["dq"]
 
@@ -19,16 +22,21 @@ async def handle_root(request):
     return web.Response(text="")
 
 
-async def _prepare(aiohttp_server, aiohttp_client, ssl_ctx, client_ssl_ctx, cq, dq):
+async def _prepare(
+    aiohttp_server: Any,
+    aiohttp_client: Any,
+    ssl_ctx: Any,
+    client_ssl_ctx: Any,
+    cq: asyncio.Queue[int],
+    dq: asyncio.Queue[int],
+) -> Tuple[TestServer, TestClient]:
     app = web.Application()
     app["cq"] = cq
     app["dq"] = dq
     app.router.add_get("/", handle_root)
     server = await aiohttp_server(app, port=0, ssl=ssl_ctx)
 
-    session = await aiohttp_client(
-        server, connector=aiohttp.TCPConnector(ssl=client_ssl_ctx)
-    )
+    session = await aiohttp_client(server, connector=TCPConnector(ssl=client_ssl_ctx))
 
     # replace SockSite … it is different and blocks
     await dq.put(0)
@@ -38,15 +46,15 @@ async def _prepare(aiohttp_server, aiohttp_client, ssl_ctx, client_ssl_ctx, cq, 
     return server, session
 
 
-async def _close(server, session):
+async def _close(server: TestServer, session: TestClient) -> None:
     await server.close()
     await session.close()
 
 
-async def _restart(runner, ssl_ctx, port, cq, dq):
-    """
-    restart service to force connection_lost
-    """
+async def _restart(
+    runner: Any, ssl_ctx: Any, port: int, cq: asyncio.Queue[int], dq: asyncio.Queue[int]
+) -> None:
+    """restart service to force connection_lost"""
     await dq.get()
     dq.task_done()
     for s in list(runner.sites):
@@ -59,23 +67,28 @@ async def _restart(runner, ssl_ctx, port, cq, dq):
         break
 
 
-def _ssl_resource_warnings(w):
+def _ssl_resource_warnings(w: warnings.WarningMessage) -> bool:
     unclosed_transport_msg = (
         "unclosed transport <asyncio.sslproto._SSLProtocolTransport object at"
     )
     return (
         w.category == ResourceWarning
         and w.filename.endswith("sslproto.py")
-        and w.message.args[0].startswith(unclosed_transport_msg)
+        and cast(Warning, w.message).args[0].startswith(unclosed_transport_msg)
     )
 
 
 async def _run(
-    loop, aiohttp_server, aiohttp_client, recwarn, ssl_ctx, client_ssl_ctx, cq, dq
-):
-    """
-    run for two processed client requests
-    """
+    loop: Any,
+    aiohttp_server: Any,
+    aiohttp_client: Any,
+    recwarn: Any,
+    ssl_ctx: Any,
+    client_ssl_ctx: Any,
+    cq: asyncio.Queue[int],
+    dq: asyncio.Queue[int],
+) -> None:
+    """run for two processed client requests"""
     server, session = await _prepare(
         aiohttp_server, aiohttp_client, ssl_ctx, client_ssl_ctx, cq, dq
     )
@@ -85,23 +98,34 @@ async def _run(
             jobs.append(session.get("/"))
             jobs.append(_restart(server.runner, ssl_ctx, session.port, cq, dq))
             await asyncio.gather(*jobs)
-        except aiohttp.client.ServerDisconnectedError:
+        except ServerDisconnectedError:
+            """
+            restarting the service will cause the client connections to fail
+            this is expected and no failure
+            """
             pass
         finally:
             await asyncio.sleep(0.1)
 
-        assert not len(list(filter(_ssl_resource_warnings, recwarn)))
+        assert not len(
+            list(filter(_ssl_resource_warnings, recwarn))
+        ), "unclosed transport"
 
     await _close(server, session)
 
 
+# @pytest.mark.xfail
 def test_unclosed_transport_asyncio_sslproto_SSLProtocolTransport(
-    aiohttp_server, aiohttp_client, recwarn, ssl_ctx, client_ssl_ctx
-):
+    aiohttp_server: Any,
+    aiohttp_client: Any,
+    recwarn: Any,
+    ssl_ctx: Any,
+    client_ssl_ctx: Any,
+) -> None:
     loop = asyncio.get_event_loop()
 
-    cq = asyncio.Queue()
-    dq = asyncio.Queue()
+    cq: asyncio.Queue[int] = asyncio.Queue()
+    dq: asyncio.Queue[int] = asyncio.Queue()
     loop.set_debug(True)
     loop.run_until_complete(
         _run(
