@@ -2,6 +2,8 @@ import asyncio
 import warnings
 from typing import Any, Tuple, cast
 
+import pytest
+
 from aiohttp import TCPConnector, web
 from aiohttp.client import ServerDisconnectedError
 
@@ -114,7 +116,7 @@ async def _run(
     await _close(server, session)
 
 
-# @pytest.mark.xfail
+@pytest.mark.xfail
 def test_unclosed_transport_asyncio_sslproto_SSLProtocolTransport(
     aiohttp_server: Any,
     aiohttp_client: Any,
