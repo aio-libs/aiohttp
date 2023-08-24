@@ -29,8 +29,8 @@ async def _prepare(
     aiohttp_client: Any,
     ssl_ctx: ssl.SSLContext,
     client_ssl_ctx: ssl.SSLContext,
-    cq: asyncio.Queue[int],
-    dq: asyncio.Queue[int],
+    cq: "asyncio.Queue[int]",
+    dq: "asyncio.Queue[int]",
 ) -> Tuple[TestServer, TestClient]:
     app = web.Application()
     app["cq"] = cq
@@ -57,8 +57,8 @@ async def _restart(
     runner: web.BaseRunner,
     ssl_ctx: ssl.SSLContext,
     port: int,
-    cq: asyncio.Queue[int],
-    dq: asyncio.Queue[int],
+    cq: "asyncio.Queue[int]",
+    dq: "asyncio.Queue[int]",
 ) -> None:
     """restart service to force connection_lost"""
     await dq.get()
@@ -91,8 +91,8 @@ async def _run(
     recwarn: pytest.WarningsRecorder,
     ssl_ctx: ssl.SSLContext,
     client_ssl_ctx: ssl.SSLContext,
-    cq: asyncio.Queue[int],
-    dq: asyncio.Queue[int],
+    cq: "asyncio.Queue[int]",
+    dq: "asyncio.Queue[int]",
 ) -> None:
     """run for two processed client requests"""
     server, session = await _prepare(
@@ -129,8 +129,8 @@ def test_unclosed_transport_asyncio_sslproto_SSLProtocolTransport(
 ) -> None:
     loop = asyncio.get_event_loop()
 
-    cq: asyncio.Queue[int] = asyncio.Queue()
-    dq: asyncio.Queue[int] = asyncio.Queue()
+    cq: "asyncio.Queue[int]" = asyncio.Queue()
+    dq: "asyncio.Queue[int]" = asyncio.Queue()
     loop.set_debug(True)
     loop.run_until_complete(
         _run(
