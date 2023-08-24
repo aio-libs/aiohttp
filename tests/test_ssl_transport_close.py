@@ -98,9 +98,7 @@ async def _run(
     server, session = await _prepare(
         aiohttp_server, aiohttp_client, ssl_ctx, client_ssl_ctx, cq, dq
     )
-    if server.runner is None or session.port is None:
-        # mypy | None required
-        return
+    assert server.runner is not None and session.port is not None
     for i in range(3):
         try:
             jobs: Any = []
