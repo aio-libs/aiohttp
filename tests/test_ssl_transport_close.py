@@ -1,4 +1,5 @@
 import asyncio
+import ssl
 import warnings
 from typing import Any, Tuple, cast
 
@@ -6,9 +7,8 @@ import pytest
 
 from aiohttp import TCPConnector, web
 from aiohttp.client import ServerDisconnectedError
-
-TestServer = Any
-TestClient = Any
+from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
+from aiohttp.test_utils import TestClient, TestServer
 
 
 async def handle_root(request: web.Request) -> web.Response:
@@ -27,8 +27,8 @@ async def handle_root(request: web.Request) -> web.Response:
 async def _prepare(
     aiohttp_server: Any,
     aiohttp_client: Any,
-    ssl_ctx: Any,
-    client_ssl_ctx: Any,
+    ssl_ctx: ssl.SSLContext,
+    client_ssl_ctx: ssl.SSLContext,
     cq: asyncio.Queue[int],
     dq: asyncio.Queue[int],
 ) -> Tuple[TestServer, TestClient]:
@@ -54,7 +54,11 @@ async def _close(server: TestServer, session: TestClient) -> None:
 
 
 async def _restart(
-    runner: Any, ssl_ctx: Any, port: int, cq: asyncio.Queue[int], dq: asyncio.Queue[int]
+    runner: web.BaseRunner,
+    ssl_ctx: ssl.SSLContext,
+    port: int,
+    cq: asyncio.Queue[int],
+    dq: asyncio.Queue[int],
 ) -> None:
     """restart service to force connection_lost"""
     await dq.get()
@@ -81,12 +85,12 @@ def _ssl_resource_warnings(w: warnings.WarningMessage) -> bool:
 
 
 async def _run(
-    loop: Any,
-    aiohttp_server: Any,
-    aiohttp_client: Any,
-    recwarn: Any,
-    ssl_ctx: Any,
-    client_ssl_ctx: Any,
+    loop: asyncio.AbstractEventLoop,
+    aiohttp_server: AiohttpServer,
+    aiohttp_client: AiohttpClient,
+    recwarn: pytest.WarningsRecorder,
+    ssl_ctx: ssl.SSLContext,
+    client_ssl_ctx: ssl.SSLContext,
     cq: asyncio.Queue[int],
     dq: asyncio.Queue[int],
 ) -> None:
@@ -94,9 +98,12 @@ async def _run(
     server, session = await _prepare(
         aiohttp_server, aiohttp_client, ssl_ctx, client_ssl_ctx, cq, dq
     )
+    if server.runner is None or session.port is None:
+        # mypy | None required
+        return
     for i in range(3):
         try:
-            jobs = []
+            jobs: Any = []
             jobs.append(session.get("/"))
             jobs.append(_restart(server.runner, ssl_ctx, session.port, cq, dq))
             await asyncio.gather(*jobs)
@@ -116,13 +123,13 @@ async def _run(
     await _close(server, session)
 
 
-@pytest.mark.xfail
+@pytest.mark.xfail(reason="Depends on #5102")
 def test_unclosed_transport_asyncio_sslproto_SSLProtocolTransport(
-    aiohttp_server: Any,
-    aiohttp_client: Any,
-    recwarn: Any,
-    ssl_ctx: Any,
-    client_ssl_ctx: Any,
+    aiohttp_server: AiohttpServer,
+    aiohttp_client: AiohttpClient,
+    recwarn: pytest.WarningsRecorder,
+    ssl_ctx: ssl.SSLContext,
+    client_ssl_ctx: ssl.SSLContext,
 ) -> None:
     loop = asyncio.get_event_loop()
 
