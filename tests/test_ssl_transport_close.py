@@ -106,10 +106,8 @@ async def _run(
             jobs.append(_restart(server.runner, ssl_ctx, session.port, cq, dq))
             await asyncio.gather(*jobs)
         except ServerDisconnectedError:
-            """
-            restarting the service will cause the client connections to fail
-            this is expected and no failure
-            """
+            # Restarting the service will cause the client connections to fail
+            # this is expected and not a failure.
             pass
         finally:
             await asyncio.sleep(0.1)
