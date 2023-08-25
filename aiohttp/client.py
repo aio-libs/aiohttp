@@ -355,6 +355,7 @@ class ClientSession:
         auto_decompress: Optional[bool] = None,
         max_line_size: Optional[int] = None,
         max_field_size: Optional[int] = None,
+        skip_default_headers: Optional[bool] = None,
     ) -> ClientResponse:
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
@@ -382,8 +383,8 @@ class ClientSession:
         params = params or {}
 
         # Merge with default headers and transform to CIMultiDict
-        headers = self._prepare_headers(headers)
-        proxy_headers = self._prepare_headers(proxy_headers)
+        headers = self._prepare_headers(headers, skip_default_headers)
+        proxy_headers = self._prepare_headers(proxy_headers, skip_default_headers)
 
         try:
             url = self._build_url(str_or_url)
@@ -907,10 +908,13 @@ class ClientSession:
                 client_notakeover=notakeover,
             )
 
-    def _prepare_headers(self, headers: Optional[LooseHeaders]) -> "CIMultiDict[str]":
+    def _prepare_headers(self, headers: Optional[LooseHeaders], skip_default_headers: bool = False) -> "CIMultiDict[str]":
         """Add default headers and transform it to CIMultiDict"""
         # Convert headers to MultiDict
-        result = CIMultiDict(self._default_headers)
+        if skip_default_headers:
+            result = CIMultiDict()
+        else:
+            result = CIMultiDict(self._default_headers)
         if headers:
             if not isinstance(headers, (MultiDictProxy, MultiDict)):
                 headers = CIMultiDict(headers)
