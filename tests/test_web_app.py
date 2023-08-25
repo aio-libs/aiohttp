@@ -1,4 +1,5 @@
 import asyncio
+import warnings
 from typing import Any, AsyncIterator, Callable, Iterator, NoReturn
 from unittest import mock
 
@@ -112,34 +113,35 @@ def test_appkey() -> None:
 
 def test_appkey_repr_concrete() -> None:
     key = web.AppKey("key", int)
-    assert repr(key) in (
-        "<AppKey(__channelexec__.key, type=int)>",  # pytest-xdist
-        "<AppKey(__main__.key, type=int)>",
-    )
+    assert repr(key) == "<AppKey(key, type=int)>"
     key2 = web.AppKey("key", web.Request)
-    assert repr(key2) in (
-        # pytest-xdist:
-        "<AppKey(__channelexec__.key, type=aiohttp.web_request.Request)>",
-        "<AppKey(__main__.key, type=aiohttp.web_request.Request)>",
-    )
+    assert repr(key2) == "<AppKey(key, type=aiohttp.web_request.Request)>"
 
 
 def test_appkey_repr_nonconcrete() -> None:
     key = web.AppKey("key", Iterator[int])
-    assert repr(key) in (
-        # pytest-xdist:
-        "<AppKey(__channelexec__.key, type=typing.Iterator[int])>",
-        "<AppKey(__main__.key, type=typing.Iterator[int])>",
-    )
+    assert repr(key) == "<AppKey(key, type=typing.Iterator[int])>"
 
 
 def test_appkey_repr_annotated() -> None:
     key = web.AppKey[Iterator[int]]("key")
-    assert repr(key) in (
-        # pytest-xdist:
-        "<AppKey(__channelexec__.key, type=typing.Iterator[int])>",
-        "<AppKey(__main__.key, type=typing.Iterator[int])>",
-    )
+    assert repr(key) == "<AppKey(key, type=typing.Iterator[int])>"
+
+
+def test_appkey_str_compatibility() -> None:
+    app = web.Application()
+    key = web.AppKey("key", int)
+    key2 = web.AppKey("key2", int)
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            ".*web.AppKey.*\n.*web_advanced.html#application-s-config",
+            UserWarning,
+        )
+        app[key] = 1
+        assert app["key"] == 1
+        app["key2"] = 2
+        assert app[key2] == 2
 
 
 def test_app_str_keys() -> None:

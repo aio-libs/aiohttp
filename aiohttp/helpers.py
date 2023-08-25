@@ -8,7 +8,6 @@ import dataclasses
 import datetime
 import enum
 import functools
-import inspect
 import netrc
 import os
 import platform
@@ -817,19 +816,15 @@ class AppKey(Generic[_T]):
     __orig_class__: Type[object]
 
     def __init__(self, name: str, t: Optional[Type[_T]] = None):
-        # Prefix with module name to help deduplicate key names.
-        frame = inspect.currentframe()
-        while frame:
-            if frame.f_code.co_name == "<module>":
-                module: str = frame.f_globals["__name__"]
-                break
-            frame = frame.f_back
-        else:
-            raise RuntimeError("Failed to get module name.")
-
-        # https://github.com/python/mypy/issues/14209
-        self._name = module + "." + name  # type: ignore[possibly-undefined]
+        self._name = name
         self._t = t
+
+    # Add __hash__ and __eq__ to make AppKey compatible with string keys
+    def __hash__(self) -> int:
+        return hash(self._name)
+
+    def __eq__(self, other: object) -> bool:
+        return hash(self) == hash(other)
 
     def __lt__(self, other: object) -> bool:
         if isinstance(other, AppKey):
