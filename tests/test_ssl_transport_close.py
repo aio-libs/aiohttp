@@ -111,7 +111,7 @@ async def _run(
         ), "unclosed transport"
 
 
-#@pytest.mark.xfail(reason="Depends on #5102")
+@pytest.mark.xfail(reason="Depends on #5102")
 def test_unclosed_transport_asyncio_sslproto_SSLProtocolTransport(
     loop: asyncio.AbstractEventLoop,
     aiohttp_server: AiohttpServer,
