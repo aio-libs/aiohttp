@@ -147,10 +147,22 @@ def test_app_str_keys() -> None:
     with pytest.warns(
         UserWarning, match=r"web_advanced\.html#application-s-config"
     ) as checker:
+        # Warning for __setitem__
         app["key"] = "value"
         # Check that the error is emitted at the call site (stacklevel=2)
         assert checker[0].filename == __file__
-    assert app["key"] == "value"
+    with pytest.warns(
+        UserWarning, match=r"web_advanced\.html#application-s-config"
+    ) as checker:
+        # Warning for __getitem__
+        assert app["key"] == "value"
+        assert checker[0].filename == __file__
+    with pytest.warns(
+        UserWarning, match=r"web_advanced\.html#application-s-config"
+    ) as checker:
+        # Warning for get
+        assert app.get("key") == "value"
+        assert checker[0].filename == __file__
 
 
 def test_app_get() -> None:

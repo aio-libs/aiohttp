@@ -150,6 +150,13 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         ...
 
     def __getitem__(self, key: Union[str, AppKey[_T]]) -> Any:
+        if not isinstance(key, AppKey):
+            warnings.warn(
+                "It is recommended to use web.AppKey instances for keys.\n"
+                + "https://docs.aiohttp.org/en/stable/web_advanced.html"
+                + "#application-s-config",
+                stacklevel=2,
+            )
         return self._state[key]
 
     def _check_frozen(self) -> None:
@@ -200,6 +207,13 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         ...
 
     def get(self, key: Union[str, AppKey[_T]], default: Any = None) -> Any:
+        if not isinstance(key, AppKey):
+            warnings.warn(
+                "It is recommended to use web.AppKey instances for keys.\n"
+                + "https://docs.aiohttp.org/en/stable/web_advanced.html"
+                + "#application-s-config",
+                stacklevel=2,
+            )
         return self._state.get(key, default)
 
     ########
