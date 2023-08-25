@@ -1,5 +1,6 @@
 import asyncio
 import ssl
+import sys
 import warnings
 from typing import Any, Tuple, cast
 
@@ -111,7 +112,7 @@ async def _run(
         ), "unclosed transport"
 
 
-@pytest.mark.xfail(reason="Depends on #5102")
+@pytest.mark.xfail(sys.version_info < (3, 11), reason="Working on 3.11+")
 def test_unclosed_transport_asyncio_sslproto_SSLProtocolTransport(
     loop: asyncio.AbstractEventLoop,
     aiohttp_server: AiohttpServer,
