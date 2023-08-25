@@ -1,4 +1,5 @@
 import asyncio
+import platform
 import ssl
 import sys
 import warnings
@@ -112,7 +113,10 @@ async def _run(
         ), "unclosed transport"
 
 
-@pytest.mark.xfail(sys.version_info < (3, 11), reason="Working on 3.11+")
+@pytest.mark.xfail(
+    sys.version_info < (3, 11) or platform.python_implementation() == "PyPy",
+    reason="Working on 3.11+ and Pypy."
+)
 def test_unclosed_transport_asyncio_sslproto_SSLProtocolTransport(
     loop: asyncio.AbstractEventLoop,
     aiohttp_server: AiohttpServer,
