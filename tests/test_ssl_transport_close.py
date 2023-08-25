@@ -114,7 +114,7 @@ async def _run(
 
 
 @pytest.mark.xfail(
-    sys.version_info < (3, 11) or platform.python_implementation() == "PyPy",
+    sys.version_info < (3, 11) and platform.python_implementation() != "PyPy",
     reason="Working on 3.11+ and Pypy.",
 )
 def test_unclosed_transport_asyncio_sslproto_SSLProtocolTransport(
