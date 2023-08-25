@@ -48,12 +48,6 @@ async def _prepare(
     return server, session
 
 
-async def _close(server: TestServer, session: TestClient) -> None:
-    await server.close()
-    await session.close()
-    await server
-
-
 async def _restart(
     runner: web.BaseRunner,
     ssl_ctx: ssl.SSLContext,
@@ -86,7 +80,6 @@ def _ssl_resource_warnings(w: warnings.WarningMessage) -> bool:
 
 
 async def _run(
-    loop: asyncio.AbstractEventLoop,
     aiohttp_server: AiohttpServer,
     aiohttp_client: AiohttpClient,
     recwarn: pytest.WarningsRecorder,
@@ -117,25 +110,21 @@ async def _run(
             list(filter(_ssl_resource_warnings, recwarn))
         ), "unclosed transport"
 
-    await _close(server, session)
 
-
-@pytest.mark.xfail(reason="Depends on #5102")
+#@pytest.mark.xfail(reason="Depends on #5102")
 def test_unclosed_transport_asyncio_sslproto_SSLProtocolTransport(
+    loop: asyncio.AbstractEventLoop,
     aiohttp_server: AiohttpServer,
     aiohttp_client: AiohttpClient,
     recwarn: pytest.WarningsRecorder,
     ssl_ctx: ssl.SSLContext,
     client_ssl_ctx: ssl.SSLContext,
 ) -> None:
-    loop = asyncio.get_event_loop()
-
     cq: "asyncio.Queue[int]" = asyncio.Queue()
     dq: "asyncio.Queue[int]" = asyncio.Queue()
     loop.set_debug(True)
     loop.run_until_complete(
         _run(
-            loop,
             aiohttp_server,
             aiohttp_client,
             recwarn,
@@ -145,4 +134,3 @@ def test_unclosed_transport_asyncio_sslproto_SSLProtocolTransport(
             dq,
         )
     )
-    loop.close()
