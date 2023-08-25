@@ -51,6 +51,7 @@ async def _prepare(
 async def _close(server: TestServer, session: TestClient) -> None:
     await server.close()
     await session.close()
+    await server
 
 
 async def _restart(
