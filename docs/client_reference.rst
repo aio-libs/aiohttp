@@ -347,7 +347,8 @@ The client session supports the context manager protocol for self closing.
                          timeout=sentinel, ssl=None, \
                          verify_ssl=None, fingerprint=None, \
                          ssl_context=None, proxy_headers=None, \
-                         server_hostname=None, auto_decompress=None)
+                         server_hostname=None, auto_decompress=None, \
+                         skip_default_headers = False)
       :async:
       :noindexentry:
 
@@ -531,6 +532,8 @@ The client session supports the context manager protocol for self closing.
       :param bool auto_decompress: Automatically decompress response body.
          Overrides :attr:`ClientSession.auto_decompress`.
          May be used to enable/disable auto decompression on a per-request basis.
+
+      :param bool skip_default_headers: Skip adding the default headers set in :attr:`ClientSession.headers`.
 
       :return ClientResponse: a :class:`client response <ClientResponse>`
          object.
