@@ -1,13 +1,18 @@
 # type: ignore
 import asyncio
+import sys
 from typing import Any
 
-import async_timeout
 import pytest
 
 import aiohttp
 from aiohttp import hdrs, web
 from aiohttp.client_ws import ClientWSTimeout
+
+if sys.version_info >= (3, 11):
+    import asyncio as async_timeout
+else:
+    import async_timeout
 
 
 async def test_send_recv_text(aiohttp_client: Any) -> None:
