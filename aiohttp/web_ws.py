@@ -3,9 +3,9 @@ import base64
 import binascii
 import hashlib
 import json
+import sys
 from typing import Any, Final, Iterable, Optional, Tuple, cast
 
-import async_timeout
 import attr
 from multidict import CIMultiDict
 
@@ -31,6 +31,11 @@ from .typedefs import JSONDecoder, JSONEncoder
 from .web_exceptions import HTTPBadRequest, HTTPException
 from .web_request import BaseRequest
 from .web_response import StreamResponse
+
+if sys.version_info >= (3, 11):
+    import asyncio as async_timeout
+else:
+    import async_timeout
 
 __all__ = (
     "WebSocketResponse",
