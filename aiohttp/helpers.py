@@ -65,7 +65,6 @@ else:
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
 PY_310 = sys.version_info >= (3, 10)
-PY_311 = sys.version_info >= (3, 11)
 
 COOKIE_MAX_LENGTH = 4096
 

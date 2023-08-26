@@ -4,6 +4,7 @@ import base64
 import datetime
 import gc
 import platform
+import sys
 import weakref
 from math import ceil, modf
 from pathlib import Path
@@ -16,7 +17,7 @@ from re_assert import Matches
 from yarl import URL
 
 from aiohttp import helpers
-from aiohttp.helpers import PY_311, is_expected_content_type, parse_http_date
+from aiohttp.helpers import is_expected_content_type, parse_http_date
 
 IS_PYPY = platform.python_implementation() == "PyPy"
 
@@ -448,7 +449,7 @@ def test_ceil_call_later_no_timeout() -> None:
 
 async def test_ceil_timeout_none(loop) -> None:
     async with helpers.ceil_timeout(None) as cm:
-        if PY_311:
+        if sys.version_info >= (3, 11):
             assert cm.when() is None
         else:
             assert cm.deadline is None
@@ -456,7 +457,7 @@ async def test_ceil_timeout_none(loop) -> None:
 
 async def test_ceil_timeout_round(loop) -> None:
     async with helpers.ceil_timeout(7.5) as cm:
-        if PY_311:
+        if sys.version_info >= (3, 11):
             frac, integer = modf(cm.when())
         else:
             frac, integer = modf(cm.deadline)
@@ -465,7 +466,7 @@ async def test_ceil_timeout_round(loop) -> None:
 
 async def test_ceil_timeout_small(loop) -> None:
     async with helpers.ceil_timeout(1.1) as cm:
-        if PY_311:
+        if sys.version_info >= (3, 11):
             frac, integer = modf(cm.when())
         else:
             frac, integer = modf(cm.deadline)
@@ -475,7 +476,7 @@ async def test_ceil_timeout_small(loop) -> None:
 
 async def test_ceil_timeout_small_with_overriden_threshold(loop) -> None:
     async with helpers.ceil_timeout(1.5, ceil_threshold=1) as cm:
-        if PY_311:
+        if sys.version_info >= (3, 11):
             frac, integer = modf(cm.when())
         else:
             frac, integer = modf(cm.deadline)
