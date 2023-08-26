@@ -192,6 +192,7 @@ class ClientSession:
         "_read_bufsize",
         "_max_line_size",
         "_max_field_size",
+        "_fallback_encoding",
     )
 
     def __init__(
@@ -221,6 +222,9 @@ class ClientSession:
         read_bufsize: int = 2**16,
         max_line_size: int = 8190,
         max_field_size: int = 8190,
+        fallback_encoding: Callable[
+            [ClientResponse, bytes], str
+        ] = lambda r, b: "utf-8",
     ) -> None:
         if base_url is None or isinstance(base_url, URL):
             self._base_url: Optional[URL] = base_url
@@ -290,6 +294,8 @@ class ClientSession:
         self._trace_configs = trace_configs or []
         for trace_config in self._trace_configs:
             trace_config.freeze()
+
+        self._fallback_encoding = fallback_encoding
 
     def __init_subclass__(cls: Type["ClientSession"]) -> None:
         raise TypeError(

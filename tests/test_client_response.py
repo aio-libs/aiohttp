@@ -427,7 +427,10 @@ async def test_text_custom_encoding(loop: Any, session: Any) -> None:
     assert not response.get_encoding.called
 
 
-async def test_text_detect_encoding(loop: Any, session: Any) -> None:
+@pytest.mark.parametrize("content_type", ["text/plain", "text/plain;charset=invalid"])
+async def test_text_fallback_encoding(
+    content_type: str, loop: Any, session: Any
+) -> None:
     response = ClientResponse(
         "get",
         URL("http://def-cl-resp.org"),
@@ -438,6 +441,7 @@ async def test_text_detect_encoding(loop: Any, session: Any) -> None:
         traces=[],
         loop=loop,
         session=session,
+        fallback_encoding=lambda r, b: "cp1251",
     )
 
     def side_effect(*args, **kwargs):
@@ -445,7 +449,7 @@ async def test_text_detect_encoding(loop: Any, session: Any) -> None:
         fut.set_result('{"тест": "пройден"}'.encode("cp1251"))
         return fut
 
-    response._headers = {"Content-Type": "text/plain"}
+    response._headers = {"Content-Type": content_type}
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
 
@@ -453,35 +457,7 @@ async def test_text_detect_encoding(loop: Any, session: Any) -> None:
     res = await response.text()
     assert res == '{"тест": "пройден"}'
     assert response._connection is None
-
-
-async def test_text_detect_encoding_if_invalid_charset(loop: Any, session: Any) -> None:
-    response = ClientResponse(
-        "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
-        writer=mock.Mock(),
-        continue100=None,
-        timer=TimerNoop(),
-        traces=[],
-        loop=loop,
-        session=session,
-    )
-
-    def side_effect(*args, **kwargs):
-        fut = loop.create_future()
-        fut.set_result('{"тест": "пройден"}'.encode("cp1251"))
-        return fut
-
-    response._headers = {"Content-Type": "text/plain;charset=invalid"}
-    content = response.content = mock.Mock()
-    content.read.side_effect = side_effect
-
-    await response.read()
-    res = await response.text()
-    assert res == '{"тест": "пройден"}'
-    assert response._connection is None
-    assert response.get_encoding().lower() in ("windows-1251", "maccyrillic")
+    assert response.get_encoding() == "cp1251"
 
 
 async def test_get_encoding_body_none(loop: Any, session: Any) -> None:
@@ -729,9 +705,7 @@ def test_get_encoding_unknown(loop: Any, session: Any) -> None:
     )
 
     response._headers = {"Content-Type": "application/json"}
-    with mock.patch("aiohttp.client_reqrep.chardet") as m_chardet:
-        m_chardet.detect.return_value = {"encoding": None}
-        assert response.get_encoding() == "utf-8"
+    assert response.get_encoding() == "utf-8"
 
 
 def test_raise_for_status_2xx() -> None:

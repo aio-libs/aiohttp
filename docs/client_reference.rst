@@ -51,7 +51,8 @@ The client session supports the context manager protocol for self closing.
                          read_bufsize=2**16, \
                          requote_redirect_url=True, \
                          trust_env=False, \
-                         trace_configs=None)
+                         trace_configs=None,
+                         fallback_encoding=lambda r, b: "utf-8")
 
    The class for creating client sessions and making requests.
 
@@ -207,6 +208,14 @@ The client session supports the context manager protocol for self closing.
                          tracing.  ``None`` (default) is used for request tracing
                          disabling.  See :ref:`aiohttp-client-tracing-reference` for
                          more information.
+
+   :param Callable[[ClientResponse, bytes], str] fallback_encoding:
+      any :term:`callable` that takes a :class:`client response <ClientResponse>` object
+      and its :type:`contents <bytes>` and returns a :class:`str` encoding to use if
+      the response does not specify one.  By default, the encoding is assumed to be
+      ``utf-8``.
+
+      .. versionadded:: 4.0
 
    .. attribute:: closed
 
@@ -1406,12 +1415,8 @@ Response object
       Read response's body and return decoded :class:`str` using
       specified *encoding* parameter.
 
-      If *encoding* is ``None`` content encoding is autocalculated
-      using ``Content-Type`` HTTP header and *charset-normalizer* tool if the
-      header is not provided by server.
-
-      :term:`cchardet` is used with fallback to :term:`charset-normalizer` if
-      *cchardet* is not available.
+      If *encoding* is ``None`` content encoding is determined using
+      :meth:`get_encoding`.
 
       Close underlying connection if data reading gets an error,
       release connection otherwise.
@@ -1422,33 +1427,15 @@ Response object
 
       :return str: decoded *BODY*
 
-      :raise LookupError: if the encoding detected by cchardet is
-                          unknown by Python (e.g. VISCII).
-
-      .. note::
-
-         If response has no ``charset`` info in ``Content-Type`` HTTP
-         header :term:`cchardet` / :term:`charset-normalizer` is used for
-         content encoding autodetection.
-
-         It may hurt performance. If page encoding is known passing
-         explicit *encoding* parameter might help::
-
-            await resp.text('ISO-8859-1')
-
    .. method:: json(*, encoding=None, loads=json.loads, \
                       content_type='application/json')
       :async:
 
       Read response's body as *JSON*, return :class:`dict` using
       specified *encoding* and *loader*. If data is not still available
-      a ``read`` call will be done,
+      a ``read`` call will be done.
 
-      If *encoding* is ``None`` content encoding is autocalculated
-      using :term:`cchardet` or :term:`charset-normalizer` as fallback if
-      *cchardet* is not available.
-
-      if response's `content-type` does not match `content_type` parameter
+      If response's `content-type` does not match `content_type` parameter
       :exc:`aiohttp.ContentTypeError` get raised.
       To disable content type check pass ``None`` value.
 
@@ -1480,17 +1467,9 @@ Response object
 
    .. method:: get_encoding()
 
-      Automatically detect content encoding using ``charset`` info in
-      ``Content-Type`` HTTP header. If this info is not exists or there
-      are no appropriate codecs for encoding then :term:`cchardet` /
-      :term:`charset-normalizer` is used.
-
-      Beware that it is not always safe to use the result of this function to
-      decode a response. Some encodings detected by cchardet are not known by
-      Python (e.g. VISCII). *charset-normalizer* is not concerned by that issue.
-
-      :raise RuntimeError: if called before the body has been read,
-                           for :term:`cchardet` usage
+      Retrieve content encoding using ``charset`` info in ``Content-Type`` HTTP header.
+      If no charset is present or the charset is not understood by Python, the
+      ``fallback_encoding`` function associated with the ``ClientSession`` is called.
 
       .. versionadded:: 3.0
 
