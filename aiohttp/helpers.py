@@ -50,13 +50,17 @@ from typing import (
 from urllib.parse import quote
 from urllib.request import getproxies, proxy_bypass
 
-import async_timeout
 from multidict import CIMultiDict, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs
 from .log import client_logger
 from .typedefs import PathLike  # noqa
+
+if sys.version_info >= (3, 11):
+    import asyncio as async_timeout
+else:
+    import async_timeout
 
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
