@@ -8,4 +8,4 @@ frozenlist >= 1.1.1
 aiosignal >= 1.1.2
 aiodns >= 1.1; sys_platform=="linux" or sys_platform=="darwin"
 Brotli
-cchardet; python_version < "3.10"
+chardetng_py

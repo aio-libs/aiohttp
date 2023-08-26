@@ -12,10 +12,10 @@ async-timeout==4.0.3 ; python_version < "3.11"
     # via -r requirements/runtime-deps.in
 brotli==1.0.9
     # via -r requirements/runtime-deps.in
-cchardet==2.1.7 ; python_version < "3.10"
-    # via -r requirements/runtime-deps.in
 cffi==1.15.1
     # via pycares
+chardetng-py==0.3.0
+    # via -r requirements/runtime-deps.in
 charset-normalizer==3.2.0
     # via -r requirements/runtime-deps.in
 frozenlist==1.4.0

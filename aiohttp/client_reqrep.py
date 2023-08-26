@@ -74,7 +74,7 @@ except ImportError:  # pragma: no cover
     SSLContext = object  # type: ignore[misc,assignment]
 
 try:
-    import cchardet as chardet
+    from chardetng_py import compat as chardet
 except ImportError:  # pragma: no cover
     import charset_normalizer as chardet
 
