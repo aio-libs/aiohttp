@@ -3,6 +3,7 @@ import base64
 import datetime
 import gc
 import platform
+import sys
 import tempfile
 import weakref
 from math import ceil, modf
@@ -415,20 +416,31 @@ async def test_weakref_handle_weak(loop) -> None:
 
 async def test_ceil_timeout() -> None:
     async with helpers.ceil_timeout(None) as timeout:
-        assert timeout.deadline is None
+        if sys.version_info >= (3, 11):
+            assert timeout.when() is None
+        else:
+            assert timeout.deadline is None
 
 
 async def test_ceil_timeout_round() -> None:
     async with helpers.ceil_timeout(7.5) as cm:
-        assert cm.deadline is not None
-        frac, integer = modf(cm.deadline)
+        if sys.version_info >= (3, 11):
+            assert cm.when() is not None
+            frac, integer = modf(cm.when())
+        else:
+            assert cm.deadline is not None
+            frac, integer = modf(cm.deadline)
         assert frac == 0
 
 
 async def test_ceil_timeout_small() -> None:
     async with helpers.ceil_timeout(1.1) as cm:
-        assert cm.deadline is not None
-        frac, integer = modf(cm.deadline)
+        if sys.version_info >= (3, 11):
+            assert cm.when() is not None
+            frac, integer = modf(cm.when())
+        else:
+            assert cm.deadline is not None
+            frac, integer = modf(cm.deadline)
         # a chance for exact integer with zero fraction is negligible
         assert frac != 0
 
@@ -450,12 +462,18 @@ def test_ceil_call_later_no_timeout() -> None:
 
 async def test_ceil_timeout_none(loop) -> None:
     async with helpers.ceil_timeout(None) as cm:
-        assert cm.deadline is None
+        if sys.version_info >= (3, 11):
+            assert cm.when() is None
+        else:
+            assert cm.deadline is None
 
 
 async def test_ceil_timeout_small_with_overriden_threshold(loop) -> None:
     async with helpers.ceil_timeout(1.5, ceil_threshold=1) as cm:
-        frac, integer = modf(cm.deadline)
+        if sys.version_info >= (3, 11):
+            frac, integer = modf(cm.when())
+        else:
+            frac, integer = modf(cm.deadline)
         assert frac == 0
 
 

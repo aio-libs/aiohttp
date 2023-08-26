@@ -1,9 +1,8 @@
 """WebSocket client for asyncio."""
 
 import asyncio
+import sys
 from typing import Any, Optional, cast
-
-import async_timeout
 
 from .client_exceptions import ClientError
 from .client_reqrep import ClientResponse
@@ -24,6 +23,11 @@ from .typedefs import (
     JSONDecoder,
     JSONEncoder,
 )
+
+if sys.version_info >= (3, 11):
+    import asyncio as async_timeout
+else:
+    import async_timeout
 
 
 class ClientWebSocketResponse:
