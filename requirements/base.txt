@@ -14,7 +14,7 @@ brotli==1.0.9
     # via -r requirements/runtime-deps.in
 cffi==1.15.1
     # via pycares
-chardetng-py==0.3.0
+chardetng-py==0.3.1
     # via -r requirements/runtime-deps.in
 charset-normalizer==3.2.0
     # via -r requirements/runtime-deps.in
