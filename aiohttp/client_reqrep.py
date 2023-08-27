@@ -1020,7 +1020,7 @@ class ClientResponse(HeadersMixin):
         encoding = mimetype.parameters.get("charset")
         if encoding:
             try:
-                return codecs.lookup(encoding)
+                return codecs.lookup(encoding).name
             except LookupError:
                 pass
 
