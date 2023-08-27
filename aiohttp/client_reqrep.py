@@ -78,7 +78,9 @@ try:
 except ImportError:  # pragma: no cover
     import charset_normalizer as chardet
 
-    def detect_charset(data: bytes, *, tld: Union[bytes, bytearray, None], allow_utf8: bool) -> str:
+    def detect_charset(
+        data: bytes, *, tld: Union[bytes, bytearray, None], allow_utf8: bool
+    ) -> str:
         # tld is ignored because charset_normalizer does not support it
         # allow_utf8 is the only behavior supported by charset_normalizer
         return chardet(data)["encoding"] or "utf-8"
@@ -1023,16 +1025,14 @@ class ClientResponse(HeadersMixin):
                 pass
 
         if mimetype.type == "application" and (
-                mimetype.subtype == "json" or mimetype.subtype == "rdap"
-            ):
-                # RFC 7159 states that the default encoding is UTF-8.
-                # RFC 7483 defines application/rdap+json
-                return "utf-8"
+            mimetype.subtype == "json" or mimetype.subtype == "rdap"
+        ):
+            # RFC 7159 states that the default encoding is UTF-8.
+            # RFC 7483 defines application/rdap+json
+            return "utf-8"
 
         if self._body is None:
-            raise RuntimeError(
-                "Cannot guess the encoding of a not yet read body"
-            )
+            raise RuntimeError("Cannot guess the encoding of a not yet read body")
 
         # TLD parsing should match internal logic for matching charsets in chardetng
         tld = self.url.host.split(".")[-1]
