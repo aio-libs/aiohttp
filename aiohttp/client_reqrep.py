@@ -74,9 +74,14 @@ except ImportError:  # pragma: no cover
     SSLContext = object  # type: ignore[misc,assignment]
 
 try:
-    from chardetng_py import compat as chardet
+    from chardetng_py import detect as detect_charset
 except ImportError:  # pragma: no cover
     import charset_normalizer as chardet
+
+    def detect_charset(data: bytes, *, tld: Union[bytes, bytearray, None], allow_utf8: bool) -> str:
+        # tld is ignored because charset_normalizer does not support it
+        # allow_utf8 is the only behavior supported by charset_normalizer
+        return chardet(data)["encoding"] or "utf-8"
 
 
 __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
@@ -1013,26 +1018,25 @@ class ClientResponse(HeadersMixin):
         encoding = mimetype.parameters.get("charset")
         if encoding:
             try:
-                codecs.lookup(encoding)
+                return codecs.lookup(encoding)
             except LookupError:
-                encoding = None
-        if not encoding:
-            if mimetype.type == "application" and (
+                pass
+
+        if mimetype.type == "application" and (
                 mimetype.subtype == "json" or mimetype.subtype == "rdap"
             ):
                 # RFC 7159 states that the default encoding is UTF-8.
                 # RFC 7483 defines application/rdap+json
-                encoding = "utf-8"
-            elif self._body is None:
-                raise RuntimeError(
-                    "Cannot guess the encoding of " "a not yet read body"
-                )
-            else:
-                encoding = chardet.detect(self._body)["encoding"]
-        if not encoding:
-            encoding = "utf-8"
+                return "utf-8"
 
-        return encoding
+        if self._body is None:
+            raise RuntimeError(
+                "Cannot guess the encoding of a not yet read body"
+            )
+
+        # TLD parsing should match internal logic for matching charsets in chardetng
+        tld = self.url.host.split(".")[-1]
+        return detect_charset(self._body, tld=tld, allow_utf8=True)
 
     async def text(self, encoding: Optional[str] = None, errors: str = "strict") -> str:
         """Read response payload and decode."""
