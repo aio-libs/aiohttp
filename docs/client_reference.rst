@@ -1407,11 +1407,7 @@ Response object
       specified *encoding* parameter.
 
       If *encoding* is ``None`` content encoding is autocalculated
-      using ``Content-Type`` HTTP header and *charset-normalizer* tool if the
-      header is not provided by server.
-
-      :term:`cchardet` is used with fallback to :term:`charset-normalizer` if
-      *cchardet* is not available.
+      using ``Content-Type`` HTTP header.
 
       Close underlying connection if data reading gets an error,
       release connection otherwise.
@@ -1422,17 +1418,14 @@ Response object
 
       :return str: decoded *BODY*
 
-      :raise LookupError: if the encoding detected by cchardet is
-                          unknown by Python (e.g. VISCII).
+      :raise UnicodeDecodeError: if decoding using the encoding specified in the
+                                 ``Content-Type`` HTTP header fails or if no encoding
+                                 is specified in the ``Content-Type`` HTTP header and
+                                 decoding as ``utf-8`` fails.
 
       .. note::
 
-         If response has no ``charset`` info in ``Content-Type`` HTTP
-         header :term:`cchardet` / :term:`charset-normalizer` is used for
-         content encoding autodetection.
-
-         It may hurt performance. If page encoding is known passing
-         explicit *encoding* parameter might help::
+         If page encoding is known passing explicit *encoding* parameter might help::
 
             await resp.text('ISO-8859-1')
 
@@ -1443,10 +1436,6 @@ Response object
       Read response's body as *JSON*, return :class:`dict` using
       specified *encoding* and *loader*. If data is not still available
       a ``read`` call will be done,
-
-      If *encoding* is ``None`` content encoding is autocalculated
-      using :term:`cchardet` or :term:`charset-normalizer` as fallback if
-      *cchardet* is not available.
 
       if response's `content-type` does not match `content_type` parameter
       :exc:`aiohttp.ContentTypeError` get raised.
@@ -1482,15 +1471,7 @@ Response object
 
       Automatically detect content encoding using ``charset`` info in
       ``Content-Type`` HTTP header. If this info is not exists or there
-      are no appropriate codecs for encoding then :term:`cchardet` /
-      :term:`charset-normalizer` is used.
-
-      Beware that it is not always safe to use the result of this function to
-      decode a response. Some encodings detected by cchardet are not known by
-      Python (e.g. VISCII). *charset-normalizer* is not concerned by that issue.
-
-      :raise RuntimeError: if called before the body has been read,
-                           for :term:`cchardet` usage
+      are no appropriate codecs for encoding then ``utf-8`` is used.
 
       .. versionadded:: 3.0
 

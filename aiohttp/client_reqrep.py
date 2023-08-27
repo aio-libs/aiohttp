@@ -73,11 +73,6 @@ except ImportError:  # pragma: no cover
     ssl = None  # type: ignore[assignment]
     SSLContext = object  # type: ignore[misc,assignment]
 
-try:
-    import cchardet as chardet
-except ImportError:  # pragma: no cover
-    import charset_normalizer as chardet
-
 
 __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
 
@@ -1011,28 +1006,14 @@ class ClientResponse(HeadersMixin):
         mimetype = helpers.parse_mimetype(ctype)
 
         encoding = mimetype.parameters.get("charset")
-        if encoding:
-            try:
-                codecs.lookup(encoding)
-            except LookupError:
-                encoding = None
-        if not encoding:
-            if mimetype.type == "application" and (
-                mimetype.subtype == "json" or mimetype.subtype == "rdap"
-            ):
-                # RFC 7159 states that the default encoding is UTF-8.
-                # RFC 7483 defines application/rdap+json
-                encoding = "utf-8"
-            elif self._body is None:
-                raise RuntimeError(
-                    "Cannot guess the encoding of " "a not yet read body"
-                )
-            else:
-                encoding = chardet.detect(self._body)["encoding"]
-        if not encoding:
-            encoding = "utf-8"
 
-        return encoding
+        if not encoding:
+            return "utf-8"
+
+        try:
+            return codecs.lookup(encoding).name
+        except LookupError:
+            return "utf-8"
 
     async def text(self, encoding: Optional[str] = None, errors: str = "strict") -> str:
         """Read response payload and decode."""
@@ -1042,6 +1023,7 @@ class ClientResponse(HeadersMixin):
         if encoding is None:
             encoding = self.get_encoding()
 
+        # Users may catch UnicodeDecode error if they wish to do charset detetction
         return self._body.decode(encoding, errors=errors)  # type: ignore[union-attr]
 
     async def json(
