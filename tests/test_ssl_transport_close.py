@@ -60,14 +60,13 @@ async def _restart(
     """restart service to force connection_lost"""
     await dq.get()
     dq.task_done()
-    for s in list(runner.sites):
-        await s.stop()
-        await cq.put(0)
-        s = web.TCPSite(
-            runner, "127.0.0.1", port=port, ssl_context=ssl_ctx, shutdown_timeout=1.0
-        )
-        await s.start()
-        break
+    site = next(iter(runner.sites))
+    await site.stop()
+    await cq.put(0)
+    site = web.TCPSite(
+        runner, "127.0.0.1", port=port, ssl_context=ssl_ctx, shutdown_timeout=1.0
+    )
+    await site.start()
 
 
 def _ssl_resource_warnings(w: warnings.WarningMessage) -> bool:
