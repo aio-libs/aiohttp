@@ -428,8 +428,8 @@ async def test_text_custom_encoding(loop: Any, session: Any) -> None:
 
 
 @pytest.mark.parametrize("content_type", ("text/plain", "text/plain;charset=invalid"))
-async def test_text_detect_encoding(content_type: str, loop: Any, session: Any) -> None:
-    session._detect_encoding = lambda r, b: "cp1251"
+async def test_text_charset_resolver(content_type: str, loop: Any, session: Any) -> None:
+    session._resolve_charset = lambda r, b: "cp1251"
     response = ClientResponse(
         "get",
         URL("http://def-cl-resp.org"),
