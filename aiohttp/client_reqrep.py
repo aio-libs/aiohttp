@@ -722,7 +722,11 @@ class ClientResponse(HeadersMixin):
         self._session: Optional[ClientSession] = session
         # Save reference to _detect_encoding, so that get_encoding() will still
         # work after the response has finished reading the body.
-        self._detect_encoding = session._detect_encoding
+        if session is None:
+            # TODO: Fix session=None in tests (see ClientRequest.__init__).
+            self._detect_encoding = lambda *_: "utf-8"
+        else:
+            self._detect_encoding = session._detect_encoding
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
