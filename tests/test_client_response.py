@@ -482,7 +482,7 @@ async def test_get_encoding_body_none(loop: Any, session: Any) -> None:
 
     with pytest.raises(
         RuntimeError,
-        match="^Cannot guess the encoding of a not yet read body$",
+        match="^Cannot compute fallback encoding of a not yet read body$",
     ):
         response.get_encoding()
     assert response.closed
