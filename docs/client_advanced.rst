@@ -752,21 +752,21 @@ to decode the body.
 If you know the correct encoding for a request, you can simply specify
 the encoding as a parameter (e.g. ``resp.text("windows-1252")``).
 
-Alternatively, :class:`ClientSession` accepts a ``detect_encoding`` parameter which
+Alternatively, :class:`ClientSession` accepts a ``fallback_charset_resolver`` parameter which
 can be used to introduce charset guessing functionality. When a charset is not found
 in the Content-Type header, this function will be called to get the charset encoding. For
 example, this can be used with the ``chardetng_py`` library.::
 
     from chardetng_py import detect
 
-    def detect_encoding(resp: ClientResponse, body: bytes) -> str:
+    def charset_resolver(resp: ClientResponse, body: bytes) -> str:
         tld = resp.url.host.rsplit(".", maxsplit=1)[-1]
         return detect(body, allow_utf8=True, tld=tld)
 
-    ClientSession(detect_encoding=detect_encoding)
+    ClientSession(fallback_charset_resolver=charset_resolver)
 
 Or, if ``chardetng_py`` doesn't work for you, then ``charset-normalizer`` is another option::
 
     from charset_normalizer import detect
 
-    ClientSession(detect_encoding=lamba r, b: detect(b)["encoding"] or "utf-8")
+    ClientSession(fallback_charset_resolver=lamba r, b: detect(b)["encoding"] or "utf-8")
