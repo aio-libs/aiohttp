@@ -210,12 +210,14 @@ The client session supports the context manager protocol for self closing.
                          more information.
 
    :param Callable[[ClientResponse, bytes], str] fallback_encoding:
-      any :term:`callable` that takes a :class:`client response <ClientResponse>` object
-      and its :type:`contents <bytes>` and returns a :class:`str` encoding to use if
-      the response does not specify one.  By default, the encoding is assumed to be
-      ``utf-8``.
+      A :term:`callable` that accepts a :class:`ClientResponse` and its
+      :type:`contents <bytes>` and returns a :class:`str` which will be used as
+      the encoding parameter to :meth:`bytes.decode()`.
+      
+      This function will be called when the charset is not known (e.g. not specified in the
+      Content-Type header). The default function simply defaults to ``utf-8``.
 
-      .. versionadded:: 4.0
+      .. versionadded:: 3.8.6
 
    .. attribute:: closed
 
@@ -1415,8 +1417,8 @@ Response object
       Read response's body and return decoded :class:`str` using
       specified *encoding* parameter.
 
-      If *encoding* is ``None`` content encoding is determined using
-      :meth:`get_encoding`.
+      If *encoding* is ``None`` content encoding is determined from the
+      Content-Type header, or using the ``fallback_encoding`` function.
 
       Close underlying connection if data reading gets an error,
       release connection otherwise.
@@ -1426,7 +1428,7 @@ Response object
                            (default).
 
 
-      :raises: :exc:`UnicodeDecodeError` if encoding is unknown. See also
+      :raises: :exc:`UnicodeDecodeError` if decoding fails. See also
                :meth:`get_encoding`.
 
       :return str: decoded *BODY*

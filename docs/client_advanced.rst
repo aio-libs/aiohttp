@@ -745,27 +745,28 @@ aiohttp does not support HTTP/HTTPS pipelining.
 Character Set Detection
 -----------------------
 
-In order to facilitate detecting of the character set of a response without a charset
-parameter in the Content-Type header, the :class:`ClientSession` class provides a
-``fallback_encoding`` callable parameter. ::
+If you encounter a :exc:`UnicodeDecodeError` when using :meth:`ClientResponse.text()`
+this may be because the response does not include the charset needed
+to decode the body.
 
-    # chardetng_py: fast charset detection written in rust
+If you know the correct encoding for a request, you can simply specify
+the encoding as a parameter (e.g. ``resp.text("windows-1252")``).
+
+Alternatively, :class:`ClientSession` accepts a ``fallback_encoding`` parameter which
+can be used to introduce charset guessing functionality. When a charset is not found
+in the Content-Type header, this function will be called to get the charset encoding. For
+example, this can be used with the chardetng_py library.::
+
     from chardetng_py import detect
 
-    def fallback_encoding(response, body):
-        tld = response.url.host.split(".")[-1]
-        return detect(body, tld=tld)
+    def fallback_encoding(resp: ClientResponse, body: bytes) -> str:
+        tld = resp.url.host.rsplit(".", maxsplit=1)[-1]
+        return detect(body, allow_utf8=True, tld=tld)
 
-    # charset_normalizer: pure python charset detection
+    ClientSession(fallback_encoding=fallback_encoding)
+
+Or, if ``chardetng_py`` doesn't work for you, then ``charset-normalizer`` is another option::
+
     from charset_normalizer import chardet
 
-    def fallback_encoding(response, body):
-        return chardet(body)["encoding"] or "utf-8"
-
-    async with ClientSession(fallback_encoding=fallback_encoding) as client:
-        ....
-
-.. note:: Attempting to call :meth:`ClientResponse.text()` without setting
-          `fallback_encoding` will result in a :exc:`UnicodeDecodeError` exception
-          if the charset is not specified in the Content-Type header and the response
-          body is not valid UTF-8.
+    ClientSession(fallback_encoding=lamba r, b: chardet(b)["encoding"] or "utf-8")
