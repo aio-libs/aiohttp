@@ -213,7 +213,7 @@ The client session supports the context manager protocol for self closing.
       A :term:`callable` that accepts a :class:`ClientResponse` and its
       :type:`contents <bytes>` and returns a :class:`str` which will be used as
       the encoding parameter to :meth:`bytes.decode()`.
-      
+
       This function will be called when the charset is not known (e.g. not specified in the
       Content-Type header). The default function simply defaults to ``utf-8``.
 
