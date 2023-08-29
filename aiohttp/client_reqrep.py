@@ -724,7 +724,9 @@ class ClientResponse(HeadersMixin):
         # work after the response has finished reading the body.
         if session is None:
             # TODO: Fix session=None in tests (see ClientRequest.__init__).
-            self._detect_encoding: Callable[["ClientResponse", bytes], str] = lambda *_: "utf-8"
+            self._detect_encoding: Callable[
+                ["ClientResponse", bytes], str
+            ] = lambda *_: "utf-8"
         else:
             self._detect_encoding = session._detect_encoding
         if loop.get_debug():
