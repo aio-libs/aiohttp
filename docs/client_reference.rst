@@ -209,8 +209,8 @@ The client session supports the context manager protocol for self closing.
                          disabling.  See :ref:`aiohttp-client-tracing-reference` for
                          more information.
 
-   :param Callable[[ClientResponse, bytes], str] detect_encoding:
-      A :term:`callable` that accepts a :class:`ClientResponse` and the :class:`bytes`
+   :param Callable[[ClientResponse, bytes], str] detect_encoding: A :term:`callable` that
+      accepts a :class:`ClientResponse` and the :class:`bytes`
       contents, and returns a :class:`str` which will be used as
       the encoding parameter to :meth:`bytes.decode()`.
 
