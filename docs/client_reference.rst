@@ -52,7 +52,7 @@ The client session supports the context manager protocol for self closing.
                          requote_redirect_url=True, \
                          trust_env=False, \
                          trace_configs=None, \
-                         detect_encoding=lambda r, b: "utf-8")
+                         fallback_charset_resolver=lambda r, b: "utf-8")
 
    The class for creating client sessions and making requests.
 
@@ -209,9 +209,9 @@ The client session supports the context manager protocol for self closing.
                          disabling.  See :ref:`aiohttp-client-tracing-reference` for
                          more information.
 
-   :param Callable[[ClientResponse, bytes], str] detect_encoding: A :term:`callable` that
-      accepts a :class:`ClientResponse` and the :class:`bytes`
-      contents, and returns a :class:`str` which will be used as
+   :param Callable[[ClientResponse, bytes], str] fallback_charset_resolver:
+      A :term:`callable` that accepts a :class:`ClientResponse` and the
+      :class:`bytes` contents, and returns a :class:`str` which will be used as
       the encoding parameter to :meth:`bytes.decode()`.
 
       This function will be called when the charset is not known (e.g. not specified in the
@@ -1418,7 +1418,7 @@ Response object
       specified *encoding* parameter.
 
       If *encoding* is ``None`` content encoding is determined from the
-      Content-Type header, or using the ``detect_encoding`` function.
+      Content-Type header, or using the ``fallback_charset_resolver`` function.
 
       Close underlying connection if data reading gets an error,
       release connection otherwise.
@@ -1475,7 +1475,7 @@ Response object
 
       Retrieve content encoding using ``charset`` info in ``Content-Type`` HTTP header.
       If no charset is present or the charset is not understood by Python, the
-      ``detect_encoding`` function associated with the ``ClientSession`` is called.
+      ``fallback_charset_resolver`` function associated with the ``ClientSession`` is called.
 
       .. versionadded:: 3.0
 
