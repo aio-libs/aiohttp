@@ -50,6 +50,8 @@
        The Real First Universal Charset Detector.
        Open, modern and actively maintained alternative to Chardet.
 
+       Prior versions of aiohttp used charset-normalizer for charset detection.
+
        https://pypi.org/project/charset-normalizer/
 
    cchardet
@@ -57,9 +59,9 @@
        cChardet is high speed universal character encoding detector -
        binding to charsetdetect.
 
-       https://pypi.python.org/pypi/cchardet/
+       Prior versions of aiohttp used cchardet as an optional speedup.
 
-       .. include:: _snippets/cchardet-unmaintained-admonition.rst
+       https://pypi.python.org/pypi/cchardet/
 
    gunicorn
 
