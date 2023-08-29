@@ -59,6 +59,8 @@
 
        https://pypi.python.org/pypi/cchardet/
 
+       .. include:: _snippets/cchardet-unmaintained-admonition.rst
+
    gunicorn
 
        Gunicorn 'Green Unicorn' is a Python WSGI HTTP Server for
