@@ -427,7 +427,7 @@ async def test_text_custom_encoding(loop: Any, session: Any) -> None:
     assert not response.get_encoding.called
 
 
-@pytest.mark.parametrize("content_type", ["text/plain", "text/plain;charset=invalid"])
+@pytest.mark.parametrize("content_type", ("text/plain", "text/plain;charset=invalid"))
 async def test_text_detect_encoding(content_type: str, loop: Any, session: Any) -> None:
     response = ClientResponse(
         "get",
