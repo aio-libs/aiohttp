@@ -16,18 +16,12 @@ attrs==23.1.0
     # via -r requirements/runtime-deps.in
 brotli==1.0.9
     # via -r requirements/runtime-deps.in
-cchardet==2.1.7 ; python_version < "3.10"
-    # via -r requirements/runtime-deps.in
 certifi==2023.7.22
     # via requests
 cffi==1.15.1
     # via
     #   cryptography
     #   pycares
-charset-normalizer==3.2.0
-    # via
-    #   -r requirements/runtime-deps.in
-    #   requests
 click==8.1.6
     # via
     #   typer
