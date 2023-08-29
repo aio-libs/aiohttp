@@ -210,8 +210,8 @@ The client session supports the context manager protocol for self closing.
                          more information.
 
    :param Callable[[ClientResponse, bytes], str] detect_encoding:
-      A :term:`callable` that accepts a :class:`ClientResponse` and its
-      :type:`contents <bytes>` and returns a :class:`str` which will be used as
+      A :term:`callable` that accepts a :class:`ClientResponse` and the :class:`bytes`
+      contents, and returns a :class:`str` which will be used as
       the encoding parameter to :meth:`bytes.decode()`.
 
       This function will be called when the charset is not known (e.g. not specified in the
