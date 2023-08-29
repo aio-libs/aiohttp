@@ -1,5 +1,6 @@
 import asyncio
 import codecs
+import contextlib
 import functools
 import io
 import re
@@ -12,6 +13,7 @@ from types import MappingProxyType, TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     Dict,
     Iterable,
     List,
@@ -65,11 +67,6 @@ try:
 except ImportError:  # pragma: no cover
     ssl = None  # type: ignore[assignment]
     SSLContext = object  # type: ignore[misc,assignment]
-
-try:
-    import cchardet as chardet
-except ImportError:  # pragma: no cover
-    import charset_normalizer as chardet  # type: ignore[no-redef]
 
 
 __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
@@ -722,8 +719,8 @@ class ClientResponse(HeadersMixin):
     _raw_headers: RawHeaders = None  # type: ignore[assignment] # Response raw headers
 
     _connection = None  # current connection
-    _source_traceback = None
-    # setted up by ClientRequest after ClientResponse object creation
+    _source_traceback: Optional[traceback.StackSummary] = None
+    # set up by ClientRequest after ClientResponse object creation
     # post-init stage allows to not change ctor signature
     _closed = True  # to allow __del__ for non-initialized properly response
     _released = False
@@ -760,6 +757,15 @@ class ClientResponse(HeadersMixin):
         self._loop = loop
         # store a reference to session #1985
         self._session: Optional[ClientSession] = session
+        # Save reference to _resolve_charset, so that get_encoding() will still
+        # work after the response has finished reading the body.
+        if session is None:
+            # TODO: Fix session=None in tests (see ClientRequest.__init__).
+            self._resolve_charset: Callable[
+                ["ClientResponse", bytes], str
+            ] = lambda *_: "utf-8"
+        else:
+            self._resolve_charset = session._resolve_charset
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
@@ -1053,27 +1059,22 @@ class ClientResponse(HeadersMixin):
 
         encoding = mimetype.parameters.get("charset")
         if encoding:
-            try:
-                codecs.lookup(encoding)
-            except LookupError:
-                encoding = None
-        if not encoding:
-            if mimetype.type == "application" and (
-                mimetype.subtype == "json" or mimetype.subtype == "rdap"
-            ):
-                # RFC 7159 states that the default encoding is UTF-8.
-                # RFC 7483 defines application/rdap+json
-                encoding = "utf-8"
-            elif self._body is None:
-                raise RuntimeError(
-                    "Cannot guess the encoding of " "a not yet read body"
-                )
-            else:
-                encoding = chardet.detect(self._body)["encoding"]
-        if not encoding:
-            encoding = "utf-8"
+            with contextlib.suppress(LookupError):
+                return codecs.lookup(encoding).name
 
-        return encoding
+        if mimetype.type == "application" and (
+            mimetype.subtype == "json" or mimetype.subtype == "rdap"
+        ):
+            # RFC 7159 states that the default encoding is UTF-8.
+            # RFC 7483 defines application/rdap+json
+            return "utf-8"
+
+        if self._body is None:
+            raise RuntimeError(
+                "Cannot compute fallback encoding of a not yet read body"
+            )
+
+        return self._resolve_charset(self, self._body)
 
     async def text(self, encoding: Optional[str] = None, errors: str = "strict") -> str:
         """Read response payload and decode."""

@@ -88,6 +88,11 @@ from .streams import FlowControlDataQueue
 from .tracing import Trace, TraceConfig
 from .typedefs import Final, JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
 
+try:
+    import cchardet as chardet
+except ImportError:  # pragma: no cover
+    import charset_normalizer as chardet  # type: ignore[no-redef]
+
 __all__ = (
     # client_exceptions
     "ClientConnectionError",
@@ -159,6 +164,7 @@ class ClientTimeout:
 DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60)
 
 _RetType = TypeVar("_RetType")
+_CharsetResolver = Callable[[ClientResponse, bytes], str]
 
 
 class ClientSession:
@@ -220,6 +226,10 @@ class ClientSession:
         requote_redirect_url: bool = True,
         trace_configs: Optional[List[TraceConfig]] = None,
         read_bufsize: int = 2**16,
+        fallback_charset_resolver: _CharsetResolver = lambda r, b: chardet.detect(b)[
+            "encoding"
+        ]
+        or "utf-8",
     ) -> None:
         if loop is None:
             if connector is not None:
@@ -312,6 +322,8 @@ class ClientSession:
         self._trace_configs = trace_configs or []
         for trace_config in self._trace_configs:
             trace_config.freeze()
+
+        self._resolve_charset = fallback_charset_resolver
 
     def __init_subclass__(cls: Type["ClientSession"]) -> None:
         warnings.warn(
