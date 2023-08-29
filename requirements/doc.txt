@@ -14,8 +14,6 @@ blockdiag==3.0.0
     # via sphinxcontrib-blockdiag
 certifi==2023.7.22
     # via requests
-charset-normalizer==3.2.0
-    # via requests
 click==8.1.6
     # via
     #   click-default-group
