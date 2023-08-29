@@ -1265,3 +1265,45 @@ def test_response_not_closed_after_get_ok(mocker) -> None:
     assert not response.ok
     assert not response.closed
     assert spy.call_count == 0
+
+
+async def test_iter_chunks(loop: Any, session: Any) -> None:
+    response = ClientResponse(
+        "get",
+        URL("http://def-cl-resp.org"),
+        request_info=mock.Mock(),
+        writer=mock.Mock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+
+    content = response.content = mock.MagicMock()
+    content.iter_chunks.__aiter__.return_value = [b"payload"]
+
+    async for data in response.iter_chunked(1):
+        assert data == b"payload"
+    assert response._connection is None
+
+
+async def test_iter_chunked(loop: Any, session: Any) -> None:
+    response = ClientResponse(
+        "get",
+        URL("http://def-cl-resp.org"),
+        request_info=mock.Mock(),
+        writer=mock.Mock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+
+    content = response.content = mock.MagicMock()
+    content.iter_chunked.__aiter__.return_value = [b"payload"]
+
+    async for data in response.iter_chunked(1):
+        assert data == b"payload"
+    assert response._connection is None
