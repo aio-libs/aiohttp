@@ -1,2 +1,2 @@
-Remove character set detection. Add detect_encoding parameter to ClientSession to
-support user-defined character set detection.
+Replace automatic character set detection with a `detect_encoding` parameter in `ClientSession`
+to allow user-supplied character set detection functions.
