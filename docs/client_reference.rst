@@ -51,7 +51,7 @@ The client session supports the context manager protocol for self closing.
                          read_bufsize=2**16, \
                          requote_redirect_url=True, \
                          trust_env=False, \
-                         trace_configs=None,
+                         trace_configs=None, \
                          detect_encoding=lambda r, b: "utf-8")
 
    The class for creating client sessions and making requests.
