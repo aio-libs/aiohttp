@@ -740,3 +740,32 @@ HTTP Pipelining
 ---------------
 
 aiohttp does not support HTTP/HTTPS pipelining.
+
+
+Character Set Detection
+-----------------------
+
+In order to facilitate detecting of the character set of a response without a charset
+parameter in the Content-Type header, the :class:`ClientSession` class provides a
+``fallback_encoding`` callable parameter. ::
+
+    # chardetng_py: fast charset detection written in rust
+    from chardetng_py import detect
+
+    def fallback_encoding(response, body):
+        tld = response.url.host.split(".")[-1]
+        return detect(body, tld=tld)
+
+    # charset_normalizer: pure python charset detection
+    from charset_normalizer import chardet
+
+    def fallback_encoding(response, body):
+        return chardet(body)["encoding"] or "utf-8"
+
+    async with ClientSession(fallback_encoding=fallback_encoding) as client:
+        ....
+
+.. note:: Attempting to call :meth:`ClientResponse.text()` without setting
+          `fallback_encoding` will result in a :exc:`UnicodeDecodeError` exception
+          if the charset is not specified in the Content-Type header and the response
+          body is not valid UTF-8.
