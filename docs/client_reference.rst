@@ -1425,6 +1425,10 @@ Response object
                            ``None`` for encoding autodetection
                            (default).
 
+
+      :raises: :exc:`UnicodeDecodeError` if encoding is unknown. See also
+               :meth:`get_encoding`.
+
       :return str: decoded *BODY*
 
    .. method:: json(*, encoding=None, loads=json.loads, \
