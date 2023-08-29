@@ -681,7 +681,7 @@ class ClientResponse(HeadersMixin):
     _raw_headers: RawHeaders = None  # type: ignore[assignment]
 
     _connection = None  # current connection
-    _source_traceback = None
+    _source_traceback: Optional[traceback.StackSummary] = None
     # set up by ClientRequest after ClientResponse object creation
     # post-init stage allows to not change ctor signature
     _closed = True  # to allow __del__ for non-initialized properly response
