@@ -755,7 +755,7 @@ the encoding as a parameter (e.g. ``resp.text("windows-1252")``).
 Alternatively, :class:`ClientSession` accepts a ``detect_encoding`` parameter which
 can be used to introduce charset guessing functionality. When a charset is not found
 in the Content-Type header, this function will be called to get the charset encoding. For
-example, this can be used with the chardetng_py library.::
+example, this can be used with the ``chardetng_py`` library.::
 
     from chardetng_py import detect
 
