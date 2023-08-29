@@ -1022,7 +1022,7 @@ class ClientResponse(HeadersMixin):
                 "Cannot compute fallback encoding of a not yet read body"
             )
 
-        return self._session._fallback_encoding(self, self._body)
+        return self._session._detect_encoding(self, self._body)
 
     async def text(self, encoding: Optional[str] = None, errors: str = "strict") -> str:
         """Read response payload and decode."""

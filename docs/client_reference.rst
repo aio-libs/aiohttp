@@ -52,7 +52,7 @@ The client session supports the context manager protocol for self closing.
                          requote_redirect_url=True, \
                          trust_env=False, \
                          trace_configs=None,
-                         fallback_encoding=lambda r, b: "utf-8")
+                         detect_encoding=lambda r, b: "utf-8")
 
    The class for creating client sessions and making requests.
 
@@ -209,7 +209,7 @@ The client session supports the context manager protocol for self closing.
                          disabling.  See :ref:`aiohttp-client-tracing-reference` for
                          more information.
 
-   :param Callable[[ClientResponse, bytes], str] fallback_encoding:
+   :param Callable[[ClientResponse, bytes], str] detect_encoding:
       A :term:`callable` that accepts a :class:`ClientResponse` and its
       :type:`contents <bytes>` and returns a :class:`str` which will be used as
       the encoding parameter to :meth:`bytes.decode()`.
@@ -1418,7 +1418,7 @@ Response object
       specified *encoding* parameter.
 
       If *encoding* is ``None`` content encoding is determined from the
-      Content-Type header, or using the ``fallback_encoding`` function.
+      Content-Type header, or using the ``detect_encoding`` function.
 
       Close underlying connection if data reading gets an error,
       release connection otherwise.
@@ -1475,7 +1475,7 @@ Response object
 
       Retrieve content encoding using ``charset`` info in ``Content-Type`` HTTP header.
       If no charset is present or the charset is not understood by Python, the
-      ``fallback_encoding`` function associated with the ``ClientSession`` is called.
+      ``detect_encoding`` function associated with the ``ClientSession`` is called.
 
       .. versionadded:: 3.0
 

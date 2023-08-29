@@ -428,9 +428,7 @@ async def test_text_custom_encoding(loop: Any, session: Any) -> None:
 
 
 @pytest.mark.parametrize("content_type", ["text/plain", "text/plain;charset=invalid"])
-async def test_text_fallback_encoding(
-    content_type: str, loop: Any, session: Any
-) -> None:
+async def test_text_detect_encoding(content_type: str, loop: Any, session: Any) -> None:
     response = ClientResponse(
         "get",
         URL("http://def-cl-resp.org"),
@@ -441,7 +439,7 @@ async def test_text_fallback_encoding(
         traces=[],
         loop=loop,
         session=session,
-        fallback_encoding=lambda r, b: "cp1251",
+        detect_encoding=lambda r, b: "cp1251",
     )
 
     def side_effect(*args, **kwargs):
