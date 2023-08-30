@@ -700,7 +700,7 @@ Graceful Shutdown
 -----------------
 
 When :class:`ClientSession` closes at the end of an ``async with``
-block (or through a direct :meth:`ClientSession.close()` call), the
+block (or through a direct :meth:`ClientSession.close` call), the
 underlying connection remains open due to asyncio internal details. In
 practice, the underlying connection will close after a short
 while. However, if the event loop is stopped before the underlying
@@ -745,7 +745,7 @@ aiohttp does not support HTTP/HTTPS pipelining.
 Character Set Detection
 -----------------------
 
-If you encounter a :exc:`UnicodeDecodeError` when using :meth:`ClientResponse.text()`
+If you encounter a :exc:`UnicodeDecodeError` when using :meth:`ClientResponse.text`
 this may be because the response does not include the charset needed
 to decode the body.
 
