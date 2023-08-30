@@ -122,7 +122,7 @@ The client session supports the context manager protocol for self closing.
 
    :param bool raise_for_status:
 
-      Automatically call :meth:`ClientResponse.raise_for_status()` for
+      Automatically call :meth:`ClientResponse.raise_for_status` for
       each response, ``False`` by default.
 
       This parameter can be overridden when you making a request, e.g.::
@@ -211,7 +211,7 @@ The client session supports the context manager protocol for self closing.
                          disabling.  See :ref:`aiohttp-client-tracing-reference` for
                          more information.
 
-   :param Callable[[ClientResponse,bytes],str] fallback_charset_resolver:
+   :type fallback_charset_resolver: Callable[[ClientResponse, bytes], str]
       A :term:`callable` that accepts a :class:`ClientResponse` and the
       :class:`bytes` contents, and returns a :class:`str` which will be used as
       the encoding parameter to :meth:`bytes.decode()`.
@@ -317,7 +317,7 @@ The client session supports the context manager protocol for self closing.
 
    .. attribute:: raise_for_status
 
-      Should :meth:`ClientResponse.raise_for_status()` be called for each response
+      Should :meth:`ClientResponse.raise_for_status` be called for each response
 
       Either :class:`bool` or :class:`collections.abc.Callable`
 
@@ -443,7 +443,7 @@ The client session supports the context manager protocol for self closing.
       :param bool expect100: Expect 100-continue response from server.
                              ``False`` by default (optional).
 
-      :param bool raise_for_status: Automatically call :meth:`ClientResponse.raise_for_status()` for
+      :param bool raise_for_status: Automatically call :meth:`ClientResponse.raise_for_status` for
                                     response if set to ``True``.
                                     If set to ``None`` value from ``ClientSession`` will be used.
                                     ``None`` by default (optional).
@@ -897,7 +897,7 @@ certification chaining.
                           ``False`` by default (optional).
 
    :param bool raise_for_status: Automatically call
-                                 :meth:`ClientResponse.raise_for_status()`
+                                 :meth:`ClientResponse.raise_for_status`
                                  for response if set to ``True``.  If
                                  set to ``None`` value from
                                  ``ClientSession`` will be used.
