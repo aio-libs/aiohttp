@@ -136,7 +136,7 @@ platformdirs==3.10.0
     # via virtualenv
 pluggy==1.2.0
     # via pytest
-pre-commit==3.3.3
+pre-commit==3.4.0
     # via -r requirements/lint.in
 proxy-py==2.4.3
     # via -r requirements/test.in
