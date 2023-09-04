@@ -6,7 +6,7 @@
 #
 aioredis==2.0.1
     # via -r requirements/lint.in
-async-timeout==4.0.3 ; python_version < "3.11"
+async-timeout==4.0.3
     # via aioredis
 cfgv==3.3.1
     # via pre-commit
@@ -34,7 +34,7 @@ platformdirs==3.10.0
     # via virtualenv
 pluggy==1.2.0
     # via pytest
-pre-commit==3.3.3
+pre-commit==3.4.0
     # via -r requirements/lint.in
 pytest==7.4.0
     # via -r requirements/lint.in
