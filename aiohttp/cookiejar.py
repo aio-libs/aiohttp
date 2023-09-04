@@ -284,7 +284,7 @@ class CookieJar(AbstractCookieJar):
             # previously found
             if name in filtered:
                 existing_cookie = filtered[name]
-                if len(existing_cookie.get('path')) < len(cookie.get('path')):
+                if len(existing_cookie.get("path")) < len(cookie.get("path")):
                     filtered[name] = cookie
             else:
                 filtered[name] = cookie
@@ -293,8 +293,12 @@ class CookieJar(AbstractCookieJar):
         # (based on cookie version) is preserved
         for name in filtered:
             filtered_cookie = filtered[name]
-            mrsl_val = cast("Morsel[str]", filtered_cookie.get(filtered_cookie.key, Morsel()))
-            mrsl_val.set(filtered_cookie.key, filtered_cookie.value, filtered_cookie.coded_value)
+            mrsl_val = cast(
+                "Morsel[str]", filtered_cookie.get(filtered_cookie.key, Morsel())
+            )
+            mrsl_val.set(
+                filtered_cookie.key, filtered_cookie.value, filtered_cookie.coded_value
+            )
             filtered[name] = mrsl_val
 
         return filtered
