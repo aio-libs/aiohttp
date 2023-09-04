@@ -34,6 +34,8 @@ cffi==1.15.1
     #   pycares
 cfgv==3.3.1
     # via pre-commit
+charset-normalizer==3.2.0
+    # via requests
 cherry-picker==2.1.0
     # via -r requirements/dev.in
 click==8.1.6
@@ -86,10 +88,6 @@ idna==3.4
     #   yarl
 imagesize==1.4.1
     # via sphinx
-importlib-metadata==6.8.0
-    # via sphinx
-importlib-resources==6.0.0
-    # via towncrier
 incremental==22.10.0
     # via towncrier
 iniconfig==2.0.0
@@ -129,7 +127,7 @@ platformdirs==3.10.0
     # via virtualenv
 pluggy==1.2.0
     # via pytest
-pre-commit==3.3.3
+pre-commit==3.4.0
     # via -r requirements/lint.in
 proxy-py==2.4.3
     # via -r requirements/test.in
@@ -252,10 +250,6 @@ wheel==0.41.0
     # via pip-tools
 yarl==1.9.2
     # via -r requirements/runtime-deps.in
-zipp==3.16.2
-    # via
-    #   importlib-metadata
-    #   importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
 pip==23.2.1
