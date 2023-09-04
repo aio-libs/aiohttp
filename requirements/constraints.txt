@@ -145,7 +145,7 @@ pyjwt==2.8.0
     # via gidgethub
 pyproject-hooks==1.0.0
     # via build
-pytest==7.4.0
+pytest==7.4.1
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
