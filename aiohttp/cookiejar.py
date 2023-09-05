@@ -282,12 +282,10 @@ class CookieJar(AbstractCookieJar):
 
             # we need to check, if the found cookie is a better match then the
             # previously found
-            if name in filtered:
-                existing_cookie = filtered[name]
-                if len(existing_cookie.get("path")) < len(cookie.get("path")):
-                    filtered[name] = cookie
-            else:
-                filtered[name] = cookie
+            if name in filtered and len(cookie["path"]) < len(filtered[name]["path"]):
+                continue
+
+            filtered[name] = cookie
 
         # It's critical we use the Morsel so the coded_value
         # (based on cookie version) is preserved
