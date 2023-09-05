@@ -157,7 +157,7 @@ pytest-mock==3.11.1
     # via -r requirements/test.in
 python-dateutil==2.8.2
     # via freezegun
-python-on-whales==0.64.2
+python-on-whales==0.64.3
     # via -r requirements/test.in
 pyyaml==6.0.1
     # via pre-commit
