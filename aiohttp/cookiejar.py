@@ -256,7 +256,7 @@ class CookieJar(AbstractCookieJar):
             and request_origin not in self._treat_as_secure_origin
         )
 
-        for cookie in self:
+        for cookie in sorted(self, key=lambda c: len(c["path"])):
             name = cookie.key
             domain = cookie["domain"]
 
@@ -280,23 +280,10 @@ class CookieJar(AbstractCookieJar):
             if is_not_secure and cookie["secure"]:
                 continue
 
-            # we need to check, if the found cookie is a better match then the
-            # previously found
-            if name in filtered and len(cookie["path"]) < len(filtered[name]["path"]):
-                continue
-
-            filtered[name] = cookie
-
-        # It's critical we use the Morsel so the coded_value
-        # (based on cookie version) is preserved
-        for name in filtered:
-            filtered_cookie = filtered[name]
-            mrsl_val = cast(
-                "Morsel[str]", filtered_cookie.get(filtered_cookie.key, Morsel())
-            )
-            mrsl_val.set(
-                filtered_cookie.key, filtered_cookie.value, filtered_cookie.coded_value
-            )
+            # It's critical we use the Morsel so the coded_value
+            # (based on cookie version) is preserved
+            mrsl_val = cast("Morsel[str]", cookie.get(cookie.key, Morsel()))
+            mrsl_val.set(cookie.key, cookie.value, cookie.coded_value)
             filtered[name] = mrsl_val
 
         return filtered
