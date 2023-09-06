@@ -301,6 +301,12 @@ def test_host_header_ipv6_with_port(make_request: Any) -> None:
         ),
         pytest.param("https://python.org.", None, "python.org", id="https"),
         pytest.param("https://...", None, "", id="only dots"),
+        pytest.param(
+            "http://príklad.example.org.:99",
+            None,
+            "xn--prklad-4va.example.org:99",
+            id="single dot with port idna",
+        ),
     ),
 )
 def test_host_header_fqdn(

@@ -2071,6 +2071,8 @@ async def test_tcp_connector_raise_connector_ssl_error(
         pytest.param(
             "localhost...", id="fully-qualified domain name with multiple trailing dots"
         ),
+        # According to https://datatracker.ietf.org/doc/html/rfc6761#section-6.3 subdomains of localhost should work.
+        pytest.param("príklad.localhost.", id="idna fully-qualified domain name"),
     ),
 )
 async def test_tcp_connector_do_not_raise_connector_ssl_error(
