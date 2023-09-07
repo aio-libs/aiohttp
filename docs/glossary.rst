@@ -45,22 +45,6 @@
       Any object that can be called. Use :func:`callable` to check
       that.
 
-   charset-normalizer
-
-       The Real First Universal Charset Detector.
-       Open, modern and actively maintained alternative to Chardet.
-
-       https://pypi.org/project/charset-normalizer/
-
-   cchardet
-
-       cChardet is high speed universal character encoding detector -
-       binding to charsetdetect.
-
-       https://pypi.python.org/pypi/cchardet/
-
-       .. include:: _snippets/cchardet-unmaintained-admonition.rst
-
    gunicorn
 
        Gunicorn 'Green Unicorn' is a Python WSGI HTTP Server for
