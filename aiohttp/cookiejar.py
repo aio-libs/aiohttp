@@ -251,7 +251,8 @@ class CookieJar(AbstractCookieJar):
             and request_origin not in self._treat_as_secure_origin
         )
 
-        for cookie in self:
+        # Point 2: https://www.rfc-editor.org/rfc/rfc6265.html#section-5.4
+        for cookie in sorted(self, key=lambda c: len(c["path"])):
             name = cookie.key
             domain = cookie["domain"]
 
