@@ -226,10 +226,9 @@ class ClientSession:
         requote_redirect_url: bool = True,
         trace_configs: Optional[List[TraceConfig]] = None,
         read_bufsize: int = 2**16,
-        fallback_charset_resolver: _CharsetResolver = lambda r, b: chardet.detect(b)[
-            "encoding"
-        ]
-        or "utf-8",
+        fallback_charset_resolver: _CharsetResolver = lambda r, b: (
+            chardet.detect(b)["encoding"] or "utf-8"
+        ),
     ) -> None:
         if loop is None:
             if connector is not None:
