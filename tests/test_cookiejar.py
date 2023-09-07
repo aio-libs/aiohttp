@@ -694,6 +694,36 @@ class TestCookieJarSafe(TestCookieJarBase):
         self.assertEqual(len(jar_filtered), 1)
         self.assertEqual(jar_filtered["path-cookie"].value, "one")
 
+    def test_path_filter_diff_folder_same_name_return_best_match_independent_from_put_order(
+        self,
+    ) -> None:
+        async def make_jar():
+            return CookieJar(unsafe=True)
+
+        jar = self.loop.run_until_complete(make_jar())
+        jar.update_cookies(
+            SimpleCookie("path-cookie=one; Domain=pathtest.com; Path=/one; ")
+        )
+        jar.update_cookies(
+            SimpleCookie("path-cookie=zero; Domain=pathtest.com; Path=/; ")
+        )
+        jar.update_cookies(
+            SimpleCookie("path-cookie=two; Domain=pathtest.com; Path=/second; ")
+        )
+        self.assertEqual(len(jar), 3)
+
+        jar_filtered = jar.filter_cookies(URL("http://pathtest.com/"))
+        self.assertEqual(len(jar_filtered), 1)
+        self.assertEqual(jar_filtered["path-cookie"].value, "zero")
+
+        jar_filtered = jar.filter_cookies(URL("http://pathtest.com/second"))
+        self.assertEqual(len(jar_filtered), 1)
+        self.assertEqual(jar_filtered["path-cookie"].value, "two")
+
+        jar_filtered = jar.filter_cookies(URL("http://pathtest.com/one"))
+        self.assertEqual(len(jar_filtered), 1)
+        self.assertEqual(jar_filtered["path-cookie"].value, "one")
+
 
 async def test_dummy_cookie_jar() -> None:
     cookie = SimpleCookie("foo=bar; Domain=example.com;")
