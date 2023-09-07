@@ -1,1 +1,1 @@
-Fix filter_cookies return 'best-mach' (instead of lifo) cookie -- by :user:`marq24`.
+Fix sorting in filter_cookies to use cookie with longest path -- by :user:`marq24`.
