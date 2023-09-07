@@ -228,6 +228,7 @@ Martin Richard
 Mathias Fröjdman
 Mathieu Dugré
 Matt VanEseltine
+Matthias Marquardt
 Matthieu Hauglustaine
 Matthieu Rigal
 Matvey Tingaev
