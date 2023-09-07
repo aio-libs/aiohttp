@@ -686,9 +686,7 @@ class TestCookieJarSafe(TestCookieJarBase):
         self.assertEqual(len(jar_filtered), 1)
         self.assertEqual(jar_filtered["path-cookie"].value, "one")
 
-    def test_path_filter_diff_folder_same_name_return_best_match_independent_from_put_order(
-        self,
-    ) -> None:
+    def test_filter_cookies_order_by_path(self) -> None:
         async def make_jar():
             return CookieJar(unsafe=True)
 
