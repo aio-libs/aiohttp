@@ -22,6 +22,8 @@ cffi==1.15.1
     # via
     #   cryptography
     #   pycares
+charset-normalizer==3.2.0
+    # via requests
 click==8.1.6
     # via
     #   typer
@@ -73,7 +75,7 @@ pydantic==2.2.0
     # via python-on-whales
 pydantic-core==2.6.0
     # via pydantic
-pytest==7.4.1
+pytest==7.4.2
     # via
     #   -r requirements/test.in
     #   pytest-cov
