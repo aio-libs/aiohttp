@@ -69,7 +69,7 @@ pycparser==2.21
     # via cffi
 pydantic==1.10.12
     # via python-on-whales
-pytest==7.4.1
+pytest==7.4.2
     # via
     #   -r requirements/test.in
     #   pytest-cov
