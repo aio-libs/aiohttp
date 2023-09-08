@@ -167,6 +167,21 @@ _RetType = TypeVar("_RetType")
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
 
 
+def _default_fallback_charset_resolver(response: ClientResponse, body: bytes) -> str:
+
+    ret: str = chardet.detect(body)["encoding"] or "utf-8"
+
+    if ret != "utf-8":
+        warnings.warn(
+            "Automatic character set detection is deprecated, use "
+            "fallback_charset_resolver instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+    return ret
+
+
 class ClientSession:
     """First-class interface for making HTTP requests."""
 
@@ -226,8 +241,8 @@ class ClientSession:
         requote_redirect_url: bool = True,
         trace_configs: Optional[List[TraceConfig]] = None,
         read_bufsize: int = 2**16,
-        fallback_charset_resolver: _CharsetResolver = lambda r, b: (
-            chardet.detect(b)["encoding"] or "utf-8"
+        fallback_charset_resolver: _CharsetResolver = (
+            _default_fallback_charset_resolver
         ),
     ) -> None:
         if loop is None:
