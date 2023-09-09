@@ -207,8 +207,8 @@ The client session supports the context manager protocol for self closing.
       the encoding parameter to :meth:`bytes.decode()`.
 
       This function will be called when the charset is not known (e.g. not specified in the
-      Content-Type header). The default function in 3.8.6 calls chardetng
-      or charset-normaliser. In 3.9+ this be replaced with a function that
+      Content-Type header). The default function in 3.8.6 calls ``chardetng``
+      or ``charset-normaliser``. In 3.9+ this be replaced with a function that
       simply defaults to ``utf-8``.
 
       .. versionadded:: 3.8.6
