@@ -173,8 +173,8 @@ def _default_fallback_charset_resolver(response: ClientResponse, body: bytes) ->
 
     if ret != "utf-8":
         warnings.warn(
-            "Automatic character set detection is deprecated, use "
-            "fallback_charset_resolver instead.",
+            "Automatic charset detection will be removed in 3.9, see: "
+            "https://docs.aiohttp.org/en/stable/client_advanced.html#character-set-detection",
             DeprecationWarning,
             stacklevel=2,
         )
