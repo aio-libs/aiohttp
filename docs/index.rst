@@ -162,14 +162,6 @@ Dependencies
 - *charset-normalizer*
 - *multidict*
 - *yarl*
-- *Optional* :term:`cchardet` as faster replacement for
-  :term:`charset-normalizer`.
-
-  Install it explicitly via:
-
-  .. code-block:: bash
-
-     $ pip install cchardet
 
 - *Optional* :term:`aiodns` for fast DNS resolving. The
   library is highly recommended.
