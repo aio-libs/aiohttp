@@ -88,6 +88,11 @@ from .streams import FlowControlDataQueue
 from .tracing import Trace, TraceConfig
 from .typedefs import Final, JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
 
+try:
+    import cchardet as chardet
+except ImportError:  # pragma: no cover
+    import charset_normalizer as chardet  # type: ignore[no-redef]
+
 __all__ = (
     # client_exceptions
     "ClientConnectionError",
@@ -159,6 +164,22 @@ class ClientTimeout:
 DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60)
 
 _RetType = TypeVar("_RetType")
+_CharsetResolver = Callable[[ClientResponse, bytes], str]
+
+
+def _default_fallback_charset_resolver(response: ClientResponse, body: bytes) -> str:
+
+    ret: str = chardet.detect(body)["encoding"] or "utf-8"
+
+    if ret != "utf-8":
+        warnings.warn(
+            "Automatic charset detection will be removed in 3.9, see: "
+            "https://docs.aiohttp.org/en/stable/client_advanced.html#character-set-detection",  # noqa: E501
+            DeprecationWarning,
+            stacklevel=3,
+        )
+
+    return ret
 
 
 class ClientSession:
@@ -220,6 +241,9 @@ class ClientSession:
         requote_redirect_url: bool = True,
         trace_configs: Optional[List[TraceConfig]] = None,
         read_bufsize: int = 2**16,
+        fallback_charset_resolver: _CharsetResolver = (
+            _default_fallback_charset_resolver
+        ),
     ) -> None:
         if loop is None:
             if connector is not None:
@@ -312,6 +336,8 @@ class ClientSession:
         self._trace_configs = trace_configs or []
         for trace_config in self._trace_configs:
             trace_config.freeze()
+
+        self._resolve_charset = fallback_charset_resolver
 
     def __init_subclass__(cls: Type["ClientSession"]) -> None:
         warnings.warn(
