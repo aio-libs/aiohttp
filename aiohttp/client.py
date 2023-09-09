@@ -176,7 +176,7 @@ def _default_fallback_charset_resolver(response: ClientResponse, body: bytes) ->
             "Automatic charset detection will be removed in 3.9, see: "
             "https://docs.aiohttp.org/en/stable/client_advanced.html#character-set-detection",
             DeprecationWarning,
-            stacklevel=2,
+            stacklevel=3,
         )
 
     return ret
