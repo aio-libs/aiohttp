@@ -39,6 +39,7 @@ def tls_certificate_authority():
 def tls_certificate(tls_certificate_authority):
     return tls_certificate_authority.issue_cert(
         "localhost",
+        "xn--prklad-4va.localhost",
         "127.0.0.1",
         "::1",
     )
