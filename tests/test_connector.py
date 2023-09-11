@@ -2062,8 +2062,20 @@ async def test_tcp_connector_raise_connector_ssl_error(
     await session.close()
 
 
+@pytest.mark.parametrize(
+    "host",
+    (
+        pytest.param("127.0.0.1", id="ip address"),
+        pytest.param("localhost", id="domain name"),
+        pytest.param("localhost.", id="fully-qualified domain name"),
+        pytest.param(
+            "localhost...", id="fully-qualified domain name with multiple trailing dots"
+        ),
+        pytest.param("príklad.localhost.", id="idna fully-qualified domain name"),
+    ),
+)
 async def test_tcp_connector_do_not_raise_connector_ssl_error(
-    aiohttp_server: Any, ssl_ctx: Any, client_ssl_ctx: Any
+    aiohttp_server: Any, ssl_ctx: Any, client_ssl_ctx: Any, host: str
 ) -> None:
     async def handler(request):
         return web.Response()
@@ -2075,10 +2087,33 @@ async def test_tcp_connector_do_not_raise_connector_ssl_error(
     port = unused_port()
     conn = aiohttp.TCPConnector(local_addr=("127.0.0.1", port))
 
+    # resolving something.localhost with the real DNS resolver does not work on macOS, so we have a stub.
+    async def _resolve_host(host, port, traces=None):
+        return [
+            {
+                "hostname": host,
+                "host": "127.0.0.1",
+                "port": port,
+                "family": socket.AF_INET,
+                "proto": 0,
+                "flags": socket.AI_NUMERICHOST,
+            },
+            {
+                "hostname": host,
+                "host": "::1",
+                "port": port,
+                "family": socket.AF_INET,
+                "proto": 0,
+                "flags": socket.AI_NUMERICHOST,
+            },
+        ]
+
+    conn._resolve_host = _resolve_host
+
     session = aiohttp.ClientSession(connector=conn)
     url = srv.make_url("/")
 
-    r = await session.get(url, ssl=client_ssl_ctx)
+    r = await session.get(url.with_host(host), ssl=client_ssl_ctx)
 
     r.release()
     first_conn = next(iter(conn._conns.values()))[0][0]
