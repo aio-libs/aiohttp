@@ -1085,6 +1085,11 @@ class TCPConnector(BaseConnector):
 
         host = req.url.raw_host
         assert host is not None
+        # Replace multiple trailing dots with a single one.
+        # A trailing dot is only present for fully-qualified domain names.
+        # See https://github.com/aio-libs/aiohttp/pull/7364.
+        if host.endswith(".."):
+            host = host.rstrip(".") + "."
         port = req.port
         assert port is not None
         host_resolved = asyncio.ensure_future(
@@ -1116,8 +1121,12 @@ class TCPConnector(BaseConnector):
             host = hinfo["host"]
             port = hinfo["port"]
 
+            # Strip trailing dots, certificates contain FQDN without dots.
+            # See https://github.com/aio-libs/aiohttp/issues/3636
             server_hostname = (
-                (req.server_hostname or hinfo["hostname"]) if sslcontext else None
+                (req.server_hostname or hinfo["hostname"]).rstrip(".")
+                if sslcontext
+                else None
             )
 
             try:
