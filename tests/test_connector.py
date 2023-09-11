@@ -2071,7 +2071,6 @@ async def test_tcp_connector_raise_connector_ssl_error(
         pytest.param(
             "localhost...", id="fully-qualified domain name with multiple trailing dots"
         ),
-        # According to https://datatracker.ietf.org/doc/html/rfc6761#section-6.3 subdomains of localhost should work.
         pytest.param("príklad.localhost.", id="idna fully-qualified domain name"),
     ),
 )
@@ -2087,6 +2086,29 @@ async def test_tcp_connector_do_not_raise_connector_ssl_error(
     srv = await aiohttp_server(app, ssl=ssl_ctx)
     port = unused_port()
     conn = aiohttp.TCPConnector(local_addr=("127.0.0.1", port))
+
+    # resolving something.localhost with the real DNS resolver does not work on macOS, so we have a stub.
+    async def _resolve_host(host, port, traces=None):
+        return [
+            {
+                "hostname": host,
+                "host": "127.0.0.1",
+                "port": port,
+                "family": socket.AF_INET,
+                "proto": 0,
+                "flags": socket.AI_NUMERICHOST,
+            },
+            {
+                "hostname": host,
+                "host": "::1",
+                "port": port,
+                "family": socket.AF_INET,
+                "proto": 0,
+                "flags": socket.AI_NUMERICHOST,
+            },
+        ]
+
+    conn._resolve_host = _resolve_host
 
     session = aiohttp.ClientSession(connector=conn)
     url = srv.make_url("/")
