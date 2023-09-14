@@ -1107,6 +1107,7 @@ class TCPConnector(BaseConnector):
                     fut.result()
 
             host_resolved.add_done_callback(drop_exception)
+            host_resolved.cancel()
             raise
         except OSError as exc:
             if exc.errno is None and isinstance(exc, asyncio.TimeoutError):

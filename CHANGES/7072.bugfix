@@ -1,0 +1,1 @@
+Fixes the "Task was destroyed but it is pending" issue related to `TCPConnector._resolve_host` taking too long (probably because of a DNS lookup failure)
