@@ -4,7 +4,10 @@ from concurrent.futures import Executor
 from typing import Optional, cast
 
 try:
-    import brotli
+    try:
+        import brotlicffi as brotli
+    except ImportError:
+        import brotli
 
     HAS_BROTLI = True
 except ImportError:  # pragma: no cover
