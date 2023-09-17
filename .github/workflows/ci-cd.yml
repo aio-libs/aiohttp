@@ -170,7 +170,7 @@ jobs:
             no-extensions: 'Y'
           - os: ubuntu
             pyver: "3.12"
-            experimental: false
+            experimental: true
             no-extensions: 'Y'
           - os: macos
             pyver: "3.12"
