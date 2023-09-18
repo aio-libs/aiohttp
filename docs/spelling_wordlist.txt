@@ -40,6 +40,7 @@ boolean
 botocore
 brotli
 Brotli
+brotlicffi
 brotlipy
 bugfix
 Bugfixes

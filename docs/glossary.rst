@@ -40,6 +40,13 @@
 
       https://pypi.org/project/Brotli/
 
+   brotlicffi
+
+      An alternative implementation of :term:`Brotli` built using the CFFI
+      library. This implementation supports PyPy correctly.
+
+      https://pypi.org/project/brotlicffi/
+
    callable
 
       Any object that can be called. Use :func:`callable` to check
