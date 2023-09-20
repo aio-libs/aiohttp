@@ -26,7 +26,7 @@ babel==2.12.1
     # via sphinx
 blockdiag==3.0.0
     # via sphinxcontrib-blockdiag
-brotli==1.0.9
+brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
 build==0.10.0
     # via pip-tools
