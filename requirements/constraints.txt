@@ -192,10 +192,11 @@ slotscheck==0.17.0
     # via -r requirements/lint.in
 snowballstemmer==2.1.0
     # via sphinx
-sphinx==7.1.1
+sphinx==7.2.6
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-blockdiag
+    #   sphinxcontrib-serializinghtml
     #   sphinxcontrib-spelling
     #   sphinxcontrib-towncrier
 sphinxcontrib-applehelp==1.0.2
@@ -210,7 +211,7 @@ sphinxcontrib-jsmath==1.0.1
     # via sphinx
 sphinxcontrib-qthelp==1.0.3
     # via sphinx
-sphinxcontrib-serializinghtml==1.1.5
+sphinxcontrib-serializinghtml==1.1.9
     # via sphinx
 sphinxcontrib-spelling==8.0.0 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.in
