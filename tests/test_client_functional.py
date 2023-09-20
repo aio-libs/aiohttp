@@ -3214,5 +3214,7 @@ async def test_rejected_upload(aiohttp_client: Any, tmp_path: Any) -> None:
         async with await client.post("/not_ok", data=data) as resp_not_ok:
             assert 400 == resp_not_ok.status
 
-    async with await client.get("/ok", timeout=aiohttp.ClientTimeout(total=0.01)) as resp_ok:
+    async with await client.get(
+        "/ok", timeout=aiohttp.ClientTimeout(total=0.01)
+    ) as resp_ok:
         assert 200 == resp_ok.status
