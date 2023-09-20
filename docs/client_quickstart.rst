@@ -184,7 +184,8 @@ The ``gzip`` and ``deflate`` transfer-encodings are automatically
 decoded for you.
 
 You can enable ``brotli`` transfer-encodings support,
-just install  `brotli <https://github.com/python-hyper/Brotli>`_.
+just install `Brotli <https://pypi.org/project/Brotli/>`_
+or `brotlicffi <https://pypi.org/project/brotlicffi/>`_.
 
 JSON Request
 ============

@@ -21,7 +21,10 @@ from aiohttp.http_parser import (
 )
 
 try:
-    import brotli
+    try:
+        import brotlicffi as brotli
+    except ImportError:
+        import brotli
 except ImportError:
     brotli = None
 
