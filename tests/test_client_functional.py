@@ -3206,7 +3206,7 @@ async def test_max_line_size_request_explicit(aiohttp_client) -> None:
 
 
 @pytest.mark.xfail(raises=asyncio.TimeoutError, reason="#7599")
-async def test_rejected_upload(aiohttp_client: Any, tmp_path: Any) -> None:
+async def test_rejected_upload(aiohttp_client, tmp_path) -> None:
     async def ok_handler(request):
         return web.Response()
 
