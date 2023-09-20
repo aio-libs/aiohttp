@@ -3210,7 +3210,7 @@ async def test_rejected_upload(aiohttp_client: Any, tmp_path: Any) -> None:
     file_path = tmp_path / "uploaded.txt"
     file_path.write_text("0" * file_size_bytes, encoding="utf8")
 
-    with open(file=file_path, mode="rb") as file:
+    with open(file_path, "rb") as file:
         data = {"file": file}
         async with await client.post("/not_ok", data=data) as resp_not_ok:
             assert 400 == resp_not_ok.status
