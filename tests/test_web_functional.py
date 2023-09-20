@@ -7,7 +7,6 @@ import zlib
 from typing import Optional
 from unittest import mock
 
-import brotli
 import pytest
 from multidict import CIMultiDictProxy, MultiDict
 from yarl import URL
@@ -17,6 +16,11 @@ from aiohttp import FormData, HttpVersion10, HttpVersion11, TraceConfig, multipa
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.typedefs import Handler
+
+try:
+    import brotlicffi as brotli
+except ImportError:
+    import brotli
 
 try:
     import ssl
