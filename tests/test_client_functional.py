@@ -3191,3 +3191,31 @@ async def test_max_line_size_request_explicit(aiohttp_client: Any) -> None:
 
     async with await client.get("/", max_line_size=8191) as resp:
         assert resp.reason == "x" * 8191
+
+
+@pytest.mark.xfail(raises=asyncio.TimeoutError, reason="#7599")
+async def test_rejected_upload(aiohttp_client: Any, tmp_path: Any) -> None:
+    async def ok_handler(request):
+        return web.Response()
+
+    async def not_ok_handler(request):
+        raise web.HTTPBadRequest()
+
+    app = web.Application()
+    app.router.add_get("/ok", ok_handler)
+    app.router.add_post("/not_ok", not_ok_handler)
+    client = await aiohttp_client(app)
+
+    file_size_bytes = 1024 * 1024
+    file_path = tmp_path / "uploaded.txt"
+    file_path.write_text("0" * file_size_bytes, encoding="utf8")
+
+    with open(file_path, "rb") as file:
+        data = {"file": file}
+        async with await client.post("/not_ok", data=data) as resp_not_ok:
+            assert 400 == resp_not_ok.status
+
+    async with await client.get(
+        "/ok", timeout=aiohttp.ClientTimeout(total=0.01)
+    ) as resp_ok:
+        assert 200 == resp_ok.status
