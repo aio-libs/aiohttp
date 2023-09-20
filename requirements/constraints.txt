@@ -28,7 +28,7 @@ backports-entry-points-selectable==1.1.1
     # via virtualenv
 blockdiag==2.0.1
     # via sphinxcontrib-blockdiag
-brotli==1.0.9
+brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
 build==0.9.0
     # via pip-tools
