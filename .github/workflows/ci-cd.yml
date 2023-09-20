@@ -211,16 +211,16 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install -r requirements/test.in -c requirements/test.txt
-    - name: Cythonize
-      if: ${{ matrix.no-extensions == '' }}
-      run: |
-        make cythonize
     - name: Restore llhttp generated files
       if: ${{ matrix.no-extensions == '' }}
       uses: actions/download-artifact@v3
       with:
         name: llhttp
         path: vendor/llhttp/build/
+    - name: Cythonize
+      if: ${{ matrix.no-extensions == '' }}
+      run: |
+        make cythonize
     - name: Run unittests
       env:
         COLOR: yes
