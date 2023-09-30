@@ -261,7 +261,11 @@ class SockSite(BaseSite):
 
 class BaseRunner(ABC):
     __slots__ = (
-        "starting_tasks", "_handle_signals", "_kwargs", "_server", "_sites",
+        "starting_tasks",
+        "_handle_signals",
+        "_kwargs",
+        "_server",
+        "_sites",
         "_serve_forever_fut",
     )
 
@@ -312,19 +316,15 @@ class BaseRunner(ABC):
 
     async def serve_forever(self) -> None:
         if self._serve_forever_fut is not None:
-            raise RuntimeError(
-                'Concurrent calls to serve_forever() are not allowed'
-            )
+            raise RuntimeError("Concurrent calls to serve_forever() are not allowed")
         if self._server is None:
-            raise RuntimeError('Call setup() first')
+            raise RuntimeError("Call setup() first")
 
         loop = asyncio.get_event_loop()
         self._serve_forever_fut = loop.create_future()
+
         try:
             await self._serve_forever_fut
-        except asyncio.CancelledError:
-            await self.cleanup()
-            raise
         finally:
             self._serve_forever_fut = None
 
