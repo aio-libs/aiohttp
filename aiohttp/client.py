@@ -608,9 +608,7 @@ class ClientSession:
                             parsed_url = url.join(parsed_url)
 
                         is_same_host_https_redirect = (
-                            url.host == parsed_url.host
-                            and parsed_url.scheme == "https"
-                            and url.scheme in ("http", "https")
+                            url.host == parsed_url.host and parsed_url.scheme == "https"
                         )
 
                         if (
