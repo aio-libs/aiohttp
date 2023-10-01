@@ -610,7 +610,7 @@ class ClientSession:
                         is_same_host_https_redirect = (
                             url.host == parsed_url.host
                             and parsed_url.scheme == "https"
-                            and url.scheme == "http"
+                            and url.scheme in ("http", "https")
                         )
 
                         if (

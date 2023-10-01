@@ -2473,6 +2473,58 @@ async def test_drop_auth_on_redirect_to_other_host(
         assert resp.status == 200
 
 
+async def test_dont_drop_auth_on_redirect_to_same_host_https_scheme(
+    aiohttp_server: Any, tls_certificate_authority: Any
+) -> None:
+    app1 = web.Application()
+
+    async def handler1(request):
+        print("handler1")
+        assert "Authorization" in request.headers, "Header was dropped"
+        print("handler1")
+        return web.Response()
+
+    app1.router.add_get("/path1", handler1)
+
+    cert = tls_certificate_authority.issue_cert("localhost", "127.0.0.1")
+    ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    cert.configure_cert(ssl_ctx)
+
+    server1 = await aiohttp_server(app1, ssl=ssl_ctx)
+
+    app2 = web.Application()
+
+    async def handler2(request):
+        assert request.headers["Authorization"] == "Basic dXNlcjpwYXNz"
+        raise web.HTTPFound(server1.make_url("/path1"))
+
+    app2.router.add_get("/path2", handler2)
+    server2 = await aiohttp_server(app2, ssl=ssl_ctx)
+
+    url = server2.make_url("/path2")
+
+    connector = aiohttp.TCPConnector(ssl=False)
+    async with aiohttp.request(
+        "GET",
+        url,
+        raise_for_status=False,
+        auth=aiohttp.BasicAuth("user", "pass"),
+        connector=connector,
+    ) as resp:
+        assert resp.status == 200
+
+    async with aiohttp.request(
+        "GET",
+        url,
+        raise_for_status=False,
+        headers={"Authorization": "Basic dXNlcjpwYXNz"},
+        connector=connector,
+    ) as resp:
+        assert resp.status == 200
+
+    await connector.close()
+
+
 async def test_async_with_session() -> None:
     async with aiohttp.ClientSession() as session:
         pass
