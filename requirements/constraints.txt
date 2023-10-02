@@ -167,7 +167,7 @@ pytest-mock==3.11.1
     # via -r requirements/test.in
 python-dateutil==2.8.2
     # via freezegun
-python-on-whales==0.64.3
+python-on-whales==0.65.0
     # via -r requirements/test.in
 pytz==2021.3
     # via babel
