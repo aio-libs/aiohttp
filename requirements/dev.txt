@@ -53,7 +53,7 @@ click==8.1.6
     #   wait-for-it
 click-default-group==1.2.2
     # via towncrier
-coverage==7.3.0
+coverage==7.3.2
     # via
     #   -r requirements/test.in
     #   pytest-cov
