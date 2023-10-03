@@ -1,1 +1,1 @@
-Fix EmptyStreamReader iter_chunks() never ending
+Fixed ``EmptyStreamReader.iter_chunks()`` never ending -- by :user:`mind1m`
