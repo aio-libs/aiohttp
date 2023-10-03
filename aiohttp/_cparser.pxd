@@ -154,3 +154,5 @@ cdef extern from "../vendor/llhttp/build/llhttp.h":
     const char* llhttp_method_name(llhttp_method_t method)
 
     void llhttp_set_lenient_headers(llhttp_t* parser, int enabled)
+    void llhttp_set_lenient_optional_cr_before_lf(llhttp_t* parser, int enabled)
+    void llhttp_set_lenient_spaces_after_chunk_size(llhttp_t* parser, int enabled)
