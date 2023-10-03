@@ -535,11 +535,7 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
         return b""
 
     async def readchunk(self) -> Tuple[bytes, bool]:
-        # if we return (b"", True) right away
-        # then iter_chunks() will loop forever because it expects (b"", False)
-        # this code makes sure that we yield (b"", False) first
         if not self._read_eof_chunk:
-            # do this only once
             self._read_eof_chunk = True
             return (b"", False)
 
