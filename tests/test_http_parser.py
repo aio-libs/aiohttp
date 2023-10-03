@@ -347,7 +347,7 @@ def test_request_te_chunked_with_content_length(parser: Any) -> None:
     )
     with pytest.raises(
         http_exceptions.BadHttpMessage,
-        match="Content-Length can't be present with Transfer-Encoding",
+        match="Transfer-Encoding can't be present with Content-Length",
     ):
         parser.feed_data(text)
 
