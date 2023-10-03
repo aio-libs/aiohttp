@@ -485,7 +485,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
             if hdrs.CONTENT_LENGTH in headers:
                 raise BadHttpMessage(
-                    "Content-Length can't be present with Transfer-Encoding",
+                    "Transfer-Encoding can't be present with Content-Length",
                 )
 
         return (headers, raw_headers, close_conn, encoding, upgrade, chunked)
