@@ -151,7 +151,6 @@ ipv
 IPv
 ish
 isort
-iter
 iterable
 iterables
 javascript
