@@ -10,7 +10,7 @@ from typing import Any
 from unittest import mock
 
 import pytest
-from freezegun import freeze_time
+from time_machine import travel
 from yarl import URL
 
 from aiohttp import CookieJar, DummyCookieJar
@@ -418,10 +418,10 @@ class TestCookieJarSafe(TestCookieJarBase):
         elif isinstance(send_time, float):
             send_time = datetime.datetime.fromtimestamp(send_time)
 
-        with freeze_time(update_time):
+        with travel(update_time, tick=False):
             self.jar.update_cookies(self.cookies_to_send)
 
-        with freeze_time(send_time):
+        with travel(send_time, tick=False):
             cookies_sent = self.jar.filter_cookies(URL(url))
 
         self.jar.clear()
@@ -784,11 +784,11 @@ async def test_cookie_jar_clear_expired():
     cookie["foo"] = "bar"
     cookie["foo"]["expires"] = "Tue, 1 Jan 1990 12:00:00 GMT"
 
-    with freeze_time("1980-01-01"):
+    with travel("1980-01-01", tick=False):
         sut.update_cookies(cookie)
 
     sut.clear(lambda x: False)
-    with freeze_time("1980-01-01"):
+    with travel("1980-01-01", tick=False):
         assert len(sut) == 0
 
 
