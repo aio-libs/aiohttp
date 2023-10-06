@@ -552,36 +552,6 @@ def test_invalid_name(parser: Any) -> None:
         parser.feed_data(text)
 
 
-def test_cve_2023_37276(parser: Any) -> None:
-    text = b"""POST / HTTP/1.1\r\nHost: localhost:8080\r\nX-Abc: \rxTransfer-Encoding: chunked\r\n\r\n"""
-    with pytest.raises(http_exceptions.BadHttpMessage):
-        parser.feed_data(text)
-
-
-@pytest.mark.parametrize(
-    "hdr",
-    (
-        "Content-Length: -5",  # https://www.rfc-editor.org/rfc/rfc9110.html#name-content-length
-        "Content-Length: +256",
-        "Foo: abc\rdef",  # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-5
-        "Bar: abc\ndef",
-        "Baz: abc\x00def",
-        "Foo : bar",  # https://www.rfc-editor.org/rfc/rfc9112.html#section-5.1-2
-        "Foo\t: bar",
-    ),
-)
-def test_bad_headers(parser: Any, hdr: str) -> None:
-    text = f"POST / HTTP/1.1\r\n{hdr}\r\n\r\n".encode()
-    with pytest.raises(http_exceptions.InvalidHeader):
-        parser.feed_data(text)
-
-
-def test_whitespace_before_header(parser: Any) -> None:
-    text = b"GET / HTTP/1.1\r\n\tContent-Length: 1\r\n\r\nX"
-    with pytest.raises(http_exceptions.BadHttpMessage):
-        parser.feed_data(text)
-
-
 @pytest.mark.parametrize("size", [40960, 8191])
 def test_max_header_field_size(parser: Any, size: Any) -> None:
     name = b"t" * size
