@@ -858,12 +858,35 @@ async def test_http_response_parser_bad_chunked_lax(response: Any) -> None:
 
 
 @pytest.mark.dev_mode
-async def test_http_response_parser_bad_chunked_strict(response: Any) -> None:
+async def test_http_response_parser_bad_chunked_strict_py() -> None:
+    parser = HttpRequestParserPy(
+        protocol,
+        loop,
+        2**16,
+        max_line_size=8190,
+        max_field_size=8190,
+    )
     text = (
         b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5 \r\nabcde\r\n0\r\n\r\n"
     )
     messages, upgrade, tail = response.feed_data(text)
     assert isinstance(messages[0][1].exception(), http_exceptions.TransferEncodingError)
+
+
+@pytest.mark.dev_mode
+async def test_http_response_parser_bad_chunked_strict_c() -> None:
+    parser = HttpRequestParserC(
+        protocol,
+        loop,
+        2**16,
+        max_line_size=8190,
+        max_field_size=8190,
+    )
+    text = (
+        b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5 \r\nabcde\r\n0\r\n\r\n"
+    )
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        response.feed_data(text)
 
 
 def test_http_response_parser_bad(response: Any) -> None:
