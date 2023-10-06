@@ -414,31 +414,33 @@ async def test_no_transfer_encoding_header(make_request: Any, mocker: Any) -> No
     assert "Transfer-Encoding" not in ws.headers
 
 
-async def test_get_extra_info(make_request: Any, mocker: Any) -> None:
+@pytest.mark.parametrize(
+    "ws_transport, expected_result",
+    [
+        (
+            mock.MagicMock(
+                transport=mock.MagicMock(
+                    get_extra_info=lambda name, default=None: {"test": "existent"}.get(
+                        name, default
+                    )
+                )
+            ),
+            "existent",
+        ),
+        (None, "default"),
+        (mock.MagicMock(transport=None), "default"),
+    ],
+)
+async def test_get_extra_info(
+    make_request: Any, mocker: Any, ws_transport: Any, expected_result: Any
+) -> None:
     valid_key = "test"
-    valid_value = "existent"
     default_value = "default"
-
-    def get_extra_info(name: str, default: Any = None):
-        return {valid_key: valid_value}.get(name, default)
-
-    transp = mock.Mock()
-    transp.get_extra_info.side_effect = get_extra_info
 
     req = make_request("GET", "/")
     ws = WebSocketResponse()
 
     await ws.prepare(req)
-    ws._writer.transport = transp
+    ws._writer = ws_transport
 
-    ws_extra_info = ws.get_extra_info(valid_key, default_value)
-    transp_extra_info = ws._writer.transport.get_extra_info(valid_key, default_value)
-    assert ws_extra_info == transp_extra_info
-
-    ws._writer.transport = None
-    extra_info = ws.get_extra_info(valid_key, default_value)
-    assert extra_info == default_value
-
-    ws._writer = None
-    extra_info = ws.get_extra_info(valid_key, default_value)
-    assert extra_info == default_value
+    assert ws.get_extra_info(valid_key, default_value) == expected_result
