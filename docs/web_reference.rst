@@ -1051,7 +1051,16 @@ and :ref:`aiohttp-web-signals` handlers::
 
    .. method:: get_extra_info(name, default=None)
 
-      Reads extra info from writer's transport
+      Reads optional extra information from the writer's transport.
+      If no value associated with ``name`` is found, ``default`` is returned.
+
+      Can be used, for example, for getting IP address of client's peer::
+
+         peername = response.get_extra_info('peername')
+         if peername is not None:
+             host, port = peername
+
+      See :meth:`asyncio.BaseTransport.get_extra_info`
 
    .. method:: exception()
 
