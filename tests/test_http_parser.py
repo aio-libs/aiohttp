@@ -177,17 +177,19 @@ def test_cve_2023_37276(parser: Any) -> None:
         "Baz: abc\x00def",
         "Foo : bar",  # https://www.rfc-editor.org/rfc/rfc9112.html#section-5.1-2
         "Foo\t: bar",
-    )
+    ),
 )
 def test_bad_headers(parser: Any, hdr: str) -> None:
-    text = "POST / HTTP/1.1\r\n{}\r\n\r\n".format(hdr).encode()
+    text = f"POST / HTTP/1.1\r\n{hdr}\r\n\r\n".encode()
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
 
 
 def test_content_length_transfer_encoding(parser: Any) -> None:
-    text = (b"GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\nTransfer-Encoding: a\r\n\r\n"
-            + b"apple\r\n")
+    text = (
+        b"GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\nTransfer-Encoding: a\r\n\r\n"
+        + b"apple\r\n"
+    )
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
 
@@ -201,8 +203,10 @@ def test_bad_chunked_py(loop: Any, protocol: Any) -> None:
         max_line_size=8190,
         max_field_size=8190,
     )
-    text = (b"GET / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n0_2e\r\n\r\n"
-            + b"GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\n\r\n0\r\n\r\n")
+    text = (
+        b"GET / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n0_2e\r\n\r\n"
+        + b"GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\n\r\n0\r\n\r\n"
+    )
     messages, upgrade, tail = parser.feed_data(text)
     assert isinstance(messages[0][1].exception(), http_exceptions.TransferEncodingError)
 
@@ -221,8 +225,10 @@ def test_bad_chunked_c(loop: Any, protocol: Any) -> None:
         max_line_size=8190,
         max_field_size=8190,
     )
-    text = (b"GET / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n0_2e\r\n\r\n"
-            + b"GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\n\r\n0\r\n\r\n")
+    text = (
+        b"GET / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n0_2e\r\n\r\n"
+        + b"GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\n\r\n0\r\n\r\n"
+    )
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
 
@@ -563,10 +569,10 @@ def test_cve_2023_37276(parser: Any) -> None:
         "Baz: abc\x00def",
         "Foo : bar",  # https://www.rfc-editor.org/rfc/rfc9112.html#section-5.1-2
         "Foo\t: bar",
-    )
+    ),
 )
 def test_bad_headers(parser: Any, hdr: str) -> None:
-    text = "POST / HTTP/1.1\r\n{}\r\n\r\n".format(hdr).encode()
+    text = f"POST / HTTP/1.1\r\n{hdr}\r\n\r\n".encode()
     with pytest.raises(http_exceptions.InvalidHeader):
         parser.feed_data(text)
 
@@ -580,8 +586,10 @@ def test_bad_chunked_py(loop: Any, protocol: Any) -> None:
         max_line_size=8190,
         max_field_size=8190,
     )
-    text = (b"GET / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n0_2e\r\n\r\n"
-            + b"GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\n\r\n0\r\n\r\n")
+    text = (
+        b"GET / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n0_2e\r\n\r\n"
+        + b"GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\n\r\n0\r\n\r\n"
+    )
     messages, upgrade, tail = parser.feed_data(text)
     assert isinstance(messages[0][1].exception(), http_exceptions.TransferEncodingError)
 
@@ -600,8 +608,10 @@ def test_bad_chunked_c(loop: Any, protocol: Any) -> None:
         max_line_size=8190,
         max_field_size=8190,
     )
-    text = (b"GET / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n0_2e\r\n\r\n"
-            + b"GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\n\r\n0\r\n\r\n")
+    text = (
+        b"GET / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n0_2e\r\n\r\n"
+        + b"GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\n\r\n0\r\n\r\n"
+    )
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
 
@@ -909,7 +919,9 @@ def test_http_response_parser_bad_crlf(response: Any) -> None:
 
 
 async def test_http_response_parser_bad_chunked_lax(response: Any) -> None:
-    text = (b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5 \r\nabcde\r\n0\r\n\r\n")
+    text = (
+        b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5 \r\nabcde\r\n0\r\n\r\n"
+    )
     messages, upgrade, tail = response.feed_data(text)
 
     assert await messages[0][1].read(5) == b"abcde"
@@ -917,7 +929,9 @@ async def test_http_response_parser_bad_chunked_lax(response: Any) -> None:
 
 @pytest.mark.dev_mode
 async def test_http_response_parser_bad_chunked_strict(response: Any) -> None:
-    text = (b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5 \r\nabcde\r\n0\r\n\r\n")
+    text = (
+        b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5 \r\nabcde\r\n0\r\n\r\n"
+    )
     messages, upgrade, tail = response.feed_data(text)
     assert isinstance(messages[0][1].exception(), http_exceptions.TransferEncodingError)
 

@@ -356,7 +356,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 readall=self.readall,
                                 response_with_body=self.response_with_body,
                                 auto_decompress=self._auto_decompress,
-                                lax=self.lax
+                                lax=self.lax,
                             )
                             if not payload_parser.done:
                                 self._payload_parser = payload_parser
@@ -375,7 +375,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 compression=msg.compression,
                                 readall=True,
                                 auto_decompress=self._auto_decompress,
-                                lax=self.lax
+                                lax=self.lax,
                             )
                         else:
                             if (
@@ -399,7 +399,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                     readall=True,
                                     response_with_body=self.response_with_body,
                                     auto_decompress=self._auto_decompress,
-                                    lax=self.lax
+                                    lax=self.lax,
                                 )
                                 if not payload_parser.done:
                                     self._payload_parser = payload_parser
@@ -467,12 +467,21 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
         # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-6
         # https://www.rfc-editor.org/rfc/rfc9110.html#name-collected-abnf
-        singletons = (hdrs.CONTENT_LENGTH, hdrs.CONTENT_LOCATION, hdrs.CONTENT_RANGE,
-                      hdrs.CONTENT_TYPE, hdrs.ETAG, hdrs.HOST, hdrs.MAX_FORWARDS,
-                      hdrs.SERVER, hdrs.TRANSFER_ENCODING, hdrs.USER_AGENT)
+        singletons = (
+            hdrs.CONTENT_LENGTH,
+            hdrs.CONTENT_LOCATION,
+            hdrs.CONTENT_RANGE,
+            hdrs.CONTENT_TYPE,
+            hdrs.ETAG,
+            hdrs.HOST,
+            hdrs.MAX_FORWARDS,
+            hdrs.SERVER,
+            hdrs.TRANSFER_ENCODING,
+            hdrs.USER_AGENT,
+        )
         bad_hdr = next((h for h in singletons if len(headers.getall(h, ())) > 1), None)
         if bad_hdr is not None:
-            raise BadHttpMessage("Duplicate '{}' header found.".format(bad_hdr))
+            raise BadHttpMessage(f"Duplicate '{bad_hdr}' header found.")
 
         # keep-alive
         conn = headers.get(hdrs.CONNECTION)
@@ -824,8 +833,8 @@ class HttpPayloadParser:
 
                 # toss the CRLF at the end of the chunk
                 if self._chunk == ChunkState.PARSE_CHUNKED_CHUNK_EOF:
-                    if chunk[:len(SEP)] == SEP:
-                        chunk = chunk[len(SEP):]
+                    if chunk[: len(SEP)] == SEP:
+                        chunk = chunk[len(SEP) :]
                         self._chunk = ChunkState.PARSE_CHUNKED_SIZE
                     else:
                         self._chunk_tail = chunk
@@ -835,11 +844,11 @@ class HttpPayloadParser:
                 # we should get another \r\n otherwise
                 # trailers needs to be skiped until \r\n\r\n
                 if self._chunk == ChunkState.PARSE_MAYBE_TRAILERS:
-                    head = chunk[:len(SEP)]
+                    head = chunk[: len(SEP)]
                     if head == SEP:
                         # end of stream
                         self.payload.feed_eof()
-                        return True, chunk[len(SEP):]
+                        return True, chunk[len(SEP) :]
                     # Both CR and LF, or only LF may not be received yet. It is
                     # expected that CRLF or LF will be shown at the very first
                     # byte next time, otherwise trailers should come. The last
