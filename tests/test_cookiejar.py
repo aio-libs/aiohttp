@@ -4,16 +4,21 @@ import datetime
 import itertools
 import pathlib
 import pickle
+import sys
 import unittest
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from typing import Any
 from unittest import mock
 
 import pytest
-from time_machine import travel
 from yarl import URL
 
 from aiohttp import CookieJar, DummyCookieJar
+
+try:
+    from time_machine import travel
+except ImportError:
+    travel = None  # type: ignore[assignment]
 
 
 def dump_cookiejar() -> bytes:  # pragma: no cover
@@ -608,6 +613,10 @@ class TestCookieJarSafe(TestCookieJarBase):
         self.assertEqual(cookies_received["path-cookie"]["path"], "/somepath")
         self.assertEqual(cookies_received["wrong-path-cookie"]["path"], "/")
 
+    @unittest.skipIf(
+        sys.implementation.name != "cpython",
+        reason="time_machine leverages CPython specific pointers https://github.com/adamchainz/time-machine/issues/305",
+    )
     def test_expires(self) -> None:
         ts_before = datetime.datetime(
             1975, 1, 1, tzinfo=datetime.timezone.utc
@@ -629,6 +638,10 @@ class TestCookieJarSafe(TestCookieJarBase):
 
         self.assertEqual(set(cookies_sent.keys()), {"shared-cookie"})
 
+    @unittest.skipIf(
+        sys.implementation.name != "cpython",
+        reason="time_machine leverages CPython specific pointers https://github.com/adamchainz/time-machine/issues/305",
+    )
     def test_max_age(self) -> None:
         cookies_sent = self.timed_request("http://maxagetest.com/", 1000, 1000)
 
@@ -776,6 +789,10 @@ async def test_cookie_jar_clear_all() -> None:
     assert len(sut) == 0
 
 
+@pytest.mark.skipif(
+    sys.implementation.name != "cpython",
+    reason="time_machine leverages CPython specific pointers https://github.com/adamchainz/time-machine/issues/305",
+)
 async def test_cookie_jar_clear_expired():
     sut = CookieJar()
 

@@ -90,7 +90,7 @@ setuptools-git==1.2
     # via -r requirements/test.in
 six==1.16.0
     # via python-dateutil
-time-machine==2.13.0
+time-machine==2.13.0 ; implementation_name == "cpython"
     # via -r requirements/test.in
 tomli==2.0.1
     # via

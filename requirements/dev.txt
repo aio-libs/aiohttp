@@ -198,7 +198,7 @@ sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
 sphinxcontrib-towncrier==0.3.2a0
     # via -r requirements/doc.in
-time-machine==2.13.0
+time-machine==2.13.0 ; implementation_name == "cpython"
     # via -r requirements/test.in
 toml==0.10.2
     # via cherry-picker

@@ -10,6 +10,6 @@ pytest-mock
 python-on-whales
 re-assert
 setuptools-git
-time-machine
+time-machine; implementation_name == "cpython"
 trustme; platform_machine != "i686"  # no 32-bit wheels
 wait-for-it
