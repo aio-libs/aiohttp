@@ -876,6 +876,10 @@ async def test_http_response_parser_bad_chunked_strict_py(
 
 
 @pytest.mark.dev_mode
+@pytest.mark.skipif(
+    "HttpRequestParserC" not in dir(aiohttp.http_parser),
+    reason="C based HTTP parser not available",
+)
 async def test_http_response_parser_bad_chunked_strict_c(
     loop: Any, protocol: Any
 ) -> None:
