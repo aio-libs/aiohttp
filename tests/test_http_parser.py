@@ -649,8 +649,10 @@ def test_http_request_parser(parser) -> None:
 
 def test_http_request_bad_status_line(parser) -> None:
     text = b"getpath \r\n\r\n"
-    with pytest.raises(http_exceptions.BadStatusLine):
+    with pytest.raises(http_exceptions.BadStatusLine) as exc_info:
         parser.feed_data(text)
+    # Check for accidentally escaped message.
+    assert r"\n" not in exc_info.value.message
 
 
 def test_http_request_upgrade(parser) -> None:
