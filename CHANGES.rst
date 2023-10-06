@@ -18,7 +18,7 @@ Security bugfixes
 
 - Upgraded the vendored copy of llhttp_ to v9.1.3 -- by :user:`Dreamsorcerer`
 
-  Thanks to :user:` kenballus` for reporting this, see
+  Thanks to :user:`kenballus` for reporting this, see
   https://github.com/aio-libs/aiohttp/security/advisories/GHSA-pjjw-qhg8-p2p9.
 
   .. _llhttp: https://llhttp.org
@@ -27,7 +27,7 @@ Security bugfixes
 
 - Updated Python parser to comply with RFCs 9110/9112 -- by :user:`Dreamorcerer`
 
-  Thanks to :user:` kenballus` for reporting this, see
+  Thanks to :user:`kenballus` for reporting this, see
   https://github.com/aio-libs/aiohttp/security/advisories/GHSA-gfw2-4jvh-wgfg.
 
   `#7663 <https://github.com/aio-libs/aiohttp/issues/7663>`_
