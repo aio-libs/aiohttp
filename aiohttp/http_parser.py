@@ -51,7 +51,7 @@ __all__ = (
     "RawResponseMessage",
 )
 
-_SEP =  Literal[b"\r\n", b"\n"]
+_SEP = Literal[b"\r\n", b"\n"]
 
 ASCIISET: Final[Set[str]] = set(string.printable)
 
