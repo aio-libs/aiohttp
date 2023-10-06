@@ -3,6 +3,7 @@ import asyncio
 import collections
 import re
 import string
+import sys
 import zlib
 from contextlib import suppress
 from enum import IntEnum
@@ -11,7 +12,6 @@ from typing import (
     ClassVar,
     Generic,
     List,
-    Literal,
     NamedTuple,
     Optional,
     Pattern,
@@ -42,6 +42,11 @@ from .http_writer import HttpVersion, HttpVersion10
 from .log import internal_logger
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import Final, RawHeaders
+
+if sys.version_info >= (3, 8):
+    from typing import Literal
+else:
+    from typing_extensions import Literal
 
 try:
     import brotli
