@@ -1,1 +1,1 @@
-Implement ``WebSocketResponse.get_extra_info`` method to avoid accessing the private member ``_writer``
+Added ``WebSocketResponse.get_extra_info()`` to access a protocol transport's extra info.
