@@ -858,8 +858,8 @@ async def test_http_response_parser_bad_chunked_lax(response: Any) -> None:
 
 
 @pytest.mark.dev_mode
-async def test_http_response_parser_bad_chunked_strict_py() -> None:
-    parser = HttpRequestParserPy(
+async def test_http_response_parser_bad_chunked_strict_py(loop: Any, protocol: Any) -> None:
+    response = HttpResponseParserPy(
         protocol,
         loop,
         2**16,
@@ -874,8 +874,8 @@ async def test_http_response_parser_bad_chunked_strict_py() -> None:
 
 
 @pytest.mark.dev_mode
-async def test_http_response_parser_bad_chunked_strict_c() -> None:
-    parser = HttpRequestParserC(
+async def test_http_response_parser_bad_chunked_strict_c(loop: Any, protocol: Any) -> None:
+    response = HttpResponseParserC(
         protocol,
         loop,
         2**16,
