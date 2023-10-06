@@ -183,7 +183,8 @@ class HeadersParser:
             # consume continuation lines
             continuation = line and line[0] in (32, 9)  # (' ', '\t')
 
-            # Deprecated: https://www.rfc-editor.org/rfc/rfc9112.html#name-obsolete-line-folding
+            # Deprecated:
+            # https://www.rfc-editor.org/rfc/rfc9112.html#name-obsolete-line-folding
             if continuation:
                 bvalue_lst = [bvalue]
                 while continuation:
