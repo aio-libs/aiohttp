@@ -217,7 +217,6 @@ def test_bad_chunked_py(loop: Any, protocol: Any) -> None:
 )
 def test_bad_chunked_c(loop: Any, protocol: Any) -> None:
     """C parser behaves differently. Maybe we should align them later."""
-    payload = b"GET1 /test HTTP/1.1\r\n\r\n"
     parser = HttpRequestParserC(
         protocol,
         loop,
@@ -574,45 +573,6 @@ def test_cve_2023_37276(parser: Any) -> None:
 def test_bad_headers(parser: Any, hdr: str) -> None:
     text = f"POST / HTTP/1.1\r\n{hdr}\r\n\r\n".encode()
     with pytest.raises(http_exceptions.InvalidHeader):
-        parser.feed_data(text)
-
-
-def test_bad_chunked_py(loop: Any, protocol: Any) -> None:
-    """Test that invalid chunked encoding doesn't allow content-length to be used."""
-    parser = HttpRequestParserPy(
-        protocol,
-        loop,
-        2**16,
-        max_line_size=8190,
-        max_field_size=8190,
-    )
-    text = (
-        b"GET / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n0_2e\r\n\r\n"
-        + b"GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\n\r\n0\r\n\r\n"
-    )
-    messages, upgrade, tail = parser.feed_data(text)
-    assert isinstance(messages[0][1].exception(), http_exceptions.TransferEncodingError)
-
-
-@pytest.mark.skipif(
-    "HttpRequestParserC" not in dir(aiohttp.http_parser),
-    reason="C based HTTP parser not available",
-)
-def test_bad_chunked_c(loop: Any, protocol: Any) -> None:
-    """C parser behaves differently. Maybe we should align them later."""
-    payload = b"GET1 /test HTTP/1.1\r\n\r\n"
-    parser = HttpRequestParserC(
-        protocol,
-        loop,
-        2**16,
-        max_line_size=8190,
-        max_field_size=8190,
-    )
-    text = (
-        b"GET / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n0_2e\r\n\r\n"
-        + b"GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\n\r\n0\r\n\r\n"
-    )
-    with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
 
 
