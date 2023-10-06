@@ -5,9 +5,12 @@ import string
 from contextlib import suppress
 from enum import IntEnum
 from typing import (
+    Any,
+    ClassVar,
     Final,
     Generic,
     List,
+    Literal,
     NamedTuple,
     Optional,
     Pattern,
@@ -24,7 +27,7 @@ from yarl import URL
 from . import hdrs
 from .base_protocol import BaseProtocol
 from .compression_utils import HAS_BROTLI, BrotliDecompressor, ZLibDecompressor
-from .helpers import NO_EXTENSIONS, BaseTimerContext
+from .helpers import DEBUG, NO_EXTENSIONS, BaseTimerContext
 from .http_exceptions import (
     BadHttpMessage,
     BadStatusLine,
@@ -206,6 +209,8 @@ class HeadersParser:
 
 
 class HttpParser(abc.ABC, Generic[_MsgT]):
+    lax: ClassVar[bool] = False
+
     def __init__(
         self,
         protocol: BaseProtocol,
@@ -266,7 +271,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
     def feed_data(
         self,
         data: bytes,
-        SEP: bytes = b"\r\n",
+        SEP: Literal[b"\r\n", b"\n"] = b"\r\n",
         EMPTY: bytes = b"",
         CONTENT_LENGTH: istr = hdrs.CONTENT_LENGTH,
         METH_CONNECT: str = hdrs.METH_CONNECT,
@@ -288,13 +293,16 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 pos = data.find(SEP, start_pos)
                 # consume \r\n
                 if pos == start_pos and not self._lines:
-                    start_pos = pos + 2
+                    start_pos = pos + len(SEP)
                     continue
 
                 if pos >= start_pos:
                     # line found
-                    self._lines.append(data[start_pos:pos])
-                    start_pos = pos + 2
+                    line = data[start_pos:pos]
+                    if SEP == b"\n":  # For lax response parsing
+                        line = line.rstrip(b"\r")
+                    self._lines.append(line)
+                    start_pos = pos + len(SEP)
 
                     # \r\n\r\n found
                     if self._lines[-1] == EMPTY:
@@ -348,6 +356,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 readall=self.readall,
                                 response_with_body=self.response_with_body,
                                 auto_decompress=self._auto_decompress,
+                                lax=self.lax
                             )
                             if not payload_parser.done:
                                 self._payload_parser = payload_parser
@@ -366,6 +375,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 compression=msg.compression,
                                 readall=True,
                                 auto_decompress=self._auto_decompress,
+                                lax=self.lax
                             )
                         else:
                             if (
@@ -389,6 +399,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                     readall=True,
                                     response_with_body=self.response_with_body,
                                     auto_decompress=self._auto_decompress,
+                                    lax=self.lax
                                 )
                                 if not payload_parser.done:
                                     self._payload_parser = payload_parser
@@ -411,7 +422,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 assert not self._lines
                 assert self._payload_parser is not None
                 try:
-                    eof, data = self._payload_parser.feed_data(data[start_pos:])
+                    eof, data = self._payload_parser.feed_data(data[start_pos:], SEP)
                 except BaseException as exc:
                     if self.payload_exception is not None:
                         self._payload_parser.payload.set_exception(
@@ -597,6 +608,20 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
     Returns RawResponseMessage.
     """
 
+    # Lax mode should only be enabled on response parser.
+    lax = not DEBUG
+
+    def feed_data(
+        self,
+        data: bytes,
+        SEP: Optional[bytes] = None,
+        *args: Any,
+        **kwargs: Any,
+    ) -> Tuple[List[Tuple[_MsgT, StreamReader]], bool, bytes]:
+        if SEP is None:
+            SEP = b"\r\n" if DEBUG else b"\n"
+        return super().feed_data(data, SEP, *args, **kwargs)
+
     def parse_message(self, lines: List[bytes]) -> RawResponseMessage:
         line = lines[0].decode("utf-8", "surrogateescape")
         try:
@@ -663,6 +688,7 @@ class HttpPayloadParser:
         readall: bool = False,
         response_with_body: bool = True,
         auto_decompress: bool = True,
+        lax: bool = False,
     ) -> None:
         self._length = 0
         self._type = ParseState.PARSE_NONE
@@ -670,6 +696,7 @@ class HttpPayloadParser:
         self._chunk_size = 0
         self._chunk_tail = b""
         self._auto_decompress = auto_decompress
+        self._lax = lax
         self.done = False
 
         # payload decompression wrapper
@@ -757,6 +784,9 @@ class HttpPayloadParser:
                         else:
                             size_b = chunk[:pos]
 
+                        if self._lax:  # Allow whitespace in lax mode.
+                            size_b = size_b.strip()
+
                         if not size_b.isdigit():
                             exc = TransferEncodingError(
                                 chunk[:pos].decode("ascii", "surrogateescape")
@@ -765,7 +795,7 @@ class HttpPayloadParser:
                             raise exc
                         size = int(bytes(size_b), 16)
 
-                        chunk = chunk[pos + 2 :]
+                        chunk = chunk[pos + len(SEP) :]
                         if size == 0:  # eof marker
                             self._chunk = ChunkState.PARSE_MAYBE_TRAILERS
                         else:
@@ -794,8 +824,8 @@ class HttpPayloadParser:
 
                 # toss the CRLF at the end of the chunk
                 if self._chunk == ChunkState.PARSE_CHUNKED_CHUNK_EOF:
-                    if chunk[:2] == SEP:
-                        chunk = chunk[2:]
+                    if chunk[:len(SEP)] == SEP:
+                        chunk = chunk[len(SEP):]
                         self._chunk = ChunkState.PARSE_CHUNKED_SIZE
                     else:
                         self._chunk_tail = chunk
@@ -805,11 +835,11 @@ class HttpPayloadParser:
                 # we should get another \r\n otherwise
                 # trailers needs to be skiped until \r\n\r\n
                 if self._chunk == ChunkState.PARSE_MAYBE_TRAILERS:
-                    head = chunk[:2]
+                    head = chunk[:len(SEP)]
                     if head == SEP:
                         # end of stream
                         self.payload.feed_eof()
-                        return True, chunk[2:]
+                        return True, chunk[len(SEP):]
                     # Both CR and LF, or only LF may not be received yet. It is
                     # expected that CRLF or LF will be shown at the very first
                     # byte next time, otherwise trailers should come. The last
@@ -827,7 +857,7 @@ class HttpPayloadParser:
                 if self._chunk == ChunkState.PARSE_TRAILERS:
                     pos = chunk.find(SEP)
                     if pos >= 0:
-                        chunk = chunk[pos + 2 :]
+                        chunk = chunk[pos + len(SEP) :]
                         self._chunk = ChunkState.PARSE_MAYBE_TRAILERS
                     else:
                         self._chunk_tail = chunk
