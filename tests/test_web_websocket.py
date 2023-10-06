@@ -412,3 +412,33 @@ async def test_no_transfer_encoding_header(make_request: Any, mocker: Any) -> No
     await ws._start(req)
 
     assert "Transfer-Encoding" not in ws.headers
+
+
+async def test_get_extra_info(make_request: Any, mocker: Any) -> None:
+    valid_key = "test"
+    valid_value = "existent"
+    default_value = "default"
+
+    def get_extra_info(name: str, default: Any = None):
+        return {valid_key: valid_value}.get(name, default)
+
+    transp = mock.Mock()
+    transp.get_extra_info.side_effect = get_extra_info
+
+    req = make_request("GET", "/")
+    ws = WebSocketResponse()
+
+    await ws.prepare(req)
+    ws._writer.transport = transp
+
+    ws_extra_info = ws.get_extra_info(valid_key, default_value)
+    transp_extra_info = ws._writer.transport.get_extra_info(valid_key, default_value)
+    assert ws_extra_info == transp_extra_info
+
+    ws._writer.transport = None
+    extra_info = ws.get_extra_info(valid_key, default_value)
+    assert extra_info == default_value
+
+    ws._writer = None
+    extra_info = ws.get_extra_info(valid_key, default_value)
+    assert extra_info == default_value
