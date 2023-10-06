@@ -523,7 +523,6 @@ def test_bad_chunked_py(loop: Any, protocol: Any) -> None:
 )
 def test_bad_chunked_c(loop: Any, protocol: Any) -> None:
     """C parser behaves differently. Maybe we should align them later."""
-    payload = b"GET1 /test HTTP/1.1\r\n\r\n"
     parser = HttpRequestParserC(
         protocol,
         loop,
