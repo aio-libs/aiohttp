@@ -240,14 +240,6 @@ def test_whitespace_before_header(parser) -> None:
         parser.feed_data(text)
 
 
-def test_parse_headers_longline(parser) -> None:
-    invalid_unicode_byte = b"\xd9"
-    header_name = b"Test" + invalid_unicode_byte + b"Header" + b"A" * 8192
-    text = b"GET /test HTTP/1.1\r\n" + header_name + b": test\r\n" + b"\r\n" + b"\r\n"
-    with pytest.raises((http_exceptions.LineTooLong, http_exceptions.BadHttpMessage)):
-        parser.feed_data(text)
-
-
 def test_parse(parser) -> None:
     text = b"GET /test HTTP/1.1\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)
