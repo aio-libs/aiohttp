@@ -159,6 +159,87 @@ def test_invalid_linebreak(loop: Any, protocol: Any, request: Any) -> None:
         parser.feed_data(text)
 
 
+def test_cve_2023_37276(parser) -> None:
+    text = (
+        b"POST / HTTP/1.1\r\nHost: localhost:8080\r\n"
+        b"X-Abc: \rxTransfer-Encoding: chunked\r\n\r\n"
+    )
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(text)
+
+
+@pytest.mark.parametrize(
+    "hdr",
+    (
+        # https://www.rfc-editor.org/rfc/rfc9110.html#name-content-length
+        "Content-Length: -5",
+        "Content-Length: +256",
+        "Foo: abc\rdef",  # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-5
+        "Bar: abc\ndef",
+        "Baz: abc\x00def",
+        "Foo : bar",  # https://www.rfc-editor.org/rfc/rfc9112.html#section-5.1-2
+        "Foo\t: bar",
+    ),
+)
+def test_bad_headers(parser, hdr: str) -> None:
+    text = f"POST / HTTP/1.1\r\n{hdr}\r\n\r\n".encode()
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(text)
+
+
+def test_content_length_transfer_encoding(parser) -> None:
+    text = (
+        b"GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\n"
+        + b"Transfer-Encoding: a\r\n\r\napple\r\n"
+    )
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(text)
+
+
+def test_bad_chunked_py(loop, protocol) -> None:
+    """Test that invalid chunked encoding doesn't allow content-length to be used."""
+    parser = HttpRequestParserPy(
+        protocol,
+        loop,
+        2**16,
+        max_line_size=8190,
+        max_field_size=8190,
+    )
+    text = (
+        b"GET / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n0_2e\r\n\r\n"
+        + b"GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\n\r\n0\r\n\r\n"
+    )
+    messages, upgrade, tail = parser.feed_data(text)
+    assert isinstance(messages[0][1].exception(), http_exceptions.TransferEncodingError)
+
+
+@pytest.mark.skipif(
+    "HttpRequestParserC" not in dir(aiohttp.http_parser),
+    reason="C based HTTP parser not available",
+)
+def test_bad_chunked_c(loop, protocol) -> None:
+    """C parser behaves differently. Maybe we should align them later."""
+    parser = HttpRequestParserC(
+        protocol,
+        loop,
+        2**16,
+        max_line_size=8190,
+        max_field_size=8190,
+    )
+    text = (
+        b"GET / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n0_2e\r\n\r\n"
+        + b"GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\n\r\n0\r\n\r\n"
+    )
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(text)
+
+
+def test_whitespace_before_header(parser) -> None:
+    text = b"GET / HTTP/1.1\r\n\tContent-Length: 1\r\n\r\nX"
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(text)
+
+
 def test_parse(parser) -> None:
     text = b"GET /test HTTP/1.1\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)
@@ -465,74 +546,6 @@ def test_invalid_name(parser) -> None:
         parser.feed_data(text)
 
 
-def test_cve_2023_37276(parser: Any) -> None:
-    text = b"""POST / HTTP/1.1\r\nHost: localhost:8080\r\nX-Abc: \rxTransfer-Encoding: chunked\r\n\r\n"""
-    with pytest.raises(http_exceptions.BadHttpMessage):
-        parser.feed_data(text)
-
-
-@pytest.mark.parametrize(
-    "hdr",
-    (
-        "Content-Length: -5",  # https://www.rfc-editor.org/rfc/rfc9110.html#name-content-length
-        "Content-Length: +256",
-        "Foo: abc\rdef",  # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-5
-        "Bar: abc\ndef",
-        "Baz: abc\x00def",
-        "Foo : bar",  # https://www.rfc-editor.org/rfc/rfc9112.html#section-5.1-2
-        "Foo\t: bar",
-    ),
-)
-def test_bad_headers(parser: Any, hdr: str) -> None:
-    text = f"POST / HTTP/1.1\r\n{hdr}\r\n\r\n".encode()
-    with pytest.raises(http_exceptions.InvalidHeader):
-        parser.feed_data(text)
-
-
-def test_bad_chunked_py(loop: Any, protocol: Any) -> None:
-    """Test that invalid chunked encoding doesn't allow content-length to be used."""
-    parser = HttpRequestParserPy(
-        protocol,
-        loop,
-        2**16,
-        max_line_size=8190,
-        max_field_size=8190,
-    )
-    text = (
-        b"GET / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n0_2e\r\n\r\n"
-        + b"GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\n\r\n0\r\n\r\n"
-    )
-    messages, upgrade, tail = parser.feed_data(text)
-    assert isinstance(messages[0][1].exception(), http_exceptions.TransferEncodingError)
-
-
-@pytest.mark.skipif(
-    "HttpRequestParserC" not in dir(aiohttp.http_parser),
-    reason="C based HTTP parser not available",
-)
-def test_bad_chunked_c(loop: Any, protocol: Any) -> None:
-    """C parser behaves differently. Maybe we should align them later."""
-    parser = HttpRequestParserC(
-        protocol,
-        loop,
-        2**16,
-        max_line_size=8190,
-        max_field_size=8190,
-    )
-    text = (
-        b"GET / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n0_2e\r\n\r\n"
-        + b"GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\n\r\n0\r\n\r\n"
-    )
-    with pytest.raises(http_exceptions.BadHttpMessage):
-        parser.feed_data(text)
-
-
-def test_whitespace_before_header(parser: Any) -> None:
-    text = b"GET / HTTP/1.1\r\n\tContent-Length: 1\r\n\r\nX"
-    with pytest.raises(http_exceptions.BadHttpMessage):
-        parser.feed_data(text)
-
-
 @pytest.mark.parametrize("size", [40960, 8191])
 def test_max_header_field_size(parser, size) -> None:
     name = b"t" * size
@@ -814,6 +827,62 @@ def test_http_response_parser_strict_headers(response) -> None:
         pytest.xfail("Py parser is lenient. May update py-parser later.")
     with pytest.raises(http_exceptions.BadHttpMessage):
         response.feed_data(b"HTTP/1.1 200 test\r\nFoo: abc\x01def\r\n\r\n")
+
+
+def test_http_response_parser_bad_crlf(response) -> None:
+    """Still a lot of dodgy servers sending bad requests like this."""
+    messages, upgrade, tail = response.feed_data(
+        b"HTTP/1.0 200 OK\nFoo: abc\nBar: def\n\nBODY\n"
+    )
+    msg = messages[0][0]
+
+    assert msg.headers["Foo"] == "abc"
+    assert msg.headers["Bar"] == "def"
+
+
+async def test_http_response_parser_bad_chunked_lax(response) -> None:
+    text = (
+        b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5 \r\nabcde\r\n0\r\n\r\n"
+    )
+    messages, upgrade, tail = response.feed_data(text)
+
+    assert await messages[0][1].read(5) == b"abcde"
+
+
+@pytest.mark.dev_mode
+async def test_http_response_parser_bad_chunked_strict_py(loop, protocol) -> None:
+    response = HttpResponseParserPy(
+        protocol,
+        loop,
+        2**16,
+        max_line_size=8190,
+        max_field_size=8190,
+    )
+    text = (
+        b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5 \r\nabcde\r\n0\r\n\r\n"
+    )
+    messages, upgrade, tail = response.feed_data(text)
+    assert isinstance(messages[0][1].exception(), http_exceptions.TransferEncodingError)
+
+
+@pytest.mark.dev_mode
+@pytest.mark.skipif(
+    "HttpRequestParserC" not in dir(aiohttp.http_parser),
+    reason="C based HTTP parser not available",
+)
+async def test_http_response_parser_bad_chunked_strict_c(loop, protocol) -> None:
+    response = HttpResponseParserC(
+        protocol,
+        loop,
+        2**16,
+        max_line_size=8190,
+        max_field_size=8190,
+    )
+    text = (
+        b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5 \r\nabcde\r\n0\r\n\r\n"
+    )
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        response.feed_data(text)
 
 
 def test_http_response_parser_bad(response) -> None:
