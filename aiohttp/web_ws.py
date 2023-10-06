@@ -324,7 +324,10 @@ class WebSocketResponse(StreamResponse):
         return self._compress
 
     def get_extra_info(self, name: str, default: Any = None) -> Any:
-        """extra info from writer transport"""
+        """Get optional transport information.
+
+        If no value associated with ``name`` is found, ``default`` is returned.
+        """
         writer = self._writer
         if writer is None:
             return default
