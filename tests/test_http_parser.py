@@ -160,7 +160,8 @@ def test_invalid_linebreak(loop: Any, protocol: Any, request: Any) -> None:
 
 
 def test_cve_2023_37276(parser) -> None:
-    text = b"""POST / HTTP/1.1\r\nHost: localhost:8080\r\nX-Abc: \rxTransfer-Encoding: chunked\r\n\r\n"""
+    text = (b"POST / HTTP/1.1\r\nHost: localhost:8080\r\n"
+            b"X-Abc: \rxTransfer-Encoding: chunked\r\n\r\n"
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
 
@@ -168,7 +169,8 @@ def test_cve_2023_37276(parser) -> None:
 @pytest.mark.parametrize(
     "hdr",
     (
-        "Content-Length: -5",  # https://www.rfc-editor.org/rfc/rfc9110.html#name-content-length
+        # https://www.rfc-editor.org/rfc/rfc9110.html#name-content-length
+        "Content-Length: -5",
         "Content-Length: +256",
         "Foo: abc\rdef",  # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-5
         "Bar: abc\ndef",
@@ -185,8 +187,8 @@ def test_bad_headers(parser, hdr: str) -> None:
 
 def test_content_length_transfer_encoding(parser) -> None:
     text = (
-        b"GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\nTransfer-Encoding: a\r\n\r\n"
-        + b"apple\r\n"
+        b"GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\n"
+        + b"Transfer-Encoding: a\r\n\r\napple\r\n"
     )
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
