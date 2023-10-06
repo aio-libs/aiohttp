@@ -840,8 +840,8 @@ class HttpPayloadParser:
 
                 # toss the CRLF at the end of the chunk
                 if self._chunk == ChunkState.PARSE_CHUNKED_CHUNK_EOF:
-                    if chunk[:len(SEP)] == SEP:
-                        chunk = chunk[len(SEP):]
+                    if chunk[: len(SEP)] == SEP:
+                        chunk = chunk[len(SEP) :]
                         self._chunk = ChunkState.PARSE_CHUNKED_SIZE
                     else:
                         self._chunk_tail = chunk
