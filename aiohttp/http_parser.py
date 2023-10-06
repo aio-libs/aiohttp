@@ -65,6 +65,7 @@ ASCIISET: Final[Set[str]] = set(string.printable)
 METHRE: Final[Pattern[str]] = re.compile(r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+")
 VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d).(\d)")
 HDRRE: Final[Pattern[bytes]] = re.compile(rb"[\x00-\x1F\x7F()<>@,;:\[\]={} \t\"\\]")
+HEXDIGIT = re.compile(rb"[0-9a-fA-F]+")
 
 
 class RawRequestMessage(NamedTuple):
@@ -321,7 +322,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
                             # Shouldn't allow +/- or other number formats.
                             # https://www.rfc-editor.org/rfc/rfc9110#section-8.6-2
-                            if not length_hdr.strip(" \t").isdigit():
+                            if not length_hdr.strip(" \t").isdecimal():
                                 raise InvalidHeader(CONTENT_LENGTH)
 
                             return int(length_hdr)
@@ -657,7 +658,7 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
         version_o = HttpVersion(int(match.group(1)), int(match.group(2)))
 
         # The status code is a three-digit number
-        if len(status) != 3 or not status.isdigit():
+        if len(status) != 3 or not status.isdecimal():
             raise BadStatusLine(line)
         status_i = int(status)
 
@@ -798,7 +799,7 @@ class HttpPayloadParser:
                         if self._lax:  # Allow whitespace in lax mode.
                             size_b = size_b.strip()
 
-                        if not size_b.isdigit():
+                        if not re.fullmatch(HEXDIGIT, size_b):
                             exc = TransferEncodingError(
                                 chunk[:pos].decode("ascii", "surrogateescape")
                             )
@@ -809,6 +810,8 @@ class HttpPayloadParser:
                         chunk = chunk[pos + len(SEP) :]
                         if size == 0:  # eof marker
                             self._chunk = ChunkState.PARSE_MAYBE_TRAILERS
+                            if self._lax and chunk.startswith(b"\r"):
+                                chunk = chunk[1:]
                         else:
                             self._chunk = ChunkState.PARSE_CHUNKED_CHUNK
                             self._chunk_size = size
@@ -830,13 +833,15 @@ class HttpPayloadParser:
                         self._chunk_size = 0
                         self.payload.feed_data(chunk[:required], required)
                         chunk = chunk[required:]
+                        if self._lax and chunk.startswith(b"\r"):
+                            chunk = chunk[1:]
                         self._chunk = ChunkState.PARSE_CHUNKED_CHUNK_EOF
                         self.payload.end_http_chunk_receiving()
 
                 # toss the CRLF at the end of the chunk
                 if self._chunk == ChunkState.PARSE_CHUNKED_CHUNK_EOF:
-                    if chunk[: len(SEP)] == SEP:
-                        chunk = chunk[len(SEP) :]
+                    if chunk[:len(SEP)] == SEP:
+                        chunk = chunk[len(SEP):]
                         self._chunk = ChunkState.PARSE_CHUNKED_SIZE
                     else:
                         self._chunk_tail = chunk
