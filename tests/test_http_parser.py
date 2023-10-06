@@ -160,8 +160,10 @@ def test_invalid_linebreak(loop: Any, protocol: Any, request: Any) -> None:
 
 
 def test_cve_2023_37276(parser) -> None:
-    text = (b"POST / HTTP/1.1\r\nHost: localhost:8080\r\n"
-            b"X-Abc: \rxTransfer-Encoding: chunked\r\n\r\n")
+    text = (
+        b"POST / HTTP/1.1\r\nHost: localhost:8080\r\n"
+        b"X-Abc: \rxTransfer-Encoding: chunked\r\n\r\n"
+    )
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
 
