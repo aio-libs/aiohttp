@@ -464,12 +464,21 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
         # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-6
         # https://www.rfc-editor.org/rfc/rfc9110.html#name-collected-abnf
-        singletons = (hdrs.CONTENT_LENGTH, hdrs.CONTENT_LOCATION, hdrs.CONTENT_RANGE,
-                      hdrs.CONTENT_TYPE, hdrs.ETAG, hdrs.HOST, hdrs.MAX_FORWARDS,
-                      hdrs.SERVER, hdrs.TRANSFER_ENCODING, hdrs.USER_AGENT)
+        singletons = (
+            hdrs.CONTENT_LENGTH,
+            hdrs.CONTENT_LOCATION,
+            hdrs.CONTENT_RANGE,
+            hdrs.CONTENT_TYPE,
+            hdrs.ETAG,
+            hdrs.HOST,
+            hdrs.MAX_FORWARDS,
+            hdrs.SERVER,
+            hdrs.TRANSFER_ENCODING,
+            hdrs.USER_AGENT,
+        )
         bad_hdr = next((h for h in singletons if len(headers.getall(h, ())) > 1), None)
         if bad_hdr is not None:
-            raise BadHttpMessage("Duplicate '{}' header found.".format(bad_hdr))
+            raise BadHttpMessage(f"Duplicate '{bad_hdr}' header found.")
 
         # keep-alive
         conn = headers.get(hdrs.CONNECTION)
