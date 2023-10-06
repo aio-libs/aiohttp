@@ -1049,6 +1049,10 @@ and :ref:`aiohttp-web-signals` handlers::
       May be ``None`` if server and client protocols are
       not overlapping.
 
+   .. method:: get_extra_info(name, default=None)
+
+      Reads extra info from writer's transport
+
    .. method:: exception()
 
       Returns last occurred exception or None.
