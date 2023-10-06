@@ -51,6 +51,8 @@ __all__ = (
     "RawResponseMessage",
 )
 
+_SEP =  Literal[b"\r\n", b"\n"]
+
 ASCIISET: Final[Set[str]] = set(string.printable)
 
 # See https://www.rfc-editor.org/rfc/rfc9110.html#name-overview
@@ -271,7 +273,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
     def feed_data(
         self,
         data: bytes,
-        SEP: Literal[b"\r\n", b"\n"] = b"\r\n",
+        SEP: _SEP = b"\r\n",
         EMPTY: bytes = b"",
         CONTENT_LENGTH: istr = hdrs.CONTENT_LENGTH,
         METH_CONNECT: str = hdrs.METH_CONNECT,
@@ -623,10 +625,10 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
     def feed_data(
         self,
         data: bytes,
-        SEP: Optional[bytes] = None,
+        SEP: Optional[_SEP] = None,
         *args: Any,
         **kwargs: Any,
-    ) -> Tuple[List[Tuple[_MsgT, StreamReader]], bool, bytes]:
+    ) -> Tuple[List[Tuple[RawResponseMessage, StreamReader]], bool, bytes]:
         if SEP is None:
             SEP = b"\r\n" if DEBUG else b"\n"
         return super().feed_data(data, SEP, *args, **kwargs)
@@ -757,7 +759,7 @@ class HttpPayloadParser:
             )
 
     def feed_data(
-        self, chunk: bytes, SEP: bytes = b"\r\n", CHUNK_EXT: bytes = b";"
+        self, chunk: bytes, SEP: _SEP = b"\r\n", CHUNK_EXT: bytes = b";"
     ) -> Tuple[bool, bytes]:
         # Read specified amount of bytes
         if self._type == ParseState.PARSE_LENGTH:
@@ -772,7 +774,7 @@ class HttpPayloadParser:
                     return True, b""
             else:
                 self._length = 0
-                self.payload.feed_data(chunk[:required], required)
+                self.payload.(chunk[:required], required)
                 self.payload.feed_eof()
                 return True, chunk[required:]
 
