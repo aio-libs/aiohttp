@@ -774,7 +774,7 @@ class HttpPayloadParser:
                     return True, b""
             else:
                 self._length = 0
-                self.payload.(chunk[:required], required)
+                self.payload.feed_data(chunk[:required], required)
                 self.payload.feed_eof()
                 return True, chunk[required:]
 
