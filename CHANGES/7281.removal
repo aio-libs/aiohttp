@@ -1,1 +1,0 @@
-Removed support for unsupported ``tokio`` event loop -- by :user:`Dreamsorcerer`
