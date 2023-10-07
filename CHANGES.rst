@@ -10,6 +10,216 @@
 
 .. towncrier release notes start
 
+3.9.0b0 (2023-10-07)
+====================
+
+Features
+--------
+
+- Introduced ``AppKey`` for static typing support of ``Application`` storage.
+  See https://docs.aiohttp.org/en/stable/web_advanced.html#application-s-config
+
+  `#5864 <https://github.com/aio-libs/aiohttp/issues/5864>`_
+
+- Added a graceful shutdown period which allows pending tasks to complete before the application's cleanup is called.
+  The period can be adjusted with the ``shutdown_timeout`` parameter. -- by :user:`Dreamsorcerer`.
+  See https://docs.aiohttp.org/en/latest/web_advanced.html#graceful-shutdown
+
+  `#7188 <https://github.com/aio-libs/aiohttp/issues/7188>`_
+
+- Added `handler_cancellation <https://docs.aiohttp.org/en/stable/web_advanced.html#web-handler-cancellation>`_ parameter to cancel web handler on client disconnection. -- by :user:`mosquito`
+  This (optionally) reenables a feature removed in a previous release.
+  Recommended for those looking for an extra level of protection against denial-of-service attacks.
+
+  `#7056 <https://github.com/aio-libs/aiohttp/issues/7056>`_
+
+- Added support for setting response header parameters ``max_line_size`` and ``max_field_size``.
+
+  `#2304 <https://github.com/aio-libs/aiohttp/issues/2304>`_
+
+- Added ``auto_decompress`` parameter to ``ClientSession.request`` to override ``ClientSession._auto_decompress``. -- by :user:`Daste745`
+
+  `#3751 <https://github.com/aio-libs/aiohttp/issues/3751>`_
+
+- Changed ``raise_for_status`` to allow a coroutine.
+
+  `#3892 <https://github.com/aio-libs/aiohttp/issues/3892>`_
+
+- Added client brotli compression support (optional with runtime check).
+
+  `#5219 <https://github.com/aio-libs/aiohttp/issues/5219>`_
+
+- Added ``client_max_size`` to ``BaseRequest.clone()`` to allow overriding the request body size -- :user:`anesabml`.
+
+  `#5704 <https://github.com/aio-libs/aiohttp/issues/5704>`_
+
+- Added a middleware type alias ``aiohttp.typedefs.Middleware``.
+
+  `#5898 <https://github.com/aio-libs/aiohttp/issues/5898>`_
+
+- Exported ``HTTPMove`` which can be used to catch any redirection request
+  that has a location -- :user:`dreamsorcerer`.
+
+  `#6594 <https://github.com/aio-libs/aiohttp/issues/6594>`_
+
+- Changed the ``path`` parameter in ``web.run_app()`` to accept a ``pathlib.Path`` object.
+
+  `#6839 <https://github.com/aio-libs/aiohttp/issues/6839>`_
+
+- Added support for passing a custom server name parameter to HTTPS connection.
+
+  `#7114 <https://github.com/aio-libs/aiohttp/issues/7114>`_
+
+- Added support for using Basic Auth credentials from :file:`.netrc` file when making HTTP requests with the :py:class:`~aiohttp.ClientSession` ``trust_env`` argument is set to ``True`` -- by :user:`yuvipanda`.
+
+  `#7131 <https://github.com/aio-libs/aiohttp/issues/7131>`_
+
+- Turned access log into no-op when the logger is disabled.
+
+  `#7240 <https://github.com/aio-libs/aiohttp/issues/7240>`_
+
+- Added typing information to ``RawResponseMessage`` -- by :user:`Gobot1234`
+
+  `#7365 <https://github.com/aio-libs/aiohttp/issues/7365>`_
+
+- Removed ``async-timeout`` for Python 3.11+ (replaced with ``asyncio.timeout()`` on newer releases).
+
+  `#7502 <https://github.com/aio-libs/aiohttp/issues/7502>`_
+
+- Added support for ``brotlicffi`` as an alternative to ``brotli`` (fixing Brotli support on PyPy).
+
+  `#7611 <https://github.com/aio-libs/aiohttp/issues/7611>`_
+
+
+
+Bugfixes
+--------
+
+- Implemented stripping the trailing dots from fully-qualified domain names in ``Host`` headers and TLS context when acting as an HTTP client.
+  This allows the client to connect to URLs with FQDN host name like ``https://example.com./``.
+  -- by :user:`martin-sucha`.
+
+  `#3636 <https://github.com/aio-libs/aiohttp/issues/3636>`_
+
+- Fixed client timeout not working when incoming data is always available without waiting -- by :user:`Dreamsorcerer`.
+
+  `#5854 <https://github.com/aio-libs/aiohttp/issues/5854>`_
+
+- Fixed ``readuntil`` to work with a delimiter of more than one character
+
+  `#6701 <https://github.com/aio-libs/aiohttp/issues/6701>`_
+
+- Added ``__repr__`` to ``EmptyStreamReader`` to avoid ``AttributeError``s.
+
+  `#6916 <https://github.com/aio-libs/aiohttp/issues/6916>`_
+
+- Fixed bug when using ``TCPConnector`` with ``ttl_dns_cache=0``.
+
+  `#7014 <https://github.com/aio-libs/aiohttp/issues/7014>`_
+
+- Fixed response returned from expect handler being thrown away. -- by :user:`Dreamsorcerer`
+
+  `#7025 <https://github.com/aio-libs/aiohttp/issues/7025>`_
+
+- Avoided raising ``UnicodeDecodeError`` in multipart and in HTTP headers parsing.
+
+  `#7044 <https://github.com/aio-libs/aiohttp/issues/7044>`_
+
+- Changed ``sock_read`` timeout to start after writing has finished, avoiding read timeouts caused by an unfinished write. -- by :user:`dtrifiro`
+
+  `#7149 <https://github.com/aio-libs/aiohttp/issues/7149>`_
+
+- Fixed missing query in tracing method URLs when using ``yarl`` 1.9+.
+
+  `#7259 <https://github.com/aio-libs/aiohttp/issues/7259>`_
+
+- Changed max 32-bit timestamp to an aware datetime object, for consistency with the non-32-bit one, and to avoid a ``DeprecationWarning`` on Python 3.12.
+
+  `#7302 <https://github.com/aio-libs/aiohttp/issues/7302>`_
+
+- Fixed ``EmptyStreamReader.iter_chunks()`` never ending. -- by :user:`mind1m`
+
+  `#7616 <https://github.com/aio-libs/aiohttp/issues/7616>`_
+
+
+
+Improved Documentation
+----------------------
+
+- Fixed the `ClientResponse.release`'s type in the doc. Changed from `comethod` to `method`.
+
+  `#5836 <https://github.com/aio-libs/aiohttp/issues/5836>`_
+
+- Added information on behavior of base_url parameter in `ClientSession`.
+
+  `#6647 <https://github.com/aio-libs/aiohttp/issues/6647>`_
+
+- Fixed `ClientResponseError` docs.
+
+  `#6700 <https://github.com/aio-libs/aiohttp/issues/6700>`_
+
+- Updated Redis code examples to follow the latest API.
+
+  `#6907 <https://github.com/aio-libs/aiohttp/issues/6907>`_
+
+- Added a note about possibly needing to update headers when using ``on_response_prepare``. -- by :user:`Dreamsorcerer`
+
+  `#7283 <https://github.com/aio-libs/aiohttp/issues/7283>`_
+
+- Completed ``trust_env`` parameter description to honor ``wss_proxy``, ``ws_proxy`` or ``no_proxy`` env.
+
+  `#7325 <https://github.com/aio-libs/aiohttp/issues/7325>`_
+
+- Expanded SSL documentation with more examples (e.g. how to use certifi). -- by :user:`Dreamsorcerer`
+
+  `#7334 <https://github.com/aio-libs/aiohttp/issues/7334>`_
+
+
+
+Deprecations and Removals
+-------------------------
+
+- Dropped Python 3.6 support.
+
+  `#6378 <https://github.com/aio-libs/aiohttp/issues/6378>`_
+
+- Dropped Python 3.7 support. -- by :user:`Dreamsorcerer`
+
+  `#7336 <https://github.com/aio-libs/aiohttp/issues/7336>`_
+
+- Removed support for abandoned ``tokio`` event loop. -- by :user:`Dreamsorcerer`
+
+  `#7281 <https://github.com/aio-libs/aiohttp/issues/7281>`_
+
+
+
+Misc
+----
+
+- Made ``print`` argument in ``run_app()`` optional.
+
+  `#3690 <https://github.com/aio-libs/aiohttp/issues/3690>`_
+
+- Improved performance of ``ceil_timeout`` in some cases.
+
+  `#6316 <https://github.com/aio-libs/aiohttp/issues/6316>`_
+
+- Changed importing Gunicorn to happen on-demand, decreasing import time by ~53%. -- :user:`Dreamsorcerer`
+
+  `#6591 <https://github.com/aio-libs/aiohttp/issues/6591>`_
+
+- Improved import time by replacing ``http.server`` with ``http.HTTPStatus``.
+
+  `#6903 <https://github.com/aio-libs/aiohttp/issues/6903>`_
+
+- Fixed annotation of ``ssl`` parameter to disallow ``True``. -- by :user:`Dreamsorcerer`
+
+  `#7335 <https://github.com/aio-libs/aiohttp/issues/7335>`_
+
+
+----
+
+
 3.8.6 (2023-10-07)
 ==================
 
