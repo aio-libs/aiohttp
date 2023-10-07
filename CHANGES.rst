@@ -36,7 +36,7 @@ Security bugfixes
 Deprecation
 -----------
 
-- Added ``fallback_charset_resolver`` parameter in ``aiohttp.ClientSession`` to allow a user-supplied
+- Added ``fallback_charset_resolver`` parameter in ``ClientSession`` to allow a user-supplied
   character set detection function.
 
   Character set detection will no longer be included in 3.9 as a default. If this feature is needed,
