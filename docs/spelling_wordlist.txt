@@ -43,6 +43,7 @@ Brotli
 brotlicffi
 brotlipy
 bugfix
+bugfixes
 Bugfixes
 builtin
 BytesIO

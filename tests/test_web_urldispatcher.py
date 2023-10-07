@@ -1,4 +1,5 @@
 import asyncio
+import functools
 import pathlib
 from typing import Optional
 from unittest import mock
@@ -273,6 +274,21 @@ async def test_access_special_resource(
         # Request the root of the static directory.
         r = await client.get("/special")
         assert r.status == 403
+
+
+async def test_partially_applied_handler(aiohttp_client: AiohttpClient) -> None:
+    app = web.Application()
+
+    async def handler(data: bytes, request: web.Request) -> web.Response:
+        return web.Response(body=data)
+
+    app.router.add_route("GET", "/", functools.partial(handler, b"hello"))
+
+    client = await aiohttp_client(app)
+
+    r = await client.get("/")
+    data = await r.read()
+    assert data == b"hello"
 
 
 async def test_static_head(
