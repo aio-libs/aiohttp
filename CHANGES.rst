@@ -25,7 +25,7 @@ Security bugfixes
 
   `#7647 <https://github.com/aio-libs/aiohttp/issues/7647>`_
 
-- Updated Python parser to comply with :rfc:`9110`/:rfc:`9112` -- by :user:`Dreamorcerer`
+- Updated Python parser to comply with RFCs 9110/9112 -- by :user:`Dreamorcerer`
 
   Thanks to :user:`kenballus` for reporting this, see
   https://github.com/aio-libs/aiohttp/security/advisories/GHSA-gfw2-4jvh-wgfg.
@@ -36,7 +36,7 @@ Security bugfixes
 Deprecation
 -----------
 
-- Added `fallback_charset_resolver` parameter in `ClientSession` to allow a user-supplied
+- Added ``fallback_charset_resolver`` parameter in ``aiohttp.ClientSession`` to allow a user-supplied
   character set detection function.
 
   Character set detection will no longer be included in 3.9 as a default. If this feature is needed,
@@ -58,7 +58,7 @@ Features
 Bugfixes
 --------
 
-- Fixed ``PermissionError`` when .netrc is unreadable due to permissions.
+- Fixed ``PermissionError`` when ``.netrc`` is unreadable due to permissions.
 
   `#7237 <https://github.com/aio-libs/aiohttp/issues/7237>`_
 
@@ -66,11 +66,11 @@ Bugfixes
 
   `#7468 <https://github.com/aio-libs/aiohttp/issues/7468>`_
 
-- Fixed GunicornWebWorker max_requests_jitter not working.
+- Fixed ``GunicornWebWorker`` max_requests_jitter not working.
 
   `#7518 <https://github.com/aio-libs/aiohttp/issues/7518>`_
 
-- Fixed sorting in filter_cookies to use cookie with longest path. -- by :user:`marq24`.
+- Fixed sorting in ``filter_cookies`` to use cookie with longest path. -- by :user:`marq24`.
 
   `#7577 <https://github.com/aio-libs/aiohttp/issues/7577>`_
 
