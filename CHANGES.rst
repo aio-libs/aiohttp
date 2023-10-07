@@ -28,7 +28,7 @@ Features
   `#7188 <https://github.com/aio-libs/aiohttp/issues/7188>`_
 
 - Added `handler_cancellation <https://docs.aiohttp.org/en/stable/web_advanced.html#web-handler-cancellation>`_ parameter to cancel web handler on client disconnection. -- by :user:`mosquito`
-  This (optionally) reenables a feature removed in a previous release.
+  This (optionally) reintroduces a feature removed in a previous release.
   Recommended for those looking for an extra level of protection against denial-of-service attacks.
 
   `#7056 <https://github.com/aio-libs/aiohttp/issues/7056>`_
@@ -109,7 +109,7 @@ Bugfixes
 
   `#6701 <https://github.com/aio-libs/aiohttp/issues/6701>`_
 
-- Added ``__repr__`` to ``EmptyStreamReader`` to avoid ``AttributeError``s.
+- Added ``__repr__`` to ``EmptyStreamReader`` to avoid ``AttributeError``.
 
   `#6916 <https://github.com/aio-libs/aiohttp/issues/6916>`_
 
