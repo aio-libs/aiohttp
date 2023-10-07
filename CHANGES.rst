@@ -25,7 +25,7 @@ Security bugfixes
 
   `#7647 <https://github.com/aio-libs/aiohttp/issues/7647>`_
 
-- Updated Python parser to comply with RFCs 9110/9112 -- by :user:`Dreamorcerer`
+- Updated Python parser to comply with :rfc:`9110`/:rfc:`9112` -- by :user:`Dreamorcerer`
 
   Thanks to :user:`kenballus` for reporting this, see
   https://github.com/aio-libs/aiohttp/security/advisories/GHSA-gfw2-4jvh-wgfg.
