@@ -10,6 +10,78 @@
 
 .. towncrier release notes start
 
+3.8.6 (2023-10-07)
+==================
+
+Security bugfixes
+-----------------
+
+- Upgraded the vendored copy of llhttp_ to v9.1.3 -- by :user:`Dreamsorcerer`
+
+  Thanks to :user:`kenballus` for reporting this, see
+  https://github.com/aio-libs/aiohttp/security/advisories/GHSA-pjjw-qhg8-p2p9.
+
+  .. _llhttp: https://llhttp.org
+
+  `#7647 <https://github.com/aio-libs/aiohttp/issues/7647>`_
+
+- Updated Python parser to comply with RFCs 9110/9112 -- by :user:`Dreamorcerer`
+
+  Thanks to :user:`kenballus` for reporting this, see
+  https://github.com/aio-libs/aiohttp/security/advisories/GHSA-gfw2-4jvh-wgfg.
+
+  `#7663 <https://github.com/aio-libs/aiohttp/issues/7663>`_
+
+
+Deprecation
+-----------
+
+- Added ``fallback_charset_resolver`` parameter in ``ClientSession`` to allow a user-supplied
+  character set detection function.
+
+  Character set detection will no longer be included in 3.9 as a default. If this feature is needed,
+  please use `fallback_charset_resolver <https://docs.aiohttp.org/en/stable/client_advanced.html#character-set-detection>`_.
+
+  `#7561 <https://github.com/aio-libs/aiohttp/issues/7561>`_
+
+
+Features
+--------
+
+- Enabled lenient response parsing for more flexible parsing in the client
+  (this should resolve some regressions when dealing with badly formatted HTTP responses). -- by :user:`Dreamsorcerer`
+
+  `#7490 <https://github.com/aio-libs/aiohttp/issues/7490>`_
+
+
+
+Bugfixes
+--------
+
+- Fixed ``PermissionError`` when ``.netrc`` is unreadable due to permissions.
+
+  `#7237 <https://github.com/aio-libs/aiohttp/issues/7237>`_
+
+- Fixed output of parsing errors pointing to a ``\n``. -- by :user:`Dreamsorcerer`
+
+  `#7468 <https://github.com/aio-libs/aiohttp/issues/7468>`_
+
+- Fixed ``GunicornWebWorker`` max_requests_jitter not working.
+
+  `#7518 <https://github.com/aio-libs/aiohttp/issues/7518>`_
+
+- Fixed sorting in ``filter_cookies`` to use cookie with longest path. -- by :user:`marq24`.
+
+  `#7577 <https://github.com/aio-libs/aiohttp/issues/7577>`_
+
+- Fixed display of ``BadStatusLine`` messages from llhttp_. -- by :user:`Dreamsorcerer`
+
+  `#7651 <https://github.com/aio-libs/aiohttp/issues/7651>`_
+
+
+----
+
+
 3.8.5 (2023-07-19)
 ==================
 
@@ -43,7 +115,6 @@ Bugfixes
 - Fixed a transport is :data:`None` error -- by :user:`Dreamsorcerer`.
 
   `#3355 <https://github.com/aio-libs/aiohttp/issues/3355>`_
-
 
 
 ----
