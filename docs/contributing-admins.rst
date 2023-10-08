@@ -25,7 +25,7 @@ To create a new release:
 Once released, we need to complete some cleanup steps (no further steps are needed for
 non-stable releases though). If doing a patch release, we need to do the below steps twice,
 first merge into the newer release branch (e.g. 3.8 into 3.9) and then to master
-(e.g. 3.9 to master). If a new minor release, then just merge to master.
+(e.g. 3.9 into master). If a new minor release, then just merge to master.
 
 #. Switch to target branch: e.g. ``git checkout 3.9 && git pull``
 #. Start a merge: e.g. ``git merge 3.8 --no-commit``
@@ -36,12 +36,12 @@ first merge into the newer release branch (e.g. 3.8 into 3.9) and then to master
    you may get a rejected message. Follow these steps to resolve:
 
   #. Checkout to a new branch and push: e.g. ``git checkout -b do-not-merge && git push``
-  #. Open a _draft_ PR with a title of 'DO NOT MERGE'.
+  #. Open a *draft* PR with a title of 'DO NOT MERGE'.
   #. Once the CI has completed on that branch, you should be able to switch back and push
      the target branch (as tests have passed on the merge commit now).
   #. This should automatically consider the PR merged and delete the temporary branch.
 
-Back on the original release branch, append `.dev0` to the version number in ``__init__.py``.
+Back on the original release branch, append ``.dev0`` to the version number in ``__init__.py``.
 
 If doing a minor release:
 
