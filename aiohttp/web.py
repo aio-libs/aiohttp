@@ -26,7 +26,6 @@ from .log import access_logger
 from .typedefs import PathLike
 from .web_app import Application, CleanupError
 from .web_exceptions import (
-    NotAppKeyWarning,
     HTTPAccepted,
     HTTPBadGateway,
     HTTPBadRequest,
@@ -85,6 +84,7 @@ from .web_exceptions import (
     HTTPUseProxy,
     HTTPVariantAlsoNegotiates,
     HTTPVersionNotSupported,
+    NotAppKeyWarning,
 )
 from .web_fileresponse import FileResponse
 from .web_log import AccessLogger
