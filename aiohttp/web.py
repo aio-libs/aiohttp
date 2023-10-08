@@ -271,7 +271,7 @@ try:
 except ImportError:  # pragma: no cover
     SSLContext = Any  # type: ignore[misc,assignment]
 
-# Only display warning when using -Wdefault, -We, -X dev or similar).
+# Only display warning when using -Wdefault, -We, -X dev or similar.
 warnings.filterwarnings("ignore", category=NotAppKeyWarning, append=True)
 
 HostSequence = TypingIterable[str]
