@@ -379,6 +379,8 @@ and :ref:`aiohttp-web-signals` handlers.
       Reads extra information from the protocol's transport.
       If no value associated with ``name`` is found, ``default`` is returned.
 
+      See :meth:`asyncio.BaseTransport.get_extra_info`
+
       :param str name: The key to look up in the transport extra information.
 
       :param default: Default value to be used when no value for ``name`` is
@@ -1054,13 +1056,12 @@ and :ref:`aiohttp-web-signals` handlers::
       Reads optional extra information from the writer's transport.
       If no value associated with ``name`` is found, ``default`` is returned.
 
-      Can be used, for example, for getting IP address of client's peer::
-
-         peername = response.get_extra_info('peername')
-         if peername is not None:
-             host, port = peername
-
       See :meth:`asyncio.BaseTransport.get_extra_info`
+
+      :param str name: The key to look up in the transport extra information.
+
+      :param default: Default value to be used when no value for ``name`` is
+                      found (default is ``None``).
 
    .. method:: exception()
 
