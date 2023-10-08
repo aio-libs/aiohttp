@@ -3,7 +3,7 @@
 Contributing
 ============
 
-:doc:`contributing-admins`
+(:doc:`contributing-admins`)
 
 Instructions for contributors
 -----------------------------
