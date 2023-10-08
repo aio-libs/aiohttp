@@ -30,7 +30,10 @@ from .http_exceptions import (
     PayloadEncodingError,
     TransferEncodingError,
 )
-from .http_parser import DeflateBuffer as _DeflateBuffer, HeadersDictProxy as _HeadersDictProxy
+from .http_parser import (
+    DeflateBuffer as _DeflateBuffer,
+    HeadersDictProxy as _HeadersDictProxy,
+)
 from .http_writer import (
     HttpVersion as _HttpVersion,
     HttpVersion10 as _HttpVersion10,

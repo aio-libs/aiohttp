@@ -102,7 +102,7 @@ class HeadersDictProxy(Mapping[str, str]):
             quoted = re.match(QUOTEHDRRE, val)
             if quoted:
                 values.append(quoted.group(1)[1:-1])
-                val = val[len(quoted.group()):].lstrip()
+                val = val[len(quoted.group()) :].lstrip()
             else:
                 try:
                     h, val = val.split(",", maxsplit=1)
@@ -261,9 +261,18 @@ class HeadersParser:
                 # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-8
                 # https://www.rfc-editor.org/rfc/rfc9110.html#section-10.2.2-13.1
                 # https://www.rfc-editor.org/rfc/rfc9110.html#name-collected-abnf
-                if name in {"Content-Location", "Date", "From", "If-Modified-Since",
-                            "If-Range", "If-Unmodified-Since", "Last-Modified",
-                            "Location", "Referer", "Retry-After"}:
+                if name in {
+                    "Content-Location",
+                    "Date",
+                    "From",
+                    "If-Modified-Since",
+                    "If-Range",
+                    "If-Unmodified-Since",
+                    "Last-Modified",
+                    "Location",
+                    "Referer",
+                    "Retry-After",
+                }:
                     raise BadHttpMessage(f"Duplicate '{name}' header found.")
                 headers[name] += ", " + value
             else:
