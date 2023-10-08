@@ -1,3 +1,6 @@
+:orphan:
+.. https://github.com/sphinx-doc/sphinx/issues/5281
+
 Instructions for aiohttp admins
 ===============================
 
