@@ -1,7 +1,8 @@
 Instructions for aiohttp admins
 ===============================
 
-This page is intended to document certain processes for aiohttp admins.
+This page is intended to document certain processes for admins of the aiohttp repository.
+For regular contributors, return to :doc:`contributing`.
 
 .. contents::
    :local:
