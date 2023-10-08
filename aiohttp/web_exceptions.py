@@ -71,6 +71,10 @@ __all__ = (
 )
 
 
+class NotAppKeyWarning(UserWarning):
+    """Warning when not using AppKey in Application."""
+
+
 ############################################################
 # HTTP Exceptions
 ############################################################
