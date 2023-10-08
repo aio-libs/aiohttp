@@ -15,7 +15,6 @@ from cpython.mem cimport PyMem_Free, PyMem_Malloc
 from libc.limits cimport ULLONG_MAX
 from libc.string cimport memcpy
 
-from multidict import CIMultiDict as _CIMultiDict, CIMultiDictProxy as _CIMultiDictProxy
 from yarl import URL as _URL
 
 from aiohttp import hdrs
@@ -31,7 +30,7 @@ from .http_exceptions import (
     PayloadEncodingError,
     TransferEncodingError,
 )
-from .http_parser import DeflateBuffer as _DeflateBuffer
+from .http_parser import DeflateBuffer as _DeflateBuffer, HeadersDictProxy as _HeadersDictProxy
 from .http_writer import (
     HttpVersion as _HttpVersion,
     HttpVersion10 as _HttpVersion10,
@@ -59,8 +58,7 @@ __all__ = ('HttpRequestParser', 'HttpResponseParser',
 
 cdef object URL = _URL
 cdef object URL_build = URL.build
-cdef object CIMultiDict = _CIMultiDict
-cdef object CIMultiDictProxy = _CIMultiDictProxy
+cdef object HeadersDictProxy = _HeadersDictProxy
 cdef object HttpVersion = _HttpVersion
 cdef object HttpVersion10 = _HttpVersion10
 cdef object HttpVersion11 = _HttpVersion11
@@ -111,7 +109,7 @@ cdef class RawRequestMessage:
     cdef readonly str method
     cdef readonly str path
     cdef readonly object version  # HttpVersion
-    cdef readonly object headers  # CIMultiDict
+    cdef readonly object headers  # HeadersDictProxy
     cdef readonly object raw_headers  # tuple
     cdef readonly object should_close
     cdef readonly object compression
@@ -211,7 +209,7 @@ cdef class RawResponseMessage:
     cdef readonly object version  # HttpVersion
     cdef readonly int code
     cdef readonly str reason
-    cdef readonly object headers  # CIMultiDict
+    cdef readonly object headers  # HeadersDictProxy
     cdef readonly object raw_headers  # tuple
     cdef readonly object should_close
     cdef readonly object compression
@@ -383,8 +381,6 @@ cdef class HttpParser:
             name = find_header(raw_name)
             value = raw_value.decode('utf-8', 'surrogateescape')
 
-            self._headers.add(name, value)
-
             if name is CONTENT_ENCODING:
                 self._content_encoding = value
 
@@ -392,6 +388,12 @@ cdef class HttpParser:
             PyByteArray_Resize(self._raw_value, 0)
             self._has_value = False
             self._raw_headers.append((raw_name, raw_value))
+
+            name = name.title()
+            if name in self._headers:
+                self._headers[name] += ", " + value
+            else:
+                self._headers[name] = value
 
     cdef _on_header_field(self, char* at, size_t length):
         cdef Py_ssize_t size
@@ -423,7 +425,7 @@ cdef class HttpParser:
         chunked = self._cparser.flags & cparser.F_CHUNKED
 
         raw_headers = tuple(self._raw_headers)
-        headers = CIMultiDictProxy(self._headers)
+        headers = HeadersDictProxy(self._headers)
 
         if upgrade or self._cparser.method == cparser.HTTP_CONNECT:
             self._upgraded = True
@@ -665,7 +667,7 @@ cdef int cb_on_message_begin(cparser.llhttp_t* parser) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
 
     pyparser._started = True
-    pyparser._headers = CIMultiDict()
+    pyparser._headers = {}
     pyparser._raw_headers = []
     PyByteArray_Resize(pyparser._buf, 0)
     pyparser._path = None
