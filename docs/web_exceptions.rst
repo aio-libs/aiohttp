@@ -85,7 +85,7 @@ HTTP Exception hierarchy chart::
 All HTTP exceptions have the same constructor signature::
 
     HTTPNotFound(*, headers=None, reason=None,
-                 body=None, text=None, content_type=None)
+                 text=None, content_type=None)
 
 If not directly specified, *headers* will be added to the *default
 response headers*.
@@ -94,8 +94,8 @@ Classes :exc:`HTTPMultipleChoices`, :exc:`HTTPMovedPermanently`,
 :exc:`HTTPFound`, :exc:`HTTPSeeOther`, :exc:`HTTPUseProxy`,
 :exc:`HTTPTemporaryRedirect` have the following constructor signature::
 
-    HTTPFound(location, *, headers=None, reason=None,
-              body=None, text=None, content_type=None)
+    HTTPFound(location, *,headers=None, reason=None,
+              text=None, content_type=None)
 
 where *location* is value for *Location HTTP header*.
 
@@ -104,7 +104,14 @@ unsupported method and list of allowed methods::
 
     HTTPMethodNotAllowed(method, allowed_methods, *,
                          headers=None, reason=None,
-                         body=None, text=None, content_type=None)
+                         text=None, content_type=None)
+
+:exc:`HTTPUnavailableForLegalReasons` is constructed by providing the link
+to a resource with information for the blocking reason::
+
+    HTTPUnavailableForLegalReasons(link, *,
+                                   headers=None, reason=None,
+                                   text=None, content_type=None)
 
 Base HTTP Exception
 -------------------
@@ -478,14 +485,14 @@ HTTP exceptions for status code in range 400-499, e.g. ``raise web.HTTPNotFound(
    An exception for *451 Unavailable For Legal Reasons*, a subclass of
    :exc:`HTTPClientError`.
 
-   :param link: A link to a resource with information for blocking reason,
+   :param link: A link to a resource with information for the blocking reason,
                 :class:`str` or :class:`~yarl.URL`
 
    For other parameters see :exc:`HTTPException` constructor.
 
    .. attribute:: link
 
-      A :class:`~yarl.URL` link to a resource with information for blocking reason,
+      A :class:`~yarl.URL` link to a resource with information for the blocking reason,
       read-only property.
 
 

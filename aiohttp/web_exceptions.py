@@ -427,11 +427,16 @@ class HTTPUnavailableForLegalReasons(HTTPClientError):
         text: Optional[str] = None,
         content_type: Optional[str] = None,
     ) -> None:
+        if not link:
+            raise ValueError(
+                "HTTP unavailable for legal reasons needs a link to"
+                " a resource with information for the blocking reason."
+            )
         super().__init__(
             headers=headers, reason=reason, text=text, content_type=content_type
         )
-        self.headers["Link"] = f'<{str(link)}>; rel="blocked-by"'
         self._link = URL(link)
+        self.headers["Link"] = f'<{str(self.link)}>; rel="blocked-by"'
 
     @property
     def link(self) -> URL:
