@@ -243,7 +243,7 @@ async def test_concurrent_task_close(aiohttp_client: Any) -> None:
     app = web.Application()
     app.router.add_route("GET", "/", handler)
 
-    client = aiohttp_client(app)
+    client = await aiohttp_client(app)
     async with client.ws_connect("/") as resp:
         # wait for the message in a separate task
         task = asyncio.create_task(resp.receive())
