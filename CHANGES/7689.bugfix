@@ -1,0 +1,1 @@
+Handle invalid ``link`` argument values in HTTP 451 exception.
