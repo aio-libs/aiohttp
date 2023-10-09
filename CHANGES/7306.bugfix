@@ -1,1 +1,1 @@
-Fixed an issue where ``ClientWebSocketResponse.close_code`` as erroneously set to None when there were concurrent async tasks receiving data and closing the connection.
+Fixed ``ClientWebSocketResponse.close_code`` being erroneously set to ``None`` when there are concurrent async tasks receiving data and closing the connection.
