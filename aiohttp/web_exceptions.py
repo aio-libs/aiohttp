@@ -427,11 +427,11 @@ class HTTPUnavailableForLegalReasons(HTTPClientError):
         text: Optional[str] = None,
         content_type: Optional[str] = None,
     ) -> None:
+        if link is not None and not link:
+            raise ValueError("link argument cannot be empty.")
         super().__init__(
             headers=headers, reason=reason, text=text, content_type=content_type
         )
-        if link is not None and not link:
-            raise ValueError("link argument cannot be empty.")
         self._link = URL(link) if link else None
         if self._link:
             self.headers["Link"] = f'<{str(self.link)}>; rel="blocked-by"'
