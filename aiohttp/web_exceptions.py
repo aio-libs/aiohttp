@@ -433,7 +433,7 @@ class HTTPUnavailableForLegalReasons(HTTPClientError):
             headers=headers, reason=reason, text=text, content_type=content_type
         )
         self._link = URL(link) if link else None
-        if self._link:
+        if self.link:
             self.headers["Link"] = f'<{str(self.link)}>; rel="blocked-by"'
 
     @property
