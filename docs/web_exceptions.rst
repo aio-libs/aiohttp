@@ -106,10 +106,10 @@ unsupported method and list of allowed methods::
                          headers=None, reason=None,
                          text=None, content_type=None)
 
-:exc:`HTTPUnavailableForLegalReasons` is constructed by providing the link
-to a resource with information for the blocking reason::
+:exc:`HTTPUnavailableForLegalReasons` is constructed by optionally providing
+a link to the entity implementing the blockage (if any)::
 
-    HTTPUnavailableForLegalReasons(link, *,
+    HTTPUnavailableForLegalReasons(link=None, *
                                    headers=None, reason=None,
                                    text=None, content_type=None)
 
@@ -475,7 +475,7 @@ HTTP exceptions for status code in range 400-499, e.g. ``raise web.HTTPNotFound(
    An exception for *431 Requests Header Fields Too Large*, a subclass of
    :exc:`HTTPClientError`.
 
-.. exception:: HTTPUnavailableForLegalReasons(link, *, \
+.. exception:: HTTPUnavailableForLegalReasons(link=None, *, \
                                               headers=None, \
                                               reason=None, \
                                               text=None, \
@@ -485,14 +485,14 @@ HTTP exceptions for status code in range 400-499, e.g. ``raise web.HTTPNotFound(
    An exception for *451 Unavailable For Legal Reasons*, a subclass of
    :exc:`HTTPClientError`.
 
-   :param link: A link to a resource with information for the blocking reason,
+   :param link: A link to the entity implementing the blockage,
                 :class:`str` or :class:`~yarl.URL`
 
    For other parameters see :exc:`HTTPException` constructor.
 
    .. attribute:: link
 
-      A :class:`~yarl.URL` link to a resource with information for the blocking reason,
+      A :class:`~yarl.URL` link to the entity implementing the blockage or ``None``,
       read-only property.
 
 

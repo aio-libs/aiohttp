@@ -330,6 +330,28 @@ class TestHTTPUnavailableForLegalReasons:
         assert exc.reason == "Zaprescheno"
         assert exc.status == 451
 
+    def test_ctor_no_link(self) -> None:
+        exc = web.HTTPUnavailableForLegalReasons(
+            headers={"X-Custom": "value"},
+            reason="Zaprescheno",
+            text="text",
+            content_type="custom",
+        )
+        assert exc.link is None
+        assert exc.text == "text"
+        compare: Mapping[str, str] = {
+            "X-Custom": "value",
+            "Content-Type": "custom",
+        }
+        assert exc.headers == compare
+        assert exc.reason == "Zaprescheno"
+        assert exc.status == 451
+
+    def test_no_link(self) -> None:
+        exc = web.HTTPUnavailableForLegalReasons()
+        assert exc.link is None
+        assert "Link" not in exc.headers
+
     def test_link_str(self) -> None:
         exc = web.HTTPUnavailableForLegalReasons(link="http://warning.or.kr/")
         assert exc.link == URL("http://warning.or.kr/")
@@ -343,8 +365,6 @@ class TestHTTPUnavailableForLegalReasons:
     def test_empty_link(self) -> None:
         with pytest.raises(ValueError):
             web.HTTPUnavailableForLegalReasons(link="")
-        with pytest.raises(ValueError):
-            web.HTTPUnavailableForLegalReasons(link=None)  # type: ignore[arg-type]
 
     def test_link_CRLF(self) -> None:
         exc = web.HTTPUnavailableForLegalReasons(link="http://warning.or.kr/\r\n")
