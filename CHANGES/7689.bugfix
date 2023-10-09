@@ -1,1 +1,1 @@
-Handle invalid ``link`` argument values in HTTP 451 exception.
+Make ``link`` argument optional and handle invalid values in HTTP 451 exception.
