@@ -233,6 +233,33 @@ async def test_close(aiohttp_client: Any) -> None:
     assert msg.type == aiohttp.WSMsgType.CLOSED
 
 
+async def test_concurrent_task_close(aiohttp_client: Any) -> None:
+    async def handler(request):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.receive()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    client = await aiohttp_client(app)
+    async with client.ws_connect("/") as resp:
+        # wait for the message in a separate task
+        task = asyncio.create_task(resp.receive())
+
+        # Make sure we start to wait on receiving message before closing the connection
+        await asyncio.sleep(0.1)
+
+        closed = await resp.close()
+
+        await task
+
+        assert closed
+        assert resp.closed
+        assert resp.close_code == 1000
+
+
 async def test_concurrent_close(aiohttp_client: Any) -> None:
     client_ws = None
 
