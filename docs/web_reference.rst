@@ -2555,10 +2555,10 @@ application on specific TCP or Unix socket, e.g.::
       Stop handling all registered sites and cleanup used resources.
 
    .. method:: serve_forever()
+      :async:
 
-      Wait forever. Cancellation of serve_forever task causes the runner to be closed.
-      This method can be called only if the runner is already initialized.
-      Only one serve_forever task can exist per one runner object.
+      Wait forever. Make sure to call :meth:`setup` prior calling this method.
+      Only one :meth:`serve_forever` task is allowed per one runner object.
 
 
 .. class:: AppRunner(app, *, handle_signals=False, **kwargs)
