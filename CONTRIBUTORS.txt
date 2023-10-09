@@ -215,6 +215,7 @@ Ludovic Gasc
 Luis Pedrosa
 Lukasz Marcin Dobrzanski
 Makc Belousow
+Maksim Vasilev
 Manuel Miranda
 Marat Sharafutdinov
 Marc Mueller
