@@ -181,7 +181,8 @@ class ClientWebSocketResponse:
     async def close(self, *, code: int = WSCloseCode.OK, message: bytes = b"") -> bool:
         # we need to break `receive()` cycle first,
         # `close()` may be called from different task
-        if self._waiting is not None and not self._closed:
+        if self._waiting is not None and not self._closing:
+            self._closing = True
             self._reader.feed_data(WS_CLOSING_MESSAGE, 0)
             await self._waiting
 
@@ -200,7 +201,7 @@ class ClientWebSocketResponse:
                 self._response.close()
                 return True
 
-            if self._closing:
+            if self._close_code:
                 self._response.close()
                 return True
 
