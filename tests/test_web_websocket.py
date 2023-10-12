@@ -458,7 +458,9 @@ async def test_no_transfer_encoding_header(make_request, mocker) -> None:
         (mock.MagicMock(transport=None), "default"),
     ],
 )
-async def test_get_extra_info(make_request, mocker, ws_transport, expected_result) -> None:
+async def test_get_extra_info(
+    make_request, mocker, ws_transport, expected_result
+) -> None:
     valid_key = "test"
     default_value = "default"
 
