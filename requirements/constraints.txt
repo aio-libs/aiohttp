@@ -42,7 +42,7 @@ cfgv==3.3.1
     # via pre-commit
 charset-normalizer==3.2.0
     # via requests
-cherry-picker==2.1.0
+cherry-picker==2.2.0
     # via -r requirements/dev.in
 click==8.0.3
     # via
@@ -216,11 +216,10 @@ sphinxcontrib-spelling==8.0.0 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.in
 sphinxcontrib-towncrier==0.3.2a0
     # via -r requirements/doc.in
-toml==0.10.2
-    # via cherry-picker
 tomli==1.2.2
     # via
     #   build
+    #   cherry-picker
     #   coverage
     #   mypy
     #   pep517
