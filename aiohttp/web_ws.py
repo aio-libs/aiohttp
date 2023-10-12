@@ -323,6 +323,19 @@ class WebSocketResponse(StreamResponse):
     def compress(self) -> bool:
         return self._compress
 
+    def get_extra_info(self, name: str, default: Any = None) -> Any:
+        """Get optional transport information.
+
+        If no value associated with ``name`` is found, ``default`` is returned.
+        """
+        writer = self._writer
+        if writer is None:
+            return default
+        transport = writer.transport
+        if transport is None:
+            return default
+        return transport.get_extra_info(name, default)
+
     def exception(self) -> Optional[BaseException]:
         return self._exception
 
