@@ -432,6 +432,25 @@ def test_ceil_call_later() -> None:
     loop.call_at.assert_called_with(21.0, cb)
 
 
+async def test_ceil_timeout_round(loop) -> None:
+    async with helpers.ceil_timeout(7.5) as cm:
+        if sys.version_info >= (3, 11):
+            frac, integer = modf(cm.when())
+        else:
+            frac, integer = modf(cm.deadline)
+        assert frac == 0
+
+
+async def test_ceil_timeout_small(loop) -> None:
+    async with helpers.ceil_timeout(1.1) as cm:
+        if sys.version_info >= (3, 11):
+            frac, integer = modf(cm.when())
+        else:
+            frac, integer = modf(cm.deadline)
+        # a chance for exact integer with zero fraction is negligible
+        assert frac != 0
+
+
 def test_ceil_call_later_with_small_threshold() -> None:
     cb = mock.Mock()
     loop = mock.Mock()
@@ -453,25 +472,6 @@ async def test_ceil_timeout_none(loop) -> None:
             assert cm.when() is None
         else:
             assert cm.deadline is None
-
-
-async def test_ceil_timeout_round(loop) -> None:
-    async with helpers.ceil_timeout(7.5) as cm:
-        if sys.version_info >= (3, 11):
-            frac, integer = modf(cm.when())
-        else:
-            frac, integer = modf(cm.deadline)
-        assert frac == 0
-
-
-async def test_ceil_timeout_small(loop) -> None:
-    async with helpers.ceil_timeout(1.1) as cm:
-        if sys.version_info >= (3, 11):
-            frac, integer = modf(cm.when())
-        else:
-            frac, integer = modf(cm.deadline)
-        # a chance for exact integer with zero fraction is negligible
-        assert frac != 0
 
 
 async def test_ceil_timeout_small_with_overriden_threshold(loop) -> None:
