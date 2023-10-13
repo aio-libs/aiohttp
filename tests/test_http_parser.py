@@ -934,6 +934,30 @@ def test_http_request_chunked_payload(parser: Any) -> None:
     assert payload.is_eof()
 
 
+def test_http_chunked_zero_bytes(parser) -> None:
+    payload = (
+        b"HTTP/1.1 304 Not Modified\r\n"
+        b"Server: nginx\r\n"
+        b"Date: Fri, 13 Oct 2023 00:28:29 GMT\r\n"
+        b"Connection: keep-alive\r\n"
+        b'Etag: "7fd47ef2bec893ff2f1735d216a6d5fc9a9d95b0"\r\n'
+        b"X-Content-Type-Options: nosniff\r\n"
+        b"X-XSS-Protection: 1; mode=block\r\n"
+        b"X-Robots-Tag: none\r\n"
+        b"Content-Type: application/octet-stream\r\n"
+        b"Transfer-Encoding: chunked\r\n\r\n0\r\n\r\n"
+    )
+    messages, upgrade, tail = parser.feed_data(payload)
+    assert len(messages) == 1
+
+    msg, payload = messages[0]
+
+    assert msg.method == "GET"
+    assert msg.path == "/test/тест"
+    assert msg.version == (1, 1)
+    assert payload.is_eof()
+
+
 def test_http_request_chunked_payload_and_next_message(parser: Any) -> None:
     text = b"GET /test HTTP/1.1\r\n" b"transfer-encoding: chunked\r\n\r\n"
     msg, payload = parser.feed_data(text)[0][0]
