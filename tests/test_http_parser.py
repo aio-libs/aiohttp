@@ -947,7 +947,7 @@ def test_http_chunked_zero_bytes(response: Any) -> None:
         b"Content-Type: application/octet-stream\r\n"
         b"Transfer-Encoding: chunked\r\n\r\n0\r\n\r\n"
     )
-    msg, payload = parser.feed_data(text)[0][0]
+    msg, payload = response.feed_data(text)[0][0]
 
     assert payload.is_eof()
 
