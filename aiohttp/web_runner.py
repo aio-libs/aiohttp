@@ -313,7 +313,8 @@ class BaseRunner(ABC):
     async def cleanup(self) -> None:
         loop = asyncio.get_event_loop()
 
-        self._server.pre_shutdown()
+        if self._server is not None:
+            self._server.pre_shutdown()
         # The loop over sites is intentional, an exception on gather()
         # leaves self._sites in unpredictable state.
         # The loop guarantees that a site is either deleted on success or
