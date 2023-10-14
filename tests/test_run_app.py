@@ -20,6 +20,11 @@ from aiohttp import ClientConnectorError, ClientSession, web
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.web_runner import BaseRunner
 
+if sys.version_info >= (3, 11):
+    import asyncio as async_timeout
+else:
+    import async_timeout
+
 _has_unix_domain_socks = hasattr(socket, "AF_UNIX")
 if _has_unix_domain_socks:
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as _abstract_path_sock:
@@ -1113,3 +1118,35 @@ class TestShutdown:
         web.run_app(app, port=port, shutdown_timeout=5)
         assert t.exception() is None
         assert finished is True
+
+    def test_shutdown_close_idle_keepalive(
+        self, aiohttp_unused_port: Callable[[], int]
+    ) -> None:
+        port = aiohttp_unused_port()
+
+        async def test() -> None:
+            await asyncio.sleep(1)
+            async with ClientSession() as sess:
+                async with sess.get(f"http://localhost:{port}/stop"):
+                    pass
+
+                # Hold on to keep-alive connection.
+                await asyncio.sleep(5)
+
+        async def run_test(app: web.Application) -> None:
+            nonlocal t
+            t = asyncio.create_task(test())
+            yield
+            t.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await t
+
+        t = None
+        app = web.Application()
+        app.cleanup_ctx.append(run_test)
+        app.router.add_get("/stop", self.stop)
+
+        web.run_app(app, port=port, shutdown_timeout=10)
+        # If connection closed, then test() will be cancelled in cleanup_ctx.
+        # If not, then shutdown_timeout will allow it to sleep until complete.
+        assert t.cancelled()
