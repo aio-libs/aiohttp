@@ -110,7 +110,7 @@ unsupported method and list of allowed methods::
 to yourself (as the entity implementing the blockage), and an explanation for
 the block included in ``text``.::
 
-    HTTPUnavailableForLegalReasons(link=None, *
+    HTTPUnavailableForLegalReasons(link, *,
                                    headers=None, reason=None,
                                    text=None, content_type=None)
 
@@ -476,7 +476,7 @@ HTTP exceptions for status code in range 400-499, e.g. ``raise web.HTTPNotFound(
    An exception for *431 Requests Header Fields Too Large*, a subclass of
    :exc:`HTTPClientError`.
 
-.. exception:: HTTPUnavailableForLegalReasons(link=None, *, \
+.. exception:: HTTPUnavailableForLegalReasons(link, *, \
                                               headers=None, \
                                               reason=None, \
                                               text=None, \
