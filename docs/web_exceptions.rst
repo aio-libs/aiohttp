@@ -490,6 +490,7 @@ HTTP exceptions for status code in range 400-499, e.g. ``raise web.HTTPNotFound(
                 :class:`str`, :class:`~yarl.URL` or ``None``.
 
    For other parameters see :exc:`HTTPException` constructor.
+   A reason for the block should be included in ``text``.
 
    .. attribute:: link
 
