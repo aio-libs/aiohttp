@@ -106,8 +106,9 @@ unsupported method and list of allowed methods::
                          headers=None, reason=None,
                          text=None, content_type=None)
 
-:exc:`HTTPUnavailableForLegalReasons` is constructed by optionally providing
-a link to the entity implementing the blockage (if any)::
+:exc:`HTTPUnavailableForLegalReasons` should be constructed with a ``link``
+to yourself (as the entity implementing the blockage), and an explanation for
+the block included in ``text``.::
 
     HTTPUnavailableForLegalReasons(link=None, *
                                    headers=None, reason=None,
