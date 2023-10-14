@@ -486,8 +486,8 @@ HTTP exceptions for status code in range 400-499, e.g. ``raise web.HTTPNotFound(
    An exception for *451 Unavailable For Legal Reasons*, a subclass of
    :exc:`HTTPClientError`.
 
-   :param link: A link to the entity implementing the blockage,
-                :class:`str` or :class:`~yarl.URL`
+   :param link: A link to yourself (as the entity implementing the blockage),
+                :class:`str`, :class:`~yarl.URL` or ``None``.
 
    For other parameters see :exc:`HTTPException` constructor.
 
