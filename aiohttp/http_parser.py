@@ -556,11 +556,11 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
             )
 
         # method
-        if not METHRE.match(method):
+        if not METHRE.fullmatch(method):
             raise BadStatusLine(method)
 
         # version
-        match = VERSRE.match(version)
+        match = VERSRE.fullmatch(version)
         if match is None:
             raise BadStatusLine(line)
         version_o = HttpVersion(int(match.group(1)), int(match.group(2)))
@@ -659,7 +659,7 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
             )
 
         # version
-        match = VERSRE.match(version)
+        match = VERSRE.fullmatch(version)
         if match is None:
             raise BadStatusLine(line)
         version_o = HttpVersion(int(match.group(1)), int(match.group(2)))
