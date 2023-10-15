@@ -436,7 +436,7 @@ class HTTPUnavailableForLegalReasons(HTTPClientError):
             self.headers["Link"] = f'<{str(self._link)}>; rel="blocked-by"'
 
     @property
-    def link(self) -> URL:
+    def link(self) -> Optional[URL]:
         return self._link
 
 

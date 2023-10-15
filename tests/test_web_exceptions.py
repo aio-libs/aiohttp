@@ -332,7 +332,7 @@ class TestHTTPUnavailableForLegalReasons:
 
     def test_no_link(self) -> None:
         with pytest.raises(TypeError):
-            web.HTTPUnavailableForLegalReasons()
+            web.HTTPUnavailableForLegalReasons()  # type: ignore[call-arg]
 
     def test_none_link(self) -> None:
         exc = web.HTTPUnavailableForLegalReasons(link=None)
