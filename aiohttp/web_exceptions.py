@@ -420,7 +420,7 @@ class HTTPUnavailableForLegalReasons(HTTPClientError):
 
     def __init__(
         self,
-        link: StrOrURL,
+        link: Optional[StrOrURL],
         *,
         headers: Optional[LooseHeaders] = None,
         reason: Optional[str] = None,
@@ -430,11 +430,13 @@ class HTTPUnavailableForLegalReasons(HTTPClientError):
         super().__init__(
             headers=headers, reason=reason, text=text, content_type=content_type
         )
-        self.headers["Link"] = f'<{str(link)}>; rel="blocked-by"'
-        self._link = URL(link)
+        self._link = None
+        if link:
+            self._link = URL(link)
+            self.headers["Link"] = f'<{str(self._link)}>; rel="blocked-by"'
 
     @property
-    def link(self) -> URL:
+    def link(self) -> Optional[URL]:
         return self._link
 
 
