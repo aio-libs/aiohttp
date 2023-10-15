@@ -367,7 +367,7 @@ class HTTPUnavailableForLegalReasons(HTTPClientError):
 
     def __init__(
         self,
-        link: str,
+        link: Optional[StrOrURL],
         *,
         headers: Optional[LooseHeaders] = None,
         reason: Optional[str] = None,
@@ -382,8 +382,14 @@ class HTTPUnavailableForLegalReasons(HTTPClientError):
             text=text,
             content_type=content_type,
         )
-        self.headers["Link"] = '<%s>; rel="blocked-by"' % link
-        self.link = link
+        self._link = None
+        if link:
+            self._link = URL(link)
+            self.headers["Link"] = f'<{str(self._link)}>; rel="blocked-by"'
+
+    @property
+    def link(self) -> Optional[URL]:
+        return self._link
 
 
 ############################################################

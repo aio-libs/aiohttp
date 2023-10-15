@@ -432,6 +432,7 @@ nitpick_ignore = [
     ("py:exc", "HTTPNotFound"),  # undocumented
     ("py:exc", "HTTPMethodNotAllowed"),  # undocumented
     ("py:class", "HTTPMethodNotAllowed"),  # undocumented
+    ("py:class", "HTTPUnavailableForLegalReasons"),  # undocumented
 ]
 
 # -- Options for towncrier_draft extension -----------------------------------
