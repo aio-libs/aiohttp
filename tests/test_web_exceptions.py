@@ -5,6 +5,7 @@ from unittest import mock
 
 import aiosignal
 import pytest
+from yarl import URL
 
 from aiohttp import helpers, web
 from aiohttp.pytest_plugin import AiohttpClient
