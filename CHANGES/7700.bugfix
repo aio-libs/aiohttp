@@ -1,0 +1,1 @@
+Fix issue with insufficient HTTP method and version validation.
