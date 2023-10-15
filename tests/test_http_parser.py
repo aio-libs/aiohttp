@@ -728,7 +728,7 @@ def test_http_request_parser_two_slashes(parser) -> None:
 
 def test_http_request_parser_bad_method(parser) -> None:
     with pytest.raises(http_exceptions.BadStatusLine):
-        parser.feed_data(b'=":<G>(e),[T];?" /get HTTP/1.1\r\n\r\n')
+        parser.feed_data(b'G=":<>(e),[T];?" /get HTTP/1.1\r\n\r\n')
 
 
 def test_http_request_parser_bad_version(parser) -> None:
@@ -738,7 +738,7 @@ def test_http_request_parser_bad_version(parser) -> None:
 
 def test_http_request_parser_bad_version_number(parser: Any) -> None:
     with pytest.raises(http_exceptions.BadHttpMessage):
-        parser.feed_data(b"GET /test HTTP/12.3\r\n\r\n")
+        parser.feed_data(b"GET /test HTTP/1.32\r\n\r\n")
 
 
 @pytest.mark.parametrize("size", [40965, 8191])
