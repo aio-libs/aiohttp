@@ -58,7 +58,9 @@ The client session supports the context manager protocol for self closing.
 
 
    :param base_url: Base part of the URL (optional)
-      If set it allows to skip the base part in request calls.
+      If set, it allows to skip the base part (https://docs.aiohttp.org) in
+      request calls. If base_url includes a path (as in
+      https://docs.aiohttp.org/en/stable) the path is ignored/discarded.
 
       .. versionadded:: 3.8
 
@@ -1506,7 +1508,15 @@ manually.
 
    .. method:: get_extra_info(name, default=None)
 
-      Reads extra info from connection's transport
+      Reads optional extra information from the connection's transport.
+      If no value associated with ``name`` is found, ``default`` is returned.
+
+      See :meth:`asyncio.BaseTransport.get_extra_info`
+
+      :param str name: The key to look up in the transport extra information.
+
+      :param default: Default value to be used when no value for ``name`` is
+                      found (default is ``None``).
 
    .. method:: exception()
 

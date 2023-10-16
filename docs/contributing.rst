@@ -151,10 +151,10 @@ Any extra texts (print statements and so on) should be removed.
 
      make test-<python-version>[-no-extensions]
 
-   For example, if you want to run tests for python3.7
+   For example, if you want to run tests for python3.10
    without extensions, you can run this command::
 
-     make test-3.7-no-extensions
+     make test-3.10-no-extensions
 
 Tests coverage
 --------------

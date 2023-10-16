@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/dev.txt --resolver=backtracking --strip-extras requirements/dev.in
 #
-aiodns==3.0.0 ; sys_platform == "linux" or sys_platform == "darwin"
+aiodns==3.1.1 ; sys_platform == "linux" or sys_platform == "darwin"
     # via -r requirements/runtime-deps.in
 aiohttp-theme==0.1.6
     # via -r requirements/doc.in
@@ -22,7 +22,7 @@ babel==2.12.1
     # via sphinx
 blockdiag==3.0.0
     # via sphinxcontrib-blockdiag
-brotli==1.0.9
+brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
 build==0.10.0
     # via pip-tools
@@ -36,7 +36,7 @@ cfgv==3.3.1
     # via pre-commit
 charset-normalizer==3.2.0
     # via requests
-cherry-picker==2.1.0
+cherry-picker==2.2.0
     # via -r requirements/dev.in
 click==8.1.6
     # via
@@ -49,7 +49,7 @@ click==8.1.6
     #   wait-for-it
 click-default-group==1.2.2
     # via towncrier
-coverage==7.3.1
+coverage==7.3.2
     # via
     #   -r requirements/test.in
     #   pytest-cov
@@ -100,7 +100,7 @@ multidict==6.0.4
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.5.1 ; implementation_name == "cpython"
+mypy==1.6.0 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -124,7 +124,7 @@ platformdirs==3.10.0
     # via virtualenv
 pluggy==1.2.0
     # via pytest
-pre-commit==3.4.0
+pre-commit==3.5.0
     # via -r requirements/lint.in
 proxy-py==2.4.3
     # via -r requirements/test.in
@@ -140,7 +140,7 @@ pyjwt==2.8.0
     # via gidgethub
 pyproject-hooks==1.0.0
     # via build
-pytest==7.4.1
+pytest==7.4.2
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -152,7 +152,7 @@ pytest-mock==3.11.1
     # via -r requirements/test.in
 python-dateutil==2.8.2
     # via freezegun
-python-on-whales==0.64.3
+python-on-whales==0.65.0
     # via -r requirements/test.in
 pyyaml==6.0.1
     # via pre-commit
@@ -194,11 +194,10 @@ sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
 sphinxcontrib-towncrier==0.3.2a0
     # via -r requirements/doc.in
-toml==0.10.2
-    # via cherry-picker
 tomli==2.0.1
     # via
     #   build
+    #   cherry-picker
     #   coverage
     #   mypy
     #   pip-tools

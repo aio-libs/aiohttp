@@ -53,6 +53,7 @@ Arthur Darcet
 Austin Scola
 Ben Bader
 Ben Greiner
+Ben Kallus
 Ben Timby
 Benedikt Reinartz
 Bob Haddleton
@@ -144,6 +145,7 @@ Hrishikesh Paranjape
 Hu Bo
 Hugh Young
 Hugo Herter
+Hugo Hromic
 Hugo van Kemenade
 Hynek Schlawack
 Igor Alexandrov
@@ -225,6 +227,7 @@ Marko Kohtala
 Martijn Pieters
 Martin Melka
 Martin Richard
+Martin Sucha
 Mathias Fröjdman
 Mathieu Dugré
 Matt VanEseltine
@@ -316,6 +319,7 @@ Tolga Tezel
 Tomasz Trebski
 Toshiaki Tanaka
 Trinh Hoang Nhu
+Tymofii Tsiapa
 Vadim Suharnikov
 Vaibhav Sagar
 Vamsi Krishna Avula

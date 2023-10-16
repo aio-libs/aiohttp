@@ -491,7 +491,7 @@ class StreamReader(AsyncStreamReaderMixin):
 
 class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     def __init__(self) -> None:
-        pass
+        self._read_eof_chunk = False
 
     def __repr__(self) -> str:
         return "<%s>" % self.__class__.__name__
@@ -535,6 +535,10 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
         return b""
 
     async def readchunk(self) -> Tuple[bytes, bool]:
+        if not self._read_eof_chunk:
+            self._read_eof_chunk = True
+            return (b"", False)
+
         return (b"", True)
 
     async def readexactly(self, n: int) -> bytes:
