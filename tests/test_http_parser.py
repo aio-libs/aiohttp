@@ -741,7 +741,7 @@ def test_http_request_parser_bad_version_number(parser: Any) -> None:
 
 
 def test_http_request_parser_bad_uri(parser: Any) -> None:
-    with pytest.raises(http_exceptions.BadStatusLine):
+    with pytest.raises(http_exceptions.InvalidURLError):
         parser.feed_data(b"GET ! HTTP/1.1\r\n\r\n")
 
 
