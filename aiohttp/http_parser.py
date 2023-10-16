@@ -34,6 +34,7 @@ from .http_exceptions import (
     ContentEncodingError,
     ContentLengthError,
     InvalidHeader,
+    InvalidURLError,
     LineTooLong,
     TransferEncodingError,
 )
@@ -587,7 +588,7 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
             url = URL(path, encoded=True)
             if url.scheme == "":
                 # not absolute-form
-                raise BadStatusLine(line)
+                raise InvalidURLError(line)
 
         # read headers
         (
