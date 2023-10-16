@@ -5,7 +5,7 @@ import os.path
 import urllib.parse
 import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 from unittest import mock
 
 import pytest
@@ -281,6 +281,43 @@ def test_default_loop(loop) -> None:
     req = ClientRequest("get", URL("http://python.org/"))
     assert req.loop is loop
     loop.run_until_complete(req.close())
+
+
+@pytest.mark.parametrize(
+    ("url", "headers", "expected"),
+    (
+        pytest.param("http://localhost.", None, "localhost", id="dot only at the end"),
+        pytest.param("http://python.org.", None, "python.org", id="single dot"),
+        pytest.param(
+            "http://python.org.:99", None, "python.org:99", id="single dot with port"
+        ),
+        pytest.param(
+            "http://python.org...:99",
+            None,
+            "python.org:99",
+            id="multiple dots with port",
+        ),
+        pytest.param(
+            "http://python.org.:99",
+            {"host": "example.com.:99"},
+            "example.com.:99",
+            id="explicit host header",
+        ),
+        pytest.param("https://python.org.", None, "python.org", id="https"),
+        pytest.param("https://...", None, "", id="only dots"),
+        pytest.param(
+            "http://príklad.example.org.:99",
+            None,
+            "xn--prklad-4va.example.org:99",
+            id="single dot with port idna",
+        ),
+    ),
+)
+def test_host_header_fqdn(
+    make_request: Any, url: str, headers: Dict[str, str], expected: str
+) -> None:
+    req = make_request("get", url, headers=headers)
+    assert req.headers["HOST"] == expected
 
 
 def test_default_headers_useragent(make_request) -> None:
