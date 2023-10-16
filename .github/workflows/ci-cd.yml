@@ -332,7 +332,7 @@ jobs:
         submodules: true
     - name: Set up QEMU
       if: ${{ matrix.qemu }}
-      uses: docker/setup-qemu-action@v2
+      uses: docker/setup-qemu-action@v3
       with:
         platforms: all
       id: qemu
