@@ -1,0 +1,1 @@
+Fix unhandled exception when Python HTTP parser encouners unpaired Unicode surrogates.
