@@ -7,4 +7,5 @@ yarl >= 1.0, < 2.0
 frozenlist >= 1.1.1
 aiosignal >= 1.1.2
 aiodns; sys_platform=="linux" or sys_platform=="darwin"
-Brotli
+Brotli; platform_python_implementation == 'CPython'
+brotlicffi; platform_python_implementation != 'CPython'

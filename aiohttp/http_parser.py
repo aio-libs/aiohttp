@@ -6,9 +6,11 @@ from contextlib import suppress
 from enum import IntEnum
 from typing import (
     Any,
+    ClassVar,
     Final,
     Generic,
     List,
+    Literal,
     NamedTuple,
     Optional,
     Pattern,
@@ -25,13 +27,14 @@ from yarl import URL
 from . import hdrs
 from .base_protocol import BaseProtocol
 from .compression_utils import HAS_BROTLI, BrotliDecompressor, ZLibDecompressor
-from .helpers import NO_EXTENSIONS, BaseTimerContext
+from .helpers import DEBUG, NO_EXTENSIONS, BaseTimerContext
 from .http_exceptions import (
     BadHttpMessage,
     BadStatusLine,
     ContentEncodingError,
     ContentLengthError,
     InvalidHeader,
+    InvalidURLError,
     LineTooLong,
     TransferEncodingError,
 )
@@ -49,18 +52,21 @@ __all__ = (
     "RawResponseMessage",
 )
 
+_SEP = Literal[b"\r\n", b"\n"]
+
 ASCIISET: Final[Set[str]] = set(string.printable)
 
-# See https://tools.ietf.org/html/rfc7230#section-3.1.1
-# and https://tools.ietf.org/html/rfc7230#appendix-B
+# See https://www.rfc-editor.org/rfc/rfc9110.html#name-overview
+# and https://www.rfc-editor.org/rfc/rfc9110.html#name-tokens
 #
 #     method = token
 #     tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "." /
 #             "^" / "_" / "`" / "|" / "~" / DIGIT / ALPHA
 #     token = 1*tchar
 METHRE: Final[Pattern[str]] = re.compile(r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+")
-VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d+).(\d+)")
-HDRRE: Final[Pattern[bytes]] = re.compile(rb"[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\\\"]")
+VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d).(\d)")
+HDRRE: Final[Pattern[bytes]] = re.compile(rb"[\x00-\x1F\x7F()<>@,;:\[\]={} \t\"\\]")
+HEXDIGIT = re.compile(rb"[0-9a-fA-F]+")
 
 
 class RawRequestMessage(NamedTuple):
@@ -135,8 +141,11 @@ class HeadersParser:
             except ValueError:
                 raise InvalidHeader(line) from None
 
-            bname = bname.strip(b" \t")
-            bvalue = bvalue.lstrip()
+            # https://www.rfc-editor.org/rfc/rfc9112.html#section-5.1-2
+            if {bname[0], bname[-1]} & {32, 9}:  # {" ", "\t"}
+                raise InvalidHeader(line)
+
+            bvalue = bvalue.lstrip(b" \t")
             if HDRRE.search(bname):
                 raise InvalidHeader(bname)
             if len(bname) > self.max_field_size:
@@ -157,6 +166,7 @@ class HeadersParser:
             # consume continuation lines
             continuation = line and line[0] in (32, 9)  # (' ', '\t')
 
+            # Deprecated: https://www.rfc-editor.org/rfc/rfc9112.html#name-obsolete-line-folding
             if continuation:
                 bvalue_lst = [bvalue]
                 while continuation:
@@ -191,9 +201,13 @@ class HeadersParser:
                         str(header_length),
                     )
 
-            bvalue = bvalue.strip()
+            bvalue = bvalue.strip(b" \t")
             name = bname.decode("utf-8", "surrogateescape")
             value = bvalue.decode("utf-8", "surrogateescape")
+
+            # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-5
+            if "\n" in value or "\r" in value or "\x00" in value:
+                raise InvalidHeader(bvalue)
 
             headers.add(name, value)
             raw_headers.append((bname, bvalue))
@@ -202,6 +216,8 @@ class HeadersParser:
 
 
 class HttpParser(abc.ABC, Generic[_MsgT]):
+    lax: ClassVar[bool] = False
+
     def __init__(
         self,
         protocol: Optional[BaseProtocol] = None,
@@ -264,7 +280,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
     def feed_data(
         self,
         data: bytes,
-        SEP: bytes = b"\r\n",
+        SEP: _SEP = b"\r\n",
         EMPTY: bytes = b"",
         CONTENT_LENGTH: istr = hdrs.CONTENT_LENGTH,
         METH_CONNECT: str = hdrs.METH_CONNECT,
@@ -288,13 +304,16 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 pos = data.find(SEP, start_pos)
                 # consume \r\n
                 if pos == start_pos and not self._lines:
-                    start_pos = pos + 2
+                    start_pos = pos + len(SEP)
                     continue
 
                 if pos >= start_pos:
                     # line found
-                    self._lines.append(data[start_pos:pos])
-                    start_pos = pos + 2
+                    line = data[start_pos:pos]
+                    if SEP == b"\n":  # For lax response parsing
+                        line = line.rstrip(b"\r")
+                    self._lines.append(line)
+                    start_pos = pos + len(SEP)
 
                     # \r\n\r\n found
                     if self._lines[-1] == EMPTY:
@@ -309,15 +328,12 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                             if length_hdr is None:
                                 return None
 
-                            try:
-                                length = int(length_hdr)
-                            except ValueError:
+                            # Shouldn't allow +/- or other number formats.
+                            # https://www.rfc-editor.org/rfc/rfc9110#section-8.6-2
+                            if not length_hdr.strip(" \t").isdecimal():
                                 raise InvalidHeader(CONTENT_LENGTH)
 
-                            if length < 0:
-                                raise InvalidHeader(CONTENT_LENGTH)
-
-                            return length
+                            return int(length_hdr)
 
                         length = get_content_length()
                         # do not support old websocket spec
@@ -351,6 +367,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 readall=self.readall,
                                 response_with_body=self.response_with_body,
                                 auto_decompress=self._auto_decompress,
+                                lax=self.lax,
                             )
                             if not payload_parser.done:
                                 self._payload_parser = payload_parser
@@ -369,6 +386,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 compression=msg.compression,
                                 readall=True,
                                 auto_decompress=self._auto_decompress,
+                                lax=self.lax,
                             )
                         else:
                             if (
@@ -392,6 +410,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                     readall=True,
                                     response_with_body=self.response_with_body,
                                     auto_decompress=self._auto_decompress,
+                                    lax=self.lax,
                                 )
                                 if not payload_parser.done:
                                     self._payload_parser = payload_parser
@@ -414,7 +433,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 assert not self._lines
                 assert self._payload_parser is not None
                 try:
-                    eof, data = self._payload_parser.feed_data(data[start_pos:])
+                    eof, data = self._payload_parser.feed_data(data[start_pos:], SEP)
                 except BaseException as exc:
                     if self.payload_exception is not None:
                         self._payload_parser.payload.set_exception(
@@ -457,6 +476,24 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         upgrade = False
         chunked = False
 
+        # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-6
+        # https://www.rfc-editor.org/rfc/rfc9110.html#name-collected-abnf
+        singletons = (
+            hdrs.CONTENT_LENGTH,
+            hdrs.CONTENT_LOCATION,
+            hdrs.CONTENT_RANGE,
+            hdrs.CONTENT_TYPE,
+            hdrs.ETAG,
+            hdrs.HOST,
+            hdrs.MAX_FORWARDS,
+            hdrs.SERVER,
+            hdrs.TRANSFER_ENCODING,
+            hdrs.USER_AGENT,
+        )
+        bad_hdr = next((h for h in singletons if len(headers.getall(h, ())) > 1), None)
+        if bad_hdr is not None:
+            raise BadHttpMessage(f"Duplicate '{bad_hdr}' header found.")
+
         # keep-alive
         conn = headers.get(hdrs.CONNECTION)
         if conn:
@@ -485,7 +522,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
             if hdrs.CONTENT_LENGTH in headers:
                 raise BadHttpMessage(
-                    "Content-Length can't be present with Transfer-Encoding",
+                    "Transfer-Encoding can't be present with Content-Length",
                 )
 
         return (headers, raw_headers, close_conn, encoding, upgrade, chunked)
@@ -510,7 +547,7 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         # request line
         line = lines[0].decode("utf-8", "surrogateescape")
         try:
-            method, path, version = line.split(None, 2)
+            method, path, version = line.split(maxsplit=2)
         except ValueError:
             raise BadStatusLine(line) from None
 
@@ -520,18 +557,14 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
             )
 
         # method
-        if not METHRE.match(method):
+        if not METHRE.fullmatch(method):
             raise BadStatusLine(method)
 
         # version
-        try:
-            if version.startswith("HTTP/"):
-                n1, n2 = version[5:].split(".", 1)
-                version_o = HttpVersion(int(n1), int(n2))
-            else:
-                raise BadStatusLine(version)
-        except Exception:
-            raise BadStatusLine(version)
+        match = VERSRE.fullmatch(version)
+        if match is None:
+            raise BadStatusLine(line)
+        version_o = HttpVersion(int(match.group(1)), int(match.group(2)))
 
         if method == "CONNECT":
             # authority-form,
@@ -553,10 +586,16 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
                 fragment=url_fragment,
                 encoded=True,
             )
+        elif path == "*" and method == "OPTIONS":
+            # asterisk-form,
+            url = URL(path, encoded=True)
         else:
             # absolute-form for proxy maybe,
             # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.2
             url = URL(path, encoded=True)
+            if url.scheme == "":
+                # not absolute-form
+                raise InvalidURLError(line)
 
         # read headers
         (
@@ -595,15 +634,29 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
     Returns RawResponseMessage.
     """
 
+    # Lax mode should only be enabled on response parser.
+    lax = not DEBUG
+
+    def feed_data(
+        self,
+        data: bytes,
+        SEP: Optional[_SEP] = None,
+        *args: Any,
+        **kwargs: Any,
+    ) -> Tuple[List[Tuple[RawResponseMessage, StreamReader]], bool, bytes]:
+        if SEP is None:
+            SEP = b"\r\n" if DEBUG else b"\n"
+        return super().feed_data(data, SEP, *args, **kwargs)
+
     def parse_message(self, lines: List[bytes]) -> RawResponseMessage:
         line = lines[0].decode("utf-8", "surrogateescape")
         try:
-            version, status = line.split(None, 1)
+            version, status = line.split(maxsplit=1)
         except ValueError:
             raise BadStatusLine(line) from None
 
         try:
-            status, reason = status.split(None, 1)
+            status, reason = status.split(maxsplit=1)
         except ValueError:
             reason = ""
 
@@ -613,19 +666,15 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
             )
 
         # version
-        match = VERSRE.match(version)
+        match = VERSRE.fullmatch(version)
         if match is None:
             raise BadStatusLine(line)
         version_o = HttpVersion(int(match.group(1)), int(match.group(2)))
 
         # The status code is a three-digit number
-        try:
-            status_i = int(status)
-        except ValueError:
-            raise BadStatusLine(line) from None
-
-        if status_i > 999:
+        if len(status) != 3 or not status.isdecimal():
             raise BadStatusLine(line)
+        status_i = int(status)
 
         # read headers
         (
@@ -665,6 +714,7 @@ class HttpPayloadParser:
         readall: bool = False,
         response_with_body: bool = True,
         auto_decompress: bool = True,
+        lax: bool = False,
     ) -> None:
         self._length = 0
         self._type = ParseState.PARSE_NONE
@@ -672,6 +722,7 @@ class HttpPayloadParser:
         self._chunk_size = 0
         self._chunk_tail = b""
         self._auto_decompress = auto_decompress
+        self._lax = lax
         self.done = False
 
         # payload decompression wrapper
@@ -723,7 +774,7 @@ class HttpPayloadParser:
             )
 
     def feed_data(
-        self, chunk: bytes, SEP: bytes = b"\r\n", CHUNK_EXT: bytes = b";"
+        self, chunk: bytes, SEP: _SEP = b"\r\n", CHUNK_EXT: bytes = b";"
     ) -> Tuple[bool, bytes]:
         # Read specified amount of bytes
         if self._type == ParseState.PARSE_LENGTH:
@@ -760,18 +811,22 @@ class HttpPayloadParser:
                         else:
                             size_b = chunk[:pos]
 
-                        try:
-                            size = int(bytes(size_b), 16)
-                        except ValueError:
+                        if self._lax:  # Allow whitespace in lax mode.
+                            size_b = size_b.strip()
+
+                        if not re.fullmatch(HEXDIGIT, size_b):
                             exc = TransferEncodingError(
                                 chunk[:pos].decode("ascii", "surrogateescape")
                             )
                             self.payload.set_exception(exc)
-                            raise exc from None
+                            raise exc
+                        size = int(bytes(size_b), 16)
 
-                        chunk = chunk[pos + 2 :]
+                        chunk = chunk[pos + len(SEP) :]
                         if size == 0:  # eof marker
                             self._chunk = ChunkState.PARSE_MAYBE_TRAILERS
+                            if self._lax and chunk.startswith(b"\r"):
+                                chunk = chunk[1:]
                         else:
                             self._chunk = ChunkState.PARSE_CHUNKED_CHUNK
                             self._chunk_size = size
@@ -793,13 +848,15 @@ class HttpPayloadParser:
                         self._chunk_size = 0
                         self.payload.feed_data(chunk[:required], required)
                         chunk = chunk[required:]
+                        if self._lax and chunk.startswith(b"\r"):
+                            chunk = chunk[1:]
                         self._chunk = ChunkState.PARSE_CHUNKED_CHUNK_EOF
                         self.payload.end_http_chunk_receiving()
 
                 # toss the CRLF at the end of the chunk
                 if self._chunk == ChunkState.PARSE_CHUNKED_CHUNK_EOF:
-                    if chunk[:2] == SEP:
-                        chunk = chunk[2:]
+                    if chunk[: len(SEP)] == SEP:
+                        chunk = chunk[len(SEP) :]
                         self._chunk = ChunkState.PARSE_CHUNKED_SIZE
                     else:
                         self._chunk_tail = chunk
@@ -809,11 +866,11 @@ class HttpPayloadParser:
                 # we should get another \r\n otherwise
                 # trailers needs to be skiped until \r\n\r\n
                 if self._chunk == ChunkState.PARSE_MAYBE_TRAILERS:
-                    head = chunk[:2]
+                    head = chunk[: len(SEP)]
                     if head == SEP:
                         # end of stream
                         self.payload.feed_eof()
-                        return True, chunk[2:]
+                        return True, chunk[len(SEP) :]
                     # Both CR and LF, or only LF may not be received yet. It is
                     # expected that CRLF or LF will be shown at the very first
                     # byte next time, otherwise trailers should come. The last
@@ -831,7 +888,7 @@ class HttpPayloadParser:
                 if self._chunk == ChunkState.PARSE_TRAILERS:
                     pos = chunk.find(SEP)
                     if pos >= 0:
-                        chunk = chunk[pos + 2 :]
+                        chunk = chunk[pos + len(SEP) :]
                         self._chunk = ChunkState.PARSE_MAYBE_TRAILERS
                     else:
                         self._chunk_tail = chunk
@@ -925,7 +982,7 @@ RawResponseMessagePy = RawResponseMessage
 
 try:
     if not NO_EXTENSIONS:
-        from ._http_parser import (  # type: ignore[import,no-redef]
+        from ._http_parser import (  # type: ignore[import-not-found,no-redef]
             HttpRequestParser,
             HttpResponseParser,
             RawRequestMessage,

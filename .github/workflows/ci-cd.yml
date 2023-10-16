@@ -195,16 +195,16 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install -r requirements/test.in -c requirements/test.txt
-    - name: Cythonize
-      if: ${{ matrix.no-extensions == '' }}
-      run: |
-        make cythonize
     - name: Restore llhttp generated files
       if: ${{ matrix.no-extensions == '' }}
       uses: actions/download-artifact@v3
       with:
         name: llhttp
         path: vendor/llhttp/build/
+    - name: Cythonize
+      if: ${{ matrix.no-extensions == '' }}
+      run: |
+        make cythonize
     - name: Run unittests
       env:
         COLOR: yes
@@ -364,7 +364,7 @@ jobs:
       run: |
         make cythonize
     - name: Build wheels
-      uses: pypa/cibuildwheel@v2.15.0
+      uses: pypa/cibuildwheel@v2.16.2
       env:
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
     - uses: actions/upload-artifact@v3
@@ -417,7 +417,7 @@ jobs:
       uses: pypa/gh-action-pypi-publish@release/v1
 
     - name: Sign the dists with Sigstore
-      uses: sigstore/gh-action-sigstore-python@v2.0.1
+      uses: sigstore/gh-action-sigstore-python@v2.1.0
       with:
         inputs: >-
           ./dist/*.tar.gz
