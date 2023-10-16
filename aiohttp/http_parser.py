@@ -578,10 +578,16 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
                 fragment=url_fragment,
                 encoded=True,
             )
+        elif path == "*" and method == "OPTIONS":
+            # asterisk-form,
+            url = URL(path, encoded=True)
         else:
             # absolute-form for proxy maybe,
             # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.2
             url = URL(path, encoded=True)
+            if url.scheme == "":
+                # not absolute-form
+                raise BadStatusLine(line)
 
         # read headers
         (
