@@ -131,7 +131,7 @@ changes.
 Tutorial
 ========
 
-:ref:`Polls tutorial <aiohttpdemos-polls-beginning>`
+:ref:`Polls tutorial <aiohttpdemos:aiohttp-demos-polls-beginning>`
 
 
 Source code
