@@ -783,8 +783,12 @@ class ClientSession:
         if compress:
             extstr = ws_ext_gen(compress=compress)
             real_headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = extstr
+        
+        # We need this code to keep backward compatibility. If ssl is True, we transform it to None
+        if ssl is True:
+            ssl = None
 
-        if not isinstance(ssl, SSL_ALLOWED_TYPES):
+        if not isinstance(ssl, SSL_ALLOWED_TYPES) and ssl is not False:
             raise TypeError(
                 "ssl should be SSLContext, bool, Fingerprint, "
                 "or None, got {!r} instead.".format(ssl)

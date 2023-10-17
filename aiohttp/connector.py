@@ -927,8 +927,12 @@ class TCPConnector(BaseConnector):
             sslcontext = req.ssl
             if isinstance(sslcontext, ssl.SSLContext):
                 return sslcontext
-            if sslcontext is True:
-                self._make_ssl_context(True)
+            if sslcontext is not None:
+                # not verified or fingerprinted
+                return self._make_ssl_context(False)
+            sslcontext = self._ssl
+            if isinstance(sslcontext, ssl.SSLContext):
+                return sslcontext
             if sslcontext is not None:
                 # not verified or fingerprinted
                 return self._make_ssl_context(False)
