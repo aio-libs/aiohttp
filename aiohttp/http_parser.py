@@ -66,7 +66,9 @@ ASCIISET: Final[Set[str]] = set(string.printable)
 METHRE: Final[Pattern[str]] = re.compile(r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+")
 VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d).(\d)")
 STATUSLINESEP: Final[Pattern[str]] = re.compile(r"[ \t\v\f\r]+")
-HDRRE: Final[Pattern[bytes]] = re.compile(rb"[\x00-\x1F\x7F-\xFF()<>@,;:\[\]={} \t\"\\]")
+HDRRE: Final[Pattern[bytes]] = re.compile(
+    rb"[\x00-\x1F\x7F-\xFF()<>@,;:\[\]={} \t\"\\]"
+)
 HEXDIGIT = re.compile(rb"[0-9a-fA-F]+")
 
 
