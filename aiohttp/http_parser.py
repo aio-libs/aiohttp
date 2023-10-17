@@ -588,7 +588,7 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
             url = URL(path, encoded=True)
             if url.scheme == "":
                 # not absolute-form
-                raise InvalidURLError(repr(line))
+                raise InvalidURLError(path.encode(errors="surrogateescape").decode('latin1'))
 
         # read headers
         (

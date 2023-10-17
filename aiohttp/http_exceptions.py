@@ -86,9 +86,9 @@ class LineTooLong(BadHttpMessage):
 class InvalidHeader(BadHttpMessage):
     def __init__(self, hdr: Union[bytes, str]) -> None:
         hdr_s = hdr.decode(errors="backslashreplace") if isinstance(hdr, bytes) else hdr
-        super().__init__(f"Invalid HTTP header: {hdr_s}")
+        super().__init__(f"Invalid HTTP header: {hdr!r}")
         self.hdr = hdr_s
-        self.args = (hdr_s,)
+        self.args = (hdr,)
 
 
 class BadStatusLine(BadHttpMessage):
