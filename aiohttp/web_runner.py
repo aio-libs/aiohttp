@@ -234,9 +234,22 @@ class SockSite(BaseSite):
 
 
 class BaseRunner(ABC):
-    __slots__ = ("starting_tasks", "_handle_signals", "_kwargs", "_server", "_sites", "_shutdown_timeout")
+    __slots__ = (
+        "starting_tasks",
+        "_handle_signals",
+        "_kwargs",
+        "_server",
+        "_sites",
+        "_shutdown_timeout",
+    )
 
-    def __init__(self, *, handle_signals: bool = False, shutdown_timeout: float = 60.0, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *,
+        handle_signals: bool = False,
+        shutdown_timeout: float = 60.0,
+        **kwargs: Any,
+    ) -> None:
         self._handle_signals = handle_signals
         self._kwargs = kwargs
         self._server: Optional[Server] = None
