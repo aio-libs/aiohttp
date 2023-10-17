@@ -103,7 +103,7 @@ class TestInvalidHeader:
     def test_ctor(self) -> None:
         err = http_exceptions.InvalidHeader("X-Spam")
         assert err.code == 400
-        assert err.message == "Invalid HTTP Header: X-Spam"
+        assert err.message == "Invalid HTTP header: 'X-Spam'"
         assert err.headers is None
 
     def test_pickle(self) -> None:
@@ -113,17 +113,17 @@ class TestInvalidHeader:
             pickled = pickle.dumps(err, proto)
             err2 = pickle.loads(pickled)
             assert err2.code == 400
-            assert err2.message == "Invalid HTTP Header: X-Spam"
+            assert err2.message == "Invalid HTTP header: 'X-Spam'"
             assert err2.headers is None
             assert err2.foo == "bar"
 
     def test_str(self) -> None:
         err = http_exceptions.InvalidHeader(hdr="X-Spam")
-        assert str(err) == "400, message:\n  Invalid HTTP Header: X-Spam"
+        assert str(err) == "400, message:\n  Invalid HTTP header: 'X-Spam'"
 
     def test_repr(self) -> None:
         err = http_exceptions.InvalidHeader(hdr="X-Spam")
-        expected = "<InvalidHeader: 400, message='Invalid HTTP Header: X-Spam'>"
+        expected = "<InvalidHeader: 400, message=\"Invalid HTTP header: 'X-Spam'\">"
         assert repr(err) == expected
 
 
