@@ -82,21 +82,7 @@ class BaseSite(ABC):
         if hasattr(self._server, "wait_closed"):
             await self._server.wait_closed()
 
-        # Wait for pending tasks for a given time limit.
-        with suppress(asyncio.TimeoutError):
-            await asyncio.wait_for(
-                self._wait(asyncio.current_task()), timeout=self._shutdown_timeout
-            )
-
-        await self._runner.shutdown()
-        assert self._runner.server
-        await self._runner.server.shutdown(self._shutdown_timeout)
         self._runner._unreg_site(self)
-
-    async def _wait(self, parent_task: Optional["asyncio.Task[object]"]) -> None:
-        exclude = self._runner.starting_tasks | {asyncio.current_task(), parent_task}
-        while tasks := asyncio.all_tasks() - exclude:
-            await asyncio.wait(tasks)
 
 
 class TCPSite(BaseSite):
@@ -307,21 +293,37 @@ class BaseRunner(ABC):
         self.starting_tasks = asyncio.all_tasks()
 
     @abstractmethod
+    async def pre_shutdown(self) -> None:
+        """Call any pre-shutdown hooks to help server close gracefully."""
+
+    @abstractmethod
     async def shutdown(self) -> None:
-        pass  # pragma: no cover
+        """Call any shutdown hooks to allow cleaning up resources."""
 
     async def cleanup(self) -> None:
         loop = asyncio.get_event_loop()
 
-        if self._server is not None:
-            self._server.pre_shutdown()
         # The loop over sites is intentional, an exception on gather()
         # leaves self._sites in unpredictable state.
         # The loop guarantees that a site is either deleted on success or
         # still present on failure
         for site in list(self._sites):
             await site.stop()
+
+        assert self.server
+        self._server.pre_shutdown()
+        await self.pre_shutdown()
+
+        # Wait for pending tasks for a given time limit.
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(
+                self._wait(asyncio.current_task()), timeout=self._shutdown_timeout
+            )
+
+        await self.server.shutdown(self._shutdown_timeout)
+        await self.shutdown()
         await self._cleanup_server()
+
         self._server = None
         if self._handle_signals:
             try:
@@ -353,6 +355,11 @@ class BaseRunner(ABC):
             raise RuntimeError(f"Site {site} is not registered in runner {self}")
         self._sites.remove(site)
 
+    async def _wait(self, parent_task: Optional["asyncio.Task[object]"]) -> None:
+        exclude = self.starting_tasks | {asyncio.current_task(), parent_task}
+        while tasks := asyncio.all_tasks() - exclude:
+            await asyncio.wait(tasks)
+
 
 class ServerRunner(BaseRunner):
     """Low-level web server runner"""
@@ -364,6 +371,9 @@ class ServerRunner(BaseRunner):
     ) -> None:
         super().__init__(handle_signals=handle_signals, **kwargs)
         self._web_server = web_server
+
+    async def pre_shutdown(self) -> None:
+        pass
 
     async def shutdown(self) -> None:
         pass
@@ -413,6 +423,9 @@ class AppRunner(BaseRunner):
     @property
     def app(self) -> Application:
         return self._app
+
+    async def pre_shutdown(self) -> None:
+        await self._app.pre_shutdown()
 
     async def shutdown(self) -> None:
         await self._app.shutdown()

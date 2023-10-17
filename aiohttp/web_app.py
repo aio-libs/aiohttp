@@ -84,6 +84,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         "_subapps",
         "_on_response_prepare",
         "_on_startup",
+        "_on_pre_shutdown",
         "_on_shutdown",
         "_on_cleanup",
         "_client_max_size",
@@ -123,6 +124,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
 
         self._on_response_prepare: _RespPrepareSignal = Signal(self)
         self._on_startup: _AppSignal = Signal(self)
+        self._on_pre_shutdown: _AppSignal = Signal(self)
         self._on_shutdown: _AppSignal = Signal(self)
         self._on_cleanup: _AppSignal = Signal(self)
         self._cleanup_ctx = CleanupContext()
@@ -320,6 +322,10 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         return self._on_startup
 
     @property
+    def on_pre_shutdown(self) -> _AppSignal:
+        return self._on_pre_shutdown
+
+    @property
     def on_shutdown(self) -> _AppSignal:
         return self._on_shutdown
 
@@ -345,6 +351,14 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         Should be called in the event loop along with the request handler.
         """
         await self.on_startup.send(self)
+
+    async def pre_shutdown(self) -> None:
+        """Causes on_pre_shutdown signal
+
+        Should be called before shutdown(), and before pausing to allow
+        running tasks to complete.
+        """
+        await self.on_shutdown.send(self)
 
     async def shutdown(self) -> None:
         """Causes on_shutdown signal
