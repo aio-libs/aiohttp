@@ -783,7 +783,7 @@ class ClientSession:
         if compress:
             extstr = ws_ext_gen(compress=compress)
             real_headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = extstr
-        
+
         # We need this code to keep backward compatibility. If ssl is True, we transform it to None
         if ssl is True:
             ssl = None
