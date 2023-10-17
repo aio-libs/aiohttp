@@ -2,11 +2,13 @@ import abc
 import asyncio
 import re
 import string
+from collections.abc import Mapping
 from contextlib import suppress
 from enum import IntEnum
 from typing import (
     Any,
     ClassVar,
+    Dict,
     Final,
     Generic,
     List,
@@ -66,7 +68,54 @@ ASCIISET: Final[Set[str]] = set(string.printable)
 METHRE: Final[Pattern[str]] = re.compile(r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+")
 VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d).(\d)")
 HDRRE: Final[Pattern[bytes]] = re.compile(rb"[\x00-\x1F\x7F()<>@,;:\[\]={} \t\"\\]")
+QUOTEHDRRE = re.compile(r'(".*?(?:[^\\]"))[ \t]*(?:,|$)')
 HEXDIGIT = re.compile(rb"[0-9a-fA-F]+")
+
+
+class HeadersDictProxy(Mapping[str, str]):
+    def __init__(self, d: Mapping[str, str]):
+        self._d = d
+
+    def __getitem__(self, key: str):
+        return self._d.__getitem__(key.title())
+
+    def __contains__(self, key: str):
+        return self._d.__contains__(key.title())
+
+    def __iter__(self):
+        return self._d.__iter__()
+
+    def __len__(self):
+        return self._d.__len__()
+
+    def has_key(self, key: str):
+        return self._d.has_key(key.title())
+
+    def get(self, key: str, default=None):
+        return self._d.get(key.title(), default)
+
+    def getall(self, key: str) -> Tuple[str]:
+        return self._split_on_commas(self._d.get(key, ""))
+
+    def _split_on_commas(self, val: str) -> Tuple[str]:
+        values = []
+        while val:
+            quoted = re.match(QUOTEHDRRE, val)
+            if quoted:
+                values.append(quoted.group(1)[1:-1])
+                val = val[len(quoted.group()) :].lstrip()
+            else:
+                try:
+                    h, val = val.split(",", maxsplit=1)
+                except ValueError:
+                    h = val
+                    val = ""
+                val = val.lstrip()
+                h = h.rstrip()
+                if h:
+                    values.append(h)
+
+        return tuple(values)
 
 
 class RawRequestMessage(NamedTuple):
@@ -124,7 +173,7 @@ class HeadersParser:
     def parse_headers(
         self, lines: List[bytes]
     ) -> Tuple["CIMultiDictProxy[str]", RawHeaders]:
-        headers: CIMultiDict[str] = CIMultiDict()
+        headers = {}
         raw_headers = []
 
         lines_idx = 1
@@ -206,10 +255,31 @@ class HeadersParser:
             if "\n" in value or "\r" in value or "\x00" in value:
                 raise InvalidHeader(bvalue)
 
-            headers.add(name, value)
             raw_headers.append((bname, bvalue))
+            name = name.title()
+            if name in headers:
+                # https://www.rfc-editor.org/rfc/rfc9110.html#name-field-order
+                # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-8
+                # https://www.rfc-editor.org/rfc/rfc9110.html#section-10.2.2-13.1
+                # https://www.rfc-editor.org/rfc/rfc9110.html#name-collected-abnf
+                if name in {
+                    "Content-Location",
+                    "Date",
+                    "From",
+                    "If-Modified-Since",
+                    "If-Range",
+                    "If-Unmodified-Since",
+                    "Last-Modified",
+                    "Location",
+                    "Referer",
+                    "Retry-After",
+                }:
+                    raise BadHttpMessage(f"Duplicate '{name}' header found.")
+                headers[name] += ", " + value
+            else:
+                headers[name] = value
 
-        return (CIMultiDictProxy(headers), tuple(raw_headers))
+        return (HeadersDictProxy(headers), tuple(raw_headers))
 
 
 class HttpParser(abc.ABC, Generic[_MsgT]):

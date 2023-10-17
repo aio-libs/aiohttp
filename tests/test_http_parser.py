@@ -168,6 +168,41 @@ def test_cve_2023_37276(parser: Any) -> None:
 
 
 @pytest.mark.parametrize(
+    ("hdr_vals", "expected"),
+    (
+        (
+            ('"http://example.com/a.html,foo", apples',),
+            ("http://example.com/a.html,foo", "apples"),
+        ),
+        (("bananas, apples",), ("bananas", "apples")),
+        (("bananas", "apples"), ("bananas", "apples")),
+        (
+            ('"http://example.com/a.html,foo", "apples"',),
+            ("http://example.com/a.html,foo", "apples"),
+        ),
+        (
+            ('"Sat, 04 May 1996", "Wed, 14 Sep 2005"',),
+            ("Sat, 04 May 1996", "Wed, 14 Sep 2005"),
+        ),
+        (("foo,bar,baz",), ("foo", "bar", "baz")),
+        (('"applebanna, this',), ('"applebanna', "this")),
+        (('fooo", "bar"',), ('fooo"', "bar")),
+        ((" spam , eggs ",), ("spam", "eggs")),
+        ((" spam ", " eggs "), ("spam", "eggs")),
+        ((",   , ",), ()),
+        (("",), ()),
+    ),
+)
+def test_list_headers(parser: Any, hdr_vals: List[str], expected: List[str]) -> None:
+    headers = "\r\n".join(f"Foo: {v}" for v in hdr_vals)
+    text = f"POST / HTTP/1.1\r\n{headers}\r\n\r\n".encode()
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+
+    assert msg.headers.getall("Foo") == expected
+
+
+@pytest.mark.parametrize(
     "hdr",
     (
         "Content-Length: -5",  # https://www.rfc-editor.org/rfc/rfc9110.html#name-content-length
