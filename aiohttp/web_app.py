@@ -358,7 +358,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         Should be called before shutdown(), and before pausing to allow
         running tasks to complete.
         """
-        await self.on_shutdown.send(self)
+        await self.on_pre_shutdown.send(self)
 
     async def shutdown(self) -> None:
         """Causes on_shutdown signal
