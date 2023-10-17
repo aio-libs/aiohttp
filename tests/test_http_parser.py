@@ -663,7 +663,7 @@ def test_http_request_bad_status_line(parser: Any) -> None:
 
 
 def test_http_request_bad_status_line_whitespace(parser: Any) -> None:
-    text = b"GET\npathn\nHTTP/1.1\r\n\r\n"
+    text = b"GET\n/path\fHTTP/1.1\r\n\r\n"
     with pytest.raises(http_exceptions.BadStatusLine):
         parser.feed_data(text)
 
