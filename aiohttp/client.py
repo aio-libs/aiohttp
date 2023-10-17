@@ -790,7 +790,7 @@ class ClientSession:
 
         if not isinstance(ssl, SSL_ALLOWED_TYPES) and ssl is not False:
             raise TypeError(
-                "ssl should be SSLContext, bool, Fingerprint, "
+                "ssl should be SSLContext, Fingerprint, "
                 "or None, got {!r} instead.".format(ssl)
             )
 
