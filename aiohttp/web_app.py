@@ -226,6 +226,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         self._on_response_prepare.freeze()
         self._cleanup_ctx.freeze()
         self._on_startup.freeze()
+        self._on_pre_shutdown.freeze()
         self._on_shutdown.freeze()
         self._on_cleanup.freeze()
         self._middlewares_handlers = tuple(self._prepare_middleware())
@@ -274,6 +275,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             appsig.append(handler)
 
         reg_handler("on_startup")
+        reg_handler("on_pre_shutdown")
         reg_handler("on_shutdown")
         reg_handler("on_cleanup")
 

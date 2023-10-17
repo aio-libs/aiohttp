@@ -304,6 +304,7 @@ async def _run_app(
         access_log_format=access_log_format,
         access_log=access_log,
         keepalive_timeout=keepalive_timeout,
+        shutdown_timeout=shutdown_timeout,
         handler_cancellation=handler_cancellation,
     )
 
@@ -319,7 +320,6 @@ async def _run_app(
                         runner,
                         host,
                         port,
-                        shutdown_timeout=shutdown_timeout,
                         ssl_context=ssl_context,
                         backlog=backlog,
                         reuse_address=reuse_address,
@@ -333,7 +333,6 @@ async def _run_app(
                             runner,
                             h,
                             port,
-                            shutdown_timeout=shutdown_timeout,
                             ssl_context=ssl_context,
                             backlog=backlog,
                             reuse_address=reuse_address,
@@ -345,7 +344,6 @@ async def _run_app(
                 TCPSite(
                     runner,
                     port=port,
-                    shutdown_timeout=shutdown_timeout,
                     ssl_context=ssl_context,
                     backlog=backlog,
                     reuse_address=reuse_address,
@@ -359,7 +357,6 @@ async def _run_app(
                     UnixSite(
                         runner,
                         path,
-                        shutdown_timeout=shutdown_timeout,
                         ssl_context=ssl_context,
                         backlog=backlog,
                     )
@@ -370,7 +367,6 @@ async def _run_app(
                         UnixSite(
                             runner,
                             p,
-                            shutdown_timeout=shutdown_timeout,
                             ssl_context=ssl_context,
                             backlog=backlog,
                         )
@@ -382,7 +378,6 @@ async def _run_app(
                     SockSite(
                         runner,
                         sock,
-                        shutdown_timeout=shutdown_timeout,
                         ssl_context=ssl_context,
                         backlog=backlog,
                     )
@@ -393,7 +388,6 @@ async def _run_app(
                         SockSite(
                             runner,
                             s,
-                            shutdown_timeout=shutdown_timeout,
                             ssl_context=ssl_context,
                             backlog=backlog,
                         )

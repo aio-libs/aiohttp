@@ -10,15 +10,20 @@ import ssl
 import subprocess
 import sys
 import time
-from typing import Any, Callable, NoReturn
+from typing import Any, Callable, NoReturn, Set
 from unittest import mock
 from uuid import uuid4
 
 import pytest
 
-from aiohttp import ClientConnectorError, ClientSession, web
+from aiohttp import ClientConnectorError, ClientSession, WSCloseCode, web
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.web_runner import BaseRunner
+
+if sys.version_info >= (3, 11):
+    import asyncio as async_timeout
+else:
+    import async_timeout
 
 _has_unix_domain_socks = hasattr(socket, "AF_UNIX")
 if _has_unix_domain_socks:
@@ -1145,3 +1150,57 @@ class TestShutdown:
         # If connection closed, then test() will be cancelled in cleanup_ctx.
         # If not, then shutdown_timeout will allow it to sleep until complete.
         assert t.cancelled()
+
+    def test_shutdown_close_websockets(
+        self, aiohttp_unused_port: Callable[[], int]
+    ) -> None:
+        port = aiohttp_unused_port()
+        WS = web.AppKey("ws", Set[web.WebSocketResponse])
+        client_finished = server_finished = False
+
+        async def ws_handler(request: web.Request) -> web.WebSocketResponse:
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
+            request.app[WS].add(ws)
+            async for msg in ws:
+                pass
+            nonlocal server_finished
+            server_finished = True
+            return ws
+
+        async def close_websockets(app: web.Application) -> None:
+            for ws in app[WS]:
+                await ws.close(code=WSCloseCode.GOING_AWAY)
+
+        async def test() -> None:
+            async with ClientSession() as sess:
+                async with sess.ws_connect(f"http://localhost:{port}/ws") as ws:
+                    async with sess.get(f"http://localhost:{port}/stop"):
+                        pass
+
+                    async for msg in ws:
+                        pass
+                    nonlocal client_finished
+                    client_finished = True
+
+        async def run_test(app: web.Application) -> None:
+            nonlocal t
+            t = asyncio.create_task(test())
+            yield
+            t.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await t
+
+        t = None
+        app = web.Application()
+        app[WS] = set()
+        app.on_pre_shutdown.append(close_websockets)
+        app.cleanup_ctx.append(run_test)
+        app.router.add_get("/ws", ws_handler)
+        app.router.add_get("/stop", self.stop)
+
+        start = time.time()
+        web.run_app(app, port=port, shutdown_timeout=10)
+        assert time.time() - start < 5
+        assert client_finished
+        assert server_finished

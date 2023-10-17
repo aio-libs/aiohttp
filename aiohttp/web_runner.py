@@ -45,20 +45,18 @@ def _raise_graceful_exit() -> None:
 
 
 class BaseSite(ABC):
-    __slots__ = ("_runner", "_shutdown_timeout", "_ssl_context", "_backlog", "_server")
+    __slots__ = ("_runner", "_ssl_context", "_backlog", "_server")
 
     def __init__(
         self,
         runner: "BaseRunner",
         *,
-        shutdown_timeout: float = 60.0,
         ssl_context: Optional[SSLContext] = None,
         backlog: int = 128,
     ) -> None:
         if runner.server is None:
             raise RuntimeError("Call runner.setup() before making a site")
         self._runner = runner
-        self._shutdown_timeout = shutdown_timeout
         self._ssl_context = ssl_context
         self._backlog = backlog
         self._server: Optional[asyncio.AbstractServer] = None
@@ -92,7 +90,6 @@ class TCPSite(BaseSite):
         host: Optional[str] = None,
         port: Optional[int] = None,
         *,
-        shutdown_timeout: float = 60.0,
         ssl_context: Optional[SSLContext] = None,
         backlog: int = 128,
         reuse_address: Optional[bool] = None,
@@ -100,7 +97,6 @@ class TCPSite(BaseSite):
     ) -> None:
         super().__init__(
             runner,
-            shutdown_timeout=shutdown_timeout,
             ssl_context=ssl_context,
             backlog=backlog,
         )
@@ -141,13 +137,11 @@ class UnixSite(BaseSite):
         runner: "BaseRunner",
         path: PathLike,
         *,
-        shutdown_timeout: float = 60.0,
         ssl_context: Optional[SSLContext] = None,
         backlog: int = 128,
     ) -> None:
         super().__init__(
             runner,
-            shutdown_timeout=shutdown_timeout,
             ssl_context=ssl_context,
             backlog=backlog,
         )
@@ -174,9 +168,7 @@ class UnixSite(BaseSite):
 class NamedPipeSite(BaseSite):
     __slots__ = ("_path",)
 
-    def __init__(
-        self, runner: "BaseRunner", path: str, *, shutdown_timeout: float = 60.0
-    ) -> None:
+    def __init__(self, runner: "BaseRunner", path: str) -> None:
         loop = asyncio.get_event_loop()
         if not isinstance(
             loop, asyncio.ProactorEventLoop  # type: ignore[attr-defined]
@@ -184,7 +176,7 @@ class NamedPipeSite(BaseSite):
             raise RuntimeError(
                 "Named Pipes only available in proactor" "loop under windows"
             )
-        super().__init__(runner, shutdown_timeout=shutdown_timeout)
+        super().__init__(runner)
         self._path = path
 
     @property
@@ -210,13 +202,11 @@ class SockSite(BaseSite):
         runner: "BaseRunner",
         sock: socket.socket,
         *,
-        shutdown_timeout: float = 60.0,
         ssl_context: Optional[SSLContext] = None,
         backlog: int = 128,
     ) -> None:
         super().__init__(
             runner,
-            shutdown_timeout=shutdown_timeout,
             ssl_context=ssl_context,
             backlog=backlog,
         )
@@ -244,13 +234,14 @@ class SockSite(BaseSite):
 
 
 class BaseRunner(ABC):
-    __slots__ = ("starting_tasks", "_handle_signals", "_kwargs", "_server", "_sites")
+    __slots__ = ("starting_tasks", "_handle_signals", "_kwargs", "_server", "_sites", "_shutdown_timeout")
 
-    def __init__(self, *, handle_signals: bool = False, **kwargs: Any) -> None:
+    def __init__(self, *, handle_signals: bool = False, shutdown_timeout: float = 60.0, **kwargs: Any) -> None:
         self._handle_signals = handle_signals
         self._kwargs = kwargs
         self._server: Optional[Server] = None
         self._sites: List[BaseSite] = []
+        self._shutdown_timeout = shutdown_timeout
 
     @property
     def server(self) -> Optional[Server]:
