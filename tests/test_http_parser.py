@@ -185,7 +185,14 @@ def test_bad_headers(parser: Any, hdr: str) -> None:
         parser.feed_data(text)
 
 
-def test_unpaired_surrogate_in_header(parser: Any) -> None:
+def test_unpaired_surrogate_in_header_py(loop: Any, protocol: Any) -> None:
+    parser = HttpRequestParserPy(
+        protocol,
+        loop,
+        2**16,
+        max_line_size=8190,
+        max_field_size=8190,
+    )
     text = b"POST / HTTP/1.1\r\n\xff\r\n\r\n"
     message = None
     try:
