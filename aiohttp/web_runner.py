@@ -74,13 +74,11 @@ class BaseSite(ABC):
 
     async def stop(self) -> None:
         self._runner._check_site(self)
-        if self._server is None:
-            self._runner._unreg_site(self)
-            return  # not started yet
-        self._server.close()
-        # named pipes do not have wait_closed property
-        if hasattr(self._server, "wait_closed"):
-            await self._server.wait_closed()
+        if self._server is not None:  # Maybe not started yet
+            self._server.close()
+            # named pipes do not have wait_closed property
+            if hasattr(self._server, "wait_closed"):
+                await self._server.wait_closed()
 
         self._runner._unreg_site(self)
 
