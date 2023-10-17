@@ -704,9 +704,7 @@ class TimerContext(BaseTimerContext):
         task = asyncio.current_task(loop=self._loop)
 
         if task is None:
-            raise RuntimeError(
-                "Timeout context manager should be used inside a task"
-            )
+            raise RuntimeError("Timeout context manager should be used inside a task")
 
         if self._cancelled:
             raise asyncio.TimeoutError from None
