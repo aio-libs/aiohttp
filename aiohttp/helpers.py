@@ -705,7 +705,7 @@ class TimerContext(BaseTimerContext):
 
         if task is None:
             raise RuntimeError(
-                "Timeout context manager should be used " "inside a task"
+                "Timeout context manager should be used inside a task"
             )
 
         if self._cancelled:
