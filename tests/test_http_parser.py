@@ -186,6 +186,23 @@ def test_bad_headers(parser: Any, hdr: str) -> None:
         parser.feed_data(text)
 
 
+def test_unpaired_surrogate_in_header_py(loop: Any, protocol: Any) -> None:
+    parser = HttpRequestParserPy(
+        protocol,
+        loop,
+        2**16,
+        max_line_size=8190,
+        max_field_size=8190,
+    )
+    text = b"POST / HTTP/1.1\r\n\xff\r\n\r\n"
+    message = None
+    try:
+        parser.feed_data(text)
+    except http_exceptions.InvalidHeader as e:
+        message = e.message.encode("utf-8")
+    assert message is not None
+
+
 def test_content_length_transfer_encoding(parser: Any) -> None:
     text = (
         b"GET / HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\nTransfer-Encoding: a\r\n\r\n"
@@ -741,9 +758,14 @@ def test_http_request_parser_bad_version_number(parser: Any) -> None:
         parser.feed_data(b"GET /test HTTP/1.32\r\n\r\n")
 
 
-def test_http_request_parser_bad_uri(parser: Any) -> None:
+def test_http_request_parser_bad_ascii_uri(parser: Any) -> None:
     with pytest.raises(http_exceptions.InvalidURLError):
         parser.feed_data(b"GET ! HTTP/1.1\r\n\r\n")
+
+
+def test_http_request_parser_bad_nonascii_uri(parser: Any) -> None:
+    with pytest.raises(http_exceptions.InvalidURLError):
+        parser.feed_data(b"GET \xff HTTP/1.1\r\n\r\n")
 
 
 @pytest.mark.parametrize("size", [40965, 8191])
