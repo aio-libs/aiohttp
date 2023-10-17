@@ -26,6 +26,7 @@ from aiohttp.web_urldispatcher import (
     SystemRoute,
     View,
     _default_expect_handler,
+    _PlainResourceGroup,
 )
 
 
@@ -1151,9 +1152,27 @@ def test_invalid_route_name(router: Any) -> None:
         router.add_get("/", make_handler(), name="invalid name")
 
 
-def test_invalid_route_name(router) -> None:
+def test_invalid_route_name_keyword(router) -> None:
     with pytest.raises(ValueError):
         router.add_get("/", make_handler(), name="class")  # identifier
+
+
+def test_register_invalid_resource_name_dup(router):
+    router.add_resource("/a", name="a")
+    with pytest.raises(ValueError):
+        router.add_resource("/b", name="a")
+
+
+def test_register_invalid_named_resource_dup(router):
+    resource = router.add_resource("/", name="a")
+    with pytest.raises(ValueError):
+        router._register_named_resource(resource)
+
+
+def test_register_invalid_named_resource_empty(router):
+    resource = router.add_resource("/")
+    with pytest.raises(ValueError):
+        router._register_named_resource(resource)
 
 
 def test_frozen_router(router: Any) -> None:
@@ -1292,3 +1311,50 @@ async def test_prefixed_subapp_root_route(app: Any) -> None:
     assert match_info.route.handler is handler
     match_info = await app.router.resolve(make_mocked_request("GET", "/s"))
     assert "<MatchInfoError 404: Not Found>" == repr(match_info)
+
+
+def test_group_plain_resource():
+    grp = _PlainResourceGroup()
+    assert "<_PlainResourceGroup count=0>" == repr(grp)
+    resource = grp.add_resource("/")
+    assert list(grp.resources()) == [resource]
+    assert "<_PlainResourceGroup count=1>" == repr(grp)
+
+
+def test_append_dyn_routes_in_one_resource(router: Any):
+    handler = make_handler()
+    router.add_get("/a/{param}/", handler)
+    router.add_put("/a/{param}/", handler)
+    assert len(list(router.resources())) == 1
+
+
+def test_convert_to_plain_resource_group(router: Any):
+    router.add_resource("/a")
+    assert "[<PlainResource  /a>]" == repr(router._resources)
+    router.add_resource("/a")
+    assert "[<PlainResource  /a>]" == repr(router._resources)
+
+    router.add_resource("/d/{p}")
+    assert "[<PlainResource  /a>, <DynamicResource  /d/{p}>]" == repr(router._resources)
+
+    router.add_resource("/b")
+    assert (
+        "[<PlainResource  /a>,"
+        " <DynamicResource  /d/{p}>,"
+        " <PlainResource  /b>]" == repr(router._resources)
+    )
+    router.add_resource("/c")
+    assert (
+        "[<PlainResource  /a>,"
+        " <DynamicResource  /d/{p}>,"
+        " <_PlainResourceGroup count=2>]" == repr(router._resources)
+    )
+
+    assert len(router.resources()) == 4
+
+
+def test_frozen_plain_group(router: Any):
+    router.add_resource("/foo", name="foo")
+    router.freeze()
+    with pytest.raises(RuntimeError):
+        router.add_resource("/bar", name="bar")

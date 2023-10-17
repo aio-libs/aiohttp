@@ -86,6 +86,7 @@ PATH_SEP: Final[str] = re.escape("/")
 
 _ExpectHandler = Callable[[Request], Awaitable[Optional[StreamResponse]]]
 _Resolve = Tuple[Optional["UrlMappingMatchInfo"], Set[str]]
+_InnerResource = Union["AbstractResource", "_PlainResourceGroup"]
 
 
 class _InfoDict(TypedDict, total=False):
@@ -414,6 +415,44 @@ class PlainResource(Resource):
         return f"<PlainResource {name} {self._path}>"
 
 
+class _PlainResourceGroup:
+    def __init__(self, resource: Optional[PlainResource] = None) -> None:
+        self._resources: Dict[str, PlainResource] = {}
+        if resource is not None:
+            self._resources[resource.canonical] = resource
+
+    def resources(self) -> Iterator[PlainResource]:
+        return iter(self._resources.values())
+
+    def freeze(self) -> None:
+        for resource in self._resources.values():
+            resource.freeze()
+
+    def add_prefix(self, prefix: str) -> None:
+        resources = list(self._resources.values())
+        self._resources.clear()
+        for resource in resources:
+            resource.add_prefix(prefix)
+            self._resources[resource.canonical] = resource
+
+    async def resolve(self, request: Request) -> _Resolve:
+        resource = self._resources.get(request.rel_url.raw_path)
+        if resource is None:
+            return None, set()
+
+        return await resource.resolve(request)
+
+    def __repr__(self) -> str:
+        return f"<_PlainResourceGroup count={len(self._resources)}>"
+
+    def add_resource(self, path: str, name: Optional[str] = None) -> PlainResource:
+        result = self._resources.get(path)
+        if result is None:
+            result = PlainResource(path, name=name)
+            self._resources[path] = result
+        return result
+
+
 class DynamicResource(Resource):
     DYN = re.compile(r"\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*)\}")
     DYN_WITH_RE = re.compile(r"\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}")
@@ -716,13 +755,11 @@ class PrefixedSubAppResource(PrefixResource):
     def __init__(self, prefix: str, app: "Application") -> None:
         super().__init__(prefix)
         self._app = app
-        for resource in app.router.resources():
-            resource.add_prefix(prefix)
+        app.router.add_prefix(prefix)
 
     def add_prefix(self, prefix: str) -> None:
         super().add_prefix(prefix)
-        for resource in self._app.router.resources():
-            resource.add_prefix(prefix)
+        self._app.router.add_prefix(prefix)
 
     def url_for(self, *args: str, **kwargs: str) -> URL:
         raise RuntimeError(".url_for() is not supported " "by sub-application root")
@@ -977,7 +1014,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
     def __init__(self) -> None:
         super().__init__()
-        self._resources: List[AbstractResource] = []
+        self._resources: List[_InnerResource] = []
         self._named_resources: Dict[str, AbstractResource] = {}
 
     async def resolve(self, request: Request) -> UrlMappingMatchInfo:
@@ -1008,11 +1045,24 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
     def __getitem__(self, name: str) -> AbstractResource:
         return self._named_resources[name]
 
+    def add_prefix(self, prefix: str) -> None:
+        for resource in self._resources:
+            resource.add_prefix(prefix)
+
+    def _representing_resources(self) -> List[AbstractResource]:
+        result: List[AbstractResource] = []
+        for resource in self._resources:
+            if isinstance(resource, _PlainResourceGroup):
+                result.extend(resource.resources())
+            else:
+                result.append(resource)
+        return result
+
     def resources(self) -> ResourcesView:
-        return ResourcesView(self._resources)
+        return ResourcesView(self._representing_resources())
 
     def routes(self) -> RoutesView:
-        return RoutesView(self._resources)
+        return RoutesView(self._representing_resources())
 
     def named_resources(self) -> Mapping[str, AbstractResource]:
         return MappingProxyType(self._named_resources)
@@ -1021,47 +1071,93 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         assert isinstance(
             resource, AbstractResource
         ), f"Instance of AbstractResource class is required, got {resource!r}"
+
+        self._register_inner_resource(resource)
+
+        if resource.name:
+            self._register_named_resource(resource)
+
+    def _raise_if_frozen(self) -> None:
         if self.frozen:
             raise RuntimeError("Cannot register a resource into frozen router.")
 
-        name = resource.name
-
-        if name is not None:
-            parts = self.NAME_SPLIT_RE.split(name)
-            for part in parts:
-                if keyword.iskeyword(part):
-                    raise ValueError(
-                        f"Incorrect route name {name!r}, "
-                        "python keywords cannot be used "
-                        "for route name"
-                    )
-                if not part.isidentifier():
-                    raise ValueError(
-                        "Incorrect route name {!r}, "
-                        "the name should be a sequence of "
-                        "python identifiers separated "
-                        "by dash, dot or column".format(name)
-                    )
-            if name in self._named_resources:
-                raise ValueError(
-                    "Duplicate {!r}, "
-                    "already handled by {!r}".format(name, self._named_resources[name])
-                )
-            self._named_resources[name] = resource
+    def _register_inner_resource(self, resource: _InnerResource) -> None:
+        self._raise_if_frozen()
         self._resources.append(resource)
 
+    def _register_named_resource(self, resource: AbstractResource) -> None:
+        self._raise_if_frozen()
+
+        name = resource.name
+
+        if not name:
+            raise ValueError("Cannot register a named resource with empty name.")
+
+        parts = self.NAME_SPLIT_RE.split(name)
+        for part in parts:
+            if keyword.iskeyword(part):
+                raise ValueError(
+                    f"Incorrect route name {name!r}, "
+                    "python keywords cannot be used "
+                    "for route name"
+                )
+            if not part.isidentifier():
+                raise ValueError(
+                    "Incorrect route name {!r}, "
+                    "the name should be a sequence of "
+                    "python identifiers separated "
+                    "by dash, dot or column".format(name)
+                )
+        if name in self._named_resources:
+            raise ValueError(
+                "Duplicate {!r}, "
+                "already handled by {!r}".format(name, self._named_resources[name])
+            )
+        self._named_resources[name] = resource
+
     def add_resource(self, path: str, *, name: Optional[str] = None) -> Resource:
+        resource: Optional[_InnerResource]
         if path and not path.startswith("/"):
             raise ValueError("path should be started with / or be empty")
-        # Reuse last added resource if path and name are the same
-        if self._resources:
-            resource = self._resources[-1]
-            if resource.name == name and resource.raw_match(path):
+
+        # Reuse named resource
+        if name:
+            resource = self._named_resources.get(name)
+            if resource is None:
+                pass
+            elif resource.raw_match(path):
                 return cast(Resource, resource)
+            else:
+                raise ValueError(f"Duplicate {name!r}, already handled by {resource!r}")
+
+        # Plain resource
         if not ("{" in path or "}" in path or ROUTE_RE.search(path)):
-            resource = PlainResource(_requote_path(path), name=name)
-            self.register_resource(resource)
+            grp = None
+            if self._resources:
+                resource = self._resources[-1]
+                if isinstance(resource, _PlainResourceGroup):
+                    grp = resource
+                elif not name and resource.raw_match(path):
+                    return cast(Resource, resource)
+                elif isinstance(resource, PlainResource):
+                    grp = _PlainResourceGroup(resource)
+                    self._resources[-1] = grp
+            if grp is not None:
+                resource = grp.add_resource(_requote_path(path), name=name)
+                if name:
+                    self._register_named_resource(resource)
+            else:
+                resource = PlainResource(_requote_path(path), name=name)
+                self.register_resource(resource)
             return resource
+
+        # Reuse last added resource if path are the same
+        elif not name and self._resources:
+            resource = self._resources[-1]
+            assert isinstance(resource, AbstractResource)
+            if resource.raw_match(path):
+                return cast(Resource, resource)
+
         resource = DynamicResource(path, name=name)
         self.register_resource(resource)
         return resource
