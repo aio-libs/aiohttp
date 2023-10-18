@@ -440,7 +440,8 @@ class ClientSession:
 
         for trace in traces:
             await trace.send_request_start(
-                method, url.update_query(params or {}), headers)
+                method, url.update_query(params or {}), headers
+            )
 
         timer = tm.timer()
         try:
