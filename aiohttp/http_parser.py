@@ -65,7 +65,9 @@ ASCIISET: Final[Set[str]] = set(string.printable)
 #     token = 1*tchar
 METHRE: Final[Pattern[str]] = re.compile(r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+")
 VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d).(\d)")
-HDRRE: Final[Pattern[bytes]] = re.compile(rb"[\x00-\x1F\x7F()<>@,;:\[\]={} \t\"\\]")
+HDRRE: Final[Pattern[bytes]] = re.compile(
+    rb"[\x00-\x1F\x7F-\xFF()<>@,;:\[\]={} \t\"\\]"
+)
 HEXDIGIT = re.compile(rb"[0-9a-fA-F]+")
 
 
@@ -547,7 +549,7 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         # request line
         line = lines[0].decode("utf-8", "surrogateescape")
         try:
-            method, path, version = line.split(maxsplit=2)
+            method, path, version = line.split(" ", maxsplit=2)
         except ValueError:
             raise BadStatusLine(line) from None
 
