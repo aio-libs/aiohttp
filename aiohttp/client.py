@@ -62,7 +62,6 @@ from .client_exceptions import (
     WSServerHandshakeError,
 )
 from .client_reqrep import (
-    SSL_ALLOWED_TYPES,
     ClientRequest,
     ClientResponse,
     Fingerprint,
@@ -83,6 +82,7 @@ from .helpers import (
     get_env_proxy_for_url,
     sentinel,
     strip_auth_from_url,
+    verify_ssl_type,
 )
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, WSMessage, ws_ext_gen, ws_ext_parse
@@ -368,11 +368,7 @@ class ClientSession:
         if self.closed:
             raise RuntimeError("Session is closed")
 
-        if not isinstance(ssl, SSL_ALLOWED_TYPES):
-            raise TypeError(
-                "ssl should be SSLContext, bool, Fingerprint, "
-                "or None, got {!r} instead.".format(ssl)
-            )
+        verify_ssl_type(ssl)
 
         if data is not None and json is not None:
             raise ValueError(
@@ -784,15 +780,11 @@ class ClientSession:
             extstr = ws_ext_gen(compress=compress)
             real_headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = extstr
 
-        # We need this code to keep backward compatibility. If ssl is True, we transform it to None
+        # For the customers that mistakenly pass in True, convert it to None to use default ssl context
         if ssl is True:
             ssl = None
 
-        if not isinstance(ssl, SSL_ALLOWED_TYPES) and ssl is not False:
-            raise TypeError(
-                "ssl should be SSLContext, Fingerprint, "
-                "or None, got {!r} instead.".format(ssl)
-            )
+        verify_ssl_type(ssl)
 
         # send request
         resp = await self.request(

@@ -13,6 +13,7 @@ import netrc
 import os
 import platform
 import re
+import ssl
 import sys
 import time
 import warnings
@@ -35,12 +36,14 @@ from typing import (
     Iterable,
     Iterator,
     List,
+    Literal,
     Mapping,
     Optional,
     Pattern,
     Protocol,
     Tuple,
     Type,
+    TYPE_CHECKING,
     TypeVar,
     Union,
     final,
@@ -54,6 +57,7 @@ from multidict import CIMultiDict, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs
+from .client_reqrep import SSL_ALLOWED_TYPES, Fingerprint
 from .log import client_logger
 from .typedefs import PathLike  # noqa
 
@@ -61,6 +65,11 @@ if sys.version_info >= (3, 11):
     import asyncio as async_timeout
 else:
     import async_timeout
+
+if TYPE_CHECKING:
+    from ssl import SSLContext
+else:
+    SSLContext = None
 
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
@@ -1063,3 +1072,10 @@ def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
             with suppress(ValueError):
                 return datetime.datetime(*timetuple[:6], tzinfo=datetime.timezone.utc)
     return None
+
+def verify_ssl_type(ssl_obj: Optional[Union[SSLContext, Literal[False], Fingerprint]]) -> None:
+    if not isinstance(ssl, SSL_ALLOWED_TYPES) and ssl is not False:
+            raise TypeError(
+                "ssl should be SSLContext, Fingerprint, "
+                "or None, got {!r} instead.".format(ssl)
+            )
