@@ -27,6 +27,7 @@ from math import ceil
 from pathlib import Path
 from types import TracebackType
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     ContextManager,
@@ -43,7 +44,6 @@ from typing import (
     Protocol,
     Tuple,
     Type,
-    TYPE_CHECKING,
     TypeVar,
     Union,
     final,
@@ -1073,9 +1073,12 @@ def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
                 return datetime.datetime(*timetuple[:6], tzinfo=datetime.timezone.utc)
     return None
 
-def verify_ssl_type(ssl_obj: Optional[Union[SSLContext, Literal[False], Fingerprint]]) -> None:
+
+def verify_ssl_type(
+    ssl_obj: Optional[Union[SSLContext, Literal[False], Fingerprint]]
+) -> None:
     if not isinstance(ssl, SSL_ALLOWED_TYPES) and ssl is not False:
-            raise TypeError(
-                "ssl should be SSLContext, Fingerprint, "
-                "or None, got {!r} instead.".format(ssl)
-            )
+        raise TypeError(
+            "ssl should be SSLContext, Fingerprint, "
+            "or None, got {!r} instead.".format(ssl)
+        )

@@ -61,12 +61,7 @@ from .client_exceptions import (
     TooManyRedirects,
     WSServerHandshakeError,
 )
-from .client_reqrep import (
-    ClientRequest,
-    ClientResponse,
-    Fingerprint,
-    RequestInfo,
-)
+from .client_reqrep import ClientRequest, ClientResponse, Fingerprint, RequestInfo
 from .client_ws import (
     DEFAULT_WS_CLIENT_TIMEOUT,
     ClientWebSocketResponse,
