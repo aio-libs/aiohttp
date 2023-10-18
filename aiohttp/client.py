@@ -439,7 +439,8 @@ class ClientSession:
         ]
 
         for trace in traces:
-            await trace.send_request_start(method, url.update_query(params), headers)
+            await trace.send_request_start(
+                method, url.update_query(params or {}), headers)
 
         timer = tm.timer()
         try:
@@ -560,7 +561,7 @@ class ClientSession:
                     if resp.status in (301, 302, 303, 307, 308) and allow_redirects:
                         for trace in traces:
                             await trace.send_request_redirect(
-                                method, url.update_query(params), headers, resp
+                                method, url.update_query(params or {}), headers, resp
                             )
 
                         redirects += 1
@@ -649,7 +650,7 @@ class ClientSession:
 
             for trace in traces:
                 await trace.send_request_end(
-                    method, url.update_query(params), headers, resp
+                    method, url.update_query(params or {}), headers, resp
                 )
             return resp
 
@@ -662,7 +663,7 @@ class ClientSession:
 
             for trace in traces:
                 await trace.send_request_exception(
-                    method, url.update_query(params), headers, e
+                    method, url.update_query(params or {}), headers, e
                 )
             raise
 
