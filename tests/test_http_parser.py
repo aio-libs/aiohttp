@@ -177,6 +177,7 @@ def test_cve_2023_37276(parser: Any) -> None:
         "Baz: abc\x00def",
         "Foo : bar",  # https://www.rfc-editor.org/rfc/rfc9112.html#section-5.1-2
         "Foo\t: bar",
+        "\xffoo: bar",
     ),
 )
 def test_bad_headers(parser: Any, hdr: str) -> None:
@@ -676,6 +677,12 @@ def test_http_request_bad_status_line(parser: Any) -> None:
         parser.feed_data(text)
     # Check for accidentally escaped message.
     assert r"\n" not in exc_info.value.message
+
+
+def test_http_request_bad_status_line_whitespace(parser: Any) -> None:
+    text = b"GET\n/path\fHTTP/1.1\r\n\r\n"
+    with pytest.raises(http_exceptions.BadStatusLine):
+        parser.feed_data(text)
 
 
 def test_http_request_upgrade(parser: Any) -> None:
