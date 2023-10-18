@@ -13,7 +13,6 @@ import netrc
 import os
 import platform
 import re
-import ssl
 import sys
 import time
 import warnings
