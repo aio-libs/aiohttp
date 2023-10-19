@@ -1078,6 +1078,6 @@ def verify_ssl_type(
 ) -> None:
     if not isinstance(ssl, SSL_ALLOWED_TYPES) and ssl is not False:
         raise TypeError(
-            "ssl should be SSLContext, Fingerprint, "
+            "ssl should be SSLContext, Fingerprint, False "
             "or None, got {!r} instead.".format(ssl)
         )
