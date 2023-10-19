@@ -2247,7 +2247,9 @@ Hierarchy of exceptions
   * :exc:`ClientResponseError`
 
     * :exc:`ContentTypeError`
+
     * :exc:`WSServerHandshakeError`
+
     * :exc:`~aiohttp.ClientHttpProxyError`
 
   * :exc:`ClientConnectionError`
@@ -2256,17 +2258,18 @@ Hierarchy of exceptions
 
       * :exc:`ClientConnectorError`
 
-         * :exc:`ClientSSLError`
+        * :exc:`ClientSSLError`
 
-           * :exc:`ClientConnectorCertificateError`
+          * :exc:`ClientConnectorCertificateError`
 
-           * :exc:`ClientConnectorSSLError`
+          * :exc:`ClientConnectorSSLError`
 
-         * :exc:`ClientProxyConnectionError`
+        * :exc:`ClientProxyConnectionError`
 
     * :exc:`ServerConnectionError`
 
       * :exc:`ServerDisconnectedError`
+
       * :exc:`ServerTimeoutError`
 
       * :exc:`ServerFingerprintMismatch`
