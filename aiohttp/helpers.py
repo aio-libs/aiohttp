@@ -1076,8 +1076,8 @@ def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
 def verify_ssl_type(
     ssl_obj: Optional[Union[SSLContext, Literal[False], Fingerprint]]
 ) -> None:
-    if not isinstance(ssl, SSL_ALLOWED_TYPES) and ssl is not False:
+    if not isinstance(ssl_obj, SSL_ALLOWED_TYPES) and ssl_obj is not False:
         raise TypeError(
             "ssl should be SSLContext, Fingerprint, "
-            "or None, got {!r} instead.".format(ssl)
+            "or None, got {!r} instead.".format(ssl_obj)
         )
