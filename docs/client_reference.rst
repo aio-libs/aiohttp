@@ -2244,19 +2244,13 @@ Hierarchy of exceptions
 
 * :exc:`ClientError`
 
-  * :exc:`ClientResponseError`
-
-    * :exc:`ContentTypeError`
-
-    * :exc:`WSServerHandshakeError`
-
-    * :exc:`~aiohttp.ClientHttpProxyError`
-
   * :exc:`ClientConnectionError`
 
     * :exc:`ClientOSError`
 
       * :exc:`ClientConnectorError`
+
+        * :exc:`ClientProxyConnectionError`
 
         * :exc:`ClientSSLError`
 
@@ -2264,16 +2258,22 @@ Hierarchy of exceptions
 
           * :exc:`ClientConnectorSSLError`
 
-        * :exc:`ClientProxyConnectionError`
-
     * :exc:`ServerConnectionError`
 
       * :exc:`ServerDisconnectedError`
 
-      * :exc:`ServerTimeoutError`
-
       * :exc:`ServerFingerprintMismatch`
 
+      * :exc:`ServerTimeoutError`
+
   * :exc:`ClientPayloadError`
+
+  * :exc:`ClientResponseError`
+
+    * :exc:`~aiohttp.ClientHttpProxyError`
+
+    * :exc:`ContentTypeError`
+
+    * :exc:`WSServerHandshakeError`
 
   * :exc:`InvalidURL`
