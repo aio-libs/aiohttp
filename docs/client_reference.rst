@@ -2274,6 +2274,8 @@ Hierarchy of exceptions
 
     * :exc:`ContentTypeError`
 
+    * :exc:`TooManyRedirects`
+
     * :exc:`WSServerHandshakeError`
 
   * :exc:`InvalidURL`
