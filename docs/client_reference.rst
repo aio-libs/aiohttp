@@ -2258,6 +2258,8 @@ Hierarchy of exceptions
 
           * :exc:`ClientConnectorSSLError`
 
+        * :exc:`UnixClientConnectorError`
+
     * :exc:`ServerConnectionError`
 
       * :exc:`ServerDisconnectedError`
