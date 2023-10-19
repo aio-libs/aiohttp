@@ -2264,10 +2264,10 @@ Hierarchy of exceptions
 
          * :exc:`ClientProxyConnectionError`
 
-      * :exc:`ServerConnectionError`
+    * :exc:`ServerConnectionError`
 
-         * :exc:`ServerDisconnectedError`
-         * :exc:`ServerTimeoutError`
+      * :exc:`ServerDisconnectedError`
+      * :exc:`ServerTimeoutError`
 
       * :exc:`ServerFingerprintMismatch`
 
