@@ -3,7 +3,7 @@ import signal
 import socket
 from abc import ABC, abstractmethod
 from contextlib import suppress
-from typing import Any, List, Optional, Set, Type
+from typing import Any, Awaitable, Callable, List, Optional, Set, Type
 
 from yarl import URL
 
@@ -235,7 +235,7 @@ class SockSite(BaseSite):
 
 class BaseRunner(ABC):
     __slots__ = (
-        "starting_tasks",
+        "pre_shutdown_callback",
         "_handle_signals",
         "_kwargs",
         "_server",
@@ -250,6 +250,7 @@ class BaseRunner(ABC):
         shutdown_timeout: float = 60.0,
         **kwargs: Any,
     ) -> None:
+        self.pre_shutdown_callback: Optional[Callable[[], Awaitable[None]]] = None
         self._handle_signals = handle_signals
         self._kwargs = kwargs
         self._server: Optional[Server] = None
@@ -288,11 +289,6 @@ class BaseRunner(ABC):
                 pass
 
         self._server = await self._make_server()
-        # On shutdown we want to avoid waiting on tasks which run forever.
-        # It's very likely that all tasks which run forever will have been created by
-        # the time we have completed the application startup (in self._make_server()),
-        # so we just record all running tasks here and exclude them later.
-        self.starting_tasks = asyncio.all_tasks()
 
     @abstractmethod
     async def pre_shutdown(self) -> None:
@@ -316,11 +312,8 @@ class BaseRunner(ABC):
         self._server.pre_shutdown()
         await self.pre_shutdown()
 
-        # Wait for pending tasks for a given time limit.
-        with suppress(asyncio.TimeoutError):
-            await asyncio.wait_for(
-                self._wait(asyncio.current_task()), timeout=self._shutdown_timeout
-            )
+        if self.pre_shutdown_callback:
+            await self.pre_shutdown_callback()
 
         await self.server.shutdown(self._shutdown_timeout)
         await self.shutdown()
@@ -356,11 +349,6 @@ class BaseRunner(ABC):
         if site not in self._sites:
             raise RuntimeError(f"Site {site} is not registered in runner {self}")
         self._sites.remove(site)
-
-    async def _wait(self, parent_task: Optional["asyncio.Task[object]"]) -> None:
-        exclude = self.starting_tasks | {asyncio.current_task(), parent_task}
-        while tasks := asyncio.all_tasks() - exclude:
-            await asyncio.wait(tasks)
 
 
 class ServerRunner(BaseRunner):
