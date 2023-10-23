@@ -412,3 +412,35 @@ async def test_no_transfer_encoding_header(make_request: Any, mocker: Any) -> No
     await ws._start(req)
 
     assert "Transfer-Encoding" not in ws.headers
+
+
+@pytest.mark.parametrize(
+    "ws_transport, expected_result",
+    [
+        (
+            mock.MagicMock(
+                transport=mock.MagicMock(
+                    get_extra_info=lambda name, default=None: {"test": "existent"}.get(
+                        name, default
+                    )
+                )
+            ),
+            "existent",
+        ),
+        (None, "default"),
+        (mock.MagicMock(transport=None), "default"),
+    ],
+)
+async def test_get_extra_info(
+    make_request: Any, mocker: Any, ws_transport: Any, expected_result: Any
+) -> None:
+    valid_key = "test"
+    default_value = "default"
+
+    req = make_request("GET", "/")
+    ws = WebSocketResponse()
+
+    await ws.prepare(req)
+    ws._writer = ws_transport
+
+    assert ws.get_extra_info(valid_key, default_value) == expected_result

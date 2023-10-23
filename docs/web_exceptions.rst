@@ -85,7 +85,7 @@ HTTP Exception hierarchy chart::
 All HTTP exceptions have the same constructor signature::
 
     HTTPNotFound(*, headers=None, reason=None,
-                 body=None, text=None, content_type=None)
+                 text=None, content_type=None)
 
 If not directly specified, *headers* will be added to the *default
 response headers*.
@@ -94,8 +94,8 @@ Classes :exc:`HTTPMultipleChoices`, :exc:`HTTPMovedPermanently`,
 :exc:`HTTPFound`, :exc:`HTTPSeeOther`, :exc:`HTTPUseProxy`,
 :exc:`HTTPTemporaryRedirect` have the following constructor signature::
 
-    HTTPFound(location, *, headers=None, reason=None,
-              body=None, text=None, content_type=None)
+    HTTPFound(location, *,headers=None, reason=None,
+              text=None, content_type=None)
 
 where *location* is value for *Location HTTP header*.
 
@@ -104,7 +104,15 @@ unsupported method and list of allowed methods::
 
     HTTPMethodNotAllowed(method, allowed_methods, *,
                          headers=None, reason=None,
-                         body=None, text=None, content_type=None)
+                         text=None, content_type=None)
+
+:exc:`HTTPUnavailableForLegalReasons` should be constructed with a ``link``
+to yourself (as the entity implementing the blockage), and an explanation for
+the block included in ``text``.::
+
+    HTTPUnavailableForLegalReasons(link, *,
+                                   headers=None, reason=None,
+                                   text=None, content_type=None)
 
 Base HTTP Exception
 -------------------
@@ -478,14 +486,15 @@ HTTP exceptions for status code in range 400-499, e.g. ``raise web.HTTPNotFound(
    An exception for *451 Unavailable For Legal Reasons*, a subclass of
    :exc:`HTTPClientError`.
 
-   :param link: A link to a resource with information for blocking reason,
-                :class:`str` or :class:`~yarl.URL`
+   :param link: A link to yourself (as the entity implementing the blockage),
+                :class:`str`, :class:`~yarl.URL` or ``None``.
 
    For other parameters see :exc:`HTTPException` constructor.
+   A reason for the block should be included in ``text``.
 
    .. attribute:: link
 
-      A :class:`~yarl.URL` link to a resource with information for blocking reason,
+      A :class:`~yarl.URL` link to the entity implementing the blockage or ``None``,
       read-only property.
 
 

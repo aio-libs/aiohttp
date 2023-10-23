@@ -189,7 +189,7 @@ def _py_serialize_headers(status_line: str, headers: "CIMultiDict[str]") -> byte
 _serialize_headers = _py_serialize_headers
 
 try:
-    import aiohttp._http_writer as _http_writer  # type: ignore[import]
+    import aiohttp._http_writer as _http_writer  # type: ignore[import-not-found]
 
     _c_serialize_headers = _http_writer._serialize_headers
     if not NO_EXTENSIONS:

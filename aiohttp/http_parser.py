@@ -34,6 +34,7 @@ from .http_exceptions import (
     ContentEncodingError,
     ContentLengthError,
     InvalidHeader,
+    InvalidURLError,
     LineTooLong,
     TransferEncodingError,
 )
@@ -64,7 +65,9 @@ ASCIISET: Final[Set[str]] = set(string.printable)
 #     token = 1*tchar
 METHRE: Final[Pattern[str]] = re.compile(r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+")
 VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d).(\d)")
-HDRRE: Final[Pattern[bytes]] = re.compile(rb"[\x00-\x1F\x7F()<>@,;:\[\]={} \t\"\\]")
+HDRRE: Final[Pattern[bytes]] = re.compile(
+    rb"[\x00-\x1F\x7F-\xFF()<>@,;:\[\]={} \t\"\\]"
+)
 HEXDIGIT = re.compile(rb"[0-9a-fA-F]+")
 
 
@@ -539,7 +542,7 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         # request line
         line = lines[0].decode("utf-8", "surrogateescape")
         try:
-            method, path, version = line.split(maxsplit=2)
+            method, path, version = line.split(" ", maxsplit=2)
         except ValueError:
             raise BadStatusLine(line) from None
 
@@ -549,11 +552,11 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
             )
 
         # method
-        if not METHRE.match(method):
+        if not METHRE.fullmatch(method):
             raise BadStatusLine(method)
 
         # version
-        match = VERSRE.match(version)
+        match = VERSRE.fullmatch(version)
         if match is None:
             raise BadStatusLine(line)
         version_o = HttpVersion(int(match.group(1)), int(match.group(2)))
@@ -578,10 +581,18 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
                 fragment=url_fragment,
                 encoded=True,
             )
+        elif path == "*" and method == "OPTIONS":
+            # asterisk-form,
+            url = URL(path, encoded=True)
         else:
             # absolute-form for proxy maybe,
             # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.2
             url = URL(path, encoded=True)
+            if url.scheme == "":
+                # not absolute-form
+                raise InvalidURLError(
+                    path.encode(errors="surrogateescape").decode("latin1")
+                )
 
         # read headers
         (
@@ -652,7 +663,7 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
             )
 
         # version
-        match = VERSRE.match(version)
+        match = VERSRE.fullmatch(version)
         if match is None:
             raise BadStatusLine(line)
         version_o = HttpVersion(int(match.group(1)), int(match.group(2)))
@@ -966,7 +977,7 @@ RawResponseMessagePy = RawResponseMessage
 
 try:
     if not NO_EXTENSIONS:
-        from ._http_parser import (  # type: ignore[import,no-redef]
+        from ._http_parser import (  # type: ignore[import-not-found,no-redef]
             HttpRequestParser,
             HttpResponseParser,
             RawRequestMessage,
