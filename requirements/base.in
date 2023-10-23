@@ -2,4 +2,4 @@
 -r runtime-deps.in
 
 gunicorn
-uvloop; platform_system != "Windows" and implementation_name == "cpython" and python_version < "3.12"  # MagicStack/uvloop#14  # MagicStack/uvloop#547
+uvloop; platform_system != "Windows" and implementation_name == "cpython"  # MagicStack/uvloop#14
