@@ -235,7 +235,7 @@ class SockSite(BaseSite):
 
 class BaseRunner(ABC):
     __slots__ = (
-        "pre_shutdown_callback",
+        "shutdown_callback",
         "_handle_signals",
         "_kwargs",
         "_server",
@@ -250,7 +250,7 @@ class BaseRunner(ABC):
         shutdown_timeout: float = 60.0,
         **kwargs: Any,
     ) -> None:
-        self.pre_shutdown_callback: Optional[Callable[[], Awaitable[None]]] = None
+        self.shutdown_callback: Optional[Callable[[], Awaitable[None]]] = None
         self._handle_signals = handle_signals
         self._kwargs = kwargs
         self._server: Optional[Server] = None
@@ -291,12 +291,8 @@ class BaseRunner(ABC):
         self._server = await self._make_server()
 
     @abstractmethod
-    async def pre_shutdown(self) -> None:
-        """Call any pre-shutdown hooks to help server close gracefully."""
-
-    @abstractmethod
     async def shutdown(self) -> None:
-        """Call any shutdown hooks to allow cleaning up resources."""
+        """Call any shutdown hooks to help server close gracefully."""
 
     async def cleanup(self) -> None:
         loop = asyncio.get_event_loop()
@@ -310,13 +306,12 @@ class BaseRunner(ABC):
 
         assert self.server
         self._server.pre_shutdown()
-        await self.pre_shutdown()
+        await self.shutdown()
 
-        if self.pre_shutdown_callback:
-            await self.pre_shutdown_callback()
+        if self.shutdown_callback:
+            await self.shutdown_callback()
 
         await self.server.shutdown(self._shutdown_timeout)
-        await self.shutdown()
         await self._cleanup_server()
 
         self._server = None
@@ -361,9 +356,6 @@ class ServerRunner(BaseRunner):
     ) -> None:
         super().__init__(handle_signals=handle_signals, **kwargs)
         self._web_server = web_server
-
-    async def pre_shutdown(self) -> None:
-        pass
 
     async def shutdown(self) -> None:
         pass
@@ -413,9 +405,6 @@ class AppRunner(BaseRunner):
     @property
     def app(self) -> Application:
         return self._app
-
-    async def pre_shutdown(self) -> None:
-        await self._app.pre_shutdown()
 
     async def shutdown(self) -> None:
         await self._app.shutdown()

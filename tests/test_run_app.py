@@ -1189,7 +1189,7 @@ class TestShutdown:
         t = None
         app = web.Application()
         app[WS] = set()
-        app.on_pre_shutdown.append(close_websockets)
+        app.on_shutdown.append(close_websockets)
         app.cleanup_ctx.append(run_test)
         app.router.add_get("/ws", ws_handler)
         app.router.add_get("/stop", self.stop)

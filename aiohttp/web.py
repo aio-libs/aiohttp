@@ -330,7 +330,7 @@ async def _run_app(
     # the time we have completed the application startup (in runner.setup()),
     # so we just record all running tasks here and exclude them later.
     starting_tasks: "WeakSet[asyncio.Task[object]]" = WeakSet(asyncio.all_tasks())
-    runner.pre_shutdown_callback = partial(wait, starting_tasks, shutdown_timeout)
+    runner.shutdown_callback = partial(wait, starting_tasks, shutdown_timeout)
 
     sites: List[BaseSite] = []
 
