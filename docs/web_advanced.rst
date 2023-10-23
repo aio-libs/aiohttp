@@ -928,7 +928,7 @@ Stopping *aiohttp web server* by just closing all connections is not
 always satisfactory.
 
 When aiohttp is run with :func:`run_app`, it will attempt a graceful shutdown
-by following these steps (if using a :ref:`runner<_aiohttp-web-app-runners>`,
+by following these steps (if using a :ref:`runner<aiohttp-web-app-runners>`,
 then calling :meth:`AppRunner.cleanup` will perform these steps, excluding
 steps 4 and 7).
 
@@ -940,10 +940,10 @@ steps 4 and 7).
    or background tasks to complete successfully. The timeout can be adjusted with
    ``shutdown_timeout`` in :func:`run_app`.
 5. Close any remaining connections and cancel their handlers. It will wait on the
-   cancelling handlers for a short time, again adjustable with ``shutdown_timeout``.
+   canceling handlers for a short time, again adjustable with ``shutdown_timeout``.
 6. Call the :attr:`Application.on_cleanup` signal. This should be used to cleanup any
    resources (such as DB connections). This includes completing the
-   :ref:`cleanup contexts<_aiohttp-web-cleanup-ctx>`.
+   :ref:`cleanup contexts<aiohttp-web-cleanup-ctx>`.
 7. Cancel any remaining tasks and wait on them to complete.
 
 Websocket shutdown
