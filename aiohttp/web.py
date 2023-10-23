@@ -298,12 +298,16 @@ async def _run_app(
         starting_tasks: "WeakSet[asyncio.Task[object]]", shutdown_timeout: float
     ) -> None:
         # Wait for pending tasks for a given time limit.
-        starting_tasks.add(asyncio.current_task())
+        t = asyncio.current_task()
+        assert t is not None
+        starting_tasks.add(t)
         with suppress(asyncio.TimeoutError):
             await asyncio.wait_for(_wait(starting_tasks), timeout=shutdown_timeout)
 
     async def _wait(exclude: "WeakSet[asyncio.Task[object]]") -> None:
-        exclude.add(asyncio.current_task())
+        t = asyncio.current_task()
+        assert t is not None
+        exclude.add(t)
         while tasks := asyncio.all_tasks().difference(exclude):
             await asyncio.wait(tasks)
 
