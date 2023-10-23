@@ -233,7 +233,7 @@ uritemplate==4.1.1
     # via gidgethub
 urllib3==2.0.4
     # via requests
-uvloop==0.18.1 ; platform_system != "Windows" and implementation_name == "cpython"
+uvloop==0.19.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via
     #   -r requirements/base.in
     #   -r requirements/lint.in
