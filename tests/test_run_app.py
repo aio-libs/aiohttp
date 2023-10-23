@@ -1168,6 +1168,7 @@ class TestShutdown:
                 await ws.close(code=WSCloseCode.GOING_AWAY)
 
         async def test() -> None:
+            await asyncio.sleep(1)
             async with ClientSession() as sess:
                 async with sess.ws_connect(f"http://localhost:{port}/ws") as ws:
                     async with sess.get(f"http://localhost:{port}/stop"):
