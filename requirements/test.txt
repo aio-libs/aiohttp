@@ -112,7 +112,7 @@ typing-extensions==4.7.1
     #   typer
 urllib3==2.0.4
     # via requests
-uvloop==0.17.0 ; platform_system != "Windows" and implementation_name == "cpython" and python_version < "3.12"
+uvloop==0.19.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
 wait-for-it==2.2.2
     # via -r requirements/test.in
