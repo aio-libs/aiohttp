@@ -295,8 +295,6 @@ class BaseRunner(ABC):
         """Call any shutdown hooks to help server close gracefully."""
 
     async def cleanup(self) -> None:
-        loop = asyncio.get_event_loop()
-
         # The loop over sites is intentional, an exception on gather()
         # leaves self._sites in unpredictable state.
         # The loop guarantees that a site is either deleted on success or
@@ -304,18 +302,19 @@ class BaseRunner(ABC):
         for site in list(self._sites):
             await site.stop()
 
-        assert self.server
-        self._server.pre_shutdown()
-        await self.shutdown()
+        if self._server:  # If setup succeeded
+            self._server.pre_shutdown()
+            await self.shutdown()
 
-        if self.shutdown_callback:
-            await self.shutdown_callback()
+            if self.shutdown_callback:
+                await self.shutdown_callback()
 
-        await self.server.shutdown(self._shutdown_timeout)
+            await self._server.shutdown(self._shutdown_timeout)
         await self._cleanup_server()
 
         self._server = None
         if self._handle_signals:
+            loop = asyncio.get_running_loop()
             try:
                 loop.remove_signal_handler(signal.SIGINT)
                 loop.remove_signal_handler(signal.SIGTERM)
