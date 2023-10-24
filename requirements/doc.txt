@@ -14,11 +14,9 @@ blockdiag==3.0.0
     # via sphinxcontrib-blockdiag
 certifi==2023.7.22
     # via requests
+charset-normalizer==3.3.1
+    # via requests
 click==8.1.6
-    # via
-    #   click-default-group
-    #   towncrier
-click-default-group==1.2.2
     # via towncrier
 docutils==0.20.1
     # via sphinx
@@ -28,10 +26,6 @@ idna==3.4
     # via requests
 imagesize==1.4.1
     # via sphinx
-importlib-metadata==6.8.0
-    # via sphinx
-importlib-resources==6.0.0
-    # via towncrier
 incremental==22.10.0
     # via towncrier
 jinja2==3.1.2
@@ -43,7 +37,9 @@ markupsafe==2.1.3
 packaging==23.1
     # via sphinx
 pillow==9.5.0
-    # via blockdiag
+    # via
+    #   -c requirements/broken-projects.in
+    #   blockdiag
 pygments==2.15.1
     # via sphinx
 requests==2.31.0
@@ -73,7 +69,7 @@ sphinxcontrib-towncrier==0.3.2a0
     # via -r requirements/doc.in
 tomli==2.0.1
     # via towncrier
-towncrier==23.6.0
+towncrier==23.10.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
@@ -81,10 +77,6 @@ urllib3==2.0.4
     # via requests
 webcolors==1.13
     # via blockdiag
-zipp==3.16.2
-    # via
-    #   importlib-metadata
-    #   importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
 setuptools==68.0.0
