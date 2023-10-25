@@ -150,7 +150,7 @@ pyjwt==2.3.0
     # via gidgethub
 pyparsing==2.4.7
     # via packaging
-pytest==7.4.2
+pytest==7.4.3
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
