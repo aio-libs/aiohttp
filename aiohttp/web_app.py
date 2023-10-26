@@ -31,6 +31,7 @@ from . import hdrs
 from .helpers import AppKey
 from .log import web_logger
 from .typedefs import Middleware
+from .web_exceptions import NotAppKeyWarning
 from .web_middlewares import _fix_request_current_app
 from .web_request import Request
 from .web_response import StreamResponse
@@ -173,6 +174,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
                 "It is recommended to use web.AppKey instances for keys.\n"
                 + "https://docs.aiohttp.org/en/stable/web_advanced.html"
                 + "#application-s-config",
+                category=NotAppKeyWarning,
                 stacklevel=2,
             )
         self._state[key] = value
