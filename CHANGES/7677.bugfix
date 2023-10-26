@@ -1,0 +1,1 @@
+Changed ``AppKey`` warning to ``web.NotAppKeyWarning`` and stop it being displayed by default. -- by :user:`Dreamsorcerer`
