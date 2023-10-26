@@ -3,6 +3,7 @@ import logging
 import os
 import socket
 import sys
+import warnings
 from argparse import ArgumentParser
 from collections.abc import Iterable
 from importlib import import_module
@@ -83,6 +84,7 @@ from .web_exceptions import (
     HTTPUseProxy as HTTPUseProxy,
     HTTPVariantAlsoNegotiates as HTTPVariantAlsoNegotiates,
     HTTPVersionNotSupported as HTTPVersionNotSupported,
+    NotAppKeyWarning as NotAppKeyWarning,
 )
 from .web_fileresponse import FileResponse as FileResponse
 from .web_log import AccessLogger
@@ -159,6 +161,7 @@ __all__ = (
     "Application",
     "CleanupError",
     # web_exceptions
+    "NotAppKeyWarning",
     "HTTPAccepted",
     "HTTPBadGateway",
     "HTTPBadRequest",
@@ -287,6 +290,9 @@ try:
     from ssl import SSLContext
 except ImportError:  # pragma: no cover
     SSLContext = Any  # type: ignore[misc,assignment]
+
+# Only display warning when using -Wdefault, -We, -X dev or similar.
+warnings.filterwarnings("ignore", category=NotAppKeyWarning, append=True)
 
 HostSequence = TypingIterable[str]
 
