@@ -928,7 +928,7 @@ Stopping *aiohttp web server* by just closing all connections is not
 always satisfactory.
 
 When aiohttp is run with :func:`run_app`, it will attempt a graceful shutdown
-by following these steps (if using a :ref:`runner<aiohttp-web-app-runners>`,
+by following these steps (if using a :ref:`runner <aiohttp-web-app-runners>`,
 then calling :meth:`AppRunner.cleanup` will perform these steps, excluding
 steps 4 and 7).
 
