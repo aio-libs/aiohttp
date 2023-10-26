@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/constraints.txt --resolver=backtracking --strip-extras requirements/constraints.in
 #
-aiodns==3.0.0 ; sys_platform == "linux" or sys_platform == "darwin"
+aiodns==3.1.1 ; sys_platform == "linux" or sys_platform == "darwin"
     # via -r requirements/runtime-deps.in
 aiohttp-theme==0.1.6
     # via -r requirements/doc.in
@@ -36,19 +36,16 @@ cfgv==3.3.1
     # via pre-commit
 charset-normalizer==3.2.0
     # via requests
-cherry-picker==2.1.0
+cherry-picker==2.2.0
     # via -r requirements/dev.in
 click==8.1.6
     # via
     #   cherry-picker
-    #   click-default-group
     #   pip-tools
     #   slotscheck
     #   towncrier
     #   typer
     #   wait-for-it
-click-default-group==1.2.2
-    # via towncrier
 coverage==7.3.2
     # via
     #   -r requirements/test.in
@@ -57,7 +54,7 @@ cryptography==41.0.3
     # via
     #   pyjwt
     #   trustme
-cython==3.0.3
+cython==3.0.4
     # via -r requirements/cython.in
 distlib==0.3.7
     # via virtualenv
@@ -67,8 +64,6 @@ exceptiongroup==1.1.2
     # via pytest
 filelock==3.12.2
     # via virtualenv
-freezegun==1.2.2
-    # via -r requirements/test.in
 frozenlist==1.4.0
     # via
     #   -r requirements/runtime-deps.in
@@ -103,7 +98,7 @@ multidict==6.0.4
     #   -r requirements/multidict.in
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.5.1 ; implementation_name == "cpython"
+mypy==1.6.1 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -127,7 +122,7 @@ platformdirs==3.10.0
     # via virtualenv
 pluggy==1.2.0
     # via pytest
-pre-commit==3.4.0
+pre-commit==3.5.0
     # via -r requirements/lint.in
 proxy-py==2.4.3
     # via -r requirements/test.in
@@ -145,7 +140,7 @@ pyjwt==2.8.0
     # via gidgethub
 pyproject-hooks==1.0.0
     # via build
-pytest==7.4.2
+pytest==7.4.3
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -156,7 +151,7 @@ pytest-cov==4.1.0
 pytest-mock==3.11.1
     # via -r requirements/test.in
 python-dateutil==2.8.2
-    # via freezegun
+    # via time-machine
 python-on-whales==0.65.0
     # via -r requirements/test.in
 pyyaml==6.0.1
@@ -202,11 +197,12 @@ sphinxcontrib-spelling==8.0.0 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.in
 sphinxcontrib-towncrier==0.3.2a0
     # via -r requirements/doc.in
-toml==0.10.2
-    # via cherry-picker
+time-machine==2.13.0 ; implementation_name == "cpython"
+    # via -r requirements/test.in
 tomli==2.0.1
     # via
     #   build
+    #   cherry-picker
     #   coverage
     #   mypy
     #   pip-tools
@@ -214,7 +210,7 @@ tomli==2.0.1
     #   pytest
     #   slotscheck
     #   towncrier
-towncrier==23.6.0
+towncrier==23.10.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
@@ -236,7 +232,7 @@ uritemplate==4.1.1
     # via gidgethub
 urllib3==2.0.4
     # via requests
-uvloop==0.17.0 ; platform_system != "Windows" and python_version < "3.12"
+uvloop==0.19.0 ; platform_system != "Windows"
     # via
     #   -r requirements/base.in
     #   -r requirements/lint.in

@@ -379,6 +379,8 @@ and :ref:`aiohttp-web-signals` handlers.
       Reads extra information from the protocol's transport.
       If no value associated with ``name`` is found, ``default`` is returned.
 
+      See :meth:`asyncio.BaseTransport.get_extra_info`
+
       :param str name: The key to look up in the transport extra information.
 
       :param default: Default value to be used when no value for ``name`` is
@@ -1048,6 +1050,18 @@ and :ref:`aiohttp-web-signals` handlers::
 
       May be ``None`` if server and client protocols are
       not overlapping.
+
+   .. method:: get_extra_info(name, default=None)
+
+      Reads optional extra information from the writer's transport.
+      If no value associated with ``name`` is found, ``default`` is returned.
+
+      See :meth:`asyncio.BaseTransport.get_extra_info`
+
+      :param str name: The key to look up in the transport extra information.
+
+      :param default: Default value to be used when no value for ``name`` is
+                      found (default is ``None``).
 
    .. method:: exception()
 
