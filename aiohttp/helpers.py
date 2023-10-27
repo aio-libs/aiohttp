@@ -1033,7 +1033,7 @@ def populate_with_cookies(
 
 
 # https://tools.ietf.org/html/rfc7232#section-2.3
-_ETAGC = r"[!#-}\x80-\xff]+"
+_ETAGC = r"[!\x23-\x7E\x80-\xff]+"
 _ETAGC_RE = re.compile(_ETAGC)
 _QUOTED_ETAG = rf'(W/)?"({_ETAGC})"'
 QUOTED_ETAG_RE = re.compile(_QUOTED_ETAG)
