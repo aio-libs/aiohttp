@@ -1062,7 +1062,7 @@ def test_parse_no_length_payload(parser: Any) -> None:
 
 
 def test_parse_content_length_payload_multiple(response: Any) -> None:
-    text = b"HTTP/1.1 200 OK\r\n" b"content-length: 5\r\n\r\n" b"first"
+    text = b"HTTP/1.1 200 OK\r\ncontent-length: 5\r\n\r\nfirst"
     msg, payload = response.feed_data(text)[0][0]
     assert msg.version == HttpVersion(major=1, minor=1)
     assert msg.code == 200
@@ -1080,7 +1080,7 @@ def test_parse_content_length_payload_multiple(response: Any) -> None:
     assert payload.is_eof()
     assert b"first" == b"".join(d for d in payload._buffer)
 
-    text = b"HTTP/1.1 200 OK\r\n" b"content-length: 6\r\n\r\n" b"second"
+    text = b"HTTP/1.1 200 OK\r\ncontent-length: 6\r\n\r\nsecond"
     msg, payload = response.feed_data(text)[0][0]
     assert msg.version == HttpVersion(major=1, minor=1)
     assert msg.code == 200
@@ -1100,7 +1100,7 @@ def test_parse_content_length_payload_multiple(response: Any) -> None:
 
 
 def test_parse_content_length_than_chunked_payload(response: Any) -> None:
-    text = b"HTTP/1.1 200 OK\r\n" b"content-length: 5\r\n\r\n" b"first"
+    text = b"HTTP/1.1 200 OK\r\ncontent-length: 5\r\n\r\nfirst"
     msg, payload = response.feed_data(text)[0][0]
     assert msg.version == HttpVersion(major=1, minor=1)
     assert msg.code == 200
