@@ -364,20 +364,21 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         if self._compression:
             await self._start_compression(request)
 
-        if self.status in (204, 304) or 100 <= self.status < 200:
-            #
-            # Remove transfer-encoding/content-length since there is no
-            # body and this can confuse some clients (e.g. older aiohttp)
-            #
-            # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3
-            #
-            # Any response to a HEAD request and any response with
-            # a 1xx (Informational), 204 (No Content), or 304
-            # (Not Modified) status code is always terminated by
-            # the first empty line after the header fields,
-            # regardless of the header fields present in the message,
-            # and thus cannot contain a message body or trailer section.
-            #
+        # 204, 304, 1xx should not have a body per
+        # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3
+        #
+        # Any response to a HEAD request and any response with
+        # a 1xx (Informational), 204 (No Content), or 304
+        # (Not Modified) status code is always terminated by
+        # the first empty line after the header fields,
+        # regardless of the header fields present in the message,
+        # and thus cannot contain a message body or trailer section.
+        #
+        status_code_indicates_empty_body = (
+            self.status in (204, 304) or 100 <= self.status < 200
+        )
+
+        if status_code_indicates_empty_body:
             if hdrs.TRANSFER_ENCODING in headers:
                 del headers[hdrs.TRANSFER_ENCODING]
             if hdrs.CONTENT_LENGTH in headers:
@@ -404,7 +405,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
                     keep_alive = False
             # HTTP 1.1: https://tools.ietf.org/html/rfc7230#section-3.3.2
             # HTTP 1.0: https://tools.ietf.org/html/rfc1945#section-10.4
-            elif version >= HttpVersion11 and self.status in (100, 101, 102, 103, 204):
+            elif version >= HttpVersion11 and status_code_indicates_empty_body:
                 del headers[hdrs.CONTENT_LENGTH]
 
         if self.status not in (204, 304):
