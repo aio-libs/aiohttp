@@ -348,10 +348,9 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         code_indicates_empty_body = (
                             code in (204, 304) or 100 <= code < 200
                         )
-                        if (
-                            not code_indicates_empty_body
-                            and ((length is not None and length > 0) or msg.chunked)
-                            and not msg.upgrade
+                        if not code_indicates_empty_body and (
+                            (length is not None and length > 0)
+                            or (msg.chunked and not msg.upgrade)
                         ):
                             payload = StreamReader(
                                 self.protocol,
