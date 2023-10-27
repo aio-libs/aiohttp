@@ -405,8 +405,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             # HTTP 1.1: https://tools.ietf.org/html/rfc7230#section-3.3.2
             # HTTP 1.0: https://tools.ietf.org/html/rfc1945#section-10.4
             elif version >= HttpVersion11 and request_indicates_empty_body:
-                if hdrs.CONTENT_LENGTH in headers:
-                    del headers[hdrs.CONTENT_LENGTH]
+                del headers[hdrs.CONTENT_LENGTH]
                 if hdrs.TRANSFER_ENCODING in headers:
                     del headers[hdrs.TRANSFER_ENCODING]
 
