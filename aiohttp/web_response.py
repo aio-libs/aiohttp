@@ -384,6 +384,8 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
                 writer.enable_chunking()
                 headers[hdrs.TRANSFER_ENCODING] = "chunked"
             elif hdrs.TRANSFER_ENCODING in headers:
+                # remove transfer codings when they are not needed
+                # per https://datatracker.ietf.org/doc/html/rfc9112#section-6.1
                 del headers[hdrs.TRANSFER_ENCODING]
             if hdrs.CONTENT_LENGTH in headers:
                 del headers[hdrs.CONTENT_LENGTH]
@@ -402,6 +404,8 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             # HTTP 1.0: https://tools.ietf.org/html/rfc1945#section-10.4
             elif version >= HttpVersion11 and request_indicates_empty_body:
                 del headers[hdrs.CONTENT_LENGTH]
+                # remove transfer codings when they are not needed
+                # per https://datatracker.ietf.org/doc/html/rfc9112#section-6.1
                 if hdrs.TRANSFER_ENCODING in headers:
                     del headers[hdrs.TRANSFER_ENCODING]
 
