@@ -1808,6 +1808,52 @@ async def test_bad_payload_chunked_encoding(aiohttp_client: Any) -> None:
     resp.close()
 
 
+async def test_no_payload_304_with_chunked_encoding(aiohttp_client: Any) -> None:
+    async def handler(request):
+        resp = web.StreamResponse(status=304)
+        resp.enable_chunked_encoding()
+        resp._length_check = False
+        resp.headers["Transfer-Encoding"] = "chunked"
+        writer = await resp.prepare(request)
+        await writer.write_eof()
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/")
+    assert resp.status == 304
+    assert hdrs.CONTENT_LENGTH not in resp.headers
+    assert hdrs.TRANSFER_ENCODING not in resp.headers
+    await resp.read()
+
+    resp.close()
+
+
+async def test_no_payload_200_with_chunked_encoding(aiohttp_client: Any) -> None:
+    async def handler(request):
+        resp = web.StreamResponse(status=200)
+        resp.enable_chunked_encoding()
+        resp._length_check = False
+        resp.headers["Transfer-Encoding"] = "chunked"
+        writer = await resp.prepare(request)
+        await writer.write_eof()
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/")
+    assert resp.status == 200
+    assert hdrs.CONTENT_LENGTH not in resp.headers
+    assert hdrs.TRANSFER_ENCODING in resp.headers
+    await resp.read()
+
+    resp.close()
+
+
 async def test_bad_payload_content_length(aiohttp_client: Any) -> None:
     async def handler(request):
         resp = web.Response(text="text")

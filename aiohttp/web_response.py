@@ -389,6 +389,8 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             if not request_indicates_empty_body:
                 writer.enable_chunking()
                 headers[hdrs.TRANSFER_ENCODING] = "chunked"
+            elif hdrs.TRANSFER_ENCODING in headers:
+                del headers[hdrs.TRANSFER_ENCODING]
             if hdrs.CONTENT_LENGTH in headers:
                 del headers[hdrs.CONTENT_LENGTH]
         elif self._length_check:
