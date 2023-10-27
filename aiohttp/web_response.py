@@ -364,16 +364,10 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         if self._compression:
             await self._start_compression(request)
 
-        # 204, 304, 1xx should not have a body per
+        # The following should not have a body per
         # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3
-        #
-        # Any response to a HEAD request and any response with
-        # a 1xx (Informational), 204 (No Content), or 304
-        # (Not Modified) status code is always terminated by
-        # the first empty line after the header fields,
-        # regardless of the header fields present in the message,
-        # and thus cannot contain a message body or trailer section.
-        #
+        # status code: 204, 304, 1xx
+        # method: HEAD
         request_indicates_empty_body = (
             request.method == "HEAD"
             or self.status in (204, 304)
