@@ -374,8 +374,10 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         # regardless of the header fields present in the message,
         # and thus cannot contain a message body or trailer section.
         #
-        status_code_indicates_empty_body = (
-            self.status in (204, 304) or 100 <= self.status < 200
+        request_indicates_empty_body = (
+            request.method == "HEAD"
+            or self.status in (204, 304)
+            or 100 <= self.status < 200
         )
 
         if self._chunked:
@@ -384,7 +386,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
                     "Using chunked encoding is forbidden "
                     "for HTTP/{0.major}.{0.minor}".format(request.version)
                 )
-            if not status_code_indicates_empty_body:
+            if not request_indicates_empty_body:
                 writer.enable_chunking()
                 headers[hdrs.TRANSFER_ENCODING] = "chunked"
             if hdrs.CONTENT_LENGTH in headers:
@@ -393,7 +395,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             writer.length = self.content_length
             if writer.length is None:
                 if version >= HttpVersion11:
-                    if not status_code_indicates_empty_body:
+                    if not request_indicates_empty_body:
                         writer.enable_chunking()
                         headers[hdrs.TRANSFER_ENCODING] = "chunked"
                     if hdrs.CONTENT_LENGTH in headers:
@@ -402,7 +404,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
                     keep_alive = False
             # HTTP 1.1: https://tools.ietf.org/html/rfc7230#section-3.3.2
             # HTTP 1.0: https://tools.ietf.org/html/rfc1945#section-10.4
-            elif version >= HttpVersion11 and status_code_indicates_empty_body:
+            elif version >= HttpVersion11 and request_indicates_empty_body:
                 if hdrs.CONTENT_LENGTH in headers:
                     del headers[hdrs.CONTENT_LENGTH]
                 if hdrs.TRANSFER_ENCODING in headers:
@@ -412,7 +414,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             # remove the header since it is invalid
             del headers[hdrs.TRANSFER_ENCODING]
 
-        if not status_code_indicates_empty_body:
+        if not request_indicates_empty_body:
             headers.setdefault(hdrs.CONTENT_TYPE, "application/octet-stream")
         headers.setdefault(hdrs.DATE, rfc822_formatted_time())
         headers.setdefault(hdrs.SERVER, SERVER_SOFTWARE)
