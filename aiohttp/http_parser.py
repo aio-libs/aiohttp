@@ -351,7 +351,8 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         if (
                             not code_indicates_empty_body
                             and ((length is not None and length > 0) or msg.chunked)
-                        ) and not msg.upgrade:
+                            and not msg.upgrade
+                        ):
                             payload = StreamReader(
                                 self.protocol,
                                 timer=self.timer,
