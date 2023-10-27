@@ -1809,6 +1809,8 @@ async def test_bad_payload_chunked_encoding(aiohttp_client: Any) -> None:
 
 
 async def test_no_payload_304_with_chunked_encoding(aiohttp_client: Any) -> None:
+    """Test a 304 response with no payload with chunked set should have it removed."""
+
     async def handler(request):
         resp = web.StreamResponse(status=304)
         resp.enable_chunked_encoding()
@@ -1831,7 +1833,34 @@ async def test_no_payload_304_with_chunked_encoding(aiohttp_client: Any) -> None
     resp.close()
 
 
+async def test_head_request_with_chunked_encoding(aiohttp_client: Any) -> None:
+    """Test a head response with chunked set should have it removed."""
+
+    async def handler(request):
+        resp = web.StreamResponse(status=200)
+        resp.enable_chunked_encoding()
+        resp._length_check = False
+        resp.headers["Transfer-Encoding"] = "chunked"
+        writer = await resp.prepare(request)
+        await writer.write_eof()
+        return resp
+
+    app = web.Application()
+    app.router.add_head("/", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.head("/")
+    assert resp.status == 200
+    assert hdrs.CONTENT_LENGTH not in resp.headers
+    assert hdrs.TRANSFER_ENCODING not in resp.headers
+    await resp.read()
+
+    resp.close()
+
+
 async def test_no_payload_200_with_chunked_encoding(aiohttp_client: Any) -> None:
+    """Test chunked is preserved on a 200 response with no payload."""
+
     async def handler(request):
         resp = web.StreamResponse(status=200)
         resp.enable_chunked_encoding()
