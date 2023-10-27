@@ -409,10 +409,6 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
                     del headers[hdrs.CONTENT_LENGTH]
                 if hdrs.TRANSFER_ENCODING in headers:
                     del headers[hdrs.TRANSFER_ENCODING]
-        elif hdrs.TRANSFER_ENCODING in headers:
-            # Not chunked, but has transfer encoding
-            # remove the header since it is invalid
-            del headers[hdrs.TRANSFER_ENCODING]
 
         if not request_indicates_empty_body:
             headers.setdefault(hdrs.CONTENT_TYPE, "application/octet-stream")
