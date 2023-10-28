@@ -268,7 +268,7 @@ class FileResponse(StreamResponse):
         # If we are sending 0 bytes calling sendfile() will throw a ValueError
         if (
             count == 0
-            or request.method in (hdrs.METH_CONNECT or hdrs.METH_HEAD)
+            or request.method in (hdrs.METH_CONNECT, hdrs.METH_HEAD)
             or self.status in (204, 304)
             or 100 <= self.status < 200
         ):
