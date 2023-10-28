@@ -383,10 +383,6 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             if not must_be_empty_body:
                 writer.enable_chunking()
                 headers[hdrs.TRANSFER_ENCODING] = "chunked"
-            elif hdrs.TRANSFER_ENCODING in headers:
-                # remove transfer codings when they are not needed
-                # per https://datatracker.ietf.org/doc/html/rfc9112#section-6.1
-                del headers[hdrs.TRANSFER_ENCODING]
             if hdrs.CONTENT_LENGTH in headers:
                 del headers[hdrs.CONTENT_LENGTH]
         elif self._length_check:
@@ -396,22 +392,21 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
                     if not must_be_empty_body:
                         writer.enable_chunking()
                         headers[hdrs.TRANSFER_ENCODING] = "chunked"
-                    if hdrs.CONTENT_LENGTH in headers:
-                        del headers[hdrs.CONTENT_LENGTH]
                 else:
                     keep_alive = False
-            # HTTP 1.1: https://tools.ietf.org/html/rfc7230#section-3.3.2
-            # HTTP 1.0: https://tools.ietf.org/html/rfc1945#section-10.4
-            elif version >= HttpVersion11 and must_be_empty_body:
-                # If the content-length is not set to "0" we will
-                # prematurely close a keep-alive connection that could
-                # have been reused. This matches the behavior of Response
-                # which would also set the content-length to "0" in _start
-                headers[hdrs.CONTENT_LENGTH] = "0"
-                # remove transfer codings when they are not needed
-                # per https://datatracker.ietf.org/doc/html/rfc9112#section-6.1
-                if hdrs.TRANSFER_ENCODING in headers:
-                    del headers[hdrs.TRANSFER_ENCODING]
+
+        # HTTP 1.1: https://tools.ietf.org/html/rfc7230#section-3.3.2
+        # HTTP 1.0: https://tools.ietf.org/html/rfc1945#section-10.4
+        if must_be_empty_body and version >= HttpVersion11:
+            # If the content-length is not set to "0" we will
+            # prematurely close a keep-alive connection that could
+            # have been reused. This matches the behavior of Response
+            # which would also set the content-length to "0" in _start
+            headers[hdrs.CONTENT_LENGTH] = "0"
+            # remove transfer codings when they are not needed
+            # per https://datatracker.ietf.org/doc/html/rfc9112#section-6.1
+            if hdrs.TRANSFER_ENCODING in headers:
+                del headers[hdrs.TRANSFER_ENCODING]
 
         if not must_be_empty_body:
             headers.setdefault(hdrs.CONTENT_TYPE, "application/octet-stream")
