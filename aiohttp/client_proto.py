@@ -248,7 +248,11 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
                     self._payload = payload
 
-                    if self._skip_payload or message.code in (204, 304):
+                    if (
+                        self._skip_payload
+                        or message.code in (204, 304)
+                        or 100 <= message.code < 200
+                    ):
                         self.feed_data((message, EMPTY_PAYLOAD), 0)
                     else:
                         self.feed_data((message, payload), 0)
