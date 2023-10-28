@@ -30,6 +30,7 @@ from .helpers import (
     CookieMixin,
     ETag,
     HeadersMixin,
+    must_be_empty_body,
     parse_http_date,
     populate_with_cookies,
     rfc822_formatted_time,
@@ -335,15 +336,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             return None
         if self._payload_writer is not None:
             return self._payload_writer
-        # The following should not have a body per
-        # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3
-        # status code: 204, 304, 1xx
-        # method: CONNECT, HEAD
-        self._must_be_empty_body = (
-            request.method in (hdrs.METH_HEAD, hdrs.METH_CONNECT)
-            or self.status in (204, 304)
-            or 100 <= self.status < 200
-        )
+        self._must_be_empty_body = must_be_empty_body(request.method, self.status)
         return await self._start(request)
 
     async def _start(self, request: "BaseRequest") -> AbstractStreamWriter:
