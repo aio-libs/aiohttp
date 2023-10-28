@@ -346,6 +346,18 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
 
         return writer
 
+    def _must_be_empty_body(self, request: "BaseRequest") -> bool:
+        """Check if the body must be empty."""
+        # The following should not have a body per
+        # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3
+        # status code: 204, 304, 1xx
+        # method: HEAD
+        return (
+            request.method == hdrs.METH_HEAD
+            or self.status in (204, 304)
+            or 100 <= self.status < 200
+        )
+
     async def _prepare_headers(self) -> None:
         request = self._req
         assert request is not None
@@ -364,16 +376,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         if self._compression:
             await self._start_compression(request)
 
-        # The following should not have a body per
-        # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3
-        # status code: 204, 304, 1xx
-        # method: HEAD
-        must_be_empty_body = (
-            request.method == hdrs.METH_HEAD
-            or self.status in (204, 304)
-            or 100 <= self.status < 200
-        )
-
+        must_be_empty_body = self._must_be_empty_body(request)
         if self._chunked:
             if version != HttpVersion11:
                 raise RuntimeError(
@@ -681,11 +684,7 @@ class Response(StreamResponse):
             await super().write_eof()
 
     async def _start(self, request: "BaseRequest") -> AbstractStreamWriter:
-        must_be_empty_body = (
-            request.method == hdrs.METH_HEAD
-            or self.status in (204, 304)
-            or 100 <= self.status < 200
-        )
+        must_be_empty_body = self._must_be_empty_body(request)
         if (
             not self._chunked or must_be_empty_body
         ) and hdrs.CONTENT_LENGTH not in self._headers:
