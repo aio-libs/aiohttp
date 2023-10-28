@@ -147,12 +147,8 @@ async def test_keepalive_after_empty_body_status_stream_response(
         app, connector=connector, trace_configs=[trace_config]
     )
 
-    import pprint
-
-    pprint.pprint("first")
     resp1 = await client.get("/")
     await resp1.read()
-    pprint.pprint("second")
     resp2 = await client.get("/")
     await resp2.read()
 
