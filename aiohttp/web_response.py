@@ -369,7 +369,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         # status code: 204, 304, 1xx
         # method: HEAD
         request_indicates_empty_body = (
-            request.method == "HEAD"
+            request.method == hdrs.METH_HEAD
             or self.status in (204, 304)
             or 100 <= self.status < 200
         )
@@ -403,7 +403,11 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             # HTTP 1.1: https://tools.ietf.org/html/rfc7230#section-3.3.2
             # HTTP 1.0: https://tools.ietf.org/html/rfc1945#section-10.4
             elif version >= HttpVersion11 and request_indicates_empty_body:
-                del headers[hdrs.CONTENT_LENGTH]
+                # If the content-length is not set to "0" we will
+                # prematurely close a keep-alive connection that could
+                # have been reused. This matches the behavior of Response
+                # which would also set the content-length to "0" in _start
+                headers[hdrs.CONTENT_LENGTH] = "0"
                 # remove transfer codings when they are not needed
                 # per https://datatracker.ietf.org/doc/html/rfc9112#section-6.1
                 if hdrs.TRANSFER_ENCODING in headers:
@@ -682,7 +686,14 @@ class Response(StreamResponse):
             await super().write_eof()
 
     async def _start(self, request: "BaseRequest") -> AbstractStreamWriter:
-        if not self._chunked and hdrs.CONTENT_LENGTH not in self._headers:
+        request_indicates_empty_body = (
+            request.method == hdrs.METH_HEAD
+            or self.status in (204, 304)
+            or 100 <= self.status < 200
+        )
+        if (
+            not self._chunked or request_indicates_empty_body
+        ) and hdrs.CONTENT_LENGTH not in self._headers:
             if self._body_payload:
                 size = cast(Payload, self._body).size
                 if size is not None:

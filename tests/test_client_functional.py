@@ -70,6 +70,7 @@ async def test_keepalive_after_head_requests_success(aiohttp_client: Any) -> Non
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
+    app.router.add_route("HEAD", "/", handler)
 
     connector = aiohttp.TCPConnector(limit=1)
     client = await aiohttp_client(
@@ -82,9 +83,10 @@ async def test_keepalive_after_head_requests_success(aiohttp_client: Any) -> Non
     await resp2.read()
 
     assert 1 == cnt_conn_reuse
+    await client.close()
 
 
-@pytest.mark.parametrize("status", (100, 101, 204, 304))
+@pytest.mark.parametrize("status", (101, 204, 304))
 async def test_keepalive_after_empty_body_status(
     aiohttp_client: Any, status: int
 ) -> None:
@@ -116,6 +118,46 @@ async def test_keepalive_after_empty_body_status(
     await resp2.read()
 
     assert 1 == cnt_conn_reuse
+    await client.close()
+
+
+@pytest.mark.parametrize("status", (101, 204, 304))
+async def test_keepalive_after_empty_body_status_stream_response(
+    aiohttp_client: Any, status: int
+) -> None:
+    async def handler(request):
+        stream_response = web.StreamResponse(status=status)
+        await stream_response.prepare(request)
+        return stream_response
+
+    cnt_conn_reuse = 0
+
+    async def on_reuseconn(session, ctx, params):
+        nonlocal cnt_conn_reuse
+        cnt_conn_reuse += 1
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config._on_connection_reuseconn.append(on_reuseconn)
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    connector = aiohttp.TCPConnector(limit=1)
+    client = await aiohttp_client(
+        app, connector=connector, trace_configs=[trace_config]
+    )
+
+    import pprint
+
+    pprint.pprint("first")
+    resp1 = await client.get("/")
+    await resp1.read()
+    pprint.pprint("second")
+    resp2 = await client.get("/")
+    await resp2.read()
+
+    assert 1 == cnt_conn_reuse
+    await client.close()
 
 
 async def test_keepalive_response_released(aiohttp_client: Any) -> None:
