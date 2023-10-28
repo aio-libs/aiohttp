@@ -117,7 +117,7 @@ async def test_keepalive_after_empty_body_status(
     resp2 = await client.get("/")
     await resp2.read()
 
-    assert 1 == cnt_conn_reuse
+    assert cnt_conn_reuse == 1
     await client.close()
 
 
@@ -152,7 +152,7 @@ async def test_keepalive_after_empty_body_status_stream_response(
     resp2 = await client.get("/")
     await resp2.read()
 
-    assert 1 == cnt_conn_reuse
+    assert cnt_conn_reuse == 1
     await client.close()
 
 
