@@ -672,7 +672,7 @@ class Response(StreamResponse):
         assert self._req is not None
         assert self._payload_writer is not None
         if body is not None:
-            if self._req._method == hdrs.METH_HEAD or self._status in [204, 304]:
+            if self._must_be_empty_body(self._req):
                 await super().write_eof()
             elif self._body_payload:
                 payload = cast(Payload, body)
