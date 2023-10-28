@@ -123,7 +123,7 @@ async def test_zero_bytes_file_mocked_native_sendfile(
         assert "" == txt.rstrip()
         assert "application/octet-stream" == resp.headers["Content-Type"]
         assert resp.headers.get("Content-Encoding") is None
-        assert resp.headers["Content-Length"] == "0"
+        assert resp.headers.get("Content-Length") == "0"
         await resp.release()
 
     await client.close()
@@ -290,7 +290,7 @@ async def test_static_file_if_modified_since(
     resp = await client.get("/", headers={"If-Modified-Since": lastmod})
     body = await resp.read()
     assert 304 == resp.status
-    assert resp.headers["Content-Length"] == "0"
+    assert resp.headers.get("Content-Length") is None
     assert resp.headers.get("Last-Modified") == lastmod
     assert b"" == body
     resp.close()
@@ -338,7 +338,7 @@ async def test_static_file_if_modified_since_future_date(
     resp = await client.get("/", headers={"If-Modified-Since": lastmod})
     body = await resp.read()
     assert 304 == resp.status
-    assert resp.headers["Content-Length"] == "0"
+    assert resp.headers.get("Content-Length") is None
     assert resp.headers.get("Last-Modified")
     assert b"" == body
     resp.close()
@@ -437,7 +437,7 @@ async def test_static_file_if_none_match(
     )
     body = await resp.read()
     assert 304 == resp.status
-    assert resp.headers["Content-Length"] == "0"
+    assert resp.headers.get("Content-Length") is None
     assert resp.headers.get("ETag") == original_etag
     assert b"" == body
     resp.close()
@@ -455,7 +455,7 @@ async def test_static_file_if_none_match_star(
     resp = await client.head("/", headers={"If-None-Match": "*"})
     body = await resp.read()
     assert 304 == resp.status
-    assert resp.headers["Content-Length"] == "0"
+    assert resp.headers.get("Content-Length") is None
     assert resp.headers.get("ETag")
     assert resp.headers.get("Last-Modified")
     assert b"" == body

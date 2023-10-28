@@ -1898,7 +1898,7 @@ async def test_no_payload_304_with_chunked_encoding(aiohttp_client: Any) -> None
 
     resp = await client.get("/")
     assert resp.status == 304
-    assert resp.headers[hdrs.CONTENT_LENGTH] == "0"
+    assert hdrs.CONTENT_LENGTH not in resp.headers
     assert hdrs.TRANSFER_ENCODING not in resp.headers
     await resp.read()
 
@@ -1923,7 +1923,7 @@ async def test_head_request_with_chunked_encoding(aiohttp_client: Any) -> None:
 
     resp = await client.head("/")
     assert resp.status == 200
-    assert resp.headers[hdrs.CONTENT_LENGTH] == "0"
+    assert hdrs.CONTENT_LENGTH not in resp.headers
     assert hdrs.TRANSFER_ENCODING not in resp.headers
     await resp.read()
 
