@@ -351,9 +351,9 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         # The following should not have a body per
         # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3
         # status code: 204, 304, 1xx
-        # method: HEAD
+        # method: CONNECT, HEAD
         return (
-            request.method == hdrs.METH_HEAD
+            request.method in (hdrs.METH_HEAD, hdrs.METH_CONNECT)
             or self.status in (204, 304)
             or 100 <= self.status < 200
         )
