@@ -392,7 +392,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
                     if not self._must_be_empty_body:
                         writer.enable_chunking()
                         headers[hdrs.TRANSFER_ENCODING] = "chunked"
-                else:
+                elif not self._must_be_empty_body:
                     keep_alive = False
 
         # HTTP 1.1: https://tools.ietf.org/html/rfc7230#section-3.3.2
