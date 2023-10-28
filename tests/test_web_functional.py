@@ -2111,7 +2111,7 @@ async def test_auto_decompress(
     "status",
     [101, 204],
 )
-async def test_response_101_204_no_content_length_http11(
+async def test_response_101_204_zero_content_length_http11(
     status: Any, aiohttp_client: Any
 ) -> None:
     async def handler(_):
@@ -2121,7 +2121,7 @@ async def test_response_101_204_no_content_length_http11(
     app.router.add_get("/", handler)
     client = await aiohttp_client(app, version="1.1")
     resp = await client.get("/")
-    assert CONTENT_LENGTH not in resp.headers
+    assert resp.headers[CONTENT_LENGTH] == "0"
     assert TRANSFER_ENCODING not in resp.headers
     await resp.release()
 
