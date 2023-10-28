@@ -368,7 +368,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3
         # status code: 204, 304, 1xx
         # method: HEAD
-        request_indicates_empty_body = (
+        must_be_empty_body = (
             request.method == hdrs.METH_HEAD
             or self.status in (204, 304)
             or 100 <= self.status < 200
@@ -380,7 +380,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
                     "Using chunked encoding is forbidden "
                     "for HTTP/{0.major}.{0.minor}".format(request.version)
                 )
-            if not request_indicates_empty_body:
+            if not must_be_empty_body:
                 writer.enable_chunking()
                 headers[hdrs.TRANSFER_ENCODING] = "chunked"
             elif hdrs.TRANSFER_ENCODING in headers:
@@ -393,7 +393,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             writer.length = self.content_length
             if writer.length is None:
                 if version >= HttpVersion11:
-                    if not request_indicates_empty_body:
+                    if not must_be_empty_body:
                         writer.enable_chunking()
                         headers[hdrs.TRANSFER_ENCODING] = "chunked"
                     if hdrs.CONTENT_LENGTH in headers:
@@ -402,7 +402,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
                     keep_alive = False
             # HTTP 1.1: https://tools.ietf.org/html/rfc7230#section-3.3.2
             # HTTP 1.0: https://tools.ietf.org/html/rfc1945#section-10.4
-            elif version >= HttpVersion11 and request_indicates_empty_body:
+            elif version >= HttpVersion11 and must_be_empty_body:
                 # If the content-length is not set to "0" we will
                 # prematurely close a keep-alive connection that could
                 # have been reused. This matches the behavior of Response
@@ -413,7 +413,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
                 if hdrs.TRANSFER_ENCODING in headers:
                     del headers[hdrs.TRANSFER_ENCODING]
 
-        if not request_indicates_empty_body:
+        if not must_be_empty_body:
             headers.setdefault(hdrs.CONTENT_TYPE, "application/octet-stream")
         headers.setdefault(hdrs.DATE, rfc822_formatted_time())
         headers.setdefault(hdrs.SERVER, SERVER_SOFTWARE)
@@ -686,13 +686,13 @@ class Response(StreamResponse):
             await super().write_eof()
 
     async def _start(self, request: "BaseRequest") -> AbstractStreamWriter:
-        request_indicates_empty_body = (
+        must_be_empty_body = (
             request.method == hdrs.METH_HEAD
             or self.status in (204, 304)
             or 100 <= self.status < 200
         )
         if (
-            not self._chunked or request_indicates_empty_body
+            not self._chunked or must_be_empty_body
         ) and hdrs.CONTENT_LENGTH not in self._headers:
             if self._body_payload:
                 size = cast(Payload, self._body).size
