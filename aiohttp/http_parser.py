@@ -27,7 +27,7 @@ from yarl import URL
 from . import hdrs
 from .base_protocol import BaseProtocol
 from .compression_utils import HAS_BROTLI, BrotliDecompressor, ZLibDecompressor
-from .helpers import DEBUG, NO_EXTENSIONS, BaseTimerContext
+from .helpers import DEBUG, NO_EXTENSIONS, BaseTimerContext, must_be_empty_body
 from .http_exceptions import (
     BadHttpMessage,
     BadStatusLine,
@@ -343,14 +343,8 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
                         assert self.protocol is not None
                         # calculate payload
-                        # 204, 304, 1xx should not have a body per
-                        # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3
-                        must_be_empty_body = (
-                            method in (hdrs.METH_CONNECT, hdrs.METH_HEAD)
-                            or code in (204, 304)
-                            or 100 <= code < 200
-                        )
-                        if not must_be_empty_body and (
+                        empty_body = must_be_empty_body(method, code)
+                        if not empty_body and (
                             (length is not None and length > 0)
                             or msg.chunked
                             and not msg.upgrade
@@ -392,11 +386,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 auto_decompress=self._auto_decompress,
                                 lax=self.lax,
                             )
-                        elif (
-                            not must_be_empty_body
-                            and length is None
-                            and self.read_until_eof
-                        ):
+                        elif not empty_body and length is None and self.read_until_eof:
                             payload = StreamReader(
                                 self.protocol,
                                 timer=self.timer,

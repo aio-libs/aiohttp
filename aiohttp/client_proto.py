@@ -9,7 +9,12 @@ from .client_exceptions import (
     ServerDisconnectedError,
     ServerTimeoutError,
 )
-from .helpers import BaseTimerContext, set_exception, set_result
+from .helpers import (
+    BaseTimerContext,
+    set_exception,
+    set_result,
+    status_code_must_be_empty_body,
+)
 from .http import HttpResponseParser, RawResponseMessage, WebSocketReader
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamReader
 
@@ -248,10 +253,8 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
                     self._payload = payload
 
-                    if (
-                        self._skip_payload
-                        or message.code in (204, 304)
-                        or 100 <= message.code < 200
+                    if self._skip_payload or status_code_must_be_empty_body(
+                        message.code
                     ):
                         self.feed_data((message, EMPTY_PAYLOAD), 0)
                     else:
