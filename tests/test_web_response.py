@@ -16,7 +16,7 @@ from re_assert import Matches
 
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs
 from aiohttp.helpers import ETag
-from aiohttp.http_writer import _serialize_headers
+from aiohttp.http_writer import StreamWriter, _serialize_headers
 from aiohttp.payload import BytesPayload
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
@@ -627,12 +627,7 @@ async def test_rm_content_length_if_compression_http10() -> None:
 @pytest.mark.parametrize("status", (100, 101, 204, 304))
 async def test_rm_transfer_encoding_rfc_9112_6_3_http_11(status: int) -> None:
     """Remove transfer encoding for RFC 9112 sec 6.3 with HTTP/1.1."""
-    writer = mock.Mock()
-
-    async def write_headers(status_line, headers):
-        pass
-
-    writer.write_headers.side_effect = write_headers
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
     req = make_request("GET", "/", version=HttpVersion11, writer=writer)
     resp = Response(status=status, headers={hdrs.TRANSFER_ENCODING: "chunked"})
     await resp.prepare(req)
@@ -644,12 +639,7 @@ async def test_rm_transfer_encoding_rfc_9112_6_3_http_11(status: int) -> None:
 
 async def test_rm_transfer_encoding_head_response() -> None:
     """Remove transfer encoding from a HEAD response HTTP/1.1."""
-    writer = mock.Mock()
-
-    async def write_headers(status_line, headers):
-        pass
-
-    writer.write_headers.side_effect = write_headers
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
     req = make_request("HEAD", "/", version=HttpVersion11, writer=writer)
     resp = Response(status=200, headers={hdrs.TRANSFER_ENCODING: "chunked"})
     await resp.prepare(req)
