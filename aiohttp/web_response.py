@@ -400,7 +400,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
 
         # HTTP 1.1: https://tools.ietf.org/html/rfc7230#section-3.3.2
         # HTTP 1.0: https://tools.ietf.org/html/rfc1945#section-10.4
-        if must_be_empty_body and version >= HttpVersion11:
+        if must_be_empty_body:
             # If the content-length is not set to "0" we will
             # prematurely close a keep-alive connection that could
             # have been reused. This matches the behavior of Response
@@ -408,7 +408,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             headers[hdrs.CONTENT_LENGTH] = "0"
             # remove transfer codings when they are not needed
             # per https://datatracker.ietf.org/doc/html/rfc9112#section-6.1
-            if hdrs.TRANSFER_ENCODING in headers:
+            if version >= HttpVersion11 and hdrs.TRANSFER_ENCODING in headers:
                 del headers[hdrs.TRANSFER_ENCODING]
 
         if not must_be_empty_body:
