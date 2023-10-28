@@ -345,10 +345,8 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         # calculate payload
                         # 204, 304, 1xx should not have a body per
                         # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3
-                        code_indicates_empty_body = (
-                            code in (204, 304) or 100 <= code < 200
-                        )
-                        if not code_indicates_empty_body and (
+                        must_be_empty_body = code in (204, 304) or 100 <= code < 200
+                        if not must_be_empty_body and (
                             (length is not None and length > 0)
                             or msg.chunked
                             and not msg.upgrade
@@ -391,7 +389,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 lax=self.lax,
                             )
                         elif (
-                            not code_indicates_empty_body
+                            not must_be_empty_body
                             and length is None
                             and self.read_until_eof
                         ):
