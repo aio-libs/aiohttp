@@ -345,7 +345,11 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         # calculate payload
                         # 204, 304, 1xx should not have a body per
                         # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3
-                        must_be_empty_body = code in (204, 304) or 100 <= code < 200
+                        must_be_empty_body = (
+                            method in (hdrs.METH_CONNECT, hdrs.METH_HEAD)
+                            or code in (204, 304)
+                            or 100 <= code < 200
+                        )
                         if not must_be_empty_body and (
                             (length is not None and length > 0)
                             or msg.chunked
