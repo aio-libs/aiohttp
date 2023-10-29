@@ -13,7 +13,15 @@ from multidict import CIMultiDictProxy, MultiDict
 from yarl import URL
 
 import aiohttp
-from aiohttp import FormData, HttpVersion10, HttpVersion11, TraceConfig, multipart, web
+from aiohttp import (
+    FormData,
+    HttpVersion,
+    HttpVersion10,
+    HttpVersion11,
+    TraceConfig,
+    multipart,
+    web,
+)
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.typedefs import Handler
@@ -2151,4 +2159,24 @@ async def test_httpfound_cookies_302(aiohttp_client: Any) -> None:
 
     resp = await client.get("/", allow_redirects=False)
     assert "my-cookie" in resp.cookies
+    await resp.release()
+
+
+@pytest.mark.parametrize("status", (101, 204, 304))
+@pytest.mark.parametrize("version", (HttpVersion10, HttpVersion11))
+async def test_no_body_for_1xx_204_304_responses(
+    aiohttp_client: Any, status: int, version: HttpVersion
+) -> None:
+    """Test no body is present for for 1xx, 204, and 304 responses."""
+
+    async def handler(_):
+        return web.Response(status=status, body=b"should not get to client")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app, version=version)
+    resp = await client.get("/")
+    assert CONTENT_TYPE not in resp.headers
+    assert TRANSFER_ENCODING not in resp.headers
+    await resp.read() == b""
     await resp.release()
