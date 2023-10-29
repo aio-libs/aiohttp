@@ -390,12 +390,12 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
 
         # HTTP 1.1: https://tools.ietf.org/html/rfc7230#section-3.3.2
         # HTTP 1.0: https://tools.ietf.org/html/rfc1945#section-10.4
-        # HEAD requests should still include the content-length header
-        # per https://datatracker.ietf.org/doc/html/rfc2616#section-14.13
-        if self._must_be_empty_body and request.method != hdrs.METH_HEAD:
+        if self._must_be_empty_body:
             # We need to remove the content-length for empty body
             # https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.2
-            if hdrs.CONTENT_LENGTH in headers:
+            # HEAD requests should still include the content-length header
+            # per https://datatracker.ietf.org/doc/html/rfc2616#section-14.13
+            if hdrs.CONTENT_LENGTH in headers and request.method != hdrs.METH_HEAD:
                 del headers[hdrs.CONTENT_LENGTH]
             # remove transfer codings when they are not needed
             # per https://datatracker.ietf.org/doc/html/rfc9112#section-6.1
