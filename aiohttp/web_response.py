@@ -395,7 +395,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             # We need to remove the content-length for empty body
             # https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.2
             if hdrs.CONTENT_LENGTH in headers and should_remove_content_length(
-                self.status, request.method
+                request.method, self.status
             ):
                 del headers[hdrs.CONTENT_LENGTH]
             # remove transfer codings when they are not needed
@@ -677,7 +677,7 @@ class Response(StreamResponse):
 
     async def _start(self, request: "BaseRequest") -> AbstractStreamWriter:
         if self._must_be_empty_body and should_remove_content_length(
-            self.status, request.method
+            request.method, self.status
         ):
             # We need to remove the content-length for empty body
             # https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.2

@@ -17,7 +17,12 @@ from re_assert import Matches
 from yarl import URL
 
 from aiohttp import helpers
-from aiohttp.helpers import is_expected_content_type, parse_http_date
+from aiohttp.helpers import (
+    is_expected_content_type,
+    must_be_empty_body,
+    parse_http_date,
+    should_remove_content_length,
+)
 
 IS_PYPY = platform.python_implementation() == "PyPy"
 
@@ -1071,3 +1076,27 @@ def test_read_basicauth_from_empty_netrc():
         LookupError, match="No entry for example.com found in the `.netrc` file."
     ):
         helpers.basicauth_from_netrc(netrc_obj, "example.com")
+
+
+def test_should_remove_content_length_is_subset_of_must_be_empty_body():
+    """Test should_remove_content_length is always a subset of must_be_empty_body."""
+    assert should_remove_content_length("GET", 101) is True
+    assert must_be_empty_body("GET", 101) is True
+
+    assert should_remove_content_length("GET", 102) is True
+    assert must_be_empty_body("GET", 102) is True
+
+    assert should_remove_content_length("GET", 204) is True
+    assert must_be_empty_body("GET", 204) is True
+
+    assert should_remove_content_length("GET", 204) is True
+    assert must_be_empty_body("GET", 204) is True
+
+    assert should_remove_content_length("GET", 200) is False
+    assert must_be_empty_body("GET", 200) is False
+
+    assert should_remove_content_length("HEAD", 200) is False
+    assert must_be_empty_body("HEAD", 200) is True
+
+    assert should_remove_content_length("CONNECT", 200) is True
+    assert must_be_empty_body("CONNECT", 200) is True

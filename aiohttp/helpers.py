@@ -1084,8 +1084,11 @@ def status_code_must_be_empty_body(code: int) -> bool:
     return code in (204, 304) or 100 <= code < 200
 
 
-def should_remove_content_length(code: int, method: str) -> bool:
-    """Check if a Content-Length header should be removed."""
+def should_remove_content_length(method: str, code: int) -> bool:
+    """Check if a Content-Length header should be removed.
+
+    This should always be a subset of must_be_empty_body
+    """
     # forbidden on 1xx/204/CONNECT per:
     # https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.2
     # discouraged on 304 per
