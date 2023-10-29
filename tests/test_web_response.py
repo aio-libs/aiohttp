@@ -637,9 +637,9 @@ async def test_rm_transfer_encoding_rfc_9112_6_3_http_11(status: int) -> None:
     assert hdrs.TRANSFER_ENCODING not in resp.headers
 
 
-@pytest.mark.parametrize("status", (101, 204, 304))
-async def test_rm_content_length_101_204_304_responses(status: int) -> None:
-    """Remove content length for 101, 204, and 304 responses.
+@pytest.mark.parametrize("status", (100, 101, 102, 204, 304))
+async def test_rm_content_length_1xx_204_304_responses(status: int) -> None:
+    """Remove content length for 1xx, 204, and 304 responses.
 
     Content-Length is forbidden for 1xx and 204
     https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.2
