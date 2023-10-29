@@ -529,8 +529,11 @@ class ClientRequest:
         """Support coroutines that yields bytes objects."""
         # 100 response
         if self._continue is not None:
-            await writer.drain()
-            await self._continue
+            try:
+                await writer.drain()
+                await self._continue
+            except asyncio.CancelledError:
+                return
 
         protocol = conn.protocol
         assert protocol is not None
@@ -949,7 +952,7 @@ class ClientResponse(HeadersMixin):
                 self._connection.release()
                 self._connection = None
             else:
-                self._writer.add_done_callback(self._connection.release)
+                self._writer.add_done_callback(lambda f: self._connection.release)
 
         self._cleanup_writer()
         return noop()
