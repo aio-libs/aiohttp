@@ -402,7 +402,6 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
                 del headers[hdrs.TRANSFER_ENCODING]
         else:
             headers.setdefault(hdrs.CONTENT_TYPE, "application/octet-stream")
-
         headers.setdefault(hdrs.DATE, rfc822_formatted_time())
         headers.setdefault(hdrs.SERVER, SERVER_SOFTWARE)
 
