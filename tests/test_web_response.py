@@ -638,7 +638,7 @@ async def test_rm_transfer_encoding_rfc_9112_6_3_http_11(status: int) -> None:
 
 
 async def test_head_response_keeps_content_length_of_original_body() -> None:
-    """Remove HEAD response keeps the content length of the original body HTTP/1.1."""
+    """Verify HEAD response keeps the content length of the original body HTTP/1.1."""
     writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
     req = make_request("HEAD", "/", version=HttpVersion11, writer=writer)
     resp = Response(status=200, body=b"answer")
