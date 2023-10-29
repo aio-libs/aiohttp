@@ -643,6 +643,11 @@ async def test_rm_content_length_204_304_responses(status: int) -> None:
 
     https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.1
     https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.2
+
+    Content-Length is forbidden for 204
+
+    https://datatracker.ietf.org/doc/html/rfc7232#section-4.1
+    and discouraged for 304.
     """
     writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
     req = make_request("GET", "/", version=HttpVersion11, writer=writer)
