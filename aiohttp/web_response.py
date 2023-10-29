@@ -392,8 +392,6 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         # HTTP 1.1: https://tools.ietf.org/html/rfc7230#section-3.3.2
         # HTTP 1.0: https://tools.ietf.org/html/rfc1945#section-10.4
         if self._must_be_empty_body:
-            # We need to remove the content-length for empty body
-            # https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.2
             if hdrs.CONTENT_LENGTH in headers and should_remove_content_length(
                 request.method, self.status
             ):
@@ -679,8 +677,6 @@ class Response(StreamResponse):
         if self._must_be_empty_body and should_remove_content_length(
             request.method, self.status
         ):
-            # We need to remove the content-length for empty body
-            # https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.2
             if hdrs.CONTENT_LENGTH in self._headers:
                 del self._headers[hdrs.CONTENT_LENGTH]
         elif not self._chunked and hdrs.CONTENT_LENGTH not in self._headers:
