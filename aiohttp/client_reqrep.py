@@ -978,9 +978,10 @@ class ClientResponse(HeadersMixin):
 
     def _cleanup_writer(self) -> None:
         if self._writer is not None:
-            self._writer.cancel()
-        if self._writer.done():
-            self._writer = None
+            if self._writer.done():
+                self._writer = None
+            else:
+                self._writer.cancel()
         self._session = None
 
     def _notify_content(self) -> None:
