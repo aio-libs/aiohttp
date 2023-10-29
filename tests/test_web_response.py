@@ -637,15 +637,15 @@ async def test_rm_transfer_encoding_rfc_9112_6_3_http_11(status: int) -> None:
     assert hdrs.TRANSFER_ENCODING not in resp.headers
 
 
-async def test_rm_transfer_encoding_head_response() -> None:
-    """Remove transfer encoding from a HEAD response HTTP/1.1."""
+async def test_head_response_keeps_content_length_of_original_body() -> None:
+    """Remove HEAD response keeps the content length of the original body HTTP/1.1."""
     writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
     req = make_request("HEAD", "/", version=HttpVersion11, writer=writer)
-    resp = Response(status=200, headers={hdrs.TRANSFER_ENCODING: "chunked"})
+    resp = Response(status=200, body=b"answer")
     await resp.prepare(req)
-    assert resp.content_length == 0
+    assert resp.content_length == 6
     assert not resp.chunked
-    assert hdrs.CONTENT_LENGTH not in resp.headers
+    assert resp.headers[hdrs.CONTENT_LENGTH] == "6"
     assert hdrs.TRANSFER_ENCODING not in resp.headers
 
 
