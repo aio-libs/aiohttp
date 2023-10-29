@@ -556,6 +556,7 @@ class ClientRequest:
                 new_exc.__cause__ = exc
                 protocol.set_exception(new_exc)
         except asyncio.CancelledError as exc:
+            await writer.write_eof()
             if not conn.closed:
                 protocol.set_exception(exc)
         except Exception as exc:
@@ -978,7 +979,8 @@ class ClientResponse(HeadersMixin):
     def _cleanup_writer(self) -> None:
         if self._writer is not None:
             self._writer.cancel()
-        self._writer = None
+        if self._writer.done():
+            self._writer = None
         self._session = None
 
     def _notify_content(self) -> None:

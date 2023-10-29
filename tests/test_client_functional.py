@@ -156,6 +156,27 @@ async def test_HTTP_304(aiohttp_client: Any) -> None:
     assert content == b""
 
 
+async def test_stream_request_on_server_eof(aiohttp_client) -> None:
+    async def handler(request):
+        return web.Response(text="OK", status=200)
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+    app.add_routes([web.put("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    async def data_gen():
+        for _ in range(2):
+            yield b"just data"
+            await asyncio.sleep(0.1)
+
+    async with client.put("/", data=data_gen()) as resp:
+        assert 200 == resp.status
+    async with client.get("/") as resp:
+        assert 200 == resp.status
+
+
 async def test_HTTP_304_WITH_BODY(aiohttp_client: Any) -> None:
     async def handler(request):
         body = await request.read()
