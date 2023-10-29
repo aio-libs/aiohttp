@@ -1082,3 +1082,14 @@ def status_code_must_be_empty_body(code: int) -> bool:
     # 204, 304, 1xx should not have a body per
     # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3
     return code in (204, 304) or 100 <= code < 200
+
+
+def should_remove_content_length(code: int, method: str) -> bool:
+    """Check if a Content-Length header should be removed."""
+    # forbidden on 1xx/204/CONNECT per:
+    # https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.2
+    # discouraged on 304 per
+    # https://datatracker.ietf.org/doc/html/rfc7232#section-4.1
+    # HEAD requests should still include the content-length header
+    # per https://datatracker.ietf.org/doc/html/rfc2616#section-14.13
+    return code in (204, 304) or 100 <= code < 200 or method == hdrs.METH_CONNECT

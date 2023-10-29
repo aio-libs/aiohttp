@@ -35,6 +35,7 @@ from .helpers import (
     populate_with_cookies,
     rfc822_formatted_time,
     sentinel,
+    should_remove_content_length,
     validate_etag_value,
 )
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11
@@ -393,9 +394,9 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         if self._must_be_empty_body:
             # We need to remove the content-length for empty body
             # https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.2
-            # HEAD requests should still include the content-length header
-            # per https://datatracker.ietf.org/doc/html/rfc2616#section-14.13
-            if hdrs.CONTENT_LENGTH in headers and request.method != hdrs.METH_HEAD:
+            if hdrs.CONTENT_LENGTH in headers and should_remove_content_length(
+                self.status, request.method
+            ):
                 del headers[hdrs.CONTENT_LENGTH]
             # remove transfer codings when they are not needed
             # per https://datatracker.ietf.org/doc/html/rfc9112#section-6.1
@@ -675,9 +676,9 @@ class Response(StreamResponse):
             await super().write_eof()
 
     async def _start(self, request: "BaseRequest") -> AbstractStreamWriter:
-        # HEAD requests should still include the content-length header
-        # per https://datatracker.ietf.org/doc/html/rfc2616#section-14.13
-        if self._must_be_empty_body and request.method != hdrs.METH_HEAD:
+        if self._must_be_empty_body and should_remove_content_length(
+            self.status, request.method
+        ):
             # We need to remove the content-length for empty body
             # https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.2
             if hdrs.CONTENT_LENGTH in self._headers:
