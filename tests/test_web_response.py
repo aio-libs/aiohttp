@@ -637,6 +637,21 @@ async def test_rm_transfer_encoding_rfc_9112_6_3_http_11(status: int) -> None:
     assert hdrs.TRANSFER_ENCODING not in resp.headers
 
 
+@pytest.mark.parametrize("status", (204, 304))
+async def test_rm_content_length_204_304_responses(status: int) -> None:
+    """Remove content length for 204 and 304 responses.
+
+    See RFC7230 3.3.1, RFC7230 3.3.2
+    """
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
+    req = make_request("GET", "/", version=HttpVersion11, writer=writer)
+    resp = Response(status=status, body="answer")
+    await resp.prepare(req)
+    assert not resp.chunked
+    assert hdrs.CONTENT_LENGTH not in resp.headers
+    assert hdrs.TRANSFER_ENCODING not in resp.headers
+
+
 async def test_head_response_keeps_content_length_of_original_body() -> None:
     """Verify HEAD response keeps the content length of the original body HTTP/1.1."""
     writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
