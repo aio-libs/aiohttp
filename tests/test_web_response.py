@@ -641,7 +641,8 @@ async def test_rm_transfer_encoding_rfc_9112_6_3_http_11(status: int) -> None:
 async def test_rm_content_length_204_304_responses(status: int) -> None:
     """Remove content length for 204 and 304 responses.
 
-    See RFC7230 3.3.1, RFC7230 3.3.2
+    https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.1
+    https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.2
     """
     writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
     req = make_request("GET", "/", version=HttpVersion11, writer=writer)
