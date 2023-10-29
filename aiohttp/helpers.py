@@ -1074,7 +1074,7 @@ def method_must_be_empty_body(method: str) -> bool:
     """Check if a method must return an empty body."""
     # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
     # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.2
-    return method in (hdrs.METH_CONNECT, hdrs.METH_HEAD)
+    return method.upper() in (hdrs.METH_CONNECT, hdrs.METH_HEAD)
 
 
 def status_code_must_be_empty_body(code: int) -> bool:
