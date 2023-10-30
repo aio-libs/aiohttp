@@ -293,8 +293,8 @@ async def test_post_data_bytesio(aiohttp_client: Any) -> None:
     client = await aiohttp_client(app)
 
     with io.BytesIO(data) as file_handle:
-        resp = await client.post("/", data=file_handle)
-    assert 200 == resp.status
+        async with client.post("/", data=file_handle) as resp:
+            assert 200 == resp.status
 
 
 async def test_post_data_with_bytesio_file(aiohttp_client: Any) -> None:
