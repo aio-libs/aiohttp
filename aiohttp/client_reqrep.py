@@ -918,9 +918,7 @@ class ClientResponse(HeadersMixin):
             ):
                 return
 
-            if self._writer.done():
-                self._connection.release()
-                self._connection = None
+            self._release_connection()
 
         self._closed = True
         self._cleanup_writer()
@@ -937,24 +935,17 @@ class ClientResponse(HeadersMixin):
         if self._loop.is_closed():
             return
 
-        if self._connection is not None:
-            self._connection.close()
-            self._connection = None
         self._cleanup_writer()
+        self._release_connection()
 
     def release(self) -> Any:
         if not self._released:
             self._notify_content()
 
         self._closed = True
-        if self._connection is not None:
-            if self._writer is None:
-                self._connection.release()
-                self._connection = None
-            else:
-                self._writer.add_done_callback(lambda f: self._connection.release)
 
         self._cleanup_writer()
+        self._release_connection()
         return noop()
 
     @property
@@ -978,6 +969,14 @@ class ClientResponse(HeadersMixin):
                 message=self.reason,
                 headers=self.headers,
             )
+
+    def _release_connection(self) -> None:
+        if self._connection is not None:
+            if self._writer is None:
+                self._connection.release()
+                self._connection = None
+            else:
+                self._writer.add_done_callback(lambda f: self._release_connection())
 
     def _cleanup_writer(self) -> None:
         if self._writer is not None:
@@ -1093,3 +1092,4 @@ class ClientResponse(HeadersMixin):
         # for exceptions, response object can close connection
         # if state is broken
         self.release()
+        await self.wait_for_close()
