@@ -1010,8 +1010,6 @@ class ClientResponse(HeadersMixin):
             except BaseException:
                 self.close()
                 raise
-        elif self._released:
-            raise ClientConnectionError("Connection closed")
 
         await self.wait_for_close()
         return self._body

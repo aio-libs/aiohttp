@@ -137,6 +137,7 @@ async def test_release_early(aiohttp_client: Any) -> None:
     client = await aiohttp_client(app)
     resp = await client.get("/")
     assert resp.closed
+    await resp.wait_for_close()
     assert 1 == len(client._session.connector._conns)
 
 
