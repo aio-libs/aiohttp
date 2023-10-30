@@ -5,6 +5,7 @@ import string
 from contextlib import suppress
 from enum import IntEnum
 from typing import (
+    TYPE_CHECKING,
     Any,
     ClassVar,
     Final,
@@ -337,9 +338,13 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
                         self._upgraded = msg.upgrade
 
-                        method: str = getattr(msg, "method", self.method)
+                        method = getattr(msg, "method", self.method)
+                        if TYPE_CHECKING:
+                            assert isinstance(method, str)
                         # code is only present on responses
-                        code: int = getattr(msg, "code", 0)
+                        code = getattr(msg, "code", 0)
+                        if TYPE_CHECKING:
+                            assert isinstance(code, int)
 
                         assert self.protocol is not None
                         # calculate payload
