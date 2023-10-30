@@ -1816,7 +1816,6 @@ async def test_response_context_manager(aiohttp_server: Any) -> None:
     resp = await session.get(server.make_url("/"))
     async with resp:
         assert resp.status == 200
-        assert resp.connection is None
     assert resp.connection is None
 
     await session.close()
