@@ -173,8 +173,16 @@ async def test_stream_request_on_server_eof(aiohttp_client) -> None:
 
     async with client.put("/", data=data_gen()) as resp:
         assert 200 == resp.status
+        assert len(client.session.connector._acquired) == 1
+        conn = next(iter(client.session.connector._acquired))
+
     async with client.get("/") as resp:
         assert 200 == resp.status
+
+    # Connection should have been reused
+    conns = next(iter(client.session.connector._conns.values()))
+    assert len(conns) == 1
+    assert conns[0][0] is conn
 
 
 async def test_stream_request_on_server_eof_nested(aiohttp_client) -> None:
@@ -196,6 +204,10 @@ async def test_stream_request_on_server_eof_nested(aiohttp_client) -> None:
         assert 200 == resp.status
         async with client.get("/") as resp:
             assert 200 == resp.status
+
+    # Should be 2 separate connections
+    conns = next(iter(client.session.connector._conns.values()))
+    assert len(conns) == 2
 
 
 async def test_HTTP_304_WITH_BODY(aiohttp_client: Any) -> None:

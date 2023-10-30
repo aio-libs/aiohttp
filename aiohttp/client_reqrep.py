@@ -546,8 +546,6 @@ class ClientRequest:
 
                 for chunk in self.body:
                     await writer.write(chunk)  # type: ignore[arg-type]
-
-            await writer.write_eof()
         except OSError as exc:
             if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
                 protocol.set_exception(exc)
@@ -560,11 +558,10 @@ class ClientRequest:
                 protocol.set_exception(new_exc)
         except asyncio.CancelledError as exc:
             await writer.write_eof()
-            if not conn.closed:
-                protocol.set_exception(exc)
         except Exception as exc:
             protocol.set_exception(exc)
         else:
+            await writer.write_eof()
             protocol.start_timeout()
         finally:
             self._writer = None
