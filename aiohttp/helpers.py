@@ -1067,6 +1067,7 @@ def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
 
 def must_be_empty_body(method: str, code: int) -> bool:
     """Check if a request must return an empty body."""
+    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3
     return status_code_must_be_empty_body(code) or method_must_be_empty_body(method)
 
 
@@ -1079,5 +1080,6 @@ def method_must_be_empty_body(method: str) -> bool:
 
 def status_code_must_be_empty_body(code: int) -> bool:
     """Check if a status code must return an empty body."""
+    # 204, 304, 1xx should not have a body per
     # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
     return code in {204, 304} or 100 <= code < 200
