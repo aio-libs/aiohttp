@@ -1073,15 +1073,16 @@ def must_be_empty_body(method: str, code: int) -> bool:
 
 def method_must_be_empty_body(method: str) -> bool:
     """Check if a method must return an empty body."""
-    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3
-    return method in (hdrs.METH_CONNECT, hdrs.METH_HEAD)
+    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
+    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.2
+    return method.upper() in (hdrs.METH_CONNECT, hdrs.METH_HEAD)
 
 
 def status_code_must_be_empty_body(code: int) -> bool:
     """Check if a status code must return an empty body."""
     # 204, 304, 1xx should not have a body per
-    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3
-    return code in (204, 304) or 100 <= code < 200
+    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
+    return code in {204, 304} or 100 <= code < 200
 
 
 def should_remove_content_length(method: str, code: int) -> bool:
