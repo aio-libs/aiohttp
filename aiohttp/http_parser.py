@@ -337,9 +337,9 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
                         self._upgraded = msg.upgrade
 
-                        method = getattr(msg, "method", self.method)
+                        method: str = getattr(msg, "method", self.method)
                         # code is only present on responses
-                        code = getattr(msg, "code", 0)
+                        code: int = getattr(msg, "code", 0)
 
                         assert self.protocol is not None
                         # calculate payload
