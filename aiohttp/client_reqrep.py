@@ -556,7 +556,7 @@ class ClientRequest:
                 new_exc.__context__ = exc
                 new_exc.__cause__ = exc
                 protocol.set_exception(new_exc)
-        except asyncio.CancelledError as exc:
+        except asyncio.CancelledError:
             await writer.write_eof()
         except Exception as exc:
             protocol.set_exception(exc)
