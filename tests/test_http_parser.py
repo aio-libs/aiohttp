@@ -1141,7 +1141,7 @@ def test_parse_content_length_than_chunked_payload(response: Any) -> None:
     assert b"second" == b"".join(d for d in payload._buffer)
 
 
-@pytest.mark.parametrize("code", [204, 304, 101, 102])
+@pytest.mark.parametrize("code", (204, 304, 101, 102))
 def test_parse_chunked_payload_empty_body_than_another_chunked(
     response: Any, code: int
 ) -> None:
