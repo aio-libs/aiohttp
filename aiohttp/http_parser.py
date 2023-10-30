@@ -5,7 +5,6 @@ import string
 from contextlib import suppress
 from enum import IntEnum
 from typing import (
-    TYPE_CHECKING,
     Any,
     ClassVar,
     Final,
@@ -20,6 +19,7 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    cast,
 )
 
 from multidict import CIMultiDict, CIMultiDictProxy, istr
@@ -339,12 +339,10 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         self._upgraded = msg.upgrade
 
                         method = getattr(msg, "method", self.method)
-                        if TYPE_CHECKING:
-                            assert isinstance(method, str)
+                        # assert method is not None
+                        method = cast(str, method)
                         # code is only present on responses
                         code = getattr(msg, "code", 0)
-                        if TYPE_CHECKING:
-                            assert isinstance(code, int)
 
                         assert self.protocol is not None
                         # calculate payload
