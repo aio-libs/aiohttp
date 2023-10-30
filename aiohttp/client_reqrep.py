@@ -650,7 +650,8 @@ class ClientRequest:
     async def close(self) -> None:
         if self._writer is not None:
             try:
-                await self._writer
+                with contextlib.suppress(asyncio.CancelledError):
+                    await self._writer
             finally:
                 self._writer = None
 
@@ -975,6 +976,14 @@ class ClientResponse(HeadersMixin):
             else:
                 self._writer.add_done_callback(lambda f: self._release_connection())
 
+    async def _wait_released(self) -> None:
+        if self._writer is not None:
+            try:
+                await self._writer
+            finally:
+                self._writer = None
+        self._release_connection()
+
     def _cleanup_writer(self) -> None:
         if self._writer is not None:
             if self._writer.done():
@@ -1010,8 +1019,10 @@ class ClientResponse(HeadersMixin):
             except BaseException:
                 self.close()
                 raise
+        elif self._released:  # Response explicity released
+            raise ClientConnectionError("Connection closed")
 
-        await self.wait_for_close()
+        await self._wait_released()  # Underlying connection released
         return self._body
 
     def get_encoding(self) -> str:
