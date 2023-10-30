@@ -1063,3 +1063,16 @@ def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
             with suppress(ValueError):
                 return datetime.datetime(*timetuple[:6], tzinfo=datetime.timezone.utc)
     return None
+
+
+def method_must_be_empty_body(method: str) -> bool:
+    """Check if a method must return an empty body."""
+    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
+    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.2
+    return method.upper() in (hdrs.METH_CONNECT, hdrs.METH_HEAD)
+
+
+def status_code_must_be_empty_body(code: int) -> bool:
+    """Check if a status code must return an empty body."""
+    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
+    return code in {204, 304} or 100 <= code < 200
