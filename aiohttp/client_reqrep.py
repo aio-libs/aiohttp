@@ -1013,6 +1013,7 @@ class ClientResponse(HeadersMixin):
         elif self._released:
             raise ClientConnectionError("Connection closed")
 
+        await self.wait_for_close()
         return self._body
 
     def get_encoding(self) -> str:
