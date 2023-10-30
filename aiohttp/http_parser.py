@@ -350,7 +350,11 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         assert self.protocol is not None
                         # calculate payload
                         empty_body = status_code_must_be_empty_body(code)
-                        if method and method_must_be_empty_body(method):
+                        if (
+                            not empty_body
+                            and method
+                            and method_must_be_empty_body(method)
+                        ):
                             empty_body = True
                         if not empty_body and (
                             (length is not None and length > 0)
