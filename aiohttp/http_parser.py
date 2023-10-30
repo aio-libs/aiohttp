@@ -19,7 +19,6 @@ from typing import (
     Type,
     TypeVar,
     Union,
-    cast,
 )
 
 from multidict import CIMultiDict, CIMultiDictProxy, istr
@@ -28,7 +27,13 @@ from yarl import URL
 from . import hdrs
 from .base_protocol import BaseProtocol
 from .compression_utils import HAS_BROTLI, BrotliDecompressor, ZLibDecompressor
-from .helpers import DEBUG, NO_EXTENSIONS, BaseTimerContext, must_be_empty_body
+from .helpers import (
+    DEBUG,
+    NO_EXTENSIONS,
+    BaseTimerContext,
+    method_must_be_empty_body,
+    status_code_must_be_empty_body,
+)
 from .http_exceptions import (
     BadHttpMessage,
     BadStatusLine,
@@ -339,14 +344,14 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         self._upgraded = msg.upgrade
 
                         method = getattr(msg, "method", self.method)
-                        # assert method is not None
-                        method = cast(str, method)
                         # code is only present on responses
                         code = getattr(msg, "code", 0)
 
                         assert self.protocol is not None
                         # calculate payload
-                        empty_body = must_be_empty_body(method, code)
+                        empty_body = status_code_must_be_empty_body(code)
+                        if method and method_must_be_empty_body(method):
+                            empty_body = True
                         if not empty_body and (
                             (length is not None and length > 0)
                             or msg.chunked
