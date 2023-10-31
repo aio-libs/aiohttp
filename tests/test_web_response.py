@@ -668,6 +668,30 @@ async def test_head_response_keeps_content_length_of_original_body() -> None:
     assert hdrs.TRANSFER_ENCODING not in resp.headers
 
 
+async def test_head_response_omits_content_length_when_body_unset() -> None:
+    """Verify HEAD response omits content-length body when its unset."""
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
+    req = make_request("HEAD", "/", version=HttpVersion11, writer=writer)
+    resp = Response(status=200)
+    await resp.prepare(req)
+    assert resp.content_length == 0
+    assert not resp.chunked
+    assert hdrs.CONTENT_LENGTH not in resp.headers
+    assert hdrs.TRANSFER_ENCODING not in resp.headers
+
+
+async def test_304_response_omits_content_length_when_body_unset() -> None:
+    """Verify 304 response omits content-length body when its unset."""
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
+    req = make_request("HEAD", "/", version=HttpVersion11, writer=writer)
+    resp = Response(status=304)
+    await resp.prepare(req)
+    assert resp.content_length == 0
+    assert not resp.chunked
+    assert hdrs.CONTENT_LENGTH not in resp.headers
+    assert hdrs.TRANSFER_ENCODING not in resp.headers
+
+
 async def test_content_length_on_chunked() -> None:
     req = make_request("GET", "/")
     resp = Response(body=b"answer")
