@@ -27,7 +27,13 @@ from yarl import URL
 from . import hdrs
 from .base_protocol import BaseProtocol
 from .compression_utils import HAS_BROTLI, BrotliDecompressor, ZLibDecompressor
-from .helpers import DEBUG, NO_EXTENSIONS, BaseTimerContext
+from .helpers import (
+    DEBUG,
+    NO_EXTENSIONS,
+    BaseTimerContext,
+    method_must_be_empty_body,
+    status_code_must_be_empty_body,
+)
 from .http_exceptions import (
     BadHttpMessage,
     BadStatusLine,
@@ -345,10 +351,15 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         self._upgraded = msg.upgrade
 
                         method = getattr(msg, "method", self.method)
+                        # code is only present on responses
+                        code = getattr(msg, "code", 0)
 
                         assert self.protocol is not None
                         # calculate payload
-                        if (
+                        empty_body = status_code_must_be_empty_body(code) or bool(
+                            method and method_must_be_empty_body(method)
+                        )
+                        if not empty_body and (
                             (length is not None and length > 0)
                             or msg.chunked
                             and not msg.upgrade
@@ -390,34 +401,29 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 auto_decompress=self._auto_decompress,
                                 lax=self.lax,
                             )
+                        elif not empty_body and length is None and self.read_until_eof:
+                            payload = StreamReader(
+                                self.protocol,
+                                timer=self.timer,
+                                loop=loop,
+                                limit=self._limit,
+                            )
+                            payload_parser = HttpPayloadParser(
+                                payload,
+                                length=length,
+                                chunked=msg.chunked,
+                                method=method,
+                                compression=msg.compression,
+                                code=self.code,
+                                readall=True,
+                                response_with_body=self.response_with_body,
+                                auto_decompress=self._auto_decompress,
+                                lax=self.lax,
+                            )
+                            if not payload_parser.done:
+                                self._payload_parser = payload_parser
                         else:
-                            if (
-                                getattr(msg, "code", 100) >= 199
-                                and length is None
-                                and self.read_until_eof
-                            ):
-                                payload = StreamReader(
-                                    self.protocol,
-                                    timer=self.timer,
-                                    loop=loop,
-                                    limit=self._limit,
-                                )
-                                payload_parser = HttpPayloadParser(
-                                    payload,
-                                    length=length,
-                                    chunked=msg.chunked,
-                                    method=method,
-                                    compression=msg.compression,
-                                    code=self.code,
-                                    readall=True,
-                                    response_with_body=self.response_with_body,
-                                    auto_decompress=self._auto_decompress,
-                                    lax=self.lax,
-                                )
-                                if not payload_parser.done:
-                                    self._payload_parser = payload_parser
-                            else:
-                                payload = EMPTY_PAYLOAD
+                            payload = EMPTY_PAYLOAD
 
                         messages.append((msg, payload))
                 else:
