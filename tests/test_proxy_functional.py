@@ -4,6 +4,7 @@ import functools
 import os
 import pathlib
 import platform
+import ssl
 from re import match as match_regex
 from typing import Any
 from unittest import mock
@@ -161,10 +162,11 @@ async def test_secure_https_proxy_absolute_path(
 @secure_proxy_xfail(raises=AssertionError)
 @pytest.mark.parametrize("web_server_endpoint_type", ("https",))
 @pytest.mark.usefixtures("loop")
+@pytest.mark.skipif(ASYNCIO_SUPPORTS_TLS_IN_TLS, reason="asyncio supports TLS in TLS")
 async def test_https_proxy_unsupported_tls_in_tls(
-    client_ssl_ctx,
-    secure_proxy_url,
-    web_server_endpoint_type,
+    client_ssl_ctx: ssl.SSLContext,
+    secure_proxy_url: str,
+    web_server_endpoint_type: str,
 ) -> None:
     """Ensure connecting to TLS endpoints w/ HTTPS proxy needs patching.
 
