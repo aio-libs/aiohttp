@@ -144,6 +144,10 @@ async def test_head_returns_empty_body(aiohttp_client: Any) -> None:
     assert 200 == resp.status
     txt = await resp.text()
     assert "" == txt
+    # The Content-Length header should be set to 4 which is
+    # the length of the response body if it would have been
+    # returned by a GET request.
+    assert resp.headers["Content-Length"] == "4"
 
 
 async def test_response_before_complete(aiohttp_client: Any) -> None:
