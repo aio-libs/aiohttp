@@ -83,7 +83,6 @@ async def test_keepalive_after_head_requests_success(aiohttp_client: Any) -> Non
     await resp2.read()
 
     assert 1 == cnt_conn_reuse
-    await client.close()
 
 
 @pytest.mark.parametrize("status", (101, 204, 304))
@@ -118,7 +117,6 @@ async def test_keepalive_after_empty_body_status(
     await resp2.read()
 
     assert cnt_conn_reuse == 1
-    await client.close()
 
 
 @pytest.mark.parametrize("status", (101, 204, 304))
@@ -153,7 +151,6 @@ async def test_keepalive_after_empty_body_status_stream_response(
     await resp2.read()
 
     assert cnt_conn_reuse == 1
-    await client.close()
 
 
 async def test_keepalive_response_released(aiohttp_client: Any) -> None:
