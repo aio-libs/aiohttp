@@ -60,7 +60,7 @@ cryptography==41.0.2
     # via
     #   pyjwt
     #   trustme
-cython==3.0.4
+cython==3.0.5
     # via -r requirements/cython.in
 distlib==0.3.3
     # via virtualenv
@@ -89,6 +89,10 @@ idna==3.3
     #   yarl
 imagesize==1.3.0
     # via sphinx
+importlib-metadata==6.8.0
+    # via sphinx
+importlib-resources==6.1.0
+    # via towncrier
 incremental==21.3.0
     # via towncrier
 iniconfig==1.1.1
@@ -238,6 +242,7 @@ typing-extensions==4.7.1
     # via
     #   -r requirements/typing-extensions.in
     #   aioredis
+    #   annotated-types
     #   mypy
     #   pydantic
     #   pydantic-core
@@ -260,6 +265,10 @@ wheel==0.37.0
     # via pip-tools
 yarl==1.9.2
     # via -r requirements/runtime-deps.in
+zipp==3.17.0
+    # via
+    #   importlib-metadata
+    #   importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
 pip==23.2.1
