@@ -673,9 +673,7 @@ class Response(StreamResponse):
             await super().write_eof()
 
     async def _start(self, request: "BaseRequest") -> AbstractStreamWriter:
-        if self._must_be_empty_body and should_remove_content_length(
-            request.method, self.status
-        ):
+        if should_remove_content_length(request.method, self.status):
             if hdrs.CONTENT_LENGTH in self._headers:
                 del self._headers[hdrs.CONTENT_LENGTH]
         elif not self._chunked and hdrs.CONTENT_LENGTH not in self._headers:
