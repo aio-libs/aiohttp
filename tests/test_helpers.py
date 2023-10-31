@@ -1110,5 +1110,8 @@ def test_should_remove_content_length_is_subset_of_must_be_empty_body():
     assert should_remove_content_length("CONNECT", 200) is True
     assert must_be_empty_body("CONNECT", 200) is True
 
+    assert should_remove_content_length("CONNECT", 201) is True
+    assert must_be_empty_body("CONNECT", 201) is True
+
     assert should_remove_content_length("CONNECT", 300) is False
     assert must_be_empty_body("CONNECT", 300) is False

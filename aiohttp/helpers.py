@@ -1070,7 +1070,7 @@ def must_be_empty_body(method: str, code: int) -> bool:
     return (
         status_code_must_be_empty_body(code)
         or method_must_be_empty_body(method)
-        or (code == 200 and method.upper() == hdrs.METH_CONNECT)
+        or (200 <= code < 300 and method.upper() == hdrs.METH_CONNECT)
     )
 
 
@@ -1097,5 +1097,5 @@ def should_remove_content_length(method: str, code: int) -> bool:
     return (
         code in {204, 304}
         or 100 <= code < 200
-        or (code == 200 and method.upper() == hdrs.METH_CONNECT)
+        or (200 <= code < 300 and method.upper() == hdrs.METH_CONNECT)
     )
