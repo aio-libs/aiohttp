@@ -23,7 +23,6 @@ from aiohttp.helpers import (
     must_be_empty_body,
     parse_http_date,
     should_remove_content_length,
-    parse_http_date,
 )
 
 IS_PYPY = platform.python_implementation() == "PyPy"
