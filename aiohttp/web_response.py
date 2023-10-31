@@ -396,9 +396,9 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
                 request.method, self.status
             ):
                 del headers[hdrs.CONTENT_LENGTH]
-            # remove transfer codings when they are not needed
-            # per https://datatracker.ietf.org/doc/html/rfc9112#section-6.1
-            if version >= HttpVersion11 and hdrs.TRANSFER_ENCODING in headers:
+            # https://datatracker.ietf.org/doc/html/rfc9112#section-6.1-10
+            # https://datatracker.ietf.org/doc/html/rfc9112#section-6.1-13
+            if hdrs.TRANSFER_ENCODING in headers:
                 del headers[hdrs.TRANSFER_ENCODING]
         else:
             headers.setdefault(hdrs.CONTENT_TYPE, "application/octet-stream")
