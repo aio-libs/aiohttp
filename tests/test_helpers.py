@@ -19,6 +19,7 @@ from yarl import URL
 from aiohttp import helpers
 from aiohttp.helpers import (
     is_expected_content_type,
+    method_must_be_empty_body,
     must_be_empty_body,
     parse_http_date,
     should_remove_content_length,
@@ -1078,6 +1079,13 @@ def test_read_basicauth_from_empty_netrc():
         helpers.basicauth_from_netrc(netrc_obj, "example.com")
 
 
+def test_method_must_be_empty_body():
+    """Test that HEAD is the only method that unequivocally must have an empty body."""
+    assert method_must_be_empty_body("HEAD") is True
+    # CONNECT is only empty on a successful response
+    assert method_must_be_empty_body("CONNECT") is False
+
+
 def test_should_remove_content_length_is_subset_of_must_be_empty_body():
     """Test should_remove_content_length is always a subset of must_be_empty_body."""
     assert should_remove_content_length("GET", 101) is True
@@ -1098,5 +1106,9 @@ def test_should_remove_content_length_is_subset_of_must_be_empty_body():
     assert should_remove_content_length("HEAD", 200) is False
     assert must_be_empty_body("HEAD", 200) is True
 
+    # CONNECT is only empty on a successful response
     assert should_remove_content_length("CONNECT", 200) is True
     assert must_be_empty_body("CONNECT", 200) is True
+
+    assert should_remove_content_length("CONNECT", 300) is False
+    assert must_be_empty_body("CONNECT", 300) is False
