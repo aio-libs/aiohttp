@@ -683,7 +683,7 @@ async def test_head_response_omits_content_length_when_body_unset() -> None:
 async def test_304_response_omits_content_length_when_body_unset() -> None:
     """Verify 304 response omits content-length body when its unset."""
     writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
-    req = make_request("HEAD", "/", version=HttpVersion11, writer=writer)
+    req = make_request("GET", "/", version=HttpVersion11, writer=writer)
     resp = Response(status=304)
     await resp.prepare(req)
     assert resp.content_length == 0
