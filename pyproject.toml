@@ -19,6 +19,5 @@ test-command = ""
 skip = "pp*"
 
 [tool.codespell]
-skip = '.git,*.pdf,*.svg'
-#
-# ignore-words-list = ''
+skip = '.git,*.pdf,*.svg,Makefile,CONTRIBUTORS.txt,venvs,_build'
+ignore-words-list = 'te'
