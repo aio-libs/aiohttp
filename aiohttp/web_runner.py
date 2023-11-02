@@ -44,11 +44,16 @@ class BaseSite(ABC):
         self,
         runner: "BaseRunner",
         *,
+        shutdown_timeout: float = 60.0,
         ssl_context: Optional[SSLContext] = None,
         backlog: int = 128,
     ) -> None:
         if runner.server is None:
             raise RuntimeError("Call runner.setup() before making a site")
+        if shutdown_timeout != 60.0:
+            msg = "shutdown_timeout should be set on BaseRunner"
+            warnings.warn(msg, DeprecationWarning, stacklevel=2)
+            self._runner._shutdown_timeout = shutdown_timeout
         self._runner = runner
         self._ssl_context = ssl_context
         self._backlog = backlog
@@ -80,6 +85,7 @@ class TCPSite(BaseSite):
         host: Optional[str] = None,
         port: Optional[int] = None,
         *,
+        shutdown_timeout: float = 60.0,
         ssl_context: Optional[SSLContext] = None,
         backlog: int = 128,
         reuse_address: Optional[bool] = None,
@@ -127,6 +133,7 @@ class UnixSite(BaseSite):
         runner: "BaseRunner",
         path: PathLike,
         *,
+        shutdown_timeout: float = 60.0,
         ssl_context: Optional[SSLContext] = None,
         backlog: int = 128,
     ) -> None:
@@ -158,7 +165,7 @@ class UnixSite(BaseSite):
 class NamedPipeSite(BaseSite):
     __slots__ = ("_path",)
 
-    def __init__(self, runner: "BaseRunner", path: str) -> None:
+    def __init__(self, runner: "BaseRunner", path: str, *, shutdown_timeout: float = 60.0) -> None:
         loop = asyncio.get_event_loop()
         if not isinstance(
             loop, asyncio.ProactorEventLoop  # type: ignore[attr-defined]
@@ -192,6 +199,7 @@ class SockSite(BaseSite):
         runner: "BaseRunner",
         sock: socket.socket,
         *,
+        shutdown_timeout: float = 60.0,
         ssl_context: Optional[SSLContext] = None,
         backlog: int = 128,
     ) -> None:
