@@ -1,6 +1,7 @@
 import asyncio
 import signal
 import socket
+import warnings
 from abc import ABC, abstractmethod
 from typing import Any, Awaitable, Callable, List, Optional, Set
 
@@ -53,7 +54,7 @@ class BaseSite(ABC):
         if shutdown_timeout != 60.0:
             msg = "shutdown_timeout should be set on BaseRunner"
             warnings.warn(msg, DeprecationWarning, stacklevel=2)
-            self._runner._shutdown_timeout = shutdown_timeout
+            runner._shutdown_timeout = shutdown_timeout
         self._runner = runner
         self._ssl_context = ssl_context
         self._backlog = backlog
