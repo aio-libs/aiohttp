@@ -165,7 +165,9 @@ class UnixSite(BaseSite):
 class NamedPipeSite(BaseSite):
     __slots__ = ("_path",)
 
-    def __init__(self, runner: "BaseRunner", path: str, *, shutdown_timeout: float = 60.0) -> None:
+    def __init__(
+        self, runner: "BaseRunner", path: str, *, shutdown_timeout: float = 60.0
+    ) -> None:
         loop = asyncio.get_event_loop()
         if not isinstance(
             loop, asyncio.ProactorEventLoop  # type: ignore[attr-defined]
