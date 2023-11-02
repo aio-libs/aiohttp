@@ -20,7 +20,9 @@ from aiohttp import helpers
 from aiohttp.helpers import (
     is_expected_content_type,
     method_must_be_empty_body,
+    must_be_empty_body,
     parse_http_date,
+    should_remove_content_length,
 )
 
 IS_PYPY = platform.python_implementation() == "PyPy"
@@ -1082,3 +1084,34 @@ def test_method_must_be_empty_body():
     assert method_must_be_empty_body("HEAD") is True
     # CONNECT is only empty on a successful response
     assert method_must_be_empty_body("CONNECT") is False
+
+
+def test_should_remove_content_length_is_subset_of_must_be_empty_body():
+    """Test should_remove_content_length is always a subset of must_be_empty_body."""
+    assert should_remove_content_length("GET", 101) is True
+    assert must_be_empty_body("GET", 101) is True
+
+    assert should_remove_content_length("GET", 102) is True
+    assert must_be_empty_body("GET", 102) is True
+
+    assert should_remove_content_length("GET", 204) is True
+    assert must_be_empty_body("GET", 204) is True
+
+    assert should_remove_content_length("GET", 204) is True
+    assert must_be_empty_body("GET", 204) is True
+
+    assert should_remove_content_length("GET", 200) is False
+    assert must_be_empty_body("GET", 200) is False
+
+    assert should_remove_content_length("HEAD", 200) is False
+    assert must_be_empty_body("HEAD", 200) is True
+
+    # CONNECT is only empty on a successful response
+    assert should_remove_content_length("CONNECT", 200) is True
+    assert must_be_empty_body("CONNECT", 200) is True
+
+    assert should_remove_content_length("CONNECT", 201) is True
+    assert must_be_empty_body("CONNECT", 201) is True
+
+    assert should_remove_content_length("CONNECT", 300) is False
+    assert must_be_empty_body("CONNECT", 300) is False
