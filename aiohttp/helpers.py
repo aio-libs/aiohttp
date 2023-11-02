@@ -1092,8 +1092,8 @@ def should_remove_content_length(method: str, code: int) -> bool:
 
     This should always be a subset of must_be_empty_body
     """
-    # https://www.rfc-editor.org/rfc/rfc9110.html#section-8.6-7
     # https://www.rfc-editor.org/rfc/rfc9110.html#section-8.6-8
+    # https://www.rfc-editor.org/rfc/rfc9110.html#section-15.4.5-4
     return (
         code in {204, 304}
         or 100 <= code < 200
