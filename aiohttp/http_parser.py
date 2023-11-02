@@ -661,6 +661,7 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
         try:
             status, reason = status.split(maxsplit=1)
         except ValueError:
+            status = status.strip()
             reason = ""
 
         if len(reason) > self.max_line_size:
