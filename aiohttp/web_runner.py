@@ -93,6 +93,7 @@ class TCPSite(BaseSite):
     ) -> None:
         super().__init__(
             runner,
+            shutdown_timeout=shutdown_timeout,
             ssl_context=ssl_context,
             backlog=backlog,
         )
@@ -139,6 +140,7 @@ class UnixSite(BaseSite):
     ) -> None:
         super().__init__(
             runner,
+            shutdown_timeout=shutdown_timeout,
             ssl_context=ssl_context,
             backlog=backlog,
         )
@@ -175,7 +177,7 @@ class NamedPipeSite(BaseSite):
             raise RuntimeError(
                 "Named Pipes only available in proactor" "loop under windows"
             )
-        super().__init__(runner)
+        super().__init__(runner, shutdown_timeout=shutdown_timeout)
         self._path = path
 
     @property
@@ -207,6 +209,7 @@ class SockSite(BaseSite):
     ) -> None:
         super().__init__(
             runner,
+            shutdown_timeout=shutdown_timeout,
             ssl_context=ssl_context,
             backlog=backlog,
         )
