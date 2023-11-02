@@ -260,13 +260,21 @@ class SockSite(BaseSite):
 
 
 class BaseRunner(ABC):
-    __slots__ = ("starting_tasks", "_handle_signals", "_kwargs", "_server", "_sites")
+    __slots__ = (
+        "starting_tasks",
+        "_handle_signals",
+        "_kwargs",
+        "_server",
+        "_sites",
+        "_serve_forever_fut",
+    )
 
     def __init__(self, *, handle_signals: bool = False, **kwargs: Any) -> None:
         self._handle_signals = handle_signals
         self._kwargs = kwargs
         self._server: Optional[Server] = None
         self._sites: List[BaseSite] = []
+        self._serve_forever_fut: Optional[asyncio.Future[None]] = None
 
     @property
     def server(self) -> Optional[Server]:
@@ -305,6 +313,20 @@ class BaseRunner(ABC):
         # the time we have completed the application startup (in self._make_server()),
         # so we just record all running tasks here and exclude them later.
         self.starting_tasks = asyncio.all_tasks()
+
+    async def serve_forever(self) -> None:
+        if self._serve_forever_fut is not None:
+            raise RuntimeError("Concurrent calls to serve_forever() are not allowed")
+        if self._server is None:
+            raise RuntimeError("Call setup() first")
+
+        loop = asyncio.get_event_loop()
+        self._serve_forever_fut = loop.create_future()
+
+        try:
+            await self._serve_forever_fut
+        finally:
+            self._serve_forever_fut = None
 
     @abstractmethod
     async def shutdown(self) -> None:

@@ -2525,7 +2525,7 @@ application on specific TCP or Unix socket, e.g.::
     site = web.TCPSite(runner, 'localhost', 8080)
     await site.start()
     # wait for finish signal
-    await runner.cleanup()
+    await runner.serve_forever()
 
 
 .. versionadded:: 3.0
@@ -2567,6 +2567,12 @@ application on specific TCP or Unix socket, e.g.::
       :async:
 
       Stop handling all registered sites and cleanup used resources.
+
+   .. method:: serve_forever()
+      :async:
+
+      Wait forever. Make sure to call :meth:`setup` prior calling this method.
+      Only one :meth:`serve_forever` task is allowed per one runner object.
 
 
 .. class:: AppRunner(app, *, handle_signals=False, **kwargs)
