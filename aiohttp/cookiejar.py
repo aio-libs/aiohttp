@@ -234,7 +234,6 @@ class CookieJar(AbstractCookieJar):
         self, request_url: URL = URL()
     ) -> Union["BaseCookie[str]", "SimpleCookie[str]"]:
         """Returns this jar's cookies filtered by their attributes."""
-        self._do_expiration()
         if not isinstance(request_url, URL):
             warnings.warn(
                 "The method accepts yarl.URL instances only, got {}".format(
