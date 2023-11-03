@@ -809,6 +809,10 @@ async def test_cookie_jar_clear_expired():
         assert len(sut) == 0
 
 
+@pytest.mark.skipif(
+    sys.implementation.name != "cpython",
+    reason="time_machine leverages CPython specific pointers https://github.com/adamchainz/time-machine/issues/305",
+)
 async def test_cookie_jar_filter_cookies_expires():
     """Test that calling filter_cookies will expire stale cookies."""
     jar = CookieJar()
