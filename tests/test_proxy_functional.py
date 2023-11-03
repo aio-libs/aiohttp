@@ -398,7 +398,8 @@ async def test_proxy_http_acquired_cleanup(proxy_test_server, loop) -> None:
 
     assert 0 == len(conn._acquired)
 
-    resp = await sess.get(url, proxy=proxy.url)
+    async with sess.get(url, proxy=proxy.url) as resp:
+        pass
     assert resp.closed
 
     assert 0 == len(conn._acquired)
