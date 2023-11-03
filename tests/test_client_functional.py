@@ -70,6 +70,7 @@ async def test_keepalive_after_head_requests_success(aiohttp_client: Any) -> Non
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
+    app.router.add_route("HEAD", "/", handler)
 
     connector = aiohttp.TCPConnector(limit=1)
     client = await aiohttp_client(
@@ -82,6 +83,74 @@ async def test_keepalive_after_head_requests_success(aiohttp_client: Any) -> Non
     await resp2.read()
 
     assert 1 == cnt_conn_reuse
+
+
+@pytest.mark.parametrize("status", (101, 204, 304))
+async def test_keepalive_after_empty_body_status(
+    aiohttp_client: Any, status: int
+) -> None:
+    async def handler(request):
+        body = await request.read()
+        assert b"" == body
+        return web.Response(status=status)
+
+    cnt_conn_reuse = 0
+
+    async def on_reuseconn(session, ctx, params):
+        nonlocal cnt_conn_reuse
+        cnt_conn_reuse += 1
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config._on_connection_reuseconn.append(on_reuseconn)
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    connector = aiohttp.TCPConnector(limit=1)
+    client = await aiohttp_client(
+        app, connector=connector, trace_configs=[trace_config]
+    )
+
+    resp1 = await client.get("/")
+    await resp1.read()
+    resp2 = await client.get("/")
+    await resp2.read()
+
+    assert cnt_conn_reuse == 1
+
+
+@pytest.mark.parametrize("status", (101, 204, 304))
+async def test_keepalive_after_empty_body_status_stream_response(
+    aiohttp_client: Any, status: int
+) -> None:
+    async def handler(request):
+        stream_response = web.StreamResponse(status=status)
+        await stream_response.prepare(request)
+        return stream_response
+
+    cnt_conn_reuse = 0
+
+    async def on_reuseconn(session, ctx, params):
+        nonlocal cnt_conn_reuse
+        cnt_conn_reuse += 1
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config._on_connection_reuseconn.append(on_reuseconn)
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    connector = aiohttp.TCPConnector(limit=1)
+    client = await aiohttp_client(
+        app, connector=connector, trace_configs=[trace_config]
+    )
+
+    resp1 = await client.get("/")
+    await resp1.read()
+    resp2 = await client.get("/")
+    await resp2.read()
+
+    assert cnt_conn_reuse == 1
 
 
 async def test_keepalive_response_released(aiohttp_client: Any) -> None:
@@ -137,6 +206,7 @@ async def test_release_early(aiohttp_client: Any) -> None:
     client = await aiohttp_client(app)
     resp = await client.get("/")
     assert resp.closed
+    await resp.wait_for_close()
     assert 1 == len(client._session.connector._conns)
 
 
@@ -154,6 +224,60 @@ async def test_HTTP_304(aiohttp_client: Any) -> None:
     assert resp.status == 304
     content = await resp.read()
     assert content == b""
+
+
+async def test_stream_request_on_server_eof(aiohttp_client) -> None:
+    async def handler(request):
+        return web.Response(text="OK", status=200)
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+    app.add_routes([web.put("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    async def data_gen():
+        for _ in range(2):
+            yield b"just data"
+            await asyncio.sleep(0.1)
+
+    async with client.put("/", data=data_gen()) as resp:
+        assert 200 == resp.status
+        assert len(client.session.connector._acquired) == 1
+        conn = next(iter(client.session.connector._acquired))
+
+    async with client.get("/") as resp:
+        assert 200 == resp.status
+
+    # Connection should have been reused
+    conns = next(iter(client.session.connector._conns.values()))
+    assert len(conns) == 1
+    assert conns[0][0] is conn
+
+
+async def test_stream_request_on_server_eof_nested(aiohttp_client) -> None:
+    async def handler(request):
+        return web.Response(text="OK", status=200)
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+    app.add_routes([web.put("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    async def data_gen():
+        for _ in range(2):
+            yield b"just data"
+            await asyncio.sleep(0.1)
+
+    async with client.put("/", data=data_gen()) as resp:
+        assert 200 == resp.status
+        async with client.get("/") as resp:
+            assert 200 == resp.status
+
+    # Should be 2 separate connections
+    conns = next(iter(client.session.connector._conns.values()))
+    assert len(conns) == 2
 
 
 async def test_HTTP_304_WITH_BODY(aiohttp_client: Any) -> None:
@@ -238,8 +362,8 @@ async def test_post_data_bytesio(aiohttp_client: Any) -> None:
     client = await aiohttp_client(app)
 
     with io.BytesIO(data) as file_handle:
-        resp = await client.post("/", data=file_handle)
-    assert 200 == resp.status
+        async with client.post("/", data=file_handle) as resp:
+            assert 200 == resp.status
 
 
 async def test_post_data_with_bytesio_file(aiohttp_client: Any) -> None:
@@ -1804,6 +1928,81 @@ async def test_bad_payload_chunked_encoding(aiohttp_client: Any) -> None:
 
     with pytest.raises(aiohttp.ClientPayloadError):
         await resp.read()
+
+    resp.close()
+
+
+async def test_no_payload_304_with_chunked_encoding(aiohttp_client: Any) -> None:
+    """Test a 304 response with no payload with chunked set should have it removed."""
+
+    async def handler(request):
+        resp = web.StreamResponse(status=304)
+        resp.enable_chunked_encoding()
+        resp._length_check = False
+        resp.headers["Transfer-Encoding"] = "chunked"
+        writer = await resp.prepare(request)
+        await writer.write_eof()
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/")
+    assert resp.status == 304
+    assert hdrs.CONTENT_LENGTH not in resp.headers
+    assert hdrs.TRANSFER_ENCODING not in resp.headers
+    await resp.read()
+
+    resp.close()
+
+
+async def test_head_request_with_chunked_encoding(aiohttp_client: Any) -> None:
+    """Test a head response with chunked set should have it removed."""
+
+    async def handler(request):
+        resp = web.StreamResponse(status=200)
+        resp.enable_chunked_encoding()
+        resp._length_check = False
+        resp.headers["Transfer-Encoding"] = "chunked"
+        writer = await resp.prepare(request)
+        await writer.write_eof()
+        return resp
+
+    app = web.Application()
+    app.router.add_head("/", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.head("/")
+    assert resp.status == 200
+    assert hdrs.CONTENT_LENGTH not in resp.headers
+    assert hdrs.TRANSFER_ENCODING not in resp.headers
+    await resp.read()
+
+    resp.close()
+
+
+async def test_no_payload_200_with_chunked_encoding(aiohttp_client: Any) -> None:
+    """Test chunked is preserved on a 200 response with no payload."""
+
+    async def handler(request):
+        resp = web.StreamResponse(status=200)
+        resp.enable_chunked_encoding()
+        resp._length_check = False
+        resp.headers["Transfer-Encoding"] = "chunked"
+        writer = await resp.prepare(request)
+        await writer.write_eof()
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/")
+    assert resp.status == 200
+    assert hdrs.CONTENT_LENGTH not in resp.headers
+    assert hdrs.TRANSFER_ENCODING in resp.headers
+    await resp.read()
 
     resp.close()
 

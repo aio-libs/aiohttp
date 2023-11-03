@@ -19,6 +19,7 @@ from aiohttp.http_parser import (
     HttpPayloadParser,
     HttpRequestParserPy,
     HttpResponseParserPy,
+    HttpVersion,
 )
 
 try:
@@ -817,6 +818,22 @@ def test_http_response_parser_utf8(response: Any) -> None:
     assert not tail
 
 
+def test_http_response_parser_utf8_without_reason(response: Any) -> None:
+    text = "HTTP/1.1 200 \r\nx-test:тест\r\n\r\n".encode()
+
+    messages, upgraded, tail = response.feed_data(text)
+    assert len(messages) == 1
+    msg = messages[0][0]
+
+    assert msg.version == (1, 1)
+    assert msg.code == 200
+    assert msg.reason == ""
+    assert msg.headers == CIMultiDict([("X-TEST", "тест")])
+    assert msg.raw_headers == ((b"x-test", "тест".encode()),)
+    assert not upgraded
+    assert not tail
+
+
 @pytest.mark.parametrize("size", [40962, 8191])
 def test_http_response_parser_bad_status_line_too_long(
     response: Any, size: Any
@@ -1058,6 +1075,131 @@ def test_parse_no_length_payload(parser: Any) -> None:
     text = b"PUT / HTTP/1.1\r\n\r\n"
     msg, payload = parser.feed_data(text)[0][0]
     assert payload.is_eof()
+
+
+def test_parse_content_length_payload_multiple(response: Any) -> None:
+    text = b"HTTP/1.1 200 OK\r\ncontent-length: 5\r\n\r\nfirst"
+    msg, payload = response.feed_data(text)[0][0]
+    assert msg.version == HttpVersion(major=1, minor=1)
+    assert msg.code == 200
+    assert msg.reason == "OK"
+    assert msg.headers == CIMultiDict(
+        [
+            ("Content-Length", "5"),
+        ]
+    )
+    assert msg.raw_headers == ((b"content-length", b"5"),)
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert not msg.chunked
+    assert payload.is_eof()
+    assert b"first" == b"".join(d for d in payload._buffer)
+
+    text = b"HTTP/1.1 200 OK\r\ncontent-length: 6\r\n\r\nsecond"
+    msg, payload = response.feed_data(text)[0][0]
+    assert msg.version == HttpVersion(major=1, minor=1)
+    assert msg.code == 200
+    assert msg.reason == "OK"
+    assert msg.headers == CIMultiDict(
+        [
+            ("Content-Length", "6"),
+        ]
+    )
+    assert msg.raw_headers == ((b"content-length", b"6"),)
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert not msg.chunked
+    assert payload.is_eof()
+    assert b"second" == b"".join(d for d in payload._buffer)
+
+
+def test_parse_content_length_than_chunked_payload(response: Any) -> None:
+    text = b"HTTP/1.1 200 OK\r\ncontent-length: 5\r\n\r\nfirst"
+    msg, payload = response.feed_data(text)[0][0]
+    assert msg.version == HttpVersion(major=1, minor=1)
+    assert msg.code == 200
+    assert msg.reason == "OK"
+    assert msg.headers == CIMultiDict(
+        [
+            ("Content-Length", "5"),
+        ]
+    )
+    assert msg.raw_headers == ((b"content-length", b"5"),)
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert not msg.chunked
+    assert payload.is_eof()
+    assert b"first" == b"".join(d for d in payload._buffer)
+
+    text = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"transfer-encoding: chunked\r\n\r\n"
+        b"6\r\nsecond\r\n0\r\n\r\n"
+    )
+    msg, payload = response.feed_data(text)[0][0]
+    assert msg.version == HttpVersion(major=1, minor=1)
+    assert msg.code == 200
+    assert msg.reason == "OK"
+    assert msg.headers == CIMultiDict(
+        [
+            ("Transfer-Encoding", "chunked"),
+        ]
+    )
+    assert msg.raw_headers == ((b"transfer-encoding", b"chunked"),)
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert msg.chunked
+    assert payload.is_eof()
+    assert b"second" == b"".join(d for d in payload._buffer)
+
+
+@pytest.mark.parametrize("code", (204, 304, 101, 102))
+def test_parse_chunked_payload_empty_body_than_another_chunked(
+    response: Any, code: int
+) -> None:
+    head = f"HTTP/1.1 {code} OK\r\n".encode()
+    text = head + b"transfer-encoding: chunked\r\n\r\n"
+    msg, payload = response.feed_data(text)[0][0]
+    assert msg.version == HttpVersion(major=1, minor=1)
+    assert msg.code == code
+    assert msg.reason == "OK"
+    assert msg.headers == CIMultiDict(
+        [
+            ("Transfer-Encoding", "chunked"),
+        ]
+    )
+    assert msg.raw_headers == ((b"transfer-encoding", b"chunked"),)
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert msg.chunked
+    assert payload.is_eof()
+
+    text = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"transfer-encoding: chunked\r\n\r\n"
+        b"6\r\nsecond\r\n0\r\n\r\n"
+    )
+    msg, payload = response.feed_data(text)[0][0]
+    assert msg.version == HttpVersion(major=1, minor=1)
+    assert msg.code == 200
+    assert msg.reason == "OK"
+    assert msg.headers == CIMultiDict(
+        [
+            ("Transfer-Encoding", "chunked"),
+        ]
+    )
+    assert msg.raw_headers == ((b"transfer-encoding", b"chunked"),)
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert msg.chunked
+    assert payload.is_eof()
+    assert b"second" == b"".join(d for d in payload._buffer)
 
 
 def test_partial_url(parser: Any) -> None:

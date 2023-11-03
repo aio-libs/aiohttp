@@ -41,14 +41,11 @@ cherry-picker==2.2.0
 click==8.1.6
     # via
     #   cherry-picker
-    #   click-default-group
     #   pip-tools
     #   slotscheck
     #   towncrier
     #   typer
     #   wait-for-it
-click-default-group==1.2.2
-    # via towncrier
 coverage==7.3.2
     # via
     #   -r requirements/test.in
@@ -57,7 +54,7 @@ cryptography==41.0.3
     # via
     #   pyjwt
     #   trustme
-cython==3.0.4
+cython==3.0.5
     # via -r requirements/cython.in
 distlib==0.3.7
     # via virtualenv
@@ -143,7 +140,7 @@ pyjwt==2.8.0
     # via gidgethub
 pyproject-hooks==1.0.0
     # via build
-pytest==7.4.2
+pytest==7.4.3
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -213,7 +210,7 @@ tomli==2.0.1
     #   pytest
     #   slotscheck
     #   towncrier
-towncrier==23.6.0
+towncrier==23.10.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
@@ -235,7 +232,7 @@ uritemplate==4.1.1
     # via gidgethub
 urllib3==2.0.4
     # via requests
-uvloop==0.17.0 ; platform_system != "Windows" and python_version < "3.12"
+uvloop==0.19.0 ; platform_system != "Windows"
     # via
     #   -r requirements/base.in
     #   -r requirements/lint.in

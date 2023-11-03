@@ -36,7 +36,7 @@ pluggy==1.2.0
     # via pytest
 pre-commit==3.5.0
     # via -r requirements/lint.in
-pytest==7.4.2
+pytest==7.4.3
     # via -r requirements/lint.in
 pyyaml==6.0.1
     # via pre-commit
@@ -52,7 +52,7 @@ typing-extensions==4.7.1
     #   -r requirements/typing-extensions.in
     #   aioredis
     #   mypy
-uvloop==0.17.0 ; platform_system != "Windows" and python_version < "3.12"
+uvloop==0.19.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
 virtualenv==20.24.2
     # via pre-commit
