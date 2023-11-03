@@ -1352,7 +1352,9 @@ async def test_POST_MultiDict(aiohttp_client: Any) -> None:
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
-    async with client.post("/", data=MultiDict([("q", "test1"), ("q", "test2")])) as resp:
+    async with client.post(
+        "/", data=MultiDict([("q", "test1"), ("q", "test2")])
+    ) as resp:
         assert 200 == resp.status
 
 
@@ -1390,7 +1392,9 @@ async def test_POST_FILES(aiohttp_client: Any, fname: Any) -> None:
     client = await aiohttp_client(app)
 
     with fname.open("rb") as f:
-        async with client.post("/", data={"some": f, "test": b"data"}, chunked=True) as resp:
+        async with client.post(
+            "/", data={"some": f, "test": b"data"}, chunked=True
+        ) as resp:
             assert 200 == resp.status
 
 
@@ -1579,7 +1583,9 @@ async def test_POST_FILES_SINGLE_content_disposition(
     client = await aiohttp_client(app)
 
     with fname.open("rb") as f:
-        async with client.post("/", data=aiohttp.get_payload(f, disposition="inline")) as resp:
+        async with client.post(
+            "/", data=aiohttp.get_payload(f, disposition="inline")
+        ) as resp:
             assert 200 == resp.status
 
 
