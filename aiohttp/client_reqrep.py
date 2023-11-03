@@ -529,8 +529,11 @@ class ClientRequest:
         """Support coroutines that yields bytes objects."""
         # 100 response
         if self._continue is not None:
-            await writer.drain()
-            await self._continue
+            try:
+                await writer.drain()
+                await self._continue
+            except asyncio.CancelledError:
+                return
 
         protocol = conn.protocol
         assert protocol is not None
@@ -543,8 +546,6 @@ class ClientRequest:
 
                 for chunk in self.body:
                     await writer.write(chunk)  # type: ignore[arg-type]
-
-            await writer.write_eof()
         except OSError as exc:
             if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
                 protocol.set_exception(exc)
@@ -555,12 +556,12 @@ class ClientRequest:
                 new_exc.__context__ = exc
                 new_exc.__cause__ = exc
                 protocol.set_exception(new_exc)
-        except asyncio.CancelledError as exc:
-            if not conn.closed:
-                protocol.set_exception(exc)
+        except asyncio.CancelledError:
+            await writer.write_eof()
         except Exception as exc:
             protocol.set_exception(exc)
         else:
+            await writer.write_eof()
             protocol.start_timeout()
         finally:
             self._writer = None
@@ -649,7 +650,8 @@ class ClientRequest:
     async def close(self) -> None:
         if self._writer is not None:
             try:
-                await self._writer
+                with contextlib.suppress(asyncio.CancelledError):
+                    await self._writer
             finally:
                 self._writer = None
 
@@ -914,8 +916,7 @@ class ClientResponse(HeadersMixin):
             ):
                 return
 
-            self._connection.release()
-            self._connection = None
+            self._release_connection()
 
         self._closed = True
         self._cleanup_writer()
@@ -927,30 +928,22 @@ class ClientResponse(HeadersMixin):
     def close(self) -> None:
         if not self._released:
             self._notify_content()
-        if self._closed:
-            return
 
         self._closed = True
         if self._loop.is_closed():
             return
 
-        if self._connection is not None:
-            self._connection.close()
-            self._connection = None
         self._cleanup_writer()
+        self._release_connection()
 
     def release(self) -> Any:
         if not self._released:
             self._notify_content()
-        if self._closed:
-            return noop()
 
         self._closed = True
-        if self._connection is not None:
-            self._connection.release()
-            self._connection = None
 
         self._cleanup_writer()
+        self._release_connection()
         return noop()
 
     @property
@@ -975,10 +968,28 @@ class ClientResponse(HeadersMixin):
                 headers=self.headers,
             )
 
+    def _release_connection(self) -> None:
+        if self._connection is not None:
+            if self._writer is None:
+                self._connection.release()
+                self._connection = None
+            else:
+                self._writer.add_done_callback(lambda f: self._release_connection())
+
+    async def _wait_released(self) -> None:
+        if self._writer is not None:
+            try:
+                await self._writer
+            finally:
+                self._writer = None
+        self._release_connection()
+
     def _cleanup_writer(self) -> None:
         if self._writer is not None:
-            self._writer.cancel()
-        self._writer = None
+            if self._writer.done():
+                self._writer = None
+            else:
+                self._writer.cancel()
         self._session = None
 
     def _notify_content(self) -> None:
@@ -1008,9 +1019,10 @@ class ClientResponse(HeadersMixin):
             except BaseException:
                 self.close()
                 raise
-        elif self._released:
+        elif self._released:  # Response explicity released
             raise ClientConnectionError("Connection closed")
 
+        await self._wait_released()  # Underlying connection released
         return self._body
 
     def get_encoding(self) -> str:
@@ -1087,3 +1099,4 @@ class ClientResponse(HeadersMixin):
         # for exceptions, response object can close connection
         # if state is broken
         self.release()
+        await self.wait_for_close()

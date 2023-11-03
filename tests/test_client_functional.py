@@ -206,6 +206,7 @@ async def test_release_early(aiohttp_client: Any) -> None:
     client = await aiohttp_client(app)
     resp = await client.get("/")
     assert resp.closed
+    await resp.wait_for_close()
     assert 1 == len(client._session.connector._conns)
 
 
@@ -223,6 +224,60 @@ async def test_HTTP_304(aiohttp_client: Any) -> None:
     assert resp.status == 304
     content = await resp.read()
     assert content == b""
+
+
+async def test_stream_request_on_server_eof(aiohttp_client) -> None:
+    async def handler(request):
+        return web.Response(text="OK", status=200)
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+    app.add_routes([web.put("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    async def data_gen():
+        for _ in range(2):
+            yield b"just data"
+            await asyncio.sleep(0.1)
+
+    async with client.put("/", data=data_gen()) as resp:
+        assert 200 == resp.status
+        assert len(client.session.connector._acquired) == 1
+        conn = next(iter(client.session.connector._acquired))
+
+    async with client.get("/") as resp:
+        assert 200 == resp.status
+
+    # Connection should have been reused
+    conns = next(iter(client.session.connector._conns.values()))
+    assert len(conns) == 1
+    assert conns[0][0] is conn
+
+
+async def test_stream_request_on_server_eof_nested(aiohttp_client) -> None:
+    async def handler(request):
+        return web.Response(text="OK", status=200)
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+    app.add_routes([web.put("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    async def data_gen():
+        for _ in range(2):
+            yield b"just data"
+            await asyncio.sleep(0.1)
+
+    async with client.put("/", data=data_gen()) as resp:
+        assert 200 == resp.status
+        async with client.get("/") as resp:
+            assert 200 == resp.status
+
+    # Should be 2 separate connections
+    conns = next(iter(client.session.connector._conns.values()))
+    assert len(conns) == 2
 
 
 async def test_HTTP_304_WITH_BODY(aiohttp_client: Any) -> None:
@@ -307,8 +362,8 @@ async def test_post_data_bytesio(aiohttp_client: Any) -> None:
     client = await aiohttp_client(app)
 
     with io.BytesIO(data) as file_handle:
-        resp = await client.post("/", data=file_handle)
-    assert 200 == resp.status
+        async with client.post("/", data=file_handle) as resp:
+            assert 200 == resp.status
 
 
 async def test_post_data_with_bytesio_file(aiohttp_client: Any) -> None:
