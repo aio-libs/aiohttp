@@ -1203,6 +1203,7 @@ class _RequestContextManager(_BaseRequestContextManager[ClientResponse]):
         # explicitly.  Otherwise connection error handling should kick in
         # and close/recycle the connection as required.
         self._resp.release()
+        await self._resp.wait_for_close()
 
 
 class _WSRequestContextManager(_BaseRequestContextManager[ClientWebSocketResponse]):
