@@ -97,4 +97,4 @@ repos:
   hooks:
   - id: codespell
     additional_dependencies:
-      - tomli
+    - tomli
