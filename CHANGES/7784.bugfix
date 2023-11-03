@@ -1,0 +1,1 @@
+Fix duplicate cookie expiration call in filter_cookies
