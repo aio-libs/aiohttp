@@ -1,0 +1,1 @@
+Fixed a rare `RuntimeError: await wasn't used with future` exception -- by :user:`stalkerg`
