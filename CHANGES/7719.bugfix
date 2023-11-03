@@ -1,1 +1,0 @@
-Update parser to disallow invalid characters in header field names and stop accepting LF as a request line separator.
