@@ -10,6 +10,92 @@
 
 .. towncrier release notes start
 
+3.9.0b1 (2023-11-03)
+==================
+
+Features
+--------
+
+- Added ``WebSocketResponse.get_extra_info()`` to access a protocol transport's extra info.
+
+  `#7078 <https://github.com/aio-libs/aiohttp/issues/7078>`_
+
+- Allow ``link`` argument to be set to None/empty in HTTP 451 exception.
+
+  `#7689 <https://github.com/aio-libs/aiohttp/issues/7689>`_
+
+- Added ``shutdown_timeout`` parameter to ``BaseRunner``, while
+  deprecating ``shutdown_timeout`` parameter from ``BaseSite``. -- by :user:`Dreamsorcerer`
+
+  `#7718 <https://github.com/aio-libs/aiohttp/issues/7718>`_
+
+
+
+Bugfixes
+--------
+
+- Fixed keep-alive connections stopping a graceful shutdown. -- by :user:`Dreamsorcerer`
+
+  `#7718 <https://github.com/aio-libs/aiohttp/issues/7718>`_
+
+- Fixed ``ClientWebSocketResponse.close_code`` being erroneously set to ``None`` when there are concurrent async tasks receiving data and closing the connection.
+
+  `#7306 <https://github.com/aio-libs/aiohttp/issues/7306>`_
+
+- Changed ``AppKey`` warning to ``web.NotAppKeyWarning`` and stop it being displayed by default. -- by :user:`Dreamsorcerer`
+
+  `#7677 <https://github.com/aio-libs/aiohttp/issues/7677>`_
+
+- Fix issue with insufficient HTTP method and version validation.
+
+  `#7700 <https://github.com/aio-libs/aiohttp/issues/7700>`_
+
+- Add check to validate that absolute URIs have schemes.
+
+  `#7712 <https://github.com/aio-libs/aiohttp/issues/7712>`_
+
+- Fix unhandled exception when Python HTTP parser encounters unpaired Unicode surrogates.
+
+  `#7715 <https://github.com/aio-libs/aiohttp/issues/7715>`_
+
+- Update parser to disallow invalid characters in header field names and stop accepting LF as a request line separator.
+
+  `#7719 <https://github.com/aio-libs/aiohttp/issues/7719>`_
+
+- Fix py http parser not treating 204/304/1xx as an empty body
+
+  `#7755 <https://github.com/aio-libs/aiohttp/issues/7755>`_
+
+- Ensure empty body response for 1xx/204/304 per RFC 9112 sec 6.3
+
+  `#7756 <https://github.com/aio-libs/aiohttp/issues/7756>`_
+
+- Fixed an issue when a client request is closed before completing a chunked payload -- by :user:`Dreamsorcerer`
+
+  `#7764 <https://github.com/aio-libs/aiohttp/issues/7764>`_
+
+- Edge Case Handling for ResponseParser for missing reason value
+
+  `#7776 <https://github.com/aio-libs/aiohttp/issues/7776>`_
+
+- Fixed a rare `RuntimeError: await wasn't used with future` exception -- by :user:`stalkerg`
+
+  `#7785 <https://github.com/aio-libs/aiohttp/issues/7785>`_
+
+
+
+Improved Documentation
+----------------------
+
+- Fix, update, and improve client exceptions documentation.
+
+  `#7733 <https://github.com/aio-libs/aiohttp/issues/7733>`_
+
+
+
+----
+
+
 3.9.0b0 (2023-10-07)
 ====================
 
