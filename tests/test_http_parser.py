@@ -818,6 +818,22 @@ def test_http_response_parser_utf8(response: Any) -> None:
     assert not tail
 
 
+def test_http_response_parser_utf8_without_reason(response: Any) -> None:
+    text = "HTTP/1.1 200 \r\nx-test:тест\r\n\r\n".encode()
+
+    messages, upgraded, tail = response.feed_data(text)
+    assert len(messages) == 1
+    msg = messages[0][0]
+
+    assert msg.version == (1, 1)
+    assert msg.code == 200
+    assert msg.reason == ""
+    assert msg.headers == CIMultiDict([("X-TEST", "тест")])
+    assert msg.raw_headers == ((b"x-test", "тест".encode()),)
+    assert not upgraded
+    assert not tail
+
+
 @pytest.mark.parametrize("size", [40962, 8191])
 def test_http_response_parser_bad_status_line_too_long(
     response: Any, size: Any
