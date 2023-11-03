@@ -55,8 +55,12 @@ class Server:
     ) -> BaseRequest:
         return BaseRequest(message, payload, protocol, writer, task, self._loop)
 
+    def pre_shutdown(self) -> None:
+        for conn in self._connections:
+            conn.close()
+
     async def shutdown(self, timeout: Optional[float] = None) -> None:
-        coros = [conn.shutdown(timeout) for conn in self._connections]
+        coros = (conn.shutdown(timeout) for conn in self._connections)
         await asyncio.gather(*coros)
         self._connections.clear()
 
