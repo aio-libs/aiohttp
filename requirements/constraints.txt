@@ -151,7 +151,9 @@ pyenchant==3.2.2
 pygments==2.15.1
     # via sphinx
 pyjwt==2.3.0
-    # via gidgethub
+    # via
+    #   gidgethub
+    #   pyjwt
 pyparsing==2.4.7
     # via packaging
 pytest==7.4.3
@@ -187,7 +189,7 @@ six==1.16.0
     # via
     #   python-dateutil
     #   virtualenv
-slotscheck==0.17.0
+slotscheck==0.17.1
     # via -r requirements/lint.in
 snowballstemmer==2.1.0
     # via sphinx
