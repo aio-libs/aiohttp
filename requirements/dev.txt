@@ -81,6 +81,10 @@ idna==3.4
     #   yarl
 imagesize==1.4.1
     # via sphinx
+importlib-metadata==6.8.0
+    # via sphinx
+importlib-resources==6.1.0
+    # via towncrier
 incremental==22.10.0
     # via towncrier
 iniconfig==2.0.0
@@ -132,7 +136,9 @@ pydantic==1.10.12
 pygments==2.15.1
     # via sphinx
 pyjwt==2.8.0
-    # via gidgethub
+    # via
+    #   gidgethub
+    #   pyjwt
 pyproject-hooks==1.0.0
     # via build
 pytest==7.4.3
@@ -149,6 +155,8 @@ python-dateutil==2.8.2
     # via time-machine
 python-on-whales==0.65.0
     # via -r requirements/test.in
+pytz==2023.3.post1
+    # via babel
 pyyaml==6.0.1
     # via pre-commit
 re-assert==1.1.0
@@ -164,7 +172,7 @@ setuptools-git==1.2
     # via -r requirements/test.in
 six==1.16.0
     # via python-dateutil
-slotscheck==0.17.0
+slotscheck==0.17.1
     # via -r requirements/lint.in
 snowballstemmer==2.2.0
     # via sphinx
@@ -238,6 +246,10 @@ wheel==0.41.0
     # via pip-tools
 yarl==1.9.2
     # via -r requirements/runtime-deps.in
+zipp==3.17.0
+    # via
+    #   importlib-metadata
+    #   importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
 pip==23.2.1
