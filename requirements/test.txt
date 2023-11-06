@@ -84,7 +84,7 @@ pytest-mock==3.12.0
     # via -r requirements/test.in
 python-dateutil==2.8.2
     # via time-machine
-python-on-whales==0.65.0
+python-on-whales==0.66.0
     # via -r requirements/test.in
 re-assert==1.1.0
     # via -r requirements/test.in
@@ -112,6 +112,7 @@ typer==0.9.0
 typing-extensions==4.7.1
     # via
     #   -r requirements/typing-extensions.in
+    #   annotated-types
     #   mypy
     #   pydantic
     #   pydantic-core
