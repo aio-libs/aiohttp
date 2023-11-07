@@ -1077,7 +1077,7 @@ class ClientResponse(HeadersMixin):
             except BaseException:
                 self.close()
                 raise
-        elif self._released:  # Response explicity released
+        elif self._released:  # Response explicitly released
             raise ClientConnectionError("Connection closed")
 
         await self._wait_released()  # Underlying connection released

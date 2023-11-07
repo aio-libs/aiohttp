@@ -181,7 +181,6 @@ middleware
 middlewares
 miltidict
 misbehaviors
-misformed
 Mixcloud
 Mongo
 Mongo
@@ -223,7 +222,7 @@ performant
 pickleable
 ping
 pipelining
-plugable
+pluggable
 plugin
 poller
 pong
@@ -284,7 +283,6 @@ shourtcuts
 skipuntil
 Skyscanner
 SocketSocketTransport
-softwares
 ssl
 SSLContext
 startup
