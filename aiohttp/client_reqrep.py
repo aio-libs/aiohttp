@@ -968,7 +968,7 @@ class ClientResponse(HeadersMixin):
                 headers=self.headers,
             )
 
-    def _cleanup_writer_and_release_connection(self, _: asyncio.Future) -> None:
+    def _cleanup_writer_and_release_connection(self, _: asyncio.Future[None]) -> None:
         """Cleanup writer and release connection.
 
         This is called when the writer is not finished
