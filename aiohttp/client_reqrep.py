@@ -974,10 +974,8 @@ class ClientResponse(HeadersMixin):
         This is called when the writer is not finished
         and _release_connection is called.
         """
-        if self._connection is not None:
-            self._cleanup_writer()
-            self._connection.release()
-            self._connection = None
+        self._writer = None
+        self._release_connection()
 
     def _release_connection(self) -> None:
         if self._connection is not None:
