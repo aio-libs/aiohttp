@@ -972,7 +972,7 @@ class ClientResponse(HeadersMixin):
         """Cleanup writer and release connection.
 
         This is called as a callback when the writer finishes
-        in the event _release_connection was called is called
+        in the event _release_connection was called
         before the writer is done.
         """
         self._writer = None
