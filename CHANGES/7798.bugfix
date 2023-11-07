@@ -1,0 +1,1 @@
+Fix infinite loop releasing the connection when the writer is not finished
