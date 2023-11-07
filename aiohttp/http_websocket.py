@@ -59,6 +59,15 @@ class WSCloseCode(IntEnum):
 
 ALLOWED_CLOSE_CODES: Final[Set[int]] = {int(i) for i in WSCloseCode}
 
+# For websockets, keeping latency low is extremely important as implementations
+# generally expect to be able to send and receive messages quickly.  We use a
+# larger chunk size than the default to reduce the number of executor calls
+# since the executor is a significant source of latency and overhead when
+# the chunks are small. A size of 5KiB was chosen because it is also the
+# same value python-zlib-ng choose to use as the threshold to release the GIL.
+
+WEBSOCKET_MAX_SYNC_CHUNK_SIZE = 5 * 1024
+
 
 class WSMsgType(IntEnum):
     # websocket spec types
@@ -626,11 +635,17 @@ class WebSocketWriter:
         if (compress or self.compress) and opcode < 8:
             if compress:
                 # Do not set self._compress if compressing is for this frame
-                compressobj = ZLibCompressor(level=zlib.Z_BEST_SPEED, wbits=-compress)
+                compressobj = ZLibCompressor(
+                    level=zlib.Z_BEST_SPEED,
+                    wbits=-compress,
+                    max_sync_chunk_size=WEBSOCKET_MAX_SYNC_CHUNK_SIZE,
+                )
             else:  # self.compress
                 if not self._compressobj:
                     self._compressobj = ZLibCompressor(
-                        level=zlib.Z_BEST_SPEED, wbits=-self.compress
+                        level=zlib.Z_BEST_SPEED,
+                        wbits=-self.compress,
+                        max_sync_chunk_size=WEBSOCKET_MAX_SYNC_CHUNK_SIZE,
                     )
                 compressobj = self._compressobj
 
