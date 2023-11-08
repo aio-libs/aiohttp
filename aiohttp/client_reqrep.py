@@ -916,10 +916,12 @@ class ClientResponse(HeadersMixin):
             ):
                 return
 
+            self._cleanup_writer()
             self._release_connection()
+        else:
+            self._cleanup_writer()
 
         self._closed = True
-        self._cleanup_writer()
 
     @property
     def closed(self) -> bool:
