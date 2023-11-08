@@ -87,7 +87,7 @@ from .helpers import (
 )
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, WSMessage, ws_ext_gen, ws_ext_parse
-from .streams import FlowControlDataQueue
+from .streams import FlowControlDataQueue, DataQueue
 from .tracing import Trace, TraceConfig
 from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
 
@@ -507,53 +507,85 @@ class ClientSession:
                         trust_env=self.trust_env,
                     )
 
-                    # connection timeout
-                    try:
-                        async with ceil_timeout(
-                            real_timeout.connect,
-                            ceil_threshold=real_timeout.ceil_threshold,
-                        ):
-                            assert self._connector is not None
-                            conn = await self._connector.connect(
-                                req, traces=traces, timeout=real_timeout
-                            )
-                    except asyncio.TimeoutError as exc:
-                        raise ServerTimeoutError(
-                            f"Connection timeout to host {url}"
-                        ) from exc
-
-                    assert conn.transport is not None
-
-                    assert conn.protocol is not None
-                    conn.protocol.set_response_params(
-                        timer=timer,
-                        skip_payload=method_must_be_empty_body(method),
-                        read_until_eof=read_until_eof,
-                        auto_decompress=auto_decompress,
-                        read_timeout=real_timeout.sock_read,
-                        read_bufsize=read_bufsize,
-                        timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
-                        max_line_size=max_line_size,
-                        max_field_size=max_field_size,
-                    )
-
-                    try:
+                    if sys.platform == "emscripten":
+                        req.response = resp = req.response_class(
+                            req.method,
+                            req.original_url,
+                            writer=None,
+                            continue100=req._continue,
+                            timer=req._timer,
+                            request_info=req.request_info,
+                            traces=req._traces,
+                            loop=req.loop,
+                            session=req._session,
+                        )
+                        from js import fetch, Headers, AbortController
+                        from pyodide.ffi import to_js
+                        body = None
+                        if req.body:
+                            body = to_js(req.body._value)
+                        abortcontroller = AbortController.new()
+                        tm.register(abortcontroller.abort)
+                        jsresp = await fetch(str(req.url), method=req.method, headers=Headers.new(headers.items()), body=body, signal=abortcontroller.signal)
+                        resp.version = version
+                        resp.status = jsresp.status
+                        resp.reason = jsresp.statusText
+                        # This is not quite correct in handling of repeated headers
+                        resp._headers = CIMultiDict(jsresp.headers)
+                        resp._raw_headers = tuple(tuple(e) for e in jsresp.headers)
+                        resp.content = DataQueue(self._loop)
+                        def done_callback(fut):
+                            resp.content.feed_data(fut.result())
+                            resp.content.feed_eof()
+                        jsresp.arrayBuffer().add_done_callback(done_callback)
+                    else:
+                        # connection timeout
                         try:
-                            resp = await req.send(conn)
+                            async with ceil_timeout(
+                                real_timeout.connect,
+                                ceil_threshold=real_timeout.ceil_threshold,
+                            ):
+                                assert self._connector is not None
+                                conn = await self._connector.connect(
+                                    req, traces=traces, timeout=real_timeout
+                                )
+                        except asyncio.TimeoutError as exc:
+                            raise ServerTimeoutError(
+                                f"Connection timeout to host {url}"
+                            ) from exc
+
+                        assert conn.transport is not None
+
+                        assert conn.protocol is not None
+                        conn.protocol.set_response_params(
+                            timer=timer,
+                            skip_payload=method_must_be_empty_body(method),
+                            read_until_eof=read_until_eof,
+                            auto_decompress=auto_decompress,
+                            read_timeout=real_timeout.sock_read,
+                            read_bufsize=read_bufsize,
+                            timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
+                            max_line_size=max_line_size,
+                            max_field_size=max_field_size,
+                        )
+
+                        try:
                             try:
-                                await resp.start(conn)
+                                resp = await req.send(conn)
+                                try:
+                                    await resp.start(conn)
+                                except BaseException:
+                                    resp.close()
+                                    raise
                             except BaseException:
-                                resp.close()
+                                conn.close()
                                 raise
-                        except BaseException:
-                            conn.close()
+                        except ClientError:
                             raise
-                    except ClientError:
-                        raise
-                    except OSError as exc:
-                        if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
-                            raise
-                        raise ClientOSError(*exc.args) from exc
+                        except OSError as exc:
+                            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                                raise
+                            raise ClientOSError(*exc.args) from exc
 
                     self._cookie_jar.update_cookies(resp.cookies, resp.url)
 
