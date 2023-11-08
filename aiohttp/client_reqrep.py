@@ -81,6 +81,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from .tracing import Trace
 
 
+_CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 json_re = re.compile(r"^application/(?:[\w.+-]+?\+)?json")
 
 
@@ -275,9 +276,15 @@ class ClientRequest:
         trust_env: bool = False,
         server_hostname: Optional[str] = None,
     ):
-
         if loop is None:
             loop = asyncio.get_event_loop()
+
+        match = _CONTAINS_CONTROL_CHAR_RE.search(method)
+        if match:
+            raise ValueError(
+                f"Method cannot contain non-token characters {method!r} "
+                "(found at least {match.group()!r})"
+            )
 
         assert isinstance(url, URL), url
         assert isinstance(proxy, (URL, type(None))), proxy
