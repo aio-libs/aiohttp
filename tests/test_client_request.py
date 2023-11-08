@@ -89,6 +89,11 @@ def test_method3(make_request) -> None:
     assert req.method == "HEAD"
 
 
+def test_method_invalid(make_request) -> None:
+    with pytest.raises(ValueError, match="Method cannot contain non-token characters"):
+        make_request("METHOD WITH\nWHITESPACES", "http://python.org/")
+
+
 def test_version_1_0(make_request) -> None:
     req = make_request("get", "http://python.org/", version="1.0")
     assert req.version == (1, 0)
