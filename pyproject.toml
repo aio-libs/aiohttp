@@ -17,3 +17,7 @@ issue_format = "`#{issue} <https://github.com/aio-libs/aiohttp/issues/{issue}>`_
 test-command = ""
 # don't build PyPy wheels, install from source instead
 skip = "pp*"
+
+[tool.codespell]
+skip = '.git,*.pdf,*.svg,Makefile,CONTRIBUTORS.txt,venvs,_build'
+ignore-words-list = 'te'

@@ -2046,7 +2046,7 @@ async def test_bad_payload_content_length(aiohttp_client: Any) -> None:
 
 async def test_payload_content_length_by_chunks(aiohttp_client) -> None:
     async def handler(request):
-        resp = web.StreamResponse(headers={"content-length": "3"})
+        resp = web.StreamResponse(headers={"content-length": "2"})
         await resp.prepare(request)
         await resp.write(b"answer")
         await resp.write(b"two")
@@ -2059,7 +2059,7 @@ async def test_payload_content_length_by_chunks(aiohttp_client) -> None:
 
     resp = await client.get("/")
     data = await resp.read()
-    assert data == b"ans"
+    assert data == b"an"
     resp.close()
 
 
