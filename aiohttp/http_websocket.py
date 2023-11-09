@@ -144,7 +144,7 @@ native_byteorder: Final[str] = sys.byteorder
 
 
 # Used by _websocket_mask_python
-@functools.lru_cache()
+@functools.lru_cache
 def _xor_table() -> List[bytes]:
     return [bytes(a ^ b for a in range(256)) for b in range(256)]
 
