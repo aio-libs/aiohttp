@@ -124,7 +124,7 @@ packaging==21.2
     #   sphinx
 pep517==0.12.0
     # via build
-pillow==9.5.0
+pillow==10.1.0
     # via
     #   -c requirements/broken-projects.in
     #   blockdiag
