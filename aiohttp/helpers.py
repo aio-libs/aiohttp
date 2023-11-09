@@ -858,7 +858,7 @@ class AppKey(Generic[_T]):
                 t = get_args(self.__orig_class__)[0]
 
         if t is None:
-            t_repr = "<<Unkown>>"
+            t_repr = "<<Unknown>>"
         elif isinstance(t, type):
             if t.__module__ == "builtins":
                 t_repr = t.__qualname__

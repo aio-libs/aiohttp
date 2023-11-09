@@ -265,7 +265,7 @@ class StreamReader(AsyncStreamReaderMixin):
         # self._http_chunk_splits contains logical byte offsets from start of
         # the body transfer. Each offset is the offset of the end of a chunk.
         # "Logical" means bytes, accessible for a user.
-        # If no chunks containig logical data were received, current position
+        # If no chunks containing logical data were received, current position
         # is difinitely zero.
         pos = self._http_chunk_splits[-1] if self._http_chunk_splits else 0
 

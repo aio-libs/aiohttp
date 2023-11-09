@@ -911,9 +911,9 @@ def test_cookie_set_after_del() -> None:
 def test_set_status_with_reason() -> None:
     resp = StreamResponse()
 
-    resp.set_status(200, "Everithing is fine!")
+    resp.set_status(200, "Everything is fine!")
     assert 200 == resp.status
-    assert "Everithing is fine!" == resp.reason
+    assert "Everything is fine!" == resp.reason
 
 
 async def test_start_force_close() -> None:

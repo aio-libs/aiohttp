@@ -45,7 +45,7 @@ MEMLEAK_SKIP_TYPES = (
 def get_memory_usage(obj):
     objs = [obj]
     # Memory leak may be caused by leaked links to same objects.
-    # Without link counting, [1,2,3] is indistiguishable from [1,2,3,3,3,3,3,3]
+    # Without link counting, [1,2,3] is indistinguishable from [1,2,3,3,3,3,3,3]
     known = defaultdict(int)
     known[id(obj)] += 1
 
