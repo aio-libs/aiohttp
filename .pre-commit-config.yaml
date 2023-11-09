@@ -44,9 +44,6 @@ repos:
   - id: end-of-file-fixer
     exclude: >-
       ^docs/[^/]*\.svg$
-  - id: requirements-txt-fixer
-    exclude: >-
-      ^requirements/.*\.txt$
   - id: trailing-whitespace
   - id: file-contents-sorter
     args: ['--ignore-case']
