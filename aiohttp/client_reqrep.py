@@ -178,7 +178,7 @@ class ClientRequest:
     auth = None
     response = None
 
-    _writer = None  # async task for streaming data
+    __writer = None  # async task for streaming data
     _continue = None  # waiter future for '100 Continue' response
 
     # N.B.
@@ -264,6 +264,21 @@ class ClientRequest:
         if traces is None:
             traces = []
         self._traces = traces
+
+    def __reset_writer(self, _: object = None) -> None:
+        self.__writer = None
+
+    @property
+    def _writer(self) -> Optional["asyncio.Task[None]"]:
+        return self.__writer
+
+    @_writer.setter
+    def _writer(self, writer: Optional["asyncio.Task[None]"]) -> None:
+        if self.__writer is not None:
+            self.__writer.remove_done_callback(self.__reset_writer)
+        if writer is not None:
+            writer.add_done_callback(self.__reset_writer)
+        self.__writer = writer
 
     def is_ssl(self) -> bool:
         return self.url.scheme in ("https", "wss")
@@ -563,8 +578,6 @@ class ClientRequest:
         else:
             await writer.write_eof()
             protocol.start_timeout()
-        finally:
-            self._writer = None
 
     async def send(self, conn: "Connection") -> "ClientResponse":
         # Specify request target:
@@ -649,16 +662,14 @@ class ClientRequest:
 
     async def close(self) -> None:
         if self._writer is not None:
-            try:
-                with contextlib.suppress(asyncio.CancelledError):
-                    await self._writer
-            finally:
-                self._writer = None
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._writer
 
     def terminate(self) -> None:
         if self._writer is not None:
             if not self.loop.is_closed():
                 self._writer.cancel()
+                self._writer.remove_done_callback(self.__reset_writer)
             self._writer = None
 
     async def _on_chunk_request_sent(self, method: str, url: URL, chunk: bytes) -> None:
@@ -714,7 +725,7 @@ class ClientResponse(HeadersMixin):
         self._real_url = url
         self._url = url.with_fragment(None)
         self._body: Optional[bytes] = None
-        self._writer: Optional[asyncio.Task[None]] = writer
+        self.__writer: Optional[asyncio.Task[None]] = writer
         self._continue = continue100  # None by default
         self._closed = True
         self._history: Tuple[ClientResponse, ...] = ()
@@ -736,6 +747,21 @@ class ClientResponse(HeadersMixin):
             self._resolve_charset = session._resolve_charset
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
+
+    def __reset_writer(self, _: object = None) -> None:
+        self.__writer = None
+
+    @property
+    def _writer(self) -> Optional["asyncio.Task[None]"]:
+        return self.__writer
+
+    @_writer.setter
+    def _writer(self, writer: Optional["asyncio.Task[None]"]) -> None:
+        if self.__writer is not None:
+            self.__writer.remove_done_callback(self.__reset_writer)
+        if writer is not None:
+            writer.add_done_callback(self.__reset_writer)
+        self.__writer = writer
 
     @reify
     def url(self) -> URL:
@@ -978,18 +1004,13 @@ class ClientResponse(HeadersMixin):
 
     async def _wait_released(self) -> None:
         if self._writer is not None:
-            try:
-                await self._writer
-            finally:
-                self._writer = None
+            await self._writer
         self._release_connection()
 
     def _cleanup_writer(self) -> None:
         if self._writer is not None:
-            if self._writer.done():
-                self._writer = None
-            else:
-                self._writer.cancel()
+            assert not self._writer.done()
+            self._writer.cancel()
         self._session = None
 
     def _notify_content(self) -> None:
@@ -1001,10 +1022,7 @@ class ClientResponse(HeadersMixin):
 
     async def wait_for_close(self) -> None:
         if self._writer is not None:
-            try:
-                await self._writer
-            finally:
-                self._writer = None
+            await self._writer
         self.release()
 
     async def read(self) -> bytes:
