@@ -702,6 +702,7 @@ class ClientResponse(HeadersMixin):
     # post-init stage allows to not change ctor signature
     _closed = True  # to allow __del__ for non-initialized properly response
     _released = False
+    __writer = None
 
     def __init__(
         self,
@@ -725,7 +726,7 @@ class ClientResponse(HeadersMixin):
         self._real_url = url
         self._url = url.with_fragment(None)
         self._body: Optional[bytes] = None
-        self.__writer: Optional[asyncio.Task[None]] = writer
+        self._writer: Optional[asyncio.Task[None]] = writer
         self._continue = continue100  # None by default
         self._closed = True
         self._history: Tuple[ClientResponse, ...] = ()
