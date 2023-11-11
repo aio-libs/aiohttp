@@ -7,7 +7,7 @@ from .client_exceptions import (
     ClientOSError,
     ClientPayloadError,
     ServerDisconnectedError,
-    ServerTimeoutError,
+    SocketTimeoutError,
 )
 from .helpers import (
     BaseTimerContext,
@@ -205,7 +205,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         self._reschedule_timeout()
 
     def _on_read_timeout(self) -> None:
-        exc = ServerTimeoutError("Timeout on reading data from socket")
+        exc = SocketTimeoutError("Timeout on reading data from socket")
         self.set_exception(exc)
         if self._payload is not None:
             self._payload.set_exception(exc)

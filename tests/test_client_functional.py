@@ -19,7 +19,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver
-from aiohttp.client_exceptions import TooManyRedirects
+from aiohttp.client_exceptions import SocketTimeoutError, TooManyRedirects
 from aiohttp.pytest_plugin import AiohttpClient, TestClient
 from aiohttp.test_utils import unused_port
 

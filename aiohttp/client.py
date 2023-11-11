@@ -52,12 +52,14 @@ from .client_exceptions import (
     ClientProxyConnectionError,
     ClientResponseError,
     ClientSSLError,
+    ConnectionTimeoutError,
     ContentTypeError,
     InvalidURL,
     ServerConnectionError,
     ServerDisconnectedError,
     ServerFingerprintMismatch,
     ServerTimeoutError,
+    SocketTimeoutError,
     TooManyRedirects,
     WSServerHandshakeError,
 )
@@ -104,12 +106,14 @@ __all__ = (
     "ClientProxyConnectionError",
     "ClientResponseError",
     "ClientSSLError",
+    "ConnectionTimeoutError",
     "ContentTypeError",
     "InvalidURL",
     "ServerConnectionError",
     "ServerDisconnectedError",
     "ServerFingerprintMismatch",
     "ServerTimeoutError",
+    "SocketTimeoutError",
     "TooManyRedirects",
     "WSServerHandshakeError",
     # client_reqrep
@@ -518,7 +522,7 @@ class ClientSession:
                                 req, traces=traces, timeout=real_timeout
                             )
                     except asyncio.TimeoutError as exc:
-                        raise ServerTimeoutError(
+                        raise ConnectionTimeoutError(
                             f"Connection timeout to host {url}"
                         ) from exc
 
