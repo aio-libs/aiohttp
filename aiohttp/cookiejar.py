@@ -234,7 +234,6 @@ class CookieJar(AbstractCookieJar):
         self, request_url: URL = URL()
     ) -> Union["BaseCookie[str]", "SimpleCookie[str]"]:
         """Returns this jar's cookies filtered by their attributes."""
-        self._do_expiration()
         if not isinstance(request_url, URL):
             warnings.warn(
                 "The method accepts yarl.URL instances only, got {}".format(
@@ -246,6 +245,16 @@ class CookieJar(AbstractCookieJar):
         filtered: Union["SimpleCookie[str]", "BaseCookie[str]"] = (
             SimpleCookie() if self._quote_cookie else BaseCookie()
         )
+        if not self._cookies:
+            # Shortcut: empty jar
+            # We need the shortcut because the filtering itself and its
+            # preparation is expensive
+            return filtered
+        self._do_expiration()
+        if not self._cookies:
+            # Shortcut: all cookies expired
+            # Likewise.
+            return filtered
         hostname = request_url.raw_host or ""
         request_origin = URL()
         with contextlib.suppress(ValueError):
