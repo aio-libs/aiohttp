@@ -28,7 +28,10 @@ class WriterMock(mock.AsyncMock):
         return self().__await__()
 
     def add_done_callback(self, cb: Callable[[], None]) -> None:
-        cb()
+        """Dummy method."""
+
+    def remove_done_callback(self, cb: Callable[[], None]) -> None:
+        """Dummy method."""
 
 
 @pytest.fixture
@@ -1141,6 +1144,7 @@ async def test_terminate(loop: Any, conn: Any) -> None:
     resp = await req.send(conn)
     assert req._writer is not None
     writer = req._writer = WriterMock()
+    writer.cancel = mock.Mock()
 
     req.terminate()
     assert req._writer is None
