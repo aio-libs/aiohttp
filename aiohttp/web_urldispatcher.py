@@ -995,7 +995,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
                     ) is not None:
                         return match_dict
 
-        # We didn't find any candidates, so will fallback to a linear search
+        # We didn't find any candidates, so we fallback to a linear search
 
         method = request.method
         allowed_methods: Set[str] = set()
