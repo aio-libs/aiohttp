@@ -256,8 +256,6 @@ class CookieJar(AbstractCookieJar):
 
         is_not_secure = request_url.scheme not in ("https", "wss")
         if is_not_secure and self._treat_as_secure_origin:
-            # Only check origin if insecure scheme and there are origins to
-            # treat as secure.
             request_origin = URL()
             with contextlib.suppress(ValueError):
                 request_origin = request_url.origin()
