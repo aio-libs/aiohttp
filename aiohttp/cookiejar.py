@@ -246,14 +246,11 @@ class CookieJar(AbstractCookieJar):
             SimpleCookie() if self._quote_cookie else BaseCookie()
         )
         if not self._cookies:
-            # Shortcut: empty jar
-            # We need the shortcut because the filtering itself and its
-            # preparation is expensive
+            # Skip do_expiration() if there are no cookies.
             return filtered
         self._do_expiration()
         if not self._cookies:
-            # Shortcut: all cookies expired
-            # Likewise.
+            # Skip rest of function if no non-expired cookies.
             return filtered
         hostname = request_url.raw_host or ""
         request_origin = URL()
