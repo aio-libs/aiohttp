@@ -211,7 +211,7 @@ jobs:
         python -m pip install -U pip wheel setuptools build twine
     - name: Install dependencies
       run: |
-        python -m pip install -r requirements/test.in -c requirements/test.txt
+        python -m pip install . -r requirements/test.in -c requirements/test.txt
     - name: Restore llhttp generated files
       if: ${{ matrix.no-extensions == '' }}
       uses: actions/download-artifact@v3
