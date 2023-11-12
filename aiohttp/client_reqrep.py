@@ -824,7 +824,7 @@ class ClientResponse(HeadersMixin):
                 "ascii", "backslashreplace"
             ).decode("ascii")
         else:
-            ascii_encodable_reason = "<None>"
+            ascii_encodable_reason = "None"
         print(
             "<ClientResponse({}) [{} {}]>".format(
                 ascii_encodable_url, self.status, ascii_encodable_reason
