@@ -56,7 +56,7 @@ from .helpers import (
     reify,
     set_result,
 )
-from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, StreamWriter
+from .http import SERVER_SOFTWARE, HttpVersion, HttpVersion10, HttpVersion11, StreamWriter
 from .log import client_logger
 from .streams import StreamReader
 from .typedefs import (
@@ -688,9 +688,9 @@ class ClientResponse(HeadersMixin):
     # but will be set by the start() method.
     # As the end user will likely never see the None values, we cheat the types below.
     # from the Status-Line of the response
-    version = None  # HTTP-Version
+    version: Optional[HttpVersion] = None  # HTTP-Version
     status: int = None  # type: ignore[assignment] # Status-Code
-    reason = None  # Reason-Phrase
+    reason: Optional[str] = None  # Reason-Phrase
 
     content: StreamReader = None  # type: ignore[assignment] # Payload stream
     _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]
@@ -824,7 +824,7 @@ class ClientResponse(HeadersMixin):
                 "ascii", "backslashreplace"
             ).decode("ascii")
         else:
-            ascii_encodable_reason = self.reason
+            ascii_encodable_reason = "<None>"
         print(
             "<ClientResponse({}) [{} {}]>".format(
                 ascii_encodable_url, self.status, ascii_encodable_reason
