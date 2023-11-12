@@ -26,10 +26,11 @@ from aiohttp.test_utils import make_mocked_coro
 
 class WriterMock(mock.AsyncMock):
     def __await__(self) -> None:
+        self._cb()
         return self().__await__()
 
     def add_done_callback(self, cb: Callable[[], None]) -> None:
-        cb()
+        self._cb = cb
 
 
 @pytest.fixture
@@ -1192,6 +1193,7 @@ async def test_terminate(loop, conn) -> None:
     resp = await req.send(conn)
     assert req._writer is not None
     writer = req._writer = WriterMock()
+    writer.cancel.side_effect = lambda: writer._cb()
 
     req.terminate()
     assert req._writer is None
