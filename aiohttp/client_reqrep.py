@@ -56,7 +56,13 @@ from .helpers import (
     reify,
     set_result,
 )
-from .http import SERVER_SOFTWARE, HttpVersion, HttpVersion10, HttpVersion11, StreamWriter
+from .http import (
+    SERVER_SOFTWARE,
+    HttpVersion,
+    HttpVersion10,
+    HttpVersion11,
+    StreamWriter,
+)
 from .log import client_logger
 from .streams import StreamReader
 from .typedefs import (
