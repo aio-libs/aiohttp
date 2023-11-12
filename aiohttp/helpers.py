@@ -530,11 +530,9 @@ def is_ip_address(host: Optional[Union[str, bytes, bytearray, memoryview]]) -> b
     return is_ipv4_address(host) or is_ipv6_address(host)
 
 
-def next_whole_second() -> datetime.datetime:
+def next_whole_second() -> int:
     """Return current time rounded up to the next whole second."""
-    return datetime.datetime.now(datetime.timezone.utc).replace(
-        microsecond=0
-    ) + datetime.timedelta(seconds=0)
+    return ceil(time.time())
 
 
 _cached_current_datetime: Optional[int] = None

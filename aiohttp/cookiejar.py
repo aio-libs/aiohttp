@@ -1,9 +1,11 @@
+import calendar
 import contextlib
 import datetime
 import os  # noqa
 import pathlib
 import pickle
 import re
+import time
 import warnings
 from collections import defaultdict
 from http.cookies import BaseCookie, Morsel, SimpleCookie
@@ -52,9 +54,16 @@ class CookieJar(AbstractCookieJar):
 
     DATE_YEAR_RE = re.compile(r"(\d{2,4})")
 
-    MAX_TIME = datetime.datetime.max.replace(tzinfo=datetime.timezone.utc)
-
-    MAX_32BIT_TIME = datetime.datetime.fromtimestamp(2**31 - 1, datetime.timezone.utc)
+    # calendar.timegm() fails for timestamps after datetime.datetime.max
+    # Minus one as a loss of precision occurs when timestamp() is called.
+    MAX_TIME = int(
+        datetime.datetime.max.replace(tzinfo=datetime.timezone.utc).timestamp()
+    ) - 1
+    # #4515: datetime.max may not be representable on 32-bit platforms
+    try:
+        calendar.timegm(time.gmtime(MAX_TIME))
+    except OverflowError:
+        MAX_TIME = 2**31 - 1
 
     def __init__(
         self,
@@ -82,13 +91,7 @@ class CookieJar(AbstractCookieJar):
             ]
         self._treat_as_secure_origin = treat_as_secure_origin
         self._next_expiration = next_whole_second()
-        self._expirations: Dict[Tuple[str, str, str], datetime.datetime] = {}
-        # #4515: datetime.max may not be representable on 32-bit platforms
-        self._max_time = self.MAX_TIME
-        try:
-            self._max_time.timestamp()
-        except OverflowError:
-            self._max_time = self.MAX_32BIT_TIME
+        self._expirations: Dict[Tuple[str, str, str], Union[int, float]] = {}
 
     def save(self, file_path: PathLike) -> None:
         file_path = pathlib.Path(file_path)
@@ -109,7 +112,7 @@ class CookieJar(AbstractCookieJar):
             return
 
         to_del = []
-        now = datetime.datetime.now(datetime.timezone.utc)
+        now = time.time()
         for (domain, path), cookie in self._cookies.items():
             for name, morsel in cookie.items():
                 key = (domain, path, name)
@@ -125,13 +128,8 @@ class CookieJar(AbstractCookieJar):
                 del self._expirations[(domain, path, name)]
             self._cookies[(domain, path)].pop(name, None)
 
-        next_expiration = min(self._expirations.values(), default=self._max_time)
-        try:
-            self._next_expiration = next_expiration.replace(
-                microsecond=0
-            ) + datetime.timedelta(seconds=1)
-        except OverflowError:
-            self._next_expiration = self._max_time
+        next_expiration = min(self._expirations.values(), default=self.MAX_TIME)
+        self._next_expiration = min(next_expiration + 1, self.MAX_TIME)
 
     def clear_domain(self, domain: str) -> None:
         self.clear(lambda x: self._is_domain_match(domain, x["domain"]))
@@ -148,7 +146,7 @@ class CookieJar(AbstractCookieJar):
         self.clear(lambda x: False)
 
     def _expire_cookie(
-        self, when: datetime.datetime, domain: str, path: str, name: str
+        self, when: Union[int, float], domain: str, path: str, name: str
     ) -> None:
         self._next_expiration = min(self._next_expiration, when)
         self._expirations[(domain, path, name)] = when
@@ -207,12 +205,7 @@ class CookieJar(AbstractCookieJar):
             if max_age:
                 try:
                     delta_seconds = int(max_age)
-                    try:
-                        max_age_expiration = datetime.datetime.now(
-                            datetime.timezone.utc
-                        ) + datetime.timedelta(seconds=delta_seconds)
-                    except OverflowError:
-                        max_age_expiration = self._max_time
+                    max_age_expiration = min(time.time() + delta_seconds, self.MAX_TIME)
                     self._expire_cookie(max_age_expiration, domain, path, name)
                 except ValueError:
                     cookie["max-age"] = ""
@@ -331,7 +324,7 @@ class CookieJar(AbstractCookieJar):
         return non_matching.startswith("/")
 
     @classmethod
-    def _parse_date(cls, date_str: str) -> Optional[datetime.datetime]:
+    def _parse_date(cls, date_str: str) -> Optional[int]:
         """Implements date string parsing adhering to RFC 6265."""
         if not date_str:
             return None
@@ -391,8 +384,8 @@ class CookieJar(AbstractCookieJar):
         if year < 1601 or hour > 23 or minute > 59 or second > 59:
             return None
 
-        return datetime.datetime(
-            year, month, day, hour, minute, second, tzinfo=datetime.timezone.utc
+        return calendar.timegm(
+                (year, month, day, hour, minute, second, -1, -1, -1)
         )
 
 
