@@ -238,7 +238,7 @@ async def test_handler_cancellation(aiohttp_unused_port) -> None:
         assert runner.server.handler_cancellation, "Flag was not propagated"
 
         async with client.ClientSession(
-            timeout=client.ClientTimeout(total=0.1)
+            timeout=client.ClientTimeout(total=0.15)
         ) as sess:
             with pytest.raises(asyncio.TimeoutError):
                 await sess.get(f"http://localhost:{port}/")

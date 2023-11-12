@@ -158,7 +158,7 @@ pytest-mock==3.12.0
     # via -r requirements/test.in
 python-dateutil==2.8.2
     # via time-machine
-python-on-whales==0.65.0
+python-on-whales==0.66.0
     # via -r requirements/test.in
 pytz==2023.3.post1
     # via babel
