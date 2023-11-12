@@ -5,7 +5,7 @@ import os.path
 import urllib.parse
 import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 from unittest import mock
 
 import pytest
@@ -22,6 +22,17 @@ from aiohttp.client_reqrep import (
     _merge_ssl_params,
 )
 from aiohttp.test_utils import make_mocked_coro
+
+
+class WriterMock(mock.AsyncMock):
+    def __await__(self) -> None:
+        return self().__await__()
+
+    def add_done_callback(self, cb: Callable[[], None]) -> None:
+        """Dummy method."""
+
+    def remove_done_callback(self, cb: Callable[[], None]) -> None:
+        """Dummy method."""
 
 
 @pytest.fixture
@@ -1167,7 +1178,7 @@ async def test_custom_response_class(loop, conn) -> None:
 async def test_oserror_on_write_bytes(loop, conn) -> None:
     req = ClientRequest("POST", URL("http://python.org/"), loop=loop)
 
-    writer = mock.Mock()
+    writer = WriterMock()
     writer.write.side_effect = OSError
 
     await req.write_bytes(writer, conn)
@@ -1183,7 +1194,8 @@ async def test_terminate(loop, conn) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
     resp = await req.send(conn)
     assert req._writer is not None
-    writer = req._writer = mock.Mock()
+    writer = req._writer = WriterMock()
+    writer.cancel = mock.Mock()
 
     req.terminate()
     assert req._writer is None
@@ -1201,7 +1213,7 @@ def test_terminate_with_closed_loop(loop, conn) -> None:
         req = ClientRequest("get", URL("http://python.org"))
         resp = await req.send(conn)
         assert req._writer is not None
-        writer = req._writer = mock.Mock()
+        writer = req._writer = WriterMock()
 
         await asyncio.sleep(0.05)
 
