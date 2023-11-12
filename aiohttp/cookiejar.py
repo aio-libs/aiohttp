@@ -59,10 +59,16 @@ class CookieJar(AbstractCookieJar):
     MAX_TIME = (
         int(datetime.datetime.max.replace(tzinfo=datetime.timezone.utc).timestamp()) - 1
     )
-    # #4515: datetime.max may not be representable on 32-bit platforms
     try:
         calendar.timegm(time.gmtime(MAX_TIME))
+    except OSError:
+        # Hit the maximum representable time on Windows
+        # https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/localtime-localtime32-localtime64
+        MAX_TIME = calendar.timegm((3000, 12, 31, 23, 59, 59, -1, -1, -1))
+        # The below line should never raise an exception
+        time.gmtime(MAX_TIME)
     except OverflowError:
+        # #4515: datetime.max may not be representable on 32-bit platforms
         MAX_TIME = 2**31 - 1
 
     def __init__(
