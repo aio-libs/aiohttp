@@ -5,7 +5,7 @@ import io
 import pathlib
 import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 from unittest import mock
 
 import pytest
