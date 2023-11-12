@@ -16,7 +16,7 @@ from typing import (
 
 from . import hdrs
 from .abc import AbstractStreamWriter
-from .helpers import ETAG_ANY, ETag
+from .helpers import ETAG_ANY, ETag, must_be_empty_body
 from .typedefs import LooseHeaders, PathLike
 from .web_exceptions import (
     HTTPNotModified,
@@ -266,7 +266,7 @@ class FileResponse(StreamResponse):
             )
 
         # If we are sending 0 bytes calling sendfile() will throw a ValueError
-        if count == 0 or request.method == hdrs.METH_HEAD or self.status in [204, 304]:
+        if count == 0 or must_be_empty_body(request.method, self.status):
             return await super().prepare(request)
 
         fobj = await loop.run_in_executor(None, filepath.open, "rb")

@@ -1316,7 +1316,7 @@ Response object
       Reading from the stream may raise
       :exc:`aiohttp.ClientPayloadError` if the response object is
       closed before response receives all data or in case if any
-      transfer encoding related errors like misformed chunked
+      transfer encoding related errors like malformed chunked
       encoding of broken compression data.
 
    .. attribute:: cookies
@@ -1508,7 +1508,15 @@ manually.
 
    .. method:: get_extra_info(name, default=None)
 
-      Reads extra info from connection's transport
+      Reads optional extra information from the connection's transport.
+      If no value associated with ``name`` is found, ``default`` is returned.
+
+      See :meth:`asyncio.BaseTransport.get_extra_info`
+
+      :param str name: The key to look up in the transport extra information.
+
+      :param default: Default value to be used when no value for ``name`` is
+                      found (default is ``None``).
 
    .. method:: exception()
 
@@ -2130,13 +2138,6 @@ Response errors
       .. deprecated:: 3.1
 
 
-.. class:: WSServerHandshakeError
-
-   Web socket server response error.
-
-   Derived from :exc:`ClientResponseError`
-
-
 .. class:: ContentTypeError
 
    Invalid content type.
@@ -2156,6 +2157,13 @@ Response errors
    Derived from :exc:`ClientResponseError`
 
    .. versionadded:: 3.2
+
+
+.. class:: WSServerHandshakeError
+
+   Web socket server response error.
+
+   Derived from :exc:`ClientResponseError`
 
 Connection errors
 ^^^^^^^^^^^^^^^^^
@@ -2183,14 +2191,6 @@ Connection errors
 
    Derived from :exc:`ClientConnectorError`
 
-.. class:: UnixClientConnectorError
-
-   Derived from :exc:`ClientConnectorError`
-
-.. class:: ServerConnectionError
-
-   Derived from :exc:`ClientConnectionError`
-
 .. class:: ClientSSLError
 
    Derived from :exc:`ClientConnectorError`
@@ -2207,6 +2207,14 @@ Connection errors
 
    Derived from :exc:`ClientSSLError` and :exc:`ssl.CertificateError`
 
+.. class:: UnixClientConnectorError
+
+   Derived from :exc:`ClientConnectorError`
+
+.. class:: ServerConnectionError
+
+   Derived from :exc:`ClientConnectionError`
+
 .. class:: ServerDisconnectedError
 
    Server disconnected.
@@ -2218,17 +2226,17 @@ Connection errors
       Partially parsed HTTP message (optional).
 
 
-.. class:: ServerTimeoutError
-
-   Server operation timeout: read timeout, etc.
-
-   Derived from :exc:`ServerConnectionError` and :exc:`asyncio.TimeoutError`
-
 .. class:: ServerFingerprintMismatch
 
    Server fingerprint mismatch.
 
    Derived from :exc:`ServerConnectionError`
+
+.. class:: ServerTimeoutError
+
+   Server operation timeout: read timeout, etc.
+
+   Derived from :exc:`ServerConnectionError` and :exc:`asyncio.TimeoutError`
 
 
 Hierarchy of exceptions
@@ -2236,33 +2244,40 @@ Hierarchy of exceptions
 
 * :exc:`ClientError`
 
-  * :exc:`ClientResponseError`
-
-    * :exc:`ContentTypeError`
-    * :exc:`WSServerHandshakeError`
-    * :exc:`~aiohttp.ClientHttpProxyError`
-
   * :exc:`ClientConnectionError`
 
     * :exc:`ClientOSError`
 
       * :exc:`ClientConnectorError`
 
-         * :exc:`ClientSSLError`
+        * :exc:`ClientProxyConnectionError`
 
-           * :exc:`ClientConnectorCertificateError`
+        * :exc:`ClientSSLError`
 
-           * :exc:`ClientConnectorSSLError`
+          * :exc:`ClientConnectorCertificateError`
 
-         * :exc:`ClientProxyConnectionError`
+          * :exc:`ClientConnectorSSLError`
 
-      * :exc:`ServerConnectionError`
+        * :exc:`UnixClientConnectorError`
 
-         * :exc:`ServerDisconnectedError`
-         * :exc:`ServerTimeoutError`
+    * :exc:`ServerConnectionError`
+
+      * :exc:`ServerDisconnectedError`
 
       * :exc:`ServerFingerprintMismatch`
 
+      * :exc:`ServerTimeoutError`
+
   * :exc:`ClientPayloadError`
+
+  * :exc:`ClientResponseError`
+
+    * :exc:`~aiohttp.ClientHttpProxyError`
+
+    * :exc:`ContentTypeError`
+
+    * :exc:`TooManyRedirects`
+
+    * :exc:`WSServerHandshakeError`
 
   * :exc:`InvalidURL`

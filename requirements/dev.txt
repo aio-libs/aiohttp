@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/dev.txt --resolver=backtracking --strip-extras requirements/dev.in
 #
-aiodns==3.1.0 ; sys_platform == "linux" or sys_platform == "darwin"
+aiodns==3.1.1 ; sys_platform == "linux" or sys_platform == "darwin"
     # via -r requirements/runtime-deps.in
 aiohttp-theme==0.1.6
     # via -r requirements/doc.in
@@ -41,14 +41,11 @@ cherry-picker==2.2.0
 click==8.1.6
     # via
     #   cherry-picker
-    #   click-default-group
     #   pip-tools
     #   slotscheck
     #   towncrier
     #   typer
     #   wait-for-it
-click-default-group==1.2.2
-    # via towncrier
 coverage==7.3.2
     # via
     #   -r requirements/test.in
@@ -65,8 +62,6 @@ exceptiongroup==1.1.2
     # via pytest
 filelock==3.12.2
     # via virtualenv
-freezegun==1.2.2
-    # via -r requirements/test.in
 frozenlist==1.4.0
     # via
     #   -r requirements/runtime-deps.in
@@ -86,6 +81,10 @@ idna==3.4
     #   yarl
 imagesize==1.4.1
     # via sphinx
+importlib-metadata==6.8.0
+    # via sphinx
+importlib-resources==6.1.0
+    # via towncrier
 incremental==22.10.0
     # via towncrier
 iniconfig==2.0.0
@@ -100,7 +99,7 @@ multidict==6.0.4
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.6.0 ; implementation_name == "cpython"
+mypy==1.6.1 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -124,7 +123,7 @@ platformdirs==3.10.0
     # via virtualenv
 pluggy==1.2.0
     # via pytest
-pre-commit==3.4.0
+pre-commit==3.5.0
     # via -r requirements/lint.in
 proxy-py==2.4.3
     # via -r requirements/test.in
@@ -137,10 +136,12 @@ pydantic==1.10.12
 pygments==2.15.1
     # via sphinx
 pyjwt==2.8.0
-    # via gidgethub
+    # via
+    #   gidgethub
+    #   pyjwt
 pyproject-hooks==1.0.0
     # via build
-pytest==7.4.2
+pytest==7.4.3
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -148,12 +149,14 @@ pytest==7.4.2
     #   pytest-mock
 pytest-cov==4.1.0
     # via -r requirements/test.in
-pytest-mock==3.11.1
+pytest-mock==3.12.0
     # via -r requirements/test.in
 python-dateutil==2.8.2
-    # via freezegun
-python-on-whales==0.65.0
+    # via time-machine
+python-on-whales==0.66.0
     # via -r requirements/test.in
+pytz==2023.3.post1
+    # via babel
 pyyaml==6.0.1
     # via pre-commit
 re-assert==1.1.0
@@ -169,7 +172,7 @@ setuptools-git==1.2
     # via -r requirements/test.in
 six==1.16.0
     # via python-dateutil
-slotscheck==0.17.0
+slotscheck==0.17.1
     # via -r requirements/lint.in
 snowballstemmer==2.2.0
     # via sphinx
@@ -193,8 +196,10 @@ sphinxcontrib-qthelp==1.0.3
     # via sphinx
 sphinxcontrib-serializinghtml==1.1.9
     # via sphinx
-sphinxcontrib-towncrier==0.3.2a0
+sphinxcontrib-towncrier==0.4.0a0
     # via -r requirements/doc.in
+time-machine==2.13.0 ; implementation_name == "cpython"
+    # via -r requirements/test.in
 tomli==2.0.1
     # via
     #   build
@@ -206,7 +211,7 @@ tomli==2.0.1
     #   pytest
     #   slotscheck
     #   towncrier
-towncrier==23.6.0
+towncrier==23.11.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
@@ -228,7 +233,7 @@ uritemplate==4.1.1
     # via gidgethub
 urllib3==2.0.4
     # via requests
-uvloop==0.17.0 ; platform_system != "Windows" and implementation_name == "cpython" and python_version < "3.12"
+uvloop==0.19.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via
     #   -r requirements/base.in
     #   -r requirements/lint.in
@@ -242,6 +247,10 @@ wheel==0.41.0
     # via pip-tools
 yarl==1.9.2
     # via -r requirements/runtime-deps.in
+zipp==3.17.0
+    # via
+    #   importlib-metadata
+    #   importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
 pip==23.2.1

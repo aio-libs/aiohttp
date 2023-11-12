@@ -17,10 +17,6 @@ certifi==2023.7.22
 charset-normalizer==3.3.0
     # via requests
 click==8.1.6
-    # via
-    #   click-default-group
-    #   towncrier
-click-default-group==1.2.2
     # via towncrier
 docutils==0.20.1
     # via sphinx
@@ -30,6 +26,10 @@ idna==3.4
     # via requests
 imagesize==1.4.1
     # via sphinx
+importlib-metadata==6.8.0
+    # via sphinx
+importlib-resources==6.1.1
+    # via towncrier
 incremental==22.10.0
     # via towncrier
 jinja2==3.1.2
@@ -48,6 +48,8 @@ pyenchant==3.2.2
     # via sphinxcontrib-spelling
 pygments==2.15.1
     # via sphinx
+pytz==2023.3.post1
+    # via babel
 requests==2.31.0
     # via sphinx
 snowballstemmer==2.2.0
@@ -75,18 +77,22 @@ sphinxcontrib-serializinghtml==1.1.9
     # via sphinx
 sphinxcontrib-spelling==8.0.0 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.in
-sphinxcontrib-towncrier==0.3.2a0
+sphinxcontrib-towncrier==0.4.0a0
     # via -r requirements/doc.in
 tomli==2.0.1
     # via towncrier
-towncrier==23.6.0
+towncrier==23.11.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
-urllib3==2.0.6
+urllib3==2.0.7
     # via requests
 webcolors==1.13
     # via blockdiag
+zipp==3.17.0
+    # via
+    #   importlib-metadata
+    #   importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
 setuptools==68.0.0
