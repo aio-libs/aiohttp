@@ -4,7 +4,7 @@
 import gc
 import sys
 from json import JSONDecodeError
-from typing import Any
+from typing import Any, Callable
 from unittest import mock
 
 import pytest
@@ -21,6 +21,9 @@ from aiohttp.test_utils import make_mocked_coro
 class WriterMock(mock.AsyncMock):
     def __await__(self) -> None:
         return self().__await__()
+
+    def add_done_callback(self, cb: Callable[[], None]) -> None:
+        cb()
 
     def done(self) -> bool:
         return True
