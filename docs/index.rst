@@ -22,7 +22,7 @@ Key Features
   :ref:`Client WebSockets <aiohttp-client-websockets>` out-of-the-box
   without the Callback Hell.
 - Web-server has :ref:`aiohttp-web-middlewares`,
-  :ref:`aiohttp-web-signals` and plugable routing.
+  :ref:`aiohttp-web-signals` and pluggable routing.
 
 .. _aiohttp-installation:
 
@@ -131,7 +131,7 @@ changes.
 Tutorial
 ========
 
-:ref:`Polls tutorial <aiohttp-demos-polls-beginning>`
+:ref:`Polls tutorial <aiohttpdemos:aiohttp-demos-polls-beginning>`
 
 
 Source code
