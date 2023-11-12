@@ -669,7 +669,7 @@ class ClientRequest:
         if self._writer is not None:
             if not self.loop.is_closed():
                 self._writer.cancel()
-                self._writer.remove_done_callback(self.__reset_writer)
+            self._writer.remove_done_callback(self.__reset_writer)
             self._writer = None
 
     async def _on_chunk_request_sent(self, method: str, url: URL, chunk: bytes) -> None:
