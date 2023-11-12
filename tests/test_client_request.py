@@ -23,6 +23,14 @@ from aiohttp.client_reqrep import (
 from aiohttp.test_utils import make_mocked_coro
 
 
+class WriterMock(mock.AsyncMock):
+    def __await__(self) -> None:
+        return self().__await__()
+
+    def add_done_callback(self, cb: Callable[[], None]) -> None:
+        cb()
+
+
 @pytest.fixture
 def make_request(loop: Any):
     request = None
@@ -1118,7 +1126,7 @@ async def test_custom_response_class(loop: Any, conn: Any) -> None:
 async def test_oserror_on_write_bytes(loop: Any, conn: Any) -> None:
     req = ClientRequest("POST", URL("http://python.org/"), loop=loop)
 
-    writer = mock.Mock()
+    writer = WriterMock()
     writer.write.side_effect = OSError
 
     await req.write_bytes(writer, conn)
@@ -1132,7 +1140,7 @@ async def test_terminate(loop: Any, conn: Any) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
     resp = await req.send(conn)
     assert req._writer is not None
-    writer = req._writer = mock.Mock()
+    writer = req._writer = WriterMock()
 
     req.terminate()
     assert req._writer is None
@@ -1148,7 +1156,7 @@ def test_terminate_with_closed_loop(loop: Any, conn: Any) -> None:
         req = ClientRequest("get", URL("http://python.org"), loop=loop)
         resp = await req.send(conn)
         assert req._writer is not None
-        writer = req._writer = mock.Mock()
+        writer = req._writer = WriterMock()
 
         await asyncio.sleep(0.05)
 
