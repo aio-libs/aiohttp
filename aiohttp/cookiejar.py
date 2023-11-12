@@ -248,14 +248,13 @@ class CookieJar(AbstractCookieJar):
             return filtered
         request_url = URL(request_url)
         hostname = request_url.raw_host or ""
-        request_origin = URL()
-        with contextlib.suppress(ValueError):
-            request_origin = request_url.origin()
 
-        is_not_secure = (
-            request_url.scheme not in ("https", "wss")
-            and request_origin not in self._treat_as_secure_origin
-        )
+        is_not_secure = request_url.scheme not in ("https", "wss")
+        if is_not_secure and self._treat_as_secure_origin:
+            request_origin = URL()
+            with contextlib.suppress(ValueError):
+                request_origin = request_url.origin()
+            is_not_secure = request_origin not in self._treat_as_secure_origin
 
         # Point 2: https://www.rfc-editor.org/rfc/rfc6265.html#section-5.4
         for cookie in sorted(self, key=lambda c: len(c["path"])):
