@@ -102,24 +102,28 @@ def test_date_parsing() -> None:
     assert parse_func("") is None
 
     # 70 -> 1970
-    assert parse_func("Tue, 1 Jan 70 00:00:00 GMT") == datetime.datetime(
-        1970, 1, 1, tzinfo=utc
-    ).timestamp()
+    assert (
+        parse_func("Tue, 1 Jan 70 00:00:00 GMT")
+        == datetime.datetime(1970, 1, 1, tzinfo=utc).timestamp()
+    )
 
     # 10 -> 2010
-    assert parse_func("Tue, 1 Jan 10 00:00:00 GMT") == datetime.datetime(
-        2010, 1, 1, tzinfo=utc
-    ).timestamp()
+    assert (
+        parse_func("Tue, 1 Jan 10 00:00:00 GMT")
+        == datetime.datetime(2010, 1, 1, tzinfo=utc).timestamp()
+    )
 
     # No day of week string
-    assert parse_func("1 Jan 1970 00:00:00 GMT") == datetime.datetime(
-        1970, 1, 1, tzinfo=utc
-    ).timestamp()
+    assert (
+        parse_func("1 Jan 1970 00:00:00 GMT")
+        == datetime.datetime(1970, 1, 1, tzinfo=utc).timestamp()
+    )
 
     # No timezone string
-    assert parse_func("Tue, 1 Jan 1970 00:00:00") == datetime.datetime(
-        1970, 1, 1, tzinfo=utc
-    ).timestamp()
+    assert (
+        parse_func("Tue, 1 Jan 1970 00:00:00")
+        == datetime.datetime(1970, 1, 1, tzinfo=utc).timestamp()
+    )
 
     # No year
     assert parse_func("Tue, 1 Jan 00:00:00 GMT") is None

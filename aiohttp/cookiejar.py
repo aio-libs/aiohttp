@@ -56,9 +56,9 @@ class CookieJar(AbstractCookieJar):
 
     # calendar.timegm() fails for timestamps after datetime.datetime.max
     # Minus one as a loss of precision occurs when timestamp() is called.
-    MAX_TIME = int(
-        datetime.datetime.max.replace(tzinfo=datetime.timezone.utc).timestamp()
-    ) - 1
+    MAX_TIME = (
+        int(datetime.datetime.max.replace(tzinfo=datetime.timezone.utc).timestamp()) - 1
+    )
     # #4515: datetime.max may not be representable on 32-bit platforms
     try:
         calendar.timegm(time.gmtime(MAX_TIME))
@@ -384,9 +384,7 @@ class CookieJar(AbstractCookieJar):
         if year < 1601 or hour > 23 or minute > 59 or second > 59:
             return None
 
-        return calendar.timegm(
-                (year, month, day, hour, minute, second, -1, -1, -1)
-        )
+        return calendar.timegm((year, month, day, hour, minute, second, -1, -1, -1))
 
 
 class DummyCookieJar(AbstractCookieJar):
