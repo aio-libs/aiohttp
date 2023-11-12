@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  merge_group:
   push:
     branches:
       - 'master'
@@ -105,7 +106,7 @@ jobs:
         path:  vendor/llhttp/build
     - name: Setup NodeJS
       if: steps.cache.outputs.cache-hit != 'true'
-      uses: actions/setup-node@v2
+      uses: actions/setup-node@v4
       with:
         node-version: '14'
     - name: Generate llhttp sources
@@ -136,7 +137,7 @@ jobs:
           - os: windows
             no-extensions: 'Y'
         include:
-          - pyver: pypy-3.8
+          - pyver: pypy-3.9
             no-extensions: 'Y'
             os: ubuntu
             experimental: false

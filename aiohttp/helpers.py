@@ -858,7 +858,7 @@ class AppKey(Generic[_T]):
                 t = get_args(self.__orig_class__)[0]
 
         if t is None:
-            t_repr = "<<Unkown>>"
+            t_repr = "<<Unknown>>"
         elif isinstance(t, type):
             if t.__module__ == "builtins":
                 t_repr = t.__qualname__
@@ -938,7 +938,7 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
 
 
 # https://tools.ietf.org/html/rfc7232#section-2.3
-_ETAGC = r"[!#-}\x80-\xff]+"
+_ETAGC = r"[!\x23-\x7E\x80-\xff]+"
 _ETAGC_RE = re.compile(_ETAGC)
 _QUOTED_ETAG = rf'(W/)?"({_ETAGC})"'
 QUOTED_ETAG_RE = re.compile(_QUOTED_ETAG)
@@ -968,3 +968,39 @@ def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
             with suppress(ValueError):
                 return datetime.datetime(*timetuple[:6], tzinfo=datetime.timezone.utc)
     return None
+
+
+def must_be_empty_body(method: str, code: int) -> bool:
+    """Check if a request must return an empty body."""
+    return (
+        status_code_must_be_empty_body(code)
+        or method_must_be_empty_body(method)
+        or (200 <= code < 300 and method.upper() == hdrs.METH_CONNECT)
+    )
+
+
+def method_must_be_empty_body(method: str) -> bool:
+    """Check if a method must return an empty body."""
+    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
+    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.2
+    return method.upper() == hdrs.METH_HEAD
+
+
+def status_code_must_be_empty_body(code: int) -> bool:
+    """Check if a status code must return an empty body."""
+    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
+    return code in {204, 304} or 100 <= code < 200
+
+
+def should_remove_content_length(method: str, code: int) -> bool:
+    """Check if a Content-Length header should be removed.
+
+    This should always be a subset of must_be_empty_body
+    """
+    # https://www.rfc-editor.org/rfc/rfc9110.html#section-8.6-8
+    # https://www.rfc-editor.org/rfc/rfc9110.html#section-15.4.5-4
+    return (
+        code in {204, 304}
+        or 100 <= code < 200
+        or (200 <= code < 300 and method.upper() == hdrs.METH_CONNECT)
+    )

@@ -3,8 +3,11 @@ import logging
 import os
 import socket
 import sys
+import warnings
 from argparse import ArgumentParser
 from collections.abc import Iterable
+from contextlib import suppress
+from functools import partial
 from importlib import import_module
 from typing import (
     Any,
@@ -18,6 +21,7 @@ from typing import (
     Union,
     cast,
 )
+from weakref import WeakSet
 
 from .abc import AbstractAccessLogger
 from .helpers import AppKey as AppKey
@@ -83,6 +87,7 @@ from .web_exceptions import (
     HTTPUseProxy as HTTPUseProxy,
     HTTPVariantAlsoNegotiates as HTTPVariantAlsoNegotiates,
     HTTPVersionNotSupported as HTTPVersionNotSupported,
+    NotAppKeyWarning as NotAppKeyWarning,
 )
 from .web_fileresponse import FileResponse as FileResponse
 from .web_log import AccessLogger
@@ -159,6 +164,7 @@ __all__ = (
     "Application",
     "CleanupError",
     # web_exceptions
+    "NotAppKeyWarning",
     "HTTPAccepted",
     "HTTPBadGateway",
     "HTTPBadRequest",
@@ -288,6 +294,9 @@ try:
 except ImportError:  # pragma: no cover
     SSLContext = Any  # type: ignore[misc,assignment]
 
+# Only display warning when using -Wdefault, -We, -X dev or similar.
+warnings.filterwarnings("ignore", category=NotAppKeyWarning, append=True)
+
 HostSequence = TypingIterable[str]
 
 
@@ -311,7 +320,24 @@ async def _run_app(
     reuse_port: Optional[bool] = None,
     handler_cancellation: bool = False,
 ) -> None:
-    # A internal functio to actually do all dirty job for application running
+    async def wait(
+        starting_tasks: "WeakSet[asyncio.Task[object]]", shutdown_timeout: float
+    ) -> None:
+        # Wait for pending tasks for a given time limit.
+        t = asyncio.current_task()
+        assert t is not None
+        starting_tasks.add(t)
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(_wait(starting_tasks), timeout=shutdown_timeout)
+
+    async def _wait(exclude: "WeakSet[asyncio.Task[object]]") -> None:
+        t = asyncio.current_task()
+        assert t is not None
+        exclude.add(t)
+        while tasks := asyncio.all_tasks().difference(exclude):
+            await asyncio.wait(tasks)
+
+    # An internal function to actually do all dirty job for application running
     if asyncio.iscoroutine(app):
         app = await app
 
@@ -324,10 +350,17 @@ async def _run_app(
         access_log_format=access_log_format,
         access_log=access_log,
         keepalive_timeout=keepalive_timeout,
+        shutdown_timeout=shutdown_timeout,
         handler_cancellation=handler_cancellation,
     )
 
     await runner.setup()
+    # On shutdown we want to avoid waiting on tasks which run forever.
+    # It's very likely that all tasks which run forever will have been created by
+    # the time we have completed the application startup (in runner.setup()),
+    # so we just record all running tasks here and exclude them later.
+    starting_tasks: "WeakSet[asyncio.Task[object]]" = WeakSet(asyncio.all_tasks())
+    runner.shutdown_callback = partial(wait, starting_tasks, shutdown_timeout)
 
     sites: List[BaseSite] = []
 
@@ -339,7 +372,6 @@ async def _run_app(
                         runner,
                         host,
                         port,
-                        shutdown_timeout=shutdown_timeout,
                         ssl_context=ssl_context,
                         backlog=backlog,
                         reuse_address=reuse_address,
@@ -353,7 +385,6 @@ async def _run_app(
                             runner,
                             h,
                             port,
-                            shutdown_timeout=shutdown_timeout,
                             ssl_context=ssl_context,
                             backlog=backlog,
                             reuse_address=reuse_address,
@@ -365,7 +396,6 @@ async def _run_app(
                 TCPSite(
                     runner,
                     port=port,
-                    shutdown_timeout=shutdown_timeout,
                     ssl_context=ssl_context,
                     backlog=backlog,
                     reuse_address=reuse_address,
@@ -379,7 +409,6 @@ async def _run_app(
                     UnixSite(
                         runner,
                         path,
-                        shutdown_timeout=shutdown_timeout,
                         ssl_context=ssl_context,
                         backlog=backlog,
                     )
@@ -390,7 +419,6 @@ async def _run_app(
                         UnixSite(
                             runner,
                             p,
-                            shutdown_timeout=shutdown_timeout,
                             ssl_context=ssl_context,
                             backlog=backlog,
                         )
@@ -402,7 +430,6 @@ async def _run_app(
                     SockSite(
                         runner,
                         sock,
-                        shutdown_timeout=shutdown_timeout,
                         ssl_context=ssl_context,
                         backlog=backlog,
                     )
@@ -413,7 +440,6 @@ async def _run_app(
                         SockSite(
                             runner,
                             s,
-                            shutdown_timeout=shutdown_timeout,
                             ssl_context=ssl_context,
                             backlog=backlog,
                         )
