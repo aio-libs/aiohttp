@@ -760,9 +760,9 @@ class ClientResponse(HeadersMixin):
     def _writer(self, writer: Optional["asyncio.Task[None]"]) -> None:
         if self.__writer is not None:
             self.__writer.remove_done_callback(self.__reset_writer)
+        self.__writer = writer
         if writer is not None:
             writer.add_done_callback(self.__reset_writer)
-        self.__writer = writer
 
     @reify
     def url(self) -> URL:
