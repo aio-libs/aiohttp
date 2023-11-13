@@ -939,7 +939,7 @@ class CookieMixin:
         super().__init__()
         # Mypy doesn't like that _cookies isn't in __slots__.
         # See the comment on this class's __slots__ for why this is OK.
-        self._cookies = SimpleCookie()
+        self._cookies = SimpleCookie()  # type: ignore[misc]
 
     @property
     def cookies(self) -> SimpleCookie:

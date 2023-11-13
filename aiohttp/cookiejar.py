@@ -240,7 +240,7 @@ class CookieJar(AbstractCookieJar):
                 DeprecationWarning,
             )
             request_url = URL(request_url)
-        filtered: "BaseCookie[str]" = (
+        filtered: Union[SimpleCookie, "BaseCookie[str]"] = (
             SimpleCookie() if self._quote_cookie else BaseCookie()
         )
         if not self._cookies:
