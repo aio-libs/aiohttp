@@ -395,7 +395,7 @@ class ClientRequest:
         if not cookies:
             return
 
-        c: SimpleCookie[str] = SimpleCookie()
+        c = SimpleCookie()
         if hdrs.COOKIE in self.headers:
             c.load(self.headers.get(hdrs.COOKIE, ""))
             del self.headers[hdrs.COOKIE]
@@ -727,7 +727,7 @@ class ClientResponse(HeadersMixin):
         super().__init__()
 
         self.method = method
-        self.cookies: SimpleCookie[str] = SimpleCookie()
+        self.cookies = SimpleCookie()
 
         self._real_url = url
         self._url = url.with_fragment(None)
