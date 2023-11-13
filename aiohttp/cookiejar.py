@@ -8,9 +8,8 @@ import re
 import time
 import warnings
 from collections import defaultdict
-from math import ceil
-
 from http.cookies import BaseCookie, Morsel, SimpleCookie
+from math import ceil
 from typing import (  # noqa
     DefaultDict,
     Dict,
