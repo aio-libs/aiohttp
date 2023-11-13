@@ -716,16 +716,17 @@ class PrefixedSubAppResource(PrefixResource):
     def __init__(self, prefix: str, app: "Application") -> None:
         super().__init__(prefix)
         self._app = app
-        router = app.router
-        for resource in app.router.resources():
-            router.unindex_resource(resource)
-            resource.add_prefix(prefix)
-            router.index_resource(resource)
+        self._add_prefix_to_resources(prefix)
 
     def add_prefix(self, prefix: str) -> None:
         super().add_prefix(prefix)
+        self._add_prefix_to_resources(prefix)
+
+    def _add_prefix_to_resources(self, prefix: str) -> None:
         router = self._app.router
         for resource in router.resources():
+            # Since the canonical path of a resource is about
+            # to change, we need to unindex it and then reindex
             router.unindex_resource(resource)
             resource.add_prefix(prefix)
             router.index_resource(resource)
