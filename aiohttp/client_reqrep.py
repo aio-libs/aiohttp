@@ -706,8 +706,8 @@ class ClientRequest:
             self.headers[hdrs.CONNECTION] = connection
 
         # status + headers
-        status_line = "{0} {1} HTTP/{2[0]}.{2[1]}".format(
-            self.method, path, self.version
+        status_line = "{0} {1} HTTP/{v.major}.{v.minor}".format(
+            self.method, path, v=self.version
         )
         await writer.write_headers(status_line, self.headers)
 
