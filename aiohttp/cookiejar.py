@@ -71,6 +71,8 @@ class CookieJar(AbstractCookieJar):
     except OverflowError:
         # #4515: datetime.max may not be representable on 32-bit platforms
         MAX_TIME = 2**31 - 1
+    # Avoid minuses in the future, 3x faster
+    SUB_MAX_TIME = MAX_TIME - 1
 
     def __init__(
         self,
@@ -135,7 +137,11 @@ class CookieJar(AbstractCookieJar):
                 del self._expirations[(domain, path, name)]
             self._cookies[(domain, path)].pop(name, None)
 
-        self._next_expiration = min(*self._expirations.values(), self.MAX_TIME - 1) + 1
+        self._next_expiration = (
+            min(*self._expirations.values(), self.SUB_MAX_TIME) + 1
+            if self._expirations
+            else self.MAX_TIME
+        )
 
     def clear_domain(self, domain: str) -> None:
         self.clear(lambda x: self._is_domain_match(domain, x["domain"]))
