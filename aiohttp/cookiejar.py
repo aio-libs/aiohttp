@@ -8,6 +8,8 @@ import re
 import time
 import warnings
 from collections import defaultdict
+from math import ceil
+
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from typing import (  # noqa
     DefaultDict,
@@ -26,7 +28,7 @@ from typing import (  # noqa
 from yarl import URL
 
 from .abc import AbstractCookieJar, ClearCookiePredicate
-from .helpers import is_ip_address, next_whole_second
+from .helpers import is_ip_address
 from .typedefs import LooseCookies, PathLike, StrOrURL
 
 __all__ = ("CookieJar", "DummyCookieJar")
@@ -96,7 +98,7 @@ class CookieJar(AbstractCookieJar):
                 for url in treat_as_secure_origin
             ]
         self._treat_as_secure_origin = treat_as_secure_origin
-        self._next_expiration: Union[int, float] = next_whole_second()
+        self._next_expiration: Union[int, float] = ceil(time.time())
         self._expirations: Dict[Tuple[str, str, str], Union[int, float]] = {}
 
     def save(self, file_path: PathLike) -> None:
@@ -111,7 +113,7 @@ class CookieJar(AbstractCookieJar):
 
     def clear(self, predicate: Optional[ClearCookiePredicate] = None) -> None:
         if predicate is None:
-            self._next_expiration = next_whole_second()
+            self._next_expiration = ceil(time.time())
             self._cookies.clear()
             self._host_only_cookies.clear()
             self._expirations.clear()
@@ -134,8 +136,7 @@ class CookieJar(AbstractCookieJar):
                 del self._expirations[(domain, path, name)]
             self._cookies[(domain, path)].pop(name, None)
 
-        next_expiration = min(self._expirations.values(), default=self.MAX_TIME)
-        self._next_expiration = min(next_expiration + 1, self.MAX_TIME)
+        self._next_expiration = min(*self._expirations.values(), self.MAX_TIME - 1) + 1
 
     def clear_domain(self, domain: str) -> None:
         self.clear(lambda x: self._is_domain_match(domain, x["domain"]))
