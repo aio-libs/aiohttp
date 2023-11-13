@@ -1113,9 +1113,13 @@ async def test_close(loop: Any, buf: Any, conn: Any) -> None:
 
 
 async def test_bad_version(loop: Any, conn: Any) -> None:
-    req = ClientRequest("GET", URL("http://python.org"), loop=loop,
-                        headers={"Connection": "Close"},
-                        version=("1", "1\r\nInjected-Header: not allowed"))
+    req = ClientRequest(
+        "GET",
+        URL("http://python.org"),
+        loop=loop,
+        headers={"Connection": "Close"},
+        version=("1", "1\r\nInjected-Header: not allowed"),
+    )
 
     with pytest.raises(AttributeError):
         await req.send(conn)
