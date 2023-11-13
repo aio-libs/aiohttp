@@ -21,6 +21,7 @@ from aiohttp.client_reqrep import (
     _gen_default_accept_encoding,
     _merge_ssl_params,
 )
+from aiohttp.http import HttpVersion
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -623,18 +624,18 @@ async def test_connection_header(loop, conn) -> None:
     req.headers.clear()
 
     req.keep_alive.return_value = True
-    req.version = (1, 1)
+    req.version = HttpVersion(1, 1)
     req.headers.clear()
     await req.send(conn)
     assert req.headers.get("CONNECTION") is None
 
-    req.version = (1, 0)
+    req.version = HttpVersion(1, 0)
     req.headers.clear()
     await req.send(conn)
     assert req.headers.get("CONNECTION") == "keep-alive"
 
     req.keep_alive.return_value = False
-    req.version = (1, 1)
+    req.version = HttpVersion(1, 1)
     req.headers.clear()
     await req.send(conn)
     assert req.headers.get("CONNECTION") == "close"
@@ -1159,6 +1160,19 @@ async def test_close(loop, buf, conn) -> None:
     assert buf.split(b"\r\n\r\n", 1)[1] == b"6\r\nresult\r\n0\r\n\r\n"
     await req.close()
     resp.close()
+
+
+async def test_bad_version(loop, conn) -> None:
+    req = ClientRequest(
+        "GET",
+        URL("http://python.org"),
+        loop=loop,
+        headers={"Connection": "Close"},
+        version=("1", "1\r\nInjected-Header: not allowed"),
+    )
+
+    with pytest.raises(AttributeError):
+        await req.send(conn)
 
 
 async def test_custom_response_class(loop, conn) -> None:
