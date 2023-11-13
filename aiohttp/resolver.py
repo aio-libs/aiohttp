@@ -45,7 +45,7 @@ class ThreadedResolver(AbstractResolver):
                     # IPv6 is not supported by Python build,
                     # or IPv6 is not enabled in the host
                     continue
-                if address[3]:  # type: ignore[misc]
+                if address[3]:
                     # This is essential for link-local IPv6 addresses.
                     # LL IPv6 is a VERY rare case. Strictly speaking, we should use
                     # getnameinfo() unconditionally, but performance makes sense.
