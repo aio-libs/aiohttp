@@ -1112,6 +1112,15 @@ async def test_close(loop: Any, buf: Any, conn: Any) -> None:
     resp.close()
 
 
+async def test_bad_version(loop: Any, conn: Any) -> None:
+    req = ClientRequest("GET", URL("http://python.org"), loop=loop,
+                        headers={"Connection": "Close"},
+                        version=("1", "1\r\nInjected-Header: not allowed"))
+
+    with pytest.raises(AttributeError):
+        await req.send(conn)
+
+
 async def test_custom_response_class(loop: Any, conn: Any) -> None:
     class CustomResponse(ClientResponse):
         def read(self, decode=False):
