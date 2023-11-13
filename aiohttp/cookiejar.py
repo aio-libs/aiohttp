@@ -63,7 +63,7 @@ class CookieJar(AbstractCookieJar):
         quote_cookie: bool = True,
         treat_as_secure_origin: Union[StrOrURL, List[StrOrURL], None] = None
     ) -> None:
-        self._cookies: DefaultDict[Tuple[str, str], SimpleCookie[str]] = defaultdict(
+        self._cookies: DefaultDict[Tuple[str, str], SimpleCookie] = defaultdict(
             SimpleCookie
         )
         self._host_only_cookies: Set[Tuple[str, str]] = set()
@@ -166,7 +166,7 @@ class CookieJar(AbstractCookieJar):
 
         for name, cookie in cookies:
             if not isinstance(cookie, Morsel):
-                tmp: SimpleCookie[str] = SimpleCookie()
+                tmp = SimpleCookie()
                 tmp[name] = cookie  # type: ignore[assignment]
                 cookie = tmp[name]
 
@@ -232,7 +232,7 @@ class CookieJar(AbstractCookieJar):
 
     def filter_cookies(
         self, request_url: URL = URL()
-    ) -> Union["BaseCookie[str]", "SimpleCookie[str]"]:
+    ) -> "BaseCookie[str]":
         """Returns this jar's cookies filtered by their attributes."""
         if not isinstance(request_url, URL):
             warnings.warn(
@@ -242,7 +242,7 @@ class CookieJar(AbstractCookieJar):
                 DeprecationWarning,
             )
             request_url = URL(request_url)
-        filtered: Union["SimpleCookie[str]", "BaseCookie[str]"] = (
+        filtered: "BaseCookie[str]" = (
             SimpleCookie() if self._quote_cookie else BaseCookie()
         )
         if not self._cookies:
