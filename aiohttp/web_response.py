@@ -193,7 +193,7 @@ class StreamResponse(BaseClass, HeadersMixin):
         return self._headers
 
     @property
-    def cookies(self) -> "SimpleCookie[str]":
+    def cookies(self) -> SimpleCookie:
         return self._cookies
 
     def set_cookie(
