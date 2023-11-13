@@ -20,6 +20,7 @@ from aiohttp.client_reqrep import (
     Fingerprint,
     _gen_default_accept_encoding,
 )
+from aiohttp.http import HttpVersion
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -590,18 +591,18 @@ async def test_connection_header(loop: Any, conn: Any) -> None:
     req.headers.clear()
 
     req.keep_alive.return_value = True
-    req.version = (1, 1)
+    req.version = HttpVersion(1, 1)
     req.headers.clear()
     await req.send(conn)
     assert req.headers.get("CONNECTION") is None
 
-    req.version = (1, 0)
+    req.version = HttpVersion(1, 0)
     req.headers.clear()
     await req.send(conn)
     assert req.headers.get("CONNECTION") == "keep-alive"
 
     req.keep_alive.return_value = False
-    req.version = (1, 1)
+    req.version = HttpVersion(1, 1)
     req.headers.clear()
     await req.send(conn)
     assert req.headers.get("CONNECTION") == "close"
