@@ -83,7 +83,7 @@ class StreamResponse(BaseClass, HeadersMixin):
         self._chunked = False
         self._compression = False
         self._compression_force: Optional[ContentCoding] = None
-        self._cookies: SimpleCookie[str] = SimpleCookie()
+        self._cookies = SimpleCookie()
 
         self._req: Optional[BaseRequest] = None
         self._payload_writer: Optional[AbstractStreamWriter] = None
