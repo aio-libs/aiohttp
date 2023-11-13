@@ -230,9 +230,7 @@ class CookieJar(AbstractCookieJar):
 
         self._do_expiration()
 
-    def filter_cookies(
-        self, request_url: URL = URL()
-    ) -> "BaseCookie[str]":
+    def filter_cookies(self, request_url: URL = URL()) -> "BaseCookie[str]":
         """Returns this jar's cookies filtered by their attributes."""
         if not isinstance(request_url, URL):
             warnings.warn(
