@@ -939,10 +939,10 @@ class CookieMixin:
         super().__init__()
         # Mypy doesn't like that _cookies isn't in __slots__.
         # See the comment on this class's __slots__ for why this is OK.
-        self._cookies: SimpleCookie[str] = SimpleCookie()  # type: ignore[misc]
+        self._cookies = SimpleCookie()  # type: ignore[misc]
 
     @property
-    def cookies(self) -> "SimpleCookie[str]":
+    def cookies(self) -> SimpleCookie:
         return self._cookies
 
     def set_cookie(
@@ -1024,9 +1024,7 @@ class CookieMixin:
         )
 
 
-def populate_with_cookies(
-    headers: "CIMultiDict[str]", cookies: "SimpleCookie[str]"
-) -> None:
+def populate_with_cookies(headers: "CIMultiDict[str]", cookies: SimpleCookie) -> None:
     for cookie in cookies.values():
         value = cookie.output(header="")[1:]
         headers.add(hdrs.SET_COOKIE, value)
