@@ -99,7 +99,7 @@ multidict==6.0.4
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.6.1 ; implementation_name == "cpython"
+mypy==1.7.0 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -171,16 +171,17 @@ requests==2.31.0
 setuptools-git==1.2
     # via -r requirements/test.in
 six==1.16.0
-    # via python-dateutil
+    # via
+    #   python-dateutil
+    #   sphinx
 slotscheck==0.17.1
     # via -r requirements/lint.in
 snowballstemmer==2.2.0
     # via sphinx
-sphinx==7.2.6
+sphinx==7.1.2
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-blockdiag
-    #   sphinxcontrib-serializinghtml
     #   sphinxcontrib-towncrier
 sphinxcontrib-applehelp==1.0.4
     # via sphinx
@@ -194,7 +195,7 @@ sphinxcontrib-jsmath==1.0.1
     # via sphinx
 sphinxcontrib-qthelp==1.0.3
     # via sphinx
-sphinxcontrib-serializinghtml==1.1.9
+sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
 sphinxcontrib-towncrier==0.4.0a0
     # via -r requirements/doc.in
@@ -260,3 +261,4 @@ setuptools==68.0.0
     #   blockdiag
     #   nodeenv
     #   pip-tools
+    #   sphinx
