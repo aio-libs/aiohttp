@@ -1005,8 +1005,10 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
                     else:
                         allowed_methods |= allowed
 
-        # We didn't find any candidates, so we'll try the sub-app resources
-        # which we have to walk in a linear fashion because they have match rules
+        # We didn't find any candidates, so we'll try the matched sub-app resources
+        # which we have to walk in a linear fashion because they have match rules.
+        # For most cases we do not expect there to be many of these since currently
+        # they are only added by add_domain
         method = request.method
         for resource in self._matched_sub_app_resources:
             match_dict, allowed = await resource.resolve(request)
