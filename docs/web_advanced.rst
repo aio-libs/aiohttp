@@ -394,7 +394,8 @@ and get it back in the :term:`web-handler`::
         data = request.app['my_private_key']
 
 Rather than using :class:`str` keys, we recommend using :class:`AppKey`.
-This is required for type safety (e.g. when checking with mypy)::
+This is required for type safety (e.g. when checking with mypy,
+or for autocomplete in an IDE)::
 
     my_private_key = web.AppKey("my_private_key", str)
     app[my_private_key] = data
@@ -402,6 +403,16 @@ This is required for type safety (e.g. when checking with mypy)::
     async def handler(request: web.Request):
         data = request.app[my_private_key]
         # reveal_type(data) -> str
+
+.. note::
+
+   If warnings are explicitly enabled (e.g. ``-We`` or ``-Wall``) then
+   using :class:`str` keys will trigger a warning. Like other warnings
+   this can be filtered out easily if you have no interest in this feature.
+   e.g. Add ``-W 'ignore:It is recommended to use web.AppKey instances for keys.'``
+   after ``-Wall`` or add
+   ``warnings.filterwarnings("ignore", category=web.NotAppKeyWarning)`` to your
+   code.
 
 In case of :ref:`nested applications
 <aiohttp-web-nested-applications>` the desired lookup strategy could
