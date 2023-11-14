@@ -1868,7 +1868,7 @@ unique *name* and at least one :term:`route`.
 1. Router splits the URL and checks the index from longest to shortest.
    For example, '/one/two/three' will first check the index for
    '/one/two/three', then '/one/two' and finally '/'.
-2. If the URL part matches is found in the index, the list of routes for
+2. If the URL part is found in the index, the list of routes for
    that URL part is iterated over. If a route matches to requested HTTP
    method (or ``'*'`` wildcard) the route's handler is used as found
    :term:`web-handler`. The lookup is finished.
