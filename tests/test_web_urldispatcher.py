@@ -555,9 +555,9 @@ async def test_order_is_preserved(aiohttp_client: AiohttpClient) -> None:
         return web.Response(text=request.match_info._route.resource.canonical)
 
     app.router.add_get("/first/x/{b}/", handler)
-    app.router.add_get("/first/{x:.*/b}", handler)
+    app.router.add_get(r"/first/{x:.*/b}", handler)
 
-    app.router.add_get("/second/{x:.*/b}", handler)
+    app.router.add_get(r"/second/{x:.*/b}", handler)
     app.router.add_get("/second/x/{b}/", handler)
 
     client = await aiohttp_client(app)
