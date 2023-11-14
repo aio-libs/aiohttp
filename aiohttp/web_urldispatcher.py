@@ -1094,8 +1094,8 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         """Return a key to index the resource in the resource index."""
         canonical = resource.canonical
         if "{" in canonical:  # strip at the first { to allow for variables
-            return canonical.partition("{")[0].rstrip("/") or "/"
-        return canonical
+            return canonical.partition("{")[0].rstrip("/")
+        return canonical or "/"
 
     def index_resource(self, resource: AbstractResource) -> None:
         """Add a resource to the resource index."""
