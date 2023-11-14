@@ -551,7 +551,7 @@ async def test_order_is_preserved(aiohttp_client: AiohttpClient) -> None:
     app = web.Application()
 
     async def handler(request: web.Request) -> web.Response:
-        assert isinstance(request.match_info._route, Resource)
+        assert isinstance(request.match_info._route.resource, Resource)
         return web.Response(text=request.match_info._route.resource.canonical)
 
     app.router.add_get("/first/x/{b}/", handler)
