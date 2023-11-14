@@ -10,7 +10,7 @@ import yarl
 
 from aiohttp import web
 from aiohttp.pytest_plugin import AiohttpClient
-from aiohttp.web_urldispatcher import SystemRoute
+from aiohttp.web_urldispatcher import Resource, SystemRoute
 
 
 @pytest.mark.parametrize(
@@ -551,6 +551,7 @@ async def test_order_is_preserved(aiohttp_client: AiohttpClient) -> None:
     app = web.Application()
 
     async def handler(request: web.Request) -> web.Response:
+        assert isinstance(request.match_info._route, Resource)
         return web.Response(text=request.match_info._route.resource.canonical)
 
     app.router.add_get("/first/x/{b}/", handler)
