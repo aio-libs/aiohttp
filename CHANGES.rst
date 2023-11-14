@@ -10,6 +10,50 @@
 
 .. towncrier release notes start
 
+3.9.0rc0 (2023-11-14)
+=====================
+
+Features
+--------
+
+- Performance: Skipped filtering ``CookieJar`` when the jar is empty or all cookies have expired.
+
+  `#7819 <https://github.com/aio-libs/aiohttp/issues/7819>`_
+
+- Performance: Only check origin if insecure scheme and there are origins to treat as secure, in ``CookieJar.filter_cookies()``.
+
+  `#7821 <https://github.com/aio-libs/aiohttp/issues/7821>`_
+
+- Performance: Used timestamp instead of ``datetime`` to achieve faster cookie expiration in ``CookieJar``.
+
+  `#7824 <https://github.com/aio-libs/aiohttp/issues/7824>`_
+
+
+
+Bugfixes
+--------
+
+- Fixed an issue where the client could go into an infinite loop. -- by :user:`Dreamsorcerer`
+
+  `#7815 <https://github.com/aio-libs/aiohttp/issues/7815>`_
+
+- Added HTTP method validation.
+
+  `#6533 <https://github.com/aio-libs/aiohttp/issues/6533>`_
+
+- Fixed arbitrary sequence types being allowed to inject values via version parameter. -- by :user:`Dreamsorcerer`
+
+  `#7835 <https://github.com/aio-libs/aiohttp/issues/7835>`_
+
+- Performance: Fixed increase in latency with small messages from websocket compression changes.
+
+  `#7797 <https://github.com/aio-libs/aiohttp/issues/7797>`_
+
+
+
+----
+
+
 3.9.0b1 (2023-11-03)
 ====================
 
