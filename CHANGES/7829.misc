@@ -1,1 +1,1 @@
-Index resources in the UrlDispatcher to avoid linear search on hit
+Index resources in the UrlDispatcher to avoid linear search for most cases
