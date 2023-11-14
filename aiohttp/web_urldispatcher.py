@@ -1101,7 +1101,8 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         """Add a resource to the resource index."""
         resource_key = self._get_resource_index_key(resource)
         # There may be multiple resources for a canonical path
-        # so we use a list to avoid falling back to a full linear search
+        # so we keep them in a list to ensure that registration
+        # order is respected.
         self._resource_index.setdefault(resource_key, []).append(resource)
 
     def unindex_resource(self, resource: AbstractResource) -> None:
