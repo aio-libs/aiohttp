@@ -1874,8 +1874,8 @@ unique *name* and at least one :term:`route`.
    :term:`web-handler`. The lookup is finished.
 3. If the route is not found in the index, the router tries to find
    the route in the list of :class:`~aiohttp.web.MatchedSubAppResource`,
-   (current only created from and :meth:`~aiohttp.web_app.Application.add_domain`
-   call), and will iterate over the list of
+   (current only created from :meth:`~aiohttp.web_app.Application.add_domain`),
+   and will iterate over the list of
    :class:`~aiohttp.web.MatchedSubAppResource` in a linear fashion
    until a match is found.
 4. If no *resource* / *route* pair was found the *router*
