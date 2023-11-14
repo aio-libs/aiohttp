@@ -547,7 +547,10 @@ async def test_decoded_url_match(
 
 
 async def test_order_is_preserved(aiohttp_client: AiohttpClient) -> None:
-    """Test route order is preserved."""
+    """Test route order is preserved.
+
+    Note that fixed/static paths are always preferred over a regex path.
+    """
     app = web.Application()
 
     async def handler(request: web.Request) -> web.Response:
@@ -581,9 +584,10 @@ async def test_order_is_preserved(aiohttp_client: AiohttpClient) -> None:
     assert await r.text() == "/second/{user}/info"
     await r.release()
 
+    # Fixed/static paths are always preferred over regex paths
     r = await client.get("/second/bob/info")
     assert r.status == 200
-    assert await r.text() == "/second/{user}/info"
+    assert await r.text() == "/second/bob/info"
     await r.release()
 
     r = await client.get("/third/bob/info")
@@ -601,9 +605,10 @@ async def test_order_is_preserved(aiohttp_client: AiohttpClient) -> None:
     assert await r.text() == "/forth/{name}"
     await r.release()
 
+    # Fixed/static paths are always preferred over regex paths
     r = await client.get("/forth/42")
     assert r.status == 200
-    assert await r.text() == "/forth/{name}"
+    assert await r.text() == "/forth/42"
     await r.release()
 
     r = await client.get("/fifth/21")
