@@ -158,7 +158,7 @@ class CookieJar(AbstractCookieJar):
         self.clear(lambda x: False)
 
     def _expire_cookie(
-        self, when: Union[int, float], domain: str, path: str, name: str
+        self, when: float, domain: str, path: str, name: str
     ) -> None:
         self._next_expiration = min(self._next_expiration, when)
         self._expirations[(domain, path, name)] = when
