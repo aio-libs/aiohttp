@@ -196,6 +196,12 @@ First one is *optimized*. You have got the idea.
 Variable Resources
 ^^^^^^^^^^^^^^^^^^
 
+.. versionchanged:: 4.0
+
+    Fixed paths are always preferred over variable paths. For example,
+    if you have two routes ``/a/b`` and ``/a/{name}``, then the first
+    route will always be preferred over the second one.
+
 Resource may have *variable path* also. For instance, a resource with
 the path ``'/a/{name}/c'`` would match all incoming requests with
 paths such as ``'/a/b/c'``, ``'/a/1/c'``, and ``'/a/etc/c'``.
