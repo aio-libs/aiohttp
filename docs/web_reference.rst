@@ -1865,7 +1865,7 @@ unique *name* and at least one :term:`route`.
 
 :term:`web-handler` lookup is performed in the following way:
 
-1. Router splits the URL and checks the index from longest to shortest.
+1. The router splits the URL and checks the index from longest to shortest.
    For example, '/one/two/three' will first check the index for
    '/one/two/three', then '/one/two' and finally '/'.
 2. If the URL part is found in the index, the list of routes for
