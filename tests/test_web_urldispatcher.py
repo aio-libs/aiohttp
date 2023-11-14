@@ -544,3 +544,21 @@ async def test_decoded_url_match(
     r = await client.get(yarl.URL(urlencoded_path, encoded=True))
     assert r.status == expected_http_resp_status
     await r.release()
+
+
+async def test_order_is_preserved(aiohttp_client: AiohttpClient) -> None:
+    """Test route order is preserved."""
+    app = web.Application()
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(text=request.match_info._route.resource.canonical)
+
+    app.router.add_get("/x/{b}/", handler)
+    app.router.add_get("/{x:.*/b}", handler)
+
+    client = await aiohttp_client(app)
+
+    r = await client.get("/x/b/")
+    assert r.status == 200
+    assert await r.text() == "/x/{b}/"
+    await r.release()
