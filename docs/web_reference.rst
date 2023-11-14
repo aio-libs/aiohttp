@@ -1865,13 +1865,20 @@ unique *name* and at least one :term:`route`.
 
 :term:`web-handler` lookup is performed in the following way:
 
-1. Router iterates over *resources* one-by-one.
+1. Router splits the url and checks the index from longest to shortest.
+   For example, '/one/two/three' will first check the index for
+   '/one/two/three', then '/one/two' and finally '/'.
 2. If *resource* matches to requested URL the resource iterates over
-   own *routes*.
+   the *routes* for the canonical URL in the index.
 3. If route matches to requested HTTP method (or ``'*'`` wildcard) the
    route's handler is used as found :term:`web-handler`. The lookup is
    finished.
-4. Otherwise router tries next resource from the *routing table*.
+4. If the route is not found in the index, the router tries to find
+   the route in the list of :class:`~aiohttp.web.MatchedSubAppResource`,
+   (current only created from and :meth:`~aiohttp.web_app.Application.add_domain`
+   call), and will iterate over the list of
+   :class:`~aiohttp.web.MatchedSubAppResource` in a linear fashion
+   until a match is found.
 5. If the end of *routing table* is reached and no *resource* /
    *route* pair found the *router* returns special :class:`~aiohttp.abc.AbstractMatchInfo`
    instance with :attr:`aiohttp.abc.AbstractMatchInfo.http_exception` is not ``None``
@@ -1900,7 +1907,10 @@ Resource classes hierarchy::
      Resource
        PlainResource
        DynamicResource
+     PrefixResource
        StaticResource
+       PrefixedSubAppResource
+          MatchedSubAppResource
 
 
 .. class:: AbstractResource
