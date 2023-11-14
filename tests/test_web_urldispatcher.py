@@ -557,8 +557,11 @@ async def test_order_is_preserved(aiohttp_client: AiohttpClient) -> None:
     app.router.add_get("/first/x/{b}/", handler)
     app.router.add_get(r"/first/{x:.*/b}", handler)
 
-    app.router.add_get(r"/second/{x:.*/b}", handler)
-    app.router.add_get("/second/x/{b}/", handler)
+    app.router.add_get(r"/second/{user}/info", handler)
+    app.router.add_get("/second/bob/info", handler)
+
+    app.router.add_get("/third/bob/info", handler)
+    app.router.add_get(r"/third/{user}/info", handler)
 
     client = await aiohttp_client(app)
 
@@ -567,7 +570,22 @@ async def test_order_is_preserved(aiohttp_client: AiohttpClient) -> None:
     assert await r.text() == "/first/x/{b}/"
     await r.release()
 
-    r = await client.get("/second/x/b/")
+    r = await client.get("/second/frank/info")
     assert r.status == 200
-    assert await r.text() == "/second/{x:.*/b}"
+    assert await r.text() == "/second/{user}/info"
+    await r.release()
+
+    r = await client.get("/second/bob/info")
+    assert r.status == 200
+    assert await r.text() == "/second/{user}/info"
+    await r.release()
+
+    r = await client.get("/third/bob/info")
+    assert r.status == 200
+    assert await r.text() == "/third/bob/info"
+    await r.release()
+
+    r = await client.get("/third/frank/info")
+    assert r.status == 200
+    assert await r.text() == "/third/{user}/info"
     await r.release()
