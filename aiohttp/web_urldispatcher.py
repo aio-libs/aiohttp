@@ -994,7 +994,11 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         resource_index = self._resource_index
         allowed_methods: Set[str] = set()
 
-        # Walk the url parts looking for candidates
+        # Walk the url parts looking for candidates. We walk the url backwards
+        # to ensure the most explicit match is found first. If there are multiple
+        # candidates for a given url part because there are multiple resources
+        # registered for the same canonical path, we resolve them in a linear
+        # fashion to ensure registration order is respected.
         for i in range(len(url_parts), 0, -1):
             url_part = "/" + "/".join(url_parts[1:i])
             if (resource_candidates := resource_index.get(url_part)) is not None:
