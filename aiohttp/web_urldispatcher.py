@@ -987,26 +987,28 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self._resources: List[AbstractResource] = []
         self._named_resources: Dict[str, AbstractResource] = {}
         self._resource_index: dict[str, list[AbstractResource]] = {}
+        self._matched_sub_app_resources: List[MatchedSubAppResource] = []
 
     async def resolve(self, request: Request) -> UrlMappingMatchInfo:
         url_parts = request.rel_url.raw_parts
         resource_index = self._resource_index
+        allowed_methods: Set[str] = set()
+
         # Walk the url parts looking for candidates
         for i in range(len(url_parts), 0, -1):
             url_part = "/" + "/".join(url_parts[1:i])
             if (resource_candidates := resource_index.get(url_part)) is not None:
                 for candidate in resource_candidates:
-                    if (
-                        match_dict := (await candidate.resolve(request))[0]
-                    ) is not None:
+                    match_dict, allowed = await candidate.resolve(request)
+                    if match_dict is not None:
                         return match_dict
+                    else:
+                        allowed_methods |= allowed
 
-        # We didn't find any candidates, so we fallback to a linear search
-
+        # We didn't find any candidates, so we'll try the sub-app resources
+        # which we have to walk in a linear fashion because they have match rules
         method = request.method
-        allowed_methods: Set[str] = set()
-
-        for resource in self._resources:
+        for resource in self._matched_sub_app_resources:
             match_dict, allowed = await resource.resolve(request)
             if match_dict is not None:
                 return match_dict
@@ -1071,7 +1073,12 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
                 )
             self._named_resources[name] = resource
         self._resources.append(resource)
-        self.index_resource(resource)
+
+        if isinstance(resource, MatchedSubAppResource):
+            # We cannot index match sub-app resources because they have match rules
+            self._matched_sub_app_resources.append(resource)
+        else:
+            self.index_resource(resource)
 
     def _get_resource_index_key(self, resource: AbstractResource) -> str:
         """Return a key to index the resource in the resource index."""
