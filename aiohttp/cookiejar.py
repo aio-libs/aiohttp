@@ -99,7 +99,7 @@ class CookieJar(AbstractCookieJar):
                 for url in treat_as_secure_origin
             ]
         self._treat_as_secure_origin = treat_as_secure_origin
-        self._next_expiration: Union[int, float] = ceil(time.time())
+        self._next_expiration: float = ceil(time.time())
         self._expirations: Dict[Tuple[str, str, str], Union[int, float]] = {}
 
     def save(self, file_path: PathLike) -> None:
