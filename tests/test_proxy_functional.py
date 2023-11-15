@@ -218,7 +218,11 @@ async def test_https_proxy_unsupported_tls_in_tls(
     escaped_host_port = ":".join((url.host.replace(".", r"\."), str(url.port)))
     escaped_proxy_url = str(secure_proxy_url).replace(".", r"\.")
 
-    conn = aiohttp.TCPConnector()
+    ssl_context = ssl.SSLContext()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+
+    conn = aiohttp.TCPConnector(ssl=ssl_context)
     sess = aiohttp.ClientSession(connector=conn)
 
     expected_warning_text = (
