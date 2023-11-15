@@ -82,7 +82,7 @@ def secure_proxy_url(tls_certificate_pem_path):
     proxypy_args = [
         "--threadless",  # use asyncio
         "--num-workers",
-        "1",  # the tests only send one query anyway
+        "3",  # ensure we can handle multiple connections
         "--hostname",
         "127.0.0.1",  # network interface to listen to
         "--port",
