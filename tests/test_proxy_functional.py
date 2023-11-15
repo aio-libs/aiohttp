@@ -16,7 +16,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import web
-from aiohttp.client_exceptions import ClientConnectionError, ClientProxyConnectionError
+from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.helpers import PY_310
 
 pytestmark = [
@@ -132,7 +132,10 @@ def _pretend_asyncio_supports_tls_in_tls(
     )
 
 
-@secure_proxy_xfail(raises=ClientProxyConnectionError)
+@pytest.mark.skipif(
+    not ASYNCIO_SUPPORTS_TLS_IN_TLS,
+    reason="asyncio on this python does not support TLS in TLS",
+)
 @pytest.mark.parametrize("web_server_endpoint_type", ("http", "https"))
 @pytest.mark.usefixtures("_pretend_asyncio_supports_tls_in_tls", "loop")
 async def test_secure_https_proxy_absolute_path(
@@ -159,10 +162,11 @@ async def test_secure_https_proxy_absolute_path(
     await conn.close()
 
 
-@secure_proxy_xfail(raises=AssertionError)
 @pytest.mark.parametrize("web_server_endpoint_type", ("https",))
 @pytest.mark.usefixtures("loop")
-@pytest.mark.skipif(ASYNCIO_SUPPORTS_TLS_IN_TLS, reason="asyncio supports TLS in TLS")
+@pytest.mark.skipif(
+    ASYNCIO_SUPPORTS_TLS_IN_TLS, reason="asyncio on this python supports TLS in TLS"
+)
 async def test_https_proxy_unsupported_tls_in_tls(
     client_ssl_ctx: ssl.SSLContext,
     secure_proxy_url: str,
