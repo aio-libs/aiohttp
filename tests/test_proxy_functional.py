@@ -109,10 +109,13 @@ def secure_proxy_url(tls_certificate_pem_path, tmp_path: Path):
             host=str(proxy_instance.flags.hostname),
             port=proxy_instance.flags.port,
         )
-        with open(log_path) as log_file:
-            print("proxy log:")
-            log_contents = log_file.read()
-            print(log_contents)
+        try:
+            with open(log_path) as log_file:
+                print("proxy log:")
+                log_contents = log_file.read()
+                print(log_contents)
+        except FileNotFoundError:
+            print("proxy log not found")
 
 
 @pytest.fixture
