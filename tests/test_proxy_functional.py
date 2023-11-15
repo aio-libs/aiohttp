@@ -91,6 +91,8 @@ def secure_proxy_url(tls_certificate_pem_path):
         tls_certificate_pem_path,  # contains both key and cert
         "--key-file",
         tls_certificate_pem_path,  # contains both key and cert
+        "--log-level",
+        "d",
     ]
 
     with proxy.Proxy(input_args=proxypy_args) as proxy_instance:
