@@ -4,6 +4,7 @@ import functools
 import os
 import pathlib
 import platform
+import socket
 import ssl
 from re import match as match_regex
 from typing import Any
@@ -45,6 +46,25 @@ ASYNCIO_SUPPORTS_TLS_IN_TLS = hasattr(
     asyncio.sslproto._SSLProtocolTransport,
     "_start_tls_compatible",
 )
+
+
+async def verify_port_accepts_connections(port: int) -> bool:
+    """Verify that a given port accepts connections.
+
+    This is done by trying to connect to it.
+    """
+    loop = asyncio.get_event_loop()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setblocking(False)
+    try:
+        async with asyncio.timeout(0.5):
+            await loop.sock_connect(sock, ("127.0.0.1", port))
+    except (OSError, TimeoutError):
+        return False
+    finally:
+        if sock is not None:
+            sock.close()
+    return True
 
 
 @pytest.fixture
@@ -140,13 +160,18 @@ def _pretend_asyncio_supports_tls_in_tls(
 @pytest.mark.usefixtures("_pretend_asyncio_supports_tls_in_tls", "loop")
 async def test_secure_https_proxy_absolute_path(
     client_ssl_ctx: ssl.SSLContext,
-    secure_proxy_url: str,
+    secure_proxy_url: URL,
     web_server_endpoint_url: str,
     web_server_endpoint_payload: str,
 ) -> None:
     """Ensure HTTP(S) sites are accessible through a secure proxy."""
     conn = aiohttp.TCPConnector()
     sess = aiohttp.ClientSession(connector=conn)
+
+    # Verify the proxy is up and running.
+    assert await verify_port_accepts_connections(
+        secure_proxy_url.port
+    ), "Could not connect to proxy"
 
     response = await sess.get(
         web_server_endpoint_url,
@@ -169,7 +194,7 @@ async def test_secure_https_proxy_absolute_path(
 )
 async def test_https_proxy_unsupported_tls_in_tls(
     client_ssl_ctx: ssl.SSLContext,
-    secure_proxy_url: str,
+    secure_proxy_url: URL,
     web_server_endpoint_type: str,
 ) -> None:
     """Ensure connecting to TLS endpoints w/ HTTPS proxy needs patching.
@@ -177,6 +202,11 @@ async def test_https_proxy_unsupported_tls_in_tls(
     This also checks that a helpful warning on how to patch the env
     is displayed.
     """
+    # Verify the proxy is up and running.
+    assert await verify_port_accepts_connections(
+        secure_proxy_url.port
+    ), "Could not connect to proxy"
+
     url = URL.build(scheme=web_server_endpoint_type, host="python.org")
 
     escaped_host_port = ":".join((url.host.replace(".", r"\."), str(url.port)))
