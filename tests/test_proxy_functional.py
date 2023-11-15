@@ -1,6 +1,7 @@
 # type: ignore
 import asyncio
 import functools
+import logging
 import os
 import pathlib
 import platform
@@ -95,6 +96,8 @@ def secure_proxy_url(tls_certificate_pem_path):
         "d",
     ]
 
+    logging.getLogger("proxy.proxy").setLevel(logging.DEBUG)
+
     with proxy.Proxy(input_args=proxypy_args) as proxy_instance:
         yield URL.build(
             scheme="https",
@@ -142,30 +145,11 @@ async def web_server_endpoint_url(
     )
 
 
-@pytest.fixture
-def _pretend_asyncio_supports_tls_in_tls(
-    monkeypatch,
-    web_server_endpoint_type,
-):
-    if web_server_endpoint_type != "https" or ASYNCIO_SUPPORTS_TLS_IN_TLS:
-        return
-
-    # for https://github.com/python/cpython/pull/28073
-    # and https://bugs.python.org/issue37179
-    monkeypatch.setattr(
-        asyncio.sslproto._SSLProtocolTransport,
-        "_start_tls_compatible",
-        True,
-        raising=False,
-    )
-
-
 @pytest.mark.skipif(
     not ASYNCIO_SUPPORTS_TLS_IN_TLS,
     reason="asyncio on this python does not support TLS in TLS",
 )
 @pytest.mark.parametrize("web_server_endpoint_type", ("http", "https"))
-@pytest.mark.usefixtures("_pretend_asyncio_supports_tls_in_tls", "loop")
 async def test_secure_https_proxy_absolute_path(
     client_ssl_ctx: ssl.SSLContext,
     secure_proxy_url: URL,
