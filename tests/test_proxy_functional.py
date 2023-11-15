@@ -139,10 +139,10 @@ def _pretend_asyncio_supports_tls_in_tls(
 @pytest.mark.parametrize("web_server_endpoint_type", ("http", "https"))
 @pytest.mark.usefixtures("_pretend_asyncio_supports_tls_in_tls", "loop")
 async def test_secure_https_proxy_absolute_path(
-    client_ssl_ctx,
-    secure_proxy_url,
-    web_server_endpoint_url,
-    web_server_endpoint_payload,
+    client_ssl_ctx: ssl.SSLContext,
+    secure_proxy_url: str,
+    web_server_endpoint_url: str,
+    web_server_endpoint_payload: str,
 ) -> None:
     """Ensure HTTP(S) sites are accessible through a secure proxy."""
     conn = aiohttp.TCPConnector()
