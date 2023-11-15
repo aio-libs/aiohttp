@@ -867,7 +867,7 @@ class HttpPayloadParser:
 
                 # if stream does not contain trailer, after 0\r\n
                 # we should get another \r\n otherwise
-                # trailers needs to be skiped until \r\n\r\n
+                # trailers needs to be skipped until \r\n\r\n
                 if self._chunk == ChunkState.PARSE_MAYBE_TRAILERS:
                     head = chunk[: len(SEP)]
                     if head == SEP:

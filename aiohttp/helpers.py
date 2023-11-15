@@ -530,13 +530,6 @@ def is_ip_address(host: Optional[Union[str, bytes, bytearray, memoryview]]) -> b
     return is_ipv4_address(host) or is_ipv6_address(host)
 
 
-def next_whole_second() -> datetime.datetime:
-    """Return current time rounded up to the next whole second."""
-    return datetime.datetime.now(datetime.timezone.utc).replace(
-        microsecond=0
-    ) + datetime.timedelta(seconds=0)
-
-
 _cached_current_datetime: Optional[int] = None
 _cached_formatted_datetime = ""
 
@@ -848,7 +841,7 @@ class AppKey(Generic[_T]):
                 t = get_args(self.__orig_class__)[0]
 
         if t is None:
-            t_repr = "<<Unkown>>"
+            t_repr = "<<Unknown>>"
         elif isinstance(t, type):
             if t.__module__ == "builtins":
                 t_repr = t.__qualname__
@@ -939,10 +932,10 @@ class CookieMixin:
         super().__init__()
         # Mypy doesn't like that _cookies isn't in __slots__.
         # See the comment on this class's __slots__ for why this is OK.
-        self._cookies: SimpleCookie[str] = SimpleCookie()  # type: ignore[misc]
+        self._cookies = SimpleCookie()  # type: ignore[misc]
 
     @property
-    def cookies(self) -> "SimpleCookie[str]":
+    def cookies(self) -> SimpleCookie:
         return self._cookies
 
     def set_cookie(
@@ -1024,9 +1017,7 @@ class CookieMixin:
         )
 
 
-def populate_with_cookies(
-    headers: "CIMultiDict[str]", cookies: "SimpleCookie[str]"
-) -> None:
+def populate_with_cookies(headers: "CIMultiDict[str]", cookies: SimpleCookie) -> None:
     for cookie in cookies.values():
         value = cookie.output(header="")[1:]
         headers.add(hdrs.SET_COOKIE, value)

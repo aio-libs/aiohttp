@@ -22,7 +22,7 @@ identify==2.5.26
     # via pre-commit
 iniconfig==2.0.0
     # via pytest
-mypy==1.6.1 ; implementation_name == "cpython"
+mypy==1.7.0 ; implementation_name == "cpython"
     # via -r requirements/lint.in
 mypy-extensions==1.0.0
     # via mypy
@@ -40,7 +40,7 @@ pytest==7.4.3
     # via -r requirements/lint.in
 pyyaml==6.0.1
     # via pre-commit
-slotscheck==0.17.0
+slotscheck==0.17.1
     # via -r requirements/lint.in
 tomli==2.0.1
     # via

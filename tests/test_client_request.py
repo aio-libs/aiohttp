@@ -5,7 +5,7 @@ import io
 import pathlib
 import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 from unittest import mock
 
 import pytest
@@ -20,7 +20,19 @@ from aiohttp.client_reqrep import (
     Fingerprint,
     _gen_default_accept_encoding,
 )
+from aiohttp.http import HttpVersion
 from aiohttp.test_utils import make_mocked_coro
+
+
+class WriterMock(mock.AsyncMock):
+    def __await__(self) -> None:
+        return self().__await__()
+
+    def add_done_callback(self, cb: Callable[[], None]) -> None:
+        """Dummy method."""
+
+    def remove_done_callback(self, cb: Callable[[], None]) -> None:
+        """Dummy method."""
 
 
 @pytest.fixture
@@ -579,18 +591,18 @@ async def test_connection_header(loop: Any, conn: Any) -> None:
     req.headers.clear()
 
     req.keep_alive.return_value = True
-    req.version = (1, 1)
+    req.version = HttpVersion(1, 1)
     req.headers.clear()
     await req.send(conn)
     assert req.headers.get("CONNECTION") is None
 
-    req.version = (1, 0)
+    req.version = HttpVersion(1, 0)
     req.headers.clear()
     await req.send(conn)
     assert req.headers.get("CONNECTION") == "keep-alive"
 
     req.keep_alive.return_value = False
-    req.version = (1, 1)
+    req.version = HttpVersion(1, 1)
     req.headers.clear()
     await req.send(conn)
     assert req.headers.get("CONNECTION") == "close"
@@ -1101,6 +1113,19 @@ async def test_close(loop: Any, buf: Any, conn: Any) -> None:
     resp.close()
 
 
+async def test_bad_version(loop: Any, conn: Any) -> None:
+    req = ClientRequest(
+        "GET",
+        URL("http://python.org"),
+        loop=loop,
+        headers={"Connection": "Close"},
+        version=("1", "1\r\nInjected-Header: not allowed"),
+    )
+
+    with pytest.raises(AttributeError):
+        await req.send(conn)
+
+
 async def test_custom_response_class(loop: Any, conn: Any) -> None:
     class CustomResponse(ClientResponse):
         def read(self, decode=False):
@@ -1118,7 +1143,7 @@ async def test_custom_response_class(loop: Any, conn: Any) -> None:
 async def test_oserror_on_write_bytes(loop: Any, conn: Any) -> None:
     req = ClientRequest("POST", URL("http://python.org/"), loop=loop)
 
-    writer = mock.Mock()
+    writer = WriterMock()
     writer.write.side_effect = OSError
 
     await req.write_bytes(writer, conn)
@@ -1132,7 +1157,8 @@ async def test_terminate(loop: Any, conn: Any) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
     resp = await req.send(conn)
     assert req._writer is not None
-    writer = req._writer = mock.Mock()
+    writer = req._writer = WriterMock()
+    writer.cancel = mock.Mock()
 
     req.terminate()
     assert req._writer is None
@@ -1148,7 +1174,7 @@ def test_terminate_with_closed_loop(loop: Any, conn: Any) -> None:
         req = ClientRequest("get", URL("http://python.org"), loop=loop)
         resp = await req.send(conn)
         assert req._writer is not None
-        writer = req._writer = mock.Mock()
+        writer = req._writer = WriterMock()
 
         await asyncio.sleep(0.05)
 
