@@ -176,6 +176,7 @@ async def test_secure_https_proxy_absolute_path(
     response.close()
     await sess.close()
     await conn.close()
+    raise NotImplementedError("TODO: test HTTPS proxy")
 
 
 @pytest.mark.parametrize("web_server_endpoint_type", ("https",))
