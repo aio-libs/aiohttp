@@ -19,7 +19,7 @@ try:
     import trustme
 
     # Check if the CA is available in runtime, MacOS on Py3.10 fails somehow
-    trustme.CA()
+    trustme.CA(key_type=trustme.KeyType.RSA)
 
     TRUSTME: bool = True
 except ImportError:
@@ -35,16 +35,17 @@ IS_LINUX = sys.platform.startswith("linux")
 def tls_certificate_authority() -> Any:
     if not TRUSTME:
         pytest.xfail("trustme is not supported")
-    return trustme.CA()
+    return trustme.CA(key_type=trustme.KeyType.RSA)
 
 
 @pytest.fixture
-def tls_certificate(tls_certificate_authority: Any) -> Any:
+def tls_certificate(tls_certificate_authority: "trustme.CA") -> Any:
     return tls_certificate_authority.issue_cert(
         "localhost",
         "xn--prklad-4va.localhost",
         "127.0.0.1",
         "::1",
+        key_type=trustme.KeyType.RSA,
     )
 
 
@@ -65,6 +66,7 @@ def client_ssl_ctx(tls_certificate_authority: Any) -> ssl.SSLContext:
 @pytest.fixture
 def tls_ca_certificate_pem_path(tls_certificate_authority: Any) -> None:
     with tls_certificate_authority.cert_pem.tempfile() as ca_cert_pem:
+        print(ca_cert_pem)
         yield ca_cert_pem
 
 

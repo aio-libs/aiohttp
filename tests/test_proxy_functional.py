@@ -100,11 +100,6 @@ def secure_proxy_url(tls_certificate_pem_path, tmp_path: Path):
         str(log_path),
     ]
 
-    with open(tls_certificate_pem_path) as tls_certificate_pem_file:
-        tls_certificate_pem = tls_certificate_pem_file.read()
-        print("tls_certificate_pem:")
-        print(tls_certificate_pem)
-
     logging.getLogger().setLevel(logging.DEBUG)
     logging.getLogger("proxy").setLevel(logging.DEBUG)
     with proxy.Proxy(input_args=proxypy_args) as proxy_instance:
@@ -194,7 +189,6 @@ async def test_secure_https_proxy_absolute_path(
     response.close()
     await sess.close()
     await conn.close()
-    raise NotImplementedError("TODO: test HTTPS proxy")
 
 
 @pytest.mark.parametrize("web_server_endpoint_type", ("https",))
