@@ -11,6 +11,7 @@ from typing import Any
 from unittest import mock
 from uuid import uuid4
 
+import async_timeout
 import proxy
 import pytest
 from yarl import URL
@@ -57,7 +58,7 @@ async def verify_port_accepts_connections(port: int) -> bool:
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setblocking(False)
     try:
-        async with asyncio.timeout(0.5):
+        async with async_timeout.timeout(0.5):
             await loop.sock_connect(sock, ("127.0.0.1", port))
     except (OSError, TimeoutError):
         return False
