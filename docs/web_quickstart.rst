@@ -196,7 +196,7 @@ First one is *optimized*. You have got the idea.
 Variable Resources
 ^^^^^^^^^^^^^^^^^^
 
-.. versionchanged:: 4.0
+.. versionchanged:: 3.10
 
     Fixed paths are always preferred over variable paths. For example,
     if you have two routes ``/a/b`` and ``/a/{name}``, then the first
