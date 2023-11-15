@@ -177,11 +177,18 @@ async def test_secure_https_proxy_absolute_path(
         secure_proxy_url.port
     ), "Could not connect to proxy"
 
-    response = await sess.get(
-        web_server_endpoint_url,
-        proxy=secure_proxy_url,
-        ssl=client_ssl_ctx,  # used for both proxy and endpoint connections
-    )
+    try:
+        response = await sess.get(
+            web_server_endpoint_url,
+            proxy=secure_proxy_url,
+            ssl=client_ssl_ctx,  # used for both proxy and endpoint connections
+        )
+    except Exception:
+        # Verify the proxy is up and running.
+        assert await verify_port_accepts_connections(
+            secure_proxy_url.port
+        ), "Could not connect to proxy"
+        raise
 
     assert response.status == 200
     assert await response.text() == web_server_endpoint_payload
