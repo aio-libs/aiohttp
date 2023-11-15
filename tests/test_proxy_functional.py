@@ -6,12 +6,12 @@ import pathlib
 import platform
 import socket
 import ssl
+import sys
 from re import match as match_regex
 from typing import Any
 from unittest import mock
 from uuid import uuid4
 
-import async_timeout
 import proxy
 import pytest
 from yarl import URL
@@ -20,6 +20,11 @@ import aiohttp
 from aiohttp import web
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.helpers import PY_310
+
+if sys.version_info >= (3, 11):
+    import asyncio as async_timeout
+else:
+    import async_timeout
 
 pytestmark = [
     pytest.mark.filterwarnings(
