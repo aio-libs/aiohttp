@@ -96,8 +96,7 @@ def secure_proxy_url(tls_certificate_pem_path):
         "d",
     ]
 
-    logging.getLogger("proxy.proxy").setLevel(logging.DEBUG)
-
+    logging.getLogger("proxy").setLevel(logging.DEBUG)
     with proxy.Proxy(input_args=proxypy_args) as proxy_instance:
         yield URL.build(
             scheme="https",
