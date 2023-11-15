@@ -8,6 +8,7 @@ import platform
 import socket
 import ssl
 import sys
+from pathlib import Path
 from re import match as match_regex
 from typing import Any
 from unittest import mock
@@ -75,11 +76,12 @@ async def verify_port_accepts_connections(port: int) -> bool:
 
 
 @pytest.fixture
-def secure_proxy_url(tls_certificate_pem_path):
+def secure_proxy_url(tls_certificate_pem_path, tmp_path: Path):
     """Return the URL of an instance of a running secure proxy.
 
     This fixture also spawns that instance and tears it down after the test.
     """
+    log_path = tmp_path.joinpath("proxy.log")
     proxypy_args = [
         "--threadless",  # use asyncio
         "--num-workers",
@@ -94,8 +96,11 @@ def secure_proxy_url(tls_certificate_pem_path):
         tls_certificate_pem_path,  # contains both key and cert
         "--log-level",
         "d",
+        "--log-file",
+        str(log_path),
     ]
 
+    logging.getLogger().setLevel(logging.DEBUG)
     logging.getLogger("proxy").setLevel(logging.DEBUG)
     with proxy.Proxy(input_args=proxypy_args) as proxy_instance:
         yield URL.build(
@@ -103,6 +108,10 @@ def secure_proxy_url(tls_certificate_pem_path):
             host=str(proxy_instance.flags.hostname),
             port=proxy_instance.flags.port,
         )
+        with open(log_path) as log_file:
+            print("proxy log:")
+            log_contents = log_file.read()
+            print(log_contents)
 
 
 @pytest.fixture
