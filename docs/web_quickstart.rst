@@ -198,9 +198,17 @@ Variable Resources
 
 .. versionchanged:: 3.10
 
-    Fixed paths are always preferred over variable paths. For example,
+    Fixed paths are preferred over variable paths. For example,
     if you have two routes ``/a/b`` and ``/a/{name}``, then the first
     route will always be preferred over the second one.
+
+    If there are multiple dynamic paths with the same fixed prefix,
+    they will be resolved in order of registration.
+
+    For example, if you have two dynamic routes that are prefixed
+    with the fixed ``/users`` path such as ``/users/{x}/{y}/z`` and
+    ``/users/{x}/y/z``, the first one will be preferred over the
+    second one.
 
 Resource may have *variable path* also. For instance, a resource with
 the path ``'/a/{name}/c'`` would match all incoming requests with
