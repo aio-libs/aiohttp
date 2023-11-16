@@ -1885,6 +1885,18 @@ unique *name* and at least one :term:`route`.
    *HTTP 405 Method Not Allowed* status code.
    Registered :meth:`~aiohttp.abc.AbstractMatchInfo.handler` raises this exception on call.
 
+Fixed paths are preferred over variable paths. For example,
+if you have two routes ``/a/b`` and ``/a/{name}``, then the first
+route will always be preferred over the second one.
+
+If there are multiple dynamic paths with the same fixed prefix,
+they will be resolved in order of registration.
+
+For example, if you have two dynamic routes that are prefixed
+with the fixed ``/users`` path such as ``/users/{x}/{y}/z`` and
+``/users/{x}/y/z``, the first one will be preferred over the
+second one.
+
 User should never instantiate resource classes but give it by
 :meth:`UrlDispatcher.add_resource` call.
 
