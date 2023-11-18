@@ -65,7 +65,7 @@ class CookieJar(AbstractCookieJar):
     except (OSError, ValueError):
         # Hit the maximum representable time on Windows
         # https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/localtime-localtime32-localtime64
-        # Throws ValueError on PyPy 3.8, OSError elsewhere
+        # Throws ValueError on PyPy 3.8 and 3.9, OSError elsewhere
         MAX_TIME = calendar.timegm((3000, 12, 31, 23, 59, 59, -1, -1, -1))
     except OverflowError:
         # #4515: datetime.max may not be representable on 32-bit platforms
