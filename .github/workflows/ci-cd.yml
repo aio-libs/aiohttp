@@ -155,7 +155,7 @@ jobs:
         include:
           - pyver: pypy-3.9
             no-extensions: 'Y'
-            os: windows
+            os: ubuntu
             experimental: false
           - os: macos
             pyver: "3.11"
