@@ -1,1 +1,0 @@
-Ensure empty body response for 1xx/204/304 per RFC 9112 sec 6.3
