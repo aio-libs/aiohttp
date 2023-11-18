@@ -49,7 +49,7 @@ Features
 
   `#5219 <https://github.com/aio-libs/aiohttp/issues/5219>`_
 
-- Added ``client_max_size`` to ``BaseRequest.clone()`` to allow overriding the request body size -- :user:`anesabml`.
+- Added ``client_max_size`` to ``BaseRequest.clone()`` to allow overriding the request body size. -- :user:`anesabml`.
 
   `#5704 <https://github.com/aio-libs/aiohttp/issues/5704>`_
 
@@ -82,7 +82,8 @@ Features
 
   `#7114 <https://github.com/aio-libs/aiohttp/issues/7114>`_
 
-- Added support for using Basic Auth credentials from :file:`.netrc` file when making HTTP requests with the :py:class:`~aiohttp.ClientSession` ``trust_env`` argument is set to ``True`` -- by :user:`yuvipanda`.
+- Added support for using Basic Auth credentials from :file:`.netrc` file when making HTTP requests with the
+  :py:class:`~aiohttp.ClientSession` ``trust_env`` argument is set to ``True``. -- by :user:`yuvipanda`.
 
   `#7131 <https://github.com/aio-libs/aiohttp/issues/7131>`_
 
@@ -90,7 +91,7 @@ Features
 
   `#7240 <https://github.com/aio-libs/aiohttp/issues/7240>`_
 
-- Added typing information to ``RawResponseMessage`` -- by :user:`Gobot1234`
+- Added typing information to ``RawResponseMessage``. -- by :user:`Gobot1234`
 
   `#7365 <https://github.com/aio-libs/aiohttp/issues/7365>`_
 
@@ -121,11 +122,11 @@ Bugfixes
 
   `#3636 <https://github.com/aio-libs/aiohttp/issues/3636>`_
 
-- Fixed client timeout not working when incoming data is always available without waiting -- by :user:`Dreamsorcerer`.
+- Fixed client timeout not working when incoming data is always available without waiting. -- by :user:`Dreamsorcerer`.
 
   `#5854 <https://github.com/aio-libs/aiohttp/issues/5854>`_
 
-- Fixed ``readuntil`` to work with a delimiter of more than one character
+- Fixed ``readuntil`` to work with a delimiter of more than one character.
 
   `#6701 <https://github.com/aio-libs/aiohttp/issues/6701>`_
 
@@ -161,39 +162,39 @@ Bugfixes
 
   `#7616 <https://github.com/aio-libs/aiohttp/issues/7616>`_
 
-- Fixed a rare ``RuntimeError: await wasn't used with future`` exception -- by :user:`stalkerg`
+- Fixed a rare ``RuntimeError: await wasn't used with future`` exception. -- by :user:`stalkerg`
 
   `#7785 <https://github.com/aio-libs/aiohttp/issues/7785>`_
 
-- Fix issue with insufficient HTTP method and version validation.
+- Fixed issue with insufficient HTTP method and version validation.
 
   `#7700 <https://github.com/aio-libs/aiohttp/issues/7700>`_
 
-- Add check to validate that absolute URIs have schemes.
+- Added check to validate that absolute URIs have schemes.
 
   `#7712 <https://github.com/aio-libs/aiohttp/issues/7712>`_
 
-- Fix unhandled exception when Python HTTP parser encounters unpaired Unicode surrogates.
+- Fixed unhandled exception when Python HTTP parser encounters unpaired Unicode surrogates.
 
   `#7715 <https://github.com/aio-libs/aiohttp/issues/7715>`_
 
-- Update parser to disallow invalid characters in header field names and stop accepting LF as a request line separator.
+- Updated parser to disallow invalid characters in header field names and stop accepting LF as a request line separator.
 
   `#7719 <https://github.com/aio-libs/aiohttp/issues/7719>`_
 
-- Fix py http parser not treating 204/304/1xx as an empty body
+- Fixed Python HTTP parser not treating 204/304/1xx as an empty body.
 
   `#7755 <https://github.com/aio-libs/aiohttp/issues/7755>`_
 
-- Ensure empty body response for 1xx/204/304 per RFC 9112 sec 6.3
+- Ensure empty body response for 1xx/204/304 per RFC 9112 sec 6.3.
 
   `#7756 <https://github.com/aio-libs/aiohttp/issues/7756>`_
 
-- Fixed an issue when a client request is closed before completing a chunked payload -- by :user:`Dreamsorcerer`
+- Fixed an issue when a client request is closed before completing a chunked payload. -- by :user:`Dreamsorcerer`
 
   `#7764 <https://github.com/aio-libs/aiohttp/issues/7764>`_
 
-- Edge Case Handling for ResponseParser for missing reason value
+- Edge Case Handling for ResponseParser for missing reason value.
 
   `#7776 <https://github.com/aio-libs/aiohttp/issues/7776>`_
 
@@ -293,7 +294,7 @@ Misc
 
   `#6903 <https://github.com/aio-libs/aiohttp/issues/6903>`_
 
-- Fixed annotation of ``ssl`` parameter to disallow ``True``. -- by :user:`Dreamsorcerer`
+- Fixed annotation of ``ssl`` parameter to disallow ``True``. -- by :user:`Dreamsorcerer`.
 
   `#7335 <https://github.com/aio-libs/aiohttp/issues/7335>`_
 
