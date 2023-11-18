@@ -161,7 +161,7 @@ Bugfixes
 
   `#7616 <https://github.com/aio-libs/aiohttp/issues/7616>`_
 
-- Fixed a rare `RuntimeError: await wasn't used with future` exception -- by :user:`stalkerg`
+- Fixed a rare ``RuntimeError: await wasn't used with future`` exception -- by :user:`stalkerg`
 
   `#7785 <https://github.com/aio-libs/aiohttp/issues/7785>`_
 
