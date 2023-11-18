@@ -1,1 +1,0 @@
-Fix increase in latency with small messages from websocket compression changes

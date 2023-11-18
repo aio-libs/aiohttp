@@ -124,6 +124,40 @@ def test_empty_text_304() -> None:
     resp.text is None
 
 
+def test_no_link_451() -> None:
+    with pytest.raises(TypeError):
+        web.HTTPUnavailableForLegalReasons()  # type: ignore[call-arg]
+
+
+def test_link_none_451() -> None:
+    resp = web.HTTPUnavailableForLegalReasons(link=None)
+    assert resp.link is None
+    assert "Link" not in resp.headers
+
+
+def test_link_empty_451() -> None:
+    resp = web.HTTPUnavailableForLegalReasons(link="")
+    assert resp.link is None
+    assert "Link" not in resp.headers
+
+
+def test_link_str_451() -> None:
+    resp = web.HTTPUnavailableForLegalReasons(link="http://warning.or.kr/")
+    assert resp.link == URL("http://warning.or.kr/")
+    assert resp.headers["Link"] == '<http://warning.or.kr/>; rel="blocked-by"'
+
+
+def test_link_url_451() -> None:
+    resp = web.HTTPUnavailableForLegalReasons(link=URL("http://warning.or.kr/"))
+    assert resp.link == URL("http://warning.or.kr/")
+    assert resp.headers["Link"] == '<http://warning.or.kr/>; rel="blocked-by"'
+
+
+def test_link_CRLF_451() -> None:
+    resp = web.HTTPUnavailableForLegalReasons(link="http://warning.or.kr/\r\n")
+    assert "\r\n" not in resp.headers["Link"]
+
+
 def test_HTTPException_retains_cause() -> None:
     with pytest.raises(web.HTTPException) as ei:
         try:
