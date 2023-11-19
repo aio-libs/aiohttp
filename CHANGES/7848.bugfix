@@ -1,0 +1,1 @@
+Fix importing aiohttp under PyPy 3.8 and 3.9 on Windows.
