@@ -241,7 +241,7 @@ jobs:
         COLOR: yes
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
       run: >-  # `exit 1` makes sure that the job remains red with flaky runs
-        pytest --no-cov -vvvvv -s --lf && exit 1
+        pytest --no-cov -vvvvv --lf && exit 1
       shell: bash
     - name: Run dev_mode tests
       env:
