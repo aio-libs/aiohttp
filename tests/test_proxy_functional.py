@@ -162,6 +162,7 @@ async def web_server_endpoint_url(
     reason="asyncio on this python does not support TLS in TLS",
 )
 @pytest.mark.parametrize("web_server_endpoint_type", ("http", "https"))
+@pytest.mark.filterwarnings(r".*ssl.OP_NO_SSL*")
 async def test_secure_https_proxy_absolute_path(
     client_ssl_ctx: ssl.SSLContext,
     secure_proxy_url: URL,
