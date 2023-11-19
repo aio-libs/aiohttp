@@ -120,6 +120,9 @@ async def web_server_endpoint_url(
 )
 @pytest.mark.parametrize("web_server_endpoint_type", ("http", "https"))
 @pytest.mark.filterwarnings(r"ignore:.*ssl.OP_NO_SSL*")
+# Filter out the warning from
+# https://github.com/abhinavsingh/proxy.py/blob/30574fd0414005dfa8792a6e797023e862bdcf43/proxy/common/utils.py#L226
+# otherwise this test will fail because the proxy will die with an error.
 async def test_secure_https_proxy_absolute_path(
     client_ssl_ctx: ssl.SSLContext,
     secure_proxy_url: URL,
