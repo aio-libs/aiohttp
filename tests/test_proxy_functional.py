@@ -1,13 +1,10 @@
 # type: ignore
 import asyncio
 import functools
-import logging
 import os
 import pathlib
 import platform
-import socket
 import ssl
-import sys
 from pathlib import Path
 from re import match as match_regex
 from typing import Any
@@ -22,11 +19,6 @@ import aiohttp
 from aiohttp import web
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.helpers import PY_310
-
-if sys.version_info >= (3, 11):
-    import asyncio as async_timeout
-else:
-    import async_timeout
 
 pytestmark = [
     pytest.mark.filterwarnings(
@@ -56,32 +48,12 @@ ASYNCIO_SUPPORTS_TLS_IN_TLS = hasattr(
 )
 
 
-async def verify_port_accepts_connections(port: int) -> bool:
-    """Verify that a given port accepts connections.
-
-    This is done by trying to connect to it.
-    """
-    loop = asyncio.get_event_loop()
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.setblocking(False)
-    try:
-        async with async_timeout.timeout(0.5):
-            await loop.sock_connect(sock, ("127.0.0.1", port))
-    except (OSError, TimeoutError):
-        return False
-    finally:
-        if sock is not None:
-            sock.close()
-    return True
-
-
 @pytest.fixture
 def secure_proxy_url(tls_certificate_pem_path, tmp_path: Path):
     """Return the URL of an instance of a running secure proxy.
 
     This fixture also spawns that instance and tears it down after the test.
     """
-    log_path = tmp_path.joinpath("proxy.log")
     proxypy_args = [
         "--threadless",  # use asyncio
         "--num-workers",
@@ -94,28 +66,14 @@ def secure_proxy_url(tls_certificate_pem_path, tmp_path: Path):
         tls_certificate_pem_path,  # contains both key and cert
         "--key-file",
         tls_certificate_pem_path,  # contains both key and cert
-        "--log-level",
-        "d",
-        "--log-file",
-        str(log_path),
     ]
 
-    logging.getLogger().setLevel(logging.DEBUG)
-    logging.getLogger("proxy").setLevel(logging.DEBUG)
     with proxy.Proxy(input_args=proxypy_args) as proxy_instance:
-        print(proxy_instance.flags.__dict__)
         yield URL.build(
             scheme="https",
             host=str(proxy_instance.flags.hostname),
             port=proxy_instance.flags.port,
         )
-        try:
-            with open(log_path) as log_file:
-                print("proxy log:")
-                log_contents = log_file.read()
-                print(log_contents)
-        except FileNotFoundError:
-            print("proxy log not found")
 
 
 @pytest.fixture
@@ -173,23 +131,11 @@ async def test_secure_https_proxy_absolute_path(
     conn = aiohttp.TCPConnector()
     sess = aiohttp.ClientSession(connector=conn)
 
-    # Verify the proxy is up and running.
-    assert await verify_port_accepts_connections(
-        secure_proxy_url.port
-    ), "Could not connect to proxy"
-
-    try:
-        response = await sess.get(
-            web_server_endpoint_url,
-            proxy=secure_proxy_url,
-            ssl=client_ssl_ctx,  # used for both proxy and endpoint connections
-        )
-    except Exception:
-        # Verify the proxy is up and running.
-        assert await verify_port_accepts_connections(
-            secure_proxy_url.port
-        ), "Could not connect to proxy"
-        raise
+    response = await sess.get(
+        web_server_endpoint_url,
+        proxy=secure_proxy_url,
+        ssl=client_ssl_ctx,  # used for both proxy and endpoint connections
+    )
 
     assert response.status == 200
     assert await response.text() == web_server_endpoint_payload
@@ -214,11 +160,6 @@ async def test_https_proxy_unsupported_tls_in_tls(
     This also checks that a helpful warning on how to patch the env
     is displayed.
     """
-    # Verify the proxy is up and running.
-    assert await verify_port_accepts_connections(
-        secure_proxy_url.port
-    ), "Could not connect to proxy"
-
     url = URL.build(scheme=web_server_endpoint_type, host="python.org")
 
     escaped_host_port = ":".join((url.host.replace(".", r"\."), str(url.port)))
