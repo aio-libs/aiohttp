@@ -5,7 +5,6 @@ import os
 import pathlib
 import platform
 import ssl
-from pathlib import Path
 from re import match as match_regex
 from typing import Any
 from unittest import mock
@@ -49,7 +48,7 @@ ASYNCIO_SUPPORTS_TLS_IN_TLS = hasattr(
 
 
 @pytest.fixture
-def secure_proxy_url(tls_certificate_pem_path, tmp_path: Path):
+def secure_proxy_url(tls_certificate_pem_path):
     """Return the URL of an instance of a running secure proxy.
 
     This fixture also spawns that instance and tears it down after the test.
@@ -57,7 +56,7 @@ def secure_proxy_url(tls_certificate_pem_path, tmp_path: Path):
     proxypy_args = [
         "--threadless",  # use asyncio
         "--num-workers",
-        "3",  # ensure we can handle multiple connections
+        "1",  # the tests only send one query anyway
         "--hostname",
         "127.0.0.1",  # network interface to listen to
         "--port",
