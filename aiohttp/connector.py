@@ -47,7 +47,14 @@ from .client_exceptions import (
 )
 from .client_proto import ResponseHandler
 from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
-from .helpers import _SENTINEL, ceil_timeout, is_ip_address, sentinel, set_result
+from .helpers import (
+    _SENTINEL,
+    IS_PYODIDE,
+    ceil_timeout,
+    is_ip_address,
+    sentinel,
+    set_result,
+)
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
@@ -1384,3 +1391,60 @@ class NamedPipeConnector(BaseConnector):
             raise ClientConnectorError(req.connection_key, exc) from exc
 
         return cast(ResponseHandler, proto)
+
+
+IN_PYODIDE = "pyodide" in sys.modules or "emscripten" in sys.platform
+
+
+class PyodideProtocol(ResponseHandler):
+    def __init__(self):
+        from js import AbortController  # noqa: I900
+
+        self.abortcontroller = AbortController()
+
+    def close(self):
+        self.abortcontroller.abort()
+
+
+class PyodideConnector(BaseConnector):
+    """Named pipe connector.
+
+    Only supported by the proactor event loop.
+    See also: https://docs.python.org/3/library/asyncio-eventloop.html
+
+    path - Windows named pipe path.
+    keepalive_timeout - (optional) Keep-alive timeout.
+    force_close - Set to True to force close and do reconnect
+        after each request (and between redirects).
+    limit - The total number of simultaneous connections.
+    limit_per_host - Number of simultaneous connections to one host.
+    loop - Optional event loop.
+    """
+
+    def __init__(
+        self,
+        path: str,
+        force_close: bool = False,
+        keepalive_timeout: Union[_SENTINEL, float, None] = sentinel,
+        limit: int = 100,
+        limit_per_host: int = 0,
+    ) -> None:
+        super().__init__(
+            force_close=force_close,
+            keepalive_timeout=keepalive_timeout,
+            limit=limit,
+            limit_per_host=limit_per_host,
+        )
+        if IS_PYODIDE:
+            raise RuntimeError("PyodideConnector only works in Pyodide")
+        self._path = path
+
+    @property
+    def path(self) -> str:
+        """Path to the named pipe."""
+        return self._path
+
+    async def _create_connection(
+        self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
+    ) -> ResponseHandler:
+        return PyodideProtocol()

@@ -44,6 +44,7 @@ from .compression_utils import HAS_BROTLI
 from .formdata import FormData
 from .hdrs import CONTENT_TYPE
 from .helpers import (
+    IS_PYODIDE,
     BaseTimerContext,
     BasicAuth,
     HeadersMixin,
@@ -585,7 +586,7 @@ class ClientRequest:
             await writer.write_eof()
             protocol.start_timeout()
 
-    async def send(self, conn: "Connection") -> "ClientResponse":
+    def _path(self) -> str:
         # Specify request target:
         # - CONNECT request must send authority form URI
         # - not CONNECT proxy must send absolute form URI
@@ -602,7 +603,10 @@ class ClientRequest:
             path = self.url.raw_path
             if self.url.raw_query_string:
                 path += "?" + self.url.raw_query_string
+        return path
 
+    async def send(self, conn: "Connection") -> "ClientResponse":
+        path = self._path()
         protocol = conn.protocol
         assert protocol is not None
         writer = StreamWriter(
@@ -687,6 +691,52 @@ class ClientRequest:
     ) -> None:
         for trace in self._traces:
             await trace.send_request_headers(method, url, headers)
+
+
+class PyodideClientRequest(ClientRequest):
+    async def send(self, conn: "Connection") -> "ClientResponse":
+        if not IS_PYODIDE:
+            raise RuntimeError("PyodideClientRequest only works in Pyodide")
+
+        path = self._path()
+        protocol = conn.protocol
+        assert protocol is not None
+        from js import Headers, fetch  # noqa: I900
+        from pyodide.ffi import to_js  # noqa: I900
+
+        body = None
+        if self.body:
+            if isinstance(self.body, payload.Payload):
+                body = to_js(self.body._value)
+            else:
+                if isinstance(self.body, (bytes, bytearray)):
+                    body = (self.body,)  # type: ignore[assignment]
+
+                raise NotImplementedError("OOPS")
+        response_future = fetch(
+            path,
+            method=self.method,
+            headers=Headers.new(self.headers.items()),
+            body=body,
+            signal=protocol.abortcontroller.signal,
+        )
+        response_class = self.response_class
+        assert response_class is not None
+        assert issubclass(response_class, PyodideClientResponse)
+        self.response = response_class(
+            self.method,
+            self.original_url,
+            writer=None,
+            continue100=self._continue,
+            timer=self._timer,
+            request_info=self.request_info,
+            traces=self._traces,
+            loop=self.loop,
+            session=self._session,
+            response_future=response_future,
+        )
+        self.response.version = self.version
+        return self.response
 
 
 class ClientResponse(HeadersMixin):
@@ -1124,3 +1174,31 @@ class ClientResponse(HeadersMixin):
         # if state is broken
         self.release()
         await self.wait_for_close()
+
+
+class PyodideClientResponse(ClientResponse):
+    def __init__(self, *args, response_future, **kwargs):
+        if not IS_PYODIDE:
+            raise RuntimeError("PyodideClientResponse only works in Pyodide")
+        self.response_future = response_future
+        super().__init__(*args, **kwargs)
+
+    async def start(self, connection: "Connection") -> "ClientResponse":
+        from .streams import DataQueue
+
+        self._connection = connection
+        self._protocol = connection.protocol
+        jsresp = await self.response_future
+        self.status = jsresp.status
+        self.reason = jsresp.statusText
+        # This is not quite correct in handling of repeated headers
+        self._headers = CIMultiDict(jsresp.headers)
+        self._raw_headers = tuple(tuple(e) for e in jsresp.headers)
+        self.content = DataQueue(self._loop)
+
+        def done_callback(fut):
+            self.content.feed_data(fut.result())
+            self.content.feed_eof()
+
+        jsresp.arrayBuffer().add_done_callback(done_callback)
+        return self

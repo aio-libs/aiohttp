@@ -29,6 +29,9 @@ repos:
   rev: v1.5.0
   hooks:
   - id: yesqa
+    additional_dependencies:
+      - flake8-docstrings==1.6.0
+      - flake8-requirements==1.7.8
 - repo: https://github.com/PyCQA/isort
   rev: '5.12.0'
   hooks:
