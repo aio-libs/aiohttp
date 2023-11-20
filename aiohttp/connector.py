@@ -1432,12 +1432,12 @@ class PyodideConnector(BaseConnector):
         timeout_ceil_threshold: float = 5,
     ) -> None:
         super().__init__(
-            keepalive_timeout,
-            force_close,
-            limit,
-            limit_per_host,
-            enable_cleanup_closed,
-            timeout_ceil_threshold,
+            keepalive_timeout=keepalive_timeout,
+            force_close=force_close,
+            limit=limit,
+            limit_per_host=limit_per_host,
+            enable_cleanup_closed=enable_cleanup_closed,
+            timeout_ceil_threshold=timeout_ceil_threshold,
         )
         if IS_PYODIDE:
             raise RuntimeError("PyodideConnector only works in Pyodide")
