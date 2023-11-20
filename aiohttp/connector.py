@@ -1423,21 +1423,24 @@ class PyodideConnector(BaseConnector):
 
     def __init__(
         self,
-        path: str,
+        *,
+        keepalive_timeout: Union[_SENTINEL, None, float] = sentinel,
         force_close: bool = False,
-        keepalive_timeout: Union[_SENTINEL, float, None] = sentinel,
         limit: int = 100,
         limit_per_host: int = 0,
+        enable_cleanup_closed: bool = False,
+        timeout_ceil_threshold: float = 5,
     ) -> None:
         super().__init__(
-            force_close=force_close,
-            keepalive_timeout=keepalive_timeout,
-            limit=limit,
-            limit_per_host=limit_per_host,
+            keepalive_timeout,
+            force_close,
+            limit,
+            limit_per_host,
+            enable_cleanup_closed,
+            timeout_ceil_threshold,
         )
         if IS_PYODIDE:
             raise RuntimeError("PyodideConnector only works in Pyodide")
-        self._path = path
 
     @property
     def path(self) -> str:
