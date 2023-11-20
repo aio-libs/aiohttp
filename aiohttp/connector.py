@@ -1439,7 +1439,7 @@ class PyodideConnector(BaseConnector):
             enable_cleanup_closed=enable_cleanup_closed,
             timeout_ceil_threshold=timeout_ceil_threshold,
         )
-        if IS_PYODIDE:
+        if not IS_PYODIDE:
             raise RuntimeError("PyodideConnector only works in Pyodide")
 
     @property
