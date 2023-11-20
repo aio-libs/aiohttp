@@ -1397,13 +1397,18 @@ IN_PYODIDE = "pyodide" in sys.modules or "emscripten" in sys.platform
 
 
 class PyodideProtocol(ResponseHandler):
-    def __init__(self):
+    def __init__(self, loop: asyncio.AbstractEventLoop):
         from js import AbortController  # noqa: I900
 
-        self.abortcontroller = AbortController()
+        super().__init__(loop)
+        self.abortcontroller = AbortController.new()
+        self.closed = loop.create_future()
+        # asyncio.Transport "raises NotImplemented for every method"
+        self.transport = asyncio.Transport()
 
     def close(self):
         self.abortcontroller.abort()
+        self.closed.set_result(None)
 
 
 class PyodideConnector(BaseConnector):
@@ -1450,4 +1455,4 @@ class PyodideConnector(BaseConnector):
     async def _create_connection(
         self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
     ) -> ResponseHandler:
-        return PyodideProtocol()
+        return PyodideProtocol(self._loop)

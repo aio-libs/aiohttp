@@ -1197,7 +1197,8 @@ class PyodideClientResponse(ClientResponse):
         self.content = DataQueue(self._loop)
 
         def done_callback(fut):
-            self.content.feed_data(fut.result())
+            data = fut.result().to_bytes()
+            self.content.feed_data(data, len(data))
             self.content.feed_eof()
 
         jsresp.arrayBuffer().add_done_callback(done_callback)
