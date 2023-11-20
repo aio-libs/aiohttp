@@ -269,7 +269,7 @@ jobs:
             steps.python-install.outputs.python-version
           }}
 
-  test:
+  test-pyodide:
     permissions:
       contents: read # to fetch code (actions/checkout)
 
