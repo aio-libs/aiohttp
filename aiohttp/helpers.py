@@ -108,6 +108,8 @@ SEPARATORS = {
 }
 TOKEN = CHAR ^ CTL ^ SEPARATORS
 
+IS_PYODIDE = "pyodide" in sys.modules
+
 
 class noop:
     def __await__(self) -> Generator[None, None, None]:
