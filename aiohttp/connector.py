@@ -24,6 +24,7 @@ from typing import (  # noqa
     List,
     Literal,
     Optional,
+    Protocol,
     Set,
     Tuple,
     Type,
@@ -50,6 +51,8 @@ from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
 from .helpers import (
     _SENTINEL,
     IS_PYODIDE,
+    JsRequest,
+    JsResponse,
     ceil_timeout,
     is_ip_address,
     sentinel,
@@ -1397,38 +1400,47 @@ IN_PYODIDE = "pyodide" in sys.modules or "emscripten" in sys.platform
 
 
 class PyodideProtocol(ResponseHandler):
-    def __init__(self, loop: asyncio.AbstractEventLoop):
-        from js import AbortController  # noqa: I900
+    def __init__(
+        self,
+        loop: asyncio.AbstractEventLoop,
+        fetch_handler: Callable[[JsRequest], asyncio.Future[JsResponse]],
+    ):
+        from js import AbortController  # type:ignore[import-not-found] # noqa: I900
 
         super().__init__(loop)
         self.abortcontroller = AbortController.new()
         self.closed = loop.create_future()
         # asyncio.Transport "raises NotImplemented for every method"
         self.transport = asyncio.Transport()
+        self.fetch_handler = fetch_handler
 
-    def close(self):
+    def close(self) -> None:
         self.abortcontroller.abort()
         self.closed.set_result(None)
 
 
+class PyodideConnection(Connection):
+    _protocol: PyodideProtocol
+
+    @property
+    def protocol(self) -> Optional[PyodideProtocol]:
+        return self._protocol
+
+
 class PyodideConnector(BaseConnector):
-    """Named pipe connector.
+    """Pyodide connector
 
-    Only supported by the proactor event loop.
-    See also: https://docs.python.org/3/library/asyncio-eventloop.html
-
-    path - Windows named pipe path.
-    keepalive_timeout - (optional) Keep-alive timeout.
-    force_close - Set to True to force close and do reconnect
-        after each request (and between redirects).
-    limit - The total number of simultaneous connections.
-    limit_per_host - Number of simultaneous connections to one host.
-    loop - Optional event loop.
+    Dummy connector that
     """
+
+    protocol: PyodideProtocol
 
     def __init__(
         self,
         *,
+        fetch_handler: Optional[
+            Callable[[JsRequest], asyncio.Future[JsResponse]]
+        ] = None,
         keepalive_timeout: Union[_SENTINEL, None, float] = sentinel,
         force_close: bool = False,
         limit: int = 100,
@@ -1444,15 +1456,16 @@ class PyodideConnector(BaseConnector):
             enable_cleanup_closed=enable_cleanup_closed,
             timeout_ceil_threshold=timeout_ceil_threshold,
         )
+        if fetch_handler is None:
+            from js import fetch  # noqa: I900
+
+            fetch_handler = fetch
+
+        self.fetch_handler = fetch_handler
         if not IS_PYODIDE:
             raise RuntimeError("PyodideConnector only works in Pyodide")
-
-    @property
-    def path(self) -> str:
-        """Path to the named pipe."""
-        return self._path
 
     async def _create_connection(
         self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
     ) -> ResponseHandler:
-        return PyodideProtocol(self._loop)
+        return PyodideProtocol(self._loop, self.fetch_handler)
