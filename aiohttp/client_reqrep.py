@@ -1212,7 +1212,7 @@ class PyodideClientResponse(ClientResponse):
         traces: List["Trace"],
         loop: asyncio.AbstractEventLoop,
         session: "ClientSession",
-        response_future: asyncio.Future[JsResponse],
+        response_future: "asyncio.Future[JsResponse]",
     ):
         if not IS_PYODIDE:
             raise RuntimeError("PyodideClientResponse only works in Pyodide")
@@ -1244,7 +1244,7 @@ class PyodideClientResponse(ClientResponse):
         )
         self.content = DataQueue(self._loop)  # type:ignore[assignment]
 
-        def done_callback(fut: asyncio.Future[JsArrayBuffer]) -> None:
+        def done_callback(fut: "asyncio.Future[JsArrayBuffer]") -> None:
             data = fut.result().to_bytes()
             self.content.feed_data(data, len(data))
             self.content.feed_eof()

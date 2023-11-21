@@ -1403,7 +1403,7 @@ class PyodideProtocol(ResponseHandler):
     def __init__(
         self,
         loop: asyncio.AbstractEventLoop,
-        fetch_handler: Callable[[JsRequest], asyncio.Future[JsResponse]],
+        fetch_handler: Callable[[JsRequest], "asyncio.Future[JsResponse]"],
     ):
         from js import AbortController  # type:ignore[import-not-found] # noqa: I900
 
@@ -1439,7 +1439,7 @@ class PyodideConnector(BaseConnector):
         self,
         *,
         fetch_handler: Optional[
-            Callable[[JsRequest], asyncio.Future[JsResponse]]
+            Callable[[JsRequest], "asyncio.Future[JsResponse]"]
         ] = None,
         keepalive_timeout: Union[_SENTINEL, None, float] = sentinel,
         force_close: bool = False,

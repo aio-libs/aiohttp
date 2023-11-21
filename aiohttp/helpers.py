@@ -1108,5 +1108,5 @@ class JsResponse(Protocol):
     statusText: str
     headers: List[Tuple[str, str]]
 
-    def arrayBuffer(self) -> asyncio.Future[JsArrayBuffer]:
+    def arrayBuffer(self) -> "asyncio.Future[JsArrayBuffer]":
         ...
