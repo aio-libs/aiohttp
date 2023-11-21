@@ -1,0 +1,1 @@
+Ensure separate ZLibCompressor instances per coroutine when using max_sync_chunk_size

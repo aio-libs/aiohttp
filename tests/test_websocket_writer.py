@@ -87,7 +87,7 @@ async def test_send_compress_text(protocol: Any, transport: Any) -> None:
     await writer.send(b"text")
     writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")
     await writer.send(b"text")
-    writer.transport.write.assert_called_with(b"\xc1\x05*\x01b\x00\x00")
+    writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")
 
 
 async def test_send_compress_text_notakeover(protocol: Any, transport: Any) -> None:

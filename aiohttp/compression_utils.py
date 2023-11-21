@@ -67,6 +67,8 @@ class ZLibCompressor(ZlibBaseHandler):
         return self._compressor.compress(data)
 
     async def compress(self, data: bytes) -> bytes:
+        # In a multi-coroutine environment where max_sync_chunk_size is in use,
+        # ensure that each coroutine has its own compressor instance.
         if (
             self._max_sync_chunk_size is not None
             and len(data) > self._max_sync_chunk_size
@@ -99,6 +101,8 @@ class ZLibDecompressor(ZlibBaseHandler):
         return self._decompressor.decompress(data, max_length)
 
     async def decompress(self, data: bytes, max_length: int = 0) -> bytes:
+        # In a multi-coroutine environment where max_sync_chunk_size is in use,
+        # ensure that each coroutine has its own decompressor instance.
         if (
             self._max_sync_chunk_size is not None
             and len(data) > self._max_sync_chunk_size

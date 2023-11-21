@@ -609,7 +609,6 @@ class WebSocketWriter:
         self._closing = False
         self._limit = limit
         self._output_size = 0
-        self._compressobj: Any = None  # actually compressobj
 
     async def _send_frame(
         self, message: bytes, opcode: int, compress: Optional[int] = None
@@ -632,13 +631,11 @@ class WebSocketWriter:
                     max_sync_chunk_size=WEBSOCKET_MAX_SYNC_CHUNK_SIZE,
                 )
             else:  # self.compress
-                if not self._compressobj:
-                    self._compressobj = ZLibCompressor(
-                        level=zlib.Z_BEST_SPEED,
-                        wbits=-self.compress,
-                        max_sync_chunk_size=WEBSOCKET_MAX_SYNC_CHUNK_SIZE,
-                    )
-                compressobj = self._compressobj
+                compressobj = ZLibCompressor(
+                    level=zlib.Z_BEST_SPEED,
+                    wbits=-self.compress,
+                    max_sync_chunk_size=WEBSOCKET_MAX_SYNC_CHUNK_SIZE,
+                )
 
             message = await compressobj.compress(message)
             message += compressobj.flush(
