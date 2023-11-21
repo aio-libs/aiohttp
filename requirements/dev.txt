@@ -171,9 +171,7 @@ requests==2.31.0
 setuptools-git==1.2
     # via -r requirements/test.in
 six==1.16.0
-    # via
-    #   python-dateutil
-    #   sphinx
+    # via python-dateutil
 slotscheck==0.17.1
     # via -r requirements/lint.in
 snowballstemmer==2.2.0
@@ -246,7 +244,7 @@ webcolors==1.13
     # via blockdiag
 wheel==0.41.0
     # via pip-tools
-yarl==1.9.2
+yarl==1.9.3
     # via -r requirements/runtime-deps.in
 zipp==3.17.0
     # via
@@ -261,4 +259,3 @@ setuptools==68.0.0
     #   blockdiag
     #   nodeenv
     #   pip-tools
-    #   sphinx
