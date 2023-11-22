@@ -636,9 +636,8 @@ class WebSocketWriter:
                 # compressed in order and takeover is not violated.
                 if not self._compressobj:
                     self._compressobj = self._make_compress_obj(self.compress)
-                compressobj = self._compressobj
-                if not self._compress_lock:
                     self._compress_lock = asyncio.Lock()
+                compressobj = self._compressobj
                 async with self._compress_lock:
                     message = await compressobj.compress(message)
                     self._write_compressed_message(message, opcode, compressobj, rsv)
