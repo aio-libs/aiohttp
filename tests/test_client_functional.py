@@ -3183,7 +3183,7 @@ async def test_read_timeout_closes_connection(aiohttp_client: AiohttpClient) -> 
         nonlocal request_count
         request_count += 1
         if request_count < 3:
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.5)
         return web.Response(body=f"request:{request_count}")
 
     app = web.Application()
@@ -3193,10 +3193,20 @@ async def test_read_timeout_closes_connection(aiohttp_client: AiohttpClient) -> 
     client: TestClient = await aiohttp_client(app, timeout=timeout)
     with pytest.raises(aiohttp.ServerTimeoutError):
         await client.get("/")
+
+    # Make sure its really closed
+    assert not client.session.connector._conns
+
     with pytest.raises(aiohttp.ServerTimeoutError):
         await client.get("/")
+
+    # Make sure its really closed
+    assert not client.session.connector._conns
     result = await client.get("/")
     assert await result.read() == b"request:3"
+
+    # Make sure its not closed
+    assert client.session.connector._conns
 
 
 async def test_read_timeout_on_prepared_response(aiohttp_client: Any) -> None:
