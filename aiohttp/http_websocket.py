@@ -628,27 +628,19 @@ class WebSocketWriter:
             if compress:
                 # Do not set self._compress if compressing is for this frame
                 compressobj = self._make_compress_obj(compress)
+                message = await compressobj.compress(message)
+                self._write_compressed_message(message, opcode, compressobj, rsv)
             else:  # self.compress
+                # If we are reusing the compress object, we need to hold a lock
+                # around the compress/flush/write to ensure that messages get
+                # compressed in order and takeover is not violated.
                 if not self._compressobj:
                     self._compressobj = self._make_compress_obj(self.compress)
                 compressobj = self._compressobj
-
-            if not compressobj.should_run_in_executor(message):
-                # Compress message if it is smaller than max sync chunk size
-                # without awaiting to ensure that the message written before
-                # the next message can be compressed.
-                message = compressobj.compress_sync(message)
-                self._write_compressed_message(message, opcode, compressobj, rsv)
-            else:
-                # Since we are compressing in an executor, and the await returns
-                # control to the event loop we need to hold a lock to ensure that
-                # the compressed message is written before the next message is
-                # compressed to ensure that the messages are written in the correct
-                # order and context takeover is not violated.
                 if not self._compress_lock:
                     self._compress_lock = asyncio.Lock()
                 async with self._compress_lock:
-                    message = await compressobj.compress_executor(message)
+                    message = await compressobj.compress(message)
                     self._write_compressed_message(message, opcode, compressobj, rsv)
 
         else:
