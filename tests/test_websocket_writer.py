@@ -180,4 +180,8 @@ async def test_concurrent_messages_with_and_with_out_executor(
         first_char = bytes_data[0:1]
         char_val = ord(first_char)
         assert len(bytes_data) == char_val
+        # If we have a concurrency problem, the data
+        # tends to get mixed up between messages so
+        # we want to validate that all the bytes are
+        # the same value
         assert bytes_data == bytes_data[0:1] * char_val
