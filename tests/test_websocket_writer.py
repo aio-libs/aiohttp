@@ -1,7 +1,7 @@
 # type: ignore
 import asyncio
 import random
-from typing import Any
+from typing import Any, Callable
 from unittest import mock
 
 import pytest
@@ -110,9 +110,19 @@ async def test_send_compress_text_per_message(protocol: Any, transport: Any) -> 
     writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")
 
 
-@pytest.mark.parametrize("max_sync_chunk_size", (16, 4096))
+@pytest.mark.parametrize(
+    ("max_sync_chunk_size", "payload_point_generator"),
+    (
+        (16, lambda count: count),
+        (4096, lambda count: count),
+        (32, lambda count: 64 + count if count % 2 else count),
+    ),
+)
 async def test_concurrent_messages(
-    protocol: Any, transport: Any, max_sync_chunk_size: int
+    protocol: Any,
+    transport: Any,
+    max_sync_chunk_size: int,
+    payload_point_generator: Callable[[int], int],
 ) -> None:
     """Ensure messages are compressed correctly when there are multiple concurrent writers.
 
@@ -125,6 +135,11 @@ async def test_concurrent_messages(
     - Generate messages that are smaller than patch
       WEBSOCKET_MAX_SYNC_CHUNK_SIZE of 4096
       where compression will run in the event loop
+
+    - Interleave generated messages with a
+      WEBSOCKET_MAX_SYNC_CHUNK_SIZE of 32
+      where compression will run in the event loop
+      and in the executor
     """
     with mock.patch(
         "aiohttp.http_websocket.WEBSOCKET_MAX_SYNC_CHUNK_SIZE", max_sync_chunk_size
@@ -134,9 +149,9 @@ async def test_concurrent_messages(
         reader = WebSocketReader(queue, 50000)
         writers = []
         payloads = []
-        msg_length = 16 + 1
         for count in range(1, 64 + 1):
-            payload = bytes((count,)) * msg_length
+            point = payload_point_generator(count)
+            payload = bytes((point,)) * point
             payloads.append(payload)
             writers.append(writer.send(payload, binary=True))
         await asyncio.gather(*writers)
@@ -146,42 +161,11 @@ async def test_concurrent_messages(
             assert result is False
             msg = await queue.read()
             bytes_data: bytes = msg.data
-            assert len(bytes_data) == msg_length
-            assert bytes_data == bytes_data[0:1] * msg_length
-
-
-@mock.patch("aiohttp.http_websocket.WEBSOCKET_MAX_SYNC_CHUNK_SIZE", 32)
-async def test_concurrent_messages_with_and_with_out_executor(
-    protocol: Any, transport: Any
-) -> None:
-    """Ensure messages are compressed correctly when there are multiple concurrent writers.
-
-    This test generates messages mixes messages that
-    are small enough to not be compressed in the executor
-    with messages that need to be compressed in the executor.
-    """
-    writer = WebSocketWriter(protocol, transport, compress=15)
-    queue: DataQueue[WSMessage] = DataQueue(asyncio.get_running_loop())
-    reader = WebSocketReader(queue, 50000)
-    writers = []
-    payloads = []
-    for count in range(1, 64 + 1):
-        point = 64 + count if count % 2 else count
-        payload = bytes((point,)) * point
-        payloads.append(payload)
-        writers.append(writer.send(payload, binary=True))
-    await asyncio.gather(*writers)
-    for call in writer.transport.write.call_args_list:
-        call_bytes = call[0][0]
-        result, _ = reader.feed_data(call_bytes)
-        assert result is False
-        msg = await queue.read()
-        bytes_data: bytes = msg.data
-        first_char = bytes_data[0:1]
-        char_val = ord(first_char)
-        assert len(bytes_data) == char_val
-        # If we have a concurrency problem, the data
-        # tends to get mixed up between messages so
-        # we want to validate that all the bytes are
-        # the same value
-        assert bytes_data == bytes_data[0:1] * char_val
+            first_char = bytes_data[0:1]
+            char_val = ord(first_char)
+            assert len(bytes_data) == char_val
+            # If we have a concurrency problem, the data
+            # tends to get mixed up between messages so
+            # we want to validate that all the bytes are
+            # the same value
+            assert bytes_data == bytes_data[0:1] * char_val
