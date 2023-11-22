@@ -1,0 +1,1 @@
+Fix ClientResponse.close releasing the connection instead of closing
