@@ -150,35 +150,6 @@ async def test_concurrent_messages(
             assert bytes_data == bytes_data[0:1] * msg_length
 
 
-async def test_concurrent_messages_without_executor(
-    protocol: Any, transport: Any
-) -> None:
-    """Ensure messages are compressed correctly when there are multiple concurrent writers.
-
-    This test generates messages that are small enough that
-    they will not be compressed in the executor.
-    """
-    writer = WebSocketWriter(protocol, transport, compress=15)
-    queue: DataQueue[WSMessage] = DataQueue(asyncio.get_running_loop())
-    reader = WebSocketReader(queue, 50000)
-    writers = []
-    payloads = []
-    msg_length = 16 + 1
-    for count in range(1, 64 + 1):
-        payload = bytes((count,)) * msg_length
-        payloads.append(payload)
-        writers.append(writer.send(payload, binary=True))
-    await asyncio.gather(*writers)
-    for call in writer.transport.write.call_args_list:
-        call_bytes = call[0][0]
-        result, _ = reader.feed_data(call_bytes)
-        assert result is False
-        msg = await queue.read()
-        bytes_data: bytes = msg.data
-        assert len(bytes_data) == msg_length
-        assert bytes_data == bytes_data[0:1] * msg_length
-
-
 @mock.patch("aiohttp.http_websocket.WEBSOCKET_MAX_SYNC_CHUNK_SIZE", 32)
 async def test_concurrent_messages_with_and_with_out_executor(
     protocol: Any, transport: Any
