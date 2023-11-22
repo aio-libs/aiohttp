@@ -155,17 +155,18 @@ async def test_concurrent_messages(
             payloads.append(payload)
             writers.append(writer.send(payload, binary=True))
         await asyncio.gather(*writers)
-        for call in writer.transport.write.call_args_list:
-            call_bytes = call[0][0]
-            result, _ = reader.feed_data(call_bytes)
-            assert result is False
-            msg = await queue.read()
-            bytes_data: bytes = msg.data
-            first_char = bytes_data[0:1]
-            char_val = ord(first_char)
-            assert len(bytes_data) == char_val
-            # If we have a concurrency problem, the data
-            # tends to get mixed up between messages so
-            # we want to validate that all the bytes are
-            # the same value
-            assert bytes_data == bytes_data[0:1] * char_val
+
+    for call in writer.transport.write.call_args_list:
+        call_bytes = call[0][0]
+        result, _ = reader.feed_data(call_bytes)
+        assert result is False
+        msg = await queue.read()
+        bytes_data: bytes = msg.data
+        first_char = bytes_data[0:1]
+        char_val = ord(first_char)
+        assert len(bytes_data) == char_val
+        # If we have a concurrency problem, the data
+        # tends to get mixed up between messages so
+        # we want to validate that all the bytes are
+        # the same value
+        assert bytes_data == bytes_data[0:1] * char_val
