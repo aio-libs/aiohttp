@@ -1,4 +1,5 @@
 # type: ignore
+import asyncio
 import random
 from typing import Any
 from unittest import mock
@@ -106,3 +107,25 @@ async def test_send_compress_text_per_message(protocol: Any, transport: Any) -> 
     writer.transport.write.assert_called_with(b"\x81\x04text")
     await writer.send(b"text", compress=15)
     writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")
+
+
+@pytest.mark.xfail(raises=AssertionError, reason="#7859")
+async def test_send_compress_text_with_async_executor_parallel(
+    protocol: Any, transport: Any
+) -> None:
+    writer = WebSocketWriter(protocol, transport, compress=15)
+    # send 10 messages in parallel
+    await asyncio.gather(*[writer.send(b"b" * (5 * 1024 + 1)) for _ in range(10)])
+    assert (
+        writer.transport.write.call_args_list[0][0][0]
+        == b"\xc1)\xec\xd0\x81\x10\x00\x00\x00\x03!\xd7\xf7\x87\x98\xc7\xae\x10*\x0c"
+        b"\x180`\xc0\x80\x01\x03\x06\x0c\x180`\xc0\x80\x01\x03\x06\x0c\x18\xb8\x1d"
+        b"\x18\x00"
+    )
+    for result in writer.transport.write.call_args_list[1:]:
+        assert (
+            result[0][0]
+            == b"\xc1&\xec\xd0\x81\x0c\x00\x00\x00\xc0 \x7f\xeb{|\x85\x10\x06\x0c"
+            b"\x180`\xc0\x80\x01\x03\x06\x0c\x180`\xc0\x80\x01\x03\x06\x0c\x8c"
+            b"\x07\x02"
+        )
