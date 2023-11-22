@@ -110,32 +110,44 @@ async def test_send_compress_text_per_message(protocol: Any, transport: Any) -> 
     writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")
 
 
-@mock.patch("aiohttp.http_websocket.WEBSOCKET_MAX_SYNC_CHUNK_SIZE", 16)
-async def test_concurrent_messages_with_executor(protocol: Any, transport: Any) -> None:
+@pytest.mark.parametrize("max_sync_chunk_size", (16, 4096))
+async def test_concurrent_messages(
+    protocol: Any, transport: Any, max_sync_chunk_size: int
+) -> None:
     """Ensure messages are compressed correctly when there are multiple concurrent writers.
 
-    This test generates messages large enough that they will
-    be compressed in the executor.
+    This test generates is parametrized to
+
+    - Generate messages that are larger than patch
+      WEBSOCKET_MAX_SYNC_CHUNK_SIZE of 16
+      where compression will run in the executor
+
+    - Generate messages that are smaller than patch
+      WEBSOCKET_MAX_SYNC_CHUNK_SIZE of 4096
+      where compression will run in the event loop
     """
-    writer = WebSocketWriter(protocol, transport, compress=15)
-    queue: DataQueue[WSMessage] = DataQueue(asyncio.get_running_loop())
-    reader = WebSocketReader(queue, 50000)
-    writers = []
-    payloads = []
-    msg_length = 16 + 1
-    for count in range(1, 64 + 1):
-        payload = bytes((count,)) * msg_length
-        payloads.append(payload)
-        writers.append(writer.send(payload, binary=True))
-    await asyncio.gather(*writers)
-    for call in writer.transport.write.call_args_list:
-        call_bytes = call[0][0]
-        result, _ = reader.feed_data(call_bytes)
-        assert result is False
-        msg = await queue.read()
-        bytes_data: bytes = msg.data
-        assert len(bytes_data) == msg_length
-        assert bytes_data == bytes_data[0:1] * msg_length
+    with mock.patch(
+        "aiohttp.http_websocket.WEBSOCKET_MAX_SYNC_CHUNK_SIZE", max_sync_chunk_size
+    ):
+        writer = WebSocketWriter(protocol, transport, compress=15)
+        queue: DataQueue[WSMessage] = DataQueue(asyncio.get_running_loop())
+        reader = WebSocketReader(queue, 50000)
+        writers = []
+        payloads = []
+        msg_length = 16 + 1
+        for count in range(1, 64 + 1):
+            payload = bytes((count,)) * msg_length
+            payloads.append(payload)
+            writers.append(writer.send(payload, binary=True))
+        await asyncio.gather(*writers)
+        for call in writer.transport.write.call_args_list:
+            call_bytes = call[0][0]
+            result, _ = reader.feed_data(call_bytes)
+            assert result is False
+            msg = await queue.read()
+            bytes_data: bytes = msg.data
+            assert len(bytes_data) == msg_length
+            assert bytes_data == bytes_data[0:1] * msg_length
 
 
 async def test_concurrent_messages_without_executor(
