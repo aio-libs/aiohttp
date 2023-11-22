@@ -37,6 +37,12 @@ class ZlibBaseHandler:
         self._executor = executor
         self._max_sync_chunk_size = max_sync_chunk_size
 
+    def should_run_in_executor(self, data: bytes) -> bool:
+        return (
+            self._max_sync_chunk_size is not None
+            and len(data) > self._max_sync_chunk_size
+        )
+
 
 class ZLibCompressor(ZlibBaseHandler):
     def __init__(
@@ -48,7 +54,7 @@ class ZLibCompressor(ZlibBaseHandler):
         strategy: int = zlib.Z_DEFAULT_STRATEGY,
         executor: Optional[Executor] = None,
         max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
-    ):
+    ) -> None:
         super().__init__(
             mode=encoding_to_mode(encoding, suppress_deflate_header)
             if wbits is None
@@ -66,14 +72,14 @@ class ZLibCompressor(ZlibBaseHandler):
     def compress_sync(self, data: bytes) -> bytes:
         return self._compressor.compress(data)
 
+    async def compress_executor(self, data: bytes) -> bytes:
+        return await asyncio.get_event_loop().run_in_executor(
+            self._executor, self.compress_sync, data
+        )
+
     async def compress(self, data: bytes) -> bytes:
-        if (
-            self._max_sync_chunk_size is not None
-            and len(data) > self._max_sync_chunk_size
-        ):
-            return await asyncio.get_event_loop().run_in_executor(
-                self._executor, self.compress_sync, data
-            )
+        if self.should_run_in_executor(data):
+            return await self.compress_executor(data)
         return self.compress_sync(data)
 
     def flush(self, mode: int = zlib.Z_FINISH) -> bytes:
