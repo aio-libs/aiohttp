@@ -3189,15 +3189,15 @@ async def test_read_timeout_closes_connection(aiohttp_client: AiohttpClient) -> 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
 
-    timeout = aiohttp.ClientTimeout(sock_read=0.1)
+    timeout = aiohttp.ClientTimeout(total=0.1)
     client: TestClient = await aiohttp_client(app, timeout=timeout)
-    with pytest.raises(aiohttp.ServerTimeoutError):
+    with pytest.raises(asyncio.TimeoutError):
         await client.get("/")
 
     # Make sure its really closed
     assert not client.session.connector._conns
 
-    with pytest.raises(aiohttp.ServerTimeoutError):
+    with pytest.raises(asyncio.TimeoutError):
         await client.get("/")
 
     # Make sure its really closed
