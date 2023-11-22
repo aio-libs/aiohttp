@@ -166,7 +166,7 @@ async def test_concurrent_messages_with_and_with_out_executor(
     writers = []
     payloads = []
     for count in range(1, 64 + 1):
-        payload = bytes((count,)) * (64 if count % 2 else 8)
+        payload = bytes((count,)) * (32 + count if count % 2 else count)
         payloads.append(payload)
         writers.append(writer.send(payload, binary=True))
     await asyncio.gather(*writers)
