@@ -5,6 +5,7 @@ import os
 import pathlib
 import platform
 import ssl
+import sys
 from re import match as match_regex
 from typing import Any
 from unittest import mock
@@ -41,10 +42,7 @@ secure_proxy_xfail = functools.partial(
     ),
 )
 
-ASYNCIO_SUPPORTS_TLS_IN_TLS = hasattr(
-    asyncio.sslproto._SSLProtocolTransport,
-    "_start_tls_compatible",
-)
+ASYNCIO_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11)
 
 
 @pytest.fixture
@@ -54,7 +52,9 @@ def secure_proxy_url(tls_certificate_pem_path):
     This fixture also spawns that instance and tears it down after the test.
     """
     proxypy_args = [
-        "--threaded",  # needed for windows
+        # --threadless does not work on windows, see
+        # https://github.com/abhinavsingh/proxy.py/issues/492
+        "--threaded" if os.name == "nt" else "--threadless",
         "--num-workers",
         "1",  # the tests only send one query anyway
         "--hostname",
