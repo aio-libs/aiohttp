@@ -54,7 +54,7 @@ def secure_proxy_url(tls_certificate_pem_path):
     This fixture also spawns that instance and tears it down after the test.
     """
     proxypy_args = [
-        "--threadless",  # use asyncio
+        "--threaded",  # needed for windows
         "--num-workers",
         "1",  # the tests only send one query anyway
         "--hostname",
