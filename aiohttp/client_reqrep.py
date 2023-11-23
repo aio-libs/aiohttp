@@ -1033,7 +1033,9 @@ class ClientResponse(HeadersMixin):
             return
 
         self._cleanup_writer()
-        self._release_connection()
+        if self._connection is not None:
+            self._connection.close()
+            self._connection = None
 
     def release(self) -> Any:
         if not self._released:
