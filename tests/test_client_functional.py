@@ -174,6 +174,25 @@ async def test_keepalive_response_released(aiohttp_client: Any) -> None:
     assert 1 == len(client._session.connector._conns)
 
 
+async def test_no_eof_response_not_released(aiohttp_client: Any) -> None:
+    async def handler(request):
+        body = await request.read()
+        assert b"" == body
+        return web.Response(body=b"OK" * 2000)
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/")
+    await resp.read()
+    assert resp.connection is None
+    resp = await client.get("/", read_until_eof=False)
+    await resp.read()
+    assert resp.connection is not None
+
+
 async def test_keepalive_server_force_close_connection(aiohttp_client: Any) -> None:
     async def handler(request):
         body = await request.read()
