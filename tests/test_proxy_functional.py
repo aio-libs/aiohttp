@@ -1,9 +1,7 @@
 # type: ignore
 import asyncio
-import functools
 import os
 import pathlib
-import platform
 import ssl
 import sys
 from re import match as match_regex
@@ -18,7 +16,6 @@ from yarl import URL
 import aiohttp
 from aiohttp import web
 from aiohttp.client_exceptions import ClientConnectionError
-from aiohttp.helpers import PY_310
 
 pytestmark = [
     pytest.mark.filterwarnings(
@@ -31,16 +28,6 @@ pytestmark = [
     ),
 ]
 
-
-secure_proxy_xfail = functools.partial(
-    pytest.mark.xfail,
-    (PY_310 and platform.system() != "Darwin") or platform.system() == "Windows",
-    reason=(
-        "The secure proxy fixture does not seem to work "
-        "under Python 3.10 on Linux and any Python on Windows. "
-        "See https://github.com/abhinavsingh/proxy.py/issues/622."
-    ),
-)
 
 ASYNCIO_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11)
 
