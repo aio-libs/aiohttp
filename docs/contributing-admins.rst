@@ -12,7 +12,7 @@ For regular contributors, return to :doc:`contributing`.
 Creating a new release
 ----------------------
 
-.. note:: The example commands assume that `origin` refers to the aio-libs repository.
+.. note:: The example commands assume that ``origin`` refers to the ``aio-libs`` repository.
 
 To create a new release:
 
