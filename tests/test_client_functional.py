@@ -20,6 +20,7 @@ import aiohttp
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver
 from aiohttp.client_exceptions import TooManyRedirects
+from aiohttp.pytest_plugin import AiohttpClient, TestClient
 from aiohttp.test_utils import unused_port
 
 
@@ -3173,6 +3174,39 @@ async def test_read_timeout(aiohttp_client: Any) -> None:
 
     with pytest.raises(aiohttp.ServerTimeoutError):
         await client.get("/")
+
+
+async def test_read_timeout_closes_connection(aiohttp_client: AiohttpClient) -> None:
+    request_count = 0
+
+    async def handler(request):
+        nonlocal request_count
+        request_count += 1
+        if request_count < 3:
+            await asyncio.sleep(0.5)
+        return web.Response(body=f"request:{request_count}")
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    timeout = aiohttp.ClientTimeout(total=0.1)
+    client: TestClient = await aiohttp_client(app, timeout=timeout)
+    with pytest.raises(asyncio.TimeoutError):
+        await client.get("/")
+
+    # Make sure its really closed
+    assert not client.session.connector._conns
+
+    with pytest.raises(asyncio.TimeoutError):
+        await client.get("/")
+
+    # Make sure its really closed
+    assert not client.session.connector._conns
+    result = await client.get("/")
+    assert await result.read() == b"request:3"
+
+    # Make sure its not closed
+    assert client.session.connector._conns
 
 
 async def test_read_timeout_on_prepared_response(aiohttp_client: Any) -> None:
