@@ -12,6 +12,8 @@ For regular contributors, return to :doc:`contributing`.
 Creating a new release
 ----------------------
 
+.. note:: The example commands assume that `origin` refers to the aio-libs repository.
+
 To create a new release:
 
 #. Start on the branch for the release you are planning (e.g. ``3.8`` for v3.8.6): ``git checkout 3.8 && git pull``
@@ -31,7 +33,7 @@ first merge into the newer release branch (e.g. 3.8 into 3.9) and then to master
 (e.g. 3.9 into master). If a new minor release, then just merge to master.
 
 #. Switch to target branch: e.g. ``git checkout 3.9 && git pull``
-#. Start a merge: e.g. ``git merge 3.8 --no-commit``
+#. Start a merge: e.g. ``git merge 3.8 --no-commit --no-ff --gpg-sign``
 #. Carefully review the changes and revert anything that should not be included.
 #. To ensure change fragments are cleaned up properly, run: ``python tools/cleanup_changes.py``
 #. Commit the merge (must be a normal merge commit, not squashed).
