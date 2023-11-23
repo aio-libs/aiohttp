@@ -54,6 +54,7 @@ canonicalize
 cchardet
 cChardet
 ceil
+changelog
 Changelog
 chardet
 Chardet
