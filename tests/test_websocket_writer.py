@@ -115,7 +115,7 @@ async def test_send_compress_text_with_async_executor_parallel(
 ) -> None:
     writer = WebSocketWriter(protocol, transport, compress=15)
     # send 10 messages in parallel
-    await asyncio.gather(*[writer.send(b"b" * (5 * 1024 + 1)) for _ in range(10)])
+    await asyncio.gather(*(writer.send(b"b" * (5 * 1024 + 1)) for _ in range(10)))
     assert (
         writer.transport.write.call_args_list[0][0][0]
         == b"\xc1)\xec\xd0\x81\x10\x00\x00\x00\x03!\xd7\xf7\x87\x98\xc7\xae\x10*\x0c"
