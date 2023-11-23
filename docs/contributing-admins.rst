@@ -34,7 +34,8 @@ first merge into the newer release branch (e.g. 3.8 into 3.9) and then to master
 
 #. Switch to target branch: e.g. ``git checkout 3.9 && git pull``
 #. Start a merge: e.g. ``git merge 3.8 --no-commit --no-ff --gpg-sign``
-#. Carefully review the changes and revert anything that should not be included.
+#. Carefully review the changes and revert anything that should not be included (most
+   things outside the changelog).
 #. To ensure change fragments are cleaned up properly, run: ``python tools/cleanup_changes.py``
 #. Commit the merge (must be a normal merge commit, not squashed).
 #. Push the branch directly to Github (because a PR would get squashed). When pushing,
