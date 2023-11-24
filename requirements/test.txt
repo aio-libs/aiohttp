@@ -49,7 +49,7 @@ multidict==6.0.4
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.7.0 ; implementation_name == "cpython"
+mypy==1.7.1 ; implementation_name == "cpython"
     # via -r requirements/test.in
 mypy-extensions==1.0.0
     # via mypy
