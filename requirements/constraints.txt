@@ -188,7 +188,6 @@ setuptools-git==1.2
 six==1.16.0
     # via
     #   python-dateutil
-    #   sphinx
     #   virtualenv
 slotscheck==0.17.1
     # via -r requirements/lint.in
@@ -266,7 +265,7 @@ webcolors==1.11.1
     # via blockdiag
 wheel==0.37.0
     # via pip-tools
-yarl==1.9.2
+yarl==1.9.3
     # via -r requirements/runtime-deps.in
 zipp==3.17.0
     # via
@@ -280,4 +279,3 @@ setuptools==68.0.0
     # via
     #   blockdiag
     #   pip-tools
-    #   sphinx
