@@ -72,7 +72,7 @@ class ZLibCompressor(ZlibBaseHandler):
             # To ensure the stream is consistent in the event
             # there are multiple writers, we need to lock
             # the compressor so that only one writer can
-            # write at a time.
+            # compress at a time.
             if (
                 self._max_sync_chunk_size is not None
                 and len(data) > self._max_sync_chunk_size
