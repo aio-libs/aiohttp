@@ -633,6 +633,10 @@ class WebSocketWriter:
                 compressobj = self._compressobj
 
             message = await compressobj.compress(message)
+            # Its critical that we do not return control to the event
+            # loop until we have finished sending all the compressed
+            # data. Otherwise we could end up mixing compressed frames
+            # if there are multiple coroutines compressing data.
             message += compressobj.flush(
                 zlib.Z_FULL_FLUSH if self.notakeover else zlib.Z_SYNC_FLUSH
             )
@@ -669,6 +673,9 @@ class WebSocketWriter:
                 self._write(header + message)
 
             self._output_size += len(header) + len(message)
+
+        # It is safe to return control to the event loop when using compression
+        # after this point as we have already send or buffers all the data.
 
         if self._output_size > self._limit:
             self._output_size = 0
