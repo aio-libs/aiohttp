@@ -48,7 +48,7 @@ class ZLibCompressor(ZlibBaseHandler):
         strategy: int = zlib.Z_DEFAULT_STRATEGY,
         executor: Optional[Executor] = None,
         max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
-    ):
+    ) -> None:
         super().__init__(
             mode=encoding_to_mode(encoding, suppress_deflate_header)
             if wbits is None
@@ -62,19 +62,25 @@ class ZLibCompressor(ZlibBaseHandler):
             self._compressor = zlib.compressobj(
                 wbits=self._mode, strategy=strategy, level=level
             )
+        self._compress_lock = asyncio.Lock()
 
     def compress_sync(self, data: bytes) -> bytes:
         return self._compressor.compress(data)
 
     async def compress(self, data: bytes) -> bytes:
-        if (
-            self._max_sync_chunk_size is not None
-            and len(data) > self._max_sync_chunk_size
-        ):
-            return await asyncio.get_event_loop().run_in_executor(
-                self._executor, self.compress_sync, data
-            )
-        return self.compress_sync(data)
+        async with self._compress_lock:
+            # To ensure the stream is consistent in the event
+            # there are multiple writers, we need to lock
+            # the compressor so that only one writer can
+            # write at a time.
+            if (
+                self._max_sync_chunk_size is not None
+                and len(data) > self._max_sync_chunk_size
+            ):
+                return await asyncio.get_event_loop().run_in_executor(
+                    self._executor, self.compress_sync, data
+                )
+            return self.compress_sync(data)
 
     def flush(self, mode: int = zlib.Z_FINISH) -> bytes:
         return self._compressor.flush(mode)
