@@ -109,7 +109,7 @@ trustme==1.1.0 ; platform_machine != "i686"
     # via -r requirements/test.in
 typer==0.9.0
     # via python-on-whales
-typing-extensions==4.7.1
+typing-extensions==4.8.0
     # via
     #   -r requirements/typing-extensions.in
     #   annotated-types
