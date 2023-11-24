@@ -1,4 +1,3 @@
-# type: ignore
 import asyncio
 import random
 from typing import Any, Callable
