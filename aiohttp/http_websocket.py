@@ -675,7 +675,7 @@ class WebSocketWriter:
             self._output_size += len(header) + len(message)
 
         # It is safe to return control to the event loop when using compression
-        # after this point as we have already send or buffers all the data.
+        # after this point as we have already sent or buffered all the data.
 
         if self._output_size > self._limit:
             self._output_size = 0
