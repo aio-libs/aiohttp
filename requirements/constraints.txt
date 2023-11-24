@@ -124,7 +124,7 @@ packaging==21.2
     #   sphinx
 pep517==0.12.0
     # via build
-pillow==9.5.0
+pillow==10.1.0
     # via
     #   -c requirements/broken-projects.in
     #   blockdiag
@@ -188,7 +188,6 @@ setuptools-git==1.2
 six==1.16.0
     # via
     #   python-dateutil
-    #   sphinx
     #   virtualenv
 slotscheck==0.17.1
     # via -r requirements/lint.in
@@ -280,4 +279,3 @@ setuptools==68.0.0
     # via
     #   blockdiag
     #   pip-tools
-    #   sphinx

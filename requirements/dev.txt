@@ -117,7 +117,7 @@ packaging==23.1
     #   gunicorn
     #   pytest
     #   sphinx
-pillow==9.5.0
+pillow==10.1.0
     # via
     #   -c requirements/broken-projects.in
     #   blockdiag
@@ -177,9 +177,7 @@ requests==2.31.0
 setuptools-git==1.2
     # via -r requirements/test.in
 six==1.16.0
-    # via
-    #   python-dateutil
-    #   sphinx
+    # via python-dateutil
 slotscheck==0.17.1
     # via -r requirements/lint.in
 snowballstemmer==2.2.0
@@ -269,4 +267,3 @@ setuptools==68.0.0
     #   blockdiag
     #   nodeenv
     #   pip-tools
-    #   sphinx
