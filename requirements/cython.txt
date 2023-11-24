@@ -8,5 +8,5 @@ cython==3.0.5
     # via -r requirements/cython.in
 multidict==6.0.4
     # via -r requirements/multidict.in
-typing-extensions==4.7.1
+typing-extensions==4.8.0
     # via -r requirements/typing-extensions.in
