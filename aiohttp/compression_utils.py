@@ -48,7 +48,7 @@ class ZLibCompressor(ZlibBaseHandler):
         strategy: int = zlib.Z_DEFAULT_STRATEGY,
         executor: Optional[Executor] = None,
         max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
-    ) -> None:
+    ):
         super().__init__(
             mode=encoding_to_mode(encoding, suppress_deflate_header)
             if wbits is None
