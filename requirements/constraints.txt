@@ -188,7 +188,6 @@ setuptools-git==1.2
 six==1.16.0
     # via
     #   python-dateutil
-    #   sphinx
     #   virtualenv
 slotscheck==0.17.1
     # via -r requirements/lint.in
@@ -241,7 +240,7 @@ trustme==1.1.0 ; platform_machine != "i686"
     # via -r requirements/test.in
 typer==0.6.1
     # via python-on-whales
-typing-extensions==4.7.1
+typing-extensions==4.8.0
     # via
     #   -r requirements/typing-extensions.in
     #   aioredis
@@ -280,4 +279,3 @@ setuptools==68.0.0
     # via
     #   blockdiag
     #   pip-tools
-    #   sphinx
