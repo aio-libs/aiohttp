@@ -52,5 +52,6 @@ Back on the original release branch, append ``.dev0`` to the version number in `
 If doing a minor release:
 
 #. Create a new release branch for future features to go to: e.g. ``git checkout -b 3.10 3.9 && git push``
+#. Update ``target-branch`` for Dependabot to reference the new branch name in ``.github/dependabot.yml``.
 #. Delete the older backport label (e.g. backport-3.8): https://github.com/aio-libs/aiohttp/labels
 #. Add a new backport label (e.g. backport-3.10).
