@@ -941,9 +941,9 @@ class ClientResponse(HeadersMixin):
             return
 
         # protocol could be None because connection could be detached
+        protocol = self._connection and self._connection.protocol
         # Mypy bug: https://github.com/python/mypy/issues/16565
-        protocol = self._connection and self._connection.protocol  # type: ignore[union-attr]
-        if protocol is not None and protocol.upgraded:
+        if protocol is not None and protocol.upgraded:  # type: ignore[union-attr]
             return
 
         self._closed = True
@@ -1044,9 +1044,9 @@ class ClientResponse(HeadersMixin):
         elif self._released:  # Response explicitly released
             raise ClientConnectionError("Connection closed")
 
+        protocol = self._connection and self._connection.protocol
         # Mypy bug: https://github.com/python/mypy/issues/16565
-        protocol = self._connection and self._connection.protocol  # type: ignore[union-attr]
-        if protocol is None or not protocol.upgraded:
+        if protocol is None or not protocol.upgraded:  # type: ignore[union-attr]
             await self._wait_released()  # Underlying connection released
         return self._body
 
