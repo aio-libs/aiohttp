@@ -10,7 +10,7 @@ coverage:
     project: no
 
 comment:
-  layout: "header, diff, files"
+  layout: "header, diff, tree"
 
 flags:
   library:
