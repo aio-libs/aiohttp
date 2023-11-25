@@ -503,7 +503,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 close_conn = True
             elif v == "keep-alive":
                 close_conn = False
-            elif v == "upgrade":
+            elif v == "upgrade" and headers.get(hdrs.UPGRADE):
                 upgrade = True
 
         # encoding

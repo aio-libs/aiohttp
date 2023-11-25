@@ -473,6 +473,19 @@ def test_conn_upgrade(parser: Any) -> None:
     assert upgrade
 
 
+def test_bad_upgrade(parser: Any) -> None:
+    """Test not upgraded if missing Upgrade header."""
+
+    text = (
+        b"GET /test HTTP/1.1\r\n"
+        b"connection: upgrade\r\n\r\n"
+    )
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert not msg.upgrade
+    assert not upgrade
+
+
 def test_compression_empty(parser: Any) -> None:
     text = b"GET /test HTTP/1.1\r\n" b"content-encoding: \r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)
