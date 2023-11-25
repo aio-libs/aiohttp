@@ -174,11 +174,11 @@ async def test_keepalive_response_released(aiohttp_client: Any) -> None:
     assert 1 == len(client._session.connector._conns)
 
 
-async def test_no_eof_response_not_released(aiohttp_client: Any) -> None:
+async def test_upgrade_connection_not_released_after_read(aiohttp_client) -> None:
     async def handler(request):
         body = await request.read()
         assert b"" == body
-        return web.Response(body=b"OK" * 2000)
+        return web.Response(status=101, headers={"Connection": "Upgrade"})
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
@@ -186,9 +186,6 @@ async def test_no_eof_response_not_released(aiohttp_client: Any) -> None:
     client = await aiohttp_client(app)
 
     resp = await client.get("/")
-    await resp.read()
-    assert resp.connection is None
-    resp = await client.get("/", read_until_eof=False)
     await resp.read()
     assert resp.connection is not None
 
