@@ -1,0 +1,1 @@
+Fixed a regression when using `wait_until_eof=True` in a request method. -- by :user:`Dreamsorcerer`
