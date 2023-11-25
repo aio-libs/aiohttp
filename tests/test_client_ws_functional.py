@@ -5,6 +5,7 @@ import pytest
 
 import aiohttp
 from aiohttp import hdrs, web
+from aiohttp.http import WSCloseCode
 
 if sys.version_info >= (3, 11):
     import asyncio as async_timeout
@@ -581,12 +582,12 @@ async def test_heartbeat_no_pong(aiohttp_client) -> None:
     app.router.add_route("GET", "/", handler)
 
     client = await aiohttp_client(app)
-    resp = await client.ws_connect("/", heartbeat=0.05)
+    resp = await client.ws_connect("/", heartbeat=0.1)
 
-    await resp.receive()
-    await resp.receive()
-
+    # Connection should be closed roughly after 1.5x heartbeat.
+    await asyncio.sleep(0.2)
     assert ping_received
+    assert resp.close_code is WSCloseCode.ABNORMAL_CLOSURE
 
 
 async def test_send_recv_compress(aiohttp_client) -> None:
