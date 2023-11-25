@@ -1043,8 +1043,7 @@ class ClientResponse(HeadersMixin):
         elif self._released:  # Response explicitly released
             raise ClientConnectionError("Connection closed")
 
-        if self._protocol._parser.read_until_eof:
-            await self._wait_released()  # Underlying connection released
+        await self._wait_released()  # Underlying connection released
         return self._body
 
     def get_encoding(self) -> str:
