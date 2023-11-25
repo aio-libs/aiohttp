@@ -71,13 +71,13 @@ async def test_access_root_of_static_handler(
     client = await aiohttp_client(app)
 
     # Request the root of the static directory.
-    r = await client.get(prefix)
-    assert r.status == status
+    async with await client.get(prefix) as r:
+        assert r.status == status
 
-    if data:
-        assert r.headers["Content-Type"] == "text/html; charset=utf-8"
-        read_ = await r.read()
-        assert read_ == data
+        if data:
+            assert r.headers["Content-Type"] == "text/html; charset=utf-8"
+            read_ = await r.read()
+            assert read_ == data
 
 
 async def test_follow_symlink(
