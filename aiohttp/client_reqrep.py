@@ -940,11 +940,10 @@ class ClientResponse(HeadersMixin):
         if self._closed:
             return
 
-        if self._connection is not None:
-            # protocol could be None because connection could be detached
-            protocol = self._connection.protocol
-            if protocol is not None and protocol.upgraded:
-                return
+        # protocol could be None because connection could be detached
+        protocol = getattr(self._connection, "protocol", None)
+        if protocol is not None and protocol.upgraded:
+            return
 
         self._closed = True
         self._cleanup_writer()
@@ -1044,7 +1043,7 @@ class ClientResponse(HeadersMixin):
         elif self._released:  # Response explicitly released
             raise ClientConnectionError("Connection closed")
 
-        protocol = self._connection.protocol
+        protocol = getattr(self._connection, "protocol", None)
         if protocol is None or not protocol.upgraded:
             await self._wait_released()  # Underlying connection released
         return self._body
