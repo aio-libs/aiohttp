@@ -1,1 +1,1 @@
-Fixed a regression when using `wait_until_eof=True` in a request method. -- by :user:`Dreamsorcerer`
+Fixed a regression where connection may get closed during upgrade. -- by :user:`Dreamsorcerer`
