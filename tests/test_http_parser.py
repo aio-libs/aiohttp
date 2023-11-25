@@ -475,7 +475,6 @@ def test_conn_upgrade(parser: Any) -> None:
 
 def test_bad_upgrade(parser: Any) -> None:
     """Test not upgraded if missing Upgrade header."""
-
     text = b"GET /test HTTP/1.1\r\nconnection: upgrade\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
