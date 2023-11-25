@@ -178,7 +178,9 @@ async def test_upgrade_connection_not_released_after_read(aiohttp_client: Any) -
     async def handler(request: web.Request) -> web.Response:
         body = await request.read()
         assert b"" == body
-        return web.Response(status=101, headers={"Connection": "Upgrade", "Upgrade": "tcp"})
+        return web.Response(
+            status=101, headers={"Connection": "Upgrade", "Upgrade": "tcp"}
+        )
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
