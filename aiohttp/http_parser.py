@@ -510,7 +510,8 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 close_conn = True
             elif v == "keep-alive":
                 close_conn = False
-            elif v == "upgrade":
+            # https://www.rfc-editor.org/rfc/rfc9110.html#name-101-switching-protocols
+            elif v == "upgrade" and headers.get(hdrs.UPGRADE):
                 upgrade = True
 
         # encoding
