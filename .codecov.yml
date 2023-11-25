@@ -9,6 +9,9 @@ coverage:
   status:
     project: no
 
+comment:
+  layout: "header, diff, files"
+
 flags:
   library:
     paths:
