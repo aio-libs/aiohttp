@@ -644,9 +644,10 @@ async def test_heartbeat_no_pong(aiohttp_client: Any) -> None:
     app.router.add_route("GET", "/", handler)
 
     client = await aiohttp_client(app)
-    resp = await client.ws_connect("/", heartbeat=0.05)
+    resp = await client.ws_connect("/", heartbeat=0.1)
 
-    await asyncio.sleep(0.1)
+    # Connection should be closed roughly after 1.5x heartbeat.
+    await asyncio.sleep(0.2)
     assert ping_received
     assert resp.close_code is WSCloseCode.ABNORMAL_CLOSURE
 
