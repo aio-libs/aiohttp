@@ -610,3 +610,26 @@ async def test_order_is_preserved(aiohttp_client: AiohttpClient) -> None:
     r = await client.get("/fifth/42")
     assert r.status == 200
     assert await r.text() == "/fifth/42"
+
+
+async def test_url_with_many_slashes(aiohttp_client: AiohttpClient) -> None:
+    app = web.Application()
+
+    class MyView(web.View):
+        async def get(self) -> web.Response:
+            return web.Response()
+
+        async def post(self) -> web.Response:
+            return web.Response()
+
+    app.router.add_routes([web.view("/a", MyView), web.view("/a/b/c/d", MyView)])
+
+    client = await aiohttp_client(app)
+
+    r = await client.get("///a////b//////c//d")
+    assert r.status == 200
+    await r.release()
+
+    r = await client.get("///a")
+    assert r.status == 200
+    await r.release()
