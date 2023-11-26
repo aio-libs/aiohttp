@@ -998,7 +998,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         # candidates for a given url part because there are multiple resources
         # registered for the same canonical path, we resolve them in a linear
         # fashion to ensure registration order is respected.
-        url_part = request.rel_url.path
+        url_part = request.rel_url.raw_path
         while url_part:
             for candidate in resource_index.get(url_part, ()):
                 match_dict, allowed = await candidate.resolve(request)
