@@ -1001,13 +1001,12 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         # fashion to ensure registration order is respected.
         for i in range(len(url_parts), 0, -1):
             url_part = "/" + "/".join(url_parts[1:i])
-            if (resource_candidates := resource_index.get(url_part)) is not None:
-                for candidate in resource_candidates:
-                    match_dict, allowed = await candidate.resolve(request)
-                    if match_dict is not None:
-                        return match_dict
-                    else:
-                        allowed_methods |= allowed
+            for candidate in resource_index.get(url_part, ()):
+                match_dict, allowed = await candidate.resolve(request)
+                if match_dict is not None:
+                    return match_dict
+                else:
+                    allowed_methods |= allowed
 
         #
         # We didn't find any candidates, so we'll try the matched sub-app
