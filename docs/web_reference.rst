@@ -1870,7 +1870,7 @@ unique *name* and at least one :term:`route`.
    '/one/two/three', then '/one/two' and finally '/'.
 2. If the URL part is found in the index, the list of routes for
    that URL part is iterated over. If a route matches to requested HTTP
-   method (or ``'*'`` wildcard) the route's handler is used as found
+   method (or ``'*'`` wildcard) the route's handler is used as the chosen
    :term:`web-handler`. The lookup is finished.
 3. If the route is not found in the index, the router tries to find
    the route in the list of :class:`~aiohttp.web.MatchedSubAppResource`,
