@@ -1879,7 +1879,7 @@ unique *name* and at least one :term:`route`.
    :class:`~aiohttp.web.MatchedSubAppResource` in a linear fashion
    until a match is found.
 4. If no *resource* / *route* pair was found, the *router*
-   returns special :class:`~aiohttp.abc.AbstractMatchInfo`
+   returns the special :class:`~aiohttp.abc.AbstractMatchInfo`
    instance with :attr:`aiohttp.abc.AbstractMatchInfo.http_exception` is not ``None``
    but :exc:`HTTPException` with  either *HTTP 404 Not Found* or
    *HTTP 405 Method Not Allowed* status code.
