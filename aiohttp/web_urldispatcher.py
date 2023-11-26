@@ -990,7 +990,6 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self._matched_sub_app_resources: List[MatchedSubAppResource] = []
 
     async def resolve(self, request: Request) -> UrlMappingMatchInfo:
-        url_parts = request.rel_url.raw_parts
         resource_index = self._resource_index
         allowed_methods: Set[str] = set()
 
@@ -999,14 +998,17 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         # candidates for a given url part because there are multiple resources
         # registered for the same canonical path, we resolve them in a linear
         # fashion to ensure registration order is respected.
-        for i in range(len(url_parts), 0, -1):
-            url_part = "/" + "/".join(url_parts[1:i])
+        url_part = request.rel_url.path
+        while url_part:
             for candidate in resource_index.get(url_part, ()):
                 match_dict, allowed = await candidate.resolve(request)
                 if match_dict is not None:
                     return match_dict
                 else:
                     allowed_methods |= allowed
+            if url_part == "/":
+                break
+            url_part = url_part.rpartition("/")[0] or "/"
 
         #
         # We didn't find any candidates, so we'll try the matched sub-app
