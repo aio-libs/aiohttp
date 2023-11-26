@@ -53,6 +53,7 @@ canonicalize
 cchardet
 cChardet
 ceil
+changelog
 Changelog
 chardet
 Chardet
@@ -88,7 +89,7 @@ Cythonize
 cythonized
 de
 deduplicate
-# de-facto:
+Dependabot
 deprecations
 DER
 dev
