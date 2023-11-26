@@ -1016,7 +1016,6 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         # For most cases we do not expect there to be many of these since
         # currently they are only added by `add_domain`
         #
-        method = request.method
         for resource in self._matched_sub_app_resources:
             match_dict, allowed = await resource.resolve(request)
             if match_dict is not None:
