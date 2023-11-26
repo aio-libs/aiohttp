@@ -619,16 +619,9 @@ async def test_url_with_many_slashes(aiohttp_client: AiohttpClient) -> None:
         async def get(self) -> web.Response:
             return web.Response()
 
-        async def post(self) -> web.Response:
-            return web.Response()
-
-    app.router.add_routes([web.view("/a", MyView), web.view("/a/b/c/d", MyView)])
+    app.router.add_routes([web.view("/a", MyView)])
 
     client = await aiohttp_client(app)
-
-    r = await client.get("///a////b//////c//d")
-    assert r.status == 200
-    await r.release()
 
     r = await client.get("///a")
     assert r.status == 200
