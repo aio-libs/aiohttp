@@ -1024,7 +1024,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
                 allowed_methods |= allowed
 
         if allowed_methods:
-            return MatchInfoError(HTTPMethodNotAllowed(method, allowed_methods))
+            return MatchInfoError(HTTPMethodNotAllowed(request.method, allowed_methods))
         else:
             return MatchInfoError(HTTPNotFound())
 
