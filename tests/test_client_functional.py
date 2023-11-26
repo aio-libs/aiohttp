@@ -173,6 +173,25 @@ async def test_keepalive_response_released(aiohttp_client: Any) -> None:
     assert 1 == len(client._session.connector._conns)
 
 
+async def test_upgrade_connection_not_released_after_read(aiohttp_client) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        body = await request.read()
+        assert b"" == body
+        return web.Response(
+            status=101, headers={"Connection": "Upgrade", "Upgrade": "tcp"}
+        )
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/")
+    await resp.read()
+    assert resp.connection is not None
+    assert not resp.closed
+
+
 async def test_keepalive_server_force_close_connection(aiohttp_client) -> None:
     async def handler(request):
         body = await request.read()
