@@ -127,6 +127,10 @@ class Connection:
                 context["source_traceback"] = self._source_traceback
             self._loop.call_exception_handler(context)
 
+    def __bool__(self) -> Literal[True]:
+        """Force subclasses to not be falsy, to make checks simpler."""
+        return True
+
     @property
     def loop(self) -> asyncio.AbstractEventLoop:
         warnings.warn(
