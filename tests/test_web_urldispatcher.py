@@ -142,7 +142,6 @@ async def test_access_to_the_file_with_spaces(
     r = await client.get(url)
     assert r.status == 200
     assert (await r.text()) == data
-    await r.release()
 
 
 async def test_access_non_existing_resource(
@@ -577,46 +576,37 @@ async def test_order_is_preserved(aiohttp_client: AiohttpClient) -> None:
     r = await client.get("/first/x/b/")
     assert r.status == 200
     assert await r.text() == "/first/x/{b}/"
-    await r.release()
 
     r = await client.get("/second/frank/info")
     assert r.status == 200
     assert await r.text() == "/second/{user}/info"
-    await r.release()
 
     # Fixed/static paths are always preferred over regex paths
     r = await client.get("/second/bob/info")
     assert r.status == 200
     assert await r.text() == "/second/bob/info"
-    await r.release()
 
     r = await client.get("/third/bob/info")
     assert r.status == 200
     assert await r.text() == "/third/bob/info"
-    await r.release()
 
     r = await client.get("/third/frank/info")
     assert r.status == 200
     assert await r.text() == "/third/{user}/info"
-    await r.release()
 
     r = await client.get("/forth/21")
     assert r.status == 200
     assert await r.text() == "/forth/{name}"
-    await r.release()
 
     # Fixed/static paths are always preferred over regex paths
     r = await client.get("/forth/42")
     assert r.status == 200
     assert await r.text() == "/forth/42"
-    await r.release()
 
     r = await client.get("/fifth/21")
     assert r.status == 200
     assert await r.text() == "/fifth/{name}"
-    await r.release()
 
     r = await client.get("/fifth/42")
     assert r.status == 200
     assert await r.text() == "/fifth/42"
-    await r.release()
