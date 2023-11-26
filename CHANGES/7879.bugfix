@@ -1,1 +1,0 @@
-Fixed a regression where connection may get closed during upgrade. -- by :user:`Dreamsorcerer`
