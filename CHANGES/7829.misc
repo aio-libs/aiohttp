@@ -1,1 +1,3 @@
-Index resources in the UrlDispatcher to avoid linear search for most cases
+Improved URL handler resolution time by indexing resources in the UrlDispatcher.
+For applications with a large number of handlers, this should increase performance significantly.
+-- by :user:`bdraco`
