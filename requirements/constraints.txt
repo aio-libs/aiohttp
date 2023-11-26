@@ -108,7 +108,7 @@ multidict==6.0.4
     #   -r requirements/multidict.in
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.7.0 ; implementation_name == "cpython"
+mypy==1.7.1 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -265,7 +265,7 @@ webcolors==1.11.1
     # via blockdiag
 wheel==0.37.0
     # via pip-tools
-yarl==1.9.2
+yarl==1.9.3
     # via -r requirements/runtime-deps.in
 zipp==3.17.0
     # via
