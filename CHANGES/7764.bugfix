@@ -1,1 +1,0 @@
-Fixed an issue when a client request is closed before completing a chunked payload -- by :user:`Dreamsorcerer`
