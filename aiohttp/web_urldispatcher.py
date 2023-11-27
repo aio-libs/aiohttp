@@ -738,11 +738,6 @@ class PrefixedSubAppResource(PrefixResource):
         return {"app": self._app, "prefix": self._prefix}
 
     async def resolve(self, request: Request) -> _Resolve:
-        if (
-            not request.url.raw_path.startswith(self._prefix2)
-            and request.url.raw_path != self._prefix
-        ):
-            return None, set()
         match_info = await self._app.router.resolve(request)
         match_info.add_app(self._app)
         if isinstance(match_info.http_exception, HTTPMethodNotAllowed):
