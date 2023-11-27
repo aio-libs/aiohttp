@@ -1,6 +1,7 @@
 import warnings
 from typing import Any, Dict, Iterable, List, Optional, Set  # noqa
 
+from multidict import CIMultiDict
 from yarl import URL
 
 from .typedefs import LooseHeaders, StrOrURL
@@ -116,6 +117,14 @@ class HTTPException(Response, Exception):
 
     def __bool__(self) -> bool:
         return True
+
+    @property
+    def status(self) -> int:
+        return self.status_code
+
+    @property
+    def headers(self) -> "CIMultiDict[str]":
+        return self._headers
 
 
 class HTTPError(HTTPException):
