@@ -294,13 +294,6 @@ class MatchInfoError(UrlMappingMatchInfo):
     def http_exception(self) -> HTTPException:
         return self._exception
 
-    def freeze(self) -> None:
-        """Freeze the match info.
-
-        MatchInfoErrors are SystemRoutes and
-        shared across all apps so freeze is a noop.
-        """
-
     def __repr__(self) -> str:
         return "<MatchInfoError {}: {}>".format(
             self._exception.status, self._exception.reason
@@ -1226,6 +1219,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         super().freeze()
         for resource in self._resources:
             resource.freeze()
+        self._http_not_found_match.freeze()
 
     def add_routes(self, routes: Iterable[AbstractRouteDef]) -> List[AbstractRoute]:
         """Append routes to route table.
