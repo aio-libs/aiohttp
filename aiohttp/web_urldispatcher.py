@@ -294,6 +294,13 @@ class MatchInfoError(UrlMappingMatchInfo):
     def http_exception(self) -> HTTPException:
         return self._exception
 
+    def freeze(self) -> None:
+        """Freeze the match info.
+
+        MatchInfoErrors are SystemRoutes and
+        shared across all apps so freeze is a noop.
+        """
+
     def __repr__(self) -> str:
         return "<MatchInfoError {}: {}>".format(
             self._exception.status, self._exception.reason
