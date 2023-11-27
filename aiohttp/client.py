@@ -777,6 +777,11 @@ class ClientSession:
 
         # For the customers that mistakenly pass in True, convert it to None to use default ssl context
         if ssl is True:
+            warnings.warn(
+                "True is not a valid value for the ssl parameter; "
+                "using default ssl context. Previously this "
+                "would silently disable verification.",
+            )
             ssl = None
 
         verify_ssl_type(ssl)
