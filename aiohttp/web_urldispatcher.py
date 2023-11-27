@@ -974,9 +974,6 @@ class RoutesView(Sized, Iterable[AbstractRoute], Container[AbstractRoute]):
         return route in self._routes
 
 
-NOT_FOUND_MATCH_ERROR = MatchInfoError(HTTPNotFound())
-
-
 class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
     NAME_SPLIT_RE = re.compile(r"[.:-]")
 
@@ -986,6 +983,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self._named_resources: Dict[str, AbstractResource] = {}
         self._resource_index: dict[str, list[AbstractResource]] = {}
         self._matched_sub_app_resources: List[MatchedSubAppResource] = []
+        self._http_not_found_match = MatchInfoError(HTTPNotFound())
 
     async def resolve(self, request: Request) -> UrlMappingMatchInfo:
         resource_index = self._resource_index
@@ -1026,7 +1024,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         if allowed_methods:
             return MatchInfoError(HTTPMethodNotAllowed(request.method, allowed_methods))
 
-        return NOT_FOUND_MATCH_ERROR
+        return self._http_not_found_match
 
     def __iter__(self) -> Iterator[str]:
         return iter(self._named_resources)
