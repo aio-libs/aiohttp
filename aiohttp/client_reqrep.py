@@ -56,7 +56,13 @@ from .helpers import (
     reify,
     set_result,
 )
-from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, StreamWriter
+from .http import (
+    SERVER_SOFTWARE,
+    HttpVersion,
+    HttpVersion10,
+    HttpVersion11,
+    StreamWriter,
+)
 from .log import client_logger
 from .streams import StreamReader
 from .typedefs import (
@@ -178,7 +184,7 @@ class ClientRequest:
     auth = None
     response = None
 
-    _writer = None  # async task for streaming data
+    __writer = None  # async task for streaming data
     _continue = None  # waiter future for '100 Continue' response
 
     # N.B.
@@ -264,6 +270,21 @@ class ClientRequest:
         if traces is None:
             traces = []
         self._traces = traces
+
+    def __reset_writer(self, _: object = None) -> None:
+        self.__writer = None
+
+    @property
+    def _writer(self) -> Optional["asyncio.Task[None]"]:
+        return self.__writer
+
+    @_writer.setter
+    def _writer(self, writer: Optional["asyncio.Task[None]"]) -> None:
+        if self.__writer is not None:
+            self.__writer.remove_done_callback(self.__reset_writer)
+        self.__writer = writer
+        if writer is not None:
+            writer.add_done_callback(self.__reset_writer)
 
     def is_ssl(self) -> bool:
         return self.url.scheme in ("https", "wss")
@@ -374,7 +395,7 @@ class ClientRequest:
         if not cookies:
             return
 
-        c: SimpleCookie[str] = SimpleCookie()
+        c = SimpleCookie()
         if hdrs.COOKIE in self.headers:
             c.load(self.headers.get(hdrs.COOKIE, ""))
             del self.headers[hdrs.COOKIE]
@@ -529,8 +550,11 @@ class ClientRequest:
         """Support coroutines that yields bytes objects."""
         # 100 response
         if self._continue is not None:
-            await writer.drain()
-            await self._continue
+            try:
+                await writer.drain()
+                await self._continue
+            except asyncio.CancelledError:
+                return
 
         protocol = conn.protocol
         assert protocol is not None
@@ -543,8 +567,6 @@ class ClientRequest:
 
                 for chunk in self.body:
                     await writer.write(chunk)  # type: ignore[arg-type]
-
-            await writer.write_eof()
         except OSError as exc:
             if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
                 protocol.set_exception(exc)
@@ -555,15 +577,13 @@ class ClientRequest:
                 new_exc.__context__ = exc
                 new_exc.__cause__ = exc
                 protocol.set_exception(new_exc)
-        except asyncio.CancelledError as exc:
-            if not conn.closed:
-                protocol.set_exception(exc)
+        except asyncio.CancelledError:
+            await writer.write_eof()
         except Exception as exc:
             protocol.set_exception(exc)
         else:
+            await writer.write_eof()
             protocol.start_timeout()
-        finally:
-            self._writer = None
 
     async def send(self, conn: "Connection") -> "ClientResponse":
         # Specify request target:
@@ -624,8 +644,8 @@ class ClientRequest:
             self.headers[hdrs.CONNECTION] = connection
 
         # status + headers
-        status_line = "{0} {1} HTTP/{2[0]}.{2[1]}".format(
-            self.method, path, self.version
+        status_line = "{0} {1} HTTP/{v.major}.{v.minor}".format(
+            self.method, path, v=self.version
         )
         await writer.write_headers(status_line, self.headers)
 
@@ -648,15 +668,14 @@ class ClientRequest:
 
     async def close(self) -> None:
         if self._writer is not None:
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._writer
-            finally:
-                self._writer = None
 
     def terminate(self) -> None:
         if self._writer is not None:
             if not self.loop.is_closed():
                 self._writer.cancel()
+            self._writer.remove_done_callback(self.__reset_writer)
             self._writer = None
 
     async def _on_chunk_request_sent(self, method: str, url: URL, chunk: bytes) -> None:
@@ -675,9 +694,9 @@ class ClientResponse(HeadersMixin):
     # but will be set by the start() method.
     # As the end user will likely never see the None values, we cheat the types below.
     # from the Status-Line of the response
-    version = None  # HTTP-Version
+    version: Optional[HttpVersion] = None  # HTTP-Version
     status: int = None  # type: ignore[assignment] # Status-Code
-    reason = None  # Reason-Phrase
+    reason: Optional[str] = None  # Reason-Phrase
 
     content: StreamReader = None  # type: ignore[assignment] # Payload stream
     _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]
@@ -689,6 +708,7 @@ class ClientResponse(HeadersMixin):
     # post-init stage allows to not change ctor signature
     _closed = True  # to allow __del__ for non-initialized properly response
     _released = False
+    __writer = None
 
     def __init__(
         self,
@@ -707,7 +727,7 @@ class ClientResponse(HeadersMixin):
         super().__init__()
 
         self.method = method
-        self.cookies: SimpleCookie[str] = SimpleCookie()
+        self.cookies = SimpleCookie()
 
         self._real_url = url
         self._url = url.with_fragment(None)
@@ -734,6 +754,21 @@ class ClientResponse(HeadersMixin):
             self._resolve_charset = session._resolve_charset
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
+
+    def __reset_writer(self, _: object = None) -> None:
+        self.__writer = None
+
+    @property
+    def _writer(self) -> Optional["asyncio.Task[None]"]:
+        return self.__writer
+
+    @_writer.setter
+    def _writer(self, writer: Optional["asyncio.Task[None]"]) -> None:
+        if self.__writer is not None:
+            self.__writer.remove_done_callback(self.__reset_writer)
+        self.__writer = writer
+        if writer is not None:
+            writer.add_done_callback(self.__reset_writer)
 
     @reify
     def url(self) -> URL:
@@ -795,7 +830,7 @@ class ClientResponse(HeadersMixin):
                 "ascii", "backslashreplace"
             ).decode("ascii")
         else:
-            ascii_encodable_reason = self.reason
+            ascii_encodable_reason = "None"
         print(
             "<ClientResponse({}) [{} {}]>".format(
                 ascii_encodable_url, self.status, ascii_encodable_reason
@@ -905,20 +940,14 @@ class ClientResponse(HeadersMixin):
         if self._closed:
             return
 
-        if self._connection is not None:
-            # websocket, protocol could be None because
-            # connection could be detached
-            if (
-                self._connection.protocol is not None
-                and self._connection.protocol.upgraded
-            ):
-                return
-
-            self._connection.release()
-            self._connection = None
+        # protocol could be None because connection could be detached
+        protocol = self._connection and self._connection.protocol
+        if protocol is not None and protocol.upgraded:
+            return
 
         self._closed = True
         self._cleanup_writer()
+        self._release_connection()
 
     @property
     def closed(self) -> bool:
@@ -927,30 +956,24 @@ class ClientResponse(HeadersMixin):
     def close(self) -> None:
         if not self._released:
             self._notify_content()
-        if self._closed:
-            return
 
         self._closed = True
         if self._loop.is_closed():
             return
 
+        self._cleanup_writer()
         if self._connection is not None:
             self._connection.close()
             self._connection = None
-        self._cleanup_writer()
 
     def release(self) -> Any:
         if not self._released:
             self._notify_content()
-        if self._closed:
-            return noop()
 
         self._closed = True
-        if self._connection is not None:
-            self._connection.release()
-            self._connection = None
 
         self._cleanup_writer()
+        self._release_connection()
         return noop()
 
     @property
@@ -975,10 +998,22 @@ class ClientResponse(HeadersMixin):
                 headers=self.headers,
             )
 
+    def _release_connection(self) -> None:
+        if self._connection is not None:
+            if self._writer is None:
+                self._connection.release()
+                self._connection = None
+            else:
+                self._writer.add_done_callback(lambda f: self._release_connection())
+
+    async def _wait_released(self) -> None:
+        if self._writer is not None:
+            await self._writer
+        self._release_connection()
+
     def _cleanup_writer(self) -> None:
         if self._writer is not None:
             self._writer.cancel()
-        self._writer = None
         self._session = None
 
     def _notify_content(self) -> None:
@@ -990,10 +1025,7 @@ class ClientResponse(HeadersMixin):
 
     async def wait_for_close(self) -> None:
         if self._writer is not None:
-            try:
-                await self._writer
-            finally:
-                self._writer = None
+            await self._writer
         self.release()
 
     async def read(self) -> bytes:
@@ -1008,9 +1040,12 @@ class ClientResponse(HeadersMixin):
             except BaseException:
                 self.close()
                 raise
-        elif self._released:
+        elif self._released:  # Response explicitly released
             raise ClientConnectionError("Connection closed")
 
+        protocol = self._connection and self._connection.protocol
+        if protocol is None or not protocol.upgraded:
+            await self._wait_released()  # Underlying connection released
         return self._body
 
     def get_encoding(self) -> str:
@@ -1087,3 +1122,4 @@ class ClientResponse(HeadersMixin):
         # for exceptions, response object can close connection
         # if state is broken
         self.release()
+        await self.wait_for_close()

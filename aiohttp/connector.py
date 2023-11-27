@@ -114,6 +114,10 @@ class Connection:
                 context["source_traceback"] = self._source_traceback
             self._loop.call_exception_handler(context)
 
+    def __bool__(self) -> Literal[True]:
+        """Force subclasses to not be falsy, to make checks simpler."""
+        return True
+
     @property
     def transport(self) -> Optional[asyncio.Transport]:
         if self._protocol is None:
@@ -232,7 +236,7 @@ class BaseConnector:
         self._loop = loop
         self._factory = functools.partial(ResponseHandler, loop=loop)
 
-        self.cookies: SimpleCookie[str] = SimpleCookie()
+        self.cookies = SimpleCookie()
 
         # start keep-alive connection cleanup task
         self._cleanup_handle: Optional[asyncio.TimerHandle] = None

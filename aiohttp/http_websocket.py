@@ -59,6 +59,15 @@ class WSCloseCode(IntEnum):
 
 ALLOWED_CLOSE_CODES: Final[Set[int]] = {int(i) for i in WSCloseCode}
 
+# For websockets, keeping latency low is extremely important as implementations
+# generally expect to be able to send and receive messages quickly.  We use a
+# larger chunk size than the default to reduce the number of executor calls
+# since the executor is a significant source of latency and overhead when
+# the chunks are small. A size of 5KiB was chosen because it is also the
+# same value python-zlib-ng choose to use as the threshold to release the GIL.
+
+WEBSOCKET_MAX_SYNC_CHUNK_SIZE = 5 * 1024
+
 
 class WSMsgType(IntEnum):
     # websocket spec types
@@ -126,7 +135,7 @@ native_byteorder: Final[str] = sys.byteorder
 
 
 # Used by _websocket_mask_python
-@functools.lru_cache()
+@functools.lru_cache
 def _xor_table() -> List[bytes]:
     return [bytes(a ^ b for a in range(256)) for b in range(256)]
 
@@ -617,15 +626,17 @@ class WebSocketWriter:
         if (compress or self.compress) and opcode < 8:
             if compress:
                 # Do not set self._compress if compressing is for this frame
-                compressobj = ZLibCompressor(level=zlib.Z_BEST_SPEED, wbits=-compress)
+                compressobj = self._make_compress_obj(compress)
             else:  # self.compress
                 if not self._compressobj:
-                    self._compressobj = ZLibCompressor(
-                        level=zlib.Z_BEST_SPEED, wbits=-self.compress
-                    )
+                    self._compressobj = self._make_compress_obj(self.compress)
                 compressobj = self._compressobj
 
             message = await compressobj.compress(message)
+            # Its critical that we do not return control to the event
+            # loop until we have finished sending all the compressed
+            # data. Otherwise we could end up mixing compressed frames
+            # if there are multiple coroutines compressing data.
             message += compressobj.flush(
                 zlib.Z_FULL_FLUSH if self.notakeover else zlib.Z_SYNC_FLUSH
             )
@@ -663,9 +674,19 @@ class WebSocketWriter:
 
             self._output_size += len(header) + len(message)
 
+        # It is safe to return control to the event loop when using compression
+        # after this point as we have already sent or buffered all the data.
+
         if self._output_size > self._limit:
             self._output_size = 0
             await self.protocol._drain_helper()
+
+    def _make_compress_obj(self, compress: int) -> ZLibCompressor:
+        return ZLibCompressor(
+            level=zlib.Z_BEST_SPEED,
+            wbits=-compress,
+            max_sync_chunk_size=WEBSOCKET_MAX_SYNC_CHUNK_SIZE,
+        )
 
     def _write(self, data: bytes) -> None:
         if self.transport.is_closing():

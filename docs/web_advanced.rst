@@ -927,25 +927,38 @@ Graceful shutdown
 Stopping *aiohttp web server* by just closing all connections is not
 always satisfactory.
 
-The first thing aiohttp will do is to stop listening on the sockets,
-so new connections will be rejected. It will then wait a few
-seconds to allow any pending tasks to complete before continuing
-with application shutdown. The timeout can be adjusted with
-``shutdown_timeout`` in :func:`run_app`.
+When aiohttp is run with :func:`run_app`, it will attempt a graceful shutdown
+by following these steps (if using a :ref:`runner <aiohttp-web-app-runners>`,
+then calling :meth:`AppRunner.cleanup` will perform these steps, excluding
+steps 4 and 7).
 
-Another problem is if the application supports :term:`websockets <websocket>` or
-*data streaming* it most likely has open connections at server
-shutdown time.
+1. Stop each site listening on sockets, so new connections will be rejected.
+2. Close idle keep-alive connections (and set active ones to close upon completion).
+3. Call the :attr:`Application.on_shutdown` signal. This should be used to shutdown
+   long-lived connections, such as websockets (see below).
+4. Wait a short time for running tasks to complete. This allows any pending handlers
+   or background tasks to complete successfully. The timeout can be adjusted with
+   ``shutdown_timeout`` in :func:`run_app`.
+5. Close any remaining connections and cancel their handlers. It will wait on the
+   canceling handlers for a short time, again adjustable with ``shutdown_timeout``.
+6. Call the :attr:`Application.on_cleanup` signal. This should be used to cleanup any
+   resources (such as DB connections). This includes completing the
+   :ref:`cleanup contexts<aiohttp-web-cleanup-ctx>`.
+7. Cancel any remaining tasks and wait on them to complete.
 
-The *library* has no knowledge how to close them gracefully but
-developer can help by registering :attr:`Application.on_shutdown`
-signal handler and call the signal on *web server* closing.
+Websocket shutdown
+^^^^^^^^^^^^^^^^^^
 
-Developer should keep a list of opened connections
+One problem is if the application supports :term:`websockets <websocket>` or
+*data streaming* it most likely has open connections at server shutdown time.
+
+The *library* has no knowledge how to close them gracefully but a developer can
+help by registering an :attr:`Application.on_shutdown` signal handler.
+
+A developer should keep a list of opened connections
 (:class:`Application` is a good candidate).
 
-The following :term:`websocket` snippet shows an example for websocket
-handler::
+The following :term:`websocket` snippet shows an example of a websocket handler::
 
     from aiohttp import web
     import weakref
@@ -967,19 +980,15 @@ handler::
 
         return ws
 
-Signal handler may look like::
+Then the signal handler may look like::
 
     from aiohttp import WSCloseCode
 
     async def on_shutdown(app):
         for ws in set(app[websockets]):
-            await ws.close(code=WSCloseCode.GOING_AWAY,
-                           message='Server shutdown')
+            await ws.close(code=WSCloseCode.GOING_AWAY, message="Server shutdown")
 
     app.on_shutdown.append(on_shutdown)
-
-Both :func:`run_app` and :meth:`AppRunner.cleanup` call shutdown
-signal handlers.
 
 .. _aiohttp-web-ceil-absolute-timeout:
 
@@ -1113,7 +1122,7 @@ Handling error pages
 --------------------
 
 Pages like *404 Not Found* and *500 Internal Error* could be handled
-by custom middleware, see :ref:`polls demo <aiohttp-demos-polls-middlewares>`
+by custom middleware, see :ref:`polls demo <aiohttpdemos:aiohttp-demos-polls-middlewares>`
 for example.
 
 .. _aiohttp-web-forwarded-support:

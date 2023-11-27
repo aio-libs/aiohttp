@@ -1,1 +1,0 @@
-Fixed annotation of ``ssl`` parameter to disallow ``True``. -- by :user:`Dreamsorcerer`

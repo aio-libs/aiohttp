@@ -10,13 +10,13 @@ import ssl
 import subprocess
 import sys
 import time
-from typing import Any, Callable, NoReturn
+from typing import Any, Callable, NoReturn, Set
 from unittest import mock
 from uuid import uuid4
 
 import pytest
 
-from aiohttp import ClientConnectorError, ClientSession, web
+from aiohttp import ClientConnectorError, ClientSession, WSCloseCode, web
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.web_runner import BaseRunner
 
@@ -563,7 +563,7 @@ def test_run_app_preexisting_inet_socket(patched_loop: Any, mocker: Any) -> None
 
     sock = socket.socket()
     with contextlib.closing(sock):
-        sock.bind(("0.0.0.0", 0))
+        sock.bind(("127.0.0.1", 0))
         _, port = sock.getsockname()
 
         printer = mock.Mock(wraps=stopper(patched_loop))
@@ -572,7 +572,7 @@ def test_run_app_preexisting_inet_socket(patched_loop: Any, mocker: Any) -> None
         patched_loop.create_server.assert_called_with(
             mock.ANY, sock=sock, backlog=128, ssl=None
         )
-        assert f"http://0.0.0.0:{port}" in printer.call_args[0][0]
+        assert f"http://127.0.0.1:{port}" in printer.call_args[0][0]
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not available")
@@ -581,7 +581,7 @@ def test_run_app_preexisting_inet6_socket(patched_loop: Any) -> None:
 
     sock = socket.socket(socket.AF_INET6)
     with contextlib.closing(sock):
-        sock.bind(("::", 0))
+        sock.bind(("::1", 0))
         port = sock.getsockname()[1]
 
         printer = mock.Mock(wraps=stopper(patched_loop))
@@ -590,7 +590,7 @@ def test_run_app_preexisting_inet6_socket(patched_loop: Any) -> None:
         patched_loop.create_server.assert_called_with(
             mock.ANY, sock=sock, backlog=128, ssl=None
         )
-        assert f"http://[::]:{port}" in printer.call_args[0][0]
+        assert f"http://[::1]:{port}" in printer.call_args[0][0]
 
 
 @skip_if_no_unix_socks
@@ -618,9 +618,9 @@ def test_run_app_multiple_preexisting_sockets(patched_loop: Any) -> None:
     sock1 = socket.socket()
     sock2 = socket.socket()
     with contextlib.closing(sock1), contextlib.closing(sock2):
-        sock1.bind(("0.0.0.0", 0))
+        sock1.bind(("localhost", 0))
         _, port1 = sock1.getsockname()
-        sock2.bind(("0.0.0.0", 0))
+        sock2.bind(("localhost", 0))
         _, port2 = sock2.getsockname()
 
         printer = mock.Mock(wraps=stopper(patched_loop))
@@ -632,8 +632,8 @@ def test_run_app_multiple_preexisting_sockets(patched_loop: Any) -> None:
                 mock.call(mock.ANY, sock=sock2, backlog=128, ssl=None),
             ]
         )
-        assert f"http://0.0.0.0:{port1}" in printer.call_args[0][0]
-        assert f"http://0.0.0.0:{port2}" in printer.call_args[0][0]
+        assert f"http://127.0.0.1:{port1}" in printer.call_args[0][0]
+        assert f"http://127.0.0.1:{port2}" in printer.call_args[0][0]
 
 
 _script_test_signal = """
@@ -1113,3 +1113,90 @@ class TestShutdown:
         web.run_app(app, port=port, shutdown_timeout=5)
         assert t.exception() is None
         assert finished is True
+
+    def test_shutdown_close_idle_keepalive(
+        self, aiohttp_unused_port: Callable[[], int]
+    ) -> None:
+        port = aiohttp_unused_port()
+
+        async def test() -> None:
+            await asyncio.sleep(1)
+            async with ClientSession() as sess:
+                async with sess.get(f"http://localhost:{port}/stop"):
+                    pass
+
+                # Hold on to keep-alive connection.
+                await asyncio.sleep(5)
+
+        async def run_test(app: web.Application) -> None:
+            nonlocal t
+            t = asyncio.create_task(test())
+            yield
+            t.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await t
+
+        t = None
+        app = web.Application()
+        app.cleanup_ctx.append(run_test)
+        app.router.add_get("/stop", self.stop)
+
+        web.run_app(app, port=port, shutdown_timeout=10)
+        # If connection closed, then test() will be cancelled in cleanup_ctx.
+        # If not, then shutdown_timeout will allow it to sleep until complete.
+        assert t.cancelled()
+
+    def test_shutdown_close_websockets(
+        self, aiohttp_unused_port: Callable[[], int]
+    ) -> None:
+        port = aiohttp_unused_port()
+        WS = web.AppKey("ws", Set[web.WebSocketResponse])
+        client_finished = server_finished = False
+
+        async def ws_handler(request: web.Request) -> web.WebSocketResponse:
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
+            request.app[WS].add(ws)
+            async for msg in ws:
+                pass
+            nonlocal server_finished
+            server_finished = True
+            return ws
+
+        async def close_websockets(app: web.Application) -> None:
+            for ws in app[WS]:
+                await ws.close(code=WSCloseCode.GOING_AWAY)
+
+        async def test() -> None:
+            await asyncio.sleep(1)
+            async with ClientSession() as sess:
+                async with sess.ws_connect(f"http://localhost:{port}/ws") as ws:
+                    async with sess.get(f"http://localhost:{port}/stop"):
+                        pass
+
+                    async for msg in ws:
+                        pass
+                    nonlocal client_finished
+                    client_finished = True
+
+        async def run_test(app: web.Application) -> None:
+            nonlocal t
+            t = asyncio.create_task(test())
+            yield
+            t.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await t
+
+        t = None
+        app = web.Application()
+        app[WS] = set()
+        app.on_shutdown.append(close_websockets)
+        app.cleanup_ctx.append(run_test)
+        app.router.add_get("/ws", ws_handler)
+        app.router.add_get("/stop", self.stop)
+
+        start = time.time()
+        web.run_app(app, port=port, shutdown_timeout=10)
+        assert time.time() - start < 5
+        assert client_finished
+        assert server_finished

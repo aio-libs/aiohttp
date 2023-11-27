@@ -22,7 +22,7 @@ repos:
     entry: ./tools/check_changes.py
     pass_filenames: false
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v4.4.0'
+  rev: 'v4.5.0'
   hooks:
   - id: check-merge-conflict
 - repo: https://github.com/asottile/yesqa
@@ -34,12 +34,12 @@ repos:
   hooks:
   - id: isort
 - repo: https://github.com/psf/black
-  rev: '23.7.0'
+  rev: '23.11.0'
   hooks:
     - id: black
       language_version: python3 # Should be a command that runs python
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v4.4.0'
+  rev: 'v4.5.0'
   hooks:
   - id: end-of-file-fixer
     exclude: >-
@@ -72,10 +72,10 @@ repos:
   - id: detect-private-key
     exclude: ^examples/
 - repo: https://github.com/asottile/pyupgrade
-  rev: 'v3.10.1'
+  rev: 'v3.15.0'
   hooks:
   - id: pyupgrade
-    args: ['--py36-plus']
+    args: ['--py37-plus']
 - repo: https://github.com/PyCQA/flake8
   rev: '6.1.0'
   hooks:
@@ -92,3 +92,9 @@ repos:
       ^[^/]+[.]rst$
     exclude: >-
       ^CHANGES\.rst$
+- repo: https://github.com/codespell-project/codespell
+  rev: v2.2.6
+  hooks:
+  - id: codespell
+    additional_dependencies:
+    - tomli

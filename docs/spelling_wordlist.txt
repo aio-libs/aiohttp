@@ -54,6 +54,7 @@ canonicalize
 cchardet
 cChardet
 ceil
+changelog
 Changelog
 chardet
 Chardet
@@ -89,7 +90,7 @@ Cythonize
 cythonized
 de
 deduplicate
-# de-facto:
+Dependabot
 deprecations
 DER
 dev
@@ -182,7 +183,6 @@ middleware
 middlewares
 miltidict
 misbehaviors
-misformed
 Mixcloud
 Mongo
 msg
@@ -223,7 +223,7 @@ performant
 pickleable
 ping
 pipelining
-plugable
+pluggable
 plugin
 poller
 pong
@@ -244,6 +244,7 @@ pytest
 Pytest
 Quickstart
 quote’s
+rc
 readline
 readonly
 readpayload
@@ -285,7 +286,6 @@ shourtcuts
 skipuntil
 Skyscanner
 SocketSocketTransport
-softwares
 ssl
 SSLContext
 startup

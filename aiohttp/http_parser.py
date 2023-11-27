@@ -27,7 +27,13 @@ from yarl import URL
 from . import hdrs
 from .base_protocol import BaseProtocol
 from .compression_utils import HAS_BROTLI, BrotliDecompressor, ZLibDecompressor
-from .helpers import DEBUG, NO_EXTENSIONS, BaseTimerContext
+from .helpers import (
+    DEBUG,
+    NO_EXTENSIONS,
+    BaseTimerContext,
+    method_must_be_empty_body,
+    status_code_must_be_empty_body,
+)
 from .http_exceptions import (
     BadHttpMessage,
     BadStatusLine,
@@ -338,10 +344,15 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         self._upgraded = msg.upgrade
 
                         method = getattr(msg, "method", self.method)
+                        # code is only present on responses
+                        code = getattr(msg, "code", 0)
 
                         assert self.protocol is not None
                         # calculate payload
-                        if (
+                        empty_body = status_code_must_be_empty_body(code) or bool(
+                            method and method_must_be_empty_body(method)
+                        )
+                        if not empty_body and (
                             (length is not None and length > 0)
                             or msg.chunked
                             and not msg.upgrade
@@ -383,34 +394,29 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 auto_decompress=self._auto_decompress,
                                 lax=self.lax,
                             )
+                        elif not empty_body and length is None and self.read_until_eof:
+                            payload = StreamReader(
+                                self.protocol,
+                                timer=self.timer,
+                                loop=loop,
+                                limit=self._limit,
+                            )
+                            payload_parser = HttpPayloadParser(
+                                payload,
+                                length=length,
+                                chunked=msg.chunked,
+                                method=method,
+                                compression=msg.compression,
+                                code=self.code,
+                                readall=True,
+                                response_with_body=self.response_with_body,
+                                auto_decompress=self._auto_decompress,
+                                lax=self.lax,
+                            )
+                            if not payload_parser.done:
+                                self._payload_parser = payload_parser
                         else:
-                            if (
-                                getattr(msg, "code", 100) >= 199
-                                and length is None
-                                and self.read_until_eof
-                            ):
-                                payload = StreamReader(
-                                    self.protocol,
-                                    timer=self.timer,
-                                    loop=loop,
-                                    limit=self._limit,
-                                )
-                                payload_parser = HttpPayloadParser(
-                                    payload,
-                                    length=length,
-                                    chunked=msg.chunked,
-                                    method=method,
-                                    compression=msg.compression,
-                                    code=self.code,
-                                    readall=True,
-                                    response_with_body=self.response_with_body,
-                                    auto_decompress=self._auto_decompress,
-                                    lax=self.lax,
-                                )
-                                if not payload_parser.done:
-                                    self._payload_parser = payload_parser
-                            else:
-                                payload = EMPTY_PAYLOAD
+                            payload = EMPTY_PAYLOAD
 
                         messages.append((msg, payload))
                 else:
@@ -497,7 +503,8 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 close_conn = True
             elif v == "keep-alive":
                 close_conn = False
-            elif v == "upgrade":
+            # https://www.rfc-editor.org/rfc/rfc9110.html#name-101-switching-protocols
+            elif v == "upgrade" and headers.get(hdrs.UPGRADE):
                 upgrade = True
 
         # encoding
@@ -655,6 +662,7 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
         try:
             status, reason = status.split(maxsplit=1)
         except ValueError:
+            status = status.strip()
             reason = ""
 
         if len(reason) > self.max_line_size:
@@ -860,7 +868,7 @@ class HttpPayloadParser:
 
                 # if stream does not contain trailer, after 0\r\n
                 # we should get another \r\n otherwise
-                # trailers needs to be skiped until \r\n\r\n
+                # trailers needs to be skipped until \r\n\r\n
                 if self._chunk == ChunkState.PARSE_MAYBE_TRAILERS:
                     head = chunk[: len(SEP)]
                     if head == SEP:
