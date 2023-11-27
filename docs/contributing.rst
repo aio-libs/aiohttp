@@ -161,29 +161,61 @@ Any extra texts (print statements and so on) should be removed.
 Tests coverage
 --------------
 
-We are trying hard to have good test coverage; please don't make it worse.
+We use *codecov.io* as an indispensable tool for analysing our coverage
+results. Visit https://codecov.io/gh/aio-libs/aiohttp to see coverage
+reports for the master branch, history, pull requests etc.
 
-Use:
+We'll use an example from a real PR to demonstrate how we use this.
+Once the tests run in a PR, you'll see a comment posted by codecov.
+The most important thing to check here, is whether there are any new
+missed or partial lines in the report:
 
-.. code-block:: shell
+.. image:: contributing-cov-comment.png
 
-   $ make cov-dev
+Here we see that the PR has introduced 1 miss and 2 partials. Now we
+click the link in the comment header to open the full report:
 
-to run test suite and collect coverage information. Once the command
-has finished check your coverage at the file that appears in the last
-line of the output:
-``open file:///.../aiohttp/htmlcov/index.html``
+.. image:: contributing-con-header.png
+   :alt: Codecov report
 
-Please go to the link and make sure that your code change is covered.
+Now, if we look through the diff under 'Files changed' we find one of
+our partials:
 
+.. image:: contributing-cov-partial.png
+   :alt: A while loop with partial coverage.
 
-The project uses *codecov.io* for storing coverage results. Visit
-https://codecov.io/gh/aio-libs/aiohttp for looking on coverage of
-master branch, history, pull requests etc.
+In this case, the while loop is never skipped in our tests. This is
+probably not worth writing a test for (and may be a situation that is
+impossible to trigger anyway), so we leave this alone.
+
+We're still missing a partial and a miss, so we switch to the
+'Indirect changes' tab and take a look through the diff there. This
+time we find the remaining 2 lines:
+
+.. image:: contributing-cov-miss.png
+   :alt: An if statement that isn't covered anymore.
+
+After reviewing the PR, we find that this code is no longer needed as
+the changes mean that this method will never be called under those
+conditions. Thanks to this report, we were able to remove some
+redundant code from a performance-critical part of our codebase (this
+check would have been run, probably multiple times, for every single
+incoming request).
+
+Other tools
++++++++++++
 
 The browser extension https://docs.codecov.io/docs/browser-extension
-is highly recommended for analyzing the coverage just in *Files
-Changed* tab on *GitHub Pull Request* review page.
+is also a useful tool for analyzing the coverage directly from *Files
+Changed* tab on the *GitHub Pull Request* review page.
+
+
+You can also produce coverage reports locally with ``make cov-dev``
+or just adding ``--cov-report=html`` to ``pytest``.
+
+This will run the test suite and collect coverage information. Once
+finished, coverage results can be view by opening:
+``open file:///.../aiohttp/htmlcov/index.html``
 
 Documentation
 -------------
@@ -249,7 +281,8 @@ The contents of this file are *reStructuredText* formatted text that
 will be used as the content of the news file entry. You do not need to
 reference the issue or PR numbers here as *towncrier* will automatically
 add a reference to all of the affected issues when rendering the news
-file.
+file. Please also see ``CHANGES/README.rst`` for the correct format of
+a changelog fragment.
 
 
 
