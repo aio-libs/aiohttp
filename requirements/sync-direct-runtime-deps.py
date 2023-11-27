@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """Sync direct runtime dependencies from setup.cfg to runtime-deps.in."""
 
 from configparser import ConfigParser
