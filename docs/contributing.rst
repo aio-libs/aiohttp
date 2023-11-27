@@ -166,13 +166,13 @@ results. Visit https://codecov.io/gh/aio-libs/aiohttp to see coverage
 reports for the master branch, history, pull requests etc.
 
 We'll use an example from a real PR to demonstrate how we use this.
-Once the tests run in a PR, you'll see a comment posted by codecov.
-The most important thing to check here, is whether there are any new
+Once the tests run in a PR, you'll see a comment posted by *codecov*.
+The most important thing to check here is whether there are any new
 missed or partial lines in the report:
 
 .. image:: contributing-cov-comment.png
 
-Here we see that the PR has introduced 1 miss and 2 partials. Now we
+Here, the PR has introduced 1 miss and 2 partials. Now we
 click the link in the comment header to open the full report:
 
 .. image:: contributing-cov-header.png
