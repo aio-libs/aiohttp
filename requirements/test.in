@@ -1,5 +1,5 @@
--r base.in
 -c broken-projects.in
+-r base.in
 
 coverage
 mypy; implementation_name == "cpython"
