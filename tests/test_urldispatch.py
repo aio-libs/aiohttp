@@ -1258,10 +1258,17 @@ async def test_prefixed_subapp_overlap(app) -> None:
     subapp2.router.add_get("/b", handler2)
     app.add_subapp("/ss", subapp2)
 
+    subapp3 = web.Application()
+    handler3 = make_handler()
+    subapp3.router.add_get("/c", handler3)
+    app.add_subapp("/s/s", subapp3)
+
     match_info = await app.router.resolve(make_mocked_request("GET", "/s/a"))
     assert match_info.route.handler is handler1
     match_info = await app.router.resolve(make_mocked_request("GET", "/ss/b"))
     assert match_info.route.handler is handler2
+    match_info = await app.router.resolve(make_mocked_request("GET", "/s/s/c"))
+    assert match_info.route.handler is handler3
 
 
 async def test_prefixed_subapp_empty_route(app) -> None:

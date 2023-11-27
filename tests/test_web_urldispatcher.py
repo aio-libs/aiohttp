@@ -13,7 +13,7 @@ import yarl
 
 from aiohttp import abc, web
 from aiohttp.pytest_plugin import AiohttpClient
-from aiohttp.web_urldispatcher import SystemRoute
+from aiohttp.web_urldispatcher import Resource, SystemRoute
 
 
 @pytest.fixture(scope="function")
@@ -166,7 +166,6 @@ async def test_access_to_the_file_with_spaces(
     r = await client.get(url)
     assert r.status == 200
     assert (await r.text()) == data
-    await r.release()
 
 
 async def test_access_non_existing_resource(
@@ -587,4 +586,87 @@ async def test_decoded_url_match(
 
     r = await client.get(yarl.URL(urlencoded_path, encoded=True))
     assert r.status == expected_http_resp_status
+    await r.release()
+
+
+async def test_order_is_preserved(aiohttp_client: AiohttpClient) -> None:
+    """Test route order is preserved.
+
+    Note that fixed/static paths are always preferred over a regex path.
+    """
+    app = web.Application()
+
+    async def handler(request: web.Request) -> web.Response:
+        assert isinstance(request.match_info._route.resource, Resource)
+        return web.Response(text=request.match_info._route.resource.canonical)
+
+    app.router.add_get("/first/x/{b}/", handler)
+    app.router.add_get(r"/first/{x:.*/b}", handler)
+
+    app.router.add_get(r"/second/{user}/info", handler)
+    app.router.add_get("/second/bob/info", handler)
+
+    app.router.add_get("/third/bob/info", handler)
+    app.router.add_get(r"/third/{user}/info", handler)
+
+    app.router.add_get(r"/forth/{name:\d+}", handler)
+    app.router.add_get("/forth/42", handler)
+
+    app.router.add_get("/fifth/42", handler)
+    app.router.add_get(r"/fifth/{name:\d+}", handler)
+
+    client = await aiohttp_client(app)
+
+    r = await client.get("/first/x/b/")
+    assert r.status == 200
+    assert await r.text() == "/first/x/{b}/"
+
+    r = await client.get("/second/frank/info")
+    assert r.status == 200
+    assert await r.text() == "/second/{user}/info"
+
+    # Fixed/static paths are always preferred over regex paths
+    r = await client.get("/second/bob/info")
+    assert r.status == 200
+    assert await r.text() == "/second/bob/info"
+
+    r = await client.get("/third/bob/info")
+    assert r.status == 200
+    assert await r.text() == "/third/bob/info"
+
+    r = await client.get("/third/frank/info")
+    assert r.status == 200
+    assert await r.text() == "/third/{user}/info"
+
+    r = await client.get("/forth/21")
+    assert r.status == 200
+    assert await r.text() == "/forth/{name}"
+
+    # Fixed/static paths are always preferred over regex paths
+    r = await client.get("/forth/42")
+    assert r.status == 200
+    assert await r.text() == "/forth/42"
+
+    r = await client.get("/fifth/21")
+    assert r.status == 200
+    assert await r.text() == "/fifth/{name}"
+
+    r = await client.get("/fifth/42")
+    assert r.status == 200
+    assert await r.text() == "/fifth/42"
+
+
+async def test_url_with_many_slashes(aiohttp_client: AiohttpClient) -> None:
+    app = web.Application()
+
+    class MyView(web.View):
+        async def get(self) -> web.Response:
+            return web.Response()
+
+    app.router.add_routes([web.view("/a", MyView)])
+
+    client = await aiohttp_client(app)
+
+    r = await client.get("///a")
+    assert r.status == 200
     await r.release()
