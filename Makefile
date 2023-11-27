@@ -187,7 +187,4 @@ install-dev: .develop
 .PHONY: sync-direct-runtime-deps
 sync-direct-runtime-deps:
 	@echo Updating 'requirements/runtime-deps.in' from 'setup.cfg'... >&2
-	@echo '# Extracted from `setup.cfg` via `make sync-direct-runtime-deps`' > requirements/runtime-deps.in
-	@echo >> requirements/runtime-deps.in
-	@python -c 'from configparser import ConfigParser; from itertools import chain; from pathlib import Path; cfg = ConfigParser(); cfg.read_string(Path("setup.cfg").read_text()); print("\n".join(line.strip() for line in chain(cfg["options"].get("install_requires").splitlines(), "\n".join(cfg["options.extras_require"].values()).splitlines()) if line.strip()))' \
-		>> requirements/runtime-deps.in
+	@python requirements/sync-direct-runtime-deps.py
