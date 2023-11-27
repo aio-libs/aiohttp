@@ -147,7 +147,7 @@ class Fingerprint:
 
 
 if ssl is not None:
-    SSL_ALLOWED_TYPES = (ssl.SSLContext, Fingerprint, type(None))
+    SSL_ALLOWED_TYPES = (ssl.SSLContext, bool, Fingerprint, type(None))
 else:  # pragma: no cover
     SSL_ALLOWED_TYPES = type(None)
 
