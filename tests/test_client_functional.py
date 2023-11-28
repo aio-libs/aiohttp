@@ -3195,6 +3195,21 @@ async def test_read_timeout(aiohttp_client: Any) -> None:
         await client.get("/")
 
 
+async def test_socket_timeout(aiohttp_client: Any) -> None:
+    async def handler(request):
+        await asyncio.sleep(5)
+        return web.Response()
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    timeout = aiohttp.ClientTimeout(sock_read=0.1)
+    client = await aiohttp_client(app, timeout=timeout)
+
+    with pytest.raises(SocketTimeoutError):
+        await client.get("/")
+
+
 async def test_read_timeout_closes_connection(aiohttp_client: AiohttpClient) -> None:
     request_count = 0
 
