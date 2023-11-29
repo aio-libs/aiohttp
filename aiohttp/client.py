@@ -24,7 +24,6 @@ from typing import (
     Generic,
     Iterable,
     List,
-    Literal,
     Mapping,
     Optional,
     Set,
