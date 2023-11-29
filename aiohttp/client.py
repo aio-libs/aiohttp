@@ -675,7 +675,7 @@ class ClientSession:
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
-        ssl: Union[SSLContext, Literal[False], None, Fingerprint] = None,
+        ssl: Union[SSLContext, bool, Fingerprint] = True,
         proxy_headers: Optional[LooseHeaders] = None,
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
@@ -721,7 +721,7 @@ class ClientSession:
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
-        ssl: Union[SSLContext, Literal[False], None, Fingerprint] = None,
+        ssl: Union[SSLContext, bool, Fingerprint] = True,
         proxy_headers: Optional[LooseHeaders] = None,
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
@@ -776,14 +776,13 @@ class ClientSession:
             extstr = ws_ext_gen(compress=compress)
             real_headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = extstr
 
-        # For the customers that mistakenly pass in True, convert it to None to use default ssl context
-        if ssl is True:
+        # For the sake of backward compatibility, if user passes in None, convert it to True
+        if ssl is None:
             warnings.warn(
-                "True is not a valid value for the ssl parameter; "
-                "using default ssl context. Previously this "
-                "would silently disable verification.",
+                "None is a deprecated value for the ssl parameter; "
+                "using True for default ssl context.",
             )
-            ssl = None
+            ssl = True
 
         verify_ssl_type(ssl)
 

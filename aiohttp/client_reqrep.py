@@ -159,7 +159,7 @@ class ConnectionKey:
     host: str
     port: Optional[int]
     is_ssl: bool
-    ssl: Union[SSLContext, None, Literal[False], Fingerprint]
+    ssl: Union[SSLContext, bool, Fingerprint]
     proxy: Optional[URL]
     proxy_auth: Optional[BasicAuth]
     proxy_headers_hash: Optional[int]  # hash(CIMultiDict)
@@ -213,7 +213,7 @@ class ClientRequest:
         proxy_auth: Optional[BasicAuth] = None,
         timer: Optional[BaseTimerContext] = None,
         session: Optional["ClientSession"] = None,
-        ssl: Union[SSLContext, Literal[False], Fingerprint, None] = None,
+        ssl: Union[SSLContext, bool, Fingerprint] = True,
         proxy_headers: Optional[LooseHeaders] = None,
         traces: Optional[List["Trace"]] = None,
         trust_env: bool = False,
@@ -248,7 +248,7 @@ class ClientRequest:
             real_response_class = response_class
         self.response_class: Type[ClientResponse] = real_response_class
         self._timer = timer if timer is not None else TimerNoop()
-        self._ssl = ssl
+        self._ssl = ssl if ssl is not None else True
         self.server_hostname = server_hostname
 
         if loop.get_debug():
@@ -290,7 +290,7 @@ class ClientRequest:
         return self.url.scheme in ("https", "wss")
 
     @property
-    def ssl(self) -> Union["SSLContext", None, Literal[False], Fingerprint]:
+    def ssl(self) -> Union["SSLContext", bool, Fingerprint]:
         return self._ssl
 
     @property
