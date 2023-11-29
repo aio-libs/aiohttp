@@ -147,7 +147,7 @@ class ClientConnectorError(ClientOSError):
         return self._conn_key.port
 
     @property
-    def ssl(self) -> Union[SSLContext, None, bool, "Fingerprint"]:
+    def ssl(self) -> Union[SSLContext, bool, "Fingerprint"]:
         return self._conn_key.ssl
 
     def __str__(self) -> str:
