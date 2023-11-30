@@ -347,7 +347,7 @@ class ClientSession:
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
         timeout: Union[ClientTimeout, _SENTINEL, None] = sentinel,
-        ssl: Optional[Union[SSLContext, bool, Fingerprint]] = True,
+        ssl: Union[SSLContext, bool, Fingerprint] = True,
         server_hostname: Optional[str] = None,
         proxy_headers: Optional[LooseHeaders] = None,
         trace_request_ctx: Optional[SimpleNamespace] = None,
