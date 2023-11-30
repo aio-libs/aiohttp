@@ -19,7 +19,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver
-from aiohttp.client_exceptions import TooManyRedirects
+from aiohttp.client_exceptions import SocketTimeoutError, TooManyRedirects
 from aiohttp.pytest_plugin import AiohttpClient, TestClient
 from aiohttp.test_utils import unused_port
 
@@ -3192,6 +3192,21 @@ async def test_read_timeout(aiohttp_client: Any) -> None:
     client = await aiohttp_client(app, timeout=timeout)
 
     with pytest.raises(aiohttp.ServerTimeoutError):
+        await client.get("/")
+
+
+async def test_socket_timeout(aiohttp_client: Any) -> None:
+    async def handler(request):
+        await asyncio.sleep(5)
+        return web.Response()
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    timeout = aiohttp.ClientTimeout(sock_read=0.1)
+    client = await aiohttp_client(app, timeout=timeout)
+
+    with pytest.raises(SocketTimeoutError):
         await client.get("/")
 
 
