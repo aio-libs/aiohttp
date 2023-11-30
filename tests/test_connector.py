@@ -1144,6 +1144,7 @@ async def test_cleanup(key: Any) -> None:
     existing_handle = conn._cleanup_handle = mock.Mock()
 
     conn._cleanup()
+    await asyncio.sleep(0.1)  # Mitigate race condition on slow systems
     assert existing_handle.cancel.called
     assert conn._conns == {}
     assert conn._cleanup_handle is None

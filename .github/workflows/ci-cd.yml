@@ -231,6 +231,7 @@ jobs:
         COLOR: yes
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
         PIP_USER: 1
+        PYTHONPATH: .
       run: >-
         PATH="${HOME}/Library/Python/3.11/bin:${HOME}/.local/bin:${PATH}"
         pytest
@@ -240,6 +241,7 @@ jobs:
       env:
         COLOR: yes
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
+        PYTHONPATH: .
       run: >-  # `exit 1` makes sure that the job remains red with flaky runs
         pytest --no-cov -vvvvv --lf && exit 1
       shell: bash
@@ -248,6 +250,7 @@ jobs:
         COLOR: yes
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
         PIP_USER: 1
+        PYTHONPATH: .
       run: python -X dev -m pytest -m dev_mode --cov-append
       shell: bash
     - name: Turn coverage into xml

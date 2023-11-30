@@ -3,10 +3,11 @@
 
 coverage
 mypy; implementation_name == "cpython"
-proxy.py
+proxy.py >= 2.4.4rc3
 pytest
 pytest-cov
 pytest-mock
+pytest-xdist; python_version >= "3.8" or sys_platform == "win32"
 python-on-whales
 re-assert
 setuptools-git
