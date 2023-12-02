@@ -8,7 +8,7 @@ from yarl import URL
 
 from .client_reqrep import ClientResponse
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .client import ClientSession
 
     _ParamT_contra = TypeVar("_ParamT_contra", contravariant=True)

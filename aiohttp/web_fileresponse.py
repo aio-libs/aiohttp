@@ -28,7 +28,7 @@ from .web_response import StreamResponse
 
 __all__ = ("FileResponse",)
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .web_request import BaseRequest
 
 
