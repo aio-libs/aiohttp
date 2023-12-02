@@ -101,7 +101,7 @@ from .tracing import (
     TraceResponseChunkReceivedParams,
 )
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     # At runtime these are lazy-loaded at the bottom of the file.
     from .worker import GunicornUVLoopWebWorker, GunicornWebWorker
 

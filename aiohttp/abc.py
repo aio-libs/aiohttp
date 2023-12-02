@@ -20,7 +20,7 @@ from yarl import URL
 
 from .typedefs import LooseCookies
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .web_app import Application
     from .web_exceptions import HTTPException
     from .web_request import BaseRequest, Request
@@ -129,7 +129,7 @@ class AbstractResolver(ABC):
         """Release resolver"""
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     IterableBase = Iterable[Morsel[str]]
 else:
     IterableBase = Iterable

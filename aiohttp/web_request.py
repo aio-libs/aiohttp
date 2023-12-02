@@ -65,7 +65,7 @@ from .web_response import StreamResponse
 __all__ = ("BaseRequest", "FileField", "Request")
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .web_app import Application
     from .web_protocol import RequestHandler
     from .web_urldispatcher import UrlMappingMatchInfo
