@@ -20,7 +20,7 @@ from . import hdrs
 from .abc import AbstractView
 from .typedefs import Handler, PathLike
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .web_request import Request
     from .web_response import StreamResponse
     from .web_urldispatcher import AbstractRoute, UrlDispatcher

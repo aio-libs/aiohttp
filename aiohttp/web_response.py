@@ -44,7 +44,7 @@ from .typedefs import JSONEncoder, LooseHeaders
 __all__ = ("ContentCoding", "StreamResponse", "Response", "json_response")
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .web_request import BaseRequest
 
     BaseClass = MutableMapping[str, Any]

@@ -17,7 +17,7 @@ from yarl import URL
 DEFAULT_JSON_ENCODER = json.dumps
 DEFAULT_JSON_DECODER = json.loads
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     _CIMultiDict = CIMultiDict[str]
     _CIMultiDictProxy = CIMultiDictProxy[str]
     _MultiDict = MultiDict[str]
