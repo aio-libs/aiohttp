@@ -81,7 +81,7 @@ except ImportError:  # pragma: no cover
 __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .client import ClientSession
     from .connector import Connection
     from .tracing import Trace

@@ -69,7 +69,7 @@ __all__ = (
 )
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .web_app import Application
 
     BaseDict = Dict[str, str]

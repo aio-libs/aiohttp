@@ -50,7 +50,7 @@ from .web import (
 )
 from .web_protocol import _RequestHandler
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from ssl import SSLContext
 else:
     SSLContext = None
