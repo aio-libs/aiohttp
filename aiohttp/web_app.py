@@ -60,7 +60,7 @@ from .web_urldispatcher import (
 __all__ = ("Application", "CleanupError")
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     _AppSignal = Signal[Callable[["Application"], Awaitable[None]]]
     _RespPrepareSignal = Signal[Callable[[Request, StreamResponse], Awaitable[None]]]
     _Middlewares = FrozenList[Middleware]
@@ -561,7 +561,7 @@ class CleanupError(RuntimeError):
         return cast(List[BaseException], self.args[1])
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     _CleanupContextBase = FrozenList[Callable[[Application], AsyncIterator[None]]]
 else:
     _CleanupContextBase = FrozenList
