@@ -3,7 +3,7 @@
 
 coverage
 mypy; implementation_name == "cpython"
-proxy.py
+proxy.py >= 2.4.4rc4
 pytest
 pytest-cov
 pytest-mock
