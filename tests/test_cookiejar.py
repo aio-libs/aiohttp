@@ -3,21 +3,16 @@ import datetime
 import itertools
 import os
 import pickle
-import sys
 import tempfile
 import unittest
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from unittest import mock
 
 import pytest
+from freezegun import freeze_time
 from yarl import URL
 
 from aiohttp import CookieJar, DummyCookieJar
-
-try:
-    from time_machine import travel
-except ImportError:
-    travel = None  # type: ignore[assignment]
 
 
 def dump_cookiejar() -> bytes:  # pragma: no cover
@@ -412,10 +407,10 @@ class TestCookieJarSafe(TestCookieJarBase):
         elif isinstance(send_time, float):
             send_time = datetime.datetime.fromtimestamp(send_time)
 
-        with travel(update_time, tick=False):
+        with freeze_time(update_time):
             self.jar.update_cookies(self.cookies_to_send)
 
-        with travel(send_time, tick=False):
+        with freeze_time(send_time):
             cookies_sent = self.jar.filter_cookies(URL(url))
 
         self.jar.clear()
@@ -607,10 +602,6 @@ class TestCookieJarSafe(TestCookieJarBase):
         self.assertEqual(cookies_received["path-cookie"]["path"], "/somepath")
         self.assertEqual(cookies_received["wrong-path-cookie"]["path"], "/")
 
-    @unittest.skipIf(
-        sys.implementation.name != "cpython",
-        reason="time_machine leverages CPython specific pointers https://github.com/adamchainz/time-machine/issues/305",
-    )
     def test_expires(self) -> None:
         ts_before = datetime.datetime(
             1975, 1, 1, tzinfo=datetime.timezone.utc
@@ -632,10 +623,6 @@ class TestCookieJarSafe(TestCookieJarBase):
 
         self.assertEqual(set(cookies_sent.keys()), {"shared-cookie"})
 
-    @unittest.skipIf(
-        sys.implementation.name != "cpython",
-        reason="time_machine leverages CPython specific pointers https://github.com/adamchainz/time-machine/issues/305",
-    )
     def test_max_age(self) -> None:
         cookies_sent = self.timed_request("http://maxagetest.com/", 1000, 1000)
 
@@ -783,10 +770,6 @@ async def test_cookie_jar_clear_all():
     assert len(sut) == 0
 
 
-@pytest.mark.skipif(
-    sys.implementation.name != "cpython",
-    reason="time_machine leverages CPython specific pointers https://github.com/adamchainz/time-machine/issues/305",
-)
 async def test_cookie_jar_clear_expired():
     sut = CookieJar()
 
@@ -795,11 +778,11 @@ async def test_cookie_jar_clear_expired():
     cookie["foo"] = "bar"
     cookie["foo"]["expires"] = "Tue, 1 Jan 1990 12:00:00 GMT"
 
-    with travel("1980-01-01", tick=False):
+    with freeze_time("1980-01-01"):
         sut.update_cookies(cookie)
 
     sut.clear(lambda x: False)
-    with travel("1980-01-01", tick=False):
+    with freeze_time("1980-01-01"):
         assert len(sut) == 0
 
 
