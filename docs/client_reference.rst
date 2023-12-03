@@ -2254,6 +2254,17 @@ Connection errors
 
    Derived from :exc:`ServerConnectionError` and :exc:`asyncio.TimeoutError`
 
+.. class:: ConnectionTimeoutError
+
+   Connection timeout on request: e.g. read timeout.
+
+   Derived from :exc:`ServerTimeoutError`
+
+.. class:: SocketTimeoutError
+
+   Reading from socket timeout.
+
+   Derived from :exc:`ServerTimeoutError`
 
 Hierarchy of exceptions
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -2283,6 +2294,10 @@ Hierarchy of exceptions
       * :exc:`ServerFingerprintMismatch`
 
       * :exc:`ServerTimeoutError`
+
+        * :exc:`ConnectionTimeoutError`
+
+        * :exc:`SocketTimeoutError`
 
   * :exc:`ClientPayloadError`
 
