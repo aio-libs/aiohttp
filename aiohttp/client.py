@@ -39,25 +39,27 @@ from yarl import URL
 from . import hdrs, http, payload
 from .abc import AbstractCookieJar
 from .client_exceptions import (
-    ClientConnectionError as ClientConnectionError,
-    ClientConnectorCertificateError as ClientConnectorCertificateError,
-    ClientConnectorError as ClientConnectorError,
-    ClientConnectorSSLError as ClientConnectorSSLError,
-    ClientError as ClientError,
-    ClientHttpProxyError as ClientHttpProxyError,
-    ClientOSError as ClientOSError,
-    ClientPayloadError as ClientPayloadError,
-    ClientProxyConnectionError as ClientProxyConnectionError,
-    ClientResponseError as ClientResponseError,
-    ClientSSLError as ClientSSLError,
-    ContentTypeError as ContentTypeError,
-    InvalidURL as InvalidURL,
-    ServerConnectionError as ServerConnectionError,
-    ServerDisconnectedError as ServerDisconnectedError,
-    ServerFingerprintMismatch as ServerFingerprintMismatch,
-    ServerTimeoutError as ServerTimeoutError,
-    TooManyRedirects as TooManyRedirects,
-    WSServerHandshakeError as WSServerHandshakeError,
+    ClientConnectionError,
+    ClientConnectorCertificateError,
+    ClientConnectorError,
+    ClientConnectorSSLError,
+    ClientError,
+    ClientHttpProxyError,
+    ClientOSError,
+    ClientPayloadError,
+    ClientProxyConnectionError,
+    ClientResponseError,
+    ClientSSLError,
+    ConnectionTimeoutError,
+    ContentTypeError,
+    InvalidURL,
+    ServerConnectionError,
+    ServerDisconnectedError,
+    ServerFingerprintMismatch,
+    ServerTimeoutError,
+    SocketTimeoutError,
+    TooManyRedirects,
+    WSServerHandshakeError,
 )
 from .client_reqrep import (
     ClientRequest as ClientRequest,
@@ -105,12 +107,14 @@ __all__ = (
     "ClientProxyConnectionError",
     "ClientResponseError",
     "ClientSSLError",
+    "ConnectionTimeoutError",
     "ContentTypeError",
     "InvalidURL",
     "ServerConnectionError",
     "ServerDisconnectedError",
     "ServerFingerprintMismatch",
     "ServerTimeoutError",
+    "SocketTimeoutError",
     "TooManyRedirects",
     "WSServerHandshakeError",
     # client_reqrep
@@ -575,8 +579,8 @@ class ClientSession:
                                 req, traces=traces, timeout=real_timeout
                             )
                     except asyncio.TimeoutError as exc:
-                        raise ServerTimeoutError(
-                            "Connection timeout " "to host {}".format(url)
+                        raise ConnectionTimeoutError(
+                            f"Connection timeout to host {url}"
                         ) from exc
 
                     assert conn.transport is not None
