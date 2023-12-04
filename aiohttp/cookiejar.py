@@ -79,7 +79,7 @@ class CookieJar(AbstractCookieJar):
         *,
         unsafe: bool = False,
         quote_cookie: bool = True,
-        treat_as_secure_origin: Union[StrOrURL, List[StrOrURL], None] = None,
+        treat_as_secure_origin: Union[StrOrURL, List[StrOrURL], None] = None
     ) -> None:
         self._cookies: DefaultDict[Tuple[str, str], SimpleCookie] = defaultdict(
             SimpleCookie
@@ -263,11 +263,8 @@ class CookieJar(AbstractCookieJar):
                 request_origin = request_url.origin()
             is_not_secure = request_origin not in self._treat_as_secure_origin
 
-        # d: domain, d could be subdomain
-        # p: path
-        d = hostname
-
         pairs = []
+        d = hostname
         while d:
             p = request_url.path
             while p:
