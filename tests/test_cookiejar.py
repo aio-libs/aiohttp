@@ -281,7 +281,7 @@ async def test_filter_cookies_str_deprecated(loop: Any) -> None:
                 "no-path-cookie",
                 "path1-cookie",
             ],
-        )
+        ),
     ],
     ids=(
         "/one/two/ path",
