@@ -300,7 +300,7 @@ async def test_filter_cookies_with_domain_path_lookup(loop: Any) -> None:
                 "shared-cookie",
                 "path3-cookie",
                 "path4-cookie",
-            ]
+            ],
         ),
         (
             "http://test1.example.com/",
@@ -309,17 +309,18 @@ async def test_filter_cookies_with_domain_path_lookup(loop: Any) -> None:
                 "domain-cookie",
                 "subdomain1-cookie",
                 "dotted-domain-cookie",
-            ]
-        )
-
+            ],
+        ),
     ],
     ids=(
         "/one/two/ path",
         "test1.example.com subdomain",
-    )
+    ),
 )
 async def test_filter_cookies_with_domain_path_lookup_multilevelpath(
-    loop: Any, url: Any, expected_cookies: Any,
+    loop: Any,
+    url: Any,
+    expected_cookies: Any,
 ) -> None:
     jar = CookieJar()
     cookies = SimpleCookie(
