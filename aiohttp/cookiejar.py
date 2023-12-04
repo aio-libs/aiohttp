@@ -286,7 +286,6 @@ class CookieJar(AbstractCookieJar):
 
         # shared cookie, it should have max of 1 entry
         pairs.add(("", "/"))
-        print(f"pairs: {pairs}")
 
         import itertools
 
