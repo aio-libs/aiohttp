@@ -255,38 +255,56 @@ async def test_filter_cookies_str_deprecated(loop: Any) -> None:
 
 @pytest.mark.parametrize(
     ("url", "expected_cookies"),
-    [
+    (
         (
             "http://pathtest.com/one/two/",
-            [
+            (
+                "no-path-cookie",
+                "path1-cookie",
                 "path2-cookie",
                 "shared-cookie",
                 "path3-cookie",
                 "path4-cookie",
-            ],
+            ),
+        ),
+        (
+            "http://pathtest.com/one/two",
+            (
+                "no-path-cookie",
+                "path1-cookie",
+                "path2-cookie",
+                "shared-cookie",
+                "path3-cookie",
+            ),
+        ),
+        (
+            "http://pathtest.com/one/two/three/",
+            (
+                "no-path-cookie",
+                "path1-cookie",
+                "path2-cookie",
+                "shared-cookie",
+                "path3-cookie",
+                "path4-cookie",
+            ),
         ),
         (
             "http://test1.example.com/",
-            [
+            (
                 "shared-cookie",
                 "domain-cookie",
                 "subdomain1-cookie",
                 "dotted-domain-cookie",
-            ],
+            ),
         ),
         (
             "http://pathtest.com/",
-            [
+            (
                 "shared-cookie",
                 "no-path-cookie",
                 "path1-cookie",
-            ],
+            ),
         ),
-    ],
-    ids=(
-        "/one/two/ path",
-        "test1.example.com subdomain",
-        "pathtest.com",
     ),
 )
 async def test_filter_cookies_with_domain_path_lookup_multilevelpath(
