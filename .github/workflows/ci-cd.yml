@@ -290,12 +290,12 @@ jobs:
       uses: actions/checkout@v4
       with:
         submodules: true
-    - name: Setup Python ${{ matrix.pyver }}
+    - name: Setup Python ${{ env.PYTHON_VERSION }}
       id: python-install
       uses: actions/setup-python@v4
       with:
         allow-prereleases: true
-        python-version: ${{ matrix.pyver }}
+        python-version: ${{ env.PYTHON_VERSION }}
     - name: Get pip cache dir
       id: pip-cache
       run: |
