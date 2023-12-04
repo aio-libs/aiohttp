@@ -290,7 +290,37 @@ async def test_filter_cookies_with_domain_path_lookup(loop: Any) -> None:
         assert c in expected_cookies
 
 
-async def test_filter_cookies_with_domain_path_lookup_subdomain(loop: Any) -> None:
+@pytest.mark.parametrize(
+    ("url", "expected_cookies"),
+    [
+        (
+            "http://pathtest.com/one/two/",
+            [
+                "path2-cookie",
+                "shared-cookie",
+                "path3-cookie",
+                "path4-cookie",
+            ]
+        ),
+        (
+            "http://test1.example.com/",
+            [
+                "shared-cookie",
+                "domain-cookie",
+                "subdomain1-cookie",
+                "dotted-domain-cookie",
+            ]
+        )
+
+    ],
+    ids=(
+        "/one/two/ path",
+        "test1.example.com subdomain",
+    )
+)
+async def test_filter_cookies_with_domain_path_lookup_multilevelpath(
+    loop: Any, url: Any, expected_cookies: Any,
+) -> None:
     jar = CookieJar()
     cookies = SimpleCookie(
         "shared-cookie=first; "
@@ -315,53 +345,9 @@ async def test_filter_cookies_with_domain_path_lookup_subdomain(loop: Any) -> No
         " Expires=string;"
     )
     jar.update_cookies(cookies)
-    cookies = jar.filter_cookies(URL("http://test1.example.com/"))
+    cookies = jar.filter_cookies(URL(url))
 
-    expected_cookies = [
-        "shared-cookie",
-        "domain-cookie",
-        "subdomain1-cookie",
-        "dotted-domain-cookie",
-    ]
-    assert len(cookies) == 4
-    for c in cookies:
-        assert c in expected_cookies
-
-
-async def test_filter_cookies_with_domain_path_lookup_multilevelpath(loop: Any) -> None:
-    jar = CookieJar()
-    cookies = SimpleCookie(
-        "shared-cookie=first; "
-        "domain-cookie=second; Domain=example.com; "
-        "subdomain1-cookie=third; Domain=test1.example.com; "
-        "subdomain2-cookie=fourth; Domain=test2.example.com; "
-        "dotted-domain-cookie=fifth; Domain=.example.com; "
-        "different-domain-cookie=sixth; Domain=different.org; "
-        "secure-cookie=seventh; Domain=secure.com; Secure; "
-        "no-path-cookie=eighth; Domain=pathtest.com; "
-        "path1-cookie=ninth; Domain=pathtest.com; Path=/; "
-        "path2-cookie=tenth; Domain=pathtest.com; Path=/one; "
-        "path3-cookie=eleventh; Domain=pathtest.com; Path=/one/two; "
-        "path4-cookie=twelfth; Domain=pathtest.com; Path=/one/two/; "
-        "expires-cookie=thirteenth; Domain=expirestest.com; Path=/;"
-        " Expires=Tue, 1 Jan 1980 12:00:00 GMT; "
-        "max-age-cookie=fourteenth; Domain=maxagetest.com; Path=/;"
-        " Max-Age=60; "
-        "invalid-max-age-cookie=fifteenth; Domain=invalid-values.com; "
-        " Max-Age=string; "
-        "invalid-expires-cookie=sixteenth; Domain=invalid-values.com; "
-        " Expires=string;"
-    )
-    jar.update_cookies(cookies)
-    cookies = jar.filter_cookies(URL("http://pathtest.com/one/two/"))
-
-    expected_cookies = [
-        "path2-cookie",
-        "shared-cookie",
-        "path3-cookie",
-        "path4-cookie",
-    ]
-    assert len(cookies) == 4
+    assert len(cookies) == len(expected_cookies)
     for c in cookies:
         assert c in expected_cookies
 
