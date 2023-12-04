@@ -278,11 +278,10 @@ class CookieJar(AbstractCookieJar):
                     p = None
 
             # handle last element for split
-            leftovers = d.split(".", maxsplit=1)
-            if len(leftovers) > 1:
-                d = leftovers[-1]
-            else:
-                d = None
+            try:
+                d = d.split(".", maxsplit=1)[1]
+            except IndexError:
+                d = ""
 
         # shared cookie, it should have max of 1 entry
         pairs.add(("", "/"))
