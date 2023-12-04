@@ -261,8 +261,43 @@ class CookieJar(AbstractCookieJar):
                 request_origin = request_url.origin()
             is_not_secure = request_origin not in self._treat_as_secure_origin
 
+        # d: domain, d could be subdomain
+        # p: path
+        d = hostname
+
+        pairs = set()
+        while d:
+            p = request_url.path
+            while p:
+                pairs.add((d, p))
+                path_leftovers = p.rsplit("/", maxsplit=1)
+                # handle last element for rsplit
+                if len(path_leftovers) > 1:
+                    p = path_leftovers[0]
+                else:
+                    p = None
+
+            # handle last element for split
+            leftovers = d.split(".", maxsplit=1)
+            if len(leftovers) > 1:
+                d = leftovers[-1]
+            else:
+                d = None
+
+        # shared cookie, it should have max of 1 entry
+        pairs.add(("", "/"))
+        print(f'pairs: {pairs}')
+
+        import itertools
+
+        cookies = itertools.chain.from_iterable(
+            self._cookies[p].values() for p in pairs
+        )
+
+        # try push
+
         # Point 2: https://www.rfc-editor.org/rfc/rfc6265.html#section-5.4
-        for cookie in sorted(self, key=lambda c: len(c["path"])):
+        for cookie in list(cookies):
             name = cookie.key
             domain = cookie["domain"]
 
