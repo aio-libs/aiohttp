@@ -297,7 +297,7 @@ class CookieJar(AbstractCookieJar):
         # try push
 
         # Point 2: https://www.rfc-editor.org/rfc/rfc6265.html#section-5.4
-        for cookie in list(cookies):
+        for cookie in cookies:
             name = cookie.key
             domain = cookie["domain"]
 
