@@ -323,7 +323,7 @@ jobs:
       if: ${{ matrix.no-extensions == '' }}
       run: |
         make cythonize
-    - uses: mymindstorm/setup-emsdk@ab889da2abbcbb280f91ec4c215d3bb4f3a8f775 # v12
+    - uses: mymindstorm/setup-emsdk@v12
       with:
         version: ${{ env.EMSCRIPTEN_VERSION }}
         actions-cache-folder: emsdk-cache
@@ -333,17 +333,17 @@ jobs:
       run: |
         CFLAGS=-g2 LDFLAGS=-g2 pyodide build
 
-    # - name: set up node
-    #   uses: actions/setup-node@5e21ff4d9bc1a8cf6de233a3057d20ec6b3fb69d # v3.8.1
-    #   with:
-    #     node-version: ${{ env.NODE_VERSION }}
+    - name: set up node
+      uses: actions/setup-node@v3.8.1
+      with:
+        node-version: ${{ env.NODE_VERSION }}
 
-    # - name: Set up Pyodide virtual environment
-    #   run: |
-    #     pyodide venv .venv-pyodide
-    #     source .venv-pyodide/bin/activate
-    #     pip install dist/*.whl
-    #     python -c "import sys; print(sys.platform)"
+    - name: Set up Pyodide virtual environment
+      run: |
+        pyodide venv .venv-pyodide
+        source .venv-pyodide/bin/activate
+        pip install dist/*.whl
+        python -c "import sys; print(sys.platform)"
 
   check:  # This job does nothing and is only used for the branch protection
     if: always()
