@@ -7,6 +7,7 @@ import pickle
 import re
 import time
 import warnings
+import itertools
 from collections import defaultdict
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from math import ceil
@@ -265,28 +266,21 @@ class CookieJar(AbstractCookieJar):
         # p: path
         d = hostname
 
-        pairs = set()
+        pairs = []
         while d:
             p = request_url.path
             while p:
-                pairs.add((d, p))
-                path_leftovers = p.rsplit("/", maxsplit=1)
-                # handle last element for rsplit
-                if len(path_leftovers) > 1:
-                    p = path_leftovers[0]
-                else:
-                    p = None
+                pairs.append((d, p))
+                p = p.rsplit("/", maxsplit=1)[0]
 
-            # handle last element for split
             try:
                 d = d.split(".", maxsplit=1)[1]
             except IndexError:
+                # handle last element for split
                 d = ""
 
         # shared cookie, it should have max of 1 entry
-        pairs.add(("", "/"))
-
-        import itertools
+        pairs.append(("", "/"))
 
         cookies = itertools.chain.from_iterable(
             self._cookies[p].values() for p in pairs
