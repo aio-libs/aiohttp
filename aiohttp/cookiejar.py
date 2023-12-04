@@ -286,8 +286,6 @@ class CookieJar(AbstractCookieJar):
             self._cookies[p].values() for p in reversed(pairs)
         )
 
-        # try push
-
         # Point 2: https://www.rfc-editor.org/rfc/rfc6265.html#section-5.4
         for cookie in cookies:
             name = cookie.key

@@ -253,43 +253,6 @@ async def test_filter_cookies_str_deprecated(loop: Any) -> None:
         jar.filter_cookies("http://éé.com")
 
 
-async def test_filter_cookies_with_domain_path_lookup(loop: Any) -> None:
-    jar = CookieJar()
-    cookies = SimpleCookie(
-        "shared-cookie=first; "
-        "domain-cookie=second; Domain=example.com; "
-        "subdomain1-cookie=third; Domain=test1.example.com; "
-        "subdomain2-cookie=fourth; Domain=test2.example.com; "
-        "dotted-domain-cookie=fifth; Domain=.example.com; "
-        "different-domain-cookie=sixth; Domain=different.org; "
-        "secure-cookie=seventh; Domain=secure.com; Secure; "
-        "no-path-cookie=eighth; Domain=pathtest.com; "
-        "path1-cookie=ninth; Domain=pathtest.com; Path=/; "
-        "path2-cookie=tenth; Domain=pathtest.com; Path=/one; "
-        "path3-cookie=eleventh; Domain=pathtest.com; Path=/one/two; "
-        "path4-cookie=twelfth; Domain=pathtest.com; Path=/one/two/; "
-        "expires-cookie=thirteenth; Domain=expirestest.com; Path=/;"
-        " Expires=Tue, 1 Jan 1980 12:00:00 GMT; "
-        "max-age-cookie=fourteenth; Domain=maxagetest.com; Path=/;"
-        " Max-Age=60; "
-        "invalid-max-age-cookie=fifteenth; Domain=invalid-values.com; "
-        " Max-Age=string; "
-        "invalid-expires-cookie=sixteenth; Domain=invalid-values.com; "
-        " Expires=string;"
-    )
-    jar.update_cookies(cookies)
-    cookies = jar.filter_cookies(URL("http://pathtest.com/"))
-
-    expected_cookies = [
-        "shared-cookie",
-        "no-path-cookie",
-        "path1-cookie",
-    ]
-    assert len(cookies) == 3
-    for c in cookies:
-        assert c in expected_cookies
-
-
 @pytest.mark.parametrize(
     ("url", "expected_cookies"),
     [
@@ -311,10 +274,19 @@ async def test_filter_cookies_with_domain_path_lookup(loop: Any) -> None:
                 "dotted-domain-cookie",
             ],
         ),
+        (
+            "http://pathtest.com/",
+            [
+                "shared-cookie",
+                "no-path-cookie",
+                "path1-cookie",
+            ],
+        )
     ],
     ids=(
         "/one/two/ path",
         "test1.example.com subdomain",
+        "pathtest.com",
     ),
 )
 async def test_filter_cookies_with_domain_path_lookup_multilevelpath(
