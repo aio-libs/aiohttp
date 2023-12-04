@@ -1,13 +1,13 @@
 import calendar
 import contextlib
 import datetime
+import itertools
 import os  # noqa
 import pathlib
 import pickle
 import re
 import time
 import warnings
-import itertools
 from collections import defaultdict
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from math import ceil
