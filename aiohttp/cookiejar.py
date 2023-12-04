@@ -78,7 +78,7 @@ class CookieJar(AbstractCookieJar):
         *,
         unsafe: bool = False,
         quote_cookie: bool = True,
-        treat_as_secure_origin: Union[StrOrURL, List[StrOrURL], None] = None
+        treat_as_secure_origin: Union[StrOrURL, List[StrOrURL], None] = None,
     ) -> None:
         self._cookies: DefaultDict[Tuple[str, str], SimpleCookie] = defaultdict(
             SimpleCookie
@@ -286,7 +286,7 @@ class CookieJar(AbstractCookieJar):
 
         # shared cookie, it should have max of 1 entry
         pairs.add(("", "/"))
-        print(f'pairs: {pairs}')
+        print(f"pairs: {pairs}")
 
         import itertools
 
