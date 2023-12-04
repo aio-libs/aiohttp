@@ -1,1 +1,1 @@
-added server_hostname param to ws_connect
+Added ``server_hostname`` parameter to ``ws_connect``.
