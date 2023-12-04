@@ -323,9 +323,8 @@ async def test_filter_cookies_with_domain_path_lookup_subdomain(loop: Any) -> No
         "subdomain1-cookie",
         "dotted-domain-cookie",
     ]
-    # assert len(cookies) == 4
+    assert len(cookies) == 4
     for c in cookies:
-        print(f"c: {c}")
         assert c in expected_cookies
 
 
@@ -364,7 +363,6 @@ async def test_filter_cookies_with_domain_path_lookup_multilevelpath(loop: Any) 
     ]
     assert len(cookies) == 4
     for c in cookies:
-        # print(f"c: {c}")
         assert c in expected_cookies
 
 
