@@ -283,7 +283,7 @@ class CookieJar(AbstractCookieJar):
         pairs.append(("", "/"))
 
         cookies = itertools.chain.from_iterable(
-            self._cookies[p].values() for p in pairs
+            self._cookies[p].values() for p in reversed(pairs)
         )
 
         # try push
