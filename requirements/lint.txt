@@ -22,7 +22,7 @@ identify==2.5.26
     # via pre-commit
 iniconfig==2.0.0
     # via pytest
-mypy==1.7.0 ; implementation_name == "cpython"
+mypy==1.7.1 ; implementation_name == "cpython"
     # via -r requirements/lint.in
 mypy-extensions==1.0.0
     # via mypy
@@ -47,7 +47,7 @@ tomli==2.0.1
     #   mypy
     #   pytest
     #   slotscheck
-typing-extensions==4.7.1
+typing-extensions==4.8.0
     # via
     #   -r requirements/typing-extensions.in
     #   aioredis

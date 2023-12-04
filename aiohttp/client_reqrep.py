@@ -88,7 +88,7 @@ except ImportError:  # pragma: no cover
 __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .client import ClientSession
     from .connector import Connection, PyodideConnection
     from .tracing import Trace
@@ -1013,19 +1013,14 @@ class ClientResponse(HeadersMixin):
         if self._closed:
             return
 
-        if self._connection is not None:
-            # websocket, protocol could be None because
-            # connection could be detached
-            if (
-                self._connection.protocol is not None
-                and self._connection.protocol.upgraded
-            ):
-                return
-
-            self._release_connection()
+        # protocol could be None because connection could be detached
+        protocol = self._connection and self._connection.protocol
+        if protocol is not None and protocol.upgraded:
+            return
 
         self._closed = True
         self._cleanup_writer()
+        self._release_connection()
 
     @property
     def closed(self) -> bool:
@@ -1040,7 +1035,9 @@ class ClientResponse(HeadersMixin):
             return
 
         self._cleanup_writer()
-        self._release_connection()
+        if self._connection is not None:
+            self._connection.close()
+            self._connection = None
 
     def release(self) -> Any:
         if not self._released:
@@ -1119,7 +1116,9 @@ class ClientResponse(HeadersMixin):
         elif self._released:  # Response explicitly released
             raise ClientConnectionError("Connection closed")
 
-        await self._wait_released()  # Underlying connection released
+        protocol = self._connection and self._connection.protocol
+        if protocol is None or not protocol.upgraded:
+            await self._wait_released()  # Underlying connection released
         return self._body
 
     def get_encoding(self) -> str:

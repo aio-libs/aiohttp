@@ -73,7 +73,7 @@ except ImportError:  # pragma: no cover
 __all__ = ("BaseConnector", "TCPConnector", "UnixConnector", "NamedPipeConnector")
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .client import ClientTimeout
     from .client_reqrep import ConnectionKey
     from .tracing import Trace
@@ -116,6 +116,10 @@ class Connection:
             if self._source_traceback is not None:
                 context["source_traceback"] = self._source_traceback
             self._loop.call_exception_handler(context)
+
+    def __bool__(self) -> Literal[True]:
+        """Force subclasses to not be falsy, to make checks simpler."""
+        return True
 
     @property
     def transport(self) -> Optional[asyncio.Transport]:

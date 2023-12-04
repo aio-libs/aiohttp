@@ -10,6 +10,37 @@
 
 .. towncrier release notes start
 
+3.9.1 (2023-11-26)
+==================
+
+Bugfixes
+--------
+
+- Fixed importing aiohttp under PyPy on Windows.
+
+  `#7848 <https://github.com/aio-libs/aiohttp/issues/7848>`_
+
+- Fixed async concurrency safety in websocket compressor.
+
+  `#7865 <https://github.com/aio-libs/aiohttp/issues/7865>`_
+
+- Fixed ``ClientResponse.close()`` releasing the connection instead of closing.
+
+  `#7869 <https://github.com/aio-libs/aiohttp/issues/7869>`_
+
+- Fixed a regression where connection may get closed during upgrade. -- by :user:`Dreamsorcerer`
+
+  `#7879 <https://github.com/aio-libs/aiohttp/issues/7879>`_
+
+- Fixed messages being reported as upgraded without an Upgrade header in Python parser. -- by :user:`Dreamsorcerer`
+
+  `#7895 <https://github.com/aio-libs/aiohttp/issues/7895>`_
+
+
+
+----
+
+
 3.9.0 (2023-11-18)
 ==================
 
