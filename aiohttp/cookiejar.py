@@ -210,6 +210,7 @@ class CookieJar(AbstractCookieJar):
                     # Cut everything from the last slash to the end
                     path = "/" + path[1 : path.rfind("/")]
                 cookie["path"] = path
+            path = path.rstrip("/")
 
             max_age = cookie["max-age"]
             if max_age:
@@ -272,6 +273,7 @@ class CookieJar(AbstractCookieJar):
             while p:
                 pairs.append((d, p))
                 p = p.rsplit("/", maxsplit=1)[0]
+            pairs.append((d, ""))
 
             try:
                 d = d.split(".", maxsplit=1)[1]
@@ -280,7 +282,7 @@ class CookieJar(AbstractCookieJar):
                 d = ""
 
         # shared cookie, it should have max of 1 entry
-        pairs.append(("", "/"))
+        pairs.append(("", ""))
 
         cookies = itertools.chain.from_iterable(
             self._cookies[p].values() for p in reversed(pairs)
