@@ -333,21 +333,17 @@ jobs:
       run: |
         CFLAGS=-g2 LDFLAGS=-g2 pyodide build
 
-    - name: set up node
-      uses: actions/setup-node@v3.8.1
+    - uses: pyodide/pyodide-actions/download-pyodide@v1
       with:
-        node-version: ${{ env.NODE_VERSION }}
+        version: ${{ inputs.pyodide-version }}
+        to: pyodide-dist
 
-    - name: Set up Pyodide virtual environment
-      run: |
-        pyodide venv .venv-pyodide
-        source .venv-pyodide/bin/activate
-        pip install dist/*.whl
+    - uses: pyodide/pyodide-actions/install-browser@v1
 
     - name: Test
       run: |
-        source .venv-pyodide/bin/activate
-
+        pip install pytest-pyodide
+        pytest tests/test_pyodide.py --rt chrome --dist-dir ./pyodide-dist
 
   check:  # This job does nothing and is only used for the branch protection
     if: always()

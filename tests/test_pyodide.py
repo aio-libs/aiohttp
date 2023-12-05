@@ -1,10 +1,18 @@
+import shutil
 import sys
 from asyncio import Future
 from collections.abc import Mapping
+from pathlib import Path
 from types import ModuleType
 from typing import Any
 
+import pytest
 from pytest import fixture
+
+try:
+    from pytest_pyodide import run_in_pyodide  # noqa: I900
+except ImportError:
+    run_in_pyodide = pytest.mark.skip("pytest-pyodide not installed")
 
 from aiohttp import ClientSession, client, client_reqrep, connector
 from aiohttp.connector import PyodideConnector
@@ -104,3 +112,45 @@ async def test_pyodide_mock(mock_pyodide_env: Any) -> None:
             assert response.headers["content-type"] == "text/html; charset=utf-8"
             html = await response.text()
             assert html == "abc"
+
+
+@fixture
+def install_aiohttp(selenium, request):
+    wheel = next(Path("dist").glob("*.whl"))
+    dist_dir = request.config.option.dist_dir
+    dist_wheel = dist_dir / wheel.name
+    shutil.copyfile(wheel, dist_wheel)
+    selenium.load_package(["multidict", "yarl", "aiosignal"])
+    selenium.load_package(wheel.name)
+    try:
+        yield
+    finally:
+        dist_wheel.unlink()
+
+
+@fixture
+async def url_to_fetch(request, web_server_main):
+    target_file = Path(request.config.option.dist_dir) / "test.txt"
+    target_file.write_text("hello there!")
+    server_host, server_port, _ = web_server_main
+    try:
+        yield f"http://{server_host}:{server_port}/{target_file.name}"
+    finally:
+        target_file.unlink()
+
+
+@fixture
+async def loop_wrapper(loop):
+    return None
+
+
+@run_in_pyodide
+async def test_pyodide(selenium, install_aiohttp, url_to_fetch, loop_wrapper) -> None:
+    from aiohttp import ClientSession
+
+    async with ClientSession() as session:
+        async with session.get(url_to_fetch) as response:
+            assert response.status == 200
+            assert response.headers["content-type"] == "text/plain"
+            html = await response.text()
+            assert html == "hello there!"
