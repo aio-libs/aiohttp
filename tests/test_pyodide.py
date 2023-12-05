@@ -89,7 +89,7 @@ async def test_pyodide_mock(mock_pyodide_env: Any) -> None:
             "User-Agent": "Python/3.11 aiohttp/4.0.0a2.dev0",
         }
         assert request.kwargs["signal"] == "AbortSignal"
-        assert request.kwargs["body"] == b""
+        assert request.kwargs["body"] is None
         fut = Future()
         resp = JsResponse(
             200, "OK", [["Content-type", "text/html; charset=utf-8"]], JsBuffer(b"abc")

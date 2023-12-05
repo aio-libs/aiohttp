@@ -699,8 +699,10 @@ def _make_js_request(
     from js import Headers, Request  # type:ignore[import-not-found] # noqa: I900
     from pyodide.ffi import to_js  # type:ignore[import-not-found] # noqa: I900
 
+    if method.lower() in ["get", "head"]:
+        body = None
     # TODO: to_js does an unnecessary copy.
-    if isinstance(body, payload.Payload):
+    elif isinstance(body, payload.Payload):
         body = to_js(body._value)
     elif isinstance(body, (bytes, bytearray)):
         body = to_js(body)
