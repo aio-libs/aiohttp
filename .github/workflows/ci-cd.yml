@@ -343,7 +343,11 @@ jobs:
         pyodide venv .venv-pyodide
         source .venv-pyodide/bin/activate
         pip install dist/*.whl
-        python -c "import sys; print(sys.platform)"
+
+    - name: Test
+      run: |
+        source .venv-pyodide/bin/activate
+
 
   check:  # This job does nothing and is only used for the branch protection
     if: always()

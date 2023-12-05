@@ -589,7 +589,7 @@ class ClientRequest:
             await writer.write_eof()
             protocol.start_timeout()
 
-    def _path(self) -> str:
+    async def send(self, conn: "Connection") -> "ClientResponse":
         # Specify request target:
         # - CONNECT request must send authority form URI
         # - not CONNECT proxy must send absolute form URI
@@ -606,10 +606,7 @@ class ClientRequest:
             path = self.url.raw_path
             if self.url.raw_query_string:
                 path += "?" + self.url.raw_query_string
-        return path
 
-    async def send(self, conn: "Connection") -> "ClientResponse":
-        path = self._path()
         protocol = conn.protocol
         assert protocol is not None
         writer = StreamWriter(
@@ -731,12 +728,11 @@ class PyodideClientRequest(ClientRequest):
         if not IS_PYODIDE:
             raise RuntimeError("PyodideClientRequest only works in Pyodide")
 
-        path = self._path()
         protocol = conn.protocol
         assert protocol is not None
 
         request = _make_js_request(
-            path,
+            str(self.url),
             method=self.method,
             headers=self.headers,
             body=self.body,
