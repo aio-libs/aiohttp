@@ -13,6 +13,7 @@ import netrc
 import os
 import platform
 import re
+import socket
 import sys
 import time
 import warnings
@@ -1090,3 +1091,23 @@ def should_remove_content_length(method: str, code: int) -> bool:
         or 100 <= code < 200
         or (200 <= code < 300 and method.upper() == hdrs.METH_CONNECT)
     )
+
+
+def convert_hosts_to_addr_infos(hosts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Converts the list of hosts to a list of addr_infos.
+
+    The list of hosts is the result of a DNS lookup. The list of
+    addr_infos is the result of a call to `socket.getaddrinfo()`.
+    """
+    addr_infos: List[Dict[str, Any]] = []
+    for hinfo in hosts:
+        host = hinfo["host"]
+        is_ipv6 = is_ipv6_address(host)
+        family = socket.AF_INET6 if is_ipv6 else socket.AF_INET
+        if is_ipv6:
+            addr = (host, hinfo["port"], 0, 0)
+        else:
+            addr = (host, hinfo["port"])
+        addr_infos.append(
+            (family, hinfo["type"], hinfo["proto"], hinfo["hostname"], addr)
+        )

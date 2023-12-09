@@ -3,6 +3,7 @@ import dataclasses
 import functools
 import logging
 import random
+import socket
 import sys
 import traceback
 import warnings
@@ -13,10 +14,9 @@ from http.cookies import SimpleCookie
 from itertools import cycle, islice
 from time import monotonic
 from types import TracebackType
-from typing import (  # noqa
+from typing import (
     TYPE_CHECKING,
     Any,
-    Awaitable,
     Callable,
     DefaultDict,
     Dict,
@@ -30,6 +30,8 @@ from typing import (  # noqa
     Union,
     cast,
 )
+
+import aiohappyeyeballs
 
 from . import hdrs, helpers
 from .abc import AbstractResolver
@@ -956,16 +958,33 @@ class TCPConnector(BaseConnector):
     async def _wrap_create_connection(
         self,
         *args: Any,
+        addr_infos: List[aiohappyeyeballs.AddrInfoType],
         req: ClientRequest,
         timeout: "ClientTimeout",
         client_error: Type[Exception] = ClientConnectorError,
         **kwargs: Any,
     ) -> Tuple[asyncio.Transport, ResponseHandler]:
+        local_addrs_infos = None
+        if self._local_addr:
+            host, port = self._local_addr
+            is_ipv6 = helpers.is_ipv6_address(host)
+            family = socket.AF_INET6 if is_ipv6 else socket.AF_INET
+            if is_ipv6:
+                addr = (host, port, 0, 0)
+            else:
+                addr = (host, port)
+            local_addrs_infos = [(family, 0, 0, addr)]
         try:
             async with ceil_timeout(
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
             ):
-                return await self._loop.create_connection(*args, **kwargs)
+                sock = await aiohappyeyeballs.start_connection(
+                    addr_infos=addr_infos,
+                    local_addr_infos=local_addrs_infos,
+                    happy_eyeballs_delay=0.25,
+                    loop=self._loop,
+                )
+                return await self._loop.create_connection(*args, **kwargs, sock=sock)
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:
@@ -1120,36 +1139,27 @@ class TCPConnector(BaseConnector):
             raise ClientConnectorError(req.connection_key, exc) from exc
 
         last_exc: Optional[Exception] = None
-
-        for hinfo in hosts:
-            host = hinfo["host"]
-            port = hinfo["port"]
-
+        addr_infos = helpers.convert_hosts_to_addr_infos(hosts)
+        while addr_infos:
             # Strip trailing dots, certificates contain FQDN without dots.
             # See https://github.com/aio-libs/aiohttp/issues/3636
             server_hostname = (
-                (req.server_hostname or hinfo["hostname"]).rstrip(".")
-                if sslcontext
-                else None
+                (req.server_hostname or host).rstrip(".") if sslcontext else None
             )
 
             try:
                 transp, proto = await self._wrap_create_connection(
                     self._factory,
-                    host,
-                    port,
                     timeout=timeout,
                     ssl=sslcontext,
-                    family=hinfo["family"],
-                    proto=hinfo["proto"],
-                    flags=hinfo["flags"],
+                    addr_infos=addr_infos,
                     server_hostname=server_hostname,
-                    local_addr=self._local_addr,
                     req=req,
                     client_error=client_error,
                 )
             except ClientConnectorError as exc:
                 last_exc = exc
+                addr_infos.pop(0)
                 continue
 
             if req.is_ssl() and fingerprint:
@@ -1160,6 +1170,17 @@ class TCPConnector(BaseConnector):
                     if not self._cleanup_closed_disabled:
                         self._cleanup_closed_transports.append(transp)
                     last_exc = exc
+                    sock: socket.socket = transp.get_extra_info("socket")
+                    bad_peer = sock.getpeername()
+                    bad_addrs_infos: List[aiohappyeyeballs.AddrInfoType] = []
+                    for addr_info in addr_infos:
+                        if addr_info[-1][0] == bad_peer[0]:
+                            bad_addrs_infos.append(addr_info)
+                    if bad_addrs_infos:
+                        for bad_addr_info in bad_addrs_infos:
+                            addr_infos.remove(bad_addr_info)
+                    else:
+                        addr_infos.pop(0)
                     continue
 
             return transp, proto
