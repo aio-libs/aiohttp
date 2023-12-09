@@ -964,16 +964,11 @@ class TCPConnector(BaseConnector):
         client_error: Type[Exception] = ClientConnectorError,
         **kwargs: Any,
     ) -> Tuple[asyncio.Transport, ResponseHandler]:
-        local_addrs_infos = None
+        local_addrs_infos: Optional[List[aiohappyeyeballs.AddrInfoType]] = None
         if self._local_addr:
-            host, port = self._local_addr
-            is_ipv6 = helpers.is_ipv6_address(host)
-            family = socket.AF_INET6 if is_ipv6 else socket.AF_INET
-            if is_ipv6:
-                addr = (host, port, 0, 0)
-            else:
-                addr = (host, port)
-            local_addrs_infos = [(family, 0, 0, addr)]
+            local_addrs_infos = helpers.convert_local_addr_to_addr_infos(
+                self._local_addr
+            )
         try:
             async with ceil_timeout(
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
