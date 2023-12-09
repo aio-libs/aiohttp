@@ -335,7 +335,7 @@ jobs:
 
     - uses: pyodide/pyodide-actions/download-pyodide@v1
       with:
-        version: ${{ inputs.pyodide-version }}
+        version: ${{ env.PYODIDE_VERSION }}
         to: pyodide-dist
 
     - uses: pyodide/pyodide-actions/install-browser@v1
