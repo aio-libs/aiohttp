@@ -127,6 +127,7 @@ def _pop_addr_infos(
     addr_infos: List[aiohappyeyeballs.AddrInfoType],
     addr: Tuple[str, ...],
 ) -> None:
+    """Pop addr_info from the list of addr_infos by addr."""
     bad_addrs_infos: List[aiohappyeyeballs.AddrInfoType] = []
     for addr_info in addr_infos:
         if addr_info[-1][0] == addr[0]:
