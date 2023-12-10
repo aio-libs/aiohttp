@@ -95,6 +95,7 @@ def _convert_hosts_to_addr_infos(
 def _convert_local_addr_to_addr_infos(
     local_addr: Tuple[str, int]
 ) -> List[aiohappyeyeballs.AddrInfoType]:
+    """Convert a local_addr tuple to a list of addr_infos."""
     host, port = local_addr
     is_ipv6 = helpers.is_ipv6_address(host)
     family = socket.AF_INET6 if is_ipv6 else socket.AF_INET
