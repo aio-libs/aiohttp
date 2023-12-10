@@ -84,10 +84,7 @@ def _convert_hosts_to_addr_infos(
         host = hinfo["host"]
         is_ipv6 = helpers.is_ipv6_address(host)
         family = socket.AF_INET6 if is_ipv6 else socket.AF_INET
-        if is_ipv6:
-            addr = (host, hinfo["port"], 0, 0)
-        else:
-            addr = (host, hinfo["port"])
+        addr = (host, hinfo["port"], 0, 0) if is_ipv6 else (host, hinfo["port"])
         addr_infos.append(
             (family, socket.SOCK_STREAM, socket.IPPROTO_TCP, hinfo["hostname"], addr)
         )
@@ -100,10 +97,7 @@ def _convert_local_addr_to_addr_infos(
     host, port = local_addr
     is_ipv6 = helpers.is_ipv6_address(host)
     family = socket.AF_INET6 if is_ipv6 else socket.AF_INET
-    if is_ipv6:
-        addr = (host, port, 0, 0)
-    else:
-        addr = (host, port)
+    addr = (host, port, 0, 0) if is_ipv6 else (host, port)
     return [(family, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", addr)]
 
 
