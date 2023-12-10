@@ -102,6 +102,27 @@ def _convert_local_addr_to_addr_infos(
     return [(family, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", addr)]
 
 
+def _pop_addr_infos(
+    addr_infos: List[aiohappyeyeballs.AddrInfoType], interleave: int
+) -> aiohappyeyeballs.AddrInfoType:
+    """Pop addr_info from the list of addr_infos by family up to interleave times.
+
+    The interleave parameter is used to know how many addr_infos for
+    each family should be popped of the top of the list.
+    """
+    seen: Dict[int, int] = {}
+    to_remove: List[aiohappyeyeballs.AddrInfoType] = []
+    for addr_info in addr_infos:
+        family = addr_info[0]
+        if family not in seen:
+            seen[family] = 0
+        if seen[family] < interleave:
+            to_remove.append(addr_info)
+        seen[family] += 1
+    for addr_info in to_remove:
+        addr_infos.remove(addr_info)
+
+
 class Connection:
     _source_traceback = None
     _transport = None
@@ -782,6 +803,7 @@ class TCPConnector(BaseConnector):
         enable_cleanup_closed: bool = False,
         timeout_ceil_threshold: float = 5,
         happy_eyeballs_delay: float = 0.25,
+        interleave: int = 1,
     ) -> None:
         super().__init__(
             keepalive_timeout=keepalive_timeout,
@@ -808,6 +830,7 @@ class TCPConnector(BaseConnector):
         self._family = family
         self._local_addr = local_addr
         self._happy_eyeballs_delay = happy_eyeballs_delay
+        self._interleave = interleave
 
     def _close_immediately(self) -> List["asyncio.Future[None]"]:
         for ev in self._throttle_dns_events.values():
@@ -1008,6 +1031,7 @@ class TCPConnector(BaseConnector):
                     addr_infos=addr_infos,
                     local_addr_infos=local_addrs_infos,
                     happy_eyeballs_delay=self._happy_eyeballs_delay,
+                    interleave=self._interleave,
                     loop=self._loop,
                 )
                 return await self._loop.create_connection(*args, **kwargs, sock=sock)
@@ -1185,7 +1209,7 @@ class TCPConnector(BaseConnector):
                 )
             except ClientConnectorError as exc:
                 last_exc = exc
-                addr_infos.pop(0)
+                _pop_addr_infos(addr_infos, self._interleave)
                 continue
 
             if req.is_ssl() and fingerprint:
@@ -1196,15 +1220,15 @@ class TCPConnector(BaseConnector):
                     if not self._cleanup_closed_disabled:
                         self._cleanup_closed_transports.append(transp)
                     last_exc = exc
+                    # Remove the bad peer from the list of addr_infos
                     sock: socket.socket = transp.get_extra_info("socket")
                     bad_peer = sock.getpeername()
                     bad_addrs_infos: List[aiohappyeyeballs.AddrInfoType] = []
                     for addr_info in addr_infos:
                         if addr_info[-1][0] == bad_peer[0]:
                             bad_addrs_infos.append(addr_info)
-                    if bad_addrs_infos:
-                        for bad_addr_info in bad_addrs_infos:
-                            addr_infos.remove(bad_addr_info)
+                    for bad_addr_info in bad_addrs_infos:
+                        addr_infos.remove(bad_addr_info)
                     else:
                         addr_infos.pop(0)
                     continue
