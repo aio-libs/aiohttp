@@ -71,6 +71,40 @@ if TYPE_CHECKING:
     from .tracing import Trace
 
 
+def _convert_hosts_to_addr_infos(
+    hosts: List[Dict[str, Any]]
+) -> List[aiohappyeyeballs.AddrInfoType]:
+    """Converts the list of hosts to a list of addr_infos.
+
+    The list of hosts is the result of a DNS lookup. The list of
+    addr_infos is the result of a call to `socket.getaddrinfo()`.
+    """
+    addr_infos: List[Dict[str, Any]] = []
+    for hinfo in hosts:
+        host = hinfo["host"]
+        is_ipv6 = helpers.is_ipv6_address(host)
+        family = socket.AF_INET6 if is_ipv6 else socket.AF_INET
+        if is_ipv6:
+            addr = (host, hinfo["port"], 0, 0)
+        else:
+            addr = (host, hinfo["port"])
+        addr_infos.append((family, 0, hinfo["proto"], hinfo["hostname"], addr))
+    return addr_infos
+
+
+def _convert_local_addr_to_addr_infos(
+    local_addr: Tuple[str, int]
+) -> List[aiohappyeyeballs.AddrInfoType]:
+    host, port = local_addr
+    is_ipv6 = helpers.is_ipv6_address(host)
+    family = socket.AF_INET6 if is_ipv6 else socket.AF_INET
+    if is_ipv6:
+        addr = (host, port, 0, 0)
+    else:
+        addr = (host, port)
+    return [(family, 0, 0, "", addr)]
+
+
 class Connection:
     _source_traceback = None
     _transport = None
@@ -966,9 +1000,7 @@ class TCPConnector(BaseConnector):
     ) -> Tuple[asyncio.Transport, ResponseHandler]:
         local_addrs_infos: Optional[List[aiohappyeyeballs.AddrInfoType]] = None
         if self._local_addr:
-            local_addrs_infos = helpers.convert_local_addr_to_addr_infos(
-                self._local_addr
-            )
+            local_addrs_infos = _convert_local_addr_to_addr_infos(self._local_addr)
         try:
             async with ceil_timeout(
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
@@ -1134,7 +1166,7 @@ class TCPConnector(BaseConnector):
             raise ClientConnectorError(req.connection_key, exc) from exc
 
         last_exc: Optional[Exception] = None
-        addr_infos = helpers.convert_hosts_to_addr_infos(hosts)
+        addr_infos = _convert_hosts_to_addr_infos(hosts)
         while addr_infos:
             # Strip trailing dots, certificates contain FQDN without dots.
             # See https://github.com/aio-libs/aiohttp/issues/3636
