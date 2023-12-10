@@ -79,7 +79,7 @@ def _convert_hosts_to_addr_infos(
     The list of hosts is the result of a DNS lookup. The list of
     addr_infos is the result of a call to `socket.getaddrinfo()`.
     """
-    addr_infos: List[Dict[str, Any]] = []
+    addr_infos: List[aiohappyeyeballs.AddrInfoType] = []
     for hinfo in hosts:
         host = hinfo["host"]
         is_ipv6 = helpers.is_ipv6_address(host)
