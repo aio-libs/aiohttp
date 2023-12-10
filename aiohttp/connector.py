@@ -780,6 +780,7 @@ class TCPConnector(BaseConnector):
         limit_per_host: int = 0,
         enable_cleanup_closed: bool = False,
         timeout_ceil_threshold: float = 5,
+        happy_eyeballs_delay: float = 0.25,
     ) -> None:
         super().__init__(
             keepalive_timeout=keepalive_timeout,
@@ -805,6 +806,7 @@ class TCPConnector(BaseConnector):
         self._throttle_dns_events: Dict[Tuple[str, int], EventResultOrError] = {}
         self._family = family
         self._local_addr = local_addr
+        self._happy_eyeballs_delay = happy_eyeballs_delay
 
     def _close_immediately(self) -> List["asyncio.Future[None]"]:
         for ev in self._throttle_dns_events.values():
@@ -1004,7 +1006,7 @@ class TCPConnector(BaseConnector):
                 sock = await aiohappyeyeballs.start_connection(
                     addr_infos=addr_infos,
                     local_addr_infos=local_addrs_infos,
-                    happy_eyeballs_delay=0.25,
+                    happy_eyeballs_delay=self._happy_eyeballs_delay,
                     loop=self._loop,
                 )
                 return await self._loop.create_connection(*args, **kwargs, sock=sock)
