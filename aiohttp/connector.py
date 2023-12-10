@@ -88,7 +88,9 @@ def _convert_hosts_to_addr_infos(
             addr = (host, hinfo["port"], 0, 0)
         else:
             addr = (host, hinfo["port"])
-        addr_infos.append((family, 0, hinfo["proto"], hinfo["hostname"], addr))
+        addr_infos.append(
+            (family, socket.SOCK_STREAM, socket.IPPROTO_TCP, hinfo["hostname"], addr)
+        )
     return addr_infos
 
 
@@ -102,7 +104,7 @@ def _convert_local_addr_to_addr_infos(
         addr = (host, port, 0, 0)
     else:
         addr = (host, port)
-    return [(family, 0, 0, "", addr)]
+    return [(family, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", addr)]
 
 
 class Connection:
