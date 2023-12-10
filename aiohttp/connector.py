@@ -1227,8 +1227,9 @@ class TCPConnector(BaseConnector):
                     for addr_info in addr_infos:
                         if addr_info[-1][0] == bad_peer[0]:
                             bad_addrs_infos.append(addr_info)
-                    for bad_addr_info in bad_addrs_infos:
-                        addr_infos.remove(bad_addr_info)
+                    if bad_addrs_infos:
+                        for bad_addr_info in bad_addrs_infos:
+                            addr_infos.remove(bad_addr_info)
                     else:
                         addr_infos.pop(0)
                     continue
