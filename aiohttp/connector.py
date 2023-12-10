@@ -102,7 +102,7 @@ def _convert_local_addr_to_addr_infos(
     return [(family, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", addr)]
 
 
-def _pop_addr_infos(
+def _pop_addr_infos_interleave(
     addr_infos: List[aiohappyeyeballs.AddrInfoType], interleave: int
 ) -> None:
     """Pop addr_info from the list of addr_infos by family up to interleave times.
@@ -121,6 +121,21 @@ def _pop_addr_infos(
         seen[family] += 1
     for addr_info in to_remove:
         addr_infos.remove(addr_info)
+
+
+def _pop_addr_infos(
+    addr_infos: List[aiohappyeyeballs.AddrInfoType],
+    addr: Tuple[str, ...],
+) -> None:
+    bad_addrs_infos: List[aiohappyeyeballs.AddrInfoType] = []
+    for addr_info in addr_infos:
+        if addr_info[-1][0] == addr[0]:
+            bad_addrs_infos.append(addr_info)
+    if bad_addrs_infos:
+        for bad_addr_info in bad_addrs_infos:
+            addr_infos.remove(bad_addr_info)
+    else:
+        addr_infos.pop(0)
 
 
 class Connection:
@@ -1209,7 +1224,7 @@ class TCPConnector(BaseConnector):
                 )
             except ClientConnectorError as exc:
                 last_exc = exc
-                _pop_addr_infos(addr_infos, self._interleave)
+                _pop_addr_infos_interleave(addr_infos, self._interleave)
                 continue
 
             if req.is_ssl() and fingerprint:
@@ -1223,15 +1238,7 @@ class TCPConnector(BaseConnector):
                     # Remove the bad peer from the list of addr_infos
                     sock: socket.socket = transp.get_extra_info("socket")
                     bad_peer = sock.getpeername()
-                    bad_addrs_infos: List[aiohappyeyeballs.AddrInfoType] = []
-                    for addr_info in addr_infos:
-                        if addr_info[-1][0] == bad_peer[0]:
-                            bad_addrs_infos.append(addr_info)
-                    if bad_addrs_infos:
-                        for bad_addr_info in bad_addrs_infos:
-                            addr_infos.remove(bad_addr_info)
-                    else:
-                        addr_infos.pop(0)
+                    _pop_addr_infos(addr_infos, bad_peer)
                     continue
 
             return transp, proto
