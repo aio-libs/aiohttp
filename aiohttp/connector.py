@@ -104,7 +104,7 @@ def _convert_local_addr_to_addr_infos(
 
 def _pop_addr_infos(
     addr_infos: List[aiohappyeyeballs.AddrInfoType], interleave: int
-) -> aiohappyeyeballs.AddrInfoType:
+) -> None:
     """Pop addr_info from the list of addr_infos by family up to interleave times.
 
     The interleave parameter is used to know how many addr_infos for
