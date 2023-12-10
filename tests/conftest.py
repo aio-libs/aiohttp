@@ -208,11 +208,3 @@ def netrc_contents(
     monkeypatch.setenv("NETRC", str(netrc_file_path))
 
     return netrc_file_path
-
-
-@pytest.fixture
-def start_connection():
-    with mock.patch(
-        "aiohttp.connector.aiohappyeyeballs.start_connection"
-    ) as start_connection_mock:
-        yield start_connection_mock
