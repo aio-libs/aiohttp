@@ -123,7 +123,7 @@ def _pop_addr_infos_interleave(
         addr_infos.remove(addr_info)
 
 
-def _pop_addr_infos(
+def _remove_addr_infos(
     addr_infos: List[aiohappyeyeballs.AddrInfoType],
     addr: Tuple[str, ...],
 ) -> None:
@@ -1239,7 +1239,7 @@ class TCPConnector(BaseConnector):
                     # Remove the bad peer from the list of addr_infos
                     sock: socket.socket = transp.get_extra_info("socket")
                     bad_peer = sock.getpeername()
-                    _pop_addr_infos(addr_infos, bad_peer)
+                    _remove_addr_infos(addr_infos, bad_peer)
                     continue
 
             return transp, proto
