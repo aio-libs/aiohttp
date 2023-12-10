@@ -1202,7 +1202,7 @@ class TCPConnector(BaseConnector):
                     # Remove the bad peer from the list of addr_infos
                     sock: socket.socket = transp.get_extra_info("socket")
                     bad_peer = sock.getpeername()
-                    aiohappyeyeballs.remove_addr_infos(addr_infos, bad_peer)
+                    aiohappyeyeballs.remove_addr_infos(addr_infos, bad_peer[0])
                     continue
 
             return transp, proto
