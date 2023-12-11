@@ -602,8 +602,6 @@ class RequestHandler(BaseProtocol):
                                 self._keepalive_handle = loop.call_at(
                                     now + keepalive_timeout, self._process_keepalive
                                 )
-                    else:
-                        break
 
         # remove handler, close transport if no handlers left
         if not self._force_close:
