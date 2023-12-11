@@ -55,7 +55,6 @@ from multidict import CIMultiDict, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs
-from .client_reqrep import SSL_ALLOWED_TYPES, Fingerprint
 from .log import client_logger
 from .typedefs import PathLike  # noqa
 
@@ -1061,14 +1060,6 @@ def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
             with suppress(ValueError):
                 return datetime.datetime(*timetuple[:6], tzinfo=datetime.timezone.utc)
     return None
-
-
-def verify_ssl_type(ssl: Union[SSLContext, bool, Fingerprint]) -> None:
-    if not isinstance(ssl, SSL_ALLOWED_TYPES):
-        raise TypeError(
-            "ssl should be SSLContext, Fingerprint, or bool, "
-            "got {!r} instead.".format(ssl)
-        )
 
 
 def must_be_empty_body(method: str, code: int) -> bool:

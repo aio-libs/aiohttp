@@ -53,7 +53,7 @@ from .helpers import (
     is_ip_address,
     sentinel,
     set_result,
-    verify_ssl_type,
+    SSL_ALLOWED_TYPES,
 )
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
@@ -765,7 +765,11 @@ class TCPConnector(BaseConnector):
             timeout_ceil_threshold=timeout_ceil_threshold,
         )
 
-        verify_ssl_type(ssl)
+        if not isinstance(ssl, SSL_ALLOWED_TYPES):
+            raise TypeError(
+                "ssl should be SSLContext, Fingerprint, or bool, "
+                "got {!r} instead.".format(ssl)
+            )
         self._ssl = ssl
         if resolver is None:
             resolver = DefaultResolver()

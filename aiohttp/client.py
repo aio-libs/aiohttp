@@ -79,7 +79,7 @@ from .helpers import (
     method_must_be_empty_body,
     sentinel,
     strip_auth_from_url,
-    verify_ssl_type,
+    SSL_ALLOWED_TYPES,
 )
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, WSMessage, ws_ext_gen, ws_ext_parse
@@ -367,7 +367,11 @@ class ClientSession:
         if self.closed:
             raise RuntimeError("Session is closed")
 
-        verify_ssl_type(ssl)
+        if not isinstance(ssl, SSL_ALLOWED_TYPES):
+            raise TypeError(
+                "ssl should be SSLContext, Fingerprint, or bool, "
+                "got {!r} instead.".format(ssl)
+            )
 
         if data is not None and json is not None:
             raise ValueError(
@@ -786,7 +790,11 @@ class ClientSession:
         if ssl is None:
             ssl = True
 
-        verify_ssl_type(ssl)
+        if not isinstance(ssl, SSL_ALLOWED_TYPES):
+            raise TypeError(
+                "ssl should be SSLContext, Fingerprint, or bool, "
+                "got {!r} instead.".format(ssl)
+            )
 
         # send request
         resp = await self.request(
