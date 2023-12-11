@@ -70,7 +70,7 @@ except ImportError:  # pragma: no cover
 __all__ = ("BaseConnector", "TCPConnector", "UnixConnector", "NamedPipeConnector")
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .client import ClientTimeout
     from .client_reqrep import ConnectionKey
     from .tracing import Trace

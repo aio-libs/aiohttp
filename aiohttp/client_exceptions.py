@@ -14,7 +14,7 @@ except ImportError:  # pragma: no cover
     ssl = SSLContext = None  # type: ignore[assignment]
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .client_reqrep import ClientResponse, ConnectionKey, Fingerprint, RequestInfo
 else:
     RequestInfo = ClientResponse = ConnectionKey = None
@@ -28,6 +28,8 @@ __all__ = (
     "ClientSSLError",
     "ClientConnectorSSLError",
     "ClientConnectorCertificateError",
+    "ConnectionTimeoutError",
+    "SocketTimeoutError",
     "ServerConnectionError",
     "ServerTimeoutError",
     "ServerDisconnectedError",
@@ -207,6 +209,14 @@ class ServerDisconnectedError(ServerConnectionError):
 
 class ServerTimeoutError(ServerConnectionError, asyncio.TimeoutError):
     """Server timeout error."""
+
+
+class ConnectionTimeoutError(ServerTimeoutError):
+    """Connection timeout error."""
+
+
+class SocketTimeoutError(ServerTimeoutError):
+    """Socket timeout error."""
 
 
 class ServerFingerprintMismatch(ServerConnectionError):

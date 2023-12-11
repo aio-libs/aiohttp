@@ -32,9 +32,9 @@ pycares==4.3.0
     # via aiodns
 pycparser==2.21
     # via cffi
-typing-extensions==4.8.0
+typing-extensions==4.9.0
     # via -r requirements/typing-extensions.in
 uvloop==0.19.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
-yarl==1.9.3
+yarl==1.9.4
     # via -r requirements/runtime-deps.in
