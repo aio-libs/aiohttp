@@ -83,7 +83,7 @@ def _convert_hosts_to_addr_infos(
     addr_infos: List[aiohappyeyeballs.AddrInfoType] = []
     for hinfo in hosts:
         host = hinfo["host"]
-        is_ipv6 = helpers.is_ipv6_address(host)
+        is_ipv6 = ":" in host
         family = socket.AF_INET6 if is_ipv6 else socket.AF_INET
         addr = (host, hinfo["port"], 0, 0) if is_ipv6 else (host, hinfo["port"])
         addr_infos.append(
