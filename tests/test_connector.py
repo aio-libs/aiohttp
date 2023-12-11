@@ -641,7 +641,7 @@ async def test_tcp_connector_multiple_hosts_errors(loop: Any) -> None:
         first_addr_info_addr = first_addr_info[-1]
         addrs_tried.append(first_addr_info_addr)
 
-        mock_socket = mock.Mock()
+        mock_socket = mock.create_autospec(socket.socket, spec_set=True, instance=True)
         mock_socket.getpeername.return_value = first_addr_info_addr
         return mock_socket
 

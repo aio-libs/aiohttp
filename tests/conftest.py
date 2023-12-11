@@ -213,6 +213,8 @@ def netrc_contents(
 @pytest.fixture
 def start_connection():
     with mock.patch(
-        "aiohttp.connector.aiohappyeyeballs.start_connection"
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        autospec=True,
+        spec_set=True,
     ) as start_connection_mock:
         yield start_connection_mock

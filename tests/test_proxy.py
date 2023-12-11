@@ -37,7 +37,11 @@ class TestProxy(unittest.TestCase):
         gc.collect()
 
     @mock.patch("aiohttp.connector.ClientRequest")
-    @mock.patch("aiohttp.connector.aiohappyeyeballs.start_connection")
+    @mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        autospec=True,
+        spec_set=True,
+    )
     def test_connect(self, start_connection: Any, ClientRequestMock: Any) -> None:
         req = ClientRequest(
             "GET",
@@ -90,7 +94,11 @@ class TestProxy(unittest.TestCase):
         conn.close()
 
     @mock.patch("aiohttp.connector.ClientRequest")
-    @mock.patch("aiohttp.connector.aiohappyeyeballs.start_connection")
+    @mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        autospec=True,
+        spec_set=True,
+    )
     def test_proxy_headers(self, start_connection: Any, ClientRequestMock: Any) -> None:
         req = ClientRequest(
             "GET",
@@ -143,7 +151,11 @@ class TestProxy(unittest.TestCase):
 
         conn.close()
 
-    @mock.patch("aiohttp.connector.aiohappyeyeballs.start_connection")
+    @mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        autospec=True,
+        spec_set=True,
+    )
     def test_proxy_auth(self, start_connection: Any) -> None:
         with self.assertRaises(ValueError) as ctx:
             ClientRequest(
@@ -158,7 +170,11 @@ class TestProxy(unittest.TestCase):
             "proxy_auth must be None or BasicAuth() tuple",
         )
 
-    @mock.patch("aiohttp.connector.aiohappyeyeballs.start_connection")
+    @mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        autospec=True,
+        spec_set=True,
+    )
     def test_proxy_dns_error(self, start_connection: Any) -> None:
         async def make_conn():
             return aiohttp.TCPConnector()
@@ -182,7 +198,11 @@ class TestProxy(unittest.TestCase):
         self.assertEqual(req.url.path, "/")
         self.assertEqual(dict(req.headers), expected_headers)
 
-    @mock.patch("aiohttp.connector.aiohappyeyeballs.start_connection")
+    @mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        autospec=True,
+        spec_set=True,
+    )
     def test_proxy_connection_error(self, start_connection: Any) -> None:
         async def make_conn():
             return aiohttp.TCPConnector()
@@ -216,7 +236,11 @@ class TestProxy(unittest.TestCase):
             )
 
     @mock.patch("aiohttp.connector.ClientRequest")
-    @mock.patch("aiohttp.connector.aiohappyeyeballs.start_connection")
+    @mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        autospec=True,
+        spec_set=True,
+    )
     def test_proxy_server_hostname_default(
         self, start_connection: Any, ClientRequestMock: Any
     ) -> None:
@@ -279,7 +303,11 @@ class TestProxy(unittest.TestCase):
         self.loop.run_until_complete(req.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
-    @mock.patch("aiohttp.connector.aiohappyeyeballs.start_connection")
+    @mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        autospec=True,
+        spec_set=True,
+    )
     def test_proxy_server_hostname_override(
         self, start_connection: Any, ClientRequestMock: Any
     ) -> None:
@@ -346,7 +374,11 @@ class TestProxy(unittest.TestCase):
         self.loop.run_until_complete(req.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
-    @mock.patch("aiohttp.connector.aiohappyeyeballs.start_connection")
+    @mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        autospec=True,
+        spec_set=True,
+    )
     def test_https_connect(self, start_connection: Any, ClientRequestMock: Any) -> None:
         proxy_req = ClientRequest(
             "GET", URL("http://proxy.example.com"), loop=self.loop
@@ -407,7 +439,11 @@ class TestProxy(unittest.TestCase):
         self.loop.run_until_complete(req.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
-    @mock.patch("aiohttp.connector.aiohappyeyeballs.start_connection")
+    @mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        autospec=True,
+        spec_set=True,
+    )
     def test_https_connect_certificate_error(
         self, start_connection: Any, ClientRequestMock: Any
     ) -> None:
@@ -464,7 +500,11 @@ class TestProxy(unittest.TestCase):
             )
 
     @mock.patch("aiohttp.connector.ClientRequest")
-    @mock.patch("aiohttp.connector.aiohappyeyeballs.start_connection")
+    @mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        autospec=True,
+        spec_set=True,
+    )
     def test_https_connect_ssl_error(
         self, start_connection: Any, ClientRequestMock: Any
     ) -> None:
@@ -523,7 +563,11 @@ class TestProxy(unittest.TestCase):
             )
 
     @mock.patch("aiohttp.connector.ClientRequest")
-    @mock.patch("aiohttp.connector.aiohappyeyeballs.start_connection")
+    @mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        autospec=True,
+        spec_set=True,
+    )
     def test_https_connect_http_proxy_error(
         self, start_connection: Any, ClientRequestMock: Any
     ) -> None:
@@ -585,7 +629,11 @@ class TestProxy(unittest.TestCase):
         self.loop.run_until_complete(req.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
-    @mock.patch("aiohttp.connector.aiohappyeyeballs.start_connection")
+    @mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        autospec=True,
+        spec_set=True,
+    )
     def test_https_connect_resp_start_error(
         self, start_connection: Any, ClientRequestMock: Any
     ) -> None:
@@ -641,7 +689,11 @@ class TestProxy(unittest.TestCase):
             )
 
     @mock.patch("aiohttp.connector.ClientRequest")
-    @mock.patch("aiohttp.connector.aiohappyeyeballs.start_connection")
+    @mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        autospec=True,
+        spec_set=True,
+    )
     def test_request_port(self, start_connection: Any, ClientRequestMock: Any) -> None:
         proxy_req = ClientRequest(
             "GET", URL("http://proxy.example.com"), loop=self.loop
@@ -700,7 +752,11 @@ class TestProxy(unittest.TestCase):
         self.assertIsNone(req.proxy_auth)
 
     @mock.patch("aiohttp.connector.ClientRequest")
-    @mock.patch("aiohttp.connector.aiohappyeyeballs.start_connection")
+    @mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        autospec=True,
+        spec_set=True,
+    )
     def test_https_connect_pass_ssl_context(
         self, start_connection: Any, ClientRequestMock: Any
     ) -> None:
@@ -771,7 +827,11 @@ class TestProxy(unittest.TestCase):
         self.loop.run_until_complete(req.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
-    @mock.patch("aiohttp.connector.aiohappyeyeballs.start_connection")
+    @mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        autospec=True,
+        spec_set=True,
+    )
     def test_https_auth(self, start_connection: Any, ClientRequestMock: Any) -> None:
         proxy_req = ClientRequest(
             "GET",
