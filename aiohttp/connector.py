@@ -92,19 +92,6 @@ def _convert_hosts_to_addr_infos(
     return addr_infos
 
 
-def _convert_local_addr_to_addr_infos(
-    local_addr: Optional[Tuple[str, int]]
-) -> Optional[List[aiohappyeyeballs.AddrInfoType]]:
-    """Convert a local_addr tuple to a list of addr_infos."""
-    if local_addr is None:
-        return None
-    host, port = local_addr
-    is_ipv6 = helpers.is_ipv6_address(host)
-    family = socket.AF_INET6 if is_ipv6 else socket.AF_INET
-    addr = (host, port, 0, 0) if is_ipv6 else (host, port)
-    return [(family, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", addr)]
-
-
 class Connection:
     _source_traceback = None
     _transport = None
@@ -810,7 +797,7 @@ class TCPConnector(BaseConnector):
         self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache)
         self._throttle_dns_events: Dict[Tuple[str, int], EventResultOrError] = {}
         self._family = family
-        self._local_addr_infos = _convert_local_addr_to_addr_infos(local_addr)
+        self._local_addr_infos = aiohappyeyeballs.addr_to_addr_infos(local_addr)
         self._happy_eyeballs_delay = happy_eyeballs_delay
         self._interleave = interleave
 
