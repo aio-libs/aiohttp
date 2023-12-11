@@ -62,7 +62,13 @@ from .client_exceptions import (
     TooManyRedirects,
     WSServerHandshakeError,
 )
-from .client_reqrep import ClientRequest, ClientResponse, Fingerprint, RequestInfo
+from .client_reqrep import (
+    SSL_ALLOWED_TYPES,
+    ClientRequest,
+    ClientResponse,
+    Fingerprint,
+    RequestInfo,
+)
 from .client_ws import (
     DEFAULT_WS_CLIENT_TIMEOUT,
     ClientWebSocketResponse,
@@ -79,7 +85,6 @@ from .helpers import (
     method_must_be_empty_body,
     sentinel,
     strip_auth_from_url,
-    SSL_ALLOWED_TYPES,
 )
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, WSMessage, ws_ext_gen, ws_ext_parse

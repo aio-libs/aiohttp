@@ -46,15 +46,8 @@ from .client_exceptions import (
     ssl_errors,
 )
 from .client_proto import ResponseHandler
-from .client_reqrep import ClientRequest, Fingerprint
-from .helpers import (
-    _SENTINEL,
-    ceil_timeout,
-    is_ip_address,
-    sentinel,
-    set_result,
-    SSL_ALLOWED_TYPES,
-)
+from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
+from .helpers import _SENTINEL, ceil_timeout, is_ip_address, sentinel, set_result
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
