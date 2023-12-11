@@ -179,8 +179,6 @@ class TestProxy(unittest.TestCase):
             )
         self.assertEqual(req.url.path, "/")
         self.assertEqual(dict(req.headers), expected_headers)
-        self.loop.run_until_complete(req.close())
-        self.loop.run_until_complete(connector.close())
 
     def test_proxy_connection_error(self) -> None:
         async def make_conn():
