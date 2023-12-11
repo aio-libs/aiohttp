@@ -732,6 +732,68 @@ async def test_tcp_connector_multiple_hosts_errors(loop: Any) -> None:
     established_connection.close()
 
 
+async def test_tcp_connector_happy_eyeballs(loop: Any) -> None:
+    conn = aiohttp.TCPConnector()
+
+    ip1 = "dead::beef::"
+    ip2 = "192.168.1.1"
+    ips = [ip1, ip2]
+    addrs_tried = []
+
+    req = ClientRequest(
+        "GET",
+        URL("https://mocked.host"),
+        loop=loop,
+    )
+
+    async def _resolve_host(host, port, traces=None):
+        return [
+            {
+                "hostname": host,
+                "host": ip,
+                "port": port,
+                "family": socket.AF_INET6 if ":" in ip else socket.AF_INET,
+                "proto": 0,
+                "flags": socket.AI_NUMERICHOST,
+            }
+            for ip in ips
+        ]
+
+    conn._resolve_host = _resolve_host
+
+    os_error = False
+    connected = False
+
+    async def sock_connect(*args, **kwargs):
+        addr = args[1]
+        nonlocal os_error
+
+        addrs_tried.append(addr)
+
+        if addr[0] == ip1:
+            os_error = True
+            raise OSError
+
+    async def create_connection(*args, **kwargs):
+        nonlocal connected
+        connected = True
+        tr = create_mocked_conn(loop)
+        pr = create_mocked_conn(loop)
+        return tr, pr
+
+    conn._loop.sock_connect = sock_connect
+    conn._loop.create_connection = create_connection
+
+    established_connection = await conn.connect(req, [], ClientTimeout())
+
+    assert addrs_tried == [(ip1, 443, 0, 0), (ip2, 443)]
+
+    assert os_error
+    assert connected
+
+    established_connection.close()
+
+
 async def test_tcp_connector_resolve_host(loop: Any) -> None:
     conn = aiohttp.TCPConnector(use_dns_cache=True)
 

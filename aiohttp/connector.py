@@ -72,26 +72,6 @@ if TYPE_CHECKING:
     from .tracing import Trace
 
 
-def _convert_hosts_to_addr_infos(
-    hosts: List[Dict[str, Any]]
-) -> List[aiohappyeyeballs.AddrInfoType]:
-    """Converts the list of hosts to a list of addr_infos.
-
-    The list of hosts is the result of a DNS lookup. The list of
-    addr_infos is the result of a call to `socket.getaddrinfo()`.
-    """
-    addr_infos: List[aiohappyeyeballs.AddrInfoType] = []
-    for hinfo in hosts:
-        host = hinfo["host"]
-        is_ipv6 = ":" in host
-        family = socket.AF_INET6 if is_ipv6 else socket.AF_INET
-        addr = (host, hinfo["port"], 0, 0) if is_ipv6 else (host, hinfo["port"])
-        addr_infos.append(
-            (family, socket.SOCK_STREAM, socket.IPPROTO_TCP, hinfo["hostname"], addr)
-        )
-    return addr_infos
-
-
 class Connection:
     _source_traceback = None
     _transport = None
@@ -1111,6 +1091,33 @@ class TCPConnector(BaseConnector):
 
         return tls_transport, tls_proto
 
+    def _convert_hosts_to_addr_infos(
+        self, hosts: List[Dict[str, Any]]
+    ) -> List[aiohappyeyeballs.AddrInfoType]:
+        """Converts the list of hosts to a list of addr_infos.
+
+        The list of hosts is the result of a DNS lookup. The list of
+        addr_infos is the result of a call to `socket.getaddrinfo()`.
+        """
+        addr_infos: List[aiohappyeyeballs.AddrInfoType] = []
+        for hinfo in hosts:
+            host = hinfo["host"]
+            is_ipv6 = ":" in host
+            family = socket.AF_INET6 if is_ipv6 else socket.AF_INET
+            if self._family and self._family != family:
+                continue
+            addr = (host, hinfo["port"], 0, 0) if is_ipv6 else (host, hinfo["port"])
+            addr_infos.append(
+                (
+                    family,
+                    socket.SOCK_STREAM,
+                    socket.IPPROTO_TCP,
+                    hinfo["hostname"],
+                    addr,
+                )
+            )
+        return addr_infos
+
     async def _create_direct_connection(
         self,
         req: ClientRequest,
@@ -1155,7 +1162,7 @@ class TCPConnector(BaseConnector):
             raise ClientConnectorError(req.connection_key, exc) from exc
 
         last_exc: Optional[Exception] = None
-        addr_infos = _convert_hosts_to_addr_infos(hosts)
+        addr_infos = self._convert_hosts_to_addr_infos(hosts)
         while addr_infos:
             # Strip trailing dots, certificates contain FQDN without dots.
             # See https://github.com/aio-libs/aiohttp/issues/3636
