@@ -733,8 +733,6 @@ class TCPConnector(BaseConnector):
     limit_per_host - Number of simultaneous connections to one host.
     enable_cleanup_closed - Enables clean-up closed ssl transports.
                             Disabled by default.
-    timeout_ceil_threshold - Trigger ceiling of timeout values when
-                             it's above timeout_ceil_threshold.
     happy_eyeballs_delay - This is the “Connection Attempt Delay”
                            as defined in RFC 8305. To disable
                            the happy eyeballs algorithm, set to None.
