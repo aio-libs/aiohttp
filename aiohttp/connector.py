@@ -735,11 +735,10 @@ class TCPConnector(BaseConnector):
                             Disabled by default.
     timeout_ceil_threshold - Trigger ceiling of timeout values when
                              it's above timeout_ceil_threshold.
-    happy_eyeballs_delay - Delay before starting the second connection
-                            attempt in happy eyeballs algorithm. To disable
-                            happy eyeballs algorithm, set to None.
-    interleave - Number of connections to interleave between happy eyeballs
-                    attempts.
+    happy_eyeballs_delay - This is the “Connection Attempt Delay”
+                           as defined in RFC 8305. To disable
+                           the happy eyeballs algorithm, set to None.
+    interleave - “First Address Family Count” as defined in RFC 8305
     loop - Optional event loop.
     """
 
