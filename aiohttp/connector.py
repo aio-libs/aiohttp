@@ -752,7 +752,7 @@ class TCPConnector(BaseConnector):
         enable_cleanup_closed: bool = False,
         timeout_ceil_threshold: float = 5,
         happy_eyeballs_delay: float = 0.25,
-        interleave: int = 1,
+        interleave: Optional[int] = None,
     ) -> None:
         super().__init__(
             keepalive_timeout=keepalive_timeout,
