@@ -1,5 +1,6 @@
 # type: ignore
 import asyncio
+import sys
 from contextlib import suppress
 from typing import Any
 from unittest import mock
@@ -7,6 +8,11 @@ from unittest import mock
 import pytest
 
 from aiohttp import client, helpers, web
+
+if sys.version_info >= (3, 11):
+    import asyncio as async_timeout
+else:
+    import async_timeout
 
 
 async def test_simple_server(aiohttp_raw_server: Any, aiohttp_client: Any) -> None:
@@ -31,13 +37,29 @@ async def test_unsupported_upgrade(aiohttp_raw_server, aiohttp_client) -> None:
     # don't fail if a client probes for an unsupported protocol upgrade
     # https://github.com/aio-libs/aiohttp/issues/6446#issuecomment-999032039
     async def handler(request: web.Request):
-        return web.Response(body=await request.read())
+        try:
+            import pprint
+
+            pprint.pprint(["handler called"])
+            async with async_timeout.timeout(1):
+                result = await request.read()
+            pprint.pprint(["handler read", result])
+            return web.Response(body=result)
+        except Exception as e:
+            import pprint
+
+            pprint.pprint(["handler except", e])
+            raise
 
     upgrade_headers = {"Connection": "Upgrade", "Upgrade": "unsupported_proto"}
     server = await aiohttp_raw_server(handler)
-    cli = await aiohttp_client(server)
+    cli: client.ClientSession = await aiohttp_client(server)
     test_data = b"Test"
-    resp = await cli.post("/path/to", data=test_data, headers=upgrade_headers)
+    async with async_timeout.timeout(1):
+        resp = await cli.post("/path/to", data=test_data, headers=upgrade_headers)
+    import pprint
+
+    pprint.pprint(resp.headers)
     assert resp.status == 200
     data = await resp.read()
     assert data == test_data
