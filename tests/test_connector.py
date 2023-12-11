@@ -11,10 +11,11 @@ import sys
 import uuid
 from collections import deque
 from contextlib import closing
-from typing import Any, Optional
+from typing import Any, List, Optional
 from unittest import mock
 
 import pytest
+from aiohappyeyeballs import AddrInfoType
 from yarl import URL
 
 import aiohttp
@@ -600,6 +601,7 @@ async def test_tcp_connector_multiple_hosts_errors(loop: Any) -> None:
     ip4 = "192.168.1.4"
     ip5 = "192.168.1.5"
     ips = [ip1, ip2, ip3, ip4, ip5]
+    addrs_tried = []
     ips_tried = []
 
     fingerprint = hashlib.sha256(b"foo").digest()
@@ -629,11 +631,27 @@ async def test_tcp_connector_multiple_hosts_errors(loop: Any) -> None:
     os_error = certificate_error = ssl_error = fingerprint_error = False
     connected = False
 
+    async def start_connection(*args, **kwargs):
+        nonlocal os_error, certificate_error, ssl_error, fingerprint_error
+        nonlocal connected
+
+        addr_infos: List[AddrInfoType] = kwargs["addr_infos"]
+
+        first_addr_info = addr_infos[0]
+        first_addr_info_addr = first_addr_info[-1]
+        addrs_tried.append(first_addr_info_addr)
+
+        mock_socket = mock.Mock()
+        mock_socket.getpeername.return_value = first_addr_info_addr
+        return mock_socket
+
     async def create_connection(*args, **kwargs):
         nonlocal os_error, certificate_error, ssl_error, fingerprint_error
         nonlocal connected
 
-        ip = args[1]
+        sock = kwargs["sock"]
+        addr_info = sock.getpeername()
+        ip = addr_info[0]
 
         ips_tried.append(ip)
 
@@ -666,6 +684,9 @@ async def test_tcp_connector_multiple_hosts_errors(loop: Any) -> None:
                 if param == "peername":
                     return ("192.168.1.5", 12345)
 
+                if param == "socket":
+                    return sock
+
                 assert False, param
 
             tr.get_extra_info = get_extra_info
@@ -685,6 +706,9 @@ async def test_tcp_connector_multiple_hosts_errors(loop: Any) -> None:
                     s.getpeercert.return_value = b"foo"
                     return s
 
+                if param == "socket":
+                    return sock
+
                 assert False
 
             tr.get_extra_info = get_extra_info
@@ -694,8 +718,13 @@ async def test_tcp_connector_multiple_hosts_errors(loop: Any) -> None:
 
     conn._loop.create_connection = create_connection
 
-    established_connection = await conn.connect(req, [], ClientTimeout())
+    with mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection", start_connection
+    ):
+        established_connection = await conn.connect(req, [], ClientTimeout())
+
     assert ips == ips_tried
+    assert addrs_tried == [(ip, 443) for ip in ips]
 
     assert os_error
     assert certificate_error
