@@ -157,7 +157,8 @@ class TestProxy(unittest.TestCase):
             "proxy_auth must be None or BasicAuth() tuple",
         )
 
-    def test_proxy_dns_error(self) -> None:
+    @mock.patch("aiohttp.connector.aiohappyeyeballs.start_connection")
+    def test_proxy_dns_error(self, start_connection: Any) -> None:
         async def make_conn():
             return aiohttp.TCPConnector()
 
