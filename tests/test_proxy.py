@@ -157,8 +157,7 @@ class TestProxy(unittest.TestCase):
             "proxy_auth must be None or BasicAuth() tuple",
         )
 
-    @mock.patch("aiohttp.connector.aiohappyeyeballs.start_connection")
-    def test_proxy_dns_error(self, start_connection: Any) -> None:
+    def test_proxy_dns_error(self) -> None:
         async def make_conn():
             return aiohttp.TCPConnector()
 
@@ -180,6 +179,7 @@ class TestProxy(unittest.TestCase):
             )
         self.assertEqual(req.url.path, "/")
         self.assertEqual(dict(req.headers), expected_headers)
+        self.loop.run_until_complete(req.close())
 
     def test_proxy_connection_error(self) -> None:
         async def make_conn():
