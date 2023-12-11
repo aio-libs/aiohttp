@@ -78,6 +78,7 @@ from .connector import BaseConnector, NamedPipeConnector, TCPConnector, UnixConn
 from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
+    SSL_ALLOWED_TYPES,
     BasicAuth,
     TimeoutHandle,
     ceil_timeout,
