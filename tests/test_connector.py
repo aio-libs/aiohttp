@@ -706,9 +706,6 @@ async def test_tcp_connector_multiple_hosts_errors(loop: Any) -> None:
                     s.getpeercert.return_value = b"foo"
                     return s
 
-                if param == "socket":
-                    return sock
-
                 assert False
 
             tr.get_extra_info = get_extra_info
