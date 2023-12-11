@@ -26,7 +26,6 @@ from math import ceil
 from pathlib import Path
 from types import TracebackType
 from typing import (
-    TYPE_CHECKING,
     Any,
     Callable,
     ContextManager,
@@ -62,11 +61,6 @@ if sys.version_info >= (3, 11):
     import asyncio as async_timeout
 else:
     import async_timeout
-
-if TYPE_CHECKING:
-    from ssl import SSLContext
-else:
-    SSLContext = None
 
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
