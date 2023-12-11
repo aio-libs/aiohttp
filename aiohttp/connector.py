@@ -1112,7 +1112,7 @@ class TCPConnector(BaseConnector):
                     family,
                     socket.SOCK_STREAM,
                     socket.IPPROTO_TCP,
-                    hinfo["hostname"],
+                    "",
                     addr,
                 )
             )
