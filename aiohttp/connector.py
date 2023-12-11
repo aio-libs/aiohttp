@@ -751,7 +751,7 @@ class TCPConnector(BaseConnector):
         limit_per_host: int = 0,
         enable_cleanup_closed: bool = False,
         timeout_ceil_threshold: float = 5,
-        happy_eyeballs_delay: float = 0.25,
+        happy_eyeballs_delay: Optional[float] = 0.25,
         interleave: Optional[int] = None,
     ) -> None:
         super().__init__(
