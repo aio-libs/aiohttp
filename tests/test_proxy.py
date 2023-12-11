@@ -161,7 +161,7 @@ class TestProxy(unittest.TestCase):
         async def make_conn():
             return aiohttp.TCPConnector()
 
-        connector = self.loop.run_until_complete(make_conn())
+        connector: aiohttp.TCPConnector = self.loop.run_until_complete(make_conn())
         connector._resolve_host = make_mocked_coro(
             raise_exception=OSError("dont take it serious")
         )
@@ -180,6 +180,7 @@ class TestProxy(unittest.TestCase):
         self.assertEqual(req.url.path, "/")
         self.assertEqual(dict(req.headers), expected_headers)
         self.loop.run_until_complete(req.close())
+        self.loop.run_until_complete(connector.close())
 
     def test_proxy_connection_error(self) -> None:
         async def make_conn():
