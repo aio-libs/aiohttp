@@ -775,6 +775,12 @@ async def test_tcp_connector_happy_eyeballs(loop: Any) -> None:
             raise OSError
 
     async def create_connection(*args, **kwargs):
+        sock: socket.socket = kwargs["sock"]
+
+        # Close the socket since we are not actually connecting
+        # and we don't want to leak it.
+        sock.close()
+
         nonlocal connected
         connected = True
         tr = create_mocked_conn(loop)
