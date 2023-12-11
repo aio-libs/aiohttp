@@ -744,8 +744,14 @@ async def test_tcp_connector_multiple_hosts_errors(loop: Any) -> None:
     established_connection.close()
 
 
-async def test_tcp_connector_happy_eyeballs(loop: Any) -> None:
-    conn = aiohttp.TCPConnector()
+@pytest.mark.parametrize(
+    ("happy_eyeballs_delay"),
+    [0.1, 0.25, None],
+)
+async def test_tcp_connector_happy_eyeballs(
+    loop: Any, happy_eyeballs_delay: Optional[float]
+) -> None:
+    conn = aiohttp.TCPConnector(happy_eyeballs_delay=happy_eyeballs_delay)
 
     ip1 = "dead::beef::"
     ip2 = "192.168.1.1"
