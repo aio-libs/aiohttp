@@ -733,6 +733,13 @@ class TCPConnector(BaseConnector):
     limit_per_host - Number of simultaneous connections to one host.
     enable_cleanup_closed - Enables clean-up closed ssl transports.
                             Disabled by default.
+    timeout_ceil_threshold - Trigger ceiling of timeout values when
+                             it's above timeout_ceil_threshold.
+    happy_eyeballs_delay - Delay before starting the second connection
+                            attempt in happy eyeballs algorithm. To disable
+                            happy eyeballs algorithm, set to None.
+    interleave - Number of connections to interleave between happy eyeballs
+                    attempts.
     loop - Optional event loop.
     """
 
