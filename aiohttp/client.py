@@ -777,10 +777,6 @@ class ClientSession:
 
         # For the sake of backward compatibility, if user passes in None, convert it to True
         if ssl is None:
-            warnings.warn(
-                "None is a deprecated value for the ssl parameter; "
-                "using True for default ssl context.",
-            )
             ssl = True
 
         verify_ssl_type(ssl)
