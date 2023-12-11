@@ -143,7 +143,8 @@ class TestProxy(unittest.TestCase):
 
         conn.close()
 
-    def test_proxy_auth(self) -> None:
+    @mock.patch("aiohttp.connector.aiohappyeyeballs.start_connection")
+    def test_proxy_auth(self, start_connection: Any) -> None:
         with self.assertRaises(ValueError) as ctx:
             ClientRequest(
                 "GET",
@@ -157,7 +158,8 @@ class TestProxy(unittest.TestCase):
             "proxy_auth must be None or BasicAuth() tuple",
         )
 
-    def test_proxy_dns_error(self) -> None:
+    @mock.patch("aiohttp.connector.aiohappyeyeballs.start_connection")
+    def test_proxy_dns_error(self, start_connection: Any) -> None:
         async def make_conn():
             return aiohttp.TCPConnector()
 
@@ -180,7 +182,8 @@ class TestProxy(unittest.TestCase):
         self.assertEqual(req.url.path, "/")
         self.assertEqual(dict(req.headers), expected_headers)
 
-    def test_proxy_connection_error(self) -> None:
+    @mock.patch("aiohttp.connector.aiohappyeyeballs.start_connection")
+    def test_proxy_connection_error(self, start_connection: Any) -> None:
         async def make_conn():
             return aiohttp.TCPConnector()
 
