@@ -72,6 +72,7 @@ from .connector import BaseConnector, NamedPipeConnector, TCPConnector, UnixConn
 from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
+    SSL_ALLOWED_TYPES,
     BasicAuth,
     TimeoutHandle,
     ceil_timeout,
@@ -79,7 +80,6 @@ from .helpers import (
     method_must_be_empty_body,
     sentinel,
     strip_auth_from_url,
-    SSL_ALLOWED_TYPES,
 )
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, WSMessage, ws_ext_gen, ws_ext_parse

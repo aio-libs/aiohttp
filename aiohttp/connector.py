@@ -49,11 +49,11 @@ from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest, Fingerprint
 from .helpers import (
     _SENTINEL,
+    SSL_ALLOWED_TYPES,
     ceil_timeout,
     is_ip_address,
     sentinel,
     set_result,
-    SSL_ALLOWED_TYPES,
 )
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
