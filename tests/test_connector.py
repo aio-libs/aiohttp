@@ -538,7 +538,9 @@ async def test__drop_acquire_per_host3(loop: Any) -> None:
     assert conn._acquired_per_host[123] == {789}
 
 
-async def test_tcp_connector_certificate_error(loop: Any) -> None:
+async def test_tcp_connector_certificate_error(
+    loop: Any, start_connection: mock.AsyncMock
+) -> None:
     req = ClientRequest("GET", URL("https://127.0.0.1:443"), loop=loop)
 
     async def certificate_error(*args, **kwargs):
@@ -555,7 +557,9 @@ async def test_tcp_connector_certificate_error(loop: Any) -> None:
     assert isinstance(ctx.value, aiohttp.ClientSSLError)
 
 
-async def test_tcp_connector_server_hostname_default(loop: Any) -> None:
+async def test_tcp_connector_server_hostname_default(
+    loop: Any, start_connection: mock.AsyncMock
+) -> None:
     conn = aiohttp.TCPConnector()
 
     with mock.patch.object(
@@ -569,7 +573,9 @@ async def test_tcp_connector_server_hostname_default(loop: Any) -> None:
             assert create_connection.call_args.kwargs["server_hostname"] == "127.0.0.1"
 
 
-async def test_tcp_connector_server_hostname_override(loop: Any) -> None:
+async def test_tcp_connector_server_hostname_override(
+    loop: Any, start_connection: mock.AsyncMock
+) -> None:
     conn = aiohttp.TCPConnector()
 
     with mock.patch.object(
