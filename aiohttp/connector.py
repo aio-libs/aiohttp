@@ -1112,13 +1112,7 @@ class TCPConnector(BaseConnector):
                 continue
             addr = (host, hinfo["port"], 0, 0) if is_ipv6 else (host, hinfo["port"])
             addr_infos.append(
-                (
-                    family,
-                    socket.SOCK_STREAM,
-                    socket.IPPROTO_TCP,
-                    "",
-                    addr,
-                )
+                (family, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", addr)
             )
         return addr_infos
 
