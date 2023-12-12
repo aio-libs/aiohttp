@@ -9,7 +9,7 @@ end-users. This is why we enforce collection of the change
 fragment files in pull requests as per `Towncrier philosophy`_.
 
 The idea is that when somebody makes a change, they must record
-the bits that would affect end-users only including information
+the bits that would affect end-users, only including information
 that would be useful to them. Then, when the maintainers publish
 a new release, they'll automatically use these records to compose
 a change log for the respective version. It is important to
@@ -35,8 +35,10 @@ combined with others, it will be a part of the "news digest"
 telling the readers **what changed** in a specific version of
 the library *since the previous version*. You should also use
 reStructuredText syntax for highlighting code (inline or block),
-linking parts of the docs or external sites.
-If you wish to sign your change, feel free to add ``-- by
+linking parts of the docs or external sites. However, you do not need to
+reference the issue or PR numbers here as *towncrier* will automatically
+add a reference to all of the affected issues when rendering the news
+file. If you wish to sign your change, feel free to add ``-- by
 :user:`github-username``` at the end (replace ``github-username``
 with your own!).
 
