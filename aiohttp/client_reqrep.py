@@ -148,7 +148,7 @@ class Fingerprint:
 if ssl is not None:
     SSL_ALLOWED_TYPES = (ssl.SSLContext, bool, Fingerprint)
 else:  # pragma: no cover
-    SSL_ALLOWED_TYPES = type(None)
+    SSL_ALLOWED_TYPES = (bool, type(None))
 
 
 @dataclasses.dataclass(frozen=True)
