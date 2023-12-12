@@ -6,7 +6,7 @@
 #
 aiodns==3.1.1 ; sys_platform == "linux" or sys_platform == "darwin"
     # via -r requirements/runtime-deps.in
-aiohappyeyeballs==2.2.0
+aiohappyeyeballs==2.3.0
     # via -r requirements/runtime-deps.in
 aiohttp-theme==0.1.6
     # via -r requirements/doc.in
