@@ -45,12 +45,11 @@ with your own!).
 Finally, name your file following the convention that Towncrier
 understands: it should start with the number of an issue or a
 PR followed by a dot, then add a patch type, like ``feature``,
-``doc``, ``misc`` etc., and add ``.rst`` as a suffix. If you
-need to add more than one fragment, you may add an optional
-sequence number (delimited with another period) between the type
-and the suffix.
+``doc``, ``misc`` etc. If you need to add more than one fragment,
+you may add an optional sequence number (delimited with another period)
+between the type and the suffix.
 
-In general the name will follow ``<pr_number>.<category>.rst`` pattern,
+In general the name will follow ``<pr_number>.<category>`` pattern,
 where the categories are:
 
 - ``feature``: Any new feature
