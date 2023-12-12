@@ -34,7 +34,7 @@ for the users to understand what it means.
 combined with others, it will be a part of the "news digest"
 telling the readers **what changed** in a specific version of
 the library *since the previous version*. You should also use
-reStructuredText syntax for highlighting code (inline or block),
+*reStructuredText* syntax for highlighting code (inline or block),
 linking parts of the docs or external sites. However, you do not need to
 reference the issue or PR numbers here as *towncrier* will automatically
 add a reference to all of the affected issues when rendering the news
