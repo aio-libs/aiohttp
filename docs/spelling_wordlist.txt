@@ -7,7 +7,6 @@ aiohttpdemo
 aiohttp’s
 aiopg
 alives
-analysing
 api
 api’s
 app
