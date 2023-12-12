@@ -1,8 +1,5 @@
 .. _Adding change notes with your PRs:
 
-Adding change notes with your PRs
-+++++++++++++++++++++++++++++++++
-
 It is very important to maintain a log for news of how
 updating to the new version of the software will affect
 end-users. This is why we enforce collection of the change
