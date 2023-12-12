@@ -257,7 +257,7 @@ To run spell checker on Linux box you should install it first:
 Changelog update
 ----------------
 
-.. include:: ../../CHANGES/README.rst
+.. include:: ../CHANGES/README.rst
 
 
 Making a Pull Request
