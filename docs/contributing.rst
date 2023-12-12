@@ -161,7 +161,7 @@ Any extra texts (print statements and so on) should be removed.
 Tests coverage
 --------------
 
-We use *codecov.io* as an indispensable tool for analysing our coverage
+We use *codecov.io* as an indispensable tool for analyzing our coverage
 results. Visit https://codecov.io/gh/aio-libs/aiohttp to see coverage
 reports for the master branch, history, pull requests etc.
 
