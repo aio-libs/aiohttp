@@ -11,6 +11,7 @@
 ## Related issue number
 
 <!-- Are there any issues opened that will be resolved by merging this change? -->
+<!-- Remember to prefix with 'Fixes' if it should close the issue (e.g. 'Fixes #123'). -->
 
 ## Checklist
 
