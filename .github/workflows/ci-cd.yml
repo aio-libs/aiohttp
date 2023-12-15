@@ -198,7 +198,7 @@ jobs:
         python -m pip install -r requirements/test.in -c requirements/test.txt
     - name: Restore llhttp generated files
       if: ${{ matrix.no-extensions == '' }}
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: llhttp
         path: vendor/llhttp/build/
@@ -298,7 +298,7 @@ jobs:
         python -m
         pip install -r requirements/cython.in -c requirements/cython.txt
     - name: Restore llhttp generated files
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: llhttp
         path: vendor/llhttp/build/
@@ -361,7 +361,7 @@ jobs:
         python -m
         pip install -r requirements/cython.in -c requirements/cython.txt
     - name: Restore llhttp generated files
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: llhttp
         path: vendor/llhttp/build/
@@ -399,7 +399,7 @@ jobs:
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
     - name: Download distributions
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: dist
         path: dist
