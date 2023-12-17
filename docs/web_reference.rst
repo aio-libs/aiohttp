@@ -988,6 +988,14 @@ and :ref:`aiohttp-web-signals` handlers::
 
       .. versionadded:: 3.3
 
+   :param bool autoclose: Close connection when the client sends
+                           a :const:`~aiohttp.WSMsgType.CLOSE` message,
+                           ``True`` by default. If set to ``False``,
+                           the connection is not closed and the
+                           caller is responsible for calling
+                           ``request.transport.close()`` to avoid
+                           leaking resources.
+
 
    The class supports ``async for`` statement for iterating over
    incoming messages::
