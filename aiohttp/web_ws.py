@@ -162,9 +162,8 @@ class WebSocketResponse(StreamResponse):
     def _pong_not_received(self) -> None:
         if self._req is not None and self._req.transport is not None:
             self._closed = True
-            self._close_code = WSCloseCode.ABNORMAL_CLOSURE
+            self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
             self._exception = asyncio.TimeoutError()
-            self._req.transport.close()
 
     async def prepare(self, request: BaseRequest) -> AbstractStreamWriter:
         # make pre-check to don't hide it by do_handshake() exceptions
@@ -444,7 +443,8 @@ class WebSocketResponse(StreamResponse):
     def _set_code_close_transport(self, code: WSCloseCode) -> None:
         """Set the close code and close the transport."""
         self._close_code = code
-        self._writer.transport.close()
+        if self._req is not None and self._req.transport is not None:
+            self._req.transport.close()
 
     async def receive(self, timeout: Optional[float] = None) -> WSMessage:
         if self._reader is None:
@@ -475,7 +475,7 @@ class WebSocketResponse(StreamResponse):
                     set_result(waiter, True)
                     self._waiting = None
             except (asyncio.CancelledError, asyncio.TimeoutError):
-                self._close_code = WSCloseCode.ABNORMAL_CLOSURE
+                self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
                 raise
             except EofStream:
                 self._close_code = WSCloseCode.OK
