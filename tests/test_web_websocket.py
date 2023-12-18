@@ -1,5 +1,6 @@
 # type: ignore
 import asyncio
+import time
 from typing import Any
 from unittest import mock
 
@@ -140,13 +141,16 @@ async def test_write_non_prepared() -> None:
 
 
 async def test_ping_timeout(make_request: Any) -> None:
+    loop = asyncio.get_running_loop()
+    future = loop.create_future()
     req = make_request("GET", "/")
-    req._protocol._timeout_ceil_threshold = 0.001
-    ws = WebSocketResponse(heartbeat=0.001, timeout=0.001)
+    lowest_time = time.get_clock_info("monotonic").resolution
+    req._protocol._timeout_ceil_threshold = lowest_time
+    ws = WebSocketResponse(heartbeat=lowest_time, timeout=lowest_time)
     await ws.prepare(req)
-    await asyncio.sleep(0.1)
+    ws._req.transport.close.side_effect = lambda: future.set_result(None)
+    await future
     assert ws.closed
-    assert len(ws._req.transport.close.mock_calls) == 1
 
 
 def test_websocket_ready() -> None:
