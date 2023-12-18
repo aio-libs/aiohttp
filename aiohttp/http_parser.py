@@ -70,9 +70,10 @@ ASCIISET: Final[Set[str]] = set(string.printable)
 #             "^" / "_" / "`" / "|" / "~" / DIGIT / ALPHA
 #     token = 1*tchar
 METHRE: Final[Pattern[str]] = re.compile(r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+")
-VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d).(\d)")
+VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)")
+# FIXME: unreadable, and should reuse METHRE
 HDRRE: Final[Pattern[bytes]] = re.compile(
-    rb"[\x00-\x1F\x7F-\xFF()<>@,;:\[\]={} \t\"\\]"
+    rb"[\x00-\x1F\x7F-\xFF()/<>?@,;:\[\]={} \t\"\\]"
 )
 HEXDIGIT = re.compile(rb"[0-9a-fA-F]+")
 
