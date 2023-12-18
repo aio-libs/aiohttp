@@ -169,6 +169,18 @@ def test_cve_2023_37276(parser: Any) -> None:
 
 
 @pytest.mark.parametrize(
+    "rfc9110_5_6_2_token_delim",
+    r'"(),/:;<=>?@[\]{}',
+)
+def test_bad_header_name(parser: Any, rfc9110_5_6_2_token_delim: str) -> None:
+    text = f"POST / HTTP/1.1\r\nhead{rfc9110_5_6_2_token_delim}er: val\r\n\r\n".encode()
+    if rfc9110_5_6_2_token_delim == ":":
+        pytest.xfail("Inserting colon into header just splits name/value earlier.")
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(text)
+
+
+@pytest.mark.parametrize(
     "hdr",
     (
         "Content-Length: -5",  # https://www.rfc-editor.org/rfc/rfc9110.html#name-content-length
@@ -263,6 +275,18 @@ def test_parse_headers_longline(parser: Any) -> None:
     text = b"GET /test HTTP/1.1\r\n" + header_name + b": test\r\n" + b"\r\n" + b"\r\n"
     with pytest.raises((http_exceptions.LineTooLong, http_exceptions.BadHttpMessage)):
         parser.feed_data(text)
+
+
+def test_parse_unusual_request_line(parser: Any) -> None:
+    text = b"#smol //a HTTP/1.3\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    assert len(messages) == 1
+    msg, _ = messages[0]
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert msg.method == "#smol"
+    assert msg.path == "//a"
+    assert msg.version == (1, 3)
 
 
 def test_parse(parser: Any) -> None:
@@ -689,6 +713,14 @@ def test_http_request_bad_status_line(parser: Any) -> None:
     assert r"\n" not in exc_info.value.message
 
 
+def test_http_request_bad_status_line_separator(parser: Any) -> None:
+    # single code point, old, multibyte NFKC, multibyte NFKD
+    utf8sep = "\N{arabic ligature sallallahou alayhe wasallam}".encode("utf-8")
+    text = b"GET /ligature HTTP/1" + utf8sep + b"1\r\n\r\n"
+    with pytest.raises(http_exceptions.BadStatusLine):
+        parser.feed_data(text)
+
+
 def test_http_request_bad_status_line_whitespace(parser: Any) -> None:
     text = b"GET\n/path\fHTTP/1.1\r\n\r\n"
     with pytest.raises(http_exceptions.BadStatusLine):
@@ -759,9 +791,13 @@ def test_http_request_parser_two_slashes(parser: Any) -> None:
     assert not msg.chunked
 
 
-def test_http_request_parser_bad_method(parser: Any) -> None:
+@pytest.mark.parametrize(
+    "rfc9110_5_6_2_token_delim",
+    [bytes([i]) for i in rb'"(),/:;<=>?@[\]{}'],
+)
+def test_http_request_parser_bad_method(parser: Any, rfc9110_5_6_2_token_delim: bytes) -> None:
     with pytest.raises(http_exceptions.BadStatusLine):
-        parser.feed_data(b'G=":<>(e),[T];?" /get HTTP/1.1\r\n\r\n')
+        parser.feed_data(rfc9110_5_6_2_token_delim + b'ET" /get HTTP/1.1\r\n\r\n')
 
 
 def test_http_request_parser_bad_version(parser: Any) -> None:
