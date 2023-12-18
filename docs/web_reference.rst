@@ -970,6 +970,14 @@ and :ref:`aiohttp-web-signals` handlers::
 
       .. versionadded:: 3.3
 
+   :param bool autoclose: Close connection when the client sends
+                           a :const:`~aiohttp.WSMsgType.CLOSE` message,
+                           ``True`` by default. If set to ``False``,
+                           the connection is not closed and the
+                           caller is responsible for calling
+                           ``request.transport.close()`` to avoid
+                           leaking resources.
+
 
    The class supports ``async for`` statement for iterating over
    incoming messages::
@@ -1146,7 +1154,7 @@ and :ref:`aiohttp-web-signals` handlers::
          The method is converted into :term:`coroutine`,
          *compress* parameter added.
 
-   .. method:: close(*, code=WSCloseCode.OK, message=b'')
+   .. method:: close(*, code=WSCloseCode.OK, message=b'', drain=True)
       :async:
 
       A :ref:`coroutine<coroutine>` that initiates closing
@@ -1159,6 +1167,8 @@ and :ref:`aiohttp-web-signals` handlers::
       :param message: optional payload of *close* message,
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
+
+      :param bool drain: drain outgoing buffer before closing connection.
 
       :raise RuntimeError: if connection is not started
 
