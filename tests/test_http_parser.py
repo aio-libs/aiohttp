@@ -2,6 +2,7 @@
 # Tests for aiohttp/protocol.py
 
 import asyncio
+from contextlib import nullcontext
 import re
 from typing import Any, List
 from unittest import mock
@@ -591,6 +592,41 @@ def test_headers_content_length_err_2(parser: Any) -> None:
         parser.feed_data(text)
 
 
+_pad : dict[bytes, str] = {
+    b"": "empty",
+    # not a typo. Python likes triple zero
+    b"\000": "NUL",
+    b" ": "SP",
+    b"  ": "SPSP",
+    # not a typo: both 0xa0 and 0x0a in case of 8-bit fun
+    b"\n": "LF",
+    b"\xa0": "NBSP",
+    b"\t ": "TABSP",
+}
+
+
+@pytest.mark.parametrize("hdr", [b"", b"foo"], ids=["name-empty", "with-name"])
+@pytest.mark.parametrize("pad2", _pad.keys(), ids=["post-"+n for n in _pad.values()])
+@pytest.mark.parametrize("pad1", _pad.keys(), ids=["pre-"+n for n in _pad.values()])
+def test_invalid_header_spacing(parser: Any, pad1: bytes, pad2: bytes, hdr: bytes) -> None:
+    text = (
+        b"GET /test HTTP/1.1\r\n"
+        b"%s%s%s: value\r\n\r\n" % (pad1, hdr, pad2)
+    )
+    expectation = pytest.raises(http_exceptions.BadHttpMessage)
+    if pad1 == pad2 == b"" and hdr != b"":
+        # pytest.xfail badly readable with that name, flip assertion manually
+        expectation = nullcontext()
+    with expectation:
+        parser.feed_data(text)
+
+
+def test_empty_header_name(parser: Any) -> None:
+    text = b"GET /test HTTP/1.1\r\n" b":test\r\n\r\n"
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(text)
+
+
 def test_invalid_header(parser: Any) -> None:
     text = b"GET /test HTTP/1.1\r\n" b"test line\r\n\r\n"
     with pytest.raises(http_exceptions.BadHttpMessage):
@@ -740,6 +776,29 @@ def test_http_request_upgrade(parser: Any) -> None:
     assert msg.upgrade
     assert upgrade
     assert tail == b"some raw data"
+
+
+def test_http_request_parser_utf8_request_line(parser: Any) -> None:
+    messages, upgrade, tail = parser.feed_data(
+        # note the truncated unicode sequence
+        b"GET /P\xc3\xbcnktchen\xa0\xef\xb7 HTTP/1.1\r\n" +
+        # for easier grep: ASCII 0xA0 more commonly known as non-breaking space
+        # note the leading and trailing spaces
+        "sTeP:  \N{latin small letter sharp s}nek\t\N{no-break space}  "
+        "\r\n\r\n".encode()
+    )
+    msg = messages[0][0]
+
+    assert msg.method == "GET"
+    assert msg.path == "/Pünktchen\udca0\udcef\udcb7"
+    assert msg.version == (1, 1)
+    assert msg.headers == CIMultiDict([("STEP", "ßnek\t\xa0")])
+    assert msg.raw_headers == (("sTeP".encode(), "ßnek\t\xa0".encode()),)
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert not msg.chunked
+    assert msg.url.path == URL("/P%C3%BCnktchen\udca0\udcef\udcb7").path
 
 
 def test_http_request_parser_utf8(parser: Any) -> None:
