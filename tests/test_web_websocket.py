@@ -1,5 +1,6 @@
 # type: ignore
 import asyncio
+import time
 from typing import Any
 from unittest import mock
 
@@ -139,6 +140,20 @@ async def test_write_non_prepared() -> None:
         await ws.write(b"data")
 
 
+async def test_heartbeat_timeout(make_request: Any) -> None:
+    """Verify the transport is closed when the heartbeat timeout is reached."""
+    loop = asyncio.get_running_loop()
+    future = loop.create_future()
+    req = make_request("GET", "/")
+    lowest_time = time.get_clock_info("monotonic").resolution
+    req._protocol._timeout_ceil_threshold = lowest_time
+    ws = WebSocketResponse(heartbeat=lowest_time, timeout=lowest_time)
+    await ws.prepare(req)
+    ws._req.transport.close.side_effect = lambda: future.set_result(None)
+    await future
+    assert ws.closed
+
+
 def test_websocket_ready() -> None:
     websocket_ready = WebSocketReady(True, "chat")
     assert websocket_ready.ok is True
@@ -207,6 +222,7 @@ async def test_send_str_closed(make_request: Any) -> None:
     await ws.prepare(req)
     ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
     await ws.close()
+    assert len(ws._req.transport.close.mock_calls) == 1
 
     with pytest.raises(ConnectionError):
         await ws.send_str("string")
@@ -263,6 +279,8 @@ async def test_close_idempotent(make_request: Any) -> None:
     ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
     assert await ws.close(code=1, message="message1")
     assert ws.closed
+    assert len(ws._req.transport.close.mock_calls) == 1
+
     assert not (await ws.close(code=2, message="message2"))
 
 
@@ -296,12 +314,15 @@ async def test_write_eof_idempotent(make_request: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
+    assert len(ws._req.transport.close.mock_calls) == 0
+
     ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
     await ws.close()
 
     await ws.write_eof()
     await ws.write_eof()
     await ws.write_eof()
+    assert len(ws._req.transport.close.mock_calls) == 1
 
 
 async def test_receive_eofstream_in_reader(make_request: Any, loop: Any) -> None:
@@ -327,6 +348,7 @@ async def test_receive_timeouterror(make_request: Any, loop: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
+    assert len(ws._req.transport.close.mock_calls) == 0
 
     ws._reader = mock.Mock()
     res = loop.create_future()
@@ -335,6 +357,8 @@ async def test_receive_timeouterror(make_request: Any, loop: Any) -> None:
 
     with pytest.raises(asyncio.TimeoutError):
         await ws.receive()
+
+    assert len(ws._req.transport.close.mock_calls) == 1
 
 
 async def test_multiple_receive_on_close_connection(make_request: Any) -> None:
@@ -367,6 +391,7 @@ async def test_close_exc(make_request: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
+    assert len(ws._req.transport.close.mock_calls) == 0
 
     exc = ValueError()
     ws._writer = mock.Mock()
@@ -374,6 +399,7 @@ async def test_close_exc(make_request: Any) -> None:
     await ws.close()
     assert ws.closed
     assert ws.exception() is exc
+    assert len(ws._req.transport.close.mock_calls) == 1
 
     ws._closed = False
     ws._writer.close.side_effect = asyncio.CancelledError()
