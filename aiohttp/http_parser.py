@@ -69,7 +69,8 @@ ASCIISET: Final[Set[str]] = set(string.printable)
 #     tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "." /
 #             "^" / "_" / "`" / "|" / "~" / DIGIT / ALPHA
 #     token = 1*tchar
-METHRE: Final[Pattern[str]] = re.compile(r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+")
+_TCHAR_SPECIALS : Final[str] = "!#$%&'*+-.^_`|~"
+METHRE: Final[Pattern[str]] = re.compile("[0-9A-Za-z%s]+" % re.escape(_TCHAR_SPECIALS))
 VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)")
 # FIXME: unreadable, and should reuse METHRE
 HDRRE: Final[Pattern[bytes]] = re.compile(
