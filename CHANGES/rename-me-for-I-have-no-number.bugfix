@@ -1,0 +1,1 @@
+HTTP parser no longer crashes on header lines starting with a colon.
