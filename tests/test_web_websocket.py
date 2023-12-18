@@ -140,7 +140,7 @@ async def test_write_non_prepared() -> None:
         await ws.write(b"data")
 
 
-async def test_ping_timeout(make_request: Any) -> None:
+async def test_heartbeat_timeout(make_request: Any) -> None:
     loop = asyncio.get_running_loop()
     future = loop.create_future()
     req = make_request("GET", "/")
