@@ -70,12 +70,8 @@ ASCIISET: Final[Set[str]] = set(string.printable)
 #             "^" / "_" / "`" / "|" / "~" / DIGIT / ALPHA
 #     token = 1*tchar
 _TCHAR_SPECIALS : Final[str] = "!#$%&'*+-.^_`|~"
-METHRE: Final[Pattern[str]] = re.compile("[0-9A-Za-z%s]+" % re.escape(_TCHAR_SPECIALS))
+TOKENRE: Final[Pattern[str]] = re.compile("[0-9A-Za-z%s]+" % re.escape(_TCHAR_SPECIALS))
 VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)")
-# FIXME: unreadable, and should reuse METHRE
-HDRRE: Final[Pattern[bytes]] = re.compile(
-    rb"[\x00-\x1F\x7F-\xFF()/<>?@,;:\[\]={} \t\"\\]"
-)
 HEXDIGIT = re.compile(rb"[0-9a-fA-F]+")
 
 
@@ -148,13 +144,14 @@ class HeadersParser:
             except ValueError:
                 raise InvalidHeader(line) from None
 
+            if len(bname) == 0:
+                raise InvalidHeader(bname)
+
             # https://www.rfc-editor.org/rfc/rfc9112.html#section-5.1-2
             if {bname[0], bname[-1]} & {32, 9}:  # {" ", "\t"}
                 raise InvalidHeader(line)
 
             bvalue = bvalue.lstrip(b" \t")
-            if HDRRE.search(bname):
-                raise InvalidHeader(bname)
             if len(bname) > self.max_field_size:
                 raise LineTooLong(
                     "request header name {}".format(
@@ -163,6 +160,9 @@ class HeadersParser:
                     str(self.max_field_size),
                     str(len(bname)),
                 )
+            name = bname.decode("utf-8", "surrogateescape")
+            if not TOKENRE.fullmatch(name):
+                raise InvalidHeader(bname)
 
             header_length = len(bvalue)
 
@@ -209,7 +209,6 @@ class HeadersParser:
                     )
 
             bvalue = bvalue.strip(b" \t")
-            name = bname.decode("utf-8", "surrogateescape")
             value = bvalue.decode("utf-8", "surrogateescape")
 
             # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-5
@@ -561,7 +560,7 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
             )
 
         # method
-        if not METHRE.fullmatch(method):
+        if not TOKENRE.fullmatch(method):
             raise BadStatusLine(method)
 
         # version
