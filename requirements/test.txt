@@ -80,7 +80,7 @@ pytest-mock==3.12.0
     # via -r requirements/test.in
 python-dateutil==2.8.2
     # via freezegun
-python-on-whales==0.67.0
+python-on-whales==0.68.0
     # via -r requirements/test.in
 re-assert==1.1.0
     # via -r requirements/test.in
@@ -103,7 +103,7 @@ trustme==1.1.0 ; platform_machine != "i686"
     # via -r requirements/test.in
 typer==0.9.0
     # via python-on-whales
-typing-extensions==4.8.0
+typing-extensions==4.9.0
     # via
     #   -r requirements/typing-extensions.in
     #   mypy
