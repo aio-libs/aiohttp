@@ -141,6 +141,7 @@ async def test_write_non_prepared() -> None:
 
 
 async def test_heartbeat_timeout(make_request: Any) -> None:
+    """Verify the transport is closed when the heartbeat timeout is reached."""
     loop = asyncio.get_running_loop()
     future = loop.create_future()
     req = make_request("GET", "/")
