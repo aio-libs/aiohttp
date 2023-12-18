@@ -1172,7 +1172,7 @@ and :ref:`aiohttp-web-signals` handlers::
          The method is converted into :term:`coroutine`,
          *compress* parameter added.
 
-   .. method:: close(*, code=WSCloseCode.OK, message=b'')
+   .. method:: close(*, code=WSCloseCode.OK, message=b'', drain=True)
       :async:
 
       A :ref:`coroutine<coroutine>` that initiates closing
@@ -1185,6 +1185,8 @@ and :ref:`aiohttp-web-signals` handlers::
       :param message: optional payload of *close* message,
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
+
+      :param bool drain: drain outgoing buffer before closing connection.
 
       :raise RuntimeError: if connection is not started
 
