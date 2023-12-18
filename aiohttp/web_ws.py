@@ -474,7 +474,7 @@ class WebSocketResponse(StreamResponse):
                 self._closing = True
                 self._close_code = msg.data
                 # Could be closed while awaiting reader.
-                if not self._closed and self._autoclose:  # type: ignore[redundant-expr]
+                if not self._closed and self._autoclose:
                     # The client is likely going to close the
                     # connection out from under us so we do not
                     # want to drain any pending writes as it will
