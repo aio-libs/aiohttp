@@ -263,29 +263,19 @@ class CookieJar(AbstractCookieJar):
                 request_origin = request_url.origin()
             is_not_secure = request_origin not in self._treat_as_secure_origin
 
-        pairs = []
-        d = hostname
-        while d:
-            p = request_url.path
-            while p:
-                pairs.append((d, p))
-                p = p.rsplit("/", maxsplit=1)[0]
-            pairs.append((d, ""))
-
-            try:
-                d = d.split(".", maxsplit=1)[1]
-            except IndexError:
-                # handle last element for split
-                d = ""
-
-        # shared cookie, it should have max of 1 entry
-        pairs.append(("", ""))
-
-        cookies = itertools.chain.from_iterable(
-            self._cookies[p].values() for p in reversed(pairs)
+        # Get all the path prefixes that might match a cookie (e.g. "", "/foo", "/foo/bar")
+        paths = itertools.accumulate(request_url.path.split("/"), lambda x, y: f"{x}/{y}")
+        # Get all the subdomains that might match a cookie (e.g. "foo.bar.com", "bar.com", "com")
+        domains = itertools.accumulate(
+            reversed(hostname.split(".")), lambda x, y: f"{y}.{x}"
         )
+        # Create every combination of (domain, path) pairs, plus the shared cookie.
+        pairs = itertools.chain((("", ""),), itertools.product(domains, paths))
 
         # Point 2: https://www.rfc-editor.org/rfc/rfc6265.html#section-5.4
+        cookies = itertools.chain.from_iterable(
+            self._cookies[p].values() for p in pairs
+        )
         for cookie in cookies:
             name = cookie.key
             domain = cookie["domain"]
