@@ -69,10 +69,16 @@ ASCIISET: Final[Set[str]] = set(string.printable)
 #     tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "." /
 #             "^" / "_" / "`" / "|" / "~" / DIGIT / ALPHA
 #     token = 1*tchar
+#
+# Future editors beware:
+# It is easy to create security problems around the difference between the syntax of
+#  HTTP messages (protocol elements limited to exhaustively enumerated ASCII characters)
+#  and Unicode string operatons and pattern matching.
+# The re.ASCII merely switches character class semantics, it does NOT guard against incorrect use.
 _TCHAR_SPECIALS : Final[str] = "!#$%&'*+-.^_`|~"
 TOKENRE: Final[Pattern[str]] = re.compile("[0-9A-Za-z%s]+" % re.escape(_TCHAR_SPECIALS))
-VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)")
-HEXDIGIT = re.compile(rb"[0-9a-fA-F]+")
+VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)", re.ASCII)
+HEXDIGIT : Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
 
 
 class RawRequestMessage(NamedTuple):
