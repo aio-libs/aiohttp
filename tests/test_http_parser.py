@@ -749,6 +749,23 @@ def test_http_request_bad_status_line(parser: Any) -> None:
     assert r"\n" not in exc_info.value.message
 
 
+_num : dict[bytes, str] = {
+    # dangerous: accepted by Python int()
+    # unicodedata.category(codepoint) == "Nd"
+    "\N{mathematical double-struck digit one}".encode("utf-8"): "utf8digit",
+    # only added for interop tests, refused by Python int()
+    # unicodedata.category(codepoint) == "No"
+    "\N{superscript one}".encode("utf-8"): "utf8number",
+    "\N{superscript one}".encode("latin-1"): "latin1number",
+}
+
+@pytest.mark.parametrize("nonascii_digit", _num.keys(), ids=_num.values())
+def test_http_request_bad_status_line_number(parser: Any, nonascii_digit: bytes) -> None:
+    text = b"GET /digit HTTP/1." + nonascii_digit + b"\r\n\r\n"
+    with pytest.raises(http_exceptions.BadStatusLine):
+        parser.feed_data(text)
+
+
 def test_http_request_bad_status_line_separator(parser: Any) -> None:
     # single code point, old, multibyte NFKC, multibyte NFKD
     utf8sep = "\N{arabic ligature sallallahou alayhe wasallam}".encode("utf-8")
