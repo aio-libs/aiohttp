@@ -2,8 +2,8 @@
 # Tests for aiohttp/protocol.py
 
 import asyncio
-from contextlib import nullcontext
 import re
+from contextlib import nullcontext
 from typing import Any, List
 from unittest import mock
 from urllib.parse import quote
@@ -592,7 +592,7 @@ def test_headers_content_length_err_2(parser: Any) -> None:
         parser.feed_data(text)
 
 
-_pad : dict[bytes, str] = {
+_pad: dict[bytes, str] = {
     b"": "empty",
     # not a typo. Python likes triple zero
     b"\000": "NUL",
@@ -606,13 +606,12 @@ _pad : dict[bytes, str] = {
 
 
 @pytest.mark.parametrize("hdr", [b"", b"foo"], ids=["name-empty", "with-name"])
-@pytest.mark.parametrize("pad2", _pad.keys(), ids=["post-"+n for n in _pad.values()])
-@pytest.mark.parametrize("pad1", _pad.keys(), ids=["pre-"+n for n in _pad.values()])
-def test_invalid_header_spacing(parser: Any, pad1: bytes, pad2: bytes, hdr: bytes) -> None:
-    text = (
-        b"GET /test HTTP/1.1\r\n"
-        b"%s%s%s: value\r\n\r\n" % (pad1, hdr, pad2)
-    )
+@pytest.mark.parametrize("pad2", _pad.keys(), ids=["post-" + n for n in _pad.values()])
+@pytest.mark.parametrize("pad1", _pad.keys(), ids=["pre-" + n for n in _pad.values()])
+def test_invalid_header_spacing(
+    parser: Any, pad1: bytes, pad2: bytes, hdr: bytes
+) -> None:
+    text = b"GET /test HTTP/1.1\r\n" b"%s%s%s: value\r\n\r\n" % (pad1, hdr, pad2)
     expectation = pytest.raises(http_exceptions.BadHttpMessage)
     if pad1 == pad2 == b"" and hdr != b"":
         # pytest.xfail badly readable with that name, flip assertion manually
@@ -749,7 +748,7 @@ def test_http_request_bad_status_line(parser: Any) -> None:
     assert r"\n" not in exc_info.value.message
 
 
-_num : dict[bytes, str] = {
+_num: dict[bytes, str] = {
     # dangerous: accepted by Python int()
     # unicodedata.category(codepoint) == "Nd"
     "\N{mathematical double-struck digit one}".encode("utf-8"): "utf8digit",
@@ -759,8 +758,11 @@ _num : dict[bytes, str] = {
     "\N{superscript one}".encode("latin-1"): "latin1number",
 }
 
+
 @pytest.mark.parametrize("nonascii_digit", _num.keys(), ids=_num.values())
-def test_http_request_bad_status_line_number(parser: Any, nonascii_digit: bytes) -> None:
+def test_http_request_bad_status_line_number(
+    parser: Any, nonascii_digit: bytes
+) -> None:
     text = b"GET /digit HTTP/1." + nonascii_digit + b"\r\n\r\n"
     with pytest.raises(http_exceptions.BadStatusLine):
         parser.feed_data(text)
@@ -871,7 +873,9 @@ def test_http_request_parser_two_slashes(parser: Any) -> None:
     "rfc9110_5_6_2_token_delim",
     [bytes([i]) for i in rb'"(),/:;<=>?@[\]{}'],
 )
-def test_http_request_parser_bad_method(parser: Any, rfc9110_5_6_2_token_delim: bytes) -> None:
+def test_http_request_parser_bad_method(
+    parser: Any, rfc9110_5_6_2_token_delim: bytes
+) -> None:
     with pytest.raises(http_exceptions.BadStatusLine):
         parser.feed_data(rfc9110_5_6_2_token_delim + b'ET" /get HTTP/1.1\r\n\r\n')
 
