@@ -79,7 +79,7 @@ class CookieJar(AbstractCookieJar):
         *,
         unsafe: bool = False,
         quote_cookie: bool = True,
-        treat_as_secure_origin: Union[StrOrURL, List[StrOrURL], None] = None
+        treat_as_secure_origin: Union[StrOrURL, List[StrOrURL], None] = None,
     ) -> None:
         self._cookies: DefaultDict[Tuple[str, str], SimpleCookie] = defaultdict(
             SimpleCookie
@@ -264,7 +264,9 @@ class CookieJar(AbstractCookieJar):
             is_not_secure = request_origin not in self._treat_as_secure_origin
 
         # Get all the path prefixes that might match a cookie (e.g. "", "/foo", "/foo/bar")
-        paths = itertools.accumulate(request_url.path.split("/"), lambda x, y: f"{x}/{y}")
+        paths = itertools.accumulate(
+            request_url.path.split("/"), lambda x, y: f"{x}/{y}"
+        )
         # Get all the subdomains that might match a cookie (e.g. "foo.bar.com", "bar.com", "com")
         domains = itertools.accumulate(
             reversed(hostname.split(".")), lambda x, y: f"{y}.{x}"
