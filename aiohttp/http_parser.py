@@ -351,6 +351,8 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         import pprint
 
                         pprint.pprint(["upgraded", msg.upgrade, msg])
+                        # If response is not 101 than we didn't upgrade
+                        # if its 0 its not a response
                         self._upgraded = msg.upgrade and code in (0, 101)
 
                         assert self.protocol is not None
