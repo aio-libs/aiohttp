@@ -643,6 +643,10 @@ class ClientRequest:
         if connection is not None:
             self.headers[hdrs.CONNECTION] = connection
 
+        import pprint
+
+        pprint.pprint(["send status line"])
+
         # status + headers
         status_line = "{0} {1} HTTP/{v.major}.{v.minor}".format(
             self.method, path, v=self.version
@@ -896,7 +900,13 @@ class ClientResponse(HeadersMixin):
                 # read response
                 try:
                     protocol = self._protocol
+                    import pprint
+
+                    pprint.pprint(["read response"])
                     message, payload = await protocol.read()  # type: ignore[union-attr]
+                    import pprint
+
+                    pprint.pprint(["protocol read", message, payload])
                 except http.HttpProcessingError as exc:
                     raise ClientResponseError(
                         self.request_info,

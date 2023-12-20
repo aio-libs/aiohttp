@@ -297,6 +297,9 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         data_len = len(data)
         start_pos = 0
         loop = self.loop
+        import pprint
+
+        pprint.pprint(["feed_data", data])
 
         while start_pos < data_len:
             # read HTTP message (request/response line + headers), \r\n\r\n
@@ -341,17 +344,24 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         if SEC_WEBSOCKET_KEY1 in msg.headers:
                             raise InvalidHeader(SEC_WEBSOCKET_KEY1)
 
-                        self._upgraded = msg.upgrade
-
                         method = getattr(msg, "method", self.method)
                         # code is only present on responses
                         code = getattr(msg, "code", 0)
+
+                        import pprint
+
+                        pprint.pprint(["upgraded", msg.upgrade, msg])
+                        self._upgraded = code == 101 and msg.upgrade
 
                         assert self.protocol is not None
                         # calculate payload
                         empty_body = status_code_must_be_empty_body(code) or bool(
                             method and method_must_be_empty_body(method)
                         )
+                        import pprint
+
+                        pprint.pprint(["empty_body", empty_body, msg.upgrade])
+                        # self._upgraded=False
                         if not empty_body and (
                             (length is not None and length > 0)
                             or msg.chunked
@@ -505,6 +515,9 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 close_conn = False
             # https://www.rfc-editor.org/rfc/rfc9110.html#name-101-switching-protocols
             elif v == "upgrade" and headers.get(hdrs.UPGRADE):
+                import pprint
+
+                pprint.pprint(["upgrade", headers.get(hdrs.UPGRADE)])
                 upgrade = True
 
         # encoding

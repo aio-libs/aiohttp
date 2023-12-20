@@ -606,7 +606,12 @@ class DataQueue(Generic[_T]):
             self._waiter = self._loop.create_future()
             try:
                 await self._waiter
-            except (asyncio.CancelledError, asyncio.TimeoutError):
+            except (asyncio.CancelledError, asyncio.TimeoutError) as ex:
+                import pprint
+
+                pprint.pprint(
+                    ["read waiter", self._waiter, self._buffer, self._eof, ex]
+                )
                 self._waiter = None
                 raise
 

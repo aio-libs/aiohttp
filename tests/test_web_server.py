@@ -41,7 +41,7 @@ async def test_unsupported_upgrade(aiohttp_raw_server, aiohttp_client) -> None:
             import pprint
 
             pprint.pprint(["handler called"])
-            async with async_timeout.timeout(1):
+            async with async_timeout.timeout(2):
                 result = await request.read()
             pprint.pprint(["handler read", result])
             return web.Response(body=result)
@@ -55,7 +55,7 @@ async def test_unsupported_upgrade(aiohttp_raw_server, aiohttp_client) -> None:
     server = await aiohttp_raw_server(handler)
     cli: client.ClientSession = await aiohttp_client(server)
     test_data = b"Test"
-    async with async_timeout.timeout(1):
+    async with async_timeout.timeout(0.5):
         resp = await cli.post("/path/to", data=test_data, headers=upgrade_headers)
     import pprint
 

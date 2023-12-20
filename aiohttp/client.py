@@ -1,11 +1,11 @@
 """HTTP Client for asyncio."""
-
 import asyncio
 import base64
 import dataclasses
 import hashlib
 import json
 import os
+import pprint
 import sys
 import traceback
 import warnings
@@ -543,13 +543,20 @@ class ClientSession:
 
                     try:
                         try:
+                            pprint.pprint(["send"])
                             resp = await req.send(conn)
                             try:
+                                pprint.pprint(["start"])
+
                                 await resp.start(conn)
-                            except BaseException:
+                            except BaseException as ex:
+                                pprint.pprint(["close 1", ex])
+
                                 resp.close()
                                 raise
-                        except BaseException:
+                        except BaseException as ex:
+                            pprint.pprint(["close 2", ex])
+
                             conn.close()
                             raise
                     except ClientError:

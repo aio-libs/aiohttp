@@ -477,6 +477,9 @@ class RequestHandler(BaseProtocol):
         except asyncio.CancelledError:
             raise
         except asyncio.TimeoutError as exc:
+            import pprint
+
+            pprint.pprint(["request handler timed out"])
             self.log_debug("Request handler timed out.", exc_info=exc)
             resp = self.handle_error(request, 504)
             reset = await self.finish_response(request, resp, start_time)
