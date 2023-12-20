@@ -351,7 +351,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         import pprint
 
                         pprint.pprint(["upgraded", msg.upgrade, msg])
-                        self._upgraded = code in (0, 101) and msg.upgrade
+                        self._upgraded = msg.upgrade and code in (0, 101)
 
                         assert self.protocol is not None
                         # calculate payload
@@ -360,7 +360,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         )
                         import pprint
 
-                        pprint.pprint(["empty_body", empty_body, msg.upgrade])
+                        pprint.pprint(["empty_body", empty_body, code, msg.upgrade])
                         # self._upgraded=False
                         if not empty_body and (
                             (length is not None and length > 0)
