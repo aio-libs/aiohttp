@@ -1017,7 +1017,7 @@ class TCPConnector(BaseConnector):
                 raise
             raise client_error(req.connection_key, exc) from exc
 
-    async def _legacy_wrap_create_connection(
+    async def _wrap_existing_connection(
         self,
         *args: Any,
         req: ClientRequest,
@@ -1401,7 +1401,7 @@ class TCPConnector(BaseConnector):
                 if not runtime_has_start_tls:
                     # HTTP proxy with support for upgrade to HTTPS
                     sslcontext = self._get_ssl_context(req)
-                    return await self._legacy_wrap_create_connection(
+                    return await self._wrap_existing_connection(
                         self._factory,
                         timeout=timeout,
                         ssl=sslcontext,
