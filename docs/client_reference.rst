@@ -1055,7 +1055,8 @@ is controlled by *force_close* constructor's parameter).
                  family=0, ssl_context=None, local_addr=None, \
                  resolver=None, keepalive_timeout=sentinel, \
                  force_close=False, limit=100, limit_per_host=0, \
-                 enable_cleanup_closed=False, loop=None)
+                 enable_cleanup_closed=False, timeout_ceil_threshold=5, \
+                 happy_eyeballs_delay=0.25, interleave=None, loop=None)
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
@@ -1157,6 +1158,24 @@ is controlled by *force_close* constructor's parameter).
       SSL shutdown process, in that case asyncio leaks SSL connections.
       If this parameter is set to True, aiohttp additionally aborts underlining
       transport after 2 seconds. It is off by default.
+
+   :param float happy_eyeballs_delay: The amount of time in seconds to wait for a
+      connection attempt to complete, before starting the next attempt in parallel.
+      This is the “Connection Attempt Delay” as defined in RFC 8305. To disable
+      Happy Eyeballs, set this to ``None``. The default value recommended by the
+      RFC is 0.25 (250 milliseconds).
+
+        .. versionadded:: 3.10
+
+   :param int interleave: controls address reordering when a host name resolves
+      to multiple IP addresses. If ``0`` or unspecified, no reordering is done, and
+      addresses are tried in the order returned by the resolver. If a positive
+      integer is specified, the addresses are interleaved by address family, and
+      the given integer is interpreted as “First Address Family Count” as defined
+      in RFC 8305. The default is ``0`` if happy_eyeballs_delay is not specified, and
+      ``1`` if it is.
+
+        .. versionadded:: 3.10
 
    .. attribute:: family
 
