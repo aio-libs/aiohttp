@@ -793,6 +793,11 @@ class ClientSession:
 
         # For the sake of backward compatibility, if user passes in None, convert it to True
         if ssl is None:
+            warnings.warn(
+                "ssl=None is deprecated, please use ssl=True",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             ssl = True
 
         if not isinstance(ssl, SSL_ALLOWED_TYPES):
