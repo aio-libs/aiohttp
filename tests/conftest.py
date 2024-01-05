@@ -6,6 +6,7 @@ import sys
 from hashlib import md5, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest import mock
 from uuid import uuid4
 
 import pytest
@@ -197,3 +198,13 @@ def netrc_contents(
     monkeypatch.setenv("NETRC", str(netrc_file_path))
 
     return netrc_file_path
+
+
+@pytest.fixture
+def start_connection():
+    with mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        autospec=True,
+        spec_set=True,
+    ) as start_connection_mock:
+        yield start_connection_mock
