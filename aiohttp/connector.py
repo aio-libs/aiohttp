@@ -1017,6 +1017,28 @@ class TCPConnector(BaseConnector):
                 raise
             raise client_error(req.connection_key, exc) from exc
 
+    async def _legacy_wrap_create_connection(
+        self,
+        *args: Any,
+        req: ClientRequest,
+        timeout: "ClientTimeout",
+        client_error: Type[Exception] = ClientConnectorError,
+        **kwargs: Any,
+    ) -> Tuple[asyncio.Transport, ResponseHandler]:
+        try:
+            async with ceil_timeout(
+                timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
+            ):
+                return await self._loop.create_connection(*args, **kwargs)
+        except cert_errors as exc:
+            raise ClientConnectorCertificateError(req.connection_key, exc) from exc
+        except ssl_errors as exc:
+            raise ClientConnectorSSLError(req.connection_key, exc) from exc
+        except OSError as exc:
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                raise
+            raise client_error(req.connection_key, exc) from exc
+
     def _fail_on_no_start_tls(self, req: "ClientRequest") -> None:
         """Raise a :py:exc:`RuntimeError` on missing ``start_tls()``.
 
@@ -1379,7 +1401,7 @@ class TCPConnector(BaseConnector):
                 if not runtime_has_start_tls:
                     # HTTP proxy with support for upgrade to HTTPS
                     sslcontext = self._get_ssl_context(req)
-                    return await self._wrap_create_connection(
+                    return await self._legacy_wrap_create_connection(
                         self._factory,
                         timeout=timeout,
                         ssl=sslcontext,
