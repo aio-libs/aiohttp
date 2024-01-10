@@ -1,0 +1,1 @@
+Fix :py:class:`~aiohttp.web.FileResponse`. doing blocking I/O in the event loop
