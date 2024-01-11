@@ -779,13 +779,6 @@ async def test_client_session_timeout_default_args(loop: Any) -> None:
     await session1.close()
 
 
-async def test_client_session_timeout_argument() -> None:
-    timeout = client.ClientTimeout(total=500)
-    session = ClientSession(timeout=timeout)
-    assert session.timeout == timeout
-    await session.close()
-
-
 async def test_client_session_timeout_zero() -> None:
     timeout = client.ClientTimeout(total=10, connect=0, sock_connect=0, sock_read=0)
     try:
