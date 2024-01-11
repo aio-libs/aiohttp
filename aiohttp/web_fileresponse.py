@@ -267,6 +267,10 @@ class FileResponse(StreamResponse):
             self.headers[hdrs.CONTENT_ENCODING] = encoding
         if gzip:
             self.headers[hdrs.VARY] = hdrs.ACCEPT_ENCODING
+            # Disable compression if we are already sending
+            # a compressed file since we don't want to double
+            # compress.
+            self._compression = False
 
         self.etag = etag_value  # type: ignore[assignment]
         self.last_modified = st.st_mtime  # type: ignore[assignment]
