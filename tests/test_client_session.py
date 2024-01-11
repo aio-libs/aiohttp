@@ -798,11 +798,8 @@ async def test_client_session_timeout_zero() -> None:
 async def test_client_session_timeout_bad_argument() -> None:
     with pytest.raises(ValueError):
         ClientSession(timeout="test_bad_argumnet")
-
-
-async def test_client_session_timeout_arg_deprecation_warning() -> None:
-    with pytest.warns(DeprecationWarning):
-        ClientSession(timeout=0.1)
+    with pytest.raises(ValueError):
+        ClientSession(timeout=100)
 
 
 async def test_requote_redirect_url_default() -> None:
