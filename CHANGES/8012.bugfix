@@ -1,0 +1,1 @@
+Fix `web.FileResponse` doing blocking I/O in the event loop
