@@ -249,6 +249,32 @@ async def test_static_file_custom_content_type_compress(
     await client.close()
 
 
+async def test_static_file_with_gziped_counter_part_enable_compression(
+    aiohttp_client: Any, sender: Any
+):
+    """Test that enable_compression does not double compress when a .gz file is also present."""
+    filepath = pathlib.Path(__file__).parent / "hello.txt"
+
+    async def handler(request):
+        resp = sender(filepath)
+        resp.enable_compression()
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/")
+    assert resp.status == 200
+    body = await resp.read()
+    assert body == b"hello aiohttp\n"
+    assert resp.headers["Content-Type"] == "text/plain"
+    assert resp.headers.get("Content-Encoding") == "gzip"
+    resp.close()
+    await resp.release()
+    await client.close()
+
+
 async def test_static_file_with_content_encoding(
     aiohttp_client: Any, sender: Any
 ) -> None:
