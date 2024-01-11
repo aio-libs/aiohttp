@@ -124,19 +124,31 @@ class FileResponse(StreamResponse):
         self.content_length = 0
         return await super().prepare(request)
 
-    async def prepare(self, request: "BaseRequest") -> Optional[AbstractStreamWriter]:
+    def _get_file_path_stat_and_gzip(
+        self, check_for_gzipped_file: bool
+    ) -> Tuple[pathlib.Path, os.stat_result, bool]:
+        """Return the file path, stat result, and gzip status.
+
+        This method should be called from a thread executor
+        since it calls os.stat which may block.
+        """
         filepath = self._path
-
-        gzip = False
-        if "gzip" in request.headers.get(hdrs.ACCEPT_ENCODING, ""):
+        if check_for_gzipped_file:
             gzip_path = filepath.with_name(filepath.name + ".gz")
+            try:
+                return gzip_path, gzip_path.stat(), True
+            except OSError:
+                # Fall through and try the non-gzipped file
+                pass
 
-            if gzip_path.is_file():
-                filepath = gzip_path
-                gzip = True
+        return filepath, filepath.stat(), False
 
+    async def prepare(self, request: "BaseRequest") -> Optional[AbstractStreamWriter]:
         loop = asyncio.get_event_loop()
-        st: os.stat_result = await loop.run_in_executor(None, filepath.stat)
+        check_for_gzipped_file = "gzip" in request.headers.get(hdrs.ACCEPT_ENCODING, "")
+        filepath, st, gzip = await loop.run_in_executor(
+            None, self._get_file_path_stat_and_gzip, check_for_gzipped_file
+        )
 
         etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
         last_modified = st.st_mtime
