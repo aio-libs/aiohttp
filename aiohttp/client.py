@@ -271,7 +271,22 @@ class ClientSession:
         if timeout is sentinel or timeout is None:
             self._timeout = DEFAULT_TIMEOUT
         else:
-            self._timeout = timeout
+            if not isinstance(timeout, (ClientTimeout, int, float)):
+                raise ValueError(
+                    f"timeout parameter cannot be of {type(timeout)} type, "
+                    "please use 'timeout=ClientTimeout(...)'",
+                )
+            if not isinstance(timeout, ClientTimeout):
+                self._timeout = ClientTimeout(total=timeout)
+                warnings.warn(
+                    "parameter 'timeout' of type 'float' or 'int' "
+                    "is deprecated, please use "
+                    "'timeout=ClientTimeout(total=...)'",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+            else:
+                self._timeout = timeout
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env

@@ -1,0 +1,1 @@
+Handle ``ClientSession`` ``timeout`` param types properly.
