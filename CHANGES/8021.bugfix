@@ -1,1 +1,1 @@
-Handle ``ClientSession`` ``timeout`` param types properly.
+Add runtime type check for ``ClientSession`` ``timeout`` parameter.
