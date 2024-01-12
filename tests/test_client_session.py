@@ -779,12 +779,6 @@ async def test_client_session_timeout_default_args(loop: Any) -> None:
     await session1.close()
 
 
-async def test_client_session_timeout_argument() -> None:
-    session = ClientSession(timeout=500)
-    assert session.timeout == 500
-    await session.close()
-
-
 async def test_client_session_timeout_zero() -> None:
     timeout = client.ClientTimeout(total=10, connect=0, sock_connect=0, sock_read=0)
     try:
@@ -792,6 +786,13 @@ async def test_client_session_timeout_zero() -> None:
             await session.get("http://example.com")
     except asyncio.TimeoutError:
         pytest.fail("0 should disable timeout.")
+
+
+async def test_client_session_timeout_bad_argument() -> None:
+    with pytest.raises(ValueError):
+        ClientSession(timeout="test_bad_argumnet")
+    with pytest.raises(ValueError):
+        ClientSession(timeout=100)
 
 
 async def test_requote_redirect_url_default() -> None:

@@ -1,0 +1,1 @@
+Add runtime type check for ``ClientSession`` ``timeout`` parameter.
