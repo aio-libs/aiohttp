@@ -276,7 +276,7 @@ class ClientSession:
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
-        if timeout is sentinel:
+        if timeout is sentinel or timeout is None:
             self._timeout = DEFAULT_TIMEOUT
             if read_timeout is not sentinel:
                 warnings.warn(
@@ -293,7 +293,12 @@ class ClientSession:
                     stacklevel=2,
                 )
         else:
-            self._timeout = timeout  # type: ignore[assignment]
+            if not isinstance(timeout, ClientTimeout):
+                raise ValueError(
+                    f"timeout parameter cannot be of {type(timeout)} type, "
+                    "please use 'timeout=ClientTimeout(...)'",
+                )
+            self._timeout = timeout
             if read_timeout is not sentinel:
                 raise ValueError(
                     "read_timeout and timeout parameters "
