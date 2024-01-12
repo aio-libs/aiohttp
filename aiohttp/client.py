@@ -298,7 +298,7 @@ class ClientSession:
                     f"timeout parameter cannot be of {type(timeout)} type, "
                     "please use 'timeout=ClientTimeout(...)'",
                 )
-            self._timeout = timeout  # type: ignore[assignment]
+            self._timeout = timeout
             if read_timeout is not sentinel:
                 raise ValueError(
                     "read_timeout and timeout parameters "
