@@ -108,6 +108,30 @@ async def test_follow_symlink(
     assert (await r.text()) == data
 
 
+async def test_follow_symlink_directory_transversal(
+    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+) -> None:
+    # Tests that follow_symlinks does not allow directory transversal
+    app = web.Application()
+
+    # Register global static route:
+    app.router.add_static("/", str(tmp_path), follow_symlinks=True)
+    client = await aiohttp_client(app)
+
+    await client.start_server()
+    # We need to use a raw socket to test this, as the client will normalize
+    # the path before sending it to the server.
+    reader, writer = await asyncio.open_connection(client.host, client.port)
+    writer.write(
+        "GET /../../../../../../../../../../../../../../../etc/passwd HTTP/1.1\r\n\r\n".encode()
+    )
+    response = await reader.readuntil(b"\r\n\r\n")
+    assert b"404 Not Found" in response
+    writer.close()
+    await writer.wait_closed()
+    await client.close()
+
+
 @pytest.mark.parametrize(
     "dir_name,filename,data",
     [
