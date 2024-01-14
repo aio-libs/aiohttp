@@ -130,9 +130,7 @@ async def test_follow_symlink_directory_transversal(
     # We need to use a raw socket to test this, as the client will normalize
     # the path before sending it to the server.
     reader, writer = await asyncio.open_connection(client.host, client.port)
-    writer.write(
-        "GET /../private_file HTTP/1.1\r\n\r\n".encode()
-    )
+    writer.write("GET /../private_file HTTP/1.1\r\n\r\n".encode())
     response = await reader.readuntil(b"\r\n\r\n")
     assert b"404 Not Found" in response
     writer.close()
