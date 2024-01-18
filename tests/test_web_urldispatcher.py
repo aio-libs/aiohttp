@@ -137,6 +137,7 @@ async def test_follow_symlink_directory_transversal(
     await writer.wait_closed()
     await client.close()
 
+
 async def test_follow_symlink_directory_transversal_after_normalization(
     tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
 ) -> None:
