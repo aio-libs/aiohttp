@@ -677,6 +677,8 @@ class StaticResource(PrefixResource):
         elif filepath.is_file():
             return FileResponse(filepath, chunk_size=self._chunk_size)
         else:
+            import pprint
+            pprint.pprint(['404', filepath])
             raise HTTPNotFound
 
     def _directory_as_html(self, filepath: Path) -> str:
