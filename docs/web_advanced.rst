@@ -262,11 +262,19 @@ instead could be enabled with ``show_index`` parameter set to ``True``::
 
    web.static('/prefix', path_to_static_folder, show_index=True)
 
-When a symlink from the static directory is accessed, the server responses to
-client with ``HTTP/404 Not Found`` by default. To allow the server to follow
-symlinks, parameter ``follow_symlinks`` should be set to ``True``::
+When a symlink that leads outside the static directory is accessed, the server
+responds to client with ``HTTP/404 Not Found`` by default. To allow the server to
+follow symlinks that lead outside the path, the parameter ``follow_symlinks`` should
+be set to ``True``::
 
    web.static('/prefix', path_to_static_folder, follow_symlinks=True)
+
+.. warning::
+
+   Enabling ``follow_symlinks`` can be a security risk, and may lead to
+   a directory transversal attack. Enabling this option is highly discouraged.
+   It is recommended to only enable this option when serving static files from a
+   trusted directory that is not writable by anyone else.
 
 When you want to enable cache busting,
 parameter ``append_version`` can be set to ``True``
