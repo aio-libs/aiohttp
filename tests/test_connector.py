@@ -1309,7 +1309,7 @@ async def test_connect(loop: Any, key: Any) -> None:
     assert connection._protocol is proto
     assert connection.transport is proto.transport
     assert isinstance(connection, Connection)
-    await connection.close()
+    connection.close()
 
 
 async def test_connect_tracing(loop: Any) -> None:
@@ -1596,12 +1596,11 @@ async def test___get_ssl_context6(loop: Any) -> None:
 
 
 async def test__get_ssl_context_ssl_true(loop: Any) -> None:
-    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     conn = aiohttp.TCPConnector(ssl=True)
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = True
-    assert conn._get_ssl_context(req) is ctx
+    assert conn._get_ssl_context(req) is True
 
 
 async def test_close_twice(loop: Any) -> None:
