@@ -407,7 +407,7 @@ class ClientSession:
         verify_ssl: Optional[bool] = None,
         fingerprint: Optional[bytes] = None,
         ssl_context: Optional[SSLContext] = None,
-        ssl: Union[SSLContext, bool, Fingerprint] = True,
+        ssl: Optional[Union[SSLContext, bool, Fingerprint]] = True,
         server_hostname: Optional[str] = None,
         proxy_headers: Optional[LooseHeaders] = None,
         trace_request_ctx: Optional[SimpleNamespace] = None,
@@ -737,7 +737,7 @@ class ClientSession:
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
-        ssl: Union[SSLContext, bool, Fingerprint] = True,
+        ssl: Union[SSLContext, bool, None, Fingerprint] = True,
         verify_ssl: Optional[bool] = None,
         fingerprint: Optional[bytes] = None,
         ssl_context: Optional[SSLContext] = None,
@@ -825,11 +825,6 @@ class ClientSession:
 
         # For the sake of backward compatibility, if user passes in None, convert it to True
         if ssl is None:
-            warnings.warn(
-                "ssl=None is deprecated, please use ssl=True",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             ssl = True
         ssl = _merge_ssl_params(ssl, verify_ssl, ssl_context, fingerprint)
 
