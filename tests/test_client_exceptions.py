@@ -89,7 +89,7 @@ class TestClientConnectorError:
         host="example.com",
         port=8080,
         is_ssl=False,
-        ssl=None,
+        ssl=True,
         proxy=None,
         proxy_auth=None,
         proxy_headers_hash=None,
@@ -106,7 +106,7 @@ class TestClientConnectorError:
         assert err.os_error.strerror == "No such file"
         assert err.host == "example.com"
         assert err.port == 8080
-        assert err.ssl is None
+        assert err.ssl is True
 
     def test_pickle(self) -> None:
         err = client.ClientConnectorError(
@@ -123,7 +123,7 @@ class TestClientConnectorError:
             assert err2.os_error.strerror == "No such file"
             assert err2.host == "example.com"
             assert err2.port == 8080
-            assert err2.ssl is None
+            assert err2.ssl is True
             assert err2.foo == "bar"
 
     def test_repr(self) -> None:
@@ -141,7 +141,7 @@ class TestClientConnectorError:
             os_error=OSError(errno.ENOENT, "No such file"),
         )
         assert str(err) == (
-            "Cannot connect to host example.com:8080 ssl:" "default [No such file]"
+            "Cannot connect to host example.com:8080 ssl:default [No such file]"
         )
 
 
@@ -150,7 +150,7 @@ class TestClientConnectorCertificateError:
         host="example.com",
         port=8080,
         is_ssl=False,
-        ssl=None,
+        ssl=True,
         proxy=None,
         proxy_auth=None,
         proxy_headers_hash=None,

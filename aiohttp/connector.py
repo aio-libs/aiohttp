@@ -746,7 +746,7 @@ class TCPConnector(BaseConnector):
         use_dns_cache: bool = True,
         ttl_dns_cache: Optional[int] = 10,
         family: int = 0,
-        ssl: Union[None, Literal[False], Fingerprint, SSLContext] = None,
+        ssl: Union[bool, Fingerprint, SSLContext] = True,
         local_addr: Optional[Tuple[str, int]] = None,
         resolver: Optional[AbstractResolver] = None,
         keepalive_timeout: Union[None, float, _SENTINEL] = sentinel,
@@ -769,8 +769,8 @@ class TCPConnector(BaseConnector):
 
         if not isinstance(ssl, SSL_ALLOWED_TYPES):
             raise TypeError(
-                "ssl should be SSLContext, bool, Fingerprint, "
-                "or None, got {!r} instead.".format(ssl)
+                "ssl should be SSLContext, Fingerprint, or bool, "
+                "got {!r} instead.".format(ssl)
             )
         self._ssl = ssl
         if resolver is None:
@@ -942,13 +942,13 @@ class TCPConnector(BaseConnector):
             sslcontext = req.ssl
             if isinstance(sslcontext, ssl.SSLContext):
                 return sslcontext
-            if sslcontext is not None:
+            if sslcontext is not True:
                 # not verified or fingerprinted
                 return self._make_ssl_context(False)
             sslcontext = self._ssl
             if isinstance(sslcontext, ssl.SSLContext):
                 return sslcontext
-            if sslcontext is not None:
+            if sslcontext is not True:
                 # not verified or fingerprinted
                 return self._make_ssl_context(False)
             return self._make_ssl_context(True)
