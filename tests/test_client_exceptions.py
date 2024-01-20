@@ -89,7 +89,7 @@ class TestClientConnectorError:
         host="example.com",
         port=8080,
         is_ssl=False,
-        ssl=None,
+        ssl=True,
         proxy=None,
         proxy_auth=None,
         proxy_headers_hash=None,
@@ -141,7 +141,7 @@ class TestClientConnectorError:
             os_error=OSError(errno.ENOENT, "No such file"),
         )
         assert str(err) == (
-            "Cannot connect to host example.com:8080 ssl:" "default [No such file]"
+            "Cannot connect to host example.com:8080 ssl:default [No such file]"
         )
 
 
@@ -150,7 +150,7 @@ class TestClientConnectorCertificateError:
         host="example.com",
         port=8080,
         is_ssl=False,
-        ssl=None,
+        ssl=True,
         proxy=None,
         proxy_auth=None,
         proxy_headers_hash=None,
