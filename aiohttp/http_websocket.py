@@ -605,7 +605,7 @@ class WebSocketWriter:
         *,
         use_mask: bool = False,
         limit: int = DEFAULT_LIMIT,
-        random: Any = random.Random(),
+        random: random.Random = random.Random(),
         compress: int = 0,
         notakeover: bool = False,
     ) -> None:
@@ -668,20 +668,20 @@ class WebSocketWriter:
         else:
             header = PACK_LEN3(0x80 | rsv | opcode, 127 | mask_bit, msg_length)
         if use_mask:
-            mask = self.randrange(0, 0xFFFFFFFF)
-            mask = mask.to_bytes(4, "big")
+            mask_int = self.randrange(0, 0xFFFFFFFF)
+            mask = mask_int.to_bytes(4, "big")
             message = bytearray(message)
             _websocket_mask(mask, message)
             self._write(header + mask + message)
-            self._output_size += len(header) + len(mask) + len(message)
+            self._output_size += len(header) + len(mask) + msg_length
         else:
-            if len(message) > MSG_SIZE:
+            if msg_length > MSG_SIZE:
                 self._write(header)
                 self._write(message)
             else:
                 self._write(header + message)
 
-            self._output_size += len(header) + len(message)
+            self._output_size += len(header) + msg_length
 
         # It is safe to return control to the event loop when using compression
         # after this point as we have already sent or buffered all the data.
