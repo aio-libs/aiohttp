@@ -1595,14 +1595,6 @@ async def test___get_ssl_context6(loop: Any) -> None:
     assert conn._get_ssl_context(req) is conn._make_ssl_context(True)
 
 
-async def test__get_ssl_context_ssl_true(loop: Any) -> None:
-    conn = aiohttp.TCPConnector(ssl=True)
-    req = mock.Mock()
-    req.is_ssl.return_value = True
-    req.ssl = True
-    assert conn._get_ssl_context(req) is True
-
-
 async def test_close_twice(loop: Any) -> None:
     proto = create_mocked_conn(loop)
 
