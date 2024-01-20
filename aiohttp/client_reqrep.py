@@ -247,7 +247,7 @@ class ClientRequest:
             real_response_class = response_class
         self.response_class: Type[ClientResponse] = real_response_class
         self._timer = timer if timer is not None else TimerNoop()
-        self._ssl = ssl if ssl is not None else True
+        self._ssl = ssl if ssl is not None else True  # type: ignore[redundant-expr]
         self.server_hostname = server_hostname
 
         if loop.get_debug():
