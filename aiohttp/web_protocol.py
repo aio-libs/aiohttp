@@ -589,6 +589,9 @@ class RequestHandler(BaseProtocol):
             except Exception as exc:
                 self.log_exception("Unhandled exception", exc_info=exc)
                 self.force_close()
+            except BaseException:
+                self.force_close()
+                raise
             finally:
                 if self.transport is None and resp is not None:
                     self.log_debug("Ignored premature client disconnection.")
