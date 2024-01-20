@@ -31,19 +31,19 @@ from aiohttp.tracing import Trace
 @pytest.fixture()
 def key():
     # Connection key
-    return ConnectionKey("localhost", 80, False, None, None, None, None)
+    return ConnectionKey("localhost", 80, False, True, None, None, None)
 
 
 @pytest.fixture
 def key2():
     # Connection key
-    return ConnectionKey("localhost", 80, False, None, None, None, None)
+    return ConnectionKey("localhost", 80, False, True, None, None, None)
 
 
 @pytest.fixture
 def ssl_key():
     # Connection key
-    return ConnectionKey("localhost", 80, True, None, None, None, None)
+    return ConnectionKey("localhost", 80, True, True, None, None, None)
 
 
 @pytest.fixture
