@@ -158,7 +158,7 @@ class ClientTimeout:
 # 5 Minute default read timeout
 DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60)
 
-# https://www.rfc-editor.org/rfc/rfc9112.html#name-retrying-requests
+# https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
 
 _RetType = TypeVar("_RetType")
@@ -438,6 +438,7 @@ class ClientSession:
         timer = tm.timer()
         try:
             with timer:
+                # https://www.rfc-editor.org/rfc/rfc9112.html#name-retrying-requests
                 retry_persistent_connection = method in IDEMPOTENT_METHODS
                 while True:
                     url, auth_from_url = strip_auth_from_url(url)
