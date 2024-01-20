@@ -158,7 +158,7 @@ def _merge_ssl_params(
     verify_ssl: Optional[bool],
     ssl_context: Optional["SSLContext"],
     fingerprint: Optional[bytes],
-) -> Union["SSLContext", Literal[False], Fingerprint, None]:
+) -> Union["SSLContext", bool, Fingerprint]:
     if verify_ssl is not None and not verify_ssl:
         warnings.warn(
             "verify_ssl is deprecated, use ssl=False instead",
