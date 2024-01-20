@@ -9,6 +9,8 @@ import json
 import pathlib
 import socket
 import ssl
+import sys
+import time
 from typing import Any, AsyncIterator
 from unittest import mock
 
@@ -213,6 +215,67 @@ async def test_keepalive_server_force_close_connection(aiohttp_client: Any) -> N
     resp2.close()
 
     assert 0 == len(client._session.connector._conns)
+
+
+async def test_keepalive_timeout_async_sleep() -> None:
+    async def handler(request):
+        body = await request.read()
+        assert b"" == body
+        return web.Response(body=b"OK")
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    runner = web.AppRunner(app, tcp_keepalive=True, keepalive_timeout=0.001)
+    await runner.setup()
+
+    port = unused_port()
+    site = web.TCPSite(runner, host="localhost", port=port)
+    await site.start()
+
+    try:
+        async with aiohttp.client.ClientSession() as sess:
+            resp1 = await sess.get(f"http://localhost:{port}/")
+            await resp1.read()
+            # wait for server keepalive_timeout
+            await asyncio.sleep(0.01)
+            resp2 = await sess.get(f"http://localhost:{port}/")
+            await resp2.read()
+    finally:
+        await asyncio.gather(runner.shutdown(), site.stop())
+
+
+@pytest.mark.skipif(
+    sys.version_info[:2] == (3, 11),
+    reason="https://github.com/pytest-dev/pytest/issues/10763",
+)
+async def test_keepalive_timeout_sync_sleep() -> None:
+    async def handler(request):
+        body = await request.read()
+        assert b"" == body
+        return web.Response(body=b"OK")
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    runner = web.AppRunner(app, tcp_keepalive=True, keepalive_timeout=0.001)
+    await runner.setup()
+
+    port = unused_port()
+    site = web.TCPSite(runner, host="localhost", port=port)
+    await site.start()
+
+    try:
+        async with aiohttp.client.ClientSession() as sess:
+            resp1 = await sess.get(f"http://localhost:{port}/")
+            await resp1.read()
+            # wait for server keepalive_timeout
+            # time.sleep is a more challenging scenario than asyncio.sleep
+            time.sleep(0.01)
+            resp2 = await sess.get(f"http://localhost:{port}/")
+            await resp2.read()
+    finally:
+        await asyncio.gather(runner.shutdown(), site.stop())
 
 
 async def test_release_early(aiohttp_client: Any) -> None:
@@ -3030,21 +3093,20 @@ async def test_handle_keepalive_on_closed_connection() -> None:
 
     addr = server.sockets[0].getsockname()
 
-    connector = aiohttp.TCPConnector(limit=1)
-    session = aiohttp.ClientSession(connector=connector)
+    async with aiohttp.TCPConnector(limit=1) as connector:
+        async with aiohttp.ClientSession(connector=connector) as session:
+            url = "http://{}:{}/".format(*addr)
 
-    url = "http://{}:{}/".format(*addr)
+            r = await session.request("GET", url)
+            await r.read()
+            assert 1 == len(connector._conns)
+            closed_conn = next(iter(connector._conns.values()))
 
-    r = await session.request("GET", url)
-    await r.read()
-    assert 1 == len(connector._conns)
+            await session.request("GET", url)
+            assert 1 == len(connector._conns)
+            new_conn = next(iter(connector._conns.values()))
+            assert closed_conn is not new_conn
 
-    with pytest.raises(aiohttp.ClientConnectionError):
-        await session.request("GET", url)
-    assert 0 == len(connector._conns)
-
-    await session.close()
-    await connector.close()
     server.close()
     await server.wait_closed()
 
