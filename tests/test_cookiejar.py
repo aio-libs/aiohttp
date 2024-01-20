@@ -593,11 +593,11 @@ class TestCookieJarSafe(TestCookieJarBase):
 
     def test_domain_filter_host_only(self) -> None:
         self.jar.update_cookies(self.cookies_to_receive, URL("http://example.com/"))
+        sub_cookie = SimpleCookie("subdomain=spam; Path=/;")
+        self.jar.update_cookies(sub_cookie, URL("http://foo.example.com/"))
 
-        cookies_sent = self.jar.filter_cookies(URL("http://example.com/"))
-        self.assertIn("unconstrained-cookie", set(cookies_sent.keys()))
-
-        cookies_sent = self.jar.filter_cookies(URL("http://different.org/"))
+        cookies_sent = self.jar.filter_cookies(URL("http://foo.example.com/"))
+        self.assertIn("subdomain", set(cookies_sent.keys()))
         self.assertNotIn("unconstrained-cookie", set(cookies_sent.keys()))
 
     def test_secure_filter(self) -> None:
