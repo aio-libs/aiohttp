@@ -263,13 +263,18 @@ class CookieJar(AbstractCookieJar):
                 request_origin = request_url.origin()
             is_not_secure = request_origin not in self._treat_as_secure_origin
 
+        if is_ip_address(hostname):
+            if not self._unsafe:
+                return filtered
+            domains = (hostname,)
+        else:
+            # Get all the subdomains that might match a cookie (e.g. "foo.bar.com", "bar.com", "com")
+            domains = itertools.accumulate(
+                reversed(hostname.split(".")), lambda x, y: f"{y}.{x}"
+            )
         # Get all the path prefixes that might match a cookie (e.g. "", "/foo", "/foo/bar")
         paths = itertools.accumulate(
             request_url.path.split("/"), lambda x, y: f"{x}/{y}"
-        )
-        # Get all the subdomains that might match a cookie (e.g. "foo.bar.com", "bar.com", "com")
-        domains = itertools.accumulate(
-            reversed(hostname.split(".")), lambda x, y: f"{y}.{x}"
         )
         # Create every combination of (domain, path) pairs, plus the shared cookie.
         pairs = itertools.chain((("", ""),), itertools.product(domains, paths))
@@ -285,9 +290,6 @@ class CookieJar(AbstractCookieJar):
             # Send shared cookies
             if not domain:
                 filtered[name] = cookie.value
-                continue
-
-            if not self._unsafe and is_ip_address(hostname):
                 continue
 
             if (domain, name) in self._host_only_cookies:
