@@ -503,7 +503,7 @@ class ClientSession:
                         proxy_auth=proxy_auth,
                         timer=timer,
                         session=self,
-                        ssl=ssl if ssl is not None else True,
+                        ssl=ssl if ssl is not None else True,  # type: ignore[redundant-expr]
                         server_hostname=server_hostname,
                         proxy_headers=proxy_headers,
                         traces=traces,
@@ -710,7 +710,7 @@ class ClientSession:
                 headers=headers,
                 proxy=proxy,
                 proxy_auth=proxy_auth,
-                ssl=ssl if ssl is not None else True,
+                ssl=ssl if ssl is not None else True,  # type: ignore[redundant-expr]
                 server_hostname=server_hostname,
                 proxy_headers=proxy_headers,
                 compress=compress,
