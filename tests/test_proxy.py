@@ -88,7 +88,7 @@ class TestProxy(unittest.TestCase):
             auth=None,
             headers={"Host": "www.python.org"},
             loop=self.loop,
-            ssl=None,
+            ssl=True,
         )
 
         conn.close()
@@ -146,7 +146,7 @@ class TestProxy(unittest.TestCase):
             auth=None,
             headers={"Host": "www.python.org", "Foo": "Bar"},
             loop=self.loop,
-            ssl=None,
+            ssl=True,
         )
 
         conn.close()
