@@ -154,7 +154,7 @@ class ClientConnectorError(ClientOSError):
 
     def __str__(self) -> str:
         return "Cannot connect to host {0.host}:{0.port} ssl:{1} [{2}]".format(
-            self, self.ssl if self.ssl is not None else "default", self.strerror
+            self, "default" if self.ssl is True else self.ssl, self.strerror
         )
 
     # OSError.__reduce__ does too much black magick
@@ -188,7 +188,7 @@ class UnixClientConnectorError(ClientConnectorError):
 
     def __str__(self) -> str:
         return "Cannot connect to unix socket {0.path} ssl:{1} [{2}]".format(
-            self, self.ssl if self.ssl is not None else "default", self.strerror
+            self, "default" if self.ssl is True else self.ssl, self.strerror
         )
 
 
