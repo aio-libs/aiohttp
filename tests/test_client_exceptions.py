@@ -106,7 +106,7 @@ class TestClientConnectorError:
         assert err.os_error.strerror == "No such file"
         assert err.host == "example.com"
         assert err.port == 8080
-        assert err.ssl is None
+        assert err.ssl is True
 
     def test_pickle(self) -> None:
         err = client.ClientConnectorError(
@@ -123,7 +123,7 @@ class TestClientConnectorError:
             assert err2.os_error.strerror == "No such file"
             assert err2.host == "example.com"
             assert err2.port == 8080
-            assert err2.ssl is None
+            assert err2.ssl is True
             assert err2.foo == "bar"
 
     def test_repr(self) -> None:
