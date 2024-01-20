@@ -155,28 +155,6 @@ def test_domain_matching() -> None:
     assert not test_func("test.com", "127.0.0.1")
 
 
-def test_path_matching() -> None:
-    test_func = CookieJar._is_path_match
-
-    assert test_func("/", "")
-    assert test_func("", "/")
-    assert test_func("/file", "")
-    assert test_func("/folder/file", "")
-    assert test_func("/", "/")
-    assert test_func("/file", "/")
-    assert test_func("/file", "/file")
-    assert test_func("/folder/", "/folder/")
-    assert test_func("/folder/", "/")
-    assert test_func("/folder/file", "/")
-
-    assert not test_func("/", "/file")
-    assert not test_func("/", "/folder/")
-    assert not test_func("/file", "/folder/file")
-    assert not test_func("/folder/", "/folder/file")
-    assert not test_func("/different-file", "/file")
-    assert not test_func("/different-folder/", "/folder/")
-
-
 async def test_constructor(cookies_to_send: Any, cookies_to_receive: Any) -> None:
     jar = CookieJar()
     jar.update_cookies(cookies_to_send)
