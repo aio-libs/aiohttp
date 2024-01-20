@@ -791,11 +791,6 @@ class TCPConnector(BaseConnector):
             timeout_ceil_threshold=timeout_ceil_threshold,
         )
 
-        if not isinstance(ssl, SSL_ALLOWED_TYPES):
-            raise TypeError(
-                "ssl should be SSLContext, Fingerprint, or bool, "
-                "got {!r} instead.".format(ssl)
-            )
         self._ssl = _merge_ssl_params(ssl, verify_ssl, ssl_context, fingerprint)
         if resolver is None:
             resolver = DefaultResolver(loop=self._loop)

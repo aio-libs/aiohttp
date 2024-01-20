@@ -431,11 +431,6 @@ class ClientSession:
         if self.closed:
             raise RuntimeError("Session is closed")
 
-        if not isinstance(ssl, SSL_ALLOWED_TYPES):
-            raise TypeError(
-                "ssl should be SSLContext, Fingerprint, or bool, "
-                "got {!r} instead.".format(ssl)
-            )
         ssl = _merge_ssl_params(ssl, verify_ssl, ssl_context, fingerprint)
 
         if data is not None and json is not None:
