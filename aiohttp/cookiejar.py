@@ -294,8 +294,6 @@ class CookieJar(AbstractCookieJar):
             if (domain, name) in self._host_only_cookies:
                 if domain != hostname:
                     continue
-            elif not self._is_domain_match(domain, hostname):
-                continue
 
             if not self._is_path_match(request_url.path, cookie["path"]):
                 continue
