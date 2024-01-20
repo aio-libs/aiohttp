@@ -1008,7 +1008,14 @@ class ClientResponse(HeadersMixin):
 
     async def _wait_released(self) -> None:
         if self._writer is not None:
-            await self._writer
+            try:
+                await self._writer
+            except asyncio.CancelledError:
+                # Writer was cancelled, ensure the connection is closed
+                # since we won't be able to write the rest of the body
+                # we need to close the connection since we can't reuse it
+                self.close()
+                return
         self._release_connection()
 
     def _cleanup_writer(self) -> None:
@@ -1025,7 +1032,14 @@ class ClientResponse(HeadersMixin):
 
     async def wait_for_close(self) -> None:
         if self._writer is not None:
-            await self._writer
+            try:
+                await self._writer
+            except asyncio.CancelledError:
+                # Writer was cancelled, ensure the connection is closed
+                # since we won't be able to write the rest of the body
+                # we need to close the connection since we can't reuse it
+                self.close()
+                return
         self.release()
 
     async def read(self) -> bytes:
