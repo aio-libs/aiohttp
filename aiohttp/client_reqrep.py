@@ -1008,7 +1008,7 @@ class ClientResponse(HeadersMixin):
             else:
                 self._writer.add_done_callback(lambda f: self._release_connection())
 
-    async def _wait_for_writer(self) -> None:
+    async def _wait_for_writer(self, writer: asyncio.Task[None]) -> None:
         """Wait for the writer to finish.
 
         If we cancel the writer, we will suppress the CancelledError
@@ -1016,7 +1016,7 @@ class ClientResponse(HeadersMixin):
         did not cancel the writer, we need to raise the exception.
         """
         try:
-            await self._writer
+            await writer
         except asyncio.CancelledError:
             # Writer was cancelled, ensure the connection is closed
             # since we won't be able to write the rest of the body
@@ -1027,7 +1027,7 @@ class ClientResponse(HeadersMixin):
 
     async def _wait_released(self) -> None:
         if self._writer is not None:
-            await self._wait_for_writer()
+            await self._wait_for_writer(self._writer)
         self._release_connection()
 
     def _cleanup_writer(self) -> None:
@@ -1045,7 +1045,7 @@ class ClientResponse(HeadersMixin):
 
     async def wait_for_close(self) -> None:
         if self._writer is not None:
-            await self._wait_for_writer()
+            await self._wait_for_writer(self._writer)
         self.release()
 
     async def read(self) -> bytes:
