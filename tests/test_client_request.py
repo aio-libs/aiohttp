@@ -166,7 +166,7 @@ def test_host_port_default_http(make_request) -> None:
     req = make_request("get", "http://python.org/")
     assert req.host == "python.org"
     assert req.port == 80
-    assert not req.ssl
+    assert not req.is_ssl()
 
 
 def test_host_port_default_https(make_request) -> None:
@@ -400,7 +400,7 @@ def test_ipv6_default_http_port(make_request) -> None:
     req = make_request("get", "http://[2001:db8::1]/")
     assert req.host == "2001:db8::1"
     assert req.port == 80
-    assert not req.ssl
+    assert not req.is_ssl()
 
 
 def test_ipv6_default_https_port(make_request) -> None:
