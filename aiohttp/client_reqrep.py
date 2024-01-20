@@ -14,6 +14,7 @@ from types import MappingProxyType, TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
+    Awaitable,
     Callable,
     Dict,
     Iterable,
@@ -1008,7 +1009,7 @@ class ClientResponse(HeadersMixin):
             else:
                 self._writer.add_done_callback(lambda f: self._release_connection())
 
-    async def _wait_for_writer(self, writer: asyncio.Task[None]) -> None:
+    async def _wait_for_writer(self, writer: Awaitable[None]) -> None:
         """Wait for the writer to finish.
 
         If we cancel the writer, we will suppress the CancelledError
