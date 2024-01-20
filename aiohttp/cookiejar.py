@@ -263,6 +263,10 @@ class CookieJar(AbstractCookieJar):
                 request_origin = request_url.origin()
             is_not_secure = request_origin not in self._treat_as_secure_origin
 
+        # Send shared cookie
+        for c in self._cookies[("", "")].values():
+            filtered[c.key] = c.value
+
         if is_ip_address(hostname):
             if not self._unsafe:
                 return filtered
@@ -276,8 +280,8 @@ class CookieJar(AbstractCookieJar):
         paths = itertools.accumulate(
             request_url.path.split("/"), lambda x, y: f"{x}/{y}"
         )
-        # Create every combination of (domain, path) pairs, plus the shared cookie.
-        pairs = itertools.chain((("", ""),), itertools.product(domains, paths))
+        # Create every combination of (domain, path) pairs.
+        pairs = itertools.product(domains, paths)
 
         # Point 2: https://www.rfc-editor.org/rfc/rfc6265.html#section-5.4
         cookies = itertools.chain.from_iterable(
@@ -286,11 +290,6 @@ class CookieJar(AbstractCookieJar):
         for cookie in cookies:
             name = cookie.key
             domain = cookie["domain"]
-
-            # Send shared cookies
-            if not domain:
-                filtered[name] = cookie.value
-                continue
 
             if (domain, name) in self._host_only_cookies:
                 if domain != hostname:
