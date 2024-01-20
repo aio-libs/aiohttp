@@ -295,7 +295,8 @@ class CookieJar(AbstractCookieJar):
                 if domain != hostname:
                     continue
 
-            if not self._is_path_match(request_url.path, cookie["path"]):
+            # Skip edge case when the cookie has a trailing slash but request doesn't.
+            if len(cookie["path"]) > path_len:
                 continue
 
             if is_not_secure and cookie["secure"]:
@@ -324,25 +325,6 @@ class CookieJar(AbstractCookieJar):
             return False
 
         return not is_ip_address(hostname)
-
-    @staticmethod
-    def _is_path_match(req_path: str, cookie_path: str) -> bool:
-        """Implements path matching adhering to RFC 6265."""
-        if not req_path.startswith("/"):
-            req_path = "/"
-
-        if req_path == cookie_path:
-            return True
-
-        if not req_path.startswith(cookie_path):
-            return False
-
-        if cookie_path.endswith("/"):
-            return True
-
-        non_matching = req_path[len(cookie_path) :]
-
-        return non_matching.startswith("/")
 
     @classmethod
     def _parse_date(cls, date_str: str) -> Optional[int]:
