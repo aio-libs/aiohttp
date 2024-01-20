@@ -11,7 +11,7 @@ import warnings
 from collections import defaultdict
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from math import ceil
-from typing import (  # noqa
+from typing import (
     DefaultDict,
     Dict,
     Iterable,
