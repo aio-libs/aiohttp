@@ -22,7 +22,6 @@ from typing import (
     Generic,
     Iterable,
     List,
-    Literal,
     Mapping,
     Optional,
     Set,
@@ -415,7 +414,7 @@ class ClientSession:
         verify_ssl: Optional[bool] = None,
         fingerprint: Optional[bytes] = None,
         ssl_context: Optional[SSLContext] = None,
-        ssl: Optional[Union[SSLContext, Literal[False], Fingerprint]] = None,
+        ssl: Union[SSLContext, bool, Fingerprint] = True,
         server_hostname: Optional[str] = None,
         proxy_headers: Optional[LooseHeaders] = None,
         trace_request_ctx: Optional[SimpleNamespace] = None,
@@ -571,7 +570,7 @@ class ClientSession:
                         proxy_auth=proxy_auth,
                         timer=timer,
                         session=self,
-                        ssl=ssl,
+                        ssl=ssl if ssl is not None else True,
                         server_hostname=server_hostname,
                         proxy_headers=proxy_headers,
                         traces=traces,
@@ -752,7 +751,7 @@ class ClientSession:
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
-        ssl: Union[SSLContext, Literal[False], None, Fingerprint] = None,
+        ssl: Union[SSLContext, bool, Fingerprint] = True,
         verify_ssl: Optional[bool] = None,
         fingerprint: Optional[bytes] = None,
         ssl_context: Optional[SSLContext] = None,
@@ -804,7 +803,7 @@ class ClientSession:
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
-        ssl: Union[SSLContext, Literal[False], None, Fingerprint] = None,
+        ssl: Union[SSLContext, bool, Fingerprint] = True,
         verify_ssl: Optional[bool] = None,
         fingerprint: Optional[bytes] = None,
         ssl_context: Optional[SSLContext] = None,
@@ -838,6 +837,14 @@ class ClientSession:
             extstr = ws_ext_gen(compress=compress)
             real_headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = extstr
 
+        # For the sake of backward compatibility, if user passes in None, convert it to True
+        if ssl is None:
+            warnings.warn(
+                "ssl=None is deprecated, please use ssl=True",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            ssl = True
         ssl = _merge_ssl_params(ssl, verify_ssl, ssl_context, fingerprint)
 
         # send request
