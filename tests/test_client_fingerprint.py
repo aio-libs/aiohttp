@@ -37,7 +37,7 @@ def test_fingerprint_check_no_ssl() -> None:
 
 def test__merge_ssl_params_verify_ssl() -> None:
     with pytest.warns(DeprecationWarning):
-        assert _merge_ssl_params(None, False, None, None) is False
+        assert _merge_ssl_params(True, False, None, None) is False
 
 
 def test__merge_ssl_params_verify_ssl_conflict() -> None:
@@ -50,7 +50,7 @@ def test__merge_ssl_params_verify_ssl_conflict() -> None:
 def test__merge_ssl_params_ssl_context() -> None:
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     with pytest.warns(DeprecationWarning):
-        assert _merge_ssl_params(None, None, ctx, None) is ctx
+        assert _merge_ssl_params(True, None, ctx, None) is ctx
 
 
 def test__merge_ssl_params_ssl_context_conflict() -> None:
@@ -64,7 +64,7 @@ def test__merge_ssl_params_ssl_context_conflict() -> None:
 def test__merge_ssl_params_fingerprint() -> None:
     digest = hashlib.sha256(b"123").digest()
     with pytest.warns(DeprecationWarning):
-        ret = _merge_ssl_params(None, None, None, digest)
+        ret = _merge_ssl_params(True, None, None, digest)
         assert ret.fingerprint == digest
 
 

@@ -30,19 +30,19 @@ from aiohttp.tracing import Trace
 @pytest.fixture()
 def key():
     # Connection key
-    return ConnectionKey("localhost", 80, False, None, None, None, None)
+    return ConnectionKey("localhost", 80, False, True, None, None, None)
 
 
 @pytest.fixture
 def key2():
     # Connection key
-    return ConnectionKey("localhost", 80, False, None, None, None, None)
+    return ConnectionKey("localhost", 80, False, True, None, None, None)
 
 
 @pytest.fixture
 def ssl_key():
     # Connection key
-    return ConnectionKey("localhost", 80, True, None, None, None, None)
+    return ConnectionKey("localhost", 80, True, True, None, None, None)
 
 
 @pytest.fixture
@@ -1467,9 +1467,9 @@ async def test_cleanup_closed_disabled(loop, mocker) -> None:
     assert not conn._cleanup_closed_transports
 
 
-async def test_tcp_connector_ctor(loop) -> None:
-    conn = aiohttp.TCPConnector(loop=loop)
-    assert conn._ssl is None
+async def test_tcp_connector_ctor() -> None:
+    conn = aiohttp.TCPConnector()
+    assert conn._ssl is True
 
     assert conn.use_dns_cache
     assert conn.family == 0
@@ -1555,7 +1555,7 @@ async def test___get_ssl_context3(loop) -> None:
     conn = aiohttp.TCPConnector(loop=loop, ssl=ctx)
     req = mock.Mock()
     req.is_ssl.return_value = True
-    req.ssl = None
+    req.ssl = True
     assert conn._get_ssl_context(req) is ctx
 
 
@@ -1581,7 +1581,7 @@ async def test___get_ssl_context6(loop) -> None:
     conn = aiohttp.TCPConnector(loop=loop)
     req = mock.Mock()
     req.is_ssl.return_value = True
-    req.ssl = None
+    req.ssl = True
     assert conn._get_ssl_context(req) is conn._make_ssl_context(True)
 
 
