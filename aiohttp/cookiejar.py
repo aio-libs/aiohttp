@@ -270,7 +270,7 @@ class CookieJar(AbstractCookieJar):
         if is_ip_address(hostname):
             if not self._unsafe:
                 return filtered
-            domains = (hostname,)
+            domains: Iterable[str] = (hostname,)
         else:
             # Get all the subdomains that might match a cookie (e.g. "foo.bar.com", "bar.com", "com")
             domains = itertools.accumulate(
@@ -287,6 +287,7 @@ class CookieJar(AbstractCookieJar):
         cookies = itertools.chain.from_iterable(
             self._cookies[p].values() for p in pairs
         )
+        path_len = len(request_url.path)
         for cookie in cookies:
             name = cookie.key
             domain = cookie["domain"]
