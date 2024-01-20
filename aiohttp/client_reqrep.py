@@ -709,7 +709,7 @@ class ClientResponse(HeadersMixin):
     _closed = True  # to allow __del__ for non-initialized properly response
     _released = False
     __writer = None
-    __writer_cancelled = False
+    __writer_cancelled_internally = False
 
     def __init__(
         self,
@@ -768,7 +768,7 @@ class ClientResponse(HeadersMixin):
         if self.__writer is not None:
             self.__writer.remove_done_callback(self.__reset_writer)
         self.__writer = writer
-        self.__writer_cancelled = False
+        self.__writer_cancelled_internally = False
         if writer is not None:
             writer.add_done_callback(self.__reset_writer)
 
@@ -1022,7 +1022,7 @@ class ClientResponse(HeadersMixin):
             # since we won't be able to write the rest of the body
             # we need to close the connection since we can't reuse it
             self.close()
-            if not self.__writer_cancelled:
+            if not self.__writer_cancelled_internally:
                 raise
 
     async def _wait_released(self) -> None:
@@ -1032,7 +1032,7 @@ class ClientResponse(HeadersMixin):
 
     def _cleanup_writer(self) -> None:
         if self._writer is not None:
-            self.__writer_cancelled = True
+            self.__writer_cancelled_internally = True
             self._writer.cancel()
         self._session = None
 
