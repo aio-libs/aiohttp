@@ -146,9 +146,9 @@ class Fingerprint:
 
 
 if ssl is not None:
-    SSL_ALLOWED_TYPES = (ssl.SSLContext, bool, Fingerprint, type(None))
+    SSL_ALLOWED_TYPES = (ssl.SSLContext, bool, Fingerprint)
 else:  # pragma: no cover
-    SSL_ALLOWED_TYPES = (bool, type(None))
+    SSL_ALLOWED_TYPES = (bool,)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -247,7 +247,7 @@ class ClientRequest:
             real_response_class = response_class
         self.response_class: Type[ClientResponse] = real_response_class
         self._timer = timer if timer is not None else TimerNoop()
-        self._ssl = ssl if ssl is not None else True  # type: ignore[redundant-expr]
+        self._ssl = ssl
         self.server_hostname = server_hostname
 
         if loop.get_debug():
