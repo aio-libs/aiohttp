@@ -152,7 +152,12 @@ class CookieJar(AbstractCookieJar):
             yield from val.values()
 
     def __len__(self) -> int:
-        return sum(1 for i in self)
+        """Return number of cookies.
+
+        This function does not iterate self to avoid unnecessary expiration
+        checks.
+        """
+        return sum(len(cookie.values()) for cookie in self._cookies.values())
 
     def _do_expiration(self) -> None:
         self.clear(lambda x: False)
