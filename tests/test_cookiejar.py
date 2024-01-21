@@ -154,8 +154,8 @@ def test_domain_matching() -> None:
     assert not test_func("test.com", "127.0.0.1")
 
 
-async def test_constructor(cookies_to_send, cookies_to_receive) -> None:
-    jar = CookieJar()
+async def test_constructor(loop, cookies_to_send, cookies_to_receive) -> None:
+    jar = CookieJar(loop=loop)
     jar.update_cookies(cookies_to_send)
     jar_cookies = SimpleCookie()
     for cookie in jar:
