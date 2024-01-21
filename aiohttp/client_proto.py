@@ -81,11 +81,11 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         if self._parser is not None:
             try:
                 uncompleted = self._parser.feed_eof()
-            except Exception:
+            except Exception as e:
                 if self._payload is not None:
-                    self._payload.set_exception(
-                        ClientPayloadError("Response payload is not completed")
-                    )
+                    exc = ClientPayloadError("Response payload is not completed")
+                    exc.__cause__ = e
+                    self._payload.set_exception(exc)
 
         if not self.is_eof():
             if isinstance(exc, OSError):
