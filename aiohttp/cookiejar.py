@@ -2,6 +2,7 @@ import asyncio
 import calendar
 import contextlib
 import datetime
+import itertools
 import os  # noqa
 import pathlib
 import pickle
@@ -10,7 +11,7 @@ import time
 from collections import defaultdict
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from math import ceil
-from typing import (  # noqa
+from typing import (
     DefaultDict,
     Dict,
     Iterable,
@@ -211,6 +212,7 @@ class CookieJar(AbstractCookieJar):
                     # Cut everything from the last slash to the end
                     path = "/" + path[1 : path.rfind("/")]
                 cookie["path"] = path
+            path = path.rstrip("/")
 
             max_age = cookie["max-age"]
             if max_age:
@@ -256,26 +258,41 @@ class CookieJar(AbstractCookieJar):
                 request_origin = request_url.origin()
             is_not_secure = request_origin not in self._treat_as_secure_origin
 
+        # Send shared cookie
+        for c in self._cookies[("", "")].values():
+            filtered[c.key] = c.value
+
+        if is_ip_address(hostname):
+            if not self._unsafe:
+                return filtered
+            domains: Iterable[str] = (hostname,)
+        else:
+            # Get all the subdomains that might match a cookie (e.g. "foo.bar.com", "bar.com", "com")
+            domains = itertools.accumulate(
+                reversed(hostname.split(".")), lambda x, y: f"{y}.{x}"
+            )
+        # Get all the path prefixes that might match a cookie (e.g. "", "/foo", "/foo/bar")
+        paths = itertools.accumulate(
+            request_url.path.split("/"), lambda x, y: f"{x}/{y}"
+        )
+        # Create every combination of (domain, path) pairs.
+        pairs = itertools.product(domains, paths)
+
         # Point 2: https://www.rfc-editor.org/rfc/rfc6265.html#section-5.4
-        for cookie in sorted(self, key=lambda c: len(c["path"])):
+        cookies = itertools.chain.from_iterable(
+            self._cookies[p].values() for p in pairs
+        )
+        path_len = len(request_url.path)
+        for cookie in cookies:
             name = cookie.key
             domain = cookie["domain"]
-
-            # Send shared cookies
-            if not domain:
-                filtered[name] = cookie.value
-                continue
-
-            if not self._unsafe and is_ip_address(hostname):
-                continue
 
             if (domain, name) in self._host_only_cookies:
                 if domain != hostname:
                     continue
-            elif not self._is_domain_match(domain, hostname):
-                continue
 
-            if not self._is_path_match(request_url.path, cookie["path"]):
+            # Skip edge case when the cookie has a trailing slash but request doesn't.
+            if len(cookie["path"]) > path_len:
                 continue
 
             if is_not_secure and cookie["secure"]:
@@ -304,25 +321,6 @@ class CookieJar(AbstractCookieJar):
             return False
 
         return not is_ip_address(hostname)
-
-    @staticmethod
-    def _is_path_match(req_path: str, cookie_path: str) -> bool:
-        """Implements path matching adhering to RFC 6265."""
-        if not req_path.startswith("/"):
-            req_path = "/"
-
-        if req_path == cookie_path:
-            return True
-
-        if not req_path.startswith(cookie_path):
-            return False
-
-        if cookie_path.endswith("/"):
-            return True
-
-        non_matching = req_path[len(cookie_path) :]
-
-        return non_matching.startswith("/")
 
     @classmethod
     def _parse_date(cls, date_str: str) -> Optional[int]:
