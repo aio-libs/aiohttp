@@ -512,7 +512,7 @@ class ClientSession:
                         proxy_auth=proxy_auth,
                         timer=timer,
                         session=self,
-                        ssl=ssl if ssl is not None else True,  # type: ignore[redundant-expr]
+                        ssl=ssl,
                         server_hostname=server_hostname,
                         proxy_headers=proxy_headers,
                         traces=traces,
@@ -724,7 +724,7 @@ class ClientSession:
                 headers=headers,
                 proxy=proxy,
                 proxy_auth=proxy_auth,
-                ssl=ssl if ssl is not None else True,  # type: ignore[redundant-expr]
+                ssl=ssl,
                 server_hostname=server_hostname,
                 proxy_headers=proxy_headers,
                 compress=compress,
@@ -804,15 +804,6 @@ class ClientSession:
         if compress:
             extstr = ws_ext_gen(compress=compress)
             real_headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = extstr
-
-        # For the sake of backward compatibility, if user passes in None, convert it to True
-        if ssl is None:
-            warnings.warn(
-                "ssl=None is deprecated, please use ssl=True",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            ssl = True
 
         if not isinstance(ssl, SSL_ALLOWED_TYPES):
             raise TypeError(
