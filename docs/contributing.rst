@@ -3,6 +3,8 @@
 Contributing
 ============
 
+(:doc:`contributing-admins`)
+
 Instructions for contributors
 -----------------------------
 

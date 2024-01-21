@@ -596,7 +596,7 @@ class WebSocketWriter:
         *,
         use_mask: bool = False,
         limit: int = DEFAULT_LIMIT,
-        random: Any = random.Random(),
+        random: random.Random = random.Random(),
         compress: int = 0,
         notakeover: bool = False,
     ) -> None:
@@ -626,21 +626,17 @@ class WebSocketWriter:
         if (compress or self.compress) and opcode < 8:
             if compress:
                 # Do not set self._compress if compressing is for this frame
-                compressobj = ZLibCompressor(
-                    level=zlib.Z_BEST_SPEED,
-                    wbits=-compress,
-                    max_sync_chunk_size=WEBSOCKET_MAX_SYNC_CHUNK_SIZE,
-                )
+                compressobj = self._make_compress_obj(compress)
             else:  # self.compress
                 if not self._compressobj:
-                    self._compressobj = ZLibCompressor(
-                        level=zlib.Z_BEST_SPEED,
-                        wbits=-self.compress,
-                        max_sync_chunk_size=WEBSOCKET_MAX_SYNC_CHUNK_SIZE,
-                    )
+                    self._compressobj = self._make_compress_obj(self.compress)
                 compressobj = self._compressobj
 
             message = await compressobj.compress(message)
+            # Its critical that we do not return control to the event
+            # loop until we have finished sending all the compressed
+            # data. Otherwise we could end up mixing compressed frames
+            # if there are multiple coroutines compressing data.
             message += compressobj.flush(
                 zlib.Z_FULL_FLUSH if self.notakeover else zlib.Z_SYNC_FLUSH
             )
@@ -663,24 +659,34 @@ class WebSocketWriter:
         else:
             header = PACK_LEN3(0x80 | rsv | opcode, 127 | mask_bit, msg_length)
         if use_mask:
-            mask = self.randrange(0, 0xFFFFFFFF)
-            mask = mask.to_bytes(4, "big")
+            mask_int = self.randrange(0, 0xFFFFFFFF)
+            mask = mask_int.to_bytes(4, "big")
             message = bytearray(message)
             _websocket_mask(mask, message)
             self._write(header + mask + message)
-            self._output_size += len(header) + len(mask) + len(message)
+            self._output_size += len(header) + len(mask) + msg_length
         else:
-            if len(message) > MSG_SIZE:
+            if msg_length > MSG_SIZE:
                 self._write(header)
                 self._write(message)
             else:
                 self._write(header + message)
 
-            self._output_size += len(header) + len(message)
+            self._output_size += len(header) + msg_length
+
+        # It is safe to return control to the event loop when using compression
+        # after this point as we have already sent or buffered all the data.
 
         if self._output_size > self._limit:
             self._output_size = 0
             await self.protocol._drain_helper()
+
+    def _make_compress_obj(self, compress: int) -> ZLibCompressor:
+        return ZLibCompressor(
+            level=zlib.Z_BEST_SPEED,
+            wbits=-compress,
+            max_sync_chunk_size=WEBSOCKET_MAX_SYNC_CHUNK_SIZE,
+        )
 
     def _write(self, data: bytes) -> None:
         if self.transport.is_closing():

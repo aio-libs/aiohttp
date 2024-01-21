@@ -4,21 +4,16 @@ import datetime
 import itertools
 import pathlib
 import pickle
-import sys
 import unittest
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from typing import Any
 from unittest import mock
 
 import pytest
+from freezegun import freeze_time
 from yarl import URL
 
 from aiohttp import CookieJar, DummyCookieJar
-
-try:
-    from time_machine import travel
-except ImportError:
-    travel = None  # type: ignore[assignment]
 
 
 def dump_cookiejar() -> bytes:  # pragma: no cover
@@ -102,23 +97,27 @@ def test_date_parsing() -> None:
     assert parse_func("") is None
 
     # 70 -> 1970
-    assert parse_func("Tue, 1 Jan 70 00:00:00 GMT") == datetime.datetime(
-        1970, 1, 1, tzinfo=utc
+    assert (
+        parse_func("Tue, 1 Jan 70 00:00:00 GMT")
+        == datetime.datetime(1970, 1, 1, tzinfo=utc).timestamp()
     )
 
     # 10 -> 2010
-    assert parse_func("Tue, 1 Jan 10 00:00:00 GMT") == datetime.datetime(
-        2010, 1, 1, tzinfo=utc
+    assert (
+        parse_func("Tue, 1 Jan 10 00:00:00 GMT")
+        == datetime.datetime(2010, 1, 1, tzinfo=utc).timestamp()
     )
 
     # No day of week string
-    assert parse_func("1 Jan 1970 00:00:00 GMT") == datetime.datetime(
-        1970, 1, 1, tzinfo=utc
+    assert (
+        parse_func("1 Jan 1970 00:00:00 GMT")
+        == datetime.datetime(1970, 1, 1, tzinfo=utc).timestamp()
     )
 
     # No timezone string
-    assert parse_func("Tue, 1 Jan 1970 00:00:00") == datetime.datetime(
-        1970, 1, 1, tzinfo=utc
+    assert (
+        parse_func("Tue, 1 Jan 1970 00:00:00")
+        == datetime.datetime(1970, 1, 1, tzinfo=utc).timestamp()
     )
 
     # No year
@@ -154,28 +153,6 @@ def test_domain_matching() -> None:
     assert not test_func("diff-test.com", "test.com")
     assert not test_func("test.com", "diff-test.com")
     assert not test_func("test.com", "127.0.0.1")
-
-
-def test_path_matching() -> None:
-    test_func = CookieJar._is_path_match
-
-    assert test_func("/", "")
-    assert test_func("", "/")
-    assert test_func("/file", "")
-    assert test_func("/folder/file", "")
-    assert test_func("/", "/")
-    assert test_func("/file", "/")
-    assert test_func("/file", "/file")
-    assert test_func("/folder/", "/folder/")
-    assert test_func("/folder/", "/")
-    assert test_func("/folder/file", "/")
-
-    assert not test_func("/", "/file")
-    assert not test_func("/", "/folder/")
-    assert not test_func("/file", "/folder/file")
-    assert not test_func("/folder/", "/folder/file")
-    assert not test_func("/different-file", "/file")
-    assert not test_func("/different-folder/", "/folder/")
 
 
 async def test_constructor(cookies_to_send: Any, cookies_to_receive: Any) -> None:
@@ -252,6 +229,96 @@ async def test_filter_cookies_str_deprecated(loop: Any) -> None:
         match="The method accepts yarl.URL instances only, got <class 'str'>",
     ):
         jar.filter_cookies("http://éé.com")
+
+
+@pytest.mark.parametrize(
+    ("url", "expected_cookies"),
+    (
+        (
+            "http://pathtest.com/one/two/",
+            (
+                "no-path-cookie",
+                "path1-cookie",
+                "path2-cookie",
+                "shared-cookie",
+                "path3-cookie",
+                "path4-cookie",
+            ),
+        ),
+        (
+            "http://pathtest.com/one/two",
+            (
+                "no-path-cookie",
+                "path1-cookie",
+                "path2-cookie",
+                "shared-cookie",
+                "path3-cookie",
+            ),
+        ),
+        (
+            "http://pathtest.com/one/two/three/",
+            (
+                "no-path-cookie",
+                "path1-cookie",
+                "path2-cookie",
+                "shared-cookie",
+                "path3-cookie",
+                "path4-cookie",
+            ),
+        ),
+        (
+            "http://test1.example.com/",
+            (
+                "shared-cookie",
+                "domain-cookie",
+                "subdomain1-cookie",
+                "dotted-domain-cookie",
+            ),
+        ),
+        (
+            "http://pathtest.com/",
+            (
+                "shared-cookie",
+                "no-path-cookie",
+                "path1-cookie",
+            ),
+        ),
+    ),
+)
+async def test_filter_cookies_with_domain_path_lookup_multilevelpath(
+    loop: Any,
+    url: Any,
+    expected_cookies: Any,
+) -> None:
+    jar = CookieJar()
+    cookies = SimpleCookie(
+        "shared-cookie=first; "
+        "domain-cookie=second; Domain=example.com; "
+        "subdomain1-cookie=third; Domain=test1.example.com; "
+        "subdomain2-cookie=fourth; Domain=test2.example.com; "
+        "dotted-domain-cookie=fifth; Domain=.example.com; "
+        "different-domain-cookie=sixth; Domain=different.org; "
+        "secure-cookie=seventh; Domain=secure.com; Secure; "
+        "no-path-cookie=eighth; Domain=pathtest.com; "
+        "path1-cookie=ninth; Domain=pathtest.com; Path=/; "
+        "path2-cookie=tenth; Domain=pathtest.com; Path=/one; "
+        "path3-cookie=eleventh; Domain=pathtest.com; Path=/one/two; "
+        "path4-cookie=twelfth; Domain=pathtest.com; Path=/one/two/; "
+        "expires-cookie=thirteenth; Domain=expirestest.com; Path=/;"
+        " Expires=Tue, 1 Jan 1980 12:00:00 GMT; "
+        "max-age-cookie=fourteenth; Domain=maxagetest.com; Path=/;"
+        " Max-Age=60; "
+        "invalid-max-age-cookie=fifteenth; Domain=invalid-values.com; "
+        " Max-Age=string; "
+        "invalid-expires-cookie=sixteenth; Domain=invalid-values.com; "
+        " Expires=string;"
+    )
+    jar.update_cookies(cookies)
+    cookies = jar.filter_cookies(URL(url))
+
+    assert len(cookies) == len(expected_cookies)
+    for c in cookies:
+        assert c in expected_cookies
 
 
 async def test_domain_filter_ip_cookie_send(loop: Any) -> None:
@@ -423,10 +490,10 @@ class TestCookieJarSafe(TestCookieJarBase):
         elif isinstance(send_time, float):
             send_time = datetime.datetime.fromtimestamp(send_time)
 
-        with travel(update_time, tick=False):
+        with freeze_time(update_time):
             self.jar.update_cookies(self.cookies_to_send)
 
-        with travel(send_time, tick=False):
+        with freeze_time(send_time):
             cookies_sent = self.jar.filter_cookies(URL(url))
 
         self.jar.clear()
@@ -504,11 +571,11 @@ class TestCookieJarSafe(TestCookieJarBase):
 
     def test_domain_filter_host_only(self) -> None:
         self.jar.update_cookies(self.cookies_to_receive, URL("http://example.com/"))
+        sub_cookie = SimpleCookie("subdomain=spam; Path=/;")
+        self.jar.update_cookies(sub_cookie, URL("http://foo.example.com/"))
 
-        cookies_sent = self.jar.filter_cookies(URL("http://example.com/"))
-        self.assertIn("unconstrained-cookie", set(cookies_sent.keys()))
-
-        cookies_sent = self.jar.filter_cookies(URL("http://different.org/"))
+        cookies_sent = self.jar.filter_cookies(URL("http://foo.example.com/"))
+        self.assertIn("subdomain", set(cookies_sent.keys()))
         self.assertNotIn("unconstrained-cookie", set(cookies_sent.keys()))
 
     def test_secure_filter(self) -> None:
@@ -613,10 +680,6 @@ class TestCookieJarSafe(TestCookieJarBase):
         self.assertEqual(cookies_received["path-cookie"]["path"], "/somepath")
         self.assertEqual(cookies_received["wrong-path-cookie"]["path"], "/")
 
-    @unittest.skipIf(
-        sys.implementation.name != "cpython",
-        reason="time_machine leverages CPython specific pointers https://github.com/adamchainz/time-machine/issues/305",
-    )
     def test_expires(self) -> None:
         ts_before = datetime.datetime(
             1975, 1, 1, tzinfo=datetime.timezone.utc
@@ -638,10 +701,6 @@ class TestCookieJarSafe(TestCookieJarBase):
 
         self.assertEqual(set(cookies_sent.keys()), {"shared-cookie"})
 
-    @unittest.skipIf(
-        sys.implementation.name != "cpython",
-        reason="time_machine leverages CPython specific pointers https://github.com/adamchainz/time-machine/issues/305",
-    )
     def test_max_age(self) -> None:
         cookies_sent = self.timed_request("http://maxagetest.com/", 1000, 1000)
 
@@ -789,10 +848,6 @@ async def test_cookie_jar_clear_all() -> None:
     assert len(sut) == 0
 
 
-@pytest.mark.skipif(
-    sys.implementation.name != "cpython",
-    reason="time_machine leverages CPython specific pointers https://github.com/adamchainz/time-machine/issues/305",
-)
 async def test_cookie_jar_clear_expired():
     sut = CookieJar()
 
@@ -801,11 +856,11 @@ async def test_cookie_jar_clear_expired():
     cookie["foo"] = "bar"
     cookie["foo"]["expires"] = "Tue, 1 Jan 1990 12:00:00 GMT"
 
-    with travel("1980-01-01", tick=False):
+    with freeze_time("1980-01-01"):
         sut.update_cookies(cookie)
 
     sut.clear(lambda x: False)
-    with travel("1980-01-01", tick=False):
+    with freeze_time("1980-01-01"):
         assert len(sut) == 0
 
 
@@ -873,7 +928,7 @@ def test_pickle_format(cookies_to_send) -> None:
         with file_path.open("wb") as f:
             pickle.dump(cookies, f, pickle.HIGHEST_PROTOCOL)
     """
-    pickled = b"\x80\x05\x95\xc5\x07\x00\x00\x00\x00\x00\x00\x8c\x0bcollections\x94\x8c\x0bdefaultdict\x94\x93\x94\x8c\x0chttp.cookies\x94\x8c\x0cSimpleCookie\x94\x93\x94\x85\x94R\x94(\x8c\x00\x94\x8c\x01/\x94\x86\x94h\x05)\x81\x94\x8c\rshared-cookie\x94h\x03\x8c\x06Morsel\x94\x93\x94)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\t\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\x08\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(\x8c\x03key\x94h\x0c\x8c\x05value\x94\x8c\x05first\x94\x8c\x0bcoded_value\x94h\x1cubs\x8c\x0bexample.com\x94h\t\x86\x94h\x05)\x81\x94(\x8c\rdomain-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h\th\x12h\x08h\x13h\x1eh\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ah!h\x1b\x8c\x06second\x94h\x1dh$ub\x8c\x14dotted-domain-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h\th\x12h\x08h\x13\x8c\x0bexample.com\x94h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ah%h\x1b\x8c\x05fifth\x94h\x1dh)ubu\x8c\x11test1.example.com\x94h\t\x86\x94h\x05)\x81\x94\x8c\x11subdomain1-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h\th\x12h\x08h\x13h*h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ah-h\x1b\x8c\x05third\x94h\x1dh0ubs\x8c\x11test2.example.com\x94h\t\x86\x94h\x05)\x81\x94\x8c\x11subdomain2-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h\th\x12h\x08h\x13h1h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ah4h\x1b\x8c\x06fourth\x94h\x1dh7ubs\x8c\rdifferent.org\x94h\t\x86\x94h\x05)\x81\x94\x8c\x17different-domain-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h\th\x12h\x08h\x13h8h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ah;h\x1b\x8c\x05sixth\x94h\x1dh>ubs\x8c\nsecure.com\x94h\t\x86\x94h\x05)\x81\x94\x8c\rsecure-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h\th\x12h\x08h\x13h?h\x14h\x08h\x15\x88h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ahBh\x1b\x8c\x07seventh\x94h\x1dhEubs\x8c\x0cpathtest.com\x94h\t\x86\x94h\x05)\x81\x94(\x8c\x0eno-path-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h\th\x12h\x08h\x13hFh\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ahIh\x1b\x8c\x06eighth\x94h\x1dhLub\x8c\x0cpath1-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h\th\x12h\x08h\x13\x8c\x0cpathtest.com\x94h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ahMh\x1b\x8c\x05ninth\x94h\x1dhQubu\x8c\x0cpathtest.com\x94\x8c\x04/one\x94\x86\x94h\x05)\x81\x94\x8c\x0cpath2-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11hSh\x12h\x08h\x13hRh\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ahVh\x1b\x8c\x05tenth\x94h\x1dhYubs\x8c\x0cpathtest.com\x94\x8c\x08/one/two\x94\x86\x94h\x05)\x81\x94\x8c\x0cpath3-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h[h\x12h\x08h\x13hZh\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ah^h\x1b\x8c\x08eleventh\x94h\x1dhaubs\x8c\x0cpathtest.com\x94\x8c\t/one/two/\x94\x86\x94h\x05)\x81\x94\x8c\x0cpath4-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11hch\x12h\x08h\x13hbh\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ahfh\x1b\x8c\x07twelfth\x94h\x1dhiubs\x8c\x0fexpirestest.com\x94h\t\x86\x94h\x05)\x81\x94\x8c\x0eexpires-cookie\x94h\x0e)\x81\x94(h\x10\x8c\x1cTue, 1 Jan 2999 12:00:00 GMT\x94h\x11h\th\x12h\x08h\x13hjh\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ahmh\x1b\x8c\nthirteenth\x94h\x1dhqubs\x8c\x0emaxagetest.com\x94h\t\x86\x94h\x05)\x81\x94\x8c\x0emax-age-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h\th\x12h\x08h\x13hrh\x14\x8c\x0260\x94h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ahuh\x1b\x8c\nfourteenth\x94h\x1dhyubs\x8c\x12invalid-values.com\x94h\t\x86\x94h\x05)\x81\x94(\x8c\x16invalid-max-age-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h\th\x12h\x08h\x13hzh\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ah}h\x1b\x8c\tfifteenth\x94h\x1dh\x80ub\x8c\x16invalid-expires-cookie\x94h\x0e)\x81\x94(h\x10h\x08h\x11h\th\x12h\x08h\x13\x8c\x12invalid-values.com\x94h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08u}\x94(h\x1ah\x81h\x1b\x8c\tsixteenth\x94h\x1dh\x85ubuu."
+    pickled = b"\x80\x04\x95\xc8\x0b\x00\x00\x00\x00\x00\x00\x8c\x0bcollections\x94\x8c\x0bdefaultdict\x94\x93\x94\x8c\x0chttp.cookies\x94\x8c\x0cSimpleCookie\x94\x93\x94\x85\x94R\x94(\x8c\x00\x94h\x08\x86\x94h\x05)\x81\x94\x8c\rshared-cookie\x94h\x03\x8c\x06Morsel\x94\x93\x94)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94\x8c\x01/\x94\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\x08\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(\x8c\x03key\x94h\x0b\x8c\x05value\x94\x8c\x05first\x94\x8c\x0bcoded_value\x94h\x1cubs\x8c\x0bexample.com\x94h\x08\x86\x94h\x05)\x81\x94(\x8c\rdomain-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\x1e\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah!h\x1b\x8c\x06second\x94h\x1dh-ub\x8c\x14dotted-domain-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94\x8c\x0bexample.com\x94\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah.h\x1b\x8c\x05fifth\x94h\x1dh;ubu\x8c\x11test1.example.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x11subdomain1-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h<\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah?h\x1b\x8c\x05third\x94h\x1dhKubs\x8c\x11test2.example.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x11subdomain2-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94hL\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ahOh\x1b\x8c\x06fourth\x94h\x1dh[ubs\x8c\rdifferent.org\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x17different-domain-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\\\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah_h\x1b\x8c\x05sixth\x94h\x1dhkubs\x8c\nsecure.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\rsecure-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94hl\x8c\x07max-age\x94h\x08\x8c\x06secure\x94\x88\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ahoh\x1b\x8c\x07seventh\x94h\x1dh{ubs\x8c\x0cpathtest.com\x94h\x08\x86\x94h\x05)\x81\x94(\x8c\x0eno-path-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h|\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\x7fh\x1b\x8c\x06eighth\x94h\x1dh\x8bub\x8c\x0cpath1-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94\x8c\x0cpathtest.com\x94\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\x8ch\x1b\x8c\x05ninth\x94h\x1dh\x99ubu\x8c\x0cpathtest.com\x94\x8c\x04/one\x94\x86\x94h\x05)\x81\x94\x8c\x0cpath2-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x9b\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\x9a\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\x9eh\x1b\x8c\x05tenth\x94h\x1dh\xaaubs\x8c\x0cpathtest.com\x94\x8c\x08/one/two\x94\x86\x94h\x05)\x81\x94(\x8c\x0cpath3-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\xac\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\xab\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xafh\x1b\x8c\x08eleventh\x94h\x1dh\xbbub\x8c\x0cpath4-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94\x8c\t/one/two/\x94\x8c\x07comment\x94h\x08\x8c\x06domain\x94\x8c\x0cpathtest.com\x94\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xbch\x1b\x8c\x07twelfth\x94h\x1dh\xcaubu\x8c\x0fexpirestest.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x0eexpires-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94\x8c\x1cTue, 1 Jan 2999 12:00:00 GMT\x94\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\xcb\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xceh\x1b\x8c\nthirteenth\x94h\x1dh\xdbubs\x8c\x0emaxagetest.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x0emax-age-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\xdc\x8c\x07max-age\x94\x8c\x0260\x94\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xdfh\x1b\x8c\nfourteenth\x94h\x1dh\xecubs\x8c\x12invalid-values.com\x94h\x08\x86\x94h\x05)\x81\x94(\x8c\x16invalid-max-age-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\xed\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xf0h\x1b\x8c\tfifteenth\x94h\x1dh\xfcub\x8c\x16invalid-expires-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94\x8c\x12invalid-values.com\x94\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xfdh\x1b\x8c\tsixteenth\x94h\x1dj\n\x01\x00\x00ubuu."
     cookies = pickle.loads(pickled)
 
     cj = CookieJar()

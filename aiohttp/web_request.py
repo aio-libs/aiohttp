@@ -65,7 +65,7 @@ from .web_response import StreamResponse
 __all__ = ("BaseRequest", "FileField", "Request")
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .web_app import Application
     from .web_protocol import RequestHandler
     from .web_urldispatcher import UrlMappingMatchInfo
@@ -571,7 +571,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         A read-only dictionary-like object.
         """
         raw = self.headers.get(hdrs.COOKIE, "")
-        parsed: SimpleCookie[str] = SimpleCookie(raw)
+        parsed = SimpleCookie(raw)
         return MappingProxyType({key: val.value for key, val in parsed.items()})
 
     @reify

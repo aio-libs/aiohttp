@@ -24,7 +24,6 @@ from typing import (
     Generic,
     Iterable,
     List,
-    Literal,
     Mapping,
     Optional,
     Set,
@@ -52,12 +51,14 @@ from .client_exceptions import (
     ClientProxyConnectionError,
     ClientResponseError,
     ClientSSLError,
+    ConnectionTimeoutError,
     ContentTypeError,
     InvalidURL,
     ServerConnectionError,
     ServerDisconnectedError,
     ServerFingerprintMismatch,
     ServerTimeoutError,
+    SocketTimeoutError,
     TooManyRedirects,
     WSServerHandshakeError,
 )
@@ -104,12 +105,14 @@ __all__ = (
     "ClientProxyConnectionError",
     "ClientResponseError",
     "ClientSSLError",
+    "ConnectionTimeoutError",
     "ContentTypeError",
     "InvalidURL",
     "ServerConnectionError",
     "ServerDisconnectedError",
     "ServerFingerprintMismatch",
     "ServerTimeoutError",
+    "SocketTimeoutError",
     "TooManyRedirects",
     "WSServerHandshakeError",
     # client_reqrep
@@ -161,6 +164,9 @@ class ClientTimeout:
 
 # 5 Minute default read timeout
 DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60)
+
+# https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
+IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
 
 _RetType = TypeVar("_RetType")
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
@@ -265,9 +271,13 @@ class ClientSession:
         self._version = version
         self._json_serialize = json_serialize
         if timeout is sentinel or timeout is None:
-            self._timeout = DEFAULT_TIMEOUT
-        else:
-            self._timeout = timeout
+            timeout = DEFAULT_TIMEOUT
+        if not isinstance(timeout, ClientTimeout):
+            raise ValueError(
+                f"timeout parameter cannot be of {type(timeout)} type, "
+                "please use 'timeout=ClientTimeout(...)'",
+            )
+        self._timeout = timeout
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
@@ -353,7 +363,7 @@ class ClientSession:
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
         timeout: Union[ClientTimeout, _SENTINEL, None] = sentinel,
-        ssl: Optional[Union[SSLContext, Literal[False], Fingerprint]] = None,
+        ssl: Union[SSLContext, bool, Fingerprint] = True,
         server_hostname: Optional[str] = None,
         proxy_headers: Optional[LooseHeaders] = None,
         trace_request_ctx: Optional[SimpleNamespace] = None,
@@ -371,8 +381,8 @@ class ClientSession:
 
         if not isinstance(ssl, SSL_ALLOWED_TYPES):
             raise TypeError(
-                "ssl should be SSLContext, bool, Fingerprint, "
-                "or None, got {!r} instead.".format(ssl)
+                "ssl should be SSLContext, Fingerprint, or bool, "
+                "got {!r} instead.".format(ssl)
             )
 
         if data is not None and json is not None:
@@ -445,6 +455,8 @@ class ClientSession:
         timer = tm.timer()
         try:
             with timer:
+                # https://www.rfc-editor.org/rfc/rfc9112.html#name-retrying-requests
+                retry_persistent_connection = method in IDEMPOTENT_METHODS
                 while True:
                     url, auth_from_url = strip_auth_from_url(url)
                     if auth and auth_from_url:
@@ -500,7 +512,7 @@ class ClientSession:
                         proxy_auth=proxy_auth,
                         timer=timer,
                         session=self,
-                        ssl=ssl,
+                        ssl=ssl if ssl is not None else True,  # type: ignore[redundant-expr]
                         server_hostname=server_hostname,
                         proxy_headers=proxy_headers,
                         traces=traces,
@@ -518,7 +530,7 @@ class ClientSession:
                                 req, traces=traces, timeout=real_timeout
                             )
                     except asyncio.TimeoutError as exc:
-                        raise ServerTimeoutError(
+                        raise ConnectionTimeoutError(
                             f"Connection timeout to host {url}"
                         ) from exc
 
@@ -548,6 +560,11 @@ class ClientSession:
                         except BaseException:
                             conn.close()
                             raise
+                    except (ClientOSError, ServerDisconnectedError):
+                        if retry_persistent_connection:
+                            retry_persistent_connection = False
+                            continue
+                        raise
                     except ClientError:
                         raise
                     except OSError as exc:
@@ -684,7 +701,8 @@ class ClientSession:
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
-        ssl: Union[SSLContext, Literal[False], None, Fingerprint] = None,
+        ssl: Union[SSLContext, bool, Fingerprint] = True,
+        server_hostname: Optional[str] = None,
         proxy_headers: Optional[LooseHeaders] = None,
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
@@ -706,7 +724,8 @@ class ClientSession:
                 headers=headers,
                 proxy=proxy,
                 proxy_auth=proxy_auth,
-                ssl=ssl,
+                ssl=ssl if ssl is not None else True,  # type: ignore[redundant-expr]
+                server_hostname=server_hostname,
                 proxy_headers=proxy_headers,
                 compress=compress,
                 max_msg_size=max_msg_size,
@@ -730,7 +749,8 @@ class ClientSession:
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
-        ssl: Union[SSLContext, Literal[False], None, Fingerprint] = None,
+        ssl: Union[SSLContext, bool, Fingerprint] = True,
+        server_hostname: Optional[str] = None,
         proxy_headers: Optional[LooseHeaders] = None,
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
@@ -785,10 +805,19 @@ class ClientSession:
             extstr = ws_ext_gen(compress=compress)
             real_headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = extstr
 
+        # For the sake of backward compatibility, if user passes in None, convert it to True
+        if ssl is None:
+            warnings.warn(
+                "ssl=None is deprecated, please use ssl=True",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            ssl = True
+
         if not isinstance(ssl, SSL_ALLOWED_TYPES):
             raise TypeError(
-                "ssl should be SSLContext, bool, Fingerprint, "
-                "or None, got {!r} instead.".format(ssl)
+                "ssl should be SSLContext, Fingerprint, or bool, "
+                "got {!r} instead.".format(ssl)
             )
 
         # send request
@@ -802,6 +831,7 @@ class ClientSession:
             proxy=proxy,
             proxy_auth=proxy_auth,
             ssl=ssl,
+            server_hostname=server_hostname,
             proxy_headers=proxy_headers,
         )
 

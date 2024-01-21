@@ -18,7 +18,6 @@ from typing import (
     Dict,
     Iterable,
     List,
-    Literal,
     Mapping,
     Optional,
     Tuple,
@@ -84,7 +83,7 @@ except ImportError:  # pragma: no cover
 __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .client import ClientSession
     from .connector import Connection
     from .tracing import Trace
@@ -149,7 +148,7 @@ class Fingerprint:
 if ssl is not None:
     SSL_ALLOWED_TYPES = (ssl.SSLContext, bool, Fingerprint, type(None))
 else:  # pragma: no cover
-    SSL_ALLOWED_TYPES = type(None)
+    SSL_ALLOWED_TYPES = (bool, type(None))
 
 
 @dataclasses.dataclass(frozen=True)
@@ -159,7 +158,7 @@ class ConnectionKey:
     host: str
     port: Optional[int]
     is_ssl: bool
-    ssl: Union[SSLContext, None, Literal[False], Fingerprint]
+    ssl: Union[SSLContext, bool, Fingerprint]
     proxy: Optional[URL]
     proxy_auth: Optional[BasicAuth]
     proxy_headers_hash: Optional[int]  # hash(CIMultiDict)
@@ -213,7 +212,7 @@ class ClientRequest:
         proxy_auth: Optional[BasicAuth] = None,
         timer: Optional[BaseTimerContext] = None,
         session: Optional["ClientSession"] = None,
-        ssl: Union[SSLContext, Literal[False], Fingerprint, None] = None,
+        ssl: Union[SSLContext, bool, Fingerprint] = True,
         proxy_headers: Optional[LooseHeaders] = None,
         traces: Optional[List["Trace"]] = None,
         trust_env: bool = False,
@@ -248,7 +247,7 @@ class ClientRequest:
             real_response_class = response_class
         self.response_class: Type[ClientResponse] = real_response_class
         self._timer = timer if timer is not None else TimerNoop()
-        self._ssl = ssl
+        self._ssl = ssl if ssl is not None else True  # type: ignore[redundant-expr]
         self.server_hostname = server_hostname
 
         if loop.get_debug():
@@ -290,7 +289,7 @@ class ClientRequest:
         return self.url.scheme in ("https", "wss")
 
     @property
-    def ssl(self) -> Union["SSLContext", None, Literal[False], Fingerprint]:
+    def ssl(self) -> Union["SSLContext", bool, Fingerprint]:
         return self._ssl
 
     @property
@@ -395,7 +394,7 @@ class ClientRequest:
         if not cookies:
             return
 
-        c: SimpleCookie[str] = SimpleCookie()
+        c = SimpleCookie()
         if hdrs.COOKIE in self.headers:
             c.load(self.headers.get(hdrs.COOKIE, ""))
             del self.headers[hdrs.COOKIE]
@@ -644,8 +643,8 @@ class ClientRequest:
             self.headers[hdrs.CONNECTION] = connection
 
         # status + headers
-        status_line = "{0} {1} HTTP/{2[0]}.{2[1]}".format(
-            self.method, path, self.version
+        status_line = "{0} {1} HTTP/{v.major}.{v.minor}".format(
+            self.method, path, v=self.version
         )
         await writer.write_headers(status_line, self.headers)
 
@@ -727,7 +726,7 @@ class ClientResponse(HeadersMixin):
         super().__init__()
 
         self.method = method
-        self.cookies: SimpleCookie[str] = SimpleCookie()
+        self.cookies = SimpleCookie()
 
         self._real_url = url
         self._url = url.with_fragment(None)
@@ -940,19 +939,14 @@ class ClientResponse(HeadersMixin):
         if self._closed:
             return
 
-        if self._connection is not None:
-            # websocket, protocol could be None because
-            # connection could be detached
-            if (
-                self._connection.protocol is not None
-                and self._connection.protocol.upgraded
-            ):
-                return
-
-            self._release_connection()
+        # protocol could be None because connection could be detached
+        protocol = self._connection and self._connection.protocol
+        if protocol is not None and protocol.upgraded:
+            return
 
         self._closed = True
         self._cleanup_writer()
+        self._release_connection()
 
     @property
     def closed(self) -> bool:
@@ -967,7 +961,9 @@ class ClientResponse(HeadersMixin):
             return
 
         self._cleanup_writer()
-        self._release_connection()
+        if self._connection is not None:
+            self._connection.close()
+            self._connection = None
 
     def release(self) -> Any:
         if not self._released:
@@ -1046,7 +1042,9 @@ class ClientResponse(HeadersMixin):
         elif self._released:  # Response explicitly released
             raise ClientConnectionError("Connection closed")
 
-        await self._wait_released()  # Underlying connection released
+        protocol = self._connection and self._connection.protocol
+        if protocol is None or not protocol.upgraded:
+            await self._wait_released()  # Underlying connection released
         return self._body
 
     def get_encoding(self) -> str:
