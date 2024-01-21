@@ -854,7 +854,28 @@ async def test_cookie_jar_clear_expired():
         assert len(sut) == 0
 
 
-async def test_cookie_jar_clear_domain():
+async def test_cookie_jar_filter_cookies_expires():
+    """Test that calling filter_cookies will expire stale cookies."""
+    jar = CookieJar()
+    assert len(jar) == 0
+
+    cookie = SimpleCookie()
+
+    cookie["foo"] = "bar"
+    cookie["foo"]["expires"] = "Tue, 1 Jan 1990 12:00:00 GMT"
+
+    with freeze_time("1980-01-01"):
+        jar.update_cookies(cookie)
+
+    assert len(jar) == 1
+
+    # filter_cookies should expire stale cookies
+    jar.filter_cookies(URL("http://any.com/"))
+
+    assert len(jar) == 0
+
+
+async def test_cookie_jar_clear_domain() -> None:
     sut = CookieJar()
     cookie = SimpleCookie()
     cookie["foo"] = "bar"
