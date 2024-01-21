@@ -762,7 +762,7 @@ class TCPConnector(BaseConnector):
         ttl_dns_cache: Optional[int] = 10,
         family: int = 0,
         ssl_context: Optional[SSLContext] = None,
-        ssl: Union[None, Literal[False], Fingerprint, SSLContext] = None,
+        ssl: Union[bool, Fingerprint, SSLContext] = True,
         local_addr: Optional[Tuple[str, int]] = None,
         resolver: Optional[AbstractResolver] = None,
         keepalive_timeout: Union[None, float, object] = sentinel,
@@ -955,13 +955,13 @@ class TCPConnector(BaseConnector):
             sslcontext = req.ssl
             if isinstance(sslcontext, ssl.SSLContext):
                 return sslcontext
-            if sslcontext is not None:
+            if sslcontext is not True:
                 # not verified or fingerprinted
                 return self._make_ssl_context(False)
             sslcontext = self._ssl
             if isinstance(sslcontext, ssl.SSLContext):
                 return sslcontext
-            if sslcontext is not None:
+            if sslcontext is not True:
                 # not verified or fingerprinted
                 return self._make_ssl_context(False)
             return self._make_ssl_context(True)
