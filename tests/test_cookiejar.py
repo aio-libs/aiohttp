@@ -286,9 +286,9 @@ async def test_filter_cookies_str_deprecated(loop) -> None:
     ),
 )
 async def test_filter_cookies_with_domain_path_lookup_multilevelpath(
-    loop: Any,
-    url: Any,
-    expected_cookies: Any,
+    loop,
+    url,
+    expected_cookies,
 ) -> None:
     jar = CookieJar()
     cookies = SimpleCookie(
