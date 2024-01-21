@@ -674,7 +674,7 @@ example, this can be used with the ``chardetng_py`` library.::
 
     def charset_resolver(resp: ClientResponse, body: bytes) -> str:
         tld = resp.url.host.rsplit(".", maxsplit=1)[-1]
-        return detect(body, allow_utf8=True, tld=tld)
+        return detect(body, allow_utf8=True, tld=tld.encode())
 
     ClientSession(fallback_charset_resolver=charset_resolver)
 
@@ -682,4 +682,4 @@ Or, if ``chardetng_py`` doesn't work for you, then ``charset-normalizer`` is ano
 
     from charset_normalizer import detect
 
-    ClientSession(fallback_charset_resolver=lamba r, b: detect(b)["encoding"] or "utf-8")
+    ClientSession(fallback_charset_resolver=lambda r, b: detect(b)["encoding"] or "utf-8")
