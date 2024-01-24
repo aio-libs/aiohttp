@@ -147,7 +147,7 @@ class HeadersParser:
                 raise InvalidHeader(line) from None
 
             # https://www.rfc-editor.org/rfc/rfc9112.html#section-5.1-2
-            if {bname[0], bname[-1]} & {32, 9}:  # {" ", "\t"}
+            if bname == b"" or {bname[0], bname[-1]} & {32, 9}:  # {" ", "\t"}
                 raise InvalidHeader(line)
 
             bvalue = bvalue.lstrip(b" \t")

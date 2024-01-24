@@ -251,6 +251,20 @@ def test_bad_chunked_c(loop: Any, protocol: Any) -> None:
         parser.feed_data(text)
 
 
+def test_empty_header_name_py(loop: Any, protocol: Any) -> None:
+    """Test that empty header names can't be used."""
+    parser = HttpRequestParserPy(
+        protocol,
+        loop,
+        2**16,
+        max_line_size=8190,
+        max_field_size=8190,
+    )
+    text = b"GET / HTTP/1.1\r\n:\r\n\r\n"
+    with pytest.raises(http_exceptions.InvalidHeader):
+        parser.feed_data(text)
+
+
 def test_whitespace_before_header(parser: Any) -> None:
     text = b"GET / HTTP/1.1\r\n\tContent-Length: 1\r\n\r\nX"
     with pytest.raises(http_exceptions.BadHttpMessage):
