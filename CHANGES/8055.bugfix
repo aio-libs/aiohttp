@@ -1,0 +1,1 @@
+Make empty header names cause a 400 instead of an unhandled exception.
