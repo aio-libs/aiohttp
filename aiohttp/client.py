@@ -267,8 +267,11 @@ class ClientSession:
             self._cookie_jar.update_cookies(cookies)
 
         self._connector_owner = connector_owner
-        self._default_auth = auth
+
+        if not isinstance(version, HttpVersion):
+            raise ValueError("version parameter must be a valid HttpVersion value")
         self._version = version
+
         self._json_serialize = json_serialize
         if timeout is sentinel or timeout is None:
             timeout = DEFAULT_TIMEOUT
@@ -329,6 +332,11 @@ class ClientSession:
         self, method: str, url: StrOrURL, **kwargs: Any
     ) -> "_RequestContextManager":
         """Perform HTTP request."""
+        
+        valid_methods = ["GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS", "TRACE", "CONNECT"]
+        if method.upper() not in valid_methods:
+            raise ValueError(f"Invalid HTTP method: {method}")
+
         return _RequestContextManager(self._request(method, url, **kwargs))
 
     def _build_url(self, str_or_url: StrOrURL) -> URL:
