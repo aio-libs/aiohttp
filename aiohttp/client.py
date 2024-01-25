@@ -332,8 +332,17 @@ class ClientSession:
         self, method: str, url: StrOrURL, **kwargs: Any
     ) -> "_RequestContextManager":
         """Perform HTTP request."""
-        
-        valid_methods = ["GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS", "TRACE", "CONNECT"]
+
+        valid_methods = [
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE",
+            "HEAD",
+            "OPTIONS",
+            "TRACE",
+            "CONNECT",
+        ]
         if method.upper() not in valid_methods:
             raise ValueError(f"Invalid HTTP method: {method}")
 
