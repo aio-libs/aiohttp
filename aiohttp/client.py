@@ -267,6 +267,7 @@ class ClientSession:
             self._cookie_jar.update_cookies(cookies)
 
         self._connector_owner = connector_owner
+        self._default_auth = auth
 
         if not isinstance(version, HttpVersion):
             raise ValueError("version parameter must be a valid HttpVersion value")
