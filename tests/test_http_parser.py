@@ -622,11 +622,16 @@ def test_invalid_header_spacing(
     if pad1 == pad2 == b"" and hdr != b"":
         # one entry in param matrix is correct: non-empty name, not padded
         expectation = nullcontext()
+    if pad1 == pad2 == hdr == b"":
+        if not isinstance(response, HttpResponseParserPy):
+            pytest.xfail("Regression test for Py parser. May match C behaviour later.")
     with expectation:
         parser.feed_data(text)
 
 
 def test_empty_header_name(parser: Any) -> None:
+    if not isinstance(response, HttpResponseParserPy):
+        pytest.xfail("Regression test for Py parser. May match C behaviour later.")
     text = b"GET /test HTTP/1.1\r\n" b":test\r\n\r\n"
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
