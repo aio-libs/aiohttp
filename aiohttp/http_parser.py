@@ -69,12 +69,6 @@ ASCIISET: Final[Set[str]] = set(string.printable)
 #     tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "." /
 #             "^" / "_" / "`" / "|" / "~" / DIGIT / ALPHA
 #     token = 1*tchar
-#
-# Future editors beware:
-# It is easy to create security problems around the difference between the syntax of
-#  HTTP messages (protocol elements limited to exhaustively enumerated ASCII characters)
-#  and Unicode string operations and pattern matching.
-# The re.ASCII merely switches character class semantics, it does NOT guard against incorrect use.
 _TCHAR_SPECIALS: Final[str] = re.escape("!#$%&'*+-.^_`|~")
 TOKENRE: Final[Pattern[str]] = re.compile(f"[0-9A-Za-z{_TCHAR_SPECIALS}]+")
 VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)", re.ASCII)
