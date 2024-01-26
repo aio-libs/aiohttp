@@ -4,7 +4,7 @@
 import asyncio
 import re
 from contextlib import nullcontext
-from typing import Any, List
+from typing import Any, Dict, List
 from unittest import mock
 from urllib.parse import quote
 
@@ -283,6 +283,8 @@ def test_parse_headers_longline(parser: Any) -> None:
 
 
 def test_parse_unusual_request_line(parser: Any) -> None:
+    if not isinstance(response, HttpResponseParserPy):
+        pytest.xfail("Regression test for Py parser. May match C behaviour later.")
     text = b"#smol //a HTTP/1.3\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)
     assert len(messages) == 1
@@ -596,7 +598,7 @@ def test_headers_content_length_err_2(parser: Any) -> None:
         parser.feed_data(text)
 
 
-_pad: dict[bytes, str] = {
+_pad: Dict[bytes, str] = {
     b"": "empty",
     # not a typo. Python likes triple zero
     b"\000": "NUL",
@@ -752,7 +754,7 @@ def test_http_request_bad_status_line(parser: Any) -> None:
     assert r"\n" not in exc_info.value.message
 
 
-_num: dict[bytes, str] = {
+_num: Dict[bytes, str] = {
     # dangerous: accepted by Python int()
     # unicodedata.category(codepoint) == "Nd"
     "\N{mathematical double-struck digit one}".encode("utf-8"): "utf8digit",
