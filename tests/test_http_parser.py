@@ -188,6 +188,8 @@ def test_bad_header_name(parser: Any, rfc9110_5_6_2_token_delim: str) -> None:
     (
         "Content-Length: -5",  # https://www.rfc-editor.org/rfc/rfc9110.html#name-content-length
         "Content-Length: +256",
+        "Content-Length: \N{superscript one}",
+        "Content-Length: \N{mathematical double-struck digit one}",
         "Foo: abc\rdef",  # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-5
         "Bar: abc\ndef",
         "Baz: abc\x00def",
@@ -1095,6 +1097,14 @@ def test_http_response_parser_code_above_999(response: Any) -> None:
 def test_http_response_parser_code_not_int(response: Any) -> None:
     with pytest.raises(http_exceptions.BadStatusLine):
         response.feed_data(b"HTTP/1.1 ttt test\r\n\r\n")
+
+
+@pytest.mark.parametrize("nonascii_digit", _num.keys(), ids=_num.values())
+def test_http_response_parser_code_not_ascii(
+    response: Any, nonascii_digit: bytes
+) -> None:
+    with pytest.raises(http_exceptions.BadStatusLine):
+        response.feed_data(b"HTTP/1.1 20" + nonascii_digit + b" test\r\n\r\n")
 
 
 def test_http_request_chunked_payload(parser: Any) -> None:

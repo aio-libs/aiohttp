@@ -72,6 +72,7 @@ ASCIISET: Final[Set[str]] = set(string.printable)
 _TCHAR_SPECIALS: Final[str] = re.escape("!#$%&'*+-.^_`|~")
 TOKENRE: Final[Pattern[str]] = re.compile(f"[0-9A-Za-z{_TCHAR_SPECIALS}]+")
 VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)", re.ASCII)
+DIGIT: Final[Pattern[str]] = re.compile(r"\d+", re.ASCII)
 HEXDIGIT: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
 
 
@@ -131,6 +132,7 @@ class HeadersParser:
         self, lines: List[bytes]
     ) -> Tuple["CIMultiDictProxy[str]", RawHeaders]:
         headers: CIMultiDict[str] = CIMultiDict()
+        # note: "raw" does not mean inclusion of OWS before/after the field value
         raw_headers = []
 
         lines_idx = 1
@@ -332,7 +334,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
                             # Shouldn't allow +/- or other number formats.
                             # https://www.rfc-editor.org/rfc/rfc9110#section-8.6-2
-                            if not length_hdr.strip(" \t").isdecimal():
+                            if not DIGIT.fullmatch(length_hdr):
                                 raise InvalidHeader(CONTENT_LENGTH)
 
                             return int(length_hdr)
@@ -677,8 +679,8 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
             raise BadStatusLine(line)
         version_o = HttpVersion(int(match.group(1)), int(match.group(2)))
 
-        # The status code is a three-digit number
-        if len(status) != 3 or not status.isdecimal():
+        # The status code is a three-digit ASCII number, no padding
+        if len(status) != 3 or not DIGIT.fullmatch(status):
             raise BadStatusLine(line)
         status_i = int(status)
 
