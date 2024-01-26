@@ -756,10 +756,10 @@ def test_http_request_bad_status_line(parser: Any) -> None:
 
 _num: Dict[bytes, str] = {
     # dangerous: accepted by Python int()
-    # unicodedata.category(codepoint) == "Nd"
+    # unicodedata.category("\U0001D7D9") == 'Nd'
     "\N{mathematical double-struck digit one}".encode(): "utf8digit",
     # only added for interop tests, refused by Python int()
-    # unicodedata.category(codepoint) == "No"
+    # unicodedata.category("\U000000B9") == 'No'
     "\N{superscript one}".encode(): "utf8number",
     "\N{superscript one}".encode("latin-1"): "latin1number",
 }
