@@ -757,10 +757,10 @@ def test_http_request_bad_status_line(parser: Any) -> None:
 _num: Dict[bytes, str] = {
     # dangerous: accepted by Python int()
     # unicodedata.category(codepoint) == "Nd"
-    "\N{mathematical double-struck digit one}".encode("utf-8"): "utf8digit",
+    "\N{mathematical double-struck digit one}".encode(): "utf8digit",
     # only added for interop tests, refused by Python int()
     # unicodedata.category(codepoint) == "No"
-    "\N{superscript one}".encode("utf-8"): "utf8number",
+    "\N{superscript one}".encode(): "utf8number",
     "\N{superscript one}".encode("latin-1"): "latin1number",
 }
 
@@ -776,7 +776,7 @@ def test_http_request_bad_status_line_number(
 
 def test_http_request_bad_status_line_separator(parser: Any) -> None:
     # single code point, old, multibyte NFKC, multibyte NFKD
-    utf8sep = "\N{arabic ligature sallallahou alayhe wasallam}".encode("utf-8")
+    utf8sep = "\N{arabic ligature sallallahou alayhe wasallam}".encode()
     text = b"GET /ligature HTTP/1" + utf8sep + b"1\r\n\r\n"
     with pytest.raises(http_exceptions.BadStatusLine):
         parser.feed_data(text)
@@ -820,7 +820,7 @@ def test_http_request_parser_utf8_request_line(parser: Any) -> None:
     assert msg.path == "/Pünktchen\udca0\udcef\udcb7"
     assert msg.version == (1, 1)
     assert msg.headers == CIMultiDict([("STEP", "ßnek\t\xa0")])
-    assert msg.raw_headers == (("sTeP".encode(), "ßnek\t\xa0".encode()),)
+    assert msg.raw_headers == ((b"sTeP", "ßnek\t\xa0".encode()),)
     assert not msg.should_close
     assert msg.compression is None
     assert not msg.upgrade
