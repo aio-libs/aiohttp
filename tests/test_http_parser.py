@@ -175,9 +175,11 @@ def test_cve_2023_37276(parser: Any) -> None:
 )
 def test_bad_header_name(parser: Any, rfc9110_5_6_2_token_delim: str) -> None:
     text = f"POST / HTTP/1.1\r\nhead{rfc9110_5_6_2_token_delim}er: val\r\n\r\n".encode()
+    expectation = pytest.raises(http_exceptions.BadHttpMessage)
     if rfc9110_5_6_2_token_delim == ":":
-        pytest.xfail("Inserting colon into header just splits name/value earlier.")
-    with pytest.raises(http_exceptions.BadHttpMessage):
+        # Inserting colon into header just splits name/value earlier.
+        expectation = nullcontext()
+    with expectation:
         parser.feed_data(text)
 
 
@@ -614,7 +616,7 @@ def test_invalid_header_spacing(
     text = b"GET /test HTTP/1.1\r\n" b"%s%s%s: value\r\n\r\n" % (pad1, hdr, pad2)
     expectation = pytest.raises(http_exceptions.BadHttpMessage)
     if pad1 == pad2 == b"" and hdr != b"":
-        # pytest.xfail badly readable with that name, flip assertion manually
+        # one entry in param matrix is correct: non-empty name, not padded
         expectation = nullcontext()
     with expectation:
         parser.feed_data(text)
