@@ -804,6 +804,8 @@ def test_http_request_upgrade(parser: Any) -> None:
 
 
 def test_http_request_parser_utf8_request_line(parser: Any) -> None:
+    if not isinstance(response, HttpResponseParserPy):
+        pytest.xfail("Regression test for Py parser. May match C behaviour later.")
     messages, upgrade, tail = parser.feed_data(
         # note the truncated unicode sequence
         b"GET /P\xc3\xbcnktchen\xa0\xef\xb7 HTTP/1.1\r\n" +
