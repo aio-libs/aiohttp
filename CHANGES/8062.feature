@@ -1,0 +1,1 @@
+Added server capability to check for static files with Brotli compression via a ``.br`` extension -- by :user:`steverep`

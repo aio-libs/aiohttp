@@ -224,9 +224,14 @@ async def test_static_file_custom_content_type(
     await client.close()
 
 
+@pytest.mark.parametrize(
+    ("accept_encoding", "expect_encoding"),
+    [("gzip, deflate", "gzip"), ("gzip, deflate, br", "br")],
+)
 async def test_static_file_custom_content_type_compress(
-    aiohttp_client: Any, sender: Any
+    aiohttp_client: Any, sender: Any, accept_encoding: str, expect_encoding: str
 ):
+    """Test static compressed files are returned with expected content type and encoding"""
     filepath = pathlib.Path(__file__).parent / "hello.txt"
 
     async def handler(request):
@@ -238,47 +243,60 @@ async def test_static_file_custom_content_type_compress(
     app.router.add_get("/", handler)
     client = await aiohttp_client(app)
 
-    resp = await client.get("/")
+    resp = await client.get("/", headers={"Accept-Encoding": accept_encoding})
     assert resp.status == 200
     body = await resp.read()
     assert b"hello aiohttp\n" == body
     assert resp.headers["Content-Type"] == "application/pdf"
-    assert resp.headers.get("Content-Encoding") == "gzip"
+    assert resp.headers.get("Content-Encoding") == expect_encoding
     resp.close()
     await resp.release()
     await client.close()
 
 
+@pytest.mark.parametrize(
+    ("accept_encoding", "expect_encoding"),
+    [("gzip, deflate", "gzip"), ("gzip, deflate, br", "br")],
+)
+@pytest.mark.parametrize("forced_compression", [None, "gzip"])
 async def test_static_file_with_gziped_counter_part_enable_compression(
-    aiohttp_client: Any, sender: Any
+    aiohttp_client: Any,
+    sender: Any,
+    accept_encoding: str,
+    expect_encoding: str,
+    forced_compression: str,
 ):
-    """Test that enable_compression does not double compress when a .gz file is also present."""
+    """Test that enable_compression does not double compress when a static compressed file is also present."""
     filepath = pathlib.Path(__file__).parent / "hello.txt"
 
     async def handler(request):
         resp = sender(filepath)
-        resp.enable_compression()
+        resp.enable_compression(force=forced_compression)
         return resp
 
     app = web.Application()
     app.router.add_get("/", handler)
     client = await aiohttp_client(app)
 
-    resp = await client.get("/")
+    resp = await client.get("/", headers={"Accept-Encoding": accept_encoding})
     assert resp.status == 200
     body = await resp.read()
     assert body == b"hello aiohttp\n"
     assert resp.headers["Content-Type"] == "text/plain"
-    assert resp.headers.get("Content-Encoding") == "gzip"
+    assert resp.headers.get("Content-Encoding") == expect_encoding
     resp.close()
     await resp.release()
     await client.close()
 
 
+@pytest.mark.parametrize(
+    ("extension", "expect_encoding"), [(".gz", "gzip"), (".br", "br")]
+)
 async def test_static_file_with_content_encoding(
-    aiohttp_client: Any, sender: Any
+    aiohttp_client: Any, sender: Any, extension: str, expect_encoding: str
 ) -> None:
-    filepath = pathlib.Path(__file__).parent / "hello.txt.gz"
+    """Test requesting of static compressed files returns correct content type and encoding"""
+    filepath = pathlib.Path(__file__).parent / ("hello.txt" + extension)
 
     async def handler(request):
         return sender(filepath)
@@ -291,10 +309,8 @@ async def test_static_file_with_content_encoding(
     assert 200 == resp.status
     body = await resp.read()
     assert b"hello aiohttp\n" == body
-    ct = resp.headers["CONTENT-TYPE"]
-    assert "text/plain" == ct
-    encoding = resp.headers["CONTENT-ENCODING"]
-    assert "gzip" == encoding
+    assert resp.headers["CONTENT-TYPE"] == "text/plain"
+    assert resp.headers["CONTENT-ENCODING"] == expect_encoding
     resp.close()
 
     await resp.release()

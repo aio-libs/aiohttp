@@ -9,6 +9,7 @@ from typing import (
     Awaitable,
     Callable,
     Final,
+    Literal,
     Optional,
     Tuple,
     cast,
@@ -24,7 +25,7 @@ from .web_exceptions import (
     HTTPPreconditionFailed,
     HTTPRequestRangeNotSatisfiable,
 )
-from .web_response import StreamResponse
+from .web_response import ContentCoding, StreamResponse
 
 __all__ = ("FileResponse",)
 
@@ -36,6 +37,13 @@ _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
 
 
 NOSENDFILE: Final[bool] = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
+
+# File extensions for IANA encodings that will be checked in the order defined.
+# Brotli is specified as a literal until compression is supported.
+ENCODING_EXTENSION: Final[dict[ContentCoding | Literal["br"], str]] = {
+    "br": ".br",
+    ContentCoding.gzip: ".gz",
+}
 
 
 class FileResponse(StreamResponse):
@@ -122,29 +130,31 @@ class FileResponse(StreamResponse):
         return await super().prepare(request)
 
     def _get_file_path_stat_and_gzip(
-        self, check_for_gzipped_file: bool
-    ) -> Tuple[pathlib.Path, os.stat_result, bool]:
-        """Return the file path, stat result, and gzip status.
+        self, accept_encoding: str
+    ) -> Tuple[pathlib.Path, os.stat_result, Optional[ContentCoding | Literal["br"]]]:
+        """Return the file path, stat result, and possible compression type.
 
         This method should be called from a thread executor
         since it calls os.stat which may block.
         """
         filepath = self._path
-        if check_for_gzipped_file:
-            gzip_path = filepath.with_name(filepath.name + ".gz")
-            try:
-                return gzip_path, gzip_path.stat(), True
-            except OSError:
-                # Fall through and try the non-gzipped file
-                pass
+        for encoding, extension in ENCODING_EXTENSION.items():
+            if encoding in accept_encoding:
+                compressed_path = filepath.with_name(filepath.name + extension)
+                try:
+                    return compressed_path, compressed_path.stat(), encoding
+                except OSError:
+                    # Try the next extension
+                    pass
 
-        return filepath, filepath.stat(), False
+        # Fallback to the uncompressed file
+        return filepath, filepath.stat(), None
 
     async def prepare(self, request: "BaseRequest") -> Optional[AbstractStreamWriter]:
         loop = asyncio.get_event_loop()
-        check_for_gzipped_file = "gzip" in request.headers.get(hdrs.ACCEPT_ENCODING, "")
-        filepath, st, gzip = await loop.run_in_executor(
-            None, self._get_file_path_stat_and_gzip, check_for_gzipped_file
+        accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "").lower()
+        filepath, st, file_compression = await loop.run_in_executor(
+            None, self._get_file_path_stat_and_gzip, accept_encoding
         )
 
         etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
@@ -181,7 +191,7 @@ class FileResponse(StreamResponse):
             if not ct:
                 ct = "application/octet-stream"
         else:
-            encoding = "gzip" if gzip else None
+            encoding = file_compression
 
         status = self._status
         file_size = st.st_size
@@ -261,7 +271,7 @@ class FileResponse(StreamResponse):
             self.content_type = ct
         if encoding:
             self.headers[hdrs.CONTENT_ENCODING] = encoding
-        if gzip:
+        if file_compression:
             self.headers[hdrs.VARY] = hdrs.ACCEPT_ENCODING
             # Disable compression if we are already sending
             # a compressed file since we don't want to double
