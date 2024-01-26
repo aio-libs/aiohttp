@@ -75,8 +75,8 @@ ASCIISET: Final[Set[str]] = set(string.printable)
 #  HTTP messages (protocol elements limited to exhaustively enumerated ASCII characters)
 #  and Unicode string operations and pattern matching.
 # The re.ASCII merely switches character class semantics, it does NOT guard against incorrect use.
-_TCHAR_SPECIALS: Final[str] = "!#$%&'*+-.^_`|~"
-TOKENRE: Final[Pattern[str]] = re.compile("[0-9A-Za-z%s]+" % re.escape(_TCHAR_SPECIALS))
+_TCHAR_SPECIALS: Final[str] = re.escape("!#$%&'*+-.^_`|~")
+TOKENRE: Final[Pattern[str]] = re.compile(f"[0-9A-Za-z{_TCHAR_SPECIALS}]+")
 VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)", re.ASCII)
 HEXDIGIT: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
 
