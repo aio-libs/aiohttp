@@ -6,7 +6,16 @@ repos:
     language: fail
     entry: >-
       Changelog files must be named
-      ####.(bugfix|feature|removal|doc|misc)(.#)?(.rst)?
+      ####.(
+      bugfix
+      | feature
+      | deprecation
+      | breaking
+      | doc
+      | packaging
+      | contrib
+      | misc
+      )(.#)?(.rst)?
     exclude: >-
       (?x)
       ^
@@ -15,8 +24,11 @@ repos:
           |(\d+|[0-9a-f]{8}|[0-9a-f]{7}|[0-9a-f]{40})\.(
             bugfix
             |feature
-            |removal
+            |deprecation
+            |breaking
             |doc
+            |packaging
+            |contrib
             |misc
           )(\.\d+)?(\.rst)?
           |README\.rst
