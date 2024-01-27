@@ -13,10 +13,12 @@ from typing import (
     Awaitable,
     Callable,
     Deque,
+    Generic,
     Optional,
     Sequence,
     Tuple,
     Type,
+    TypeVar,
     Union,
     cast,
 )
@@ -47,18 +49,20 @@ if TYPE_CHECKING:
     from .web_server import Server
 
 
+_RequestType = TypeVar("_RequestType", bound=BaseRequest)
+
 _RequestFactory = Callable[
     [
         RawRequestMessage,
         StreamReader,
-        "RequestHandler",
+        "RequestHandler[_RequestType]",
         AbstractStreamWriter,
         "asyncio.Task[None]",
     ],
-    BaseRequest,
+    _RequestType,
 ]
 
-_RequestHandler = Callable[[BaseRequest], Awaitable[StreamResponse]]
+_RequestHandler = Callable[[_RequestType], Awaitable[StreamResponse]]
 _AnyAbstractAccessLogger = Union[
     Type[AbstractAsyncAccessLogger],
     Type[AbstractAccessLogger],
@@ -112,7 +116,7 @@ class _ErrInfo:
 _MsgType = Tuple[Union[RawRequestMessage, _ErrInfo], StreamReader]
 
 
-class RequestHandler(BaseProtocol):
+class RequestHandler(BaseProtocol, Generic[_RequestType]):
     """HTTP protocol implementation.
 
     RequestHandler handles incoming HTTP request. It reads request line,
@@ -179,7 +183,7 @@ class RequestHandler(BaseProtocol):
 
     def __init__(
         self,
-        manager: "Server",
+        manager: "Server[_RequestType]",
         *,
         loop: asyncio.AbstractEventLoop,
         keepalive_timeout: float = 75.0,  # NGINX default is 75 secs
@@ -199,10 +203,14 @@ class RequestHandler(BaseProtocol):
 
         self._request_count = 0
         self._keepalive = False
-        self._current_request: Optional[BaseRequest] = None
-        self._manager: Optional[Server] = manager
-        self._request_handler: Optional[_RequestHandler] = manager.request_handler
-        self._request_factory: Optional[_RequestFactory] = manager.request_factory
+        self._current_request: Optional[_RequestType] = None
+        self._manager: Optional[Server[_RequestType]] = manager
+        self._request_handler: Optional[
+            _RequestHandler[_RequestType]
+        ] = manager.request_handler
+        self._request_factory: Optional[
+            _RequestFactory[_RequestType]
+        ] = manager.request_factory
 
         self._tcp_keepalive = tcp_keepalive
         # placeholder to be replaced on keepalive timeout setup
@@ -424,7 +432,7 @@ class RequestHandler(BaseProtocol):
             self.transport = None
 
     async def log_access(
-        self, request: BaseRequest, response: StreamResponse, request_start: float
+        self, request: _RequestType, response: StreamResponse, request_start: float
     ) -> None:
         if self.access_logger is not None:
             await self.access_logger.log(request, response, request_start)
@@ -457,9 +465,9 @@ class RequestHandler(BaseProtocol):
 
     async def _handle_request(
         self,
-        request: BaseRequest,
+        request: _RequestType,
         start_time: float,
-        request_handler: Callable[[BaseRequest], Awaitable[StreamResponse]],
+        request_handler: Callable[[_RequestType], Awaitable[StreamResponse]],
     ) -> Tuple[StreamResponse, bool]:
         assert self._request_handler is not None
         try:
@@ -612,7 +620,7 @@ class RequestHandler(BaseProtocol):
                 self.transport.close()
 
     async def finish_response(
-        self, request: BaseRequest, resp: StreamResponse, start_time: float
+        self, request: _RequestType, resp: StreamResponse, start_time: float
     ) -> bool:
         """Prepare the response and write_eof, then log access.
 
@@ -651,7 +659,7 @@ class RequestHandler(BaseProtocol):
 
     def handle_error(
         self,
-        request: BaseRequest,
+        request: _RequestType,
         status: int = 500,
         exc: Optional[BaseException] = None,
         message: Optional[str] = None,
@@ -702,8 +710,8 @@ class RequestHandler(BaseProtocol):
 
     def _make_error_handler(
         self, err_info: _ErrInfo
-    ) -> Callable[[BaseRequest], Awaitable[StreamResponse]]:
-        async def handler(request: BaseRequest) -> StreamResponse:
+    ) -> Callable[[_RequestType], Awaitable[StreamResponse]]:
+        async def handler(request: _RequestType) -> StreamResponse:
             return self.handle_error(
                 request, err_info.status, err_info.exc, err_info.message
             )

@@ -148,7 +148,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self,
         message: RawRequestMessage,
         payload: StreamReader,
-        protocol: "RequestHandler",
+        protocol: "RequestHandler[BaseRequest]",
         payload_writer: AbstractStreamWriter,
         task: "asyncio.Task[None]",
         loop: asyncio.AbstractEventLoop,
@@ -267,7 +267,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._task
 
     @property
-    def protocol(self) -> "RequestHandler":
+    def protocol(self) -> "RequestHandler[BaseRequest]":
         return self._protocol
 
     @property

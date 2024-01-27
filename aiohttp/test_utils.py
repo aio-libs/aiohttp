@@ -162,7 +162,7 @@ class BaseTestServer(ABC):
         return self._closed
 
     @property
-    def handler(self) -> Server:
+    def handler(self) -> Server[Request]:
         # for backward compatibility
         # web.Server instance
         runner = self.runner
@@ -222,7 +222,7 @@ class TestServer(BaseTestServer):
 class RawTestServer(BaseTestServer):
     def __init__(
         self,
-        handler: _RequestHandler,
+        handler: _RequestHandler[Request],
         *,
         scheme: Union[str, _SENTINEL] = sentinel,
         host: str = "127.0.0.1",

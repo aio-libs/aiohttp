@@ -1,23 +1,23 @@
 """Low level HTTP server."""
 import asyncio
 import warnings
-from typing import Any, Awaitable, Callable, Dict, List, Optional  # noqa
+from typing import Any, Dict, Generic, List, Optional
 
 from .abc import AbstractStreamWriter
 from .http_parser import RawRequestMessage
 from .streams import StreamReader
-from .web_protocol import RequestHandler, _RequestFactory, _RequestHandler
+from .web_protocol import RequestHandler, _RequestFactory, _RequestHandler, _RequestType
 from .web_request import BaseRequest
 
 __all__ = ("Server",)
 
 
-class Server:
+class Server(Generic[_RequestType]):
     def __init__(
         self,
-        handler: _RequestHandler,
+        handler: _RequestHandler[_RequestType],
         *,
-        request_factory: Optional[_RequestFactory] = None,
+        request_factory: Optional[_RequestFactory[_RequestType]] = None,
         debug: Optional[bool] = None,
         handler_cancellation: bool = False,
         **kwargs: Any,
@@ -29,24 +29,27 @@ class Server:
                 stacklevel=2,
             )
         self._loop = asyncio.get_running_loop()
-        self._connections: Dict[RequestHandler, asyncio.Transport] = {}
+        self._connections: Dict[RequestHandler[_RequestType], asyncio.Transport] = {}
         self._kwargs = kwargs
         self.requests_count = 0
         self.request_handler = handler
-        self.request_factory = request_factory or self._make_request
+        # This line confuses the type check with RequestFactory is None, as it
+        # can not infer that _RequestType is then always BaseRequest, and self._make_request
+        # meet the request factory contract.
+        self.request_factory: _RequestFactory[_RequestType] = request_factory or self._make_request  # type: ignore[assignment]
         self.handler_cancellation = handler_cancellation
 
     @property
-    def connections(self) -> List[RequestHandler]:
+    def connections(self) -> List[RequestHandler[_RequestType]]:
         return list(self._connections.keys())
 
     def connection_made(
-        self, handler: RequestHandler, transport: asyncio.Transport
+        self, handler: RequestHandler[_RequestType], transport: asyncio.Transport
     ) -> None:
         self._connections[handler] = transport
 
     def connection_lost(
-        self, handler: RequestHandler, exc: Optional[BaseException] = None
+        self, handler: RequestHandler[_RequestType], exc: Optional[BaseException] = None
     ) -> None:
         if handler in self._connections:
             del self._connections[handler]
@@ -55,7 +58,7 @@ class Server:
         self,
         message: RawRequestMessage,
         payload: StreamReader,
-        protocol: RequestHandler,
+        protocol: RequestHandler[BaseRequest],
         writer: AbstractStreamWriter,
         task: "asyncio.Task[None]",
     ) -> BaseRequest:
@@ -70,7 +73,7 @@ class Server:
         await asyncio.gather(*coros)
         self._connections.clear()
 
-    def __call__(self) -> RequestHandler:
+    def __call__(self) -> RequestHandler[_RequestType]:
         try:
             return RequestHandler(self, loop=self._loop, **self._kwargs)
         except TypeError:

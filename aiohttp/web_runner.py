@@ -249,12 +249,12 @@ class BaseRunner(ABC):
         self.shutdown_callback: Optional[Callable[[], Awaitable[None]]] = None
         self._handle_signals = handle_signals
         self._kwargs = kwargs
-        self._server: Optional[Server] = None
+        self._server: Optional[Server[Request]] = None
         self._sites: List[BaseSite] = []
         self._shutdown_timeout = shutdown_timeout
 
     @property
-    def server(self) -> Optional[Server]:
+    def server(self) -> Optional[Server[Request]]:
         return self._server
 
     @property
@@ -319,7 +319,7 @@ class BaseRunner(ABC):
                 pass
 
     @abstractmethod
-    async def _make_server(self) -> Server:
+    async def _make_server(self) -> Server[Request]:
         pass  # pragma: no cover
 
     @abstractmethod
@@ -347,7 +347,11 @@ class ServerRunner(BaseRunner):
     __slots__ = ("_web_server",)
 
     def __init__(
-        self, web_server: Server, *, handle_signals: bool = False, **kwargs: Any
+        self,
+        web_server: Server[Request],
+        *,
+        handle_signals: bool = False,
+        **kwargs: Any,
     ) -> None:
         super().__init__(handle_signals=handle_signals, **kwargs)
         self._web_server = web_server
@@ -355,7 +359,7 @@ class ServerRunner(BaseRunner):
     async def shutdown(self) -> None:
         pass
 
-    async def _make_server(self) -> Server:
+    async def _make_server(self) -> Server[Request]:
         return self._web_server
 
     async def _cleanup_server(self) -> None:
@@ -404,7 +408,7 @@ class AppRunner(BaseRunner):
     async def shutdown(self) -> None:
         await self._app.shutdown()
 
-    async def _make_server(self) -> Server:
+    async def _make_server(self) -> Server[Request]:
         self._app.on_startup.freeze()
         await self._app.startup()
         self._app.freeze()
@@ -419,7 +423,7 @@ class AppRunner(BaseRunner):
         self,
         message: RawRequestMessage,
         payload: StreamReader,
-        protocol: RequestHandler,
+        protocol: RequestHandler[Request],
         writer: AbstractStreamWriter,
         task: "asyncio.Task[None]",
         _cls: Type[Request] = Request,
