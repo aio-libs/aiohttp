@@ -3,7 +3,7 @@ import asyncio
 import pathlib
 import socket
 import zlib
-from typing import Any, Iterable
+from typing import Any, Iterable, Optional
 
 import pytest
 
@@ -258,20 +258,20 @@ async def test_static_file_custom_content_type_compress(
     ("accept_encoding", "expect_encoding"),
     [("gzip, deflate", "gzip"), ("gzip, deflate, br", "br")],
 )
-@pytest.mark.parametrize("forced_compression", [None, "gzip"])
+@pytest.mark.parametrize("forced_compression", [None, web.ContentCoding.gzip])
 async def test_static_file_with_gziped_counter_part_enable_compression(
     aiohttp_client: Any,
     sender: Any,
     accept_encoding: str,
     expect_encoding: str,
-    forced_compression: str,
+    forced_compression: Optional[web.ContentCoding],
 ):
     """Test that enable_compression does not double compress when a static compressed file is also present."""
     filepath = pathlib.Path(__file__).parent / "hello.txt"
 
     async def handler(request):
         resp = sender(filepath)
-        resp.enable_compression(force=forced_compression)
+        resp.enable_compression(forced_compression)
         return resp
 
     app = web.Application()

@@ -39,10 +39,11 @@ _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
 NOSENDFILE: Final[bool] = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
 
 # File extensions for IANA encodings that will be checked in the order defined.
-# Brotli is specified as a literal until compression is supported.
-ENCODING_EXTENSION: Final[dict[ContentCoding | Literal["br"], str]] = {
+# TODO(py311): Replace Literal with ContentCoding as StrEnum and remove .value
+ENCODING_EXTENSION: Final[dict[Literal["br", "gzip"], str]] = {
+    # Literal for Brotli is used until compression is supported.
     "br": ".br",
-    ContentCoding.gzip: ".gz",
+    ContentCoding.gzip.value: ".gz",
 }
 
 
@@ -131,7 +132,7 @@ class FileResponse(StreamResponse):
 
     def _get_file_path_stat_and_gzip(
         self, accept_encoding: str
-    ) -> Tuple[pathlib.Path, os.stat_result, Optional[ContentCoding | Literal["br"]]]:
+    ) -> Tuple[pathlib.Path, os.stat_result, Optional[Literal["br", "gzip"]]]:
         """Return the file path, stat result, and possible compression type.
 
         This method should be called from a thread executor
