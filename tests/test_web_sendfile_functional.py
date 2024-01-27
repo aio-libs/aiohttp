@@ -226,10 +226,13 @@ async def test_static_file_custom_content_type(
 
 @pytest.mark.parametrize(
     ("accept_encoding", "expect_encoding"),
-    [("gzip, deflate", "gzip"), ("gzip, deflate, br", "br")],
+    [(None, "br"), ("gzip, deflate", "gzip")],
 )
 async def test_static_file_custom_content_type_compress(
-    aiohttp_client: Any, sender: Any, accept_encoding: str, expect_encoding: str
+    aiohttp_client: Any,
+    sender: Any,
+    accept_encoding: Optional[str],
+    expect_encoding: str,
 ):
     """Test static compressed files are returned with expected content type and encoding"""
     filepath = pathlib.Path(__file__).parent / "hello.txt"
@@ -243,7 +246,9 @@ async def test_static_file_custom_content_type_compress(
     app.router.add_get("/", handler)
     client = await aiohttp_client(app)
 
-    resp = await client.get("/", headers={"Accept-Encoding": accept_encoding})
+    resp = await client.get(
+        "/", headers={"Accept-Encoding": accept_encoding} if accept_encoding else None
+    )
     assert resp.status == 200
     body = await resp.read()
     assert b"hello aiohttp\n" == body
@@ -256,13 +261,13 @@ async def test_static_file_custom_content_type_compress(
 
 @pytest.mark.parametrize(
     ("accept_encoding", "expect_encoding"),
-    [("gzip, deflate", "gzip"), ("gzip, deflate, br", "br")],
+    [(None, "br"), ("gzip, deflate", "gzip")],
 )
 @pytest.mark.parametrize("forced_compression", [None, web.ContentCoding.gzip])
 async def test_static_file_with_gziped_counter_part_enable_compression(
     aiohttp_client: Any,
     sender: Any,
-    accept_encoding: str,
+    accept_encoding: Optional[str],
     expect_encoding: str,
     forced_compression: Optional[web.ContentCoding],
 ):
@@ -278,7 +283,9 @@ async def test_static_file_with_gziped_counter_part_enable_compression(
     app.router.add_get("/", handler)
     client = await aiohttp_client(app)
 
-    resp = await client.get("/", headers={"Accept-Encoding": accept_encoding})
+    resp = await client.get(
+        "/", headers={"Accept-Encoding": accept_encoding} if accept_encoding else None
+    )
     assert resp.status == 200
     body = await resp.read()
     assert body == b"hello aiohttp\n"
