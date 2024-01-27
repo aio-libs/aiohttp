@@ -8,6 +8,7 @@ from typing import (
     Any,
     Awaitable,
     Callable,
+    Dict,
     Final,
     Optional,
     Tuple,
@@ -39,7 +40,7 @@ NOSENDFILE: Final[bool] = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
 
 # File extensions for IANA encodings that will be checked in the order defined.
 # TODO(py311): Use StrEnum conversion of ContentCoding for key type and remove .value
-ENCODING_EXTENSION: Final[dict[str, str]] = {
+ENCODING_EXTENSION: Final[Dict[str, str]] = {
     # Literal for Brotli is used until compression is supported.
     "br": ".br",
     ContentCoding.gzip.value: ".gz",
