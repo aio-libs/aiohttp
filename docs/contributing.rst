@@ -170,7 +170,7 @@ Once the tests run in a PR, you'll see a comment posted by *codecov*.
 The most important thing to check here is whether there are any new
 missed or partial lines in the report:
 
-.. image:: contributing-cov-comment.png
+.. image:: _static/img/contributing-cov-comment.svg
 
 Here, the PR has introduced 1 miss and 2 partials. Now we
 click the link in the comment header to open the full report:
