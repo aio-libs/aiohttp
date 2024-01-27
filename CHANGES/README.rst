@@ -1,7 +1,7 @@
 .. _Adding change notes with your PRs:
 
 Adding change notes with your PRs
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+=================================
 
 It is very important to maintain a log for news of how
 updating to the new version of the software will affect
@@ -19,7 +19,7 @@ to the end-users most of the time. And so such details should be
 recorded in the Git history rather than a changelog.
 
 Alright! So how to add a news fragment?
-+++++++++++++++++++++++++++++++++++++++
+---------------------------------------
 
 ``aiohttp`` uses `towncrier <https://pypi.org/project/towncrier/>`_
 for changelog management.
@@ -66,7 +66,7 @@ necessary to make a separate documentation fragment for documentation
 changes accompanying the relevant code changes.
 
 Examples for adding changelog entries to your Pull Requests
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+-----------------------------------------------------------
 
 File :file:`CHANGES/6045.doc.1.rst`:
 
