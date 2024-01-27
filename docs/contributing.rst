@@ -175,7 +175,7 @@ missed or partial lines in the report:
 Here, the PR has introduced 1 miss and 2 partials. Now we
 click the link in the comment header to open the full report:
 
-.. image:: contributing-cov-header.png
+.. image:: _static/img/contributing-cov-header.svg
    :alt: Codecov report
 
 Now, if we look through the diff under 'Files changed' we find one of
