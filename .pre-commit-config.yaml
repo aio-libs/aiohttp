@@ -8,7 +8,21 @@ repos:
       Changelog files must be named
       ####.(bugfix|feature|removal|doc|misc)(.#)?(.rst)?
     exclude: >-
-      ^CHANGES/(\.TEMPLATE\.rst|\.gitignore|\d+\.(bugfix|feature|removal|doc|misc)(\.\d+)?(\.rst)?|README\.rst)$
+      (?x)
+      ^
+        CHANGES/(
+          \.gitignore
+          |(\d+|[0-9a-f]{8}|[0-9a-f]{7}|[0-9a-f]{40})\.(
+            bugfix
+            |feature
+            |removal
+            |doc
+            |misc
+          )(\.\d+)?(\.rst)?
+          |README\.rst
+          |\.TEMPLATE\.rst
+        )
+      $
     files: ^CHANGES/
   - id: changelogs-user-role
     name: Changelog files should use a non-broken :user:`name` role
