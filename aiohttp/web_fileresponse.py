@@ -153,7 +153,7 @@ class FileResponse(StreamResponse):
 
     async def prepare(self, request: "BaseRequest") -> Optional[AbstractStreamWriter]:
         loop = asyncio.get_event_loop()
-        accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "").lower()
+        accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "")
         filepath, st, file_compression = await loop.run_in_executor(
             None, self._get_file_path_stat_and_gzip, accept_encoding
         )
