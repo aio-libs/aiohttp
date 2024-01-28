@@ -199,9 +199,7 @@ async def test_constructor_with_expired(
     assert jar._loop is loop
 
 
-async def test_save_load(
-    tmp_path, loop, cookies_to_send, cookies_to_receive
-) -> None:
+async def test_save_load(tmp_path, loop, cookies_to_send, cookies_to_receive) -> None:
     file_path = pathlib.Path(str(tmp_path)) / "aiohttp.test.cookie"
 
     # export cookie jar

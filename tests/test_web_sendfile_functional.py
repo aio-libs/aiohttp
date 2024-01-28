@@ -563,7 +563,7 @@ async def test_static_file_huge(aiohttp_client, tmp_path) -> None:
 
     # fill 20MB file
     with file_path.open("wb") as f:
-        for i in range(1024*20):
+        for i in range(1024 * 20):
             f.write((chr(i % 64 + 0x20) * 1024).encode())
 
     file_st = file_path.stat()
