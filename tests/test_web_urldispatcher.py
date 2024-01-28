@@ -108,7 +108,7 @@ async def test_follow_symlink(
     assert (await r.text()) == data
 
 
-async def test_follow_symlink_directory_transversal(
+async def test_follow_symlink_directory_traversal(
     tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
 ) -> None:
     # Tests that follow_symlinks does not allow directory transversal
@@ -138,7 +138,7 @@ async def test_follow_symlink_directory_transversal(
     await client.close()
 
 
-async def test_follow_symlink_directory_transversal_after_normalization(
+async def test_follow_symlink_directory_traversal_after_normalization(
     tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
 ) -> None:
     # Tests that follow_symlinks does not allow directory transversal
