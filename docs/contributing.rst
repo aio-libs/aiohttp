@@ -158,8 +158,8 @@ Any extra texts (print statements and so on) should be removed.
 
      make test-3.10-no-extensions
 
-Tests coverage
-==============
+Code coverage
+=============
 
 We use *codecov.io* as an indispensable tool for analyzing our coverage
 results. Visit https://codecov.io/gh/aio-libs/aiohttp to see coverage
