@@ -1,1 +1,0 @@
-Replace all tmpdir fixtures with tmp_path in test suite.

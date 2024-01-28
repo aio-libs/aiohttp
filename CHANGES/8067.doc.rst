@@ -1,3 +1,0 @@
-The Sphinx setup was updated to avoid showing the empty
-changelog draft section in the tagged release documentation
-builds on Read The Docs -- by :user:`webknjaz`.
