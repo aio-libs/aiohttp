@@ -10,7 +10,6 @@
 
 .. towncrier release notes start
 
-=======
 3.9.2 (2024-01-28)
 ==================
 
