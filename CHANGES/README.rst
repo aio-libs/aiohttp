@@ -1,7 +1,15 @@
-.. _Adding change notes with your PRs:
+.. _Making a pull request:
+
+Making a pull request
+=====================
+
+When making a pull request, please include a short summary of the changes
+and a reference to any issue tickets that the PR is intended to solve.
+All PRs with code changes should include tests. All changes should
+include a changelog entry.
 
 Adding change notes with your PRs
-=================================
+---------------------------------
 
 It is very important to maintain a log for news of how
 updating to the new version of the software will affect
