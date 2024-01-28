@@ -16,7 +16,7 @@
 Bug fixes
 ---------
 
-- Fixed websocket connection leak.
+- Fixed server-side websocket connection leak.
 
 
   *Related issues and pull requests on GitHub:*
@@ -32,7 +32,7 @@ Bug fixes
 
 
 
-- Fixed double compress when compression enabled and compressed file exists.
+- Fixed double compress when compression enabled and compressed file exists in server file responses.
 
 
   *Related issues and pull requests on GitHub:*
@@ -62,7 +62,7 @@ Bug fixes
 
 
 
-- Improved validation of paths for static resources -- by :user:`bdraco`.
+- Improved validation of paths for static resources requests to the server -- by :user:`bdraco`.
 
 
   *Related issues and pull requests on GitHub:*
