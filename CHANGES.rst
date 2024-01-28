@@ -99,14 +99,6 @@ Breaking changes
 Improved documentation
 ----------------------
 
-- Updated :ref:`contributing/Tests coverage <aiohttp-contributing>` section to show how we use ``codecov`` -- by :user:`Dreamsorcerer`.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`7916`.
-
-
-
 - Fixed examples of ``fallback_charset_resolver`` function in client_advanced documentation. -- by :user:`henry0312`.
 
 
@@ -160,6 +152,14 @@ Packaging updates and notes for downstreams
 
 Contributor-facing changes
 --------------------------
+
+- Updated :ref:`contributing/Tests coverage <aiohttp-contributing>` section to show how we use ``codecov`` -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`7916`.
+
+
 
 - The changelog categorization was made clearer. The
   contributors can now mark their fragment files more
