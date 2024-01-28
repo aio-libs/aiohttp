@@ -250,9 +250,11 @@ async def test_static_file_custom_content_type_compress(
         "/", headers={"Accept-Encoding": accept_encoding} if accept_encoding else None
     )
     assert resp.status == 200
-    assert resp.headers["Content-Type"] == "application/pdf"
-    assert resp.headers.get("Content-Encoding") == expect_encoding
-    assert await resp.read() == b"hello aiohttp\n"
+    assert (
+        resp.headers["Content-Type"],
+        resp.headers.get("Content-Encoding"),
+        await resp.read(),
+    ) == ("application/pdf", expect_encoding, b"hello aiohttp\n")
     resp.close()
     await resp.release()
     await client.close()
@@ -286,9 +288,11 @@ async def test_static_file_with_encoding_and_enable_compression(
         "/", headers={"Accept-Encoding": accept_encoding} if accept_encoding else None
     )
     assert resp.status == 200
-    assert resp.headers["Content-Type"] == "text/plain"
-    assert resp.headers.get("Content-Encoding") == expect_encoding
-    assert await resp.read() == b"hello aiohttp\n"
+    assert (
+        resp.headers["Content-Type"],
+        resp.headers.get("Content-Encoding"),
+        await resp.read(),
+    ) == ("text/plain", expect_encoding, b"hello aiohttp\n")
     resp.close()
     await resp.release()
     await client.close()
@@ -311,10 +315,12 @@ async def test_static_file_with_content_encoding(
     client = await aiohttp_client(app)
 
     resp = await client.get("/")
-    assert 200 == resp.status
-    assert resp.headers["CONTENT-TYPE"] == "text/plain"
-    assert resp.headers["CONTENT-ENCODING"] == expect_encoding
-    assert await resp.read() == b"hello aiohttp\n"
+    assert resp.status == 200
+    assert (
+        resp.headers["Content-Type"],
+        resp.headers.get("Content-Encoding"),
+        await resp.read(),
+    ) == ("text/plain", expect_encoding, b"hello aiohttp\n")
     resp.close()
 
     await resp.release()
