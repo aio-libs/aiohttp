@@ -181,7 +181,7 @@ click the link in the comment header to open the full report:
 Now, if we look through the diff under 'Files changed' we find one of
 our partials:
 
-.. image:: contributing-cov-partial.png
+.. image:: _static/img/contributing-cov-partial.svg
    :alt: A while loop with partial coverage.
 
 In this case, the while loop is never skipped in our tests. This is
@@ -192,7 +192,7 @@ We're still missing a partial and a miss, so we switch to the
 'Indirect changes' tab and take a look through the diff there. This
 time we find the remaining 2 lines:
 
-.. image:: contributing-cov-miss.png
+.. image:: _static/img/contributing-cov-miss.svg
    :alt: An if statement that isn't covered anymore.
 
 After reviewing the PR, we find that this code is no longer needed as
