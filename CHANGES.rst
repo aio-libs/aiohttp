@@ -99,7 +99,7 @@ Breaking changes
 Improved documentation
 ----------------------
 
-- Fixed examples of ``fallback_charset_resolver`` function in client_advanced documentation. -- by :user:`henry0312`.
+- Fixed examples of ``fallback_charset_resolver`` function in the :doc:`client_advanced` document. -- by :user:`henry0312`.
 
 
   *Related issues and pull requests on GitHub:*
