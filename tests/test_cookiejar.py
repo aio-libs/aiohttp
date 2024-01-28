@@ -1,9 +1,8 @@
 import asyncio
 import datetime
 import itertools
-import os
+import pathlib
 import pickle
-import tempfile
 import unittest
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from unittest import mock
@@ -178,8 +177,8 @@ async def test_constructor_with_expired(
     assert jar._loop is loop
 
 
-async def test_save_load(loop, cookies_to_send, cookies_to_receive) -> None:
-    file_path = tempfile.mkdtemp() + "/aiohttp.test.cookie"
+async def test_save_load(tmp_path, loop, cookies_to_send, cookies_to_receive) -> None:
+    file_path = pathlib.Path(str(tmp_path)) / "aiohttp.test.cookie"
 
     # export cookie jar
     jar_save = CookieJar(loop=loop)
@@ -193,7 +192,6 @@ async def test_save_load(loop, cookies_to_send, cookies_to_receive) -> None:
     for cookie in jar_load:
         jar_test[cookie.key] = cookie
 
-    os.unlink(file_path)
     assert jar_test == cookies_to_receive
 
 
