@@ -17,6 +17,7 @@ Arsenic
 async
 asyncio
 asyncpg
+attrs
 auth
 autocalculated
 autodetection
@@ -34,6 +35,7 @@ backports
 BaseEventLoop
 basename
 BasicAuth
+behaviour
 BodyPartReader
 boolean
 botocore
@@ -89,6 +91,7 @@ Cythonize
 cythonized
 de
 deduplicate
+defs
 Dependabot
 deprecations
 DER
@@ -104,6 +107,7 @@ DNSResolver
 docstring
 docstrings
 DoS
+downstreams
 Dup
 elasticsearch
 encodings
@@ -313,6 +317,8 @@ Testsuite
 Tf
 timestamps
 TLS
+tmp
+tmpdir
 toolbar
 toplevel
 towncrier
@@ -329,6 +335,7 @@ Unittest
 unix
 unsets
 unstripped
+untyped
 uppercased
 upstr
 url
