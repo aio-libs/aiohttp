@@ -10,6 +10,203 @@
 
 .. towncrier release notes start
 
+=======
+3.9.2 (2024-01-28)
+==================
+
+Bug fixes
+---------
+
+- Fixed server-side websocket connection leak.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`7978`.
+
+
+
+- Fixed ``web.FileResponse`` doing blocking I/O in the event loop.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8012`.
+
+
+
+- Fixed double compress when compression enabled and compressed file exists in server file responses.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8014`.
+
+
+
+- Added runtime type check for ``ClientSession`` ``timeout`` parameter.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8021`.
+
+
+
+- Fixed an unhandled exception in the Python HTTP parser on header lines starting with a colon -- by :user:`pajod`.
+
+  Invalid request lines with anything but a dot between the HTTP major and minor version are now rejected.
+  Invalid header field names containing question mark or slash are now rejected.
+  Such requests are incompatible with :rfc:`9110#section-5.6.2` and are not known to be of any legitimate use.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8074`.
+
+
+
+- Improved validation of paths for static resources requests to the server -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8079`.
+
+
+
+
+Features
+--------
+
+- Added support for passing :py:data:`True` to ``ssl`` parameter in ``ClientSession`` while
+  deprecating :py:data:`None` -- by :user:`xiangyan99`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`7698`.
+
+
+
+Breaking changes
+----------------
+
+- Fixed an unhandled exception in the Python HTTP parser on header lines starting with a colon -- by :user:`pajod`.
+
+  Invalid request lines with anything but a dot between the HTTP major and minor version are now rejected.
+  Invalid header field names containing question mark or slash are now rejected.
+  Such requests are incompatible with :rfc:`9110#section-5.6.2` and are not known to be of any legitimate use.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8074`.
+
+
+
+
+Improved documentation
+----------------------
+
+- Fixed examples of ``fallback_charset_resolver`` function in the :doc:`client_advanced` document. -- by :user:`henry0312`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`7995`.
+
+
+
+- The Sphinx setup was updated to avoid showing the empty
+  changelog draft section in the tagged release documentation
+  builds on Read The Docs -- by :user:`webknjaz`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8067`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- The changelog categorization was made clearer. The
+  contributors can now mark their fragment files more
+  accurately -- by :user:`webknjaz`.
+
+  The new category tags are:
+
+      * ``bugfix``
+
+      * ``feature``
+
+      * ``deprecation``
+
+      * ``breaking`` (previously, ``removal``)
+
+      * ``doc``
+
+      * ``packaging``
+
+      * ``contrib``
+
+      * ``misc``
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8066`.
+
+
+
+
+Contributor-facing changes
+--------------------------
+
+- Updated :ref:`contributing/Tests coverage <aiohttp-contributing>` section to show how we use ``codecov`` -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`7916`.
+
+
+
+- The changelog categorization was made clearer. The
+  contributors can now mark their fragment files more
+  accurately -- by :user:`webknjaz`.
+
+  The new category tags are:
+
+      * ``bugfix``
+
+      * ``feature``
+
+      * ``deprecation``
+
+      * ``breaking`` (previously, ``removal``)
+
+      * ``doc``
+
+      * ``packaging``
+
+      * ``contrib``
+
+      * ``misc``
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8066`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Replaced all ``tmpdir`` fixtures with ``tmp_path`` in test suite.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`3551`.
+
+
+
+
+----
+
+
 3.9.1 (2023-11-26)
 ==================
 
