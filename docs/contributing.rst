@@ -203,7 +203,7 @@ check would have been run, probably multiple times, for every single
 incoming request).
 
 .. tip::
-   Sometimes the diff on Codecov doesn't make sense. This is usually
+   Sometimes the diff on *codecov.io* doesn't make sense. This is usually
    caused by the branch being out of sync with master. Try merging
    master into the branch and it will likely fix the issue. Failing
    that, try checking coverage locally as described in the next section.
