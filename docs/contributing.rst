@@ -25,7 +25,7 @@ Workflow is pretty straightforward:
 
   4. Make sure all tests passed
 
-  5. Add a file into the ``CHANGES`` folder (see `Adding change notes with your PRs`_ for how).
+  5. Add a file into the ``CHANGES`` folder (see `Making a pull request`_ for how).
 
   6. Commit changes to your own aiohttp clone
 
