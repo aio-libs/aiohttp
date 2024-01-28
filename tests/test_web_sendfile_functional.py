@@ -558,18 +558,18 @@ def test_static_route_path_existence_check() -> None:
         web.StaticResource("/", nodirectory)
 
 
-async def test_static_file_huge(aiohttp_client, tmpdir) -> None:
+async def test_static_file_huge(aiohttp_client, tmp_path) -> None:
     filename = "huge_data.unknown_mime_type"
 
     # fill 20MB file
-    with tmpdir.join(filename).open("wb") as f:
+    with (tmp_path / filename).open("wb") as f:
         for i in range(1024 * 20):
             f.write((chr(i % 64 + 0x20) * 1024).encode())
 
-    file_st = os.stat(str(tmpdir.join(filename)))
+    file_st = os.stat(str(tmp_path / filename))
 
     app = web.Application()
-    app.router.add_static("/static", str(tmpdir))
+    app.router.add_static("/static", str(tmp_path))
     client = await aiohttp_client(app)
 
     resp = await client.get("/static/" + filename)
@@ -579,7 +579,7 @@ async def test_static_file_huge(aiohttp_client, tmpdir) -> None:
     assert resp.headers.get("CONTENT-ENCODING") is None
     assert int(resp.headers.get("CONTENT-LENGTH")) == file_st.st_size
 
-    f = tmpdir.join(filename).open("rb")
+    f = (tmp_path / filename).open("rb")
     off = 0
     cnt = 0
     while off < file_st.st_size:
@@ -988,11 +988,11 @@ async def test_static_file_compression(aiohttp_client, sender) -> None:
     await client.close()
 
 
-async def test_static_file_huge_cancel(aiohttp_client, tmpdir) -> None:
+async def test_static_file_huge_cancel(aiohttp_client, tmp_path) -> None:
     filename = "huge_data.unknown_mime_type"
 
     # fill 100MB file
-    with tmpdir.join(filename).open("wb") as f:
+    with (tmp_path / filename).open("wb") as f:
         for i in range(1024 * 20):
             f.write((chr(i % 64 + 0x20) * 1024).encode())
 
@@ -1005,7 +1005,7 @@ async def test_static_file_huge_cancel(aiohttp_client, tmpdir) -> None:
         tr = request.transport
         sock = tr.get_extra_info("socket")
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024)
-        ret = web.FileResponse(pathlib.Path(str(tmpdir.join(filename))))
+        ret = web.FileResponse(pathlib.Path(str(tmp_path / filename)))
         return ret
 
     app = web.Application()
@@ -1029,11 +1029,11 @@ async def test_static_file_huge_cancel(aiohttp_client, tmpdir) -> None:
     await client.close()
 
 
-async def test_static_file_huge_error(aiohttp_client, tmpdir) -> None:
+async def test_static_file_huge_error(aiohttp_client, tmp_path) -> None:
     filename = "huge_data.unknown_mime_type"
 
     # fill 20MB file
-    with tmpdir.join(filename).open("wb") as f:
+    with (tmp_path / filename).open("wb") as f:
         f.seek(20 * 1024 * 1024)
         f.write(b"1")
 
@@ -1042,7 +1042,7 @@ async def test_static_file_huge_error(aiohttp_client, tmpdir) -> None:
         tr = request.transport
         sock = tr.get_extra_info("socket")
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024)
-        ret = web.FileResponse(pathlib.Path(str(tmpdir.join(filename))))
+        ret = web.FileResponse(pathlib.Path(str(tmp_path / filename)))
         return ret
 
     app = web.Application()
