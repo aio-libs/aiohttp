@@ -43,7 +43,7 @@ with your own!).
 Finally, name your file following the convention that Towncrier
 understands: it should start with the number of an issue or a
 PR followed by a dot, then add a patch type, like ``feature``,
-``doc``, ``misc`` etc., and add ``.rst`` as a suffix. If you
+``doc``, ``contrib`` etc., and add ``.rst`` as a suffix. If you
 need to add more than one fragment, you may add an optional
 sequence number (delimited with another period) between the type
 and the suffix.
@@ -51,11 +51,24 @@ and the suffix.
 In general the name will follow ``<pr_number>.<category>.rst`` pattern,
 where the categories are:
 
-- ``feature``: Any new feature
-- ``bugfix``: A bug fix
-- ``doc``: A change to the documentation
-- ``misc``: Changes internal to the repo like CI, test and build changes
-- ``removal``: For deprecations and removals of an existing feature or behavior
+- ``bugfix``: A bug fix for something we deemed an improper undesired
+  behavior that got corrected in the release to match pre-agreed
+  expectations.
+- ``feature``: A new behavior, public APIs. That sort of stuff.
+- ``deprecation``: A declaration of future API removals and breaking
+  changes in behavior.
+- ``breaking``: When something public gets removed in a breaking way.
+  Could be deprecated in an earlier release.
+- ``doc``: Notable updates to the documentation structure or build
+  process.
+- ``packaging``: Notes for downstreams about unobvious side effects
+  and tooling. Changes in the test invocation considerations and
+  runtime assumptions.
+- ``contrib``: Stuff that affects the contributor experience. e.g.
+  Running tests, building the docs, setting up the development
+  environment.
+- ``misc``: Changes that are hard to assign to any of the above
+  categories.
 
 A pull request may have more than one of these components, for example
 a code change may introduce a new feature that deprecates an old

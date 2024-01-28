@@ -1,0 +1,21 @@
+The changelog categorization was made clearer. The
+contributors can now mark their fragment files more
+accurately -- by :user:`webknjaz`.
+
+The new category tags are:
+
+    * ``bugfix``
+
+    * ``feature``
+
+    * ``deprecation``
+
+    * ``breaking`` (previously, ``removal``)
+
+    * ``doc``
+
+    * ``packaging``
+
+    * ``contrib``
+
+    * ``misc``
