@@ -180,7 +180,7 @@ Contributor-facing changes
 Miscellaneous internal changes
 ------------------------------
 
-- Replace all tmpdir fixtures with tmp_path in test suite.
+- Replaced all ``tmpdir`` fixtures with ``tmp_path`` in test suite.
 
 
   *Related issues and pull requests on GitHub:*
