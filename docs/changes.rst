@@ -4,14 +4,17 @@
 Changelog
 =========
 
-To be included in v\ |release| (if present)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. only:: not is_release
 
-.. towncrier-draft-entries:: |release| [UNRELEASED DRAFT]
+   To be included in v\ |release| (if present)
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Released versions
-^^^^^^^^^^^^^^^^^
+   .. towncrier-draft-entries:: |release| [UNRELEASED DRAFT]
+
+   Released versions
+   ^^^^^^^^^^^^^^^^^
 
 .. include:: ../CHANGES.rst
+   :start-after: .. towncrier release notes start
 
 .. include:: ../HISTORY.rst
