@@ -269,7 +269,7 @@ should be set to ``True``::
 
    web.static('/prefix', path_to_static_folder, follow_symlinks=True)
 
-.. warning::
+.. caution::
 
    Enabling ``follow_symlinks`` can be a security risk, and may lead to
    a directory transversal attack. You do NOT need this option to follow symlinks
