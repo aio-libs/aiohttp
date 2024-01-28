@@ -615,9 +615,7 @@ _pad: Dict[bytes, str] = {
 @pytest.mark.parametrize("hdr", [b"", b"foo"], ids=["name-empty", "with-name"])
 @pytest.mark.parametrize("pad2", _pad.keys(), ids=["post-" + n for n in _pad.values()])
 @pytest.mark.parametrize("pad1", _pad.keys(), ids=["pre-" + n for n in _pad.values()])
-def test_invalid_header_spacing(
-    parser, pad1: bytes, pad2: bytes, hdr: bytes
-) -> None:
+def test_invalid_header_spacing(parser, pad1: bytes, pad2: bytes, hdr: bytes) -> None:
     text = b"GET /test HTTP/1.1\r\n" b"%s%s%s: value\r\n\r\n" % (pad1, hdr, pad2)
     expectation = pytest.raises(http_exceptions.BadHttpMessage)
     if pad1 == pad2 == b"" and hdr != b"":
@@ -1104,9 +1102,7 @@ def test_http_response_parser_code_not_int(response) -> None:
 
 
 @pytest.mark.parametrize("nonascii_digit", _num.keys(), ids=_num.values())
-def test_http_response_parser_code_not_ascii(
-    response, nonascii_digit: bytes
-) -> None:
+def test_http_response_parser_code_not_ascii(response, nonascii_digit: bytes) -> None:
     with pytest.raises(http_exceptions.BadStatusLine):
         response.feed_data(b"HTTP/1.1 20" + nonascii_digit + b" test\r\n\r\n")
 
