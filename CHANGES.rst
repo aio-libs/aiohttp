@@ -24,7 +24,7 @@ Bug fixes
 
 
 
-- Fixed `web.FileResponse` doing blocking I/O in the event loop.
+- Fixed :py:class:`web.FileResponse <aiohttp.web.FileResponse>` doing blocking I/O in the event loop.
 
 
   *Related issues and pull requests on GitHub:*
