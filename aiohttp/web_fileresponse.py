@@ -2,6 +2,7 @@ import asyncio
 import mimetypes
 import os
 import pathlib
+import sys
 from typing import (
     IO,
     TYPE_CHECKING,
@@ -25,7 +26,7 @@ from .web_exceptions import (
     HTTPPreconditionFailed,
     HTTPRequestRangeNotSatisfiable,
 )
-from .web_response import ContentCoding, StreamResponse
+from .web_response import StreamResponse
 
 __all__ = ("FileResponse",)
 
@@ -38,12 +39,12 @@ _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
 
 NOSENDFILE: Final[bool] = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
 
-# File extensions for IANA encodings that will be checked in the order defined.
-# TODO(py311): Use StrEnum conversion of ContentCoding for key type and remove .value
-ENCODING_EXTENSION: Final[Dict[str, str]] = {
-    # Literal for Brotli is used until compression is supported.
-    "br": ".br",
-    ContentCoding.gzip.value: ".gz",
+if sys.version_info < (3, 9):
+    mimetypes.encodings_map[".br"] = "br"
+
+# File extension to IANA encodings map that will be checked in the order defined.
+ENCODING_EXTENSIONS: Final[Dict[str, str]] = {
+    ext: mimetypes.encodings_map[ext] for ext in (".br", ".gz")
 }
 
 
@@ -139,7 +140,7 @@ class FileResponse(StreamResponse):
         since it calls os.stat which may block.
         """
         filepath = self._path
-        for encoding, extension in ENCODING_EXTENSION.items():
+        for extension, encoding in ENCODING_EXTENSIONS.items():
             if encoding in accept_encoding:
                 compressed_path = filepath.with_name(filepath.name + extension)
                 try:
