@@ -216,7 +216,7 @@ or just adding ``--cov-report=html`` to ``pytest``.
 This will run the test suite and collect coverage information. Once
 finished, coverage results can be view by opening:
 ```console
-python -m webbrowser -n file://"$(pwd)"/htmlcov/index.html
+$ python -m webbrowser -n file://"$(pwd)"/htmlcov/index.html
 ```
 
 Documentation
