@@ -67,6 +67,7 @@ CIMultiDict
 ClientSession
 cls
 cmd
+codebase
 codec
 Codings
 committer
