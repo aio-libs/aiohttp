@@ -24,12 +24,14 @@ async def test_simple_server(aiohttp_raw_server: Any, aiohttp_client: Any) -> No
 @pytest.mark.xfail(
     not helpers.NO_EXTENSIONS,
     raises=client.ServerDisconnectedError,
-    reason="The behavior of C-extensions differs from pure-Python: "
-    "https://github.com/aio-libs/aiohttp/issues/6446",
+    reason="The behavior of C-extensions differs from pure-Python (see #6446)",
 )
 async def test_unsupported_upgrade(aiohttp_raw_server, aiohttp_client) -> None:
-    # don't fail if a client probes for an unsupported protocol upgrade
-    # https://github.com/aio-libs/aiohttp/issues/6446#issuecomment-999032039
+    """don't fail if a client probes for an unsupported protocol upgrade
+
+    https://github.com/aio-libs/aiohttp/issues/6446#issuecomment-999032039
+    """
+
     async def handler(request: web.Request):
         return web.Response(body=await request.read())
 
