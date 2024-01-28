@@ -225,6 +225,7 @@ Martin Richard
 Martin Sucha
 Mathias Fröjdman
 Mathieu Dugré
+Matt VanEseltine
 Matthias Marquardt
 Matthieu Hauglustaine
 Matthieu Rigal
