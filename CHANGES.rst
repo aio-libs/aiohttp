@@ -74,7 +74,7 @@ Bug fixes
 Features
 --------
 
-- Added support for passing `True` to `ssl` while deprecating `None` -- by :user:`xiangyan99`.
+- Added support for passing :py:data:`True` to ``ssl`` while deprecating :py:data:`None` -- by :user:`xiangyan99`.
 
 
   *Related issues and pull requests on GitHub:*
