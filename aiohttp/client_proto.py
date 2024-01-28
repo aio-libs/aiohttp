@@ -7,7 +7,7 @@ from .client_exceptions import (
     ClientOSError,
     ClientPayloadError,
     ServerDisconnectedError,
-    ServerTimeoutError,
+    SocketTimeoutError,
 )
 from .helpers import (
     BaseTimerContext,
@@ -93,11 +93,11 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         if self._parser is not None:
             try:
                 uncompleted = self._parser.feed_eof()
-            except Exception:
+            except Exception as e:
                 if self._payload is not None:
-                    self._payload.set_exception(
-                        ClientPayloadError("Response payload is not completed")
-                    )
+                    exc = ClientPayloadError("Response payload is not completed")
+                    exc.__cause__ = e
+                    self._payload.set_exception(exc)
 
         if not self.is_eof():
             if isinstance(exc, OSError):
@@ -205,7 +205,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         self._reschedule_timeout()
 
     def _on_read_timeout(self) -> None:
-        exc = ServerTimeoutError("Timeout on reading data from socket")
+        exc = SocketTimeoutError("Timeout on reading data from socket")
         self.set_exception(exc)
         if self._payload is not None:
             self._payload.set_exception(exc)

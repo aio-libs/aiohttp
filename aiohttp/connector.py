@@ -3,6 +3,7 @@ import dataclasses
 import functools
 import logging
 import random
+import socket
 import sys
 import traceback
 import warnings
@@ -30,6 +31,8 @@ from typing import (  # noqa
     Union,
     cast,
 )
+
+import aiohappyeyeballs
 
 from . import hdrs, helpers
 from .abc import AbstractResolver
@@ -63,7 +66,7 @@ except ImportError:  # pragma: no cover
 __all__ = ("BaseConnector", "TCPConnector", "UnixConnector", "NamedPipeConnector")
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .client import ClientTimeout
     from .client_reqrep import ConnectionKey
     from .tracing import Trace
@@ -730,6 +733,10 @@ class TCPConnector(BaseConnector):
     limit_per_host - Number of simultaneous connections to one host.
     enable_cleanup_closed - Enables clean-up closed ssl transports.
                             Disabled by default.
+    happy_eyeballs_delay - This is the “Connection Attempt Delay”
+                           as defined in RFC 8305. To disable
+                           the happy eyeballs algorithm, set to None.
+    interleave - “First Address Family Count” as defined in RFC 8305
     loop - Optional event loop.
     """
 
@@ -739,7 +746,7 @@ class TCPConnector(BaseConnector):
         use_dns_cache: bool = True,
         ttl_dns_cache: Optional[int] = 10,
         family: int = 0,
-        ssl: Union[None, Literal[False], Fingerprint, SSLContext] = None,
+        ssl: Union[bool, Fingerprint, SSLContext] = True,
         local_addr: Optional[Tuple[str, int]] = None,
         resolver: Optional[AbstractResolver] = None,
         keepalive_timeout: Union[None, float, _SENTINEL] = sentinel,
@@ -748,6 +755,8 @@ class TCPConnector(BaseConnector):
         limit_per_host: int = 0,
         enable_cleanup_closed: bool = False,
         timeout_ceil_threshold: float = 5,
+        happy_eyeballs_delay: Optional[float] = 0.25,
+        interleave: Optional[int] = None,
     ) -> None:
         super().__init__(
             keepalive_timeout=keepalive_timeout,
@@ -760,8 +769,8 @@ class TCPConnector(BaseConnector):
 
         if not isinstance(ssl, SSL_ALLOWED_TYPES):
             raise TypeError(
-                "ssl should be SSLContext, bool, Fingerprint, "
-                "or None, got {!r} instead.".format(ssl)
+                "ssl should be SSLContext, Fingerprint, or bool, "
+                "got {!r} instead.".format(ssl)
             )
         self._ssl = ssl
         if resolver is None:
@@ -772,7 +781,9 @@ class TCPConnector(BaseConnector):
         self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache)
         self._throttle_dns_events: Dict[Tuple[str, int], EventResultOrError] = {}
         self._family = family
-        self._local_addr = local_addr
+        self._local_addr_infos = aiohappyeyeballs.addr_to_addr_infos(local_addr)
+        self._happy_eyeballs_delay = happy_eyeballs_delay
+        self._interleave = interleave
 
     def _close_immediately(self) -> List["asyncio.Future[None]"]:
         for ev in self._throttle_dns_events.values():
@@ -931,13 +942,13 @@ class TCPConnector(BaseConnector):
             sslcontext = req.ssl
             if isinstance(sslcontext, ssl.SSLContext):
                 return sslcontext
-            if sslcontext is not None:
+            if sslcontext is not True:
                 # not verified or fingerprinted
                 return self._make_ssl_context(False)
             sslcontext = self._ssl
             if isinstance(sslcontext, ssl.SSLContext):
                 return sslcontext
-            if sslcontext is not None:
+            if sslcontext is not True:
                 # not verified or fingerprinted
                 return self._make_ssl_context(False)
             return self._make_ssl_context(True)
@@ -956,6 +967,7 @@ class TCPConnector(BaseConnector):
     async def _wrap_create_connection(
         self,
         *args: Any,
+        addr_infos: List[aiohappyeyeballs.AddrInfoType],
         req: ClientRequest,
         timeout: "ClientTimeout",
         client_error: Type[Exception] = ClientConnectorError,
@@ -965,7 +977,14 @@ class TCPConnector(BaseConnector):
             async with ceil_timeout(
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
             ):
-                return await self._loop.create_connection(*args, **kwargs)
+                sock = await aiohappyeyeballs.start_connection(
+                    addr_infos=addr_infos,
+                    local_addr_infos=self._local_addr_infos,
+                    happy_eyeballs_delay=self._happy_eyeballs_delay,
+                    interleave=self._interleave,
+                    loop=self._loop,
+                )
+                return await self._loop.create_connection(*args, **kwargs, sock=sock)
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:
@@ -1076,6 +1095,27 @@ class TCPConnector(BaseConnector):
 
         return tls_transport, tls_proto
 
+    def _convert_hosts_to_addr_infos(
+        self, hosts: List[Dict[str, Any]]
+    ) -> List[aiohappyeyeballs.AddrInfoType]:
+        """Converts the list of hosts to a list of addr_infos.
+
+        The list of hosts is the result of a DNS lookup. The list of
+        addr_infos is the result of a call to `socket.getaddrinfo()`.
+        """
+        addr_infos: List[aiohappyeyeballs.AddrInfoType] = []
+        for hinfo in hosts:
+            host = hinfo["host"]
+            is_ipv6 = ":" in host
+            family = socket.AF_INET6 if is_ipv6 else socket.AF_INET
+            if self._family and self._family != family:
+                continue
+            addr = (host, hinfo["port"], 0, 0) if is_ipv6 else (host, hinfo["port"])
+            addr_infos.append(
+                (family, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", addr)
+            )
+        return addr_infos
+
     async def _create_direct_connection(
         self,
         req: ClientRequest,
@@ -1120,36 +1160,27 @@ class TCPConnector(BaseConnector):
             raise ClientConnectorError(req.connection_key, exc) from exc
 
         last_exc: Optional[Exception] = None
-
-        for hinfo in hosts:
-            host = hinfo["host"]
-            port = hinfo["port"]
-
+        addr_infos = self._convert_hosts_to_addr_infos(hosts)
+        while addr_infos:
             # Strip trailing dots, certificates contain FQDN without dots.
             # See https://github.com/aio-libs/aiohttp/issues/3636
             server_hostname = (
-                (req.server_hostname or hinfo["hostname"]).rstrip(".")
-                if sslcontext
-                else None
+                (req.server_hostname or host).rstrip(".") if sslcontext else None
             )
 
             try:
                 transp, proto = await self._wrap_create_connection(
                     self._factory,
-                    host,
-                    port,
                     timeout=timeout,
                     ssl=sslcontext,
-                    family=hinfo["family"],
-                    proto=hinfo["proto"],
-                    flags=hinfo["flags"],
+                    addr_infos=addr_infos,
                     server_hostname=server_hostname,
-                    local_addr=self._local_addr,
                     req=req,
                     client_error=client_error,
                 )
             except ClientConnectorError as exc:
                 last_exc = exc
+                aiohappyeyeballs.pop_addr_infos_interleave(addr_infos, self._interleave)
                 continue
 
             if req.is_ssl() and fingerprint:
@@ -1160,6 +1191,10 @@ class TCPConnector(BaseConnector):
                     if not self._cleanup_closed_disabled:
                         self._cleanup_closed_transports.append(transp)
                     last_exc = exc
+                    # Remove the bad peer from the list of addr_infos
+                    sock: socket.socket = transp.get_extra_info("socket")
+                    bad_peer = sock.getpeername()
+                    aiohappyeyeballs.remove_addr_infos(addr_infos, bad_peer)
                     continue
 
             return transp, proto

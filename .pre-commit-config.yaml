@@ -6,9 +6,35 @@ repos:
     language: fail
     entry: >-
       Changelog files must be named
-      ####.(bugfix|feature|removal|doc|misc)(.#)?(.rst)?
+      ####.(
+      bugfix
+      | feature
+      | deprecation
+      | breaking
+      | doc
+      | packaging
+      | contrib
+      | misc
+      )(.#)?(.rst)?
     exclude: >-
-      ^CHANGES/(\.TEMPLATE\.rst|\.gitignore|\d+\.(bugfix|feature|removal|doc|misc)(\.\d+)?(\.rst)?|README\.rst)$
+      (?x)
+      ^
+        CHANGES/(
+          \.gitignore
+          |(\d+|[0-9a-f]{8}|[0-9a-f]{7}|[0-9a-f]{40})\.(
+            bugfix
+            |feature
+            |deprecation
+            |breaking
+            |doc
+            |packaging
+            |contrib
+            |misc
+          )(\.\d+)?(\.rst)?
+          |README\.rst
+          |\.TEMPLATE\.rst
+        )
+      $
     files: ^CHANGES/
   - id: changelogs-user-role
     name: Changelog files should use a non-broken :user:`name` role
@@ -45,8 +71,7 @@ repos:
     exclude: >-
       ^docs/[^/]*\.svg$
   - id: requirements-txt-fixer
-    exclude: >-
-      ^requirements/.*\.txt$
+    files: requirements/.*\.in$
   - id: trailing-whitespace
   - id: file-contents-sorter
     args: ['--ignore-case']
