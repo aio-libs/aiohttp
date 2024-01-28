@@ -1875,9 +1875,15 @@ Application and Router
                               by default it's not allowed and HTTP/403 will
                               be returned on directory access.
 
-      :param bool follow_symlinks: flag for allowing to follow symlinks from
-                              a directory, by default it's not allowed and
-                              HTTP/404 will be returned on access.
+      :param bool follow_symlinks: flag for allowing to follow symlinks that lead
+                              outside the static root directory, by default it's not allowed and
+                              HTTP/404 will be returned on access.  Enabling ``follow_symlinks``
+                              can be a security risk, and may lead to a directory transversal attack.
+                              You do NOT need this option to follow symlinks which point to somewhere
+                              else within the static directory, this option is only used to break out
+                              of the security sandbox. Enabling this option is highly discouraged,
+                              and only expected to be used for edge cases in a local development
+                              setting where remote users do not have access to the server.
 
       :param bool append_version: flag for adding file version (hash)
                               to the url query string, this value will
