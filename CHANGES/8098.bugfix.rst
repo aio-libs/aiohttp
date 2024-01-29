@@ -1,2 +1,0 @@
-Fixed backwards compatibility breakage of ``ssl`` parameter when set outside of
-``ClientSession`` (e.g. directly in ``TCPConnector``) -- by :user:`Dreamsorcerer`.
