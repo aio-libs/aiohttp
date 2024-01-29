@@ -42,6 +42,7 @@ def tls_certificate_authority() -> Any:
 def tls_certificate(tls_certificate_authority: Any) -> Any:
     return tls_certificate_authority.issue_cert(
         "localhost",
+        "xn--prklad-4va.localhost",
         "127.0.0.1",
         "::1",
     )
@@ -207,3 +208,13 @@ def netrc_contents(
     monkeypatch.setenv("NETRC", str(netrc_file_path))
 
     return netrc_file_path
+
+
+@pytest.fixture
+def start_connection():
+    with mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        autospec=True,
+        spec_set=True,
+    ) as start_connection_mock:
+        yield start_connection_mock

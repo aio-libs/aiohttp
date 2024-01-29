@@ -1,18 +1,21 @@
 import asyncio
 import collections
 import warnings
-from typing import Awaitable, Callable, Generic, List, Optional, Tuple, TypeVar
-
-from typing_extensions import Final
+from typing import (
+    Awaitable,
+    Callable,
+    Deque,
+    Final,
+    Generic,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+)
 
 from .base_protocol import BaseProtocol
 from .helpers import BaseTimerContext, TimerNoop, set_exception, set_result
 from .log import internal_logger
-
-try:  # pragma: no cover
-    from typing import Deque
-except ImportError:
-    from typing_extensions import Deque
 
 __all__ = (
     "EMPTY_PAYLOAD",
@@ -66,9 +69,7 @@ class AsyncStreamReaderMixin:
 
     def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
         """Returns an asynchronous iterator that yields chunks of size n."""
-        return AsyncStreamIterator(
-            lambda: self.read(n)  # type: ignore[attr-defined,no-any-return]
-        )
+        return AsyncStreamIterator(lambda: self.read(n))  # type: ignore[attr-defined]
 
     def iter_any(self) -> AsyncStreamIterator[bytes]:
         """Yield all available data as soon as it is received."""
@@ -490,7 +491,7 @@ class StreamReader(AsyncStreamReaderMixin):
 
 class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     def __init__(self) -> None:
-        pass
+        self._read_eof_chunk = False
 
     def __repr__(self) -> str:
         return "<%s>" % self.__class__.__name__
@@ -534,6 +535,10 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
         return b""
 
     async def readchunk(self) -> Tuple[bytes, bool]:
+        if not self._read_eof_chunk:
+            self._read_eof_chunk = True
+            return (b"", False)
+
         return (b"", True)
 
     async def readexactly(self, n: int) -> bytes:

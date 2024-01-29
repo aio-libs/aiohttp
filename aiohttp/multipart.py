@@ -59,7 +59,7 @@ __all__ = (
 )
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .client_reqrep import ClientResponse
 
 
@@ -441,8 +441,8 @@ class BodyPartReader:
     async def text(self, *, encoding: Optional[str] = None) -> str:
         """Like read(), but assumes that body part contains text data."""
         data = await self.read(decode=True)
-        # see https://www.w3.org/TR/html5/forms.html#multipart/form-data-encoding-algorithm # NOQA
-        # and https://dvcs.w3.org/hg/xhr/raw-file/tip/Overview.html#dom-xmlhttprequest-send # NOQA
+        # see https://www.w3.org/TR/html5/forms.html#multipart/form-data-encoding-algorithm
+        # and https://dvcs.w3.org/hg/xhr/raw-file/tip/Overview.html#dom-xmlhttprequest-send
         encoding = encoding or self.get_charset(default="utf-8")
         return data.decode(encoding)
 

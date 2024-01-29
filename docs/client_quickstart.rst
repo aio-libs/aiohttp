@@ -75,7 +75,7 @@ endpoints of ``http://httpbin.org`` can be used the following code::
    every request is a **very bad** idea.
 
    A session contains a connection pool inside. Connection reusage and
-   keep-alives (both are on by default) may speed up total performance.
+   keep-alive (both are on by default) may speed up total performance.
 
    You may find more information about creating persistent sessions
    in :ref:`aiohttp-persistent-session`.
@@ -187,7 +187,8 @@ The ``gzip`` and ``deflate`` transfer-encodings are automatically
 decoded for you.
 
 You can enable ``brotli`` transfer-encodings support,
-just install  `Brotli <https://pypi.org/project/Brotli>`_.
+just install `Brotli <https://pypi.org/project/Brotli/>`_
+or `brotlicffi <https://pypi.org/project/brotlicffi/>`_.
 
 JSON Request
 ============

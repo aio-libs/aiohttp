@@ -16,7 +16,7 @@ but few of them are.
 aiohttp.web is built on top of few concepts: *application*, *router*,
 *request* and *response*.
 
-*router* is a *plugable* part: a library user may build a *router*
+*router* is a *pluggable* part: a library user may build a *router*
 from scratch, all other parts should work with new router seamlessly.
 
 :class:`aiohttp.abc.AbstractRouter` has the only mandatory method:
@@ -39,7 +39,8 @@ Not Allowed*. :meth:`aiohttp.abc.AbstractMatchInfo.handler` raises
    *router* parameter and returns as
    :attr:`aiohttp.web.Application.router`.
 
-   .. coroutinemethod:: resolve(request)
+   .. method:: resolve(request)
+      :async:
 
       Performs URL resolving. It's an abstract method, should be
       overridden in *router* implementation.
@@ -61,7 +62,8 @@ Not Allowed*. :meth:`aiohttp.abc.AbstractMatchInfo.handler` raises
       :exc:`aiohttp.web.HTTPException` if no match was found, ``None``
       otherwise.
 
-   .. coroutinemethod:: handler(request)
+   .. method:: handler(request)
+      :async:
 
       Abstract method performing :term:`web-handler` processing.
 
@@ -73,7 +75,8 @@ Not Allowed*. :meth:`aiohttp.abc.AbstractMatchInfo.handler` raises
 
       :raise: :class:`aiohttp.web.HTTPException` on error
 
-   .. coroutinemethod:: expect_handler(request)
+   .. method:: expect_handler(request)
+      :async:
 
       Abstract method for handling *100-continue* processing.
 

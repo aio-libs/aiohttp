@@ -15,6 +15,7 @@ from typing import (
     Callable,
     Container,
     Dict,
+    Final,
     Generator,
     Iterable,
     Iterator,
@@ -27,11 +28,11 @@ from typing import (
     Sized,
     Tuple,
     Type,
+    TypedDict,
     Union,
     cast,
 )
 
-from typing_extensions import Final, TypedDict
 from yarl import URL, __version__ as yarl_version  # type: ignore[attr-defined]
 
 from . import hdrs
@@ -65,7 +66,7 @@ __all__ = (
 )
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .web_app import Application
 
     BaseDict = Dict[str, str]
@@ -572,9 +573,14 @@ class StaticResource(PrefixResource):
             url = url / filename
 
         if append_version:
+            unresolved_path = self._directory.joinpath(filename)
             try:
-                filepath = self._directory.joinpath(filename).resolve()
-                if not self._follow_symlinks:
+                if self._follow_symlinks:
+                    normalized_path = Path(os.path.normpath(unresolved_path))
+                    normalized_path.relative_to(self._directory)
+                    filepath = normalized_path.resolve()
+                else:
+                    filepath = unresolved_path.resolve()
                     filepath.relative_to(self._directory)
             except (ValueError, FileNotFoundError):
                 # ValueError for case when path point to symlink
@@ -639,8 +645,13 @@ class StaticResource(PrefixResource):
                 # /static/\\machine_name\c$ or /static/D:\path
                 # where the static dir is totally different
                 raise HTTPForbidden()
-            filepath = self._directory.joinpath(filename).resolve()
-            if not self._follow_symlinks:
+            unresolved_path = self._directory.joinpath(filename)
+            if self._follow_symlinks:
+                normalized_path = Path(os.path.normpath(unresolved_path))
+                normalized_path.relative_to(self._directory)
+                filepath = normalized_path.resolve()
+            else:
+                filepath = unresolved_path.resolve()
                 filepath.relative_to(self._directory)
         except (ValueError, FileNotFoundError) as error:
             # relatively safe
@@ -715,13 +726,20 @@ class PrefixedSubAppResource(PrefixResource):
     def __init__(self, prefix: str, app: "Application") -> None:
         super().__init__(prefix)
         self._app = app
-        for resource in app.router.resources():
-            resource.add_prefix(prefix)
+        self._add_prefix_to_resources(prefix)
 
     def add_prefix(self, prefix: str) -> None:
         super().add_prefix(prefix)
-        for resource in self._app.router.resources():
+        self._add_prefix_to_resources(prefix)
+
+    def _add_prefix_to_resources(self, prefix: str) -> None:
+        router = self._app.router
+        for resource in router.resources():
+            # Since the canonical path of a resource is about
+            # to change, we need to unindex it and then reindex
+            router.unindex_resource(resource)
             resource.add_prefix(prefix)
+            router.index_resource(resource)
 
     def url_for(self, *args: str, **kwargs: str) -> URL:
         raise RuntimeError(".url_for() is not supported " "by sub-application root")
@@ -730,11 +748,6 @@ class PrefixedSubAppResource(PrefixResource):
         return {"app": self._app, "prefix": self._prefix}
 
     async def resolve(self, request: Request) -> _Resolve:
-        if (
-            not request.url.raw_path.startswith(self._prefix2)
-            and request.url.raw_path != self._prefix
-        ):
-            return None, set()
         match_info = await self._app.router.resolve(request)
         match_info.add_app(self._app)
         if isinstance(match_info.http_exception, HTTPMethodNotAllowed):
@@ -973,17 +986,45 @@ class RoutesView(Sized, Iterable[AbstractRoute], Container[AbstractRoute]):
 
 class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
     NAME_SPLIT_RE = re.compile(r"[.:-]")
+    HTTP_NOT_FOUND = HTTPNotFound()
 
     def __init__(self) -> None:
         super().__init__()
         self._resources: List[AbstractResource] = []
         self._named_resources: Dict[str, AbstractResource] = {}
+        self._resource_index: dict[str, list[AbstractResource]] = {}
+        self._matched_sub_app_resources: List[MatchedSubAppResource] = []
 
     async def resolve(self, request: Request) -> UrlMappingMatchInfo:
-        method = request.method
+        resource_index = self._resource_index
         allowed_methods: Set[str] = set()
 
-        for resource in self._resources:
+        # Walk the url parts looking for candidates. We walk the url backwards
+        # to ensure the most explicit match is found first. If there are multiple
+        # candidates for a given url part because there are multiple resources
+        # registered for the same canonical path, we resolve them in a linear
+        # fashion to ensure registration order is respected.
+        url_part = request.rel_url.raw_path
+        while url_part:
+            for candidate in resource_index.get(url_part, ()):
+                match_dict, allowed = await candidate.resolve(request)
+                if match_dict is not None:
+                    return match_dict
+                else:
+                    allowed_methods |= allowed
+            if url_part == "/":
+                break
+            url_part = url_part.rpartition("/")[0] or "/"
+
+        #
+        # We didn't find any candidates, so we'll try the matched sub-app
+        # resources which we have to walk in a linear fashion because they
+        # have regex/wildcard match rules and we cannot index them.
+        #
+        # For most cases we do not expect there to be many of these since
+        # currently they are only added by `add_domain`
+        #
+        for resource in self._matched_sub_app_resources:
             match_dict, allowed = await resource.resolve(request)
             if match_dict is not None:
                 return match_dict
@@ -991,9 +1032,9 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
                 allowed_methods |= allowed
 
         if allowed_methods:
-            return MatchInfoError(HTTPMethodNotAllowed(method, allowed_methods))
-        else:
-            return MatchInfoError(HTTPNotFound())
+            return MatchInfoError(HTTPMethodNotAllowed(request.method, allowed_methods))
+
+        return MatchInfoError(self.HTTP_NOT_FOUND)
 
     def __iter__(self) -> Iterator[str]:
         return iter(self._named_resources)
@@ -1048,6 +1089,30 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
                 )
             self._named_resources[name] = resource
         self._resources.append(resource)
+
+        if isinstance(resource, MatchedSubAppResource):
+            # We cannot index match sub-app resources because they have match rules
+            self._matched_sub_app_resources.append(resource)
+        else:
+            self.index_resource(resource)
+
+    def _get_resource_index_key(self, resource: AbstractResource) -> str:
+        """Return a key to index the resource in the resource index."""
+        # strip at the first { to allow for variables
+        return resource.canonical.partition("{")[0].rstrip("/") or "/"
+
+    def index_resource(self, resource: AbstractResource) -> None:
+        """Add a resource to the resource index."""
+        resource_key = self._get_resource_index_key(resource)
+        # There may be multiple resources for a canonical path
+        # so we keep them in a list to ensure that registration
+        # order is respected.
+        self._resource_index.setdefault(resource_key, []).append(resource)
+
+    def unindex_resource(self, resource: AbstractResource) -> None:
+        """Remove a resource from the resource index."""
+        resource_key = self._get_resource_index_key(resource)
+        self._resource_index[resource_key].remove(resource)
 
     def add_resource(self, path: str, *, name: Optional[str] = None) -> Resource:
         if path and not path.startswith("/"):

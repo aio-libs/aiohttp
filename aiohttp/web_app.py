@@ -2,7 +2,7 @@ import asyncio
 import logging
 import warnings
 from functools import partial, update_wrapper
-from typing import (  # noqa
+from typing import (
     TYPE_CHECKING,
     Any,
     AsyncIterator,
@@ -16,22 +16,22 @@ from typing import (  # noqa
     MutableMapping,
     Optional,
     Sequence,
-    Tuple,
     Type,
     TypeVar,
     Union,
     cast,
+    final,
     overload,
 )
 
 from aiosignal import Signal
 from frozenlist import FrozenList
-from typing_extensions import final
 
 from . import hdrs
 from .helpers import AppKey
 from .log import web_logger
 from .typedefs import Middleware
+from .web_exceptions import NotAppKeyWarning
 from .web_middlewares import _fix_request_current_app
 from .web_request import Request
 from .web_response import StreamResponse
@@ -49,7 +49,7 @@ from .web_urldispatcher import (
 __all__ = ("Application", "CleanupError")
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     _AppSignal = Signal[Callable[["Application"], Awaitable[None]]]
     _RespPrepareSignal = Signal[Callable[[Request, StreamResponse], Awaitable[None]]]
     _Middlewares = FrozenList[Middleware]
@@ -173,7 +173,9 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             warnings.warn(
                 "It is recommended to use web.AppKey instances for keys.\n"
                 + "https://docs.aiohttp.org/en/stable/web_advanced.html"
-                + "#application-s-config"
+                + "#application-s-config",
+                category=NotAppKeyWarning,
+                stacklevel=2,
             )
         self._state[key] = value
 
@@ -410,7 +412,7 @@ class CleanupError(RuntimeError):
         return cast(List[BaseException], self.args[1])
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     _CleanupContextBase = FrozenList[Callable[[Application], AsyncIterator[None]]]
 else:
     _CleanupContextBase = FrozenList

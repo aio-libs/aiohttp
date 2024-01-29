@@ -86,6 +86,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
                 access_log_format=self._get_valid_log_format(
                     self.cfg.access_log_format
                 ),
+                shutdown_timeout=self.cfg.graceful_timeout / 100 * 95,
             )
         await runner.setup()
 
@@ -99,7 +100,6 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
                 runner,
                 sock,
                 ssl_context=ctx,
-                shutdown_timeout=self.cfg.graceful_timeout / 100 * 95,
             )
             await site.start()
 
@@ -110,7 +110,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
                 self.notify()
 
                 cnt = server.requests_count
-                if self.cfg.max_requests and cnt > self.cfg.max_requests:
+                if self.max_requests and cnt > self.max_requests:
                     self.alive = False
                     self.log.info("Max requests, shutting down: %s", self)
 

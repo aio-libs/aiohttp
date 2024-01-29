@@ -13,7 +13,6 @@ def test_using_gzip_if_header_present_and_file_available(loop: Any) -> None:
     )
 
     gz_filepath = mock.create_autospec(Path, spec_set=True)
-    gz_filepath.is_file.return_value = True
     gz_filepath.stat.return_value.st_size = 1024
     gz_filepath.stat.return_value.st_mtime_ns = 1603733507222449291
 
@@ -23,7 +22,7 @@ def test_using_gzip_if_header_present_and_file_available(loop: Any) -> None:
 
     file_sender = FileResponse(filepath)
     file_sender._path = filepath
-    file_sender._sendfile = make_mocked_coro(None)  # type: ignore[assignment]
+    file_sender._sendfile = make_mocked_coro(None)  # type: ignore[method-assign]
 
     loop.run_until_complete(file_sender.prepare(request))
 
@@ -35,7 +34,8 @@ def test_gzip_if_header_not_present_and_file_available(loop: Any) -> None:
     request = make_mocked_request("GET", "http://python.org/logo.png", headers={})
 
     gz_filepath = mock.create_autospec(Path, spec_set=True)
-    gz_filepath.is_file.return_value = True
+    gz_filepath.stat.return_value.st_size = 1024
+    gz_filepath.stat.return_value.st_mtime_ns = 1603733507222449291
 
     filepath = mock.create_autospec(Path, spec_set=True)
     filepath.name = "logo.png"
@@ -45,7 +45,7 @@ def test_gzip_if_header_not_present_and_file_available(loop: Any) -> None:
 
     file_sender = FileResponse(filepath)
     file_sender._path = filepath
-    file_sender._sendfile = make_mocked_coro(None)  # type: ignore[assignment]
+    file_sender._sendfile = make_mocked_coro(None)  # type: ignore[method-assign]
 
     loop.run_until_complete(file_sender.prepare(request))
 
@@ -57,7 +57,7 @@ def test_gzip_if_header_not_present_and_file_not_available(loop: Any) -> None:
     request = make_mocked_request("GET", "http://python.org/logo.png", headers={})
 
     gz_filepath = mock.create_autospec(Path, spec_set=True)
-    gz_filepath.is_file.return_value = False
+    gz_filepath.stat.side_effect = OSError(2, "No such file or directory")
 
     filepath = mock.create_autospec(Path, spec_set=True)
     filepath.name = "logo.png"
@@ -67,7 +67,7 @@ def test_gzip_if_header_not_present_and_file_not_available(loop: Any) -> None:
 
     file_sender = FileResponse(filepath)
     file_sender._path = filepath
-    file_sender._sendfile = make_mocked_coro(None)  # type: ignore[assignment]
+    file_sender._sendfile = make_mocked_coro(None)  # type: ignore[method-assign]
 
     loop.run_until_complete(file_sender.prepare(request))
 
@@ -81,7 +81,7 @@ def test_gzip_if_header_present_and_file_not_available(loop: Any) -> None:
     )
 
     gz_filepath = mock.create_autospec(Path, spec_set=True)
-    gz_filepath.is_file.return_value = False
+    gz_filepath.stat.side_effect = OSError(2, "No such file or directory")
 
     filepath = mock.create_autospec(Path, spec_set=True)
     filepath.name = "logo.png"
@@ -91,7 +91,7 @@ def test_gzip_if_header_present_and_file_not_available(loop: Any) -> None:
 
     file_sender = FileResponse(filepath)
     file_sender._path = filepath
-    file_sender._sendfile = make_mocked_coro(None)  # type: ignore[assignment]
+    file_sender._sendfile = make_mocked_coro(None)  # type: ignore[method-assign]
 
     loop.run_until_complete(file_sender.prepare(request))
 
@@ -109,7 +109,7 @@ def test_status_controlled_by_user(loop: Any) -> None:
 
     file_sender = FileResponse(filepath, status=203)
     file_sender._path = filepath
-    file_sender._sendfile = make_mocked_coro(None)  # type: ignore[assignment]
+    file_sender._sendfile = make_mocked_coro(None)  # type: ignore[method-assign]
 
     loop.run_until_complete(file_sender.prepare(request))
 

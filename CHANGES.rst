@@ -10,6 +10,635 @@
 
 .. towncrier release notes start
 
+3.9.2 (2024-01-28)
+==================
+
+Bug fixes
+---------
+
+- Fixed server-side websocket connection leak.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`7978`.
+
+
+
+- Fixed ``web.FileResponse`` doing blocking I/O in the event loop.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8012`.
+
+
+
+- Fixed double compress when compression enabled and compressed file exists in server file responses.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8014`.
+
+
+
+- Added runtime type check for ``ClientSession`` ``timeout`` parameter.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8021`.
+
+
+
+- Fixed an unhandled exception in the Python HTTP parser on header lines starting with a colon -- by :user:`pajod`.
+
+  Invalid request lines with anything but a dot between the HTTP major and minor version are now rejected.
+  Invalid header field names containing question mark or slash are now rejected.
+  Such requests are incompatible with :rfc:`9110#section-5.6.2` and are not known to be of any legitimate use.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8074`.
+
+
+
+- Improved validation of paths for static resources requests to the server -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8079`.
+
+
+
+
+Features
+--------
+
+- Added support for passing :py:data:`True` to ``ssl`` parameter in ``ClientSession`` while
+  deprecating :py:data:`None` -- by :user:`xiangyan99`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`7698`.
+
+
+
+Breaking changes
+----------------
+
+- Fixed an unhandled exception in the Python HTTP parser on header lines starting with a colon -- by :user:`pajod`.
+
+  Invalid request lines with anything but a dot between the HTTP major and minor version are now rejected.
+  Invalid header field names containing question mark or slash are now rejected.
+  Such requests are incompatible with :rfc:`9110#section-5.6.2` and are not known to be of any legitimate use.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8074`.
+
+
+
+
+Improved documentation
+----------------------
+
+- Fixed examples of ``fallback_charset_resolver`` function in the :doc:`client_advanced` document. -- by :user:`henry0312`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`7995`.
+
+
+
+- The Sphinx setup was updated to avoid showing the empty
+  changelog draft section in the tagged release documentation
+  builds on Read The Docs -- by :user:`webknjaz`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8067`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- The changelog categorization was made clearer. The
+  contributors can now mark their fragment files more
+  accurately -- by :user:`webknjaz`.
+
+  The new category tags are:
+
+      * ``bugfix``
+
+      * ``feature``
+
+      * ``deprecation``
+
+      * ``breaking`` (previously, ``removal``)
+
+      * ``doc``
+
+      * ``packaging``
+
+      * ``contrib``
+
+      * ``misc``
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8066`.
+
+
+
+
+Contributor-facing changes
+--------------------------
+
+- Updated :ref:`contributing/Tests coverage <aiohttp-contributing>` section to show how we use ``codecov`` -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`7916`.
+
+
+
+- The changelog categorization was made clearer. The
+  contributors can now mark their fragment files more
+  accurately -- by :user:`webknjaz`.
+
+  The new category tags are:
+
+      * ``bugfix``
+
+      * ``feature``
+
+      * ``deprecation``
+
+      * ``breaking`` (previously, ``removal``)
+
+      * ``doc``
+
+      * ``packaging``
+
+      * ``contrib``
+
+      * ``misc``
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8066`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Replaced all ``tmpdir`` fixtures with ``tmp_path`` in test suite.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`3551`.
+
+
+
+
+----
+
+
+3.9.1 (2023-11-26)
+==================
+
+Bugfixes
+--------
+
+- Fixed importing aiohttp under PyPy on Windows.
+
+  `#7848 <https://github.com/aio-libs/aiohttp/issues/7848>`_
+
+- Fixed async concurrency safety in websocket compressor.
+
+  `#7865 <https://github.com/aio-libs/aiohttp/issues/7865>`_
+
+- Fixed ``ClientResponse.close()`` releasing the connection instead of closing.
+
+  `#7869 <https://github.com/aio-libs/aiohttp/issues/7869>`_
+
+- Fixed a regression where connection may get closed during upgrade. -- by :user:`Dreamsorcerer`
+
+  `#7879 <https://github.com/aio-libs/aiohttp/issues/7879>`_
+
+- Fixed messages being reported as upgraded without an Upgrade header in Python parser. -- by :user:`Dreamsorcerer`
+
+  `#7895 <https://github.com/aio-libs/aiohttp/issues/7895>`_
+
+
+
+----
+
+
+3.9.0 (2023-11-18)
+==================
+
+Features
+--------
+
+- Introduced ``AppKey`` for static typing support of ``Application`` storage.
+  See https://docs.aiohttp.org/en/stable/web_advanced.html#application-s-config
+
+  `#5864 <https://github.com/aio-libs/aiohttp/issues/5864>`_
+
+- Added a graceful shutdown period which allows pending tasks to complete before the application's cleanup is called.
+  The period can be adjusted with the ``shutdown_timeout`` parameter. -- by :user:`Dreamsorcerer`.
+  See https://docs.aiohttp.org/en/latest/web_advanced.html#graceful-shutdown
+
+  `#7188 <https://github.com/aio-libs/aiohttp/issues/7188>`_
+
+- Added `handler_cancellation <https://docs.aiohttp.org/en/stable/web_advanced.html#web-handler-cancellation>`_ parameter to cancel web handler on client disconnection. -- by :user:`mosquito`
+  This (optionally) reintroduces a feature removed in a previous release.
+  Recommended for those looking for an extra level of protection against denial-of-service attacks.
+
+  `#7056 <https://github.com/aio-libs/aiohttp/issues/7056>`_
+
+- Added support for setting response header parameters ``max_line_size`` and ``max_field_size``.
+
+  `#2304 <https://github.com/aio-libs/aiohttp/issues/2304>`_
+
+- Added ``auto_decompress`` parameter to ``ClientSession.request`` to override ``ClientSession._auto_decompress``. -- by :user:`Daste745`
+
+  `#3751 <https://github.com/aio-libs/aiohttp/issues/3751>`_
+
+- Changed ``raise_for_status`` to allow a coroutine.
+
+  `#3892 <https://github.com/aio-libs/aiohttp/issues/3892>`_
+
+- Added client brotli compression support (optional with runtime check).
+
+  `#5219 <https://github.com/aio-libs/aiohttp/issues/5219>`_
+
+- Added ``client_max_size`` to ``BaseRequest.clone()`` to allow overriding the request body size. -- :user:`anesabml`.
+
+  `#5704 <https://github.com/aio-libs/aiohttp/issues/5704>`_
+
+- Added a middleware type alias ``aiohttp.typedefs.Middleware``.
+
+  `#5898 <https://github.com/aio-libs/aiohttp/issues/5898>`_
+
+- Exported ``HTTPMove`` which can be used to catch any redirection request
+  that has a location -- :user:`dreamsorcerer`.
+
+  `#6594 <https://github.com/aio-libs/aiohttp/issues/6594>`_
+
+- Changed the ``path`` parameter in ``web.run_app()`` to accept a ``pathlib.Path`` object.
+
+  `#6839 <https://github.com/aio-libs/aiohttp/issues/6839>`_
+
+- Performance: Skipped filtering ``CookieJar`` when the jar is empty or all cookies have expired.
+
+  `#7819 <https://github.com/aio-libs/aiohttp/issues/7819>`_
+
+- Performance: Only check origin if insecure scheme and there are origins to treat as secure, in ``CookieJar.filter_cookies()``.
+
+  `#7821 <https://github.com/aio-libs/aiohttp/issues/7821>`_
+
+- Performance: Used timestamp instead of ``datetime`` to achieve faster cookie expiration in ``CookieJar``.
+
+  `#7824 <https://github.com/aio-libs/aiohttp/issues/7824>`_
+
+- Added support for passing a custom server name parameter to HTTPS connection.
+
+  `#7114 <https://github.com/aio-libs/aiohttp/issues/7114>`_
+
+- Added support for using Basic Auth credentials from :file:`.netrc` file when making HTTP requests with the
+  :py:class:`~aiohttp.ClientSession` ``trust_env`` argument is set to ``True``. -- by :user:`yuvipanda`.
+
+  `#7131 <https://github.com/aio-libs/aiohttp/issues/7131>`_
+
+- Turned access log into no-op when the logger is disabled.
+
+  `#7240 <https://github.com/aio-libs/aiohttp/issues/7240>`_
+
+- Added typing information to ``RawResponseMessage``. -- by :user:`Gobot1234`
+
+  `#7365 <https://github.com/aio-libs/aiohttp/issues/7365>`_
+
+- Removed ``async-timeout`` for Python 3.11+ (replaced with ``asyncio.timeout()`` on newer releases).
+
+  `#7502 <https://github.com/aio-libs/aiohttp/issues/7502>`_
+
+- Added support for ``brotlicffi`` as an alternative to ``brotli`` (fixing Brotli support on PyPy).
+
+  `#7611 <https://github.com/aio-libs/aiohttp/issues/7611>`_
+
+- Added ``WebSocketResponse.get_extra_info()`` to access a protocol transport's extra info.
+
+  `#7078 <https://github.com/aio-libs/aiohttp/issues/7078>`_
+
+- Allow ``link`` argument to be set to None/empty in HTTP 451 exception.
+
+  `#7689 <https://github.com/aio-libs/aiohttp/issues/7689>`_
+
+
+
+Bugfixes
+--------
+
+- Implemented stripping the trailing dots from fully-qualified domain names in ``Host`` headers and TLS context when acting as an HTTP client.
+  This allows the client to connect to URLs with FQDN host name like ``https://example.com./``.
+  -- by :user:`martin-sucha`.
+
+  `#3636 <https://github.com/aio-libs/aiohttp/issues/3636>`_
+
+- Fixed client timeout not working when incoming data is always available without waiting. -- by :user:`Dreamsorcerer`.
+
+  `#5854 <https://github.com/aio-libs/aiohttp/issues/5854>`_
+
+- Fixed ``readuntil`` to work with a delimiter of more than one character.
+
+  `#6701 <https://github.com/aio-libs/aiohttp/issues/6701>`_
+
+- Added ``__repr__`` to ``EmptyStreamReader`` to avoid ``AttributeError``.
+
+  `#6916 <https://github.com/aio-libs/aiohttp/issues/6916>`_
+
+- Fixed bug when using ``TCPConnector`` with ``ttl_dns_cache=0``.
+
+  `#7014 <https://github.com/aio-libs/aiohttp/issues/7014>`_
+
+- Fixed response returned from expect handler being thrown away. -- by :user:`Dreamsorcerer`
+
+  `#7025 <https://github.com/aio-libs/aiohttp/issues/7025>`_
+
+- Avoided raising ``UnicodeDecodeError`` in multipart and in HTTP headers parsing.
+
+  `#7044 <https://github.com/aio-libs/aiohttp/issues/7044>`_
+
+- Changed ``sock_read`` timeout to start after writing has finished, avoiding read timeouts caused by an unfinished write. -- by :user:`dtrifiro`
+
+  `#7149 <https://github.com/aio-libs/aiohttp/issues/7149>`_
+
+- Fixed missing query in tracing method URLs when using ``yarl`` 1.9+.
+
+  `#7259 <https://github.com/aio-libs/aiohttp/issues/7259>`_
+
+- Changed max 32-bit timestamp to an aware datetime object, for consistency with the non-32-bit one, and to avoid a ``DeprecationWarning`` on Python 3.12.
+
+  `#7302 <https://github.com/aio-libs/aiohttp/issues/7302>`_
+
+- Fixed ``EmptyStreamReader.iter_chunks()`` never ending. -- by :user:`mind1m`
+
+  `#7616 <https://github.com/aio-libs/aiohttp/issues/7616>`_
+
+- Fixed a rare ``RuntimeError: await wasn't used with future`` exception. -- by :user:`stalkerg`
+
+  `#7785 <https://github.com/aio-libs/aiohttp/issues/7785>`_
+
+- Fixed issue with insufficient HTTP method and version validation.
+
+  `#7700 <https://github.com/aio-libs/aiohttp/issues/7700>`_
+
+- Added check to validate that absolute URIs have schemes.
+
+  `#7712 <https://github.com/aio-libs/aiohttp/issues/7712>`_
+
+- Fixed unhandled exception when Python HTTP parser encounters unpaired Unicode surrogates.
+
+  `#7715 <https://github.com/aio-libs/aiohttp/issues/7715>`_
+
+- Updated parser to disallow invalid characters in header field names and stop accepting LF as a request line separator.
+
+  `#7719 <https://github.com/aio-libs/aiohttp/issues/7719>`_
+
+- Fixed Python HTTP parser not treating 204/304/1xx as an empty body.
+
+  `#7755 <https://github.com/aio-libs/aiohttp/issues/7755>`_
+
+- Ensure empty body response for 1xx/204/304 per RFC 9112 sec 6.3.
+
+  `#7756 <https://github.com/aio-libs/aiohttp/issues/7756>`_
+
+- Fixed an issue when a client request is closed before completing a chunked payload. -- by :user:`Dreamsorcerer`
+
+  `#7764 <https://github.com/aio-libs/aiohttp/issues/7764>`_
+
+- Edge Case Handling for ResponseParser for missing reason value.
+
+  `#7776 <https://github.com/aio-libs/aiohttp/issues/7776>`_
+
+- Fixed ``ClientWebSocketResponse.close_code`` being erroneously set to ``None`` when there are concurrent async tasks receiving data and closing the connection.
+
+  `#7306 <https://github.com/aio-libs/aiohttp/issues/7306>`_
+
+- Added HTTP method validation.
+
+  `#6533 <https://github.com/aio-libs/aiohttp/issues/6533>`_
+
+- Fixed arbitrary sequence types being allowed to inject values via version parameter. -- by :user:`Dreamsorcerer`
+
+  `#7835 <https://github.com/aio-libs/aiohttp/issues/7835>`_
+
+- Performance: Fixed increase in latency with small messages from websocket compression changes.
+
+  `#7797 <https://github.com/aio-libs/aiohttp/issues/7797>`_
+
+
+
+Improved Documentation
+----------------------
+
+- Fixed the `ClientResponse.release`'s type in the doc. Changed from `comethod` to `method`.
+
+  `#5836 <https://github.com/aio-libs/aiohttp/issues/5836>`_
+
+- Added information on behavior of base_url parameter in `ClientSession`.
+
+  `#6647 <https://github.com/aio-libs/aiohttp/issues/6647>`_
+
+- Fixed `ClientResponseError` docs.
+
+  `#6700 <https://github.com/aio-libs/aiohttp/issues/6700>`_
+
+- Updated Redis code examples to follow the latest API.
+
+  `#6907 <https://github.com/aio-libs/aiohttp/issues/6907>`_
+
+- Added a note about possibly needing to update headers when using ``on_response_prepare``. -- by :user:`Dreamsorcerer`
+
+  `#7283 <https://github.com/aio-libs/aiohttp/issues/7283>`_
+
+- Completed ``trust_env`` parameter description to honor ``wss_proxy``, ``ws_proxy`` or ``no_proxy`` env.
+
+  `#7325 <https://github.com/aio-libs/aiohttp/issues/7325>`_
+
+- Expanded SSL documentation with more examples (e.g. how to use certifi). -- by :user:`Dreamsorcerer`
+
+  `#7334 <https://github.com/aio-libs/aiohttp/issues/7334>`_
+
+- Fix, update, and improve client exceptions documentation.
+
+  `#7733 <https://github.com/aio-libs/aiohttp/issues/7733>`_
+
+
+
+Deprecations and Removals
+-------------------------
+
+- Added ``shutdown_timeout`` parameter to ``BaseRunner``, while
+  deprecating ``shutdown_timeout`` parameter from ``BaseSite``. -- by :user:`Dreamsorcerer`
+
+  `#7718 <https://github.com/aio-libs/aiohttp/issues/7718>`_
+
+- Dropped Python 3.6 support.
+
+  `#6378 <https://github.com/aio-libs/aiohttp/issues/6378>`_
+
+- Dropped Python 3.7 support. -- by :user:`Dreamsorcerer`
+
+  `#7336 <https://github.com/aio-libs/aiohttp/issues/7336>`_
+
+- Removed support for abandoned ``tokio`` event loop. -- by :user:`Dreamsorcerer`
+
+  `#7281 <https://github.com/aio-libs/aiohttp/issues/7281>`_
+
+
+
+Misc
+----
+
+- Made ``print`` argument in ``run_app()`` optional.
+
+  `#3690 <https://github.com/aio-libs/aiohttp/issues/3690>`_
+
+- Improved performance of ``ceil_timeout`` in some cases.
+
+  `#6316 <https://github.com/aio-libs/aiohttp/issues/6316>`_
+
+- Changed importing Gunicorn to happen on-demand, decreasing import time by ~53%. -- :user:`Dreamsorcerer`
+
+  `#6591 <https://github.com/aio-libs/aiohttp/issues/6591>`_
+
+- Improved import time by replacing ``http.server`` with ``http.HTTPStatus``.
+
+  `#6903 <https://github.com/aio-libs/aiohttp/issues/6903>`_
+
+- Fixed annotation of ``ssl`` parameter to disallow ``True``. -- by :user:`Dreamsorcerer`.
+
+  `#7335 <https://github.com/aio-libs/aiohttp/issues/7335>`_
+
+
+----
+
+
+3.8.6 (2023-10-07)
+==================
+
+Security bugfixes
+-----------------
+
+- Upgraded the vendored copy of llhttp_ to v9.1.3 -- by :user:`Dreamsorcerer`
+
+  Thanks to :user:`kenballus` for reporting this, see
+  https://github.com/aio-libs/aiohttp/security/advisories/GHSA-pjjw-qhg8-p2p9.
+
+  .. _llhttp: https://llhttp.org
+
+  `#7647 <https://github.com/aio-libs/aiohttp/issues/7647>`_
+
+- Updated Python parser to comply with RFCs 9110/9112 -- by :user:`Dreamorcerer`
+
+  Thanks to :user:`kenballus` for reporting this, see
+  https://github.com/aio-libs/aiohttp/security/advisories/GHSA-gfw2-4jvh-wgfg.
+
+  `#7663 <https://github.com/aio-libs/aiohttp/issues/7663>`_
+
+
+Deprecation
+-----------
+
+- Added ``fallback_charset_resolver`` parameter in ``ClientSession`` to allow a user-supplied
+  character set detection function.
+
+  Character set detection will no longer be included in 3.9 as a default. If this feature is needed,
+  please use `fallback_charset_resolver <https://docs.aiohttp.org/en/stable/client_advanced.html#character-set-detection>`_.
+
+  `#7561 <https://github.com/aio-libs/aiohttp/issues/7561>`_
+
+
+Features
+--------
+
+- Enabled lenient response parsing for more flexible parsing in the client
+  (this should resolve some regressions when dealing with badly formatted HTTP responses). -- by :user:`Dreamsorcerer`
+
+  `#7490 <https://github.com/aio-libs/aiohttp/issues/7490>`_
+
+
+
+Bugfixes
+--------
+
+- Fixed ``PermissionError`` when ``.netrc`` is unreadable due to permissions.
+
+  `#7237 <https://github.com/aio-libs/aiohttp/issues/7237>`_
+
+- Fixed output of parsing errors pointing to a ``\n``. -- by :user:`Dreamsorcerer`
+
+  `#7468 <https://github.com/aio-libs/aiohttp/issues/7468>`_
+
+- Fixed ``GunicornWebWorker`` max_requests_jitter not working.
+
+  `#7518 <https://github.com/aio-libs/aiohttp/issues/7518>`_
+
+- Fixed sorting in ``filter_cookies`` to use cookie with longest path. -- by :user:`marq24`.
+
+  `#7577 <https://github.com/aio-libs/aiohttp/issues/7577>`_
+
+- Fixed display of ``BadStatusLine`` messages from llhttp_. -- by :user:`Dreamsorcerer`
+
+  `#7651 <https://github.com/aio-libs/aiohttp/issues/7651>`_
+
+
+----
+
+
+3.8.5 (2023-07-19)
+==================
+
+Security bugfixes
+-----------------
+
+- Upgraded the vendored copy of llhttp_ to v8.1.1 -- by :user:`webknjaz`
+  and :user:`Dreamsorcerer`.
+
+  Thanks to :user:`sethmlarson` for reporting this and providing us with
+  comprehensive reproducer, workarounds and fixing details! For more
+  information, see
+  https://github.com/aio-libs/aiohttp/security/advisories/GHSA-45c4-8wx5-qw6w.
+
+  .. _llhttp: https://llhttp.org
+
+  `#7346 <https://github.com/aio-libs/aiohttp/issues/7346>`_
+
+
+Features
+--------
+
+- Added information to C parser exceptions to show which character caused the error. -- by :user:`Dreamsorcerer`
+
+  `#7366 <https://github.com/aio-libs/aiohttp/issues/7366>`_
+
+
+Bugfixes
+--------
+
+- Fixed a transport is :data:`None` error -- by :user:`Dreamsorcerer`.
+
+  `#3355 <https://github.com/aio-libs/aiohttp/issues/3355>`_
+
+
+----
+
+
 3.8.4 (2023-02-12)
 ==================
 

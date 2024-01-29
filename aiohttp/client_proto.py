@@ -7,10 +7,15 @@ from .client_exceptions import (
     ClientOSError,
     ClientPayloadError,
     ServerDisconnectedError,
-    ServerTimeoutError,
+    SocketTimeoutError,
 )
-from .helpers import BaseTimerContext, set_exception, set_result
-from .http import HttpResponseParser, RawResponseMessage
+from .helpers import (
+    BaseTimerContext,
+    set_exception,
+    set_result,
+    status_code_must_be_empty_body,
+)
+from .http import HttpResponseParser, RawResponseMessage, WebSocketReader
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamReader
 
 
@@ -25,7 +30,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
         self._payload: Optional[StreamReader] = None
         self._skip_payload = False
-        self._payload_parser = None
+        self._payload_parser: Optional[WebSocketReader] = None
 
         self._timer = None
 
@@ -46,7 +51,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
     @property
     def should_close(self) -> bool:
-        if self._payload is not None and not self._payload.is_eof() or self._upgraded:
+        if self._payload is not None and not self._payload.is_eof():
             return True
 
         return (
@@ -88,11 +93,11 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         if self._parser is not None:
             try:
                 uncompleted = self._parser.feed_eof()
-            except Exception:
+            except Exception as e:
                 if self._payload is not None:
-                    self._payload.set_exception(
-                        ClientPayloadError("Response payload is not completed")
-                    )
+                    exc = ClientPayloadError("Response payload is not completed")
+                    exc.__cause__ = e
+                    self._payload.set_exception(exc)
 
         if not self.is_eof():
             if isinstance(exc, OSError):
@@ -200,7 +205,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         self._reschedule_timeout()
 
     def _on_read_timeout(self) -> None:
-        exc = ServerTimeoutError("Timeout on reading data from socket")
+        exc = SocketTimeoutError("Timeout on reading data from socket")
         self.set_exception(exc)
         if self._payload is not None:
             self._payload.set_exception(exc)
@@ -248,7 +253,9 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
                     self._payload = payload
 
-                    if self._skip_payload or message.code in (204, 304):
+                    if self._skip_payload or status_code_must_be_empty_body(
+                        message.code
+                    ):
                         self.feed_data((message, EMPTY_PAYLOAD), 0)
                     else:
                         self.feed_data((message, payload), 0)

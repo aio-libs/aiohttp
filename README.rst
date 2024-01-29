@@ -44,7 +44,7 @@ Key Features
 - Supports both client and server side of HTTP protocol.
 - Supports both client and server Web-Sockets out-of-the-box and avoids
   Callback Hell.
-- Provides Web-server with middlewares and plugable routing.
+- Provides Web-server with middleware and pluggable routing.
 
 
 Getting started
@@ -162,21 +162,17 @@ Requirements
 ============
 
 - async-timeout_
-- charset-normalizer_
 - multidict_
 - yarl_
 - frozenlist_
 
-Optionally you may install the cChardet_ and aiodns_ libraries (highly
-recommended for sake of speed).
+Optionally you may install the aiodns_ library (highly recommended for sake of speed).
 
-.. _charset-normalizer: https://pypi.org/project/charset-normalizer
 .. _aiodns: https://pypi.python.org/pypi/aiodns
 .. _multidict: https://pypi.python.org/pypi/multidict
 .. _frozenlist: https://pypi.org/project/frozenlist/
 .. _yarl: https://pypi.python.org/pypi/yarl
 .. _async-timeout: https://pypi.python.org/pypi/async_timeout
-.. _cChardet: https://pypi.python.org/pypi/cchardet
 
 License
 =======

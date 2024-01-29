@@ -1,4 +1,4 @@
--r cython.txt
--r dev.txt
--r doc-spelling.txt
--r lint.txt
+-r cython.in
+-r dev.in
+-r doc-spelling.in
+-r lint.in

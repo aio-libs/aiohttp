@@ -13,6 +13,7 @@ from typing import (
     Any,
     ByteString,
     Dict,
+    Final,
     Iterable,
     Optional,
     TextIO,
@@ -22,7 +23,6 @@ from typing import (
 )
 
 from multidict import CIMultiDict
-from typing_extensions import Final
 
 from . import hdrs
 from .abc import AbstractStreamWriter
@@ -54,7 +54,7 @@ __all__ = (
 
 TOO_LARGE_BYTES_BODY: Final[int] = 2**20  # 1 MB
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from typing import List
 
 
@@ -397,7 +397,7 @@ class JsonPayload(BytesPayload):
         )
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from typing import AsyncIterable, AsyncIterator
 
     _AsyncIterator = AsyncIterator[bytes]
@@ -416,7 +416,7 @@ class AsyncIterablePayload(Payload):
         if not isinstance(value, AsyncIterable):
             raise TypeError(
                 "value argument must support "
-                "collections.abc.AsyncIterablebe interface, "
+                "collections.abc.AsyncIterable interface, "
                 "got {!r}".format(type(value))
             )
 

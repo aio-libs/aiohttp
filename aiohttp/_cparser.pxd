@@ -1,13 +1,4 @@
-from libc.stdint cimport (
-    int8_t,
-    int16_t,
-    int32_t,
-    int64_t,
-    uint8_t,
-    uint16_t,
-    uint32_t,
-    uint64_t,
-)
+from libc.stdint cimport int32_t, uint8_t, uint16_t, uint64_t
 
 
 cdef extern from "../vendor/llhttp/build/llhttp.h":
@@ -88,29 +79,13 @@ cdef extern from "../vendor/llhttp/build/llhttp.h":
     ctypedef llhttp_errno llhttp_errno_t
 
     enum llhttp_flags:
-        F_CONNECTION_KEEP_ALIVE,
-        F_CONNECTION_CLOSE,
-        F_CONNECTION_UPGRADE,
         F_CHUNKED,
-        F_UPGRADE,
-        F_CONTENT_LENGTH,
-        F_SKIPBODY,
-        F_TRAILING,
-        F_TRANSFER_ENCODING
-
-    enum llhttp_lenient_flags:
-        LENIENT_HEADERS,
-        LENIENT_CHUNKED_LENGTH
+        F_CONTENT_LENGTH
 
     enum llhttp_type:
         HTTP_REQUEST,
         HTTP_RESPONSE,
         HTTP_BOTH
-
-    enum llhttp_finish_t:
-        HTTP_FINISH_SAFE,
-        HTTP_FINISH_SAFE_WITH_CB,
-        HTTP_FINISH_UNSAFE
 
     enum llhttp_method:
         HTTP_DELETE,
@@ -167,24 +142,17 @@ cdef extern from "../vendor/llhttp/build/llhttp.h":
                  const llhttp_settings_t* settings)
 
     llhttp_errno_t llhttp_execute(llhttp_t* parser, const char* data, size_t len)
-    llhttp_errno_t llhttp_finish(llhttp_t* parser)
-
-    int llhttp_message_needs_eof(const llhttp_t* parser)
 
     int llhttp_should_keep_alive(const llhttp_t* parser)
-
-    void llhttp_pause(llhttp_t* parser)
-    void llhttp_resume(llhttp_t* parser)
 
     void llhttp_resume_after_upgrade(llhttp_t* parser)
 
     llhttp_errno_t llhttp_get_errno(const llhttp_t* parser)
     const char* llhttp_get_error_reason(const llhttp_t* parser)
-    void llhttp_set_error_reason(llhttp_t* parser, const char* reason)
     const char* llhttp_get_error_pos(const llhttp_t* parser)
-    const char* llhttp_errno_name(llhttp_errno_t err)
 
     const char* llhttp_method_name(llhttp_method_t method)
 
     void llhttp_set_lenient_headers(llhttp_t* parser, int enabled)
-    void llhttp_set_lenient_chunked_length(llhttp_t* parser, int enabled)
+    void llhttp_set_lenient_optional_cr_before_lf(llhttp_t* parser, int enabled)
+    void llhttp_set_lenient_spaces_after_chunk_size(llhttp_t* parser, int enabled)

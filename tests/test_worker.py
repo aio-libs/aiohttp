@@ -79,6 +79,7 @@ def test_run(
     worker.cfg = mock.Mock()
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
     worker.cfg.is_ssl = False
+    worker.cfg.graceful_timeout = 100
     worker.sockets = []
 
     worker.loop = loop
@@ -95,6 +96,7 @@ def test_run_async_factory(
     worker.cfg = mock.Mock()
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
     worker.cfg.is_ssl = False
+    worker.cfg.graceful_timeout = 100
     worker.sockets = []
     app = worker.wsgi
 
@@ -214,8 +216,8 @@ async def test__run_ok_parent_changed(
     worker.sockets = [sock]
     worker.log = mock.Mock()
     worker.loop = loop
+    worker.max_requests = 0
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
-    worker.cfg.max_requests = 0
     worker.cfg.is_ssl = False
 
     await worker._run()
@@ -237,8 +239,8 @@ async def test__run_exc(
     worker.sockets = [sock]
     worker.log = mock.Mock()
     worker.loop = loop
+    worker.max_requests = 0
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
-    worker.cfg.max_requests = 0
     worker.cfg.is_ssl = False
 
     def raiser() -> None:

@@ -1,7 +1,15 @@
-.. _Adding change notes with your PRs:
+.. _Making a pull request:
+
+Making a pull request
+=====================
+
+When making a pull request, please include a short summary of the changes
+and a reference to any issue tickets that the PR is intended to solve.
+All PRs with code changes should include tests. All changes should
+include a changelog entry.
 
 Adding change notes with your PRs
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+---------------------------------
 
 It is very important to maintain a log for news of how
 updating to the new version of the software will affect
@@ -9,7 +17,7 @@ end-users. This is why we enforce collection of the change
 fragment files in pull requests as per `Towncrier philosophy`_.
 
 The idea is that when somebody makes a change, they must record
-the bits that would affect end-users only including information
+the bits that would affect end-users, only including information
 that would be useful to them. Then, when the maintainers publish
 a new release, they'll automatically use these records to compose
 a change log for the respective version. It is important to
@@ -19,7 +27,7 @@ to the end-users most of the time. And so such details should be
 recorded in the Git history rather than a changelog.
 
 Alright! So how to add a news fragment?
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+---------------------------------------
 
 ``aiohttp`` uses `towncrier <https://pypi.org/project/towncrier/>`_
 for changelog management.
@@ -34,16 +42,19 @@ for the users to understand what it means.
 combined with others, it will be a part of the "news digest"
 telling the readers **what changed** in a specific version of
 the library *since the previous version*. You should also use
-reStructuredText syntax for highlighting code (inline or block),
+*reStructuredText* syntax for highlighting code (inline or block),
 linking parts of the docs or external sites.
-If you wish to sign your change, feel free to add ``-- by
-:user:`github-username``` at the end (replace ``github-username``
-with your own!).
+However, you do not need to reference the issue or PR numbers here
+as *towncrier* will automatically add a reference to all of the
+affected issues when rendering the news file.
+If you wish to sign your change, feel free to add
+``-- by :user:`github-username``` at the end (replace
+``github-username`` with your own!).
 
 Finally, name your file following the convention that Towncrier
 understands: it should start with the number of an issue or a
 PR followed by a dot, then add a patch type, like ``feature``,
-``doc``, ``misc`` etc., and add ``.rst`` as a suffix. If you
+``doc``, ``contrib`` etc., and add ``.rst`` as a suffix. If you
 need to add more than one fragment, you may add an optional
 sequence number (delimited with another period) between the type
 and the suffix.
@@ -51,11 +62,24 @@ and the suffix.
 In general the name will follow ``<pr_number>.<category>.rst`` pattern,
 where the categories are:
 
-- ``feature``: Any new feature
-- ``bugfix``: A bug fix
-- ``doc``: A change to the documentation
-- ``misc``: Changes internal to the repo like CI, test and build changes
-- ``removal``: For deprecations and removals of an existing feature or behavior
+- ``bugfix``: A bug fix for something we deemed an improper undesired
+  behavior that got corrected in the release to match pre-agreed
+  expectations.
+- ``feature``: A new behavior, public APIs. That sort of stuff.
+- ``deprecation``: A declaration of future API removals and breaking
+  changes in behavior.
+- ``breaking``: When something public gets removed in a breaking way.
+  Could be deprecated in an earlier release.
+- ``doc``: Notable updates to the documentation structure or build
+  process.
+- ``packaging``: Notes for downstreams about unobvious side effects
+  and tooling. Changes in the test invocation considerations and
+  runtime assumptions.
+- ``contrib``: Stuff that affects the contributor experience. e.g.
+  Running tests, building the docs, setting up the development
+  environment.
+- ``misc``: Changes that are hard to assign to any of the above
+  categories.
 
 A pull request may have more than one of these components, for example
 a code change may introduce a new feature that deprecates an old
@@ -64,7 +88,7 @@ necessary to make a separate documentation fragment for documentation
 changes accompanying the relevant code changes.
 
 Examples for adding changelog entries to your Pull Requests
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-----------------------------------------------------------
 
 File :file:`CHANGES/6045.doc.1.rst`:
 
@@ -92,4 +116,4 @@ File :file:`CHANGES/4594.feature.rst`:
    (``tool.towncrier.type``).
 
 .. _Towncrier philosophy:
-   https://towncrier.readthedocs.io/en/actual-freaking-docs/#philosophy
+   https://towncrier.readthedocs.io/en/stable/#philosophy
