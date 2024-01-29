@@ -10,6 +10,37 @@
 
 .. towncrier release notes start
 
+3.9.3 (2024-01-29)
+==================
+
+Bug fixes
+---------
+
+- Fixed backwards compatibility breakage (in 3.9.2) of ``ssl`` parameter when set outside
+  of ``ClientSession`` (e.g. directly in ``TCPConnector``) -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8097`, :issue:`8098`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved test suite handling of paths and temp files to consistently use pathlib and pytest fixtures.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`3957`.
+
+
+
+
+----
+
+
 3.9.2 (2024-01-28)
 ==================
 
