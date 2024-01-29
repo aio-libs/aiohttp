@@ -282,9 +282,20 @@ def test_parse_headers_longline(parser: Any) -> None:
         parser.feed_data(text)
 
 
+@pytest.fixture
+def xfail_c_parser_status(request) -> None:
+    if isinstance(request.getfixturevalue("parser"), HttpRequestParserPy):
+        return
+    request.node.add_marker(
+        pytest.mark.xfail(
+            reason="Regression test for Py parser. May match C behaviour later.",
+            raises=http_exceptions.BadStatusLine,
+        )
+    )
+
+
+@pytest.mark.usefixtures("xfail_c_parser_status")
 def test_parse_unusual_request_line(parser: Any) -> None:
-    if not isinstance(response, HttpResponseParserPy):
-        pytest.xfail("Regression test for Py parser. May match C behaviour later.")
     text = b"#smol //a HTTP/1.3\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)
     assert len(messages) == 1
@@ -611,9 +622,25 @@ _pad: Dict[bytes, str] = {
 }
 
 
+@pytest.fixture
+def xfail_c_parser_empty_header(request) -> None:
+    if not all(
+        (request.getfixturevalue(name) == b"") for name in ("pad1", "pad2", "hdr")
+    ):
+        return
+    if isinstance(request.getfixturevalue("parser"), HttpRequestParserPy):
+        return
+    request.node.add_marker(
+        pytest.mark.xfail(
+            reason="Regression test for Py parser. May match C behaviour later.",
+        )
+    )
+
+
 @pytest.mark.parametrize("hdr", [b"", b"foo"], ids=["name-empty", "with-name"])
 @pytest.mark.parametrize("pad2", _pad.keys(), ids=["post-" + n for n in _pad.values()])
 @pytest.mark.parametrize("pad1", _pad.keys(), ids=["pre-" + n for n in _pad.values()])
+@pytest.mark.usefixtures("xfail_c_parser_empty_header")
 def test_invalid_header_spacing(
     parser: Any, pad1: bytes, pad2: bytes, hdr: bytes
 ) -> None:
@@ -622,15 +649,12 @@ def test_invalid_header_spacing(
     if pad1 == pad2 == b"" and hdr != b"":
         # one entry in param matrix is correct: non-empty name, not padded
         expectation = nullcontext()
-    if pad1 == pad2 == hdr == b"":
-        if not isinstance(response, HttpResponseParserPy):
-            pytest.xfail("Regression test for Py parser. May match C behaviour later.")
     with expectation:
         parser.feed_data(text)
 
 
 def test_empty_header_name(parser: Any) -> None:
-    if not isinstance(response, HttpResponseParserPy):
+    if not isinstance(parser, HttpRequestParserPy):
         pytest.xfail("Regression test for Py parser. May match C behaviour later.")
     text = b"GET /test HTTP/1.1\r\n" b":test\r\n\r\n"
     with pytest.raises(http_exceptions.BadHttpMessage):
@@ -808,9 +832,20 @@ def test_http_request_upgrade(parser: Any) -> None:
     assert tail == b"some raw data"
 
 
+@pytest.fixture
+def xfail_c_parser_url(request) -> None:
+    if isinstance(request.getfixturevalue("parser"), HttpRequestParserPy):
+        return
+    request.node.add_marker(
+        pytest.mark.xfail(
+            reason="Regression test for Py parser. May match C behaviour later.",
+            raises=http_exceptions.InvalidURLError,
+        )
+    )
+
+
+@pytest.mark.usefixtures("xfail_c_parser_url")
 def test_http_request_parser_utf8_request_line(parser: Any) -> None:
-    if not isinstance(response, HttpResponseParserPy):
-        pytest.xfail("Regression test for Py parser. May match C behaviour later.")
     messages, upgrade, tail = parser.feed_data(
         # note the truncated unicode sequence
         b"GET /P\xc3\xbcnktchen\xa0\xef\xb7 HTTP/1.1\r\n" +
