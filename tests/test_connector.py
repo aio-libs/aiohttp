@@ -2001,6 +2001,11 @@ async def test_default_use_dns_cache() -> None:
     assert conn.use_dns_cache
 
 
+async def test_ssl_none() -> None:
+    conn = aiohttp.TCPConnector(ssl=None)
+    assert conn._ssl is True
+
+
 async def test_resolver_not_called_with_address_is_ip(loop) -> None:
     resolver = mock.MagicMock()
     connector = aiohttp.TCPConnector(resolver=resolver)
