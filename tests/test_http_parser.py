@@ -1186,7 +1186,7 @@ def test_parse_chunked_payload_chunk_extension(parser: Any) -> None:
     assert payload.is_eof()
 
 
-def _test_parse_no_length_or_te_on_post(loop, protocol, request_cls):
+def test_parse_no_length_or_te_on_post(loop, protocol, request_cls):
     parser = request_cls(protocol, loop, readall=True)
     text = b"POST /test HTTP/1.1\r\n\r\n"
     msg, payload = parser.feed_data(text)[0][0]
