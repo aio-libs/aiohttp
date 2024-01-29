@@ -22,9 +22,9 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`8097`, :issue:`8098`.
-  
-  
-  
+
+
+
 
 Miscellaneous internal changes
 ------------------------------
@@ -34,9 +34,9 @@ Miscellaneous internal changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`3957`.
-  
-  
-  
+
+
+
 
 ----
 
