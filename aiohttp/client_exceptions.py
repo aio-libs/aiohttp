@@ -249,7 +249,7 @@ class InvalidURL(ClientError, ValueError):
 
     # Derive from ValueError for backward compatibility
 
-    def __init__(self, url: StrOrURL, description: Optional[str] = None) -> None:
+    def __init__(self, url: StrOrURL, description: Union[str, None] = None) -> None:
         # The type of url is not yarl.URL because the exception can be raised
         # on URL(url) call
         if description:
