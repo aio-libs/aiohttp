@@ -391,7 +391,7 @@ jobs:
       run: |
         make cythonize
     - name: Build wheels
-      uses: pypa/cibuildwheel@v2.16.2
+      uses: pypa/cibuildwheel@v2.16.4
       env:
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
     - uses: actions/upload-artifact@v3
@@ -436,8 +436,10 @@ jobs:
         version_file: aiohttp/__init__.py
         github_token: ${{ secrets.GITHUB_TOKEN }}
         dist_dir: dist
-        fix_issue_regex: "`#(\\d+) <https://github.com/aio-libs/aiohttp/issues/\\1>`_"
-        fix_issue_repl: "(#\\1)"
+        fix_issue_regex: >-
+          :issue:`(\d+)`
+        fix_issue_repl: >-
+          #\1
 
     - name: >-
         Publish 🐍📦 to PyPI
