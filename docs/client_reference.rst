@@ -2103,7 +2103,7 @@ All exceptions are available as members of *aiohttp* module.
 
       Invalid URL description, :class:`str` instance.
 
-.. exception:: InvalidRedirectUrl
+.. exception:: InvalidRedirectURL
 
    Redirect URL in the server location header is malformed,
    e.g. it does not contain host part.
