@@ -226,13 +226,10 @@ async def test_static_file_custom_content_type(
 
 @pytest.mark.parametrize(
     ("accept_encoding", "expect_encoding"),
-    [(None, "br"), ("gzip, deflate", "gzip")],
+    [("gzip, deflate", "gzip"), ("gzip, deflate, br", "br")],
 )
 async def test_static_file_custom_content_type_compress(
-    aiohttp_client: Any,
-    sender: Any,
-    accept_encoding: Optional[str],
-    expect_encoding: str,
+    aiohttp_client: Any, sender: Any, accept_encoding: str, expect_encoding: str
 ):
     """Test static compressed files are returned with expected content type and encoding"""
     filepath = pathlib.Path(__file__).parent / "hello.txt"
@@ -246,9 +243,7 @@ async def test_static_file_custom_content_type_compress(
     app.router.add_get("/", handler)
     client = await aiohttp_client(app)
 
-    resp = await client.get(
-        "/", headers={"Accept-Encoding": accept_encoding} if accept_encoding else None
-    )
+    resp = await client.get("/", headers={"Accept-Encoding": accept_encoding})
     assert resp.status == 200
     assert (
         resp.headers["Content-Type"],
@@ -262,13 +257,13 @@ async def test_static_file_custom_content_type_compress(
 
 @pytest.mark.parametrize(
     ("accept_encoding", "expect_encoding"),
-    [(None, "br"), ("gzip, deflate", "gzip")],
+    [("gzip, deflate", "gzip"), ("gzip, deflate, br", "br")],
 )
 @pytest.mark.parametrize("forced_compression", [None, web.ContentCoding.gzip])
 async def test_static_file_with_encoding_and_enable_compression(
     aiohttp_client: Any,
     sender: Any,
-    accept_encoding: Optional[str],
+    accept_encoding: str,
     expect_encoding: str,
     forced_compression: Optional[web.ContentCoding],
 ):
@@ -284,9 +279,7 @@ async def test_static_file_with_encoding_and_enable_compression(
     app.router.add_get("/", handler)
     client = await aiohttp_client(app)
 
-    resp = await client.get(
-        "/", headers={"Accept-Encoding": accept_encoding} if accept_encoding else None
-    )
+    resp = await client.get("/", headers={"Accept-Encoding": accept_encoding})
     assert resp.status == 200
     assert (
         resp.headers["Content-Type"],
