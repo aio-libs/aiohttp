@@ -276,7 +276,7 @@ class InvalidURL(ClientError, ValueError):
 
 
 class InvalidRedirectURL(InvalidURL):
-    """Invalid redirect url error"""
+    """Invalid redirect URL error"""
 
 
 class ClientSSLError(ClientConnectorError):
