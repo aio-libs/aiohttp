@@ -1,0 +1,4 @@
+The pull request template is now asking the contributors to
+answer a question about the long-term maintenance challenges
+they envision as a result of merging their patches
+-- by :user:`webknjaz`.
