@@ -261,13 +261,22 @@ To run spell checker on Linux box you should install it first:
    $ pip install sphinxcontrib-spelling
 
 
+Preparing a pull request
+------------------------
+
+When making a pull request, please include a short summary of the changes
+and a reference to any issue tickets that the PR is intended to solve.
+All PRs with code changes should include tests. All changes should
+include a changelog entry.
+
+
 Changelog update
 ----------------
 
 .. include:: ../CHANGES/README.rst
 
 
-Making a Pull Request
+Making a pull request
 ---------------------
 
 After finishing all steps make a GitHub_ Pull Request with *master* base branch.
