@@ -1,15 +1,7 @@
-.. _Making a pull request:
-
-Making a pull request
-=====================
-
-When making a pull request, please include a short summary of the changes
-and a reference to any issue tickets that the PR is intended to solve.
-All PRs with code changes should include tests. All changes should
-include a changelog entry.
+.. _Adding change notes with your PRs:
 
 Adding change notes with your PRs
----------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 It is very important to maintain a log for news of how
 updating to the new version of the software will affect
@@ -27,7 +19,7 @@ to the end-users most of the time. And so such details should be
 recorded in the Git history rather than a changelog.
 
 Alright! So how to add a news fragment?
----------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ``aiohttp`` uses `towncrier <https://pypi.org/project/towncrier/>`_
 for changelog management.
@@ -47,9 +39,9 @@ linking parts of the docs or external sites.
 However, you do not need to reference the issue or PR numbers here
 as *towncrier* will automatically add a reference to all of the
 affected issues when rendering the news file.
-If you wish to sign your change, feel free to add
-``-- by :user:`github-username``` at the end (replace
-``github-username`` with your own!).
+If you wish to sign your change, feel free to add ``-- by
+:user:`github-username``` at the end (replace ``github-username``
+with your own!).
 
 Finally, name your file following the convention that Towncrier
 understands: it should start with the number of an issue or a
@@ -88,7 +80,7 @@ necessary to make a separate documentation fragment for documentation
 changes accompanying the relevant code changes.
 
 Examples for adding changelog entries to your Pull Requests
------------------------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 File :file:`CHANGES/6045.doc.1.rst`:
 
