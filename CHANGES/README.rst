@@ -86,21 +86,28 @@ File :file:`CHANGES/6045.doc.1.rst`:
 
 .. code-block:: rst
 
-    Added a ``:user:`` role to Sphinx config -- by :user:`webknjaz`
+    Added a ``:user:`` role to Sphinx config -- by :user:`webknjaz`.
 
-File :file:`CHANGES/4431.bugfix.rst`:
+File :file:`CHANGES/8074.bugfix.rst`:
 
 .. code-block:: rst
 
-    Fixed HTTP client requests to honor ``no_proxy`` environment
-    variables -- by :user:`scirelli`
+    Fixed an unhandled exception in the Python HTTP parser on header
+    lines starting with a colon -- by :user:`pajod`.
+
+    Invalid request lines with anything but a dot between the HTTP
+    major and minor version are now rejected. Invalid header field
+    names containing question mark or slash are now rejected. Such
+    requests are incompatible with :rfc:`9110#section-5.6.2` and are
+    not known to be of any legitimate use.
 
 File :file:`CHANGES/4594.feature.rst`:
 
 .. code-block:: rst
 
     Added support for ``ETag`` to :py:class:`~aiohttp.web.FileResponse`
-    -- by :user:`greshilov`, :user:`serhiy-storchaka` and :user:`asvetlov`
+    -- by :user:`greshilov`, :user:`serhiy-storchaka` and
+    :user:`asvetlov`.
 
 .. tip::
 
