@@ -2462,12 +2462,17 @@ async def test_redirect_without_location_header(aiohttp_client: Any) -> None:
     (
         # yarl.URL.__new__ raises ValueError
         "http://:/",
-        "http://www.example.com/../filename.html",
         "http://example.org:non_int_port/",
-        # yarl.URL.origin raises ValueError
+        # # yarl.URL.origin raises ValueError
         "http:/",
         "http:/example.com",
         "http:///example.com",
+        "bluesky://d:i:d",
+        "call:+3801234567",
+        "skype:handle",
+        "slack://instance/room",
+        "steam:code",
+        "twitter://handle",
     ),
 )
 async def test_invalid_redirect_url(
