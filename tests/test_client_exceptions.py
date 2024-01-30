@@ -285,7 +285,7 @@ class TestInvalidURL:
 
     def test_repr_no_description(self) -> None:
         err = client.InvalidURL(url=":wrong:url:")
-        assert err.description is None
+        assert err.args == (":wrong:url:",)
         assert repr(err) == "<InvalidURL :wrong:url:>"
 
     def test_repr_yarl_URL(self) -> None:
