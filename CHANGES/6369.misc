@@ -1,3 +1,0 @@
-Fixed the CI check used in the branch protection to gate merging PR, now
-broken pull requests from ``Dependabot`` and others are not auto-merged
-silently anymore -- :user:`webknjaz`.

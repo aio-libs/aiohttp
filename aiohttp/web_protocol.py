@@ -43,7 +43,7 @@ from .web_response import Response, StreamResponse
 
 __all__ = ("RequestHandler", "RequestPayloadError", "PayloadAccessError")
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .web_server import Server
 
 
@@ -142,8 +142,6 @@ class RequestHandler(BaseProtocol):
 
     max_field_size -- Optional maximum header field size
 
-    max_headers -- Optional maximum header size
-
     timeout_ceil_threshold -- Optional value to specify
                               threshold to ceil() timeout
                               values
@@ -188,10 +186,9 @@ class RequestHandler(BaseProtocol):
         tcp_keepalive: bool = True,
         logger: Logger = server_logger,
         access_log_class: _AnyAbstractAccessLogger = AccessLogger,
-        access_log: Logger = access_logger,
+        access_log: Optional[Logger] = access_logger,
         access_log_format: str = AccessLogger.LOG_FORMAT,
         max_line_size: int = 8190,
-        max_headers: int = 32768,
         max_field_size: int = 8190,
         lingering_time: float = 10.0,
         read_bufsize: int = 2**16,
@@ -228,7 +225,6 @@ class RequestHandler(BaseProtocol):
             read_bufsize,
             max_line_size=max_line_size,
             max_field_size=max_field_size,
-            max_headers=max_headers,
             payload_exception=RequestPayloadError,
             auto_decompress=auto_decompress,
         )
@@ -317,6 +313,9 @@ class RequestHandler(BaseProtocol):
 
         super().connection_lost(exc)
 
+        # Grab value before setting _manager to None.
+        handler_cancellation = self._manager.handler_cancellation
+
         self._manager = None
         self._force_close = True
         self._request_factory = None
@@ -331,10 +330,11 @@ class RequestHandler(BaseProtocol):
                 exc = ConnectionResetError("Connection lost")
             self._current_request._cancel(exc)
 
-        if self._task_handler is not None:
-            self._task_handler.cancel()
         if self._waiter is not None:
             self._waiter.cancel()
+
+        if handler_cancellation and self._task_handler is not None:
+            self._task_handler.cancel()
 
         self._task_handler = None
 
@@ -545,7 +545,8 @@ class RequestHandler(BaseProtocol):
 
                 # Drop the processed task from asyncio.Task.all_tasks() early
                 del task
-                if reset:
+                # https://github.com/python/mypy/issues/14309
+                if reset:  # type: ignore[possibly-undefined]
                     self.log_debug("Ignored premature client disconnection 2")
                     break
 
@@ -555,7 +556,8 @@ class RequestHandler(BaseProtocol):
                 # check payload
                 if not payload.is_eof():
                     lingering_time = self._lingering_time
-                    if not self._force_close and lingering_time:
+                    # Could be force closed while awaiting above tasks.
+                    if not self._force_close and lingering_time:  # type: ignore[redundant-expr]
                         self.log_debug(
                             "Start lingering close timer for %s sec.", lingering_time
                         )

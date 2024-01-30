@@ -1,18 +1,21 @@
 import asyncio
 import collections
 import warnings
-from typing import Awaitable, Callable, Generic, List, Optional, Tuple, TypeVar
-
-from typing_extensions import Final
+from typing import (
+    Awaitable,
+    Callable,
+    Deque,
+    Final,
+    Generic,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+)
 
 from .base_protocol import BaseProtocol
-from .helpers import BaseTimerContext, set_exception, set_result
+from .helpers import BaseTimerContext, TimerNoop, set_exception, set_result
 from .log import internal_logger
-
-try:  # pragma: no cover
-    from typing import Deque
-except ImportError:
-    from typing_extensions import Deque
 
 __all__ = (
     "EMPTY_PAYLOAD",
@@ -66,9 +69,7 @@ class AsyncStreamReaderMixin:
 
     def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
         """Returns an asynchronous iterator that yields chunks of size n."""
-        return AsyncStreamIterator(
-            lambda: self.read(n)  # type: ignore[attr-defined,no-any-return]
-        )
+        return AsyncStreamIterator(lambda: self.read(n))  # type: ignore[attr-defined]
 
     def iter_any(self) -> AsyncStreamIterator[bytes]:
         """Yield all available data as soon as it is received."""
@@ -122,7 +123,7 @@ class StreamReader(AsyncStreamReaderMixin):
         self._waiter: Optional[asyncio.Future[None]] = None
         self._eof_waiter: Optional[asyncio.Future[None]] = None
         self._exception: Optional[BaseException] = None
-        self._timer = timer
+        self._timer = TimerNoop() if timer is None else timer
         self._eof_callbacks: List[Callable[[], None]] = []
 
     def __repr__(self) -> str:
@@ -297,10 +298,7 @@ class StreamReader(AsyncStreamReaderMixin):
 
         waiter = self._waiter = self._loop.create_future()
         try:
-            if self._timer:
-                with self._timer:
-                    await waiter
-            else:
+            with self._timer:
                 await waiter
         finally:
             self._waiter = None
@@ -325,7 +323,9 @@ class StreamReader(AsyncStreamReaderMixin):
                 offset = self._buffer_offset
                 ichar = self._buffer[0].find(separator, offset) + 1
                 # Read from current offset to found separator or to the end.
-                data = self._read_nowait_chunk(ichar - offset if ichar else -1)
+                data = self._read_nowait_chunk(
+                    ichar - offset + seplen - 1 if ichar else -1
+                )
                 chunk += data
                 chunk_size += len(data)
                 if ichar:
@@ -475,8 +475,9 @@ class StreamReader(AsyncStreamReaderMixin):
 
     def _read_nowait(self, n: int) -> bytes:
         """Read not more than n bytes, or whole buffer if n == -1"""
-        chunks = []
+        self._timer.assert_timeout()
 
+        chunks = []
         while self._buffer:
             chunk = self._read_nowait_chunk(n)
             chunks.append(chunk)
@@ -490,7 +491,10 @@ class StreamReader(AsyncStreamReaderMixin):
 
 class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     def __init__(self) -> None:
-        pass
+        self._read_eof_chunk = False
+
+    def __repr__(self) -> str:
+        return "<%s>" % self.__class__.__name__
 
     def exception(self) -> Optional[BaseException]:
         return None
@@ -531,6 +535,10 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
         return b""
 
     async def readchunk(self) -> Tuple[bytes, bool]:
+        if not self._read_eof_chunk:
+            self._read_eof_chunk = True
+            return (b"", False)
+
         return (b"", True)
 
     async def readexactly(self, n: int) -> bytes:

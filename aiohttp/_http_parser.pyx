@@ -2,7 +2,6 @@
 #
 # Based on https://github.com/MagicStack/httptools
 #
-from __future__ import absolute_import, print_function
 
 from cpython cimport (
     Py_buffer,
@@ -20,6 +19,7 @@ from multidict import CIMultiDict as _CIMultiDict, CIMultiDictProxy as _CIMultiD
 from yarl import URL as _URL
 
 from aiohttp import hdrs
+from aiohttp.helpers import DEBUG
 
 from .http_exceptions import (
     BadHttpMessage,
@@ -546,7 +546,13 @@ cdef class HttpParser:
                     ex = self._last_error
                     self._last_error = None
                 else:
-                    ex = parser_error_from_errno(self._cparser)
+                    after = cparser.llhttp_get_error_pos(self._cparser)
+                    before = data[:after - <char*>self.py_buf.buf]
+                    after_b = after.split(b"\r\n", 1)[0]
+                    before = before.rsplit(b"\r\n", 1)[-1]
+                    data = before + after_b
+                    pointer = " " * (len(repr(before))-1) + "^"
+                    ex = parser_error_from_errno(self._cparser, data, pointer)
                 self._payload = None
                 raise ex
 
@@ -642,6 +648,11 @@ cdef class HttpResponseParser(HttpParser):
                    max_line_size, max_headers, max_field_size,
                    payload_exception, response_with_body, read_until_eof,
                    auto_decompress)
+        # Use strict parsing on dev mode, so users are warned about broken servers.
+        if not DEBUG:
+            cparser.llhttp_set_lenient_headers(self._cparser, 1)
+            cparser.llhttp_set_lenient_optional_cr_before_lf(self._cparser, 1)
+            cparser.llhttp_set_lenient_spaces_after_chunk_size(self._cparser, 1)
 
     cdef object _on_status_complete(self):
         if self._buf:
@@ -797,11 +808,13 @@ cdef int cb_on_chunk_complete(cparser.llhttp_t* parser) except -1:
         return 0
 
 
-cdef parser_error_from_errno(cparser.llhttp_t* parser):
+cdef parser_error_from_errno(cparser.llhttp_t* parser, data, pointer):
     cdef cparser.llhttp_errno_t errno = cparser.llhttp_get_errno(parser)
     cdef bytes desc = cparser.llhttp_get_error_reason(parser)
 
-    if errno in (cparser.HPE_CB_MESSAGE_BEGIN,
+    err_msg = "{}:\n\n  {!r}\n  {}".format(desc.decode("latin-1"), data, pointer)
+
+    if errno in {cparser.HPE_CB_MESSAGE_BEGIN,
                  cparser.HPE_CB_HEADERS_COMPLETE,
                  cparser.HPE_CB_MESSAGE_COMPLETE,
                  cparser.HPE_CB_CHUNK_HEADER,
@@ -811,22 +824,13 @@ cdef parser_error_from_errno(cparser.llhttp_t* parser):
                  cparser.HPE_INVALID_CONTENT_LENGTH,
                  cparser.HPE_INVALID_CHUNK_SIZE,
                  cparser.HPE_INVALID_EOF_STATE,
-                 cparser.HPE_INVALID_TRANSFER_ENCODING):
-        cls = BadHttpMessage
-
-    elif errno == cparser.HPE_INVALID_STATUS:
-        cls = BadStatusLine
-
-    elif errno == cparser.HPE_INVALID_METHOD:
-        cls = BadStatusLine
-
-    elif errno == cparser.HPE_INVALID_VERSION:
-        cls = BadStatusLine
-
+                 cparser.HPE_INVALID_TRANSFER_ENCODING}:
+        return BadHttpMessage(err_msg)
+    elif errno in {cparser.HPE_INVALID_STATUS,
+                   cparser.HPE_INVALID_METHOD,
+                   cparser.HPE_INVALID_VERSION}:
+        return BadStatusLine(error=err_msg)
     elif errno == cparser.HPE_INVALID_URL:
-        cls = InvalidURLError
+        return InvalidURLError(err_msg)
 
-    else:
-        cls = BadHttpMessage
-
-    return cls(desc.decode('latin-1'))
+    return BadHttpMessage(err_msg)

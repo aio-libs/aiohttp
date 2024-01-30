@@ -2,10 +2,9 @@
 import asyncio
 import contextlib
 import gc
+import io
 import json
-import sys
 from http.cookies import SimpleCookie
-from io import BytesIO
 from typing import Any, List
 from unittest import mock
 
@@ -160,7 +159,6 @@ async def test_merge_headers_with_list_of_tuples_duplicated_names(
 
 
 def test_http_GET(session: Any, params: Any) -> None:
-    # Python 3.8 will auto use mock.AsyncMock, it has different behavior
     with mock.patch(
         "aiohttp.client.ClientSession._request", new_callable=mock.MagicMock
     ) as patched:
@@ -315,7 +313,6 @@ def test_connector_loop(loop: Any) -> None:
 
         connector = another_loop.run_until_complete(make_connector())
 
-        stack.enter_context(contextlib.closing(connector))
         with pytest.raises(RuntimeError) as ctx:
 
             async def make_sess():
@@ -325,6 +322,7 @@ def test_connector_loop(loop: Any) -> None:
         assert Matches("Session and connector have to use same event loop") == str(
             ctx.value
         )
+        another_loop.run_until_complete(connector.close())
 
 
 def test_detach(loop: Any, session: Any) -> None:
@@ -538,60 +536,63 @@ async def test_request_tracing(loop: Any, aiohttp_client: Any) -> None:
     trace_config_ctx = mock.Mock()
     trace_request_ctx = {}
     body = "This is request body"
-    gathered_req_body = BytesIO()
-    gathered_res_body = BytesIO()
     gathered_req_headers = CIMultiDict()
     on_request_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
     on_request_redirect = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
     on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
 
-    async def on_request_chunk_sent(session, context, params):
-        gathered_req_body.write(params.chunk)
+    with io.BytesIO() as gathered_req_body, io.BytesIO() as gathered_res_body:
 
-    async def on_response_chunk_received(session, context, params):
-        gathered_res_body.write(params.chunk)
+        async def on_request_chunk_sent(session, context, params):
+            gathered_req_body.write(params.chunk)
 
-    async def on_request_headers_sent(session, context, params):
-        gathered_req_headers.extend(**params.headers)
+        async def on_response_chunk_received(session, context, params):
+            gathered_res_body.write(params.chunk)
 
-    trace_config = aiohttp.TraceConfig(
-        trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
-    )
-    trace_config.on_request_start.append(on_request_start)
-    trace_config.on_request_end.append(on_request_end)
-    trace_config.on_request_chunk_sent.append(on_request_chunk_sent)
-    trace_config.on_response_chunk_received.append(on_response_chunk_received)
-    trace_config.on_request_redirect.append(on_request_redirect)
-    trace_config.on_request_headers_sent.append(on_request_headers_sent)
+        async def on_request_headers_sent(session, context, params):
+            gathered_req_headers.extend(**params.headers)
 
-    headers = CIMultiDict({"Custom-Header": "Custom value"})
-    session = await aiohttp_client(app, trace_configs=[trace_config], headers=headers)
+        trace_config = aiohttp.TraceConfig(
+            trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
+        )
+        trace_config.on_request_start.append(on_request_start)
+        trace_config.on_request_end.append(on_request_end)
+        trace_config.on_request_chunk_sent.append(on_request_chunk_sent)
+        trace_config.on_response_chunk_received.append(on_response_chunk_received)
+        trace_config.on_request_redirect.append(on_request_redirect)
+        trace_config.on_request_headers_sent.append(on_request_headers_sent)
 
-    async with session.post(
-        "/", data=body, trace_request_ctx=trace_request_ctx
-    ) as resp:
-
-        await resp.json()
-
-        on_request_start.assert_called_once_with(
-            session.session,
-            trace_config_ctx,
-            aiohttp.TraceRequestStartParams(
-                hdrs.METH_POST, session.make_url("/"), headers
-            ),
+        headers = CIMultiDict({"Custom-Header": "Custom value"})
+        session = await aiohttp_client(
+            app, trace_configs=[trace_config], headers=headers
         )
 
-        on_request_end.assert_called_once_with(
-            session.session,
-            trace_config_ctx,
-            aiohttp.TraceRequestEndParams(
-                hdrs.METH_POST, session.make_url("/"), headers, resp
-            ),
-        )
-        assert not on_request_redirect.called
-        assert gathered_req_body.getvalue() == body.encode("utf8")
-        assert gathered_res_body.getvalue() == json.dumps({"ok": True}).encode("utf8")
-        assert gathered_req_headers["Custom-Header"] == "Custom value"
+        async with session.post(
+            "/", data=body, trace_request_ctx=trace_request_ctx
+        ) as resp:
+            await resp.json()
+
+            on_request_start.assert_called_once_with(
+                session.session,
+                trace_config_ctx,
+                aiohttp.TraceRequestStartParams(
+                    hdrs.METH_POST, session.make_url("/"), headers
+                ),
+            )
+
+            on_request_end.assert_called_once_with(
+                session.session,
+                trace_config_ctx,
+                aiohttp.TraceRequestEndParams(
+                    hdrs.METH_POST, session.make_url("/"), headers, resp
+                ),
+            )
+            assert not on_request_redirect.called
+            assert gathered_req_body.getvalue() == body.encode("utf8")
+            assert gathered_res_body.getvalue() == json.dumps({"ok": True}).encode(
+                "utf8"
+            )
+            assert gathered_req_headers["Custom-Header"] == "Custom value"
 
 
 async def test_request_tracing_url_params(loop: Any, aiohttp_client: Any) -> None:
@@ -679,14 +680,7 @@ async def test_request_tracing_url_params(loop: Any, aiohttp_client: Any) -> Non
 
     # Exception
     with mock.patch("aiohttp.client.TCPConnector.connect") as connect_patched:
-        error = Exception()
-        if sys.version_info >= (3, 8, 1):
-            connect_patched.side_effect = error
-        else:
-            loop = asyncio.get_event_loop()
-            f = loop.create_future()
-            f.set_exception(error)
-            connect_patched.return_value = f
+        connect_patched.side_effect = Exception()
 
         for req in [
             lambda: session.get("/?x=0"),
@@ -714,13 +708,7 @@ async def test_request_tracing_exception() -> None:
 
     with mock.patch("aiohttp.client.TCPConnector.connect") as connect_patched:
         error = Exception()
-        if sys.version_info >= (3, 8, 1):
-            connect_patched.side_effect = error
-        else:
-            loop = asyncio.get_event_loop()
-            f = loop.create_future()
-            f.set_exception(error)
-            connect_patched.return_value = f
+        connect_patched.side_effect = error
 
         session = aiohttp.ClientSession(trace_configs=[trace_config])
 
@@ -791,12 +779,6 @@ async def test_client_session_timeout_default_args(loop: Any) -> None:
     await session1.close()
 
 
-async def test_client_session_timeout_argument() -> None:
-    session = ClientSession(timeout=500)
-    assert session.timeout == 500
-    await session.close()
-
-
 async def test_client_session_timeout_zero() -> None:
     timeout = client.ClientTimeout(total=10, connect=0, sock_connect=0, sock_read=0)
     try:
@@ -804,6 +786,13 @@ async def test_client_session_timeout_zero() -> None:
             await session.get("http://example.com")
     except asyncio.TimeoutError:
         pytest.fail("0 should disable timeout.")
+
+
+async def test_client_session_timeout_bad_argument() -> None:
+    with pytest.raises(ValueError):
+        ClientSession(timeout="test_bad_argumnet")
+    with pytest.raises(ValueError):
+        ClientSession(timeout=100)
 
 
 async def test_requote_redirect_url_default() -> None:

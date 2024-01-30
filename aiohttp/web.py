@@ -1,9 +1,13 @@
 import asyncio
 import logging
+import os
 import socket
 import sys
+import warnings
 from argparse import ArgumentParser
 from collections.abc import Iterable
+from contextlib import suppress
+from functools import partial
 from importlib import import_module
 from typing import (
     Any,
@@ -17,137 +21,122 @@ from typing import (
     Union,
     cast,
 )
+from weakref import WeakSet
 
 from .abc import AbstractAccessLogger
-from .helpers import AppKey as AppKey
+from .helpers import AppKey
 from .log import access_logger
-from .web_app import Application as Application, CleanupError as CleanupError
+from .typedefs import PathLike
+from .web_app import Application, CleanupError
 from .web_exceptions import (
-    HTTPAccepted as HTTPAccepted,
-    HTTPBadGateway as HTTPBadGateway,
-    HTTPBadRequest as HTTPBadRequest,
-    HTTPClientError as HTTPClientError,
-    HTTPConflict as HTTPConflict,
-    HTTPCreated as HTTPCreated,
-    HTTPError as HTTPError,
-    HTTPException as HTTPException,
-    HTTPExpectationFailed as HTTPExpectationFailed,
-    HTTPFailedDependency as HTTPFailedDependency,
-    HTTPForbidden as HTTPForbidden,
-    HTTPFound as HTTPFound,
-    HTTPGatewayTimeout as HTTPGatewayTimeout,
-    HTTPGone as HTTPGone,
-    HTTPInsufficientStorage as HTTPInsufficientStorage,
-    HTTPInternalServerError as HTTPInternalServerError,
-    HTTPLengthRequired as HTTPLengthRequired,
-    HTTPMethodNotAllowed as HTTPMethodNotAllowed,
-    HTTPMisdirectedRequest as HTTPMisdirectedRequest,
-    HTTPMovedPermanently as HTTPMovedPermanently,
-    HTTPMultipleChoices as HTTPMultipleChoices,
-    HTTPNetworkAuthenticationRequired as HTTPNetworkAuthenticationRequired,
-    HTTPNoContent as HTTPNoContent,
-    HTTPNonAuthoritativeInformation as HTTPNonAuthoritativeInformation,
-    HTTPNotAcceptable as HTTPNotAcceptable,
-    HTTPNotExtended as HTTPNotExtended,
-    HTTPNotFound as HTTPNotFound,
-    HTTPNotImplemented as HTTPNotImplemented,
-    HTTPNotModified as HTTPNotModified,
-    HTTPOk as HTTPOk,
-    HTTPPartialContent as HTTPPartialContent,
-    HTTPPaymentRequired as HTTPPaymentRequired,
-    HTTPPermanentRedirect as HTTPPermanentRedirect,
-    HTTPPreconditionFailed as HTTPPreconditionFailed,
-    HTTPPreconditionRequired as HTTPPreconditionRequired,
-    HTTPProxyAuthenticationRequired as HTTPProxyAuthenticationRequired,
-    HTTPRedirection as HTTPRedirection,
-    HTTPRequestEntityTooLarge as HTTPRequestEntityTooLarge,
-    HTTPRequestHeaderFieldsTooLarge as HTTPRequestHeaderFieldsTooLarge,
-    HTTPRequestRangeNotSatisfiable as HTTPRequestRangeNotSatisfiable,
-    HTTPRequestTimeout as HTTPRequestTimeout,
-    HTTPRequestURITooLong as HTTPRequestURITooLong,
-    HTTPResetContent as HTTPResetContent,
-    HTTPSeeOther as HTTPSeeOther,
-    HTTPServerError as HTTPServerError,
-    HTTPServiceUnavailable as HTTPServiceUnavailable,
-    HTTPSuccessful as HTTPSuccessful,
-    HTTPTemporaryRedirect as HTTPTemporaryRedirect,
-    HTTPTooManyRequests as HTTPTooManyRequests,
-    HTTPUnauthorized as HTTPUnauthorized,
-    HTTPUnavailableForLegalReasons as HTTPUnavailableForLegalReasons,
-    HTTPUnprocessableEntity as HTTPUnprocessableEntity,
-    HTTPUnsupportedMediaType as HTTPUnsupportedMediaType,
-    HTTPUpgradeRequired as HTTPUpgradeRequired,
-    HTTPUseProxy as HTTPUseProxy,
-    HTTPVariantAlsoNegotiates as HTTPVariantAlsoNegotiates,
-    HTTPVersionNotSupported as HTTPVersionNotSupported,
+    HTTPAccepted,
+    HTTPBadGateway,
+    HTTPBadRequest,
+    HTTPClientError,
+    HTTPConflict,
+    HTTPCreated,
+    HTTPError,
+    HTTPException,
+    HTTPExpectationFailed,
+    HTTPFailedDependency,
+    HTTPForbidden,
+    HTTPFound,
+    HTTPGatewayTimeout,
+    HTTPGone,
+    HTTPInsufficientStorage,
+    HTTPInternalServerError,
+    HTTPLengthRequired,
+    HTTPMethodNotAllowed,
+    HTTPMisdirectedRequest,
+    HTTPMove,
+    HTTPMovedPermanently,
+    HTTPMultipleChoices,
+    HTTPNetworkAuthenticationRequired,
+    HTTPNoContent,
+    HTTPNonAuthoritativeInformation,
+    HTTPNotAcceptable,
+    HTTPNotExtended,
+    HTTPNotFound,
+    HTTPNotImplemented,
+    HTTPNotModified,
+    HTTPOk,
+    HTTPPartialContent,
+    HTTPPaymentRequired,
+    HTTPPermanentRedirect,
+    HTTPPreconditionFailed,
+    HTTPPreconditionRequired,
+    HTTPProxyAuthenticationRequired,
+    HTTPRedirection,
+    HTTPRequestEntityTooLarge,
+    HTTPRequestHeaderFieldsTooLarge,
+    HTTPRequestRangeNotSatisfiable,
+    HTTPRequestTimeout,
+    HTTPRequestURITooLong,
+    HTTPResetContent,
+    HTTPSeeOther,
+    HTTPServerError,
+    HTTPServiceUnavailable,
+    HTTPSuccessful,
+    HTTPTemporaryRedirect,
+    HTTPTooManyRequests,
+    HTTPUnauthorized,
+    HTTPUnavailableForLegalReasons,
+    HTTPUnprocessableEntity,
+    HTTPUnsupportedMediaType,
+    HTTPUpgradeRequired,
+    HTTPUseProxy,
+    HTTPVariantAlsoNegotiates,
+    HTTPVersionNotSupported,
+    NotAppKeyWarning,
 )
-from .web_fileresponse import FileResponse as FileResponse
+from .web_fileresponse import FileResponse
 from .web_log import AccessLogger
-from .web_middlewares import (
-    middleware as middleware,
-    normalize_path_middleware as normalize_path_middleware,
-)
-from .web_protocol import (
-    PayloadAccessError as PayloadAccessError,
-    RequestHandler as RequestHandler,
-    RequestPayloadError as RequestPayloadError,
-)
-from .web_request import (
-    BaseRequest as BaseRequest,
-    FileField as FileField,
-    Request as Request,
-)
-from .web_response import (
-    ContentCoding as ContentCoding,
-    Response as Response,
-    StreamResponse as StreamResponse,
-    json_response as json_response,
-)
+from .web_middlewares import middleware, normalize_path_middleware
+from .web_protocol import PayloadAccessError, RequestHandler, RequestPayloadError
+from .web_request import BaseRequest, FileField, Request
+from .web_response import ContentCoding, Response, StreamResponse, json_response
 from .web_routedef import (
-    AbstractRouteDef as AbstractRouteDef,
-    RouteDef as RouteDef,
-    RouteTableDef as RouteTableDef,
-    StaticDef as StaticDef,
-    delete as delete,
-    get as get,
-    head as head,
-    options as options,
-    patch as patch,
-    post as post,
-    put as put,
-    route as route,
-    static as static,
-    view as view,
+    AbstractRouteDef,
+    RouteDef,
+    RouteTableDef,
+    StaticDef,
+    delete,
+    get,
+    head,
+    options,
+    patch,
+    post,
+    put,
+    route,
+    static,
+    view,
 )
 from .web_runner import (
-    AppRunner as AppRunner,
-    BaseRunner as BaseRunner,
-    BaseSite as BaseSite,
-    GracefulExit as GracefulExit,
-    NamedPipeSite as NamedPipeSite,
-    ServerRunner as ServerRunner,
-    SockSite as SockSite,
-    TCPSite as TCPSite,
-    UnixSite as UnixSite,
+    AppRunner,
+    BaseRunner,
+    BaseSite,
+    GracefulExit,
+    NamedPipeSite,
+    ServerRunner,
+    SockSite,
+    TCPSite,
+    UnixSite,
 )
-from .web_server import Server as Server
+from .web_server import Server
 from .web_urldispatcher import (
-    AbstractResource as AbstractResource,
-    AbstractRoute as AbstractRoute,
-    DynamicResource as DynamicResource,
-    PlainResource as PlainResource,
-    Resource as Resource,
-    ResourceRoute as ResourceRoute,
-    StaticResource as StaticResource,
-    UrlDispatcher as UrlDispatcher,
-    UrlMappingMatchInfo as UrlMappingMatchInfo,
-    View as View,
+    AbstractResource,
+    AbstractRoute,
+    DynamicResource,
+    PlainResource,
+    PrefixedSubAppResource,
+    Resource,
+    ResourceRoute,
+    StaticResource,
+    UrlDispatcher,
+    UrlMappingMatchInfo,
+    View,
 )
-from .web_ws import (
-    WebSocketReady as WebSocketReady,
-    WebSocketResponse as WebSocketResponse,
-    WSMsgType as WSMsgType,
-)
+from .web_ws import WebSocketReady, WebSocketResponse, WSMsgType
 
 __all__ = (
     # web_app
@@ -155,6 +144,7 @@ __all__ = (
     "Application",
     "CleanupError",
     # web_exceptions
+    "NotAppKeyWarning",
     "HTTPAccepted",
     "HTTPBadGateway",
     "HTTPBadRequest",
@@ -174,6 +164,7 @@ __all__ = (
     "HTTPLengthRequired",
     "HTTPMethodNotAllowed",
     "HTTPMisdirectedRequest",
+    "HTTPMove",
     "HTTPMovedPermanently",
     "HTTPMultipleChoices",
     "HTTPNetworkAuthenticationRequired",
@@ -262,6 +253,7 @@ __all__ = (
     "AbstractRoute",
     "DynamicResource",
     "PlainResource",
+    "PrefixedSubAppResource",
     "Resource",
     "ResourceRoute",
     "StaticResource",
@@ -282,6 +274,9 @@ try:
 except ImportError:  # pragma: no cover
     SSLContext = Any  # type: ignore[misc,assignment]
 
+# Only display warning when using -Wdefault, -We, -X dev or similar.
+warnings.filterwarnings("ignore", category=NotAppKeyWarning, append=True)
+
 HostSequence = TypingIterable[str]
 
 
@@ -290,7 +285,7 @@ async def _run_app(
     *,
     host: Optional[Union[str, HostSequence]] = None,
     port: Optional[int] = None,
-    path: Optional[str] = None,
+    path: Union[PathLike, TypingIterable[PathLike], None] = None,
     sock: Optional[Union[socket.socket, TypingIterable[socket.socket]]] = None,
     shutdown_timeout: float = 60.0,
     keepalive_timeout: float = 75.0,
@@ -303,7 +298,25 @@ async def _run_app(
     handle_signals: bool = True,
     reuse_address: Optional[bool] = None,
     reuse_port: Optional[bool] = None,
+    handler_cancellation: bool = False,
 ) -> None:
+    async def wait(
+        starting_tasks: "WeakSet[asyncio.Task[object]]", shutdown_timeout: float
+    ) -> None:
+        # Wait for pending tasks for a given time limit.
+        t = asyncio.current_task()
+        assert t is not None
+        starting_tasks.add(t)
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(_wait(starting_tasks), timeout=shutdown_timeout)
+
+    async def _wait(exclude: "WeakSet[asyncio.Task[object]]") -> None:
+        t = asyncio.current_task()
+        assert t is not None
+        exclude.add(t)
+        while tasks := asyncio.all_tasks().difference(exclude):
+            await asyncio.wait(tasks)
+
     # An internal function to actually do all dirty job for application running
     if asyncio.iscoroutine(app):
         app = await app
@@ -317,9 +330,17 @@ async def _run_app(
         access_log_format=access_log_format,
         access_log=access_log,
         keepalive_timeout=keepalive_timeout,
+        shutdown_timeout=shutdown_timeout,
+        handler_cancellation=handler_cancellation,
     )
 
     await runner.setup()
+    # On shutdown we want to avoid waiting on tasks which run forever.
+    # It's very likely that all tasks which run forever will have been created by
+    # the time we have completed the application startup (in runner.setup()),
+    # so we just record all running tasks here and exclude them later.
+    starting_tasks: "WeakSet[asyncio.Task[object]]" = WeakSet(asyncio.all_tasks())
+    runner.shutdown_callback = partial(wait, starting_tasks, shutdown_timeout)
 
     sites: List[BaseSite] = []
 
@@ -331,7 +352,6 @@ async def _run_app(
                         runner,
                         host,
                         port,
-                        shutdown_timeout=shutdown_timeout,
                         ssl_context=ssl_context,
                         backlog=backlog,
                         reuse_address=reuse_address,
@@ -345,7 +365,6 @@ async def _run_app(
                             runner,
                             h,
                             port,
-                            shutdown_timeout=shutdown_timeout,
                             ssl_context=ssl_context,
                             backlog=backlog,
                             reuse_address=reuse_address,
@@ -357,7 +376,6 @@ async def _run_app(
                 TCPSite(
                     runner,
                     port=port,
-                    shutdown_timeout=shutdown_timeout,
                     ssl_context=ssl_context,
                     backlog=backlog,
                     reuse_address=reuse_address,
@@ -366,12 +384,11 @@ async def _run_app(
             )
 
         if path is not None:
-            if isinstance(path, (str, bytes, bytearray, memoryview)):
+            if isinstance(path, (str, os.PathLike)):
                 sites.append(
                     UnixSite(
                         runner,
                         path,
-                        shutdown_timeout=shutdown_timeout,
                         ssl_context=ssl_context,
                         backlog=backlog,
                     )
@@ -382,7 +399,6 @@ async def _run_app(
                         UnixSite(
                             runner,
                             p,
-                            shutdown_timeout=shutdown_timeout,
                             ssl_context=ssl_context,
                             backlog=backlog,
                         )
@@ -394,7 +410,6 @@ async def _run_app(
                     SockSite(
                         runner,
                         sock,
-                        shutdown_timeout=shutdown_timeout,
                         ssl_context=ssl_context,
                         backlog=backlog,
                     )
@@ -405,7 +420,6 @@ async def _run_app(
                         SockSite(
                             runner,
                             s,
-                            shutdown_timeout=shutdown_timeout,
                             ssl_context=ssl_context,
                             backlog=backlog,
                         )
@@ -421,15 +435,8 @@ async def _run_app(
             )
 
         # sleep forever by 1 hour intervals,
-        # on Windows before Python 3.8 wake up every 1 second to handle
-        # Ctrl+C smoothly
-        if sys.platform == "win32" and sys.version_info < (3, 8):
-            delay = 1
-        else:
-            delay = 3600
-
         while True:
-            await asyncio.sleep(delay)
+            await asyncio.sleep(3600)
     finally:
         await runner.cleanup()
 
@@ -464,7 +471,7 @@ def run_app(
     debug: bool = False,
     host: Optional[Union[str, HostSequence]] = None,
     port: Optional[int] = None,
-    path: Optional[str] = None,
+    path: Union[PathLike, TypingIterable[PathLike], None] = None,
     sock: Optional[Union[socket.socket, TypingIterable[socket.socket]]] = None,
     shutdown_timeout: float = 60.0,
     keepalive_timeout: float = 75.0,
@@ -477,6 +484,7 @@ def run_app(
     handle_signals: bool = True,
     reuse_address: Optional[bool] = None,
     reuse_port: Optional[bool] = None,
+    handler_cancellation: bool = False,
     loop: Optional[asyncio.AbstractEventLoop] = None,
 ) -> None:
     """Run an app locally"""
@@ -509,6 +517,7 @@ def run_app(
             handle_signals=handle_signals,
             reuse_address=reuse_address,
             reuse_port=reuse_port,
+            handler_cancellation=handler_cancellation,
         )
     )
 

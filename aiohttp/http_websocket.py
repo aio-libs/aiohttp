@@ -1,7 +1,7 @@
 """WebSocket protocol versions 13 and 8."""
 
 import asyncio
-import collections
+import functools
 import json
 import random
 import re
@@ -9,11 +9,22 @@ import sys
 import zlib
 from enum import IntEnum
 from struct import Struct
-from typing import Any, Callable, List, Optional, Pattern, Set, Tuple, Union, cast
-
-from typing_extensions import Final
+from typing import (
+    Any,
+    Callable,
+    Final,
+    List,
+    NamedTuple,
+    Optional,
+    Pattern,
+    Set,
+    Tuple,
+    Union,
+    cast,
+)
 
 from .base_protocol import BaseProtocol
+from .compression_utils import ZLibCompressor, ZLibDecompressor
 from .helpers import NO_EXTENSIONS
 from .streams import DataQueue
 
@@ -48,6 +59,15 @@ class WSCloseCode(IntEnum):
 
 ALLOWED_CLOSE_CODES: Final[Set[int]] = {int(i) for i in WSCloseCode}
 
+# For websockets, keeping latency low is extremely important as implementations
+# generally expect to be able to send and receive messages quickly.  We use a
+# larger chunk size than the default to reduce the number of executor calls
+# since the executor is a significant source of latency and overhead when
+# the chunks are small. A size of 5KiB was chosen because it is also the
+# same value python-zlib-ng choose to use as the threshold to release the GIL.
+
+WEBSOCKET_MAX_SYNC_CHUNK_SIZE = 5 * 1024
+
 
 class WSMsgType(IntEnum):
     # websocket spec types
@@ -78,10 +98,12 @@ MSG_SIZE: Final[int] = 2**14
 DEFAULT_LIMIT: Final[int] = 2**16
 
 
-_WSMessageBase = collections.namedtuple("_WSMessageBase", ["type", "data", "extra"])
+class WSMessage(NamedTuple):
+    type: WSMsgType
+    # To type correctly, this would need some kind of tagged union for each type.
+    data: Any
+    extra: Optional[str]
 
-
-class WSMessage(_WSMessageBase):
     def json(self, *, loads: Callable[[Any], Any] = json.loads) -> Any:
         """Return parsed JSON data.
 
@@ -113,7 +135,9 @@ native_byteorder: Final[str] = sys.byteorder
 
 
 # Used by _websocket_mask_python
-_XOR_TABLE: Final[List[bytes]] = [bytes(a ^ b for a in range(256)) for b in range(256)]
+@functools.lru_cache
+def _xor_table() -> List[bytes]:
+    return [bytes(a ^ b for a in range(256)) for b in range(256)]
 
 
 def _websocket_mask_python(mask: bytes, data: bytearray) -> None:
@@ -133,6 +157,7 @@ def _websocket_mask_python(mask: bytes, data: bytearray) -> None:
     assert len(mask) == 4, mask
 
     if data:
+        _XOR_TABLE = _xor_table()
         a, b, c, d = (_XOR_TABLE[n] for n in mask)
         data[::4] = data[::4].translate(a)
         data[1::4] = data[1::4].translate(b)
@@ -144,7 +169,7 @@ if NO_EXTENSIONS:  # pragma: no cover
     _websocket_mask = _websocket_mask_python
 else:
     try:
-        from ._websocket import _websocket_mask_cython  # type: ignore[import]
+        from ._websocket import _websocket_mask_cython  # type: ignore[import-not-found]
 
         _websocket_mask = _websocket_mask_cython
     except ImportError:  # pragma: no cover
@@ -266,7 +291,7 @@ class WebSocketReader:
         self._payload_length = 0
         self._payload_length_flag = 0
         self._compressed: Optional[bool] = None
-        self._decompressobj: Any = None  # zlib.decompressobj actually
+        self._decompressobj: Optional[ZLibDecompressor] = None
         self._compress = compress
 
     def feed_eof(self) -> None:
@@ -286,7 +311,7 @@ class WebSocketReader:
     def _feed_data(self, data: bytes) -> Tuple[bool, bytes]:
         for fin, opcode, payload, compressed in self.parse_frame(data):
             if compressed and not self._decompressobj:
-                self._decompressobj = zlib.decompressobj(wbits=-zlib.MAX_WBITS)
+                self._decompressobj = ZLibDecompressor(suppress_deflate_header=True)
             if opcode == WSMsgType.CLOSE:
                 if len(payload) >= 2:
                     close_code = UNPACK_CLOSE_CODE(payload[:2])[0]
@@ -371,8 +396,9 @@ class WebSocketReader:
                     # Decompress process must to be done after all packets
                     # received.
                     if compressed:
+                        assert self._decompressobj is not None
                         self._partial.extend(_WS_DEFLATE_TRAILING)
-                        payload_merged = self._decompressobj.decompress(
+                        payload_merged = self._decompressobj.decompress_sync(
                             self._partial, self._max_msg_size
                         )
                         if self._decompressobj.unconsumed_tail:
@@ -570,7 +596,7 @@ class WebSocketWriter:
         *,
         use_mask: bool = False,
         limit: int = DEFAULT_LIMIT,
-        random: Any = random.Random(),
+        random: random.Random = random.Random(),
         compress: int = 0,
         notakeover: bool = False,
     ) -> None:
@@ -600,16 +626,18 @@ class WebSocketWriter:
         if (compress or self.compress) and opcode < 8:
             if compress:
                 # Do not set self._compress if compressing is for this frame
-                compressobj = zlib.compressobj(level=zlib.Z_BEST_SPEED, wbits=-compress)
+                compressobj = self._make_compress_obj(compress)
             else:  # self.compress
                 if not self._compressobj:
-                    self._compressobj = zlib.compressobj(
-                        level=zlib.Z_BEST_SPEED, wbits=-self.compress
-                    )
+                    self._compressobj = self._make_compress_obj(self.compress)
                 compressobj = self._compressobj
 
-            message = compressobj.compress(message)
-            message = message + compressobj.flush(
+            message = await compressobj.compress(message)
+            # Its critical that we do not return control to the event
+            # loop until we have finished sending all the compressed
+            # data. Otherwise we could end up mixing compressed frames
+            # if there are multiple coroutines compressing data.
+            message += compressobj.flush(
                 zlib.Z_FULL_FLUSH if self.notakeover else zlib.Z_SYNC_FLUSH
             )
             if message.endswith(_WS_DEFLATE_TRAILING):
@@ -631,37 +659,47 @@ class WebSocketWriter:
         else:
             header = PACK_LEN3(0x80 | rsv | opcode, 127 | mask_bit, msg_length)
         if use_mask:
-            mask = self.randrange(0, 0xFFFFFFFF)
-            mask = mask.to_bytes(4, "big")
+            mask_int = self.randrange(0, 0xFFFFFFFF)
+            mask = mask_int.to_bytes(4, "big")
             message = bytearray(message)
             _websocket_mask(mask, message)
             self._write(header + mask + message)
-            self._output_size += len(header) + len(mask) + len(message)
+            self._output_size += len(header) + len(mask) + msg_length
         else:
-            if len(message) > MSG_SIZE:
+            if msg_length > MSG_SIZE:
                 self._write(header)
                 self._write(message)
             else:
                 self._write(header + message)
 
-            self._output_size += len(header) + len(message)
+            self._output_size += len(header) + msg_length
+
+        # It is safe to return control to the event loop when using compression
+        # after this point as we have already sent or buffered all the data.
 
         if self._output_size > self._limit:
             self._output_size = 0
             await self.protocol._drain_helper()
 
+    def _make_compress_obj(self, compress: int) -> ZLibCompressor:
+        return ZLibCompressor(
+            level=zlib.Z_BEST_SPEED,
+            wbits=-compress,
+            max_sync_chunk_size=WEBSOCKET_MAX_SYNC_CHUNK_SIZE,
+        )
+
     def _write(self, data: bytes) -> None:
-        if self.transport is None or self.transport.is_closing():
+        if self.transport.is_closing():
             raise ConnectionResetError("Cannot write to closing transport")
         self.transport.write(data)
 
-    async def pong(self, message: bytes = b"") -> None:
+    async def pong(self, message: Union[bytes, str] = b"") -> None:
         """Send pong message."""
         if isinstance(message, str):
             message = message.encode("utf-8")
         await self._send_frame(message, WSMsgType.PONG)
 
-    async def ping(self, message: bytes = b"") -> None:
+    async def ping(self, message: Union[bytes, str] = b"") -> None:
         """Send ping message."""
         if isinstance(message, str):
             message = message.encode("utf-8")
@@ -681,7 +719,7 @@ class WebSocketWriter:
         else:
             await self._send_frame(message, WSMsgType.TEXT, compress)
 
-    async def close(self, code: int = 1000, message: bytes = b"") -> None:
+    async def close(self, code: int = 1000, message: Union[bytes, str] = b"") -> None:
         """Close the websocket, sending the specified code and message."""
         if isinstance(message, str):
             message = message.encode("utf-8")

@@ -2,10 +2,8 @@
 
 import asyncio
 import dataclasses
-from typing import Any, Optional, cast
-
-import async_timeout
-from typing_extensions import Final
+import sys
+from typing import Any, Final, Optional, cast
 
 from .client_exceptions import ClientError
 from .client_reqrep import ClientResponse
@@ -26,6 +24,11 @@ from .typedefs import (
     JSONDecoder,
     JSONEncoder,
 )
+
+if sys.version_info >= (3, 11):
+    import asyncio as async_timeout
+else:
+    import async_timeout
 
 
 @dataclasses.dataclass(frozen=True)
@@ -107,7 +110,7 @@ class ClientWebSocketResponse:
             # fire-and-forget a task is not perfect but maybe ok for
             # sending ping. Otherwise we need a long-living heartbeat
             # task in the class.
-            self._loop.create_task(self._writer.ping())
+            self._loop.create_task(self._writer.ping())  # type: ignore[unused-awaitable]
 
             if self._pong_response_cb is not None:
                 self._pong_response_cb.cancel()
@@ -188,7 +191,8 @@ class ClientWebSocketResponse:
     async def close(self, *, code: int = WSCloseCode.OK, message: bytes = b"") -> bool:
         # we need to break `receive()` cycle first,
         # `close()` may be called from different task
-        if self._waiting is not None and not self._closed:
+        if self._waiting is not None and not self._closing:
+            self._closing = True
             self._reader.feed_data(WS_CLOSING_MESSAGE, 0)
             await self._waiting
 
@@ -207,7 +211,7 @@ class ClientWebSocketResponse:
                 self._response.close()
                 return True
 
-            if self._closing:
+            if self._close_code:
                 self._response.close()
                 return True
 
@@ -280,7 +284,8 @@ class ClientWebSocketResponse:
             if msg.type == WSMsgType.CLOSE:
                 self._closing = True
                 self._close_code = msg.data
-                if not self._closed and self._autoclose:
+                # Could be closed elsewhere while awaiting reader
+                if not self._closed and self._autoclose:  # type: ignore[redundant-expr]
                     await self.close()
             elif msg.type == WSMsgType.CLOSING:
                 self._closing = True

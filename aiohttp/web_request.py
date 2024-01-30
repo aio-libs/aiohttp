@@ -13,6 +13,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Dict,
+    Final,
     Iterator,
     Mapping,
     MutableMapping,
@@ -26,7 +27,6 @@ from typing import (
 from urllib.parse import parse_qsl
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
-from typing_extensions import Final
 from yarl import URL
 
 from . import hdrs
@@ -65,7 +65,7 @@ from .web_response import StreamResponse
 __all__ = ("BaseRequest", "FileField", "Request")
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .web_app import Application
     from .web_protocol import RequestHandler
     from .web_urldispatcher import UrlMappingMatchInfo
@@ -114,7 +114,6 @@ _FORWARDED_PAIR_RE: Final[Pattern[str]] = re.compile(_FORWARDED_PAIR)
 
 
 class BaseRequest(MutableMapping[str, Any], HeadersMixin):
-
     POST_METHODS = {
         hdrs.METH_PATCH,
         hdrs.METH_POST,
@@ -572,7 +571,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         A read-only dictionary-like object.
         """
         raw = self.headers.get(hdrs.COOKIE, "")
-        parsed: SimpleCookie[str] = SimpleCookie(raw)
+        parsed = SimpleCookie(raw)
         return MappingProxyType({key: val.value for key, val in parsed.items()})
 
     @reify
@@ -846,7 +845,6 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
 
 class Request(BaseRequest):
-
     __slots__ = ("_match_info",)
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:

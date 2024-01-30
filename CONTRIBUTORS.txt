@@ -53,6 +53,7 @@ Arthur Darcet
 Austin Scola
 Ben Bader
 Ben Greiner
+Ben Kallus
 Ben Timby
 Benedikt Reinartz
 Bob Haddleton
@@ -84,6 +85,7 @@ Dan Xu
 Daniel García
 Daniel Grossmann-Kavanagh
 Daniel Nelson
+Daniele Trifirò
 Danny Song
 David Bibb
 David Michael Brown
@@ -143,9 +145,11 @@ Hrishikesh Paranjape
 Hu Bo
 Hugh Young
 Hugo Herter
+Hugo Hromic
 Hugo van Kemenade
 Hynek Schlawack
 Igor Alexandrov
+Igor Bolshakov
 Igor Davydenko
 Igor Mozharovsky
 Igor Pavlov
@@ -153,13 +157,17 @@ Illia Volochii
 Ilya Chichak
 Ilya Gruzinov
 Ingmar Steen
+Ivan Lakovic
 Ivan Larin
+J. Nick Koston
 Jacob Champion
 Jaesung Lee
 Jake Davis
 Jakob Ackermann
 Jakub Wilk
 Jan Buchar
+Jan Gosmann
+Jarno Elonen
 Jashandeep Sohi
 Jean-Baptiste Estival
 Jens Steinhauser
@@ -170,9 +178,11 @@ Jesus Cea
 Jian Zeng
 Jinkyu Yi
 Joel Watts
+John Parton
 Jon Nabozny
 Jonas Krüger Svensson
 Jonas Obrist
+Jonathan Ballet
 Jonathan Wright
 Jonny Tan
 Joongi Kim
@@ -198,6 +208,7 @@ Krzysztof Blazewicz
 Kyrylo Perevozchikov
 Kyungmin Lee
 Lars P. Søndergaard
+Lee LieWhite
 Liu Hua
 Louis-Philippe Huberdeau
 Loïc Lajeanne
@@ -209,6 +220,7 @@ Lukasz Marcin Dobrzanski
 Makc Belousow
 Manuel Miranda
 Marat Sharafutdinov
+Marc Mueller
 Marco Paolini
 Mariano Anaya
 Mariusz Masztalerczuk
@@ -216,11 +228,14 @@ Marko Kohtala
 Martijn Pieters
 Martin Melka
 Martin Richard
+Martin Sucha
 Mathias Fröjdman
 Mathieu Dugré
 Matt VanEseltine
+Matthias Marquardt
 Matthieu Hauglustaine
 Matthieu Rigal
+Matvey Tingaev
 Meet Mangukiya
 Michael Ihnatenko
 Michał Górny
@@ -245,8 +260,10 @@ Oleg Höfling
 Pahaz Blinov
 Panagiotis Kolokotronis
 Pankaj Pandey
+Parag Jain
 Pau Freixes
 Paul Colomiets
+Paul J. Dorn
 Paulius Šileikis
 Paulus Schoutsen
 Pavel Kamaev
@@ -267,6 +284,8 @@ Robert Lu
 Robert Nikolich
 Roman Markeloff
 Roman Podoliaka
+Rong Zhang
+Samir Akarioh
 Samuel Colvin
 Sean Hunt
 Sebastian Acuna
@@ -304,6 +323,7 @@ Tolga Tezel
 Tomasz Trebski
 Toshiaki Tanaka
 Trinh Hoang Nhu
+Tymofii Tsiapa
 Vadim Suharnikov
 Vaibhav Sagar
 Vamsi Krishna Avula
@@ -337,6 +357,7 @@ William Grzybowski
 William S.
 Wilson Ong
 wouter bolsterlee
+Xiang Li
 Yang Zhou
 Yannick Koechlin
 Yannick Péroux
@@ -349,6 +370,8 @@ Yury Pliner
 Yury Selivanov
 Yusuke Tsutsumi
 Yuval Ofir
+Yuvi Panda
+Zainab Lawal
 Zeal Wierslee
 Zlatan Sičanica
 Łukasz Setla

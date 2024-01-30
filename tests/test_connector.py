@@ -10,11 +10,12 @@ import ssl
 import sys
 import uuid
 from collections import deque
-from typing import Any, Optional
+from contextlib import closing
+from typing import Any, List, Optional
 from unittest import mock
 
 import pytest
-from conftest import needs_unix
+from aiohappyeyeballs import AddrInfoType
 from yarl import URL
 
 import aiohttp
@@ -30,19 +31,19 @@ from aiohttp.tracing import Trace
 @pytest.fixture()
 def key():
     # Connection key
-    return ConnectionKey("localhost", 80, False, None, None, None, None)
+    return ConnectionKey("localhost", 80, False, True, None, None, None)
 
 
 @pytest.fixture
 def key2():
     # Connection key
-    return ConnectionKey("localhost", 80, False, None, None, None, None)
+    return ConnectionKey("localhost", 80, False, True, None, None, None)
 
 
 @pytest.fixture
 def ssl_key():
     # Connection key
-    return ConnectionKey("localhost", 80, True, None, None, None, None)
+    return ConnectionKey("localhost", 80, True, True, None, None, None)
 
 
 @pytest.fixture
@@ -538,7 +539,9 @@ async def test__drop_acquire_per_host3(loop: Any) -> None:
     assert conn._acquired_per_host[123] == {789}
 
 
-async def test_tcp_connector_certificate_error(loop: Any) -> None:
+async def test_tcp_connector_certificate_error(
+    loop: Any, start_connection: mock.AsyncMock
+) -> None:
     req = ClientRequest("GET", URL("https://127.0.0.1:443"), loop=loop)
 
     async def certificate_error(*args, **kwargs):
@@ -555,6 +558,40 @@ async def test_tcp_connector_certificate_error(loop: Any) -> None:
     assert isinstance(ctx.value, aiohttp.ClientSSLError)
 
 
+async def test_tcp_connector_server_hostname_default(
+    loop: Any, start_connection: mock.AsyncMock
+) -> None:
+    conn = aiohttp.TCPConnector()
+
+    with mock.patch.object(
+        conn._loop, "create_connection", autospec=True, spec_set=True
+    ) as create_connection:
+        create_connection.return_value = mock.Mock(), mock.Mock()
+
+        req = ClientRequest("GET", URL("https://127.0.0.1:443"), loop=loop)
+
+        with closing(await conn.connect(req, [], ClientTimeout())):
+            assert create_connection.call_args.kwargs["server_hostname"] == "127.0.0.1"
+
+
+async def test_tcp_connector_server_hostname_override(
+    loop: Any, start_connection: mock.AsyncMock
+) -> None:
+    conn = aiohttp.TCPConnector()
+
+    with mock.patch.object(
+        conn._loop, "create_connection", autospec=True, spec_set=True
+    ) as create_connection:
+        create_connection.return_value = mock.Mock(), mock.Mock()
+
+        req = ClientRequest(
+            "GET", URL("https://127.0.0.1:443"), loop=loop, server_hostname="localhost"
+        )
+
+        with closing(await conn.connect(req, [], ClientTimeout())):
+            assert create_connection.call_args.kwargs["server_hostname"] == "localhost"
+
+
 async def test_tcp_connector_multiple_hosts_errors(loop: Any) -> None:
     conn = aiohttp.TCPConnector()
 
@@ -564,6 +601,7 @@ async def test_tcp_connector_multiple_hosts_errors(loop: Any) -> None:
     ip4 = "192.168.1.4"
     ip5 = "192.168.1.5"
     ips = [ip1, ip2, ip3, ip4, ip5]
+    addrs_tried = []
     ips_tried = []
 
     fingerprint = hashlib.sha256(b"foo").digest()
@@ -593,11 +631,24 @@ async def test_tcp_connector_multiple_hosts_errors(loop: Any) -> None:
     os_error = certificate_error = ssl_error = fingerprint_error = False
     connected = False
 
+    async def start_connection(*args, **kwargs):
+        addr_infos: List[AddrInfoType] = kwargs["addr_infos"]
+
+        first_addr_info = addr_infos[0]
+        first_addr_info_addr = first_addr_info[-1]
+        addrs_tried.append(first_addr_info_addr)
+
+        mock_socket = mock.create_autospec(socket.socket, spec_set=True, instance=True)
+        mock_socket.getpeername.return_value = first_addr_info_addr
+        return mock_socket
+
     async def create_connection(*args, **kwargs):
         nonlocal os_error, certificate_error, ssl_error, fingerprint_error
         nonlocal connected
 
-        ip = args[1]
+        sock = kwargs["sock"]
+        addr_info = sock.getpeername()
+        ip = addr_info[0]
 
         ips_tried.append(ip)
 
@@ -614,6 +665,12 @@ async def test_tcp_connector_multiple_hosts_errors(loop: Any) -> None:
             raise ssl.SSLError
 
         if ip == ip4:
+            sock: socket.socket = kwargs["sock"]
+
+            # Close the socket since we are not actually connecting
+            # and we don't want to leak it.
+            sock.close()
+
             fingerprint_error = True
             tr = create_mocked_conn(loop)
             pr = create_mocked_conn(loop)
@@ -630,12 +687,21 @@ async def test_tcp_connector_multiple_hosts_errors(loop: Any) -> None:
                 if param == "peername":
                     return ("192.168.1.5", 12345)
 
+                if param == "socket":
+                    return sock
+
                 assert False, param
 
             tr.get_extra_info = get_extra_info
             return tr, pr
 
         if ip == ip5:
+            sock: socket.socket = kwargs["sock"]
+
+            # Close the socket since we are not actually connecting
+            # and we don't want to leak it.
+            sock.close()
+
             connected = True
             tr = create_mocked_conn(loop)
             pr = create_mocked_conn(loop)
@@ -658,13 +724,224 @@ async def test_tcp_connector_multiple_hosts_errors(loop: Any) -> None:
 
     conn._loop.create_connection = create_connection
 
-    established_connection = await conn.connect(req, [], ClientTimeout())
-    assert ips == ips_tried
+    with mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection", start_connection
+    ):
+        established_connection = await conn.connect(req, [], ClientTimeout())
+
+    assert ips_tried == ips
+    assert addrs_tried == [(ip, 443) for ip in ips]
 
     assert os_error
     assert certificate_error
     assert ssl_error
     assert fingerprint_error
+    assert connected
+
+    established_connection.close()
+
+
+@pytest.mark.parametrize(
+    ("happy_eyeballs_delay"),
+    [0.1, 0.25, None],
+)
+async def test_tcp_connector_happy_eyeballs(
+    loop: Any, happy_eyeballs_delay: Optional[float]
+) -> None:
+    conn = aiohttp.TCPConnector(happy_eyeballs_delay=happy_eyeballs_delay)
+
+    ip1 = "dead::beef::"
+    ip2 = "192.168.1.1"
+    ips = [ip1, ip2]
+    addrs_tried = []
+
+    req = ClientRequest(
+        "GET",
+        URL("https://mocked.host"),
+        loop=loop,
+    )
+
+    async def _resolve_host(host, port, traces=None):
+        return [
+            {
+                "hostname": host,
+                "host": ip,
+                "port": port,
+                "family": socket.AF_INET6 if ":" in ip else socket.AF_INET,
+                "proto": 0,
+                "flags": socket.AI_NUMERICHOST,
+            }
+            for ip in ips
+        ]
+
+    conn._resolve_host = _resolve_host
+
+    os_error = False
+    connected = False
+
+    async def sock_connect(*args, **kwargs):
+        addr = args[1]
+        nonlocal os_error
+
+        addrs_tried.append(addr)
+
+        if addr[0] == ip1:
+            os_error = True
+            raise OSError
+
+    async def create_connection(*args, **kwargs):
+        sock: socket.socket = kwargs["sock"]
+
+        # Close the socket since we are not actually connecting
+        # and we don't want to leak it.
+        sock.close()
+
+        nonlocal connected
+        connected = True
+        tr = create_mocked_conn(loop)
+        pr = create_mocked_conn(loop)
+        return tr, pr
+
+    conn._loop.sock_connect = sock_connect
+    conn._loop.create_connection = create_connection
+
+    established_connection = await conn.connect(req, [], ClientTimeout())
+
+    assert addrs_tried == [(ip1, 443, 0, 0), (ip2, 443)]
+
+    assert os_error
+    assert connected
+
+    established_connection.close()
+
+
+async def test_tcp_connector_interleave(loop: Any) -> None:
+    conn = aiohttp.TCPConnector(interleave=2)
+
+    ip1 = "192.168.1.1"
+    ip2 = "192.168.1.2"
+    ip3 = "dead::beef::"
+    ip4 = "aaaa::beef::"
+    ip5 = "192.168.1.5"
+    ips = [ip1, ip2, ip3, ip4, ip5]
+    success_ips = []
+    interleave = None
+
+    req = ClientRequest(
+        "GET",
+        URL("https://mocked.host"),
+        loop=loop,
+    )
+
+    async def _resolve_host(host, port, traces=None):
+        return [
+            {
+                "hostname": host,
+                "host": ip,
+                "port": port,
+                "family": socket.AF_INET6 if ":" in ip else socket.AF_INET,
+                "proto": 0,
+                "flags": socket.AI_NUMERICHOST,
+            }
+            for ip in ips
+        ]
+
+    conn._resolve_host = _resolve_host
+
+    async def start_connection(*args, **kwargs):
+        nonlocal interleave
+        addr_infos: List[AddrInfoType] = kwargs["addr_infos"]
+        interleave = kwargs["interleave"]
+        # Mock the 4th host connecting successfully
+        fourth_addr_info = addr_infos[3]
+        fourth_addr_info_addr = fourth_addr_info[-1]
+        mock_socket = mock.create_autospec(socket.socket, spec_set=True, instance=True)
+        mock_socket.getpeername.return_value = fourth_addr_info_addr
+        return mock_socket
+
+    async def create_connection(*args, **kwargs):
+        sock = kwargs["sock"]
+        addr_info = sock.getpeername()
+        ip = addr_info[0]
+
+        success_ips.append(ip)
+
+        sock: socket.socket = kwargs["sock"]
+        # Close the socket since we are not actually connecting
+        # and we don't want to leak it.
+        sock.close()
+        tr = create_mocked_conn(loop)
+        pr = create_mocked_conn(loop)
+        return tr, pr
+
+    conn._loop.create_connection = create_connection
+
+    with mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection", start_connection
+    ):
+        established_connection = await conn.connect(req, [], ClientTimeout())
+
+    assert success_ips == [ip4]
+    assert interleave == 2
+    established_connection.close()
+
+
+async def test_tcp_connector_family_is_respected(loop: Any) -> None:
+    conn = aiohttp.TCPConnector(family=socket.AF_INET)
+
+    ip1 = "dead::beef::"
+    ip2 = "192.168.1.1"
+    ips = [ip1, ip2]
+    addrs_tried = []
+
+    req = ClientRequest(
+        "GET",
+        URL("https://mocked.host"),
+        loop=loop,
+    )
+
+    async def _resolve_host(host, port, traces=None):
+        return [
+            {
+                "hostname": host,
+                "host": ip,
+                "port": port,
+                "family": socket.AF_INET6 if ":" in ip else socket.AF_INET,
+                "proto": 0,
+                "flags": socket.AI_NUMERICHOST,
+            }
+            for ip in ips
+        ]
+
+    conn._resolve_host = _resolve_host
+    connected = False
+
+    async def sock_connect(*args, **kwargs):
+        addr = args[1]
+        addrs_tried.append(addr)
+
+    async def create_connection(*args, **kwargs):
+        sock: socket.socket = kwargs["sock"]
+
+        # Close the socket since we are not actually connecting
+        # and we don't want to leak it.
+        sock.close()
+
+        nonlocal connected
+        connected = True
+        tr = create_mocked_conn(loop)
+        pr = create_mocked_conn(loop)
+        return tr, pr
+
+    conn._loop.sock_connect = sock_connect
+    conn._loop.create_connection = create_connection
+
+    established_connection = await conn.connect(req, [], ClientTimeout())
+
+    # We should only try the IPv4 address since we specified
+    # the family to be AF_INET
+    assert addrs_tried == [(ip2, 443)]
+
     assert connected
 
     established_connection.close()
@@ -762,7 +1039,6 @@ async def test_tcp_connector_dns_throttle_requests_exception_spread(loop: Any) -
 async def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
     loop: Any, dns_response: Any
 ) -> None:
-
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         conn = aiohttp.TCPConnector(use_dns_cache=True, ttl_dns_cache=10)
         m_resolver().resolve.return_value = dns_response()
@@ -789,7 +1065,6 @@ def dns_response_error(loop: Any):
 async def test_tcp_connector_cancel_dns_error_captured(
     loop: Any, dns_response_error: Any
 ) -> None:
-
     exception_handler_called = False
 
     def exception_handler(loop, context):
@@ -918,7 +1193,6 @@ async def test_tcp_connector_dns_tracing_cache_disabled(
 async def test_tcp_connector_dns_tracing_throttle_requests(
     loop: Any, dns_response: Any
 ) -> None:
-
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
     on_dns_cache_hit = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
@@ -982,7 +1256,6 @@ async def test_release_close_do_not_add_to_pool(loop: Any, key: Any) -> None:
 async def test_release_close_do_not_delete_existing_connections(
     loop: Any, key: Any
 ) -> None:
-
     proto1 = create_mocked_conn(loop)
 
     conn = aiohttp.BaseConnector()
@@ -1205,7 +1478,7 @@ async def test_cleanup_closed_disabled(loop: Any, mocker: Any) -> None:
 
 async def test_tcp_connector_ctor(loop: Any) -> None:
     conn = aiohttp.TCPConnector()
-    assert conn._ssl is None
+    assert conn._ssl is True
 
     assert conn.use_dns_cache
     assert conn.family == 0
@@ -1292,7 +1565,7 @@ async def test___get_ssl_context3(loop: Any) -> None:
     conn = aiohttp.TCPConnector(ssl=ctx)
     req = mock.Mock()
     req.is_ssl.return_value = True
-    req.ssl = None
+    req.ssl = True
     assert conn._get_ssl_context(req) is ctx
 
 
@@ -1318,7 +1591,7 @@ async def test___get_ssl_context6(loop: Any) -> None:
     conn = aiohttp.TCPConnector()
     req = mock.Mock()
     req.is_ssl.return_value = True
-    req.ssl = None
+    req.ssl = True
     assert conn._get_ssl_context(req) is conn._make_ssl_context(True)
 
 
@@ -1490,7 +1763,6 @@ async def test_connect_reuseconn_tracing(loop: Any, key: Any) -> None:
 
 
 async def test_connect_with_limit_and_limit_per_host(loop: Any, key: Any) -> None:
-
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
 
@@ -1589,7 +1861,6 @@ async def test_connect_with_no_limits(loop: Any, key: Any) -> None:
 
 
 async def test_connect_with_limit_cancelled(loop: Any) -> None:
-
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
 
@@ -1869,7 +2140,6 @@ async def test_cancelled_waiter(loop: Any) -> None:
 
 
 async def test_error_on_connection_with_cancelled_waiter(loop: Any, key: Any) -> None:
-
     conn = aiohttp.BaseConnector(limit=1)
 
     req = mock.Mock()
@@ -1931,7 +2201,7 @@ async def test_tcp_connector(aiohttp_client: Any, loop: Any) -> None:
     assert r.status == 200
 
 
-@needs_unix
+@pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
 async def test_unix_connector_not_found(loop: Any) -> None:
     connector = aiohttp.UnixConnector("/" + uuid.uuid4().hex)
 
@@ -1940,7 +2210,7 @@ async def test_unix_connector_not_found(loop: Any) -> None:
         await connector.connect(req, None, ClientTimeout())
 
 
-@needs_unix
+@pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
 async def test_unix_connector_permission(loop: Any) -> None:
     loop.create_unix_connection = make_mocked_coro(raise_exception=PermissionError())
     connector = aiohttp.UnixConnector("/" + uuid.uuid4().hex)
@@ -2030,8 +2300,7 @@ async def test_tcp_connector_raise_connector_ssl_error(
     session = aiohttp.ClientSession(connector=conn)
     url = srv.make_url("/")
 
-    err = aiohttp.ClientConnectorCertificateError
-    with pytest.raises(err) as ctx:
+    with pytest.raises(aiohttp.ClientConnectorCertificateError) as ctx:
         await session.get(url)
 
     assert isinstance(ctx.value, aiohttp.ClientConnectorCertificateError)
@@ -2040,8 +2309,20 @@ async def test_tcp_connector_raise_connector_ssl_error(
     await session.close()
 
 
+@pytest.mark.parametrize(
+    "host",
+    (
+        pytest.param("127.0.0.1", id="ip address"),
+        pytest.param("localhost", id="domain name"),
+        pytest.param("localhost.", id="fully-qualified domain name"),
+        pytest.param(
+            "localhost...", id="fully-qualified domain name with multiple trailing dots"
+        ),
+        pytest.param("príklad.localhost.", id="idna fully-qualified domain name"),
+    ),
+)
 async def test_tcp_connector_do_not_raise_connector_ssl_error(
-    aiohttp_server: Any, ssl_ctx: Any, client_ssl_ctx: Any
+    aiohttp_server: Any, ssl_ctx: Any, client_ssl_ctx: Any, host: str
 ) -> None:
     async def handler(request):
         return web.Response()
@@ -2053,10 +2334,33 @@ async def test_tcp_connector_do_not_raise_connector_ssl_error(
     port = unused_port()
     conn = aiohttp.TCPConnector(local_addr=("127.0.0.1", port))
 
+    # resolving something.localhost with the real DNS resolver does not work on macOS, so we have a stub.
+    async def _resolve_host(host, port, traces=None):
+        return [
+            {
+                "hostname": host,
+                "host": "127.0.0.1",
+                "port": port,
+                "family": socket.AF_INET,
+                "proto": 0,
+                "flags": socket.AI_NUMERICHOST,
+            },
+            {
+                "hostname": host,
+                "host": "::1",
+                "port": port,
+                "family": socket.AF_INET,
+                "proto": 0,
+                "flags": socket.AI_NUMERICHOST,
+            },
+        ]
+
+    conn._resolve_host = _resolve_host
+
     session = aiohttp.ClientSession(connector=conn)
     url = srv.make_url("/")
 
-    r = await session.get(url, ssl=client_ssl_ctx)
+    r = await session.get(url.with_host(host), ssl=client_ssl_ctx)
 
     r.release()
     first_conn = next(iter(conn._conns.values()))[0][0]
@@ -2179,10 +2483,27 @@ class TestDNSCacheTable:
         dns_cache_table.add("localhost", ["127.0.0.1"])
         assert not dns_cache_table.expired("localhost")
 
-    async def test_expired_ttl(self, loop: Any) -> None:
-        dns_cache_table = _DNSCacheTable(ttl=0.01)
+    def test_expired_ttl(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        dns_cache_table = _DNSCacheTable(ttl=1)
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 1)
         dns_cache_table.add("localhost", ["127.0.0.1"])
-        await asyncio.sleep(0.02)
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 2)
+        assert not dns_cache_table.expired("localhost")
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 3)
+        assert dns_cache_table.expired("localhost")
+
+    def test_never_expire(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        dns_cache_table = _DNSCacheTable(ttl=None)
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 1)
+        dns_cache_table.add("localhost", ["127.0.0.1"])
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 10000000)
+        assert not dns_cache_table.expired("localhost")
+
+    def test_always_expire(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        dns_cache_table = _DNSCacheTable(ttl=0)
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 1)
+        dns_cache_table.add("localhost", ["127.0.0.1"])
+        monkeypatch.setattr("aiohttp.connector.monotonic", lambda: 1.00001)
         assert dns_cache_table.expired("localhost")
 
     def test_next_addrs(self, dns_cache_table: Any) -> None:

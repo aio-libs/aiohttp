@@ -125,7 +125,6 @@ async def test_write_payload_chunked_filter_mutiple_chunks(
 async def test_write_payload_deflate_compression(
     protocol: Any, transport: Any, loop: Any
 ) -> None:
-
     COMPRESSED = b"x\x9cKI,I\x04\x00\x04\x00\x01\x9b"
     write = transport.write = mock.Mock()
     msg = http.StreamWriter(protocol, loop)
@@ -157,7 +156,6 @@ async def test_write_payload_deflate_and_chunked(
 async def test_write_payload_bytes_memoryview(
     buf: Any, protocol: Any, transport: Any, loop: Any
 ) -> None:
-
     msg = http.StreamWriter(protocol, loop)
 
     mv = memoryview(b"abcd")
@@ -260,6 +258,23 @@ async def test_write_to_closing_transport(
 
     with pytest.raises(ConnectionResetError):
         await msg.write(b"After closing")
+
+
+async def test_write_to_closed_transport(
+    protocol: Any, transport: Any, loop: Any
+) -> None:
+    """Test that writing to a closed transport raises ConnectionResetError.
+
+    The StreamWriter checks to see if protocol.transport is None before
+    writing to the transport. If it is None, it raises ConnectionResetError.
+    """
+    msg = http.StreamWriter(protocol, loop)
+
+    await msg.write(b"Before transport close")
+    protocol.transport = None
+
+    with pytest.raises(ConnectionResetError, match="Cannot write to closing transport"):
+        await msg.write(b"After transport closed")
 
 
 async def test_drain(protocol: Any, transport: Any, loop: Any) -> None:

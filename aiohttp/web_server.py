@@ -19,6 +19,7 @@ class Server:
         *,
         request_factory: Optional[_RequestFactory] = None,
         debug: Optional[bool] = None,
+        handler_cancellation: bool = False,
         **kwargs: Any,
     ) -> None:
         if debug is not None:
@@ -33,6 +34,7 @@ class Server:
         self.requests_count = 0
         self.request_handler = handler
         self.request_factory = request_factory or self._make_request
+        self.handler_cancellation = handler_cancellation
 
     @property
     def connections(self) -> List[RequestHandler]:
@@ -59,8 +61,12 @@ class Server:
     ) -> BaseRequest:
         return BaseRequest(message, payload, protocol, writer, task, self._loop)
 
+    def pre_shutdown(self) -> None:
+        for conn in self._connections:
+            conn.close()
+
     async def shutdown(self, timeout: Optional[float] = None) -> None:
-        coros = [conn.shutdown(timeout) for conn in self._connections]
+        coros = (conn.shutdown(timeout) for conn in self._connections)
         await asyncio.gather(*coros)
         self._connections.clear()
 
