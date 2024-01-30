@@ -25,6 +25,7 @@ __all__ = (
     "ClientOSError",
     "ClientConnectorError",
     "ClientProxyConnectionError",
+    "ClientRedirectionProtocolError",
     "ClientSSLError",
     "ClientConnectorSSLError",
     "ClientConnectorCertificateError",
@@ -321,3 +322,7 @@ class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore[misc]
             "[{0.certificate_error.__class__.__name__}: "
             "{0.certificate_error.args}]".format(self)
         )
+
+
+class ClientRedirectionProtocolError(ClientError, ValueError):
+    """Redirection protocol error."""

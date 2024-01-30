@@ -49,6 +49,7 @@ from .client_exceptions import (
     ClientOSError,
     ClientPayloadError,
     ClientProxyConnectionError,
+    ClientRedirectionProtocolError,
     ClientResponseError,
     ClientSSLError,
     ConnectionTimeoutError,
@@ -621,7 +622,10 @@ class ClientSession:
                         scheme = parsed_url.scheme
                         if scheme not in ("http", "https", ""):
                             resp.close()
-                            raise ValueError("Can redirect only to http or https")
+                            raise ClientRedirectionProtocolError(
+                                "Can redirect only to http or https"
+                            )
+
                         elif not scheme:
                             parsed_url = url.join(parsed_url)
 
