@@ -2105,8 +2105,8 @@ All exceptions are available as members of *aiohttp* module.
 
 .. exception:: InvalidRedirectUrl
 
-   Redirect URL used for fetching is malformed, e.g. it does not contain host
-   part.
+   Redirect URL in the server location header is malformed,
+   e.g. it does not contain host part.
 
    Derived from :exc:`InvalidURL`
 
