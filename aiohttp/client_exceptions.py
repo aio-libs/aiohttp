@@ -262,14 +262,11 @@ class InvalidURL(ClientError, ValueError):
 
     @property
     def url(self) -> StrOrURL:
-        return self.args[0]  # type: ignore[no-any-return]
+        return self._url  # type: ignore[no-any-return]
 
     @property
     def description(self) -> "str | None":
-        try:
-            return self.args[1]  # type: ignore[no-any-return]
-        except KeyError:
-            return None
+        return self._description
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} {self}>"
