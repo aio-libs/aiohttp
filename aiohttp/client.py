@@ -636,8 +636,11 @@ class ClientSession:
 
                         try:
                             redirect_origin = parsed_redirect_url.origin()
-                        except ValueError as e:
-                            raise InvalidRedirectURL(parsed_redirect_url) from e
+                        except ValueError as origin_val_err:
+                            raise InvalidRedirectURL(
+                                parsed_redirect_url,
+                                "Invalid redirect URL origin",
+                            ) from origin_val_err
 
                         if (
                             url.origin() != redirect_origin
