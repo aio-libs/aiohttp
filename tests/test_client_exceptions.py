@@ -300,6 +300,10 @@ class TestInvalidURL:
         err = client.InvalidURL(url=":wrong:url:")
         assert str(err) == ":wrong:url:"
 
+    def test_none_description(self) -> None:
+        err = client.InvalidURL(":wrong:url:")
+        assert err.description is None
+
     def test_str_with_description(self) -> None:
         err = client.InvalidURL(url=":wrong:url:", description=":description:")
         assert str(err) == ":wrong:url: - :description:"
