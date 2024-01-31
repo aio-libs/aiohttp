@@ -617,7 +617,10 @@ class ClientSession:
                                 r_url, encoded=not self._requote_redirect_url
                             )
                         except ValueError as e:
-                            raise InvalidRedirectURL(r_url) from e
+                            raise InvalidRedirectURL(
+                                r_url,
+                                "Server attempted redirecting to a location that does not look like a URL",
+                            ) from e
 
                         scheme = parsed_redirect_url.scheme
                         if scheme not in ("http", "https", ""):
