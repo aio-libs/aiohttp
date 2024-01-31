@@ -274,7 +274,7 @@ class InvalidURL(ClientError, ValueError):
     def __str__(self) -> str:
         if self._description:
             return f"{self._url} - {self._description}"
-        return self._url
+        return str(self._url)
 
 
 class InvalidRedirectURL(InvalidURL):
