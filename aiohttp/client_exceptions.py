@@ -252,6 +252,9 @@ class InvalidURL(ClientError, ValueError):
     def __init__(self, url: StrOrURL, description: Union[str, None] = None) -> None:
         # The type of url is not yarl.URL because the exception can be raised
         # on URL(url) call
+        self._url = url
+        self._description = description
+
         if description:
             super().__init__(url, description)
         else:
