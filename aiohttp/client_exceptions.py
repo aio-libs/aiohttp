@@ -262,7 +262,7 @@ class InvalidURL(ClientError, ValueError):
         return self.args[0]  # type: ignore[no-any-return]
 
     @property
-    def description(self) -> Optional[str]:
+    def description(self) -> "str | None":
         try:
             return self.args[1]  # type: ignore[no-any-return]
         except KeyError:
