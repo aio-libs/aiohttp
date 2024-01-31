@@ -2101,7 +2101,7 @@ All exceptions are available as members of *aiohttp* module.
 
     .. attribute:: description
 
-      Invalid URL description, :class:`str` instance.
+      Invalid URL description, :class:`str` instance or :data:`None`.
 
 .. exception:: InvalidRedirectURL
 
