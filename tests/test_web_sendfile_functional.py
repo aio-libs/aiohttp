@@ -298,7 +298,7 @@ async def test_static_file_with_content_encoding(
     aiohttp_client: Any, sender: Any, extension: str, expect_encoding: str
 ) -> None:
     """Test requesting of static compressed files returns correct content type and encoding."""
-    filepath = pathlib.Path(__file__).parent / ("hello.txt" + extension)
+    filepath = pathlib.Path(__file__).parent / f"hello.txt{extension}"
 
     async def handler(request):
         return sender(filepath)

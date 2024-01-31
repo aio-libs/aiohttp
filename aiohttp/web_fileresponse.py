@@ -137,7 +137,8 @@ class FileResponse(StreamResponse):
     ) -> Tuple[pathlib.Path, os.stat_result, Optional[str]]:
         """Return the file path, stat result, and encoding.
 
-        If an uncompressed file is returned, the encoding is set to ``None``.
+        If an uncompressed file is returned, the encoding is set to
+        :py:data:`None`.
 
         This method should be called from a thread executor
         since it calls os.stat which may block.
