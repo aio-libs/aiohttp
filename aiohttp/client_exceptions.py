@@ -272,7 +272,9 @@ class InvalidURL(ClientError, ValueError):
         return f"<{self.__class__.__name__} {self}>"
 
     def __str__(self) -> str:
-        return " - ".join(map(str, self.args))
+        if self._description:
+            return f"{self._url} - {self._description}"
+        return self._url
 
 
 class InvalidRedirectURL(InvalidURL):
