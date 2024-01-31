@@ -262,7 +262,7 @@ class InvalidURL(ClientError, ValueError):
 
     @property
     def url(self) -> StrOrURL:
-        return self._url  # type: ignore[no-any-return]
+        return self._url
 
     @property
     def description(self) -> "str | None":
