@@ -257,7 +257,7 @@ jobs:
       run: |
         python -m coverage xml
     - name: Upload coverage
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         file: ./coverage.xml
         flags: >-
