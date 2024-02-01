@@ -2458,25 +2458,25 @@ async def test_redirect_without_location_header(aiohttp_client: Any) -> None:
 
 
 @pytest.mark.parametrize(
-    "invalid_redirect_url",
+    "invalid_redirect_url, error_message_url",
     (
         # yarl.URL.__new__ raises ValueError
-        "http://:/",
-        "http://example.org:non_int_port/",
+        ("http://:/", "http://:/"),
+        ("http://example.org:non_int_port/", "http://example.org:non_int_port/"),
         # # yarl.URL.origin raises ValueError
-        "http:/",
-        "http:/example.com",
-        "http:///example.com",
-        "bluesky://d:i:d",
-        "call:+3801234567",
-        "skype:handle",
-        "slack://instance/room",
-        "steam:code",
-        "twitter://handle",
+        ("http:/", "http:///"),
+        ("http:/example.com", "http:///example.com"),
+        ("http:///example.com", "http:///example.com"),
+        ("bluesky://d:i:d", "bluesky://d:i:d"),
+        ("call:+3801234567", r"call:\+3801234567"),
+        ("skype:handle", "skype:handle"),
+        ("slack://instance/room", "slack://instance/room"),
+        ("steam:code", "steam:code"),
+        ("twitter://handle", "twitter://handle"),
     ),
 )
 async def test_invalid_redirect_url(
-    aiohttp_client: Any, invalid_redirect_url: Any
+    aiohttp_client: Any, invalid_redirect_url: Any, error_message_url: str
 ) -> None:
     headers = {hdrs.LOCATION: invalid_redirect_url}
 
@@ -2487,7 +2487,7 @@ async def test_invalid_redirect_url(
     app.router.add_get("/redirect", handler_request)
     client = await aiohttp_client(app)
 
-    with pytest.raises(InvalidRedirectURL):
+    with pytest.raises(InvalidRedirectURL, match=f"^{error_message_url} - [a-zA-Z]+"):
         await client.get("/redirect")
 
 
