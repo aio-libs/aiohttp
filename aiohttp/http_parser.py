@@ -45,7 +45,6 @@ from .http_exceptions import (
     TransferEncodingError,
 )
 from .http_writer import HttpVersion, HttpVersion10
-from .log import internal_logger
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import RawHeaders
 
