@@ -49,7 +49,7 @@ idna==3.4
     #   yarl
 iniconfig==2.0.0
     # via pytest
-multidict==6.0.4
+multidict==6.0.5
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
