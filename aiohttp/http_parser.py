@@ -753,12 +753,7 @@ class HttpPayloadParser:
         elif code != 204:
             self._type = ParseState.PARSE_UNTIL_EOF
         elif method in ("PUT", "POST"):
-            internal_logger.warning(  # pragma: no cover
-                "Content-Length or Transfer-Encoding header is required"
-            )
-            self._type = ParseState.PARSE_NONE
-            real_payload.feed_eof()
-            self.done = True
+            assert False
 
         self.payload = real_payload
 
