@@ -400,6 +400,8 @@ class StreamResponse(BaseClass, HeadersMixin):
         if self._compression_force:
             await self._do_start_compression(self._compression_force)
         else:
+            # Encoding comparisons should be case-insensitive
+            # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1
             accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "").lower()
             for coding in ContentCoding:
                 if coding.value in accept_encoding:
