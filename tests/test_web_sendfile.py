@@ -8,7 +8,10 @@ from aiohttp.web_fileresponse import FileResponse
 
 def test_using_gzip_if_header_present_and_file_available(loop) -> None:
     request = make_mocked_request(
-        "GET", "http://python.org/logo.png", headers={hdrs.ACCEPT_ENCODING: "gzip"}
+        "GET",
+        "http://python.org/logo.png",
+        # Header uses some uppercase to ensure case-insensitive treatment
+        headers={hdrs.ACCEPT_ENCODING: "GZip"},
     )
 
     gz_filepath = mock.create_autospec(Path, spec_set=True)
