@@ -752,8 +752,6 @@ class HttpPayloadParser:
                 self.done = True
         elif code != 204:
             self._type = ParseState.PARSE_UNTIL_EOF
-        elif method in ("PUT", "POST"):
-            assert False
 
         self.payload = real_payload
 
