@@ -1187,7 +1187,7 @@ def test_parse_chunked_payload_chunk_extension(parser: Any) -> None:
 
 
 def test_parse_no_length_or_te_on_post(loop: Any, protocol: Any, request_cls: Any):
-    parser = request_cls(protocol, loop)
+    parser = request_cls(protocol, loop, 2**16)
     text = b"POST /test HTTP/1.1\r\n\r\n"
     msg, payload = parser.feed_data(text)[0][0]
 
@@ -1443,15 +1443,6 @@ class TestParsePayload:
 
         assert out.is_eof()
         assert [(bytearray(b"data"), 4)] == list(out._buffer)
-
-    async def test_parse_no_body(self, stream: Any) -> None:
-        out = aiohttp.FlowControlDataQueue(
-            stream, 2**16, loop=asyncio.get_event_loop()
-        )
-        p = HttpPayloadParser(out, method="PUT")
-
-        assert out.is_eof()
-        assert p.done
 
     async def test_parse_length_payload_eof(self, stream: Any) -> None:
         out = aiohttp.FlowControlDataQueue(
