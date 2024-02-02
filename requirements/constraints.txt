@@ -107,7 +107,7 @@ jinja2==3.0.3
     #   towncrier
 markupsafe==2.0.1
     # via jinja2
-multidict==6.0.4
+multidict==6.0.5
     # via
     #   -r requirements/multidict.in
     #   -r requirements/runtime-deps.in
