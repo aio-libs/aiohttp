@@ -142,6 +142,8 @@ class FileResponse(StreamResponse):
 
     async def prepare(self, request: "BaseRequest") -> Optional[AbstractStreamWriter]:
         loop = asyncio.get_event_loop()
+        # Encoding comparisons should be case-insensitive
+        # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1
         check_for_gzipped_file = (
             "gzip" in request.headers.get(hdrs.ACCEPT_ENCODING, "").lower()
         )
