@@ -1186,6 +1186,14 @@ def test_parse_chunked_payload_chunk_extension(parser: Any) -> None:
     assert payload.is_eof()
 
 
+def test_parse_no_length_or_te_on_post(loop: Any, protocol: Any, request_cls: Any):
+    parser = request_cls(protocol, loop)
+    text = b"POST /test HTTP/1.1\r\n\r\n"
+    msg, payload = parser.feed_data(text)[0][0]
+
+    assert payload.is_eof()
+
+
 def test_parse_payload_response_without_body(
     loop: Any, protocol: Any, response_cls: Any
 ) -> None:
@@ -1429,7 +1437,7 @@ class TestParsePayload:
         out = aiohttp.FlowControlDataQueue(
             stream, 2**16, loop=asyncio.get_event_loop()
         )
-        p = HttpPayloadParser(out, readall=True)
+        p = HttpPayloadParser(out)
         p.feed_data(b"data")
         p.feed_eof()
 
@@ -1584,7 +1592,7 @@ class TestParsePayload:
         out = aiohttp.FlowControlDataQueue(
             stream, 2**16, loop=asyncio.get_event_loop()
         )
-        p = HttpPayloadParser(out, compression="deflate", readall=True)
+        p = HttpPayloadParser(out, compression="deflate")
         # Feeding one correct byte should be enough to choose exact
         # deflate decompressor
         p.feed_data(b"x", 1)
@@ -1596,7 +1604,7 @@ class TestParsePayload:
         out = aiohttp.FlowControlDataQueue(
             stream, 2**16, loop=asyncio.get_event_loop()
         )
-        p = HttpPayloadParser(out, compression="deflate", readall=True)
+        p = HttpPayloadParser(out, compression="deflate")
         # Feeding one wrong byte should be enough to choose exact
         # deflate decompressor
         p.feed_data(b"K", 1)
