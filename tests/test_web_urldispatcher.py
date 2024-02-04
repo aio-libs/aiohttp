@@ -14,30 +14,42 @@ from aiohttp.web_urldispatcher import Resource, SystemRoute
 
 
 @pytest.mark.parametrize(
-    "show_index,status,prefix,data",
+    "show_index,status,prefix,request_path,data",
     [
-        pytest.param(False, 403, "/", None, id="index_forbidden"),
+        pytest.param(False, 403, "/", "/", None, id="index_forbidden"),
         pytest.param(
             True,
             200,
             "/",
-            b"<html>\n<head>\n<title>Index of /.</title>\n"
-            b"</head>\n<body>\n<h1>Index of /.</h1>\n<ul>\n"
-            b'<li><a href="/my_dir">my_dir/</a></li>\n'
-            b'<li><a href="/my_file">my_file</a></li>\n'
-            b"</ul>\n</body>\n</html>",
-            id="index_root",
+            "/",
+            b"<html>\n<head>\n<title>Index of /.</title>\n</head>\n<body>\n<h1>Index of"
+            b' /.</h1>\n<ul>\n<li><a href="/%3Cimg%20src=0%20onerror=alert(1)%3E.dir">&l'
+            b't;img src=0 onerror=alert(1)&gt;.dir/</a></li>\n<li><a href="/%3Cimg%20sr'
+            b'c=0%20onerror=alert(1)%3E.txt">&lt;img src=0 onerror=alert(1)&gt;.txt</a></l'
+            b"i>\n</ul>\n</body>\n</html>",
         ),
         pytest.param(
             True,
             200,
             "/static",
-            b"<html>\n<head>\n<title>Index of /.</title>\n"
-            b"</head>\n<body>\n<h1>Index of /.</h1>\n<ul>\n"
-            b'<li><a href="/static/my_dir">my_dir/</a></li>\n'
-            b'<li><a href="/static/my_file">my_file</a></li>\n'
-            b"</ul>\n</body>\n</html>",
+            "/static",
+            b"<html>\n<head>\n<title>Index of /.</title>\n</head>\n<body>\n<h1>Index of"
+            b' /.</h1>\n<ul>\n<li><a href="/static/%3Cimg%20src=0%20onerror=alert(1)%3E.'
+            b'dir">&lt;img src=0 onerror=alert(1)&gt;.dir/</a></li>\n<li><a href="/stat'
+            b'ic/%3Cimg%20src=0%20onerror=alert(1)%3E.txt">&lt;img src=0 onerror=alert(1)&'
+            b"gt;.txt</a></li>\n</ul>\n</body>\n</html>",
             id="index_static",
+        ),
+        pytest.param(
+            True,
+            200,
+            "/static",
+            "/static/<img src=0 onerror=alert(1)>.dir",
+            b"<html>\n<head>\n<title>Index of /&lt;img src=0 onerror=alert(1)&gt;.dir</t"
+            b"itle>\n</head>\n<body>\n<h1>Index of /&lt;img src=0 onerror=alert(1)&gt;.di"
+            b'r</h1>\n<ul>\n<li><a href="/static/%3Cimg%20src=0%20onerror=alert(1)%3E.di'
+            b'r/my_file_in_dir">my_file_in_dir</a></li>\n</ul>\n</body>\n</html>',
+            id="index_subdir",
         ),
     ],
 )
@@ -47,14 +59,17 @@ async def test_access_root_of_static_handler(
     show_index: bool,
     status: int,
     prefix: str,
+    request_path: str,
     data: Optional[bytes],
 ) -> None:
     # Tests the operation of static file server.
     # Try to access the root of static file server, and make
     # sure that correct HTTP statuses are returned depending if we directory
     # index should be shown or not.
-    my_file = tmp_path / "my_file"
-    my_dir = tmp_path / "my_dir"
+    # Ensure that html in file names is escaped.
+    # Ensure that links are url quoted.
+    my_file = tmp_path / "<img src=0 onerror=alert(1)>.txt"
+    my_dir = tmp_path / "<img src=0 onerror=alert(1)>.dir"
     my_dir.mkdir()
     my_file_in_dir = my_dir / "my_file_in_dir"
 
@@ -71,7 +86,7 @@ async def test_access_root_of_static_handler(
     client = await aiohttp_client(app)
 
     # Request the root of the static directory.
-    async with await client.get(prefix) as r:
+    async with await client.get(request_path) as r:
         assert r.status == status
 
         if data:
