@@ -1125,7 +1125,7 @@ async def test_HTTP_302_REDIRECT_NON_HTTP(aiohttp_client: Any) -> None:
     app.router.add_get("/redirect", redirect)
     client = await aiohttp_client(app)
 
-    with pytest.raises(InvalidUrlRedirectClientError):
+    with pytest.raises(NonHttpUrlRedirectClientError):
         await client.get("/redirect")
 
 
