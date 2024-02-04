@@ -2487,7 +2487,7 @@ async def test_invalid_redirect_url(
     app.router.add_get("/redirect", handler_request)
     client = await aiohttp_client(app)
 
-    with pytest.raises(InvalidRedirectURL, match=f"^{error_message_url} - [a-zA-Z]+"):
+    with pytest.raises(InvalidRedirectURL, match=fr"^{error_message_url} - [a-zA-Z]+"):
         await client.get("/redirect")
 
 
