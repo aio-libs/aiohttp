@@ -40,7 +40,11 @@ __all__ = (
     "ContentTypeError",
     "ClientPayloadError",
     "InvalidURL",
-    "InvalidRedirectURL",
+    "InvalidUrlClientError",
+    "RedirectClientError",
+    "NonHttpUrlClientError",
+    "InvalidUrlRedirectClientError",
+    "NonHttpUrlRedirectClientError",
 )
 
 
@@ -277,8 +281,24 @@ class InvalidURL(ClientError, ValueError):
         return str(self._url)
 
 
-class InvalidRedirectURL(InvalidURL):
-    """Invalid redirect URL error."""
+class InvalidUrlClientError(InvalidURL):
+    """Invalid URL client error."""
+
+
+class RedirectClientError(ClientError):
+    """Client redirect error."""
+
+
+class NonHttpUrlClientError(InvalidURL):
+    """Non http URL client error."""
+
+
+class InvalidUrlRedirectClientError(InvalidUrlClientError, RedirectClientError):
+    """Invalid URL redirect client error."""
+
+
+class NonHttpUrlRedirectClientError(NonHttpUrlClientError, RedirectClientError):
+    """Non http URL redirect client error."""
 
 
 class ClientSSLError(ClientConnectorError):

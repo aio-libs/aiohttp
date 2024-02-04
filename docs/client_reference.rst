@@ -2103,12 +2103,35 @@ All exceptions are available as members of *aiohttp* module.
 
       Invalid URL description, :class:`str` instance or :data:`None`.
 
-.. exception:: InvalidRedirectURL
+.. exception:: InvalidUrlClientError
 
-   Redirect URL in the server location header is malformed,
-   e.g. it does not contain host part or is not a URL at all.
+   Base class for all errors related to client url.
 
    Derived from :exc:`InvalidURL`
+
+.. exception:: RedirectClientError
+
+   Base class for all errors related to client redirects.
+
+   Derived from :exc:`ClientError`
+
+.. exception:: NonHttpUrlClientError
+
+   Base class for all errors related to non http client urls.
+
+   Derived from :exc:`InvalidURL`
+
+.. exception:: InvalidUrlRedirectClientError
+
+   Redirect URL is malformed, e.g. it does not contain host part.
+
+   Derived from :exc:`InvalidUrlClientError` and `RedirectClientError`
+
+.. exception:: NonHttpUrlRedirectClientError
+
+   Redirect URL does not contain http[s] schema.
+
+   Derived from :exc:`RedirectClientError` and `NonHttpUrlClientError`
 
 
 .. class:: ContentDisposition
@@ -2328,4 +2351,16 @@ Hierarchy of exceptions
 
   * :exc:`InvalidURL`
 
-    * :exc:`InvalidRedirectURL`
+    * :exc:`InvalidUrlClientError`
+
+      * :exc:`InvalidUrlRedirectClientError`
+
+    * :exc:`NonHttpUrlClientError`
+
+      * :exc:`NonHttpUrlRedirectClientError`
+
+  * :exc:`RedirectClientError`
+
+    * :exc:`InvalidUrlRedirectClientError`
+
+    * :exc:`NonHttpUrlRedirectClientError`

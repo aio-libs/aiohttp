@@ -53,8 +53,12 @@ from .client_exceptions import (
     ClientSSLError,
     ConnectionTimeoutError,
     ContentTypeError,
-    InvalidRedirectURL,
     InvalidURL,
+    InvalidUrlClientError,
+    InvalidUrlRedirectClientError,
+    NonHttpUrlClientError,
+    NonHttpUrlRedirectClientError,
+    RedirectClientError,
     ServerConnectionError,
     ServerDisconnectedError,
     ServerFingerprintMismatch,
@@ -109,7 +113,11 @@ __all__ = (
     "ConnectionTimeoutError",
     "ContentTypeError",
     "InvalidURL",
-    "InvalidRedirectURL",
+    "InvalidUrlClientError",
+    "RedirectClientError",
+    "NonHttpUrlClientError",
+    "InvalidUrlRedirectClientError",
+    "NonHttpUrlRedirectClientError",
     "ServerConnectionError",
     "ServerDisconnectedError",
     "ServerFingerprintMismatch",
@@ -617,7 +625,7 @@ class ClientSession:
                                 r_url, encoded=not self._requote_redirect_url
                             )
                         except ValueError as e:
-                            raise InvalidRedirectURL(
+                            raise InvalidUrlRedirectClientError(
                                 r_url,
                                 "Server attempted redirecting to a location that does not look like a URL",
                             ) from e
@@ -625,7 +633,7 @@ class ClientSession:
                         scheme = parsed_redirect_url.scheme
                         if scheme not in ("http", "https", ""):
                             resp.close()
-                            raise InvalidRedirectURL(
+                            raise NonHttpUrlRedirectClientError(
                                 r_url, "Can redirect only to http or https"
                             )
                         elif not scheme:
@@ -640,7 +648,7 @@ class ClientSession:
                         try:
                             redirect_origin = parsed_redirect_url.origin()
                         except ValueError as origin_val_err:
-                            raise InvalidRedirectURL(
+                            raise InvalidUrlRedirectClientError(
                                 parsed_redirect_url,
                                 "Invalid redirect URL origin",
                             ) from origin_val_err

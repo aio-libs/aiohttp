@@ -22,7 +22,8 @@ import aiohttp
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver
 from aiohttp.client_exceptions import (
-    InvalidRedirectURL,
+    InvalidUrlRedirectClientError,
+    NonHttpUrlRedirectClientError,
     SocketTimeoutError,
     TooManyRedirects,
 )
@@ -1124,7 +1125,7 @@ async def test_HTTP_302_REDIRECT_NON_HTTP(aiohttp_client: Any) -> None:
     app.router.add_get("/redirect", redirect)
     client = await aiohttp_client(app)
 
-    with pytest.raises(InvalidRedirectURL):
+    with pytest.raises(InvalidUrlRedirectClientError):
         await client.get("/redirect")
 
 
@@ -2458,25 +2459,36 @@ async def test_redirect_without_location_header(aiohttp_client: Any) -> None:
 
 
 @pytest.mark.parametrize(
-    "invalid_redirect_url, error_message_url",
+    "invalid_redirect_url, error_message_url, expected_exception_class",
     (
         # yarl.URL.__new__ raises ValueError
-        ("http://:/", "http://:/"),
-        ("http://example.org:non_int_port/", "http://example.org:non_int_port/"),
+        ("http://:/", "http://:/", InvalidUrlRedirectClientError),
+        (
+            "http://example.org:non_int_port/",
+            "http://example.org:non_int_port/",
+            InvalidUrlRedirectClientError,
+        ),
         # # yarl.URL.origin raises ValueError
-        ("http:/", "http:///"),
-        ("http:/example.com", "http:///example.com"),
-        ("http:///example.com", "http:///example.com"),
-        ("bluesky://d:i:d", "bluesky://d:i:d"),
-        ("call:+3801234567", r"call:\+3801234567"),
-        ("skype:handle", "skype:handle"),
-        ("slack://instance/room", "slack://instance/room"),
-        ("steam:code", "steam:code"),
-        ("twitter://handle", "twitter://handle"),
+        ("http:/", "http:///", InvalidUrlRedirectClientError),
+        ("http:/example.com", "http:///example.com", InvalidUrlRedirectClientError),
+        ("http:///example.com", "http:///example.com", InvalidUrlRedirectClientError),
+        ("bluesky://d:i:d", "bluesky://d:i:d", InvalidUrlRedirectClientError),
+        ("call:+3801234567", r"call:\+3801234567", NonHttpUrlRedirectClientError),
+        ("skype:handle", "skype:handle", NonHttpUrlRedirectClientError),
+        (
+            "slack://instance/room",
+            "slack://instance/room",
+            NonHttpUrlRedirectClientError,
+        ),
+        ("steam:code", "steam:code", NonHttpUrlRedirectClientError),
+        ("twitter://handle", "twitter://handle", NonHttpUrlRedirectClientError),
     ),
 )
 async def test_invalid_redirect_url(
-    aiohttp_client: Any, invalid_redirect_url: Any, error_message_url: str
+    aiohttp_client: Any,
+    invalid_redirect_url: Any,
+    error_message_url: str,
+    expected_exception_class: Any,
 ) -> None:
     headers = {hdrs.LOCATION: invalid_redirect_url}
 
@@ -2487,7 +2499,9 @@ async def test_invalid_redirect_url(
     app.router.add_get("/redirect", handler_request)
     client = await aiohttp_client(app)
 
-    with pytest.raises(InvalidRedirectURL, match=rf"^{error_message_url} - [a-zA-Z]+"):
+    with pytest.raises(
+        expected_exception_class, match=rf"^{error_message_url} - [a-zA-Z]+"
+    ):
         await client.get("/redirect")
 
 
