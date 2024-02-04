@@ -2129,7 +2129,7 @@ All exceptions are available as members of *aiohttp* module.
 
 .. exception:: NonHttpUrlRedirectClientError
 
-   Redirect URL does not contain http[s] schema.
+   Redirect URL does not contain http schema.
 
    Derived from :exc:`RedirectClientError` and `NonHttpUrlClientError`
 
