@@ -193,7 +193,7 @@ six==1.16.0
     # via
     #   python-dateutil
     #   virtualenv
-slotscheck==0.17.1
+slotscheck==0.17.3
     # via -r requirements/lint.in
 snowballstemmer==2.1.0
     # via sphinx
