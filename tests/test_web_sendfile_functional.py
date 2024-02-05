@@ -1,5 +1,6 @@
 # type: ignore
 import asyncio
+import gzip
 import pathlib
 import socket
 import zlib
@@ -14,6 +15,19 @@ try:
     import ssl
 except ImportError:
     ssl = None
+
+
+HELLO_AIOHTTP = b"Hello aiohttp! :-)\n"
+
+
+@pytest.fixture(scope="module")
+def hello_txt(tmp_path_factory) -> pathlib.Path:
+    """Create a temp path with hello.txt and compressed versions."""
+    hello = tmp_path_factory.mktemp("hello-") / "hello.txt"
+    hello.write_bytes(HELLO_AIOHTTP)
+    hello_gzip = hello.with_suffix(f"{hello.suffix}.gz")
+    hello_gzip.write_bytes(gzip.compress(HELLO_AIOHTTP))
+    return hello
 
 
 @pytest.fixture
@@ -198,9 +212,10 @@ async def test_static_file_with_content_type(aiohttp_client: Any, sender: Any) -
 
 
 async def test_static_file_custom_content_type(
-    aiohttp_client: Any, sender: Any
+    hello_txt: pathlib.Path, aiohttp_client: Any, sender: Any
 ) -> None:
-    filepath = pathlib.Path(__file__).parent / "hello.txt.gz"
+    """Test that custom type without encoding is returned for encoded request."""
+    filepath = hello_txt.with_suffix(f"{hello_txt.suffix}.gz")
 
     async def handler(request):
         resp = sender(filepath, chunk_size=16)
@@ -213,24 +228,21 @@ async def test_static_file_custom_content_type(
 
     resp = await client.get("/")
     assert resp.status == 200
-    body = await resp.read()
-    with filepath.open("rb") as f:
-        content = f.read()
-        assert content == body
-    assert resp.headers["Content-Type"] == "application/pdf"
     assert resp.headers.get("Content-Encoding") is None
+    assert resp.headers["Content-Type"] == "application/pdf"
+    assert await resp.read() == filepath.read_bytes()
     resp.close()
     await resp.release()
     await client.close()
 
 
 async def test_static_file_custom_content_type_compress(
-    aiohttp_client: Any, sender: Any
+    hello_txt: pathlib.Path, aiohttp_client: Any, sender: Any
 ):
-    filepath = pathlib.Path(__file__).parent / "hello.txt"
+    """Test that custom type with encoding is returned for unencoded request."""
 
     async def handler(request):
-        resp = sender(filepath, chunk_size=16)
+        resp = sender(hello_txt, chunk_size=16)
         resp.content_type = "application/pdf"
         return resp
 
@@ -240,23 +252,21 @@ async def test_static_file_custom_content_type_compress(
 
     resp = await client.get("/")
     assert resp.status == 200
-    body = await resp.read()
-    assert b"hello aiohttp\n" == body
-    assert resp.headers["Content-Type"] == "application/pdf"
     assert resp.headers.get("Content-Encoding") == "gzip"
+    assert resp.headers["Content-Type"] == "application/pdf"
+    assert await resp.read() == HELLO_AIOHTTP
     resp.close()
     await resp.release()
     await client.close()
 
 
-async def test_static_file_with_gziped_counter_part_enable_compression(
-    aiohttp_client: Any, sender: Any
+async def test_static_file_with_encoding_and_enable_compression(
+    hello_txt: pathlib.Path, aiohttp_client: Any, sender: Any
 ):
-    """Test that enable_compression does not double compress when a .gz file is also present."""
-    filepath = pathlib.Path(__file__).parent / "hello.txt"
+    """Test that enable_compression does not double compress when an encoded file is also present."""
 
     async def handler(request):
-        resp = sender(filepath)
+        resp = sender(hello_txt)
         resp.enable_compression()
         return resp
 
@@ -266,35 +276,31 @@ async def test_static_file_with_gziped_counter_part_enable_compression(
 
     resp = await client.get("/")
     assert resp.status == 200
-    body = await resp.read()
-    assert body == b"hello aiohttp\n"
-    assert resp.headers["Content-Type"] == "text/plain"
     assert resp.headers.get("Content-Encoding") == "gzip"
+    assert resp.headers["Content-Type"] == "text/plain"
+    assert await resp.read() == HELLO_AIOHTTP
     resp.close()
     await resp.release()
     await client.close()
 
 
 async def test_static_file_with_content_encoding(
-    aiohttp_client: Any, sender: Any
+    hello_txt: pathlib.Path, aiohttp_client: Any, sender: Any
 ) -> None:
-    filepath = pathlib.Path(__file__).parent / "hello.txt.gz"
+    """Test that correct encoded files are returned when available."""
 
     async def handler(request):
-        return sender(filepath)
+        return sender(hello_txt.with_suffix(f"{hello_txt.suffix}.gz"))
 
     app = web.Application()
     app.router.add_get("/", handler)
     client = await aiohttp_client(app)
 
     resp = await client.get("/")
-    assert 200 == resp.status
-    body = await resp.read()
-    assert b"hello aiohttp\n" == body
-    ct = resp.headers["CONTENT-TYPE"]
-    assert "text/plain" == ct
-    encoding = resp.headers["CONTENT-ENCODING"]
-    assert "gzip" == encoding
+    assert resp.status == 200
+    assert resp.headers.get("Content-Encoding") == "gzip"
+    assert resp.headers["Content-Type"] == "text/plain"
+    assert await resp.read() == HELLO_AIOHTTP
     resp.close()
 
     await resp.release()
