@@ -4,13 +4,13 @@ import os
 import pathlib
 import sys
 from contextlib import suppress
+from types import MappingProxyType
 from typing import (
     IO,
     TYPE_CHECKING,
     Any,
     Awaitable,
     Callable,
-    Dict,
     Final,
     Optional,
     Tuple,
@@ -44,9 +44,9 @@ if sys.version_info < (3, 9):
     mimetypes.encodings_map[".br"] = "br"
 
 # File extension to IANA encodings map that will be checked in the order defined.
-ENCODING_EXTENSIONS: Final[Dict[str, str]] = {
-    ext: mimetypes.encodings_map[ext] for ext in (".br", ".gz")
-}
+ENCODING_EXTENSIONS = MappingProxyType(
+    {ext: mimetypes.encodings_map[ext] for ext in (".br", ".gz")}
+)
 
 
 class FileResponse(StreamResponse):
