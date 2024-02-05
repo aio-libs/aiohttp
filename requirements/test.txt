@@ -65,7 +65,7 @@ packaging==23.1
     # via
     #   gunicorn
     #   pytest
-pluggy==1.2.0
+pluggy==1.4.0
     # via pytest
 proxy-py==2.4.4rc4
     # via -r requirements/test.in
@@ -77,7 +77,7 @@ pydantic==2.2.0
     # via python-on-whales
 pydantic-core==2.6.0
     # via pydantic
-pytest==7.4.4
+pytest==8.0.0
     # via
     #   -r requirements/test.in
     #   pytest-cov
