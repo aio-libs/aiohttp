@@ -4,7 +4,7 @@ import gzip
 import pathlib
 import socket
 import zlib
-from typing import Any, Iterable
+from typing import Any, Iterable, Optional
 
 import pytest
 
@@ -21,13 +21,18 @@ HELLO_AIOHTTP = b"Hello aiohttp! :-)\n"
 
 
 @pytest.fixture(scope="module")
-def hello_txt(tmp_path_factory) -> pathlib.Path:
-    """Create a temp path with hello.txt and compressed versions."""
-    hello = tmp_path_factory.mktemp("hello-") / "hello.txt"
-    hello.write_bytes(HELLO_AIOHTTP)
-    hello_gzip = hello.with_suffix(f"{hello.suffix}.gz")
-    hello_gzip.write_bytes(gzip.compress(HELLO_AIOHTTP))
-    return hello
+def hello_txt(request, tmp_path_factory) -> pathlib.Path:
+    """Create a temp path with hello.txt and compressed versions.
+
+    The uncompressed text file path is returned by default. Alternatively, an
+    indirect parameter can be passed with an encoding to get a compressed path.
+    """
+    txt = tmp_path_factory.mktemp("hello-") / "hello.txt"
+    hello = {None: txt, "gzip": txt.with_suffix(f"{txt.suffix}.gz")}
+    hello[None].write_bytes(HELLO_AIOHTTP)
+    hello["gzip"].write_bytes(gzip.compress(HELLO_AIOHTTP))
+    encoding = getattr(request, "param", None)
+    return hello[encoding]
 
 
 @pytest.fixture
@@ -211,14 +216,14 @@ async def test_static_file_with_content_type(aiohttp_client: Any, sender: Any) -
     await client.close()
 
 
+@pytest.mark.parametrize("hello_txt", ["gzip"], indirect=True)
 async def test_static_file_custom_content_type(
     hello_txt: pathlib.Path, aiohttp_client: Any, sender: Any
 ) -> None:
     """Test that custom type without encoding is returned for encoded request."""
-    filepath = hello_txt.with_suffix(f"{hello_txt.suffix}.gz")
 
     async def handler(request):
-        resp = sender(filepath, chunk_size=16)
+        resp = sender(hello_txt, chunk_size=16)
         resp.content_type = "application/pdf"
         return resp
 
@@ -230,7 +235,7 @@ async def test_static_file_custom_content_type(
     assert resp.status == 200
     assert resp.headers.get("Content-Encoding") is None
     assert resp.headers["Content-Type"] == "application/pdf"
-    assert await resp.read() == filepath.read_bytes()
+    assert await resp.read() == hello_txt.read_bytes()
     resp.close()
     await resp.release()
     await client.close()
@@ -260,14 +265,18 @@ async def test_static_file_custom_content_type_compress(
     await client.close()
 
 
+@pytest.mark.parametrize("forced_compression", [None, web.ContentCoding.gzip])
 async def test_static_file_with_encoding_and_enable_compression(
-    hello_txt: pathlib.Path, aiohttp_client: Any, sender: Any
+    hello_txt: pathlib.Path,
+    aiohttp_client: Any,
+    sender: Any,
+    forced_compression: Optional[web.ContentCoding],
 ):
     """Test that enable_compression does not double compress when an encoded file is also present."""
 
     async def handler(request):
         resp = sender(hello_txt)
-        resp.enable_compression()
+        resp.enable_compression(forced_compression)
         return resp
 
     app = web.Application()
@@ -284,13 +293,16 @@ async def test_static_file_with_encoding_and_enable_compression(
     await client.close()
 
 
+@pytest.mark.parametrize(
+    ("hello_txt", "expect_encoding"), [["gzip"] * 2], indirect=["hello_txt"]
+)
 async def test_static_file_with_content_encoding(
-    hello_txt: pathlib.Path, aiohttp_client: Any, sender: Any
+    hello_txt: pathlib.Path, aiohttp_client: Any, sender: Any, expect_encoding: str
 ) -> None:
-    """Test that correct encoded files are returned when available."""
+    """Test requesting of static compressed files returns correct content type and encoding."""
 
     async def handler(request):
-        return sender(hello_txt.with_suffix(f"{hello_txt.suffix}.gz"))
+        return sender(hello_txt)
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -298,7 +310,7 @@ async def test_static_file_with_content_encoding(
 
     resp = await client.get("/")
     assert resp.status == 200
-    assert resp.headers.get("Content-Encoding") == "gzip"
+    assert resp.headers.get("Content-Encoding") == expect_encoding
     assert resp.headers["Content-Type"] == "text/plain"
     assert await resp.read() == HELLO_AIOHTTP
     resp.close()
