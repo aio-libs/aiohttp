@@ -1,1 +1,1 @@
-Created ``hello.txt.gz`` dynamically and improved related assertions -- by :user:`steverep`.
+Started dynamically producing ``hello.txt.gz`` during testing and improved related assertions -- by :user:`steverep`.
