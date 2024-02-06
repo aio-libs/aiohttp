@@ -197,10 +197,11 @@ async def test_static_file_with_content_type(aiohttp_client: Any, sender: Any) -
     await client.close()
 
 
+@pytest.mark.parametrize("extension", [".gz", ".br"])
 async def test_static_file_custom_content_type(
-    aiohttp_client: Any, sender: Any
+    aiohttp_client: Any, sender: Any, extension: str
 ) -> None:
-    filepath = pathlib.Path(__file__).parent / "hello.txt.gz"
+    filepath = pathlib.Path(__file__).parent / f"hello.txt{extension}"
 
     async def handler(request):
         resp = sender(filepath, chunk_size=16)
