@@ -1,1 +1,0 @@
-renamed a shadowed test and re-enabled F811 to catch future cases -- by :user:`alexmac`.
