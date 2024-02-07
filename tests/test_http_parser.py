@@ -865,7 +865,9 @@ def test_http_request_parser_utf8_request_line(parser: Any) -> None:
     assert msg.compression is None
     assert not msg.upgrade
     assert not msg.chunked
-    assert msg.url.path == URL("/P%C3%BCnktchen\udca0\udcef\udcb7").path
+    # python HTTP parser depends on Cython and CPython URL to match
+    # .. but yarl.URL("/abs") is not equal to URL.build(path="/abs"), see #6409
+    assert msg.url == URL.build(path="/Pünktchen\udca0\udcef\udcb7", encoded=True)
 
 
 def test_http_request_parser_utf8(parser: Any) -> None:
