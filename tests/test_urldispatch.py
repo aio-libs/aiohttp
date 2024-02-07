@@ -1148,10 +1148,10 @@ def test_subapp_iter(app: Any) -> None:
 
 @pytest.mark.parametrize(
     "route_name",
-    [
+    (
         "invalid name",
         "class",
-    ],
+    ),
 )
 def test_invalid_route_name(router: Any, route_name: str) -> None:
     with pytest.raises(ValueError):
