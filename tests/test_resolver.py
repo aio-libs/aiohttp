@@ -154,11 +154,6 @@ async def test_threaded_negative_lookup() -> None:
         await resolver.resolve("doesnotexist.bla")
 
 
-async def test_close_for_threaded_resolver(loop) -> None:
-    resolver = ThreadedResolver(loop=loop)
-    await resolver.close()
-
-
 async def test_threaded_negative_lookup_with_unknown_result() -> None:
     loop = Mock()
 
@@ -182,6 +177,9 @@ async def test_threaded_negative_lookup_with_unknown_result() -> None:
         res = await resolver.resolve("www.python.org")
     assert len(res) == 0
 
+
+async def test_close_for_threaded_resolver(loop) -> None:
+    resolver = ThreadedResolver()
     await resolver.close()
 
 
