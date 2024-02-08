@@ -1137,7 +1137,7 @@ def test_subapp_iter(app) -> None:
         "class",
     ),
 )
-def test_invalid_route_name(router: Any, route_name: str) -> None:
+def test_invalid_route_name(router, route_name: str) -> None:
     with pytest.raises(ValueError):
         router.add_get("/", make_handler(), name=route_name)
 
