@@ -1,0 +1,1 @@
+Two definitions for "test_invalid_route_name" existed, only one was being run. Refactored them into a single parameterized test. Enabled lint rule to prevent regression. -- by :user:`alexmac`.
