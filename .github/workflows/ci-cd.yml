@@ -252,6 +252,7 @@ jobs:
           }},Py-${{
             steps.python-install.outputs.python-version
           }}
+        token: ${{ secrets.CODECOV_TOKEN }}
 
   check:  # This job does nothing and is only used for the branch protection
     if: always()
