@@ -1130,7 +1130,6 @@ def test_subapp_iter(app) -> None:
     assert list(resource) == [r1, r2]
 
 
-
 @pytest.mark.parametrize(
     "route_name",
     (
