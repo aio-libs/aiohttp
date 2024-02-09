@@ -115,13 +115,13 @@ jobs:
       uses: actions/cache@v4.0.0
       id: cache
       with:
-        key: llhttp-${{ hashFiles('vendor/llhttp/package.json', 'vendor/llhttp/src/**/*') }}
+        key: llhttp-${{ hashFiles('vendor/llhttp/package*.json', 'vendor/llhttp/src/**/*') }}
         path:  vendor/llhttp/build
     - name: Setup NodeJS
       if: steps.cache.outputs.cache-hit != 'true'
       uses: actions/setup-node@v4
       with:
-        node-version: '14'
+        node-version: 18
     - name: Generate llhttp sources
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
@@ -268,6 +268,7 @@ jobs:
           }},Py-${{
             steps.python-install.outputs.python-version
           }}
+        token: ${{ secrets.CODECOV_TOKEN }}
 
   check:  # This job does nothing and is only used for the branch protection
     if: always()
