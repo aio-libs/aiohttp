@@ -622,25 +622,9 @@ _pad: Dict[bytes, str] = {
 }
 
 
-@pytest.fixture
-def xfail_c_parser_empty_header(request) -> None:
-    if not all(
-        (request.getfixturevalue(name) == b"") for name in ("pad1", "pad2", "hdr")
-    ):
-        return
-    if isinstance(request.getfixturevalue("parser"), HttpRequestParserPy):
-        return
-    request.node.add_marker(
-        pytest.mark.xfail(
-            reason="Regression test for Py parser. May match C behaviour later.",
-        )
-    )
-
-
 @pytest.mark.parametrize("hdr", [b"", b"foo"], ids=["name-empty", "with-name"])
 @pytest.mark.parametrize("pad2", _pad.keys(), ids=["post-" + n for n in _pad.values()])
 @pytest.mark.parametrize("pad1", _pad.keys(), ids=["pre-" + n for n in _pad.values()])
-@pytest.mark.usefixtures("xfail_c_parser_empty_header")
 def test_invalid_header_spacing(
     parser: Any, pad1: bytes, pad2: bytes, hdr: bytes
 ) -> None:
@@ -654,8 +638,6 @@ def test_invalid_header_spacing(
 
 
 def test_empty_header_name(parser: Any) -> None:
-    if not isinstance(parser, HttpRequestParserPy):
-        pytest.xfail("Regression test for Py parser. May match C behaviour later.")
     text = b"GET /test HTTP/1.1\r\n" b":test\r\n\r\n"
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
