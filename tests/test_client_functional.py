@@ -2490,8 +2490,10 @@ async def test_invalid_redirect_url(
     error_message_url: str,
     expected_exception_class: Any,
 ) -> None:
+    headers = {hdrs.LOCATION: invalid_redirect_url}
+
     async def generate_redirecting_response(request):
-        raise web.HTTPFound(location=invalid_redirect_url)
+        return web.Response(status=301, headers=headers)
 
     app = web.Application()
     app.router.add_get("/redirect", generate_redirecting_response)

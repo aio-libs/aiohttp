@@ -2119,7 +2119,7 @@ All exceptions are available as members of *aiohttp* module.
 
    Base class for all errors related to non http client urls.
 
-   Derived from :exc:`InvalidURL`
+   Derived from :exc:`ClientError`
 
 .. exception:: InvalidUrlRedirectClientError
 

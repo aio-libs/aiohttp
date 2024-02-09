@@ -289,7 +289,7 @@ class RedirectClientError(ClientError):
     """Client redirect error."""
 
 
-class NonHttpUrlClientError(InvalidURL):
+class NonHttpUrlClientError(ClientError):
     """Non http URL client error."""
 
 

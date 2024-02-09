@@ -633,9 +633,7 @@ class ClientSession:
                         scheme = parsed_redirect_url.scheme
                         if scheme not in ("http", "https", ""):
                             resp.close()
-                            raise NonHttpUrlRedirectClientError(
-                                r_url, "Can redirect only to http or https"
-                            )
+                            raise NonHttpUrlRedirectClientError(r_url)
                         elif not scheme:
                             parsed_redirect_url = url.join(parsed_redirect_url)
 
