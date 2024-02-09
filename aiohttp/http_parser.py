@@ -719,7 +719,7 @@ class HttpPayloadParser:
         lax: bool = False,
     ) -> None:
         self._length = 0
-        self._type = ParseState.PARSE_NONE
+        self._type = ParseState.PARSE_UNTIL_EOF
         self._chunk = ChunkState.PARSE_CHUNKED_SIZE
         self._chunk_size = 0
         self._chunk_tail = b""
@@ -749,8 +749,6 @@ class HttpPayloadParser:
             if self._length == 0:
                 real_payload.feed_eof()
                 self.done = True
-        elif code != 204:
-            self._type = ParseState.PARSE_UNTIL_EOF
 
         self.payload = real_payload
 
