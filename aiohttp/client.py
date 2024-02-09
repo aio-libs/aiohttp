@@ -416,6 +416,9 @@ class ClientSession:
         except ValueError as e:
             raise InvalidURL(str_or_url) from e
 
+        if url.scheme not in ("http", "https", ""):
+            raise NonHttpUrlClientError(url)
+
         skip_headers = set(self._skip_auto_headers)
         if skip_auto_headers is not None:
             for i in skip_auto_headers:

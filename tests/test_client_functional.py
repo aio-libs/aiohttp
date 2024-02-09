@@ -22,7 +22,9 @@ import aiohttp
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver
 from aiohttp.client_exceptions import (
+    InvalidURL,
     InvalidUrlRedirectClientError,
+    NonHttpUrlClientError,
     NonHttpUrlRedirectClientError,
     SocketTimeoutError,
     TooManyRedirects,
@@ -2458,30 +2460,63 @@ async def test_redirect_without_location_header(aiohttp_client: Any) -> None:
     assert data == body
 
 
+INVALID_URL_WITH_ERROR_MESSAGE = (
+    # yarl.URL.__new__ raises ValueError
+    ("http://:/", "http://:/"),
+    ("http://example.org:non_int_port/", "http://example.org:non_int_port/"),
+    # # yarl.URL.origin raises ValueError
+    ("http:/", "http:///"),
+    ("http:/example.com", "http:///example.com"),
+    ("http:///example.com", "http:///example.com"),
+    ("bluesky://d:i:d", "bluesky://d:i:d"),
+)
+
+NON_HTTP_URL_WITH_ERROR_MESSAGE = (
+    ("call:+3801234567", r"call:\+3801234567"),
+    ("skype:handle", "skype:handle"),
+    ("slack://instance/room", "slack://instance/room"),
+    ("steam:code", "steam:code"),
+    ("twitter://handle", "twitter://handle"),
+)
+
+
+@pytest.mark.parametrize(
+    ("url", "error_message_url", "expected_exception_class"),
+    (
+        *(
+            (url, message, InvalidURL)
+            for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE
+        ),
+        *(
+            (url, message, NonHttpUrlClientError)
+            for (url, message) in NON_HTTP_URL_WITH_ERROR_MESSAGE
+        ),
+    ),
+)
+async def test_invalid_and_non_http_url(
+    url: Any, error_message_url: Any, expected_exception_class: Any
+) -> None:
+    session = aiohttp.ClientSession()
+    try:
+        with pytest.raises(
+            expected_exception_class, match=rf"^{error_message_url}( - [A-Za-z ]+)?"
+        ):
+            await session.get(url)
+    finally:
+        await session.close()
+
+
 @pytest.mark.parametrize(
     ("invalid_redirect_url", "error_message_url", "expected_exception_class"),
     (
-        # yarl.URL.__new__ raises ValueError
-        ("http://:/", "http://:/", InvalidUrlRedirectClientError),
-        (
-            "http://example.org:non_int_port/",
-            "http://example.org:non_int_port/",
-            InvalidUrlRedirectClientError,
+        *(
+            (url, message, InvalidUrlRedirectClientError)
+            for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE
         ),
-        # # yarl.URL.origin raises ValueError
-        ("http:/", "http:///", InvalidUrlRedirectClientError),
-        ("http:/example.com", "http:///example.com", InvalidUrlRedirectClientError),
-        ("http:///example.com", "http:///example.com", InvalidUrlRedirectClientError),
-        ("bluesky://d:i:d", "bluesky://d:i:d", InvalidUrlRedirectClientError),
-        ("call:+3801234567", r"call:\+3801234567", NonHttpUrlRedirectClientError),
-        ("skype:handle", "skype:handle", NonHttpUrlRedirectClientError),
-        (
-            "slack://instance/room",
-            "slack://instance/room",
-            NonHttpUrlRedirectClientError,
+        *(
+            (url, message, NonHttpUrlRedirectClientError)
+            for (url, message) in NON_HTTP_URL_WITH_ERROR_MESSAGE
         ),
-        ("steam:code", "steam:code", NonHttpUrlRedirectClientError),
-        ("twitter://handle", "twitter://handle", NonHttpUrlRedirectClientError),
     ),
 )
 async def test_invalid_redirect_url(
@@ -2500,7 +2535,47 @@ async def test_invalid_redirect_url(
     client = await aiohttp_client(app)
 
     with pytest.raises(
-        expected_exception_class, match=rf"^{error_message_url} - [a-zA-Z]+"
+        expected_exception_class, match=rf"^{error_message_url}( - [A-Za-z ]+)?"
+    ):
+        await client.get("/redirect")
+
+
+@pytest.mark.parametrize(
+    ("invalid_redirect_url", "error_message_url", "expected_exception_class"),
+    (
+        *(
+            (url, message, InvalidUrlRedirectClientError)
+            for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE
+        ),
+        *(
+            (url, message, NonHttpUrlRedirectClientError)
+            for (url, message) in NON_HTTP_URL_WITH_ERROR_MESSAGE
+        ),
+    ),
+)
+async def test_invalid_redirect_url_multiple_redirects(
+    aiohttp_client: Any,
+    invalid_redirect_url: Any,
+    error_message_url: str,
+    expected_exception_class: Any,
+) -> None:
+    app = web.Application()
+
+    for path, location in [
+        ("/redirect", "/redirect1"),
+        ("/redirect1", "/redirect2"),
+        ("/redirect2", invalid_redirect_url),
+    ]:
+
+        async def generate_redirecting_response(request):
+            return web.Response(status=301, headers={hdrs.LOCATION: location})
+
+        app.router.add_get(path, generate_redirecting_response)
+
+    client = await aiohttp_client(app)
+
+    with pytest.raises(
+        expected_exception_class, match=rf"^{error_message_url}( - [A-Za-z ]+)?"
     ):
         await client.get("/redirect")
 
