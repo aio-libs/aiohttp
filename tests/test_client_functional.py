@@ -2459,7 +2459,7 @@ async def test_redirect_without_location_header(aiohttp_client: Any) -> None:
 
 
 @pytest.mark.parametrize(
-    "invalid_redirect_url, error_message_url, expected_exception_class",
+    ("invalid_redirect_url", "error_message_url", "expected_exception_class"),
     (
         # yarl.URL.__new__ raises ValueError
         ("http://:/", "http://:/", InvalidUrlRedirectClientError),
