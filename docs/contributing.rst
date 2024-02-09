@@ -1,12 +1,12 @@
 .. _aiohttp-contributing:
 
 Contributing
-************
+============
 
 (:doc:`contributing-admins`)
 
 Instructions for contributors
-=============================
+-----------------------------
 
 In order to make a clone of the GitHub_ repo: open the link and press the "Fork" button on the upper-right menu of the web page.
 
@@ -25,7 +25,7 @@ Workflow is pretty straightforward:
 
   4. Make sure all tests passed
 
-  5. Add a file into the ``CHANGES`` folder (see `Making a pull request`_ for how).
+  5. Add a file into the ``CHANGES`` folder (see `Changelog update`_ for how).
 
   6. Commit changes to your own aiohttp clone
 
@@ -53,7 +53,7 @@ Workflow is pretty straightforward:
 
 
 Preconditions for running aiohttp test suite
-============================================
+--------------------------------------------
 
 We expect you to use a python virtual environment to run our tests.
 
@@ -116,7 +116,7 @@ Congratulations, you are ready to run the test suite!
 
 
 Run autoformatter
-=================
+-----------------
 
 The project uses black_ + isort_ formatters to keep the source code style.
 Please run `make fmt` after every change before starting tests.
@@ -127,7 +127,7 @@ Please run `make fmt` after every change before starting tests.
 
 
 Run aiohttp test suite
-======================
+----------------------
 
 After all the preconditions are met you can run tests typing the next
 command:
@@ -159,7 +159,7 @@ Any extra texts (print statements and so on) should be removed.
      make test-3.10-no-extensions
 
 Code coverage
-=============
+-------------
 
 We use *codecov.io* as an indispensable tool for analyzing our coverage
 results. Visit https://codecov.io/gh/aio-libs/aiohttp to see coverage
@@ -226,7 +226,7 @@ $ python -m webbrowser -n file://"$(pwd)"/htmlcov/index.html
 ```
 
 Documentation
-=============
+-------------
 
 We encourage documentation improvements.
 
@@ -242,7 +242,7 @@ Once it finishes it will output the index html page
 Go to the link and make sure your doc changes looks good.
 
 Spell checking
-==============
+--------------
 
 We use ``pyenchant`` and ``sphinxcontrib-spelling`` for running spell
 checker for documentation:
@@ -261,18 +261,29 @@ To run spell checker on Linux box you should install it first:
    $ pip install sphinxcontrib-spelling
 
 
+Preparing a pull request
+------------------------
+
+When making a pull request, please include a short summary of the changes
+and a reference to any issue tickets that the PR is intended to solve.
+All PRs with code changes should include tests. All changes should
+include a changelog entry.
+
+
+Changelog update
+----------------
 
 .. include:: ../CHANGES/README.rst
 
 
-Making a Pull Request
-=====================
+Making a pull request
+---------------------
 
 After finishing all steps make a GitHub_ Pull Request with *master* base branch.
 
 
 Backporting
-===========
+-----------
 
 All Pull Requests are created against *master* git branch.
 
@@ -313,7 +324,7 @@ like *needs backport to 3.1*.
    merging the backport.
 
 How to become an aiohttp committer
-==================================
+----------------------------------
 
 Contribute!
 

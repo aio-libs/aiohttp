@@ -1,0 +1,1 @@
+Treated values of ``Accept-Encoding`` header as case-insensitive when checking for gzip files -- by :user:`steverep`.
