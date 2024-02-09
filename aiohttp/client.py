@@ -177,6 +177,7 @@ DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60)
 
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
+HTTP_SCHEMA_SET = frozenset({"http", "https", ""})
 
 _RetType = TypeVar("_RetType")
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
@@ -416,7 +417,7 @@ class ClientSession:
         except ValueError as e:
             raise InvalidURL(str_or_url) from e
 
-        if url.scheme not in ("http", "https", ""):
+        if url.scheme not in HTTP_SCHEMA_SET:
             raise NonHttpUrlClientError(url)
 
         skip_headers = set(self._skip_auto_headers)
@@ -634,7 +635,7 @@ class ClientSession:
                             ) from e
 
                         scheme = parsed_redirect_url.scheme
-                        if scheme not in ("http", "https", ""):
+                        if scheme not in HTTP_SCHEMA_SET:
                             resp.close()
                             raise NonHttpUrlRedirectClientError(r_url)
                         elif not scheme:
