@@ -1130,14 +1130,16 @@ def test_subapp_iter(app) -> None:
     assert list(resource) == [r1, r2]
 
 
-def test_invalid_route_name(router) -> None:
+@pytest.mark.parametrize(
+    "route_name",
+    (
+        "invalid name",
+        "class",
+    ),
+)
+def test_invalid_route_name(router, route_name: str) -> None:
     with pytest.raises(ValueError):
-        router.add_get("/", make_handler(), name="invalid name")
-
-
-def test_invalid_route_name(router) -> None:
-    with pytest.raises(ValueError):
-        router.add_get("/", make_handler(), name="class")  # identifier
+        router.add_get("/", make_handler(), name=route_name)
 
 
 def test_frozen_router(router) -> None:
