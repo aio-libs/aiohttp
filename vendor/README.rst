@@ -12,7 +12,7 @@ newer release, add ``--remote``)::
 Then build ``llhttp``::
 
     cd vendor/llhttp/
-    npm install
+    npm ci
     make
 
 Then build our parser::
