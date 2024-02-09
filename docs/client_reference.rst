@@ -2355,9 +2355,9 @@ Hierarchy of exceptions
 
       * :exc:`InvalidUrlRedirectClientError`
 
-    * :exc:`NonHttpUrlClientError`
+  * :exc:`NonHttpUrlClientError`
 
-      * :exc:`NonHttpUrlRedirectClientError`
+    * :exc:`NonHttpUrlRedirectClientError`
 
   * :exc:`RedirectClientError`
 
