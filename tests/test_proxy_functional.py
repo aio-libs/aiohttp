@@ -458,7 +458,7 @@ async def test_proxy_http_multi_conn_limit(proxy_test_server: Any, loop: Any) ->
 
 
 @pytest.mark.xfail
-async def xtest_proxy_https_connect(proxy_test_server: Any, get_request: Any) -> None:
+async def test_proxy_https_connect(proxy_test_server: Any, get_request: Any) -> None:
     proxy = await proxy_test_server()
     url = "https://www.google.com.ua/search?q=aiohttp proxy"
 
@@ -474,7 +474,7 @@ async def xtest_proxy_https_connect(proxy_test_server: Any, get_request: Any) ->
 
 
 @pytest.mark.xfail
-async def xtest_proxy_https_connect_with_port(
+async def test_proxy_https_connect_with_port(
     proxy_test_server: Any, get_request: Any
 ) -> None:
     proxy = await proxy_test_server()
@@ -492,7 +492,7 @@ async def xtest_proxy_https_connect_with_port(
 
 
 @pytest.mark.xfail
-async def xtest_proxy_https_send_body(proxy_test_server: Any, loop: Any) -> None:
+async def test_proxy_https_send_body(proxy_test_server: Any, loop: Any) -> None:
     sess = aiohttp.ClientSession()
     proxy = await proxy_test_server()
     proxy.return_value = {"status": 200, "body": b"1" * (2**20)}
@@ -507,7 +507,7 @@ async def xtest_proxy_https_send_body(proxy_test_server: Any, loop: Any) -> None
 
 
 @pytest.mark.xfail
-async def xtest_proxy_https_idna_support(
+async def test_proxy_https_idna_support(
     proxy_test_server: Any, get_request: Any
 ) -> None:
     url = "https://éé.com/"
@@ -546,7 +546,7 @@ async def test_proxy_https_bad_response(
 
 
 @pytest.mark.xfail
-async def xtest_proxy_https_auth(proxy_test_server: Any, get_request: Any) -> None:
+async def test_proxy_https_auth(proxy_test_server: Any, get_request: Any) -> None:
     url = "https://secure.aiohttp.io/path"
     auth = aiohttp.BasicAuth("user", "pass")
 
@@ -588,7 +588,7 @@ async def xtest_proxy_https_auth(proxy_test_server: Any, get_request: Any) -> No
 
 
 @pytest.mark.xfail
-async def xtest_proxy_https_acquired_cleanup(proxy_test_server: Any, loop: Any) -> None:
+async def test_proxy_https_acquired_cleanup(proxy_test_server: Any, loop: Any) -> None:
     url = "https://secure.aiohttp.io/path"
 
     conn = aiohttp.TCPConnector()
@@ -612,7 +612,7 @@ async def xtest_proxy_https_acquired_cleanup(proxy_test_server: Any, loop: Any) 
 
 
 @pytest.mark.xfail
-async def xtest_proxy_https_acquired_cleanup_force(
+async def test_proxy_https_acquired_cleanup_force(
     proxy_test_server: Any, loop: Any
 ) -> None:
     url = "https://secure.aiohttp.io/path"
@@ -638,7 +638,7 @@ async def xtest_proxy_https_acquired_cleanup_force(
 
 
 @pytest.mark.xfail
-async def xtest_proxy_https_multi_conn_limit(proxy_test_server: Any, loop: Any):
+async def test_proxy_https_multi_conn_limit(proxy_test_server: Any, loop: Any):
     url = "https://secure.aiohttp.io/path"
     limit, multi_conn_num = 1, 5
 
@@ -818,7 +818,7 @@ async def test_proxy_from_env_http_without_auth_from_wrong_netrc(
 
 
 @pytest.mark.xfail
-async def xtest_proxy_from_env_https(
+async def test_proxy_from_env_https(
     proxy_test_server: Any, get_request: Any, mocker: Any
 ) -> None:
     url = "https://aiohttp.io/path"
@@ -836,7 +836,7 @@ async def xtest_proxy_from_env_https(
 
 
 @pytest.mark.xfail
-async def xtest_proxy_from_env_https_with_auth(
+async def test_proxy_from_env_https_with_auth(
     proxy_test_server: Any, get_request: Any, mocker: Any
 ) -> None:
     url = "https://aiohttp.io/path"
