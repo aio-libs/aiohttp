@@ -253,15 +253,11 @@ def proxy_test_server(aiohttp_raw_server: Any, loop: Any, monkeypatch: Any):
 
 @pytest.fixture()
 def get_request(loop: Any):
-    async def _request(method="GET", *, url, trust_env=False, **kwargs):
+    async def _request(method="GET", *, url, trust_env=False, **kwargs) -> None:
         connector = aiohttp.TCPConnector(ssl=False)
-        client = aiohttp.ClientSession(connector=connector, trust_env=trust_env)
-        try:
-            resp = await client.request(method, url, **kwargs)
-            await resp.release()
-            return resp
-        finally:
-            await client.close()
+        async with aiohttp.ClientSession(connector=connector, trust_env=trust_env) as sess:
+            async with client.request(method, url, **kwargs):
+                return
 
     return _request
 
