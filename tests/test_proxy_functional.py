@@ -258,7 +258,7 @@ def get_request(loop: Any):
         async with aiohttp.ClientSession(
             connector=connector, trust_env=trust_env
         ) as sess:
-            async with client.request(method, url, **kwargs):
+            async with sess.request(method, url, **kwargs):
                 return
 
     return _request
