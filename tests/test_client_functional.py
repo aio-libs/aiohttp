@@ -22,6 +22,7 @@ import aiohttp
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver
 from aiohttp.client_exceptions import (
+    InvalidURL,
     InvalidUrlClientError,
     InvalidUrlRedirectClientError,
     NonHttpUrlClientError,
@@ -2460,15 +2461,17 @@ async def test_redirect_without_location_header(aiohttp_client: Any) -> None:
     assert data == body
 
 
-INVALID_URL_WITH_ERROR_MESSAGE = (
+INVALID_URL_WITH_ERROR_MESSAGE_YARL_NEW = (
     # yarl.URL.__new__ raises ValueError
     ("http://:/", "http://:/"),
     ("http://example.org:non_int_port/", "http://example.org:non_int_port/"),
+)
+
+INVALID_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN = (
     # # yarl.URL.origin raises ValueError
     ("http:/", "http:///"),
     ("http:/example.com", "http:///example.com"),
     ("http:///example.com", "http:///example.com"),
-    ("bluesky://profile/d:i:d", "bluesky://profile/d:i:d"),
 )
 
 NON_HTTP_URL_WITH_ERROR_MESSAGE = (
@@ -2477,6 +2480,7 @@ NON_HTTP_URL_WITH_ERROR_MESSAGE = (
     ("slack://instance/room", "slack://instance/room"),
     ("steam:code", "steam:code"),
     ("twitter://handle", "twitter://handle"),
+    ("bluesky://profile/d:i:d", "bluesky://profile/d:i:d"),
 )
 
 
@@ -2485,7 +2489,11 @@ NON_HTTP_URL_WITH_ERROR_MESSAGE = (
     (
         *(
             (url, message, InvalidUrlClientError)
-            for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE
+            for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE_YARL_NEW
+        ),
+        *(
+            (url, message, InvalidURL)
+            for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN
         ),
         *(
             (url, message, NonHttpUrlClientError)
@@ -2508,7 +2516,8 @@ async def test_invalid_and_non_http_url(
     (
         *(
             (url, message, InvalidUrlRedirectClientError)
-            for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE
+            for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN
+            + INVALID_URL_WITH_ERROR_MESSAGE_YARL_NEW
         ),
         *(
             (url, message, NonHttpUrlRedirectClientError)
@@ -2542,7 +2551,8 @@ async def test_invalid_redirect_url(
     (
         *(
             (url, message, InvalidUrlRedirectClientError)
-            for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE
+            for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN
+            + INVALID_URL_WITH_ERROR_MESSAGE_YARL_NEW
         ),
         *(
             (url, message, NonHttpUrlRedirectClientError)
