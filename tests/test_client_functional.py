@@ -2496,14 +2496,11 @@ NON_HTTP_URL_WITH_ERROR_MESSAGE = (
 async def test_invalid_and_non_http_url(
     url: Any, error_message_url: Any, expected_exception_class: Any
 ) -> None:
-    session = aiohttp.ClientSession()
-    try:
+    async with aiohttp.ClientSession() as http_session:
         with pytest.raises(
             expected_exception_class, match=rf"^{error_message_url}( - [A-Za-z ]+)?"
         ):
-            await session.get(url)
-    finally:
-        await session.close()
+            await http_session.get(url)
 
 
 @pytest.mark.parametrize(
