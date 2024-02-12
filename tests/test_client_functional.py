@@ -2472,7 +2472,7 @@ INVALID_URL_WITH_ERROR_MESSAGE = (
 )
 
 NON_HTTP_URL_WITH_ERROR_MESSAGE = (
-    ("call:+3801234567", r"call:\+3801234567"),
+    ("call:+380123456789", r"call:\+380123456789"),
     ("skype:handle", "skype:handle"),
     ("slack://instance/room", "slack://instance/room"),
     ("steam:code", "steam:code"),
