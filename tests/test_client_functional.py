@@ -23,6 +23,7 @@ from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver
 from aiohttp.client_exceptions import (
     InvalidURL,
+    InvalidUrlClientError,
     InvalidUrlRedirectClientError,
     NonHttpUrlClientError,
     NonHttpUrlRedirectClientError,
