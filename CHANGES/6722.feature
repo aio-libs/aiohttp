@@ -8,4 +8,5 @@ are raised instead of :py:exc:`ValueError` or :py:exc:`~aiohttp.InvalidURL` when
 :py:exc:`~aiohttp.NonHttpUrlClientError` are base for them.
 
 The :py:exc:`~aiohttp.InvalidURL` now exposes a ``description`` property with the text explanation of the error details.
-by :user:`setla`.
+
+-- by :user:`setla`
