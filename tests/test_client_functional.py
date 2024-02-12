@@ -2468,7 +2468,7 @@ INVALID_URL_WITH_ERROR_MESSAGE = (
     ("http:/", "http:///"),
     ("http:/example.com", "http:///example.com"),
     ("http:///example.com", "http:///example.com"),
-    ("bluesky://d:i:d", "bluesky://d:i:d"),
+    ("bluesky://profile/d:i:d", "bluesky://profile/d:i:d"),
 )
 
 NON_HTTP_URL_WITH_ERROR_MESSAGE = (
