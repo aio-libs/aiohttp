@@ -415,7 +415,8 @@ class ClientSession:
         try:
             url = self._build_url(str_or_url)
         except ValueError as e:
-            raise InvalidURL(str_or_url) from e
+            raise 
+InvalidUrlClientError(str_or_url) from e
 
         if url.scheme not in HTTP_SCHEMA_SET:
             raise NonHttpUrlClientError(url)

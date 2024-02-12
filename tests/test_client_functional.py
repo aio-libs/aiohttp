@@ -2484,7 +2484,7 @@ NON_HTTP_URL_WITH_ERROR_MESSAGE = (
     ("url", "error_message_url", "expected_exception_class"),
     (
         *(
-            (url, message, InvalidURL)
+            (url, message, InvalidUrlClientError)
             for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE
         ),
         *(
