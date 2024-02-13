@@ -244,7 +244,7 @@ async def test_static_file_custom_content_type(
 async def test_static_file_custom_content_type_compress(
     hello_txt: pathlib.Path, aiohttp_client: Any, sender: Any
 ):
-    """Test that custom type with encoding is returned for unencoded request."""
+    """Test that custom type with encoding is returned for unencoded requests."""
 
     async def handler(request):
         resp = sender(hello_txt, chunk_size=16)
