@@ -299,7 +299,7 @@ async def test_static_file_with_encoding_and_enable_compression(
 async def test_static_file_with_content_encoding(
     hello_txt: pathlib.Path, aiohttp_client: Any, sender: Any, expect_encoding: str
 ) -> None:
-    """Test requesting of static compressed files returns correct content type and encoding."""
+    """Test requesting static compressed files returns the correct content type and encoding."""
 
     async def handler(request):
         return sender(hello_txt)
