@@ -477,7 +477,8 @@ class ClientSession:
                         # NOTE: Bail early, otherwise, causes `InvalidURL` through
                         # NOTE: `self._request_class()` below.
                         err_exc_cls = (
-                            InvalidUrlRedirectClientError if redirects
+                            InvalidUrlRedirectClientError
+                            if redirects
                             else InvalidUrlClientError
                         )
                         raise err_exc_cls(url)
