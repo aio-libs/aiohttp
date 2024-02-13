@@ -2,10 +2,10 @@
 
 import asyncio
 import warnings
-from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Optional, Tuple, Union
 
 from .http_parser import RawResponseMessage
-from .typedefs import LooseHeaders
+from .typedefs import LooseHeaders, StrOrURL
 
 try:
     import ssl
@@ -39,6 +39,11 @@ __all__ = (
     "ContentTypeError",
     "ClientPayloadError",
     "InvalidURL",
+    "InvalidUrlClientError",
+    "RedirectClientError",
+    "NonHttpUrlClientError",
+    "InvalidUrlRedirectClientError",
+    "NonHttpUrlRedirectClientError",
 )
 
 
@@ -271,17 +276,52 @@ class InvalidURL(ClientError, ValueError):
 
     # Derive from ValueError for backward compatibility
 
-    def __init__(self, url: Any) -> None:
+    def __init__(self, url: StrOrURL, description: Union[str, None] = None) -> None:
         # The type of url is not yarl.URL because the exception can be raised
         # on URL(url) call
-        super().__init__(url)
+        self._url = url
+        self._description = description
+
+        if description:
+            super().__init__(url, description)
+        else:
+            super().__init__(url)
 
     @property
-    def url(self) -> Any:
-        return self.args[0]
+    def url(self) -> StrOrURL:
+        return self._url
+
+    @property
+    def description(self) -> "str | None":
+        return self._description
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {self.url}>"
+        return f"<{self.__class__.__name__} {self}>"
+
+    def __str__(self) -> str:
+        if self._description:
+            return f"{self._url} - {self._description}"
+        return str(self._url)
+
+
+class InvalidUrlClientError(InvalidURL):
+    """Invalid URL client error."""
+
+
+class RedirectClientError(ClientError):
+    """Client redirect error."""
+
+
+class NonHttpUrlClientError(ClientError):
+    """Non http URL client error."""
+
+
+class InvalidUrlRedirectClientError(InvalidUrlClientError, RedirectClientError):
+    """Invalid URL redirect client error."""
+
+
+class NonHttpUrlRedirectClientError(NonHttpUrlClientError, RedirectClientError):
+    """Non http URL redirect client error."""
 
 
 class ClientSSLError(ClientConnectorError):
