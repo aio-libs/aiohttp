@@ -2125,13 +2125,13 @@ All exceptions are available as members of *aiohttp* module.
 
    Redirect URL is malformed, e.g. it does not contain host part.
 
-   Derived from :exc:`InvalidUrlClientError` and `RedirectClientError`
+   Derived from :exc:`InvalidUrlClientError` and :exc:`RedirectClientError`
 
 .. exception:: NonHttpUrlRedirectClientError
 
    Redirect URL does not contain http schema.
 
-   Derived from :exc:`RedirectClientError` and `NonHttpUrlClientError`
+   Derived from :exc:`RedirectClientError` and :exc:`NonHttpUrlClientError`
 
 
 .. class:: ContentDisposition
