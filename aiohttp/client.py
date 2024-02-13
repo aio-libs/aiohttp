@@ -581,6 +581,7 @@ class ClientSession:
                                 resp.close()
                                 raise
                         except BaseException:
+                            await req.close()
                             conn.close()
                             raise
                     except (ClientOSError, ServerDisconnectedError):
