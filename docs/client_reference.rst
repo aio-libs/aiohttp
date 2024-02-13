@@ -2115,6 +2115,41 @@ All exceptions are available as members of *aiohttp* module.
 
       Invalid URL, :class:`yarl.URL` instance.
 
+    .. attribute:: description
+
+      Invalid URL description, :class:`str` instance or :data:`None`.
+
+.. exception:: InvalidUrlClientError
+
+   Base class for all errors related to client url.
+
+   Derived from :exc:`InvalidURL`
+
+.. exception:: RedirectClientError
+
+   Base class for all errors related to client redirects.
+
+   Derived from :exc:`ClientError`
+
+.. exception:: NonHttpUrlClientError
+
+   Base class for all errors related to non http client urls.
+
+   Derived from :exc:`ClientError`
+
+.. exception:: InvalidUrlRedirectClientError
+
+   Redirect URL is malformed, e.g. it does not contain host part.
+
+   Derived from :exc:`InvalidUrlClientError` and :exc:`RedirectClientError`
+
+.. exception:: NonHttpUrlRedirectClientError
+
+   Redirect URL does not contain http schema.
+
+   Derived from :exc:`RedirectClientError` and :exc:`NonHttpUrlClientError`
+
+
 .. class:: ContentDisposition
 
     Represent Content-Disposition header
@@ -2331,3 +2366,17 @@ Hierarchy of exceptions
     * :exc:`WSServerHandshakeError`
 
   * :exc:`InvalidURL`
+
+    * :exc:`InvalidUrlClientError`
+
+      * :exc:`InvalidUrlRedirectClientError`
+
+  * :exc:`NonHttpUrlClientError`
+
+    * :exc:`NonHttpUrlRedirectClientError`
+
+  * :exc:`RedirectClientError`
+
+    * :exc:`InvalidUrlRedirectClientError`
+
+    * :exc:`NonHttpUrlRedirectClientError`
