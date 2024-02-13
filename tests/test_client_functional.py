@@ -22,7 +22,6 @@ import aiohttp
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver
 from aiohttp.client_exceptions import (
-    InvalidURL,
     InvalidUrlClientError,
     InvalidUrlRedirectClientError,
     NonHttpUrlClientError,
@@ -2492,7 +2491,7 @@ NON_HTTP_URL_WITH_ERROR_MESSAGE = (
             for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE_YARL_NEW
         ),
         *(
-            (url, message, InvalidURL)
+            (url, message, InvalidUrlRedirectClientError)
             for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN
         ),
         *(
