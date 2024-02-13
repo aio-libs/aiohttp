@@ -1,3 +1,2 @@
 tests/data.unknown_mime_type binary
-tests/hello.txt.gz binary
 tests/sample.* binary
