@@ -2491,7 +2491,7 @@ NON_HTTP_URL_WITH_ERROR_MESSAGE = (
             for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE_YARL_NEW
         ),
         *(
-            (url, message, InvalidUrlRedirectClientError)
+            (url, message, InvalidUrlClientError)
             for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN
         ),
         *(
