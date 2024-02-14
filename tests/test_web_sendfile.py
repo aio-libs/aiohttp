@@ -20,7 +20,7 @@ def test_using_gzip_if_header_present_and_file_available(loop) -> None:
 
     filepath = mock.create_autospec(Path, spec_set=True)
     filepath.name = "logo.png"
-    filepath.with_name.return_value = gz_filepath
+    filepath.with_suffix.return_value = gz_filepath
 
     file_sender = FileResponse(filepath)
     file_sender._path = filepath
@@ -41,7 +41,7 @@ def test_gzip_if_header_not_present_and_file_available(loop) -> None:
 
     filepath = mock.create_autospec(Path, spec_set=True)
     filepath.name = "logo.png"
-    filepath.with_name.return_value = gz_filepath
+    filepath.with_suffix.return_value = gz_filepath
     filepath.stat.return_value.st_size = 1024
     filepath.stat.return_value.st_mtime_ns = 1603733507222449291
 
@@ -63,7 +63,7 @@ def test_gzip_if_header_not_present_and_file_not_available(loop) -> None:
 
     filepath = mock.create_autospec(Path, spec_set=True)
     filepath.name = "logo.png"
-    filepath.with_name.return_value = gz_filepath
+    filepath.with_suffix.return_value = gz_filepath
     filepath.stat.return_value.st_size = 1024
     filepath.stat.return_value.st_mtime_ns = 1603733507222449291
 
@@ -87,7 +87,7 @@ def test_gzip_if_header_present_and_file_not_available(loop) -> None:
 
     filepath = mock.create_autospec(Path, spec_set=True)
     filepath.name = "logo.png"
-    filepath.with_name.return_value = gz_filepath
+    filepath.with_suffix.return_value = gz_filepath
     filepath.stat.return_value.st_size = 1024
     filepath.stat.return_value.st_mtime_ns = 1603733507222449291
 
