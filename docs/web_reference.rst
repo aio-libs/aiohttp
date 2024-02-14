@@ -1755,8 +1755,9 @@ Application and Router
       system call even if the platform supports it. This can be accomplished by
       by setting environment variable ``AIOHTTP_NOSENDFILE=1``.
 
-      If a gzip version of the static content exists at file path + ``.gz``, it
-      will be used for the response.
+      If a Brotli or gzip compressed version of the static content exists at
+      the requested path with the ``.br`` or ``.gz`` extension, it will be used
+      for the response. Brotli will be preferred over gzip if both files exist.
 
       .. warning::
 

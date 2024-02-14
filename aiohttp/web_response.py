@@ -53,6 +53,7 @@ else:
     BaseClass = collections.abc.MutableMapping
 
 
+# TODO(py311): Convert to StrEnum for wider use
 class ContentCoding(enum.Enum):
     # The content codings that we have support for.
     #
