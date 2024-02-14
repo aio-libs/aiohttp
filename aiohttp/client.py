@@ -52,6 +52,11 @@ from .client_exceptions import (
     ConnectionTimeoutError,
     ContentTypeError,
     InvalidURL,
+    InvalidUrlClientError,
+    InvalidUrlRedirectClientError,
+    NonHttpUrlClientError,
+    NonHttpUrlRedirectClientError,
+    RedirectClientError,
     ServerConnectionError,
     ServerDisconnectedError,
     ServerFingerprintMismatch,
@@ -109,6 +114,11 @@ __all__ = (
     "ConnectionTimeoutError",
     "ContentTypeError",
     "InvalidURL",
+    "InvalidUrlClientError",
+    "RedirectClientError",
+    "NonHttpUrlClientError",
+    "InvalidUrlRedirectClientError",
+    "NonHttpUrlRedirectClientError",
     "ServerConnectionError",
     "ServerDisconnectedError",
     "ServerFingerprintMismatch",
@@ -168,6 +178,7 @@ DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60)
 
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
+HTTP_SCHEMA_SET = frozenset({"http", "https", ""})
 
 _RetType = TypeVar("_RetType")
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
@@ -455,7 +466,10 @@ class ClientSession:
         try:
             url = self._build_url(str_or_url)
         except ValueError as e:
-            raise InvalidURL(str_or_url) from e
+            raise InvalidUrlClientError(str_or_url) from e
+
+        if url.scheme not in HTTP_SCHEMA_SET:
+            raise NonHttpUrlClientError(url)
 
         skip_headers = set(self._skip_auto_headers)
         if skip_auto_headers is not None:
@@ -513,6 +527,15 @@ class ClientSession:
                 retry_persistent_connection = method in IDEMPOTENT_METHODS
                 while True:
                     url, auth_from_url = strip_auth_from_url(url)
+                    if not url.raw_host:
+                        # NOTE: Bail early, otherwise, causes `InvalidURL` through
+                        # NOTE: `self._request_class()` below.
+                        err_exc_cls = (
+                            InvalidUrlRedirectClientError
+                            if redirects
+                            else InvalidUrlClientError
+                        )
+                        raise err_exc_cls(url)
                     if auth and auth_from_url:
                         raise ValueError(
                             "Cannot combine AUTH argument with "
@@ -670,25 +693,35 @@ class ClientSession:
                             resp.release()
 
                         try:
-                            parsed_url = URL(
+                            parsed_redirect_url = URL(
                                 r_url, encoded=not self._requote_redirect_url
                             )
-
                         except ValueError as e:
-                            raise InvalidURL(r_url) from e
+                            raise InvalidUrlRedirectClientError(
+                                r_url,
+                                "Server attempted redirecting to a location that does not look like a URL",
+                            ) from e
 
-                        scheme = parsed_url.scheme
-                        if scheme not in ("http", "https", ""):
+                        scheme = parsed_redirect_url.scheme
+                        if scheme not in HTTP_SCHEMA_SET:
                             resp.close()
-                            raise ValueError("Can redirect only to http or https")
+                            raise NonHttpUrlRedirectClientError(r_url)
                         elif not scheme:
-                            parsed_url = url.join(parsed_url)
+                            parsed_redirect_url = url.join(parsed_redirect_url)
 
-                        if url.origin() != parsed_url.origin():
+                        try:
+                            redirect_origin = parsed_redirect_url.origin()
+                        except ValueError as origin_val_err:
+                            raise InvalidUrlRedirectClientError(
+                                parsed_redirect_url,
+                                "Invalid redirect URL origin",
+                            ) from origin_val_err
+
+                        if url.origin() != redirect_origin:
                             auth = None
                             headers.pop(hdrs.AUTHORIZATION, None)
 
-                        url = parsed_url
+                        url = parsed_redirect_url
                         params = {}
                         resp.release()
                         continue
