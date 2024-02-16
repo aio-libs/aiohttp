@@ -279,6 +279,7 @@ def test_parse_headers_longline(parser: Any) -> None:
     header_name = b"Test" + invalid_unicode_byte + b"Header" + b"A" * 8192
     text = b"GET /test HTTP/1.1\r\n" + header_name + b": test\r\n" + b"\r\n" + b"\r\n"
     with pytest.raises((http_exceptions.LineTooLong, http_exceptions.BadHttpMessage)):
+        # FIXME: `LineTooLong` doesn't seem to actually be happening
         parser.feed_data(text)
 
 

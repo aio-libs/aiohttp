@@ -28,10 +28,12 @@ from . import hdrs
 from .base_protocol import BaseProtocol
 from .compression_utils import HAS_BROTLI, BrotliDecompressor, ZLibDecompressor
 from .helpers import (
+    _EXC_SENTINEL,
     DEBUG,
     NO_EXTENSIONS,
     BaseTimerContext,
     method_must_be_empty_body,
+    set_exception,
     status_code_must_be_empty_body,
 )
 from .http_exceptions import (
@@ -439,13 +441,16 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 assert self._payload_parser is not None
                 try:
                     eof, data = self._payload_parser.feed_data(data[start_pos:], SEP)
-                except BaseException as exc:
+                except BaseException as underlying_exc:
+                    reraised_exc = underlying_exc
                     if self.payload_exception is not None:
-                        self._payload_parser.payload.set_exception(
-                            self.payload_exception(str(exc))
-                        )
-                    else:
-                        self._payload_parser.payload.set_exception(exc)
+                        reraised_exc = self.payload_exception(str(underlying_exc))
+
+                    set_exception(
+                        self._payload_parser.payload,
+                        reraised_exc,
+                        underlying_exc,
+                    )
 
                     eof = True
                     data = b""
@@ -826,7 +831,7 @@ class HttpPayloadParser:
                             exc = TransferEncodingError(
                                 chunk[:pos].decode("ascii", "surrogateescape")
                             )
-                            self.payload.set_exception(exc)
+                            set_exception(self.payload, exc)
                             raise exc
                         size = int(bytes(size_b), 16)
 
@@ -929,8 +934,12 @@ class DeflateBuffer:
         else:
             self.decompressor = ZLibDecompressor(encoding=encoding)
 
-    def set_exception(self, exc: BaseException) -> None:
-        self.out.set_exception(exc)
+    def set_exception(
+        self,
+        exc: BaseException,
+        exc_cause: BaseException = _EXC_SENTINEL,
+    ) -> None:
+        set_exception(self.out, exc, exc_cause)
 
     def feed_data(self, chunk: bytes, size: int) -> None:
         if not size:
