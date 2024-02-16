@@ -19,7 +19,7 @@ from multidict import CIMultiDict as _CIMultiDict, CIMultiDictProxy as _CIMultiD
 from yarl import URL as _URL
 
 from aiohttp import hdrs
-from aiohttp.helpers import DEBUG
+from aiohttp.helpers import DEBUG, set_exception
 
 from .http_exceptions import (
     BadHttpMessage,
@@ -763,11 +763,13 @@ cdef int cb_on_body(cparser.llhttp_t* parser,
     cdef bytes body = at[:length]
     try:
         pyparser._payload.feed_data(body, length)
-    except BaseException as exc:
+    except BaseException as underlying_exc:
+        reraised_exc = underlying_exc
         if pyparser._payload_exception is not None:
-            pyparser._payload.set_exception(pyparser._payload_exception(str(exc)))
-        else:
-            pyparser._payload.set_exception(exc)
+            reraised_exc = pyparser._payload_exception(str(underlying_exc))
+
+        set_exception(pyparser._payload, reraised_exc, underlying_exc)
+
         pyparser._payload_error = 1
         return -1
     else:

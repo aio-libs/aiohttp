@@ -186,9 +186,9 @@ async def test_lost_drain_waited_exception() -> None:
     assert pr._drain_waiter is not None
     exc = RuntimeError()
     pr.connection_lost(exc)
-    with pytest.raises(RuntimeError) as cm:
+    with pytest.raises(ConnectionError, match=r"^Connection lost$") as cm:
         await t
-    assert cm.value is exc
+    assert cm.value.__cause__ is exc
     assert pr._drain_waiter is None
 
 
