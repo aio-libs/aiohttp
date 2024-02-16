@@ -25,7 +25,7 @@ from typing import (
 
 from .base_protocol import BaseProtocol
 from .compression_utils import ZLibCompressor, ZLibDecompressor
-from .helpers import NO_EXTENSIONS
+from .helpers import NO_EXTENSIONS, set_exception
 from .streams import DataQueue
 
 __all__ = (
@@ -314,7 +314,7 @@ class WebSocketReader:
             return self._feed_data(data)
         except Exception as exc:
             self._exc = exc
-            self.queue.set_exception(exc)
+            set_exception(self.queue, exc)
             return True, b""
 
     def _feed_data(self, data: bytes) -> Tuple[bool, bytes]:

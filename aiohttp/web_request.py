@@ -48,6 +48,7 @@ from .helpers import (
     parse_http_date,
     reify,
     sentinel,
+    set_exception,
 )
 from .http_parser import RawRequestMessage
 from .http_writer import HttpVersion
@@ -814,7 +815,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return
 
     def _cancel(self, exc: BaseException) -> None:
-        self._payload.set_exception(exc)
+        set_exception(self._payload, exc)
 
 
 class Request(BaseRequest):
