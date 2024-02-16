@@ -14,7 +14,13 @@ from typing import (
 )
 
 from .base_protocol import BaseProtocol
-from .helpers import BaseTimerContext, TimerNoop, set_exception, set_result
+from .helpers import (
+    _EXC_SENTINEL,
+    BaseTimerContext,
+    TimerNoop,
+    set_exception,
+    set_result,
+)
 from .log import internal_logger
 
 __all__ = (
@@ -146,19 +152,23 @@ class StreamReader(AsyncStreamReaderMixin):
     def exception(self) -> Optional[BaseException]:
         return self._exception
 
-    def set_exception(self, exc: BaseException) -> None:
+    def set_exception(
+        self,
+        exc: BaseException,
+        exc_cause: BaseException = _EXC_SENTINEL,
+    ) -> None:
         self._exception = exc
         self._eof_callbacks.clear()
 
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            set_exception(waiter, exc)
+            set_exception(waiter, exc, exc_cause)
 
         waiter = self._eof_waiter
         if waiter is not None:
             self._eof_waiter = None
-            set_exception(waiter, exc)
+            set_exception(waiter, exc, exc_cause)
 
     def on_eof(self, callback: Callable[[], None]) -> None:
         if self._eof:
@@ -513,7 +523,11 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     def exception(self) -> Optional[BaseException]:
         return None
 
-    def set_exception(self, exc: BaseException) -> None:
+    def set_exception(
+        self,
+        exc: BaseException,
+        exc_cause: BaseException = _EXC_SENTINEL,
+    ) -> None:
         pass
 
     def on_eof(self, callback: Callable[[], None]) -> None:
@@ -588,14 +602,18 @@ class DataQueue(Generic[_T]):
     def exception(self) -> Optional[BaseException]:
         return self._exception
 
-    def set_exception(self, exc: BaseException) -> None:
+    def set_exception(
+        self,
+        exc: BaseException,
+        exc_cause: BaseException = _EXC_SENTINEL,
+    ) -> None:
         self._eof = True
         self._exception = exc
 
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            set_exception(waiter, exc)
+            set_exception(waiter, exc, exc_cause)
 
     def feed_data(self, data: _T, size: int = 0) -> None:
         self._size += size
