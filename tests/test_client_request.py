@@ -14,6 +14,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import BaseConnector, hdrs, helpers, payload
+from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.client_reqrep import (
     ClientRequest,
     ClientResponse,
@@ -1050,9 +1051,8 @@ async def test_data_stream_exc_chain(loop: Any, conn: Any) -> None:
     # assert connection.close.called
     assert conn.protocol.set_exception.called
     outer_exc = conn.protocol.set_exception.call_args[0][0]
-    assert isinstance(outer_exc, ValueError)
-    assert inner_exc is outer_exc
-    assert inner_exc is outer_exc
+    assert isinstance(outer_exc, ClientConnectionError)
+    assert outer_exc.__cause__ is inner_exc
     await req.close()
 
 

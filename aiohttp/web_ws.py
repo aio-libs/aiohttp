@@ -11,7 +11,7 @@ from multidict import CIMultiDict
 
 from . import hdrs
 from .abc import AbstractStreamWriter
-from .helpers import call_later, set_result
+from .helpers import call_later, set_exception, set_result
 from .http import (
     WS_CLOSED_MESSAGE,
     WS_CLOSING_MESSAGE,
@@ -548,4 +548,4 @@ class WebSocketResponse(StreamResponse):
 
     def _cancel(self, exc: BaseException) -> None:
         if self._reader is not None:
-            self._reader.set_exception(exc)
+            set_exception(self._reader, exc)

@@ -42,6 +42,7 @@ from .helpers import (
     parse_http_date,
     reify,
     sentinel,
+    set_exception,
     set_result,
 )
 from .http_parser import RawRequestMessage
@@ -813,7 +814,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return
 
     def _cancel(self, exc: BaseException) -> None:
-        self._payload.set_exception(exc)
+        set_exception(self._payload, exc)
         for fut in self._disconnection_waiters:
             set_result(fut, None)
 

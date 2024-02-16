@@ -25,7 +25,7 @@ import yarl
 
 from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
 from .base_protocol import BaseProtocol
-from .helpers import ceil_timeout
+from .helpers import ceil_timeout, set_exception
 from .http import (
     HttpProcessingError,
     HttpRequestParser,
@@ -577,7 +577,7 @@ class RequestHandler(BaseProtocol):
                         self.log_debug("Uncompleted request.")
                         self.close()
 
-                payload.set_exception(PayloadAccessError())
+                set_exception(payload, PayloadAccessError())
 
             except asyncio.CancelledError:
                 self.log_debug("Ignored premature client disconnection ")
