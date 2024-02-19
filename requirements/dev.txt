@@ -145,7 +145,7 @@ pyjwt==2.8.0
     #   pyjwt
 pyproject-hooks==1.0.0
     # via build
-pytest==8.0.0
+pytest==8.0.1
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
