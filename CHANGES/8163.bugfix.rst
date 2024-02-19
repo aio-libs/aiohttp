@@ -1,5 +1,5 @@
 Improved the not-throttled DNS resolution performance
 -- by :user:`bdraco`.
 
-This is achieverd by avoiding an :mod:`asyncio` task creation
+This is achieved by avoiding an :mod:`asyncio` task creation
 in this case.
