@@ -71,7 +71,7 @@ pycparser==2.21
     # via cffi
 pydantic==1.10.12
     # via python-on-whales
-pytest==8.0.0
+pytest==8.0.1
     # via
     #   -r requirements/test.in
     #   pytest-cov
@@ -82,7 +82,7 @@ pytest-mock==3.12.0
     # via -r requirements/test.in
 python-dateutil==2.8.2
     # via freezegun
-python-on-whales==0.68.0
+python-on-whales==0.69.0
     # via -r requirements/test.in
 re-assert==1.1.0
     # via -r requirements/test.in
