@@ -32,7 +32,7 @@ blockdiag==2.0.1
     # via sphinxcontrib-blockdiag
 brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
-build==0.9.0
+build==1.0.3
     # via pip-tools
 certifi==2023.7.22
     # via requests
@@ -94,7 +94,9 @@ idna==3.3
 imagesize==1.3.0
     # via sphinx
 importlib-metadata==7.0.0
-    # via sphinx
+    # via
+    #   build
+    #   sphinx
 importlib-resources==6.1.1
     # via towncrier
 incremental==22.10.0
@@ -126,13 +128,11 @@ packaging==21.2
     #   gunicorn
     #   pytest
     #   sphinx
-pep517==0.12.0
-    # via build
 pillow==9.5.0
     # via
     #   -c requirements/broken-projects.in
     #   blockdiag
-pip-tools==7.3.0
+pip-tools==7.4.0
     # via -r requirements/dev.in
 platformdirs==2.4.0
     # via virtualenv
@@ -160,6 +160,10 @@ pyjwt==2.3.0
     #   pyjwt
 pyparsing==2.4.7
     # via packaging
+pyproject-hooks==1.0.0
+    # via
+    #   build
+    #   pip-tools
 pytest==7.4.4
     # via
     #   -r requirements/lint.in
@@ -227,8 +231,8 @@ tomli==2.0.1
     #   cherry-picker
     #   coverage
     #   mypy
-    #   pep517
     #   pip-tools
+    #   pyproject-hooks
     #   pytest
     #   slotscheck
     #   towncrier
