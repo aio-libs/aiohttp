@@ -1212,7 +1212,8 @@ async def test_tcp_connector_dns_tracing_throttle_requests(
         m_resolver().resolve.return_value = dns_response()
         loop.create_task(conn._resolve_host("localhost", 8080, traces=traces))
         loop.create_task(conn._resolve_host("localhost", 8080, traces=traces))
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
         on_dns_cache_hit.assert_called_once_with(
             session, trace_config_ctx, aiohttp.TraceDnsCacheHitParams("localhost")
         )
