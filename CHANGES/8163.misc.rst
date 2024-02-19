@@ -1,1 +1,1 @@
-Avoid creating a task to do dns resolution if there is no throttle
+Avoid creating a task to do DNS resolution if there is no throttle
