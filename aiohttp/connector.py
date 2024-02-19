@@ -868,7 +868,7 @@ class TCPConnector(BaseConnector):
             return await asyncio.shield(resolved_host_task)
         except asyncio.CancelledError:
 
-            def drop_exception(fut: asyncio.Future[List[Dict[str, Any]]]) -> None:
+            def drop_exception(fut: "asyncio.Future[List[Dict[str, Any]]]") -> None:
                 with suppress(Exception, asyncio.CancelledError):
                     fut.result()
 
