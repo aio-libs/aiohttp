@@ -814,7 +814,7 @@ class TCPConnector(BaseConnector):
     async def _resolve_host(
         self, host: str, port: int, traces: Optional[List["Trace"]] = None
     ) -> List[Dict[str, Any]]:
-        """Resolves host and returns list of addresses."""
+        """Resolve host and returns list of addresses."""
         if is_ip_address(host):
             return [
                 {
