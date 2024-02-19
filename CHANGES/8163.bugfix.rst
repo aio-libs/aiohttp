@@ -1,1 +1,5 @@
-Avoid creating a task to do DNS resolution if there is no throttle
+Improved the not-throttled DNS resolution performance
+-- by :user:`bdraco`.
+
+This is achieverd by avoiding an :mod:`asyncio` task creation
+in this case.
