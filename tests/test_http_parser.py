@@ -1206,7 +1206,7 @@ def test_parse_chunked_payload_chunk_extension(parser: Any) -> None:
 
 
 def test_parse_no_length_or_te_on_post(loop: Any, protocol: Any, request_cls: Any):
-    parser = request_cls(protocol, loop, 2**16)
+    parser = request_cls(protocol, loop, limit=2**16)
     text = b"POST /test HTTP/1.1\r\n\r\n"
     msg, payload = parser.feed_data(text)[0][0]
 
