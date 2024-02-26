@@ -47,7 +47,7 @@ tomli==2.0.1
     #   mypy
     #   pytest
     #   slotscheck
-typing-extensions==4.9.0
+typing-extensions==4.10.0
     # via
     #   -r requirements/typing-extensions.in
     #   aioredis
