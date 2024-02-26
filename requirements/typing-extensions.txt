@@ -4,5 +4,5 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/typing-extensions.txt --resolver=backtracking --strip-extras requirements/typing-extensions.in
 #
-typing-extensions==4.9.0
+typing-extensions==4.10.0
     # via -r requirements/typing-extensions.in
