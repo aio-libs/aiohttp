@@ -10,6 +10,93 @@
 
 .. towncrier release notes start
 
+3.9.4 (2024-03-03)
+==================
+
+Bug fixes
+---------
+
+- The asynchronous internals now set the underlying causes
+  when assigning exceptions to the future objects
+  -- by :user:`webknjaz`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8089`.
+  
+  
+  
+- Treated values of ``Accept-Encoding`` header as case-insensitive when checking for gzip files -- by :user:`steverep`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8104`.
+  
+  
+  
+- Improved the DNS resolution performance on cache hit -- by :user:`bdraco`.
+
+  This is achieved by avoiding an :mod:`asyncio` task creation in this case.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8163`.
+  
+  
+  
+
+Features
+--------
+
+- Upgraded *llhttp* to 9.2 -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8146`.
+  
+  
+  
+
+Contributor-facing changes
+--------------------------
+
+- The pull request template is now asking the contributors to
+  answer a question about the long-term maintenance challenges
+  they envision as a result of merging their patches
+  -- by :user:`webknjaz`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8099`.
+  
+  
+  
+- Updated CI and documentation to use NPM clean install and upgrade node to version 18 -- by :user:`steverep`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8116`.
+  
+  
+  
+- A pytest fixture ``hello_txt`` was introduced to aid
+  static file serving tests in
+  :file:`test_web_sendfile_functional.py`. It dynamically
+  provisions ``hello.txt`` file variants shared across the
+  tests in the module.
+
+  -- by :user:`steverep`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8136`.
+  
+  
+  
+
+----
+
+
 3.9.3 (2024-01-29)
 ==================
 
