@@ -23,17 +23,17 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`8089`.
-  
-  
-  
+
+
+
 - Treated values of ``Accept-Encoding`` header as case-insensitive when checking for gzip files -- by :user:`steverep`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`8104`.
-  
-  
-  
+
+
+
 - Improved the DNS resolution performance on cache hit -- by :user:`bdraco`.
 
   This is achieved by avoiding an :mod:`asyncio` task creation in this case.
@@ -41,9 +41,9 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`8163`.
-  
-  
-  
+
+
+
 
 Features
 --------
@@ -53,9 +53,9 @@ Features
 
   *Related issues and pull requests on GitHub:*
   :issue:`8146`.
-  
-  
-  
+
+
+
 
 Contributor-facing changes
 --------------------------
@@ -68,17 +68,17 @@ Contributor-facing changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`8099`.
-  
-  
-  
+
+
+
 - Updated CI and documentation to use NPM clean install and upgrade node to version 18 -- by :user:`steverep`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`8116`.
-  
-  
-  
+
+
+
 - A pytest fixture ``hello_txt`` was introduced to aid
   static file serving tests in
   :file:`test_web_sendfile_functional.py`. It dynamically
@@ -90,9 +90,9 @@ Contributor-facing changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`8136`.
-  
-  
-  
+
+
+
 
 ----
 
