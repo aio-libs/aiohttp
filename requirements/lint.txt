@@ -36,7 +36,7 @@ pluggy==1.4.0
     # via pytest
 pre-commit==3.5.0
     # via -r requirements/lint.in
-pytest==8.0.2
+pytest==8.1.0
     # via -r requirements/lint.in
 pyyaml==6.0.1
     # via pre-commit
