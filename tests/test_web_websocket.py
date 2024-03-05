@@ -12,7 +12,7 @@ from aiohttp import WSMsgType
 from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import HTTPBadRequest, WebSocketResponse
-from aiohttp.web_ws import WS_CLOSED_MESSAGE, WebSocketReady
+from aiohttp.web_ws import WS_CLOSED_MESSAGE, WebSocketReady, WSMessage
 
 
 @pytest.fixture
@@ -361,6 +361,25 @@ async def test_receive_exception_in_reader(make_request: Any, loop: Any) -> None
     msg = await ws.receive()
     assert msg.type == WSMsgType.ERROR
     assert ws.closed
+    assert len(ws._req.transport.close.mock_calls) == 1
+
+
+async def test_receive_close_but_left_open(make_request: Any, loop: Any) -> None:
+    req = make_request("GET", "/")
+    ws = WebSocketResponse()
+    await ws.prepare(req)
+    close_message = WSMessage(WSMsgType.CLOSE, 1000, "close")
+
+    ws._reader = mock.Mock()
+    ws._reader.read = mock.AsyncMock(return_value=close_message)
+    ws._payload_writer.drain = mock.Mock()
+    ws._payload_writer.drain.return_value = loop.create_future()
+    ws._payload_writer.drain.return_value.set_result(True)
+
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.CLOSE
+    assert ws.closed
+    assert len(ws._req.transport.close.mock_calls) == 1
 
 
 async def test_receive_timeouterror(make_request: Any, loop: Any) -> None:
