@@ -344,6 +344,25 @@ async def test_receive_eofstream_in_reader(make_request: Any, loop: Any) -> None
     assert ws.closed
 
 
+async def test_receive_exception_in_reader(make_request: Any, loop: Any) -> None:
+    req = make_request("GET", "/")
+    ws = WebSocketResponse()
+    await ws.prepare(req)
+
+    ws._reader = mock.Mock()
+    exc = Exception()
+    res = loop.create_future()
+    res.set_exception(exc)
+    ws._reader.read = make_mocked_coro(res)
+    ws._payload_writer.drain = mock.Mock()
+    ws._payload_writer.drain.return_value = loop.create_future()
+    ws._payload_writer.drain.return_value.set_result(True)
+
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.ERROR
+    assert ws.closed
+
+
 async def test_receive_timeouterror(make_request: Any, loop: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
