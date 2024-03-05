@@ -386,10 +386,10 @@ async def test_receive_closing(make_request: Any, loop: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
-    close_message = WSMessage(WSMsgType.CLOSING, 1000, "closing")
+    closing_message = WSMessage(WSMsgType.CLOSING, 1000, "closing")
 
     ws._reader = mock.Mock()
-    read_mock = mock.AsyncMock(return_value=close_message)
+    read_mock = mock.AsyncMock(return_value=closing_message)
     ws._reader.read = read_mock
     ws._payload_writer.drain = mock.Mock()
     ws._payload_writer.drain.return_value = loop.create_future()
@@ -408,6 +408,28 @@ async def test_receive_closing(make_request: Any, loop: Any) -> None:
     msg = await ws.receive()
     assert msg.type == WSMsgType.CLOSED
     assert ws.closed
+
+
+async def test_close_after_closing(make_request: Any, loop: Any) -> None:
+    req = make_request("GET", "/")
+    ws = WebSocketResponse()
+    await ws.prepare(req)
+    closing_message = WSMessage(WSMsgType.CLOSING, 1000, "closing")
+
+    ws._reader = mock.Mock()
+    ws._reader.read = mock.AsyncMock(return_value=closing_message)
+    ws._payload_writer.drain = mock.Mock()
+    ws._payload_writer.drain.return_value = loop.create_future()
+    ws._payload_writer.drain.return_value.set_result(True)
+
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.CLOSING
+    assert not ws.closed
+    assert len(ws._req.transport.close.mock_calls) == 0
+
+    await ws.close()
+    assert ws.closed
+    assert len(ws._req.transport.close.mock_calls) == 1
 
 
 async def test_receive_timeouterror(make_request: Any, loop: Any) -> None:
