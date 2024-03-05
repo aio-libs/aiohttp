@@ -406,8 +406,7 @@ async def test_receive_closing(make_request: Any, loop: Any) -> None:
     ws._cancel(ConnectionResetError("Connection lost"))
 
     msg = await ws.receive()
-    assert msg.type == WSMsgType.CLOSED
-    assert ws.closed
+    assert msg.type == WSMsgType.CLOSING
 
 
 async def test_close_after_closing(make_request: Any, loop: Any) -> None:

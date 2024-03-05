@@ -557,6 +557,6 @@ class WebSocketResponse(StreamResponse):
     def _cancel(self, exc: BaseException) -> None:
         # web_protocol calls this from connection_lost
         # or when the server is shutting down.
-        self._closed = True
+        self._closing = True
         if self._reader is not None:
             set_exception(self._reader, exc)
