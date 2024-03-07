@@ -47,7 +47,6 @@ from .payload import (
     payload_type,
 )
 from .streams import StreamReader
-from .typedefs import LooseHeaders
 
 __all__ = (
     "MultipartReader",
@@ -854,7 +853,7 @@ class MultipartWriter(Payload):
     def boundary(self) -> str:
         return self._boundary.decode("ascii")
 
-    def append(self, obj: Any, headers: Optional[LooseHeaders] = None) -> Payload:
+    def append(self, obj: Any, headers: Optional[Mapping[str, str]] = None) -> Payload:
         if headers is None:
             headers = CIMultiDict()
 
@@ -901,7 +900,7 @@ class MultipartWriter(Payload):
         self._parts.append((payload, encoding, te_encoding))  # type: ignore[arg-type]
         return payload
 
-    def append_json(self, obj: Any, headers: Optional[LooseHeaders] = None) -> Payload:
+    def append_json(self, obj: Any, headers: Optional[Mapping[str, str]] = None) -> Payload:
         """Helper to append JSON part."""
         if headers is None:
             headers = CIMultiDict()
@@ -911,7 +910,7 @@ class MultipartWriter(Payload):
     def append_form(
         self,
         obj: Union[Sequence[Tuple[str, str]], Mapping[str, str]],
-        headers: Optional[LooseHeaders] = None,
+        headers: Optional[Mapping[str, str]] = None,
     ) -> Payload:
         """Helper to append form urlencoded part."""
         assert isinstance(obj, (Sequence, Mapping))
