@@ -27,7 +27,6 @@ from urllib.parse import parse_qsl, unquote, urlencode
 
 from multidict import CIMultiDict, CIMultiDictProxy
 
-
 from .compression_utils import ZLibCompressor, ZLibDecompressor
 from .hdrs import (
     CONTENT_DISPOSITION,
@@ -902,9 +901,7 @@ class MultipartWriter(Payload):
         self._parts.append((payload, encoding, te_encoding))  # type: ignore[arg-type]
         return payload
 
-    def append_json(
-        self, obj: Any, headers: Optional[LooseHeaders] = None
-    ) -> Payload:
+    def append_json(self, obj: Any, headers: Optional[LooseHeaders] = None) -> Payload:
         """Helper to append JSON part."""
         if headers is None:
             headers = CIMultiDict()
