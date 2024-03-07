@@ -1,7 +1,7 @@
-Fixed the type annotations on :py:meth:`MultipartWriter.append`,
-:py:meth:`MultipartWriter.append_json` and
-:py:meth:`MultipartWriter.append_form` -- by :user:`cakemanny`
+Fixed the type annotations on :meth:`MultipartWriter.append`,
+:meth:`MultipartWriter.append_json` and
+:meth:`MultipartWriter.append_form` -- by :user:`cakemanny`
 
-Typecheckers, such as mypy and pyright, now no longer give type
+Type checkers, such as mypy and Pyright, now no longer give type
 errors when calling :py:meth:`MultipartWriter.append` with a plain
 python dictionary as the headers argument.
