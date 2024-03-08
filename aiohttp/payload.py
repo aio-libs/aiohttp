@@ -447,30 +447,30 @@ class StreamReaderPayload(AsyncIterablePayload):
 class SendFile:
     file_path: str
     chunk_size: int
-    def __init__(self, file_path: str, chunk_size: int = 0x7fff_ffff):
+
+    def __init__(self, file_path: str, chunk_size: int = 0x7FFF_FFFF):
         self.file_path = file_path
         if chunk_size <= 0:
-            self.chunk_size = 0x7fff_ffff
+            self.chunk_size = 0x7FFF_FFFF
         else:
-            self.chunk_size = min(chunk_size, 0x7fff_ffff)
+            self.chunk_size = min(chunk_size, 0x7FFF_FFFF)
+
 
 class SendFilePayload(Payload):
-    def __init__(self, value:SendFile, *args, **kwargs):
+    def __init__(self, value: SendFile, *args, **kwargs):
         if not isinstance(value, SendFile):
             raise TypeError(
-                "value argument must be SendFile "
-                "got {!r}".format(type(value))
+                "value argument must be SendFile " "got {!r}".format(type(value))
             )
 
         if "content_type" not in kwargs:
             kwargs["content_type"] = "application/octet-stream"
         super().__init__(value, *args, **kwargs)
 
-    
     async def write(self, writer: AbstractStreamWriter) -> None:
         if self._value:
-            sendfile:SendFile = self._value
-            with open(sendfile.file_path, 'rb') as fp:
+            sendfile: SendFile = self._value
+            with open(sendfile.file_path, "rb") as fp:
                 file_size = os.fstat(fp.fileno()).st_size
                 chunk_len_pre = ("%x\r\n" % file_size).encode("ascii")
                 writer._write(chunk_len_pre)
@@ -482,6 +482,7 @@ class SendFilePayload(Payload):
                     writer.output_size += size
                 writer._write(b"\r\n")
             self._value = None
+
 
 PAYLOAD_REGISTRY = PayloadRegistry()
 PAYLOAD_REGISTRY.register(BytesPayload, (bytes, bytearray, memoryview))
