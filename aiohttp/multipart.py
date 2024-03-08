@@ -25,7 +25,7 @@ from typing import (
 )
 from urllib.parse import parse_qsl, unquote, urlencode
 
-from multidict import CIMultiDict, CIMultiDictProxy, MultiMapping
+from multidict import CIMultiDict, CIMultiDictProxy
 
 from .compression_utils import ZLibCompressor, ZLibDecompressor
 from .hdrs import (
@@ -853,7 +853,7 @@ class MultipartWriter(Payload):
     def boundary(self) -> str:
         return self._boundary.decode("ascii")
 
-    def append(self, obj: Any, headers: Optional[MultiMapping[str]] = None) -> Payload:
+    def append(self, obj: Any, headers: Optional[Mapping[str, str]] = None) -> Payload:
         if headers is None:
             headers = CIMultiDict()
 
@@ -901,7 +901,7 @@ class MultipartWriter(Payload):
         return payload
 
     def append_json(
-        self, obj: Any, headers: Optional[MultiMapping[str]] = None
+        self, obj: Any, headers: Optional[Mapping[str, str]] = None
     ) -> Payload:
         """Helper to append JSON part."""
         if headers is None:
@@ -912,7 +912,7 @@ class MultipartWriter(Payload):
     def append_form(
         self,
         obj: Union[Sequence[Tuple[str, str]], Mapping[str, str]],
-        headers: Optional[MultiMapping[str]] = None,
+        headers: Optional[Mapping[str, str]] = None,
     ) -> Payload:
         """Helper to append form urlencoded part."""
         assert isinstance(obj, (Sequence, Mapping))
