@@ -444,6 +444,45 @@ class StreamReaderPayload(AsyncIterablePayload):
         super().__init__(value.iter_any(), *args, **kwargs)
 
 
+class SendFile:
+    file_path: str
+    chunk_size: int
+    def __init__(self, file_path: str, chunk_size: int = 0x7fff_ffff):
+        self.file_path = file_path
+        if chunk_size <= 0:
+            self.chunk_size = 0x7fff_ffff
+        else:
+            self.chunk_size = min(chunk_size, 0x7fff_ffff)
+
+class SendFilePayload(Payload):
+    def __init__(self, value:SendFile, *args, **kwargs):
+        if not isinstance(value, SendFile):
+            raise TypeError(
+                "value argument must be SendFile "
+                "got {!r}".format(type(value))
+            )
+
+        if "content_type" not in kwargs:
+            kwargs["content_type"] = "application/octet-stream"
+        super().__init__(value, *args, **kwargs)
+
+    
+    async def write(self, writer: AbstractStreamWriter) -> None:
+        if self._value:
+            sendfile:SendFile = self._value
+            with open(sendfile.file_path, 'rb') as fp:
+                file_size = os.fstat(fp.fileno()).st_size
+                chunk_len_pre = ("%x\r\n" % file_size).encode("ascii")
+                writer._write(chunk_len_pre)
+                for i in range(0, file_size, sendfile.chunk_size):
+                    size = await writer.loop.sendfile(
+                        writer.transport, fp, i, sendfile.chunk_size
+                    )
+                    writer.buffer_size += size
+                    writer.output_size += size
+                writer._write(b"\r\n")
+            self._value = None
+
 PAYLOAD_REGISTRY = PayloadRegistry()
 PAYLOAD_REGISTRY.register(BytesPayload, (bytes, bytearray, memoryview))
 PAYLOAD_REGISTRY.register(StringPayload, str)
@@ -456,3 +495,4 @@ PAYLOAD_REGISTRY.register(StreamReaderPayload, StreamReader)
 # try_last for giving a chance to more specialized async interables like
 # multidict.BodyPartReaderPayload override the default
 PAYLOAD_REGISTRY.register(AsyncIterablePayload, AsyncIterable, order=Order.try_last)
+PAYLOAD_REGISTRY.register(SendFilePayload, SendFile, order=Order.try_last)
