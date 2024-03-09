@@ -126,13 +126,13 @@ def test_send_file_payload_content_type() -> None:
 
 def test_send_file_payload_not_send_file() -> None:
     with pytest.raises(TypeError):
-        payload.SendFilePayload(object())
+        payload.SendFilePayload(object())  # type: ignore[arg-type]
 
 
 async def test_send_file_payload_writer() -> None:
     with pytest.raises(TypeError):
         p = payload.SendFilePayload(payload.SendFile("/sendfile"))
-        await p.write(object())
+        await p.write(object())  # type: ignore[arg-type]
 
 
 async def test_send_file_payload_writer_transport() -> None:
@@ -176,19 +176,17 @@ async def test_send_file_payload_write_correctly() -> None:
 
     async def upload(request: Request) -> Response:
         parts = await request.multipart()
-        file: BodyPartReader = None
+        file = None
         while field := await parts.next():
+            assert isinstance(field, BodyPartReader)
             if field.name == "file":
                 file = field
                 break
         else:
             return Response(body=b"", status=400)
-        if file:
-            return Response(body=await file.read())
-        else:
-            return Response(body=b"", status=400)
+        return Response(body=await file.read())
 
-    server = web.Server(upload)
+    server = web.Server(upload)  # type: ignore[arg-type]
     runner = web.ServerRunner(server)
     await runner.setup()
     site = web.TCPSite(runner, "localhost", 9001)
