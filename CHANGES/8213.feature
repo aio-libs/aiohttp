@@ -1,5 +1,5 @@
 Provided users with a new option to use loop.sendfile when uploading files.
-like 
+like
 
 async with aiohttp.ClientSession() as sess:
         data = aiohttp.FormData(quote_fields=False)
