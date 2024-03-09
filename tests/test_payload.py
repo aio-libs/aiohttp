@@ -143,7 +143,11 @@ async def test_send_file_payload_writer_transport() -> None:
         from aiohttp.base_protocol import BaseProtocol
         from aiohttp.http_writer import StreamWriter
 
-        await p.write(StreamWriter(BaseProtocol(asyncio.get_event_loop()), asyncio.get_event_loop()))
+        await p.write(
+            StreamWriter(
+                BaseProtocol(asyncio.get_event_loop()), asyncio.get_event_loop()
+            )
+        )
 
 
 def test_send_file_default_chunk_size() -> None:
