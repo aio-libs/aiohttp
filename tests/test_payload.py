@@ -134,6 +134,13 @@ async def test_send_file_payload_writer() -> None:
         p = payload.SendFilePayload(payload.SendFile("/sendfile"))
         await p.write(object())
 
+async def test_send_file_payload_writer_transport() -> None:
+    with pytest.raises(TypeError):
+        p = payload.SendFilePayload(payload.SendFile("/sendfile"))
+        from aiohttp.http_writer import StreamWriter
+        from aiohttp.base_protocol import BaseProtocol
+        import asyncio
+        await p.write(StreamWriter(BaseProtocol(), asyncio.get_event_loop()))
 
 def test_send_file_default_chunk_size() -> None:
     sf = payload.SendFile("/sendfile")

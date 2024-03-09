@@ -469,7 +469,13 @@ class SendFilePayload(Payload):
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         if not isinstance(writer, StreamWriter):
-            raise TypeError(f"required a StreamWriter got {type(writer)!r}")
+            raise TypeError(
+                "required a StreamWriter got {!r}".format(type(writer))
+            )
+        if writer.transport is None:
+            raise TypeError(
+                "required a Transport got None type"
+            )
         if self._value:
             sendfile: SendFile = self._value
             with open(sendfile.file_path, "rb") as fp:
