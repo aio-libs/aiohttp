@@ -147,7 +147,7 @@ def test_send_file_zero_chunk_size() -> None:
 
 def test_send_file_negative_chunk_size() -> None:
     sf = payload.SendFile("/sendfile", -100)
-    assert sf.chunk_size == 0x7FFF_FFFF  
+    assert sf.chunk_size == 0x7FFF_FFFF
 
 
 def test_send_file_positive_chunk_size() -> None:
@@ -156,13 +156,12 @@ def test_send_file_positive_chunk_size() -> None:
 
 
 async def test_send_file_payload_write_correctly() -> None:
-    from aiohttp import web
-    from aiohttp.web import Response, Request
-    from aiohttp import BodyPartReader
+    from aiohttp import BodyPartReader, web
+    from aiohttp.web import Request, Response
 
     async def upload(request: Request) -> Response:
         parts = await request.multipart()
-        file:BodyPartReader = None
+        file: BodyPartReader = None
         while field := await parts.next():
             if field.name == "file":
                 file = field
@@ -173,19 +172,24 @@ async def test_send_file_payload_write_correctly() -> None:
             return Response(body=await file.read())
         else:
             return Response(body=b"", status=400)
+
     server = web.Server(upload)
     runner = web.ServerRunner(server)
     await runner.setup()
-    site = web.TCPSite(runner, 'localhost', 9001)
+    site = web.TCPSite(runner, "localhost", 9001)
     await site.start()
-    
-    import aiohttp
+
     import pathlib
+
+    import aiohttp
+
     async with aiohttp.ClientSession() as sess:
         data = aiohttp.FormData(quote_fields=False)
         assert pathlib.Path(__file__).exists()
-        data.add_field('file', payload.SendFile(__file__), filename=pathlib.Path(__file__).name)
-        async with sess.post('http://localhost:9001/upload', data=data) as resp:
+        data.add_field(
+            "file", payload.SendFile(__file__), filename=pathlib.Path(__file__).name
+        )
+        async with sess.post("http://localhost:9001/upload", data=data) as resp:
             with open(pathlib.Path(__file__), "rb") as fp:
                 assert fp.read() == await resp.read()
     await site.stop()

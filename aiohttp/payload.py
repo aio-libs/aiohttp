@@ -33,9 +33,9 @@ from .helpers import (
     parse_mimetype,
     sentinel,
 )
+from .http_writer import StreamWriter
 from .streams import StreamReader
 from .typedefs import JSONEncoder, _CIMultiDict
-from .http_writer import StreamWriter
 
 __all__ = (
     "PAYLOAD_REGISTRY",
@@ -469,9 +469,7 @@ class SendFilePayload(Payload):
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         if not isinstance(writer, StreamWriter):
-            raise TypeError(
-                "required a StreamWriter got {!r}".format(type(writer))
-            )
+            raise TypeError(f"required a StreamWriter got {type(writer)!r}")
         if self._value:
             sendfile: SendFile = self._value
             with open(sendfile.file_path, "rb") as fp:
