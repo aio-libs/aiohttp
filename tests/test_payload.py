@@ -194,10 +194,10 @@ async def test_send_file_payload_write_correctly() -> None:
 
     import pathlib
 
-    import aiohttp
+    from aiohttp import ClientSession, FormData
 
-    async with aiohttp.ClientSession() as sess:
-        data = aiohttp.FormData(quote_fields=False)
+    async with ClientSession() as sess:
+        data = FormData(quote_fields=False)
         assert pathlib.Path(__file__).exists()
         data.add_field(
             "file", payload.SendFile(__file__), filename=pathlib.Path(__file__).name
