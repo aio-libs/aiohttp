@@ -117,3 +117,77 @@ def test_async_iterable_payload_explicit_content_type() -> None:
 def test_async_iterable_payload_not_async_iterable() -> None:
     with pytest.raises(TypeError):
         payload.AsyncIterablePayload(object())  # type: ignore[arg-type]
+
+
+def test_send_file_payload_content_type() -> None:
+    p = payload.SendFilePayload(payload.SendFile("/sendfile"))
+    assert p.content_type == "application/octet-stream"
+
+
+def test_send_file_payload_not_send_file() -> None:
+    with pytest.raises(TypeError):
+        payload.SendFilePayload(object())
+
+
+async def test_send_file_payload_writer() -> None:
+    with pytest.raises(TypeError):
+        p = payload.SendFilePayload(payload.SendFile("/sendfile"))
+        await p.write(object())
+
+
+def test_send_file_default_chunk_size() -> None:
+    sf = payload.SendFile("/sendfile")
+    assert sf.chunk_size == 0x7FFF_FFFF
+
+
+def test_send_file_zero_chunk_size() -> None:
+    sf = payload.SendFile("/sendfile", 0)
+    assert sf.chunk_size == 0x7FFF_FFFF
+
+
+def test_send_file_negative_chunk_size() -> None:
+    sf = payload.SendFile("/sendfile", -100)
+    assert sf.chunk_size == 0x7FFF_FFFF  
+
+
+def test_send_file_positive_chunk_size() -> None:
+    sf = payload.SendFile("/sendfile", 1024)
+    assert sf.chunk_size == 1024
+
+
+async def test_send_file_payload_write_correctly() -> None:
+    from aiohttp import web
+    from aiohttp.web import Response, Request
+    from aiohttp import BodyPartReader
+
+    async def upload(request: Request) -> Response:
+        parts = await request.multipart()
+        file:BodyPartReader = None
+        while field := await parts.next():
+            if field.name == "file":
+                file = field
+                break
+        else:
+            return Response(body=b"", status=400)
+        if file:
+            return Response(body=await file.read())
+        else:
+            return Response(body=b"", status=400)
+    server = web.Server(upload)
+    runner = web.ServerRunner(server)
+    await runner.setup()
+    site = web.TCPSite(runner, 'localhost', 9001)
+    await site.start()
+    
+    import aiohttp
+    import pathlib
+    async with aiohttp.ClientSession() as sess:
+        data = aiohttp.FormData(quote_fields=False)
+        assert pathlib.Path(__file__).exists()
+        data.add_field('file', payload.SendFile(__file__), filename=pathlib.Path(__file__).name)
+        async with sess.post('http://localhost:9001/upload', data=data) as resp:
+            with open(pathlib.Path(__file__), "rb") as fp:
+                assert fp.read() == await resp.read()
+    await site.stop()
+    await runner.cleanup()
+    await server.shutdown()

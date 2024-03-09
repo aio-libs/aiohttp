@@ -35,6 +35,7 @@ from .helpers import (
 )
 from .streams import StreamReader
 from .typedefs import JSONEncoder, _CIMultiDict
+from .http_writer import StreamWriter
 
 __all__ = (
     "PAYLOAD_REGISTRY",
@@ -457,25 +458,29 @@ class SendFile:
 
 
 class SendFilePayload(Payload):
-    def __init__(self, value: SendFile, *args, **kwargs):
+    def __init__(self, value: SendFile, *args: Any, **kwargs: Any) -> None:
         if not isinstance(value, SendFile):
             raise TypeError(
                 "value argument must be SendFile " "got {!r}".format(type(value))
             )
 
-        if "content_type" not in kwargs:
-            kwargs["content_type"] = "application/octet-stream"
+        kwargs["content_type"] = "application/octet-stream"
         super().__init__(value, *args, **kwargs)
 
     async def write(self, writer: AbstractStreamWriter) -> None:
+        if not isinstance(writer, StreamWriter):
+            raise TypeError(
+                "required a StreamWriter got {!r}".format(type(writer))
+            )
         if self._value:
             sendfile: SendFile = self._value
             with open(sendfile.file_path, "rb") as fp:
                 file_size = os.fstat(fp.fileno()).st_size
                 chunk_len_pre = ("%x\r\n" % file_size).encode("ascii")
                 writer._write(chunk_len_pre)
+                loop = asyncio.get_event_loop()
                 for i in range(0, file_size, sendfile.chunk_size):
-                    size = await writer.loop.sendfile(
+                    size = await loop.sendfile(
                         writer.transport, fp, i, sendfile.chunk_size
                     )
                     writer.buffer_size += size
