@@ -80,6 +80,7 @@ Damien Nadé
 Dan King
 Dan Xu
 Daniel García
+Daniel Golding
 Daniel Grossmann-Kavanagh
 Daniel Nelson
 Danny Song
