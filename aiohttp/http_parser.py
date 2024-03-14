@@ -82,7 +82,7 @@ class RawRequestMessage(NamedTuple):
     method: str
     path: str
     version: HttpVersion
-    headers: CIMultiDictProxy[str]
+    headers: "CIMultiDictProxy[str]"
     raw_headers: RawHeaders
     should_close: bool
     compression: Optional[str]
@@ -95,7 +95,7 @@ class RawResponseMessage(NamedTuple):
     version: HttpVersion
     code: int
     reason: str
-    headers: CIMultiDictProxy[str]
+    headers: "CIMultiDictProxy[str]"
     raw_headers: RawHeaders
     should_close: bool
     compression: Optional[str]
@@ -133,7 +133,7 @@ class HeadersParser:
     def parse_headers(
         self, lines: List[bytes]
     ) -> Tuple["CIMultiDictProxy[str]", RawHeaders]:
-        headers: CIMultiDict[str] = CIMultiDict()
+        headers: "CIMultiDict[str]" = CIMultiDict()
         # note: "raw" does not mean inclusion of OWS before/after the field value
         raw_headers = []
 

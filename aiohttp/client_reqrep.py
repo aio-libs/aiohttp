@@ -322,7 +322,7 @@ class ClientRequest:
 
     @property
     def request_info(self) -> RequestInfo:
-        headers: CIMultiDictProxy[str] = CIMultiDictProxy(self.headers)
+        headers: "CIMultiDictProxy[str]" = CIMultiDictProxy(self.headers)
         return RequestInfo(self.url, self.method, headers, self.original_url)
 
     def update_host(self, url: URL) -> None:
@@ -353,7 +353,7 @@ class ClientRequest:
 
     def update_headers(self, headers: Optional[LooseHeaders]) -> None:
         """Update request headers."""
-        self.headers: CIMultiDict[str] = CIMultiDict()
+        self.headers: "CIMultiDict[str]" = CIMultiDict()
 
         # add host
         netloc = cast(str, self.url.raw_host)
@@ -708,7 +708,7 @@ class ClientResponse(HeadersMixin):
     reason: Optional[str] = None  # Reason-Phrase
 
     content: StreamReader = None  # type: ignore[assignment] # Payload stream
-    _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]
+    _headers: "CIMultiDictProxy[str]" = None  # type: ignore[assignment]
     _raw_headers: RawHeaders = None  # type: ignore[assignment]
 
     _connection = None  # current connection
