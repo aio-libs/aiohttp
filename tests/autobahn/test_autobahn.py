@@ -23,7 +23,7 @@ def build_autobahn_testsuite() -> Generator[None, None, None]:
             context_path=".",
         )
     except DockerException:
-        pytest.skip(msg="The docker daemon is not running.")
+        pytest.skip("The docker daemon is not running.")
 
     try:
         yield
