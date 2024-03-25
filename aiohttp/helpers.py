@@ -805,8 +805,7 @@ class ErrorableProtocol(Protocol):
         self,
         exc: BaseException,
         exc_cause: BaseException = ...,
-    ) -> None:
-        ...  # pragma: no cover
+    ) -> None: ...  # pragma: no cover
 
 
 def set_exception(
@@ -896,12 +895,10 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
         )
 
     @overload  # type: ignore[override]
-    def __getitem__(self, key: AppKey[_T]) -> _T:
-        ...
+    def __getitem__(self, key: AppKey[_T]) -> _T: ...
 
     @overload
-    def __getitem__(self, key: str) -> Any:
-        ...
+    def __getitem__(self, key: str) -> Any: ...
 
     def __getitem__(self, key: Union[str, AppKey[_T]]) -> Any:
         for mapping in self._maps:
@@ -912,16 +909,13 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
         raise KeyError(key)
 
     @overload  # type: ignore[override]
-    def get(self, key: AppKey[_T], default: _S) -> Union[_T, _S]:
-        ...
+    def get(self, key: AppKey[_T], default: _S) -> Union[_T, _S]: ...
 
     @overload
-    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]:
-        ...
+    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]: ...
 
     @overload
-    def get(self, key: str, default: Any = ...) -> Any:
-        ...
+    def get(self, key: str, default: Any = ...) -> Any: ...
 
     def get(self, key: Union[str, AppKey[_T]], default: Any = None) -> Any:
         try:
