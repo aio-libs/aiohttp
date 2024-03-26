@@ -475,7 +475,7 @@ class WebSocketResponse(StreamResponse):
                     set_result(waiter, True)
                     self._waiting = None
             except (asyncio.CancelledError, asyncio.TimeoutError):
-                self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
+                self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 raise
             except EofStream:
                 self._close_code = WSCloseCode.OK
