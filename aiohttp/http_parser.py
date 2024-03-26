@@ -368,7 +368,17 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         )
                         import pprint
 
-                        pprint.pprint(["empty_body", empty_body, code, msg.upgrade])
+                        pprint.pprint(
+                            [
+                                "empty_body",
+                                empty_body,
+                                code,
+                                msg.upgrade,
+                                "self._upgraded",
+                                self._upgraded,
+                                msg,
+                            ]
+                        )
                         # self._upgraded=False
                         if not empty_body and (
                             (length is not None and length > 0)
