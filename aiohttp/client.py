@@ -87,7 +87,6 @@ from .helpers import (
     TimeoutHandle,
     ceil_timeout,
     get_env_proxy_for_url,
-    is_supported_upgrade,
     method_must_be_empty_body,
     sentinel,
     strip_auth_from_url,
@@ -878,7 +877,7 @@ class ClientSession:
                     headers=resp.headers,
                 )
 
-            if not is_supported_upgrade(resp.headers):
+            if resp.headers.get(hdrs.UPGRADE, "").lower() != "websocket":
                 raise WSServerHandshakeError(
                     resp.request_info,
                     resp.history,

@@ -1124,4 +1124,4 @@ def should_remove_content_length(method: str, code: int) -> bool:
 
 def is_supported_upgrade(headers: CIMultiDict[str]) -> bool:
     """Check if the upgrade header is supported."""
-    return headers.get(hdrs.UPGRADE, "").lower() == "websocket"
+    return headers.get(hdrs.UPGRADE, "").lower() in ("tcp", "websocket")
