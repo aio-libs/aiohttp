@@ -852,6 +852,7 @@ async def test_receive_timeout_keeps_connection_open(
     loop: Any, aiohttp_client: Any
 ) -> None:
     closed = loop.create_future()
+    timed_out = loop.create_future()
 
     async def handler(request):
         ws = web.WebSocketResponse(autoping=False)
@@ -860,6 +861,8 @@ async def test_receive_timeout_keeps_connection_open(
         task = asyncio.create_task(ws.receive(sys.float_info.min))
         with contextlib.suppress(asyncio.TimeoutError):
             await task
+
+        timed_out.set_result(None)
 
         msg = await ws.receive()
         assert msg.type == WSMsgType.PING
@@ -879,7 +882,7 @@ async def test_receive_timeout_keeps_connection_open(
 
     ws = await client.ws_connect("/", autoping=False)
 
-    await asyncio.sleep(0.1)
+    await timed_out
     await ws.ping("data")
 
     msg = await ws.receive()
