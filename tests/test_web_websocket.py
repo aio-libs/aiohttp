@@ -358,7 +358,8 @@ async def test_receive_timeouterror(make_request: Any, loop: Any) -> None:
     with pytest.raises(asyncio.TimeoutError):
         await ws.receive()
 
-    assert len(ws._req.transport.close.mock_calls) == 1
+    # Should not close the connection on timeout
+    assert len(ws._req.transport.close.mock_calls) == 0
 
 
 async def test_multiple_receive_on_close_connection(make_request: Any) -> None:
