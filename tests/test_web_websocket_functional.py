@@ -879,8 +879,7 @@ async def test_receive_timeout_keeps_connection_open(
 
     ws = await client.ws_connect("/", autoping=False)
 
-    await asyncio.sleep(0)
-    await asyncio.sleep(sys.float_info.min)
+    await asyncio.sleep(0.1)
     await ws.ping("data")
 
     msg = await ws.receive()
