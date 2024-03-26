@@ -878,7 +878,7 @@ class ClientSession:
                     headers=resp.headers,
                 )
 
-            if is_supported_upgrade(resp.headers):
+            if not is_supported_upgrade(resp.headers):
                 raise WSServerHandshakeError(
                     resp.request_info,
                     resp.history,
