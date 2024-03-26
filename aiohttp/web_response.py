@@ -53,6 +53,7 @@ else:
     BaseClass = collections.abc.MutableMapping
 
 
+# TODO(py311): Convert to StrEnum for wider use
 class ContentCoding(enum.Enum):
     # The content codings that we have support for.
     #
@@ -183,7 +184,6 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
 
     def enable_compression(self, force: Optional[ContentCoding] = None) -> None:
         """Enables response compression encoding."""
-        # Backwards compatibility for when force was a bool <0.17.
         self._compression = True
         self._compression_force = force
 
@@ -326,6 +326,8 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         if self._compression_force:
             await self._do_start_compression(self._compression_force)
         else:
+            # Encoding comparisons should be case-insensitive
+            # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1
             accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "").lower()
             for coding in ContentCoding:
                 if coding.value in accept_encoding:

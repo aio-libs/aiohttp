@@ -9,17 +9,19 @@ from aiohttp.web_fileresponse import FileResponse
 
 def test_using_gzip_if_header_present_and_file_available(loop: Any) -> None:
     request = make_mocked_request(
-        "GET", "http://python.org/logo.png", headers={hdrs.ACCEPT_ENCODING: "gzip"}
+        "GET",
+        "http://python.org/logo.png",
+        # Header uses some uppercase to ensure case-insensitive treatment
+        headers={hdrs.ACCEPT_ENCODING: "GZip"},
     )
 
     gz_filepath = mock.create_autospec(Path, spec_set=True)
-    gz_filepath.is_file.return_value = True
     gz_filepath.stat.return_value.st_size = 1024
     gz_filepath.stat.return_value.st_mtime_ns = 1603733507222449291
 
     filepath = mock.create_autospec(Path, spec_set=True)
     filepath.name = "logo.png"
-    filepath.with_name.return_value = gz_filepath
+    filepath.with_suffix.return_value = gz_filepath
 
     file_sender = FileResponse(filepath)
     file_sender._path = filepath
@@ -35,11 +37,12 @@ def test_gzip_if_header_not_present_and_file_available(loop: Any) -> None:
     request = make_mocked_request("GET", "http://python.org/logo.png", headers={})
 
     gz_filepath = mock.create_autospec(Path, spec_set=True)
-    gz_filepath.is_file.return_value = True
+    gz_filepath.stat.return_value.st_size = 1024
+    gz_filepath.stat.return_value.st_mtime_ns = 1603733507222449291
 
     filepath = mock.create_autospec(Path, spec_set=True)
     filepath.name = "logo.png"
-    filepath.with_name.return_value = gz_filepath
+    filepath.with_suffix.return_value = gz_filepath
     filepath.stat.return_value.st_size = 1024
     filepath.stat.return_value.st_mtime_ns = 1603733507222449291
 
@@ -57,11 +60,11 @@ def test_gzip_if_header_not_present_and_file_not_available(loop: Any) -> None:
     request = make_mocked_request("GET", "http://python.org/logo.png", headers={})
 
     gz_filepath = mock.create_autospec(Path, spec_set=True)
-    gz_filepath.is_file.return_value = False
+    gz_filepath.stat.side_effect = OSError(2, "No such file or directory")
 
     filepath = mock.create_autospec(Path, spec_set=True)
     filepath.name = "logo.png"
-    filepath.with_name.return_value = gz_filepath
+    filepath.with_suffix.return_value = gz_filepath
     filepath.stat.return_value.st_size = 1024
     filepath.stat.return_value.st_mtime_ns = 1603733507222449291
 
@@ -81,11 +84,11 @@ def test_gzip_if_header_present_and_file_not_available(loop: Any) -> None:
     )
 
     gz_filepath = mock.create_autospec(Path, spec_set=True)
-    gz_filepath.is_file.return_value = False
+    gz_filepath.stat.side_effect = OSError(2, "No such file or directory")
 
     filepath = mock.create_autospec(Path, spec_set=True)
     filepath.name = "logo.png"
-    filepath.with_name.return_value = gz_filepath
+    filepath.with_suffix.return_value = gz_filepath
     filepath.stat.return_value.st_size = 1024
     filepath.stat.return_value.st_mtime_ns = 1603733507222449291
 

@@ -31,19 +31,19 @@ from aiohttp.tracing import Trace
 @pytest.fixture()
 def key():
     # Connection key
-    return ConnectionKey("localhost", 80, False, None, None, None, None)
+    return ConnectionKey("localhost", 80, False, True, None, None, None)
 
 
 @pytest.fixture
 def key2():
     # Connection key
-    return ConnectionKey("localhost", 80, False, None, None, None, None)
+    return ConnectionKey("localhost", 80, False, True, None, None, None)
 
 
 @pytest.fixture
 def ssl_key():
     # Connection key
-    return ConnectionKey("localhost", 80, True, None, None, None, None)
+    return ConnectionKey("localhost", 80, True, True, None, None, None)
 
 
 @pytest.fixture
@@ -1021,6 +1021,7 @@ async def test_tcp_connector_dns_throttle_requests(
         loop.create_task(conn._resolve_host("localhost", 8080))
         loop.create_task(conn._resolve_host("localhost", 8080))
         await asyncio.sleep(0)
+        await asyncio.sleep(0)
         m_resolver().resolve.assert_called_once_with("localhost", 8080, family=0)
 
 
@@ -1031,6 +1032,9 @@ async def test_tcp_connector_dns_throttle_requests_exception_spread(loop: Any) -
         m_resolver().resolve.side_effect = e
         r1 = loop.create_task(conn._resolve_host("localhost", 8080))
         r2 = loop.create_task(conn._resolve_host("localhost", 8080))
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
         await asyncio.sleep(0)
         assert r1.exception() == e
         assert r2.exception() == e
@@ -1045,6 +1049,7 @@ async def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
         loop.create_task(conn._resolve_host("localhost", 8080))
         f = loop.create_task(conn._resolve_host("localhost", 8080))
 
+        await asyncio.sleep(0)
         await asyncio.sleep(0)
         await conn.close()
 
@@ -1211,6 +1216,7 @@ async def test_tcp_connector_dns_tracing_throttle_requests(
         m_resolver().resolve.return_value = dns_response()
         loop.create_task(conn._resolve_host("localhost", 8080, traces=traces))
         loop.create_task(conn._resolve_host("localhost", 8080, traces=traces))
+        await asyncio.sleep(0)
         await asyncio.sleep(0)
         on_dns_cache_hit.assert_called_once_with(
             session, trace_config_ctx, aiohttp.TraceDnsCacheHitParams("localhost")
@@ -1478,7 +1484,7 @@ async def test_cleanup_closed_disabled(loop: Any, mocker: Any) -> None:
 
 async def test_tcp_connector_ctor(loop: Any) -> None:
     conn = aiohttp.TCPConnector()
-    assert conn._ssl is None
+    assert conn._ssl is True
 
     assert conn.use_dns_cache
     assert conn.family == 0
@@ -1565,7 +1571,7 @@ async def test___get_ssl_context3(loop: Any) -> None:
     conn = aiohttp.TCPConnector(ssl=ctx)
     req = mock.Mock()
     req.is_ssl.return_value = True
-    req.ssl = None
+    req.ssl = True
     assert conn._get_ssl_context(req) is ctx
 
 
@@ -1591,7 +1597,7 @@ async def test___get_ssl_context6(loop: Any) -> None:
     conn = aiohttp.TCPConnector()
     req = mock.Mock()
     req.is_ssl.return_value = True
-    req.ssl = None
+    req.ssl = True
     assert conn._get_ssl_context(req) is conn._make_ssl_context(True)
 
 

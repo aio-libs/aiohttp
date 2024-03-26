@@ -3,7 +3,8 @@
 
 import asyncio
 import re
-from typing import Any, List
+from contextlib import nullcontext
+from typing import Any, Dict, List
 from unittest import mock
 from urllib.parse import quote
 
@@ -169,10 +170,26 @@ def test_cve_2023_37276(parser: Any) -> None:
 
 
 @pytest.mark.parametrize(
+    "rfc9110_5_6_2_token_delim",
+    r'"(),/:;<=>?@[\]{}',
+)
+def test_bad_header_name(parser: Any, rfc9110_5_6_2_token_delim: str) -> None:
+    text = f"POST / HTTP/1.1\r\nhead{rfc9110_5_6_2_token_delim}er: val\r\n\r\n".encode()
+    expectation = pytest.raises(http_exceptions.BadHttpMessage)
+    if rfc9110_5_6_2_token_delim == ":":
+        # Inserting colon into header just splits name/value earlier.
+        expectation = nullcontext()
+    with expectation:
+        parser.feed_data(text)
+
+
+@pytest.mark.parametrize(
     "hdr",
     (
         "Content-Length: -5",  # https://www.rfc-editor.org/rfc/rfc9110.html#name-content-length
         "Content-Length: +256",
+        "Content-Length: \N{superscript one}",
+        "Content-Length: \N{mathematical double-struck digit one}",
         "Foo: abc\rdef",  # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-5
         "Bar: abc\ndef",
         "Baz: abc\x00def",
@@ -262,7 +279,33 @@ def test_parse_headers_longline(parser: Any) -> None:
     header_name = b"Test" + invalid_unicode_byte + b"Header" + b"A" * 8192
     text = b"GET /test HTTP/1.1\r\n" + header_name + b": test\r\n" + b"\r\n" + b"\r\n"
     with pytest.raises((http_exceptions.LineTooLong, http_exceptions.BadHttpMessage)):
+        # FIXME: `LineTooLong` doesn't seem to actually be happening
         parser.feed_data(text)
+
+
+@pytest.fixture
+def xfail_c_parser_status(request) -> None:
+    if isinstance(request.getfixturevalue("parser"), HttpRequestParserPy):
+        return
+    request.node.add_marker(
+        pytest.mark.xfail(
+            reason="Regression test for Py parser. May match C behaviour later.",
+            raises=http_exceptions.BadStatusLine,
+        )
+    )
+
+
+@pytest.mark.usefixtures("xfail_c_parser_status")
+def test_parse_unusual_request_line(parser: Any) -> None:
+    text = b"#smol //a HTTP/1.3\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    assert len(messages) == 1
+    msg, _ = messages[0]
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert msg.method == "#smol"
+    assert msg.path == "//a"
+    assert msg.version == (1, 3)
 
 
 def test_parse(parser: Any) -> None:
@@ -567,6 +610,40 @@ def test_headers_content_length_err_2(parser: Any) -> None:
         parser.feed_data(text)
 
 
+_pad: Dict[bytes, str] = {
+    b"": "empty",
+    # not a typo. Python likes triple zero
+    b"\000": "NUL",
+    b" ": "SP",
+    b"  ": "SPSP",
+    # not a typo: both 0xa0 and 0x0a in case of 8-bit fun
+    b"\n": "LF",
+    b"\xa0": "NBSP",
+    b"\t ": "TABSP",
+}
+
+
+@pytest.mark.parametrize("hdr", [b"", b"foo"], ids=["name-empty", "with-name"])
+@pytest.mark.parametrize("pad2", _pad.keys(), ids=["post-" + n for n in _pad.values()])
+@pytest.mark.parametrize("pad1", _pad.keys(), ids=["pre-" + n for n in _pad.values()])
+def test_invalid_header_spacing(
+    parser: Any, pad1: bytes, pad2: bytes, hdr: bytes
+) -> None:
+    text = b"GET /test HTTP/1.1\r\n" b"%s%s%s: value\r\n\r\n" % (pad1, hdr, pad2)
+    expectation = pytest.raises(http_exceptions.BadHttpMessage)
+    if pad1 == pad2 == b"" and hdr != b"":
+        # one entry in param matrix is correct: non-empty name, not padded
+        expectation = nullcontext()
+    with expectation:
+        parser.feed_data(text)
+
+
+def test_empty_header_name(parser: Any) -> None:
+    text = b"GET /test HTTP/1.1\r\n" b":test\r\n\r\n"
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(text)
+
+
 def test_invalid_header(parser: Any) -> None:
     text = b"GET /test HTTP/1.1\r\n" b"test line\r\n\r\n"
     with pytest.raises(http_exceptions.BadHttpMessage):
@@ -689,6 +766,34 @@ def test_http_request_bad_status_line(parser: Any) -> None:
     assert r"\n" not in exc_info.value.message
 
 
+_num: Dict[bytes, str] = {
+    # dangerous: accepted by Python int()
+    # unicodedata.category("\U0001D7D9") == 'Nd'
+    "\N{mathematical double-struck digit one}".encode(): "utf8digit",
+    # only added for interop tests, refused by Python int()
+    # unicodedata.category("\U000000B9") == 'No'
+    "\N{superscript one}".encode(): "utf8number",
+    "\N{superscript one}".encode("latin-1"): "latin1number",
+}
+
+
+@pytest.mark.parametrize("nonascii_digit", _num.keys(), ids=_num.values())
+def test_http_request_bad_status_line_number(
+    parser: Any, nonascii_digit: bytes
+) -> None:
+    text = b"GET /digit HTTP/1." + nonascii_digit + b"\r\n\r\n"
+    with pytest.raises(http_exceptions.BadStatusLine):
+        parser.feed_data(text)
+
+
+def test_http_request_bad_status_line_separator(parser: Any) -> None:
+    # single code point, old, multibyte NFKC, multibyte NFKD
+    utf8sep = "\N{arabic ligature sallallahou alayhe wasallam}".encode()
+    text = b"GET /ligature HTTP/1" + utf8sep + b"1\r\n\r\n"
+    with pytest.raises(http_exceptions.BadStatusLine):
+        parser.feed_data(text)
+
+
 def test_http_request_bad_status_line_whitespace(parser: Any) -> None:
     text = b"GET\n/path\fHTTP/1.1\r\n\r\n"
     with pytest.raises(http_exceptions.BadStatusLine):
@@ -708,6 +813,44 @@ def test_http_request_upgrade(parser: Any) -> None:
     assert msg.upgrade
     assert upgrade
     assert tail == b"some raw data"
+
+
+@pytest.fixture
+def xfail_c_parser_url(request) -> None:
+    if isinstance(request.getfixturevalue("parser"), HttpRequestParserPy):
+        return
+    request.node.add_marker(
+        pytest.mark.xfail(
+            reason="Regression test for Py parser. May match C behaviour later.",
+            raises=http_exceptions.InvalidURLError,
+        )
+    )
+
+
+@pytest.mark.usefixtures("xfail_c_parser_url")
+def test_http_request_parser_utf8_request_line(parser: Any) -> None:
+    messages, upgrade, tail = parser.feed_data(
+        # note the truncated unicode sequence
+        b"GET /P\xc3\xbcnktchen\xa0\xef\xb7 HTTP/1.1\r\n" +
+        # for easier grep: ASCII 0xA0 more commonly known as non-breaking space
+        # note the leading and trailing spaces
+        "sTeP:  \N{latin small letter sharp s}nek\t\N{no-break space}  "
+        "\r\n\r\n".encode()
+    )
+    msg = messages[0][0]
+
+    assert msg.method == "GET"
+    assert msg.path == "/Pünktchen\udca0\udcef\udcb7"
+    assert msg.version == (1, 1)
+    assert msg.headers == CIMultiDict([("STEP", "ßnek\t\xa0")])
+    assert msg.raw_headers == ((b"sTeP", "ßnek\t\xa0".encode()),)
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert not msg.chunked
+    # python HTTP parser depends on Cython and CPython URL to match
+    # .. but yarl.URL("/abs") is not equal to URL.build(path="/abs"), see #6409
+    assert msg.url == URL.build(path="/Pünktchen\udca0\udcef\udcb7", encoded=True)
 
 
 def test_http_request_parser_utf8(parser: Any) -> None:
@@ -759,9 +902,15 @@ def test_http_request_parser_two_slashes(parser: Any) -> None:
     assert not msg.chunked
 
 
-def test_http_request_parser_bad_method(parser: Any) -> None:
+@pytest.mark.parametrize(
+    "rfc9110_5_6_2_token_delim",
+    [bytes([i]) for i in rb'"(),/:;<=>?@[\]{}'],
+)
+def test_http_request_parser_bad_method(
+    parser: Any, rfc9110_5_6_2_token_delim: bytes
+) -> None:
     with pytest.raises(http_exceptions.BadStatusLine):
-        parser.feed_data(b'G=":<>(e),[T];?" /get HTTP/1.1\r\n\r\n')
+        parser.feed_data(rfc9110_5_6_2_token_delim + b'ET" /get HTTP/1.1\r\n\r\n')
 
 
 def test_http_request_parser_bad_version(parser: Any) -> None:
@@ -977,6 +1126,14 @@ def test_http_response_parser_code_above_999(response: Any) -> None:
 def test_http_response_parser_code_not_int(response: Any) -> None:
     with pytest.raises(http_exceptions.BadStatusLine):
         response.feed_data(b"HTTP/1.1 ttt test\r\n\r\n")
+
+
+@pytest.mark.parametrize("nonascii_digit", _num.keys(), ids=_num.values())
+def test_http_response_parser_code_not_ascii(
+    response: Any, nonascii_digit: bytes
+) -> None:
+    with pytest.raises(http_exceptions.BadStatusLine):
+        response.feed_data(b"HTTP/1.1 20" + nonascii_digit + b" test\r\n\r\n")
 
 
 def test_http_request_chunked_payload(parser: Any) -> None:

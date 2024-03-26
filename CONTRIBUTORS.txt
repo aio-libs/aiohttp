@@ -83,6 +83,7 @@ Damien Nadé
 Dan King
 Dan Xu
 Daniel García
+Daniel Golding
 Daniel Grossmann-Kavanagh
 Daniel Nelson
 Daniele Trifirò
@@ -149,6 +150,7 @@ Hugo Hromic
 Hugo van Kemenade
 Hynek Schlawack
 Igor Alexandrov
+Igor Bolshakov
 Igor Davydenko
 Igor Mozharovsky
 Igor Pavlov
@@ -262,6 +264,7 @@ Pankaj Pandey
 Parag Jain
 Pau Freixes
 Paul Colomiets
+Paul J. Dorn
 Paulius Šileikis
 Paulus Schoutsen
 Pavel Kamaev
@@ -305,6 +308,7 @@ Stepan Pletnev
 Stephan Jaensch
 Stephen Cirelli
 Stephen Granade
+Steve Repsher
 Steven Seguin
 Sunghyun Hwang
 Sunit Deshpande
@@ -355,6 +359,7 @@ William Grzybowski
 William S.
 Wilson Ong
 wouter bolsterlee
+Xiang Li
 Yang Zhou
 Yannick Koechlin
 Yannick Péroux
@@ -371,5 +376,6 @@ Yuvi Panda
 Zainab Lawal
 Zeal Wierslee
 Zlatan Sičanica
+Łukasz Setla
 Марк Коренберг
 Семён Марьясин

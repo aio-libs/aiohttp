@@ -9,6 +9,8 @@ import json
 import pathlib
 import socket
 import ssl
+import sys
+import time
 from typing import Any, AsyncIterator
 from unittest import mock
 
@@ -19,7 +21,14 @@ from yarl import URL
 import aiohttp
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver
-from aiohttp.client_exceptions import SocketTimeoutError, TooManyRedirects
+from aiohttp.client_exceptions import (
+    InvalidUrlClientError,
+    InvalidUrlRedirectClientError,
+    NonHttpUrlClientError,
+    NonHttpUrlRedirectClientError,
+    SocketTimeoutError,
+    TooManyRedirects,
+)
 from aiohttp.pytest_plugin import AiohttpClient, TestClient
 from aiohttp.test_utils import unused_port
 
@@ -213,6 +222,67 @@ async def test_keepalive_server_force_close_connection(aiohttp_client: Any) -> N
     resp2.close()
 
     assert 0 == len(client._session.connector._conns)
+
+
+async def test_keepalive_timeout_async_sleep() -> None:
+    async def handler(request):
+        body = await request.read()
+        assert b"" == body
+        return web.Response(body=b"OK")
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    runner = web.AppRunner(app, tcp_keepalive=True, keepalive_timeout=0.001)
+    await runner.setup()
+
+    port = unused_port()
+    site = web.TCPSite(runner, host="localhost", port=port)
+    await site.start()
+
+    try:
+        async with aiohttp.client.ClientSession() as sess:
+            resp1 = await sess.get(f"http://localhost:{port}/")
+            await resp1.read()
+            # wait for server keepalive_timeout
+            await asyncio.sleep(0.01)
+            resp2 = await sess.get(f"http://localhost:{port}/")
+            await resp2.read()
+    finally:
+        await asyncio.gather(runner.shutdown(), site.stop())
+
+
+@pytest.mark.skipif(
+    sys.version_info[:2] == (3, 11),
+    reason="https://github.com/pytest-dev/pytest/issues/10763",
+)
+async def test_keepalive_timeout_sync_sleep() -> None:
+    async def handler(request):
+        body = await request.read()
+        assert b"" == body
+        return web.Response(body=b"OK")
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    runner = web.AppRunner(app, tcp_keepalive=True, keepalive_timeout=0.001)
+    await runner.setup()
+
+    port = unused_port()
+    site = web.TCPSite(runner, host="localhost", port=port)
+    await site.start()
+
+    try:
+        async with aiohttp.client.ClientSession() as sess:
+            resp1 = await sess.get(f"http://localhost:{port}/")
+            await resp1.read()
+            # wait for server keepalive_timeout
+            # time.sleep is a more challenging scenario than asyncio.sleep
+            time.sleep(0.01)
+            resp2 = await sess.get(f"http://localhost:{port}/")
+            await resp2.read()
+    finally:
+        await asyncio.gather(runner.shutdown(), site.stop())
 
 
 async def test_release_early(aiohttp_client: Any) -> None:
@@ -1057,7 +1127,7 @@ async def test_HTTP_302_REDIRECT_NON_HTTP(aiohttp_client: Any) -> None:
     app.router.add_get("/redirect", redirect)
     client = await aiohttp_client(app)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(NonHttpUrlRedirectClientError):
         await client.get("/redirect")
 
 
@@ -2390,6 +2460,132 @@ async def test_redirect_without_location_header(aiohttp_client: Any) -> None:
     assert data == body
 
 
+INVALID_URL_WITH_ERROR_MESSAGE_YARL_NEW = (
+    # yarl.URL.__new__ raises ValueError
+    ("http://:/", "http://:/"),
+    ("http://example.org:non_int_port/", "http://example.org:non_int_port/"),
+)
+
+INVALID_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN = (
+    # # yarl.URL.origin raises ValueError
+    ("http:/", "http:///"),
+    ("http:/example.com", "http:///example.com"),
+    ("http:///example.com", "http:///example.com"),
+)
+
+NON_HTTP_URL_WITH_ERROR_MESSAGE = (
+    ("call:+380123456789", r"call:\+380123456789"),
+    ("skype:handle", "skype:handle"),
+    ("slack://instance/room", "slack://instance/room"),
+    ("steam:code", "steam:code"),
+    ("twitter://handle", "twitter://handle"),
+    ("bluesky://profile/d:i:d", "bluesky://profile/d:i:d"),
+)
+
+
+@pytest.mark.parametrize(
+    ("url", "error_message_url", "expected_exception_class"),
+    (
+        *(
+            (url, message, InvalidUrlClientError)
+            for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE_YARL_NEW
+        ),
+        *(
+            (url, message, InvalidUrlClientError)
+            for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN
+        ),
+        *(
+            (url, message, NonHttpUrlClientError)
+            for (url, message) in NON_HTTP_URL_WITH_ERROR_MESSAGE
+        ),
+    ),
+)
+async def test_invalid_and_non_http_url(
+    url: Any, error_message_url: Any, expected_exception_class: Any
+) -> None:
+    async with aiohttp.ClientSession() as http_session:
+        with pytest.raises(
+            expected_exception_class, match=rf"^{error_message_url}( - [A-Za-z ]+)?"
+        ):
+            await http_session.get(url)
+
+
+@pytest.mark.parametrize(
+    ("invalid_redirect_url", "error_message_url", "expected_exception_class"),
+    (
+        *(
+            (url, message, InvalidUrlRedirectClientError)
+            for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN
+            + INVALID_URL_WITH_ERROR_MESSAGE_YARL_NEW
+        ),
+        *(
+            (url, message, NonHttpUrlRedirectClientError)
+            for (url, message) in NON_HTTP_URL_WITH_ERROR_MESSAGE
+        ),
+    ),
+)
+async def test_invalid_redirect_url(
+    aiohttp_client: Any,
+    invalid_redirect_url: Any,
+    error_message_url: str,
+    expected_exception_class: Any,
+) -> None:
+    headers = {hdrs.LOCATION: invalid_redirect_url}
+
+    async def generate_redirecting_response(request):
+        return web.Response(status=301, headers=headers)
+
+    app = web.Application()
+    app.router.add_get("/redirect", generate_redirecting_response)
+    client = await aiohttp_client(app)
+
+    with pytest.raises(
+        expected_exception_class, match=rf"^{error_message_url}( - [A-Za-z ]+)?"
+    ):
+        await client.get("/redirect")
+
+
+@pytest.mark.parametrize(
+    ("invalid_redirect_url", "error_message_url", "expected_exception_class"),
+    (
+        *(
+            (url, message, InvalidUrlRedirectClientError)
+            for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN
+            + INVALID_URL_WITH_ERROR_MESSAGE_YARL_NEW
+        ),
+        *(
+            (url, message, NonHttpUrlRedirectClientError)
+            for (url, message) in NON_HTTP_URL_WITH_ERROR_MESSAGE
+        ),
+    ),
+)
+async def test_invalid_redirect_url_multiple_redirects(
+    aiohttp_client: Any,
+    invalid_redirect_url: Any,
+    error_message_url: str,
+    expected_exception_class: Any,
+) -> None:
+    app = web.Application()
+
+    for path, location in [
+        ("/redirect", "/redirect1"),
+        ("/redirect1", "/redirect2"),
+        ("/redirect2", invalid_redirect_url),
+    ]:
+
+        async def generate_redirecting_response(request):
+            return web.Response(status=301, headers={hdrs.LOCATION: location})
+
+        app.router.add_get(path, generate_redirecting_response)
+
+    client = await aiohttp_client(app)
+
+    with pytest.raises(
+        expected_exception_class, match=rf"^{error_message_url}( - [A-Za-z ]+)?"
+    ):
+        await client.get("/redirect")
+
+
 @pytest.mark.parametrize(
     ("status", "expected_ok"),
     (
@@ -3030,21 +3226,20 @@ async def test_handle_keepalive_on_closed_connection() -> None:
 
     addr = server.sockets[0].getsockname()
 
-    connector = aiohttp.TCPConnector(limit=1)
-    session = aiohttp.ClientSession(connector=connector)
+    async with aiohttp.TCPConnector(limit=1) as connector:
+        async with aiohttp.ClientSession(connector=connector) as session:
+            url = "http://{}:{}/".format(*addr)
 
-    url = "http://{}:{}/".format(*addr)
+            r = await session.request("GET", url)
+            await r.read()
+            assert 1 == len(connector._conns)
+            closed_conn = next(iter(connector._conns.values()))
 
-    r = await session.request("GET", url)
-    await r.read()
-    assert 1 == len(connector._conns)
+            await session.request("GET", url)
+            assert 1 == len(connector._conns)
+            new_conn = next(iter(connector._conns.values()))
+            assert closed_conn is not new_conn
 
-    with pytest.raises(aiohttp.ClientConnectionError):
-        await session.request("GET", url)
-    assert 0 == len(connector._conns)
-
-    await session.close()
-    await connector.close()
     server.close()
     await server.wait_closed()
 

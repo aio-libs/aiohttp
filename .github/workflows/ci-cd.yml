@@ -51,7 +51,7 @@ jobs:
       with:
         python-version: 3.9
     - name: Cache PyPI
-      uses: actions/cache@v3.3.2
+      uses: actions/cache@v4.0.2
       with:
         key: pip-lint-${{ hashFiles('requirements/*.txt') }}
         path: ~/.cache/pip
@@ -112,16 +112,16 @@ jobs:
       with:
         submodules: true
     - name: Cache llhttp generated files
-      uses: actions/cache@v3.3.2
+      uses: actions/cache@v4.0.2
       id: cache
       with:
-        key: llhttp-${{ hashFiles('vendor/llhttp/package.json', 'vendor/llhttp/src/**/*') }}
+        key: llhttp-${{ hashFiles('vendor/llhttp/package*.json', 'vendor/llhttp/src/**/*') }}
         path:  vendor/llhttp/build
     - name: Setup NodeJS
       if: steps.cache.outputs.cache-hit != 'true'
       uses: actions/setup-node@v4
       with:
-        node-version: '14'
+        node-version: 18
     - name: Generate llhttp sources
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
@@ -200,7 +200,7 @@ jobs:
       run: |
         echo "::set-output name=dir::$(pip cache dir)"    # - name: Cache
     - name: Cache PyPI
-      uses: actions/cache@v3.3.2
+      uses: actions/cache@v4.0.2
       with:
         key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-${{ hashFiles('requirements/*.txt') }}
         path: ${{ steps.pip-cache.outputs.dir }}
@@ -257,7 +257,7 @@ jobs:
       run: |
         python -m coverage xml
     - name: Upload coverage
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         file: ./coverage.xml
         flags: >-
@@ -268,6 +268,7 @@ jobs:
           }},Py-${{
             steps.python-install.outputs.python-version
           }}
+        token: ${{ secrets.CODECOV_TOKEN }}
 
   check:  # This job does nothing and is only used for the branch protection
     if: always()
@@ -391,7 +392,7 @@ jobs:
       run: |
         make cythonize
     - name: Build wheels
-      uses: pypa/cibuildwheel@v2.16.2
+      uses: pypa/cibuildwheel@v2.17.0
       env:
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
     - uses: actions/upload-artifact@v3
@@ -436,8 +437,10 @@ jobs:
         version_file: aiohttp/__init__.py
         github_token: ${{ secrets.GITHUB_TOKEN }}
         dist_dir: dist
-        fix_issue_regex: "`#(\\d+) <https://github.com/aio-libs/aiohttp/issues/\\1>`_"
-        fix_issue_repl: "(#\\1)"
+        fix_issue_regex: >-
+          :issue:`(\d+)`
+        fix_issue_repl: >-
+          #\1
 
     - name: >-
         Publish 🐍📦 to PyPI
@@ -454,7 +457,7 @@ jobs:
       # Confusingly, this action also supports updating releases, not
       # just creating them. This is what we want here, since we've manually
       # created the release above.
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         # dist/ contains the built packages, which smoketest-artifacts/
         # contains the signatures and certificates.

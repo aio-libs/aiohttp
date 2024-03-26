@@ -18,7 +18,6 @@ from typing import (
     Dict,
     Iterable,
     List,
-    Literal,
     Mapping,
     Optional,
     Tuple,
@@ -54,6 +53,7 @@ from .helpers import (
     noop,
     parse_mimetype,
     reify,
+    set_exception,
     set_result,
 )
 from .http import (
@@ -147,9 +147,9 @@ class Fingerprint:
 
 
 if ssl is not None:
-    SSL_ALLOWED_TYPES = (ssl.SSLContext, bool, Fingerprint, type(None))
+    SSL_ALLOWED_TYPES = (ssl.SSLContext, bool, Fingerprint)
 else:  # pragma: no cover
-    SSL_ALLOWED_TYPES = type(None)
+    SSL_ALLOWED_TYPES = (bool,)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -159,7 +159,7 @@ class ConnectionKey:
     host: str
     port: Optional[int]
     is_ssl: bool
-    ssl: Union[SSLContext, None, Literal[False], Fingerprint]
+    ssl: Union[SSLContext, bool, Fingerprint]
     proxy: Optional[URL]
     proxy_auth: Optional[BasicAuth]
     proxy_headers_hash: Optional[int]  # hash(CIMultiDict)
@@ -213,7 +213,7 @@ class ClientRequest:
         proxy_auth: Optional[BasicAuth] = None,
         timer: Optional[BaseTimerContext] = None,
         session: Optional["ClientSession"] = None,
-        ssl: Union[SSLContext, Literal[False], Fingerprint, None] = None,
+        ssl: Union[SSLContext, bool, Fingerprint] = True,
         proxy_headers: Optional[LooseHeaders] = None,
         traces: Optional[List["Trace"]] = None,
         trust_env: bool = False,
@@ -290,7 +290,7 @@ class ClientRequest:
         return self.url.scheme in ("https", "wss")
 
     @property
-    def ssl(self) -> Union["SSLContext", None, Literal[False], Fingerprint]:
+    def ssl(self) -> Union["SSLContext", bool, Fingerprint]:
         return self._ssl
 
     @property
@@ -567,20 +567,29 @@ class ClientRequest:
 
                 for chunk in self.body:
                     await writer.write(chunk)  # type: ignore[arg-type]
-        except OSError as exc:
-            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
-                protocol.set_exception(exc)
-            else:
-                new_exc = ClientOSError(
-                    exc.errno, "Can not write request body for %s" % self.url
+        except OSError as underlying_exc:
+            reraised_exc = underlying_exc
+
+            exc_is_not_timeout = underlying_exc.errno is not None or not isinstance(
+                underlying_exc, asyncio.TimeoutError
+            )
+            if exc_is_not_timeout:
+                reraised_exc = ClientOSError(
+                    underlying_exc.errno,
+                    f"Can not write request body for {self.url !s}",
                 )
-                new_exc.__context__ = exc
-                new_exc.__cause__ = exc
-                protocol.set_exception(new_exc)
+
+            set_exception(protocol, reraised_exc, underlying_exc)
         except asyncio.CancelledError:
             await writer.write_eof()
-        except Exception as exc:
-            protocol.set_exception(exc)
+        except Exception as underlying_exc:
+            set_exception(
+                protocol,
+                ClientConnectionError(
+                    f"Failed to send bytes into the underlying connection {conn !s}",
+                ),
+                underlying_exc,
+            )
         else:
             await writer.write_eof()
             protocol.start_timeout()
@@ -1030,7 +1039,7 @@ class ClientResponse(HeadersMixin):
         content = self.content
         # content can be None here, but the types are cheated elsewhere.
         if content and content.exception() is None:  # type: ignore[truthy-bool]
-            content.set_exception(ClientConnectionError("Connection closed"))
+            set_exception(content, ClientConnectionError("Connection closed"))
         self._released = True
 
     async def wait_for_close(self) -> None:
