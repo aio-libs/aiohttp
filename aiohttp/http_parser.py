@@ -32,6 +32,7 @@ from .helpers import (
     DEBUG,
     NO_EXTENSIONS,
     BaseTimerContext,
+    is_supported_upgrade,
     method_must_be_empty_body,
     set_exception,
     status_code_must_be_empty_body,
@@ -359,7 +360,10 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         pprint.pprint(["upgraded", msg.upgrade, msg])
                         # If response is not 101 than we didn't upgrade
                         # if its 0 its not a response
-                        self._upgraded = msg.upgrade and code in (0, 101)
+                        supported_upgrade = msg.upgrade and is_supported_upgrade(
+                            msg.headers
+                        )
+                        self._upgraded = supported_upgrade and code in (0, 101)
 
                         assert self.protocol is not None
                         # calculate payload
@@ -377,13 +381,16 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 "self._upgraded",
                                 self._upgraded,
                                 msg,
+                                "length",
+                                length,
+                                "msg.chunked",
+                                msg.chunked,
                             ]
                         )
                         # self._upgraded=False
                         if not empty_body and (
-                            (length is not None and length > 0)
-                            or msg.chunked
-                            and not msg.upgrade
+                            ((length is not None and length > 0) or msg.chunked)
+                            and not supported_upgrade
                         ):
                             payload = StreamReader(
                                 self.protocol,

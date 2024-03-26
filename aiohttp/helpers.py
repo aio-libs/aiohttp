@@ -1120,3 +1120,8 @@ def should_remove_content_length(method: str, code: int) -> bool:
         or 100 <= code < 200
         or (200 <= code < 300 and method.upper() == hdrs.METH_CONNECT)
     )
+
+
+def is_supported_upgrade(headers: CIMultiDict[str]) -> bool:
+    """Check if the upgrade header is supported."""
+    return headers.get(hdrs.UPGRADE, "").lower() == "websocket"
