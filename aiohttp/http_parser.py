@@ -352,11 +352,13 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         if SEC_WEBSOCKET_KEY1 in msg.headers:
                             raise InvalidHeader(SEC_WEBSOCKET_KEY1)
 
-                        self._upgraded = msg.upgrade
-
                         method = getattr(msg, "method", self.method)
                         # code is only present on responses
                         code = getattr(msg, "code", 0)
+
+                        self._upgraded = msg.upgrade and _is_supported_upgrade(
+                            msg.headers
+                        )
 
                         assert self.protocol is not None
                         # calculate payload
@@ -365,7 +367,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         )
                         if not empty_body and (
                             ((length is not None and length > 0) or msg.chunked)
-                            and not (msg.upgrade and _is_supported_upgrade(msg.headers))
+                            and not self._upgraded
                         ):
                             payload = StreamReader(
                                 self.protocol,
