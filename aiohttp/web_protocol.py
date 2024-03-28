@@ -239,9 +239,9 @@ class RequestHandler(BaseProtocol):
         self.access_log = access_log
         if access_log:
             if issubclass(access_log_class, AbstractAsyncAccessLogger):
-                self.access_logger: Optional[
-                    AbstractAsyncAccessLogger
-                ] = access_log_class()
+                self.access_logger: Optional[AbstractAsyncAccessLogger] = (
+                    access_log_class()
+                )
             else:
                 access_logger = access_log_class(access_log, access_log_format)
                 self.access_logger = AccessLoggerWrapper(

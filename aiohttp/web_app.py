@@ -143,12 +143,10 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         return self is other
 
     @overload  # type: ignore[override]
-    def __getitem__(self, key: AppKey[_T]) -> _T:
-        ...
+    def __getitem__(self, key: AppKey[_T]) -> _T: ...
 
     @overload
-    def __getitem__(self, key: str) -> Any:
-        ...
+    def __getitem__(self, key: str) -> Any: ...
 
     def __getitem__(self, key: Union[str, AppKey[_T]]) -> Any:
         return self._state[key]
@@ -160,12 +158,10 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             )
 
     @overload  # type: ignore[override]
-    def __setitem__(self, key: AppKey[_T], value: _T) -> None:
-        ...
+    def __setitem__(self, key: AppKey[_T], value: _T) -> None: ...
 
     @overload
-    def __setitem__(self, key: str, value: Any) -> None:
-        ...
+    def __setitem__(self, key: str, value: Any) -> None: ...
 
     def __setitem__(self, key: Union[str, AppKey[_T]], value: Any) -> None:
         self._check_frozen()
@@ -190,16 +186,13 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         return iter(self._state)
 
     @overload  # type: ignore[override]
-    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]:
-        ...
+    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]: ...
 
     @overload
-    def get(self, key: AppKey[_T], default: _U) -> Union[_T, _U]:
-        ...
+    def get(self, key: AppKey[_T], default: _U) -> Union[_T, _U]: ...
 
     @overload
-    def get(self, key: str, default: Any = ...) -> Any:
-        ...
+    def get(self, key: str, default: Any = ...) -> Any: ...
 
     def get(self, key: Union[str, AppKey[_T]], default: Any = None) -> Any:
         return self._state.get(key, default)
