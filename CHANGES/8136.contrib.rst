@@ -1,7 +1,0 @@
-A pytest fixture ``hello_txt`` was introduced to aid
-static file serving tests in
-:file:`test_web_sendfile_functional.py`. It dynamically
-provisions ``hello.txt`` file variants shared across the
-tests in the module.
-
--- by :user:`steverep`

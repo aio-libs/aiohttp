@@ -1,1 +1,0 @@
-Upgraded *llhttp* to 9.2 -- by :user:`Dreamsorcerer`.
