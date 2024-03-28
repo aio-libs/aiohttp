@@ -1,0 +1,1 @@
+Removed break statement inside the 'finally' block of a try-catch statement otherwise it can suppress unhandled exceptions.
