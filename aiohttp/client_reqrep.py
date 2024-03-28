@@ -43,9 +43,13 @@ from .compression_utils import HAS_BROTLI
 from .formdata import FormData
 from .hdrs import CONTENT_TYPE
 from .helpers import (
+    IS_PYODIDE,
     BaseTimerContext,
     BasicAuth,
     HeadersMixin,
+    JsArrayBuffer,
+    JsRequest,
+    JsResponse,
     TimerNoop,
     basicauth_from_netrc,
     is_expected_content_type,
@@ -86,7 +90,7 @@ __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
 
 if TYPE_CHECKING:
     from .client import ClientSession
-    from .connector import Connection
+    from .connector import Connection, PyodideConnection
     from .tracing import Trace
 
 
@@ -698,6 +702,73 @@ class ClientRequest:
             await trace.send_request_headers(method, url, headers)
 
 
+def _make_js_request(
+    path: str, *, method: str, headers: CIMultiDict[str], signal: Any, body: Any
+) -> JsRequest:
+    from js import Headers, Request  # type:ignore[import-not-found] # noqa: I900
+    from pyodide.ffi import to_js  # type:ignore[import-not-found] # noqa: I900
+
+    if method.lower() in ["get", "head"]:
+        body = None
+    # TODO: to_js does an unnecessary copy.
+    elif isinstance(body, payload.Payload):
+        body = to_js(body._value)
+    elif isinstance(body, (bytes, bytearray)):
+        body = to_js(body)
+    else:
+        # What else can happen here? Maybe body could be a list of
+        # bytes? In that case we should turn it into a Blob.
+        raise NotImplementedError("OOPS")
+
+    return cast(
+        JsRequest,
+        Request.new(
+            path,
+            method=method,
+            headers=Headers.new(headers.items()),
+            body=body,
+            signal=signal,
+        ),
+    )
+
+
+class PyodideClientRequest(ClientRequest):
+    async def send(
+        self, conn: "PyodideConnection"  # type:ignore[override]
+    ) -> "ClientResponse":
+        if not IS_PYODIDE:
+            raise RuntimeError("PyodideClientRequest only works in Pyodide")
+
+        protocol = conn.protocol
+        assert protocol is not None
+
+        request = _make_js_request(
+            str(self.url),
+            method=self.method,
+            headers=self.headers,
+            body=self.body,
+            signal=protocol.abortcontroller.signal,
+        )
+        response_future = protocol.fetch_handler(request)
+        response_class = self.response_class
+        assert response_class is not None
+        assert issubclass(response_class, PyodideClientResponse)
+        self.response = response_class(
+            self.method,
+            self.original_url,
+            writer=None,  # type:ignore[arg-type]
+            continue100=self._continue,
+            timer=self._timer,
+            request_info=self.request_info,
+            traces=self._traces,
+            loop=self.loop,
+            session=self._session,
+            response_future=response_future,
+        )
+        self.response.version = self.version
+        return self.response
+
+
 class ClientResponse(HeadersMixin):
     # Some of these attributes are None when created,
     # but will be set by the start() method.
@@ -1132,3 +1203,57 @@ class ClientResponse(HeadersMixin):
         # if state is broken
         self.release()
         await self.wait_for_close()
+
+
+class PyodideClientResponse(ClientResponse):
+    def __init__(
+        self,
+        method: str,
+        url: URL,
+        *,
+        writer: "asyncio.Task[None]",
+        continue100: Optional["asyncio.Future[bool]"],
+        timer: Optional[BaseTimerContext],
+        request_info: RequestInfo,
+        traces: List["Trace"],
+        loop: asyncio.AbstractEventLoop,
+        session: "ClientSession",
+        response_future: "asyncio.Future[JsResponse]",
+    ):
+        if not IS_PYODIDE:
+            raise RuntimeError("PyodideClientResponse only works in Pyodide")
+        self.response_future = response_future
+        super().__init__(
+            method,
+            url,
+            writer=writer,
+            continue100=continue100,
+            timer=timer,
+            request_info=request_info,
+            traces=traces,
+            loop=loop,
+            session=session,
+        )
+
+    async def start(self, connection: "Connection") -> "ClientResponse":
+        from .streams import DataQueue
+
+        self._connection = connection
+        self._protocol = connection.protocol
+        jsresp = await self.response_future
+        self.status = jsresp.status
+        self.reason = jsresp.statusText
+        # This is not quite correct in handling of repeated headers
+        self._headers = cast(CIMultiDictProxy[str], CIMultiDict(jsresp.headers))
+        self._raw_headers = tuple(
+            (e[0].encode(), e[1].encode()) for e in jsresp.headers
+        )
+        self.content = DataQueue(self._loop)  # type:ignore[assignment]
+
+        def done_callback(fut: "asyncio.Future[JsArrayBuffer]") -> None:
+            data = fut.result().to_bytes()
+            self.content.feed_data(data, len(data))
+            self.content.feed_eof()
+
+        jsresp.arrayBuffer().add_done_callback(done_callback)
+        return self

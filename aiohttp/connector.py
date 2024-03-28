@@ -25,6 +25,7 @@ from typing import (  # noqa
     List,
     Literal,
     Optional,
+    Protocol,
     Set,
     Tuple,
     Type,
@@ -50,7 +51,16 @@ from .client_exceptions import (
 )
 from .client_proto import ResponseHandler
 from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
-from .helpers import _SENTINEL, ceil_timeout, is_ip_address, sentinel, set_result
+from .helpers import (
+    _SENTINEL,
+    IS_PYODIDE,
+    JsRequest,
+    JsResponse,
+    ceil_timeout,
+    is_ip_address,
+    sentinel,
+    set_result,
+)
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
@@ -1445,3 +1455,78 @@ class NamedPipeConnector(BaseConnector):
             raise ClientConnectorError(req.connection_key, exc) from exc
 
         return cast(ResponseHandler, proto)
+
+
+IN_PYODIDE = "pyodide" in sys.modules or "emscripten" in sys.platform
+
+
+class PyodideProtocol(ResponseHandler):
+    def __init__(
+        self,
+        loop: asyncio.AbstractEventLoop,
+        fetch_handler: Callable[[JsRequest], "asyncio.Future[JsResponse]"],
+    ):
+        from js import AbortController  # type:ignore[import-not-found] # noqa: I900
+
+        super().__init__(loop)
+        self.abortcontroller = AbortController.new()
+        self.closed = loop.create_future()
+        # asyncio.Transport "raises NotImplemented for every method"
+        self.transport = asyncio.Transport()
+        self.fetch_handler = fetch_handler
+
+    def close(self) -> None:
+        self.abortcontroller.abort()
+        self.closed.set_result(None)
+
+
+class PyodideConnection(Connection):
+    _protocol: PyodideProtocol
+
+    @property
+    def protocol(self) -> Optional[PyodideProtocol]:
+        return self._protocol
+
+
+class PyodideConnector(BaseConnector):
+    """Pyodide connector
+
+    Dummy connector that
+    """
+
+    protocol: PyodideProtocol
+
+    def __init__(
+        self,
+        *,
+        fetch_handler: Optional[
+            Callable[[JsRequest], "asyncio.Future[JsResponse]"]
+        ] = None,
+        keepalive_timeout: Union[_SENTINEL, None, float] = sentinel,
+        force_close: bool = False,
+        limit: int = 100,
+        limit_per_host: int = 0,
+        enable_cleanup_closed: bool = False,
+        timeout_ceil_threshold: float = 5,
+    ) -> None:
+        super().__init__(
+            keepalive_timeout=keepalive_timeout,
+            force_close=force_close,
+            limit=limit,
+            limit_per_host=limit_per_host,
+            enable_cleanup_closed=enable_cleanup_closed,
+            timeout_ceil_threshold=timeout_ceil_threshold,
+        )
+        if fetch_handler is None:
+            from js import fetch  # noqa: I900
+
+            fetch_handler = fetch
+
+        self.fetch_handler = fetch_handler
+        if not IS_PYODIDE:
+            raise RuntimeError("PyodideConnector only works in Pyodide")
+
+    async def _create_connection(
+        self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
+    ) -> ResponseHandler:
+        return PyodideProtocol(self._loop, self.fetch_handler)
