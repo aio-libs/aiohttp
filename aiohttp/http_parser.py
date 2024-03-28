@@ -225,6 +225,11 @@ class HeadersParser:
         return (CIMultiDictProxy(headers), tuple(raw_headers))
 
 
+def _is_supported_upgrade(headers: CIMultiDictProxy[str]) -> bool:
+    """Check if the upgrade header is supported."""
+    return headers.get(hdrs.UPGRADE, "").lower() in {"tcp", "websocket"}
+
+
 class HttpParser(abc.ABC, Generic[_MsgT]):
     lax: ClassVar[bool] = False
 
@@ -347,7 +352,9 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         if SEC_WEBSOCKET_KEY1 in msg.headers:
                             raise InvalidHeader(SEC_WEBSOCKET_KEY1)
 
-                        self._upgraded = msg.upgrade
+                        self._upgraded = msg.upgrade and _is_supported_upgrade(
+                            msg.headers
+                        )
 
                         method = getattr(msg, "method", self.method)
                         # code is only present on responses
@@ -359,9 +366,8 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                             method and method_must_be_empty_body(method)
                         )
                         if not empty_body and (
-                            (length is not None and length > 0)
-                            or msg.chunked
-                            and not msg.upgrade
+                            ((length is not None and length > 0) or msg.chunked)
+                            and not self._upgraded
                         ):
                             payload = StreamReader(
                                 self.protocol,

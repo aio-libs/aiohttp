@@ -53,7 +53,7 @@ multidict==6.0.5
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.8.0 ; implementation_name == "cpython"
+mypy==1.9.0 ; implementation_name == "cpython"
     # via -r requirements/test.in
 mypy-extensions==1.0.0
     # via mypy
@@ -71,18 +71,18 @@ pycparser==2.21
     # via cffi
 pydantic==1.10.12
     # via python-on-whales
-pytest==8.0.2
+pytest==8.1.1
     # via
     #   -r requirements/test.in
     #   pytest-cov
     #   pytest-mock
-pytest-cov==4.1.0
+pytest-cov==5.0.0
     # via -r requirements/test.in
 pytest-mock==3.12.0
     # via -r requirements/test.in
 python-dateutil==2.8.2
     # via freezegun
-python-on-whales==0.69.0
+python-on-whales==0.70.1
     # via -r requirements/test.in
 re-assert==1.1.0
     # via -r requirements/test.in
