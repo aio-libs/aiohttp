@@ -227,7 +227,7 @@ class HeadersParser:
 
 def _is_supported_upgrade(headers: CIMultiDictProxy[str]) -> bool:
     """Check if the upgrade header is supported."""
-    return headers.get(hdrs.UPGRADE, "").lower() in ("tcp", "websocket")
+    return headers.get(hdrs.UPGRADE, "").lower() in {"tcp", "websocket"}
 
 
 class HttpParser(abc.ABC, Generic[_MsgT]):
