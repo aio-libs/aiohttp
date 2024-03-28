@@ -43,7 +43,7 @@ jobs:
         make sync-direct-runtime-deps
         git diff --exit-code -- requirements/runtime-deps.in
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: 3.9
     - name: Cache PyPI
@@ -175,7 +175,7 @@ jobs:
         submodules: true
     - name: Setup Python ${{ matrix.pyver }}
       id: python-install
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         allow-prereleases: true
         python-version: ${{ matrix.pyver }}
@@ -290,7 +290,7 @@ jobs:
       with:
         submodules: true
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
     - name: Update pip, wheel, setuptools, build, twine
       run: |
         python -m pip install -U pip wheel setuptools build twine
@@ -351,7 +351,7 @@ jobs:
         fi
       shell: bash
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: 3.x
     - name: Update pip, wheel, setuptools, build, twine
