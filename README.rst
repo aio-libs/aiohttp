@@ -174,11 +174,6 @@ Optionally you may install the aiodns_ library (highly recommended for sake of s
 .. _yarl: https://pypi.python.org/pypi/yarl
 .. _async-timeout: https://pypi.python.org/pypi/async_timeout
 
-License
-=======
-
-``aiohttp`` is offered under the Apache 2 license.
-
 
 Keepsafe
 ========
