@@ -1,14 +1,17 @@
 import json
 import os
 from typing import (
+    IO,
     TYPE_CHECKING,
     Any,
     Awaitable,
     Callable,
     Iterable,
     Mapping,
+    Protocol,
     Tuple,
     Union,
+    runtime_checkable,
 )
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, istr
@@ -52,3 +55,24 @@ Handler = Callable[["Request"], Awaitable["StreamResponse"]]
 Middleware = Callable[["Request", Handler], Awaitable["StreamResponse"]]
 
 PathLike = Union[str, "os.PathLike[str]"]
+
+
+class PathlibPathNamedLike(Protocol):
+    def is_file(self) -> bool:
+        ...
+
+
+@runtime_checkable
+class PathlibPathLike(Protocol):
+    """pathlib.Path interface used by aiohttp."""
+
+    name: str
+
+    def open(self, mode: str) -> IO[Any]:
+        ...
+
+    def stat(self, *, follow_symlinks=True) -> os.stat_result:
+        ...
+
+    def with_name(self, name: str) -> PathlibPathNamedLike:
+        ...
