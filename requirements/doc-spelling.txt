@@ -5,7 +5,7 @@
 #    pip-compile --allow-unsafe --output-file=requirements/doc-spelling.txt --resolver=backtracking --strip-extras requirements/doc-spelling.in
 #
 aiohttp-theme==0.1.6
-    # via -r doc.in
+    # via -r requirements/doc.in
 alabaster==0.7.13
     # via sphinx
 babel==2.12.1
@@ -40,9 +40,9 @@ markupsafe==2.1.3
     # via jinja2
 packaging==23.1
     # via sphinx
-pillow==9.5.0
+pillow==10.2.0
     # via
-    #   -c broken-projects.in
+    #   -c requirements/broken-projects.in
     #   blockdiag
 pyenchant==3.2.2
     # via sphinxcontrib-spelling
@@ -56,14 +56,14 @@ snowballstemmer==2.2.0
     # via sphinx
 sphinx==7.1.2
     # via
-    #   -r doc.in
+    #   -r requirements/doc.in
     #   sphinxcontrib-blockdiag
     #   sphinxcontrib-spelling
     #   sphinxcontrib-towncrier
 sphinxcontrib-applehelp==1.0.4
     # via sphinx
 sphinxcontrib-blockdiag==3.0.0
-    # via -r doc.in
+    # via -r requirements/doc.in
 sphinxcontrib-devhelp==1.0.2
     # via sphinx
 sphinxcontrib-htmlhelp==2.0.1
@@ -75,14 +75,14 @@ sphinxcontrib-qthelp==1.0.3
 sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
 sphinxcontrib-spelling==8.0.0 ; platform_system != "Windows"
-    # via -r doc-spelling.in
+    # via -r requirements/doc-spelling.in
 sphinxcontrib-towncrier==0.4.0a0
-    # via -r doc.in
+    # via -r requirements/doc.in
 tomli==2.0.1
     # via towncrier
 towncrier==23.11.0
     # via
-    #   -r doc.in
+    #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
 urllib3==2.0.7
     # via requests
@@ -95,6 +95,4 @@ zipp==3.17.0
 
 # The following packages are considered to be unsafe in a requirements file:
 setuptools==68.0.0
-    # via
-    #   blockdiag
-    #   sphinx
+    # via blockdiag
