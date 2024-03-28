@@ -4,6 +4,7 @@ import asyncio
 import base64
 import dataclasses
 import hashlib
+import inspect
 import json
 import os
 import sys
@@ -984,60 +985,307 @@ class ClientSession:
         return result
 
     def get(
-        self, url: StrOrURL, *, allow_redirects: bool = True, **kwargs: Any
+        self,
+        url: StrOrURL,
+        *,
+        allow_redirects: bool = True,
+        params: Optional[Mapping[str, str]] = None,
+        data: Any = None,
+        json: Any = None,
+        cookies: Optional[LooseCookies] = None,
+        headers: Optional[LooseHeaders] = None,
+        skip_auto_headers: Optional[Iterable[str]] = None,
+        auth: Optional[BasicAuth] = None,
+        max_redirects: Optional[int] = None,
+        compress: Optional[str] = None,
+        chunked: Optional[bool] = None,
+        expect100: Optional[bool] = None,
+        raise_for_status: Union[
+            None, bool, Callable[[ClientResponse], Awaitable[None]]
+        ] = None,
+        read_until_eof: Optional[bool] = None,
+        proxy: Optional[StrOrURL] = None,
+        proxy_auth: Optional[BasicAuth] = None,
+        timeout: Union[ClientTimeout, _SENTINEL, None] = None,
+        ssl: Optional[Union[SSLContext, bool, Fingerprint]] = None,
+        proxy_headers: Optional[LooseHeaders] = None,
+        trace_request_ctx: Optional[SimpleNamespace] = None,
+        read_bufsize: Optional[int] = None,
+        auto_decompress: Optional[bool] = None,
+        **kwargs: Any,
     ) -> "_RequestContextManager":
         """Perform HTTP GET request."""
+        params = locals()
+        expected_params = {
+            k: v
+            for k, v in params.items()
+            if k in inspect.signature(self.get).parameters
+            and v is not None
+            and k not in ("url", "kwargs")
+        }
+        expected_params.update(kwargs)
         return _RequestContextManager(
-            self._request(hdrs.METH_GET, url, allow_redirects=allow_redirects, **kwargs)
+            self._request(hdrs.METH_GET, url, **expected_params)
         )
 
     def options(
-        self, url: StrOrURL, *, allow_redirects: bool = True, **kwargs: Any
+        self,
+        url: StrOrURL,
+        *,
+        allow_redirects: bool = True,
+        params: Optional[Mapping[str, str]] = None,
+        data: Any = None,
+        json: Any = None,
+        cookies: Optional[LooseCookies] = None,
+        headers: Optional[LooseHeaders] = None,
+        skip_auto_headers: Optional[Iterable[str]] = None,
+        auth: Optional[BasicAuth] = None,
+        max_redirects: Optional[int] = None,
+        compress: Optional[str] = None,
+        chunked: Optional[bool] = None,
+        expect100: Optional[bool] = None,
+        raise_for_status: Union[
+            None, bool, Callable[[ClientResponse], Awaitable[None]]
+        ] = None,
+        read_until_eof: Optional[bool] = None,
+        proxy: Optional[StrOrURL] = None,
+        proxy_auth: Optional[BasicAuth] = None,
+        timeout: Union[ClientTimeout, _SENTINEL, None] = None,
+        ssl: Optional[Union[SSLContext, bool, Fingerprint]] = None,
+        proxy_headers: Optional[LooseHeaders] = None,
+        trace_request_ctx: Optional[SimpleNamespace] = None,
+        read_bufsize: Optional[int] = None,
+        auto_decompress: Optional[bool] = None,
+        **kwargs: Any,
     ) -> "_RequestContextManager":
         """Perform HTTP OPTIONS request."""
+        params = locals()
+        expected_params = {
+            k: v
+            for k, v in params.items()
+            if k in inspect.signature(self.get).parameters
+            and v is not None
+            and k not in ("url", "kwargs")
+        }
+        expected_params.update(kwargs)
         return _RequestContextManager(
-            self._request(
-                hdrs.METH_OPTIONS, url, allow_redirects=allow_redirects, **kwargs
-            )
+            self._request(hdrs.METH_OPTIONS, url, **expected_params)
         )
 
     def head(
-        self, url: StrOrURL, *, allow_redirects: bool = False, **kwargs: Any
+        self,
+        url: StrOrURL,
+        *,
+        allow_redirects: bool = False,
+        params: Optional[Mapping[str, str]] = None,
+        data: Any = None,
+        json: Any = None,
+        cookies: Optional[LooseCookies] = None,
+        headers: Optional[LooseHeaders] = None,
+        skip_auto_headers: Optional[Iterable[str]] = None,
+        auth: Optional[BasicAuth] = None,
+        max_redirects: Optional[int] = None,
+        compress: Optional[str] = None,
+        chunked: Optional[bool] = None,
+        expect100: Optional[bool] = None,
+        raise_for_status: Union[
+            None, bool, Callable[[ClientResponse], Awaitable[None]]
+        ] = None,
+        read_until_eof: Optional[bool] = None,
+        proxy: Optional[StrOrURL] = None,
+        proxy_auth: Optional[BasicAuth] = None,
+        timeout: Union[ClientTimeout, _SENTINEL, None] = None,
+        ssl: Optional[Union[SSLContext, bool, Fingerprint]] = None,
+        proxy_headers: Optional[LooseHeaders] = None,
+        trace_request_ctx: Optional[SimpleNamespace] = None,
+        read_bufsize: Optional[int] = None,
+        auto_decompress: Optional[bool] = None,
+        **kwargs: Any,
     ) -> "_RequestContextManager":
         """Perform HTTP HEAD request."""
+        params = locals()
+        expected_params = {
+            k: v
+            for k, v in params.items()
+            if k in inspect.signature(self.get).parameters
+            and v is not None
+            and k not in ("url", "kwargs")
+        }
+        expected_params.update(kwargs)
         return _RequestContextManager(
-            self._request(
-                hdrs.METH_HEAD, url, allow_redirects=allow_redirects, **kwargs
-            )
+            self._request(hdrs.METH_HEAD, url, **expected_params)
         )
 
     def post(
-        self, url: StrOrURL, *, data: Any = None, **kwargs: Any
+        self,
+        url: StrOrURL,
+        *,
+        data: Any = None,
+        params: Optional[Mapping[str, str]] = None,
+        json: Any = None,
+        cookies: Optional[LooseCookies] = None,
+        headers: Optional[LooseHeaders] = None,
+        skip_auto_headers: Optional[Iterable[str]] = None,
+        auth: Optional[BasicAuth] = None,
+        max_redirects: Optional[int] = None,
+        compress: Optional[str] = None,
+        chunked: Optional[bool] = None,
+        expect100: Optional[bool] = None,
+        raise_for_status: Union[
+            None, bool, Callable[[ClientResponse], Awaitable[None]]
+        ] = None,
+        read_until_eof: Optional[bool] = None,
+        proxy: Optional[StrOrURL] = None,
+        proxy_auth: Optional[BasicAuth] = None,
+        timeout: Union[ClientTimeout, _SENTINEL, None] = None,
+        ssl: Optional[Union[SSLContext, bool, Fingerprint]] = None,
+        proxy_headers: Optional[LooseHeaders] = None,
+        trace_request_ctx: Optional[SimpleNamespace] = None,
+        read_bufsize: Optional[int] = None,
+        auto_decompress: Optional[bool] = None,
+        **kwargs: Any,
     ) -> "_RequestContextManager":
         """Perform HTTP POST request."""
+        params = locals()
+        expected_params = {
+            k: v
+            for k, v in params.items()
+            if k in inspect.signature(self.get).parameters
+            and v is not None
+            and k not in ("url", "kwargs")
+        }
+        expected_params.update(kwargs)
         return _RequestContextManager(
-            self._request(hdrs.METH_POST, url, data=data, **kwargs)
+            self._request(hdrs.METH_POST, url, **expected_params)
         )
 
     def put(
-        self, url: StrOrURL, *, data: Any = None, **kwargs: Any
+        self,
+        url: StrOrURL,
+        *,
+        data: Any = None,
+        params: Optional[Mapping[str, str]] = None,
+        json: Any = None,
+        cookies: Optional[LooseCookies] = None,
+        headers: Optional[LooseHeaders] = None,
+        skip_auto_headers: Optional[Iterable[str]] = None,
+        auth: Optional[BasicAuth] = None,
+        max_redirects: Optional[int] = None,
+        compress: Optional[str] = None,
+        chunked: Optional[bool] = None,
+        expect100: Optional[bool] = None,
+        raise_for_status: Union[
+            None, bool, Callable[[ClientResponse], Awaitable[None]]
+        ] = None,
+        read_until_eof: Optional[bool] = None,
+        proxy: Optional[StrOrURL] = None,
+        proxy_auth: Optional[BasicAuth] = None,
+        timeout: Union[ClientTimeout, _SENTINEL, None] = None,
+        ssl: Optional[Union[SSLContext, bool, Fingerprint]] = None,
+        proxy_headers: Optional[LooseHeaders] = None,
+        trace_request_ctx: Optional[SimpleNamespace] = None,
+        read_bufsize: Optional[int] = None,
+        auto_decompress: Optional[bool] = None,
+        **kwargs: Any,
     ) -> "_RequestContextManager":
         """Perform HTTP PUT request."""
+        params = locals()
+        expected_params = {
+            k: v
+            for k, v in params.items()
+            if k in inspect.signature(self.get).parameters
+            and v is not None
+            and k not in ("url", "kwargs")
+        }
+        expected_params.update(kwargs)
         return _RequestContextManager(
-            self._request(hdrs.METH_PUT, url, data=data, **kwargs)
+            self._request(hdrs.METH_PUT, url, **expected_params)
         )
 
     def patch(
-        self, url: StrOrURL, *, data: Any = None, **kwargs: Any
+        self,
+        url: StrOrURL,
+        *,
+        data: Any = None,
+        params: Optional[Mapping[str, str]] = None,
+        json: Any = None,
+        cookies: Optional[LooseCookies] = None,
+        headers: Optional[LooseHeaders] = None,
+        skip_auto_headers: Optional[Iterable[str]] = None,
+        auth: Optional[BasicAuth] = None,
+        max_redirects: Optional[int] = None,
+        compress: Optional[str] = None,
+        chunked: Optional[bool] = None,
+        expect100: Optional[bool] = None,
+        raise_for_status: Union[
+            None, bool, Callable[[ClientResponse], Awaitable[None]]
+        ] = None,
+        read_until_eof: Optional[bool] = None,
+        proxy: Optional[StrOrURL] = None,
+        proxy_auth: Optional[BasicAuth] = None,
+        timeout: Union[ClientTimeout, _SENTINEL, None] = None,
+        ssl: Optional[Union[SSLContext, bool, Fingerprint]] = None,
+        proxy_headers: Optional[LooseHeaders] = None,
+        trace_request_ctx: Optional[SimpleNamespace] = None,
+        read_bufsize: Optional[int] = None,
+        auto_decompress: Optional[bool] = None,
+        **kwargs: Any,
     ) -> "_RequestContextManager":
         """Perform HTTP PATCH request."""
+        params = locals()
+        expected_params = {
+            k: v
+            for k, v in params.items()
+            if k in inspect.signature(self.get).parameters
+            and v is not None
+            and k not in ("url", "kwargs")
+        }
+        expected_params.update(kwargs)
         return _RequestContextManager(
-            self._request(hdrs.METH_PATCH, url, data=data, **kwargs)
+            self._request(hdrs.METH_PATCH, url, **expected_params)
         )
 
-    def delete(self, url: StrOrURL, **kwargs: Any) -> "_RequestContextManager":
+    def delete(
+        self,
+        url: StrOrURL,
+        params: Optional[Mapping[str, str]] = None,
+        data: Any = None,
+        json: Any = None,
+        cookies: Optional[LooseCookies] = None,
+        headers: Optional[LooseHeaders] = None,
+        skip_auto_headers: Optional[Iterable[str]] = None,
+        auth: Optional[BasicAuth] = None,
+        max_redirects: Optional[int] = None,
+        compress: Optional[str] = None,
+        chunked: Optional[bool] = None,
+        expect100: Optional[bool] = None,
+        raise_for_status: Union[
+            None, bool, Callable[[ClientResponse], Awaitable[None]]
+        ] = None,
+        read_until_eof: Optional[bool] = None,
+        proxy: Optional[StrOrURL] = None,
+        proxy_auth: Optional[BasicAuth] = None,
+        timeout: Union[ClientTimeout, _SENTINEL, None] = None,
+        ssl: Optional[Union[SSLContext, bool, Fingerprint]] = None,
+        proxy_headers: Optional[LooseHeaders] = None,
+        trace_request_ctx: Optional[SimpleNamespace] = None,
+        read_bufsize: Optional[int] = None,
+        auto_decompress: Optional[bool] = None,
+        **kwargs: Any,
+    ) -> "_RequestContextManager":
         """Perform HTTP DELETE request."""
-        return _RequestContextManager(self._request(hdrs.METH_DELETE, url, **kwargs))
+        params = locals()
+        expected_params = {
+            k: v
+            for k, v in params.items()
+            if k in inspect.signature(self.get).parameters
+            and v is not None
+            and k not in ("url", "kwargs")
+        }
+        expected_params.update(kwargs)
+        return _RequestContextManager(
+            self._request(hdrs.METH_DELETE, url, **expected_params)
+        )
 
     async def close(self) -> None:
         """Close underlying connector.
