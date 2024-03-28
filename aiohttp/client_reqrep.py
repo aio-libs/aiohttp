@@ -333,8 +333,8 @@ class ClientRequest:
 
         # basic auth info
         username, password = url.user, url.password
-        if username:
-            self.auth = helpers.BasicAuth(username, password or "")
+        if username or password:
+            self.auth = helpers.BasicAuth(username or "", password or "")
 
     def update_version(self, version: Union[http.HttpVersion, str]) -> None:
         """Convert request version to two elements tuple.
