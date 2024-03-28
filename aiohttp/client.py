@@ -739,6 +739,7 @@ class ClientSession:
         proxy_headers: Optional[LooseHeaders] = None,
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
+        trace_request_ctx: Optional[SimpleNamespace] = None,
     ) -> "_WSRequestContextManager":
         """Initiate websocket connection."""
         return _WSRequestContextManager(
@@ -762,6 +763,7 @@ class ClientSession:
                 proxy_headers=proxy_headers,
                 compress=compress,
                 max_msg_size=max_msg_size,
+                trace_request_ctx=trace_request_ctx,
             )
         )
 
@@ -787,6 +789,7 @@ class ClientSession:
         proxy_headers: Optional[LooseHeaders] = None,
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
+        trace_request_ctx: Optional[SimpleNamespace] = None,
     ) -> ClientWebSocketResponse:
         if timeout is sentinel or timeout is None:
             ws_timeout = DEFAULT_WS_CLIENT_TIMEOUT
@@ -857,6 +860,7 @@ class ClientSession:
             ssl=ssl,
             server_hostname=server_hostname,
             proxy_headers=proxy_headers,
+            trace_request_ctx=trace_request_ctx,
         )
 
         try:
