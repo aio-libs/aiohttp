@@ -14,6 +14,7 @@ from types import MappingProxyType, TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
+    Awaitable,
     Callable,
     Dict,
     Iterable,
@@ -718,6 +719,7 @@ class ClientResponse(HeadersMixin):
     _closed = True  # to allow __del__ for non-initialized properly response
     _released = False
     __writer = None
+    __writer_cancelled_internally = False
 
     def __init__(
         self,
@@ -776,6 +778,7 @@ class ClientResponse(HeadersMixin):
         if self.__writer is not None:
             self.__writer.remove_done_callback(self.__reset_writer)
         self.__writer = writer
+        self.__writer_cancelled_internally = False
         if writer is not None:
             writer.add_done_callback(self.__reset_writer)
 
@@ -1015,13 +1018,31 @@ class ClientResponse(HeadersMixin):
             else:
                 self._writer.add_done_callback(lambda f: self._release_connection())
 
+    async def _wait_for_writer(self, writer: Awaitable[None]) -> None:
+        """Wait for the writer to finish.
+
+        If we cancel the writer, we will suppress the CancelledError
+        since we are going to close the connection anyway, but if
+        did not cancel the writer, we need to raise the exception.
+        """
+        try:
+            await writer
+        except asyncio.CancelledError:
+            # Writer was cancelled, ensure the connection is closed
+            # since we won't be able to write the rest of the body
+            # we need to close the connection since we can't reuse it
+            self.close()
+            if not self.__writer_cancelled_internally:
+                raise
+
     async def _wait_released(self) -> None:
         if self._writer is not None:
-            await self._writer
+            await self._wait_for_writer(self._writer)
         self._release_connection()
 
     def _cleanup_writer(self) -> None:
         if self._writer is not None:
+            self.__writer_cancelled_internally = True
             self._writer.cancel()
         self._session = None
 
@@ -1034,7 +1055,7 @@ class ClientResponse(HeadersMixin):
 
     async def wait_for_close(self) -> None:
         if self._writer is not None:
-            await self._writer
+            await self._wait_for_writer(self._writer)
         self.release()
 
     async def read(self) -> bytes:
