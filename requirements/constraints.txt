@@ -48,7 +48,7 @@ click==8.1.6
     #   towncrier
     #   typer
     #   wait-for-it
-coverage==7.4.3
+coverage==7.4.4
     # via
     #   -r requirements/test.in
     #   pytest-cov
@@ -162,7 +162,7 @@ pytest==8.1.1
     #   pytest-mock
 pytest-cov==5.0.0
     # via -r requirements/test.in
-pytest-mock==3.12.0
+pytest-mock==3.14.0
     # via -r requirements/test.in
 python-dateutil==2.8.2
     # via freezegun
@@ -185,7 +185,7 @@ setuptools-git==1.2
     # via -r requirements/test.in
 six==1.16.0
     # via python-dateutil
-slotscheck==0.17.3
+slotscheck==0.19.0
     # via -r requirements/lint.in
 snowballstemmer==2.2.0
     # via sphinx
