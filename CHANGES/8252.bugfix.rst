@@ -1,0 +1,2 @@
+Fixed content not being read when an upgrade request was not supported with the pure Python implementation.
+-- by :user:`bdraco`.
