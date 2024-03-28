@@ -40,7 +40,7 @@ markupsafe==2.1.3
     # via jinja2
 packaging==23.1
     # via sphinx
-pillow==9.5.0
+pillow==10.2.0
     # via
     #   -c requirements/broken-projects.in
     #   blockdiag
@@ -54,11 +54,10 @@ requests==2.31.0
     # via sphinx
 snowballstemmer==2.2.0
     # via sphinx
-sphinx==7.2.6
+sphinx==7.1.2
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-blockdiag
-    #   sphinxcontrib-serializinghtml
     #   sphinxcontrib-spelling
     #   sphinxcontrib-towncrier
 sphinxcontrib-applehelp==1.0.4
@@ -73,7 +72,7 @@ sphinxcontrib-jsmath==1.0.1
     # via sphinx
 sphinxcontrib-qthelp==1.0.3
     # via sphinx
-sphinxcontrib-serializinghtml==1.1.9
+sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
 sphinxcontrib-spelling==8.0.0 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.in
@@ -96,4 +95,6 @@ zipp==3.17.0
 
 # The following packages are considered to be unsafe in a requirements file:
 setuptools==68.0.0
-    # via blockdiag
+    # via
+    #   blockdiag
+    #   sphinx
