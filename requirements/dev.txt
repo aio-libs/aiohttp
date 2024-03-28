@@ -127,7 +127,7 @@ pillow==9.5.0
     # via
     #   -c requirements/broken-projects.in
     #   blockdiag
-pip-tools==7.4.0
+pip-tools==7.4.1
     # via -r requirements/dev.in
 platformdirs==3.10.0
     # via virtualenv
@@ -161,7 +161,7 @@ pytest==7.4.4
     #   -r requirements/test.in
     #   pytest-cov
     #   pytest-mock
-pytest-cov==4.1.0
+pytest-cov==5.0.0
     # via -r requirements/test.in
 pytest-mock==3.14.0
     # via -r requirements/test.in
@@ -186,7 +186,7 @@ setuptools-git==1.2
     # via -r requirements/test.in
 six==1.16.0
     # via python-dateutil
-slotscheck==0.18.0
+slotscheck==0.19.0
     # via -r requirements/lint.in
 snowballstemmer==2.2.0
     # via sphinx
