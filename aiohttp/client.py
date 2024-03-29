@@ -261,9 +261,9 @@ class ClientSession:
         self._connector: Optional[BaseConnector] = connector
         self._loop = loop
         if loop.get_debug():
-            self._source_traceback: Optional[
-                traceback.StackSummary
-            ] = traceback.extract_stack(sys._getframe(1))
+            self._source_traceback: Optional[traceback.StackSummary] = (
+                traceback.extract_stack(sys._getframe(1))
+            )
         else:
             self._source_traceback = None
 

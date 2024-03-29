@@ -135,9 +135,11 @@ class WebSocketResponse(StreamResponse):
                 self._send_heartbeat,
                 self._heartbeat,
                 self._loop,
-                timeout_ceil_threshold=self._req._protocol._timeout_ceil_threshold
-                if self._req is not None
-                else 5,
+                timeout_ceil_threshold=(
+                    self._req._protocol._timeout_ceil_threshold
+                    if self._req is not None
+                    else 5
+                ),
             )
 
     def _send_heartbeat(self) -> None:
@@ -154,9 +156,11 @@ class WebSocketResponse(StreamResponse):
                 self._pong_not_received,
                 self._pong_heartbeat,
                 self._loop,
-                timeout_ceil_threshold=self._req._protocol._timeout_ceil_threshold
-                if self._req is not None
-                else 5,
+                timeout_ceil_threshold=(
+                    self._req._protocol._timeout_ceil_threshold
+                    if self._req is not None
+                    else 5
+                ),
             )
 
     def _pong_not_received(self) -> None:

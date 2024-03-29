@@ -220,9 +220,9 @@ class BaseConnector:
         self._limit = limit
         self._limit_per_host = limit_per_host
         self._acquired: Set[ResponseHandler] = set()
-        self._acquired_per_host: DefaultDict[
-            ConnectionKey, Set[ResponseHandler]
-        ] = defaultdict(set)
+        self._acquired_per_host: DefaultDict[ConnectionKey, Set[ResponseHandler]] = (
+            defaultdict(set)
+        )
         self._keepalive_timeout = cast(float, keepalive_timeout)
         self._force_close = force_close
 
