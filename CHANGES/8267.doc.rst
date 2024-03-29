@@ -1,1 +1,1 @@
-Added a note about cancelling tasks to avoid delaying server shutdown -- by :user:`Dreamsorcerer`.
+Added a note about canceling tasks to avoid delaying server shutdown -- by :user:`Dreamsorcerer`.
