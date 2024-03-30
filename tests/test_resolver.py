@@ -1,7 +1,7 @@
 import asyncio
 import ipaddress
 import socket
-from typing import Any, Awaitable, Callable, Iterable, List, NamedTuple, Tuple, Union
+from typing import Any, Awaitable, Callable, Collection, List, NamedTuple, Tuple, Union
 from unittest.mock import Mock, patch
 
 import pytest
@@ -26,7 +26,7 @@ class FakeAIODNSAddrInfoNode(NamedTuple):
 class FakeAIODNSAddrInfoResult:
     addresses: Any
 
-    def __init__(self, hosts: Iterable[str]) -> None:
+    def __init__(self, hosts: Collection[str]) -> None:
         self.nodes = [
             FakeAIODNSAddrInfoNode(socket.AF_INET, [h.encode(), 0]) for h in hosts
         ]
@@ -40,7 +40,7 @@ class FakeQueryResult:
 
 
 async def fake_aiodns_getaddrinfo_result(
-    hosts: Iterable[str],
+    hosts: Collection[str],
 ) -> FakeAIODNSAddrInfoResult:
     return FakeAIODNSAddrInfoResult(hosts=hosts)
 
@@ -49,7 +49,7 @@ async def fake_query_result(result: Any) -> List[FakeQueryResult]:
     return [FakeQueryResult(host=h) for h in result]
 
 
-def fake_addrinfo(hosts: Iterable[str]) -> Callable[..., Awaitable[Any]]:
+def fake_addrinfo(hosts: Collection[str]) -> Callable[..., Awaitable[Any]]:
     async def fake(*args: Any, **kwargs: Any) -> List[Any]:
         if not hosts:
             raise socket.gaierror
