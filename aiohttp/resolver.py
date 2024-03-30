@@ -40,7 +40,7 @@ class ThreadedResolver(AbstractResolver):
             flags=socket.AI_ADDRCONFIG,
         )
 
-        hosts = []
+        hosts: List[ResolveResult] = []
         for family, _, proto, _, address in infos:
             if family == socket.AF_INET6:
                 if len(address) < 3:
@@ -101,7 +101,7 @@ class AsyncResolver(AbstractResolver):
         except aiodns.error.DNSError as exc:
             msg = exc.args[1] if len(exc.args) >= 1 else "DNS lookup failed"
             raise OSError(msg) from exc
-        hosts = []
+        hosts: List[ResolveResult] = []
         for node in resp.nodes:
             address: Union[Tuple[bytes, int], Tuple[bytes, int, int, int]] = node.addr
             family = node.family
