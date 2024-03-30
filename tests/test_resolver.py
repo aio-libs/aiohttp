@@ -93,6 +93,32 @@ def fake_addrinfo(hosts: Collection[str]) -> Callable[..., Awaitable[Any]]:
     return fake
 
 
+def fake_ipv6_addrinfo(hosts: Collection[str]) -> Callable[..., Awaitable[Any]]:
+    async def fake(*args: Any, **kwargs: Any) -> List[Any]:
+        if not hosts:
+            raise socket.gaierror
+
+        return [
+            (
+                socket.AF_INET6,
+                None,
+                socket.SOCK_STREAM,
+                None,
+                (h, 0, 0, 3 if ip_address(h).is_link_local else 0),
+            )
+            for h in hosts
+        ]
+
+    return fake
+
+
+def fake_ipv6_nameinfo(host: str) -> Callable[..., Awaitable[Any]]:
+    async def fake(*args: Any, **kwargs: Any) -> List[Any]:
+        return host, 0
+
+    return fake
+
+
 @pytest.mark.skipif(not gethostbyname, reason="aiodns 1.1 required")
 async def test_async_resolver_positive_ipv4_lookup(loop: Any) -> None:
     with patch("aiodns.DNSResolver") as mock:
@@ -181,6 +207,17 @@ async def test_async_resolver_no_hosts_in_getaddrinfo(loop: Any) -> None:
 async def test_threaded_resolver_positive_lookup() -> None:
     loop = Mock()
     loop.getaddrinfo = fake_addrinfo(["127.0.0.1"])
+    resolver = ThreadedResolver()
+    resolver._loop = loop
+    real = await resolver.resolve("www.python.org")
+    assert real[0]["hostname"] == "www.python.org"
+    ipaddress.ip_address(real[0]["host"])
+
+
+async def test_threaded_resolver_positive_ipv6_link_local_lookup() -> None:
+    loop = Mock()
+    loop.getaddrinfo = fake_ipv6_addrinfo(["fe80::1"])
+    loop.getnameinfo = fake_ipv6_nameinfo("fe80::1%eth0")
     resolver = ThreadedResolver()
     resolver._loop = loop
     real = await resolver.resolve("www.python.org")
