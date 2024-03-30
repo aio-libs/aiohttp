@@ -13,6 +13,7 @@ from typing import (
     List,
     Optional,
     Tuple,
+    TypedDict,
 )
 
 from multidict import CIMultiDict
@@ -117,11 +118,21 @@ class AbstractView(ABC):
         """Execute the view handler."""
 
 
+class ResolveResult(TypedDict):
+
+    hostname: str
+    host: str
+    port: int
+    family: int
+    proto: int
+    flags: int
+
+
 class AbstractResolver(ABC):
     """Abstract DNS resolver."""
 
     @abstractmethod
-    async def resolve(self, host: str, port: int, family: int) -> List[Dict[str, Any]]:
+    async def resolve(self, host: str, port: int, family: int) -> List[ResolveResult]:
         """Return IP address for given hostname"""
 
     @abstractmethod
