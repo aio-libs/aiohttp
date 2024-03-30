@@ -35,7 +35,7 @@ from typing import (  # noqa
 import aiohappyeyeballs
 
 from . import hdrs, helpers
-from .abc import AbstractResolver
+from .abc import AbstractResolver, ResolveResult
 from .client_exceptions import (
     ClientConnectionError,
     ClientConnectorCertificateError,
@@ -813,7 +813,7 @@ class TCPConnector(BaseConnector):
 
     async def _resolve_host(
         self, host: str, port: int, traces: Optional[List["Trace"]] = None
-    ) -> List[Dict[str, Any]]:
+    ) -> List[ResolveResult]:
         """Resolve host and return list of addresses."""
         if is_ip_address(host):
             return [
