@@ -115,7 +115,7 @@ def fake_ipv6_addrinfo(hosts: Collection[str]) -> Callable[..., Awaitable[Any]]:
 
 
 def fake_ipv6_nameinfo(host: str) -> Callable[..., Awaitable[Any]]:
-    async def fake(*args: Any, **kwargs: Any) -> List[Any]:
+    async def fake(*args: Any, **kwargs: Any) -> Tuple[str, int]:
         return host, 0
 
     return fake
