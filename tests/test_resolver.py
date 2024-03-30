@@ -1,12 +1,18 @@
 import asyncio
 import ipaddress
 import socket
+from ipaddress import ip_address
 from typing import Any, Awaitable, Callable, Collection, List, NamedTuple, Tuple, Union
 from unittest.mock import Mock, patch
 
 import pytest
 
-from aiohttp.resolver import AsyncResolver, DefaultResolver, ThreadedResolver
+from aiohttp.resolver import (
+    _NUMERIC_SOCKET_FLAGS,
+    AsyncResolver,
+    DefaultResolver,
+    ThreadedResolver,
+)
 
 try:
     import aiodns
@@ -23,13 +29,31 @@ class FakeAIODNSAddrInfoNode(NamedTuple):
     addr: Union[Tuple[bytes, int], Tuple[bytes, int, int, int]]
 
 
-class FakeAIODNSAddrInfoResult:
-    addresses: Any
+class FakeAIODNSAddrInfoIPv4Result:
 
     def __init__(self, hosts: Collection[str]) -> None:
         self.nodes = [
             FakeAIODNSAddrInfoNode(socket.AF_INET, (h.encode(), 0)) for h in hosts
         ]
+
+
+class FakeAIODNSAddrInfoIPv6Result:
+
+    def __init__(self, hosts: Collection[str]) -> None:
+        self.nodes = [
+            FakeAIODNSAddrInfoNode(
+                socket.AF_INET6,
+                (h.encode(), 0, 0, 3 if ip_address(h).is_link_local else 0),
+            )
+            for h in hosts
+        ]
+
+
+class FakeAIODNSNameInfoIPv6Result:
+
+    def __init__(self, host: str) -> None:
+        self.node = host
+        self.service = None
 
 
 class FakeQueryResult:
@@ -39,10 +63,20 @@ class FakeQueryResult:
         self.host = host
 
 
-async def fake_aiodns_getaddrinfo_result(
+async def fake_aiodns_getaddrinfo_ipv4_result(
     hosts: Collection[str],
-) -> FakeAIODNSAddrInfoResult:
-    return FakeAIODNSAddrInfoResult(hosts=hosts)
+) -> FakeAIODNSAddrInfoIPv4Result:
+    return FakeAIODNSAddrInfoIPv4Result(hosts=hosts)
+
+
+async def fake_aiodns_getaddrinfo_ipv6_result(
+    hosts: Collection[str],
+) -> FakeAIODNSAddrInfoIPv6Result:
+    return FakeAIODNSAddrInfoIPv6Result(hosts=hosts)
+
+
+async def fake_aiodns_getnameinfo_ipv6_result(host: str) -> List[str]:
+    return FakeAIODNSNameInfoIPv6Result(host)
 
 
 async def fake_query_result(result: Any) -> List[FakeQueryResult]:
@@ -60,9 +94,11 @@ def fake_addrinfo(hosts: Collection[str]) -> Callable[..., Awaitable[Any]]:
 
 
 @pytest.mark.skipif(not gethostbyname, reason="aiodns 1.1 required")
-async def test_async_resolver_positive_lookup(loop: Any) -> None:
+async def test_async_resolver_positive_ipv4_lookup(loop: Any) -> None:
     with patch("aiodns.DNSResolver") as mock:
-        mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_result(["127.0.0.1"])
+        mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv4_result(
+            ["127.0.0.1"]
+        )
         resolver = AsyncResolver()
         real = await resolver.resolve("www.python.org")
         ipaddress.ip_address(real[0]["host"])
@@ -76,10 +112,48 @@ async def test_async_resolver_positive_lookup(loop: Any) -> None:
 
 
 @pytest.mark.skipif(not gethostbyname, reason="aiodns 1.1 required")
+async def test_async_resolver_positive_ipv6_lookup(loop: Any) -> None:
+    with patch("aiodns.DNSResolver") as mock:
+        mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv6_result(["::1"])
+        resolver = AsyncResolver()
+        real = await resolver.resolve("www.python.org")
+        ipaddress.ip_address(real[0]["host"])
+        mock().getaddrinfo.assert_called_with(
+            "www.python.org",
+            family=socket.AF_INET,
+            flags=socket.AI_ADDRCONFIG,
+            port=0,
+            type=socket.SOCK_STREAM,
+        )
+
+
+@pytest.mark.skipif(not gethostbyname, reason="aiodns 1.1 required")
+async def test_async_resolver_positive_link_local_ipv6_lookup(loop: Any) -> None:
+    with patch("aiodns.DNSResolver") as mock:
+        mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv6_result(
+            ["fe80::1"]
+        )
+        mock().getnameinfo.return_value = fake_aiodns_getnameinfo_ipv6_result(
+            "fe80::1%eth0"
+        )
+        resolver = AsyncResolver()
+        real = await resolver.resolve("www.python.org")
+        ipaddress.ip_address(real[0]["host"])
+        mock().getaddrinfo.assert_called_with(
+            "www.python.org",
+            family=socket.AF_INET,
+            flags=socket.AI_ADDRCONFIG,
+            port=0,
+            type=socket.SOCK_STREAM,
+        )
+        mock().getnameinfo.assert_called_with("fe80::1", 0, 0, 3, _NUMERIC_SOCKET_FLAGS)
+
+
+@pytest.mark.skipif(not gethostbyname, reason="aiodns 1.1 required")
 async def test_async_resolver_multiple_replies(loop: Any) -> None:
     with patch("aiodns.DNSResolver") as mock:
         ips = ["127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4"]
-        mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_result(ips)
+        mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv4_result(ips)
         resolver = AsyncResolver()
         real = await resolver.resolve("www.google.com")
         ipaddrs = [ipaddress.ip_address(x["host"]) for x in real]
@@ -96,9 +170,9 @@ async def test_async_resolver_negative_lookup(loop: Any) -> None:
 
 
 @pytest.mark.skipif(not gethostbyname, reason="aiodns 1.1 required")
-async def test_async_resolver_no_hosts_in_gethostbyname(loop: Any) -> None:
+async def test_async_resolver_no_hosts_in_getaddrinfo(loop: Any) -> None:
     with patch("aiodns.DNSResolver") as mock:
-        mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_result([])
+        mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv4_result([])
         resolver = AsyncResolver()
         with pytest.raises(OSError):
             await resolver.resolve("doesnotexist.bla")
@@ -181,22 +255,6 @@ async def test_default_loop_for_async_resolver(loop: Any) -> None:
     asyncio.set_event_loop(loop)
     resolver = AsyncResolver()
     assert resolver._loop is loop
-
-
-@pytest.mark.skipif(not gethostbyname, reason="aiodns 1.1 required")
-async def test_async_resolver_ipv6_positive_lookup(loop: Any) -> None:
-    with patch("aiodns.DNSResolver") as mock:
-        mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_result(["::1"])
-        resolver = AsyncResolver()
-        real = await resolver.resolve("www.python.org", family=socket.AF_INET6)
-        ipaddress.ip_address(real[0]["host"])
-        mock().getaddrinfo.assert_called_with(
-            "www.python.org",
-            family=socket.AF_INET6,
-            flags=socket.AI_ADDRCONFIG,
-            port=0,
-            type=socket.SOCK_STREAM,
-        )
 
 
 async def test_async_resolver_aiodns_not_present(loop: Any, monkeypatch: Any) -> None:

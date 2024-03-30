@@ -114,10 +114,10 @@ class AsyncResolver(AbstractResolver):
                     # This is essential for link-local IPv6 addresses.
                     # LL IPv6 is a VERY rare case. Strictly speaking, we should use
                     # getnameinfo() unconditionally, but performance makes sense.
-                    resolved_host, _port = await self._resolver.getnameinfo(
+                    result = await self._resolver.getnameinfo(
                         address[0].decode("ascii"), *address[1:], _NUMERIC_SOCKET_FLAGS
                     )
-                    port = int(_port)
+                    resolved_host = result.node
                 else:
                     resolved_host = address[0].decode("ascii")
                     port = address[1]
