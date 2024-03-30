@@ -1,0 +1,1 @@
+Fixed a race condition with incoming connections during server shutdown -- by :user:`Dreamsorcerer`.
