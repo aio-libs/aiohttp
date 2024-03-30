@@ -15,6 +15,8 @@ except ImportError:  # pragma: no cover
 
 aiodns_default = False
 
+_NUMERIC_SOCKET_FLAGS = socket.AI_NUMERICHOST | socket.AI_NUMERICSERV
+
 
 class ThreadedResolver(AbstractResolver):
     """Threaded resolver.
@@ -49,7 +51,7 @@ class ThreadedResolver(AbstractResolver):
                     # LL IPv6 is a VERY rare case. Strictly speaking, we should use
                     # getnameinfo() unconditionally, but performance makes sense.
                     resolved_host, _port = await self._loop.getnameinfo(
-                        address, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV
+                        address, _NUMERIC_SOCKET_FLAGS
                     )
                     port = int(_port)
                 else:
@@ -64,7 +66,7 @@ class ThreadedResolver(AbstractResolver):
                     "port": port,
                     "family": family,
                     "proto": proto,
-                    "flags": socket.AI_NUMERICHOST | socket.AI_NUMERICSERV,
+                    "flags": _NUMERIC_SOCKET_FLAGS,
                 }
             )
 
@@ -112,9 +114,7 @@ class AsyncResolver(AbstractResolver):
                     # LL IPv6 is a VERY rare case. Strictly speaking, we should use
                     # getnameinfo() unconditionally, but performance makes sense.
                     resolved_host, _port = await self._resolver.getnameinfo(
-                        address[0].decode("ascii"),
-                        *address[1:],
-                        socket.NI_NUMERICHOST | socket.NI_NUMERICSERV
+                        address[0].decode("ascii"), *address[1:], _NUMERIC_SOCKET_FLAGS
                     )
                     port = int(_port)
                 else:
@@ -131,7 +131,7 @@ class AsyncResolver(AbstractResolver):
                     "port": port,
                     "family": family,
                     "proto": 0,
-                    "flags": socket.AI_NUMERICHOST | socket.AI_NUMERICSERV,
+                    "flags": _NUMERIC_SOCKET_FLAGS,
                 }
             )
 
