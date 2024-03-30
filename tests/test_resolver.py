@@ -75,7 +75,9 @@ async def fake_aiodns_getaddrinfo_ipv6_result(
     return FakeAIODNSAddrInfoIPv6Result(hosts=hosts)
 
 
-async def fake_aiodns_getnameinfo_ipv6_result(host: str) -> List[str]:
+async def fake_aiodns_getnameinfo_ipv6_result(
+    host: str,
+) -> FakeAIODNSNameInfoIPv6Result:
     return FakeAIODNSNameInfoIPv6Result(host)
 
 
