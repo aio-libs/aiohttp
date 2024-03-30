@@ -881,7 +881,7 @@ class TCPConnector(BaseConnector):
         host: str,
         port: int,
         traces: Optional[List["Trace"]],
-    ) -> List[Dict[str, Any]]:
+    ) -> List[ResolveResult]:
         """Resolve host with a dns events throttle."""
         if key in self._throttle_dns_events:
             # get event early, before any await (#4014)
@@ -1129,7 +1129,7 @@ class TCPConnector(BaseConnector):
         return tls_transport, tls_proto
 
     def _convert_hosts_to_addr_infos(
-        self, hosts: List[Dict[str, Any]]
+        self, hosts: List[ResolveResult]
     ) -> List[aiohappyeyeballs.AddrInfoType]:
         """Converts the list of hosts to a list of addr_infos.
 
