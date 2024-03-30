@@ -48,7 +48,7 @@ class ThreadedResolver(AbstractResolver):
                     # This is essential for link-local IPv6 addresses.
                     # LL IPv6 is a VERY rare case. Strictly speaking, we should use
                     # getnameinfo() unconditionally, but performance makes sense.
-                    resolved_host, _port = socket.getnameinfo(
+                    resolved_host, _port = await self._loop.getnameinfo(
                         address, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV
                     )
                     port = int(_port)
