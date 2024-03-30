@@ -27,10 +27,10 @@ class ThreadedResolver(AbstractResolver):
         self._loop = asyncio.get_running_loop()
 
     async def resolve(
-        self, hostname: str, port: int = 0, family: int = socket.AF_INET
+        self, host: str, port: int = 0, family: int = socket.AF_INET
     ) -> List[Dict[str, Any]]:
         infos = await self._loop.getaddrinfo(
-            hostname,
+            host,
             port,
             type=socket.SOCK_STREAM,
             family=family,
@@ -48,19 +48,19 @@ class ThreadedResolver(AbstractResolver):
                     # This is essential for link-local IPv6 addresses.
                     # LL IPv6 is a VERY rare case. Strictly speaking, we should use
                     # getnameinfo() unconditionally, but performance makes sense.
-                    host, _port = socket.getnameinfo(
+                    resolved_host, _port = socket.getnameinfo(
                         address, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV
                     )
                     port = int(_port)
                 else:
-                    host, port = address[:2]
+                    resolved_host, port = address[:2]
             else:  # IPv4
                 assert family == socket.AF_INET
-                host, port = address  # type: ignore[misc]
+                resolved_host, port = address  # type: ignore[misc]
             hosts.append(
                 {
-                    "hostname": hostname,
-                    "host": host,
+                    "hostname": host,
+                    "host": resolved_host,
                     "port": port,
                     "family": family,
                     "proto": proto,
@@ -85,11 +85,11 @@ class AsyncResolver(AbstractResolver):
         self._resolver = aiodns.DNSResolver(*args, loop=self._loop, **kwargs)
 
     async def resolve(
-        self, hostname: str, port: int = 0, family: int = socket.AF_INET
+        self, host: str, port: int = 0, family: int = socket.AF_INET
     ) -> List[Dict[str, Any]]:
         try:
             resp = await self._resolver.getaddrinfo(
-                hostname,
+                host,
                 port=port,
                 type=socket.SOCK_STREAM,
                 family=family,
@@ -111,23 +111,23 @@ class AsyncResolver(AbstractResolver):
                     # This is essential for link-local IPv6 addresses.
                     # LL IPv6 is a VERY rare case. Strictly speaking, we should use
                     # getnameinfo() unconditionally, but performance makes sense.
-                    host, _port = await self._loop.getnameinfo(
+                    resolved_host, _port = await self._resolver.getnameinfo(
                         address[0].decode("ascii"),
                         *address[1:],
                         socket.NI_NUMERICHOST | socket.NI_NUMERICSERV
                     )
                     port = int(_port)
                 else:
-                    host = address[0].decode("ascii")
+                    resolved_host = address[0].decode("ascii")
                     port = address[1]
             else:  # IPv4
                 assert family == socket.AF_INET
-                host = address[0].decode("ascii")
+                resolved_host = address[0].decode("ascii")
                 port = address[1]
             hosts.append(
                 {
-                    "hostname": hostname,
-                    "host": host,
+                    "hostname": host,
+                    "host": resolved_host,
                     "port": port,
                     "family": family,
                     "proto": 0,
