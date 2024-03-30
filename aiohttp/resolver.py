@@ -1,6 +1,6 @@
 import asyncio
 import socket
-from typing import Any, Dict, List, Type, Union
+from typing import Any, Dict, List, Tuple, Type, Union
 
 from .abc import AbstractResolver
 
@@ -85,19 +85,49 @@ class AsyncResolver(AbstractResolver):
         self._resolver = aiodns.DNSResolver(*args, loop=self._loop, **kwargs)
 
     async def resolve(
-        self, host: str, port: int = 0, family: int = socket.AF_INET
+        self, hostname: str, port: int = 0, family: int = socket.AF_INET
     ) -> List[Dict[str, Any]]:
         try:
-            resp = await self._resolver.gethostbyname(host, family)
+            resp = await self._resolver.getaddrinfo(
+                hostname,
+                port=port,
+                type=socket.SOCK_STREAM,
+                family=family,
+                flags=socket.AI_ADDRCONFIG,
+            )
         except aiodns.error.DNSError as exc:
             msg = exc.args[1] if len(exc.args) >= 1 else "DNS lookup failed"
             raise OSError(msg) from exc
         hosts = []
-        for address in resp.addresses:
+        for node in resp.nodes:
+            address: Union[Tuple[bytes, int], Tuple[bytes, int, int, int]] = node.addr
+            family = node.family
+            if family == socket.AF_INET6:
+                if len(address) < 3:
+                    # IPv6 is not supported by Python build,
+                    # or IPv6 is not enabled in the host
+                    continue
+                if address[3]:
+                    # This is essential for link-local IPv6 addresses.
+                    # LL IPv6 is a VERY rare case. Strictly speaking, we should use
+                    # getnameinfo() unconditionally, but performance makes sense.
+                    host, _port = await self._loop.getnameinfo(
+                        address[0].decode("ascii"),
+                        *address[1:],
+                        socket.NI_NUMERICHOST | socket.NI_NUMERICSERV
+                    )
+                    port = int(_port)
+                else:
+                    host = address[0].decode("ascii")
+                    port = address[1]
+            else:  # IPv4
+                assert family == socket.AF_INET
+                host = address[0].decode("ascii")
+                port = address[1]
             hosts.append(
                 {
-                    "hostname": host,
-                    "host": address,
+                    "hostname": hostname,
+                    "host": host,
                     "port": port,
                     "family": family,
                     "proto": 0,
