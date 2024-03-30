@@ -1,4 +1,5 @@
 import logging
+import socket
 from abc import ABC, abstractmethod
 from collections.abc import Sized
 from http.cookies import BaseCookie, Morsel
@@ -132,7 +133,9 @@ class AbstractResolver(ABC):
     """Abstract DNS resolver."""
 
     @abstractmethod
-    async def resolve(self, host: str, port: int, family: int) -> List[ResolveResult]:
+    async def resolve(
+        self, host: str, port: int = 0, family: int = socket.AF_INET
+    ) -> List[ResolveResult]:
         """Return IP address for given hostname"""
 
     @abstractmethod
