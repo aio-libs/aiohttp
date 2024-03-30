@@ -28,7 +28,7 @@ class FakeAIODNSAddrInfoResult:
 
     def __init__(self, hosts: Collection[str]) -> None:
         self.nodes = [
-            FakeAIODNSAddrInfoNode(socket.AF_INET, [h.encode(), 0]) for h in hosts
+            FakeAIODNSAddrInfoNode(socket.AF_INET, (h.encode(), 0)) for h in hosts
         ]
 
 
