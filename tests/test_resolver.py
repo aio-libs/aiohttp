@@ -9,6 +9,7 @@ import pytest
 
 from aiohttp.resolver import (
     _NUMERIC_SOCKET_FLAGS,
+    _SUPPORTS_SCOPE_ID,
     AsyncResolver,
     DefaultResolver,
     ThreadedResolver,
@@ -140,6 +141,9 @@ async def test_async_resolver_positive_ipv4_lookup(loop: Any) -> None:
 
 
 @pytest.mark.skipif(not gethostbyname, reason="aiodns 1.1 required")
+@pytest.mark.skipif(
+    not _SUPPORTS_SCOPE_ID, reason="python version does not support scope id"
+)
 async def test_async_resolver_positive_link_local_ipv6_lookup(loop: Any) -> None:
     with patch("aiodns.DNSResolver") as mock:
         mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv6_result(
@@ -200,6 +204,9 @@ async def test_threaded_resolver_positive_lookup() -> None:
     ipaddress.ip_address(real[0]["host"])
 
 
+@pytest.mark.skipif(
+    not _SUPPORTS_SCOPE_ID, reason="python version does not support scope id"
+)
 async def test_threaded_resolver_positive_ipv6_link_local_lookup() -> None:
     loop = Mock()
     loop.getaddrinfo = fake_ipv6_addrinfo(["fe80::1"])

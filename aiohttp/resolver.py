@@ -1,5 +1,6 @@
 import asyncio
 import socket
+import sys
 from typing import Any, List, Tuple, Type, Union
 
 from .abc import AbstractResolver, ResolveResult
@@ -17,6 +18,7 @@ except ImportError:  # pragma: no cover
 aiodns_default = False
 
 _NUMERIC_SOCKET_FLAGS = socket.AI_NUMERICHOST | socket.AI_NUMERICSERV
+_SUPPORTS_SCOPE_ID = sys.version_info >= (3, 9, 0)
 
 
 class ThreadedResolver(AbstractResolver):
@@ -47,7 +49,7 @@ class ThreadedResolver(AbstractResolver):
                     # IPv6 is not supported by Python build,
                     # or IPv6 is not enabled in the host
                     continue
-                if address[3]:
+                if address[3] and _SUPPORTS_SCOPE_ID:
                     # This is essential for link-local IPv6 addresses.
                     # LL IPv6 is a VERY rare case. Strictly speaking, we should use
                     # getnameinfo() unconditionally, but performance makes sense.
@@ -110,7 +112,7 @@ class AsyncResolver(AbstractResolver):
                     # IPv6 is not supported by Python build,
                     # or IPv6 is not enabled in the host
                     continue
-                if address[3]:
+                if address[3] and _SUPPORTS_SCOPE_ID:
                     # This is essential for link-local IPv6 addresses.
                     # LL IPv6 is a VERY rare case. Strictly speaking, we should use
                     # getnameinfo() unconditionally, but performance makes sense.
