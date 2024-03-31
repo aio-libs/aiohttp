@@ -1,0 +1,9 @@
+Fix AsyncResolver to match ThreadedResolver behavior
+-- by :user:`bdraco`.
+
+On system with IPv6 support, the AsyncResolver would not fallback
+to providing A records when AAAA records were not available.
+Additionally, unlikely the ThreadedResolver, the AsyncResolver
+did not handle link-local addresses correctly.
+
+This change makes the behavior consistent with the ThreadedResolver.
