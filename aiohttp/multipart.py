@@ -268,9 +268,6 @@ class BodyPartReader:
         self._newline = _newline
         self._content = content
         self._at_eof = False
-        length = self.headers.get(CONTENT_LENGTH, None)
-        self._length = int(length) if length is not None else None
-        self._read_bytes = 0
         self._unread: Deque[bytes] = deque()
         self._prev_chunk: Optional[bytes] = None
         self._content_eof = 0
@@ -314,10 +311,7 @@ class BodyPartReader:
         """
         if self._at_eof:
             return b""
-        if self._length:
-            chunk = await self._read_chunk_from_length(size)
-        else:
-            chunk = await self._read_chunk_from_stream(size)
+        chunk = await self._read_chunk_from_stream(size)
 
         # For the case of base64 data, we must read a fragment of size with a
         # remainder of 0 by dividing by 4 for string without symbols \n or \r
@@ -344,9 +338,6 @@ class BodyPartReader:
                 chunk += over_chunk
                 remainder = len(stripped_chunk) % 4
 
-        self._read_bytes += len(chunk)
-        if self._read_bytes == self._length:
-            self._at_eof = True
         if self._at_eof:
             newline = await self._content.readline()
             assert (
@@ -354,17 +345,8 @@ class BodyPartReader:
             ), "reader did not read all the data or it is malformed"
         return chunk
 
-    async def _read_chunk_from_length(self, size: int) -> bytes:
-        # Reads body part content chunk of the specified size.
-        # The body part must has Content-Length header with proper value.
-        assert self._length is not None, "Content-Length required for chunked read"
-        chunk_size = min(size, self._length - self._read_bytes)
-        chunk = await self._content.read(chunk_size)
-        return chunk
-
     async def _read_chunk_from_stream(self, size: int) -> bytes:
-        # Reads content chunk of body part with unknown length.
-        # The Content-Length header for body part is not necessary.
+        # https://datatracker.ietf.org/doc/html/rfc7578#section-4.8
         assert (
             size >= len(self._boundary) + 2
         ), "Chunk size must be greater or equal than boundary length + 2"
