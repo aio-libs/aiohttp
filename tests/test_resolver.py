@@ -239,6 +239,16 @@ async def test_threaded_negative_lookup() -> None:
         await resolver.resolve("doesnotexist.bla")
 
 
+async def test_threaded_negative_ipv6_lookup() -> None:
+    loop = Mock()
+    ips: List[Any] = []
+    loop.getaddrinfo = fake_ipv6_addrinfo(ips)
+    resolver = ThreadedResolver()
+    resolver._loop = loop
+    with pytest.raises(socket.gaierror):
+        await resolver.resolve("doesnotexist.bla")
+
+
 async def test_threaded_negative_lookup_with_unknown_result() -> None:
     loop = Mock()
 
