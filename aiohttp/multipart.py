@@ -835,7 +835,11 @@ class MultipartWriter(Payload):
 
     def append_payload(self, payload: Payload) -> Payload:
         """Adds a new body part to multipart writer."""
-        if {CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_TRANSFER_ENCODING} & payload.headers.keys():
+        if {
+            CONTENT_ENCODING,
+            CONTENT_LENGTH,
+            CONTENT_TRANSFER_ENCODING,
+        } & payload.headers.keys():
             raise RuntimeError("Invalid headers included in multipart section.")
 
         self._parts.append(payload)
