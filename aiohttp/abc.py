@@ -120,6 +120,18 @@ class AbstractView(ABC):
 
 
 class ResolveResult(TypedDict):
+    """Resolve result.
+
+    This is the result returned from an AbstractResolver's
+    resolve method.
+
+    :param hostname: The hostname that was provided.
+    :param host: The IP address that was resolved.
+    :param port: The port that was resolved.
+    :param family: The address family that was resolved.
+    :param proto: The protocol that was resolved.
+    :param flags: The flags that were resolved.
+    """
 
     hostname: str
     host: str
