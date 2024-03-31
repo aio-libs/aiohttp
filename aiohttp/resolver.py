@@ -45,6 +45,10 @@ class ThreadedResolver(AbstractResolver):
         hosts: List[ResolveResult] = []
         for family, _, proto, _, address in infos:
             if family == socket.AF_INET6:
+                if len(address) < 3:
+                    # IPv6 is not supported by Python build,
+                    # or IPv6 is not enabled in the host
+                    continue
                 if address[3] and _SUPPORTS_SCOPE_ID:
                     # This is essential for link-local IPv6 addresses.
                     # LL IPv6 is a VERY rare case. Strictly speaking, we should use
@@ -104,10 +108,6 @@ class AsyncResolver(AbstractResolver):
             address: Union[Tuple[bytes, int], Tuple[bytes, int, int, int]] = node.addr
             family = node.family
             if family == socket.AF_INET6:
-                if len(address) < 3:
-                    # IPv6 is not supported by Python build,
-                    # or IPv6 is not enabled in the host
-                    continue
                 if address[3] and _SUPPORTS_SCOPE_ID:
                     # This is essential for link-local IPv6 addresses.
                     # LL IPv6 is a VERY rare case. Strictly speaking, we should use
