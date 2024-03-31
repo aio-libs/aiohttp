@@ -347,9 +347,6 @@ class BodyPartReader:
 
     async def _read_chunk_from_stream(self, size: int) -> bytes:
         # https://datatracker.ietf.org/doc/html/rfc7578#section-4.8
-        assert (
-            size >= len(self._boundary) + 2
-        ), "Chunk size must be greater or equal than boundary length + 2"
         first_chunk = self._prev_chunk is None
         if first_chunk:
             self._prev_chunk = await self._content.read(size)
