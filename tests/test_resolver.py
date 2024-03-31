@@ -18,10 +18,10 @@ from aiohttp.resolver import (
 try:
     import aiodns
 
-    gethostbyname: Any = hasattr(aiodns.DNSResolver, "gethostbyname")
+    getaddrinfo: Any = hasattr(aiodns.DNSResolver, "getaddrinfo")
 except ImportError:
     aiodns = None
-    gethostbyname = False
+    getaddrinfo = False
 
 
 class FakeAIODNSAddrInfoNode(NamedTuple):
@@ -122,7 +122,7 @@ def fake_ipv6_nameinfo(host: str) -> Callable[..., Awaitable[Any]]:
     return fake
 
 
-@pytest.mark.skipif(not gethostbyname, reason="aiodns 1.1 required")
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
 async def test_async_resolver_positive_ipv4_lookup(loop: Any) -> None:
     with patch("aiodns.DNSResolver") as mock:
         mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv4_result(
@@ -140,7 +140,7 @@ async def test_async_resolver_positive_ipv4_lookup(loop: Any) -> None:
         )
 
 
-@pytest.mark.skipif(not gethostbyname, reason="aiodns 1.1 required")
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
 @pytest.mark.skipif(
     not _SUPPORTS_SCOPE_ID, reason="python version does not support scope id"
 )
@@ -165,7 +165,7 @@ async def test_async_resolver_positive_link_local_ipv6_lookup(loop: Any) -> None
         mock().getnameinfo.assert_called_with("fe80::1", 0, 0, 3, _NUMERIC_SOCKET_FLAGS)
 
 
-@pytest.mark.skipif(not gethostbyname, reason="aiodns 1.1 required")
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
 async def test_async_resolver_multiple_replies(loop: Any) -> None:
     with patch("aiodns.DNSResolver") as mock:
         ips = ["127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4"]
@@ -176,7 +176,7 @@ async def test_async_resolver_multiple_replies(loop: Any) -> None:
         assert len(ipaddrs) > 3, "Expecting multiple addresses"
 
 
-@pytest.mark.skipif(not gethostbyname, reason="aiodns 1.1 required")
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
 async def test_async_resolver_negative_lookup(loop: Any) -> None:
     with patch("aiodns.DNSResolver") as mock:
         mock().getaddrinfo.side_effect = aiodns.error.DNSError()
@@ -185,7 +185,7 @@ async def test_async_resolver_negative_lookup(loop: Any) -> None:
             await resolver.resolve("doesnotexist.bla")
 
 
-@pytest.mark.skipif(not gethostbyname, reason="aiodns 1.1 required")
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
 async def test_async_resolver_no_hosts_in_getaddrinfo(loop: Any) -> None:
     with patch("aiodns.DNSResolver") as mock:
         mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv4_result([])
@@ -297,7 +297,7 @@ async def test_default_loop_for_async_resolver(loop: Any) -> None:
     assert resolver._loop is loop
 
 
-@pytest.mark.skipif(not gethostbyname, reason="aiodns 1.1 required")
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
 async def test_async_resolver_ipv6_positive_lookup(loop: Any) -> None:
     with patch("aiodns.DNSResolver") as mock:
         mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv6_result(["::1"])
