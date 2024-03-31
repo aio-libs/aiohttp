@@ -10,7 +10,7 @@ __all__ = ("ThreadedResolver", "AsyncResolver", "DefaultResolver")
 try:
     import aiodns
 
-    # aiodns_default = hasattr(aiodns.DNSResolver, 'gethostbyname')
+    # aiodns_default = hasattr(aiodns.DNSResolver, 'getaddrinfo')
 except ImportError:  # pragma: no cover
     aiodns = None
 
