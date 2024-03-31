@@ -307,6 +307,9 @@ class BaseRunner(ABC):
             await site.stop()
 
         if self._server:  # If setup succeeded
+            # Yield to event loop to ensure incoming requests prior to stopping the sites
+            # have all started to be handled before we proceed to close idle connections.
+            await asyncio.sleep(0)
             self._server.pre_shutdown()
             await self.shutdown()
 
