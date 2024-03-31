@@ -211,3 +211,31 @@ Abstract Resolver
 .. autoclass:: ResolveResult
    :members:
    :undoc-members:
+
+.. class:: ResolveResult
+
+   Result of host name resolution.
+
+   .. attribute:: hostname
+
+      The hostname that was provided.
+
+   .. attribute:: host
+
+      The IP address that was resolved.
+
+   .. attribute:: port
+
+      The port that was resolved.
+
+   .. attribute:: family
+
+      The address family that was resolved.
+
+   .. attribute:: proto
+
+      The protocol that was resolved.
+
+   .. attribute:: flags
+
+      The flags that were resolved.
