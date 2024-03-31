@@ -27,7 +27,7 @@ from urllib.parse import parse_qsl, unquote, urlencode
 
 from multidict import CIMultiDict, CIMultiDictProxy
 
-from .compression_utils import ZLibDecompressor
+from .compression_utils import ZLibCompressor
 from .hdrs import (
     CONTENT_DISPOSITION,
     CONTENT_ENCODING,
