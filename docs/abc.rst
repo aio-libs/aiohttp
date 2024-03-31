@@ -181,3 +181,33 @@ Abstract Access Logger
       :param response: :class:`aiohttp.web.Response` object.
 
       :param float time: Time taken to serve the request.
+
+
+Abstract Resolver
+-------------------------------
+
+.. class:: AbstractResolver
+
+   An abstract class, base for all resolver implementations
+
+   Method ``resolve`` should be overridden.
+
+   .. method:: resolve(host, port, family)
+
+      Resolve host name to IP address.
+
+      :param str host: hostname to resolve.
+
+      :param int port: port number.
+
+      :param int family: socket family.
+
+      :return: list of :class:`aiohttp.abc.ResolveResult` instances.
+
+   .. method:: close()
+
+      Release resolver.
+
+.. autoclass:: ResolveResult
+   :members:
+   :undoc-members:
