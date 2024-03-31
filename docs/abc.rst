@@ -196,7 +196,7 @@ Abstract Resolver
 
       Resolve host name to IP address.
 
-      :param str host: hostname to resolve.
+      :param str host: host name to resolve.
 
       :param int port: port number.
 
@@ -214,7 +214,7 @@ Abstract Resolver
 
    .. attribute:: hostname
 
-      The hostname that was provided.
+      The host name that was provided.
 
    .. attribute:: host
 
