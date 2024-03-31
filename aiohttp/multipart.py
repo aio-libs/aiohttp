@@ -27,10 +27,11 @@ from urllib.parse import parse_qsl, unquote, urlencode
 
 from multidict import CIMultiDict, CIMultiDictProxy
 
-from .compression_utils import ZLibCompressor, ZLibDecompressor
+from .compression_utils import ZLibDecompressor
 from .hdrs import (
     CONTENT_DISPOSITION,
     CONTENT_ENCODING,
+    CONTENT_LENGTH,
     CONTENT_TRANSFER_ENCODING,
     CONTENT_TYPE,
 )
