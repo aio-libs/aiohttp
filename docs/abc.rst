@@ -188,7 +188,7 @@ Abstract Resolver
 
 .. class:: AbstractResolver
 
-   An abstract class, base for all resolver implementations
+   An abstract class, base for all resolver implementations.
 
    Method ``resolve`` should be overridden.
 
