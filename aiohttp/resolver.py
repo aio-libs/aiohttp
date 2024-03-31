@@ -113,7 +113,8 @@ class AsyncResolver(AbstractResolver):
                     # LL IPv6 is a VERY rare case. Strictly speaking, we should use
                     # getnameinfo() unconditionally, but performance makes sense.
                     result = await self._resolver.getnameinfo(
-                        address[0].decode("ascii"), *address[1:], _NUMERIC_SOCKET_FLAGS
+                        (address[0].decode("ascii"), *address[1:]),
+                        _NUMERIC_SOCKET_FLAGS,
                     )
                     resolved_host = result.node
                 else:
