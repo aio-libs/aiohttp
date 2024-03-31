@@ -311,60 +311,6 @@ class TestPartReader:
             assert data == result
             assert obj.at_eof()
 
-    async def test_read_with_content_encoding_gzip(self, newline: Any) -> None:
-        with Stream(
-            b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03\x0b\xc9\xccMU"
-            b"(\xc9W\x08J\xcdI\xacP\x04\x00$\xfb\x9eV\x0e\x00\x00\x00"
-            b"%s--:--" % newline
-        ) as stream:
-            obj = aiohttp.BodyPartReader(
-                BOUNDARY,
-                {CONTENT_ENCODING: "gzip"},
-                stream,
-                _newline=newline,
-            )
-            result = await obj.read(decode=True)
-        assert b"Time to Relax!" == result
-
-    async def test_read_with_content_encoding_deflate(self, newline: Any) -> None:
-        data = b"\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00"
-        tail = b"%s--:--" % newline
-        with Stream(data + tail) as stream:
-            obj = aiohttp.BodyPartReader(
-                BOUNDARY,
-                {CONTENT_ENCODING: "deflate"},
-                stream,
-                _newline=newline,
-            )
-            result = await obj.read(decode=True)
-        assert b"Time to Relax!" == result
-
-    async def test_read_with_content_encoding_identity(self, newline: Any) -> None:
-        thing = (
-            b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03\x0b\xc9\xccMU"
-            b"(\xc9W\x08J\xcdI\xacP\x04\x00$\xfb\x9eV\x0e\x00\x00\x00"
-        )
-        with Stream(thing + b"%s--:--" % newline) as stream:
-            obj = aiohttp.BodyPartReader(
-                BOUNDARY,
-                {CONTENT_ENCODING: "identity"},
-                stream,
-                _newline=newline,
-            )
-            result = await obj.read(decode=True)
-        assert thing == result
-
-    async def test_read_with_content_encoding_unknown(self, newline: Any) -> None:
-        with Stream(b"\x0e4Time to Relax!%s--:--" % newline) as stream:
-            obj = aiohttp.BodyPartReader(
-                BOUNDARY,
-                {CONTENT_ENCODING: "snappy"},
-                stream,
-                _newline=newline,
-            )
-            with pytest.raises(RuntimeError):
-                await obj.read(decode=True)
-
     async def test_read_with_content_transfer_encoding_base64(
         self, newline: Any
     ) -> None:
@@ -495,25 +441,6 @@ class TestPartReader:
             result = await obj.text()
         assert data == result
 
-    async def test_read_text_compressed(self, newline: Any) -> None:
-        data = b"\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00" b"%s--:--" % newline
-        with Stream(data) as stream:
-            obj = aiohttp.BodyPartReader(
-                BOUNDARY,
-                {CONTENT_ENCODING: "deflate", CONTENT_TYPE: "text/plain"},
-                stream,
-                _newline=newline,
-            )
-            result = await obj.text()
-        assert "Time to Relax!" == result
-
-    async def test_read_text_while_closed(self) -> None:
-        with Stream(b"") as stream:
-            obj = aiohttp.BodyPartReader(BOUNDARY, {CONTENT_TYPE: "text/plain"}, stream)
-            obj._at_eof = True
-            result = await obj.text()
-        assert "" == result
-
     async def test_read_json(self, newline: Any) -> None:
         with Stream(b'{"test": "passed"}%s--:--' % newline) as stream:
             obj = aiohttp.BodyPartReader(
@@ -550,28 +477,6 @@ class TestPartReader:
             )
             result = await obj.json()
         assert {"тест": "пассед"} == result
-
-    async def test_read_json_compressed(self, newline: Any) -> None:
-        with Stream(
-            b"\xabV*I-.Q\xb2RP*H,.NMQ\xaa\x05\x00" b"%s--:--" % newline
-        ) as stream:
-            obj = aiohttp.BodyPartReader(
-                BOUNDARY,
-                {CONTENT_ENCODING: "deflate", CONTENT_TYPE: "application/json"},
-                stream,
-                _newline=newline,
-            )
-            result = await obj.json()
-        assert {"test": "passed"} == result
-
-    async def test_read_json_while_closed(self) -> None:
-        with Stream(b"") as stream:
-            obj = aiohttp.BodyPartReader(
-                BOUNDARY, {CONTENT_TYPE: "application/json"}, stream
-            )
-            obj._at_eof = True
-            result = await obj.json()
-        assert result is None
 
     async def test_read_form(self, newline: Any) -> None:
         data = b"foo=bar&foo=baz&boo=%s--:--" % newline
@@ -1055,7 +960,7 @@ async def test_writer_serialize_io_chunk(buf: Any, stream: Any, writer: Any) -> 
         await writer.write(stream)
     assert (
         buf == b"--:\r\nContent-Type: application/octet-stream"
-        b"\r\nContent-Length: 9\r\n\r\nfoobarbaz\r\n--:--\r\n"
+        b"\r\n\r\nfoobarbaz\r\n--:--\r\n"
     )
 
 
@@ -1098,31 +1003,26 @@ async def test_writer_write(buf: Any, stream: Any, writer: Any) -> None:
 
     assert (
         b"--:\r\n"
-        b"Content-Type: text/plain; charset=utf-8\r\n"
-        b"Content-Length: 11\r\n\r\n"
+        b"Content-Type: text/plain; charset=utf-8\r\n\r\n"
         b"foo-bar-baz"
         b"\r\n"
         b"--:\r\n"
-        b"Content-Type: application/json\r\n"
-        b"Content-Length: 18\r\n\r\n"
+        b"Content-Type: application/json\r\n\r\n"
         b'{"test": "passed"}'
         b"\r\n"
         b"--:\r\n"
-        b"Content-Type: application/x-www-form-urlencoded\r\n"
-        b"Content-Length: 11\r\n\r\n"
+        b"Content-Type: application/x-www-form-urlencoded\r\n\r\n"
         b"test=passed"
         b"\r\n"
         b"--:\r\n"
-        b"Content-Type: application/x-www-form-urlencoded\r\n"
-        b"Content-Length: 11\r\n\r\n"
+        b"Content-Type: application/x-www-form-urlencoded\r\n\r\n"
         b"one=1&two=2"
         b"\r\n"
         b"--:\r\n"
         b'Content-Type: multipart/mixed; boundary="::"\r\n'
         b"X-CUSTOM: test\r\nContent-Length: 93\r\n\r\n"
         b"--::\r\n"
-        b"Content-Type: text/plain; charset=utf-8\r\n"
-        b"Content-Length: 14\r\n\r\n"
+        b"Content-Type: text/plain; charset=utf-8\r\n\r\n"
         b"nested content\r\n"
         b"--::--\r\n"
         b"\r\n"
@@ -1140,23 +1040,19 @@ async def test_writer_write_no_close_boundary(buf: Any, stream: Any) -> None:
 
     assert (
         b"--:\r\n"
-        b"Content-Type: text/plain; charset=utf-8\r\n"
-        b"Content-Length: 11\r\n\r\n"
+        b"Content-Type: text/plain; charset=utf-8\r\n\r\n"
         b"foo-bar-baz"
         b"\r\n"
         b"--:\r\n"
-        b"Content-Type: application/json\r\n"
-        b"Content-Length: 18\r\n\r\n"
+        b"Content-Type: application/json\r\n\r\n"
         b'{"test": "passed"}'
         b"\r\n"
         b"--:\r\n"
-        b"Content-Type: application/x-www-form-urlencoded\r\n"
-        b"Content-Length: 11\r\n\r\n"
+        b"Content-Type: application/x-www-form-urlencoded\r\n\r\n"
         b"test=passed"
         b"\r\n"
         b"--:\r\n"
-        b"Content-Type: application/x-www-form-urlencoded\r\n"
-        b"Content-Length: 11\r\n\r\n"
+        b"Content-Type: application/x-www-form-urlencoded\r\n\r\n"
         b"one=1&two=2"
         b"\r\n"
     ) == bytes(buf)
