@@ -208,10 +208,6 @@ Abstract Resolver
 
       Release resolver.
 
-.. autoclass:: ResolveResult
-   :members:
-   :undoc-members:
-
 .. class:: ResolveResult
 
    Result of host name resolution.
