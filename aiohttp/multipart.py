@@ -31,7 +31,6 @@ from .compression_utils import ZLibCompressor, ZLibDecompressor
 from .hdrs import (
     CONTENT_DISPOSITION,
     CONTENT_ENCODING,
-    CONTENT_LENGTH,
     CONTENT_TRANSFER_ENCODING,
     CONTENT_TYPE,
 )
@@ -466,23 +465,10 @@ class BodyPartReader:
         Decoding is done according the specified Content-Encoding
         or Content-Transfer-Encoding headers value.
         """
+        # Deprecated: https://datatracker.ietf.org/doc/html/rfc7578#section-4.7
         if CONTENT_TRANSFER_ENCODING in self.headers:
             data = self._decode_content_transfer(data)
-        if CONTENT_ENCODING in self.headers:
-            return self._decode_content(data)
         return data
-
-    def _decode_content(self, data: bytes) -> bytes:
-        encoding = self.headers.get(CONTENT_ENCODING, "").lower()
-        if encoding == "identity":
-            return data
-        if encoding in {"deflate", "gzip"}:
-            return ZLibDecompressor(
-                encoding=encoding,
-                suppress_deflate_header=True,
-            ).decompress_sync(data)
-
-        raise RuntimeError(f"unknown content encoding: {encoding}")
 
     def _decode_content_transfer(self, data: bytes) -> bytes:
         encoding = self.headers.get(CONTENT_TRANSFER_ENCODING, "").lower()
@@ -749,9 +735,6 @@ class MultipartReader:
             self._last_part = None
 
 
-_Part = Tuple[Payload, str, str]
-
-
 class MultipartWriter(Payload):
     """Multipart body writer."""
 
@@ -774,7 +757,7 @@ class MultipartWriter(Payload):
 
         super().__init__(None, content_type=ctype)
 
-        self._parts: List[_Part] = []
+        self._parts: List[Payload] = []
 
     def __enter__(self) -> "MultipartWriter":
         return self
@@ -787,8 +770,8 @@ class MultipartWriter(Payload):
     ) -> None:
         pass
 
-    def __iter__(self) -> Iterator[_Part]:
-        return iter(self._parts)
+    def __iter__(self) -> Iterator[Payload]:
+        return iter(self.)
 
     def __len__(self) -> int:
         return len(self._parts)
@@ -852,34 +835,10 @@ class MultipartWriter(Payload):
 
     def append_payload(self, payload: Payload) -> Payload:
         """Adds a new body part to multipart writer."""
-        # compression
-        encoding: Optional[str] = payload.headers.get(
-            CONTENT_ENCODING,
-            "",
-        ).lower()
-        if encoding and encoding not in ("deflate", "gzip", "identity"):
-            raise RuntimeError(f"unknown content encoding: {encoding}")
-        if encoding == "identity":
-            encoding = None
+        if {CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_TRANSFER_ENCODING} & payload.headers.keys():
+            raise RuntimeError("Invalid headers included in multipart section.")
 
-        # te encoding
-        te_encoding: Optional[str] = payload.headers.get(
-            CONTENT_TRANSFER_ENCODING,
-            "",
-        ).lower()
-        if te_encoding not in ("", "base64", "quoted-printable", "binary"):
-            raise RuntimeError(
-                "unknown content transfer encoding: {}" "".format(te_encoding)
-            )
-        if te_encoding == "binary":
-            te_encoding = None
-
-        # size
-        size = payload.size
-        if size is not None and not (encoding or te_encoding):
-            payload.headers[CONTENT_LENGTH] = str(size)
-
-        self._parts.append((payload, encoding, te_encoding))  # type: ignore[arg-type]
+        self._parts.append(payload)
         return payload
 
     def append_json(
@@ -916,8 +875,8 @@ class MultipartWriter(Payload):
     def size(self) -> Optional[int]:
         """Size of the payload."""
         total = 0
-        for part, encoding, te_encoding in self._parts:
-            if encoding or te_encoding or part.size is None:
+        for part in self._parts:
+            if part.size is None:
                 return None
 
             total += int(
@@ -934,21 +893,10 @@ class MultipartWriter(Payload):
 
     async def write(self, writer: Any, close_boundary: bool = True) -> None:
         """Write body."""
-        for part, encoding, te_encoding in self._parts:
+        for part in self._parts:
             await writer.write(b"--" + self._boundary + b"\r\n")
             await writer.write(part._binary_headers)
-
-            if encoding or te_encoding:
-                w = MultipartPayloadWriter(writer)
-                if encoding:
-                    w.enable_compression(encoding)
-                if te_encoding:
-                    w.enable_encoding(te_encoding)
-                await part.write(w)  # type: ignore[arg-type]
-                await w.write_eof()
-            else:
-                await part.write(writer)
-
+            await part.write(writer)
             await writer.write(b"\r\n")
 
         if close_boundary:
