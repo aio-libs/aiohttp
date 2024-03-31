@@ -771,7 +771,7 @@ class MultipartWriter(Payload):
         pass
 
     def __iter__(self) -> Iterator[Payload]:
-        return iter(self.)
+        return iter(self._parts)
 
     def __len__(self) -> int:
         return len(self._parts)
