@@ -658,7 +658,12 @@ class MultipartReader:
         if self._mimetype.subtype == "form-data" and self._last_part is None:
             _, params = parse_content_disposition(part.headers.get(CONTENT_DISPOSITION))
             if params.get("name") == "_charset_":
-                self._default_charset = (await part.read()).strip()
+                # Longest encoding in https://encoding.spec.whatwg.org/encodings.json
+                # is 19 characters, so 32 should be more than enough for any valid encoding.
+                charset = await part.read_chunk(32)
+                if len(charset) >= 32:
+                    raise RuntimeError("Invalid default charset")
+                self._default_charset = charset.strip()
                 part = await self.fetch_next_part()
         self._last_part = part
         return self._last_part
