@@ -593,14 +593,14 @@ class MultipartReader:
         assert self._mimetype.type == "multipart", "multipart/* content type expected"
         if "boundary" not in self._mimetype.parameters:
             raise ValueError(
-                "boundary missed for Content-Type: %s" % self.headers[CONTENT_TYPE]
+                "boundary missed for Content-Type: %s" % headers[CONTENT_TYPE]
             )
 
         self.headers = headers
         self._boundary = ("--" + self._get_boundary()).encode()
         self._newline = _newline
         self._content = content
-        self._default_charset = None
+        self._default_charset: Optional[str] = None
         self._last_part: Optional[Union["MultipartReader", BodyPartReader]] = None
         self._at_eof = False
         self._at_bof = True
@@ -655,7 +655,7 @@ class MultipartReader:
 
         part = await self.fetch_next_part()
         # https://datatracker.ietf.org/doc/html/rfc7578#section-4.6
-        if self._mimetype.subtype == "form-data" and self._last_part is None:
+        if self._mimetype.subtype == "form-data" and self._last_part is None and isinstance(part, BodyPartReader):
             _, params = parse_content_disposition(part.headers.get(CONTENT_DISPOSITION))
             if params.get("name") == "_charset_":
                 # Longest encoding in https://encoding.spec.whatwg.org/encodings.json
@@ -896,10 +896,11 @@ class MultipartWriter(Payload):
 
     def append_payload(self, payload: Payload) -> Payload:
         """Adds a new body part to multipart writer."""
+        encoding: Optional[str] = None
+        te_encoding: Optional[str] = None
         if self._is_form_data:
             # https://datatracker.ietf.org/doc/html/rfc7578#section-4.7
             # https://datatracker.ietf.org/doc/html/rfc7578#section-4.8
-            encoding = te_encoding = None
             assert CONTENT_DISPOSITION in payload.headers
             assert "name=" in payload.headers[CONTENT_DISPOSITION]
             assert (
@@ -908,7 +909,7 @@ class MultipartWriter(Payload):
             )
         else:
             # compression
-            encoding: Optional[str] = payload.headers.get(
+            encoding = payload.headers.get(
                 CONTENT_ENCODING,
                 "",
             ).lower()
@@ -918,7 +919,7 @@ class MultipartWriter(Payload):
                 encoding = None
 
             # te encoding
-            te_encoding: Optional[str] = payload.headers.get(
+            te_encoding = payload.headers.get(
                 CONTENT_TRANSFER_ENCODING,
                 "",
             ).lower()
