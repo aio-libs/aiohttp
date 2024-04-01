@@ -262,13 +262,18 @@ class BodyPartReader:
         content: StreamReader,
         *,
         _newline: bytes = b"\r\n",
+        subtype: str = "mixed",
+        default_charset: Optional[str] = None
     ) -> None:
         self.headers = headers
         self._boundary = boundary
         self._newline = _newline
         self._content = content
+        self._default_charset = default_charset
         self._at_eof = False
-        length = self.headers.get(CONTENT_LENGTH, None)
+        self._is_form_data = subtype == "form-data"
+        # https://datatracker.ietf.org/doc/html/rfc7578#section-4.8
+        length = None if self._is_form_data else self.headers.get(CONTENT_LENGTH, None)
         self._length = int(length) if length is not None else None
         self._read_bytes = 0
         self._unread: Deque[bytes] = deque()
@@ -346,6 +351,8 @@ class BodyPartReader:
 
         self._read_bytes += len(chunk)
         if self._read_bytes == self._length:
+            self._at_eof = True
+        if self._content.at_eof():
             self._at_eof = True
         if self._at_eof:
             newline = await self._content.readline()
@@ -486,7 +493,8 @@ class BodyPartReader:
         """
         if CONTENT_TRANSFER_ENCODING in self.headers:
             data = self._decode_content_transfer(data)
-        if CONTENT_ENCODING in self.headers:
+        # https://datatracker.ietf.org/doc/html/rfc7578#section-4.8
+        if not self._is_form_data and CONTENT_ENCODING in self.headers:
             return self._decode_content(data)
         return data
 
@@ -520,7 +528,7 @@ class BodyPartReader:
         """Returns charset parameter from Content-Type header or default."""
         ctype = self.headers.get(CONTENT_TYPE, "")
         mimetype = parse_mimetype(ctype)
-        return mimetype.parameters.get("charset", default)
+        return mimetype.parameters.get("charset", self._default_charset or default)
 
     @reify
     def name(self) -> Optional[str]:
@@ -581,10 +589,18 @@ class MultipartReader:
         *,
         _newline: bytes = b"\r\n",
     ) -> None:
+        self._mimetype = parse_mimetype(headers[CONTENT_TYPE])
+        assert self._mimetype.type == "multipart", "multipart/* content type expected"
+        if "boundary" not in self._mimetype.parameters:
+            raise ValueError(
+                "boundary missed for Content-Type: %s" % self.headers[CONTENT_TYPE]
+            )
+
         self.headers = headers
         self._boundary = ("--" + self._get_boundary()).encode()
         self._newline = _newline
         self._content = content
+        self._default_charset = None
         self._last_part: Optional[Union["MultipartReader", BodyPartReader]] = None
         self._at_eof = False
         self._at_bof = True
@@ -636,7 +652,15 @@ class MultipartReader:
             await self._read_boundary()
         if self._at_eof:  # we just read the last boundary, nothing to do there
             return None
-        self._last_part = await self.fetch_next_part()
+
+        part = await self.fetch_next_part()
+        # https://datatracker.ietf.org/doc/html/rfc7578#section-4.6
+        if self._mimetype.subtype == "form-data" and self._last_part is None:
+            _, params = parse_content_disposition(part.headers.get(CONTENT_DISPOSITION))
+            if params.get("name") == "_charset_":
+                self._default_charset = (await part.read()).strip()
+                part = await self.fetch_next_part()
+        self._last_part = part
         return self._last_part
 
     async def release(self) -> None:
@@ -675,20 +699,11 @@ class MultipartReader:
             )
         else:
             return self.part_reader_cls(
-                self._boundary, headers, self._content, _newline=self._newline
+                self._boundary, headers, self._content, _newline=self._newline, self._mimetype.subtype, self._default_charset
             )
 
     def _get_boundary(self) -> str:
-        mimetype = parse_mimetype(self.headers[CONTENT_TYPE])
-
-        assert mimetype.type == "multipart", "multipart/* content type expected"
-
-        if "boundary" not in mimetype.parameters:
-            raise ValueError(
-                "boundary missed for Content-Type: %s" % self.headers[CONTENT_TYPE]
-            )
-
-        boundary = mimetype.parameters["boundary"]
+        boundary = self._mimetype.parameters["boundary"]
         if len(boundary) > 70:
             raise ValueError("boundary %r is too long (70 chars max)" % boundary)
 
@@ -793,6 +808,7 @@ class MultipartWriter(Payload):
         super().__init__(None, content_type=ctype)
 
         self._parts: List[_Part] = []
+        self._is_form_data = subtype == "form-data"
 
     def __enter__(self) -> "MultipartWriter":
         return self
@@ -870,32 +886,40 @@ class MultipartWriter(Payload):
 
     def append_payload(self, payload: Payload) -> Payload:
         """Adds a new body part to multipart writer."""
-        # compression
-        encoding: Optional[str] = payload.headers.get(
-            CONTENT_ENCODING,
-            "",
-        ).lower()
-        if encoding and encoding not in ("deflate", "gzip", "identity"):
-            raise RuntimeError(f"unknown content encoding: {encoding}")
-        if encoding == "identity":
-            encoding = None
-
-        # te encoding
-        te_encoding: Optional[str] = payload.headers.get(
-            CONTENT_TRANSFER_ENCODING,
-            "",
-        ).lower()
-        if te_encoding not in ("", "base64", "quoted-printable", "binary"):
-            raise RuntimeError(
-                "unknown content transfer encoding: {}" "".format(te_encoding)
-            )
-        if te_encoding == "binary":
-            te_encoding = None
-
-        # size
-        size = payload.size
-        if size is not None and not (encoding or te_encoding):
-            payload.headers[CONTENT_LENGTH] = str(size)
+        if self._is_form_data:
+            # https://datatracker.ietf.org/doc/html/rfc7578#section-4.7
+            # https://datatracker.ietf.org/doc/html/rfc7578#section-4.8
+            encoding = te_encoding = None
+            assert CONTENT_DISPOSITION in payload.headers
+            assert "name=" in payload.headers[CONTENT_DISPOSITION]
+            assert not {CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_TRANSFER_ENCODING} & payload.headers.keys()
+        else:
+            # compression
+            encoding: Optional[str] = payload.headers.get(
+                CONTENT_ENCODING,
+                "",
+            ).lower()
+            if encoding and encoding not in ("deflate", "gzip", "identity"):
+                raise RuntimeError(f"unknown content encoding: {encoding}")
+            if encoding == "identity":
+                encoding = None
+    
+            # te encoding
+            te_encoding: Optional[str] = payload.headers.get(
+                CONTENT_TRANSFER_ENCODING,
+                "",
+            ).lower()
+            if te_encoding not in ("", "base64", "quoted-printable", "binary"):
+                raise RuntimeError(
+                    "unknown content transfer encoding: {}" "".format(te_encoding)
+                )
+            if te_encoding == "binary":
+                te_encoding = None
+    
+            # size
+            size = payload.size
+            if size is not None and not (encoding or te_encoding):
+                payload.headers[CONTENT_LENGTH] = str(size)
 
         self._parts.append((payload, encoding, te_encoding))  # type: ignore[arg-type]
         return payload
