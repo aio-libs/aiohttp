@@ -49,12 +49,11 @@ class FormData:
         *,
         content_type: Optional[str] = None,
         filename: Optional[str] = None,
-        content_transfer_encoding: Optional[str] = None,
     ) -> None:
         if isinstance(value, io.IOBase):
             self._is_multipart = True
         elif isinstance(value, (bytes, bytearray, memoryview)):
-            if filename is None and content_transfer_encoding is None:
+            if filename is None:
                 filename = name
 
         type_options: MultiDict[str] = MultiDict({"name": name})
@@ -75,14 +74,6 @@ class FormData:
                     "content_type must be an instance of str. " "Got: %s" % content_type
                 )
             headers[hdrs.CONTENT_TYPE] = content_type
-            self._is_multipart = True
-        if content_transfer_encoding is not None:
-            if not isinstance(content_transfer_encoding, str):
-                raise TypeError(
-                    "content_transfer_encoding must be an instance"
-                    " of str. Got: %s" % content_transfer_encoding
-                )
-            headers[hdrs.CONTENT_TRANSFER_ENCODING] = content_transfer_encoding
             self._is_multipart = True
 
         self._fields.append((type_options, headers, value))
