@@ -1020,7 +1020,7 @@ async def test_writer_write(buf: Any, stream: Any, writer: Any) -> None:
         b"\r\n"
         b"--:\r\n"
         b'Content-Type: multipart/mixed; boundary="::"\r\n'
-        b"X-CUSTOM: test\r\nContent-Length: 93\r\n\r\n"
+        b"X-CUSTOM: test\r\n\r\n"
         b"--::\r\n"
         b"Content-Type: text/plain; charset=utf-8\r\n\r\n"
         b"nested content\r\n"
@@ -1063,55 +1063,11 @@ async def test_writer_write_no_parts(buf: Any, stream: Any, writer: Any) -> None
     assert b"--:--\r\n" == bytes(buf)
 
 
-async def test_writer_serialize_with_content_encoding_gzip(
+async def test_writer_serialize_with_content_header(
     buf: Any, stream: Any, writer: Any
 ) -> None:
-    writer.append("Time to Relax!", {CONTENT_ENCODING: "gzip"})
-    await writer.write(stream)
-    headers, message = bytes(buf).split(b"\r\n\r\n", 1)
-
-    assert (
-        b"--:\r\nContent-Type: text/plain; charset=utf-8\r\n"
-        b"Content-Encoding: gzip" == headers
-    )
-
-    decompressor = zlib.decompressobj(wbits=16 + zlib.MAX_WBITS)
-    data = decompressor.decompress(message.split(b"\r\n")[0])
-    data += decompressor.flush()
-    assert b"Time to Relax!" == data
-
-
-async def test_writer_serialize_with_content_encoding_deflate(
-    buf: Any, stream: Any, writer: Any
-) -> None:
-    writer.append("Time to Relax!", {CONTENT_ENCODING: "deflate"})
-    await writer.write(stream)
-    headers, message = bytes(buf).split(b"\r\n\r\n", 1)
-
-    assert (
-        b"--:\r\nContent-Type: text/plain; charset=utf-8\r\n"
-        b"Content-Encoding: deflate" == headers
-    )
-
-    thing = b"\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00\r\n--:--\r\n"
-    assert thing == message
-
-
-async def test_writer_serialize_with_content_encoding_identity(
-    buf: Any, stream: Any, writer: Any
-) -> None:
-    thing = b"\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00"
-    writer.append(thing, {CONTENT_ENCODING: "identity"})
-    await writer.write(stream)
-    headers, message = bytes(buf).split(b"\r\n\r\n", 1)
-
-    assert (
-        b"--:\r\nContent-Type: application/octet-stream\r\n"
-        b"Content-Encoding: identity\r\n"
-        b"Content-Length: 16" == headers
-    )
-
-    assert thing == message.split(b"\r\n")[0]
+    with pytest.raises(RuntimeError, match="Invalid headers"):
+        writer.append("Time to Relax!", {CONTENT_ENCODING: "deflate"})
 
 
 def test_writer_serialize_with_content_encoding_unknown(
@@ -1119,39 +1075,6 @@ def test_writer_serialize_with_content_encoding_unknown(
 ) -> None:
     with pytest.raises(RuntimeError):
         writer.append("Time to Relax!", {CONTENT_ENCODING: "snappy"})
-
-
-async def test_writer_with_content_transfer_encoding_base64(
-    buf: Any, stream: Any, writer: Any
-) -> None:
-    writer.append("Time to Relax!", {CONTENT_TRANSFER_ENCODING: "base64"})
-    await writer.write(stream)
-    headers, message = bytes(buf).split(b"\r\n\r\n", 1)
-
-    assert (
-        b"--:\r\nContent-Type: text/plain; charset=utf-8\r\n"
-        b"Content-Transfer-Encoding: base64" == headers
-    )
-
-    assert b"VGltZSB0byBSZWxheCE=" == message.split(b"\r\n")[0]
-
-
-async def test_writer_content_transfer_encoding_quote_printable(
-    buf: Any, stream: Any, writer: Any
-) -> None:
-    writer.append("Привет, мир!", {CONTENT_TRANSFER_ENCODING: "quoted-printable"})
-    await writer.write(stream)
-    headers, message = bytes(buf).split(b"\r\n\r\n", 1)
-
-    assert (
-        b"--:\r\nContent-Type: text/plain; charset=utf-8\r\n"
-        b"Content-Transfer-Encoding: quoted-printable" == headers
-    )
-
-    assert (
-        b"=D0=9F=D1=80=D0=B8=D0=B2=D0=B5=D1=82,"
-        b" =D0=BC=D0=B8=D1=80!" == message.split(b"\r\n")[0]
-    )
 
 
 def test_writer_content_transfer_encoding_unknown(
@@ -1200,37 +1123,37 @@ class TestMultipartWriter:
         assert 0 == len(writer)
         writer.append("hello, world!")
         assert 1 == len(writer)
-        assert isinstance(writer._parts[0][0], payload.Payload)
+        assert isinstance(writer._parts[0], payload.Payload)
 
     def test_append_with_headers(self, writer: Any) -> None:
         writer.append("hello, world!", {"x-foo": "bar"})
         assert 1 == len(writer)
-        assert "x-foo" in writer._parts[0][0].headers
-        assert writer._parts[0][0].headers["x-foo"] == "bar"
+        assert "x-foo" in writer._parts[0].headers
+        assert writer._parts[0].headers["x-foo"] == "bar"
 
     def test_append_json(self, writer: Any) -> None:
         writer.append_json({"foo": "bar"})
         assert 1 == len(writer)
-        part = writer._parts[0][0]
+        part = writer._parts[0]
         assert part.headers[CONTENT_TYPE] == "application/json"
 
     def test_append_part(self, writer: Any) -> None:
         part = payload.get_payload("test", headers={CONTENT_TYPE: "text/plain"})
         writer.append(part, {CONTENT_TYPE: "test/passed"})
         assert 1 == len(writer)
-        part = writer._parts[0][0]
+        part = writer._parts[0]
         assert part.headers[CONTENT_TYPE] == "test/passed"
 
     def test_append_json_overrides_content_type(self, writer: Any) -> None:
         writer.append_json({"foo": "bar"}, {CONTENT_TYPE: "test/passed"})
         assert 1 == len(writer)
-        part = writer._parts[0][0]
+        part = writer._parts[0]
         assert part.headers[CONTENT_TYPE] == "test/passed"
 
     def test_append_form(self, writer: Any) -> None:
         writer.append_form({"foo": "bar"}, {CONTENT_TYPE: "test/passed"})
         assert 1 == len(writer)
-        part = writer._parts[0][0]
+        part = writer._parts[0]
         assert part.headers[CONTENT_TYPE] == "test/passed"
 
     def test_append_multipart(self, writer: Any) -> None:
@@ -1238,7 +1161,7 @@ class TestMultipartWriter:
         subwriter.append_json({"foo": "bar"})
         writer.append(subwriter, {CONTENT_TYPE: "test/passed"})
         assert 1 == len(writer)
-        part = writer._parts[0][0]
+        part = writer._parts[0]
         assert part.headers[CONTENT_TYPE] == "test/passed"
 
     def test_with(self) -> None:
@@ -1276,7 +1199,6 @@ class TestMultipartWriter:
         assert headers == (
             b"--:\r\n"
             b"Content-Type: test/passed\r\n"
-            b"Content-Length: 3\r\n"
             b"Content-Disposition:"
             b' form-data; filename="bug"'
         )
@@ -1295,7 +1217,6 @@ class TestMultipartWriter:
                         CONTENT_TYPE: "text/python",
                     },
                 )
-            content_length = part.size
             await writer.write(stream)
 
         assert part.headers[CONTENT_TYPE] == "text/python"
@@ -1306,9 +1227,7 @@ class TestMultipartWriter:
         assert headers == (
             b"--:\r\n"
             b"Content-Type: text/python\r\n"
-            b'Content-Disposition: attachments; filename="bug.py"\r\n'
-            b"Content-Length: %s"
-            b"" % (str(content_length).encode(),)
+            b'Content-Disposition: attachments; filename="bug.py"'
         )
 
     async def test_set_content_disposition_override(
@@ -1324,7 +1243,6 @@ class TestMultipartWriter:
                         CONTENT_TYPE: "text/python",
                     },
                 )
-            content_length = part.size
             await writer.write(stream)
 
         assert part.headers[CONTENT_TYPE] == "text/python"
@@ -1335,9 +1253,7 @@ class TestMultipartWriter:
         assert headers == (
             b"--:\r\n"
             b"Content-Type: text/python\r\n"
-            b'Content-Disposition: attachments; filename="bug.py"\r\n'
-            b"Content-Length: %s"
-            b"" % (str(content_length).encode(),)
+            b'Content-Disposition: attachments; filename="bug.py"'
         )
 
     async def test_reset_content_disposition_header(
@@ -1351,8 +1267,6 @@ class TestMultipartWriter:
                     headers={CONTENT_TYPE: "text/plain"},
                 )
 
-            content_length = part.size
-
             assert CONTENT_DISPOSITION in part.headers
 
             part.set_content_disposition("attachments", filename="bug.py")
@@ -1365,9 +1279,7 @@ class TestMultipartWriter:
             b"--:\r\n"
             b"Content-Type: text/plain\r\n"
             b"Content-Disposition:"
-            b' attachments; filename="bug.py"\r\n'
-            b"Content-Length: %s"
-            b"" % (str(content_length).encode(),)
+            b' attachments; filename="bug.py"'
         )
 
 
@@ -1394,8 +1306,6 @@ async def test_async_for_reader() -> None:
                 b"--::",
                 b'Content-Disposition: attachment; filename="aiohttp"',
                 b"Content-Type: text/plain",
-                b"Content-Length: 28",
-                b"Content-Encoding: gzip",
                 b"",
                 b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03K\xcc\xcc\xcf())"
                 b"\xe0\x02\x00\xd6\x90\xe2O\x08\x00\x00\x00",
