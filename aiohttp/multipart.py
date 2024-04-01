@@ -656,8 +656,8 @@ class MultipartReader:
         part = await self.fetch_next_part()
         # https://datatracker.ietf.org/doc/html/rfc7578#section-4.6
         if (
-            self._mimetype.subtype == "form-data"
-            and self._last_part is None
+            self._last_part is None
+            and self._mimetype.subtype == "form-data"
             and isinstance(part, BodyPartReader)
         ):
             _, params = parse_content_disposition(part.headers.get(CONTENT_DISPOSITION))
