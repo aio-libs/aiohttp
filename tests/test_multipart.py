@@ -1410,9 +1410,7 @@ class TestMultipartWriter:
         assert headers == (
             b"--:\r\n"
             b"Content-Type: text/python\r\n"
-            b'Content-Disposition: attachments; filename="bug.py"\r\n'
-            b"Content-Length: %s"
-            b"" % (str(content_length).encode(),)
+            b'Content-Disposition: attachments; filename="bug.py"'
         )
 
     async def test_set_content_disposition_override(
@@ -1439,9 +1437,7 @@ class TestMultipartWriter:
         assert headers == (
             b"--:\r\n"
             b"Content-Type: text/python\r\n"
-            b'Content-Disposition: attachments; filename="bug.py"\r\n'
-            b"Content-Length: %s"
-            b"" % (str(content_length).encode(),)
+            b'Content-Disposition: attachments; filename="bug.py"'
         )
 
     async def test_reset_content_disposition_header(
@@ -1469,9 +1465,7 @@ class TestMultipartWriter:
             b"--:\r\n"
             b"Content-Type: text/plain\r\n"
             b"Content-Disposition:"
-            b' attachments; filename="bug.py"\r\n'
-            b"Content-Length: %s"
-            b"" % (str(content_length).encode(),)
+            b' attachments; filename="bug.py"'
         )
 
 
