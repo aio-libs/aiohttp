@@ -704,7 +704,7 @@ class MultipartReader:
             )
         else:
             return self.part_reader_cls(
-                self._boundary, headers, self._content, _newline=self._newline, self._mimetype.subtype, self._default_charset
+                self._boundary, headers, self._content, _newline=self._newline, subtype=self._mimetype.subtype, default_charset=self._default_charset
             )
 
     def _get_boundary(self) -> str:
