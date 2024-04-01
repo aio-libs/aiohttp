@@ -263,7 +263,7 @@ class BodyPartReader:
         *,
         _newline: bytes = b"\r\n",
         subtype: str = "mixed",
-        default_charset: Optional[str] = None
+        default_charset: Optional[str] = None,
     ) -> None:
         self.headers = headers
         self._boundary = boundary
@@ -704,7 +704,12 @@ class MultipartReader:
             )
         else:
             return self.part_reader_cls(
-                self._boundary, headers, self._content, _newline=self._newline, subtype=self._mimetype.subtype, default_charset=self._default_charset
+                self._boundary,
+                headers,
+                self._content,
+                _newline=self._newline,
+                subtype=self._mimetype.subtype,
+                default_charset=self._default_charset,
             )
 
     def _get_boundary(self) -> str:
@@ -897,7 +902,10 @@ class MultipartWriter(Payload):
             encoding = te_encoding = None
             assert CONTENT_DISPOSITION in payload.headers
             assert "name=" in payload.headers[CONTENT_DISPOSITION]
-            assert not {CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_TRANSFER_ENCODING} & payload.headers.keys()
+            assert (
+                not {CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_TRANSFER_ENCODING}
+                & payload.headers.keys()
+            )
         else:
             # compression
             encoding: Optional[str] = payload.headers.get(
