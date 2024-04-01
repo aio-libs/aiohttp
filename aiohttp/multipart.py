@@ -655,7 +655,11 @@ class MultipartReader:
 
         part = await self.fetch_next_part()
         # https://datatracker.ietf.org/doc/html/rfc7578#section-4.6
-        if self._mimetype.subtype == "form-data" and self._last_part is None and isinstance(part, BodyPartReader):
+        if (
+            self._mimetype.subtype == "form-data"
+            and self._last_part is None
+            and isinstance(part, BodyPartReader)
+        ):
             _, params = parse_content_disposition(part.headers.get(CONTENT_DISPOSITION))
             if params.get("name") == "_charset_":
                 # Longest encoding in https://encoding.spec.whatwg.org/encodings.json
