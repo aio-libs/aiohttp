@@ -903,7 +903,7 @@ class MultipartWriter(Payload):
                 raise RuntimeError(f"unknown content encoding: {encoding}")
             if encoding == "identity":
                 encoding = None
-    
+
             # te encoding
             te_encoding: Optional[str] = payload.headers.get(
                 CONTENT_TRANSFER_ENCODING,
@@ -915,7 +915,7 @@ class MultipartWriter(Payload):
                 )
             if te_encoding == "binary":
                 te_encoding = None
-    
+
             # size
             size = payload.size
             if size is not None and not (encoding or te_encoding):
