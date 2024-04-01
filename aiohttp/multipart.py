@@ -667,7 +667,7 @@ class MultipartReader:
                 charset = await part.read_chunk(32)
                 if len(charset) >= 32:
                     raise RuntimeError("Invalid default charset")
-                self._default_charset = charset.strip().encode()
+                self._default_charset = charset.strip().decode()
                 part = await self.fetch_next_part()
         self._last_part = part
         return self._last_part
