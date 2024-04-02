@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/constraints.txt --resolver=backtracking --strip-extras requirements/constraints.in
 #
-aiodns==3.1.1 ; sys_platform == "linux" or sys_platform == "darwin"
+aiodns==3.2.0 ; sys_platform == "linux" or sys_platform == "darwin"
     # via -r requirements/runtime-deps.in
 aiohappyeyeballs==2.3.2
     # via -r requirements/runtime-deps.in
@@ -56,7 +56,7 @@ cryptography==41.0.3
     # via
     #   pyjwt
     #   trustme
-cython==3.0.9
+cython==3.0.10
     # via -r requirements/cython.in
 distlib==0.3.7
     # via virtualenv
