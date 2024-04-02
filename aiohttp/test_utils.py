@@ -537,8 +537,11 @@ def make_mocked_request(
     """
     task = mock.Mock()
     if loop is ...:
-        loop = mock.Mock()
-        loop.create_future.return_value = ()
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = mock.Mock()
+            loop.create_future.return_value = ()
 
     if version < HttpVersion(1, 1):
         closing = True
