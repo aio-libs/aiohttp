@@ -1,2 +1,2 @@
-Fix blocking I/O in the event loop while processing files in a post request
+Fixed blocking I/O in the event loop while processing files in a POST request
 -- by :user:`bdraco`.
