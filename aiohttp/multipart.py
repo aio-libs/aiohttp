@@ -913,24 +913,16 @@ class MultipartWriter(Payload):
             )
         else:
             # compression
-            encoding = payload.headers.get(
-                CONTENT_ENCODING,
-                "",
-            ).lower()
+            encoding = payload.headers.get(CONTENT_ENCODING, "").lower()
             if encoding and encoding not in ("deflate", "gzip", "identity"):
                 raise RuntimeError(f"unknown content encoding: {encoding}")
             if encoding == "identity":
                 encoding = None
 
             # te encoding
-            te_encoding = payload.headers.get(
-                CONTENT_TRANSFER_ENCODING,
-                "",
-            ).lower()
+            te_encoding = payload.headers.get(CONTENT_TRANSFER_ENCODING, "").lower()
             if te_encoding not in ("", "base64", "quoted-printable", "binary"):
-                raise RuntimeError(
-                    f"unknown content transfer encoding: {te_encoding}"
-                )
+                raise RuntimeError(f"unknown content transfer encoding: {te_encoding}")
             if te_encoding == "binary":
                 te_encoding = None
 
