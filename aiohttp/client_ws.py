@@ -215,7 +215,7 @@ class ClientWebSocketResponse:
                 self._response.close()
                 return True
 
-            if self._close_code:
+            if self._closing:
                 self._response.close()
                 return True
 
