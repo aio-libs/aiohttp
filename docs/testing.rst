@@ -817,7 +817,7 @@ Utilities
       mocked.assert_called_with(1, 2)
 
 
-  :param return_value: A value that the the mock object will return when
+  :param return_value: A value that the mock object will return when
       called.
   :returns: A mock object that behaves as a coroutine which returns
       *return_value* when called.
