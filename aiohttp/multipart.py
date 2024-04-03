@@ -929,7 +929,7 @@ class MultipartWriter(Payload):
             ).lower()
             if te_encoding not in ("", "base64", "quoted-printable", "binary"):
                 raise RuntimeError(
-                    "unknown content transfer encoding: {}" "".format(te_encoding)
+                    "unknown content transfer encoding: {}".format(te_encoding)
                 )
             if te_encoding == "binary":
                 te_encoding = None
