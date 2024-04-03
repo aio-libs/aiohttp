@@ -1399,7 +1399,6 @@ class TestMultipartWriter:
                         CONTENT_TYPE: "text/python",
                     },
                 )
-            content_length = part.size
             await writer.write(stream)
 
         assert part.headers[CONTENT_TYPE] == "text/python"
@@ -1426,7 +1425,6 @@ class TestMultipartWriter:
                         CONTENT_TYPE: "text/python",
                     },
                 )
-            content_length = part.size
             await writer.write(stream)
 
         assert part.headers[CONTENT_TYPE] == "text/python"
@@ -1450,8 +1448,6 @@ class TestMultipartWriter:
                     fobj,
                     headers={CONTENT_TYPE: "text/plain"},
                 )
-
-            content_length = part.size
 
             assert CONTENT_DISPOSITION in part.headers
 
