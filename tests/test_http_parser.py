@@ -739,8 +739,8 @@ def test_max_header_value_size_continuation_under_limit(response: Any) -> None:
 
     messages, upgrade, tail = response.feed_data(text)
     msg = messages[0][0]
-    assert msg.method == "GET"
-    assert msg.path == "/test"
+    assert msg.code == 200
+    assert msg.reason == "Ok"
     assert msg.version == (1, 1)
     assert msg.headers == CIMultiDict({"data": "test " + value.decode()})
     assert msg.raw_headers == ((b"data", b"test " + value),)
@@ -748,7 +748,6 @@ def test_max_header_value_size_continuation_under_limit(response: Any) -> None:
     assert msg.compression is None
     assert not msg.upgrade
     assert not msg.chunked
-    assert msg.url == URL("/test")
 
 
 def test_http_request_parser(parser: Any) -> None:
