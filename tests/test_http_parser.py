@@ -724,18 +724,18 @@ def test_max_header_value_size_under_limit(parser: Any) -> None:
 
 
 @pytest.mark.parametrize("size", [40965, 8191])
-def test_max_header_value_size_continuation(parser: Any, size: Any) -> None:
+def test_max_header_value_size_continuation(response: Any, size: Any) -> None:
     name = b"T" * (size - 5)
-    text = b"GET /test HTTP/1.1\r\n" b"data: test " + name + b"\r\n\r\n"
+    text = b"HTTP/1.1 200 Ok\r\ndata: test\r\n " + name + b"\r\n\r\n"
 
     match = f"400, message:\n  Got more than 8190 bytes \\({size}\\) when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         parser.feed_data(text)
 
 
-def test_max_header_value_size_continuation_under_limit(parser: Any) -> None:
+def test_max_header_value_size_continuation_under_limit(response: Any) -> None:
     value = b"A" * 8185
-    text = b"GET /test HTTP/1.1\r\n" b"data: test " + value + b"\r\n\r\n"
+    text = b"HTTP/1.1 200 Ok\r\ndata: test\r\n " + value + b"\r\n\r\n"
 
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
