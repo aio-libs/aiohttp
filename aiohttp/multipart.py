@@ -665,7 +665,7 @@ class MultipartReader:
                 # Longest encoding in https://encoding.spec.whatwg.org/encodings.json
                 # is 19 characters, so 32 should be more than enough for any valid encoding.
                 charset = await part.read_chunk(32)
-                if len(charset) >= 32:
+                if len(charset) > 31:
                     raise RuntimeError("Invalid default charset")
                 self._default_charset = charset.strip().decode()
                 part = await self.fetch_next_part()
