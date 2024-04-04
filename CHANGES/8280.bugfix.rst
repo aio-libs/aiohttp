@@ -1,1 +1,1 @@
-Fixed `multipart/form-data` compliance with RFC 7578 -- by :user:`Dreamsorcerer`.
+Fixed ``multipart/form-data`` compliance with :rfc:`7578` -- by :user:`Dreamsorcerer`.
