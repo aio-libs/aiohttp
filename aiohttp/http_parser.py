@@ -123,10 +123,7 @@ class ChunkState(IntEnum):
 
 class HeadersParser:
     def __init__(
-        self,
-        max_line_size: int = 8190,
-        max_field_size: int = 8190,
-        lax: bool = False
+        self, max_line_size: int = 8190, max_field_size: int = 8190, lax: bool = False
     ) -> None:
         self.max_line_size = max_line_size
         self.max_field_size = max_field_size
