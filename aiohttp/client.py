@@ -255,7 +255,15 @@ class ClientSession:
 
         if connector is None:
             connector = TCPConnector()
-
+        if timeout is sentinel or timeout is None:
+            timeout = DEFAULT_TIMEOUT
+        if not isinstance(timeout, ClientTimeout):
+            self._connector = None
+            raise ValueError(
+                f"timeout parameter cannot be of {type(timeout)} type, "
+                "please use 'timeout=ClientTimeout(...)'",
+            )
+        self._timeout = timeout
         # Initialize these three attrs before raising any exception,
         # they are used in __del__
         self._connector: Optional[BaseConnector] = connector
@@ -281,14 +289,6 @@ class ClientSession:
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
-        if timeout is sentinel or timeout is None:
-            timeout = DEFAULT_TIMEOUT
-        if not isinstance(timeout, ClientTimeout):
-            raise ValueError(
-                f"timeout parameter cannot be of {type(timeout)} type, "
-                "please use 'timeout=ClientTimeout(...)'",
-            )
-        self._timeout = timeout
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env

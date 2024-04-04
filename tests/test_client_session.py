@@ -841,3 +841,13 @@ async def test_build_url_returns_expected_url(
 ) -> None:
     session = await create_session(base_url)
     assert session._build_url(url) == expected_url
+
+
+async def test_instantiation_with_invalid_timeout_value(loop):
+    loop.set_debug(False)
+    logs = []
+    loop.set_exception_handler(lambda loop, ctx: logs.append(ctx))
+    with pytest.raises(ValueError, match="timeout parameter cannot be .*"):
+        ClientSession(timeout=1)
+    # should not have "Unclosed client session" warning
+    assert not logs
