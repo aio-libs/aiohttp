@@ -126,9 +126,11 @@ class HeadersParser:
         self,
         max_line_size: int = 8190,
         max_field_size: int = 8190,
+        lax: bool = False
     ) -> None:
         self.max_line_size = max_line_size
         self.max_field_size = max_field_size
+        self._lax = lax
 
     def parse_headers(
         self, lines: List[bytes]
@@ -175,7 +177,7 @@ class HeadersParser:
             line = lines[lines_idx]
 
             # consume continuation lines
-            continuation = line and line[0] in (32, 9)  # (' ', '\t')
+            continuation = self._lax and line and line[0] in (32, 9)  # (' ', '\t')
 
             # Deprecated: https://www.rfc-editor.org/rfc/rfc9112.html#name-obsolete-line-folding
             if continuation:
@@ -268,7 +270,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         self._payload_parser: Optional[HttpPayloadParser] = None
         self._auto_decompress = auto_decompress
         self._limit = limit
-        self._headers_parser = HeadersParser(max_line_size, max_field_size)
+        self._headers_parser = HeadersParser(max_line_size, max_field_size, self.lax)
 
     @abc.abstractmethod
     def parse_message(self, lines: List[bytes]) -> _MsgT:
