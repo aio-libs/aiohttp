@@ -1,1 +1,1 @@
-Upgraded to LLHTTP 9.2.1, and started rejected obsolete line folding in Python parser to match -- by :user:`Dreamsorcerer`.
+Upgraded to LLHTTP 9.2.1, and started rejecting obsolete line folding in Python parser to match -- by :user:`Dreamsorcerer`.
