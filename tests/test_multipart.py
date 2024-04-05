@@ -1054,7 +1054,7 @@ class TestMultipartReader:
             b"foo"
             b"\r\n"
             b"--:\r\n"
-            b'Content-Type: text/plain;charset=UTF-8\r\n'
+            b"Content-Type: text/plain;charset=UTF-8\r\n"
             b'Content-Disposition: form-data; name="field2"\r\n\r\n'
             b"foo"
             b"\r\n"
