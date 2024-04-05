@@ -707,7 +707,7 @@ async def test_upload_file(aiohttp_client: Any) -> None:
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
-    resp = await client.post("/", data={"file": data})
+    resp = await client.post("/", data={"file": io.BytesIO(data)})
     assert 200 == resp.status
 
     await resp.release()
