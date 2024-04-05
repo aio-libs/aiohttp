@@ -49,7 +49,7 @@ def fname(here: Any):
 
 def new_dummy_form():
     form = FormData()
-    form.add_field("name", b"123")
+    form.add_field("name", b"123", content_transfer_encoding="base64")
     return form
 
 
@@ -504,7 +504,7 @@ async def test_100_continue(aiohttp_client: Any) -> None:
         return web.Response()
 
     form = FormData()
-    form.add_field("name", b"123")
+    form.add_field("name", b"123", content_transfer_encoding="base64")
 
     app = web.Application()
     app.router.add_post("/", handler)
