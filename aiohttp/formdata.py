@@ -49,11 +49,17 @@ class FormData:
         *,
         content_type: Optional[str] = None,
         filename: Optional[str] = None,
+        content_transfer_encoding: Optional[str] = None,
     ) -> None:
         if isinstance(value, io.IOBase):
             self._is_multipart = True
         elif isinstance(value, (bytes, bytearray, memoryview)):
-            if filename is None:
+            msg = (
+                "In v4, passing bytes will no longer create a file field. "
+                "Please explicitly use the filename parameter or pass a BytesIO object."
+            )
+            if filename is None and content_transfer_encoding is None:
+                warnings.warning(msg, DeprecationWarning)
                 filename = name
 
         type_options: MultiDict[str] = MultiDict({"name": name})
@@ -74,6 +80,18 @@ class FormData:
                     "content_type must be an instance of str. " "Got: %s" % content_type
                 )
             headers[hdrs.CONTENT_TYPE] = content_type
+            self._is_multipart = True
+        if content_transfer_encoding is not None:
+            msg = (
+                "content_transfer_encoding is deprecated. "
+                "To maintain compatibility with v4 please pass a BytesPayload."
+            )
+            warnings.warn(msg, DeprecationWarning)
+            if not isinstance(content_transfer_encoding, str):
+                raise TypeError(
+                    "content_transfer_encoding must be an instance"
+                    " of str. Got: %s" % content_transfer_encoding
+                )
             self._is_multipart = True
 
         self._fields.append((type_options, headers, value))
