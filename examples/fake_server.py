@@ -3,10 +3,11 @@ import asyncio
 import pathlib
 import socket
 import ssl
+from typing import List, Union
 
 import aiohttp
 from aiohttp import web
-from aiohttp.abc import AbstractResolver
+from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.resolver import DefaultResolver
 from aiohttp.test_utils import unused_port
 
@@ -19,7 +20,12 @@ class FakeResolver(AbstractResolver):
         self._fakes = fakes
         self._resolver = DefaultResolver(loop=loop)
 
-    async def resolve(self, host, port=0, family=socket.AF_INET):
+    async def resolve(
+        self,
+        host: str,
+        port: int = 0,
+        family: Union[socket.AddressFamily, int] = socket.AF_INET,
+    ) -> List[ResolveResult]:
         fake_port = self._fakes.get(host)
         if fake_port is not None:
             return [
