@@ -275,7 +275,9 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         self._payload_parser: Optional[HttpPayloadParser] = None
         self._auto_decompress = auto_decompress
         self._limit = limit
-        self._headers_parser = HeadersParser(max_line_size, max_headers, max_field_size, self.lax)
+        self._headers_parser = HeadersParser(
+            max_line_size, max_headers, max_field_size, self.lax
+        )
 
     @abc.abstractmethod
     def parse_message(self, lines: List[bytes]) -> _MsgT:
