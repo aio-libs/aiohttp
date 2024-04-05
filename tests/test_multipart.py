@@ -1043,6 +1043,58 @@ class TestMultipartReader:
                     if subpart is None:
                         break
 
+    async def test_read_form_default_encoding(self) -> None:
+        with Stream(
+            b"--:\r\n"
+            b'Content-Disposition: form-data; name="_charset_"\r\n\r\n'
+            b"ascii"
+            b"\r\n"
+            b"--:\r\n"
+            b'Content-Disposition: form-data; name="field1"\r\n\r\n'
+            b"foo"
+            b"\r\n"
+            b"--:\r\n"
+            b'Content-Type: text/plain;charset=UTF-8\r\n'
+            b'Content-Disposition: form-data; name="field2"\r\n\r\n'
+            b"foo"
+            b"\r\n"
+            b"--:\r\n"
+            b'Content-Disposition: form-data; name="field3"\r\n\r\n'
+            b"foo"
+            b"\r\n"
+        ) as stream:
+            reader = aiohttp.MultipartReader(
+                {CONTENT_TYPE: 'multipart/form-data;boundary=":"'},
+                stream,
+            )
+            field1 = await reader.next()
+            assert field1.name == "field1"
+            assert field1.get_charset() == "ascii"
+            field2 = await reader.next()
+            assert field2.name == "field2"
+            assert field2.get_charset() == "UTF-8"
+            field3 = await reader.next()
+            assert field3.name == "field3"
+            assert field3.get_charset() == "ascii"
+
+    async def test_read_form_invalid_default_encoding(self) -> None:
+        with Stream(
+            b"--:\r\n"
+            b'Content-Disposition: form-data; name="_charset_"\r\n\r\n'
+            b"this-value-is-too-long-to-be-a-charset"
+            b"\r\n"
+            b"--:\r\n"
+            b'Content-Disposition: form-data; name="field1"\r\n\r\n'
+            b"foo"
+            b"\r\n"
+        ) as stream:
+            reader = aiohttp.MultipartReader(
+                {CONTENT_TYPE: 'multipart/form-data;boundary=":"'},
+                stream,
+            )
+            with pytest.raises(RuntimeError, match="Invalid default charset"):
+                await reader.next()
+
 
 async def test_writer(writer: Any) -> None:
     assert writer.size == 7
