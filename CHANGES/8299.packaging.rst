@@ -1,2 +1,2 @@
-Added an 'internal' pytest marker for tests which should be skipped
+Added an ``internal`` pytest marker for tests which should be skipped
 by packagers and disabled them by default -- by :user:`Dreamsorcerer`.

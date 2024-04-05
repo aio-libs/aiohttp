@@ -213,7 +213,7 @@ jobs:
         PIP_USER: 1
       run: >-
         PATH="${HOME}/Library/Python/3.11/bin:${HOME}/.local/bin:${PATH}"
-        pytest -m internal
+        pytest
       shell: bash
     - name: Re-run the failing tests with maximum verbosity
       if: failure()
