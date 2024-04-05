@@ -1069,13 +1069,13 @@ class TestMultipartReader:
             )
             field1 = await reader.next()
             assert field1.name == "field1"
-            assert field1.get_charset() == "ascii"
+            assert field1.get_charset("default") == "ascii"
             field2 = await reader.next()
             assert field2.name == "field2"
-            assert field2.get_charset() == "UTF-8"
+            assert field2.get_charset("default") == "UTF-8"
             field3 = await reader.next()
             assert field3.name == "field3"
-            assert field3.get_charset() == "ascii"
+            assert field3.get_charset("default") == "ascii"
 
     async def test_read_form_invalid_default_encoding(self) -> None:
         with Stream(
