@@ -83,16 +83,16 @@ class FormData:
             headers[hdrs.CONTENT_TYPE] = content_type
             self._is_multipart = True
         if content_transfer_encoding is not None:
-            msg = (
-                "content_transfer_encoding is deprecated. "
-                "To maintain compatibility with v4 please pass a BytesPayload."
-            )
-            warnings.warn(msg, DeprecationWarning)
             if not isinstance(content_transfer_encoding, str):
                 raise TypeError(
                     "content_transfer_encoding must be an instance"
                     " of str. Got: %s" % content_transfer_encoding
                 )
+            msg = (
+                "content_transfer_encoding is deprecated. "
+                "To maintain compatibility with v4 please pass a BytesPayload."
+            )
+            warnings.warn(msg, DeprecationWarning)
             self._is_multipart = True
 
         self._fields.append((type_options, headers, value))
