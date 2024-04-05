@@ -1439,7 +1439,7 @@ async def test_POST_FILES(aiohttp_client: Any, fname: Any) -> None:
 
     with fname.open("rb") as f:
         async with client.post(
-            "/", data={"some": f, "test": b"data"}, chunked=True
+            "/", data={"some": f, "test": io.BytesIO(b"data")}, chunked=True
         ) as resp:
             assert 200 == resp.status
 
