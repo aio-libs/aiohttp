@@ -60,7 +60,7 @@ class FormData:
                 "Please explicitly use the filename parameter or pass a BytesIO object."
             )
             if filename is None and content_transfer_encoding is None:
-                warnings.warning(msg, DeprecationWarning)
+                warnings.warn(msg, DeprecationWarning)
                 filename = name
 
         type_options: MultiDict[str] = MultiDict({"name": name})
