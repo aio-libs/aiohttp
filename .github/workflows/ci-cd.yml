@@ -250,6 +250,82 @@ jobs:
           }}
         token: ${{ secrets.CODECOV_TOKEN }}
 
+  test-pyodide:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
+    name: Test pyodide
+    needs: gen_llhttp
+    runs-on: ubuntu-22.04
+    env:
+      PYODIDE_VERSION: 0.25.0a1
+      # PYTHON_VERSION and EMSCRIPTEN_VERSION are determined by PYODIDE_VERSION.
+      # The appropriate versions can be found in the Pyodide repodata.json
+      # "info" field, or in Makefile.envs:
+      # https://github.com/pyodide/pyodide/blob/main/Makefile.envs#L2
+      PYTHON_VERSION: 3.11.4
+      EMSCRIPTEN_VERSION: 3.1.45
+      NODE_VERSION: 18
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+    - name: Setup Python ${{ env.PYTHON_VERSION }}
+      id: python-install
+      uses: actions/setup-python@v4
+      with:
+        allow-prereleases: true
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Get pip cache dir
+      id: pip-cache
+      run: |
+        echo "::set-output name=dir::$(pip cache dir)"    # - name: Cache
+    - name: Cache PyPI
+      uses: actions/cache@v3.3.2
+      with:
+        key: pip-ci-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ matrix.no-extensions }}-${{ hashFiles('requirements/*.txt') }}
+        path: ${{ steps.pip-cache.outputs.dir }}
+        restore-keys: |
+            pip-ci-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ matrix.no-extensions }}-
+    - name: Update pip, wheel, setuptools, build, twine
+      run: |
+        python -m pip install -U pip wheel setuptools build twine
+    - name: Install dependencies
+      run: |
+        python -m pip install -r requirements/test.in -c requirements/test.txt
+    - name: Restore llhttp generated files
+      if: ${{ matrix.no-extensions == '' }}
+      uses: actions/download-artifact@v3
+      with:
+        name: llhttp
+        path: vendor/llhttp/build/
+    - name: Cythonize
+      if: ${{ matrix.no-extensions == '' }}
+      run: |
+        make cythonize
+    - uses: mymindstorm/setup-emsdk@v12
+      with:
+        version: ${{ env.EMSCRIPTEN_VERSION }}
+        actions-cache-folder: emsdk-cache
+    - name: Install pyodide-build
+      run: pip install "pydantic<2" pyodide-build==$PYODIDE_VERSION
+    - name: Build
+      run: |
+        CFLAGS=-g2 LDFLAGS=-g2 pyodide build
+
+    - uses: pyodide/pyodide-actions/download-pyodide@v1
+      with:
+        version: ${{ env.PYODIDE_VERSION }}
+        to: pyodide-dist
+
+    - uses: pyodide/pyodide-actions/install-browser@v1
+
+    - name: Test
+      run: |
+        pip install pytest-pyodide
+        pytest tests/test_pyodide.py --rt chrome --dist-dir ./pyodide-dist
+
   check:  # This job does nothing and is only used for the branch protection
     if: always()
 

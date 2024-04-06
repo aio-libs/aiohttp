@@ -108,6 +108,8 @@ SEPARATORS = {
 }
 TOKEN = CHAR ^ CTL ^ SEPARATORS
 
+IS_PYODIDE = "pyodide" in sys.modules
+
 
 class noop:
     def __await__(self) -> Generator[None, None, None]:
@@ -1114,3 +1116,21 @@ def should_remove_content_length(method: str, code: int) -> bool:
         or 100 <= code < 200
         or (200 <= code < 300 and method.upper() == hdrs.METH_CONNECT)
     )
+
+
+class JsRequest(Protocol):
+    pass
+
+
+class JsArrayBuffer(Protocol):
+    def to_bytes(self) -> bytes:
+        ...
+
+
+class JsResponse(Protocol):
+    status: int
+    statusText: str
+    headers: List[Tuple[str, str]]
+
+    def arrayBuffer(self) -> "asyncio.Future[JsArrayBuffer]":
+        ...

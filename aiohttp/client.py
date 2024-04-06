@@ -72,6 +72,8 @@ from .client_reqrep import (
     ClientRequest,
     ClientResponse,
     Fingerprint,
+    PyodideClientRequest,
+    PyodideClientResponse,
     RequestInfo,
 )
 from .client_ws import (
@@ -79,10 +81,17 @@ from .client_ws import (
     ClientWebSocketResponse,
     ClientWSTimeout,
 )
-from .connector import BaseConnector, NamedPipeConnector, TCPConnector, UnixConnector
+from .connector import (
+    BaseConnector,
+    NamedPipeConnector,
+    PyodideConnector,
+    TCPConnector,
+    UnixConnector,
+)
 from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
+    IS_PYODIDE,
     BasicAuth,
     TimeoutHandle,
     ceil_timeout,
@@ -224,8 +233,8 @@ class ClientSession:
         skip_auto_headers: Optional[Iterable[str]] = None,
         auth: Optional[BasicAuth] = None,
         json_serialize: JSONEncoder = json.dumps,
-        request_class: Type[ClientRequest] = ClientRequest,
-        response_class: Type[ClientResponse] = ClientResponse,
+        request_class: Optional[Type[ClientRequest]] = None,
+        response_class: Optional[Type[ClientResponse]] = None,
         ws_response_class: Type[ClientWebSocketResponse] = ClientWebSocketResponse,
         version: HttpVersion = http.HttpVersion11,
         cookie_jar: Optional[AbstractCookieJar] = None,
@@ -254,7 +263,7 @@ class ClientSession:
         loop = asyncio.get_running_loop()
 
         if connector is None:
-            connector = TCPConnector()
+            connector = PyodideConnector() if IS_PYODIDE else TCPConnector()
 
         # Initialize these three attrs before raising any exception,
         # they are used in __del__
@@ -307,6 +316,11 @@ class ClientSession:
             self._skip_auto_headers = frozenset(istr(i) for i in skip_auto_headers)
         else:
             self._skip_auto_headers = frozenset()
+
+        if request_class is None:
+            request_class = PyodideClientRequest if IS_PYODIDE else ClientRequest
+        if response_class is None:
+            response_class = PyodideClientResponse if IS_PYODIDE else ClientResponse
 
         self._request_class = request_class
         self._response_class = response_class
