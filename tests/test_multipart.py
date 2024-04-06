@@ -370,7 +370,7 @@ class TestPartReader:
         assert "Hello, world!" == result
 
     async def test_read_text_default_encoding(self) -> None:
-        with Stream(b"Привет, Мир!\r\n--:--") as stream:
+        with Stream("Привет, Мир!\r\n--:--".encode("utf-8")) as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, {}, stream)
             result = await obj.text()
         assert "Привет, Мир!" == result
