@@ -260,12 +260,9 @@ class BodyPartReader:
         boundary: bytes,
         headers: "CIMultiDictProxy[str]",
         content: StreamReader,
-        *,
-        _newline: bytes = b"\r\n",
     ) -> None:
         self.headers = headers
         self._boundary = boundary
-        self._newline = _newline
         self._content = content
         self._at_eof = False
         length = self.headers.get(CONTENT_LENGTH, None)
@@ -348,10 +345,8 @@ class BodyPartReader:
         if self._read_bytes == self._length:
             self._at_eof = True
         if self._at_eof:
-            newline = await self._content.readline()
-            assert (
-                newline == self._newline
-            ), "reader did not read all the data or it is malformed"
+            clrf = await self._content.readline()
+            assert b'\r\n' == clrf,  "reader did not read all the data or it is malformed"
         return chunk
 
     async def _read_chunk_from_length(self, size: int) -> bytes:
@@ -377,15 +372,11 @@ class BodyPartReader:
         assert self._content_eof < 3, "Reading after EOF"
         assert self._prev_chunk is not None
         window = self._prev_chunk + chunk
-
-        intermeditate_boundary = self._newline + self._boundary
-
+        sub = b'\r\n' + self._boundary
         if first_chunk:
-            pos = 0
+            idx = window.find(sub)
         else:
-            pos = max(0, len(self._prev_chunk) - len(intermeditate_boundary))
-
-        idx = window.find(intermeditate_boundary, pos)
+            idx = window.find(sub, max(0, len(self._prev_chunk) - len(sub)))
         if idx >= 0:
             # pushing boundary back to content
             with warnings.catch_warnings():
@@ -396,7 +387,6 @@ class BodyPartReader:
             chunk = window[len(self._prev_chunk) : idx]
             if not chunk:
                 self._at_eof = True
-
         result = self._prev_chunk
         self._prev_chunk = chunk
         return result
@@ -425,8 +415,7 @@ class BodyPartReader:
         else:
             next_line = await self._content.readline()
             if next_line.startswith(self._boundary):
-                # strip newline but only once
-                line = line[: -len(self._newline)]
+                line = line[:-2]  # strip CRLF but only once
             self._unread.append(next_line)
 
         return line
@@ -578,12 +567,9 @@ class MultipartReader:
         self,
         headers: Mapping[str, str],
         content: StreamReader,
-        *,
-        _newline: bytes = b"\r\n",
     ) -> None:
         self.headers = headers
         self._boundary = ("--" + self._get_boundary()).encode()
-        self._newline = _newline
         self._content = content
         self._last_part: Optional[Union["MultipartReader", BodyPartReader]] = None
         self._at_eof = False
@@ -670,13 +656,9 @@ class MultipartReader:
         if mimetype.type == "multipart":
             if self.multipart_reader_cls is None:
                 return type(self)(headers, self._content)
-            return self.multipart_reader_cls(
-                headers, self._content, _newline=self._newline
-            )
+            return self.multipart_reader_cls(headers, self._content)
         else:
-            return self.part_reader_cls(
-                self._boundary, headers, self._content, _newline=self._newline
-            )
+            return self.part_reader_cls(self._boundary, headers, self._content)
 
     def _get_boundary(self) -> str:
         mimetype = parse_mimetype(self.headers[CONTENT_TYPE])
@@ -702,20 +684,8 @@ class MultipartReader:
     async def _read_until_first_boundary(self) -> None:
         while True:
             chunk = await self._readline()
-            if chunk == b"":
-                raise ValueError(
-                    "Could not find starting boundary %r" % (self._boundary)
-                )
-            newline = None
-            end_boundary = self._boundary + b"--"
-            if chunk.startswith(end_boundary):
-                _, newline = chunk.split(end_boundary, 1)
-            elif chunk.startswith(self._boundary):
-                _, newline = chunk.split(self._boundary, 1)
-            if newline is not None:
-                assert newline in (b"\r\n", b"\n"), (newline, chunk, self._boundary)
-                self._newline = newline
-
+            if chunk == b'':
+                raise ValueError(f"Could not find starting boundary {self._boundary!r}")
             chunk = chunk.rstrip()
             if chunk == self._boundary:
                 return
