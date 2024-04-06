@@ -691,7 +691,7 @@ class MultipartReader:
             chunk = chunk.rstrip()
             if chunk == self._boundary:
                 return
-            elif chunk == end_boundary:
+            elif chunk == self._boundary + b"--":
                 self._at_eof = True
                 return
 
