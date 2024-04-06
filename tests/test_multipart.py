@@ -863,6 +863,7 @@ class TestMultipartReader:
             with pytest.raises(RuntimeError, match="Invalid default charset"):
                 await reader.next()
 
+
 async def test_writer(writer: Any) -> None:
     assert writer.size == 7
     assert writer.boundary == ":"
