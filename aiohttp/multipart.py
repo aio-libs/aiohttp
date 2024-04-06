@@ -346,7 +346,9 @@ class BodyPartReader:
             self._at_eof = True
         if self._at_eof:
             clrf = await self._content.readline()
-            assert b'\r\n' == clrf,  "reader did not read all the data or it is malformed"
+            assert (
+                b"\r\n" == clrf
+            ), "reader did not read all the data or it is malformed"
         return chunk
 
     async def _read_chunk_from_length(self, size: int) -> bytes:
@@ -372,7 +374,7 @@ class BodyPartReader:
         assert self._content_eof < 3, "Reading after EOF"
         assert self._prev_chunk is not None
         window = self._prev_chunk + chunk
-        sub = b'\r\n' + self._boundary
+        sub = b"\r\n" + self._boundary
         if first_chunk:
             idx = window.find(sub)
         else:
@@ -684,7 +686,7 @@ class MultipartReader:
     async def _read_until_first_boundary(self) -> None:
         while True:
             chunk = await self._readline()
-            if chunk == b'':
+            if chunk == b"":
                 raise ValueError(f"Could not find starting boundary {self._boundary!r}")
             chunk = chunk.rstrip()
             if chunk == self._boundary:
