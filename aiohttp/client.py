@@ -214,6 +214,8 @@ class ClientSession:
         "_resolve_charset",
     )
 
+    _connector: Optional[BaseConnector] = None
+
     def __init__(
         self,
         base_url: Optional[StrOrURL] = None,
@@ -253,20 +255,20 @@ class ClientSession:
 
         loop = asyncio.get_running_loop()
 
-        if connector is None:
-            connector = TCPConnector()
         if timeout is sentinel or timeout is None:
             timeout = DEFAULT_TIMEOUT
         if not isinstance(timeout, ClientTimeout):
-            self._connector = None
             raise ValueError(
                 f"timeout parameter cannot be of {type(timeout)} type, "
                 "please use 'timeout=ClientTimeout(...)'",
             )
+
+        if connector is None:
+            connector = TCPConnector()
         self._timeout = timeout
         # Initialize these three attrs before raising any exception,
         # they are used in __del__
-        self._connector: Optional[BaseConnector] = connector
+        self._connector = connector
         self._loop = loop
         if loop.get_debug():
             self._source_traceback: Optional[traceback.StackSummary] = (
