@@ -1,0 +1,20 @@
+name: Labels
+on:
+  pull_request:
+    branches:
+      - 'master'
+    types: [labeled, opened]
+
+jobs:
+  backport:
+    runs-on: ubuntu-latest
+    name: Backport label added
+    steps:
+    - name: Check labels
+      run: |
+        for label in "${{ github.event.pull_request.labels }}"; do
+            case $label in backport*)
+                exit 0
+            esac
+        done
+        exit 1
