@@ -14,10 +14,10 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const labels = await github.pulls.listLabelsOnPullRequest({
+            const pr = await github.pulls.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: context.payload.pull_request.number
             });
-            if (!labels.data.find(l => l.name.startsWith("backport")))
+            if (!pr.labels.data.find(l => l.name.startsWith("backport")))
               process.exit(1);
