@@ -26,6 +26,15 @@ env:
 
 permissions: {}
 jobs:
+  backport:
+    runs-on: ubuntu-latest
+    name: Backport label added?
+    if: ${{ github.ref == 'refs/heads/master' }}
+    steps:
+    - name: Check labels
+      env:
+        LABELS: ${{ github.event.pull_request.labels }}
+      run: echo "$LABELS" | grep -q 'backport'
 
   lint:
     permissions:
