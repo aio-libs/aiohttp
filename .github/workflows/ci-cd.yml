@@ -32,9 +32,7 @@ jobs:
     if: ${{ github.base_ref == 'master' }}
     steps:
     - name: Check labels
-      env:
-        LABELS: ${{ github.event.pull_request.labels }}
-      run: echo "$LABELS" | grep -q 'backport'
+      run: echo "${{ github.event.pull_request.labels }}" | grep -q 'backport'
 
   lint:
     permissions:
