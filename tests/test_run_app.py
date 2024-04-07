@@ -937,7 +937,7 @@ class TestShutdown:
                     try:
                         async with sess.get(f"http://localhost:{port}/"):
                             pass
-                    except aiohttp.ClientConnectorError:
+                    except ClientConnectorError:
                         await asyncio.sleep(0.5)
                     else:
                         break
