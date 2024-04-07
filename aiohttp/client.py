@@ -214,8 +214,6 @@ class ClientSession:
         "_resolve_charset",
     )
 
-    _connector: Optional[BaseConnector] = None
-
     def __init__(
         self,
         base_url: Optional[StrOrURL] = None,
@@ -245,6 +243,9 @@ class ClientSession:
         max_field_size: int = 8190,
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
     ) -> None:
+        # We initialise _connector to None immediately, as it's referenced in __del__()
+        # and could cause issues if an exception occurs during initialisation.
+        self._connector: Optional[BaseConnector] = None
         if base_url is None or isinstance(base_url, URL):
             self._base_url: Optional[URL] = base_url
         else:
