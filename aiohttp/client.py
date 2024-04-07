@@ -262,10 +262,10 @@ class ClientSession:
                 f"timeout parameter cannot be of {type(timeout)} type, "
                 "please use 'timeout=ClientTimeout(...)'",
             )
+        self._timeout = timeout
 
         if connector is None:
             connector = TCPConnector()
-        self._timeout = timeout
         # Initialize these three attrs before raising any exception,
         # they are used in __del__
         self._connector = connector
