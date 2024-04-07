@@ -3,7 +3,7 @@ on:
   pull_request:
     branches:
       - 'master'
-    types: [labeled, opened, unlabeled]
+    types: [labeled, opened, synchronize, reopened, unlabeled]
 
 jobs:
   backport:
