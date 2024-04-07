@@ -841,3 +841,8 @@ async def test_build_url_returns_expected_url(
 ) -> None:
     session = await create_session(base_url)
     assert session._build_url(url) == expected_url
+
+
+async def test_instantiation_with_invalid_timeout_value():
+    with pytest.raises(ValueError, match="timeout parameter cannot be .*"):
+        ClientSession(timeout=1)

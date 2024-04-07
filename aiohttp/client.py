@@ -243,6 +243,9 @@ class ClientSession:
         max_field_size: int = 8190,
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
     ) -> None:
+        # We initialise _connector to None immediately, as it's referenced in __del__()
+        # and could cause issues if an exception occurs during initialisation.
+        self._connector: Optional[BaseConnector] = None
         if base_url is None or isinstance(base_url, URL):
             self._base_url: Optional[URL] = base_url
         else:
@@ -253,12 +256,20 @@ class ClientSession:
 
         loop = asyncio.get_running_loop()
 
+        if timeout is sentinel or timeout is None:
+            timeout = DEFAULT_TIMEOUT
+        if not isinstance(timeout, ClientTimeout):
+            raise ValueError(
+                f"timeout parameter cannot be of {type(timeout)} type, "
+                "please use 'timeout=ClientTimeout(...)'",
+            )
+        self._timeout = timeout
+
         if connector is None:
             connector = TCPConnector()
-
         # Initialize these three attrs before raising any exception,
         # they are used in __del__
-        self._connector: Optional[BaseConnector] = connector
+        self._connector = connector
         self._loop = loop
         if loop.get_debug():
             self._source_traceback: Optional[traceback.StackSummary] = (
@@ -281,14 +292,6 @@ class ClientSession:
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
-        if timeout is sentinel or timeout is None:
-            timeout = DEFAULT_TIMEOUT
-        if not isinstance(timeout, ClientTimeout):
-            raise ValueError(
-                f"timeout parameter cannot be of {type(timeout)} type, "
-                "please use 'timeout=ClientTimeout(...)'",
-            )
-        self._timeout = timeout
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
