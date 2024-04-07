@@ -50,7 +50,7 @@ class FormData:
         content_type: Optional[str] = None,
         filename: Optional[str] = None,
     ) -> None:
-        if isinstance(value, io.IOBase):
+        if isinstance(value, (io.IOBase, bytes, bytearray, memoryview)):
             self._is_multipart = True
 
         type_options: MultiDict[str] = MultiDict({"name": name})
