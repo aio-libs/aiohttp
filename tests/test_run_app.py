@@ -933,8 +933,14 @@ class TestShutdown:
         async def test() -> None:
             await asyncio.sleep(1)
             async with ClientSession() as sess:
-                async with sess.get(f"http://localhost:{port}/"):
-                    pass
+                while True:
+                    try:
+                        async with sess.get(f"http://localhost:{port}/"):
+                            pass
+                    except aiohttp.ClientConnectorError:
+                        await asyncio.sleep(0.5)
+                    else:
+                        break
                 async with sess.get(f"http://localhost:{port}/stop"):
                     pass
 
