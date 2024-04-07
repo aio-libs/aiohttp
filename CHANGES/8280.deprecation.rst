@@ -1,0 +1,2 @@
+Deprecated ``content_transfer_encoding`` parameter in :py:meth:`FormData.add_field()
+<aiohttp.FormData.add_field>` -- by :user:`Dreamsorcerer`.
