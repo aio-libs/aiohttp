@@ -10,11 +10,14 @@ jobs:
     runs-on: ubuntu-latest
     name: Backport label added
     steps:
-    - name: Check labels
-      run: |
-        for label in ${{ github.event.pull_request.labels }}; do
-            case $label in backport*)
-                exit 0
-            esac
-        done
-        exit 1
+      - uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const labels = await github.pulls.listLabelsOnPullRequest({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number
+            });
+            if (!labels.data.find(l => l.name.startsWith("backport")))
+              process.exit(1);
