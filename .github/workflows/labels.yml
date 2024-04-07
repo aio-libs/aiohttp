@@ -19,5 +19,5 @@ jobs:
               repo: context.repo.repo,
               pull_number: context.payload.pull_request.number
             });
-            if (!pr.labels.data.find(l => l.name.startsWith("backport")))
+            if (!pr.labels.find(l => l.name.startsWith("backport")))
               process.exit(1);
