@@ -12,7 +12,7 @@ jobs:
     steps:
     - name: Check labels
       run: |
-        for label in "${{ github.event.pull_request.labels }}"; do
+        for label in ${{ github.event.pull_request.labels }}; do
             case $label in backport*)
                 exit 0
             esac
