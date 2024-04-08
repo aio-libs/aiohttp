@@ -956,6 +956,14 @@ steps 4 and 7).
    :ref:`cleanup contexts<aiohttp-web-cleanup-ctx>`.
 7. Cancel any remaining tasks and wait on them to complete.
 
+.. note::
+
+   When creating new tasks in a handler which _should_ be cancelled on server shutdown,
+   then it is important to keep track of those tasks and explicitly cancel them in a
+   :attr:`Application.on_shutdown` callback. As we can see from the above steps,
+   without this the server will wait on those new tasks to complete before it continues
+   with server shutdown.
+
 Websocket shutdown
 ^^^^^^^^^^^^^^^^^^
 

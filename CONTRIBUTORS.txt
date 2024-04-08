@@ -27,6 +27,7 @@ Alexander Shorin
 Alexander Travov
 Alexandru Mihai
 Alexey Firsov
+Alexey Nikitin
 Alexey Popravka
 Alexey Stepanov
 Almaz Salakhov
@@ -83,6 +84,7 @@ Damien Nadé
 Dan King
 Dan Xu
 Daniel García
+Daniel Golding
 Daniel Grossmann-Kavanagh
 Daniel Nelson
 Daniele Trifirò
@@ -375,5 +377,6 @@ Yuvi Panda
 Zainab Lawal
 Zeal Wierslee
 Zlatan Sičanica
+Łukasz Setla
 Марк Коренберг
 Семён Марьясин

@@ -53,6 +53,7 @@ else:
     BaseClass = collections.abc.MutableMapping
 
 
+# TODO(py311): Convert to StrEnum for wider use
 class ContentCoding(enum.Enum):
     # The content codings that we have support for.
     #
@@ -183,7 +184,6 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
 
     def enable_compression(self, force: Optional[ContentCoding] = None) -> None:
         """Enables response compression encoding."""
-        # Backwards compatibility for when force was a bool <0.17.
         self._compression = True
         self._compression_force = force
 

@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/base.txt --strip-extras requirements/base.in
 #
-aiodns==3.1.1 ; sys_platform == "linux" or sys_platform == "darwin"
+aiodns==3.2.0 ; sys_platform == "linux" or sys_platform == "darwin"
     # via -r requirements/runtime-deps.in
 aiohappyeyeballs==2.3.2
     # via -r requirements/runtime-deps.in
@@ -34,7 +34,7 @@ pycares==4.3.0
     # via aiodns
 pycparser==2.21
     # via cffi
-typing-extensions==4.9.0
+typing-extensions==4.10.0
     # via -r requirements/typing-extensions.in
 uvloop==0.19.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in

@@ -1,0 +1,3 @@
+The asynchronous internals now set the underlying causes
+when assigning exceptions to the future objects
+-- by :user:`webknjaz`.

@@ -1,0 +1,5 @@
+Improved the DNS resolution performance on cache hit
+-- by :user:`bdraco`.
+
+This is achieved by avoiding an :mod:`asyncio` task creation
+in this case.
