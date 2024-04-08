@@ -933,7 +933,7 @@ class TestShutdown:
         async def test() -> None:
             await asyncio.sleep(0.5)
             async with ClientSession() as sess:
-                for _ in range(5):
+                for _ in range(5):  # pragma: no cover
                     try:
                         async with sess.get(f"http://localhost:{port}/"):
                             pass
