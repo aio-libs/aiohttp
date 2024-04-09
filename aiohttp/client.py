@@ -252,6 +252,10 @@ class ClientSession:
         max_field_size: int = 8190,
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
     ) -> None:
+        # We initialise _connector to None immediately, as it's referenced in __del__()
+        # and could cause issues if an exception occurs during initialisation.
+        self._connector: Optional[BaseConnector] = None
+
         if loop is None:
             if connector is not None:
                 loop = connector._loop
@@ -266,29 +270,6 @@ class ClientSession:
                 self._base_url.origin() == self._base_url
             ), "Only absolute URLs without path part are supported"
 
-        if connector is None:
-            connector = TCPConnector(loop=loop)
-
-        if connector._loop is not loop:
-            raise RuntimeError("Session and connector has to use same event loop")
-
-        self._loop = loop
-
-        if loop.get_debug():
-            self._source_traceback = traceback.extract_stack(sys._getframe(1))
-
-        if cookie_jar is None:
-            cookie_jar = CookieJar(loop=loop)
-        self._cookie_jar = cookie_jar
-
-        if cookies is not None:
-            self._cookie_jar.update_cookies(cookies)
-
-        self._connector = connector
-        self._connector_owner = connector_owner
-        self._default_auth = auth
-        self._version = version
-        self._json_serialize = json_serialize
         if timeout is sentinel or timeout is None:
             self._timeout = DEFAULT_TIMEOUT
             if read_timeout is not sentinel:
@@ -324,6 +305,30 @@ class ClientSession:
                     "conflict, please setup "
                     "timeout.connect"
                 )
+
+        if connector is None:
+            connector = TCPConnector(loop=loop)
+
+        if connector._loop is not loop:
+            raise RuntimeError("Session and connector has to use same event loop")
+
+        self._loop = loop
+
+        if loop.get_debug():
+            self._source_traceback = traceback.extract_stack(sys._getframe(1))
+
+        if cookie_jar is None:
+            cookie_jar = CookieJar(loop=loop)
+        self._cookie_jar = cookie_jar
+
+        if cookies is not None:
+            self._cookie_jar.update_cookies(cookies)
+
+        self._connector = connector
+        self._connector_owner = connector_owner
+        self._default_auth = auth
+        self._version = version
+        self._json_serialize = json_serialize
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
