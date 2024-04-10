@@ -892,6 +892,6 @@ async def test_instantiation_with_invalid_timeout_value(loop):
     logs = []
     loop.set_exception_handler(lambda loop, ctx: logs.append(ctx))
     with pytest.raises(ValueError, match="timeout parameter cannot be .*"):
-     ClientSession(timeout=1)
+        ClientSession(timeout=1)
     # should not have "Unclosed client session" warning
     assert not logs
