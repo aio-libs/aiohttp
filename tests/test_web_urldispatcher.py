@@ -23,6 +23,84 @@ from aiohttp.web_urldispatcher import Resource, SystemRoute
             "/",
             "/",
             b"<html>\n<head>\n<title>Index of /.</title>\n</head>\n<body>\n<h1>Index of"
+            b' /.</h1>\n<ul>\n<li><a href="my_dir">my_dir/</a></li>\n<li><a href="my_file">'
+            b"my_file</a></li>\n</ul>\n</body>\n</html>",
+        ),
+        pytest.param(
+            True,
+            200,
+            "/static",
+            "/static",
+            b"<html>\n<head>\n<title>Index of /.</title>\n</head>\n<body>\n<h1>Index of"
+            b' /.</h1>\n<ul>\n<li><a href="/static/my_dir">my_dir/</a></li>\n<li><a href="'
+            b'/static/my_file">my_file</a></li>\n</ul>\n</body>\n</html>",
+            id="index_static",
+        ),
+        pytest.param(
+            True,
+            200,
+            "/static",
+            "/static/my_dir",
+            b"<html>\n<head>\n<title>Index of my_dir</title>\n</head>\n<body>\n<h1>"
+            b"Index of my_dir</h1>\n<ul>\n<li><a href="/static/my_dir/my_file_in_dir">'
+            b'my_file_in_dir</a></li>\n</ul>\n</body>\n</html>',
+            id="index_subdir",
+        ),
+    ],
+)
+async def test_access_root_of_static_handler(
+    tmp_path: pathlib.Path,
+    aiohttp_client: AiohttpClient,
+    show_index: bool,
+    status: int,
+    prefix: str,
+    request_path: str,
+    data: Optional[bytes],
+) -> None:
+    # Tests the operation of static file server.
+    # Try to access the root of static file server, and make
+    # sure that correct HTTP statuses are returned depending if we directory
+    # index should be shown or not.
+    # Ensure that html in file names is escaped.
+    # Ensure that links are url quoted.
+    my_file = tmp_path / "my_file"
+    my_dir = tmp_path / "my_dir"
+    my_dir.mkdir()
+    my_file_in_dir = my_dir / "my_file_in_dir"
+
+    with my_file.open("w") as fw:
+        fw.write("hello")
+
+    with my_file_in_dir.open("w") as fw:
+        fw.write("world")
+
+    app = web.Application()
+
+    # Register global static route:
+    app.router.add_static(prefix, str(tmp_path), show_index=show_index)
+    client = await aiohttp_client(app)
+
+    # Request the root of the static directory.
+    async with await client.get(request_path) as r:
+        assert r.status == status
+
+        if data:
+            assert r.headers["Content-Type"] == "text/html; charset=utf-8"
+            read_ = await r.read()
+            assert read_ == data
+
+
+@pytest.mark.internal  # Dependent on filesystem
+@pytest.mark.parametrize(
+    "show_index,status,prefix,request_path,data",
+    [
+        pytest.param(False, 403, "/", "/", None, id="index_forbidden"),
+        pytest.param(
+            True,
+            200,
+            "/",
+            "/",
+            b"<html>\n<head>\n<title>Index of /.</title>\n</head>\n<body>\n<h1>Index of"
             b' /.</h1>\n<ul>\n<li><a href="/%3Cimg%20src=0%20onerror=alert(1)%3E.dir">&l'
             b't;img src=0 onerror=alert(1)&gt;.dir/</a></li>\n<li><a href="/%3Cimg%20sr'
             b'c=0%20onerror=alert(1)%3E.txt">&lt;img src=0 onerror=alert(1)&gt;.txt</a></l'
@@ -53,7 +131,7 @@ from aiohttp.web_urldispatcher import Resource, SystemRoute
         ),
     ],
 )
-async def test_access_root_of_static_handler(
+async def test_access_root_of_static_handler_xss(
     tmp_path: pathlib.Path,
     aiohttp_client: AiohttpClient,
     show_index: bool,
