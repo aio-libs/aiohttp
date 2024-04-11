@@ -1,3 +1,0 @@
-Changed the type annotations to allow ``dict`` on :meth:`aiohttp.MultipartWriter.append`,
-:meth:`aiohttp.MultipartWriter.append_json` and
-:meth:`aiohttp.MultipartWriter.append_form` -- by :user:`cakemanny`

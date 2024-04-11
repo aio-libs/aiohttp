@@ -1,6 +1,0 @@
-Ensure websocket transport is closed when client does not close it
--- by :user:`bdraco`.
-
-The transport could remain open if the client did not close it. This
-change ensures the transport is closed when the client does not close
-it.
