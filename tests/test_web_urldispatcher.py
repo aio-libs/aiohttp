@@ -61,8 +61,6 @@ async def test_access_root_of_static_handler(
     # Try to access the root of static file server, and make
     # sure that correct HTTP statuses are returned depending if we directory
     # index should be shown or not.
-    # Ensure that html in file names is escaped.
-    # Ensure that links are url quoted.
     my_file = tmp_path / "my_file"
     my_dir = tmp_path / "my_dir"
     my_dir.mkdir()
