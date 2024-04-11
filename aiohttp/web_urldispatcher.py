@@ -1,7 +1,9 @@
 import abc
 import asyncio
 import base64
+import functools
 import hashlib
+import html
 import keyword
 import os
 import re
@@ -86,6 +88,8 @@ PATH_SEP: Final[str] = re.escape("/")
 
 _ExpectHandler = Callable[[Request], Awaitable[Optional[StreamResponse]]]
 _Resolve = Tuple[Optional["UrlMappingMatchInfo"], Set[str]]
+
+html_escape = functools.partial(html.escape, quote=True)
 
 
 class _InfoDict(TypedDict, total=False):
@@ -686,7 +690,7 @@ class StaticResource(PrefixResource):
         assert filepath.is_dir()
 
         relative_path_to_dir = filepath.relative_to(self._directory).as_posix()
-        index_of = f"Index of /{relative_path_to_dir}"
+        index_of = f"Index of /{html_escape(relative_path_to_dir)}"
         h1 = f"<h1>{index_of}</h1>"
 
         index_list = []
@@ -694,7 +698,7 @@ class StaticResource(PrefixResource):
         for _file in sorted(dir_index):
             # show file url as relative to static path
             rel_path = _file.relative_to(self._directory).as_posix()
-            file_url = self._prefix + "/" + rel_path
+            quoted_file_url = _quote_path(f"{self._prefix}/{rel_path}")
 
             # if file is a directory, add '/' to the end of the name
             if _file.is_dir():
@@ -703,9 +707,7 @@ class StaticResource(PrefixResource):
                 file_name = _file.name
 
             index_list.append(
-                '<li><a href="{url}">{name}</a></li>'.format(
-                    url=file_url, name=file_name
-                )
+                f'<li><a href="{quoted_file_url}">{html_escape(file_name)}</a></li>'
             )
         ul = "<ul>\n{}\n</ul>".format("\n".join(index_list))
         body = f"<body>\n{h1}\n{ul}\n</body>"
