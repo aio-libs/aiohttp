@@ -711,7 +711,7 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
             # https://www.rfc-editor.org/rfc/rfc9112.html#name-message-body-length
             elif 100 <= status_i < 200 or status_i in {204, 304}:
                 close = False
-            elif headers.keys() & {hdrs.CONTENT_LENGTH, hdrs.TRANSFER_ENCODING}:
+            elif hdrs.CONTENT_LENGTH in headers or hdrs.TRANSFER_ENCODING in headers:
                 close = False
             else:
                 # https://www.rfc-editor.org/rfc/rfc9112.html#section-6.3-2.8
