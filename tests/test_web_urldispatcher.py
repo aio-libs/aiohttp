@@ -43,7 +43,7 @@ from aiohttp.web_urldispatcher import Resource, SystemRoute
             "/static/my_dir",
             b"<html>\n<head>\n<title>Index of my_dir</title>\n</head>\n<body>\n<h1>"
             b'Index of my_dir</h1>\n<ul>\n<li><a href="/static/my_dir/my_file_in_dir">'
-            b'my_file_in_dir</a></li>\n</ul>\n</body>\n</html>',
+            b"my_file_in_dir</a></li>\n</ul>\n</body>\n</html>",
             id="index_subdir",
         ),
     ],
@@ -91,7 +91,7 @@ async def test_access_root_of_static_handler(
 @pytest.mark.internal  # Dependent on filesystem
 @pytest.mark.skipif(
     not sys.platform.startswith("linux"),
-    reason="Invalid filenames on some filesystems (like Windows)"
+    reason="Invalid filenames on some filesystems (like Windows)",
 )
 @pytest.mark.parametrize(
     "show_index,status,prefix,request_path,data",
