@@ -31,7 +31,6 @@ class FakeAIODNSAddrInfoNode(NamedTuple):
 
 
 class FakeAIODNSAddrInfoIPv4Result:
-
     def __init__(self, hosts: Collection[str]) -> None:
         self.nodes = [
             FakeAIODNSAddrInfoNode(socket.AF_INET, (h.encode(), 0)) for h in hosts
@@ -39,7 +38,6 @@ class FakeAIODNSAddrInfoIPv4Result:
 
 
 class FakeAIODNSAddrInfoIPv6Result:
-
     def __init__(self, hosts: Collection[str]) -> None:
         self.nodes = [
             FakeAIODNSAddrInfoNode(
@@ -51,7 +49,6 @@ class FakeAIODNSAddrInfoIPv6Result:
 
 
 class FakeAIODNSNameInfoIPv6Result:
-
     def __init__(self, host: str) -> None:
         self.node = host
         self.service = None

@@ -1,1 +1,0 @@
-Updated CI and documentation to use NPM clean install and upgrade node to version 18 -- by :user:`steverep`.

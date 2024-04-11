@@ -1,4 +1,0 @@
-Leave websocket transport open if receive times out or is cancelled
--- by :user:`bdraco`.
-
-This restores the behavior prior to the change in #7978.
