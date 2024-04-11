@@ -10,7 +10,8 @@
 
 .. towncrier release notes start
 
-3.9.4 (2024-03-03)
+
+3.9.4 (2024-04-11)
 ==================
 
 Bug fixes
@@ -26,7 +27,8 @@ Bug fixes
 
 
 
-- Treated values of ``Accept-Encoding`` header as case-insensitive when checking for gzip files -- by :user:`steverep`.
+- Treated values of ``Accept-Encoding`` header as case-insensitive when checking
+  for gzip files -- by :user:`steverep`.
 
 
   *Related issues and pull requests on GitHub:*
@@ -43,16 +45,126 @@ Bug fixes
   :issue:`8163`.
 
 
+- Changed the type annotations to allow ``dict`` on :meth:`aiohttp.MultipartWriter.append`,
+  :meth:`aiohttp.MultipartWriter.append_json` and
+  :meth:`aiohttp.MultipartWriter.append_form` -- by :user:`cakemanny`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`7741`.
+  
+  
+  
+- Ensure websocket transport is closed when client does not close it
+  -- by :user:`bdraco`.
+
+  The transport could remain open if the client did not close it. This
+  change ensures the transport is closed when the client does not close
+  it.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8200`.
+  
+  
+  
+- Leave websocket transport open if receive times out or is cancelled
+  -- by :user:`bdraco`.
+
+  This restores the behavior prior to the change in #7978.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8251`.
+  
+  
+  
+- Fixed content not being read when an upgrade request was not supported with the pure Python implementation.
+  -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8252`.
+  
+  
+  
+- Fixed a race condition with incoming connections during server shutdown -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8271`.
+  
+  
+  
+- Fixed ``multipart/form-data`` compliance with :rfc:`7578` -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8280`.
+  
+  
+  
+- Fixed blocking I/O in the event loop while processing files in a POST request
+  -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8283`.
+  
+  
+  
+- Escaped filenames in static view -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8317`.
+  
+  
+  
+- Fixed the pure python parser to mark a connection as closing when a
+  response has no length -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8320`.
+
+
 
 
 Features
 --------
 
-- Upgraded *llhttp* to 9.2 -- by :user:`Dreamsorcerer`.
+- Upgraded *llhttp* to 9.2.1, and started rejecting obsolete line folding
+  in Python parser to match -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
-  :issue:`8146`.
+  :issue:`8146`, :issue:`8292`.
+  
+  
+  
+
+Deprecations (removal in next major release)
+--------------------------------------------
+
+- Deprecated ``content_transfer_encoding`` parameter in :py:meth:`FormData.add_field()
+  <aiohttp.FormData.add_field>` -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8280`.
+  
+  
+  
+
+Improved documentation
+----------------------
+
+- Added a note about canceling tasks to avoid delaying server shutdown -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8267`.
 
 
 
@@ -71,7 +183,8 @@ Contributor-facing changes
 
 
 
-- Updated CI and documentation to use NPM clean install and upgrade node to version 18 -- by :user:`steverep`.
+- Updated CI and documentation to use NPM clean install and upgrade
+  node to version 18 -- by :user:`steverep`.
 
 
   *Related issues and pull requests on GitHub:*
@@ -90,6 +203,19 @@ Contributor-facing changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`8136`.
+  
+  
+  
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Added an ``internal`` pytest marker for tests which should be skipped
+  by packagers (use ``-m 'not internal'`` to disable them) -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8299`.
 
 
 
