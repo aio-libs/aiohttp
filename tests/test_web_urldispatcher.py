@@ -89,6 +89,10 @@ async def test_access_root_of_static_handler(
 
 
 @pytest.mark.internal  # Dependent on filesystem
+@pytest.mark.skipif(
+    not sys.platform.startswith("linux"),
+    reason="Invalid filenames on some filesystems (like Windows)"
+)
 @pytest.mark.parametrize(
     "show_index,status,prefix,request_path,data",
     [
