@@ -1,0 +1,1 @@
+Fixed the pure python parser to mark a connection as closing when a response has no length -- by :user:`Dreamsorcerer`.
