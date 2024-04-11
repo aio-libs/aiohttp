@@ -52,9 +52,9 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`7741`.
-  
-  
-  
+
+
+
 - Ensure websocket transport is closed when client does not close it
   -- by :user:`bdraco`.
 
@@ -65,9 +65,9 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`8200`.
-  
-  
-  
+
+
+
 - Leave websocket transport open if receive times out or is cancelled
   -- by :user:`bdraco`.
 
@@ -76,51 +76,51 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`8251`.
-  
-  
-  
+
+
+
 - Fixed content not being read when an upgrade request was not supported with the pure Python implementation.
   -- by :user:`bdraco`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`8252`.
-  
-  
-  
+
+
+
 - Fixed a race condition with incoming connections during server shutdown -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`8271`.
-  
-  
-  
+
+
+
 - Fixed ``multipart/form-data`` compliance with :rfc:`7578` -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`8280`.
-  
-  
-  
+
+
+
 - Fixed blocking I/O in the event loop while processing files in a POST request
   -- by :user:`bdraco`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`8283`.
-  
-  
-  
+
+
+
 - Escaped filenames in static view -- by :user:`bdraco`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`8317`.
-  
-  
-  
+
+
+
 - Fixed the pure python parser to mark a connection as closing when a
   response has no length -- by :user:`Dreamsorcerer`.
 
@@ -140,9 +140,9 @@ Features
 
   *Related issues and pull requests on GitHub:*
   :issue:`8146`, :issue:`8292`.
-  
-  
-  
+
+
+
 
 Deprecations (removal in next major release)
 --------------------------------------------
@@ -153,9 +153,9 @@ Deprecations (removal in next major release)
 
   *Related issues and pull requests on GitHub:*
   :issue:`8280`.
-  
-  
-  
+
+
+
 
 Improved documentation
 ----------------------
@@ -203,9 +203,9 @@ Contributor-facing changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`8136`.
-  
-  
-  
+
+
+
 
 Packaging updates and notes for downstreams
 -------------------------------------------
