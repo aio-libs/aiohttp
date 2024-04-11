@@ -1,1 +1,0 @@
-Fixed "Unclosed client session" when initialization of ClientSession fails -- by :user:`NewGlad`.
