@@ -875,8 +875,6 @@ class MultipartWriter(Payload):
         if self._is_form_data:
             # https://datatracker.ietf.org/doc/html/rfc7578#section-4.7
             # https://datatracker.ietf.org/doc/html/rfc7578#section-4.8
-            assert CONTENT_DISPOSITION in payload.headers
-            assert "name=" in payload.headers[CONTENT_DISPOSITION]
             assert (
                 not {CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_TRANSFER_ENCODING}
                 & payload.headers.keys()
