@@ -875,8 +875,6 @@ class MultipartWriter(Payload):
         if self._is_form_data:
             # https://datatracker.ietf.org/doc/html/rfc7578#section-4.7
             # https://datatracker.ietf.org/doc/html/rfc7578#section-4.8
-            assert CONTENT_DISPOSITION in payload.headers
-            assert "name=" in payload.headers[CONTENT_DISPOSITION]
             assert (
                 not {CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_TRANSFER_ENCODING}
                 & payload.headers.keys()
@@ -957,6 +955,11 @@ class MultipartWriter(Payload):
     async def write(self, writer: Any, close_boundary: bool = True) -> None:
         """Write body."""
         for part, encoding, te_encoding in self._parts:
+            if self._is_form_data:
+                # https://datatracker.ietf.org/doc/html/rfc7578#section-4.2
+                assert CONTENT_DISPOSITION in part.headers
+                assert "name=" in part.headers[CONTENT_DISPOSITION]
+
             await writer.write(b"--" + self._boundary + b"\r\n")
             await writer.write(part._binary_headers)
 
