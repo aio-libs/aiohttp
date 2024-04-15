@@ -880,7 +880,7 @@ class MultipartWriter(Payload):
                 & payload.headers.keys()
             )
             # Set default Content-Disposition in case user doesn't create one
-            if hdrs.CONTENT_DISPOSITION not in payload.headers:
+            if CONTENT_DISPOSITION not in payload.headers:
                 name = "section-{}".format(len(self._parts))
                 payload.set_content_disposition("form-data", name=name)
         else:
