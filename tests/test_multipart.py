@@ -1165,6 +1165,11 @@ class TestMultipartWriter:
         part = writer._parts[0][0]
         assert part.headers[CONTENT_TYPE] == "test/passed"
 
+    async def test_set_content_disposition(self):
+        writer = aiohttp.MultipartWriter("form-data")
+        payload = writer.append("some-data")
+        payload.set_content_disposition("form-data", name="method")
+
     def test_with(self) -> None:
         with aiohttp.MultipartWriter(boundary=":") as writer:
             writer.append("foo")
@@ -1345,12 +1350,6 @@ async def test_async_for_reader() -> None:
                     await check(part)
 
         await check(reader)
-
-
-async def test_set_content_disposition():
-    writer = aiohttp.MultipartWriter("form-data")
-    payload = writer.append("some-data")
-    payload.set_content_disposition("form-data", name="method")
 
 
 async def test_async_for_bodypart() -> None:
