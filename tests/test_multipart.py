@@ -3,11 +3,11 @@ import asyncio
 import io
 import json
 import pathlib
-import zlib
 from typing import Any, Optional
 from unittest import mock
 
 import pytest
+import zlib
 
 import aiohttp
 from aiohttp import payload
@@ -163,7 +163,6 @@ class TestPartReader:
 
     async def test_read_incomplete_chunk(self) -> None:
         with Stream(b"") as stream:
-
             def prepare(data):
                 return data
 
@@ -205,7 +204,6 @@ class TestPartReader:
 
     async def test_read_boundary_with_incomplete_chunk(self) -> None:
         with Stream(b"") as stream:
-
             def prepare(data):
                 return data
 
@@ -550,9 +548,9 @@ class TestPartReader:
         assert "foo.html" == part.filename
 
     async def test_reading_long_part(self) -> None:
-        size = 2 * 2**16
+        size = 2 * 2 ** 16
         protocol = mock.Mock(_reading_paused=False)
-        stream = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
+        stream = StreamReader(protocol, 2 ** 16, loop=asyncio.get_event_loop())
         stream.feed_data(b"0" * size + b"\r\n--:--")
         stream.feed_eof()
         obj = aiohttp.BodyPartReader(BOUNDARY, {}, stream)
@@ -875,7 +873,7 @@ async def test_writer_serialize_io_chunk(buf: Any, stream: Any, writer: Any) -> 
         await writer.write(stream)
     assert (
         buf == b"--:\r\nContent-Type: application/octet-stream"
-        b"\r\nContent-Length: 9\r\n\r\nfoobarbaz\r\n--:--\r\n"
+               b"\r\nContent-Length: 9\r\n\r\nfoobarbaz\r\n--:--\r\n"
     )
 
 
@@ -917,37 +915,37 @@ async def test_writer_write(buf: Any, stream: Any, writer: Any) -> None:
     await writer.write(stream)
 
     assert (
-        b"--:\r\n"
-        b"Content-Type: text/plain; charset=utf-8\r\n"
-        b"Content-Length: 11\r\n\r\n"
-        b"foo-bar-baz"
-        b"\r\n"
-        b"--:\r\n"
-        b"Content-Type: application/json\r\n"
-        b"Content-Length: 18\r\n\r\n"
-        b'{"test": "passed"}'
-        b"\r\n"
-        b"--:\r\n"
-        b"Content-Type: application/x-www-form-urlencoded\r\n"
-        b"Content-Length: 11\r\n\r\n"
-        b"test=passed"
-        b"\r\n"
-        b"--:\r\n"
-        b"Content-Type: application/x-www-form-urlencoded\r\n"
-        b"Content-Length: 11\r\n\r\n"
-        b"one=1&two=2"
-        b"\r\n"
-        b"--:\r\n"
-        b'Content-Type: multipart/mixed; boundary="::"\r\n'
-        b"X-CUSTOM: test\r\nContent-Length: 93\r\n\r\n"
-        b"--::\r\n"
-        b"Content-Type: text/plain; charset=utf-8\r\n"
-        b"Content-Length: 14\r\n\r\n"
-        b"nested content\r\n"
-        b"--::--\r\n"
-        b"\r\n"
-        b"--:--\r\n"
-    ) == bytes(buf)
+               b"--:\r\n"
+               b"Content-Type: text/plain; charset=utf-8\r\n"
+               b"Content-Length: 11\r\n\r\n"
+               b"foo-bar-baz"
+               b"\r\n"
+               b"--:\r\n"
+               b"Content-Type: application/json\r\n"
+               b"Content-Length: 18\r\n\r\n"
+               b'{"test": "passed"}'
+               b"\r\n"
+               b"--:\r\n"
+               b"Content-Type: application/x-www-form-urlencoded\r\n"
+               b"Content-Length: 11\r\n\r\n"
+               b"test=passed"
+               b"\r\n"
+               b"--:\r\n"
+               b"Content-Type: application/x-www-form-urlencoded\r\n"
+               b"Content-Length: 11\r\n\r\n"
+               b"one=1&two=2"
+               b"\r\n"
+               b"--:\r\n"
+               b'Content-Type: multipart/mixed; boundary="::"\r\n'
+               b"X-CUSTOM: test\r\nContent-Length: 93\r\n\r\n"
+               b"--::\r\n"
+               b"Content-Type: text/plain; charset=utf-8\r\n"
+               b"Content-Length: 14\r\n\r\n"
+               b"nested content\r\n"
+               b"--::--\r\n"
+               b"\r\n"
+               b"--:--\r\n"
+           ) == bytes(buf)
 
 
 async def test_writer_write_no_close_boundary(buf: Any, stream: Any) -> None:
@@ -959,27 +957,27 @@ async def test_writer_write_no_close_boundary(buf: Any, stream: Any) -> None:
     await writer.write(stream, close_boundary=False)
 
     assert (
-        b"--:\r\n"
-        b"Content-Type: text/plain; charset=utf-8\r\n"
-        b"Content-Length: 11\r\n\r\n"
-        b"foo-bar-baz"
-        b"\r\n"
-        b"--:\r\n"
-        b"Content-Type: application/json\r\n"
-        b"Content-Length: 18\r\n\r\n"
-        b'{"test": "passed"}'
-        b"\r\n"
-        b"--:\r\n"
-        b"Content-Type: application/x-www-form-urlencoded\r\n"
-        b"Content-Length: 11\r\n\r\n"
-        b"test=passed"
-        b"\r\n"
-        b"--:\r\n"
-        b"Content-Type: application/x-www-form-urlencoded\r\n"
-        b"Content-Length: 11\r\n\r\n"
-        b"one=1&two=2"
-        b"\r\n"
-    ) == bytes(buf)
+               b"--:\r\n"
+               b"Content-Type: text/plain; charset=utf-8\r\n"
+               b"Content-Length: 11\r\n\r\n"
+               b"foo-bar-baz"
+               b"\r\n"
+               b"--:\r\n"
+               b"Content-Type: application/json\r\n"
+               b"Content-Length: 18\r\n\r\n"
+               b'{"test": "passed"}'
+               b"\r\n"
+               b"--:\r\n"
+               b"Content-Type: application/x-www-form-urlencoded\r\n"
+               b"Content-Length: 11\r\n\r\n"
+               b"test=passed"
+               b"\r\n"
+               b"--:\r\n"
+               b"Content-Type: application/x-www-form-urlencoded\r\n"
+               b"Content-Length: 11\r\n\r\n"
+               b"one=1&two=2"
+               b"\r\n"
+           ) == bytes(buf)
 
 
 async def test_writer_write_no_parts(buf: Any, stream: Any, writer: Any) -> None:
@@ -1345,6 +1343,12 @@ async def test_async_for_reader() -> None:
                     await check(part)
 
         await check(reader)
+
+
+async def test_set_content_disposition():
+    writer = aiohttp.MultipartWriter("form-data")
+    payload = writer.append("some-data")
+    payload.set_content_disposition("form-data", name="method")
 
 
 async def test_async_for_bodypart() -> None:
