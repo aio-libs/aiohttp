@@ -19,7 +19,7 @@ else:
 
 try:
     import uvloop
-except ImportError:  # pragma: no cover
+except ImportError:
     uvloop = None  # type: ignore[assignment]
 
 
