@@ -957,8 +957,8 @@ class MultipartWriter(Payload):
         for part, encoding, te_encoding in self._parts:
             if self._is_form_data:
                 # https://datatracker.ietf.org/doc/html/rfc7578#section-4.2
-                assert CONTENT_DISPOSITION in part.payload.headers
-                assert "name=" in part.payload.headers[CONTENT_DISPOSITION]
+                assert CONTENT_DISPOSITION in part.headers
+                assert "name=" in part.headers[CONTENT_DISPOSITION]
 
             await writer.write(b"--" + self._boundary + b"\r\n")
             await writer.write(part._binary_headers)
