@@ -3610,3 +3610,30 @@ async def test_rejected_upload(aiohttp_client: Any, tmp_path: Any) -> None:
         "/ok", timeout=aiohttp.ClientTimeout(total=0.01)
     ) as resp_ok:
         assert 200 == resp_ok.status
+
+
+async def test_request_with_wrong_ssl_type(aiohttp_client: AiohttpClient) -> None:
+    app = web.Application()
+    session = await aiohttp_client(app)
+
+    with pytest.raises(TypeError, match="ssl should be SSLContext, Fingerprint, .*"):
+        await session.get("/", ssl=42)  # type: ignore[arg-type]
+
+
+async def test_request_with_wrong_proxy(aiohttp_client: AiohttpClient) -> None:
+    app = web.Application()
+    session = await aiohttp_client(app)
+
+    with pytest.raises(TypeError):
+        await session.get("/", proxy=42)  # type: ignore[arg-type]
+
+
+async def test_raise_for_status_is_none(aiohttp_client: AiohttpClient) -> None:
+    async def handler(_: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    session = await aiohttp_client(app, raise_for_status=None)  # type: ignore[arg-type]
+
+    await session.get("/")
