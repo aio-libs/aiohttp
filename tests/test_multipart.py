@@ -1169,6 +1169,8 @@ class TestMultipartWriter:
         writer = aiohttp.MultipartWriter("form-data")
         payload = writer.append("some-data")
         payload.set_content_disposition("form-data", name="method")
+        assert CONTENT_DISPOSITION in payload.headers
+        assert "name=" in payload.headers[CONTENT_DISPOSITION]
 
     def test_with(self) -> None:
         with aiohttp.MultipartWriter(boundary=":") as writer:
