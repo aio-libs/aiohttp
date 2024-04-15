@@ -879,6 +879,10 @@ class MultipartWriter(Payload):
                 not {CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_TRANSFER_ENCODING}
                 & payload.headers.keys()
             )
+            # Set default Content-Disposition in case user doesn't create one
+            if hdrs.CONTENT_DISPOSITION not in payload.headers:
+                name = "section-{}".format(len(self._parts))
+                payload.set_content_disposition("form-data", name=name)
         else:
             # compression
             encoding = payload.headers.get(CONTENT_ENCODING, "").lower()
