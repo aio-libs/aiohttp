@@ -1282,12 +1282,24 @@ class TestMultipartWriter:
         part = writer._parts[0][0]
         assert part.headers[CONTENT_TYPE] == "test/passed"
 
-    async def test_set_content_disposition_after_append(self):
+    def test_set_content_disposition_after_append(self):
         writer = aiohttp.MultipartWriter("form-data")
-        payload = writer.append("some-data")
-        payload.set_content_disposition("form-data", name="method")
-        assert CONTENT_DISPOSITION in payload.headers
-        assert "name=" in payload.headers[CONTENT_DISPOSITION]
+        part = writer.append("some-data")
+        part.set_content_disposition("form-data", name="method")
+        assert 'name="method"' in part.headers[CONTENT_DISPOSITION]
+
+    def test_automatic_content_disposition(self):
+        writer = aiohttp.MultipartWriter("form-data")
+        writer.append_json(())
+        part = payload.StringPayload("foo")
+        part.set_content_disposition("form-data", name="second")
+        writer.append_payload(part)
+        writer.append("foo")
+
+        disps = tuple(p[0].headers[CONTENT_DISPOSITION] for p in writer._parts)
+        assert 'name="section-0"' in disps[0]
+        assert 'name="second"' in disps[1]
+        assert 'name="section-2"' in disps[2]
 
     def test_with(self) -> None:
         with aiohttp.MultipartWriter(boundary=":") as writer:
