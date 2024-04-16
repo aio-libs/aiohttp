@@ -166,7 +166,7 @@ async def test_app_make_handler_access_log_class_bad_type2() -> None:
 async def test_app_make_handler_access_log_class1() -> None:
     class Logger(AbstractAccessLogger):
         def log(self, request, response, time):
-            pass
+            """Pass log method."""
 
     app = web.Application()
     runner = web.AppRunner(app, access_log_class=Logger)
@@ -176,7 +176,7 @@ async def test_app_make_handler_access_log_class1() -> None:
 async def test_app_make_handler_access_log_class2() -> None:
     class Logger(AbstractAccessLogger):
         def log(self, request, response, time):
-            pass
+            """Pass log method."""
 
     app = web.Application(handler_args={"access_log_class": Logger})
     runner = web.AppRunner(app)

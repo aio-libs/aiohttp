@@ -190,7 +190,7 @@ def test_app_run_middlewares() -> None:
     assert root._run_middlewares is False
 
     async def middleware(request: web.Request, handler: Handler) -> web.StreamResponse:
-        return await handler(request)
+        return await handler(request)  # pragma: no cover
 
     root = web.Application(middlewares=[middleware])
     sub = web.Application()
