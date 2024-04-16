@@ -234,6 +234,44 @@ class ClientSession:
         max_field_size: int = 8190,
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
     ) -> None:
+        # We initialise _connector to None immediately, as it's referenced in __del__()
+        # and could cause issues if an exception occurs during initialisation.
+        self._connector: Optional[BaseConnector] = None
+        if timeout is sentinel or timeout is None:
+            self._timeout = DEFAULT_TIMEOUT
+            if read_timeout is not sentinel:
+                warnings.warn(
+                    "read_timeout is deprecated, " "use timeout argument instead",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                self._timeout = attr.evolve(self._timeout, total=read_timeout)
+            if conn_timeout is not None:
+                self._timeout = attr.evolve(self._timeout, connect=conn_timeout)
+                warnings.warn(
+                    "conn_timeout is deprecated, " "use timeout argument instead",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+        else:
+            if not isinstance(timeout, ClientTimeout):
+                raise ValueError(
+                    f"timeout parameter cannot be of {type(timeout)} type, "
+                    "please use 'timeout=ClientTimeout(...)'",
+                )
+            self._timeout = timeout
+            if read_timeout is not sentinel:
+                raise ValueError(
+                    "read_timeout and timeout parameters "
+                    "conflict, please setup "
+                    "timeout.read"
+                )
+            if conn_timeout is not None:
+                raise ValueError(
+                    "conn_timeout and timeout parameters "
+                    "conflict, please setup "
+                    "timeout.connect"
+                )
         if loop is None:
             if connector is not None:
                 loop = connector._loop
@@ -271,41 +309,6 @@ class ClientSession:
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
-        if timeout is sentinel or timeout is None:
-            self._timeout = DEFAULT_TIMEOUT
-            if read_timeout is not sentinel:
-                warnings.warn(
-                    "read_timeout is deprecated, " "use timeout argument instead",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
-                self._timeout = attr.evolve(self._timeout, total=read_timeout)
-            if conn_timeout is not None:
-                self._timeout = attr.evolve(self._timeout, connect=conn_timeout)
-                warnings.warn(
-                    "conn_timeout is deprecated, " "use timeout argument instead",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
-        else:
-            if not isinstance(timeout, ClientTimeout):
-                raise ValueError(
-                    f"timeout parameter cannot be of {type(timeout)} type, "
-                    "please use 'timeout=ClientTimeout(...)'",
-                )
-            self._timeout = timeout
-            if read_timeout is not sentinel:
-                raise ValueError(
-                    "read_timeout and timeout parameters "
-                    "conflict, please setup "
-                    "timeout.read"
-                )
-            if conn_timeout is not None:
-                raise ValueError(
-                    "conn_timeout and timeout parameters "
-                    "conflict, please setup "
-                    "timeout.connect"
-                )
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
