@@ -10,6 +10,39 @@
 
 .. towncrier release notes start
 
+3.9.5 (2024-04-16)
+==================
+
+Bug fixes
+---------
+
+- Fixed "Unclosed client session" when initialization of ClientSession fails -- by :user:`NewGlad`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8253`.
+  
+  
+  
+- Fixed regression with adding Content-Disposition to form-data part after appending to writer -- by :user:`Dreamsorcerer`/:user:`Olegt0rr`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8332`.
+  
+  
+  
+- Added default Content-Disposition in multipart/form-data responses -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8335`.
+  
+  
+  
+
+----
+
 
 3.9.4 (2024-04-11)
 ==================
