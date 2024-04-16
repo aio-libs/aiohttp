@@ -32,7 +32,7 @@ Bug fixes
 
 
 
-- Added default Content-Disposition in multipart/form-data responses -- by :user:`Dreamsorcerer`.
+- Added default ``Content-Disposition`` in ``multipart/form-data`` responses -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
