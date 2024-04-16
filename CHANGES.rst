@@ -17,7 +17,7 @@ Bug fixes
 ---------
 
 - Fixed "Unclosed client session" when initialization of
-:py:class:`~aiohttp.ClientSession` fails -- by :user:`NewGlad`.
+  :py:class:`~aiohttp.ClientSession` fails -- by :user:`NewGlad`.
 
 
   *Related issues and pull requests on GitHub:*
@@ -25,7 +25,8 @@ Bug fixes
 
 
 
-- Fixed regression (from :pr:`8280`) with adding ``Content-Disposition`` to the ``form-data`` part after appending to writer -- by :user:`Dreamsorcerer`/:user:`Olegt0rr`.
+- Fixed regression (from :pr:`8280`) with adding ``Content-Disposition`` to the ``form-data``
+  part after appending to writer -- by :user:`Dreamsorcerer`/:user:`Olegt0rr`.
 
 
   *Related issues and pull requests on GitHub:*
@@ -33,7 +34,8 @@ Bug fixes
 
 
 
-- Added default ``Content-Disposition`` in ``multipart/form-data`` responses to avoid broken form-data responses -- by :user:`Dreamsorcerer`.
+- Added default ``Content-Disposition`` in ``multipart/form-data`` responses to avoid broken
+  form-data responses -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
