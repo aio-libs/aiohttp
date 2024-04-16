@@ -11,7 +11,7 @@ import socket
 import ssl
 import sys
 import time
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Type
 from unittest import mock
 
 import pytest
@@ -3621,15 +3621,18 @@ async def test_request_with_wrong_ssl_type(aiohttp_client: AiohttpClient) -> Non
         await session.get("/", ssl=42)  # type: ignore[arg-type]
 
 
-async def test_request_with_wrong_proxy(aiohttp_client: AiohttpClient) -> None:
+@pytest.mark.parametrize(
+    ("value", "exc_type"),
+    [(42, TypeError), ("InvalidUrl", InvalidURL)],
+)
+async def test_request_with_wrong_proxy(
+    aiohttp_client: AiohttpClient, value: Any, exc_type: Type[Exception]
+) -> None:
     app = web.Application()
     session = await aiohttp_client(app)
 
-    with pytest.raises(TypeError):
-        await session.get("/", proxy=42)  # type: ignore[arg-type]
-
-    with pytest.raises(InvalidURL):
-        await session.get("/", proxy="InvalidUrl")
+    with pytest.raises(exc_type):
+        await session.get("/", proxy=value)  # type: ignore[arg-type]
 
 
 async def test_raise_for_status_is_none(aiohttp_client: AiohttpClient) -> None:
