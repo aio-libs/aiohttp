@@ -6,6 +6,7 @@ import pytest
 import aiohttp
 from aiohttp import hdrs, web
 from aiohttp.http import WSCloseCode
+from aiohttp.pytest_plugin import AiohttpClient
 
 if sys.version_info >= (3, 11):
     import asyncio as async_timeout
@@ -835,3 +836,11 @@ async def test_peer_connection_lost_iter(aiohttp_client) -> None:
         assert "answer" == msg.data
 
     await resp.close()
+
+
+async def test_ws_connect_with_wrong_ssl_type(aiohttp_client: AiohttpClient) -> None:
+    app = web.Application()
+    session = await aiohttp_client(app)
+
+    with pytest.raises(TypeError, match="ssl should be SSLContext, .*"):
+        await session.ws_connect("/", ssl=42)
