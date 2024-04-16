@@ -22,6 +22,7 @@ import aiohttp
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver
 from aiohttp.client_exceptions import (
+    InvalidURL,
     InvalidUrlClientError,
     InvalidUrlRedirectClientError,
     NonHttpUrlClientError,
@@ -3626,6 +3627,9 @@ async def test_request_with_wrong_proxy(aiohttp_client: AiohttpClient) -> None:
 
     with pytest.raises(TypeError):
         await session.get("/", proxy=42)  # type: ignore[arg-type]
+
+    with pytest.raises(InvalidURL):
+        await session.get("/", proxy="InvalidUrl")
 
 
 async def test_raise_for_status_is_none(aiohttp_client: AiohttpClient) -> None:
