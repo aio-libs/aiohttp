@@ -295,3 +295,6 @@ ask to raise the status.
 
 - `rsocket <https://github.com/rsocket/rsocket-py>`_
   Python implementation of `RSocket protocol <https://rsocket.io>`_.
+
+- `nacl_middleware <https://github.com/CosmicDNA/nacl_middleware>`_
+  An aiohttp middleware library for asymmetric encryption of data transmitted via http and/or websocket connections.
