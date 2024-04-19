@@ -40,7 +40,7 @@ frozenlist==1.4.1
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-gunicorn==21.2.0
+gunicorn==22.0.0
     # via -r requirements/base.in
 idna==3.4
     # via
@@ -107,7 +107,6 @@ typer==0.9.0
     # via python-on-whales
 typing-extensions==4.10.0
     # via
-    #   -r requirements/typing-extensions.in
     #   mypy
     #   pydantic
     #   python-on-whales
