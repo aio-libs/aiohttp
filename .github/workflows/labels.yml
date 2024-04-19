@@ -9,6 +9,7 @@ jobs:
   backport:
     runs-on: ubuntu-latest
     name: Backport label added
+    if: ${{ github.actor != 'dependabot[bot]' }}
     steps:
       - uses: actions/github-script@v7
         with:
