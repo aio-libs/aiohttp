@@ -19,6 +19,8 @@ from unittest import mock
 
 from aiohttp import web
 
+value = web.AppKey('value', str)
+
 
 async def hello(request):
     return web.Response(body=b'Hello, world')
@@ -75,10 +77,10 @@ async def test_noop() -> None:
 async def previous(request):
     if request.method == 'POST':
         with pytest.deprecated_call():  # FIXME: this isn't actually called
-            request.app['value'] = (await request.post())['value']
+            request.app[value] = (await request.post())['value']
         return web.Response(body=b'thanks for the data')
     else:
-        v = request.app.get('value', 'unknown')
+        v = request.app.get(value, 'unknown')
         return web.Response(body='value: {}'.format(v).encode())
 
 
@@ -98,7 +100,7 @@ async def test_set_value(cli) -> None:
     assert resp.status == 200
     text = await resp.text()
     assert text == 'thanks for the data'
-    assert cli.server.app['value'] == 'foo'
+    assert cli.server.app[value] == 'foo'
 
 
 async def test_get_value(cli) -> None:
@@ -107,7 +109,7 @@ async def test_get_value(cli) -> None:
     text = await resp.text()
     assert text == 'value: unknown'
     with pytest.warns(DeprecationWarning):
-        cli.server.app['value'] = 'bar'
+        cli.server.app[value] = 'bar'
     resp = await cli.get('/')
     assert resp.status == 200
     text = await resp.text()
@@ -119,7 +121,6 @@ def test_noncoro() -> None:
 
 
 async def test_failed_to_create_client(aiohttp_client) -> None:
-
     def make_app(loop):
         raise RuntimeError()
 
@@ -142,7 +143,6 @@ async def test_custom_port_test_server(aiohttp_server, aiohttp_unused_port):
     port = aiohttp_unused_port()
     server = await aiohttp_server(app, port=port)
     assert server.port == port
-
 """
     )
     testdir.makeconftest(CONFTEST)
