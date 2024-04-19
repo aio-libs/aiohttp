@@ -48,6 +48,7 @@ from .helpers import (
     parse_http_date,
     reify,
     sentinel,
+    set_exception,
 )
 from .http_parser import RawRequestMessage
 from .http_writer import HttpVersion
@@ -725,19 +726,21 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
                     # https://tools.ietf.org/html/rfc7578#section-4.4
                     if field.filename:
                         # store file in temp file
-                        tmp = tempfile.TemporaryFile()
+                        tmp = await self._loop.run_in_executor(
+                            None, tempfile.TemporaryFile
+                        )
                         chunk = await field.read_chunk(size=2**16)
                         while chunk:
                             chunk = field.decode(chunk)
-                            tmp.write(chunk)
+                            await self._loop.run_in_executor(None, tmp.write, chunk)
                             size += len(chunk)
                             if 0 < max_size < size:
-                                tmp.close()
+                                await self._loop.run_in_executor(None, tmp.close)
                                 raise HTTPRequestEntityTooLarge(
                                     max_size=max_size, actual_size=size
                                 )
                             chunk = await field.read_chunk(size=2**16)
-                        tmp.seek(0)
+                        await self._loop.run_in_executor(None, tmp.seek, 0)
 
                         if field_ct is None:
                             field_ct = "application/octet-stream"
@@ -814,7 +817,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return
 
     def _cancel(self, exc: BaseException) -> None:
-        self._payload.set_exception(exc)
+        set_exception(self._payload, exc)
 
 
 class Request(BaseRequest):

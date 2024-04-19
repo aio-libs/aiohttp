@@ -1317,48 +1317,6 @@ async def test_POST_DATA_with_charset_post(aiohttp_client) -> None:
     resp.close()
 
 
-async def test_POST_DATA_with_context_transfer_encoding(aiohttp_client) -> None:
-    async def handler(request):
-        data = await request.post()
-        assert data["name"] == "text"
-        return web.Response(text=data["name"])
-
-    app = web.Application()
-    app.router.add_post("/", handler)
-    client = await aiohttp_client(app)
-
-    form = aiohttp.FormData()
-    form.add_field("name", "text", content_transfer_encoding="base64")
-
-    resp = await client.post("/", data=form)
-    assert 200 == resp.status
-    content = await resp.text()
-    assert content == "text"
-    resp.close()
-
-
-async def test_POST_DATA_with_content_type_context_transfer_encoding(aiohttp_client):
-    async def handler(request):
-        data = await request.post()
-        assert data["name"] == "text"
-        return web.Response(body=data["name"])
-
-    app = web.Application()
-    app.router.add_post("/", handler)
-    client = await aiohttp_client(app)
-
-    form = aiohttp.FormData()
-    form.add_field(
-        "name", "text", content_type="text/plain", content_transfer_encoding="base64"
-    )
-
-    resp = await client.post("/", data=form)
-    assert 200 == resp.status
-    content = await resp.text()
-    assert content == "text"
-    resp.close()
-
-
 async def test_POST_MultiDict(aiohttp_client) -> None:
     async def handler(request):
         data = await request.post()
@@ -1410,7 +1368,7 @@ async def test_POST_FILES(aiohttp_client, fname) -> None:
 
     with fname.open("rb") as f:
         async with client.post(
-            "/", data={"some": f, "test": b"data"}, chunked=True
+            "/", data={"some": f, "test": io.BytesIO(b"data")}, chunked=True
         ) as resp:
             assert 200 == resp.status
 

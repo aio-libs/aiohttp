@@ -108,8 +108,7 @@ def test_c_parser_loaded():
 
 def test_parse_headers(parser: Any) -> None:
     text = b"""GET /test HTTP/1.1\r
-test: line\r
- continue\r
+test: a line\r
 test2: data\r
 \r
 """
@@ -117,11 +116,22 @@ test2: data\r
     assert len(messages) == 1
     msg = messages[0][0]
 
-    assert list(msg.headers.items()) == [("test", "line continue"), ("test2", "data")]
-    assert msg.raw_headers == ((b"test", b"line continue"), (b"test2", b"data"))
+    assert list(msg.headers.items()) == [("test", "a line"), ("test2", "data")]
+    assert msg.raw_headers == ((b"test", b"a line"), (b"test2", b"data"))
     assert not msg.should_close
     assert msg.compression is None
     assert not msg.upgrade
+
+
+def test_reject_obsolete_line_folding(parser: Any) -> None:
+    text = b"""GET /test HTTP/1.1\r
+test: line\r
+ Content-Length: 48\r
+test2: data\r
+\r
+"""
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(text)
 
 
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
@@ -280,6 +290,7 @@ def test_parse_headers_longline(parser: Any) -> None:
     header_name = b"Test" + invalid_unicode_byte + b"Header" + b"A" * 8192
     text = b"GET /test HTTP/1.1\r\n" + header_name + b": test\r\n" + b"\r\n" + b"\r\n"
     with pytest.raises((http_exceptions.LineTooLong, http_exceptions.BadHttpMessage)):
+        # FIXME: `LineTooLong` doesn't seem to actually be happening
         parser.feed_data(text)
 
 
@@ -341,8 +352,8 @@ def test_parse_delayed(parser) -> None:
 
 def test_headers_multi_feed(parser) -> None:
     text1 = b"GET /test HTTP/1.1\r\n"
-    text2 = b"test: line\r"
-    text3 = b"\n continue\r\n\r\n"
+    text2 = b"test: line"
+    text3 = b" continue\r\n\r\n"
 
     messages, upgrade, tail = parser.feed_data(text1)
     assert len(messages) == 0
@@ -629,8 +640,6 @@ def test_invalid_header_spacing(parser, pad1: bytes, pad2: bytes, hdr: bytes) ->
 
 
 def test_empty_header_name(parser) -> None:
-    if not isinstance(response, HttpResponseParserPy):
-        pytest.xfail("Regression test for Py parser. May match C behaviour later.")
     text = b"GET /test HTTP/1.1\r\n" b":test\r\n\r\n"
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
@@ -706,31 +715,30 @@ def test_max_header_value_size_under_limit(parser) -> None:
 
 
 @pytest.mark.parametrize("size", [40965, 8191])
-def test_max_header_value_size_continuation(parser, size) -> None:
+def test_max_header_value_size_continuation(response, size) -> None:
     name = b"T" * (size - 5)
-    text = b"GET /test HTTP/1.1\r\n" b"data: test\r\n " + name + b"\r\n\r\n"
+    text = b"HTTP/1.1 200 Ok\r\ndata: test\r\n " + name + b"\r\n\r\n"
 
     match = f"400, message:\n  Got more than 8190 bytes \\({size}\\) when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
-        parser.feed_data(text)
+        response.feed_data(text)
 
 
-def test_max_header_value_size_continuation_under_limit(parser) -> None:
+def test_max_header_value_size_continuation_under_limit(response) -> None:
     value = b"A" * 8185
-    text = b"GET /test HTTP/1.1\r\n" b"data: test\r\n " + value + b"\r\n\r\n"
+    text = b"HTTP/1.1 200 Ok\r\ndata: test\r\n " + value + b"\r\n\r\n"
 
-    messages, upgrade, tail = parser.feed_data(text)
+    messages, upgrade, tail = response.feed_data(text)
     msg = messages[0][0]
-    assert msg.method == "GET"
-    assert msg.path == "/test"
+    assert msg.code == 200
+    assert msg.reason == "Ok"
     assert msg.version == (1, 1)
     assert msg.headers == CIMultiDict({"data": "test " + value.decode()})
     assert msg.raw_headers == ((b"data", b"test " + value),)
-    assert not msg.should_close
+    assert msg.should_close
     assert msg.compression is None
     assert not msg.upgrade
     assert not msg.chunked
-    assert msg.url == URL("/test")
 
 
 def test_http_request_parser(parser) -> None:
@@ -969,6 +977,30 @@ def test_http_response_parser_utf8_without_reason(response: Any) -> None:
     assert msg.raw_headers == ((b"x-test", "тест".encode()),)
     assert not upgraded
     assert not tail
+
+
+def test_http_response_parser_obs_line_folding(response: Any) -> None:
+    text = b"HTTP/1.1 200 Ok\r\ntest: line\r\n continue\r\n\r\n"
+
+    messages, upgraded, tail = response.feed_data(text)
+    assert len(messages) == 1
+    msg = messages[0][0]
+
+    assert msg.version == (1, 1)
+    assert msg.code == 200
+    assert msg.reason == "Ok"
+    assert msg.headers == CIMultiDict([("TEST", "line continue")])
+    assert msg.raw_headers == ((b"test", b"line continue"),)
+    assert not upgraded
+    assert not tail
+
+
+@pytest.mark.dev_mode
+def test_http_response_parser_strict_obs_line_folding(response: Any) -> None:
+    text = b"HTTP/1.1 200 Ok\r\ntest: line\r\n continue\r\n\r\n"
+
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        response.feed_data(text)
 
 
 @pytest.mark.parametrize("size", [40962, 8191])

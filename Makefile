@@ -61,7 +61,7 @@ aiohttp/%.c: aiohttp/%.pyx $(call to-hash,$(CYS)) aiohttp/_find_header.c
 	cython -3 -o $@ $< -I aiohttp -Werror
 
 vendor/llhttp/node_modules: vendor/llhttp/package.json
-	cd vendor/llhttp; npm install
+	cd vendor/llhttp; npm ci
 
 .llhttp-gen: vendor/llhttp/node_modules
 	$(MAKE) -C vendor/llhttp generate

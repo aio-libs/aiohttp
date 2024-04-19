@@ -27,6 +27,7 @@ Alexander Shorin
 Alexander Travov
 Alexandru Mihai
 Alexey Firsov
+Alexey Nikitin
 Alexey Popravka
 Alexey Stepanov
 Amin Etesamian
@@ -80,6 +81,7 @@ Damien Nadé
 Dan King
 Dan Xu
 Daniel García
+Daniel Golding
 Daniel Grossmann-Kavanagh
 Daniel Nelson
 Danny Song
@@ -299,6 +301,7 @@ Stepan Pletnev
 Stephan Jaensch
 Stephen Cirelli
 Stephen Granade
+Steve Repsher
 Steven Seguin
 Sunghyun Hwang
 Sunit Deshpande

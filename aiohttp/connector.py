@@ -825,6 +825,7 @@ class TCPConnector(BaseConnector):
     async def _resolve_host(
         self, host: str, port: int, traces: Optional[List["Trace"]] = None
     ) -> List[Dict[str, Any]]:
+        """Resolve host and return list of addresses."""
         if is_ip_address(host):
             return [
                 {
@@ -852,8 +853,7 @@ class TCPConnector(BaseConnector):
             return res
 
         key = (host, port)
-
-        if (key in self._cached_hosts) and (not self._cached_hosts.expired(key)):
+        if key in self._cached_hosts and not self._cached_hosts.expired(key):
             # get result early, before any await (#4014)
             result = self._cached_hosts.next_addrs(key)
 
@@ -862,6 +862,39 @@ class TCPConnector(BaseConnector):
                     await trace.send_dns_cache_hit(host)
             return result
 
+        #
+        # If multiple connectors are resolving the same host, we wait
+        # for the first one to resolve and then use the result for all of them.
+        # We use a throttle event to ensure that we only resolve the host once
+        # and then use the result for all the waiters.
+        #
+        # In this case we need to create a task to ensure that we can shield
+        # the task from cancellation as cancelling this lookup should not cancel
+        # the underlying lookup or else the cancel event will get broadcast to
+        # all the waiters across all connections.
+        #
+        resolved_host_task = asyncio.create_task(
+            self._resolve_host_with_throttle(key, host, port, traces)
+        )
+        try:
+            return await asyncio.shield(resolved_host_task)
+        except asyncio.CancelledError:
+
+            def drop_exception(fut: "asyncio.Future[List[Dict[str, Any]]]") -> None:
+                with suppress(Exception, asyncio.CancelledError):
+                    fut.result()
+
+            resolved_host_task.add_done_callback(drop_exception)
+            raise
+
+    async def _resolve_host_with_throttle(
+        self,
+        key: Tuple[str, int],
+        host: str,
+        port: int,
+        traces: Optional[List["Trace"]],
+    ) -> List[Dict[str, Any]]:
+        """Resolve host with a dns events throttle."""
         if key in self._throttle_dns_events:
             # get event early, before any await (#4014)
             event = self._throttle_dns_events[key]
@@ -1163,22 +1196,11 @@ class TCPConnector(BaseConnector):
             host = host.rstrip(".") + "."
         port = req.port
         assert port is not None
-        host_resolved = asyncio.ensure_future(
-            self._resolve_host(host, port, traces=traces), loop=self._loop
-        )
         try:
             # Cancelling this lookup should not cancel the underlying lookup
             #  or else the cancel event will get broadcast to all the waiters
             #  across all connections.
-            hosts = await asyncio.shield(host_resolved)
-        except asyncio.CancelledError:
-
-            def drop_exception(fut: "asyncio.Future[List[Dict[str, Any]]]") -> None:
-                with suppress(Exception, asyncio.CancelledError):
-                    fut.result()
-
-            host_resolved.add_done_callback(drop_exception)
-            raise
+            hosts = await self._resolve_host(host, port, traces=traces)
         except OSError as exc:
             if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
                 raise
