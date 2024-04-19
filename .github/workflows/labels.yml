@@ -9,7 +9,7 @@ jobs:
   backport:
     runs-on: ubuntu-latest
     name: Backport label added
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    if: ${{ github.event.pull_request.user.type != 'Bot' }}
     steps:
       - uses: actions/github-script@v7
         with:
