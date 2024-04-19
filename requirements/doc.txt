@@ -22,7 +22,7 @@ docutils==0.20.1
     # via sphinx
 funcparserlib==1.0.1
     # via blockdiag
-idna==3.4
+idna==3.7
     # via requests
 imagesize==1.4.1
     # via sphinx
@@ -90,6 +90,4 @@ zipp==3.17.0
 
 # The following packages are considered to be unsafe in a requirements file:
 setuptools==68.0.0
-    # via
-    #   blockdiag
-    #   sphinx
+    # via blockdiag
