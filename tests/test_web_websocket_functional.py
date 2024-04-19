@@ -1,6 +1,9 @@
 # HTTP websocket server functional tests
 
 import asyncio
+import contextlib
+import sys
+from typing import Any, Optional
 
 import pytest
 
@@ -258,7 +261,7 @@ async def test_close_timeout(loop, aiohttp_client) -> None:
     assert "reply" == (await ws.receive_str())
 
     # The server closes here.  Then the client sends bogus messages with an
-    # internval shorter than server-side close timeout, to make the server
+    # interval shorter than server-side close timeout, to make the server
     # hanging indefinitely.
     await asyncio.sleep(0.08)
     msg = await ws._reader.read()
@@ -310,8 +313,36 @@ async def test_concurrent_close(loop, aiohttp_client) -> None:
     assert msg.type == WSMsgType.CLOSED
 
 
-async def test_auto_pong_with_closing_by_peer(loop, aiohttp_client) -> None:
+async def test_close_op_code_from_client(loop: Any, aiohttp_client: Any) -> None:
+    srv_ws: Optional[web.WebSocketResponse] = None
 
+    async def handler(request):
+        nonlocal srv_ws
+        ws = srv_ws = web.WebSocketResponse(protocols=("foo", "bar"))
+        await ws.prepare(request)
+
+        msg = await ws.receive()
+        assert msg.type == WSMsgType.CLOSE
+        await asyncio.sleep(0)
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    ws: web.WebSocketResponse = await client.ws_connect("/", protocols=("eggs", "bar"))
+
+    await ws._writer._send_frame(b"", WSMsgType.CLOSE)
+
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.CLOSE
+
+    await asyncio.sleep(0)
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.CLOSED
+
+
+async def test_auto_pong_with_closing_by_peer(loop: Any, aiohttp_client: Any) -> None:
     closed = loop.create_future()
 
     async def handler(request):
@@ -768,3 +799,94 @@ async def test_bug3380(loop, aiohttp_client) -> None:
     resp = await client.get("/api/null", timeout=1)
     assert (await resp.json()) == {"err": None}
     resp.close()
+
+
+async def test_receive_being_cancelled_keeps_connection_open(
+    loop: Any, aiohttp_client: Any
+) -> None:
+    closed = loop.create_future()
+
+    async def handler(request):
+        ws = web.WebSocketResponse(autoping=False)
+        await ws.prepare(request)
+
+        task = asyncio.create_task(ws.receive())
+        await asyncio.sleep(0)
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+        msg = await ws.receive()
+        assert msg.type == WSMsgType.PING
+        await asyncio.sleep(0)
+        await ws.pong("data")
+
+        msg = await ws.receive()
+        assert msg.type == WSMsgType.CLOSE
+        assert msg.data == WSCloseCode.OK
+        assert msg.extra == "exit message"
+        closed.set_result(None)
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    ws = await client.ws_connect("/", autoping=False)
+
+    await asyncio.sleep(0)
+    await ws.ping("data")
+
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.PONG
+    assert msg.data == b"data"
+
+    await ws.close(code=WSCloseCode.OK, message="exit message")
+
+    await closed
+
+
+async def test_receive_timeout_keeps_connection_open(
+    loop: Any, aiohttp_client: Any
+) -> None:
+    closed = loop.create_future()
+    timed_out = loop.create_future()
+
+    async def handler(request):
+        ws = web.WebSocketResponse(autoping=False)
+        await ws.prepare(request)
+
+        task = asyncio.create_task(ws.receive(sys.float_info.min))
+        with contextlib.suppress(asyncio.TimeoutError):
+            await task
+
+        timed_out.set_result(None)
+
+        msg = await ws.receive()
+        assert msg.type == WSMsgType.PING
+        await asyncio.sleep(0)
+        await ws.pong("data")
+
+        msg = await ws.receive()
+        assert msg.type == WSMsgType.CLOSE
+        assert msg.data == WSCloseCode.OK
+        assert msg.extra == "exit message"
+        closed.set_result(None)
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    ws = await client.ws_connect("/", autoping=False)
+
+    await timed_out
+    await ws.ping("data")
+
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.PONG
+    assert msg.data == b"data"
+
+    await ws.close(code=WSCloseCode.OK, message="exit message")
+
+    await closed

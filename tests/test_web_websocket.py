@@ -371,7 +371,94 @@ async def test_receive_eofstream_in_reader(make_request, loop) -> None:
     assert ws.closed
 
 
-async def test_receive_timeouterror(make_request, loop) -> None:
+async def test_receive_exception_in_reader(make_request: Any, loop: Any) -> None:
+    req = make_request("GET", "/")
+    ws = WebSocketResponse()
+    await ws.prepare(req)
+
+    ws._reader = mock.Mock()
+    exc = Exception()
+    res = loop.create_future()
+    res.set_exception(exc)
+    ws._reader.read = make_mocked_coro(res)
+    ws._payload_writer.drain = mock.Mock()
+    ws._payload_writer.drain.return_value = loop.create_future()
+    ws._payload_writer.drain.return_value.set_result(True)
+
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.ERROR
+    assert ws.closed
+    assert len(ws._req.transport.close.mock_calls) == 1
+
+
+async def test_receive_close_but_left_open(make_request: Any, loop: Any) -> None:
+    req = make_request("GET", "/")
+    ws = WebSocketResponse()
+    await ws.prepare(req)
+    close_message = WSMessage(WSMsgType.CLOSE, 1000, "close")
+
+    ws._reader = mock.Mock()
+    ws._reader.read = mock.AsyncMock(return_value=close_message)
+    ws._payload_writer.drain = mock.Mock()
+    ws._payload_writer.drain.return_value = loop.create_future()
+    ws._payload_writer.drain.return_value.set_result(True)
+
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.CLOSE
+    assert ws.closed
+    assert len(ws._req.transport.close.mock_calls) == 1
+
+
+async def test_receive_closing(make_request: Any, loop: Any) -> None:
+    req = make_request("GET", "/")
+    ws = WebSocketResponse()
+    await ws.prepare(req)
+    closing_message = WSMessage(WSMsgType.CLOSING, 1000, "closing")
+
+    ws._reader = mock.Mock()
+    read_mock = mock.AsyncMock(return_value=closing_message)
+    ws._reader.read = read_mock
+    ws._payload_writer.drain = mock.Mock()
+    ws._payload_writer.drain.return_value = loop.create_future()
+    ws._payload_writer.drain.return_value.set_result(True)
+
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.CLOSING
+    assert not ws.closed
+
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.CLOSING
+    assert not ws.closed
+
+    ws._cancel(ConnectionResetError("Connection lost"))
+
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.CLOSING
+
+
+async def test_close_after_closing(make_request: Any, loop: Any) -> None:
+    req = make_request("GET", "/")
+    ws = WebSocketResponse()
+    await ws.prepare(req)
+    closing_message = WSMessage(WSMsgType.CLOSING, 1000, "closing")
+
+    ws._reader = mock.Mock()
+    ws._reader.read = mock.AsyncMock(return_value=closing_message)
+    ws._payload_writer.drain = mock.Mock()
+    ws._payload_writer.drain.return_value = loop.create_future()
+    ws._payload_writer.drain.return_value.set_result(True)
+
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.CLOSING
+    assert not ws.closed
+    assert len(ws._req.transport.close.mock_calls) == 0
+
+    await ws.close()
+    assert ws.closed
+    assert len(ws._req.transport.close.mock_calls) == 1
+
+
+async def test_receive_timeouterror(make_request: Any, loop: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
@@ -385,7 +472,8 @@ async def test_receive_timeouterror(make_request, loop) -> None:
     with pytest.raises(asyncio.TimeoutError):
         await ws.receive()
 
-    assert len(ws._req.transport.close.mock_calls) == 1
+    # Should not close the connection on timeout
+    assert len(ws._req.transport.close.mock_calls) == 0
 
 
 async def test_multiple_receive_on_close_connection(make_request) -> None:
