@@ -162,7 +162,8 @@ jobs:
     - name: Get pip cache dir
       id: pip-cache
       run: |
-        echo "::set-output name=dir::$(pip cache dir)"    # - name: Cache
+        echo "dir=$(pip cache dir)" >> "${GITHUB_OUTPUT}"
+      shell: bash
     - name: Cache PyPI
       uses: actions/cache@v4.0.2
       with:
