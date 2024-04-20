@@ -1,7 +1,5 @@
 aiodns
 aioredis
-Brotli
-brotlicffi
 mypy; implementation_name == "cpython"
 pre-commit
 pytest
