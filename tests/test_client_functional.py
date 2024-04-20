@@ -11,7 +11,7 @@ import socket
 import ssl
 import sys
 import time
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Type
 from unittest import mock
 
 import pytest
@@ -21,7 +21,15 @@ from yarl import URL
 import aiohttp
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver
-from aiohttp.client_exceptions import SocketTimeoutError, TooManyRedirects
+from aiohttp.client_exceptions import (
+    InvalidURL,
+    InvalidUrlClientError,
+    InvalidUrlRedirectClientError,
+    NonHttpUrlClientError,
+    NonHttpUrlRedirectClientError,
+    SocketTimeoutError,
+    TooManyRedirects,
+)
 from aiohttp.pytest_plugin import AiohttpClient, TestClient
 from aiohttp.test_utils import unused_port
 
@@ -1120,7 +1128,7 @@ async def test_HTTP_302_REDIRECT_NON_HTTP(aiohttp_client: Any) -> None:
     app.router.add_get("/redirect", redirect)
     client = await aiohttp_client(app)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(NonHttpUrlRedirectClientError):
         await client.get("/redirect")
 
 
@@ -1381,50 +1389,6 @@ async def test_POST_DATA_with_charset_post(aiohttp_client: Any) -> None:
     resp.close()
 
 
-async def test_POST_DATA_with_context_transfer_encoding(aiohttp_client: Any) -> None:
-    async def handler(request):
-        data = await request.post()
-        assert data["name"] == "text"
-        return web.Response(text=data["name"])
-
-    app = web.Application()
-    app.router.add_post("/", handler)
-    client = await aiohttp_client(app)
-
-    form = aiohttp.FormData()
-    form.add_field("name", "text", content_transfer_encoding="base64")
-
-    resp = await client.post("/", data=form)
-    assert 200 == resp.status
-    content = await resp.text()
-    assert content == "text"
-    resp.close()
-
-
-async def test_POST_DATA_with_content_type_context_transfer_encoding(
-    aiohttp_client: Any,
-):
-    async def handler(request):
-        data = await request.post()
-        assert data["name"] == "text"
-        return web.Response(body=data["name"])
-
-    app = web.Application()
-    app.router.add_post("/", handler)
-    client = await aiohttp_client(app)
-
-    form = aiohttp.FormData()
-    form.add_field(
-        "name", "text", content_type="text/plain", content_transfer_encoding="base64"
-    )
-
-    resp = await client.post("/", data=form)
-    assert 200 == resp.status
-    content = await resp.text()
-    assert content == "text"
-    resp.close()
-
-
 async def test_POST_MultiDict(aiohttp_client: Any) -> None:
     async def handler(request):
         data = await request.post()
@@ -1476,7 +1440,7 @@ async def test_POST_FILES(aiohttp_client: Any, fname: Any) -> None:
 
     with fname.open("rb") as f:
         async with client.post(
-            "/", data={"some": f, "test": b"data"}, chunked=True
+            "/", data={"some": f, "test": io.BytesIO(b"data")}, chunked=True
         ) as resp:
             assert 200 == resp.status
 
@@ -2451,6 +2415,132 @@ async def test_redirect_without_location_header(aiohttp_client: Any) -> None:
     resp = await client.get("/redirect")
     data = await resp.read()
     assert data == body
+
+
+INVALID_URL_WITH_ERROR_MESSAGE_YARL_NEW = (
+    # yarl.URL.__new__ raises ValueError
+    ("http://:/", "http://:/"),
+    ("http://example.org:non_int_port/", "http://example.org:non_int_port/"),
+)
+
+INVALID_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN = (
+    # # yarl.URL.origin raises ValueError
+    ("http:/", "http:///"),
+    ("http:/example.com", "http:///example.com"),
+    ("http:///example.com", "http:///example.com"),
+)
+
+NON_HTTP_URL_WITH_ERROR_MESSAGE = (
+    ("call:+380123456789", r"call:\+380123456789"),
+    ("skype:handle", "skype:handle"),
+    ("slack://instance/room", "slack://instance/room"),
+    ("steam:code", "steam:code"),
+    ("twitter://handle", "twitter://handle"),
+    ("bluesky://profile/d:i:d", "bluesky://profile/d:i:d"),
+)
+
+
+@pytest.mark.parametrize(
+    ("url", "error_message_url", "expected_exception_class"),
+    (
+        *(
+            (url, message, InvalidUrlClientError)
+            for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE_YARL_NEW
+        ),
+        *(
+            (url, message, InvalidUrlClientError)
+            for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN
+        ),
+        *(
+            (url, message, NonHttpUrlClientError)
+            for (url, message) in NON_HTTP_URL_WITH_ERROR_MESSAGE
+        ),
+    ),
+)
+async def test_invalid_and_non_http_url(
+    url: Any, error_message_url: Any, expected_exception_class: Any
+) -> None:
+    async with aiohttp.ClientSession() as http_session:
+        with pytest.raises(
+            expected_exception_class, match=rf"^{error_message_url}( - [A-Za-z ]+)?"
+        ):
+            await http_session.get(url)
+
+
+@pytest.mark.parametrize(
+    ("invalid_redirect_url", "error_message_url", "expected_exception_class"),
+    (
+        *(
+            (url, message, InvalidUrlRedirectClientError)
+            for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN
+            + INVALID_URL_WITH_ERROR_MESSAGE_YARL_NEW
+        ),
+        *(
+            (url, message, NonHttpUrlRedirectClientError)
+            for (url, message) in NON_HTTP_URL_WITH_ERROR_MESSAGE
+        ),
+    ),
+)
+async def test_invalid_redirect_url(
+    aiohttp_client: Any,
+    invalid_redirect_url: Any,
+    error_message_url: str,
+    expected_exception_class: Any,
+) -> None:
+    headers = {hdrs.LOCATION: invalid_redirect_url}
+
+    async def generate_redirecting_response(request):
+        return web.Response(status=301, headers=headers)
+
+    app = web.Application()
+    app.router.add_get("/redirect", generate_redirecting_response)
+    client = await aiohttp_client(app)
+
+    with pytest.raises(
+        expected_exception_class, match=rf"^{error_message_url}( - [A-Za-z ]+)?"
+    ):
+        await client.get("/redirect")
+
+
+@pytest.mark.parametrize(
+    ("invalid_redirect_url", "error_message_url", "expected_exception_class"),
+    (
+        *(
+            (url, message, InvalidUrlRedirectClientError)
+            for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN
+            + INVALID_URL_WITH_ERROR_MESSAGE_YARL_NEW
+        ),
+        *(
+            (url, message, NonHttpUrlRedirectClientError)
+            for (url, message) in NON_HTTP_URL_WITH_ERROR_MESSAGE
+        ),
+    ),
+)
+async def test_invalid_redirect_url_multiple_redirects(
+    aiohttp_client: Any,
+    invalid_redirect_url: Any,
+    error_message_url: str,
+    expected_exception_class: Any,
+) -> None:
+    app = web.Application()
+
+    for path, location in [
+        ("/redirect", "/redirect1"),
+        ("/redirect1", "/redirect2"),
+        ("/redirect2", invalid_redirect_url),
+    ]:
+
+        async def generate_redirecting_response(request):
+            return web.Response(status=301, headers={hdrs.LOCATION: location})
+
+        app.router.add_get(path, generate_redirecting_response)
+
+    client = await aiohttp_client(app)
+
+    with pytest.raises(
+        expected_exception_class, match=rf"^{error_message_url}( - [A-Za-z ]+)?"
+    ):
+        await client.get("/redirect")
 
 
 @pytest.mark.parametrize(
@@ -3521,3 +3611,36 @@ async def test_rejected_upload(aiohttp_client: Any, tmp_path: Any) -> None:
         "/ok", timeout=aiohttp.ClientTimeout(total=0.01)
     ) as resp_ok:
         assert 200 == resp_ok.status
+
+
+async def test_request_with_wrong_ssl_type(aiohttp_client: AiohttpClient) -> None:
+    app = web.Application()
+    session = await aiohttp_client(app)
+
+    with pytest.raises(TypeError, match="ssl should be SSLContext, Fingerprint, .*"):
+        await session.get("/", ssl=42)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("value", "exc_type"),
+    [(42, TypeError), ("InvalidUrl", InvalidURL)],
+)
+async def test_request_with_wrong_proxy(
+    aiohttp_client: AiohttpClient, value: Any, exc_type: Type[Exception]
+) -> None:
+    app = web.Application()
+    session = await aiohttp_client(app)
+
+    with pytest.raises(exc_type):
+        await session.get("/", proxy=value)  # type: ignore[arg-type]
+
+
+async def test_raise_for_status_is_none(aiohttp_client: AiohttpClient) -> None:
+    async def handler(_: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    session = await aiohttp_client(app, raise_for_status=None)  # type: ignore[arg-type]
+
+    await session.get("/")

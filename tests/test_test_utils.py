@@ -226,7 +226,7 @@ async def test_test_client_props() -> None:
 
 async def test_test_client_raw_server_props() -> None:
     async def hello(request):
-        return web.Response(body=_hello_world_bytes)
+        return web.Response()  # pragma: no cover
 
     server = _RawTestServer(hello, scheme="http", host="127.0.0.1")
     client = _TestClient(server)

@@ -49,7 +49,7 @@ def fname(here: Any):
 
 def new_dummy_form():
     form = FormData()
-    form.add_field("name", b"123", content_transfer_encoding="base64")
+    form.add_field("name", b"123")
     return form
 
 
@@ -447,25 +447,6 @@ async def test_release_post_data(aiohttp_client: Any) -> None:
     await resp.release()
 
 
-async def test_POST_DATA_with_content_transfer_encoding(aiohttp_client: Any) -> None:
-    async def handler(request):
-        data = await request.post()
-        assert b"123" == data["name"]
-        return web.Response()
-
-    app = web.Application()
-    app.router.add_post("/", handler)
-    client = await aiohttp_client(app)
-
-    form = FormData()
-    form.add_field("name", b"123", content_transfer_encoding="base64")
-
-    resp = await client.post("/", data=form)
-    assert 200 == resp.status
-
-    await resp.release()
-
-
 async def test_post_form_with_duplicate_keys(aiohttp_client: Any) -> None:
     async def handler(request):
         data = await request.post()
@@ -523,7 +504,7 @@ async def test_100_continue(aiohttp_client: Any) -> None:
         return web.Response()
 
     form = FormData()
-    form.add_field("name", b"123", content_transfer_encoding="base64")
+    form.add_field("name", b"123")
 
     app = web.Application()
     app.router.add_post("/", handler)
@@ -724,7 +705,7 @@ async def test_upload_file(aiohttp_client: Any) -> None:
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
-    resp = await client.post("/", data={"file": data})
+    resp = await client.post("/", data={"file": io.BytesIO(data)})
     assert 200 == resp.status
 
     await resp.release()

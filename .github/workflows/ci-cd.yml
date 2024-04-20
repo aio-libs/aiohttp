@@ -51,7 +51,7 @@ jobs:
       with:
         python-version: 3.9
     - name: Cache PyPI
-      uses: actions/cache@v4.0.0
+      uses: actions/cache@v4.0.2
       with:
         key: pip-lint-${{ hashFiles('requirements/*.txt') }}
         path: ~/.cache/pip
@@ -112,7 +112,7 @@ jobs:
       with:
         submodules: true
     - name: Cache llhttp generated files
-      uses: actions/cache@v4.0.0
+      uses: actions/cache@v4.0.2
       id: cache
       with:
         key: llhttp-${{ hashFiles('vendor/llhttp/package*.json', 'vendor/llhttp/src/**/*') }}
@@ -141,7 +141,7 @@ jobs:
     needs: gen_llhttp
     strategy:
       matrix:
-        pyver: [3.8, 3.9, '3.10']
+        pyver: [3.8, 3.9, '3.10', '3.11', '3.12']
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         experimental: [false]
@@ -157,28 +157,8 @@ jobs:
             no-extensions: 'Y'
             os: ubuntu
             experimental: false
-          - os: macos
-            pyver: "3.11"
-            experimental: true
-            no-extensions: 'Y'
           - os: ubuntu
-            pyver: "3.11"
-            experimental: false
-            no-extensions: 'Y'
-          - os: windows
-            pyver: "3.11"
-            experimental: true
-            no-extensions: 'Y'
-          - os: ubuntu
-            pyver: "3.12"
-            experimental: true
-            no-extensions: 'Y'
-          - os: macos
-            pyver: "3.12"
-            experimental: true
-            no-extensions: 'Y'
-          - os: windows
-            pyver: "3.12"
+            pyver: "3.13"
             experimental: true
             no-extensions: 'Y'
       fail-fast: true
@@ -198,9 +178,10 @@ jobs:
     - name: Get pip cache dir
       id: pip-cache
       run: |
-        echo "::set-output name=dir::$(pip cache dir)"    # - name: Cache
+        echo "dir=$(pip cache dir)" >> "${GITHUB_OUTPUT}"
+      shell: bash
     - name: Cache PyPI
-      uses: actions/cache@v4.0.0
+      uses: actions/cache@v4.0.2
       with:
         key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-${{ hashFiles('requirements/*.txt') }}
         path: ${{ steps.pip-cache.outputs.dir }}
@@ -392,7 +373,7 @@ jobs:
       run: |
         make cythonize
     - name: Build wheels
-      uses: pypa/cibuildwheel@v2.16.5
+      uses: pypa/cibuildwheel@v2.17.0
       env:
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
     - uses: actions/upload-artifact@v3
@@ -447,7 +428,7 @@ jobs:
       uses: pypa/gh-action-pypi-publish@release/v1
 
     - name: Sign the dists with Sigstore
-      uses: sigstore/gh-action-sigstore-python@v2.1.0
+      uses: sigstore/gh-action-sigstore-python@v2.1.1
       with:
         inputs: >-
           ./dist/*.tar.gz
@@ -457,7 +438,7 @@ jobs:
       # Confusingly, this action also supports updating releases, not
       # just creating them. This is what we want here, since we've manually
       # created the release above.
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         # dist/ contains the built packages, which smoketest-artifacts/
         # contains the signatures and certificates.

@@ -11,7 +11,7 @@ from multidict import CIMultiDict
 
 from . import hdrs
 from .abc import AbstractStreamWriter
-from .helpers import call_later, set_result
+from .helpers import call_later, set_exception, set_result
 from .http import (
     WS_CLOSED_MESSAGE,
     WS_CLOSING_MESSAGE,
@@ -135,9 +135,11 @@ class WebSocketResponse(StreamResponse):
                 self._send_heartbeat,
                 self._heartbeat,
                 self._loop,
-                timeout_ceil_threshold=self._req._protocol._timeout_ceil_threshold
-                if self._req is not None
-                else 5,
+                timeout_ceil_threshold=(
+                    self._req._protocol._timeout_ceil_threshold
+                    if self._req is not None
+                    else 5
+                ),
             )
 
     def _send_heartbeat(self) -> None:
@@ -154,9 +156,11 @@ class WebSocketResponse(StreamResponse):
                 self._pong_not_received,
                 self._pong_heartbeat,
                 self._loop,
-                timeout_ceil_threshold=self._req._protocol._timeout_ceil_threshold
-                if self._req is not None
-                else 5,
+                timeout_ceil_threshold=(
+                    self._req._protocol._timeout_ceil_threshold
+                    if self._req is not None
+                    else 5
+                ),
             )
 
     def _pong_not_received(self) -> None:
@@ -417,6 +421,7 @@ class WebSocketResponse(StreamResponse):
             return True
 
         if self._closing:
+            self._close_transport()
             return True
 
         reader = self._reader
@@ -440,9 +445,18 @@ class WebSocketResponse(StreamResponse):
         self._exception = asyncio.TimeoutError()
         return True
 
+    def _set_closing(self, code: WSCloseCode) -> None:
+        """Set the close code and mark the connection as closing."""
+        self._closing = True
+        self._close_code = code
+
     def _set_code_close_transport(self, code: WSCloseCode) -> None:
         """Set the close code and close the transport."""
         self._close_code = code
+        self._close_transport()
+
+    def _close_transport(self) -> None:
+        """Close the transport."""
         if self._req is not None and self._req.transport is not None:
             self._req.transport.close()
 
@@ -474,8 +488,7 @@ class WebSocketResponse(StreamResponse):
                     waiter = self._waiting
                     set_result(waiter, True)
                     self._waiting = None
-            except (asyncio.CancelledError, asyncio.TimeoutError):
-                self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
+            except asyncio.TimeoutError:
                 raise
             except EofStream:
                 self._close_code = WSCloseCode.OK
@@ -487,14 +500,12 @@ class WebSocketResponse(StreamResponse):
                 return WSMessage(WSMsgType.ERROR, exc, None)
             except Exception as exc:
                 self._exception = exc
-                self._closing = True
-                self._close_code = WSCloseCode.ABNORMAL_CLOSURE
+                self._set_closing(WSCloseCode.ABNORMAL_CLOSURE)
                 await self.close()
                 return WSMessage(WSMsgType.ERROR, exc, None)
 
             if msg.type == WSMsgType.CLOSE:
-                self._closing = True
-                self._close_code = msg.data
+                self._set_closing(msg.data)
                 # Could be closed while awaiting reader.
                 if not self._closed and self._autoclose:  # type: ignore[redundant-expr]
                     # The client is likely going to close the
@@ -503,7 +514,7 @@ class WebSocketResponse(StreamResponse):
                     # likely result writing to a broken pipe.
                     await self.close(drain=False)
             elif msg.type == WSMsgType.CLOSING:
-                self._closing = True
+                self._set_closing(WSCloseCode.OK)
             elif msg.type == WSMsgType.PING and self._autoping:
                 await self.pong(msg.data)
                 continue
@@ -547,5 +558,8 @@ class WebSocketResponse(StreamResponse):
         return msg
 
     def _cancel(self, exc: BaseException) -> None:
+        # web_protocol calls this from connection_lost
+        # or when the server is shutting down.
+        self._closing = True
         if self._reader is not None:
-            self._reader.set_exception(exc)
+            set_exception(self._reader, exc)
