@@ -1,0 +1,1 @@
+Minor improvements to static typing -- by :user:`Dreamsorcerer`.
