@@ -76,6 +76,7 @@ else:
 
 _T = TypeVar("_T")
 _U = TypeVar("_U")
+_Resource = TypeVar("_Resource", bound=AbstractResource)
 
 
 class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
@@ -334,7 +335,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         reg_handler("on_shutdown")
         reg_handler("on_cleanup")
 
-    def add_subapp(self, prefix: str, subapp: "Application") -> AbstractResource:
+    def add_subapp(self, prefix: str, subapp: "Application") -> PrefixedSubAppResource:
         if not isinstance(prefix, str):
             raise TypeError("Prefix must be str")
         prefix = prefix.rstrip("/")
@@ -344,8 +345,8 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         return self._add_subapp(factory, subapp)
 
     def _add_subapp(
-        self, resource_factory: Callable[[], AbstractResource], subapp: "Application"
-    ) -> AbstractResource:
+        self, resource_factory: Callable[[], _Resource], subapp: "Application"
+    ) -> _Resource:
         if self.frozen:
             raise RuntimeError("Cannot add sub application to frozen application")
         if subapp.frozen:
@@ -359,7 +360,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             subapp._set_loop(self._loop)
         return resource
 
-    def add_domain(self, domain: str, subapp: "Application") -> AbstractResource:
+    def add_domain(self, domain: str, subapp: "Application") -> MatchedSubAppResource:
         if not isinstance(domain, str):
             raise TypeError("Domain must be str")
         elif "*" in domain:
