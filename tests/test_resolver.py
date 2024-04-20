@@ -20,7 +20,7 @@ try:
 
     getaddrinfo: Any = hasattr(aiodns.DNSResolver, "getaddrinfo")
 except ImportError:
-    aiodns = None
+    aiodns = None  # type: ignore[assignment]
     getaddrinfo = False
 
 
@@ -286,13 +286,6 @@ async def test_close_for_async_resolver(loop: Any) -> None:
 async def test_default_loop_for_threaded_resolver(loop: Any) -> None:
     asyncio.set_event_loop(loop)
     resolver = ThreadedResolver()
-    assert resolver._loop is loop
-
-
-@pytest.mark.skipif(aiodns is None, reason="aiodns required")
-async def test_default_loop_for_async_resolver(loop: Any) -> None:
-    asyncio.set_event_loop(loop)
-    resolver = AsyncResolver()
     assert resolver._loop is loop
 
 

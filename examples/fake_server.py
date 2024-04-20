@@ -22,7 +22,7 @@ class FakeResolver(AbstractResolver):
         self,
         host: str,
         port: int = 0,
-        family: Union[socket.AddressFamily, int] = socket.AF_INET,
+        family: socket.AddressFamily = socket.AF_INET,
     ) -> List[ResolveResult]:
         fake_port = self._fakes.get(host)
         if fake_port is not None:
