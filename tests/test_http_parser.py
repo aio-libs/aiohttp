@@ -1475,7 +1475,9 @@ def test_parse_bad_method_for_c_parser_raises(loop, protocol):
 
 class TestParsePayload:
     async def test_parse_eof_payload(self, stream) -> None:
-        out = aiohttp.FlowControlDataQueue(stream, 2**16, loop=asyncio.get_event_loop())
+        out = aiohttp.FlowControlDataQueue(
+            stream, 2**16, loop=asyncio.get_event_loop()
+        )
         p = HttpPayloadParser(out)
         p.feed_data(b"data")
         p.feed_eof()
@@ -1484,7 +1486,9 @@ class TestParsePayload:
         assert [(bytearray(b"data"), 4)] == list(out._buffer)
 
     async def test_parse_length_payload_eof(self, stream) -> None:
-        out = aiohttp.FlowControlDataQueue(stream, 2**16, loop=asyncio.get_event_loop())
+        out = aiohttp.FlowControlDataQueue(
+            stream, 2**16, loop=asyncio.get_event_loop()
+        )
 
         p = HttpPayloadParser(out, length=4)
         p.feed_data(b"da")
@@ -1609,7 +1613,9 @@ class TestParsePayload:
         assert out.is_eof()
 
     async def test_http_payload_parser_deflate_split(self, stream) -> None:
-        out = aiohttp.FlowControlDataQueue(stream, 2**16, loop=asyncio.get_event_loop())
+        out = aiohttp.FlowControlDataQueue(
+            stream, 2**16, loop=asyncio.get_event_loop()
+        )
         p = HttpPayloadParser(out, compression="deflate")
         # Feeding one correct byte should be enough to choose exact
         # deflate decompressor
@@ -1619,7 +1625,9 @@ class TestParsePayload:
         assert b"data" == b"".join(d for d, _ in out._buffer)
 
     async def test_http_payload_parser_deflate_split_err(self, stream) -> None:
-        out = aiohttp.FlowControlDataQueue(stream, 2**16, loop=asyncio.get_event_loop())
+        out = aiohttp.FlowControlDataQueue(
+            stream, 2**16, loop=asyncio.get_event_loop()
+        )
         p = HttpPayloadParser(out, compression="deflate")
         # Feeding one wrong byte should be enough to choose exact
         # deflate decompressor
