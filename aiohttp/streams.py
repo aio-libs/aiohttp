@@ -23,6 +23,7 @@ __all__ = (
 )
 
 _T = TypeVar("_T")
+_SizedT = TypeVar("_SizedT", bound=collections.abc.Sized)
 
 
 class EofStream(Exception):
@@ -545,7 +546,7 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
 EMPTY_PAYLOAD: Final[StreamReader] = EmptyStreamReader()
 
 
-class DataQueue(Generic[_T]):
+class DataQueue(Generic[_SizedT]):
     """DataQueue is a general-purpose blocking queue with one reader."""
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
@@ -554,7 +555,7 @@ class DataQueue(Generic[_T]):
         self._waiter: Optional[asyncio.Future[None]] = None
         self._exception: Optional[BaseException] = None
         self._size = 0
-        self._buffer: Deque[_T] = collections.deque()
+        self._buffer: Deque[_SizedT] = collections.deque()
 
     def __len__(self) -> int:
         return len(self._buffer)
@@ -577,9 +578,8 @@ class DataQueue(Generic[_T]):
             self._waiter = None
             set_exception(waiter, exc)
 
-    def feed_data(self, data: _T) -> None:
-        if isinstance(data, (bytes, bytearray, memoryview)):
-            self._size += len(data)
+    def feed_data(self, data: _SizedT) -> None:
+        self._size += len(data)
         self._buffer.append(data)
 
         waiter = self._waiter
@@ -595,7 +595,7 @@ class DataQueue(Generic[_T]):
             self._waiter = None
             set_result(waiter, None)
 
-    async def read(self) -> _T:
+    async def read(self) -> _SizedT:
         if not self._buffer and not self._eof:
             assert not self._waiter
             self._waiter = self._loop.create_future()
@@ -607,8 +607,7 @@ class DataQueue(Generic[_T]):
 
         if self._buffer:
             data = self._buffer.popleft()
-            if isinstance(data, (bytes, bytearray, memoryview)):
-                self._size -= len(data)
+            self._size -= len(data)
             return data
         else:
             if self._exception is not None:
@@ -616,11 +615,11 @@ class DataQueue(Generic[_T]):
             else:
                 raise EofStream
 
-    def __aiter__(self) -> AsyncStreamIterator[_T]:
+    def __aiter__(self) -> AsyncStreamIterator[_SizedT]:
         return AsyncStreamIterator(self.read)
 
 
-class FlowControlDataQueue(DataQueue[_T]):
+class FlowControlDataQueue(DataQueue[_SizedT]):
     """FlowControlDataQueue resumes and pauses an underlying stream.
 
     It is a destination for parsed data.
@@ -634,13 +633,13 @@ class FlowControlDataQueue(DataQueue[_T]):
         self._protocol = protocol
         self._limit = limit * 2
 
-    def feed_data(self, data: _T) -> None:
+    def feed_data(self, data: _SizedT) -> None:
         super().feed_data(data)
 
         if self._size > self._limit and not self._protocol._reading_paused:
             self._protocol.pause_reading()
 
-    async def read(self) -> _T:
+    async def read(self) -> _SizedT:
         try:
             return await super().read()
         finally:
