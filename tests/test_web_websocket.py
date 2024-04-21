@@ -220,7 +220,7 @@ async def test_send_str_closed(make_request: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
-    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
+    ws._reader.feed_data(WS_CLOSED_MESSAGE)
     await ws.close()
     assert len(ws._req.transport.close.mock_calls) == 1
 
@@ -232,7 +232,7 @@ async def test_send_bytes_closed(make_request: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
-    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
+    ws._reader.feed_data(WS_CLOSED_MESSAGE)
     await ws.close()
 
     with pytest.raises(ConnectionError):
@@ -243,7 +243,7 @@ async def test_send_json_closed(make_request: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
-    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
+    ws._reader.feed_data(WS_CLOSED_MESSAGE)
     await ws.close()
 
     with pytest.raises(ConnectionError):
@@ -254,7 +254,7 @@ async def test_ping_closed(make_request: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
-    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
+    ws._reader.feed_data(WS_CLOSED_MESSAGE)
     await ws.close()
 
     with pytest.raises(ConnectionError):
@@ -265,7 +265,7 @@ async def test_pong_closed(make_request: Any, mocker: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
-    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
+    ws._reader.feed_data(WS_CLOSED_MESSAGE)
     await ws.close()
 
     with pytest.raises(ConnectionError):
@@ -276,7 +276,7 @@ async def test_close_idempotent(make_request: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
-    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
+    ws._reader.feed_data(WS_CLOSED_MESSAGE)
     assert await ws.close(code=1, message="message1")
     assert ws.closed
     assert len(ws._req.transport.close.mock_calls) == 1
@@ -316,7 +316,7 @@ async def test_write_eof_idempotent(make_request: Any) -> None:
     await ws.prepare(req)
     assert len(ws._req.transport.close.mock_calls) == 0
 
-    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
+    ws._reader.feed_data(WS_CLOSED_MESSAGE)
     await ws.close()
 
     await ws.write_eof()
@@ -453,7 +453,7 @@ async def test_multiple_receive_on_close_connection(make_request: Any) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)
-    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
+    ws._reader.feed_data(WS_CLOSED_MESSAGE)
     await ws.close()
 
     await ws.receive()

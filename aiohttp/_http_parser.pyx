@@ -762,7 +762,7 @@ cdef int cb_on_body(cparser.llhttp_t* parser,
     cdef HttpParser pyparser = <HttpParser>parser.data
     cdef bytes body = at[:length]
     try:
-        pyparser._payload.feed_data(body, length)
+        pyparser._payload.feed_data(body)
     except BaseException as underlying_exc:
         reraised_exc = underlying_exc
         if pyparser._payload_exception is not None:
