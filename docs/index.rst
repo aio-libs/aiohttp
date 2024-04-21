@@ -173,7 +173,7 @@ Communication channels
 
 Feel free to post your questions and ideas here.
 
-*Matrix* `#aio-libs:matrix.org <https://matrix.to/#/#aio-libs:matrix.org>`_
+*Matrix*: `#aio-libs:matrix.org <https://matrix.to/#/#aio-libs:matrix.org>`_
 
 We support `Stack Overflow
 <https://stackoverflow.com/questions/tagged/aiohttp>`_.
