@@ -3,6 +3,7 @@
 import asyncio
 import base64
 import binascii
+import contextlib
 import dataclasses
 import datetime
 import enum
@@ -37,32 +38,32 @@ from typing import (
     Mapping,
     Optional,
     Pattern,
+    Protocol,
     Tuple,
     Type,
     TypeVar,
     Union,
+    final,
+    get_args,
     overload,
 )
 from urllib.parse import quote
 from urllib.request import getproxies, proxy_bypass
 
-import async_timeout
 from multidict import CIMultiDict, MultiDict, MultiDictProxy
-from typing_extensions import Protocol, final
 from yarl import URL
 
 from . import hdrs
 from .log import client_logger
 from .typedefs import PathLike  # noqa
 
-if sys.version_info >= (3, 8):
-    from typing import get_args
+if sys.version_info >= (3, 11):
+    import asyncio as async_timeout
 else:
-    from typing_extensions import get_args
+    import async_timeout
 
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
-PY_38 = sys.version_info >= (3, 8)
 PY_310 = sys.version_info >= (3, 10)
 
 COOKIE_MAX_LENGTH = 4096
@@ -111,16 +112,6 @@ TOKEN = CHAR ^ CTL ^ SEPARATORS
 class noop:
     def __await__(self) -> Generator[None, None, None]:
         yield
-
-
-if PY_38:
-    iscoroutinefunction = asyncio.iscoroutinefunction
-else:
-
-    def iscoroutinefunction(func: Any) -> bool:  # type: ignore[misc]
-        while isinstance(func, functools.partial):
-            func = func.func
-        return asyncio.iscoroutinefunction(func)
 
 
 json_re = re.compile(r"(?:application/|[\w.-]+/[\w.+-]+?\+)json$", re.IGNORECASE)
@@ -228,8 +219,11 @@ def netrc_from_env() -> Optional[netrc.netrc]:
     except netrc.NetrcParseError as e:
         client_logger.warning("Could not parse .netrc file: %s", e)
     except OSError as e:
+        netrc_exists = False
+        with contextlib.suppress(OSError):
+            netrc_exists = netrc_path.is_file()
         # we couldn't read the file (doesn't exist, permissions, etc.)
-        if netrc_env or netrc_path.is_file():
+        if netrc_env or netrc_exists:
             # only warn if the environment wanted us to load it,
             # or it appears like the default file does actually exist
             client_logger.warning("Could not read .netrc file: %s", e)
@@ -536,13 +530,6 @@ def is_ip_address(host: Optional[Union[str, bytes, bytearray, memoryview]]) -> b
     return is_ipv4_address(host) or is_ipv6_address(host)
 
 
-def next_whole_second() -> datetime.datetime:
-    """Return current time rounded up to the next whole second."""
-    return datetime.datetime.now(datetime.timezone.utc).replace(
-        microsecond=0
-    ) + datetime.timedelta(seconds=0)
-
-
 _cached_current_datetime: Optional[int] = None
 _cached_formatted_datetime = ""
 
@@ -598,7 +585,7 @@ def _weakref_handle(info: "Tuple[weakref.ref[object], str]") -> None:
 def weakref_handle(
     ob: object,
     name: str,
-    timeout: float,
+    timeout: Optional[float],
     loop: asyncio.AbstractEventLoop,
     timeout_ceil_threshold: float = 5,
 ) -> Optional[asyncio.TimerHandle]:
@@ -613,7 +600,7 @@ def weakref_handle(
 
 def call_later(
     cb: Callable[[], Any],
-    timeout: float,
+    timeout: Optional[float],
     loop: asyncio.AbstractEventLoop,
     timeout_ceil_threshold: float = 5,
 ) -> Optional[asyncio.TimerHandle]:
@@ -727,7 +714,7 @@ class TimerContext(BaseTimerContext):
         exc_tb: Optional[TracebackType],
     ) -> Optional[bool]:
         if self._tasks:
-            self._tasks.pop()
+            self._tasks.pop()  # type: ignore[unused-awaitable]
 
         if exc_type is asyncio.CancelledError and self._cancelled:
             raise asyncio.TimeoutError from None
@@ -773,7 +760,7 @@ class HeadersMixin:
         else:
             msg = HeaderParser().parsestr("Content-Type: " + raw)
             self._content_type = msg.get_content_type()
-            params = msg.get_params()
+            params = msg.get_params(())
             self._content_dict = dict(params[1:])  # First element is content type again
 
     @property
@@ -810,9 +797,38 @@ def set_result(fut: "asyncio.Future[_T]", result: _T) -> None:
         fut.set_result(result)
 
 
-def set_exception(fut: "asyncio.Future[_T]", exc: BaseException) -> None:
-    if not fut.done():
-        fut.set_exception(exc)
+_EXC_SENTINEL = BaseException()
+
+
+class ErrorableProtocol(Protocol):
+    def set_exception(
+        self,
+        exc: BaseException,
+        exc_cause: BaseException = ...,
+    ) -> None: ...  # pragma: no cover
+
+
+def set_exception(
+    fut: "asyncio.Future[_T] | ErrorableProtocol",
+    exc: BaseException,
+    exc_cause: BaseException = _EXC_SENTINEL,
+) -> None:
+    """Set future exception.
+
+    If the future is marked as complete, this function is a no-op.
+
+    :param exc_cause: An exception that is a direct cause of ``exc``.
+                      Only set if provided.
+    """
+    if asyncio.isfuture(fut) and fut.done():
+        return
+
+    exc_is_sentinel = exc_cause is _EXC_SENTINEL
+    exc_causes_itself = exc is exc_cause
+    if not exc_is_sentinel and not exc_causes_itself:
+        exc.__cause__ = exc_cause
+
+    fut.set_exception(exc)
 
 
 @functools.total_ordering
@@ -834,8 +850,11 @@ class AppKey(Generic[_T]):
                 module: str = frame.f_globals["__name__"]
                 break
             frame = frame.f_back
+        else:
+            raise RuntimeError("Failed to get module name.")
 
-        self._name = module + "." + name
+        # https://github.com/python/mypy/issues/14209
+        self._name = module + "." + name  # type: ignore[possibly-undefined]
         self._t = t
 
     def __lt__(self, other: object) -> bool:
@@ -851,7 +870,7 @@ class AppKey(Generic[_T]):
                 t = get_args(self.__orig_class__)[0]
 
         if t is None:
-            t_repr = "<<Unkown>>"
+            t_repr = "<<Unknown>>"
         elif isinstance(t, type):
             if t.__module__ == "builtins":
                 t_repr = t.__qualname__
@@ -876,12 +895,10 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
         )
 
     @overload  # type: ignore[override]
-    def __getitem__(self, key: AppKey[_T]) -> _T:
-        ...
+    def __getitem__(self, key: AppKey[_T]) -> _T: ...
 
     @overload
-    def __getitem__(self, key: str) -> Any:
-        ...
+    def __getitem__(self, key: str) -> Any: ...
 
     def __getitem__(self, key: Union[str, AppKey[_T]]) -> Any:
         for mapping in self._maps:
@@ -892,16 +909,13 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
         raise KeyError(key)
 
     @overload  # type: ignore[override]
-    def get(self, key: AppKey[_T], default: _S) -> Union[_T, _S]:
-        ...
+    def get(self, key: AppKey[_T], default: _S) -> Union[_T, _S]: ...
 
     @overload
-    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]:
-        ...
+    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]: ...
 
     @overload
-    def get(self, key: str, default: Any = ...) -> Any:
-        ...
+    def get(self, key: str, default: Any = ...) -> Any: ...
 
     def get(self, key: Union[str, AppKey[_T]], default: Any = None) -> Any:
         try:
@@ -942,10 +956,10 @@ class CookieMixin:
         super().__init__()
         # Mypy doesn't like that _cookies isn't in __slots__.
         # See the comment on this class's __slots__ for why this is OK.
-        self._cookies: SimpleCookie[str] = SimpleCookie()  # type: ignore[misc]
+        self._cookies = SimpleCookie()  # type: ignore[misc]
 
     @property
-    def cookies(self) -> "SimpleCookie[str]":
+    def cookies(self) -> SimpleCookie:
         return self._cookies
 
     def set_cookie(
@@ -1027,16 +1041,14 @@ class CookieMixin:
         )
 
 
-def populate_with_cookies(
-    headers: "CIMultiDict[str]", cookies: "SimpleCookie[str]"
-) -> None:
+def populate_with_cookies(headers: "CIMultiDict[str]", cookies: SimpleCookie) -> None:
     for cookie in cookies.values():
         value = cookie.output(header="")[1:]
         headers.add(hdrs.SET_COOKIE, value)
 
 
 # https://tools.ietf.org/html/rfc7232#section-2.3
-_ETAGC = r"[!#-}\x80-\xff]+"
+_ETAGC = r"[!\x23-\x7E\x80-\xff]+"
 _ETAGC_RE = re.compile(_ETAGC)
 _QUOTED_ETAG = rf'(W/)?"({_ETAGC})"'
 QUOTED_ETAG_RE = re.compile(_QUOTED_ETAG)
@@ -1066,3 +1078,39 @@ def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
             with suppress(ValueError):
                 return datetime.datetime(*timetuple[:6], tzinfo=datetime.timezone.utc)
     return None
+
+
+def must_be_empty_body(method: str, code: int) -> bool:
+    """Check if a request must return an empty body."""
+    return (
+        status_code_must_be_empty_body(code)
+        or method_must_be_empty_body(method)
+        or (200 <= code < 300 and method.upper() == hdrs.METH_CONNECT)
+    )
+
+
+def method_must_be_empty_body(method: str) -> bool:
+    """Check if a method must return an empty body."""
+    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
+    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.2
+    return method.upper() == hdrs.METH_HEAD
+
+
+def status_code_must_be_empty_body(code: int) -> bool:
+    """Check if a status code must return an empty body."""
+    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
+    return code in {204, 304} or 100 <= code < 200
+
+
+def should_remove_content_length(method: str, code: int) -> bool:
+    """Check if a Content-Length header should be removed.
+
+    This should always be a subset of must_be_empty_body
+    """
+    # https://www.rfc-editor.org/rfc/rfc9110.html#section-8.6-8
+    # https://www.rfc-editor.org/rfc/rfc9110.html#section-15.4.5-4
+    return (
+        code in {204, 304}
+        or 100 <= code < 200
+        or (200 <= code < 300 and method.upper() == hdrs.METH_CONNECT)
+    )

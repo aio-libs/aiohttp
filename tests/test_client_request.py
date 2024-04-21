@@ -5,7 +5,7 @@ import io
 import pathlib
 import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
-from typing import Any, Optional
+from typing import Any, Callable, Dict, Optional
 from unittest import mock
 
 import pytest
@@ -14,13 +14,26 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import BaseConnector, hdrs, helpers, payload
+from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.client_reqrep import (
     ClientRequest,
     ClientResponse,
     Fingerprint,
     _gen_default_accept_encoding,
 )
+from aiohttp.http import HttpVersion
 from aiohttp.test_utils import make_mocked_coro
+
+
+class WriterMock(mock.AsyncMock):
+    def __await__(self) -> None:
+        return self().__await__()
+
+    def add_done_callback(self, cb: Callable[[], None]) -> None:
+        """Dummy method."""
+
+    def remove_done_callback(self, cb: Callable[[], None]) -> None:
+        """Dummy method."""
 
 
 @pytest.fixture
@@ -152,7 +165,7 @@ def test_host_port_default_http(make_request: Any) -> None:
     req = make_request("get", "http://python.org/")
     assert req.host == "python.org"
     assert req.port == 80
-    assert not req.ssl
+    assert not req.is_ssl()
 
 
 def test_host_port_default_https(make_request: Any) -> None:
@@ -279,6 +292,43 @@ def test_host_header_ipv6_with_port(make_request: Any) -> None:
     assert req.headers["HOST"] == "[::2]:99"
 
 
+@pytest.mark.parametrize(
+    ("url", "headers", "expected"),
+    (
+        pytest.param("http://localhost.", None, "localhost", id="dot only at the end"),
+        pytest.param("http://python.org.", None, "python.org", id="single dot"),
+        pytest.param(
+            "http://python.org.:99", None, "python.org:99", id="single dot with port"
+        ),
+        pytest.param(
+            "http://python.org...:99",
+            None,
+            "python.org:99",
+            id="multiple dots with port",
+        ),
+        pytest.param(
+            "http://python.org.:99",
+            {"host": "example.com.:99"},
+            "example.com.:99",
+            id="explicit host header",
+        ),
+        pytest.param("https://python.org.", None, "python.org", id="https"),
+        pytest.param("https://...", None, "", id="only dots"),
+        pytest.param(
+            "http://príklad.example.org.:99",
+            None,
+            "xn--prklad-4va.example.org:99",
+            id="single dot with port idna",
+        ),
+    ),
+)
+def test_host_header_fqdn(
+    make_request: Any, url: str, headers: Dict[str, str], expected: str
+) -> None:
+    req = make_request("get", url, headers=headers)
+    assert req.headers["HOST"] == expected
+
+
 def test_default_headers_useragent(make_request: Any) -> None:
     req = make_request("get", "http://python.org/")
 
@@ -342,7 +392,7 @@ def test_ipv6_default_http_port(make_request: Any) -> None:
     req = make_request("get", "http://[2001:db8::1]/")
     assert req.host == "2001:db8::1"
     assert req.port == 80
-    assert not req.ssl
+    assert not req.is_ssl()
 
 
 def test_ipv6_default_https_port(make_request: Any) -> None:
@@ -542,18 +592,18 @@ async def test_connection_header(loop: Any, conn: Any) -> None:
     req.headers.clear()
 
     req.keep_alive.return_value = True
-    req.version = (1, 1)
+    req.version = HttpVersion(1, 1)
     req.headers.clear()
     await req.send(conn)
     assert req.headers.get("CONNECTION") is None
 
-    req.version = (1, 0)
+    req.version = HttpVersion(1, 0)
     req.headers.clear()
     await req.send(conn)
     assert req.headers.get("CONNECTION") == "keep-alive"
 
     req.keep_alive.return_value = False
-    req.version = (1, 1)
+    req.version = HttpVersion(1, 1)
     req.headers.clear()
     await req.send(conn)
     assert req.headers.get("CONNECTION") == "close"
@@ -1001,9 +1051,8 @@ async def test_data_stream_exc_chain(loop: Any, conn: Any) -> None:
     # assert connection.close.called
     assert conn.protocol.set_exception.called
     outer_exc = conn.protocol.set_exception.call_args[0][0]
-    assert isinstance(outer_exc, ValueError)
-    assert inner_exc is outer_exc
-    assert inner_exc is outer_exc
+    assert isinstance(outer_exc, ClientConnectionError)
+    assert outer_exc.__cause__ is inner_exc
     await req.close()
 
 
@@ -1064,6 +1113,19 @@ async def test_close(loop: Any, buf: Any, conn: Any) -> None:
     resp.close()
 
 
+async def test_bad_version(loop: Any, conn: Any) -> None:
+    req = ClientRequest(
+        "GET",
+        URL("http://python.org"),
+        loop=loop,
+        headers={"Connection": "Close"},
+        version=("1", "1\r\nInjected-Header: not allowed"),
+    )
+
+    with pytest.raises(AttributeError):
+        await req.send(conn)
+
+
 async def test_custom_response_class(loop: Any, conn: Any) -> None:
     class CustomResponse(ClientResponse):
         def read(self, decode=False):
@@ -1081,7 +1143,7 @@ async def test_custom_response_class(loop: Any, conn: Any) -> None:
 async def test_oserror_on_write_bytes(loop: Any, conn: Any) -> None:
     req = ClientRequest("POST", URL("http://python.org/"), loop=loop)
 
-    writer = mock.Mock()
+    writer = WriterMock()
     writer.write.side_effect = OSError
 
     await req.write_bytes(writer, conn)
@@ -1095,7 +1157,8 @@ async def test_terminate(loop: Any, conn: Any) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
     resp = await req.send(conn)
     assert req._writer is not None
-    writer = req._writer = mock.Mock()
+    writer = req._writer = WriterMock()
+    writer.cancel = mock.Mock()
 
     req.terminate()
     assert req._writer is None
@@ -1111,7 +1174,7 @@ def test_terminate_with_closed_loop(loop: Any, conn: Any) -> None:
         req = ClientRequest("get", URL("http://python.org"), loop=loop)
         resp = await req.send(conn)
         assert req._writer is not None
-        writer = req._writer = mock.Mock()
+        writer = req._writer = WriterMock()
 
         await asyncio.sleep(0.05)
 

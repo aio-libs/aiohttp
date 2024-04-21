@@ -1109,10 +1109,20 @@ async def test_empty_stream_reader() -> None:
     assert await s.read() == b""
     assert await s.readline() == b""
     assert await s.readany() == b""
+    assert await s.readchunk() == (b"", False)
     assert await s.readchunk() == (b"", True)
     with pytest.raises(asyncio.IncompleteReadError):
         await s.readexactly(10)
     assert s.read_nowait() == b""
+
+
+async def test_empty_stream_reader_iter_chunks() -> None:
+    s = streams.EmptyStreamReader()
+
+    # check that iter_chunks() does not cause infinite loop
+    iter_chunks = s.iter_chunks()
+    with pytest.raises(StopAsyncIteration):
+        await iter_chunks.__anext__()
 
 
 @pytest.fixture

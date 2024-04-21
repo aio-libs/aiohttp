@@ -2,7 +2,7 @@ import asyncio
 import logging
 import warnings
 from functools import partial, update_wrapper
-from typing import (  # noqa
+from typing import (
     TYPE_CHECKING,
     Any,
     AsyncIterator,
@@ -16,22 +16,22 @@ from typing import (  # noqa
     MutableMapping,
     Optional,
     Sequence,
-    Tuple,
     Type,
     TypeVar,
     Union,
     cast,
+    final,
     overload,
 )
 
 from aiosignal import Signal
 from frozenlist import FrozenList
-from typing_extensions import final
 
 from . import hdrs
 from .helpers import AppKey
 from .log import web_logger
 from .typedefs import Middleware
+from .web_exceptions import NotAppKeyWarning
 from .web_middlewares import _fix_request_current_app
 from .web_request import Request
 from .web_response import StreamResponse
@@ -49,7 +49,7 @@ from .web_urldispatcher import (
 __all__ = ("Application", "CleanupError")
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     _AppSignal = Signal[Callable[["Application"], Awaitable[None]]]
     _RespPrepareSignal = Signal[Callable[[Request, StreamResponse], Awaitable[None]]]
     _Middlewares = FrozenList[Middleware]
@@ -143,12 +143,10 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         return self is other
 
     @overload  # type: ignore[override]
-    def __getitem__(self, key: AppKey[_T]) -> _T:
-        ...
+    def __getitem__(self, key: AppKey[_T]) -> _T: ...
 
     @overload
-    def __getitem__(self, key: str) -> Any:
-        ...
+    def __getitem__(self, key: str) -> Any: ...
 
     def __getitem__(self, key: Union[str, AppKey[_T]]) -> Any:
         return self._state[key]
@@ -160,12 +158,10 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             )
 
     @overload  # type: ignore[override]
-    def __setitem__(self, key: AppKey[_T], value: _T) -> None:
-        ...
+    def __setitem__(self, key: AppKey[_T], value: _T) -> None: ...
 
     @overload
-    def __setitem__(self, key: str, value: Any) -> None:
-        ...
+    def __setitem__(self, key: str, value: Any) -> None: ...
 
     def __setitem__(self, key: Union[str, AppKey[_T]], value: Any) -> None:
         self._check_frozen()
@@ -173,7 +169,9 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             warnings.warn(
                 "It is recommended to use web.AppKey instances for keys.\n"
                 + "https://docs.aiohttp.org/en/stable/web_advanced.html"
-                + "#application-s-config"
+                + "#application-s-config",
+                category=NotAppKeyWarning,
+                stacklevel=2,
             )
         self._state[key] = value
 
@@ -188,16 +186,13 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         return iter(self._state)
 
     @overload  # type: ignore[override]
-    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]:
-        ...
+    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]: ...
 
     @overload
-    def get(self, key: AppKey[_T], default: _U) -> Union[_T, _U]:
-        ...
+    def get(self, key: AppKey[_T], default: _U) -> Union[_T, _U]: ...
 
     @overload
-    def get(self, key: str, default: Any = ...) -> Any:
-        ...
+    def get(self, key: str, default: Any = ...) -> Any: ...
 
     def get(self, key: Union[str, AppKey[_T]], default: Any = None) -> Any:
         return self._state.get(key, default)
@@ -410,7 +405,7 @@ class CleanupError(RuntimeError):
         return cast(List[BaseException], self.args[1])
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     _CleanupContextBase = FrozenList[Callable[[Application], AsyncIterator[None]]]
 else:
     _CleanupContextBase = FrozenList

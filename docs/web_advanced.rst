@@ -262,11 +262,21 @@ instead could be enabled with ``show_index`` parameter set to ``True``::
 
    web.static('/prefix', path_to_static_folder, show_index=True)
 
-When a symlink from the static directory is accessed, the server responses to
-client with ``HTTP/404 Not Found`` by default. To allow the server to follow
-symlinks, parameter ``follow_symlinks`` should be set to ``True``::
+When a symlink that leads outside the static directory is accessed, the server
+responds to the client with ``HTTP/404 Not Found`` by default. To allow the server to
+follow symlinks that lead outside the static root, the parameter ``follow_symlinks``
+should be set to ``True``::
 
    web.static('/prefix', path_to_static_folder, follow_symlinks=True)
+
+.. caution::
+
+   Enabling ``follow_symlinks`` can be a security risk, and may lead to
+   a directory transversal attack. You do NOT need this option to follow symlinks
+   which point to somewhere else within the static directory, this option is only
+   used to break out of the security sandbox. Enabling this option is highly
+   discouraged, and only expected to be used for edge cases in a local
+   development setting where remote users do not have access to the server.
 
 When you want to enable cache busting,
 parameter ``append_version`` can be set to ``True``
@@ -927,25 +937,46 @@ Graceful shutdown
 Stopping *aiohttp web server* by just closing all connections is not
 always satisfactory.
 
-The first thing aiohttp will do is to stop listening on the sockets,
-so new connections will be rejected. It will then wait a few
-seconds to allow any pending tasks to complete before continuing
-with application shutdown. The timeout can be adjusted with
-``shutdown_timeout`` in :func:`run_app`.
+When aiohttp is run with :func:`run_app`, it will attempt a graceful shutdown
+by following these steps (if using a :ref:`runner <aiohttp-web-app-runners>`,
+then calling :meth:`AppRunner.cleanup` will perform these steps, excluding
+steps 4 and 7).
 
-Another problem is if the application supports :term:`websockets <websocket>` or
-*data streaming* it most likely has open connections at server
-shutdown time.
+1. Stop each site listening on sockets, so new connections will be rejected.
+2. Close idle keep-alive connections (and set active ones to close upon completion).
+3. Call the :attr:`Application.on_shutdown` signal. This should be used to shutdown
+   long-lived connections, such as websockets (see below).
+4. Wait a short time for running tasks to complete. This allows any pending handlers
+   or background tasks to complete successfully. The timeout can be adjusted with
+   ``shutdown_timeout`` in :func:`run_app`.
+5. Close any remaining connections and cancel their handlers. It will wait on the
+   canceling handlers for a short time, again adjustable with ``shutdown_timeout``.
+6. Call the :attr:`Application.on_cleanup` signal. This should be used to cleanup any
+   resources (such as DB connections). This includes completing the
+   :ref:`cleanup contexts<aiohttp-web-cleanup-ctx>`.
+7. Cancel any remaining tasks and wait on them to complete.
 
-The *library* has no knowledge how to close them gracefully but
-developer can help by registering :attr:`Application.on_shutdown`
-signal handler and call the signal on *web server* closing.
+.. note::
 
-Developer should keep a list of opened connections
+   When creating new tasks in a handler which _should_ be cancelled on server shutdown,
+   then it is important to keep track of those tasks and explicitly cancel them in a
+   :attr:`Application.on_shutdown` callback. As we can see from the above steps,
+   without this the server will wait on those new tasks to complete before it continues
+   with server shutdown.
+
+Websocket shutdown
+^^^^^^^^^^^^^^^^^^
+
+One problem is if the application supports :term:`websockets <websocket>` or
+*data streaming* it most likely has open connections at server shutdown time.
+
+The *library* has no knowledge how to close them gracefully but a developer can
+help by registering an :attr:`Application.on_shutdown` signal handler.
+
+A developer should keep a list of opened connections
 (:class:`Application` is a good candidate).
 
-The following :term:`websocket` snippet shows an example for websocket
-handler::
+The following :term:`websocket` snippet shows an example of a websocket handler::
 
     from aiohttp import web
     import weakref
@@ -967,19 +998,15 @@ handler::
 
         return ws
 
-Signal handler may look like::
+Then the signal handler may look like::
 
     from aiohttp import WSCloseCode
 
     async def on_shutdown(app):
         for ws in set(app[websockets]):
-            await ws.close(code=WSCloseCode.GOING_AWAY,
-                           message='Server shutdown')
+            await ws.close(code=WSCloseCode.GOING_AWAY, message="Server shutdown")
 
     app.on_shutdown.append(on_shutdown)
-
-Both :func:`run_app` and :meth:`AppRunner.cleanup` call shutdown
-signal handlers.
 
 .. _aiohttp-web-ceil-absolute-timeout:
 
@@ -1113,7 +1140,7 @@ Handling error pages
 --------------------
 
 Pages like *404 Not Found* and *500 Internal Error* could be handled
-by custom middleware, see :ref:`polls demo <aiohttp-demos-polls-middlewares>`
+by custom middleware, see :ref:`polls demo <aiohttpdemos:aiohttp-demos-polls-middlewares>`
 for example.
 
 .. _aiohttp-web-forwarded-support:

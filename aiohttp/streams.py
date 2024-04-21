@@ -1,18 +1,27 @@
 import asyncio
 import collections
 import warnings
-from typing import Awaitable, Callable, Generic, List, Optional, Tuple, TypeVar
-
-from typing_extensions import Final
+from typing import (
+    Awaitable,
+    Callable,
+    Deque,
+    Final,
+    Generic,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+)
 
 from .base_protocol import BaseProtocol
-from .helpers import BaseTimerContext, TimerNoop, set_exception, set_result
+from .helpers import (
+    _EXC_SENTINEL,
+    BaseTimerContext,
+    TimerNoop,
+    set_exception,
+    set_result,
+)
 from .log import internal_logger
-
-try:  # pragma: no cover
-    from typing import Deque
-except ImportError:
-    from typing_extensions import Deque
 
 __all__ = (
     "EMPTY_PAYLOAD",
@@ -67,9 +76,7 @@ class AsyncStreamReaderMixin:
 
     def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
         """Returns an asynchronous iterator that yields chunks of size n."""
-        return AsyncStreamIterator(
-            lambda: self.read(n)  # type: ignore[attr-defined,no-any-return]
-        )
+        return AsyncStreamIterator(lambda: self.read(n))  # type: ignore[attr-defined]
 
     def iter_any(self) -> AsyncStreamIterator[bytes]:
         """Yield all available data as soon as it is received."""
@@ -146,19 +153,23 @@ class StreamReader(AsyncStreamReaderMixin):
     def exception(self) -> Optional[BaseException]:
         return self._exception
 
-    def set_exception(self, exc: BaseException) -> None:
+    def set_exception(
+        self,
+        exc: BaseException,
+        exc_cause: BaseException = _EXC_SENTINEL,
+    ) -> None:
         self._exception = exc
         self._eof_callbacks.clear()
 
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            set_exception(waiter, exc)
+            set_exception(waiter, exc, exc_cause)
 
         waiter = self._eof_waiter
         if waiter is not None:
             self._eof_waiter = None
-            set_exception(waiter, exc)
+            set_exception(waiter, exc, exc_cause)
 
     def on_eof(self, callback: Callable[[], None]) -> None:
         if self._eof:
@@ -490,7 +501,7 @@ class StreamReader(AsyncStreamReaderMixin):
 
 class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     def __init__(self) -> None:
-        pass
+        self._read_eof_chunk = False
 
     def __repr__(self) -> str:
         return "<%s>" % self.__class__.__name__
@@ -498,7 +509,11 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     def exception(self) -> Optional[BaseException]:
         return None
 
-    def set_exception(self, exc: BaseException) -> None:
+    def set_exception(
+        self,
+        exc: BaseException,
+        exc_cause: BaseException = _EXC_SENTINEL,
+    ) -> None:
         pass
 
     def on_eof(self, callback: Callable[[], None]) -> None:
@@ -534,6 +549,10 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
         return b""
 
     async def readchunk(self) -> Tuple[bytes, bool]:
+        if not self._read_eof_chunk:
+            self._read_eof_chunk = True
+            return (b"", False)
+
         return (b"", True)
 
     async def readexactly(self, n: int) -> bytes:
@@ -569,14 +588,18 @@ class DataQueue(Generic[_SizedT]):
     def exception(self) -> Optional[BaseException]:
         return self._exception
 
-    def set_exception(self, exc: BaseException) -> None:
+    def set_exception(
+        self,
+        exc: BaseException,
+        exc_cause: BaseException = _EXC_SENTINEL,
+    ) -> None:
         self._eof = True
         self._exception = exc
 
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            set_exception(waiter, exc)
+            set_exception(waiter, exc, exc_cause)
 
     def feed_data(self, data: _SizedT) -> None:
         self._size += len(data)

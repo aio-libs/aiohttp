@@ -4,8 +4,10 @@ import base64
 import datetime
 import gc
 import platform
+import sys
 import weakref
 from math import ceil, modf
+from pathlib import Path
 from unittest import mock
 from urllib.request import getproxies_environment
 
@@ -15,7 +17,13 @@ from re_assert import Matches
 from yarl import URL
 
 from aiohttp import helpers
-from aiohttp.helpers import is_expected_content_type, parse_http_date
+from aiohttp.helpers import (
+    is_expected_content_type,
+    method_must_be_empty_body,
+    must_be_empty_body,
+    parse_http_date,
+    should_remove_content_length,
+)
 
 IS_PYPY = platform.python_implementation() == "PyPy"
 
@@ -430,6 +438,25 @@ def test_ceil_call_later() -> None:
     loop.call_at.assert_called_with(21.0, cb)
 
 
+async def test_ceil_timeout_round(loop) -> None:
+    async with helpers.ceil_timeout(7.5) as cm:
+        if sys.version_info >= (3, 11):
+            frac, integer = modf(cm.when())
+        else:
+            frac, integer = modf(cm.deadline)
+        assert frac == 0
+
+
+async def test_ceil_timeout_small(loop) -> None:
+    async with helpers.ceil_timeout(1.1) as cm:
+        if sys.version_info >= (3, 11):
+            frac, integer = modf(cm.when())
+        else:
+            frac, integer = modf(cm.deadline)
+        # a chance for exact integer with zero fraction is negligible
+        assert frac != 0
+
+
 def test_ceil_call_later_with_small_threshold() -> None:
     cb = mock.Mock()
     loop = mock.Mock()
@@ -447,25 +474,18 @@ def test_ceil_call_later_no_timeout() -> None:
 
 async def test_ceil_timeout_none(loop) -> None:
     async with helpers.ceil_timeout(None) as cm:
-        assert cm.deadline is None
-
-
-async def test_ceil_timeout_round(loop) -> None:
-    async with helpers.ceil_timeout(7.5) as cm:
-        frac, integer = modf(cm.deadline)
-        assert frac == 0
-
-
-async def test_ceil_timeout_small(loop) -> None:
-    async with helpers.ceil_timeout(1.1) as cm:
-        frac, integer = modf(cm.deadline)
-        # a chance for exact integer with zero fraction is negligible
-        assert frac != 0
+        if sys.version_info >= (3, 11):
+            assert cm.when() is None
+        else:
+            assert cm.deadline is None
 
 
 async def test_ceil_timeout_small_with_overriden_threshold(loop) -> None:
     async with helpers.ceil_timeout(1.5, ceil_threshold=1) as cm:
-        frac, integer = modf(cm.deadline)
+        if sys.version_info >= (3, 11):
+            frac, integer = modf(cm.when())
+        else:
+            frac, integer = modf(cm.deadline)
         assert frac == 0
 
 
@@ -993,6 +1013,26 @@ def test_netrc_from_env(expected_username: str):
     assert netrc_obj.authenticators("example.com")[0] == expected_username
 
 
+@pytest.fixture
+def protected_dir(tmp_path: Path):
+    protected_dir = tmp_path / "protected"
+    protected_dir.mkdir()
+    try:
+        protected_dir.chmod(0o600)
+        yield protected_dir
+    finally:
+        protected_dir.rmdir()
+
+
+def test_netrc_from_home_does_not_raise_if_access_denied(
+    protected_dir: Path, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setattr(Path, "home", lambda: protected_dir)
+    monkeypatch.delenv("NETRC", raising=False)
+
+    helpers.netrc_from_env()
+
+
 @pytest.mark.parametrize(
     ["netrc_contents", "expected_auth"],
     [
@@ -1037,3 +1077,41 @@ def test_read_basicauth_from_empty_netrc():
         LookupError, match="No entry for example.com found in the `.netrc` file."
     ):
         helpers.basicauth_from_netrc(netrc_obj, "example.com")
+
+
+def test_method_must_be_empty_body():
+    """Test that HEAD is the only method that unequivocally must have an empty body."""
+    assert method_must_be_empty_body("HEAD") is True
+    # CONNECT is only empty on a successful response
+    assert method_must_be_empty_body("CONNECT") is False
+
+
+def test_should_remove_content_length_is_subset_of_must_be_empty_body():
+    """Test should_remove_content_length is always a subset of must_be_empty_body."""
+    assert should_remove_content_length("GET", 101) is True
+    assert must_be_empty_body("GET", 101) is True
+
+    assert should_remove_content_length("GET", 102) is True
+    assert must_be_empty_body("GET", 102) is True
+
+    assert should_remove_content_length("GET", 204) is True
+    assert must_be_empty_body("GET", 204) is True
+
+    assert should_remove_content_length("GET", 204) is True
+    assert must_be_empty_body("GET", 204) is True
+
+    assert should_remove_content_length("GET", 200) is False
+    assert must_be_empty_body("GET", 200) is False
+
+    assert should_remove_content_length("HEAD", 200) is False
+    assert must_be_empty_body("HEAD", 200) is True
+
+    # CONNECT is only empty on a successful response
+    assert should_remove_content_length("CONNECT", 200) is True
+    assert must_be_empty_body("CONNECT", 200) is True
+
+    assert should_remove_content_length("CONNECT", 201) is True
+    assert must_be_empty_body("CONNECT", 201) is True
+
+    assert should_remove_content_length("CONNECT", 300) is False
+    assert must_be_empty_body("CONNECT", 300) is False

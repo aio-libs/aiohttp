@@ -4,10 +4,10 @@ import contextlib
 import gc
 import io
 import json
-import sys
 from http.cookies import SimpleCookie
 from typing import Any, List
 from unittest import mock
+from uuid import uuid4
 
 import pytest
 from multidict import CIMultiDict, MultiDict
@@ -160,7 +160,6 @@ async def test_merge_headers_with_list_of_tuples_duplicated_names(
 
 
 def test_http_GET(session: Any, params: Any) -> None:
-    # Python 3.8 will auto use mock.AsyncMock, it has different behavior
     with mock.patch(
         "aiohttp.client.ClientSession._request", new_callable=mock.MagicMock
     ) as patched:
@@ -682,14 +681,7 @@ async def test_request_tracing_url_params(loop: Any, aiohttp_client: Any) -> Non
 
     # Exception
     with mock.patch("aiohttp.client.TCPConnector.connect") as connect_patched:
-        error = Exception()
-        if sys.version_info >= (3, 8, 1):
-            connect_patched.side_effect = error
-        else:
-            loop = asyncio.get_event_loop()
-            f = loop.create_future()
-            f.set_exception(error)
-            connect_patched.return_value = f
+        connect_patched.side_effect = Exception()
 
         for req in [
             lambda: session.get("/?x=0"),
@@ -717,13 +709,7 @@ async def test_request_tracing_exception() -> None:
 
     with mock.patch("aiohttp.client.TCPConnector.connect") as connect_patched:
         error = Exception()
-        if sys.version_info >= (3, 8, 1):
-            connect_patched.side_effect = error
-        else:
-            loop = asyncio.get_event_loop()
-            f = loop.create_future()
-            f.set_exception(error)
-            connect_patched.return_value = f
+        connect_patched.side_effect = error
 
         session = aiohttp.ClientSession(trace_configs=[trace_config])
 
@@ -794,12 +780,6 @@ async def test_client_session_timeout_default_args(loop: Any) -> None:
     await session1.close()
 
 
-async def test_client_session_timeout_argument() -> None:
-    session = ClientSession(timeout=500)
-    assert session.timeout == 500
-    await session.close()
-
-
 async def test_client_session_timeout_zero() -> None:
     timeout = client.ClientTimeout(total=10, connect=0, sock_connect=0, sock_read=0)
     try:
@@ -807,6 +787,13 @@ async def test_client_session_timeout_zero() -> None:
             await session.get("http://example.com")
     except asyncio.TimeoutError:
         pytest.fail("0 should disable timeout.")
+
+
+async def test_client_session_timeout_bad_argument() -> None:
+    with pytest.raises(ValueError):
+        ClientSession(timeout="test_bad_argumnet")
+    with pytest.raises(ValueError):
+        ClientSession(timeout=100)
 
 
 async def test_requote_redirect_url_default() -> None:
@@ -855,3 +842,33 @@ async def test_build_url_returns_expected_url(
 ) -> None:
     session = await create_session(base_url)
     assert session._build_url(url) == expected_url
+
+
+async def test_instantiation_with_invalid_timeout_value(loop):
+    loop.set_debug(False)
+    logs = []
+    loop.set_exception_handler(lambda loop, ctx: logs.append(ctx))
+    with pytest.raises(ValueError, match="timeout parameter cannot be .*"):
+        ClientSession(timeout=1)
+    # should not have "Unclosed client session" warning
+    assert not logs
+
+
+@pytest.mark.parametrize(
+    ("outer_name", "inner_name"),
+    [
+        ("skip_auto_headers", "_skip_auto_headers"),
+        ("auth", "_default_auth"),
+        ("json_serialize", "_json_serialize"),
+        ("connector_owner", "_connector_owner"),
+        ("raise_for_status", "_raise_for_status"),
+        ("trust_env", "_trust_env"),
+        ("trace_configs", "_trace_configs"),
+    ],
+)
+async def test_properties(
+    session: ClientSession, outer_name: str, inner_name: str
+) -> None:
+    value = uuid4()
+    setattr(session, inner_name, value)
+    assert value == getattr(session, outer_name)

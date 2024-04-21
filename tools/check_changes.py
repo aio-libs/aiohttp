@@ -4,8 +4,21 @@ import re
 import sys
 from pathlib import Path
 
-ALLOWED_SUFFIXES = ["feature", "bugfix", "doc", "removal", "misc"]
-PATTERN = re.compile(r"\d+\.(" + "|".join(ALLOWED_SUFFIXES) + r")(\.\d+)?(\.rst)?")
+ALLOWED_SUFFIXES = (
+    "bugfix",
+    "feature",
+    "deprecation",
+    "breaking",
+    "doc",
+    "packaging",
+    "contrib",
+    "misc",
+)
+PATTERN = re.compile(
+    r"(\d+|[0-9a-f]{8}|[0-9a-f]{7}|[0-9a-f]{40})\.("
+    + "|".join(ALLOWED_SUFFIXES)
+    + r")(\.\d+)?(\.rst)?",
+)
 
 
 def get_root(script_path):

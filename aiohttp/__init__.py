@@ -21,15 +21,22 @@ from .client import (
     ClientSSLError,
     ClientTimeout,
     ClientWebSocketResponse,
+    ConnectionTimeoutError,
     ContentTypeError,
     Fingerprint,
     InvalidURL,
+    InvalidUrlClientError,
+    InvalidUrlRedirectClientError,
     NamedPipeConnector,
+    NonHttpUrlClientError,
+    NonHttpUrlRedirectClientError,
+    RedirectClientError,
     RequestInfo,
     ServerConnectionError,
     ServerDisconnectedError,
     ServerFingerprintMismatch,
     ServerTimeoutError,
+    SocketTimeoutError,
     TCPConnector,
     TooManyRedirects,
     UnixConnector,
@@ -99,7 +106,7 @@ from .tracing import (
     TraceResponseChunkReceivedParams,
 )
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     # At runtime these are lazy-loaded at the bottom of the file.
     from .worker import GunicornUVLoopWebWorker, GunicornWebWorker
 
@@ -123,14 +130,21 @@ __all__: Tuple[str, ...] = (
     "ClientSession",
     "ClientTimeout",
     "ClientWebSocketResponse",
+    "ConnectionTimeoutError",
     "ContentTypeError",
     "Fingerprint",
     "InvalidURL",
+    "InvalidUrlClientError",
+    "InvalidUrlRedirectClientError",
+    "NonHttpUrlClientError",
+    "NonHttpUrlRedirectClientError",
+    "RedirectClientError",
     "RequestInfo",
     "ServerConnectionError",
     "ServerDisconnectedError",
     "ServerFingerprintMismatch",
     "ServerTimeoutError",
+    "SocketTimeoutError",
     "TCPConnector",
     "TooManyRedirects",
     "UnixConnector",
