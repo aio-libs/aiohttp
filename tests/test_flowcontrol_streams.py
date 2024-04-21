@@ -119,12 +119,12 @@ class TestFlowControlStreamReader:
 class TestFlowControlDataQueue:
     def test_feed_pause(self, buffer: Any) -> None:
         buffer._protocol._reading_paused = False
-        buffer.feed_data("x")
+        buffer.feed_data("x" * 100)
 
         assert buffer._protocol.pause_reading.called
 
     async def test_resume_on_read(self, buffer: Any) -> None:
-        buffer.feed_data("x")
+        buffer.feed_data("x" * 100)
 
         buffer._protocol._reading_paused = True
         await buffer.read()
