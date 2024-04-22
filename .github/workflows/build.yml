@@ -19,7 +19,9 @@ jobs:
     - name: Install Microsoft C++ Build Tools
       run: |
         choco install visualstudio2019buildtools --package-parameters "--add Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
-
+    - name: Update Git
+      run: |
+         git submodule update --init
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
