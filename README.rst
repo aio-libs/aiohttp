@@ -148,7 +148,7 @@ Communication channels
 
 *aio-libs Discussions*: https://github.com/aio-libs/aiohttp/discussions
 
-*gitter chat* https://gitter.im/aio-libs/Lobby
+*Matrix*: `#aio-libs:matrix.org <https://matrix.to/#/#aio-libs:matrix.org>`_
 
 We support `Stack Overflow
 <https://stackoverflow.com/questions/tagged/aiohttp>`_.
