@@ -294,6 +294,19 @@ def test_parse_headers_longline(parser: Any) -> None:
         parser.feed_data(text)
 
 
+@pytest.fixture
+def xfail_c_parser_status(request) -> None:
+    if isinstance(request.getfixturevalue("parser"), HttpRequestParserPy):
+        return
+    request.node.add_marker(
+        pytest.mark.xfail(
+            reason="Regression test for Py parser. May match C behaviour later.",
+            raises=http_exceptions.BadStatusLine,
+        )
+    )
+
+
+@pytest.mark.usefixtures("xfail_c_parser_status")
 def test_parse_unusual_request_line(parser) -> None:
     if not isinstance(response, HttpResponseParserPy):
         pytest.xfail("Regression test for Py parser. May match C behaviour later.")
@@ -632,9 +645,6 @@ def test_invalid_header_spacing(parser, pad1: bytes, pad2: bytes, hdr: bytes) ->
     if pad1 == pad2 == b"" and hdr != b"":
         # one entry in param matrix is correct: non-empty name, not padded
         expectation = nullcontext()
-    if pad1 == pad2 == hdr == b"":
-        if not isinstance(response, HttpResponseParserPy):
-            pytest.xfail("Regression test for Py parser. May match C behaviour later.")
     with expectation:
         parser.feed_data(text)
 
@@ -815,9 +825,20 @@ def test_http_request_upgrade(parser: Any) -> None:
     assert tail == b"some raw data"
 
 
+@pytest.fixture
+def xfail_c_parser_url(request) -> None:
+    if isinstance(request.getfixturevalue("parser"), HttpRequestParserPy):
+        return
+    request.node.add_marker(
+        pytest.mark.xfail(
+            reason="Regression test for Py parser. May match C behaviour later.",
+            raises=http_exceptions.InvalidURLError,
+        )
+    )
+
+
+@pytest.mark.usefixtures("xfail_c_parser_url")
 def test_http_request_parser_utf8_request_line(parser) -> None:
-    if not isinstance(response, HttpResponseParserPy):
-        pytest.xfail("Regression test for Py parser. May match C behaviour later.")
     messages, upgrade, tail = parser.feed_data(
         # note the truncated unicode sequence
         b"GET /P\xc3\xbcnktchen\xa0\xef\xb7 HTTP/1.1\r\n" +
@@ -837,7 +858,9 @@ def test_http_request_parser_utf8_request_line(parser) -> None:
     assert msg.compression is None
     assert not msg.upgrade
     assert not msg.chunked
-    assert msg.url.path == URL("/P%C3%BCnktchen\udca0\udcef\udcb7").path
+    # python HTTP parser depends on Cython and CPython URL to match
+    # .. but yarl.URL("/abs") is not equal to URL.build(path="/abs"), see #6409
+    assert msg.url == URL.build(path="/Pünktchen\udca0\udcef\udcb7", encoded=True)
 
 
 def test_http_request_parser_utf8(parser) -> None:
