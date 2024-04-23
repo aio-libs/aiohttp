@@ -335,17 +335,13 @@ class WebSocketReader:
                 else:
                     msg = WSMessage(WSMsgType.CLOSE, 0, "")
 
-                self.queue.feed_data(msg, 0)
+                self.queue.feed_data(msg)
 
             elif opcode == WSMsgType.PING:
-                self.queue.feed_data(
-                    WSMessage(WSMsgType.PING, payload, ""), len(payload)
-                )
+                self.queue.feed_data(WSMessage(WSMsgType.PING, payload, ""))
 
             elif opcode == WSMsgType.PONG:
-                self.queue.feed_data(
-                    WSMessage(WSMsgType.PONG, payload, ""), len(payload)
-                )
+                self.queue.feed_data(WSMessage(WSMsgType.PONG, payload, ""))
 
             elif (
                 opcode not in (WSMsgType.TEXT, WSMsgType.BINARY)
@@ -417,9 +413,7 @@ class WebSocketReader:
                     if opcode == WSMsgType.TEXT:
                         try:
                             text = payload_merged.decode("utf-8")
-                            self.queue.feed_data(
-                                WSMessage(WSMsgType.TEXT, text, ""), len(text)
-                            )
+                            self.queue.feed_data(WSMessage(WSMsgType.TEXT, text, ""))
                         except UnicodeDecodeError as exc:
                             raise WebSocketError(
                                 WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
@@ -427,7 +421,6 @@ class WebSocketReader:
                     else:
                         self.queue.feed_data(
                             WSMessage(WSMsgType.BINARY, payload_merged, ""),
-                            len(payload_merged),
                         )
 
         return False, b""
