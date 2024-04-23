@@ -12,7 +12,7 @@ try:
 
     # aiodns_default = hasattr(aiodns.DNSResolver, 'getaddrinfo')
 except ImportError:  # pragma: no cover
-    aiodns = None
+    aiodns = None  # type: ignore[assignment]
 
 
 aiodns_default = False
@@ -32,7 +32,7 @@ class ThreadedResolver(AbstractResolver):
         self._loop = asyncio.get_running_loop()
 
     async def resolve(
-        self, host: str, port: int = 0, family: int = socket.AF_INET
+        self, host: str, port: int = 0, family: socket.AddressFamily = socket.AF_INET
     ) -> List[ResolveResult]:
         infos = await self._loop.getaddrinfo(
             host,
@@ -86,11 +86,10 @@ class AsyncResolver(AbstractResolver):
         if aiodns is None:
             raise RuntimeError("Resolver requires aiodns library")
 
-        self._loop = asyncio.get_running_loop()
-        self._resolver = aiodns.DNSResolver(*args, loop=self._loop, **kwargs)
+        self._resolver = aiodns.DNSResolver(*args, **kwargs)
 
     async def resolve(
-        self, host: str, port: int = 0, family: int = socket.AF_INET
+        self, host: str, port: int = 0, family: socket.AddressFamily = socket.AF_INET
     ) -> List[ResolveResult]:
         try:
             resp = await self._resolver.getaddrinfo(

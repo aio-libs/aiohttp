@@ -146,7 +146,7 @@ class AbstractResolver(ABC):
 
     @abstractmethod
     async def resolve(
-        self, host: str, port: int = 0, family: int = socket.AF_INET
+        self, host: str, port: int = 0, family: socket.AddressFamily = socket.AF_INET
     ) -> List[ResolveResult]:
         """Return IP address for given hostname"""
 
