@@ -766,7 +766,7 @@ class TCPConnector(BaseConnector):
         fingerprint: Optional[bytes] = None,
         use_dns_cache: bool = True,
         ttl_dns_cache: Optional[int] = 10,
-        family: int = 0,
+        family: socket.AddressFamily = socket.AddressFamily.AF_UNSPEC,
         ssl_context: Optional[SSLContext] = None,
         ssl: Union[bool, Fingerprint, SSLContext] = True,
         local_addr: Optional[Tuple[str, int]] = None,
