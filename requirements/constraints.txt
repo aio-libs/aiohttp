@@ -5,7 +5,9 @@
 #    pip-compile --allow-unsafe --output-file=requirements/constraints.txt --resolver=backtracking --strip-extras requirements/constraints.in
 #
 aiodns==3.2.0 ; sys_platform == "linux" or sys_platform == "darwin"
-    # via -r requirements/runtime-deps.in
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/runtime-deps.in
 aiohappyeyeballs==2.3.2
     # via -r requirements/runtime-deps.in
 aiohttp-theme==0.1.6
@@ -166,8 +168,10 @@ pytest-mock==3.14.0
     # via -r requirements/test.in
 python-dateutil==2.8.2
     # via freezegun
-python-on-whales==0.70.1
-    # via -r requirements/test.in
+python-on-whales==0.71.0
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/test.in
 pytz==2023.3.post1
     # via babel
 pyyaml==6.0.1
