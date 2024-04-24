@@ -34,7 +34,7 @@ cryptography==41.0.3
     # via trustme
 exceptiongroup==1.1.2
     # via pytest
-freezegun==1.4.0
+freezegun==1.5.0
     # via -r requirements/test.in
 frozenlist==1.4.1
     # via
