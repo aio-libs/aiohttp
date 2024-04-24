@@ -30,7 +30,7 @@ click==8.1.6
     # via
     #   typer
     #   wait-for-it
-coverage==7.4.4
+coverage==7.5.0
     # via
     #   -r requirements/test.in
     #   pytest-cov
@@ -113,7 +113,6 @@ typer==0.9.0
     # via python-on-whales
 typing-extensions==4.11.0
     # via
-    #   -r requirements/typing-extensions.in
     #   annotated-types
     #   mypy
     #   pydantic
