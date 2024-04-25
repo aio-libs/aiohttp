@@ -674,7 +674,7 @@ class Response(StreamResponse):
 
             # copy payload headers
             if body.headers:
-                for (key, value) in body.headers.items():
+                for key, value in body.headers.items():
                     if key not in headers:
                         headers[key] = value
 

@@ -1,6 +1,5 @@
 """Low-level http related exceptions."""
 
-
 from textwrap import indent
 from typing import Optional, Union
 
