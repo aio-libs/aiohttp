@@ -8,6 +8,7 @@ This module is based on an idea that pytest uses for self-testing:
 * https://github.com/pytest-dev/pytest/blob/d18c75b/testing/test_meta.py
 * https://twitter.com/codewithanthony/status/1229445110510735361
 """
+
 import os
 import pkgutil
 import socket
@@ -30,14 +31,16 @@ def _mark_aiohttp_worker_for_skipping(
     importables: List[str],
 ) -> List[Union[str, "ParameterSet"]]:
     return [
-        pytest.param(
-            importable,
-            marks=pytest.mark.skipif(
-                not hasattr(socket, "AF_UNIX"), reason="It's a UNIX-only module"
-            ),
+        (
+            pytest.param(
+                importable,
+                marks=pytest.mark.skipif(
+                    not hasattr(socket, "AF_UNIX"), reason="It's a UNIX-only module"
+                ),
+            )
+            if importable == "aiohttp.worker"
+            else importable
         )
-        if importable == "aiohttp.worker"
-        else importable
         for importable in importables
     ]
 

@@ -192,13 +192,16 @@ async def test_https_proxy_unsupported_tls_in_tls(
         r"$"
     )
 
-    with pytest.warns(RuntimeWarning, match=expected_warning_text,), pytest.raises(
+    with pytest.warns(
+        RuntimeWarning,
+        match=expected_warning_text,
+    ), pytest.raises(
         ClientConnectionError,
         match=expected_exception_reason,
     ) as conn_err:
         await sess.get(url, proxy=secure_proxy_url, ssl=client_ssl_ctx)
 
-    assert type(conn_err.value.__cause__) == TypeError
+    assert isinstance(conn_err.value.__cause__, TypeError)
     assert match_regex(f"^{type_err!s}$", str(conn_err.value.__cause__))
 
     await sess.close()

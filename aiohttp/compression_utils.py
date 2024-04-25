@@ -50,9 +50,11 @@ class ZLibCompressor(ZlibBaseHandler):
         max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
     ):
         super().__init__(
-            mode=encoding_to_mode(encoding, suppress_deflate_header)
-            if wbits is None
-            else wbits,
+            mode=(
+                encoding_to_mode(encoding, suppress_deflate_header)
+                if wbits is None
+                else wbits
+            ),
             executor=executor,
             max_sync_chunk_size=max_sync_chunk_size,
         )

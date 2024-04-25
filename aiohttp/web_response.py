@@ -176,7 +176,7 @@ class StreamResponse(BaseClass, HeadersMixin):
     ) -> None:
         """Enables response compression encoding."""
         # Backwards compatibility for when force was a bool <0.17.
-        if type(force) == bool:
+        if isinstance(force, bool):
             force = ContentCoding.deflate if force else ContentCoding.identity
             warnings.warn(
                 "Using boolean for force is deprecated #3318", DeprecationWarning
@@ -674,7 +674,7 @@ class Response(StreamResponse):
 
             # copy payload headers
             if body.headers:
-                for (key, value) in body.headers.items():
+                for key, value in body.headers.items():
                     if key not in headers:
                         headers[key] = value
 
