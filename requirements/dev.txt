@@ -167,7 +167,7 @@ pytest-mock==3.14.0
     # via -r requirements/test.in
 python-dateutil==2.8.2
     # via freezegun
-python-on-whales==0.70.1
+python-on-whales==0.71.0
     # via -r requirements/test.in
 pytz==2023.3.post1
     # via babel
@@ -234,7 +234,6 @@ typer==0.9.0
     # via python-on-whales
 typing-extensions==4.11.0
     # via
-    #   -r requirements/typing-extensions.in
     #   aioredis
     #   annotated-types
     #   mypy
