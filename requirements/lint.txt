@@ -66,7 +66,7 @@ pygments==2.17.2
     # via rich
 pytest==8.1.1
     # via -r requirements/lint.in
-python-on-whales==0.70.1
+python-on-whales==0.71.0
     # via -r requirements/lint.in
 pyyaml==6.0.1
     # via pre-commit
@@ -90,10 +90,12 @@ typer==0.12.3
 typing-extensions==4.11.0
     # via
     #   aioredis
+    #   annotated-types
     #   mypy
     #   pydantic
     #   pydantic-core
     #   python-on-whales
+    #   rich
     #   typer
 urllib3==2.2.1
     # via requests
