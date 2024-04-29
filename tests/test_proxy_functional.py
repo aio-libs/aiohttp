@@ -181,7 +181,7 @@ async def test_https_proxy_unsupported_tls_in_tls(
         ClientConnectionError,
         match=expected_exception_reason,
     ) as conn_err:
-        async with sess.get(url, proxy=secure_proxy_url, ssl=client_ssl_ctx) as resp:
+        async with sess.get(url, proxy=secure_proxy_url, ssl=client_ssl_ctx):
             pass
 
     assert isinstance(conn_err.value.__cause__, TypeError)
@@ -396,7 +396,7 @@ async def test_proxy_http_acquired_cleanup_force(
     assert 0 == len(conn._acquired)
 
     async def request():
-        async with sess.get(url, proxy=proxy.url) as resp:
+        async with sess.get(url, proxy=proxy.url):
             assert 1 == len(conn._acquired)
 
     await request()
@@ -577,7 +577,7 @@ async def xtest_proxy_https_acquired_cleanup(proxy_test_server: Any, loop: Any) 
     assert 0 == len(conn._acquired)
 
     async def request():
-        async with sess.get(url, proxy=proxy.url) as sess:
+        async with sess.get(url, proxy=proxy.url):
             assert 1 == len(conn._acquired)
 
     await request()
@@ -600,7 +600,7 @@ async def xtest_proxy_https_acquired_cleanup_force(
     assert 0 == len(conn._acquired)
 
     async def request():
-        async with sess.get(url, proxy=proxy.url) as sess:
+        async with sess.get(url, proxy=proxy.url):
             assert 1 == len(conn._acquired)
 
     await request()
