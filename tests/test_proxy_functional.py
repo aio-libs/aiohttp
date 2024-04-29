@@ -16,18 +16,6 @@ from aiohttp import web
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.helpers import IS_MACOS, IS_WINDOWS
 
-pytestmark = [
-    pytest.mark.filterwarnings(
-        "ignore:unclosed <socket.socket fd=.*:ResourceWarning",
-    ),
-    pytest.mark.filterwarnings(
-        "ignore:"
-        "unclosed transport <_SelectorSocketTransport closing fd=.*"
-        ":ResourceWarning",
-    ),
-]
-
-
 ASYNCIO_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11)
 
 
@@ -121,16 +109,14 @@ async def test_secure_https_proxy_absolute_path(
     conn = aiohttp.TCPConnector()
     sess = aiohttp.ClientSession(connector=conn)
 
-    response = await sess.get(
+    async with sess.get(
         web_server_endpoint_url,
         proxy=secure_proxy_url,
         ssl=client_ssl_ctx,  # used for both proxy and endpoint connections
-    )
+    ) as response:
+        assert response.status == 200
+        assert await response.text() == web_server_endpoint_payload
 
-    assert response.status == 200
-    assert await response.text() == web_server_endpoint_payload
-
-    response.close()
     await sess.close()
     await conn.close()
 
@@ -199,7 +185,8 @@ async def test_https_proxy_unsupported_tls_in_tls(
         ClientConnectionError,
         match=expected_exception_reason,
     ) as conn_err:
-        await sess.get(url, proxy=secure_proxy_url, ssl=client_ssl_ctx)
+        async with sess.get(url, proxy=secure_proxy_url, ssl=client_ssl_ctx):
+            pass
 
     assert isinstance(conn_err.value.__cause__, TypeError)
     assert match_regex(f"^{type_err!s}$", str(conn_err.value.__cause__))
@@ -259,13 +246,11 @@ def proxy_test_server(aiohttp_raw_server, loop, monkeypatch):
 def get_request(loop):
     async def _request(method="GET", *, url, trust_env=False, **kwargs):
         connector = aiohttp.TCPConnector(ssl=False, loop=loop)
-        client = aiohttp.ClientSession(connector=connector, trust_env=trust_env)
-        try:
-            resp = await client.request(method, url, **kwargs)
-            await resp.release()
-            return resp
-        finally:
-            await client.close()
+        async with aiohttp.ClientSession(
+            connector=connector, trust_env=trust_env
+        ) as client:
+            async with client.request(method, url, **kwargs) as resp:
+                return resp
 
     return _request
 
@@ -405,11 +390,8 @@ async def test_proxy_http_acquired_cleanup_force(proxy_test_server, loop) -> Non
     assert 0 == len(conn._acquired)
 
     async def request():
-        resp = await sess.get(url, proxy=proxy.url)
-
-        assert 1 == len(conn._acquired)
-
-        await resp.release()
+        async with sess.get(url, proxy=proxy.url):
+            assert 1 == len(conn._acquired)
 
     await request()
 
@@ -433,13 +415,11 @@ async def test_proxy_http_multi_conn_limit(proxy_test_server, loop) -> None:
         # process requests only one by one
         nonlocal current_pid
 
-        resp = await sess.get(url, proxy=proxy.url)
+        async with sess.get(url, proxy=proxy.url) as resp:
+            current_pid = pid
+            await asyncio.sleep(0.2, loop=loop)
+            assert current_pid == pid
 
-        current_pid = pid
-        await asyncio.sleep(0.2, loop=loop)
-        assert current_pid == pid
-
-        await resp.release()
         return resp
 
     requests = [request(pid) for pid in range(multi_conn_num)]
@@ -490,9 +470,8 @@ async def xtest_proxy_https_send_body(proxy_test_server, loop):
     proxy.return_value = {"status": 200, "body": b"1" * (2**20)}
     url = "https://www.google.com.ua/search?q=aiohttp proxy"
 
-    resp = await sess.get(url, proxy=proxy.url)
-    body = await resp.read()
-    await resp.release()
+    async with sess.get(url, proxy=proxy.url) as resp:
+        body = await resp.read()
     await sess.close()
 
     assert body == b"1" * (2**20)
@@ -586,11 +565,8 @@ async def xtest_proxy_https_acquired_cleanup(proxy_test_server, loop):
     assert 0 == len(conn._acquired)
 
     async def request():
-        resp = await sess.get(url, proxy=proxy.url)
-
-        assert 1 == len(conn._acquired)
-
-        await resp.release()
+        async with sess.get(url, proxy=proxy.url):
+            assert 1 == len(conn._acquired)
 
     await request()
 
@@ -610,11 +586,8 @@ async def xtest_proxy_https_acquired_cleanup_force(proxy_test_server, loop):
     assert 0 == len(conn._acquired)
 
     async def request():
-        resp = await sess.get(url, proxy=proxy.url)
-
-        assert 1 == len(conn._acquired)
-
-        await resp.release()
+        async with sess.get(url, proxy=proxy.url):
+            assert 1 == len(conn._acquired)
 
     await request()
 
@@ -638,13 +611,11 @@ async def xtest_proxy_https_multi_conn_limit(proxy_test_server, loop):
         # process requests only one by one
         nonlocal current_pid
 
-        resp = await sess.get(url, proxy=proxy.url)
+        async with sess.get(url, proxy=proxy.url) as resp:
+            current_pid = pid
+            await asyncio.sleep(0.2, loop=loop)
+            assert current_pid == pid
 
-        current_pid = pid
-        await asyncio.sleep(0.2, loop=loop)
-        assert current_pid == pid
-
-        await resp.release()
         return resp
 
     requests = [request(pid) for pid in range(multi_conn_num)]
@@ -850,8 +821,9 @@ async def test_proxy_auth() -> None:
         with pytest.raises(
             ValueError, match=r"proxy_auth must be None or BasicAuth\(\) tuple"
         ):
-            await session.get(
+            async with session.get(
                 "http://python.org",
                 proxy="http://proxy.example.com",
                 proxy_auth=("user", "pass"),
-            )
+            ):
+                pass
