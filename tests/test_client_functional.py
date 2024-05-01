@@ -3644,3 +3644,26 @@ async def test_raise_for_status_is_none(aiohttp_client: AiohttpClient) -> None:
     session = await aiohttp_client(app, raise_for_status=None)  # type: ignore[arg-type]
 
     await session.get("/")
+
+
+@pytest.mark.xfail(
+    reason="#8395 Error message regression for large headers in 3.9.4",
+    raises=AssertionError,
+)
+async def test_header_too_large_error(aiohttp_client: Any) -> None:
+    """By default when not specifying `max_field_size` requests should fail with a 400 status code."""
+
+    async def handler(_: web.Request) -> web.Response:
+        return web.Response(headers={"VeryLargeHeader": "x" * 10000})
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+    client = await aiohttp_client(app)
+
+    try:
+        await client.get("/")
+    except aiohttp.ClientResponseError as e:
+        assert e.status == 400
+        assert "Got more than 8190 bytes" in e.message
+    else:
+        raise AssertionError("Expected ClientResponseError")
