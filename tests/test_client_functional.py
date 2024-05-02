@@ -3656,6 +3656,8 @@ async def test_header_too_large_error(aiohttp_client: Any) -> None:
     app.add_routes([web.get("/", handler)])
     client = await aiohttp_client(app)
 
-    with pytest.raises(aiohttp.ClientResponseError, match="Got more than 8190 bytes*") as exc_info:
+    with pytest.raises(
+        aiohttp.ClientResponseError, match="Got more than 8190 bytes*"
+    ) as exc_info:
         await client.get("/")
     assert exc_info.value.status == 400
