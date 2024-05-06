@@ -32,7 +32,7 @@ importlib-resources==6.1.1
     # via towncrier
 incremental==22.10.0
     # via towncrier
-jinja2==3.1.3
+jinja2==3.1.4
     # via
     #   sphinx
     #   towncrier
@@ -90,6 +90,4 @@ zipp==3.17.0
 
 # The following packages are considered to be unsafe in a requirements file:
 setuptools==68.0.0
-    # via
-    #   blockdiag
-    #   sphinx
+    # via blockdiag
