@@ -357,7 +357,7 @@ The client session supports the context manager protocol for self closing.
                          read_until_eof=True, \
                          read_bufsize=None, \
                          proxy=None, proxy_auth=None,\
-                         timeout=sentinel, ssl=None, \
+                         timeout=sentinel, ssl=True, \
                          verify_ssl=None, fingerprint=None, \
                          ssl_context=None, proxy_headers=None, \
                          server_hostname=None, auto_decompress=None)
@@ -475,7 +475,7 @@ The client session supports the context manager protocol for self closing.
 
             If :class:`float` is passed it is a *total* timeout (in seconds).
 
-      :param ssl: SSL validation mode. ``None`` for default SSL check
+      :param ssl: SSL validation mode. ``True`` for default SSL check
                   (:func:`ssl.create_default_context` is used),
                   ``False`` for skip SSL certificate validation,
                   :class:`aiohttp.Fingerprint` for fingerprint
@@ -680,7 +680,7 @@ The client session supports the context manager protocol for self closing.
                             origin=None, \
                             params=None, \
                             headers=None, \
-                            proxy=None, proxy_auth=None, ssl=None, \
+                            proxy=None, proxy_auth=None, ssl=True, \
                             verify_ssl=None, fingerprint=None, \
                             ssl_context=None, proxy_headers=None, \
                             compress=0, max_msg_size=4194304)
@@ -744,7 +744,7 @@ The client session supports the context manager protocol for self closing.
       :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
                                            Basic Authorization (optional)
 
-      :param ssl: SSL validation mode. ``None`` for default SSL check
+      :param ssl: SSL validation mode. ``True`` for default SSL check
                   (:func:`ssl.create_default_context` is used),
                   ``False`` for skip SSL certificate validation,
                   :class:`aiohttp.Fingerprint` for fingerprint
@@ -1050,7 +1050,7 @@ is controlled by *force_close* constructor's parameter).
       overridden in subclasses.
 
 
-.. class:: TCPConnector(*, ssl=None, verify_ssl=True, fingerprint=None, \
+.. class:: TCPConnector(*, ssl=True, verify_ssl=True, fingerprint=None, \
                  use_dns_cache=True, ttl_dns_cache=10, \
                  family=0, ssl_context=None, local_addr=None, \
                  resolver=None, keepalive_timeout=sentinel, \
@@ -1068,7 +1068,7 @@ is controlled by *force_close* constructor's parameter).
    Constructor accepts all parameters suitable for
    :class:`BaseConnector` plus several TCP-specific ones:
 
-      :param ssl: SSL validation mode. ``None`` for default SSL check
+      :param ssl: SSL validation mode. ``True`` for default SSL check
                   (:func:`ssl.create_default_context` is used),
                   ``False`` for skip SSL certificate validation,
                   :class:`aiohttp.Fingerprint` for fingerprint
