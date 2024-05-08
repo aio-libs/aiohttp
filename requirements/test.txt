@@ -26,7 +26,7 @@ click==8.1.6
     # via
     #   typer
     #   wait-for-it
-coverage==7.4.4
+coverage==7.5.0
     # via
     #   -r requirements/test.in
     #   pytest-cov
@@ -34,13 +34,13 @@ cryptography==41.0.3
     # via trustme
 exceptiongroup==1.1.2
     # via pytest
-freezegun==1.4.0
+freezegun==1.5.0
     # via -r requirements/test.in
 frozenlist==1.4.1
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-gunicorn==21.2.0
+gunicorn==22.0.0
     # via -r requirements/base.in
 idna==3.4
     # via
@@ -53,7 +53,7 @@ multidict==6.0.5
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.9.0 ; implementation_name == "cpython"
+mypy==1.10.0 ; implementation_name == "cpython"
     # via -r requirements/test.in
 mypy-extensions==1.0.0
     # via mypy
@@ -63,7 +63,7 @@ packaging==23.1
     #   pytest
 pluggy==1.4.0
     # via pytest
-proxy-py==2.4.4rc4
+proxy-py==2.4.4rc5
     # via -r requirements/test.in
 pycares==4.3.0
     # via aiodns
@@ -82,7 +82,7 @@ pytest-mock==3.14.0
     # via -r requirements/test.in
 python-dateutil==2.8.2
     # via freezegun
-python-on-whales==0.70.1
+python-on-whales==0.71.0
     # via -r requirements/test.in
 re-assert==1.1.0
     # via -r requirements/test.in
@@ -107,7 +107,6 @@ typer==0.9.0
     # via python-on-whales
 typing-extensions==4.10.0
     # via
-    #   -r requirements/typing-extensions.in
     #   mypy
     #   pydantic
     #   python-on-whales
