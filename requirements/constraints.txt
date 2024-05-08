@@ -52,7 +52,7 @@ coverage==7.4.4
     # via
     #   -r requirements/test.in
     #   pytest-cov
-cryptography==41.0.3
+cryptography==42.0.6
     # via
     #   pyjwt
     #   trustme
@@ -76,11 +76,11 @@ funcparserlib==1.0.1
     # via blockdiag
 gidgethub==5.3.0
     # via cherry-picker
-gunicorn==21.2.0
+gunicorn==22.0.0
     # via -r requirements/base.in
 identify==2.5.26
     # via pre-commit
-idna==3.4
+idna==3.7
     # via
     #   requests
     #   trustme
@@ -97,7 +97,7 @@ incremental==22.10.0
     # via towncrier
 iniconfig==2.0.0
     # via pytest
-jinja2==3.1.2
+jinja2==3.1.4
     # via
     #   sphinx
     #   towncrier
@@ -122,7 +122,7 @@ packaging==23.1
     #   gunicorn
     #   pytest
     #   sphinx
-pillow==9.5.0
+pillow==10.3.0
     # via
     #   -c requirements/broken-projects.in
     #   blockdiag
@@ -140,7 +140,7 @@ pycares==4.3.0
     # via aiodns
 pycparser==2.21
     # via cffi
-pydantic==1.10.12
+pydantic==1.10.13
     # via python-on-whales
 pyenchant==3.2.2
     # via sphinxcontrib-spelling
@@ -228,7 +228,7 @@ towncrier==23.11.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
-tqdm==4.65.0
+tqdm==4.66.3
     # via python-on-whales
 trustme==1.1.0 ; platform_machine != "i686"
     # via -r requirements/test.in
@@ -244,7 +244,7 @@ typing-extensions==4.10.0
     #   typer
 uritemplate==4.1.1
     # via gidgethub
-urllib3==2.0.4
+urllib3==2.0.7
     # via requests
 uvloop==0.19.0 ; platform_system != "Windows"
     # via
