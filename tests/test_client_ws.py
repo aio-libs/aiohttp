@@ -278,7 +278,7 @@ async def test_close(loop: Any, ws_key: Any, key_data: Any) -> None:
                 assert not resp.closed
 
                 resp._reader.feed_data(
-                    aiohttp.WSMessage(aiohttp.WSMsgType.CLOSE, b"", b""), 0
+                    aiohttp.WSMessage(aiohttp.WSMsgType.CLOSE, b"", b"")
                 )
 
                 res = await resp.close()

@@ -47,7 +47,6 @@ from .http_exceptions import (
     TransferEncodingError,
 )
 from .http_writer import HttpVersion, HttpVersion10
-from .log import internal_logger
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import RawHeaders
 
@@ -242,7 +241,6 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         timer: Optional[BaseTimerContext] = None,
         code: Optional[int] = None,
         method: Optional[str] = None,
-        readall: bool = False,
         payload_exception: Optional[Type[BaseException]] = None,
         response_with_body: bool = True,
         read_until_eof: bool = False,
@@ -255,7 +253,6 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         self.timer = timer
         self.code = code
         self.method = method
-        self.readall = readall
         self.payload_exception = payload_exception
         self.response_with_body = response_with_body
         self.read_until_eof = read_until_eof
@@ -381,7 +378,6 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 method=method,
                                 compression=msg.compression,
                                 code=self.code,
-                                readall=self.readall,
                                 response_with_body=self.response_with_body,
                                 auto_decompress=self._auto_decompress,
                                 lax=self.lax,
@@ -401,7 +397,6 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 payload,
                                 method=msg.method,
                                 compression=msg.compression,
-                                readall=True,
                                 auto_decompress=self._auto_decompress,
                                 lax=self.lax,
                             )
@@ -419,7 +414,6 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 method=method,
                                 compression=msg.compression,
                                 code=self.code,
-                                readall=True,
                                 response_with_body=self.response_with_body,
                                 auto_decompress=self._auto_decompress,
                                 lax=self.lax,
@@ -739,13 +733,12 @@ class HttpPayloadParser:
         compression: Optional[str] = None,
         code: Optional[int] = None,
         method: Optional[str] = None,
-        readall: bool = False,
         response_with_body: bool = True,
         auto_decompress: bool = True,
         lax: bool = False,
     ) -> None:
         self._length = 0
-        self._type = ParseState.PARSE_NONE
+        self._type = ParseState.PARSE_UNTIL_EOF
         self._chunk = ChunkState.PARSE_CHUNKED_SIZE
         self._chunk_size = 0
         self._chunk_tail = b""
@@ -767,23 +760,12 @@ class HttpPayloadParser:
             self._type = ParseState.PARSE_NONE
             real_payload.feed_eof()
             self.done = True
-
         elif chunked:
             self._type = ParseState.PARSE_CHUNKED
         elif length is not None:
             self._type = ParseState.PARSE_LENGTH
             self._length = length
             if self._length == 0:
-                real_payload.feed_eof()
-                self.done = True
-        else:
-            if readall and code != 204:
-                self._type = ParseState.PARSE_UNTIL_EOF
-            elif method in ("PUT", "POST"):
-                internal_logger.warning(  # pragma: no cover
-                    "Content-Length or Transfer-Encoding header is required"
-                )
-                self._type = ParseState.PARSE_NONE
                 real_payload.feed_eof()
                 self.done = True
 
@@ -807,17 +789,9 @@ class HttpPayloadParser:
         # Read specified amount of bytes
         if self._type == ParseState.PARSE_LENGTH:
             required = self._length
-            chunk_len = len(chunk)
-
-            if required >= chunk_len:
-                self._length = required - chunk_len
-                self.payload.feed_data(chunk, chunk_len)
-                if self._length == 0:
-                    self.payload.feed_eof()
-                    return True, b""
-            else:
-                self._length = 0
-                self.payload.feed_data(chunk[:required], required)
+            self._length = max(required - len(chunk), 0)
+            self.payload.feed_data(chunk[:required])
+            if self._length == 0:
                 self.payload.feed_eof()
                 return True, chunk[required:]
 
@@ -865,20 +839,16 @@ class HttpPayloadParser:
                 # read chunk and feed buffer
                 if self._chunk == ChunkState.PARSE_CHUNKED_CHUNK:
                     required = self._chunk_size
-                    chunk_len = len(chunk)
+                    self._chunk_size = max(required - len(chunk), 0)
+                    self.payload.feed_data(chunk[:required])
 
-                    if required > chunk_len:
-                        self._chunk_size = required - chunk_len
-                        self.payload.feed_data(chunk, chunk_len)
+                    if self._chunk_size:
                         return False, b""
-                    else:
-                        self._chunk_size = 0
-                        self.payload.feed_data(chunk[:required], required)
-                        chunk = chunk[required:]
-                        if self._lax and chunk.startswith(b"\r"):
-                            chunk = chunk[1:]
-                        self._chunk = ChunkState.PARSE_CHUNKED_CHUNK_EOF
-                        self.payload.end_http_chunk_receiving()
+                    chunk = chunk[required:]
+                    if self._lax and chunk.startswith(b"\r"):
+                        chunk = chunk[1:]
+                    self._chunk = ChunkState.PARSE_CHUNKED_CHUNK_EOF
+                    self.payload.end_http_chunk_receiving()
 
                 # toss the CRLF at the end of the chunk
                 if self._chunk == ChunkState.PARSE_CHUNKED_CHUNK_EOF:
@@ -923,7 +893,7 @@ class HttpPayloadParser:
 
         # Read all bytes until eof
         elif self._type == ParseState.PARSE_UNTIL_EOF:
-            self.payload.feed_data(chunk, len(chunk))
+            self.payload.feed_data(chunk)
 
         return False, b""
 
@@ -955,11 +925,11 @@ class DeflateBuffer:
     ) -> None:
         set_exception(self.out, exc, exc_cause)
 
-    def feed_data(self, chunk: bytes, size: int) -> None:
-        if not size:
+    def feed_data(self, chunk: bytes) -> None:
+        if not chunk:
             return
 
-        self.size += size
+        self.size += len(chunk)
 
         # RFC1950
         # bits 0..3 = CM = 0b1000 = 8 = "deflate"
@@ -985,13 +955,13 @@ class DeflateBuffer:
         self._started_decoding = True
 
         if chunk:
-            self.out.feed_data(chunk, len(chunk))
+            self.out.feed_data(chunk)
 
     def feed_eof(self) -> None:
         chunk = self.decompressor.flush()
 
         if chunk or self.size > 0:
-            self.out.feed_data(chunk, len(chunk))
+            self.out.feed_data(chunk)
             # decompressor is not brotli unless encoding is "br"
             if self.encoding == "deflate" and not self.decompressor.eof:  # type: ignore[union-attr]
                 raise ContentEncodingError("deflate")
