@@ -229,7 +229,8 @@ jobs:
         COLOR: yes
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
         PIP_USER: 1
-      run: python -X dev -m pytest -m dev_mode --cov-append
+        PYTHONDEVMODE: 1
+      run: pytest -m dev_mode --cov-append
       shell: bash
     - name: Turn coverage into xml
       env:

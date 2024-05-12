@@ -30,6 +30,8 @@ pytest_plugins: List[str] = ["aiohttp.pytest_plugin", "pytester"]
 IS_HPUX = sys.platform.startswith("hp-ux")
 IS_LINUX = sys.platform.startswith("linux")
 
+print(f"{sys.flags.debug=}")
+
 
 @pytest.fixture
 def tls_certificate_authority() -> Any:

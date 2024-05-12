@@ -34,6 +34,8 @@ cryptography==41.0.3
     # via trustme
 exceptiongroup==1.1.2
     # via pytest
+execnet==2.1.1
+    # via pytest-xdist
 freezegun==1.5.0
     # via -r requirements/test.in
 frozenlist==1.4.1
@@ -65,6 +67,8 @@ pluggy==1.4.0
     # via pytest
 proxy-py==2.4.4
     # via -r requirements/test.in
+py==1.11.0
+    # via pytest
 pycares==4.3.0
     # via aiodns
 pycparser==2.21
@@ -76,9 +80,12 @@ pytest==8.1.1
     #   -r requirements/test.in
     #   pytest-cov
     #   pytest-mock
+    #   pytest-xdist
 pytest-cov==5.0.0
     # via -r requirements/test.in
 pytest-mock==3.14.0
+    # via -r requirements/test.in
+pytest-xdist==3.6.1
     # via -r requirements/test.in
 python-dateutil==2.8.2
     # via freezegun

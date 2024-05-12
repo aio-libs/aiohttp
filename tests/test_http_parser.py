@@ -1018,6 +1018,9 @@ def test_http_response_parser_obs_line_folding(response: Any) -> None:
 
 @pytest.mark.dev_mode
 def test_http_response_parser_strict_obs_line_folding(response: Any) -> None:
+    import sys
+
+    print(f"{sys.flags.debug=}")
     text = b"HTTP/1.1 200 Ok\r\ntest: line\r\n continue\r\n\r\n"
 
     with pytest.raises(http_exceptions.BadHttpMessage):
