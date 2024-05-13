@@ -68,7 +68,7 @@ exceptiongroup==1.1.2
     # via pytest
 filelock==3.12.2
     # via virtualenv
-freezegun==1.5.0
+freezegun==1.5.1
     # via -r requirements/test.in
 frozenlist==1.4.1
     # via
