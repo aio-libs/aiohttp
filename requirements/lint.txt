@@ -70,7 +70,7 @@ python-on-whales==0.71.0
     # via -r lint.in
 pyyaml==6.0.1
     # via pre-commit
-requests==2.31.0
+requests==2.32.0
     # via python-on-whales
 rich==13.7.1
     # via typer
