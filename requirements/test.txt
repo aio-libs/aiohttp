@@ -30,7 +30,7 @@ click==8.1.6
     # via
     #   typer
     #   wait-for-it
-coverage==7.5.1
+coverage==7.5.2
     # via
     #   -r requirements/test.in
     #   pytest-cov
