@@ -5,4 +5,4 @@ pre-commit
 pytest
 python-on-whales
 slotscheck
-uvloop; platform_system != "Windows"
+uvloop @ git+https://github.com/edgarrmondragon/uvloop.git@python3.13; platform_system != "Windows"

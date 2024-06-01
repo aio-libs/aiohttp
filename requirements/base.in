@@ -1,4 +1,4 @@
 -r runtime-deps.in
 
 gunicorn
-uvloop; platform_system != "Windows" and implementation_name == "cpython"  # MagicStack/uvloop#14
+uvloop @ git+https://github.com/edgarrmondragon/uvloop.git@python3.13; platform_system != "Windows" and implementation_name == "cpython"  # MagicStack/uvloop#14
