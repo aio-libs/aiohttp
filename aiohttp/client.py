@@ -976,6 +976,16 @@ class ClientSession:
             assert conn is not None
             conn_proto = conn.protocol
             assert conn_proto is not None
+
+            # For WS connection the read_timeout must be either receive_timeout or greater
+            # None == no timeout, i.e. infinite timeout, so None is the max timeout possible
+            if receive_timeout is None:
+                # Reset regardless
+                conn_proto.read_timeout = receive_timeout
+            elif conn_proto.read_timeout is not None:
+                # If read_timeout was set check which wins
+                conn_proto.read_timeout = max(receive_timeout, conn_proto.read_timeout)
+
             transport = conn.transport
             assert transport is not None
             reader: FlowControlDataQueue[WSMessage] = FlowControlDataQueue(
