@@ -42,6 +42,7 @@ from .abc import AbstractCookieJar
 from .client_exceptions import (
     ClientConnectionError,
     ClientConnectorCertificateError,
+    ClientConnectorDNSError,
     ClientConnectorError,
     ClientConnectorSSLError,
     ClientError,
@@ -101,6 +102,7 @@ __all__ = (
     # client_exceptions
     "ClientConnectionError",
     "ClientConnectorCertificateError",
+    "ClientConnectorDNSError",
     "ClientConnectorError",
     "ClientConnectorSSLError",
     "ClientError",
