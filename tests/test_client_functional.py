@@ -3315,6 +3315,23 @@ async def test_aiohttp_request_ctx_manager_not_found() -> None:
             assert False, "never executed"  # pragma: no cover
 
 
+async def test_aiohttp_request_ctx_manager_not_found_exception_is_dns_specific() -> (
+    None
+):
+    # The error raised should be specific to DNS
+    with pytest.raises(aiohttp.ClientConnectorDNSError):
+        async with aiohttp.request("GET", "http://wrong-dns-name.com"):
+            assert False, "never executed"  # pragma: no cover
+
+
+async def test_aiohttp_request_connector_error_non_dns() -> None:
+    # A non-dns counterpart to test_aiohttp_request_ctx_manager_not_found_exception_is_dns_specific
+    with pytest.raises(aiohttp.ClientConnectorError) as excinfo:
+        async with aiohttp.request("GET", "http://localhost:1/"):
+            assert False, "never executed"  # pragma: no cover
+    assert not isinstance(excinfo.value, aiohttp.ClientConnectorDNSError)
+
+
 async def test_aiohttp_request_coroutine(aiohttp_server: AiohttpServer) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response()
