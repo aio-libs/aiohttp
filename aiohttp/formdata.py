@@ -28,7 +28,6 @@ class FormData:
         self._writer = multipart.MultipartWriter("form-data", boundary=self._boundary)
         self._fields: List[Any] = []
         self._is_multipart = False
-        self._is_processed = False
         self._quote_fields = quote_fields
         self._charset = charset
 
@@ -119,8 +118,8 @@ class FormData:
 
     def _gen_form_data(self) -> multipart.MultipartWriter:
         """Encode a list of fields using the multipart/form-data MIME format"""
-        if self._is_processed:
-            raise RuntimeError("Form data has been processed already")
+        if not self._fields:
+            return self._writer
         for dispparams, headers, value in self._fields:
             try:
                 if hdrs.CONTENT_TYPE in headers:
@@ -151,7 +150,7 @@ class FormData:
 
             self._writer.append_payload(part)
 
-        self._is_processed = True
+        self._fields = []
         return self._writer
 
     def __call__(self) -> Payload:

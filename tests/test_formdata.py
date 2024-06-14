@@ -88,7 +88,7 @@ async def test_formdata_field_name_is_not_quoted(buf: Any, writer: Any) -> None:
     assert b'name="email 1"' in buf
 
 
-async def test_mark_formdata_as_processed(aiohttp_client: Any) -> None:
+async def test_formdata_with_resending_same_data_instance(aiohttp_client: Any) -> None:
     async def handler(request):
         return web.Response()
 
@@ -103,8 +103,12 @@ async def test_mark_formdata_as_processed(aiohttp_client: Any) -> None:
     resp = await client.post("/", data=data)
     assert len(data._writer._parts) == 1
 
-    with pytest.raises(RuntimeError):
-        await client.post("/", data=data)
+    resp.release()
+
+    data.add_field("test_2", "test_value_2", content_type="application/json")
+
+    resp = await client.post("/", data=data)
+    assert len(data._writer._parts) == 2
 
     resp.release()
 
