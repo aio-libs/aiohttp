@@ -346,7 +346,7 @@ class ClientSession:
         return _RequestContextManager(self._request(method, url, **kwargs))
 
     def _build_url(self, str_or_url: StrOrURL, **kwargs: Any) -> URL:
-        url = URL(str_or_url, encoded=kwargs.get('encode_url'))
+        url = URL(str_or_url, encoded=kwargs.get("encode_url"))
         if self._base_url is None:
             return url
         else:
@@ -385,7 +385,7 @@ class ClientSession:
         auto_decompress: Optional[bool] = None,
         max_line_size: Optional[int] = None,
         max_field_size: Optional[int] = None,
-        encode_url: Optional[bool] = False
+        encode_url: Optional[bool] = False,
     ) -> ClientResponse:
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
