@@ -259,7 +259,7 @@ async def test_test_client_props(loop) -> None:
 
 async def test_test_client_raw_server_props(loop) -> None:
     async def hello(request):
-        return web.Response(body=_hello_world_bytes)
+        return web.Response()  # pragma: no cover
 
     client = _TestClient(_RawTestServer(hello, host="127.0.0.1", loop=loop), loop=loop)
     assert client.host == "127.0.0.1"

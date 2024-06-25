@@ -10,7 +10,7 @@ import socket
 import ssl
 import sys
 import time
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Type
 from unittest import mock
 
 import pytest
@@ -21,6 +21,7 @@ import aiohttp
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver
 from aiohttp.client_exceptions import (
+    InvalidURL,
     InvalidUrlClientError,
     InvalidUrlRedirectClientError,
     NonHttpUrlClientError,
@@ -3623,3 +3624,36 @@ async def test_rejected_upload(aiohttp_client, tmp_path) -> None:
         "/ok", timeout=aiohttp.ClientTimeout(total=0.01)
     ) as resp_ok:
         assert 200 == resp_ok.status
+
+
+async def test_request_with_wrong_ssl_type(aiohttp_client: AiohttpClient) -> None:
+    app = web.Application()
+    session = await aiohttp_client(app)
+
+    with pytest.raises(TypeError, match="ssl should be SSLContext, Fingerprint, .*"):
+        await session.get("/", ssl=42)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("value", "exc_type"),
+    [(42, TypeError), ("InvalidUrl", InvalidURL)],
+)
+async def test_request_with_wrong_proxy(
+    aiohttp_client: AiohttpClient, value: Any, exc_type: Type[Exception]
+) -> None:
+    app = web.Application()
+    session = await aiohttp_client(app)
+
+    with pytest.raises(exc_type):
+        await session.get("/", proxy=value)  # type: ignore[arg-type]
+
+
+async def test_raise_for_status_is_none(aiohttp_client: AiohttpClient) -> None:
+    async def handler(_: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    session = await aiohttp_client(app, raise_for_status=None)  # type: ignore[arg-type]
+
+    await session.get("/")
