@@ -1,6 +1,7 @@
 -c broken-projects.in
 -r base.in
 
+cffi>=0.17.0rc1
 coverage
 freezegun
 mypy; implementation_name == "cpython"
