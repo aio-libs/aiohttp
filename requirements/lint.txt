@@ -50,7 +50,7 @@ packaging==23.1
     # via pytest
 platformdirs==3.10.0
     # via virtualenv
-pluggy==1.4.0
+pluggy==1.5.0
     # via pytest
 pre-commit==3.5.0
     # via -r requirements/lint.in
@@ -64,7 +64,7 @@ pydantic-core==2.18.2
     # via pydantic
 pygments==2.17.2
     # via rich
-pytest==8.1.1
+pytest==8.2.2
     # via -r requirements/lint.in
 python-on-whales==0.71.0
     # via -r requirements/lint.in
