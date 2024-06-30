@@ -32,6 +32,8 @@ from typing import (
     TypeVar,
     Union,
     final,
+    TypedDict,
+    overload,
 )
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
@@ -150,6 +152,34 @@ else:
     SSLContext = None
 
 
+class _RequestOptions(TypedDict, total=False):
+    params: Union[Mapping[str, str], None]
+    data: Any
+    json: Any
+    cookies: Union[LooseCookies, None]
+    headers: Union[LooseHeaders, None]
+    skip_auto_headers: Union[Iterable[str], None]
+    auth: Union[BasicAuth, None]
+    allow_redirects: bool
+    max_redirects: int
+    compress: Union[str, None]
+    chunked: Union[bool, None]
+    expect100: bool
+    raise_for_status: Union[None, bool, Callable[[ClientResponse], Awaitable[None]]]
+    read_until_eof: bool
+    proxy: Union[StrOrURL, None]
+    proxy_auth: Union[BasicAuth, None]
+    timeout: "Union[ClientTimeout, _SENTINEL, None]"
+    ssl: Union[SSLContext, bool, Fingerprint]
+    server_hostname: Union[str, None]
+    proxy_headers: Union[LooseHeaders, None]
+    trace_request_ctx: Union[SimpleNamespace, None]
+    read_bufsize: Union[int, None]
+    auto_decompress: Union[bool, None]
+    max_line_size: Union[int, None]
+    max_field_size: Union[int, None]
+
+
 @dataclasses.dataclass(frozen=True)
 class ClientTimeout:
     total: Optional[float] = None
@@ -186,6 +216,44 @@ _CharsetResolver = Callable[[ClientResponse, bytes], str]
 @final
 class ClientSession:
     """First-class interface for making HTTP requests."""
+
+    if sys.version_info >= (3, 11):
+        from typing import Unpack
+
+        @overload
+        def get(
+            self,
+            url: StrOrURL,
+            **kwargs: Unpack["_RequestOptions"],
+        ) -> "_RequestContextManager": ...
+
+        @overload
+        def put(
+            self,
+            url: StrOrURL,
+            **kwargs: Unpack["_RequestOptions"],
+        ) -> "_RequestContextManager": ...
+
+        @overload
+        def post(
+            self,
+            url: StrOrURL,
+            **kwargs: Unpack["_RequestOptions"],
+        ) -> "_RequestContextManager": ...
+
+        @overload
+        def delete(
+            self,
+            url: StrOrURL,
+            **kwargs: Unpack["_RequestOptions"],
+        ) -> "_RequestContextManager": ...
+
+        @overload
+        def head(
+            self,
+            url: StrOrURL,
+            **kwargs: Unpack["_RequestOptions"],
+        ) -> "_RequestContextManager": ...
 
     __slots__ = (
         "_base_url",
