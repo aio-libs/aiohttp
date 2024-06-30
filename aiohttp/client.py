@@ -29,10 +29,10 @@ from typing import (
     Set,
     Tuple,
     Type,
+    TypedDict,
     TypeVar,
     Union,
     final,
-    TypedDict,
     overload,
 )
 
