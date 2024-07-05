@@ -457,7 +457,7 @@ class ClientSession:
         except ValueError as e:
             raise InvalidUrlClientError(str_or_url) from e
 
-        if url.scheme not in HTTP_SCHEMA_SET:
+        if url.scheme not in HTTP_SCHEMA_SET and url.scheme not in WS_SCHEMA_SET:
             raise NonHttpUrlClientError(url)
 
         skip_headers = set(self._skip_auto_headers)
