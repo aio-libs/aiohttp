@@ -209,13 +209,12 @@ DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60)
 
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
-# special case wss links because it is needed to make a connection to discord's api and to make discord.py work.
-# without this discord.py cannot use aiohttp and without aiohttp it cannot make a request to open a connection
-# to discord without blocking the asyncio event loop which is NOT acceptable. As such we must eat the problem
-# here by special casing wss:// type urls and this makes people who used this behavior in 3.9.5 and older of aiohttp
-# to be able to upgrade to latest version and get both better features and bug fixes.
+HTTP_SCHEMA_SET = frozenset({"http", "https", ""})
+# special case ws and wss links when making requests as in some cases in asyncio
+# programs any other ways to request them might result in blocking the event loop
+# (or worse a deadlock).
 # Fixes https://github.com/aio-libs/aiohttp/issues/8481
-HTTP_SCHEMA_SET = frozenset({"http", "https", "wss", ""})
+WS_SCHEMA_SET = frozenset({"ws", "wss"})
 
 _RetType = TypeVar("_RetType")
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
