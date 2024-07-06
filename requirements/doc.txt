@@ -12,7 +12,7 @@ babel==2.12.1
     # via sphinx
 blockdiag==3.0.0
     # via sphinxcontrib-blockdiag
-certifi==2023.7.22
+certifi==2024.7.4
     # via requests
 charset-normalizer==3.3.0
     # via requests
