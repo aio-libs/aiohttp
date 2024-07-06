@@ -150,6 +150,9 @@ if TYPE_CHECKING:
 else:
     SSLContext = None
 
+if sys.version_info >= (3, 11) and TYPE_CHECKING:
+    from typing import Unpack
+
 
 class _RequestOptions(TypedDict, total=False):
     params: Union[Mapping[str, str], None]
@@ -1017,48 +1020,47 @@ class ClientSession:
         return result
 
     if sys.version_info >= (3, 11) and TYPE_CHECKING:
-        import typing
 
         def get(
             self,
             url: StrOrURL,
-            **kwargs: typing.Unpack[_RequestOptions],
+            **kwargs: Unpack[_RequestOptions],
         ) -> "_RequestContextManager": ...
 
         def options(
             self,
             url: StrOrURL,
-            **kwargs: typing.Unpack[_RequestOptions],
+            **kwargs: Unpack[_RequestOptions],
         ) -> "_RequestContextManager": ...
 
         def head(
             self,
             url: StrOrURL,
-            **kwargs: typing.Unpack[_RequestOptions],
+            **kwargs: Unpack[_RequestOptions],
         ) -> "_RequestContextManager": ...
 
         def post(
             self,
             url: StrOrURL,
-            **kwargs: typing.Unpack[_RequestOptions],
+            **kwargs: Unpack[_RequestOptions],
         ) -> "_RequestContextManager": ...
 
         def put(
             self,
             url: StrOrURL,
-            **kwargs: typing.Unpack[_RequestOptions],
+            **kwargs: Unpack[_RequestOptions],
         ) -> "_RequestContextManager": ...
 
         def patch(
             self,
             url: StrOrURL,
-            **kwargs: typing.Unpack[_RequestOptions],
+            **kwargs: Unpack[_RequestOptions],
         ) -> "_RequestContextManager": ...
 
         def delete(
             self,
             url: StrOrURL,
-            **kwargs: typing.Unpack[_RequestOptions],
+            **kwargs: Unpack[_RequestOptions],
         ) -> "_RequestContextManager": ...
 
     else:
