@@ -299,3 +299,6 @@ ask to raise the status.
 
 - `nacl_middleware <https://github.com/CosmicDNA/nacl_middleware>`_
   An aiohttp middleware library for asymmetric encryption of data transmitted via http and/or websocket connections.
+
+- `aiohttp-asgi-connector <https://github.com/thearchitector/aiohttp-asgi-connector>`_
+  An aiohttp connector for using a ``ClientSession`` to interface directly with separate ASGI applications.
