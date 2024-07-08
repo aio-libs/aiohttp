@@ -1,0 +1,1 @@
+Fixed server response headers for ``Content-Type`` and ``Content-Encoding`` for static compressed files -- by :user:`steverep`.
