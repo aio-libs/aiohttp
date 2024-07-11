@@ -1,12 +1,11 @@
 # type: ignore
 import asyncio
 import base64
-import hashlib
 import os
 import socket
 import ssl
 import sys
-from hashlib import md5, sha256
+from hashlib import md5, sha1, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, List
@@ -235,4 +234,4 @@ def key(key_data: Any):
 
 @pytest.fixture
 def ws_key(key: Any):
-    return base64.b64encode(hashlib.sha1(key + WS_KEY).digest()).decode()
+    return base64.b64encode(sha1(key + WS_KEY).digest()).decode()

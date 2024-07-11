@@ -516,7 +516,7 @@ async def test_ws_connect_allowed_protocols(
     # if the connection wasn't already closed
     for c in connections:
         c.close()
-        c.__del__()
+        del c
 
     await session.close()
 
