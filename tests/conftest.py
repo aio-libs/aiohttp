@@ -1,5 +1,7 @@
 # type: ignore
 import asyncio
+import base64
+import hashlib
 import os
 import socket
 import ssl
@@ -13,6 +15,7 @@ from uuid import uuid4
 
 import pytest
 
+from aiohttp.http import WS_KEY
 from aiohttp.test_utils import loop_context
 
 try:
@@ -218,3 +221,18 @@ def start_connection():
         spec_set=True,
     ) as start_connection_mock:
         yield start_connection_mock
+
+
+@pytest.fixture
+def key_data():
+    return os.urandom(16)
+
+
+@pytest.fixture
+def key(key_data: Any):
+    return base64.b64encode(key_data)
+
+
+@pytest.fixture
+def ws_key(key: Any):
+    return base64.b64encode(hashlib.sha1(key + WS_KEY).digest()).decode()
