@@ -210,11 +210,8 @@ DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60)
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
 HTTP_SCHEMA_SET = frozenset({"http", "https", ""})
-# special case ws and wss links when making requests as in some cases in asyncio
-# programs any other ways to request them might result in blocking the event loop
-# (or worse a deadlock).
-# Fixes https://github.com/aio-libs/aiohttp/issues/8481
 WS_SCHEMA_SET = frozenset({"ws", "wss"})
+ALLOWED_PROTOCOL_SCHEMA_SET = HTTP_SCHEMA_SET | WS_SCHEMA_SET
 
 _RetType = TypeVar("_RetType")
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
@@ -457,7 +454,7 @@ class ClientSession:
         except ValueError as e:
             raise InvalidUrlClientError(str_or_url) from e
 
-        if url.scheme not in HTTP_SCHEMA_SET and url.scheme not in WS_SCHEMA_SET:
+        if url.scheme not in ALLOWED_PROTOCOL_SCHEMA_SET:
             raise NonHttpUrlClientError(url)
 
         skip_headers = set(self._skip_auto_headers)
