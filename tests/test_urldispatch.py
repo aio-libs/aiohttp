@@ -364,9 +364,9 @@ def test_route_dynamic(router: Any) -> None:
 
 def test_add_static_path_checks(router: Any, tmp_path: pathlib.Path) -> None:
     """Test that static paths must exist and be directories."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="does not exist"):
         router.add_static("/", tmp_path / "does-not-exist")
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="is not a directory"):
             router.add_static("/", __file__)
 
 

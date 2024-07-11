@@ -535,9 +535,9 @@ class StaticResource(PrefixResource):
     ) -> None:
         super().__init__(prefix, name=name)
         try:
-            directory = Path(directory).expanduser().resolve(True)
+            directory = Path(directory).expanduser().resolve(strict=True)
         except FileNotFoundError as error:
-            raise ValueError(f"No directory exists at '{directory}'") from error
+            raise ValueError(f"'{directory}' does not exist") from error
         if not directory.is_dir():
             raise ValueError(f"'{directory}' is not a directory")
         self._directory = directory
