@@ -1,0 +1,1 @@
+Simplified path checks for ``UrlDispatcher.add_static()`` method -- by :user:`steverep`.

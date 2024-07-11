@@ -535,14 +535,11 @@ class StaticResource(PrefixResource):
     ) -> None:
         super().__init__(prefix, name=name)
         try:
-            directory = Path(directory)
-            if str(directory).startswith("~"):
-                directory = Path(os.path.expanduser(str(directory)))
-            directory = directory.resolve()
-            if not directory.is_dir():
-                raise ValueError("Not a directory")
-        except (FileNotFoundError, ValueError) as error:
-            raise ValueError(f"No directory exists at '{directory}'") from error
+            directory = Path(directory).expanduser().resolve(strict=True)
+        except FileNotFoundError as error:
+            raise ValueError(f"'{directory}' does not exist") from error
+        if not directory.is_dir():
+            raise ValueError(f"'{directory}' is not a directory")
         self._directory = directory
         self._show_index = show_index
         self._chunk_size = chunk_size

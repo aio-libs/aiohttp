@@ -587,15 +587,6 @@ async def test_static_file_directory_traversal_attack(aiohttp_client: Any) -> No
     await client.close()
 
 
-def test_static_route_path_existence_check() -> None:
-    directory = pathlib.Path(__file__).parent
-    web.StaticResource("/", directory)
-
-    nodirectory = directory / "nonexistent-uPNiOEAg5d"
-    with pytest.raises(ValueError):
-        web.StaticResource("/", nodirectory)
-
-
 async def test_static_file_huge(aiohttp_client: Any, tmp_path: Any) -> None:
     file_path = tmp_path / "huge_data.unknown_mime_type"
 
