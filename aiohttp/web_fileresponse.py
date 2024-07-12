@@ -50,16 +50,22 @@ ENCODING_EXTENSIONS = MappingProxyType(
 
 FALLBACK_CONTENT_TYPE = "application/octet-stream"
 
+# Provide additional MIME type/extension pairs to be recognized.
+# IANA-registered types can be skipped (e.g. application/gzip).
 # https://en.wikipedia.org/wiki/List_of_archive_formats#Compression_only
-ENCODING_CONTENT_TYPES = MappingProxyType(
+ADDITIONAL_CONTENT_TYPES = MappingProxyType(
     {
-        "gzip": "application/gzip",
-        "br": "application/x-brotli",
-        "bzip2": "application/x-bzip2",
-        "compress": "application/x-compress",
-        "xz": "application/x-xz",
+        "application/x-brotli": ".br",
+        "application/x-bzip2": ".bz2",
+        "application/x-compress": ".Z",
+        "application/x-xz": ".xz",
     }
 )
+
+# Add custom pairs and clear the encodings map so guess_type ignores them.
+mimetypes.encodings_map.clear()
+for content_type, extension in ADDITIONAL_CONTENT_TYPES.items():
+    mimetypes.add_type(content_type, extension)
 
 
 class FileResponse(StreamResponse):
@@ -205,17 +211,6 @@ class FileResponse(StreamResponse):
         ):
             return await self._not_modified(request, etag_value, last_modified)
 
-        # If the Content-Type header is not already set, guess it based on the
-        # extension of the request path. If the request is for a compressed
-        # file, map the encoding back to the correct content type.
-        ct = None
-        if hdrs.CONTENT_TYPE not in self.headers:
-            ct, encoding = mimetypes.guess_type(str(self._path))
-            if encoding:
-                ct = ENCODING_CONTENT_TYPES.get(encoding, FALLBACK_CONTENT_TYPE)
-            elif not ct:
-                ct = FALLBACK_CONTENT_TYPE
-
         status = self._status
         file_size = st.st_size
         count = file_size
@@ -290,8 +285,14 @@ class FileResponse(StreamResponse):
                 # return a HTTP 206 for a Range request.
                 self.set_status(status)
 
-        if ct:
-            self.content_type = ct
+        # If the Content-Type header is not already set, guess it based on the
+        # extension of the request path. The encoding returned by guess_type
+        #  can be ignored since the map was cleared above.
+        if hdrs.CONTENT_TYPE not in self.headers:
+            self.content_type = (
+                mimetypes.guess_type(self._path)[0] or FALLBACK_CONTENT_TYPE
+            )
+
         if file_encoding:
             self.headers[hdrs.CONTENT_ENCODING] = file_encoding
             self.headers[hdrs.VARY] = hdrs.ACCEPT_ENCODING
