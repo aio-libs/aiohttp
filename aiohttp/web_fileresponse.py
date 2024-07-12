@@ -51,10 +51,10 @@ ENCODING_EXTENSIONS = MappingProxyType(
 FALLBACK_CONTENT_TYPE = "application/octet-stream"
 
 # Provide additional MIME type/extension pairs to be recognized.
-# IANA-registered types can be skipped (e.g. application/gzip).
 # https://en.wikipedia.org/wiki/List_of_archive_formats#Compression_only
 ADDITIONAL_CONTENT_TYPES = MappingProxyType(
     {
+        "application/gzip": ".gz",
         "application/x-brotli": ".br",
         "application/x-bzip2": ".bz2",
         "application/x-compress": ".Z",
