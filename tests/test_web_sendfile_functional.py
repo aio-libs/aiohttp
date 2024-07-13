@@ -1,5 +1,6 @@
 # type: ignore
 import asyncio
+import bz2
 import gzip
 import pathlib
 import socket
@@ -37,10 +38,12 @@ def hello_txt(request, tmp_path_factory) -> pathlib.Path:
         None: txt,
         "gzip": txt.with_suffix(f"{txt.suffix}.gz"),
         "br": txt.with_suffix(f"{txt.suffix}.br"),
+        "bzip2": txt.with_suffix(f"{txt.suffix}.bz2"),
     }
     hello[None].write_bytes(HELLO_AIOHTTP)
     hello["gzip"].write_bytes(gzip.compress(HELLO_AIOHTTP))
     hello["br"].write_bytes(brotli.compress(HELLO_AIOHTTP))
+    hello["bzip2"].write_bytes(bz2.compress(HELLO_AIOHTTP))
     encoding = getattr(request, "param", None)
     return hello[encoding]
 
@@ -318,10 +321,16 @@ async def test_static_file_with_encoding_and_enable_compression(
 
 
 @pytest.mark.parametrize(
-    ("hello_txt", "expect_encoding"), [["gzip"] * 2, ["br"] * 2], indirect=["hello_txt"]
+    ("hello_txt", "expect_type"),
+    [
+        ("gzip", "application/gzip"),
+        ("br", "application/x-brotli"),
+        ("bzip2", "application/x-bzip2"),
+    ],
+    indirect=["hello_txt"],
 )
 async def test_static_file_with_content_encoding(
-    hello_txt: pathlib.Path, aiohttp_client: Any, sender: Any, expect_encoding: str
+    hello_txt: pathlib.Path, aiohttp_client: Any, sender: Any, expect_type: str
 ) -> None:
     """Test requesting static compressed files returns the correct content type and encoding."""
 
@@ -334,9 +343,9 @@ async def test_static_file_with_content_encoding(
 
     resp = await client.get("/")
     assert resp.status == 200
-    assert resp.headers.get("Content-Encoding") == expect_encoding
-    assert resp.headers["Content-Type"] == "text/plain"
-    assert await resp.read() == HELLO_AIOHTTP
+    assert resp.headers.get("Content-Encoding") is None
+    assert resp.headers["Content-Type"] == expect_type
+    assert await resp.read() == hello_txt.read_bytes()
     resp.close()
 
     await resp.release()
