@@ -1,9 +1,9 @@
 import asyncio
-import mimetypes
 import os
 import pathlib
 import sys
 from contextlib import suppress
+from mimetypes import MimeTypes
 from types import MappingProxyType
 from typing import (  # noqa
     IO,
@@ -43,13 +43,34 @@ _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
 
 NOSENDFILE: Final[bool] = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
 
+CONTENT_TYPES: Final[MimeTypes] = MimeTypes()
+
 if sys.version_info < (3, 9):
-    mimetypes.encodings_map[".br"] = "br"
+    CONTENT_TYPES.encodings_map[".br"] = "br"
 
 # File extension to IANA encodings map that will be checked in the order defined.
 ENCODING_EXTENSIONS = MappingProxyType(
-    {ext: mimetypes.encodings_map[ext] for ext in (".br", ".gz")}
+    {ext: CONTENT_TYPES.encodings_map[ext] for ext in (".br", ".gz")}
 )
+
+FALLBACK_CONTENT_TYPE = "application/octet-stream"
+
+# Provide additional MIME type/extension pairs to be recognized.
+# https://en.wikipedia.org/wiki/List_of_archive_formats#Compression_only
+ADDITIONAL_CONTENT_TYPES = MappingProxyType(
+    {
+        "application/gzip": ".gz",
+        "application/x-brotli": ".br",
+        "application/x-bzip2": ".bz2",
+        "application/x-compress": ".Z",
+        "application/x-xz": ".xz",
+    }
+)
+
+# Add custom pairs and clear the encodings map so guess_type ignores them.
+CONTENT_TYPES.encodings_map.clear()
+for content_type, extension in ADDITIONAL_CONTENT_TYPES.items():
+    CONTENT_TYPES.add_type(content_type, extension)  # type: ignore[attr-defined]
 
 
 class FileResponse(StreamResponse):
@@ -195,15 +216,6 @@ class FileResponse(StreamResponse):
         ):
             return await self._not_modified(request, etag_value, last_modified)
 
-        if hdrs.CONTENT_TYPE not in self.headers:
-            ct, encoding = mimetypes.guess_type(str(file_path))
-            if not ct:
-                ct = "application/octet-stream"
-            should_set_ct = True
-        else:
-            encoding = file_encoding
-            should_set_ct = False
-
         status = self._status
         file_size = st.st_size
         count = file_size
@@ -278,11 +290,16 @@ class FileResponse(StreamResponse):
                 # return a HTTP 206 for a Range request.
                 self.set_status(status)
 
-        if should_set_ct:
-            self.content_type = ct  # type: ignore[assignment]
-        if encoding:
-            self.headers[hdrs.CONTENT_ENCODING] = encoding
+        # If the Content-Type header is not already set, guess it based on the
+        # extension of the request path. The encoding returned by guess_type
+        #  can be ignored since the map was cleared above.
+        if hdrs.CONTENT_TYPE not in self.headers:
+            self.content_type = (
+                CONTENT_TYPES.guess_type(self._path)[0] or FALLBACK_CONTENT_TYPE
+            )
+
         if file_encoding:
+            self.headers[hdrs.CONTENT_ENCODING] = file_encoding
             self.headers[hdrs.VARY] = hdrs.ACCEPT_ENCODING
             # Disable compression if we are already sending
             # a compressed file since we don't want to double
