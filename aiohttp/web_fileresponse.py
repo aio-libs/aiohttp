@@ -40,14 +40,14 @@ _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
 
 NOSENDFILE: Final[bool] = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
 
-content_types = MimeTypes()
+CONTENT_TYPES: Final[MimeTypes] = MimeTypes()
 
 if sys.version_info < (3, 9):
-    content_types.encodings_map[".br"] = "br"
+    CONTENT_TYPES.encodings_map[".br"] = "br"
 
 # File extension to IANA encodings map that will be checked in the order defined.
 ENCODING_EXTENSIONS = MappingProxyType(
-    {ext: content_types.encodings_map[ext] for ext in (".br", ".gz")}
+    {ext: CONTENT_TYPES.encodings_map[ext] for ext in (".br", ".gz")}
 )
 
 FALLBACK_CONTENT_TYPE = "application/octet-stream"
@@ -65,9 +65,9 @@ ADDITIONAL_CONTENT_TYPES = MappingProxyType(
 )
 
 # Add custom pairs and clear the encodings map so guess_type ignores them.
-content_types.encodings_map.clear()
+CONTENT_TYPES.encodings_map.clear()
 for content_type, extension in ADDITIONAL_CONTENT_TYPES.items():
-    content_types.add_type(content_type, extension)  # type: ignore[attr-defined]
+    CONTENT_TYPES.add_type(content_type, extension)  # type: ignore[attr-defined]
 
 
 class FileResponse(StreamResponse):
@@ -292,7 +292,7 @@ class FileResponse(StreamResponse):
         #  can be ignored since the map was cleared above.
         if hdrs.CONTENT_TYPE not in self.headers:
             self.content_type = (
-                content_types.guess_type(self._path)[0] or FALLBACK_CONTENT_TYPE
+                CONTENT_TYPES.guess_type(self._path)[0] or FALLBACK_CONTENT_TYPE
             )
 
         if file_encoding:
