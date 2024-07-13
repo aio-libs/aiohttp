@@ -50,7 +50,10 @@ class Server:
         self, handler: RequestHandler, exc: Optional[BaseException] = None
     ) -> None:
         if handler in self._connections:
-            del self._connections[handler]
+            if handler._task_handler:
+                handler._task_handler.add_done_callback(lambda f: self._connections.pop(handler, None))
+            else:
+                del self._connections[handler]
 
     def _make_request(
         self,
@@ -69,6 +72,7 @@ class Server:
     async def shutdown(self, timeout: Optional[float] = None) -> None:
         coros = (conn.shutdown(timeout) for conn in self._connections)
         await asyncio.gather(*coros)
+        print("LENGTH", len(self._connections))
         self._connections.clear()
 
     def __call__(self) -> RequestHandler:

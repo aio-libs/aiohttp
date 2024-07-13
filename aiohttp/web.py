@@ -300,23 +300,6 @@ async def _run_app(
     reuse_port: Optional[bool] = None,
     handler_cancellation: bool = False,
 ) -> None:
-    async def wait(
-        starting_tasks: "WeakSet[asyncio.Task[object]]", shutdown_timeout: float
-    ) -> None:
-        # Wait for pending tasks for a given time limit.
-        t = asyncio.current_task()
-        assert t is not None
-        starting_tasks.add(t)
-        with suppress(asyncio.TimeoutError):
-            await asyncio.wait_for(_wait(starting_tasks), timeout=shutdown_timeout)
-
-    async def _wait(exclude: "WeakSet[asyncio.Task[object]]") -> None:
-        t = asyncio.current_task()
-        assert t is not None
-        exclude.add(t)
-        while tasks := asyncio.all_tasks().difference(exclude):
-            await asyncio.wait(tasks)
-
     # An internal function to actually do all dirty job for application running
     if asyncio.iscoroutine(app):
         app = await app
@@ -335,12 +318,6 @@ async def _run_app(
     )
 
     await runner.setup()
-    # On shutdown we want to avoid waiting on tasks which run forever.
-    # It's very likely that all tasks which run forever will have been created by
-    # the time we have completed the application startup (in runner.setup()),
-    # so we just record all running tasks here and exclude them later.
-    starting_tasks: "WeakSet[asyncio.Task[object]]" = WeakSet(asyncio.all_tasks())
-    runner.shutdown_callback = partial(wait, starting_tasks, shutdown_timeout)
 
     sites: List[BaseSite] = []
 
