@@ -67,7 +67,7 @@ ADDITIONAL_CONTENT_TYPES = MappingProxyType(
 # Add custom pairs and clear the encodings map so guess_type ignores them.
 content_types.encodings_map.clear()
 for content_type, extension in ADDITIONAL_CONTENT_TYPES.items():
-    content_types.add_type(content_type, extension)
+    content_types.add_type(content_type, extension)  # type: ignore[attr-defined]
 
 
 class FileResponse(StreamResponse):
