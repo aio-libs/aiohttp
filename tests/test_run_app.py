@@ -936,7 +936,10 @@ class TestShutdown:
                 for _ in range(5):  # pragma: no cover
                     try:
                         with pytest.raises(asyncio.TimeoutError):
-                            async with sess.get(f"http://localhost:{port}/", timeout=ClientTimeout(total=0.1)):
+                            async with sess.get(
+                                f"http://localhost:{port}/",
+                                timeout=ClientTimeout(total=0.1),
+                            ):
                                 pass
                     except ClientConnectorError:
                         await asyncio.sleep(0.5)

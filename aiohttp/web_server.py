@@ -51,7 +51,9 @@ class Server:
     ) -> None:
         if handler in self._connections:
             if handler._task_handler:
-                handler._task_handler.add_done_callback(lambda f: self._connections.pop(handler, None))
+                handler._task_handler.add_done_callback(
+                    lambda f: self._connections.pop(handler, None)
+                )
             else:
                 del self._connections[handler]
 
