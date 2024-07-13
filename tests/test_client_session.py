@@ -500,9 +500,7 @@ async def test_ws_connect_allowed_protocols(
         return conn
 
     async def create_connection(req, traces, timeout):
-        # return self.transport, self.protocol
-        conn = create_mocked_conn()
-        return conn
+        return create_mocked_conn()
 
     session._connector.connect = connect
     session._connector._create_connection = create_connection
