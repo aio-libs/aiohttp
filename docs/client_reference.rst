@@ -500,7 +500,7 @@ The client session supports the context manager protocol for self closing.
       :param bytes fingerprint: Pass the SHA256 digest of the expected
          certificate in DER format to verify that the certificate the
          server presents matches. Useful for `certificate pinning
-         <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
+         <https://en.wikipedia.org/wiki/HTTP_Public_Key_Pinning>`_.
 
          Warning: use of MD5 or SHA1 digests is insecure and removed.
 
@@ -769,7 +769,7 @@ The client session supports the context manager protocol for self closing.
       :param bytes fingerprint: Pass the SHA256 digest of the expected
          certificate in DER format to verify that the certificate the
          server presents matches. Useful for `certificate pinning
-         <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
+         <https://en.wikipedia.org/wiki/HTTP_Public_Key_Pinning>`_.
 
          Note: use of MD5 or SHA1 digests is insecure and deprecated.
 
@@ -1091,7 +1091,7 @@ is controlled by *force_close* constructor's parameter).
    :param bytes fingerprint: pass the SHA256 digest of the expected
       certificate in DER format to verify that the certificate the
       server presents matches. Useful for `certificate pinning
-      <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
+      <https://en.wikipedia.org/wiki/HTTP_Public_Key_Pinning>`_.
 
       Note: use of MD5 or SHA1 digests is insecure and deprecated.
 
