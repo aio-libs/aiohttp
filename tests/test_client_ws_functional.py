@@ -312,7 +312,7 @@ async def test_concurrent_close_multiple_tasks(aiohttp_client: Any) -> None:
     app = web.Application()
     app.router.add_route("GET", "/", handler)
     client = await aiohttp_client(app)
-    ws = client_ws = await client.ws_connect("/")
+    ws = await client.ws_connect("/")
 
     await ws.send_bytes(b"ask")
 
