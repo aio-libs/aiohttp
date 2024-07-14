@@ -415,7 +415,7 @@ class WebSocketResponse(StreamResponse):
             self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
             return True
 
-        if msg.type == WSMsgType.CLOSE:
+        if msg.type is WSMsgType.CLOSE:
             self._set_code_close_transport(msg.data)
             return True
 
@@ -482,7 +482,7 @@ class WebSocketResponse(StreamResponse):
                 await self.close()
                 return WSMessage(WSMsgType.ERROR, exc, None)
 
-            if msg.type == WSMsgType.CLOSE:
+            if msg.type is WSMsgType.CLOSE:
                 self._set_closing(msg.data)
                 # Could be closed while awaiting reader.
                 if not self._closed and self._autoclose:
@@ -491,19 +491,19 @@ class WebSocketResponse(StreamResponse):
                     # want to drain any pending writes as it will
                     # likely result writing to a broken pipe.
                     await self.close(drain=False)
-            elif msg.type == WSMsgType.CLOSING:
+            elif msg.type is WSMsgType.CLOSING:
                 self._set_closing(WSCloseCode.OK)
-            elif msg.type == WSMsgType.PING and self._autoping:
+            elif msg.type is WSMsgType.PING and self._autoping:
                 await self.pong(msg.data)
                 continue
-            elif msg.type == WSMsgType.PONG and self._autoping:
+            elif msg.type is WSMsgType.PONG and self._autoping:
                 continue
 
             return msg
 
     async def receive_str(self, *, timeout: Optional[float] = None) -> str:
         msg = await self.receive(timeout)
-        if msg.type != WSMsgType.TEXT:
+        if msg.type is not WSMsgType.TEXT:
             raise TypeError(
                 "Received message {}:{!r} is not WSMsgType.TEXT".format(
                     msg.type, msg.data
@@ -513,7 +513,7 @@ class WebSocketResponse(StreamResponse):
 
     async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
-        if msg.type != WSMsgType.BINARY:
+        if msg.type is not WSMsgType.BINARY:
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not bytes")
         return cast(bytes, msg.data)
 
