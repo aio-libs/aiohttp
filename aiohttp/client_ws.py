@@ -233,7 +233,7 @@ class ClientWebSocketResponse:
                     self._response.close()
                     return True
 
-                if msg.type == WSMsgType.CLOSE:
+                if msg.type is WSMsgType.CLOSE:
                     self._close_code = msg.data
                     self._response.close()
                     return True
@@ -285,31 +285,31 @@ class ClientWebSocketResponse:
                 await self.close()
                 return WSMessage(WSMsgType.ERROR, exc, None)
 
-            if msg.type == WSMsgType.CLOSE:
+            if msg.type is WSMsgType.CLOSE:
                 self._closing = True
                 self._close_code = msg.data
                 # Could be closed elsewhere while awaiting reader
                 if not self._closed and self._autoclose:  # type: ignore[redundant-expr]
                     await self.close()
-            elif msg.type == WSMsgType.CLOSING:
+            elif msg.type is WSMsgType.CLOSING:
                 self._closing = True
-            elif msg.type == WSMsgType.PING and self._autoping:
+            elif msg.type is WSMsgType.PING and self._autoping:
                 await self.pong(msg.data)
                 continue
-            elif msg.type == WSMsgType.PONG and self._autoping:
+            elif msg.type is WSMsgType.PONG and self._autoping:
                 continue
 
             return msg
 
     async def receive_str(self, *, timeout: Optional[float] = None) -> str:
         msg = await self.receive(timeout)
-        if msg.type != WSMsgType.TEXT:
+        if msg.type is not WSMsgType.TEXT:
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not str")
         return cast(str, msg.data)
 
     async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
-        if msg.type != WSMsgType.BINARY:
+        if msg.type is not WSMsgType.BINARY:
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not bytes")
         return cast(bytes, msg.data)
 
