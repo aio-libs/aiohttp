@@ -264,8 +264,8 @@ class ClientWebSocketResponse:
                     self._reset_heartbeat()
                 finally:
                     self._waiting = False
-                    if close_wait := self._close_wait:
-                        set_result(close_wait, None)
+                    if self._close_wait:
+                        set_result(self._close_wait, None)
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 raise
