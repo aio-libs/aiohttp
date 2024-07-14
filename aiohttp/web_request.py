@@ -194,7 +194,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self._task = task
         self._client_max_size = client_max_size
         self._loop = loop
-        self._disconnection_waiters = set()  # type: Set[asyncio.Future[None]]
+        self._disconnection_waiters: Set[asyncio.Future[None]] = set()
 
         transport = self._protocol.transport
         assert transport is not None
