@@ -67,6 +67,7 @@ class WebSocketResponse(StreamResponse):
         "_close_code",
         "_loop",
         "_waiting",
+        "_close_wait",
         "_exception",
         "_timeout",
         "_receive_timeout",
@@ -103,7 +104,8 @@ class WebSocketResponse(StreamResponse):
         self._conn_lost = 0
         self._close_code: Optional[int] = None
         self._loop: Optional[asyncio.AbstractEventLoop] = None
-        self._waiting: Optional[asyncio.Future[bool]] = None
+        self._waiting: bool = False
+        self._close_wait: Optional[asyncio.Future[None]] = None
         self._exception: Optional[BaseException] = None
         self._timeout = timeout
         self._receive_timeout = receive_timeout
@@ -398,9 +400,11 @@ class WebSocketResponse(StreamResponse):
 
         # we need to break `receive()` cycle first,
         # `close()` may be called from different task
-        if self._waiting is not None and not self._closed:
+        if self._waiting and not self._closed:
+            assert self._loop is not None
+            self._close_wait = self._loop.create_future()
             reader.feed_data(WS_CLOSING_MESSAGE)
-            await self._waiting
+            await self._close_wait
 
         if self._closed:
             return False
@@ -467,7 +471,7 @@ class WebSocketResponse(StreamResponse):
         loop = self._loop
         assert loop is not None
         while True:
-            if self._waiting is not None:
+            if self._waiting:
                 raise RuntimeError("Concurrent call to receive() is not allowed")
 
             if self._closed:
@@ -479,15 +483,15 @@ class WebSocketResponse(StreamResponse):
                 return WS_CLOSING_MESSAGE
 
             try:
-                self._waiting = loop.create_future()
+                self._waiting = True
                 try:
                     async with async_timeout.timeout(timeout or self._receive_timeout):
                         msg = await self._reader.read()
                     self._reset_heartbeat()
                 finally:
-                    waiter = self._waiting
-                    set_result(waiter, True)
-                    self._waiting = None
+                    self._waiting = False
+                    if close_wait := self._close_wait:
+                        set_result(close_wait, None)
             except asyncio.TimeoutError:
                 raise
             except EofStream:
