@@ -521,7 +521,7 @@ and :ref:`aiohttp-web-signals` handlers.
       This can be used in handlers as a means of receiving a notification of
       premature client disconnection.
 
-      .. versionadded:: 4.0
+      .. versionadded:: 3.10
 
 .. class:: Request
 
