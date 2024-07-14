@@ -737,7 +737,7 @@ class TCPConnector(BaseConnector):
     fingerprint - Pass the binary sha256
         digest of the expected certificate in DER format to verify
         that the certificate the server presents matches. See also
-        https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning
+        https://en.wikipedia.org/wiki/HTTP_Public_Key_Pinning
     resolver - Enable DNS lookups and use this
         resolver
     use_dns_cache - Use memory cache for DNS lookups.
