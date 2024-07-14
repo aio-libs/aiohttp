@@ -294,6 +294,38 @@ async def test_concurrent_close(aiohttp_client: Any) -> None:
     assert msg.type == aiohttp.WSMsgType.CLOSED
 
 
+async def test_concurrent_close_multiple_tasks(aiohttp_client: Any) -> None:
+    client_ws = None
+
+    async def handler(request):
+        nonlocal client_ws
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        await ws.receive_bytes()
+        await ws.send_str("test")
+
+        msg = await ws.receive()
+        assert msg.type == aiohttp.WSMsgType.CLOSE
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    ws = client_ws = await client.ws_connect("/")
+
+    await ws.send_bytes(b"ask")
+
+    task1 = asyncio.create_task(ws.close())
+    task2 = asyncio.create_task(ws.close())
+
+    msg = await ws.receive()
+    assert msg.type == aiohttp.WSMsgType.CLOSED
+
+    await task1
+    await task2
+
+
 async def test_close_from_server(aiohttp_client: Any) -> None:
     loop = asyncio.get_event_loop()
     closed = loop.create_future()
