@@ -295,10 +295,7 @@ async def test_concurrent_close(aiohttp_client: Any) -> None:
 
 
 async def test_concurrent_close_multiple_tasks(aiohttp_client: Any) -> None:
-    client_ws = None
-
     async def handler(request):
-        nonlocal client_ws
         ws = web.WebSocketResponse()
         await ws.prepare(request)
 
