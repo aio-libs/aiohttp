@@ -325,6 +325,9 @@ async def test_concurrent_close_multiple_tasks(aiohttp_client: Any) -> None:
     await task1
     await task2
 
+    msg = await ws.receive()
+    assert msg.type == aiohttp.WSMsgType.CLOSED
+
 
 async def test_close_from_server(aiohttp_client: Any) -> None:
     loop = asyncio.get_event_loop()
