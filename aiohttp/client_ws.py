@@ -66,7 +66,8 @@ class ClientWebSocketResponse:
             self._pong_heartbeat = heartbeat / 2.0
         self._pong_response_cb: Optional[asyncio.TimerHandle] = None
         self._loop = loop
-        self._waiting: Optional[asyncio.Future[bool]] = None
+        self._waiting: bool = False
+        self._close_wait: Optional[asyncio.Future[None]] = None
         self._exception: Optional[BaseException] = None
         self._compress = compress
         self._client_notakeover = client_notakeover
@@ -185,10 +186,12 @@ class ClientWebSocketResponse:
     async def close(self, *, code: int = WSCloseCode.OK, message: bytes = b"") -> bool:
         # we need to break `receive()` cycle first,
         # `close()` may be called from different task
-        if self._waiting is not None and not self._closing:
+        if self._waiting and not self._closing:
+            assert self._loop is not None
+            self._close_wait = self._loop.create_future()
             self._closing = True
             self._reader.feed_data(WS_CLOSING_MESSAGE, 0)
-            await self._waiting
+            await self._close_wait
 
         if not self._closed:
             self._cancel_heartbeat()
@@ -232,7 +235,7 @@ class ClientWebSocketResponse:
 
     async def receive(self, timeout: Optional[float] = None) -> WSMessage:
         while True:
-            if self._waiting is not None:
+            if self._waiting:
                 raise RuntimeError("Concurrent call to receive() is not allowed")
 
             if self._closed:
@@ -242,15 +245,15 @@ class ClientWebSocketResponse:
                 return WS_CLOSED_MESSAGE
 
             try:
-                self._waiting = self._loop.create_future()
+                self._waiting = True
                 try:
                     async with async_timeout.timeout(timeout or self._receive_timeout):
                         msg = await self._reader.read()
                     self._reset_heartbeat()
                 finally:
-                    waiter = self._waiting
-                    self._waiting = None
-                    set_result(waiter, True)
+                    self._waiting = False
+                    if self._close_wait:
+                        set_result(self._close_wait, None)
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 raise
