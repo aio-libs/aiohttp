@@ -475,20 +475,21 @@ async def test_ws_connect_allowed_protocols(
     ws_key: Any,
     key_data: Any,
 ) -> None:
-    url = URL(f"{protocol}://example.com")
-    req = mock.Mock()
-    req_factory = mock.Mock(return_value=req)
-    resp = mock.Mock()
+    resp = mock.create_autospec(aiohttp.ClientResponse)
     resp.status = 101
     resp.headers = {
         hdrs.UPGRADE: "websocket",
         hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
-    resp.url = url
+    resp.url = URL(f"{protocol}://example.com")
     resp.cookies = SimpleCookie()
     resp.start = mock.AsyncMock()
+
+    req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
+    req_factory = mock.Mock(return_value=req)
     req.send = mock.AsyncMock(return_value=resp)
+
     session = await create_session(request_class=req_factory)
 
     connections = []
@@ -502,11 +503,12 @@ async def test_ws_connect_allowed_protocols(
     async def create_connection(req, traces, timeout):
         return create_mocked_conn()
 
-    session._connector.connect = connect
-    session._connector._create_connection = create_connection
-    session._connector._release = mock.Mock()
-
-    with mock.patch("aiohttp.client.os") as m_os:
+    connector = session._connector
+    with mock.patch.object(connector, "connect", connect), mock.patch.object(
+        connector, "_create_connection", create_connection
+    ), mock.patch.object(connector, "_release"), mock.patch(
+        "aiohttp.client.os"
+    ) as m_os:
         m_os.urandom.return_value = key_data
         await session.ws_connect(f"{protocol}://example.com")
 
