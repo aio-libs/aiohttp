@@ -311,6 +311,47 @@ async def test_concurrent_close(loop: Any, aiohttp_client: Any) -> None:
     assert msg.type == WSMsgType.CLOSED
 
 
+async def test_concurrent_close_multiple_tasks(loop: Any, aiohttp_client: Any) -> None:
+    srv_ws = None
+
+    async def handler(request):
+        nonlocal srv_ws
+        ws = srv_ws = web.WebSocketResponse(autoclose=False, protocols=("foo", "bar"))
+        await ws.prepare(request)
+
+        msg = await ws.receive()
+        assert msg.type == WSMsgType.CLOSING
+
+        msg = await ws.receive()
+        assert msg.type == WSMsgType.CLOSING
+
+        await asyncio.sleep(0)
+
+        msg = await ws.receive()
+        assert msg.type == WSMsgType.CLOSED
+
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    ws = await client.ws_connect("/", autoclose=False, protocols=("eggs", "bar"))
+
+    task1 = asyncio.create_task(srv_ws.close(code=WSCloseCode.INVALID_TEXT))
+    task2 = asyncio.create_task(srv_ws.close(code=WSCloseCode.INVALID_TEXT))
+
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.CLOSE
+
+    await task1
+    await task2
+
+    await asyncio.sleep(0)
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.CLOSED
+
+
 async def test_close_op_code_from_client(loop: Any, aiohttp_client: Any) -> None:
     srv_ws: Optional[web.WebSocketResponse] = None
 

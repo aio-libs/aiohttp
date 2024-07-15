@@ -26,7 +26,7 @@ click==8.1.6
     # via
     #   typer
     #   wait-for-it
-coverage==7.5.2
+coverage==7.6.0
     # via
     #   -r requirements/test.in
     #   pytest-cov
@@ -53,7 +53,7 @@ multidict==6.0.5
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.10.0 ; implementation_name == "cpython"
+mypy==1.10.1 ; implementation_name == "cpython"
     # via -r requirements/test.in
 mypy-extensions==1.0.0
     # via mypy

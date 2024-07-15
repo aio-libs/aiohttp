@@ -362,6 +362,21 @@ def test_route_dynamic(router: Any) -> None:
     assert route is route2
 
 
+def test_add_static_path_checks(router: Any, tmp_path: pathlib.Path) -> None:
+    """Test that static paths must exist and be directories."""
+    with pytest.raises(ValueError, match="does not exist"):
+        router.add_static("/", tmp_path / "does-not-exist")
+        with pytest.raises(ValueError, match="is not a directory"):
+            router.add_static("/", __file__)
+
+
+def test_add_static_path_resolution(router: Any) -> None:
+    """Test that static paths are expanded and absolute."""
+    res = router.add_static("/", "~/..")
+    directory = str(res.get_info()["directory"])
+    assert directory == str(pathlib.Path.home().parent)
+
+
 def test_add_static(router: Any) -> None:
     resource = router.add_static(
         "/st", pathlib.Path(aiohttp.__file__).parent, name="static"
