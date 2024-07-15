@@ -83,7 +83,7 @@ urllib3==2.2.2
     # via requests
 webcolors==1.13
     # via blockdiag
-zipp==3.17.0
+zipp==3.19.1
     # via
     #   importlib-metadata
     #   importlib-resources
