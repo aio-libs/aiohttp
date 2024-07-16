@@ -1,0 +1,1 @@
+Fixed blocking IO in the event loop for static resources and refactored exception handling -- by :user:`steverep`.
