@@ -161,7 +161,7 @@ jobs:
             pyver: "3.13"
             experimental: true
             no-extensions: 'Y'
-      fail-fast: true
+      fail-fast: false
     runs-on: ${{ matrix.os }}-latest
     continue-on-error: ${{ matrix.experimental }}
     steps:

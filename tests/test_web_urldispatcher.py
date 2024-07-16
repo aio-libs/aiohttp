@@ -396,23 +396,17 @@ async def test_unauthorized_folder_access(
     # have permissions to do so for the folder.
     my_dir = tmp_path / "my_dir"
     my_dir.mkdir()
+    my_dir.chmod(0o000)
 
     app = web.Application()
 
-    with mock.patch("pathlib.Path.__new__") as path_constructor:
-        path = MagicMock()
-        path.joinpath.return_value = path
-        path.resolve.return_value = path
-        path.iterdir.return_value.__iter__.side_effect = PermissionError()
-        path_constructor.return_value = path
+    # Register global static route:
+    app.router.add_static("/", str(tmp_path), show_index=True)
+    client = await aiohttp_client(app)
 
-        # Register global static route:
-        app.router.add_static("/", str(tmp_path), show_index=True)
-        client = await aiohttp_client(app)
-
-        # Request the root of the static directory.
-        r = await client.get("/" + my_dir.name)
-        assert r.status == 403
+    # Request the root of the static directory.
+    r = await client.get("/" + my_dir.name)
+    assert r.status == 403
 
 
 async def test_access_symlink_loop(
