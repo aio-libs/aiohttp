@@ -647,7 +647,7 @@ class StaticResource(PrefixResource):
             raise HTTPForbidden()
 
         unresolved_path = self._directory.joinpath(filename)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
             None, self._resolve_path_to_response, unresolved_path
         )
