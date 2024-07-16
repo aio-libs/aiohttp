@@ -665,7 +665,8 @@ class StaticResource(PrefixResource):
             else:
                 file_path = unresolved_path.resolve()
                 file_path.relative_to(self._directory)
-        except (ValueError, RuntimeError) as error:
+        # TODO(PY39): Remove OSError to appease Windows
+        except (ValueError, RuntimeError, OSError) as error:
             # ValueError for relative check; RuntimeError for circular symlink.
             raise HTTPNotFound() from error
 
