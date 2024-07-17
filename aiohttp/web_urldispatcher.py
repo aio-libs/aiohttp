@@ -653,7 +653,7 @@ class StaticResource(PrefixResource):
         )
 
     def _resolve_path_to_response(self, unresolved_path: Path) -> StreamResponse:
-        """Takes the unresolved path and queries the file system to form a response."""
+        """Take the unresolved path and query the file system to form a response."""
         # Check for access outside the root directory. For follow symlinks, URI
         # cannot traverse out, but symlinks can. Otherwise, no access outside
         # root is permitted.
@@ -665,7 +665,7 @@ class StaticResource(PrefixResource):
             else:
                 file_path = unresolved_path.resolve()
                 file_path.relative_to(self._directory)
-        # TODO(PY39): Remove OSError to appease Windows
+        # TODO(PY39): Remove OSError needed to appease 3.8 on Windows.
         except (ValueError, RuntimeError, OSError) as error:
             # ValueError for relative check; RuntimeError for circular symlink.
             raise HTTPNotFound() from error
