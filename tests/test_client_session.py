@@ -467,6 +467,60 @@ async def test_close_conn_on_error(
         c.__del__()
 
 
+@pytest.mark.parametrize("protocol", ["http", "https", "ws", "wss"])
+async def test_ws_connect_allowed_protocols(
+    create_session: Any,
+    create_mocked_conn: Any,
+    protocol: str,
+    ws_key: Any,
+    key_data: Any,
+) -> None:
+    resp = mock.create_autospec(aiohttp.ClientResponse)
+    resp.status = 101
+    resp.headers = {
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
+        hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
+    }
+    resp.url = URL(f"{protocol}://example.com")
+    resp.cookies = SimpleCookie()
+    resp.start = mock.AsyncMock()
+
+    req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
+    req_factory = mock.Mock(return_value=req)
+    req.send = mock.AsyncMock(return_value=resp)
+
+    session = await create_session(request_class=req_factory)
+
+    connections = []
+    original_connect = session._connector.connect
+
+    async def connect(req, traces, timeout):
+        conn = await original_connect(req, traces, timeout)
+        connections.append(conn)
+        return conn
+
+    async def create_connection(req, traces, timeout):
+        return create_mocked_conn()
+
+    connector = session._connector
+    with mock.patch.object(connector, "connect", connect), mock.patch.object(
+        connector, "_create_connection", create_connection
+    ), mock.patch.object(connector, "_release"), mock.patch(
+        "aiohttp.client.os"
+    ) as m_os:
+        m_os.urandom.return_value = key_data
+        await session.ws_connect(f"{protocol}://example.com")
+
+    # normally called during garbage collection.  triggers an exception
+    # if the connection wasn't already closed
+    for c in connections:
+        c.close()
+        del c
+
+    await session.close()
+
+
 async def test_cookie_jar_usage(loop: Any, aiohttp_client: Any) -> None:
     req_url = None
 
