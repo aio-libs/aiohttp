@@ -1,0 +1,1 @@
+Avoid scheduling the writer if it can finish synchronously -- by :user:`bdraco`.
