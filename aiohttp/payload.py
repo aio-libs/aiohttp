@@ -11,7 +11,6 @@ from typing import (
     IO,
     TYPE_CHECKING,
     Any,
-    ByteString,
     Dict,
     Final,
     Iterable,
@@ -217,7 +216,9 @@ class Payload(ABC):
 
 
 class BytesPayload(Payload):
-    def __init__(self, value: ByteString, *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, value: Union[bytes, bytearray, memoryview], *args: Any, **kwargs: Any
+    ) -> None:
         if not isinstance(value, (bytes, bytearray, memoryview)):
             raise TypeError(f"value argument must be byte-ish, not {type(value)!r}")
 

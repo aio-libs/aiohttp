@@ -4,7 +4,6 @@ import sys
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 from .abc import AbstractResolver, ResolveResult
-from .helpers import get_running_loop
 
 __all__ = ("ThreadedResolver", "AsyncResolver", "DefaultResolver")
 
@@ -13,7 +12,7 @@ try:
 
     # aiodns_default = hasattr(aiodns.DNSResolver, 'getaddrinfo')
 except ImportError:  # pragma: no cover
-    aiodns = None
+    aiodns = None  # type: ignore[assignment]
 
 
 aiodns_default = False
@@ -30,10 +29,10 @@ class ThreadedResolver(AbstractResolver):
     """
 
     def __init__(self, loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
-        self._loop = get_running_loop(loop)
+        self._loop = loop or asyncio.get_running_loop()
 
     async def resolve(
-        self, host: str, port: int = 0, family: int = socket.AF_INET
+        self, host: str, port: int = 0, family: socket.AddressFamily = socket.AF_INET
     ) -> List[ResolveResult]:
         infos = await self._loop.getaddrinfo(
             host,
@@ -92,15 +91,14 @@ class AsyncResolver(AbstractResolver):
         if aiodns is None:
             raise RuntimeError("Resolver requires aiodns library")
 
-        self._loop = get_running_loop(loop)
-        self._resolver = aiodns.DNSResolver(*args, loop=loop, **kwargs)
+        self._resolver = aiodns.DNSResolver(*args, **kwargs)
 
         if not hasattr(self._resolver, "gethostbyname"):
             # aiodns 1.1 is not available, fallback to DNSResolver.query
             self.resolve = self._resolve_with_query  # type: ignore
 
     async def resolve(
-        self, host: str, port: int = 0, family: int = socket.AF_INET
+        self, host: str, port: int = 0, family: socket.AddressFamily = socket.AF_INET
     ) -> List[ResolveResult]:
         try:
             resp = await self._resolver.getaddrinfo(

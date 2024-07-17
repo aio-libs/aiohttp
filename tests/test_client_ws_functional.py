@@ -1,5 +1,6 @@
 import asyncio
 import sys
+from typing import Any
 
 import pytest
 
@@ -246,7 +247,7 @@ async def test_concurrent_close(aiohttp_client) -> None:
         await client_ws.close()
 
         msg = await ws.receive()
-        assert msg.type == aiohttp.WSMsgType.CLOSE
+        assert msg.type is aiohttp.WSMsgType.CLOSE
         return ws
 
     app = web.Application()
@@ -257,11 +258,43 @@ async def test_concurrent_close(aiohttp_client) -> None:
     await ws.send_bytes(b"ask")
 
     msg = await ws.receive()
-    assert msg.type == aiohttp.WSMsgType.CLOSING
+    assert msg.type is aiohttp.WSMsgType.CLOSING
 
     await asyncio.sleep(0.01)
     msg = await ws.receive()
-    assert msg.type == aiohttp.WSMsgType.CLOSED
+    assert msg.type is aiohttp.WSMsgType.CLOSED
+
+
+async def test_concurrent_close_multiple_tasks(aiohttp_client: Any) -> None:
+    async def handler(request):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        await ws.receive_bytes()
+        await ws.send_str("test")
+
+        msg = await ws.receive()
+        assert msg.type is aiohttp.WSMsgType.CLOSE
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    ws = await client.ws_connect("/")
+
+    await ws.send_bytes(b"ask")
+
+    task1 = asyncio.create_task(ws.close())
+    task2 = asyncio.create_task(ws.close())
+
+    msg = await ws.receive()
+    assert msg.type is aiohttp.WSMsgType.CLOSED
+
+    await task1
+    await task2
+
+    msg = await ws.receive()
+    assert msg.type is aiohttp.WSMsgType.CLOSED
 
 
 async def test_concurrent_task_close(aiohttp_client) -> None:

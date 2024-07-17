@@ -1,4 +1,3 @@
--r typing-extensions.in
 -r runtime-deps.in
 
 gunicorn

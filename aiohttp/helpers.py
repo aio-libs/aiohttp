@@ -14,7 +14,6 @@ import platform
 import re
 import sys
 import time
-import warnings
 import weakref
 from collections import namedtuple
 from contextlib import suppress
@@ -52,7 +51,7 @@ from multidict import MultiDict, MultiDictProxy, MultiMapping
 from yarl import URL
 
 from . import hdrs
-from .log import client_logger, internal_logger
+from .log import client_logger
 
 if sys.version_info >= (3, 11):
     import asyncio as async_timeout
@@ -285,38 +284,6 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
                     auth = None
         ret[proto] = ProxyInfo(proxy, auth)
     return ret
-
-
-def current_task(
-    loop: Optional[asyncio.AbstractEventLoop] = None,
-) -> "Optional[asyncio.Task[Any]]":
-    return asyncio.current_task(loop=loop)
-
-
-def get_running_loop(
-    loop: Optional[asyncio.AbstractEventLoop] = None,
-) -> asyncio.AbstractEventLoop:
-    if loop is None:
-        loop = asyncio.get_event_loop()
-    if not loop.is_running():
-        warnings.warn(
-            "The object should be created within an async function",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-        if loop.get_debug():
-            internal_logger.warning(
-                "The object should be created within an async function", stack_info=True
-            )
-    return loop
-
-
-def isasyncgenfunction(obj: Any) -> bool:
-    func = getattr(inspect, "isasyncgenfunction", None)
-    if func is not None:
-        return func(obj)  # type: ignore[no-any-return]
-    else:
-        return False
 
 
 def get_env_proxy_for_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
@@ -709,7 +676,7 @@ class TimerContext(BaseTimerContext):
             raise asyncio.TimeoutError from None
 
     def __enter__(self) -> BaseTimerContext:
-        task = current_task(loop=self._loop)
+        task = asyncio.current_task(loop=self._loop)
 
         if task is None:
             raise RuntimeError(
@@ -749,7 +716,7 @@ def ceil_timeout(
     if delay is None or delay <= 0:
         return async_timeout.timeout(None)
 
-    loop = get_running_loop()
+    loop = asyncio.get_running_loop()
     now = loop.time()
     when = now + delay
     if delay > ceil_threshold:
@@ -818,8 +785,7 @@ class ErrorableProtocol(Protocol):
         self,
         exc: BaseException,
         exc_cause: BaseException = ...,
-    ) -> None:
-        ...  # pragma: no cover
+    ) -> None: ...  # pragma: no cover
 
 
 def set_exception(
@@ -905,12 +871,10 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
         )
 
     @overload  # type: ignore[override]
-    def __getitem__(self, key: AppKey[_T]) -> _T:
-        ...
+    def __getitem__(self, key: AppKey[_T]) -> _T: ...
 
     @overload
-    def __getitem__(self, key: str) -> Any:
-        ...
+    def __getitem__(self, key: str) -> Any: ...
 
     def __getitem__(self, key: Union[str, AppKey[_T]]) -> Any:
         for mapping in self._maps:
@@ -921,16 +885,13 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
         raise KeyError(key)
 
     @overload  # type: ignore[override]
-    def get(self, key: AppKey[_T], default: _S) -> Union[_T, _S]:
-        ...
+    def get(self, key: AppKey[_T], default: _S) -> Union[_T, _S]: ...
 
     @overload
-    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]:
-        ...
+    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]: ...
 
     @overload
-    def get(self, key: str, default: Any = ...) -> Any:
-        ...
+    def get(self, key: str, default: Any = ...) -> Any: ...
 
     def get(self, key: Union[str, AppKey[_T]], default: Any = None) -> Any:
         try:

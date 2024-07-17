@@ -49,7 +49,7 @@ from .client_exceptions import (
 )
 from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest, Fingerprint, _merge_ssl_params
-from .helpers import ceil_timeout, get_running_loop, is_ip_address, noop, sentinel
+from .helpers import ceil_timeout, is_ip_address, noop, sentinel
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
@@ -231,7 +231,7 @@ class BaseConnector:
             if keepalive_timeout is sentinel:
                 keepalive_timeout = 15.0
 
-        loop = get_running_loop(loop)
+        loop = loop or asyncio.get_running_loop()
         self._timeout_ceil_threshold = timeout_ceil_threshold
 
         self._closed = False
@@ -242,9 +242,9 @@ class BaseConnector:
         self._limit = limit
         self._limit_per_host = limit_per_host
         self._acquired: Set[ResponseHandler] = set()
-        self._acquired_per_host: DefaultDict[
-            ConnectionKey, Set[ResponseHandler]
-        ] = defaultdict(set)
+        self._acquired_per_host: DefaultDict[ConnectionKey, Set[ResponseHandler]] = (
+            defaultdict(set)
+        )
         self._keepalive_timeout = cast(float, keepalive_timeout)
         self._force_close = force_close
 
@@ -737,7 +737,7 @@ class TCPConnector(BaseConnector):
     fingerprint - Pass the binary sha256
         digest of the expected certificate in DER format to verify
         that the certificate the server presents matches. See also
-        https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning
+        https://en.wikipedia.org/wiki/HTTP_Public_Key_Pinning
     resolver - Enable DNS lookups and use this
         resolver
     use_dns_cache - Use memory cache for DNS lookups.
@@ -766,7 +766,7 @@ class TCPConnector(BaseConnector):
         fingerprint: Optional[bytes] = None,
         use_dns_cache: bool = True,
         ttl_dns_cache: Optional[int] = 10,
-        family: int = 0,
+        family: socket.AddressFamily = socket.AddressFamily.AF_UNSPEC,
         ssl_context: Optional[SSLContext] = None,
         ssl: Union[bool, Fingerprint, SSLContext] = True,
         local_addr: Optional[Tuple[str, int]] = None,
