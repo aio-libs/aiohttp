@@ -972,8 +972,15 @@ async def test_data_stream(loop: Any, buf: Any, conn: Any) -> None:
     req = ClientRequest("POST", URL("http://python.org/"), data=gen(), loop=loop)
     assert req.chunked
     assert req.headers["TRANSFER-ENCODING"] == "chunked"
+    original_write_bytes = req.write_bytes
 
-    resp = await req.send(conn)
+    async def _mock_write_bytes(*args, **kwargs):
+        # Ensure the task is scheduled
+        await asyncio.sleep(0)
+        return await original_write_bytes(*args, **kwargs)
+
+    with mock.patch.object(req, "write_bytes", _mock_write_bytes):
+        resp = await req.send(conn)
     assert asyncio.isfuture(req._writer)
     await resp.wait_for_close()
     assert req._writer is None
