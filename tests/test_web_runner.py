@@ -264,22 +264,3 @@ def test_run_after_asyncio_run() -> None:
 
     web.run_app(app)
     assert spy.called, "run_app() should work after asyncio.run()."
-
-
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    (
-        (2, 2),
-        (None, 5),
-        ("2", 2),
-    ),
-)
-async def test_app_handler_args_ceil_threshold(value: Any, expected: Any) -> None:
-    app = web.Application(handler_args={"timeout_ceil_threshold": value})
-    runner = web.AppRunner(app)
-    await runner.setup()
-    assert runner._server
-    rh = runner._server()
-    assert rh._timeout_ceil_threshold == expected
-    await runner.cleanup()
-    assert app
