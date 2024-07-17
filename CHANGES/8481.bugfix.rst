@@ -1,2 +1,4 @@
 Fixed the incorrect rejection of ``ws://`` and ``wss://`` urls
+when creating requests. This was a regression introduced in
+#6722.
 -- by :user:` AraHaan`.
