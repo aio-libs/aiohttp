@@ -388,24 +388,24 @@ async def test_handler_metadata_persistence() -> None:
             assert route.handler.__doc__ == "Doc"
 
 
+@pytest.mark.skipif(
+    sys.platform.startswith("win32"), reason="Cannot remove read access on Windows"
+)
+@pytest.mark.parametrize("file_request", ["", "my_file.txt"])
 async def test_unauthorized_folder_access(
-    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient, file_request: str
 ) -> None:
-    # Tests the unauthorized access to a folder of static file server.
-    # Try to list a folder content of static file server when server does not
+    """Tests forbidden response for request with unauthorized directory."""
     # have permissions to do so for the folder.
     my_dir = tmp_path / "my_dir"
     my_dir.mkdir()
     my_dir.chmod(0o000)
 
     app = web.Application()
-
-    # Register global static route:
     app.router.add_static("/", str(tmp_path), show_index=True)
     client = await aiohttp_client(app)
 
-    # Request the root of the static directory.
-    r = await client.get("/" + my_dir.name)
+    r = await client.get(f"/{my_dir.name}/{file_request}")
     assert r.status == 403
 
 
