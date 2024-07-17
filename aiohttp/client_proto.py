@@ -224,6 +224,14 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
     def start_timeout(self) -> None:
         self._reschedule_timeout()
 
+    @property
+    def read_timeout(self) -> Optional[float]:
+        return self._read_timeout
+
+    @read_timeout.setter
+    def read_timeout(self, read_timeout: Optional[float]) -> None:
+        self._read_timeout = read_timeout
+
     def _on_read_timeout(self) -> None:
         exc = SocketTimeoutError("Timeout on reading data from socket")
         self.set_exception(exc)
