@@ -510,7 +510,7 @@ and :ref:`aiohttp-web-signals` handlers.
           required work will be processed by :mod:`aiohttp.web`
           internal machinery.
 
-   .. comethod:: wait_for_disconnection()
+   .. method:: wait_for_disconnection()
 
       Returns when the connection that sent this request closes
 
