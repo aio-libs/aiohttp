@@ -1155,14 +1155,28 @@ async def test_oserror_on_write_bytes(loop: Any, conn: Any) -> None:
 
 async def test_terminate(loop: Any, conn: Any) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
-    resp = await req.send(conn)
-    assert req._writer is not None
-    writer = req._writer = WriterMock()
-    writer.cancel = mock.Mock()
 
+    async def _mock_write_bytes(*args, **kwargs):
+        # Ensure the task is scheduled
+        await asyncio.sleep(0)
+
+    with mock.patch.object(req, "write_bytes", _mock_write_bytes):
+        resp = await req.send(conn)
+
+    assert req._writer is not None
+    assert resp._writer is not None
+    await resp._writer
+    writer = WriterMock()
+    writer.done = mock.Mock(return_value=False)
+    writer.cancel = mock.Mock()
+    req._writer = writer
+    resp._writer = writer
+
+    assert req._writer is not None
+    assert resp._writer is not None
     req.terminate()
-    assert req._writer is None
     writer.cancel.assert_called_with()
+    writer.done.assert_called_with()
     resp.close()
 
 
@@ -1172,9 +1186,19 @@ def test_terminate_with_closed_loop(loop: Any, conn: Any) -> None:
     async def go():
         nonlocal req, resp, writer
         req = ClientRequest("get", URL("http://python.org"), loop=loop)
-        resp = await req.send(conn)
+
+        async def _mock_write_bytes(*args, **kwargs):
+            # Ensure the task is scheduled
+            await asyncio.sleep(0)
+
+        with mock.patch.object(req, "write_bytes", _mock_write_bytes):
+            resp = await req.send(conn)
+
         assert req._writer is not None
-        writer = req._writer = WriterMock()
+        writer = WriterMock()
+        writer.done = mock.Mock(return_value=False)
+        req._writer = writer
+        resp._writer = writer
 
         await asyncio.sleep(0.05)
 
