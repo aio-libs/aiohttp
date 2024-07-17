@@ -4,7 +4,6 @@ import sys
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 from .abc import AbstractResolver, ResolveResult
-from .helpers import get_running_loop
 
 __all__ = ("ThreadedResolver", "AsyncResolver", "DefaultResolver")
 
@@ -30,7 +29,7 @@ class ThreadedResolver(AbstractResolver):
     """
 
     def __init__(self, loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
-        self._loop = get_running_loop(loop)
+        self._loop = loop or asyncio.get_running_loop()
 
     async def resolve(
         self, host: str, port: int = 0, family: socket.AddressFamily = socket.AF_INET

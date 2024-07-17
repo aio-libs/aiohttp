@@ -14,22 +14,7 @@ from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro
 
 
-@pytest.fixture
-def key_data():
-    return os.urandom(16)
-
-
-@pytest.fixture
-def key(key_data):
-    return base64.b64encode(key_data)
-
-
-@pytest.fixture
-def ws_key(key):
-    return base64.b64encode(hashlib.sha1(key + WS_KEY).digest()).decode()
-
-
-async def test_ws_connect(ws_key, loop, key_data) -> None:
+async def test_ws_connect(ws_key: Any, loop: Any, key_data: Any) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {

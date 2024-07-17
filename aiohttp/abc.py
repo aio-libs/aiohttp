@@ -21,7 +21,6 @@ from typing import (
 from multidict import CIMultiDict
 from yarl import URL
 
-from .helpers import get_running_loop
 from .typedefs import LooseCookies
 
 if TYPE_CHECKING:
@@ -170,7 +169,7 @@ class AbstractCookieJar(Sized, IterableBase):
     """Abstract Cookie Jar."""
 
     def __init__(self, *, loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
-        self._loop = get_running_loop(loop)
+        self._loop = loop or asyncio.get_running_loop()
 
     @abstractmethod
     def clear(self, predicate: Optional[ClearCookiePredicate] = None) -> None:

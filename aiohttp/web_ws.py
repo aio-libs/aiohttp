@@ -81,7 +81,8 @@ class WebSocketResponse(StreamResponse):
         self._conn_lost = 0
         self._close_code: Optional[int] = None
         self._loop: Optional[asyncio.AbstractEventLoop] = None
-        self._waiting: Optional[asyncio.Future[bool]] = None
+        self._waiting: bool = False
+        self._close_wait: Optional[asyncio.Future[None]] = None
         self._exception: Optional[BaseException] = None
         self._timeout = timeout
         self._receive_timeout = receive_timeout
@@ -376,9 +377,12 @@ class WebSocketResponse(StreamResponse):
 
         # we need to break `receive()` cycle first,
         # `close()` may be called from different task
-        if self._waiting is not None and not self._closed:
+        if self._waiting and not self._closed:
+            if not self._close_wait:
+                assert self._loop is not None
+                self._close_wait = self._loop.create_future()
             reader.feed_data(WS_CLOSING_MESSAGE, 0)
-            await self._waiting
+            await self._close_wait
 
         if self._closed:
             return False
@@ -415,7 +419,7 @@ class WebSocketResponse(StreamResponse):
             self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
             return True
 
-        if msg.type == WSMsgType.CLOSE:
+        if msg.type is WSMsgType.CLOSE:
             self._set_code_close_transport(msg.data)
             return True
 
@@ -445,7 +449,7 @@ class WebSocketResponse(StreamResponse):
         loop = self._loop
         assert loop is not None
         while True:
-            if self._waiting is not None:
+            if self._waiting:
                 raise RuntimeError("Concurrent call to receive() is not allowed")
 
             if self._closed:
@@ -457,15 +461,15 @@ class WebSocketResponse(StreamResponse):
                 return WS_CLOSING_MESSAGE
 
             try:
-                self._waiting = loop.create_future()
+                self._waiting = True
                 try:
                     async with async_timeout.timeout(timeout or self._receive_timeout):
                         msg = await self._reader.read()
                     self._reset_heartbeat()
                 finally:
-                    waiter = self._waiting
-                    set_result(waiter, True)
-                    self._waiting = None
+                    self._waiting = False
+                    if self._close_wait:
+                        set_result(self._close_wait, None)
             except asyncio.TimeoutError:
                 raise
             except EofStream:
@@ -482,7 +486,7 @@ class WebSocketResponse(StreamResponse):
                 await self.close()
                 return WSMessage(WSMsgType.ERROR, exc, None)
 
-            if msg.type == WSMsgType.CLOSE:
+            if msg.type is WSMsgType.CLOSE:
                 self._set_closing(msg.data)
                 # Could be closed while awaiting reader.
                 if not self._closed and self._autoclose:
@@ -491,19 +495,19 @@ class WebSocketResponse(StreamResponse):
                     # want to drain any pending writes as it will
                     # likely result writing to a broken pipe.
                     await self.close(drain=False)
-            elif msg.type == WSMsgType.CLOSING:
+            elif msg.type is WSMsgType.CLOSING:
                 self._set_closing(WSCloseCode.OK)
-            elif msg.type == WSMsgType.PING and self._autoping:
+            elif msg.type is WSMsgType.PING and self._autoping:
                 await self.pong(msg.data)
                 continue
-            elif msg.type == WSMsgType.PONG and self._autoping:
+            elif msg.type is WSMsgType.PONG and self._autoping:
                 continue
 
             return msg
 
     async def receive_str(self, *, timeout: Optional[float] = None) -> str:
         msg = await self.receive(timeout)
-        if msg.type != WSMsgType.TEXT:
+        if msg.type is not WSMsgType.TEXT:
             raise TypeError(
                 "Received message {}:{!r} is not WSMsgType.TEXT".format(
                     msg.type, msg.data
@@ -513,7 +517,7 @@ class WebSocketResponse(StreamResponse):
 
     async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
-        if msg.type != WSMsgType.BINARY:
+        if msg.type is not WSMsgType.BINARY:
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not bytes")
         return cast(bytes, msg.data)
 

@@ -607,18 +607,6 @@ def test_proxies_from_env_http_with_auth(url_input, expected_scheme) -> None:
     assert proxy_auth.encoding == "latin1"
 
 
-# ------------ get_running_loop ---------------------------------
-
-
-def test_get_running_loop_not_running(loop) -> None:
-    with pytest.warns(DeprecationWarning):
-        helpers.get_running_loop()
-
-
-async def test_get_running_loop_ok(loop) -> None:
-    assert helpers.get_running_loop() is loop
-
-
 # --------------------- get_env_proxy_for_url ------------------------------
 
 
