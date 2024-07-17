@@ -1,11 +1,11 @@
 import asyncio
 import contextlib
+import inspect
 import warnings
 from typing import Any, Awaitable, Callable, Dict, Iterator, Optional, Type, Union
 
 import pytest
 
-from aiohttp.helpers import isasyncgenfunction
 from aiohttp.web import Application
 
 from .test_utils import (
@@ -57,7 +57,7 @@ def pytest_fixture_setup(fixturedef):  # type: ignore[no-untyped-def]
     """
     func = fixturedef.func
 
-    if isasyncgenfunction(func):
+    if inspect.isasyncgenfunction(func):
         # async generator fixture
         is_async_gen = True
     elif asyncio.iscoroutinefunction(func):

@@ -88,7 +88,6 @@ from .helpers import (
     TimeoutHandle,
     ceil_timeout,
     get_env_proxy_for_url,
-    get_running_loop,
     method_must_be_empty_body,
     sentinel,
     strip_auth_from_url,
@@ -294,7 +293,7 @@ class ClientSession:
             if connector is not None:
                 loop = connector._loop
 
-        loop = get_running_loop(loop)
+        loop = loop or asyncio.get_running_loop()
 
         if base_url is None or isinstance(base_url, URL):
             self._base_url: Optional[URL] = base_url

@@ -4,7 +4,6 @@ import asyncio
 from typing import Any, Awaitable, Callable, Dict, List, Optional  # noqa
 
 from .abc import AbstractStreamWriter
-from .helpers import get_running_loop
 from .http_parser import RawRequestMessage
 from .streams import StreamReader
 from .web_protocol import RequestHandler, _RequestFactory, _RequestHandler
@@ -23,7 +22,7 @@ class Server:
         loop: Optional[asyncio.AbstractEventLoop] = None,
         **kwargs: Any
     ) -> None:
-        self._loop = get_running_loop(loop)
+        self._loop = loop or asyncio.get_running_loop()
         self._connections: Dict[RequestHandler, asyncio.Transport] = {}
         self._kwargs = kwargs
         self.requests_count = 0
