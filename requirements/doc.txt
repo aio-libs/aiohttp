@@ -83,11 +83,11 @@ urllib3==2.2.2
     # via requests
 webcolors==1.13
     # via blockdiag
-zipp==3.17.0
+zipp==3.19.1
     # via
     #   importlib-metadata
     #   importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==68.0.0
+setuptools==70.0.0
     # via blockdiag
