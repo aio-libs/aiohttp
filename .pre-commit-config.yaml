@@ -97,12 +97,12 @@ repos:
   - id: detect-private-key
     exclude: ^examples/
 - repo: https://github.com/asottile/pyupgrade
-  rev: 'v3.15.2'
+  rev: 'v3.16.0'
   hooks:
   - id: pyupgrade
     args: ['--py37-plus']
 - repo: https://github.com/PyCQA/flake8
-  rev: '7.0.0'
+  rev: '7.1.0'
   hooks:
   - id: flake8
     additional_dependencies:
@@ -118,7 +118,7 @@ repos:
     exclude: >-
       ^CHANGES\.rst$
 - repo: https://github.com/codespell-project/codespell
-  rev: v2.2.6
+  rev: v2.3.0
   hooks:
   - id: codespell
     additional_dependencies:
