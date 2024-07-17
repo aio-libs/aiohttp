@@ -172,6 +172,17 @@ def pipe_name():
 
 
 @pytest.fixture
+def create_mocked_conn(loop: Any):
+    def _proto_factory(conn_closing_result=None, **kwargs):
+        proto = mock.Mock(**kwargs)
+        proto.closed = loop.create_future()
+        proto.closed.set_result(conn_closing_result)
+        return proto
+
+    yield _proto_factory
+
+
+@pytest.fixture
 def selector_loop():
     policy = asyncio.WindowsSelectorEventLoopPolicy()
     asyncio.set_event_loop_policy(policy)
