@@ -7,6 +7,7 @@ import html
 import keyword
 import os
 import re
+import sys
 from contextlib import contextmanager
 from pathlib import Path
 from types import MappingProxyType
@@ -74,6 +75,12 @@ if TYPE_CHECKING:
     BaseDict = Dict[str, str]
 else:
     BaseDict = dict
+
+CIRCULAR_SYMLINK_ERROR = (
+    OSError
+    if sys.version_info < (3, 10) and sys.platform.startswith("win32")
+    else RuntimeError
+)
 
 YARL_VERSION: Final[Tuple[int, ...]] = tuple(map(int, yarl_version.split(".")[:2]))
 
@@ -665,8 +672,7 @@ class StaticResource(PrefixResource):
             else:
                 file_path = unresolved_path.resolve()
                 file_path.relative_to(self._directory)
-        # TODO(PY39): Remove OSError needed to appease 3.8 on Windows.
-        except (ValueError, RuntimeError, OSError) as error:
+        except (ValueError, CIRCULAR_SYMLINK_ERROR) as error:
             # ValueError for relative check; RuntimeError for circular symlink.
             raise HTTPNotFound() from error
 
