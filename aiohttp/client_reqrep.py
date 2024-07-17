@@ -284,7 +284,11 @@ class ClientRequest:
             self.__writer.remove_done_callback(self.__reset_writer)
         self.__writer = writer
         if writer is not None:
-            writer.add_done_callback(self.__reset_writer)
+            if writer.done():
+                # The writer is already done, so we can reset it immediately.
+                self.__reset_writer()
+            else:
+                writer.add_done_callback(self.__reset_writer)
 
     def is_ssl(self) -> bool:
         return self.url.scheme in ("https", "wss")
@@ -657,9 +661,17 @@ class ClientRequest:
             self.method, path, v=self.version
         )
         await writer.write_headers(status_line, self.headers)
+        coro = self.write_bytes(writer, conn)
 
-        self._writer = self.loop.create_task(self.write_bytes(writer, conn))
+        if sys.version_info >= (3, 12):
+            # Optimization for Python 3.12, try to write
+            # bytes immediately to avoid having to schedule
+            # the task on the event loop.
+            task = asyncio.Task(coro, loop=self.loop, eager_start=True)
+        else:
+            task = self.loop.create_task(coro)
 
+        self._writer = task
         response_class = self.response_class
         assert response_class is not None
         self.response = response_class(
@@ -777,7 +789,11 @@ class ClientResponse(HeadersMixin):
             self.__writer.remove_done_callback(self.__reset_writer)
         self.__writer = writer
         if writer is not None:
-            writer.add_done_callback(self.__reset_writer)
+            if writer.done():
+                # The writer is already done, so we can reset it immediately.
+                self.__reset_writer()
+            else:
+                writer.add_done_callback(self.__reset_writer)
 
     @reify
     def url(self) -> URL:
