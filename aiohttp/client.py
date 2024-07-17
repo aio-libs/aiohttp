@@ -29,6 +29,7 @@ from typing import (
     Set,
     Tuple,
     Type,
+    TypedDict,
     TypeVar,
     Union,
     final,
@@ -149,6 +150,37 @@ if TYPE_CHECKING:
 else:
     SSLContext = None
 
+if sys.version_info >= (3, 11) and TYPE_CHECKING:
+    from typing import Unpack
+
+
+class _RequestOptions(TypedDict, total=False):
+    params: Union[Mapping[str, str], None]
+    data: Any
+    json: Any
+    cookies: Union[LooseCookies, None]
+    headers: Union[LooseHeaders, None]
+    skip_auto_headers: Union[Iterable[str], None]
+    auth: Union[BasicAuth, None]
+    allow_redirects: bool
+    max_redirects: int
+    compress: Union[str, None]
+    chunked: Union[bool, None]
+    expect100: bool
+    raise_for_status: Union[None, bool, Callable[[ClientResponse], Awaitable[None]]]
+    read_until_eof: bool
+    proxy: Union[StrOrURL, None]
+    proxy_auth: Union[BasicAuth, None]
+    timeout: "Union[ClientTimeout, _SENTINEL, None]"
+    ssl: Union[SSLContext, bool, Fingerprint]
+    server_hostname: Union[str, None]
+    proxy_headers: Union[LooseHeaders, None]
+    trace_request_ctx: Union[SimpleNamespace, None]
+    read_bufsize: Union[int, None]
+    auto_decompress: Union[bool, None]
+    max_line_size: Union[int, None]
+    max_field_size: Union[int, None]
+
 
 @dataclasses.dataclass(frozen=True)
 class ClientTimeout:
@@ -178,6 +210,8 @@ DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60)
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
 HTTP_SCHEMA_SET = frozenset({"http", "https", ""})
+WS_SCHEMA_SET = frozenset({"ws", "wss"})
+ALLOWED_PROTOCOL_SCHEMA_SET = HTTP_SCHEMA_SET | WS_SCHEMA_SET
 
 _RetType = TypeVar("_RetType")
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
@@ -420,7 +454,7 @@ class ClientSession:
         except ValueError as e:
             raise InvalidUrlClientError(str_or_url) from e
 
-        if url.scheme not in HTTP_SCHEMA_SET:
+        if url.scheme not in ALLOWED_PROTOCOL_SCHEMA_SET:
             raise NonHttpUrlClientError(url)
 
         skip_headers = set(self._skip_auto_headers)
@@ -939,6 +973,17 @@ class ClientSession:
             assert conn is not None
             conn_proto = conn.protocol
             assert conn_proto is not None
+
+            # For WS connection the read_timeout must be either ws_timeout.ws_receive or greater
+            # None == no timeout, i.e. infinite timeout, so None is the max timeout possible
+            if ws_timeout.ws_receive is None:
+                # Reset regardless
+                conn_proto.read_timeout = None
+            elif conn_proto.read_timeout is not None:
+                conn_proto.read_timeout = max(
+                    ws_timeout.ws_receive, conn_proto.read_timeout
+                )
+
             transport = conn.transport
             assert transport is not None
             reader: FlowControlDataQueue[WSMessage] = FlowControlDataQueue(
@@ -986,61 +1031,111 @@ class ClientSession:
                     added_names.add(key)
         return result
 
-    def get(
-        self, url: StrOrURL, *, allow_redirects: bool = True, **kwargs: Any
-    ) -> "_RequestContextManager":
-        """Perform HTTP GET request."""
-        return _RequestContextManager(
-            self._request(hdrs.METH_GET, url, allow_redirects=allow_redirects, **kwargs)
-        )
+    if sys.version_info >= (3, 11) and TYPE_CHECKING:
 
-    def options(
-        self, url: StrOrURL, *, allow_redirects: bool = True, **kwargs: Any
-    ) -> "_RequestContextManager":
-        """Perform HTTP OPTIONS request."""
-        return _RequestContextManager(
-            self._request(
-                hdrs.METH_OPTIONS, url, allow_redirects=allow_redirects, **kwargs
+        def get(
+            self,
+            url: StrOrURL,
+            **kwargs: Unpack[_RequestOptions],
+        ) -> "_RequestContextManager": ...
+
+        def options(
+            self,
+            url: StrOrURL,
+            **kwargs: Unpack[_RequestOptions],
+        ) -> "_RequestContextManager": ...
+
+        def head(
+            self,
+            url: StrOrURL,
+            **kwargs: Unpack[_RequestOptions],
+        ) -> "_RequestContextManager": ...
+
+        def post(
+            self,
+            url: StrOrURL,
+            **kwargs: Unpack[_RequestOptions],
+        ) -> "_RequestContextManager": ...
+
+        def put(
+            self,
+            url: StrOrURL,
+            **kwargs: Unpack[_RequestOptions],
+        ) -> "_RequestContextManager": ...
+
+        def patch(
+            self,
+            url: StrOrURL,
+            **kwargs: Unpack[_RequestOptions],
+        ) -> "_RequestContextManager": ...
+
+        def delete(
+            self,
+            url: StrOrURL,
+            **kwargs: Unpack[_RequestOptions],
+        ) -> "_RequestContextManager": ...
+
+    else:
+
+        def get(
+            self, url: StrOrURL, *, allow_redirects: bool = True, **kwargs: Any
+        ) -> "_RequestContextManager":
+            """Perform HTTP GET request."""
+            return _RequestContextManager(
+                self._request(
+                    hdrs.METH_GET, url, allow_redirects=allow_redirects, **kwargs
+                )
             )
-        )
 
-    def head(
-        self, url: StrOrURL, *, allow_redirects: bool = False, **kwargs: Any
-    ) -> "_RequestContextManager":
-        """Perform HTTP HEAD request."""
-        return _RequestContextManager(
-            self._request(
-                hdrs.METH_HEAD, url, allow_redirects=allow_redirects, **kwargs
+        def options(
+            self, url: StrOrURL, *, allow_redirects: bool = True, **kwargs: Any
+        ) -> "_RequestContextManager":
+            """Perform HTTP OPTIONS request."""
+            return _RequestContextManager(
+                self._request(
+                    hdrs.METH_OPTIONS, url, allow_redirects=allow_redirects, **kwargs
+                )
             )
-        )
 
-    def post(
-        self, url: StrOrURL, *, data: Any = None, **kwargs: Any
-    ) -> "_RequestContextManager":
-        """Perform HTTP POST request."""
-        return _RequestContextManager(
-            self._request(hdrs.METH_POST, url, data=data, **kwargs)
-        )
+        def head(
+            self, url: StrOrURL, *, allow_redirects: bool = False, **kwargs: Any
+        ) -> "_RequestContextManager":
+            """Perform HTTP HEAD request."""
+            return _RequestContextManager(
+                self._request(
+                    hdrs.METH_HEAD, url, allow_redirects=allow_redirects, **kwargs
+                )
+            )
 
-    def put(
-        self, url: StrOrURL, *, data: Any = None, **kwargs: Any
-    ) -> "_RequestContextManager":
-        """Perform HTTP PUT request."""
-        return _RequestContextManager(
-            self._request(hdrs.METH_PUT, url, data=data, **kwargs)
-        )
+        def post(
+            self, url: StrOrURL, *, data: Any = None, **kwargs: Any
+        ) -> "_RequestContextManager":
+            """Perform HTTP POST request."""
+            return _RequestContextManager(
+                self._request(hdrs.METH_POST, url, data=data, **kwargs)
+            )
 
-    def patch(
-        self, url: StrOrURL, *, data: Any = None, **kwargs: Any
-    ) -> "_RequestContextManager":
-        """Perform HTTP PATCH request."""
-        return _RequestContextManager(
-            self._request(hdrs.METH_PATCH, url, data=data, **kwargs)
-        )
+        def put(
+            self, url: StrOrURL, *, data: Any = None, **kwargs: Any
+        ) -> "_RequestContextManager":
+            """Perform HTTP PUT request."""
+            return _RequestContextManager(
+                self._request(hdrs.METH_PUT, url, data=data, **kwargs)
+            )
 
-    def delete(self, url: StrOrURL, **kwargs: Any) -> "_RequestContextManager":
-        """Perform HTTP DELETE request."""
-        return _RequestContextManager(self._request(hdrs.METH_DELETE, url, **kwargs))
+        def patch(
+            self, url: StrOrURL, *, data: Any = None, **kwargs: Any
+        ) -> "_RequestContextManager":
+            """Perform HTTP PATCH request."""
+            return _RequestContextManager(
+                self._request(hdrs.METH_PATCH, url, data=data, **kwargs)
+            )
+
+        def delete(self, url: StrOrURL, **kwargs: Any) -> "_RequestContextManager":
+            """Perform HTTP DELETE request."""
+            return _RequestContextManager(
+                self._request(hdrs.METH_DELETE, url, **kwargs)
+            )
 
     async def close(self) -> None:
         """Close underlying connector.
