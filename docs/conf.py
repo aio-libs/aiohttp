@@ -59,7 +59,7 @@ extensions = [
     "sphinx.ext.viewcode",
     # Third-party extensions:
     "sphinxcontrib.blockdiag",
-    "sphinxcontrib.towncrier",  # provides `towncrier-draft-entries` directive
+    "sphinxcontrib.towncrier.ext",  # provides `towncrier-draft-entries` directive
 ]
 
 
