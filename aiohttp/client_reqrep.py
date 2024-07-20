@@ -283,12 +283,13 @@ class ClientRequest:
         if self.__writer is not None:
             self.__writer.remove_done_callback(self.__reset_writer)
         self.__writer = writer
-        if writer is not None:
-            if writer.done():
-                # The writer is already done, so we can reset it immediately.
-                self.__reset_writer()
-            else:
-                writer.add_done_callback(self.__reset_writer)
+        if writer is None:
+            return
+        if writer.done():
+            # The writer is already done, so we can reset it immediately.
+            self.__reset_writer()
+        else:
+            writer.add_done_callback(self.__reset_writer)
 
     def is_ssl(self) -> bool:
         return self.url.scheme in ("https", "wss")
@@ -788,12 +789,13 @@ class ClientResponse(HeadersMixin):
         if self.__writer is not None:
             self.__writer.remove_done_callback(self.__reset_writer)
         self.__writer = writer
-        if writer is not None:
-            if writer.done():
-                # The writer is already done, so we can reset it immediately.
-                self.__reset_writer()
-            else:
-                writer.add_done_callback(self.__reset_writer)
+        if writer is None:
+            return
+        if writer.done():
+            # The writer is already done, so we can reset it immediately.
+            self.__reset_writer()
+        else:
+            writer.add_done_callback(self.__reset_writer)
 
     @reify
     def url(self) -> URL:
