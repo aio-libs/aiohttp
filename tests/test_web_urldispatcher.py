@@ -439,6 +439,8 @@ async def test_static_directory_with_mock_permission_error(
     app.router.add_static("/", str(tmp_path), show_index=True)
     client = await aiohttp_client(app)
 
+    r = await client.get("/")
+    assert r.status == 200
     r = await client.get(f"/{my_dir.name}/{file_request}")
     assert r.status == 403
 
