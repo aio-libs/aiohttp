@@ -210,6 +210,8 @@ DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60)
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
 HTTP_SCHEMA_SET = frozenset({"http", "https", ""})
+WS_SCHEMA_SET = frozenset({"ws", "wss"})
+ALLOWED_PROTOCOL_SCHEMA_SET = HTTP_SCHEMA_SET | WS_SCHEMA_SET
 
 _RetType = TypeVar("_RetType")
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
@@ -452,7 +454,7 @@ class ClientSession:
         except ValueError as e:
             raise InvalidUrlClientError(str_or_url) from e
 
-        if url.scheme not in HTTP_SCHEMA_SET:
+        if url.scheme not in ALLOWED_PROTOCOL_SCHEMA_SET:
             raise NonHttpUrlClientError(url)
 
         skip_headers = set(self._skip_auto_headers)
@@ -971,6 +973,17 @@ class ClientSession:
             assert conn is not None
             conn_proto = conn.protocol
             assert conn_proto is not None
+
+            # For WS connection the read_timeout must be either ws_timeout.ws_receive or greater
+            # None == no timeout, i.e. infinite timeout, so None is the max timeout possible
+            if ws_timeout.ws_receive is None:
+                # Reset regardless
+                conn_proto.read_timeout = None
+            elif conn_proto.read_timeout is not None:
+                conn_proto.read_timeout = max(
+                    ws_timeout.ws_receive, conn_proto.read_timeout
+                )
+
             transport = conn.transport
             assert transport is not None
             reader: FlowControlDataQueue[WSMessage] = FlowControlDataQueue(
