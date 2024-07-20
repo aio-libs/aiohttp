@@ -9,4 +9,4 @@ are raised instead of :py:exc:`ValueError` or :py:exc:`~aiohttp.InvalidURL` when
 
 The :py:exc:`~aiohttp.InvalidURL` now exposes a ``description`` property with the text explanation of the error details.
 
--- by :user:`setla`
+-- by :user:`setla`, :user:`AraHaan`, and :user:`bdraco`
