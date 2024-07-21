@@ -105,6 +105,19 @@ def test_non_app() -> None:
         web.AppRunner(object())
 
 
+async def test_addresses(make_runner, unix_sockname) -> None:
+    _sock = get_unused_port_socket("127.0.0.1")
+    runner = make_runner()
+    await runner.setup()
+    tcp = web.SockSite(runner, _sock)
+    await tcp.start()
+    unix = web.UnixSite(runner, unix_sockname)
+    await unix.start()
+    actual_addrs = runner.addresses
+    expected_host, expected_post = _sock.getsockname()[:2]
+    assert actual_addrs == [(expected_host, expected_post), unix_sockname]
+
+
 @pytest.mark.skipif(
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
