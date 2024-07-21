@@ -61,7 +61,7 @@ packaging==23.1
     # via
     #   gunicorn
     #   pytest
-pluggy==1.4.0
+pluggy==1.5.0
     # via pytest
 proxy-py==2.4.4
     # via -r requirements/test.in
@@ -71,7 +71,7 @@ pycparser==2.21
     # via cffi
 pydantic==1.10.12
     # via python-on-whales
-pytest==8.1.1
+pytest==8.2.2
     # via
     #   -r requirements/test.in
     #   pytest-cov

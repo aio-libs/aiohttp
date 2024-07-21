@@ -129,7 +129,7 @@ pip-tools==7.4.1
     # via -r requirements/dev.in
 platformdirs==3.10.0
     # via virtualenv
-pluggy==1.4.0
+pluggy==1.5.0
     # via pytest
 pre-commit==3.5.0
     # via -r requirements/lint.in
@@ -151,7 +151,7 @@ pyproject-hooks==1.0.0
     # via
     #   build
     #   pip-tools
-pytest==8.1.1
+pytest==8.2.2
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
