@@ -6,6 +6,7 @@ import json
 from http.cookies import SimpleCookie
 from typing import Any, List
 from unittest import mock
+from uuid import uuid4
 
 import pytest
 from multidict import CIMultiDict, MultiDict
@@ -949,3 +950,23 @@ async def test_instantiation_with_invalid_timeout_value(loop):
         ClientSession(timeout=1)
     # should not have "Unclosed client session" warning
     assert not logs
+
+
+@pytest.mark.parametrize(
+    ("outer_name", "inner_name"),
+    [
+        ("skip_auto_headers", "_skip_auto_headers"),
+        ("auth", "_default_auth"),
+        ("json_serialize", "_json_serialize"),
+        ("connector_owner", "_connector_owner"),
+        ("raise_for_status", "_raise_for_status"),
+        ("trust_env", "_trust_env"),
+        ("trace_configs", "_trace_configs"),
+    ],
+)
+async def test_properties(
+    session: ClientSession, outer_name: str, inner_name: str
+) -> None:
+    value = uuid4()
+    setattr(session, inner_name, value)
+    assert value == getattr(session, outer_name)
