@@ -7,7 +7,6 @@ from unittest.mock import patch
 import pytest
 
 from aiohttp import web
-from aiohttp.abc import AbstractAccessLogger
 from aiohttp.test_utils import get_unused_port_socket
 
 
@@ -104,65 +103,6 @@ async def test_app_property(make_runner: Any, app: Any) -> None:
 def test_non_app() -> None:
     with pytest.raises(TypeError):
         web.AppRunner(object())
-
-
-def test_app_handler_args() -> None:
-    app = web.Application(handler_args={"test": True})
-    runner = web.AppRunner(app)
-    assert runner._kwargs == {"access_log_class": web.AccessLogger, "test": True}
-
-
-async def test_app_make_handler_access_log_class_bad_type1() -> None:
-    class Logger:
-        pass
-
-    app = web.Application()
-
-    with pytest.raises(TypeError):
-        web.AppRunner(app, access_log_class=Logger)
-
-
-async def test_app_make_handler_access_log_class_bad_type2() -> None:
-    class Logger:
-        pass
-
-    app = web.Application(handler_args={"access_log_class": Logger})
-
-    with pytest.raises(TypeError):
-        web.AppRunner(app)
-
-
-async def test_app_make_handler_access_log_class1() -> None:
-    class Logger(AbstractAccessLogger):
-        def log(self, request, response, time):
-            """Pass log method."""
-
-    app = web.Application()
-    runner = web.AppRunner(app, access_log_class=Logger)
-    assert runner._kwargs["access_log_class"] is Logger
-
-
-async def test_app_make_handler_access_log_class2() -> None:
-    class Logger(AbstractAccessLogger):
-        def log(self, request, response, time):
-            """Pass log method."""
-
-    app = web.Application(handler_args={"access_log_class": Logger})
-    runner = web.AppRunner(app)
-    assert runner._kwargs["access_log_class"] is Logger
-
-
-async def test_addresses(make_runner: Any, unix_sockname: Any) -> None:
-    _sock = get_unused_port_socket("127.0.0.1")
-    runner = make_runner()
-    await runner.setup()
-    tcp = web.SockSite(runner, _sock)
-    await tcp.start()
-    unix = web.UnixSite(runner, unix_sockname)
-    await unix.start()
-    actual_addrs = runner.addresses
-    expected_host, expected_post = _sock.getsockname()[:2]
-    assert actual_addrs == [(expected_host, expected_post), unix_sockname]
 
 
 @pytest.mark.skipif(

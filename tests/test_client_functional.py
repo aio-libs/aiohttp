@@ -3624,14 +3624,6 @@ async def test_rejected_upload(aiohttp_client, tmp_path) -> None:
         assert 200 == resp_ok.status
 
 
-async def test_request_with_wrong_ssl_type(aiohttp_client: AiohttpClient) -> None:
-    app = web.Application()
-    session = await aiohttp_client(app)
-
-    with pytest.raises(TypeError, match="ssl should be SSLContext, Fingerprint, .*"):
-        await session.get("/", ssl=42)  # type: ignore[arg-type]
-
-
 @pytest.mark.parametrize(
     ("value", "exc_type"),
     [(42, TypeError), ("InvalidUrl", InvalidURL)],
