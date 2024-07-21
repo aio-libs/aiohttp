@@ -2,7 +2,7 @@ import asyncio
 import functools
 import pathlib
 import sys
-from typing import Optional
+from typing import Generator, Optional
 from unittest import mock
 from unittest.mock import MagicMock
 
@@ -388,31 +388,61 @@ async def test_handler_metadata_persistence() -> None:
             assert route.handler.__doc__ == "Doc"
 
 
-async def test_unauthorized_folder_access(
-    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+@pytest.mark.skipif(
+    sys.platform.startswith("win32"), reason="Cannot remove read access on Windows"
+)
+@pytest.mark.parametrize("file_request", ["", "my_file.txt"])
+async def test_static_directory_without_read_permission(
+    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient, file_request: str
 ) -> None:
-    # Tests the unauthorized access to a folder of static file server.
-    # Try to list a folder content of static file server when server does not
-    # have permissions to do so for the folder.
+    """Test static directory without read permission receives forbidden response."""
+    my_dir = tmp_path / "my_dir"
+    my_dir.mkdir()
+    my_dir.chmod(0o000)
+
+    app = web.Application()
+    app.router.add_static("/", str(tmp_path), show_index=True)
+    client = await aiohttp_client(app)
+
+    r = await client.get(f"/{my_dir.name}/{file_request}")
+    assert r.status == 403
+
+
+@pytest.mark.parametrize("file_request", ["", "my_file.txt"])
+async def test_static_directory_with_mock_permission_error(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    aiohttp_client: AiohttpClient,
+    file_request: str,
+) -> None:
+    """Test static directory with mock permission errors receives forbidden response."""
     my_dir = tmp_path / "my_dir"
     my_dir.mkdir()
 
+    real_iterdir = pathlib.Path.iterdir
+    real_is_dir = pathlib.Path.is_dir
+
+    def mock_iterdir(self: pathlib.Path) -> Generator[pathlib.Path, None, None]:
+        if my_dir.samefile(self):
+            raise PermissionError()
+        return real_iterdir(self)
+
+    def mock_is_dir(self: pathlib.Path) -> bool:
+        if my_dir.samefile(self.parent):
+            raise PermissionError()
+        return real_is_dir(self)
+
+    monkeypatch.setattr("pathlib.Path.iterdir", mock_iterdir)
+    monkeypatch.setattr("pathlib.Path.is_dir", mock_is_dir)
+
     app = web.Application()
+    app.router.add_static("/", str(tmp_path), show_index=True)
+    client = await aiohttp_client(app)
 
-    with mock.patch("pathlib.Path.__new__") as path_constructor:
-        path = MagicMock()
-        path.joinpath.return_value = path
-        path.resolve.return_value = path
-        path.iterdir.return_value.__iter__.side_effect = PermissionError()
-        path_constructor.return_value = path
-
-        # Register global static route:
-        app.router.add_static("/", str(tmp_path), show_index=True)
-        client = await aiohttp_client(app)
-
-        # Request the root of the static directory.
-        r = await client.get("/" + my_dir.name)
-        assert r.status == 403
+    r = await client.get("/")
+    assert r.status == 200
+    r = await client.get(f"/{my_dir.name}/{file_request}")
+    assert r.status == 403
 
 
 async def test_access_symlink_loop(
