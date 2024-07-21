@@ -2,7 +2,7 @@ import asyncio
 import signal
 import socket
 from abc import ABC, abstractmethod
-from typing import Any, Awaitable, Callable, List, Optional, Set, Type
+from typing import Any, List, Optional, Set, Type
 
 from yarl import URL
 

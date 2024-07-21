@@ -6,8 +6,6 @@ import sys
 import warnings
 from argparse import ArgumentParser
 from collections.abc import Iterable
-from contextlib import suppress
-from functools import partial
 from importlib import import_module
 from typing import (
     Any,
@@ -21,7 +19,6 @@ from typing import (
     Union,
     cast,
 )
-from weakref import WeakSet
 
 from .abc import AbstractAccessLogger
 from .helpers import AppKey
