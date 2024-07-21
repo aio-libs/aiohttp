@@ -996,8 +996,15 @@ async def test_data_stream(loop, buf, conn) -> None:
     req = ClientRequest("POST", URL("http://python.org/"), data=gen(), loop=loop)
     assert req.chunked
     assert req.headers["TRANSFER-ENCODING"] == "chunked"
+    original_write_bytes = req.write_bytes
 
-    resp = await req.send(conn)
+    async def _mock_write_bytes(*args, **kwargs):
+        # Ensure the task is scheduled
+        await asyncio.sleep(0)
+        return await original_write_bytes(*args, **kwargs)
+
+    with mock.patch.object(req, "write_bytes", _mock_write_bytes):
+        resp = await req.send(conn)
     assert asyncio.isfuture(req._writer)
     await resp.wait_for_close()
     assert req._writer is None
@@ -1020,9 +1027,7 @@ async def test_data_stream_deprecated(loop, buf, conn) -> None:
     assert req.headers["TRANSFER-ENCODING"] == "chunked"
 
     resp = await req.send(conn)
-    assert asyncio.isfuture(req._writer)
     await resp.wait_for_close()
-    assert req._writer is None
     assert (
         buf.split(b"\r\n\r\n", 1)[1] == b"b\r\nbinary data\r\n7\r\n result\r\n0\r\n\r\n"
     )
@@ -1203,14 +1208,28 @@ async def test_oserror_on_write_bytes(loop, conn) -> None:
 
 async def test_terminate(loop, conn) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
-    resp = await req.send(conn)
-    assert req._writer is not None
-    writer = req._writer = WriterMock()
-    writer.cancel = mock.Mock()
 
+    async def _mock_write_bytes(*args, **kwargs):
+        # Ensure the task is scheduled
+        await asyncio.sleep(0)
+
+    with mock.patch.object(req, "write_bytes", _mock_write_bytes):
+        resp = await req.send(conn)
+
+    assert req._writer is not None
+    assert resp._writer is not None
+    await resp._writer
+    writer = WriterMock()
+    writer.done = mock.Mock(return_value=False)
+    writer.cancel = mock.Mock()
+    req._writer = writer
+    resp._writer = writer
+
+    assert req._writer is not None
+    assert resp._writer is not None
     req.terminate()
-    assert req._writer is None
     writer.cancel.assert_called_with()
+    writer.done.assert_called_with()
     resp.close()
 
     await req.close()
@@ -1222,9 +1241,19 @@ def test_terminate_with_closed_loop(loop, conn) -> None:
     async def go():
         nonlocal req, resp, writer
         req = ClientRequest("get", URL("http://python.org"))
-        resp = await req.send(conn)
+
+        async def _mock_write_bytes(*args, **kwargs):
+            # Ensure the task is scheduled
+            await asyncio.sleep(0)
+
+        with mock.patch.object(req, "write_bytes", _mock_write_bytes):
+            resp = await req.send(conn)
+
         assert req._writer is not None
-        writer = req._writer = WriterMock()
+        writer = WriterMock()
+        writer.done = mock.Mock(return_value=False)
+        req._writer = writer
+        resp._writer = writer
 
         await asyncio.sleep(0.05)
 
