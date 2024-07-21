@@ -8,6 +8,7 @@ import inspect
 import keyword
 import os
 import re
+import sys
 import warnings
 from contextlib import contextmanager
 from functools import wraps
@@ -77,6 +78,12 @@ if TYPE_CHECKING:
     BaseDict = Dict[str, str]
 else:
     BaseDict = dict
+
+CIRCULAR_SYMLINK_ERROR = (
+    OSError
+    if sys.version_info < (3, 10) and sys.platform.startswith("win32")
+    else RuntimeError
+)
 
 YARL_VERSION: Final[Tuple[int, ...]] = tuple(map(int, yarl_version.split(".")[:2]))
 
@@ -661,59 +668,66 @@ class StaticResource(PrefixResource):
 
     async def _handle(self, request: Request) -> StreamResponse:
         rel_url = request.match_info["filename"]
+        filename = Path(rel_url)
+        if filename.anchor:
+            # rel_url is an absolute name like
+            # /static/\\machine_name\c$ or /static/D:\path
+            # where the static dir is totally different
+            raise HTTPForbidden()
+
+        unresolved_path = self._directory.joinpath(filename)
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, self._resolve_path_to_response, unresolved_path
+        )
+
+    def _resolve_path_to_response(self, unresolved_path: Path) -> StreamResponse:
+        """Take the unresolved path and query the file system to form a response."""
+        # Check for access outside the root directory. For follow symlinks, URI
+        # cannot traverse out, but symlinks can. Otherwise, no access outside
+        # root is permitted.
         try:
-            filename = Path(rel_url)
-            if filename.anchor:
-                # rel_url is an absolute name like
-                # /static/\\machine_name\c$ or /static/D:\path
-                # where the static dir is totally different
-                raise HTTPForbidden()
-            unresolved_path = self._directory.joinpath(filename)
             if self._follow_symlinks:
                 normalized_path = Path(os.path.normpath(unresolved_path))
                 normalized_path.relative_to(self._directory)
-                filepath = normalized_path.resolve()
+                file_path = normalized_path.resolve()
             else:
-                filepath = unresolved_path.resolve()
-                filepath.relative_to(self._directory)
-        except (ValueError, FileNotFoundError) as error:
-            # relatively safe
-            raise HTTPNotFound() from error
-        except HTTPForbidden:
-            raise
-        except Exception as error:
-            # perm error or other kind!
-            request.app.logger.exception(error)
+                file_path = unresolved_path.resolve()
+                file_path.relative_to(self._directory)
+        except (ValueError, CIRCULAR_SYMLINK_ERROR) as error:
+            # ValueError for relative check; RuntimeError for circular symlink.
             raise HTTPNotFound() from error
 
-        # on opening a dir, load its contents if allowed
-        if filepath.is_dir():
-            if self._show_index:
-                try:
+        # if path is a directory, return the contents if permitted. Note the
+        # directory check will raise if a segment is not readable.
+        try:
+            if file_path.is_dir():
+                if self._show_index:
                     return Response(
-                        text=self._directory_as_html(filepath), content_type="text/html"
+                        text=self._directory_as_html(file_path),
+                        content_type="text/html",
                     )
-                except PermissionError:
+                else:
                     raise HTTPForbidden()
-            else:
-                raise HTTPForbidden()
-        elif filepath.is_file():
-            return FileResponse(filepath, chunk_size=self._chunk_size)
-        else:
-            raise HTTPNotFound
+        except PermissionError as error:
+            raise HTTPForbidden() from error
 
-    def _directory_as_html(self, filepath: Path) -> str:
-        # returns directory's index as html
+        # Not a regular file or does not exist.
+        if not file_path.is_file():
+            raise HTTPNotFound()
 
-        # sanity check
-        assert filepath.is_dir()
+        return FileResponse(file_path, chunk_size=self._chunk_size)
 
-        relative_path_to_dir = filepath.relative_to(self._directory).as_posix()
+    def _directory_as_html(self, dir_path: Path) -> str:
+        """returns directory's index as html."""
+        assert dir_path.is_dir()
+
+        relative_path_to_dir = dir_path.relative_to(self._directory).as_posix()
         index_of = f"Index of /{html_escape(relative_path_to_dir)}"
         h1 = f"<h1>{index_of}</h1>"
 
         index_list = []
-        dir_index = filepath.iterdir()
+        dir_index = dir_path.iterdir()
         for _file in sorted(dir_index):
             # show file url as relative to static path
             rel_path = _file.relative_to(self._directory).as_posix()
