@@ -311,9 +311,11 @@ async def test_async_resolver_aiodns_not_present(loop: Any, monkeypatch: Any) ->
         AsyncResolver()
 
 
-def test_default_resolver() -> None:
-    # if getaddrinfo:
-    #     assert DefaultResolver is AsyncResolver
-    # else:
-    #     assert DefaultResolver is ThreadedResolver
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+def test_aio_dns_is_default() -> None:
+    assert DefaultResolver is AsyncResolver
+
+
+@pytest.mark.skipif(getaddrinfo, reason="aiodns <3.2.0 required")
+def test_threaded_resolver_is_default() -> None:
     assert DefaultResolver is ThreadedResolver
