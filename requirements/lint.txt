@@ -5,9 +5,9 @@
 #    pip-compile --allow-unsafe --output-file=requirements/lint.txt --strip-extras requirements/lint.in
 #
 aiodns==3.2.0
-    # via -r lint.in
+    # via -r requirements/lint.in
 aioredis==2.0.1
-    # via -r lint.in
+    # via -r requirements/lint.in
 annotated-types==0.6.0
     # via pydantic
 async-timeout==4.0.3
@@ -41,7 +41,7 @@ markdown-it-py==3.0.0
 mdurl==0.1.2
     # via markdown-it-py
 mypy==1.10.1 ; implementation_name == "cpython"
-    # via -r lint.in
+    # via -r requirements/lint.in
 mypy-extensions==1.0.0
     # via mypy
 nodeenv==1.8.0
@@ -53,7 +53,7 @@ platformdirs==3.10.0
 pluggy==1.4.0
     # via pytest
 pre-commit==3.5.0
-    # via -r lint.in
+    # via -r requirements/lint.in
 pycares==4.4.0
     # via aiodns
 pycparser==2.22
@@ -65,9 +65,9 @@ pydantic-core==2.18.2
 pygments==2.17.2
     # via rich
 pytest==8.1.1
-    # via -r lint.in
-python-on-whales==0.71.0
-    # via -r lint.in
+    # via -r requirements/lint.in
+python-on-whales==0.72.0
+    # via -r requirements/lint.in
 pyyaml==6.0.1
     # via pre-commit
 requests==2.32.0
@@ -77,7 +77,7 @@ rich==13.7.1
 shellingham==1.5.4
     # via typer
 slotscheck==0.19.0
-    # via -r lint.in
+    # via -r requirements/lint.in
 tomli==2.0.1
     # via
     #   mypy
@@ -100,7 +100,7 @@ typing-extensions==4.10.0
 urllib3==2.2.2
     # via requests
 uvloop==0.19.0 ; platform_system != "Windows"
-    # via -r lint.in
+    # via -r requirements/lint.in
 virtualenv==20.24.2
     # via pre-commit
 
