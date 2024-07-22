@@ -1,5 +1,6 @@
 import asyncio
 import zlib
+from abc import ABC, abstractmethod
 from concurrent.futures import Executor
 from typing import Optional, cast
 
@@ -13,7 +14,9 @@ try:
 except ImportError:  # pragma: no cover
     HAS_BROTLI = False
 
-MAX_SYNC_CHUNK_SIZE = 1024
+
+MAX_SYNC_CHUNK_SIZE = 4096
+DEFAULT_MAX_DECOMPRESS_SIZE = 2**20  # 1MiB
 
 
 def encoding_to_mode(
@@ -26,19 +29,34 @@ def encoding_to_mode(
     return -zlib.MAX_WBITS if suppress_deflate_header else zlib.MAX_WBITS
 
 
-class ZlibBaseHandler:
+class CompressionBaseHandler(ABC):
+
     def __init__(
         self,
-        mode: int,
         executor: Optional[Executor] = None,
         max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
-    ):
-        self._mode = mode
+    ) -> None:
+        """Base class for compression handlers."""
         self._executor = executor
         self._max_sync_chunk_size = max_sync_chunk_size
 
+    @abstractmethod
+    def decompress_sync(self, data: bytes, max_length: int = 0) -> bytes:
+        """Decompress the given data."""
 
-class ZLibCompressor(ZlibBaseHandler):
+    async def decompress(self, data: bytes, max_length: int = 0) -> bytes:
+        """Decompress the given data."""
+        if (
+            self._max_sync_chunk_size is not None
+            and len(data) > self._max_sync_chunk_size
+        ):
+            return await asyncio.get_event_loop().run_in_executor(
+                self._executor, self.decompress_sync, data, max_length
+            )
+        return self.decompress_sync(data, max_length)
+
+
+class ZLibCompressor(CompressionBaseHandler):
     def __init__(
         self,
         encoding: Optional[str] = None,
@@ -88,14 +106,14 @@ class ZLibCompressor(ZlibBaseHandler):
         return self._compressor.flush(mode)
 
 
-class ZLibDecompressor(ZlibBaseHandler):
+class ZLibDecompressor(CompressionBaseHandler):
     def __init__(
         self,
         encoding: Optional[str] = None,
         suppress_deflate_header: bool = False,
         executor: Optional[Executor] = None,
         max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
-    ):
+    ) -> None:
         super().__init__(
             mode=encoding_to_mode(encoding, suppress_deflate_header),
             executor=executor,
@@ -105,16 +123,6 @@ class ZLibDecompressor(ZlibBaseHandler):
 
     def decompress_sync(self, data: bytes, max_length: int = 0) -> bytes:
         return self._decompressor.decompress(data, max_length)
-
-    async def decompress(self, data: bytes, max_length: int = 0) -> bytes:
-        if (
-            self._max_sync_chunk_size is not None
-            and len(data) > self._max_sync_chunk_size
-        ):
-            return await asyncio.get_event_loop().run_in_executor(
-                self._executor, self.decompress_sync, data, max_length
-            )
-        return self.decompress_sync(data, max_length)
 
     def flush(self, length: int = 0) -> bytes:
         return (
@@ -136,24 +144,32 @@ class ZLibDecompressor(ZlibBaseHandler):
         return self._decompressor.unused_data
 
 
-class BrotliDecompressor:
+class BrotliDecompressor(CompressionBaseHandler):
     # Supports both 'brotlipy' and 'Brotli' packages
     # since they share an import name. The top branches
     # are for 'brotlipy' and bottom branches for 'Brotli'
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        executor: Optional[Executor] = None,
+        max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
+    ) -> None:
+        """Decompress data using the Brotli library."""
         if not HAS_BROTLI:
             raise RuntimeError(
                 "The brotli decompression is not available. "
                 "Please install `Brotli` module"
             )
         self._obj = brotli.Decompressor()
+        super().__init__(executor=executor, max_sync_chunk_size=max_sync_chunk_size)
 
     def decompress_sync(self, data: bytes) -> bytes:
+        """Decompress the given data."""
         if hasattr(self._obj, "decompress"):
             return cast(bytes, self._obj.decompress(data))
         return cast(bytes, self._obj.process(data))
 
     def flush(self) -> bytes:
+        """Flush the decompressor."""
         if hasattr(self._obj, "flush"):
             return cast(bytes, self._obj.flush())
         return b""

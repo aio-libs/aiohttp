@@ -26,7 +26,12 @@ from yarl import URL
 
 from . import hdrs
 from .base_protocol import BaseProtocol
-from .compression_utils import HAS_BROTLI, BrotliDecompressor, ZLibDecompressor
+from .compression_utils import (
+    DEFAULT_MAX_DECOMPRESS_SIZE,
+    HAS_BROTLI,
+    BrotliDecompressor,
+    ZLibDecompressor,
+)
 from .helpers import (
     _EXC_SENTINEL,
     DEBUG,
@@ -901,7 +906,12 @@ class HttpPayloadParser:
 class DeflateBuffer:
     """DeflateStream decompress stream and feed data into specified stream."""
 
-    def __init__(self, out: StreamReader, encoding: Optional[str]) -> None:
+    def __init__(
+        self,
+        out: StreamReader,
+        encoding: Optional[str],
+        max_decompress_size: int = DEFAULT_MAX_DECOMPRESS_SIZE,
+    ) -> None:
         self.out = out
         self.size = 0
         self.encoding = encoding
@@ -917,6 +927,8 @@ class DeflateBuffer:
             self.decompressor = BrotliDecompressor()
         else:
             self.decompressor = ZLibDecompressor(encoding=encoding)
+
+        self._max_decompress_size = max_decompress_size
 
     def set_exception(
         self,
@@ -946,7 +958,9 @@ class DeflateBuffer:
             )
 
         try:
-            chunk = self.decompressor.decompress_sync(chunk)
+            chunk = self.decompressor.decompress_sync(
+                chunk, max_length=self._max_decompress_size
+            )
         except Exception:
             raise ContentEncodingError(
                 "Can not decode content-encoding: %s" % self.encoding

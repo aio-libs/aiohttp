@@ -27,7 +27,11 @@ from urllib.parse import parse_qsl, unquote, urlencode
 
 from multidict import CIMultiDict, CIMultiDictProxy
 
-from .compression_utils import ZLibCompressor, ZLibDecompressor
+from .compression_utils import (
+    DEFAULT_MAX_DECOMPRESS_SIZE,
+    ZLibCompressor,
+    ZLibDecompressor,
+)
 from .hdrs import (
     CONTENT_DISPOSITION,
     CONTENT_ENCODING,
@@ -263,6 +267,7 @@ class BodyPartReader:
         *,
         subtype: str = "mixed",
         default_charset: Optional[str] = None,
+        max_decompress_size: int = DEFAULT_MAX_DECOMPRESS_SIZE,
     ) -> None:
         self.headers = headers
         self._boundary = boundary
@@ -307,7 +312,7 @@ class BodyPartReader:
         while not self._at_eof:
             data.extend(await self.read_chunk(self.chunk_size))
         if decode:
-            return self.decode(data)
+            return await self.decode(data)
         return data
 
     async def read_chunk(self, size: int = chunk_size) -> bytes:
@@ -477,7 +482,7 @@ class BodyPartReader:
         """Returns True if the boundary was reached or False otherwise."""
         return self._at_eof
 
-    def decode(self, data: bytes) -> bytes:
+    async def decode(self, data: bytes) -> bytes:
         """Decodes data.
 
         Decoding is done according the specified Content-Encoding
@@ -490,15 +495,16 @@ class BodyPartReader:
             return self._decode_content(data)
         return data
 
-    def _decode_content(self, data: bytes) -> bytes:
+    async def _decode_content(self, data: bytes) -> bytes:
         encoding = self.headers.get(CONTENT_ENCODING, "").lower()
         if encoding == "identity":
             return data
         if encoding in {"deflate", "gzip"}:
-            return ZLibDecompressor(
+            return await ZLibDecompressor(
                 encoding=encoding,
                 suppress_deflate_header=True,
-            ).decompress_sync(data)
+                max_length=DEFAULT_MAX_DECOMPRESS_SIZE,
+            ).decompress(data)
 
         raise RuntimeError(f"unknown content encoding: {encoding}")
 
