@@ -3,7 +3,7 @@ import signal
 import socket
 import warnings
 from abc import ABC, abstractmethod
-from typing import Any, Awaitable, Callable, List, Optional, Set
+from typing import Any, List, Optional, Set
 
 from yarl import URL
 
@@ -238,14 +238,7 @@ class SockSite(BaseSite):
 
 
 class BaseRunner(ABC):
-    __slots__ = (
-        "shutdown_callback",
-        "_handle_signals",
-        "_kwargs",
-        "_server",
-        "_sites",
-        "_shutdown_timeout",
-    )
+    __slots__ = ("_handle_signals", "_kwargs", "_server", "_sites", "_shutdown_timeout")
 
     def __init__(
         self,
@@ -254,7 +247,6 @@ class BaseRunner(ABC):
         shutdown_timeout: float = 60.0,
         **kwargs: Any,
     ) -> None:
-        self.shutdown_callback: Optional[Callable[[], Awaitable[None]]] = None
         self._handle_signals = handle_signals
         self._kwargs = kwargs
         self._server: Optional[Server] = None
@@ -312,10 +304,6 @@ class BaseRunner(ABC):
             await asyncio.sleep(0)
             self._server.pre_shutdown()
             await self.shutdown()
-
-            if self.shutdown_callback:
-                await self.shutdown_callback()
-
             await self._server.shutdown(self._shutdown_timeout)
         await self._cleanup_server()
 
