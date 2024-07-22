@@ -1,1 +1,0 @@
-Added a 3.11-specific overloads to ``ClientSession``  -- by :user:`max-muoto`.

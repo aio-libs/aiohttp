@@ -1,5 +1,0 @@
-Restore :py:class:`~aiohttp.resolver.AsyncResolver` to be the default resolver. -- by :user:`bdraco`.
-
-:py:class:`~aiohttp.resolver.AsyncResolver` was disabled by default because
-of IPv6 compatibility issues. These issues have been resolved and
-:py:class:`~aiohttp.resolver.AsyncResolver` is again now the default resolver.

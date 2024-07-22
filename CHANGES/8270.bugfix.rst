@@ -1,9 +1,0 @@
-Fix ``AsyncResolver`` to match ``ThreadedResolver`` behavior
--- by :user:`bdraco`.
-
-On system with IPv6 support, the :py:class:`~aiohttp.resolver.AsyncResolver` would not fallback
-to providing A records when AAAA records were not available.
-Additionally, unlike the :py:class:`~aiohttp.resolver.ThreadedResolver`, the :py:class:`~aiohttp.resolver.AsyncResolver`
-did not handle link-local addresses correctly.
-
-This change makes the behavior consistent with the :py:class:`~aiohttp.resolver.ThreadedResolver`.
