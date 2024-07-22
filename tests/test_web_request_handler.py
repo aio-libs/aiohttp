@@ -22,7 +22,8 @@ async def test_connections() -> None:
     manager = web.Server(serve)
     assert manager.connections == []
 
-    handler = object()
+    handler = mock.Mock(spec_set=web.RequestHandler)
+    handler._task_handler = None
     transport = object()
     manager.connection_made(handler, transport)  # type: ignore[arg-type]
     assert manager.connections == [handler]
@@ -34,7 +35,8 @@ async def test_connections() -> None:
 async def test_shutdown_no_timeout() -> None:
     manager = web.Server(serve)
 
-    handler = mock.Mock()
+    handler = mock.Mock(spec_set=web.RequestHandler)
+    handler._task_handler = None
     handler.shutdown = make_mocked_coro(mock.Mock())
     transport = mock.Mock()
     manager.connection_made(handler, transport)
