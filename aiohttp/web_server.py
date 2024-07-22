@@ -50,7 +50,12 @@ class Server:
         self, handler: RequestHandler, exc: Optional[BaseException] = None
     ) -> None:
         if handler in self._connections:
-            del self._connections[handler]
+            if handler._task_handler:
+                handler._task_handler.add_done_callback(
+                    lambda f: self._connections.pop(handler, None)
+                )
+            else:
+                del self._connections[handler]
 
     def _make_request(
         self,
