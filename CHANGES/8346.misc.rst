@@ -1,1 +1,0 @@
-Add `nacl_middleware <https://github.com/CosmicDNA/nacl_middleware>`_ to the list of middlewares in the third party section of the documentation.
