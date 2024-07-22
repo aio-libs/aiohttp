@@ -28,7 +28,7 @@ async def test_connections() -> None:
     manager.connection_made(handler, transport)  # type: ignore[arg-type]
     assert manager.connections == [handler]
 
-    manager.connection_lost(handler, None)  # type: ignore[arg-type]
+    manager.connection_lost(handler, None)
     assert manager.connections == []
 
 
