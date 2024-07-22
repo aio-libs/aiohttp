@@ -15,7 +15,7 @@ from uuid import uuid4
 
 import pytest
 
-from aiohttp import ClientConnectorError, ClientSession, WSCloseCode, web
+from aiohttp import ClientConnectorError, ClientSession, ClientTimeout, WSCloseCode, web
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.web_runner import BaseRunner
 
@@ -920,8 +920,12 @@ class TestShutdown:
             async with ClientSession() as sess:
                 for _ in range(5):  # pragma: no cover
                     try:
-                        async with sess.get(f"http://localhost:{port}/"):
-                            pass
+                        with pytest.raises(asyncio.TimeoutError):
+                            async with sess.get(
+                                f"http://localhost:{port}/",
+                                timeout=ClientTimeout(total=0.1),
+                            ):
+                                pass
                     except ClientConnectorError:
                         await asyncio.sleep(0.5)
                     else:
@@ -941,6 +945,7 @@ class TestShutdown:
         async def handler(request: web.Request) -> web.Response:
             nonlocal t
             t = asyncio.create_task(task())
+            await t
             return web.Response(text="FOO")
 
         t = test_task = None
@@ -953,7 +958,7 @@ class TestShutdown:
         assert test_task.exception() is None
         return t
 
-    def test_shutdown_wait_for_task(
+    def test_shutdown_wait_for_handler(
         self, aiohttp_unused_port: Callable[[], int]
     ) -> None:
         port = aiohttp_unused_port()
@@ -970,7 +975,7 @@ class TestShutdown:
         assert t.done()
         assert not t.cancelled()
 
-    def test_shutdown_timeout_task(
+    def test_shutdown_timeout_handler(
         self, aiohttp_unused_port: Callable[[], int]
     ) -> None:
         port = aiohttp_unused_port()
@@ -986,34 +991,6 @@ class TestShutdown:
         assert finished is False
         assert t.done()
         assert t.cancelled()
-
-    def test_shutdown_wait_for_spawned_task(
-        self, aiohttp_unused_port: Callable[[], int]
-    ) -> None:
-        port = aiohttp_unused_port()
-        finished = False
-        finished_sub = False
-        sub_t = None
-
-        async def sub_task():
-            nonlocal finished_sub
-            await asyncio.sleep(1.5)
-            finished_sub = True
-
-        async def task():
-            nonlocal finished, sub_t
-            await asyncio.sleep(0.5)
-            sub_t = asyncio.create_task(sub_task())
-            finished = True
-
-        t = self.run_app(port, 3, task)
-
-        assert finished is True
-        assert t.done()
-        assert not t.cancelled()
-        assert finished_sub is True
-        assert sub_t.done()
-        assert not sub_t.cancelled()
 
     def test_shutdown_timeout_not_reached(
         self, aiohttp_unused_port: Callable[[], int]
