@@ -262,7 +262,12 @@ class RequestHandler(BaseProtocol):
         if self._waiter:
             self._waiter.cancel()
 
-        # wait for handlers
+        # Wait for graceful disconnection
+        if self._current_request is not None:
+            with suppress(asyncio.CancelledError, asyncio.TimeoutError):
+                async with ceil_timeout(timeout):
+                    await self._current_request.wait_for_disconnection()
+        # Then cancel handler and wait
         with suppress(asyncio.CancelledError, asyncio.TimeoutError):
             async with ceil_timeout(timeout):
                 if self._current_request is not None:
@@ -445,7 +450,6 @@ class RequestHandler(BaseProtocol):
         start_time: float,
         request_handler: Callable[[BaseRequest], Awaitable[StreamResponse]],
     ) -> Tuple[StreamResponse, bool]:
-        assert self._request_handler is not None
         try:
             try:
                 self._current_request = request
