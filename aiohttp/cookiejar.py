@@ -36,6 +36,10 @@ __all__ = ("CookieJar", "DummyCookieJar")
 
 CookieItem = Union[str, "Morsel[str]"]
 
+# We cache these string methods here as their use is in performance critical code.
+_FORMAT_PATH = "{}/{}".format
+_FORMAT_DOMAIN_REVERSED = "{1}.{0}".format
+
 
 class CookieJar(AbstractCookieJar):
     """Implements cookie storage adhering to RFC 6265."""
@@ -279,12 +283,11 @@ class CookieJar(AbstractCookieJar):
         else:
             # Get all the subdomains that might match a cookie (e.g. "foo.bar.com", "bar.com", "com")
             domains = itertools.accumulate(
-                reversed(hostname.split(".")), lambda x, y: f"{y}.{x}"
+                reversed(hostname.split(".")), _FORMAT_DOMAIN_REVERSED
             )
+
         # Get all the path prefixes that might match a cookie (e.g. "", "/foo", "/foo/bar")
-        paths = itertools.accumulate(
-            request_url.path.split("/"), lambda x, y: f"{x}/{y}"
-        )
+        paths = itertools.accumulate(request_url.path.split("/"), _FORMAT_PATH)
         # Create every combination of (domain, path) pairs.
         pairs = itertools.product(domains, paths)
 
