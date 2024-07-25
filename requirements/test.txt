@@ -77,7 +77,7 @@ pydantic==2.2.0
     # via python-on-whales
 pydantic-core==2.6.0
     # via pydantic
-pytest==8.3.1
+pytest==8.3.2
     # via
     #   -r requirements/test.in
     #   pytest-cov
