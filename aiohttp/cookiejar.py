@@ -36,6 +36,7 @@ __all__ = ("CookieJar", "DummyCookieJar")
 
 CookieItem = Union[str, "Morsel[str]"]
 
+# We cache these string methods here as their use is in performance critical code.
 _FORMAT_PATH = "{}/{}".format
 _FORMAT_DOMAIN_REVERSED = "{1}.{0}".format
 
