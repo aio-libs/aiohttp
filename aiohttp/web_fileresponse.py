@@ -180,11 +180,10 @@ class FileResponse(StreamResponse):
         return file_path, file_path.stat(), None
 
     async def prepare(self, request: "BaseRequest") -> Optional[AbstractStreamWriter]:
+        loop = asyncio.get_running_loop()
         # Encoding comparisons should be case-insensitive
         # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1
         accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "").lower()
-
-        loop = asyncio.get_running_loop()
         try:
             file_path, st, file_encoding = await loop.run_in_executor(
                 None, self._get_file_path_stat_encoding, accept_encoding
