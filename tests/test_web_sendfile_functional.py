@@ -39,7 +39,7 @@ def hello_txt(request, tmp_path_factory) -> pathlib.Path:
         "br": txt.with_suffix(f"{txt.suffix}.br"),
         "bzip2": txt.with_suffix(f"{txt.suffix}.bz2"),
     }
-    hello[None].write_bytes(HELLO_AIOHTTP)
+    # Uncompressed file is not actually written to test it is not required.
     hello["gzip"].write_bytes(gzip.compress(HELLO_AIOHTTP))
     hello["br"].write_bytes(brotli.compress(HELLO_AIOHTTP))
     hello["bzip2"].write_bytes(bz2.compress(HELLO_AIOHTTP))
