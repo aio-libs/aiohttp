@@ -690,10 +690,7 @@ class StaticResource(PrefixResource):
         except PermissionError as error:
             raise HTTPForbidden() from error
 
-        # Not a regular file or does not exist.
-        if not file_path.is_file():
-            raise HTTPNotFound()
-
+        # Return the file response, which handles all other checks.
         return FileResponse(file_path, chunk_size=self._chunk_size)
 
     def _directory_as_html(self, dir_path: Path) -> str:
