@@ -1183,3 +1183,54 @@ class TestShutdown:
         assert time.time() - start < 5
         assert client_finished
         assert server_finished
+
+    def test_shutdown_handler_cancellation_suppressed(
+        self, aiohttp_unused_port: Callable[[], int]
+    ) -> None:
+        port = aiohttp_unused_port()
+        actions = []
+
+        async def test() -> None:
+            async def test_resp(sess):
+                t = ClientTimeout(total=0.4)
+                with pytest.raises(asyncio.TimeoutError):
+                    async with sess.get(f"http://localhost:{port}/", timeout=t) as resp:
+                        assert await resp.text() == "FOO"
+                actions.append("CANCELLED")
+
+            async with ClientSession() as sess:
+                t = asyncio.create_task(test_resp(sess))
+                await asyncio.sleep(0.5)
+                # Handler is in-progress while we trigger server shutdown.
+                actions.append("PRESTOP")
+                async with sess.get(f"http://localhost:{port}/stop"):
+                    pass
+
+                actions.append("STOPPING")
+                # Handler should still complete and produce a response.
+                await t
+
+        async def run_test(app: web.Application) -> None:
+            nonlocal t
+            t = asyncio.create_task(test())
+            yield
+            await t
+
+        async def handler(request: web.Request) -> web.Response:
+            try:
+                await asyncio.sleep(5)
+            except asyncio.CancelledError:
+                actions.append("SUPPRESSED")
+                await asyncio.sleep(2)
+                actions.append("DONE")
+            return web.Response(text="FOO")
+
+        t = None
+        app = web.Application()
+        app.cleanup_ctx.append(run_test)
+        app.router.add_get("/", handler)
+        app.router.add_get("/stop", self.stop)
+
+        web.run_app(app, port=port, shutdown_timeout=2, handler_cancellation=True)
+        assert t.exception() is None
+        assert actions == ["CANCELLED", "SUPPRESSED", "PRESTOP", "STOPPING", "DONE"]
