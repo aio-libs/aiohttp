@@ -74,7 +74,7 @@ Sometimes it is a desirable behavior: on processing ``GET`` request the
 code might fetch data from a database or other web resource, the
 fetching is potentially slow.
 
-Canceling this fetch is a good idea: the client dropped the connection
+Cancelling this fetch is a good idea: the client dropped the connection
 already, so there is no reason to waste time and resources (memory etc)
 by getting data from a DB without any chance to send it back to the client.
 
