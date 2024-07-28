@@ -936,7 +936,7 @@ class TestShutdown:
             def clear(self):
                 nonlocal num_connections
                 # During Server.shutdown() we want to know how many connections still
-                # remained before it got cleared. If the handler completed succesfully
+                # remained before it got cleared. If the handler completed successfully
                 # the connection should've been removed already. If not, this may
                 # indicate a memory leak.
                 num_connections = len(self)
