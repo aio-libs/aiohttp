@@ -47,6 +47,8 @@ socket closing on the peer side without reading the full server response.
        except OSError:
            # disconnected
 
+.. _web-handler-cancellation:
+
 Web handler cancellation
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
