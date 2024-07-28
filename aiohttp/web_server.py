@@ -74,7 +74,6 @@ class Server:
     async def shutdown(self, timeout: Optional[float] = None) -> None:
         coros = (conn.shutdown(timeout) for conn in self._connections)
         await asyncio.gather(*coros)
-        print("LENGTH", len(self._connections))
         self._connections.clear()
 
     def __call__(self) -> RequestHandler:
