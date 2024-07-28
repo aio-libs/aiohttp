@@ -69,8 +69,8 @@ needed to deal with them.
 
 .. warning::
 
-   :term:`web-handler` execution could be canceled on every ``await``
-   if client drops connection without reading entire response's BODY.
+   :term:`web-handler` execution could be canceled on every ``await`` or
+   ``async with`` if client drops connection without reading entire response's BODY.
 
 Sometimes it is a desirable behavior: on processing ``GET`` request the
 code might fetch data from a database or other web resource, the
@@ -171,7 +171,7 @@ restoring the default disconnection behavior only for specific handlers::
    app.router.add_post("/", handler)
 
 It prevents all of the ``handler`` async function from cancellation,
-so ``write_to_db`` will be never interrupted.
+so ``write_to_db`` will never be interrupted.
 
 .. _aiojobs: http://aiojobs.readthedocs.io/en/latest/
 
@@ -967,7 +967,7 @@ step 7).
    resources (such as DB connections). This includes completing the
    :ref:`cleanup contexts<aiohttp-web-cleanup-ctx>` which may be used to ensure
    background tasks are completed successfully (see
-   :ref:`handler cancellation<web-handler-cancellation>` or aiojobs_ for example).
+   :ref:`handler cancellation<web-handler-cancellation>` or aiojobs_ for examples).
 7. Cancel any remaining tasks and wait on them to complete.
 
 Websocket shutdown
