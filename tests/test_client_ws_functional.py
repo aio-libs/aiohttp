@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 
 import aiohttp
-from aiohttp import hdrs, web
+from aiohttp import ServerTimeoutError, WSMsgType, hdrs, web
 from aiohttp.http import WSCloseCode
 from aiohttp.pytest_plugin import AiohttpClient
 
@@ -622,6 +622,34 @@ async def test_heartbeat_no_pong(aiohttp_client) -> None:
     await asyncio.sleep(0.2)
     assert ping_received
     assert resp.close_code is WSCloseCode.ABNORMAL_CLOSURE
+
+
+async def test_heartbeat_no_pong_concurrent_receive(aiohttp_client) -> None:
+    ping_received = False
+
+    async def handler(request):
+        nonlocal ping_received
+        ws = web.WebSocketResponse(autoping=False)
+        await ws.prepare(request)
+        msg = await ws.receive()
+        if msg.type == aiohttp.WSMsgType.ping:
+            ping_received = True
+        await ws.receive()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/", heartbeat=0.1)
+
+    # Connection should be closed roughly after 1.5x heartbeat.
+    msg = await resp.receive(1.0)
+    assert ping_received
+    assert resp.close_code is WSCloseCode.ABNORMAL_CLOSURE
+    assert msg
+    assert msg.type is WSMsgType.ERROR
+    assert isinstance(msg.data, ServerTimeoutError)
 
 
 async def test_send_recv_compress(aiohttp_client) -> None:
