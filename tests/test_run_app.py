@@ -932,7 +932,6 @@ class TestShutdown:
     def run_app(self, port: int, timeout: int, task, extra_test=None) -> asyncio.Task:
         num_connections = -1
 
-
         class DictRecordClear(dict):
             def clear(self):
                 nonlocal num_connections
@@ -943,12 +942,10 @@ class TestShutdown:
                 num_connections = len(self)
                 super().clear()
 
-
         class ServerWithRecordClear(web.Server):
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, **kwargs)
                 self._connections = DictRecordClear()
-
 
         async def test() -> None:
             await asyncio.sleep(0.5)
