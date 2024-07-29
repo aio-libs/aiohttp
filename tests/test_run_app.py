@@ -971,7 +971,7 @@ class TestShutdown:
         app.router.add_get("/", handler)
         app.router.add_get("/stop", self.stop)
 
-        with mock.patch("aiohttp.web_runner.Server", ServerWithRecordClear):
+        with mock.patch("aiohttp.web_app.Server", ServerWithRecordClear):
             web.run_app(app, port=port, shutdown_timeout=timeout)
         assert test_task.exception() is None
         return t, num_connections
