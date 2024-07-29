@@ -1,3 +1,0 @@
-Improve performance of filtering cookies -- by :user:`bdraco`.
-
-This change is a followup to the improvements in :issue:`7583`
