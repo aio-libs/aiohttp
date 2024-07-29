@@ -10,6 +10,70 @@
 
 .. towncrier release notes start
 
+3.10.0rc0 (2024-07-29)
+========================
+
+Bug fixes
+---------
+
+- Adjusted ``FileResponse`` to check file existence and access when preparing the response -- by :user:`steverep`.
+
+  The :py:class:`~aiohttp.web.FileResponse` class was modified to respond with
+   403 Forbidden or 404 Not Found as appropriate.  Previously, it would cause a
+   server error if the path did not exist or could not be accessed.  Checks for
+   existence, non-regular files, and permissions were expected to be done in the
+   route handler.  For static routes, this now permits a compressed file to exist
+   without its uncompressed variant and still be served.  In addition, this
+   changes the response status for files without read permission to 403, and for
+   non-regular files from 404 to 403 for consistency.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8182`.
+
+
+
+
+Removals and backward incompatible breaking changes
+---------------------------------------------------
+
+- The shutdown logic in 3.9 waited on all tasks, which caused issues with some libraries.
+  In 3.10 we've changed this logic to only wait on request handlers. This means that it's
+  important for developers to correctly handle the lifecycle of background tasks using a
+  library such as ``aiojobs``. If an application is using ``handler_cancellation=True`` then
+  it is also a good idea to ensure that any :func:`asyncio.shield` calls are replaced with
+  :func:`aiojobs.aiohttp.shield`.
+
+  Please read the updated documentation on these points:
+  https://docs.aiohttp.org/en/stable/web_advanced.html#graceful-shutdown
+  https://docs.aiohttp.org/en/stable/web_advanced.html#web-handler-cancellation
+
+  -- by :user:`Dreamsorcerer`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8495`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improve performance of filtering cookies -- by :user:`bdraco`.
+
+  This change is a followup to the improvements in :issue:`7583`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8535`.
+
+
+
+
+----
+
+
 3.10.0b1 (2024-07-22)
 ========================
 
