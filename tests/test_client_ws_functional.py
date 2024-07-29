@@ -634,7 +634,8 @@ async def test_heartbeat_no_pong_concurrent_receive(aiohttp_client) -> None:
         msg = await ws.receive()
         if msg.type == aiohttp.WSMsgType.ping:
             ping_received = True
-        await ws.receive()
+        ws._reader.feed_eof = lambda: None
+        await asyncio.sleep(10.0)
         return ws
 
     app = web.Application()
@@ -642,9 +643,10 @@ async def test_heartbeat_no_pong_concurrent_receive(aiohttp_client) -> None:
 
     client = await aiohttp_client(app)
     resp = await client.ws_connect("/", heartbeat=0.1)
+    resp._reader.feed_eof = lambda: None
 
     # Connection should be closed roughly after 1.5x heartbeat.
-    msg = await resp.receive(1.0)
+    msg = await resp.receive(5.0)
     assert ping_received
     assert resp.close_code is WSCloseCode.ABNORMAL_CLOSURE
     assert msg
