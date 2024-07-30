@@ -1,4 +1,4 @@
-Implement filter_cookies() with domain-matching and path-matching on the keys, instead of testing every single cookie.
+Implemented filter_cookies() with domain-matching and path-matching on the keys, instead of testing every single cookie.
 This may break existing cookies that have been saved with `CookieJar.save()`. Cookies can be migrated with this script::
 
     import pickle
