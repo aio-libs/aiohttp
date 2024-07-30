@@ -10,7 +10,7 @@
 
 .. towncrier release notes start
 
-3.10.0rc0 (2024-07-29)
+3.10.0 (2024-07-30)
 ========================
 
 Bug fixes
@@ -32,62 +32,6 @@ Bug fixes
   :issue:`8182`.
 
 
-
-
-Removals and backward incompatible breaking changes
----------------------------------------------------
-
-- The shutdown logic in 3.9 waited on all tasks, which caused issues with some libraries.
-  In 3.10 we've changed this logic to only wait on request handlers. This means that it's
-  important for developers to correctly handle the lifecycle of background tasks using a
-  library such as ``aiojobs``. If an application is using ``handler_cancellation=True`` then
-  it is also a good idea to ensure that any :func:`asyncio.shield` calls are replaced with
-  :func:`aiojobs.aiohttp.shield`.
-
-  Please read the updated documentation on these points:
-  https://docs.aiohttp.org/en/stable/web_advanced.html#graceful-shutdown
-  https://docs.aiohttp.org/en/stable/web_advanced.html#web-handler-cancellation
-
-  -- by :user:`Dreamsorcerer`
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`8495`.
-
-
-
-
-Miscellaneous internal changes
-------------------------------
-
-- Improve performance of filtering cookies -- by :user:`bdraco`.
-
-  This change is a followup to the improvements in :issue:`7583`
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`8535`.
-
-
-
-
-----
-
-
-3.10.0b1 (2024-07-22)
-========================
-
-No significant changes.
-
-
-----
-
-
-3.10.0b0 (2024-07-22)
-=========================
-
-Bug fixes
----------
 
 - Fixed server response headers for ``Content-Type`` and ``Content-Encoding`` for
   static compressed files -- by :user:`steverep`.
@@ -268,8 +212,41 @@ Contributor-facing changes
 
 
 
+Removals and backward incompatible breaking changes
+---------------------------------------------------
+
+- The shutdown logic in 3.9 waited on all tasks, which caused issues with some libraries.
+  In 3.10 we've changed this logic to only wait on request handlers. This means that it's
+  important for developers to correctly handle the lifecycle of background tasks using a
+  library such as ``aiojobs``. If an application is using ``handler_cancellation=True`` then
+  it is also a good idea to ensure that any :func:`asyncio.shield` calls are replaced with
+  :func:`aiojobs.aiohttp.shield`.
+
+  Please read the updated documentation on these points:
+  https://docs.aiohttp.org/en/stable/web_advanced.html#graceful-shutdown
+  https://docs.aiohttp.org/en/stable/web_advanced.html#web-handler-cancellation
+
+  -- by :user:`Dreamsorcerer`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8495`.
+
+
+
+
 Miscellaneous internal changes
 ------------------------------
+
+- Improve performance of filtering cookies -- by :user:`bdraco`.
+
+  This change is a followup to the improvements in :issue:`7583`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8535`.
+
+
 
 - Improved URL handler resolution time by indexing resources in the UrlDispatcher.
   For applications with a large number of handlers, this should increase performance significantly.
