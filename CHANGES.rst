@@ -191,8 +191,8 @@ Removals and backward incompatible breaking changes
   :func:`aiojobs.aiohttp.shield`.
 
   Please read the updated documentation on these points:
-  | https://docs.aiohttp.org/en/stable/web_advanced.html#graceful-shutdown
-  | https://docs.aiohttp.org/en/stable/web_advanced.html#web-handler-cancellation
+  - https://docs.aiohttp.org/en/stable/web_advanced.html#graceful-shutdown
+  - https://docs.aiohttp.org/en/stable/web_advanced.html#web-handler-cancellation
 
   -- by :user:`Dreamsorcerer`
 
