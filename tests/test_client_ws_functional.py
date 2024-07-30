@@ -693,8 +693,7 @@ async def test_heartbeat_no_pong_concurrent_receive(aiohttp_client: Any) -> None
         ws = web.WebSocketResponse(autoping=False)
         await ws.prepare(request)
         msg = await ws.receive()
-        if msg.type is aiohttp.WSMsgType.PING:
-            ping_received = True
+        ping_received = msg.type is aiohttp.WSMsgType.PING
         ws._reader.feed_eof = lambda: None
         await asyncio.sleep(10.0)
 
