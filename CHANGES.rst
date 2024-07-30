@@ -16,6 +16,28 @@
 Bug fixes
 ---------
 
+- Fixed server response headers for ``Content-Type`` and ``Content-Encoding`` for
+  static compressed files -- by :user:`steverep`.
+
+  Server will now respond with a ``Content-Type`` appropriate for the compressed
+  file (e.g. ``"application/gzip"``), and omit the ``Content-Encoding`` header.
+  Users should expect that most clients will no longer decompress such responses
+  by default.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`4462`.
+
+
+
+- Fixed duplicate cookie expiration calls in the CookieJar implementation
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`7784`.
+
+
+
 - Adjusted ``FileResponse`` to check file existence and access when preparing the response -- by :user:`steverep`.
 
   The :py:class:`~aiohttp.web.FileResponse` class was modified to respond with
@@ -33,29 +55,7 @@ Bug fixes
 
 
 
-- Fixed server response headers for ``Content-Type`` and ``Content-Encoding`` for
-  static compressed files -- by :user:`steverep`.
-
-  Server will now respond with a ``Content-Type`` appropriate for the compressed
-  file (e.g. ``"application/gzip"``), and omit the ``Content-Encoding`` header.
-  Users should expect that most clients will no longer decompress such responses
-  by default.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`4462`.
-
-
-
-- Fix duplicate cookie expiration calls in the CookieJar implementation
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`7784`.
-
-
-
-- Fix ``AsyncResolver`` to match ``ThreadedResolver`` behavior
+- Fixed ``AsyncResolver`` to match ``ThreadedResolver`` behavior
   -- by :user:`bdraco`.
 
   On system with IPv6 support, the :py:class:`~aiohttp.resolver.AsyncResolver` would not fallback
@@ -71,7 +71,7 @@ Bug fixes
 
 
 
-- Fix ``ws_connect`` not respecting `receive_timeout`` on WS(S) connection.
+- Fixed ``ws_connect`` not respecting `receive_timeout`` on WS(S) connection.
   -- by :user:`arcivanov`.
 
 
@@ -99,7 +99,7 @@ Bug fixes
 Features
 --------
 
-- Add a Request.wait_for_disconnection() method, as means of allowing request handlers to be notified of premature client disconnections.
+- Added a Request.wait_for_disconnection() method, as means of allowing request handlers to be notified of premature client disconnections.
 
 
   *Related issues and pull requests on GitHub:*
@@ -134,7 +134,7 @@ Features
 
 
 
-- Implement filter_cookies() with domain-matching and path-matching on the keys, instead of testing every single cookie.
+- Implemented filter_cookies() with domain-matching and path-matching on the keys, instead of testing every single cookie.
   This may break existing cookies that have been saved with `CookieJar.save()`. Cookies can be migrated with this script::
 
       import pickle
@@ -151,7 +151,7 @@ Features
 
 
   *Related issues and pull requests on GitHub:*
-  :issue:`7583`.
+  :issue:`7583`, :issue:`8535`.
 
 
 
@@ -163,7 +163,7 @@ Features
 
 
 
-- Implement happy eyeballs
+- Implemented happy eyeballs
 
 
   *Related issues and pull requests on GitHub:*
@@ -180,10 +180,33 @@ Features
 
 
 
+Removals and backward incompatible breaking changes
+---------------------------------------------------
+
+- The shutdown logic in 3.9 waited on all tasks, which caused issues with some libraries.
+  In 3.10 we've changed this logic to only wait on request handlers. This means that it's
+  important for developers to correctly handle the lifecycle of background tasks using a
+  library such as ``aiojobs``. If an application is using ``handler_cancellation=True`` then
+  it is also a good idea to ensure that any :func:`asyncio.shield` calls are replaced with
+  :func:`aiojobs.aiohttp.shield`.
+
+  Please read the updated documentation on these points: \
+  https://docs.aiohttp.org/en/stable/web_advanced.html#graceful-shutdown \
+  https://docs.aiohttp.org/en/stable/web_advanced.html#web-handler-cancellation
+
+  -- by :user:`Dreamsorcerer`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8495`.
+
+
+
+
 Improved documentation
 ----------------------
 
-- Add documentation for ``aiohttp.web.FileResponse``.
+- Added documentation for ``aiohttp.web.FileResponse``.
 
 
   *Related issues and pull requests on GitHub:*
@@ -191,7 +214,7 @@ Improved documentation
 
 
 
-- Improve the docs for the `ssl` params.
+- Improved the docs for the `ssl` params.
 
 
   *Related issues and pull requests on GitHub:*
@@ -212,41 +235,8 @@ Contributor-facing changes
 
 
 
-Removals and backward incompatible breaking changes
----------------------------------------------------
-
-- The shutdown logic in 3.9 waited on all tasks, which caused issues with some libraries.
-  In 3.10 we've changed this logic to only wait on request handlers. This means that it's
-  important for developers to correctly handle the lifecycle of background tasks using a
-  library such as ``aiojobs``. If an application is using ``handler_cancellation=True`` then
-  it is also a good idea to ensure that any :func:`asyncio.shield` calls are replaced with
-  :func:`aiojobs.aiohttp.shield`.
-
-  Please read the updated documentation on these points:
-  https://docs.aiohttp.org/en/stable/web_advanced.html#graceful-shutdown
-  https://docs.aiohttp.org/en/stable/web_advanced.html#web-handler-cancellation
-
-  -- by :user:`Dreamsorcerer`
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`8495`.
-
-
-
-
 Miscellaneous internal changes
 ------------------------------
-
-- Improve performance of filtering cookies -- by :user:`bdraco`.
-
-  This change is a followup to the improvements in :issue:`7583`
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`8535`.
-
-
 
 - Improved URL handler resolution time by indexing resources in the UrlDispatcher.
   For applications with a large number of handlers, this should increase performance significantly.
@@ -258,7 +248,7 @@ Miscellaneous internal changes
 
 
 
-- Add `nacl_middleware <https://github.com/CosmicDNA/nacl_middleware>`_ to the list of middlewares in the third party section of the documentation.
+- Added `nacl_middleware <https://github.com/CosmicDNA/nacl_middleware>`_ to the list of middlewares in the third party section of the documentation.
 
 
   *Related issues and pull requests on GitHub:*
@@ -290,7 +280,7 @@ Miscellaneous internal changes
 
 
 
-- Avoid creating a future on every websocket receive -- by :user:`bdraco`.
+- Avoided creating a future on every websocket receive -- by :user:`bdraco`.
 
 
   *Related issues and pull requests on GitHub:*
@@ -298,7 +288,7 @@ Miscellaneous internal changes
 
 
 
-- Use identity checks for all ``WSMsgType`` type compares -- by :user:`bdraco`.
+- Updated identity checks for all ``WSMsgType`` type compares -- by :user:`bdraco`.
 
 
   *Related issues and pull requests on GitHub:*
@@ -314,7 +304,7 @@ Miscellaneous internal changes
 
 
 
-- Restore :py:class:`~aiohttp.resolver.AsyncResolver` to be the default resolver. -- by :user:`bdraco`.
+- Restored :py:class:`~aiohttp.resolver.AsyncResolver` to be the default resolver. -- by :user:`bdraco`.
 
   :py:class:`~aiohttp.resolver.AsyncResolver` was disabled by default because
   of IPv6 compatibility issues. These issues have been resolved and
