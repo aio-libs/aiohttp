@@ -1,4 +1,4 @@
-Fix ``AsyncResolver`` to match ``ThreadedResolver`` behavior
+Fixed ``AsyncResolver`` to match ``ThreadedResolver`` behavior
 -- by :user:`bdraco`.
 
 On system with IPv6 support, the :py:class:`~aiohttp.resolver.AsyncResolver` would not fallback
