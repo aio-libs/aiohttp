@@ -5,8 +5,8 @@ library such as ``aiojobs``. If an application is using ``handler_cancellation=T
 it is also a good idea to ensure that any :func:`asyncio.shield` calls are replaced with
 :func:`aiojobs.aiohttp.shield`.
 
-Please read the updated documentation on these points:
-https://docs.aiohttp.org/en/stable/web_advanced.html#graceful-shutdown |br|
+Please read the updated documentation on these points: \
+https://docs.aiohttp.org/en/stable/web_advanced.html#graceful-shutdown \
 https://docs.aiohttp.org/en/stable/web_advanced.html#web-handler-cancellation
 
 -- by :user:`Dreamsorcerer`
