@@ -1,1 +1,0 @@
-Avoid creating a future on every websocket receive -- by :user:`bdraco`.
