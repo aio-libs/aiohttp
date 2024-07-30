@@ -1,1 +1,0 @@
-Updated identity checks for all ``WSMsgType`` type compares -- by :user:`bdraco`.
