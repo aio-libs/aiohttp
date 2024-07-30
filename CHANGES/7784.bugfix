@@ -1,1 +1,0 @@
-Fixed duplicate cookie expiration calls in the CookieJar implementation
