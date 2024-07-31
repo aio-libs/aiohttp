@@ -1,0 +1,1 @@
+Increased minimum python version to 3.8.2 as earlier versions suffer from https://github.com/python/cpython/pull/17693 -- by :user:`bdraco`.
