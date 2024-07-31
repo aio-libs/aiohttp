@@ -1,4 +1,4 @@
-WSS: Fix heartbeat timeout logic -- by :user:`arcivanov`.
+Fixed WebSocket server heartbeat timeout logic to terminate `receive` and return :py:class:`~aiohttp.ServerTimeoutError` -- by :user:`arcivanov`.
 
 When a WebSocket pong message was not received, the
  :py:meth:`~aiohttp.ClientWebSocketResponse.receive` operation did not terminate.
