@@ -1111,6 +1111,9 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         if "{" in (index_key := resource.canonical):
             # strip at the first { to allow for variables, and than
             # rpartition at / to allow for variable parts in the path
+            # For example if the canonical path is `/core/locations{tail:.*}`
+            # the index key will be `/core` since index is based on the
+            # url parts split by `/`
             index_key = index_key.partition("{")[0].rpartition("/")[0]
         return index_key.rstrip("/") or "/"
 
