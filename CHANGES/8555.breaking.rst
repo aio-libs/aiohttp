@@ -1,0 +1,6 @@
+Creating :class:`aiohttp.TCPConnector`, :class:`aiohttp.CookieJar`,
+ or :class:`aiohttp.Client` instances without a running event loop
+ was deprecated in :issue:`3372`. After :issue:`5278`, attempting
+ attempting to do so will raise a :exc:`RuntimeError`.
+
+-- by :user:`asvetlov`
