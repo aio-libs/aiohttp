@@ -1,7 +1,7 @@
 WSS: Fix heartbeat timeout logic -- by :user:`arcivanov`.
 
-The :py:meth:`~aiohttp.client_ws.ClientWebSocketResponse._pong_not_received` did not
- terminate a :py:meth:`~aiohttp.client_ws.ClientWebSocketResponse.receive` operation.
+The :py:meth:`~aiohttp.ClientWebSocketResponse._pong_not_received` did not
+ terminate a :py:meth:`~aiohttp.ClientWebSocketResponse.receive` operation.
  This change causes `_pong_not_received` to feed the `reader` an error message, causing
  pending `receive` to terminate and return the error message. The error message contains
- the exception :py:class:`~aiohttp.client_exceptions.ServerTimeoutError`.
+ the exception :py:class:`~aiohttp.ServerTimeoutError`.
