@@ -70,6 +70,7 @@ from .typedefs import (
     JSONDecoder,
     LooseCookies,
     LooseHeaders,
+    Query,
     RawHeaders,
 )
 
@@ -197,7 +198,7 @@ class ClientRequest:
         method: str,
         url: URL,
         *,
-        params: Optional[Mapping[str, str]] = None,
+        params: Query = None,
         headers: Optional[LooseHeaders] = None,
         skip_auto_headers: Iterable[str] = frozenset(),
         data: Any = None,

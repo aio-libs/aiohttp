@@ -7,6 +7,7 @@ from typing import (
     Callable,
     Iterable,
     Mapping,
+    Sequence,
     Tuple,
     Union,
 )
@@ -52,3 +53,10 @@ Handler = Callable[["Request"], Awaitable["StreamResponse"]]
 Middleware = Callable[["Request", Handler], Awaitable["StreamResponse"]]
 
 PathLike = Union[str, "os.PathLike[str]"]
+
+# from yarl https://github.com/aio-libs/yarl/blob/efea830d088309214450b359f0d02792ba2eaa50/yarl/__init__.pyi#L18-L22
+SimpleQuery = Union[str, int, float]
+QueryVariable = Union[SimpleQuery, Sequence[SimpleQuery]]
+Query = Union[
+    None, str, Mapping[str, QueryVariable], Sequence[Tuple[str, QueryVariable]]
+]
