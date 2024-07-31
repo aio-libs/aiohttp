@@ -919,7 +919,7 @@ async def test_url_with_many_slashes(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_route_with_regex(aiohttp_client: AiohttpClient) -> None:
-    """Test a route with a regex."""
+    """Test a route with a regex preceded by a fixed string."""
     app = web.Application()
 
     async def handler(request: web.Request) -> web.Response:
