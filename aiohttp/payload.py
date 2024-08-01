@@ -11,8 +11,8 @@ from typing import (
     IO,
     TYPE_CHECKING,
     Any,
-    ByteString,
     Dict,
+    Final,
     Iterable,
     Optional,
     TextIO,
@@ -22,7 +22,6 @@ from typing import (
 )
 
 from multidict import CIMultiDict
-from typing_extensions import Final
 
 from . import hdrs
 from .abc import AbstractStreamWriter
@@ -54,7 +53,7 @@ __all__ = (
 
 TOO_LARGE_BYTES_BODY: Final[int] = 2**20  # 1 MB
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from typing import List
 
 
@@ -132,7 +131,6 @@ class PayloadRegistry:
 
 
 class Payload(ABC):
-
     _default_content_type: str = "application/octet-stream"
     _size: Optional[int] = None
 
@@ -218,7 +216,9 @@ class Payload(ABC):
 
 
 class BytesPayload(Payload):
-    def __init__(self, value: ByteString, *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, value: Union[bytes, bytearray, memoryview], *args: Any, **kwargs: Any
+    ) -> None:
         if not isinstance(value, (bytes, bytearray, memoryview)):
             raise TypeError(f"value argument must be byte-ish, not {type(value)!r}")
 
@@ -254,7 +254,6 @@ class StringPayload(BytesPayload):
         content_type: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
-
         if encoding is None:
             if content_type is None:
                 real_encoding = "utf-8"
@@ -318,7 +317,6 @@ class TextIOPayload(IOBasePayload):
         content_type: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
-
         if encoding is None:
             if content_type is None:
                 encoding = "utf-8"
@@ -391,7 +389,6 @@ class JsonPayload(BytesPayload):
         *args: Any,
         **kwargs: Any,
     ) -> None:
-
         super().__init__(
             dumps(value).encode(encoding),
             content_type=content_type,
@@ -401,7 +398,7 @@ class JsonPayload(BytesPayload):
         )
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from typing import AsyncIterable, AsyncIterator
 
     _AsyncIterator = AsyncIterator[bytes]
@@ -414,14 +411,13 @@ else:
 
 
 class AsyncIterablePayload(Payload):
-
     _iter: Optional[_AsyncIterator] = None
 
     def __init__(self, value: _AsyncIterable, *args: Any, **kwargs: Any) -> None:
         if not isinstance(value, AsyncIterable):
             raise TypeError(
                 "value argument must support "
-                "collections.abc.AsyncIterablebe interface, "
+                "collections.abc.AsyncIterable interface, "
                 "got {!r}".format(type(value))
             )
 

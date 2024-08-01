@@ -25,7 +25,7 @@ import yarl
 
 from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
 from .base_protocol import BaseProtocol
-from .helpers import ceil_timeout
+from .helpers import ceil_timeout, set_exception
 from .http import (
     HttpProcessingError,
     HttpRequestParser,
@@ -43,7 +43,7 @@ from .web_response import Response, StreamResponse
 
 __all__ = ("RequestHandler", "RequestPayloadError", "PayloadAccessError")
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .web_server import Server
 
 
@@ -186,7 +186,7 @@ class RequestHandler(BaseProtocol):
         tcp_keepalive: bool = True,
         logger: Logger = server_logger,
         access_log_class: _AnyAbstractAccessLogger = AccessLogger,
-        access_log: Logger = access_logger,
+        access_log: Optional[Logger] = access_logger,
         access_log_format: str = AccessLogger.LOG_FORMAT,
         max_line_size: int = 8190,
         max_field_size: int = 8190,
@@ -239,9 +239,9 @@ class RequestHandler(BaseProtocol):
         self.access_log = access_log
         if access_log:
             if issubclass(access_log_class, AbstractAsyncAccessLogger):
-                self.access_logger: Optional[
-                    AbstractAsyncAccessLogger
-                ] = access_log_class()
+                self.access_logger: Optional[AbstractAsyncAccessLogger] = (
+                    access_log_class()
+                )
             else:
                 access_logger = access_log_class(access_log, access_log_format)
                 self.access_logger = AccessLoggerWrapper(
@@ -278,7 +278,12 @@ class RequestHandler(BaseProtocol):
         if self._waiter:
             self._waiter.cancel()
 
-        # wait for handlers
+        # Wait for graceful disconnection
+        if self._current_request is not None:
+            with suppress(asyncio.CancelledError, asyncio.TimeoutError):
+                async with ceil_timeout(timeout):
+                    await self._current_request.wait_for_disconnection()
+        # Then cancel handler and wait
         with suppress(asyncio.CancelledError, asyncio.TimeoutError):
             async with ceil_timeout(timeout):
                 if self._current_request is not None:
@@ -461,7 +466,6 @@ class RequestHandler(BaseProtocol):
         start_time: float,
         request_handler: Callable[[BaseRequest], Awaitable[StreamResponse]],
     ) -> Tuple[StreamResponse, bool]:
-        assert self._request_handler is not None
         try:
             try:
                 self._current_request = request
@@ -545,7 +549,8 @@ class RequestHandler(BaseProtocol):
 
                 # Drop the processed task from asyncio.Task.all_tasks() early
                 del task
-                if reset:
+                # https://github.com/python/mypy/issues/14309
+                if reset:  # type: ignore[possibly-undefined]
                     self.log_debug("Ignored premature client disconnection 2")
                     break
 
@@ -555,7 +560,8 @@ class RequestHandler(BaseProtocol):
                 # check payload
                 if not payload.is_eof():
                     lingering_time = self._lingering_time
-                    if not self._force_close and lingering_time:
+                    # Could be force closed while awaiting above tasks.
+                    if not self._force_close and lingering_time:  # type: ignore[redundant-expr]
                         self.log_debug(
                             "Start lingering close timer for %s sec.", lingering_time
                         )
@@ -575,7 +581,7 @@ class RequestHandler(BaseProtocol):
                         self.log_debug("Uncompleted request.")
                         self.close()
 
-                payload.set_exception(PayloadAccessError())
+                set_exception(payload, PayloadAccessError())
 
             except asyncio.CancelledError:
                 self.log_debug("Ignored premature client disconnection ")

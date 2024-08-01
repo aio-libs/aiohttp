@@ -1,0 +1,8 @@
+aiodns
+aioredis
+mypy; implementation_name == "cpython"
+pre-commit
+pytest
+python-on-whales
+slotscheck
+uvloop; platform_system != "Windows"

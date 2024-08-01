@@ -70,7 +70,6 @@ def get_memory_usage(obj: Any):
 
 
 class TestStreamReader:
-
     DATA: bytes = b"line1\nline2\nline3\n"
 
     def _make_one(self, *args, **kwargs) -> streams.StreamReader:
@@ -1110,10 +1109,20 @@ async def test_empty_stream_reader() -> None:
     assert await s.read() == b""
     assert await s.readline() == b""
     assert await s.readany() == b""
+    assert await s.readchunk() == (b"", False)
     assert await s.readchunk() == (b"", True)
     with pytest.raises(asyncio.IncompleteReadError):
         await s.readexactly(10)
     assert s.read_nowait() == b""
+
+
+async def test_empty_stream_reader_iter_chunks() -> None:
+    s = streams.EmptyStreamReader()
+
+    # check that iter_chunks() does not cause infinite loop
+    iter_chunks = s.iter_chunks()
+    with pytest.raises(StopAsyncIteration):
+        await iter_chunks.__anext__()
 
 
 @pytest.fixture
@@ -1135,9 +1144,9 @@ class TestDataQueue:
         assert not buffer.at_eof()
 
     def test_feed_data(self, buffer: Any) -> None:
-        item = object()
-        buffer.feed_data(item, 1)
-        assert [(item, 1)] == list(buffer._buffer)
+        item = b" "
+        buffer.feed_data(item)
+        assert [item] == list(buffer._buffer)
 
     def test_feed_eof(self, buffer: Any) -> None:
         buffer.feed_eof()
@@ -1145,10 +1154,10 @@ class TestDataQueue:
 
     async def test_read(self, buffer: Any) -> None:
         loop = asyncio.get_event_loop()
-        item = object()
+        item = b""
 
         def cb():
-            buffer.feed_data(item, 1)
+            buffer.feed_data(item)
 
         loop.call_soon(cb)
 
@@ -1179,12 +1188,12 @@ class TestDataQueue:
         assert waiter.cancelled()
         assert buffer._waiter is None
 
-        buffer.feed_data(b"test", 4)
+        buffer.feed_data(b"test")
         assert buffer._waiter is None
 
     async def test_read_until_eof(self, buffer: Any) -> None:
-        item = object()
-        buffer.feed_data(item, 1)
+        item = ""
+        buffer.feed_data(item)
         buffer.feed_eof()
 
         data = await buffer.read()
@@ -1194,7 +1203,7 @@ class TestDataQueue:
             await buffer.read()
 
     async def test_read_exc(self, buffer: Any) -> None:
-        item = object()
+        item = ""
         buffer.feed_data(item)
         buffer.set_exception(ValueError)
 
@@ -1211,8 +1220,8 @@ class TestDataQueue:
             await buffer.read()
 
     async def test_read_exception_with_data(self, buffer: Any) -> None:
-        val = object()
-        buffer.feed_data(val, 1)
+        val = ""
+        buffer.feed_data(val)
         buffer.set_exception(ValueError())
 
         assert val is (await buffer.read())
@@ -1466,9 +1475,9 @@ async def test_data_queue_items() -> None:
     loop = asyncio.get_event_loop()
     buffer = streams.DataQueue(loop)
 
-    items = [object(), object()]
-    buffer.feed_data(items[0], 1)
-    buffer.feed_data(items[1], 1)
+    items = ["a", "b"]
+    buffer.feed_data(items[0])
+    buffer.feed_data(items[1])
     buffer.feed_eof()
 
     item_iter = iter(items)

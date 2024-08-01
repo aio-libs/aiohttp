@@ -362,6 +362,21 @@ def test_route_dynamic(router: Any) -> None:
     assert route is route2
 
 
+def test_add_static_path_checks(router: Any, tmp_path: pathlib.Path) -> None:
+    """Test that static paths must exist and be directories."""
+    with pytest.raises(ValueError, match="does not exist"):
+        router.add_static("/", tmp_path / "does-not-exist")
+        with pytest.raises(ValueError, match="is not a directory"):
+            router.add_static("/", __file__)
+
+
+def test_add_static_path_resolution(router: Any) -> None:
+    """Test that static paths are expanded and absolute."""
+    res = router.add_static("/", "~/..")
+    directory = str(res.get_info()["directory"])
+    assert directory == str(pathlib.Path.home().parent)
+
+
 def test_add_static(router: Any) -> None:
     resource = router.add_static(
         "/st", pathlib.Path(aiohttp.__file__).parent, name="static"
@@ -755,7 +770,6 @@ def test_add_route_not_started_with_slash(router: Any) -> None:
 
 
 def test_add_route_invalid_method(router: Any) -> None:
-
     sample_bad_methods = {
         "BAD METHOD",
         "B@D_METHOD",
@@ -961,6 +975,7 @@ def test_static_route_user_home(router: Any) -> None:
         static_dir = pathlib.Path("~") / here.relative_to(pathlib.Path.home())
     except ValueError:
         pytest.skip("aiohttp folder is not placed in user's HOME")
+        return  # TODO: Remove and fix type error
     route = router.add_static("/st", str(static_dir))
     assert here == route.get_info()["directory"]
 
@@ -1146,14 +1161,16 @@ def test_subapp_iter(app: Any) -> None:
     assert list(resource) == [r1, r2]
 
 
-def test_invalid_route_name(router: Any) -> None:
+@pytest.mark.parametrize(
+    "route_name",
+    (
+        "invalid name",
+        "class",
+    ),
+)
+def test_invalid_route_name(router: Any, route_name: str) -> None:
     with pytest.raises(ValueError):
-        router.add_get("/", make_handler(), name="invalid name")
-
-
-def test_invalid_route_name(router) -> None:
-    with pytest.raises(ValueError):
-        router.add_get("/", make_handler(), name="class")  # identifier
+        router.add_get("/", make_handler(), name=route_name)
 
 
 def test_frozen_router(router: Any) -> None:
@@ -1264,10 +1281,17 @@ async def test_prefixed_subapp_overlap(app: Any) -> None:
     subapp2.router.add_get("/b", handler2)
     app.add_subapp("/ss", subapp2)
 
+    subapp3 = web.Application()
+    handler3 = make_handler()
+    subapp3.router.add_get("/c", handler3)
+    app.add_subapp("/s/s", subapp3)
+
     match_info = await app.router.resolve(make_mocked_request("GET", "/s/a"))
     assert match_info.route.handler is handler1
     match_info = await app.router.resolve(make_mocked_request("GET", "/ss/b"))
     assert match_info.route.handler is handler2
+    match_info = await app.router.resolve(make_mocked_request("GET", "/s/s/c"))
+    assert match_info.route.handler is handler3
 
 
 async def test_prefixed_subapp_empty_route(app: Any) -> None:

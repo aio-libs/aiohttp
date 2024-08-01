@@ -13,7 +13,7 @@ __all__ = (
     "normalize_path_middleware",
 )
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .web_app import Application
 
 _Func = TypeVar("_Func")

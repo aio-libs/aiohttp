@@ -5,15 +5,80 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.towncrier]
-package = "aiohttp"
-filename = "CHANGES.rst"
-directory = "CHANGES/"
-title_format = "{version} ({project_date})"
-template = "CHANGES/.TEMPLATE.rst"
-issue_format = "`#{issue} <https://github.com/aio-libs/aiohttp/issues/{issue}>`_"
+  package = "aiohttp"
+  filename = "CHANGES.rst"
+  directory = "CHANGES/"
+  title_format = "{version} ({project_date})"
+  template = "CHANGES/.TEMPLATE.rst"
+  issue_format = "{issue}"
+
+  # NOTE: The types are declared because:
+  # NOTE: - there is no mechanism to override just the value of
+  # NOTE:   `tool.towncrier.type.misc.showcontent`;
+  # NOTE: - and, we want to declare extra non-default types for
+  # NOTE:   clarity and flexibility.
+
+  [[tool.towncrier.section]]
+    path = ""
+
+  [[tool.towncrier.type]]
+    # Something we deemed an improper undesired behavior that got corrected
+    # in the release to match pre-agreed expectations.
+    directory = "bugfix"
+    name = "Bug fixes"
+    showcontent = true
+
+  [[tool.towncrier.type]]
+    # New behaviors, public APIs. That sort of stuff.
+    directory = "feature"
+    name = "Features"
+    showcontent = true
+
+  [[tool.towncrier.type]]
+    # Declarations of future API removals and breaking changes in behavior.
+    directory = "deprecation"
+    name = "Deprecations (removal in next major release)"
+    showcontent = true
+
+  [[tool.towncrier.type]]
+    # When something public gets removed in a breaking way. Could be
+    # deprecated in an earlier release.
+    directory = "breaking"
+    name = "Removals and backward incompatible breaking changes"
+    showcontent = true
+
+  [[tool.towncrier.type]]
+    # Notable updates to the documentation structure or build process.
+    directory = "doc"
+    name = "Improved documentation"
+    showcontent = true
+
+  [[tool.towncrier.type]]
+    # Notes for downstreams about unobvious side effects and tooling. Changes
+    # in the test invocation considerations and runtime assumptions.
+    directory = "packaging"
+    name = "Packaging updates and notes for downstreams"
+    showcontent = true
+
+  [[tool.towncrier.type]]
+    # Stuff that affects the contributor experience. e.g. Running tests,
+    # building the docs, setting up the development environment.
+    directory = "contrib"
+    name = "Contributor-facing changes"
+    showcontent = true
+
+  [[tool.towncrier.type]]
+    # Changes that are hard to assign to any of the above categories.
+    directory = "misc"
+    name = "Miscellaneous internal changes"
+    showcontent = true
 
 
 [tool.cibuildwheel]
 test-command = ""
 # don't build PyPy wheels, install from source instead
 skip = "pp*"
+
+[tool.codespell]
+skip = '.git,*.pdf,*.svg,Makefile,CONTRIBUTORS.txt,venvs,_build'
+ignore-words-list = 'te,assertIn'

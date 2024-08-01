@@ -1,6 +1,6 @@
 import dataclasses
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Awaitable, Optional, Type, TypeVar
+from typing import TYPE_CHECKING, Awaitable, Optional, Protocol, Type, TypeVar
 
 from aiosignal import Signal
 from multidict import CIMultiDict
@@ -8,9 +8,7 @@ from yarl import URL
 
 from .client_reqrep import ClientResponse
 
-if TYPE_CHECKING:  # pragma: no cover
-    from typing_extensions import Protocol
-
+if TYPE_CHECKING:
     from .client import ClientSession
 
     _ParamT_contra = TypeVar("_ParamT_contra", contravariant=True)
@@ -21,8 +19,7 @@ if TYPE_CHECKING:  # pragma: no cover
             __client_session: ClientSession,
             __trace_config_ctx: SimpleNamespace,
             __params: _ParamT_contra,
-        ) -> Awaitable[None]:
-            ...
+        ) -> Awaitable[None]: ...
 
 
 __all__ = (
@@ -52,9 +49,9 @@ class TraceConfig:
     def __init__(
         self, trace_config_ctx_factory: Type[SimpleNamespace] = SimpleNamespace
     ) -> None:
-        self._on_request_start: Signal[
-            _SignalCallback[TraceRequestStartParams]
-        ] = Signal(self)
+        self._on_request_start: Signal[_SignalCallback[TraceRequestStartParams]] = (
+            Signal(self)
+        )
         self._on_request_chunk_sent: Signal[
             _SignalCallback[TraceRequestChunkSentParams]
         ] = Signal(self)
@@ -91,12 +88,12 @@ class TraceConfig:
         self._on_dns_resolvehost_end: Signal[
             _SignalCallback[TraceDnsResolveHostEndParams]
         ] = Signal(self)
-        self._on_dns_cache_hit: Signal[
-            _SignalCallback[TraceDnsCacheHitParams]
-        ] = Signal(self)
-        self._on_dns_cache_miss: Signal[
-            _SignalCallback[TraceDnsCacheMissParams]
-        ] = Signal(self)
+        self._on_dns_cache_hit: Signal[_SignalCallback[TraceDnsCacheHitParams]] = (
+            Signal(self)
+        )
+        self._on_dns_cache_miss: Signal[_SignalCallback[TraceDnsCacheMissParams]] = (
+            Signal(self)
+        )
         self._on_request_headers_sent: Signal[
             _SignalCallback[TraceRequestHeadersSentParams]
         ] = Signal(self)

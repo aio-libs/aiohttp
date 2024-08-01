@@ -8,16 +8,28 @@ import zlib
 from typing import Any, Optional
 from unittest import mock
 
-import brotli
 import pytest
 from multidict import CIMultiDictProxy, MultiDict
 from yarl import URL
 
 import aiohttp
-from aiohttp import FormData, HttpVersion10, HttpVersion11, TraceConfig, multipart, web
+from aiohttp import (
+    FormData,
+    HttpVersion,
+    HttpVersion10,
+    HttpVersion11,
+    TraceConfig,
+    multipart,
+    web,
+)
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.typedefs import Handler
+
+try:
+    import brotlicffi as brotli
+except ImportError:
+    import brotli
 
 try:
     import ssl
@@ -37,7 +49,7 @@ def fname(here: Any):
 
 def new_dummy_form():
     form = FormData()
-    form.add_field("name", b"123", content_transfer_encoding="base64")
+    form.add_field("name", b"123")
     return form
 
 
@@ -132,6 +144,10 @@ async def test_head_returns_empty_body(aiohttp_client: Any) -> None:
     assert 200 == resp.status
     txt = await resp.text()
     assert "" == txt
+    # The Content-Length header should be set to 4 which is
+    # the length of the response body if it would have been
+    # returned by a GET request.
+    assert resp.headers["Content-Length"] == "4"
 
 
 async def test_response_before_complete(aiohttp_client: Any) -> None:
@@ -191,7 +207,6 @@ async def test_post_text(aiohttp_client: Any) -> None:
 
 
 async def test_post_json(aiohttp_client: Any) -> None:
-
     dct = {"key": "текст"}
 
     async def handler(request):
@@ -318,7 +333,6 @@ async def test_render_redirect(aiohttp_client: Any) -> None:
 
 
 async def test_post_single_file(aiohttp_client: Any) -> None:
-
     here = pathlib.Path(__file__).parent
 
     def check_file(fs):
@@ -386,7 +400,6 @@ async def test_files_upload_with_same_key(aiohttp_client: Any) -> None:
 
 
 async def test_post_files(aiohttp_client: Any) -> None:
-
     here = pathlib.Path(__file__).parent
 
     def check_file(fs):
@@ -429,25 +442,6 @@ async def test_release_post_data(aiohttp_client: Any) -> None:
     client = await aiohttp_client(app)
 
     resp = await client.post("/", data="post text")
-    assert 200 == resp.status
-
-    await resp.release()
-
-
-async def test_POST_DATA_with_content_transfer_encoding(aiohttp_client: Any) -> None:
-    async def handler(request):
-        data = await request.post()
-        assert b"123" == data["name"]
-        return web.Response()
-
-    app = web.Application()
-    app.router.add_post("/", handler)
-    client = await aiohttp_client(app)
-
-    form = FormData()
-    form.add_field("name", b"123", content_transfer_encoding="base64")
-
-    resp = await client.post("/", data=form)
     assert 200 == resp.status
 
     await resp.release()
@@ -510,7 +504,7 @@ async def test_100_continue(aiohttp_client: Any) -> None:
         return web.Response()
 
     form = FormData()
-    form.add_field("name", b"123", content_transfer_encoding="base64")
+    form.add_field("name", b"123")
 
     app = web.Application()
     app.router.add_post("/", handler)
@@ -523,7 +517,6 @@ async def test_100_continue(aiohttp_client: Any) -> None:
 
 
 async def test_100_continue_custom(aiohttp_client: Any) -> None:
-
     expect_received = False
 
     async def handler(request):
@@ -603,7 +596,6 @@ async def test_expect_handler_custom_response(aiohttp_client: Any) -> None:
 
 
 async def test_100_continue_for_not_found(aiohttp_client: Any) -> None:
-
     app = web.Application()
     client = await aiohttp_client(app)
 
@@ -697,7 +689,6 @@ async def test_http10_keep_alive_with_headers(aiohttp_client: Any) -> None:
 
 
 async def test_upload_file(aiohttp_client: Any) -> None:
-
     here = pathlib.Path(__file__).parent
     fname = here / "aiohttp.png"
     with fname.open("rb") as f:
@@ -714,7 +705,7 @@ async def test_upload_file(aiohttp_client: Any) -> None:
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
-    resp = await client.post("/", data={"file": data})
+    resp = await client.post("/", data={"file": io.BytesIO(data)})
     assert 200 == resp.status
 
     await resp.release()
@@ -844,7 +835,6 @@ async def test_get_with_empty_arg_with_equal(aiohttp_client: Any) -> None:
 
 
 async def test_response_with_async_gen(aiohttp_client: Any, fname: Any) -> None:
-
     with fname.open("rb") as f:
         data = f.read()
 
@@ -877,7 +867,6 @@ async def test_response_with_async_gen(aiohttp_client: Any, fname: Any) -> None:
 async def test_response_with_async_gen_no_params(
     aiohttp_client: Any, fname: Any
 ) -> None:
-
     with fname.open("rb") as f:
         data = f.read()
 
@@ -1109,7 +1098,6 @@ async def test_stream_response_multiple_chunks(aiohttp_client: Any) -> None:
 
 
 async def test_start_without_routes(aiohttp_client: Any) -> None:
-
     app = web.Application()
     client = await aiohttp_client(app)
 
@@ -1821,7 +1809,6 @@ async def test_response_context_manager(aiohttp_server: Any) -> None:
     resp = await session.get(server.make_url("/"))
     async with resp:
         assert resp.status == 200
-        assert resp.connection is None
     assert resp.connection is None
 
     await session.close()
@@ -1895,7 +1882,6 @@ async def test_context_manager_close_on_release(
 
 
 async def test_iter_any(aiohttp_server: Any) -> None:
-
     data = b"0123456789" * 1024
 
     async def handler(request):
@@ -1915,7 +1901,6 @@ async def test_iter_any(aiohttp_server: Any) -> None:
 
 
 async def test_request_tracing(aiohttp_server: Any) -> None:
-
     on_request_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
     on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
     on_dns_resolvehost_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
@@ -2158,4 +2143,24 @@ async def test_httpfound_cookies_302(aiohttp_client: Any) -> None:
 
     resp = await client.get("/", allow_redirects=False)
     assert "my-cookie" in resp.cookies
+    await resp.release()
+
+
+@pytest.mark.parametrize("status", (101, 204, 304))
+@pytest.mark.parametrize("version", (HttpVersion10, HttpVersion11))
+async def test_no_body_for_1xx_204_304_responses(
+    aiohttp_client: Any, status: int, version: HttpVersion
+) -> None:
+    """Test no body is present for for 1xx, 204, and 304 responses."""
+
+    async def handler(_):
+        return web.Response(status=status, body=b"should not get to client")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app, version=version)
+    resp = await client.get("/")
+    assert CONTENT_TYPE not in resp.headers
+    assert TRANSFER_ENCODING not in resp.headers
+    await resp.read() == b""
     await resp.release()
