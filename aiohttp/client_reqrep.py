@@ -965,10 +965,12 @@ class ClientResponse(HeadersMixin):
 
         # proxy headers
         protocol = self._protocol
-        self._proxy_headers = protocol.proxy_headers if protocol is not None else None
-        self._raw_proxy_headers = (
-            protocol.raw_proxy_headers if protocol is not None else None
-        )
+        if protocol is None:
+            self._proxy_headers = None
+            self._raw_proxy_headers = None
+        else:
+            self._proxy_headers = protocol.proxy_headers
+            self._raw_proxy_headers = protocol.raw_proxy_headers
 
         # payload
         self.content = payload
