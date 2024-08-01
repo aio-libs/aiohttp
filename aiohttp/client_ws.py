@@ -5,7 +5,7 @@ import dataclasses
 import sys
 from typing import Any, Final, Optional, cast
 
-from .client_exceptions import ClientError
+from .client_exceptions import ClientError, ServerTimeoutError
 from .client_reqrep import ClientResponse
 from .helpers import call_later, set_result
 from .http import (
@@ -132,8 +132,12 @@ class ClientWebSocketResponse:
         if not self._closed:
             self._closed = True
             self._close_code = WSCloseCode.ABNORMAL_CLOSURE
-            self._exception = asyncio.TimeoutError()
+            self._exception = ServerTimeoutError()
             self._response.close()
+            if self._waiting and not self._closing:
+                self._reader.feed_data(
+                    WSMessage(WSMsgType.ERROR, self._exception, None)
+                )
 
     @property
     def closed(self) -> bool:
