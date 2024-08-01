@@ -937,3 +937,27 @@ async def test_url_with_many_slashes(aiohttp_client: AiohttpClient) -> None:
     r = await client.get("///a")
     assert r.status == 200
     await r.release()
+
+
+async def test_route_with_regex(aiohttp_client: AiohttpClient) -> None:
+    """Test a route with a regex preceded by a fixed string."""
+    app = web.Application()
+
+    async def handler(request: web.Request) -> web.Response:
+        assert isinstance(request.match_info._route.resource, Resource)
+        return web.Response(text=request.match_info._route.resource.canonical)
+
+    app.router.add_get("/core/locations{tail:.*}", handler)
+    client = await aiohttp_client(app)
+
+    r = await client.get("/core/locations/tail/here")
+    assert r.status == 200
+    assert await r.text() == "/core/locations{tail}"
+
+    r = await client.get("/core/locations_tail_here")
+    assert r.status == 200
+    assert await r.text() == "/core/locations{tail}"
+
+    r = await client.get("/core/locations_tail;id=abcdef")
+    assert r.status == 200
+    assert await r.text() == "/core/locations{tail}"
