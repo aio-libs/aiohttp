@@ -12,7 +12,7 @@ babel==2.12.1
     # via sphinx
 blockdiag==3.0.0
     # via sphinxcontrib-blockdiag
-certifi==2023.7.22
+certifi==2024.7.4
     # via requests
 charset-normalizer==3.3.0
     # via requests
@@ -83,11 +83,11 @@ urllib3==2.2.2
     # via requests
 webcolors==1.13
     # via blockdiag
-zipp==3.17.0
+zipp==3.19.1
     # via
     #   importlib-metadata
     #   importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==68.0.0
+setuptools==70.0.0
     # via blockdiag

@@ -12,7 +12,7 @@ annotated-types==0.6.0
     # via pydantic
 async-timeout==4.0.3
     # via aioredis
-certifi==2024.2.2
+certifi==2024.7.4
     # via requests
 cffi==1.16.0
     # via pycares
@@ -66,7 +66,7 @@ pygments==2.17.2
     # via rich
 pytest==8.1.1
     # via -r requirements/lint.in
-python-on-whales==0.71.0
+python-on-whales==0.72.0
     # via -r requirements/lint.in
 pyyaml==6.0.1
     # via pre-commit
@@ -105,5 +105,5 @@ virtualenv==20.24.2
     # via pre-commit
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==68.0.0
+setuptools==70.0.0
     # via nodeenv

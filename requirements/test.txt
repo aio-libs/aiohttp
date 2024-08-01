@@ -27,7 +27,7 @@ click==8.1.6
     # via
     #   typer
     #   wait-for-it
-coverage==7.5.4
+coverage==7.6.0
     # via
     #   -r requirements/test.in
     #   pytest-cov
@@ -83,7 +83,7 @@ pytest-mock==3.14.0
     # via -r requirements/test.in
 python-dateutil==2.8.2
     # via freezegun
-python-on-whales==0.71.0
+python-on-whales==0.72.0
     # via -r requirements/test.in
 re-assert==1.1.0
     # via -r requirements/test.in
