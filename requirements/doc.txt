@@ -27,10 +27,10 @@ idna==3.4
 imagesize==1.4.1
     # via sphinx
 importlib-metadata==6.8.0
-    # via sphinx
+    # via
+    #   sphinx
+    #   towncrier
 importlib-resources==6.1.1
-    # via towncrier
-incremental==22.10.0
     # via towncrier
 jinja2==3.1.2
     # via
@@ -52,11 +52,10 @@ requests==2.31.0
     # via sphinx
 snowballstemmer==2.2.0
     # via sphinx
-sphinx==7.2.6
+sphinx==7.1.2
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-blockdiag
-    #   sphinxcontrib-serializinghtml
     #   sphinxcontrib-towncrier
 sphinxcontrib-applehelp==1.0.4
     # via sphinx
@@ -70,13 +69,13 @@ sphinxcontrib-jsmath==1.0.1
     # via sphinx
 sphinxcontrib-qthelp==1.0.3
     # via sphinx
-sphinxcontrib-serializinghtml==1.1.9
+sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
 sphinxcontrib-towncrier==0.4.0a0
     # via -r requirements/doc.in
 tomli==2.0.1
     # via towncrier
-towncrier==23.11.0
+towncrier==24.7.1
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
@@ -91,4 +90,6 @@ zipp==3.17.0
 
 # The following packages are considered to be unsafe in a requirements file:
 setuptools==68.0.0
-    # via blockdiag
+    # via
+    #   blockdiag
+    #   sphinx
