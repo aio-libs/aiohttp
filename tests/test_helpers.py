@@ -607,6 +607,30 @@ def test_proxies_from_env_http_with_auth(url_input, expected_scheme) -> None:
     assert proxy_auth.encoding == "latin1"
 
 
+# ------------ get_running_loop ---------------------------------
+
+
+def test_get_running_loop_not_running(
+    loop: asyncio.AbstractEventLoop, caplog: pytest.LogCaptureFixture
+) -> None:
+    with pytest.warns(DeprecationWarning):
+        helpers.get_running_loop()
+    assert "The object should be created within an async function" not in caplog.text
+    loop.set_debug(True)
+    with pytest.warns(DeprecationWarning):
+        helpers.get_running_loop()
+    assert "The object should be created within an async function" in caplog.text
+    loop.set_debug(False)
+    caplog.clear()
+    with pytest.warns(DeprecationWarning):
+        helpers.get_running_loop()
+    assert "The object should be created within an async function" not in caplog.text
+
+
+async def test_get_running_loop_ok(loop: asyncio.AbstractEventLoop) -> None:
+    assert helpers.get_running_loop() is loop
+
+
 # --------------------- get_env_proxy_for_url ------------------------------
 
 

@@ -1,0 +1,20 @@
+Restored the ability to create
+ :py:class:`aiohttp.TCPConnector`,
+ :py:class:`aiohttp.ClientSession`,
+ :py:class:`~aiohttp.resolver.ThreadedResolver`
+ :py:class:`aiohttp.web.Server`,
+ and :py:class:`aiohttp.CookieJar` instances
+ without a running event loop -- by :user:`bdraco`.
+
+This is a partial revert of :issue:`5278`. Creating these
+objects without a running event loop is highly discouraged
+because it can lead to confusing behavior.
+
+This is accomplished by falling back to calling
+``asyncio.get_event_loop()`` if ``asyncio.get_running_loop()``
+raises :exc:`RuntimeError`. As of Python 3.12, calling
+``asyncio.get_running_loop()`` without a running event loop
+also emits a Deprecation warning.
+
+As with Python, creating these objects without a running event
+loop will become an error in a future version of ``aiohttp``.
