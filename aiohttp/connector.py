@@ -49,7 +49,7 @@ from .client_exceptions import (
 )
 from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest, Fingerprint, _merge_ssl_params
-from .helpers import ceil_timeout, is_ip_address, noop, sentinel
+from .helpers import ceil_timeout, get_running_loop, is_ip_address, noop, sentinel
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
@@ -105,7 +105,7 @@ class Connection:
     ) -> None:
         self._key = key
         self._connector = connector
-        self._loop = loop
+        self._loop = loop or get_running_loop()
         self._protocol: Optional[ResponseHandler] = protocol
         self._callbacks: List[Callable[[], None]] = []
 

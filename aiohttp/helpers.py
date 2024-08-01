@@ -14,6 +14,7 @@ import platform
 import re
 import sys
 import time
+import warnings
 import weakref
 from collections import namedtuple
 from contextlib import suppress
@@ -51,7 +52,7 @@ from multidict import MultiDict, MultiDictProxy, MultiMapping
 from yarl import URL
 
 from . import hdrs
-from .log import client_logger
+from .log import client_logger, internal_logger
 
 if sys.version_info >= (3, 11):
     import asyncio as async_timeout
@@ -284,6 +285,24 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
                     auth = None
         ret[proto] = ProxyInfo(proxy, auth)
     return ret
+
+
+def get_running_loop() -> asyncio.AbstractEventLoop:
+    """Get the running event loop."""
+    try:
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        warnings.warn(
+            "The object should be created within an async function",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+        loop = asyncio.get_event_loop()
+        if loop.get_debug():
+            internal_logger.warning(
+                "The object should be created within an async function", stack_info=True
+            )
+        return loop
 
 
 def get_env_proxy_for_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
@@ -716,7 +735,7 @@ def ceil_timeout(
     if delay is None or delay <= 0:
         return async_timeout.timeout(None)
 
-    loop = asyncio.get_running_loop()
+    loop = get_running_loop()
     now = loop.time()
     when = now + delay
     if delay > ceil_threshold:
