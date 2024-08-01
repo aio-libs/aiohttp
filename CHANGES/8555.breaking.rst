@@ -1,5 +1,6 @@
 Creating :class:`aiohttp.TCPConnector` or :class:`aiohttp.CookieJar`
  instances without a running event loop now raises a :exc:`RuntimeError`.
+
  -- by :user:`asvetlov`
 
 Creating these objects without a running event loop was deprecated
