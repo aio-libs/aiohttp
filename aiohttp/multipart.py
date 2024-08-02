@@ -247,7 +247,7 @@ class MultipartResponseWrapper:
 
         All remaining content is read to the void.
         """
-        await self.resp.release()
+        self.resp.release()
 
 
 class BodyPartReader:
