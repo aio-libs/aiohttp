@@ -1,8 +1,13 @@
-Creating :class:`aiohttp.TCPConnector`, :class:`aiohttp.ClientSession`, or
- :class:`aiohttp.CookieJar` instances without a running event loop now
- raises a :exc:`RuntimeError`.
-
- -- by :user:`asvetlov`
+Creating :py:class:`aiohttp.TCPConnector`,
+ :py:class:`aiohttp.ClientSession`,
+ :py:class:`~aiohttp.resolver.ThreadedResolver`
+ :py:class:`aiohttp.web.Server`,
+ or :py:class:`aiohttp.CookieJar`
+ instances without a running event loop now
+ raises a :exc:`RuntimeError`
+ -- by :user:`asvetlov`.
 
 Creating these objects without a running event loop was deprecated
 in :issue:`3372` which was released in version 3.5.0.
+
+This change first appeared in version 3.10.0 as :issue:`6378`.
