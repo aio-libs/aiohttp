@@ -10,6 +10,62 @@
 
 .. towncrier release notes start
 
+3.10.1 (2024-08-02)
+========================
+
+Bug fixes
+---------
+
+- Fixed WebSocket server heartbeat timeout logic to terminate `receive` and return :py:class:`~aiohttp.ServerTimeoutError` -- by :user:`arcivanov`.
+
+  When a WebSocket pong message was not received, the
+   :py:meth:`~aiohttp.ClientWebSocketResponse.receive` operation did not terminate.
+   This change causes `_pong_not_received` to feed the `reader` an error message, causing
+   pending `receive` to terminate and return the error message. The error message contains
+   the exception :py:class:`~aiohttp.ServerTimeoutError`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8540`.
+
+
+
+- Fixed url dispatcher index not matching when a variable is preceded by a fixed string after a slash -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8566`.
+
+
+
+
+Removals and backward incompatible breaking changes
+---------------------------------------------------
+
+- Creating :py:class:`aiohttp.TCPConnector`,
+   :py:class:`aiohttp.ClientSession`,
+   :py:class:`~aiohttp.resolver.ThreadedResolver`
+   :py:class:`aiohttp.web.Server`,
+   or :py:class:`aiohttp.CookieJar`
+   instances without a running event loop now
+   raises a :exc:`RuntimeError`
+   -- by :user:`asvetlov`.
+
+  Creating these objects without a running event loop was deprecated
+  in :issue:`3372` which was released in version 3.5.0.
+
+  This change first appeared in version 3.10.0 as :issue:`6378`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8555`, :issue:`8583`.
+
+
+
+
+----
+
+
 3.10.0 (2024-07-30)
 ========================
 
