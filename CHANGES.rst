@@ -10,7 +10,7 @@
 
 .. towncrier release notes start
 
-3.10.0.dev0 (2024-08-02)
+3.10.1 (2024-08-02)
 ========================
 
 Bug fixes
