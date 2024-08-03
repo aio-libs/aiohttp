@@ -839,6 +839,7 @@ async def test_http_request_upgrade_unknown(parser: Any) -> None:
     assert msg.upgrade
     assert not upgrade
     assert not msg.chunked
+    assert tail == b""
     assert await messages[0][-1].read() == b"{}"
 
 
