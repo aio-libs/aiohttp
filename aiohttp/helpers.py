@@ -30,7 +30,6 @@ from typing import (
     Callable,
     ContextManager,
     Dict,
-    Generator,
     Generic,
     Iterable,
     Iterator,
@@ -107,11 +106,6 @@ SEPARATORS = {
     chr(9),
 }
 TOKEN = CHAR ^ CTL ^ SEPARATORS
-
-
-class noop:
-    def __await__(self) -> Generator[None, None, None]:
-        yield
 
 
 json_re = re.compile(r"(?:application/|[\w.-]+/[\w.+-]+?\+)json$", re.IGNORECASE)
