@@ -432,7 +432,7 @@ async def test_post_files(aiohttp_client: Any) -> None:
 
 async def test_release_post_data(aiohttp_client: Any) -> None:
     async def handler(request):
-        request.release()
+        await request.release()
         chunk = await request.content.readany()
         assert chunk == b""
         return web.Response()
