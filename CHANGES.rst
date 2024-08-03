@@ -16,9 +16,9 @@
 Bug fixes
 ---------
 
-- Fixed WebSocket server heartbeat timeout logic to terminate ``receive`` and return :py:class:`~aiohttp.ServerTimeoutError` -- by :user:`arcivanov`.
+- Fixed WebSocket server heartbeat timeout logic to terminate :py:meth:`~aiohttp.ClientWebSocketResponse.receive` and return :py:class:`~aiohttp.ServerTimeoutError` -- by :user:`arcivanov`.
 
-  When a WebSocket pong message was not received, the :py:meth:`~aiohttp.ClientWebSocketResponse.receive` operation did not terminate. This change causes ``_pong_not_received`` to feed the ``reader`` an error message, causing pending ``receive`` to terminate and return the error message. The error message contains the exception :py:class:`~aiohttp.ServerTimeoutError`.
+  When a WebSocket pong message was not received, the :py:meth:`~aiohttp.ClientWebSocketResponse.receive` operation did not terminate. This change causes ``_pong_not_received`` to feed the ``reader`` an error message, causing pending :py:meth:`~aiohttp.ClientWebSocketResponse.receive` to terminate and return the error message. The error message contains the exception :py:class:`~aiohttp.ServerTimeoutError`.
 
 
   *Related issues and pull requests on GitHub:*
