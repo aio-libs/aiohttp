@@ -107,13 +107,11 @@ class TestMultipartResponseWrapper:
 
     async def test_release(self) -> None:
         wrapper = MultipartResponseWrapper(mock.Mock(), mock.Mock())
-        wrapper.resp.release = make_mocked_coro(None)
         await wrapper.release()
         assert wrapper.resp.release.called
 
     async def test_release_when_stream_at_eof(self) -> None:
         wrapper = MultipartResponseWrapper(mock.Mock(), mock.Mock())
-        wrapper.resp.release = make_mocked_coro(None)
         wrapper.stream.next = make_mocked_coro(b"")
         wrapper.stream.at_eof.return_value = True
         await wrapper.next()

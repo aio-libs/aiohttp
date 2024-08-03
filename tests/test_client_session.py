@@ -546,7 +546,7 @@ async def test_cookie_jar_usage(loop: Any, aiohttp_client: Any) -> None:
 
     jar.update_cookies.reset_mock()
     resp = await session.get("/")
-    await resp.release()
+    resp.release()
 
     # Filtering the cookie jar before sending the request,
     # getting the request URL as only parameter

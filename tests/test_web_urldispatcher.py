@@ -633,19 +633,19 @@ async def test_allow_head(aiohttp_client: AiohttpClient) -> None:
 
     r = await client.get("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.head("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.get("/b")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.head("/b")
     assert r.status == 405
-    await r.release()
+    r.release()
 
 
 @pytest.mark.parametrize(
@@ -703,15 +703,15 @@ async def test_add_view(aiohttp_client: AiohttpClient) -> None:
 
     r = await client.get("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.post("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.put("/a")
     assert r.status == 405
-    await r.release()
+    r.release()
 
 
 async def test_decorate_view(aiohttp_client: AiohttpClient) -> None:
@@ -732,15 +732,15 @@ async def test_decorate_view(aiohttp_client: AiohttpClient) -> None:
 
     r = await client.get("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.post("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.put("/a")
     assert r.status == 405
-    await r.release()
+    r.release()
 
 
 async def test_web_view(aiohttp_client: AiohttpClient) -> None:
@@ -759,15 +759,15 @@ async def test_web_view(aiohttp_client: AiohttpClient) -> None:
 
     r = await client.get("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.post("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.put("/a")
     assert r.status == 405
-    await r.release()
+    r.release()
 
 
 async def test_static_absolute_url(
@@ -832,7 +832,7 @@ async def test_decoded_url_match(
 
     r = await client.get(yarl.URL(urlencoded_path, encoded=True))
     assert r.status == expected_http_resp_status
-    await r.release()
+    r.release()
 
 
 async def test_order_is_preserved(aiohttp_client: AiohttpClient) -> None:
@@ -915,7 +915,7 @@ async def test_url_with_many_slashes(aiohttp_client: AiohttpClient) -> None:
 
     r = await client.get("///a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
 
 async def test_route_with_regex(aiohttp_client: AiohttpClient) -> None:

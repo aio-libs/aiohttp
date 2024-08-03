@@ -50,7 +50,6 @@ from .helpers import (
     basicauth_from_netrc,
     is_expected_content_type,
     netrc_from_env,
-    noop,
     parse_mimetype,
     reify,
     set_exception,
@@ -993,7 +992,7 @@ class ClientResponse(HeadersMixin):
             self._connection.close()
             self._connection = None
 
-    def release(self) -> Any:
+    def release(self) -> None:
         if not self._released:
             self._notify_content()
 
@@ -1001,7 +1000,6 @@ class ClientResponse(HeadersMixin):
 
         self._cleanup_writer()
         self._release_connection()
-        return noop()
 
     @property
     def ok(self) -> bool:
