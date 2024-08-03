@@ -418,7 +418,6 @@ cdef class HttpParser:
     cdef _on_headers_complete(self):
         self._process_header()
 
-        method = http_method_str(self._cparser.method)
         should_close = not cparser.llhttp_should_keep_alive(self._cparser)
         upgrade = self._cparser.upgrade
         chunked = self._cparser.flags & cparser.F_CHUNKED
@@ -426,9 +425,13 @@ cdef class HttpParser:
         raw_headers = tuple(self._raw_headers)
         headers = CIMultiDictProxy(self._headers)
 
-        upg = headers.get("upgrade", "").lower()
-        if upg in ALLOWED_UPGRADES or self._cparser.method == cparser.HTTP_CONNECT:
-            self._upgraded = True
+        if self._cparser.type == cparser.HTTP_REQUEST:
+            allowed = upgrade and headers.get("upgrade", "").lower() in ALLOWED_UPGRADES
+            if allowed or self._cparser.method == cparser.HTTP_CONNECT:
+                self._upgraded = True
+        else:
+            if upgrade and self._cparser.status_code == 101:
+                self._upgraded = True
 
         # do not support old websocket spec
         if SEC_WEBSOCKET_KEY1 in headers:
@@ -443,6 +446,7 @@ cdef class HttpParser:
                 encoding = enc
 
         if self._cparser.type == cparser.HTTP_REQUEST:
+            method = http_method_str(self._cparser.method)
             msg = _new_request_message(
                 method, self._path,
                 self.http_version(), headers, raw_headers,
