@@ -47,6 +47,7 @@ include "_headers.pxi"
 
 from aiohttp cimport _find_header
 
+ALLOWED_UPGRADES = frozenset({"websocket"})
 DEF DEFAULT_FREELIST_SIZE = 250
 
 cdef extern from "Python.h":
@@ -425,7 +426,8 @@ cdef class HttpParser:
         raw_headers = tuple(self._raw_headers)
         headers = CIMultiDictProxy(self._headers)
 
-        if upgrade or self._cparser.method == cparser.HTTP_CONNECT:
+        upg = headers.get("upgrade", "").lower()
+        if upg in ALLOWED_UPGRADES or self._cparser.method == cparser.HTTP_CONNECT:
             self._upgraded = True
 
         # do not support old websocket spec
@@ -565,7 +567,7 @@ cdef class HttpParser:
         if self._upgraded:
             return messages, True, data[nb:]
         else:
-            return messages, False, b''
+            return messages, False, b""
 
     def set_upgraded(self, val):
         self._upgraded = val
@@ -748,10 +750,7 @@ cdef int cb_on_headers_complete(cparser.llhttp_t* parser) except -1:
         pyparser._last_error = exc
         return -1
     else:
-        if (
-            pyparser._cparser.upgrade or
-            pyparser._cparser.method == cparser.HTTP_CONNECT
-        ):
+        if pyparser._upgraded or pyparser._cparser.method == cparser.HTTP_CONNECT:
             return 2
         else:
             return 0
