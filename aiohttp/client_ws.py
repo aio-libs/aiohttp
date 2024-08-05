@@ -100,9 +100,9 @@ class ClientWebSocketResponse:
         if self._heartbeat is None:
             return
         self._cancel_pong_response_cb()
-        req = self._req
+        conn = self._conn
         timeout_ceil_threshold = (
-            req._protocol._timeout_ceil_threshold if req is not None else 5
+            conn._connector._timeout_ceil_threshold if conn is not None else 5
         )
         assert self._loop is not None
         loop = self._loop
@@ -136,9 +136,9 @@ class ClientWebSocketResponse:
         # task in the class.
         loop.create_task(self._writer.ping())  # type: ignore[unused-awaitable]
 
-        req = self._req
+        conn = self._conn
         timeout_ceil_threshold = (
-            req._protocol._timeout_ceil_threshold if req is not None else 5
+            conn._connector._timeout_ceil_threshold if conn is not None else 5
         )
         when = calculate_timeout_when(now, self._pong_heartbeat, timeout_ceil_threshold)
         self._cancel_pong_response_cb()
