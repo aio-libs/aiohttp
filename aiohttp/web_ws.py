@@ -142,9 +142,8 @@ class WebSocketResponse(StreamResponse):
         )
         assert self._loop is not None
         loop = self._loop
-        when = calculate_timeout_when(
-            loop.time(), self._heartbeat, timeout_ceil_threshold
-        )
+        now = loop.time()
+        when = calculate_timeout_when(now, self._heartbeat, timeout_ceil_threshold)
         self._heartbeat_when = when
         if self._heartbeat_cb is None:
             # We do not cancel the previous heartbeat_cb here because
