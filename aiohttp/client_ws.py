@@ -106,9 +106,8 @@ class ClientWebSocketResponse:
         timeout_ceil_threshold = (
             conn._connector._timeout_ceil_threshold if conn is not None else 5
         )
-        when = calculate_timeout_when(
-            loop.time(), self._heartbeat, timeout_ceil_threshold
-        )
+        now = loop.time()
+        when = calculate_timeout_when(now, self._heartbeat, timeout_ceil_threshold)
         self._heartbeat_when = when
         if self._heartbeat_cb is None:
             # We do not cancel the previous heartbeat_cb here because
