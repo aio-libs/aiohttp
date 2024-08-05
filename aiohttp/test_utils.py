@@ -8,6 +8,7 @@ import ipaddress
 import os
 import socket
 import sys
+import time
 from abc import ABC, abstractmethod
 from types import TracebackType
 from typing import (
@@ -55,6 +56,7 @@ else:
     SSLContext = None
 
 REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
+MONOTONIC_CLOCK_RESOLUTION = time.get_clock_info("monotonic").resolution
 
 
 def get_unused_port_socket(
@@ -111,7 +113,11 @@ class BaseTestServer(ABC):
         if self.runner:
             return
         self._ssl = kwargs.pop("ssl", None)
-        self.runner = await self._make_runner(handler_cancellation=True, **kwargs)
+        self.runner = await self._make_runner(
+            handler_cancellation=True,
+            shutdown_timeout=MONOTONIC_CLOCK_RESOLUTION,
+            **kwargs,
+        )
         await self.runner.setup()
         if not self.port:
             self.port = 0
