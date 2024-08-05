@@ -7,7 +7,7 @@ from typing import Any, Final, Optional, cast
 
 from .client_exceptions import ClientError, ServerTimeoutError
 from .client_reqrep import ClientResponse
-from .helpers import call_later, set_result
+from .helpers import calculate_timeout_when, set_result
 from .http import (
     WS_CLOSED_MESSAGE,
     WS_CLOSING_MESSAGE,
@@ -72,6 +72,7 @@ class ClientWebSocketResponse:
         self._autoping = autoping
         self._heartbeat = heartbeat
         self._heartbeat_cb: Optional[asyncio.TimerHandle] = None
+        self._heartbeat_when: float = 0.0
         if heartbeat is not None:
             self._pong_heartbeat = heartbeat / 2.0
         self._pong_response_cb: Optional[asyncio.TimerHandle] = None
@@ -85,48 +86,66 @@ class ClientWebSocketResponse:
         self._reset_heartbeat()
 
     def _cancel_heartbeat(self) -> None:
-        if self._pong_response_cb is not None:
-            self._pong_response_cb.cancel()
-            self._pong_response_cb = None
-
+        self._cancel_pong_response_cb()
         if self._heartbeat_cb is not None:
             self._heartbeat_cb.cancel()
             self._heartbeat_cb = None
 
-    def _reset_heartbeat(self) -> None:
-        self._cancel_heartbeat()
+    def _cancel_pong_response_cb(self) -> None:
+        if self._pong_response_cb is not None:
+            self._pong_response_cb.cancel()
+            self._pong_response_cb = None
 
-        if self._heartbeat is not None:
-            self._heartbeat_cb = call_later(
-                self._send_heartbeat,
-                self._heartbeat,
-                self._loop,
-                timeout_ceil_threshold=(
-                    self._conn._connector._timeout_ceil_threshold
-                    if self._conn is not None
-                    else 5
-                ),
-            )
+    def _reset_heartbeat(self) -> None:
+        if self._heartbeat is None:
+            return
+        self._cancel_pong_response_cb()
+        req = self._req
+        timeout_ceil_threshold = (
+            req._protocol._timeout_ceil_threshold if req is not None else 5
+        )
+        assert self._loop is not None
+        loop = self._loop
+        when = calculate_timeout_when(
+            loop.time(), self._heartbeat, timeout_ceil_threshold
+        )
+        self._heartbeat_when = when
+        if self._heartbeat_cb is None:
+            # We do not cancel the previous heartbeat_cb here because
+            # it generates a significant amount of TimerHandle churn
+            # which causes asyncio to rebuild the heap frequently.
+            # Instead _send_heartbeat() will reschedule the next
+            # heartbeat if it fires too early.
+            self._heartbeat_cb = loop.call_at(when, self._send_heartbeat)
 
     def _send_heartbeat(self) -> None:
-        if self._heartbeat is not None and not self._closed:
-            # fire-and-forget a task is not perfect but maybe ok for
-            # sending ping. Otherwise we need a long-living heartbeat
-            # task in the class.
-            self._loop.create_task(self._writer.ping())  # type: ignore[unused-awaitable]
-
-            if self._pong_response_cb is not None:
-                self._pong_response_cb.cancel()
-            self._pong_response_cb = call_later(
-                self._pong_not_received,
-                self._pong_heartbeat,
-                self._loop,
-                timeout_ceil_threshold=(
-                    self._conn._connector._timeout_ceil_threshold
-                    if self._conn is not None
-                    else 5
-                ),
+        self._heartbeat_cb = None
+        if self._heartbeat is None or self._closed:
+            return
+        assert self._loop is not None and self._writer is not None
+        loop = self._loop
+        now = loop.time()
+        if now < self._heartbeat_when:
+            # Heartbeat fired too early, reschedule
+            self._heartbeat_cb = loop.call_at(
+                self._heartbeat_when, self._send_heartbeat
             )
+            return
+
+        # fire-and-forget a task is not perfect but maybe ok for
+        # sending ping. Otherwise we need a long-living heartbeat
+        # task in the class.
+        self._loop.create_task(self._writer.ping())  # type: ignore[unused-awaitable]
+
+        req = self._req
+        timeout_ceil_threshold = (
+            req._protocol._timeout_ceil_threshold if req is not None else 5
+        )
+        when = calculate_timeout_when(
+            loop.time(), self._pong_heartbeat, timeout_ceil_threshold
+        )
+        self._cancel_pong_response_cb()
+        self._pong_response_cb = loop.call_at(when, self._pong_not_received)
 
     def _pong_not_received(self) -> None:
         if not self._closed:
