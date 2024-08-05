@@ -601,17 +601,18 @@ def call_later(
     if timeout is None:
         return None
     now = loop.time()
-    when = calculate_timeout_when(now, timeout, timeout_ceil_threshold)
-    return loop.call_at(when, cb)
+    if when := calculate_timeout_when(now, timeout, timeout_ceil_threshold):
+        return loop.call_at(when, cb)
+    return None
 
 
 def calculate_timeout_when(
     loop_time: float,
     timeout: float,
     timeout_ceiling_threshold: float,
-) -> float:
+) -> float | None:
     """Calculate when to execute a timeout."""
-    if timeout is not None and timeout > 0:
+    if timeout > 0:
         when = loop_time + timeout
         if timeout > timeout_ceiling_threshold:
             when = ceil(when)
