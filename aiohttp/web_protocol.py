@@ -282,7 +282,9 @@ class RequestHandler(BaseProtocol):
 
         # Wait for graceful handler completion
         if self._handler_waiter is not None:
-            await self._handler_waiter
+            with suppress(asyncio.CancelledError, asyncio.TimeoutError):
+                async with ceil_timeout(timeout):
+                    await self._handler_waiter
         # Then cancel handler and wait
         with suppress(asyncio.CancelledError, asyncio.TimeoutError):
             async with ceil_timeout(timeout):
