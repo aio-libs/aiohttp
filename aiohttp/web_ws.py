@@ -177,9 +177,7 @@ class WebSocketResponse(StreamResponse):
         timeout_ceil_threshold = (
             req._protocol._timeout_ceil_threshold if req is not None else 5
         )
-        when = calculate_timeout_when(
-            loop.time(), self._pong_heartbeat, timeout_ceil_threshold
-        )
+        when = calculate_timeout_when(now, self._pong_heartbeat, timeout_ceil_threshold)
         self._cancel_pong_response_cb()
         self._pong_response_cb = loop.call_at(when, self._pong_not_received)
 
