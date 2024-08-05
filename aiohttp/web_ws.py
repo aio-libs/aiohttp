@@ -171,7 +171,7 @@ class WebSocketResponse(StreamResponse):
         # fire-and-forget a task is not perfect but maybe ok for
         # sending ping. Otherwise we need a long-living heartbeat
         # task in the class.
-        self._loop.create_task(self._writer.ping())  # type: ignore[unused-awaitable]
+        loop.create_task(self._writer.ping())  # type: ignore[unused-awaitable]
 
         req = self._req
         timeout_ceil_threshold = (

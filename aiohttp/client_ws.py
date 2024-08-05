@@ -122,7 +122,6 @@ class ClientWebSocketResponse:
         self._heartbeat_cb = None
         if self._heartbeat is None or self._closed:
             return
-        assert self._loop is not None and self._writer is not None
         loop = self._loop
         now = loop.time()
         if now < self._heartbeat_when:
@@ -135,7 +134,7 @@ class ClientWebSocketResponse:
         # fire-and-forget a task is not perfect but maybe ok for
         # sending ping. Otherwise we need a long-living heartbeat
         # task in the class.
-        self._loop.create_task(self._writer.ping())  # type: ignore[unused-awaitable]
+        loop.create_task(self._writer.ping())  # type: ignore[unused-awaitable]
 
         req = self._req
         timeout_ceil_threshold = (
