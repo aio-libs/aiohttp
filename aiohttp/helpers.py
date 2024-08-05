@@ -609,7 +609,7 @@ def calculate_timeout_when(
     loop_time: float,
     timeout: float,
     timeout_ceiling_threshold: float,
-) -> float | None:
+) -> float:
     """Calculate when to execute a timeout."""
     when = loop_time + timeout
     if timeout > timeout_ceiling_threshold:
