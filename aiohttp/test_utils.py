@@ -113,11 +113,7 @@ class BaseTestServer(ABC):
         if self.runner:
             return
         self._ssl = kwargs.pop("ssl", None)
-        self.runner = await self._make_runner(
-            handler_cancellation=True,
-            shutdown_timeout=MONOTONIC_CLOCK_RESOLUTION,
-            **kwargs,
-        )
+        self.runner = await self._make_runner(handler_cancellation=True, **kwargs)
         await self.runner.setup()
         if not self.port:
             self.port = 0
@@ -222,7 +218,9 @@ class TestServer(BaseTestServer):
         super().__init__(scheme=scheme, host=host, port=port, **kwargs)
 
     async def _make_runner(self, **kwargs: Any) -> BaseRunner:
-        return AppRunner(self.app, **kwargs)
+        return AppRunner(
+            self.app, shutdown_timeout=MONOTONIC_CLOCK_RESOLUTION, **kwargs
+        )
 
 
 class RawTestServer(BaseTestServer):
