@@ -410,7 +410,7 @@ async def test_close_eofstream(loop: Any, ws_key: Any, key_data: Any) -> None:
 
 
 async def test_close_connection_lost(loop: Any, ws_key: Any, key_data: Any) -> None:
-    resp = mock.Mock()
+    resp = mock.Mock(spec_set=client.ClientResponse)
     resp.status = 101
     resp.headers = {
         hdrs.UPGRADE: "websocket",
@@ -418,13 +418,12 @@ async def test_close_connection_lost(loop: Any, ws_key: Any, key_data: Any) -> N
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
     resp.connection.protocol.read_timeout = None
-    with mock.patch("aiohttp.client.WebSocketWriter") as WebSocketWriter, mock.patch(
+    with mock.patch("aiohttp.client.WebSocketWriter"), mock.patch(
         "aiohttp.client.os"
     ) as m_os, mock.patch("aiohttp.client.ClientSession.request") as m_req:
         m_os.urandom.return_value = key_data
         m_req.return_value = loop.create_future()
         m_req.return_value.set_result(resp)
-        WebSocketWriter.return_value = mock.Mock()
 
         session = aiohttp.ClientSession()
         resp = await session.ws_connect("http://test.org")
