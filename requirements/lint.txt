@@ -30,6 +30,8 @@ exceptiongroup==1.1.2
     # via pytest
 filelock==3.12.2
     # via virtualenv
+freezegun==1.5.1
+    # via -r requirements/lint.in
 identify==2.5.26
     # via pre-commit
 idna==3.7
@@ -66,6 +68,8 @@ pygments==2.17.2
     # via rich
 pytest==8.1.1
     # via -r requirements/lint.in
+pytest-mock==3.14.0
+    # via -r requirements/lint.in
 python-on-whales==0.72.0
     # via -r requirements/lint.in
 pyyaml==6.0.1
@@ -85,6 +89,8 @@ tomli==2.0.1
     #   slotscheck
 tqdm==4.66.3
     # via python-on-whales
+trustme==1.1.0
+    # via -r requirements/lint.in
 typer==0.12.3
     # via python-on-whales
 typing-extensions==4.10.0
