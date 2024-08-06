@@ -2216,7 +2216,7 @@ async def test_cookies(aiohttp_client: AiohttpClient) -> None:
         assert request.cookies["test3"] == "456"
         return web.Response()
 
-    c = http.cookies.Morsel[str]()
+    c: "http.cookies.Morsel[str]" = http.cookies.Morsel()
     c.set("test3", "456", "456")
 
     app = web.Application()
@@ -2236,17 +2236,17 @@ async def test_cookies_per_request(aiohttp_client: AiohttpClient) -> None:
         assert request.cookies["test6"] == "abc"
         return web.Response()
 
-    c = http.cookies.Morsel[str]()
+    c: "http.cookies.Morsel[str]" = http.cookies.Morsel()
     c.set("test3", "456", "456")
 
     app = web.Application()
     app.router.add_get("/", handler)
     client = await aiohttp_client(app, cookies={"test1": "123", "test2": c})
 
-    rc = http.cookies.Morsel[str]()
+    rc: "http.cookies.Morsel[str]" = http.cookies.Morsel()
     rc.set("test6", "abc", "abc")
 
-    cookies: Dict[str, Union[str, http.cookies.Morsel[str]]]
+    cookies: Dict[str, Union[str, "http.cookies.Morsel[str]"]]
     cookies = {"test4": "789", "test5": rc}
     async with client.get("/", cookies=cookies) as resp:
         assert 200 == resp.status
@@ -2307,7 +2307,7 @@ async def test_morsel_with_attributes(aiohttp_client: AiohttpClient) -> None:
         assert request.cookies["test3"] == "456"
         return web.Response()
 
-    c = http.cookies.Morsel[str]()
+    c: "http.cookies.Morsel[str]" = http.cookies.Morsel()
     c.set("test3", "456", "456")
     c["httponly"] = True
     c["secure"] = True
@@ -2883,7 +2883,7 @@ async def test_drop_auth_on_redirect_to_other_host(
             host: str,
             port: int = 0,
             family: socket.AddressFamily = socket.AF_INET,
-        ) -> list[ResolveResult]:
+        ) -> List[ResolveResult]:
             server = etc_hosts[(host, port)]
             assert server.port is not None
 
