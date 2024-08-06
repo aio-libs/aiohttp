@@ -159,7 +159,9 @@ def test_domain_matching() -> None:
     assert not test_func("test.com", "127.0.0.1")
 
 
-async def test_constructor(cookies_to_send: SimpleCookie, cookies_to_receive: SimpleCookie) -> None:
+async def test_constructor(
+    cookies_to_send: SimpleCookie, cookies_to_receive: SimpleCookie
+) -> None:
     jar = CookieJar()
     jar.update_cookies(cookies_to_send)
     jar_cookies = SimpleCookie()
@@ -182,7 +184,10 @@ async def test_constructor_with_expired(
 
 
 async def test_save_load(
-    tmp_path: Path, loop: asyncio.AbstractEventLoop, cookies_to_send: SimpleCookie, cookies_to_receive: SimpleCookie
+    tmp_path: Path,
+    loop: asyncio.AbstractEventLoop,
+    cookies_to_send: SimpleCookie,
+    cookies_to_receive: SimpleCookie,
 ) -> None:
     file_path = Path(str(tmp_path)) / "aiohttp.test.cookie"
 
@@ -201,7 +206,9 @@ async def test_save_load(
     assert jar_test == cookies_to_receive
 
 
-async def test_update_cookie_with_unicode_domain(loop: asyncio.AbstractEventLoop) -> None:
+async def test_update_cookie_with_unicode_domain(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     cookies = (
         "idna-domain-first=first; Domain=xn--9caa.com; Path=/;",
         "idna-domain-second=second; Domain=xn--9caa.com; Path=/;",
@@ -218,7 +225,9 @@ async def test_update_cookie_with_unicode_domain(loop: asyncio.AbstractEventLoop
     assert jar_test == SimpleCookie(" ".join(cookies))
 
 
-async def test_filter_cookie_with_unicode_domain(loop: asyncio.AbstractEventLoop) -> None:
+async def test_filter_cookie_with_unicode_domain(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     jar = CookieJar()
     jar.update_cookies(
         SimpleCookie("idna-domain-first=first; Domain=xn--9caa.com; Path=/; ")
@@ -355,7 +364,9 @@ async def test_domain_filter_ip_cookie_send(loop: asyncio.AbstractEventLoop) -> 
     assert cookies_sent == "Cookie: shared-cookie=first"
 
 
-async def test_domain_filter_ip_cookie_receive(cookies_to_receive: SimpleCookie) -> None:
+async def test_domain_filter_ip_cookie_receive(
+    cookies_to_receive: SimpleCookie,
+) -> None:
     jar = CookieJar()
 
     jar.update_cookies(cookies_to_receive, URL("http://1.2.3.4/"))
@@ -422,7 +433,9 @@ class TestCookieJarBase(unittest.TestCase):
     def tearDown(self) -> None:
         self.loop.close()
 
-    def request_reply_with_same_url(self, url: str) -> Tuple[BaseCookie[str], SimpleCookie]:
+    def request_reply_with_same_url(
+        self, url: str
+    ) -> Tuple[BaseCookie[str], SimpleCookie]:
         self.jar.update_cookies(self.cookies_to_send)
         cookies_sent = self.jar.filter_cookies(URL(url))
 
@@ -482,7 +495,9 @@ class TestCookieJarSafe(TestCookieJarBase):
 
         self.jar = self.loop.run_until_complete(make_jar())
 
-    def timed_request(self, url: str, update_time: float, send_time: float) -> BaseCookie[str]:
+    def timed_request(
+        self, url: str, update_time: float, send_time: float
+    ) -> BaseCookie[str]:
         freeze_update_time: Union[datetime.datetime, datetime.timedelta]
         freeze_send_time: Union[datetime.datetime, datetime.timedelta]
         if isinstance(update_time, int):
@@ -946,7 +961,9 @@ def test_pickle_format(cookies_to_send: SimpleCookie) -> None:
         [URL("http://127.0.0.1/index.html")],
     ],
 )
-async def test_treat_as_secure_origin_init(url: Union[str, URL, list[str], list[URL]]) -> None:
+async def test_treat_as_secure_origin_init(
+    url: Union[str, URL, list[str], list[URL]]
+) -> None:
     jar = CookieJar(unsafe=True, treat_as_secure_origin=url)
     assert jar._treat_as_secure_origin == frozenset({URL("http://127.0.0.1")})
 

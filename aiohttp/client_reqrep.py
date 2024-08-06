@@ -533,7 +533,9 @@ class ClientRequest:
             raise ValueError("proxy_auth must be None or BasicAuth() tuple")
         self.proxy = proxy
         self.proxy_auth = proxy_auth
-        if proxy_headers is not None and not isinstance(proxy_headers, (MultiDict, MultiDictProxy)):
+        if proxy_headers is not None and not isinstance(
+            proxy_headers, (MultiDict, MultiDictProxy)
+        ):
             proxy_headers = CIMultiDict(proxy_headers)
         self.proxy_headers = proxy_headers
 

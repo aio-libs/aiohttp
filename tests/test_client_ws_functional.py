@@ -688,7 +688,9 @@ async def test_heartbeat_no_pong(aiohttp_client: AiohttpClient) -> None:
     assert resp.close_code is WSCloseCode.ABNORMAL_CLOSURE
 
 
-async def test_heartbeat_no_pong_concurrent_receive(aiohttp_client: AiohttpClient) -> None:
+async def test_heartbeat_no_pong_concurrent_receive(
+    aiohttp_client: AiohttpClient,
+) -> None:
     ping_received = False
 
     async def handler(request: web.Request) -> NoReturn:
@@ -697,7 +699,9 @@ async def test_heartbeat_no_pong_concurrent_receive(aiohttp_client: AiohttpClien
         await ws.prepare(request)
         msg = await ws.receive()
         ping_received = msg.type is aiohttp.WSMsgType.PING
-        with mock.patch.object(ws._reader, "feed_eof", autospec=True, spec_set=True, return_value=None):
+        with mock.patch.object(
+            ws._reader, "feed_eof", autospec=True, spec_set=True, return_value=None
+        ):
             await asyncio.sleep(10.0)
         assert False
 
@@ -706,7 +710,9 @@ async def test_heartbeat_no_pong_concurrent_receive(aiohttp_client: AiohttpClien
 
     client = await aiohttp_client(app)
     resp = await client.ws_connect("/", heartbeat=0.1)
-    with mock.patch.object(resp._reader, "feed_eof", autospec=True, spec_set=True, return_value=None):
+    with mock.patch.object(
+        resp._reader, "feed_eof", autospec=True, spec_set=True, return_value=None
+    ):
         # Connection should be closed roughly after 1.5x heartbeat.
         msg = await resp.receive(5.0)
         assert ping_received

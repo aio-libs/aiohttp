@@ -4,7 +4,16 @@ import io
 import pathlib
 import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
-from typing import Any, AsyncIterator, Callable, Dict, Iterator, List, Optional, Protocol
+from typing import (
+    Any,
+    AsyncIterator,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Protocol,
+)
 from unittest import mock
 
 import pytest
@@ -27,9 +36,9 @@ from aiohttp.http import HttpVersion
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.typedefs import LooseCookies
 
+
 class _RequestMaker(Protocol):
-    def __call__(self, method: str, url: str, **kwargs: Any) -> ClientRequest:
-        ...
+    def __call__(self, method: str, url: str, **kwargs: Any) -> ClientRequest: ...
 
 
 class WriterMock(mock.AsyncMock):
@@ -60,7 +69,9 @@ def buf() -> bytearray:
 
 
 @pytest.fixture
-def protocol(loop: asyncio.AbstractEventLoop, transport: asyncio.Transport) -> BaseProtocol:
+def protocol(
+    loop: asyncio.AbstractEventLoop, transport: asyncio.Transport
+) -> BaseProtocol:
     protocol = mock.Mock()
     protocol.transport = transport
     protocol._drain_helper.return_value = loop.create_future()
@@ -131,7 +142,10 @@ def test_request_info_with_fragment(make_request: _RequestMaker) -> None:
     req = make_request("get", "http://python.org/#urlfragment")
     h = CIMultiDictProxy(req.headers)
     assert req.request_info == aiohttp.RequestInfo(
-        URL("http://python.org/"), "GET", h, URL("http://python.org/#urlfragment"),
+        URL("http://python.org/"),
+        "GET",
+        h,
+        URL("http://python.org/#urlfragment"),
     )
 
 
@@ -589,7 +603,9 @@ def test_gen_netloc_no_port(make_request: _RequestMaker) -> None:
     )
 
 
-async def test_connection_header(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_connection_header(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
     with mock.patch.object(req, "keep_alive") as m:
         req.headers.clear()
@@ -612,7 +628,9 @@ async def test_connection_header(loop: asyncio.AbstractEventLoop, conn: mock.Moc
         assert req.headers.get("CONNECTION") == "close"
 
 
-async def test_no_content_length(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_no_content_length(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
     resp = await req.send(conn)
     assert req.headers.get("CONTENT-LENGTH") is None
@@ -620,7 +638,9 @@ async def test_no_content_length(loop: asyncio.AbstractEventLoop, conn: mock.Moc
     resp.close()
 
 
-async def test_no_content_length_head(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_no_content_length_head(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     req = ClientRequest("head", URL("http://python.org"), loop=loop)
     resp = await req.send(conn)
     assert req.headers.get("CONTENT-LENGTH") is None
@@ -628,7 +648,9 @@ async def test_no_content_length_head(loop: asyncio.AbstractEventLoop, conn: moc
     resp.close()
 
 
-async def test_content_type_auto_header_get(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_content_type_auto_header_get(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
     resp = await req.send(conn)
     assert "CONTENT-TYPE" not in req.headers
@@ -636,7 +658,9 @@ async def test_content_type_auto_header_get(loop: asyncio.AbstractEventLoop, con
     await req.close()
 
 
-async def test_content_type_auto_header_form(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_content_type_auto_header_form(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     req = ClientRequest(
         "post", URL("http://python.org"), data={"hey": "you"}, loop=loop
     )
@@ -645,14 +669,18 @@ async def test_content_type_auto_header_form(loop: asyncio.AbstractEventLoop, co
     resp.close()
 
 
-async def test_content_type_auto_header_bytes(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_content_type_auto_header_bytes(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     req = ClientRequest("post", URL("http://python.org"), data=b"hey you", loop=loop)
     resp = await req.send(conn)
     assert "application/octet-stream" == req.headers.get("CONTENT-TYPE")
     resp.close()
 
 
-async def test_content_type_skip_auto_header_bytes(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_content_type_skip_auto_header_bytes(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     req = ClientRequest(
         "post",
         URL("http://python.org"),
@@ -665,7 +693,9 @@ async def test_content_type_skip_auto_header_bytes(loop: asyncio.AbstractEventLo
     resp.close()
 
 
-async def test_content_type_skip_auto_header_form(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_content_type_skip_auto_header_form(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     req = ClientRequest(
         "post",
         URL("http://python.org"),
@@ -694,7 +724,9 @@ async def test_content_type_auto_header_content_length_no_skip(
         resp.close()
 
 
-async def test_urlencoded_formdata_charset(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_urlencoded_formdata_charset(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     req = ClientRequest(
         "post",
         URL("http://python.org"),
@@ -707,7 +739,9 @@ async def test_urlencoded_formdata_charset(loop: asyncio.AbstractEventLoop, conn
     )
 
 
-async def test_formdata_boundary_from_headers(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_formdata_boundary_from_headers(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     boundary = "some_boundary"
     file_path = pathlib.Path(__file__).parent / "aiohttp.png"
     with file_path.open("rb") as f:
@@ -742,7 +776,9 @@ async def test_pass_falsy_data(loop: asyncio.AbstractEventLoop) -> None:
     await req.close()
 
 
-async def test_pass_falsy_data_file(loop: asyncio.AbstractEventLoop, tmp_path: pathlib.Path) -> None:
+async def test_pass_falsy_data_file(
+    loop: asyncio.AbstractEventLoop, tmp_path: pathlib.Path
+) -> None:
     testfile = (tmp_path / "tmpfile").open("w+b")
     testfile.write(b"data")
     testfile.seek(0)
@@ -784,7 +820,9 @@ async def test_bytes_data(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> N
         resp.close()
 
 
-async def test_content_encoding(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_content_encoding(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     req = ClientRequest(
         "post", URL("http://python.org/"), data="foo", compress="deflate", loop=loop
     )
@@ -812,7 +850,9 @@ async def test_content_encoding_dont_set_headers_if_no_body(
     resp.close()
 
 
-async def test_content_encoding_header(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_content_encoding_header(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     req = ClientRequest(
         "post",
         URL("http://python.org/"),
@@ -830,7 +870,9 @@ async def test_content_encoding_header(loop: asyncio.AbstractEventLoop, conn: mo
     resp.close()
 
 
-async def test_compress_and_content_encoding(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_compress_and_content_encoding(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     with pytest.raises(ValueError):
         ClientRequest(
             "post",
@@ -868,7 +910,9 @@ async def test_chunked2(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> Non
     resp.close()
 
 
-async def test_chunked_explicit(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_chunked_explicit(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     req = ClientRequest("post", URL("http://python.org/"), chunked=True, loop=loop)
     with mock.patch("aiohttp.client_reqrep.StreamWriter") as m_writer:
         m_writer.return_value.write_headers = make_mocked_coro()
@@ -891,7 +935,9 @@ async def test_chunked_length(loop: asyncio.AbstractEventLoop, conn: mock.Mock) 
         )
 
 
-async def test_chunked_transfer_encoding(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_chunked_transfer_encoding(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     with pytest.raises(ValueError):
         ClientRequest(
             "post",
@@ -956,7 +1002,9 @@ async def test_expect100(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> No
     resp.close()
 
 
-async def test_expect_100_continue_header(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_expect_100_continue_header(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     req = ClientRequest(
         "get", URL("http://python.org/"), headers={"expect": "100-continue"}, loop=loop
     )
@@ -967,7 +1015,9 @@ async def test_expect_100_continue_header(loop: asyncio.AbstractEventLoop, conn:
     resp.close()
 
 
-async def test_data_stream(loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock) -> None:
+async def test_data_stream(
+    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock
+) -> None:
     async def gen() -> AsyncIterator[bytes]:
         yield b"binary data"
         yield b" result"
@@ -993,7 +1043,9 @@ async def test_data_stream(loop: asyncio.AbstractEventLoop, buf: bytearray, conn
     await req.close()
 
 
-async def test_data_file(loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock) -> None:
+async def test_data_file(
+    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock
+) -> None:
     with io.BufferedReader(io.BytesIO(b"*" * 2)) as file_handle:  # type: ignore[arg-type]
         req = ClientRequest(
             "POST",
@@ -1014,7 +1066,9 @@ async def test_data_file(loop: asyncio.AbstractEventLoop, buf: bytearray, conn: 
         await req.close()
 
 
-async def test_data_stream_exc(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_data_stream_exc(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     fut = loop.create_future()
 
     async def gen() -> AsyncIterator[bytes]:
@@ -1035,13 +1089,15 @@ async def test_data_stream_exc(loop: asyncio.AbstractEventLoop, conn: mock.Mock)
     assert req._writer is not None
     await req._writer
     await t
-    #assert conn.close.called
+    # assert conn.close.called
     assert conn.protocol is not None
     assert conn.protocol.set_exception.called
     await req.close()
 
 
-async def test_data_stream_exc_chain(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_data_stream_exc_chain(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     fut = loop.create_future()
 
     async def gen() -> AsyncIterator[None]:
@@ -1063,7 +1119,7 @@ async def test_data_stream_exc_chain(loop: asyncio.AbstractEventLoop, conn: mock
     assert req._writer is not None
     await req._writer
     await t
-    #assert conn.close.called
+    # assert conn.close.called
     assert conn.protocol.set_exception.called
     outer_exc = conn.protocol.set_exception.call_args[0][0]
     assert isinstance(outer_exc, ClientConnectionError)
@@ -1071,7 +1127,9 @@ async def test_data_stream_exc_chain(loop: asyncio.AbstractEventLoop, conn: mock
     await req.close()
 
 
-async def test_data_stream_continue(loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock) -> None:
+async def test_data_stream_continue(
+    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock
+) -> None:
     async def gen() -> AsyncIterator[bytes]:
         yield b"binary data"
         yield b" result"
@@ -1099,7 +1157,9 @@ async def test_data_stream_continue(loop: asyncio.AbstractEventLoop, buf: bytear
     resp.close()
 
 
-async def test_data_continue(loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock) -> None:
+async def test_data_continue(
+    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock
+) -> None:
     req = ClientRequest(
         "POST", URL("http://python.org/"), data=b"data", expect100=True, loop=loop
     )
@@ -1121,7 +1181,9 @@ async def test_data_continue(loop: asyncio.AbstractEventLoop, buf: bytearray, co
     resp.close()
 
 
-async def test_close(loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock) -> None:
+async def test_close(
+    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock
+) -> None:
     async def gen() -> AsyncIterator[bytes]:
         await asyncio.sleep(0.00001)
         yield b"result"
@@ -1147,7 +1209,9 @@ async def test_bad_version(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> 
         await req.send(conn)
 
 
-async def test_custom_response_class(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_custom_response_class(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     class CustomResponse(ClientResponse):
         async def read(self) -> bytes:
             return b"customized!"
@@ -1161,7 +1225,9 @@ async def test_custom_response_class(loop: asyncio.AbstractEventLoop, conn: mock
     resp.close()
 
 
-async def test_oserror_on_write_bytes(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_oserror_on_write_bytes(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     req = ClientRequest("POST", URL("http://python.org/"), loop=loop)
 
     writer = WriterMock()
@@ -1201,7 +1267,9 @@ async def test_terminate(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> No
     resp.close()
 
 
-def test_terminate_with_closed_loop(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+def test_terminate_with_closed_loop(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     req = resp = writer = None
 
     async def go() -> None:
@@ -1243,7 +1311,9 @@ def test_terminate_without_writer(loop: asyncio.AbstractEventLoop) -> None:
     assert req._writer is None
 
 
-async def test_custom_req_rep(loop: asyncio.AbstractEventLoop, create_mocked_conn: mock.Mock) -> None:
+async def test_custom_req_rep(
+    loop: asyncio.AbstractEventLoop, create_mocked_conn: mock.Mock
+) -> None:
     conn = None
 
     class CustomResponse(ClientResponse):
@@ -1276,14 +1346,18 @@ async def test_custom_req_rep(loop: asyncio.AbstractEventLoop, create_mocked_con
             called = True
             return resp
 
-    async def create_connection(req: ClientRequest, traces: object, timeout: object) -> Connection:
+    async def create_connection(
+        req: ClientRequest, traces: object, timeout: object
+    ) -> Connection:
         assert isinstance(req, CustomRequest)
         return create_mocked_conn()  # type: ignore[no-any-return]
 
     connector = BaseConnector()
     with mock.patch.object(connector, "_create_connection", create_connection):
         session = aiohttp.ClientSession(
-            request_class=CustomRequest, response_class=CustomResponse, connector=connector
+            request_class=CustomRequest,
+            response_class=CustomResponse,
+            connector=connector,
         )
 
         resp = await session.request("get", URL("http://example.com/path/to"))

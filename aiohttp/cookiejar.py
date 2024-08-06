@@ -97,12 +97,16 @@ class CookieJar(AbstractCookieJar):
         elif isinstance(treat_as_secure_origin, URL):
             self._treat_as_secure_origin = frozenset({treat_as_secure_origin.origin()})
         elif isinstance(treat_as_secure_origin, str):
-            self._treat_as_secure_origin = frozenset({URL(treat_as_secure_origin).origin()})
+            self._treat_as_secure_origin = frozenset(
+                {URL(treat_as_secure_origin).origin()}
+            )
         else:
-            self._treat_as_secure_origin = frozenset({
-                URL(url).origin() if isinstance(url, str) else url.origin()
-                for url in treat_as_secure_origin
-            })
+            self._treat_as_secure_origin = frozenset(
+                {
+                    URL(url).origin() if isinstance(url, str) else url.origin()
+                    for url in treat_as_secure_origin
+                }
+            )
         self._next_expiration: float = ceil(time.time())
         self._expirations: Dict[Tuple[str, str, str], float] = {}
 

@@ -10,7 +10,18 @@ import socket
 import ssl
 import sys
 import time
-from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, NoReturn, Optional, Type, Union
+from typing import (
+    Any,
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Dict,
+    List,
+    NoReturn,
+    Optional,
+    Type,
+    Union,
+)
 from unittest import mock
 
 import pytest
@@ -67,7 +78,9 @@ async def test_keepalive_two_requests_success(aiohttp_client: AiohttpClient) -> 
     assert 1 == len(client._session.connector._conns)
 
 
-async def test_keepalive_after_head_requests_success(aiohttp_client: AiohttpClient) -> None:
+async def test_keepalive_after_head_requests_success(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         body = await request.read()
         assert b"" == body
@@ -188,7 +201,9 @@ async def test_keepalive_response_released(aiohttp_client: AiohttpClient) -> Non
     assert 1 == len(client._session.connector._conns)
 
 
-async def test_upgrade_connection_not_released_after_read(aiohttp_client: AiohttpClient) -> None:
+async def test_upgrade_connection_not_released_after_read(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         body = await request.read()
         assert b"" == body
@@ -207,7 +222,9 @@ async def test_upgrade_connection_not_released_after_read(aiohttp_client: Aiohtt
     assert not resp.closed
 
 
-async def test_keepalive_server_force_close_connection(aiohttp_client: AiohttpClient) -> None:
+async def test_keepalive_server_force_close_connection(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         body = await request.read()
         assert b"" == body
@@ -353,7 +370,9 @@ async def test_stream_request_on_server_eof(aiohttp_client: AiohttpClient) -> No
     assert conns[0][0] is conn
 
 
-async def test_stream_request_on_server_eof_nested(aiohttp_client: AiohttpClient) -> None:
+async def test_stream_request_on_server_eof_nested(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(text="OK", status=200)
 
@@ -421,7 +440,9 @@ async def test_skip_auto_headers_user_agent(aiohttp_client: AiohttpClient) -> No
         assert 200 == resp.status
 
 
-async def test_skip_default_auto_headers_user_agent(aiohttp_client: AiohttpClient) -> None:
+async def test_skip_default_auto_headers_user_agent(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         assert hdrs.USER_AGENT not in request.headers
         return web.Response()
@@ -522,7 +543,10 @@ async def test_post_data_textio_encoding(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_ssl_client(
-    aiohttp_server: AiohttpServer, ssl_ctx: ssl.SSLContext, aiohttp_client: AiohttpClient, client_ssl_ctx: ssl.SSLContext
+    aiohttp_server: AiohttpServer,
+    ssl_ctx: ssl.SSLContext,
+    aiohttp_client: AiohttpClient,
+    client_ssl_ctx: ssl.SSLContext,
 ) -> None:
     connector = aiohttp.TCPConnector(ssl=client_ssl_ctx)
 
@@ -793,7 +817,9 @@ async def test_204_with_gzipped_content_encoding(aiohttp_client: AiohttpClient) 
         assert resp.closed
 
 
-async def test_timeout_on_reading_headers(aiohttp_client: AiohttpClient, mocker: MockerFixture) -> None:
+async def test_timeout_on_reading_headers(
+    aiohttp_client: AiohttpClient, mocker: MockerFixture
+) -> None:
     async def handler(request: web.Request) -> web.StreamResponse:
         resp = web.StreamResponse()
         await asyncio.sleep(0.1)
@@ -850,7 +876,9 @@ async def test_timeout_on_session_read_timeout(
         await client.get("/")
 
 
-async def test_read_timeout_between_chunks(aiohttp_client: AiohttpClient, mocker: MockerFixture) -> None:
+async def test_read_timeout_between_chunks(
+    aiohttp_client: AiohttpClient, mocker: MockerFixture
+) -> None:
     async def handler(request: web.Request) -> web.StreamResponse:
         resp = aiohttp.web.StreamResponse()
         await resp.prepare(request)
@@ -874,7 +902,9 @@ async def test_read_timeout_between_chunks(aiohttp_client: AiohttpClient, mocker
     assert res == b"data\n" * 4
 
 
-async def test_read_timeout_on_reading_chunks(aiohttp_client: AiohttpClient, mocker: MockerFixture) -> None:
+async def test_read_timeout_on_reading_chunks(
+    aiohttp_client: AiohttpClient, mocker: MockerFixture
+) -> None:
     async def handler(request: web.Request) -> web.StreamResponse:
         resp = aiohttp.web.StreamResponse()
         await resp.prepare(request)
@@ -915,7 +945,9 @@ async def test_read_timeout_on_write(aiohttp_client: AiohttpClient) -> None:
     assert result == b"foo"
 
 
-async def test_timeout_on_reading_data(aiohttp_client: AiohttpClient, mocker: MockerFixture) -> None:
+async def test_timeout_on_reading_data(
+    aiohttp_client: AiohttpClient, mocker: MockerFixture
+) -> None:
     loop = asyncio.get_event_loop()
 
     fut = loop.create_future()
@@ -938,7 +970,9 @@ async def test_timeout_on_reading_data(aiohttp_client: AiohttpClient, mocker: Mo
         await resp.read()
 
 
-async def test_timeout_none(aiohttp_client: AiohttpClient, mocker: MockerFixture) -> None:
+async def test_timeout_none(
+    aiohttp_client: AiohttpClient, mocker: MockerFixture
+) -> None:
     async def handler(request: web.Request) -> web.StreamResponse:
         resp = web.StreamResponse()
         await resp.prepare(request)
@@ -1267,7 +1301,9 @@ async def test_HTTP_200_GET_WITH_PARAMS(aiohttp_client: AiohttpClient) -> None:
     resp.close()
 
 
-async def test_HTTP_200_GET_WITH_MultiDict_PARAMS(aiohttp_client: AiohttpClient) -> None:
+async def test_HTTP_200_GET_WITH_MultiDict_PARAMS(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(
             text="&".join(k + "=" + v for k, v in request.query.items())
@@ -1459,7 +1495,9 @@ async def test_POST_FILES(aiohttp_client: AiohttpClient, fname: pathlib.Path) ->
             assert 200 == resp.status
 
 
-async def test_POST_FILES_DEFLATE(aiohttp_client: AiohttpClient, fname: pathlib.Path) -> None:
+async def test_POST_FILES_DEFLATE(
+    aiohttp_client: AiohttpClient, fname: pathlib.Path
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         data = await request.post()
         assert isinstance(data["some"], web.FileField)
@@ -1517,7 +1555,9 @@ async def test_POST_bytes_too_large(aiohttp_client: AiohttpClient) -> None:
     resp.close()
 
 
-async def test_POST_FILES_STR(aiohttp_client: AiohttpClient, fname: pathlib.Path) -> None:
+async def test_POST_FILES_STR(
+    aiohttp_client: AiohttpClient, fname: pathlib.Path
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         data = await request.post()
         with fname.open("rb") as f:
@@ -1535,7 +1575,9 @@ async def test_POST_FILES_STR(aiohttp_client: AiohttpClient, fname: pathlib.Path
             assert 200 == resp.status
 
 
-async def test_POST_FILES_STR_SIMPLE(aiohttp_client: AiohttpClient, fname: pathlib.Path) -> None:
+async def test_POST_FILES_STR_SIMPLE(
+    aiohttp_client: AiohttpClient, fname: pathlib.Path
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         data = await request.read()
         with fname.open("rb") as f:
@@ -1552,7 +1594,9 @@ async def test_POST_FILES_STR_SIMPLE(aiohttp_client: AiohttpClient, fname: pathl
             assert 200 == resp.status
 
 
-async def test_POST_FILES_LIST(aiohttp_client: AiohttpClient, fname: pathlib.Path) -> None:
+async def test_POST_FILES_LIST(
+    aiohttp_client: AiohttpClient, fname: pathlib.Path
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         data = await request.post()
         assert isinstance(data["some"], web.FileField)
@@ -1572,7 +1616,9 @@ async def test_POST_FILES_LIST(aiohttp_client: AiohttpClient, fname: pathlib.Pat
             assert 200 == resp.status
 
 
-async def test_POST_FILES_CT(aiohttp_client: AiohttpClient, fname: pathlib.Path) -> None:
+async def test_POST_FILES_CT(
+    aiohttp_client: AiohttpClient, fname: pathlib.Path
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         data = await request.post()
         assert isinstance(data["some"], web.FileField)
@@ -1595,7 +1641,9 @@ async def test_POST_FILES_CT(aiohttp_client: AiohttpClient, fname: pathlib.Path)
             assert 200 == resp.status
 
 
-async def test_POST_FILES_SINGLE(aiohttp_client: AiohttpClient, fname: pathlib.Path) -> None:
+async def test_POST_FILES_SINGLE(
+    aiohttp_client: AiohttpClient, fname: pathlib.Path
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         data = await request.text()
         with fname.open("rb") as f:
@@ -1653,7 +1701,9 @@ async def test_POST_FILES_SINGLE_content_disposition(
             assert 200 == resp.status
 
 
-async def test_POST_FILES_SINGLE_BINARY(aiohttp_client: AiohttpClient, fname: pathlib.Path) -> None:
+async def test_POST_FILES_SINGLE_BINARY(
+    aiohttp_client: AiohttpClient, fname: pathlib.Path
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         data = await request.read()
         with fname.open("rb") as f:
@@ -1722,7 +1772,9 @@ async def test_POST_FILES_IO_WITH_PARAMS(aiohttp_client: AiohttpClient) -> None:
             assert 200 == resp.status
 
 
-async def test_POST_FILES_WITH_DATA(aiohttp_client: AiohttpClient, fname: pathlib.Path) -> None:
+async def test_POST_FILES_WITH_DATA(
+    aiohttp_client: AiohttpClient, fname: pathlib.Path
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         data = await request.post()
         assert data["test"] == "true"
@@ -1748,7 +1800,9 @@ async def test_POST_FILES_WITH_DATA(aiohttp_client: AiohttpClient, fname: pathli
             assert 200 == resp.status
 
 
-async def test_POST_STREAM_DATA(aiohttp_client: AiohttpClient, fname: pathlib.Path) -> None:
+async def test_POST_STREAM_DATA(
+    aiohttp_client: AiohttpClient, fname: pathlib.Path
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         assert request.content_type == "application/octet-stream"
         content = await request.read()
@@ -1986,7 +2040,9 @@ async def test_bad_payload_chunked_encoding(aiohttp_client: AiohttpClient) -> No
     resp.close()
 
 
-async def test_no_payload_304_with_chunked_encoding(aiohttp_client: AiohttpClient) -> None:
+async def test_no_payload_304_with_chunked_encoding(
+    aiohttp_client: AiohttpClient,
+) -> None:
     """Test a 304 response with no payload with chunked set should have it removed."""
 
     async def handler(request: web.Request) -> web.StreamResponse:
@@ -2012,7 +2068,9 @@ async def test_no_payload_304_with_chunked_encoding(aiohttp_client: AiohttpClien
     resp.close()
 
 
-async def test_head_request_with_chunked_encoding(aiohttp_client: AiohttpClient) -> None:
+async def test_head_request_with_chunked_encoding(
+    aiohttp_client: AiohttpClient,
+) -> None:
     """Test a head response with chunked set should have it removed."""
 
     async def handler(request: web.Request) -> web.StreamResponse:
@@ -2038,7 +2096,9 @@ async def test_head_request_with_chunked_encoding(aiohttp_client: AiohttpClient)
     resp.close()
 
 
-async def test_no_payload_200_with_chunked_encoding(aiohttp_client: AiohttpClient) -> None:
+async def test_no_payload_200_with_chunked_encoding(
+    aiohttp_client: AiohttpClient,
+) -> None:
     """Test chunked is preserved on a 200 response with no payload."""
 
     async def handler(request: web.Request) -> web.StreamResponse:
@@ -2621,7 +2681,9 @@ async def test_raise_for_status_per_request(aiohttp_client: AiohttpClient) -> No
         await client.get("/", raise_for_status=True)
 
 
-async def test_raise_for_status_disable_per_request(aiohttp_client: AiohttpClient) -> None:
+async def test_raise_for_status_disable_per_request(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         raise web.HTTPBadRequest()
 
@@ -2816,7 +2878,12 @@ async def test_drop_auth_on_redirect_to_other_host(
     }
 
     class FakeResolver(AbstractResolver):
-        async def resolve(self, host: str, port: int = 0, family: socket.AddressFamily = socket.AF_INET) -> list[ResolveResult]:
+        async def resolve(
+            self,
+            host: str,
+            port: int = 0,
+            family: socket.AddressFamily = socket.AF_INET,
+        ) -> list[ResolveResult]:
             server = etc_hosts[(host, port)]
             assert server.port is not None
 
@@ -2863,7 +2930,9 @@ async def test_session_close_awaitable() -> None:
     assert session.closed
 
 
-async def test_close_resp_on_error_async_with_session(aiohttp_server: AiohttpServer) -> None:
+async def test_close_resp_on_error_async_with_session(
+    aiohttp_server: AiohttpServer,
+) -> None:
     async def handler(request: web.Request) -> web.StreamResponse:
         resp = web.StreamResponse(headers={"content-length": "100"})
         await resp.prepare(request)
@@ -2884,7 +2953,9 @@ async def test_close_resp_on_error_async_with_session(aiohttp_server: AiohttpSer
         assert len(session._connector._conns) == 0
 
 
-async def test_release_resp_on_normal_exit_from_cm(aiohttp_server: AiohttpServer) -> None:
+async def test_release_resp_on_normal_exit_from_cm(
+    aiohttp_server: AiohttpServer,
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response()
 
@@ -2900,7 +2971,9 @@ async def test_release_resp_on_normal_exit_from_cm(aiohttp_server: AiohttpServer
         assert len(session._connector._conns) == 1
 
 
-async def test_non_close_detached_session_on_error_cm(aiohttp_server: AiohttpServer) -> None:
+async def test_non_close_detached_session_on_error_cm(
+    aiohttp_server: AiohttpServer,
+) -> None:
     async def handler(request: web.Request) -> web.StreamResponse:
         resp = web.StreamResponse(headers={"content-length": "100"})
         await resp.prepare(request)
@@ -2923,7 +2996,12 @@ async def test_non_close_detached_session_on_error_cm(aiohttp_server: AiohttpSer
 
 async def test_close_detached_session_on_non_existing_addr() -> None:
     class FakeResolver(AbstractResolver):
-        async def resolve(self, host: str, port: int = 0, family: socket.AddressFamily = socket.AF_INET) -> List[ResolveResult]:
+        async def resolve(
+            self,
+            host: str,
+            port: int = 0,
+            family: socket.AddressFamily = socket.AF_INET,
+        ) -> List[ResolveResult]:
             return []
 
         async def close(self) -> None:
@@ -3241,7 +3319,9 @@ async def test_handle_keepalive_on_closed_connection() -> None:
 
 
 async def test_error_in_performing_request(
-    ssl_ctx: ssl.SSLContext, aiohttp_client: AiohttpClient, aiohttp_server: AiohttpServer
+    ssl_ctx: ssl.SSLContext,
+    aiohttp_client: AiohttpClient,
+    aiohttp_server: AiohttpServer,
 ) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response()
@@ -3536,7 +3616,9 @@ async def test_max_field_size_session_default(aiohttp_client: AiohttpClient) -> 
         assert resp.headers["Custom"] == "x" * 8190
 
 
-async def test_max_field_size_session_default_fail(aiohttp_client: AiohttpClient) -> None:
+async def test_max_field_size_session_default_fail(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(headers={"Custom": "x" * 8191})
 
@@ -3587,7 +3669,9 @@ async def test_max_line_size_session_default(aiohttp_client: AiohttpClient) -> N
         assert resp.reason == "x" * 8190
 
 
-async def test_max_line_size_session_default_fail(aiohttp_client: AiohttpClient) -> None:
+async def test_max_line_size_session_default_fail(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(status=200, reason="x" * 8192)
 
@@ -3626,7 +3710,9 @@ async def test_max_line_size_request_explicit(aiohttp_client: AiohttpClient) -> 
 
 
 @pytest.mark.xfail(raises=asyncio.TimeoutError, reason="#7599")
-async def test_rejected_upload(aiohttp_client: AiohttpClient, tmp_path: pathlib.Path) -> None:
+async def test_rejected_upload(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+) -> None:
     async def ok_handler(request: web.Request) -> web.Response:
         return web.Response()
 

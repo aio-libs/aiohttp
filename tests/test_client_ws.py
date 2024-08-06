@@ -15,7 +15,9 @@ from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro
 
 
-async def test_ws_connect(ws_key: bytes, loop: asyncio.AbstractEventLoop, key_data: bytes) -> None:
+async def test_ws_connect(
+    ws_key: bytes, loop: asyncio.AbstractEventLoop, key_data: bytes
+) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -131,7 +133,9 @@ async def test_ws_connect_read_timeout_reset_to_max(
     assert resp.connection.protocol.read_timeout == 1.0
 
 
-async def test_ws_connect_with_origin(key_data: bytes, loop: asyncio.AbstractEventLoop) -> None:
+async def test_ws_connect_with_origin(
+    key_data: bytes, loop: asyncio.AbstractEventLoop
+) -> None:
     resp = mock.Mock()
     resp.status = 403
     with mock.patch("aiohttp.client.os") as m_os:
@@ -150,7 +154,9 @@ async def test_ws_connect_with_origin(key_data: bytes, loop: asyncio.AbstractEve
     assert m_req.call_args[1]["headers"][hdrs.ORIGIN] == origin
 
 
-async def test_ws_connect_with_params(ws_key: bytes, loop: asyncio.AbstractEventLoop, key_data: bytes) -> None:
+async def test_ws_connect_with_params(
+    ws_key: bytes, loop: asyncio.AbstractEventLoop, key_data: bytes
+) -> None:
     params = {"key1": "value1", "key2": "value2"}
 
     resp = mock.Mock()
@@ -205,7 +211,9 @@ async def test_ws_connect_custom_response(
     assert res.read() == "customized!"  # type: ignore[attr-defined]
 
 
-async def test_ws_connect_err_status(loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes) -> None:
+async def test_ws_connect_err_status(
+    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+) -> None:
     resp = mock.Mock()
     resp.status = 500
     resp.headers = {
@@ -227,7 +235,9 @@ async def test_ws_connect_err_status(loop: asyncio.AbstractEventLoop, ws_key: by
     assert ctx.value.message == "Invalid response status"
 
 
-async def test_ws_connect_err_upgrade(loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes) -> None:
+async def test_ws_connect_err_upgrade(
+    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -249,7 +259,9 @@ async def test_ws_connect_err_upgrade(loop: asyncio.AbstractEventLoop, ws_key: b
     assert ctx.value.message == "Invalid upgrade header"
 
 
-async def test_ws_connect_err_conn(loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes) -> None:
+async def test_ws_connect_err_conn(
+    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -271,7 +283,9 @@ async def test_ws_connect_err_conn(loop: asyncio.AbstractEventLoop, ws_key: byte
     assert ctx.value.message == "Invalid connection header"
 
 
-async def test_ws_connect_err_challenge(loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes) -> None:
+async def test_ws_connect_err_challenge(
+    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -293,7 +307,9 @@ async def test_ws_connect_err_challenge(loop: asyncio.AbstractEventLoop, ws_key:
     assert ctx.value.message == "Invalid challenge response"
 
 
-async def test_ws_connect_common_headers(ws_key: bytes, loop: asyncio.AbstractEventLoop, key_data: bytes) -> None:
+async def test_ws_connect_common_headers(
+    ws_key: bytes, loop: asyncio.AbstractEventLoop, key_data: bytes
+) -> None:
     # Emulate a headers dict being reused for a second ws_connect.
 
     # In this scenario, we need to ensure that the newly generated secret key
@@ -301,7 +317,9 @@ async def test_ws_connect_common_headers(ws_key: bytes, loop: asyncio.AbstractEv
     headers: dict[str, str] = {}
 
     async def test_connection() -> None:
-        async def mock_get(*args: object, headers: Mapping[str, str], **kwargs: object) -> mock.Mock:
+        async def mock_get(
+            *args: object, headers: Mapping[str, str], **kwargs: object
+        ) -> mock.Mock:
             resp = mock.Mock()
             resp.status = 101
             key = headers[hdrs.SEC_WEBSOCKET_KEY]
@@ -337,7 +355,9 @@ async def test_ws_connect_common_headers(ws_key: bytes, loop: asyncio.AbstractEv
     await test_connection()
 
 
-async def test_close(loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes) -> None:
+async def test_close(
+    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+) -> None:
     mresp = mock.Mock()
     mresp.status = 101
     mresp.headers = {
@@ -378,7 +398,9 @@ async def test_close(loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: b
                 await session.close()
 
 
-async def test_close_eofstream(loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes) -> None:
+async def test_close_eofstream(
+    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+) -> None:
     mresp = mock.Mock()
     mresp.status = 101
     mresp.headers = {
@@ -409,7 +431,9 @@ async def test_close_eofstream(loop: asyncio.AbstractEventLoop, ws_key: bytes, k
                 await session.close()
 
 
-async def test_close_exc(loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes) -> None:
+async def test_close_exc(
+    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+) -> None:
     mresp = mock.Mock()
     mresp.status = 101
     mresp.headers = {
@@ -442,7 +466,9 @@ async def test_close_exc(loop: asyncio.AbstractEventLoop, ws_key: bytes, key_dat
                 await session.close()
 
 
-async def test_close_exc2(loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes) -> None:
+async def test_close_exc2(
+    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+) -> None:
     mresp = mock.Mock()
     mresp.status = 101
     mresp.headers = {
@@ -475,7 +501,9 @@ async def test_close_exc2(loop: asyncio.AbstractEventLoop, ws_key: bytes, key_da
                     await resp.close()
 
 
-async def test_send_data_after_close(ws_key: bytes, key_data: bytes, loop: asyncio.AbstractEventLoop) -> None:
+async def test_send_data_after_close(
+    ws_key: bytes, key_data: bytes, loop: asyncio.AbstractEventLoop
+) -> None:
     mresp = mock.Mock()
     mresp.status = 101
     mresp.headers = {
@@ -504,7 +532,9 @@ async def test_send_data_after_close(ws_key: bytes, key_data: bytes, loop: async
                     await meth(*args)
 
 
-async def test_send_data_type_errors(ws_key: bytes, key_data: bytes, loop: asyncio.AbstractEventLoop) -> None:
+async def test_send_data_type_errors(
+    ws_key: bytes, key_data: bytes, loop: asyncio.AbstractEventLoop
+) -> None:
     mresp = mock.Mock()
     mresp.status = 101
     mresp.headers = {
@@ -531,7 +561,9 @@ async def test_send_data_type_errors(ws_key: bytes, key_data: bytes, loop: async
                     await resp.send_json(set())
 
 
-async def test_reader_read_exception(ws_key: bytes, key_data: bytes, loop: asyncio.AbstractEventLoop) -> None:
+async def test_reader_read_exception(
+    ws_key: bytes, key_data: bytes, loop: asyncio.AbstractEventLoop
+) -> None:
     hresp = mock.Mock()
     hresp.status = 101
     hresp.headers = {
@@ -566,7 +598,14 @@ async def test_reader_read_exception(ws_key: bytes, key_data: bytes, loop: async
 
 async def test_receive_runtime_err(loop: asyncio.AbstractEventLoop) -> None:
     resp = client.ClientWebSocketResponse(
-        mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock(), ClientWSTimeout(ws_receive=10.0), True, True, loop
+        mock.Mock(),
+        mock.Mock(),
+        mock.Mock(),
+        mock.Mock(),
+        ClientWSTimeout(ws_receive=10.0),
+        True,
+        True,
+        loop,
     )
     resp._waiting = True
 
@@ -649,7 +688,9 @@ async def test_ws_connect_non_overlapped_protocols_2(
     del res
 
 
-async def test_ws_connect_deflate(loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes) -> None:
+async def test_ws_connect_deflate(
+    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {

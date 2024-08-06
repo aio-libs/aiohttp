@@ -2,7 +2,17 @@ import asyncio
 import contextlib
 import inspect
 import warnings
-from typing import Any, Awaitable, Callable, Dict, Iterator, Optional, Protocol, Type, Union
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    Iterator,
+    Optional,
+    Protocol,
+    Type,
+    Union,
+)
 
 import pytest
 
@@ -26,19 +36,21 @@ except ImportError:  # pragma: no cover
 
 AiohttpRawServer = Callable[[Application], Awaitable[RawTestServer]]
 
+
 class AiohttpClient(Protocol):
     def __call__(
-        self, 
+        self,
         __param: Union[Application, BaseTestServer],
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs: Any
-    ) -> Awaitable[TestClient]:
-        ...
+    ) -> Awaitable[TestClient]: ...
+
 
 class AiohttpServer(Protocol):
-    def __call__(self, app: Application, *, port: Optional[int] = None, **kwargs: Any) -> Awaitable[TestServer]:
-        ...
+    def __call__(
+        self, app: Application, *, port: Optional[int] = None, **kwargs: Any
+    ) -> Awaitable[TestServer]: ...
 
 
 def pytest_addoption(parser):  # type: ignore[no-untyped-def]
@@ -270,7 +282,9 @@ def aiohttp_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpServer]:
     """
     servers = []
 
-    async def go(app: Application, *, port: Optional[int] = None, **kwargs: Any) -> TestServer:
+    async def go(
+        app: Application, *, port: Optional[int] = None, **kwargs: Any
+    ) -> TestServer:
         server = TestServer(app, port=port)
         await server.start_server(**kwargs)
         servers.append(server)

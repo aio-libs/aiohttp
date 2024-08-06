@@ -9,8 +9,8 @@ from unittest import mock
 from uuid import uuid4
 
 import pytest
-from pytest_mock import MockerFixture
 from multidict import CIMultiDict, MultiDict
+from pytest_mock import MockerFixture
 from yarl import URL
 
 import aiohttp
@@ -34,7 +34,9 @@ class _Params(TypedDict):
 
 
 @pytest.fixture
-def connector(loop: asyncio.AbstractEventLoop, create_mocked_conn: Callable[[], ResponseHandler]) -> Iterator[BaseConnector]:
+def connector(
+    loop: asyncio.AbstractEventLoop, create_mocked_conn: Callable[[], ResponseHandler]
+) -> Iterator[BaseConnector]:
     async def make_conn() -> BaseConnector:
         return BaseConnector()
 
@@ -47,7 +49,9 @@ def connector(loop: asyncio.AbstractEventLoop, create_mocked_conn: Callable[[], 
 
 
 @pytest.fixture
-def create_session(loop: asyncio.AbstractEventLoop) -> Iterator[Callable[..., Awaitable[ClientSession]]]:
+def create_session(
+    loop: asyncio.AbstractEventLoop,
+) -> Iterator[Callable[..., Awaitable[ClientSession]]]:
     session = None
 
     async def maker(*args: Any, **kwargs: Any) -> ClientSession:
@@ -61,7 +65,10 @@ def create_session(loop: asyncio.AbstractEventLoop) -> Iterator[Callable[..., Aw
 
 
 @pytest.fixture
-def session(create_session: Callable[..., Awaitable[ClientSession]], loop: asyncio.AbstractEventLoop) -> ClientSession:
+def session(
+    create_session: Callable[..., Awaitable[ClientSession]],
+    loop: asyncio.AbstractEventLoop,
+) -> ClientSession:
     return loop.run_until_complete(create_session())
 
 
@@ -77,17 +84,23 @@ def params() -> _Params:
     )
 
 
-async def test_close_coro(create_session: Callable[..., Awaitable[ClientSession]]) -> None:
+async def test_close_coro(
+    create_session: Callable[..., Awaitable[ClientSession]]
+) -> None:
     session = await create_session()
     await session.close()
 
 
-async def test_init_headers_simple_dict(create_session: Callable[..., Awaitable[ClientSession]]) -> None:
+async def test_init_headers_simple_dict(
+    create_session: Callable[..., Awaitable[ClientSession]]
+) -> None:
     session = await create_session(headers={"h1": "header1", "h2": "header2"})
     assert sorted(session.headers.items()) == ([("h1", "header1"), ("h2", "header2")])
 
 
-async def test_init_headers_list_of_tuples(create_session: Callable[..., Awaitable[ClientSession]]) -> None:
+async def test_init_headers_list_of_tuples(
+    create_session: Callable[..., Awaitable[ClientSession]]
+) -> None:
     session = await create_session(
         headers=[("h1", "header1"), ("h2", "header2"), ("h3", "header3")]
     )
@@ -96,7 +109,9 @@ async def test_init_headers_list_of_tuples(create_session: Callable[..., Awaitab
     )
 
 
-async def test_init_headers_MultiDict(create_session: Callable[..., Awaitable[ClientSession]]) -> None:
+async def test_init_headers_MultiDict(
+    create_session: Callable[..., Awaitable[ClientSession]]
+) -> None:
     session = await create_session(
         headers=MultiDict([("h1", "header1"), ("h2", "header2"), ("h3", "header3")])
     )
@@ -105,7 +120,9 @@ async def test_init_headers_MultiDict(create_session: Callable[..., Awaitable[Cl
     )
 
 
-async def test_init_headers_list_of_tuples_with_duplicates(create_session: Callable[..., Awaitable[ClientSession]]) -> None:
+async def test_init_headers_list_of_tuples_with_duplicates(
+    create_session: Callable[..., Awaitable[ClientSession]]
+) -> None:
     session = await create_session(
         headers=[("h1", "header11"), ("h2", "header21"), ("h1", "header12")]
     )
@@ -114,7 +131,9 @@ async def test_init_headers_list_of_tuples_with_duplicates(create_session: Calla
     )
 
 
-async def test_init_cookies_with_simple_dict(create_session: Callable[..., Awaitable[ClientSession]]) -> None:
+async def test_init_cookies_with_simple_dict(
+    create_session: Callable[..., Awaitable[ClientSession]]
+) -> None:
     session = await create_session(cookies={"c1": "cookie1", "c2": "cookie2"})
     cookies = session.cookie_jar.filter_cookies(URL())
     assert set(cookies) == {"c1", "c2"}
@@ -122,7 +141,9 @@ async def test_init_cookies_with_simple_dict(create_session: Callable[..., Await
     assert cookies["c2"].value == "cookie2"
 
 
-async def test_init_cookies_with_list_of_tuples(create_session: Callable[..., Awaitable[ClientSession]]) -> None:
+async def test_init_cookies_with_list_of_tuples(
+    create_session: Callable[..., Awaitable[ClientSession]]
+) -> None:
     session = await create_session(cookies=[("c1", "cookie1"), ("c2", "cookie2")])
 
     cookies = session.cookie_jar.filter_cookies(URL())
@@ -131,7 +152,9 @@ async def test_init_cookies_with_list_of_tuples(create_session: Callable[..., Aw
     assert cookies["c2"].value == "cookie2"
 
 
-async def test_merge_headers(create_session: Callable[..., Awaitable[ClientSession]]) -> None:
+async def test_merge_headers(
+    create_session: Callable[..., Awaitable[ClientSession]]
+) -> None:
     # Check incoming simple dict
     session = await create_session(headers={"h1": "header1", "h2": "header2"})
     headers = session._prepare_headers({"h1": "h1"})
@@ -140,14 +163,18 @@ async def test_merge_headers(create_session: Callable[..., Awaitable[ClientSessi
     assert headers == {"h1": "h1", "h2": "header2"}
 
 
-async def test_merge_headers_with_multi_dict(create_session: Callable[..., Awaitable[ClientSession]]) -> None:
+async def test_merge_headers_with_multi_dict(
+    create_session: Callable[..., Awaitable[ClientSession]]
+) -> None:
     session = await create_session(headers={"h1": "header1", "h2": "header2"})
     headers = session._prepare_headers(MultiDict([("h1", "h1")]))
     assert isinstance(headers, CIMultiDict)
     assert headers == {"h1": "h1", "h2": "header2"}
 
 
-async def test_merge_headers_with_list_of_tuples(create_session: Callable[..., Awaitable[ClientSession]]) -> None:
+async def test_merge_headers_with_list_of_tuples(
+    create_session: Callable[..., Awaitable[ClientSession]]
+) -> None:
     session = await create_session(headers={"h1": "header1", "h2": "header2"})
     headers = session._prepare_headers([("h1", "h1")])
     assert isinstance(headers, CIMultiDict)
@@ -259,7 +286,9 @@ async def test_http_DELETE(session: ClientSession, params: _Params) -> None:
     ]
 
 
-async def test_close(create_session: Callable[..., Awaitable[ClientSession]], connector: BaseConnector) -> None:
+async def test_close(
+    create_session: Callable[..., Awaitable[ClientSession]], connector: BaseConnector
+) -> None:
     session = await create_session(connector=connector)
 
     await session.close()
@@ -273,7 +302,11 @@ async def test_closed(session: ClientSession) -> None:
     assert session.closed
 
 
-async def test_connector(create_session: Callable[..., Awaitable[ClientSession]], loop: asyncio.AbstractEventLoop, mocker: MockerFixture) -> None:
+async def test_connector(
+    create_session: Callable[..., Awaitable[ClientSession]],
+    loop: asyncio.AbstractEventLoop,
+    mocker: MockerFixture,
+) -> None:
     connector = TCPConnector()
     m = mocker.spy(connector, "close")
     session = await create_session(connector=connector)
@@ -284,7 +317,11 @@ async def test_connector(create_session: Callable[..., Awaitable[ClientSession]]
     await connector.close()
 
 
-async def test_create_connector(create_session: Callable[..., Awaitable[ClientSession]], loop: asyncio.AbstractEventLoop, mocker: MockerFixture) -> None:
+async def test_create_connector(
+    create_session: Callable[..., Awaitable[ClientSession]],
+    loop: asyncio.AbstractEventLoop,
+    mocker: MockerFixture,
+) -> None:
     session = await create_session()
     connector = session.connector
     m = mocker.spy(session.connector, "close")
@@ -304,6 +341,7 @@ def test_connector_loop(loop: asyncio.AbstractEventLoop) -> None:
         connector = another_loop.run_until_complete(make_connector())
 
         with pytest.raises(RuntimeError) as ctx:
+
             async def make_sess() -> ClientSession:
                 return ClientSession(connector=connector)
 
@@ -340,7 +378,9 @@ async def test_close_flag_for_closed_connector(session: ClientSession) -> None:
     assert session.closed
 
 
-async def test_double_close(connector: BaseConnector, create_session: Callable[..., Awaitable[ClientSession]]) -> None:
+async def test_double_close(
+    connector: BaseConnector, create_session: Callable[..., Awaitable[ClientSession]]
+) -> None:
     session = await create_session(connector=connector)
 
     await session.close()
@@ -366,7 +406,9 @@ async def test_del(connector: BaseConnector, loop: asyncio.AbstractEventLoop) ->
     assert logs[0] == expected
 
 
-async def test_del_debug(connector: BaseConnector, loop: asyncio.AbstractEventLoop) -> None:
+async def test_del_debug(
+    connector: BaseConnector, loop: asyncio.AbstractEventLoop
+) -> None:
     loop.set_debug(True)
     # N.B. don't use session fixture, it stores extra reference internally
     session = ClientSession(connector=connector)
@@ -387,25 +429,34 @@ async def test_del_debug(connector: BaseConnector, loop: asyncio.AbstractEventLo
 
 
 async def test_borrow_connector_loop(
-    connector: BaseConnector, create_session: Callable[..., Awaitable[ClientSession]], loop: asyncio.AbstractEventLoop
+    connector: BaseConnector,
+    create_session: Callable[..., Awaitable[ClientSession]],
+    loop: asyncio.AbstractEventLoop,
 ) -> None:
     async with ClientSession(connector=connector) as session:
         assert session._loop is loop
 
 
-async def test_reraise_os_error(create_session: Callable[..., Awaitable[ClientSession]], create_mocked_conn: Callable[[], ResponseHandler]) -> None:
+async def test_reraise_os_error(
+    create_session: Callable[..., Awaitable[ClientSession]],
+    create_mocked_conn: Callable[[], ResponseHandler],
+) -> None:
     err = OSError(1, "permission error")
     req = mock.Mock()
     req_factory = mock.Mock(return_value=req)
     req.send = mock.Mock(side_effect=err)
     session = await create_session(request_class=req_factory)
 
-    async def create_connection(req: object, traces: object, timeout: object) -> ResponseHandler:
+    async def create_connection(
+        req: object, traces: object, timeout: object
+    ) -> ResponseHandler:
         # return self.transport, self.protocol
         return create_mocked_conn()
 
     with mock.patch.object(session._connector, "_create_connection", create_connection):
-        with mock.patch.object(session._connector, "_release", autospec=True, spec_set=True):
+        with mock.patch.object(
+            session._connector, "_release", autospec=True, spec_set=True
+        ):
             with pytest.raises(aiohttp.ClientOSError) as ctx:
                 await session.request("get", "http://example.com")
             e = ctx.value
@@ -414,7 +465,8 @@ async def test_reraise_os_error(create_session: Callable[..., Awaitable[ClientSe
 
 
 async def test_close_conn_on_error(
-    create_session: Callable[..., Awaitable[ClientSession]], create_mocked_conn: Callable[[], ResponseHandler]
+    create_session: Callable[..., Awaitable[ClientSession]],
+    create_mocked_conn: Callable[[], ResponseHandler],
 ) -> None:
     class UnexpectedException(BaseException):
         pass
@@ -429,19 +481,27 @@ async def test_close_conn_on_error(
     assert session._connector is not None
     original_connect = session._connector.connect
 
-    async def connect(req: ClientRequest, traces: List[Trace], timeout: aiohttp.ClientTimeout) -> Connection:
+    async def connect(
+        req: ClientRequest, traces: List[Trace], timeout: aiohttp.ClientTimeout
+    ) -> Connection:
         conn = await original_connect(req, traces, timeout)
         connections.append(conn)
         return conn
 
-    async def create_connection(req: object, traces: object, timeout: object) -> ResponseHandler:
+    async def create_connection(
+        req: object, traces: object, timeout: object
+    ) -> ResponseHandler:
         # return self.transport, self.protocol
         conn = create_mocked_conn()
         return conn
 
     with mock.patch.object(session._connector, "connect", connect):
-        with mock.patch.object(session._connector, "_create_connection", create_connection):
-            with mock.patch.object(session._connector, "_release", autospec=True, spec_set=True):
+        with mock.patch.object(
+            session._connector, "_create_connection", create_connection
+        ):
+            with mock.patch.object(
+                session._connector, "_release", autospec=True, spec_set=True
+            ):
                 with pytest.raises(UnexpectedException):
                     async with session.request("get", "http://example.com") as resp:
                         await resp.text()
@@ -481,12 +541,16 @@ async def test_ws_connect_allowed_protocols(
     assert session._connector is not None
     original_connect = session._connector.connect
 
-    async def connect(req: ClientRequest, traces: List[Trace], timeout: aiohttp.ClientTimeout) -> Connection:
+    async def connect(
+        req: ClientRequest, traces: List[Trace], timeout: aiohttp.ClientTimeout
+    ) -> Connection:
         conn = await original_connect(req, traces, timeout)
         connections.append(conn)
         return conn
 
-    async def create_connection(req: object, traces: object, timeout: object) -> ResponseHandler:
+    async def create_connection(
+        req: object, traces: object, timeout: object
+    ) -> ResponseHandler:
         return create_mocked_conn()
 
     connector = session._connector
@@ -507,7 +571,9 @@ async def test_ws_connect_allowed_protocols(
     await session.close()
 
 
-async def test_cookie_jar_usage(loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient) -> None:
+async def test_cookie_jar_usage(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
     req_url = None
 
     jar = mock.Mock()
@@ -565,7 +631,9 @@ async def test_proxy_str(session: ClientSession, params: _Params) -> None:
     ]
 
 
-async def test_request_tracing(loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient) -> None:
+async def test_request_tracing(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.json_response({"ok": True})
 
@@ -581,13 +649,25 @@ async def test_request_tracing(loop: asyncio.AbstractEventLoop, aiohttp_client: 
 
     with io.BytesIO() as gathered_req_body, io.BytesIO() as gathered_res_body:
 
-        async def on_request_chunk_sent(session: object, context: object, params: tracing.TraceRequestChunkSentParams) -> None:
+        async def on_request_chunk_sent(
+            session: object,
+            context: object,
+            params: tracing.TraceRequestChunkSentParams,
+        ) -> None:
             gathered_req_body.write(params.chunk)
 
-        async def on_response_chunk_received(session: object, context: object, params: tracing.TraceResponseChunkReceivedParams) -> None:
+        async def on_response_chunk_received(
+            session: object,
+            context: object,
+            params: tracing.TraceResponseChunkReceivedParams,
+        ) -> None:
             gathered_res_body.write(params.chunk)
 
-        async def on_request_headers_sent(session: object, context: object, params: tracing.TraceRequestHeadersSentParams) -> None:
+        async def on_request_headers_sent(
+            session: object,
+            context: object,
+            params: tracing.TraceRequestHeadersSentParams,
+        ) -> None:
             gathered_req_headers.extend(**params.headers)
 
         trace_config = aiohttp.TraceConfig(
@@ -631,7 +711,9 @@ async def test_request_tracing(loop: asyncio.AbstractEventLoop, aiohttp_client: 
             assert gathered_req_headers["Custom-Header"] == "Custom value"
 
 
-async def test_request_tracing_url_params(loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient) -> None:
+async def test_request_tracing_url_params(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
     async def root_handler(request: web.Request) -> web.Response:
         return web.Response()
 
@@ -783,7 +865,9 @@ async def test_request_tracing_interpose_headers(
             super().__init__(*args, **kwargs)
             headers = self.headers
 
-    async def new_headers(session: object, trace_config_ctx: object, data: tracing.TraceRequestStartParams) -> None:
+    async def new_headers(
+        session: object, trace_config_ctx: object, data: tracing.TraceRequestStartParams
+    ) -> None:
         data.headers["foo"] = "bar"
 
     trace_config = aiohttp.TraceConfig()
@@ -811,7 +895,9 @@ async def test_client_session_custom_attr() -> None:
     await session.close()
 
 
-async def test_client_session_timeout_default_args(loop: asyncio.AbstractEventLoop) -> None:
+async def test_client_session_timeout_default_args(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     session1 = ClientSession()
     assert session1.timeout == client.DEFAULT_TIMEOUT
     await session1.close()
@@ -875,13 +961,18 @@ async def test_requote_redirect_url_default_disable() -> None:
     ],
 )
 async def test_build_url_returns_expected_url(
-    create_session: Callable[..., Awaitable[ClientSession]], base_url: Union[URL, str, None], url: Union[URL, str], expected_url: URL
+    create_session: Callable[..., Awaitable[ClientSession]],
+    base_url: Union[URL, str, None],
+    url: Union[URL, str],
+    expected_url: URL,
 ) -> None:
     session = await create_session(base_url)
     assert session._build_url(url) == expected_url
 
 
-async def test_instantiation_with_invalid_timeout_value(loop: asyncio.AbstractEventLoop) -> None:
+async def test_instantiation_with_invalid_timeout_value(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     loop.set_debug(False)
     logs = []
     loop.set_exception_handler(lambda loop, ctx: logs.append(ctx))

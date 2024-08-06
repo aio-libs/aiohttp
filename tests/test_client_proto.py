@@ -145,7 +145,9 @@ async def test_eof_received(loop: asyncio.AbstractEventLoop) -> None:
     assert proto._read_timeout_handle is None
 
 
-async def test_connection_lost_sets_transport_to_none(loop: asyncio.AbstractEventLoop, mocker: MockerFixture) -> None:
+async def test_connection_lost_sets_transport_to_none(
+    loop: asyncio.AbstractEventLoop, mocker: MockerFixture
+) -> None:
     """Ensure that the transport is set to None when the connection is lost.
 
     This ensures the writer knows that the connection is closed.

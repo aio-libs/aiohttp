@@ -28,7 +28,11 @@ from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
 import aiohttp
-from aiohttp.client import _RequestContextManager, _RequestOptions, _WSRequestContextManager
+from aiohttp.client import (
+    _RequestContextManager,
+    _RequestOptions,
+    _WSRequestContextManager,
+)
 
 from . import ClientSession, hdrs
 from .abc import AbstractCookieJar
@@ -388,7 +392,9 @@ class TestClient:
 
         def options(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
             """Perform an HTTP OPTIONS request."""
-            return _RequestContextManager(self._request(hdrs.METH_OPTIONS, path, **kwargs))
+            return _RequestContextManager(
+                self._request(hdrs.METH_OPTIONS, path, **kwargs)
+            )
 
         def head(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
             """Perform an HTTP HEAD request."""
@@ -400,11 +406,15 @@ class TestClient:
 
         def patch(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
             """Perform an HTTP PATCH request."""
-            return _RequestContextManager(self._request(hdrs.METH_PATCH, path, **kwargs))
+            return _RequestContextManager(
+                self._request(hdrs.METH_PATCH, path, **kwargs)
+            )
 
         def delete(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
             """Perform an HTTP PATCH request."""
-            return _RequestContextManager(self._request(hdrs.METH_DELETE, path, **kwargs))
+            return _RequestContextManager(
+                self._request(hdrs.METH_DELETE, path, **kwargs)
+            )
 
     def ws_connect(self, path: StrOrURL, **kwargs: Any) -> _WSRequestContextManager:
         """Initiate websocket connection.

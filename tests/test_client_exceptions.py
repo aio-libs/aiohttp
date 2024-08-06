@@ -80,9 +80,7 @@ class TestClientResponseError:
             message="Something wrong",
             headers={},
         )
-        assert str(err) == (
-            "400, message='Something wrong', url='http://example.com'"
-        )
+        assert str(err) == ("400, message='Something wrong', url='http://example.com'")
 
 
 class TestClientConnectorError:
