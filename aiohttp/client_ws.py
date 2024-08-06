@@ -5,7 +5,7 @@ import dataclasses
 import sys
 from typing import Any, Final, Optional, cast
 
-from .client_exceptions import ServerTimeoutError
+from .client_exceptions import ClientError, ServerTimeoutError
 from .client_reqrep import ClientResponse
 from .helpers import calculate_timeout_when, set_result
 from .http import (
@@ -305,6 +305,11 @@ class ClientWebSocketResponse:
                 self._close_code = WSCloseCode.OK
                 await self.close()
                 return WSMessage(WSMsgType.CLOSED, None, None)
+            except ClientError:
+                # Likely ServerDisconnectedError when connection is lost
+                self._set_closed()
+                self._close_code = WSCloseCode.ABNORMAL_CLOSURE
+                return WS_CLOSED_MESSAGE
             except WebSocketError as exc:
                 self._close_code = exc.code
                 await self.close(code=exc.code)
