@@ -4,7 +4,7 @@ import gc
 import io
 import json
 from http.cookies import SimpleCookie
-from typing import Any, Awaitable, Callable, Iterator, List, NoReturn, TypedDict, Union
+from typing import Any, Awaitable, Callable, Dict, Iterator, List, NoReturn, TypedDict, Union
 from unittest import mock
 from uuid import uuid4
 
@@ -25,7 +25,7 @@ from aiohttp.tracing import Trace
 
 
 class _Params(TypedDict):
-    headers: dict[str, str]
+    headers: Dict[str, str]
     max_redirects: int
     compress: str
     chunked: bool
