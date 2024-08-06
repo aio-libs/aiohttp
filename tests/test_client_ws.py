@@ -418,26 +418,26 @@ async def test_close_connection_lost(loop: Any, ws_key: Any, key_data: Any) -> N
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
     resp.connection.protocol.read_timeout = None
-    with mock.patch("aiohttp.client.WebSocketWriter") as WebSocketWriter:
-        with mock.patch("aiohttp.client.os") as m_os:
-            with mock.patch("aiohttp.client.ClientSession.request") as m_req:
-                m_os.urandom.return_value = key_data
-                m_req.return_value = loop.create_future()
-                m_req.return_value.set_result(resp)
-                WebSocketWriter.return_value = mock.Mock()
+    with mock.patch("aiohttp.client.WebSocketWriter") as WebSocketWriter, mock.patch(
+        "aiohttp.client.os"
+    ) as m_os, mock.patch("aiohttp.client.ClientSession.request") as m_req:
+        m_os.urandom.return_value = key_data
+        m_req.return_value = loop.create_future()
+        m_req.return_value.set_result(resp)
+        WebSocketWriter.return_value = mock.Mock()
 
-                session = aiohttp.ClientSession()
-                resp = await session.ws_connect("http://test.org")
-                assert not resp.closed
+        session = aiohttp.ClientSession()
+        resp = await session.ws_connect("http://test.org")
+        assert not resp.closed
 
-                exc = ServerDisconnectedError()
-                resp._reader.set_exception(exc)
+        exc = ServerDisconnectedError()
+        resp._reader.set_exception(exc)
 
-                msg = await resp.receive()
-                assert msg.type is aiohttp.WSMsgType.CLOSED
-                assert resp.closed
+        msg = await resp.receive()
+        assert msg.type is aiohttp.WSMsgType.CLOSED
+        assert resp.closed
 
-                await session.close()
+        await session.close()
 
 
 async def test_close_exc(loop: Any, ws_key: Any, key_data: Any) -> None:
