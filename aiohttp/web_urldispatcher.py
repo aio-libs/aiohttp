@@ -206,7 +206,7 @@ class AbstractRoute(abc.ABC):
 
             @wraps(handler)
             async def handler_wrapper(request: Request) -> StreamResponse:
-                result = old_handler(request)
+                result = old_handler(request)  # type: ignore[call-arg]
                 if asyncio.iscoroutine(result):
                     result = await result
                 assert isinstance(result, StreamResponse)
