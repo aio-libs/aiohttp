@@ -54,8 +54,9 @@ Middleware = Callable[["Request", Handler], Awaitable["StreamResponse"]]
 
 
 class Middleware(Protocol):
-    def __call__(self, request: "Request", handler: Handler) -> Awaitable["StreamResponse"]:
-        ...
+    def __call__(
+        self, request: "Request", handler: Handler
+    ) -> Awaitable["StreamResponse"]: ...
 
 
 PathLike = Union[str, "os.PathLike[str]"]
