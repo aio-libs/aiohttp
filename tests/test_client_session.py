@@ -4,7 +4,17 @@ import gc
 import io
 import json
 from http.cookies import SimpleCookie
-from typing import Any, Awaitable, Callable, Dict, Iterator, List, NoReturn, TypedDict, Union
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    NoReturn,
+    TypedDict,
+    Union,
+)
 from unittest import mock
 from uuid import uuid4
 
