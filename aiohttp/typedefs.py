@@ -7,6 +7,7 @@ from typing import (
     Callable,
     Iterable,
     Mapping,
+    Protocol,
     Tuple,
     Union,
 )
@@ -49,6 +50,12 @@ LooseCookies = Union[
 ]
 
 Handler = Callable[["Request"], Awaitable["StreamResponse"]]
-Middleware = Callable[["Request", Handler], Awaitable["StreamResponse"]]
+
+
+class Middleware(Protocol):
+    def __call__(
+        self, request: "Request", handler: Handler
+    ) -> Awaitable["StreamResponse"]: ...
+
 
 PathLike = Union[str, "os.PathLike[str]"]
