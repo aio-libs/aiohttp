@@ -613,7 +613,7 @@ def calculate_timeout_when(
     """Calculate when to execute a timeout."""
     when = loop_time + timeout
     if timeout > timeout_ceiling_threshold:
-        when = ceil(when)
+        return ceil(when)
     return when
 
 
