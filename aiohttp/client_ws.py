@@ -119,8 +119,6 @@ class ClientWebSocketResponse:
 
     def _send_heartbeat(self) -> None:
         self._heartbeat_cb = None
-        if self._heartbeat is None or self._closed:
-            return
         loop = self._loop
         now = loop.time()
         if now < self._heartbeat_when:
@@ -145,7 +143,7 @@ class ClientWebSocketResponse:
 
     def _pong_not_received(self) -> None:
         if not self._closed:
-            self._closed = True
+            self._set_closed()
             self._close_code = WSCloseCode.ABNORMAL_CLOSURE
             self._exception = ServerTimeoutError()
             self._response.close()
@@ -153,6 +151,14 @@ class ClientWebSocketResponse:
                 self._reader.feed_data(
                     WSMessage(WSMsgType.ERROR, self._exception, None)
                 )
+
+    def _set_closed(self) -> None:
+        """Set the connection to closed.
+
+        Cancel any heartbeat timers and set the closed flag.
+        """
+        self._closed = True
+        self._cancel_heartbeat()
 
     @property
     def closed(self) -> bool:
@@ -223,8 +229,7 @@ class ClientWebSocketResponse:
             await self._close_wait
 
         if not self._closed:
-            self._cancel_heartbeat()
-            self._closed = True
+            self._set_closed()
             try:
                 await self._writer.close(code, message)
             except asyncio.CancelledError:
@@ -293,7 +298,7 @@ class ClientWebSocketResponse:
                 await self.close()
                 return WSMessage(WSMsgType.CLOSED, None, None)
             except ClientError:
-                self._closed = True
+                self._set_closed()
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 return WS_CLOSED_MESSAGE
             except WebSocketError as exc:

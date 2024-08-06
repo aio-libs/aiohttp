@@ -155,8 +155,6 @@ class WebSocketResponse(StreamResponse):
 
     def _send_heartbeat(self) -> None:
         self._heartbeat_cb = None
-        if self._heartbeat is None or self._closed:
-            return
         assert self._loop is not None and self._writer is not None
         loop = self._loop
         now = loop.time()
@@ -182,9 +180,17 @@ class WebSocketResponse(StreamResponse):
 
     def _pong_not_received(self) -> None:
         if self._req is not None and self._req.transport is not None:
-            self._closed = True
+            self._set_closed()
             self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
             self._exception = asyncio.TimeoutError()
+
+    def _set_closed(self) -> None:
+        """Set the connection to closed.
+
+        Cancel any heartbeat timers and set the closed flag.
+        """
+        self._closed = True
+        self._cancel_heartbeat()
 
     async def prepare(self, request: BaseRequest) -> AbstractStreamWriter:
         # make pre-check to don't hide it by do_handshake() exceptions
@@ -425,7 +431,7 @@ class WebSocketResponse(StreamResponse):
         if self._closed:
             return False
 
-        self._closed = True
+        self._set_closed()
         try:
             await self._writer.close(code, message)
             writer = self._payload_writer
