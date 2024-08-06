@@ -1,3 +1,3 @@
 Improved websocket performance when messages are sent or received frequently -- by :user:`bdraco`.
 
-The websocket keep-alive scheduling algorithm has been improved to reduce the ``asyncio`` scheduling overhead by reducing the number of ``asyncio.TimerHandle``s being created and cancelled.
+The WebSocket heartbeat scheduling algorithm has been improved to reduce the ``asyncio`` scheduling overhead by reducing the number of ``asyncio.TimerHandle``s being created and cancelled.
