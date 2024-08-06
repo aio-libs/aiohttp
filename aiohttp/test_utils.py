@@ -28,7 +28,7 @@ from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
 import aiohttp
-from aiohttp.client import _RequestContextManager, _WSRequestContextManager
+from aiohttp.client import _RequestContextManager, _RequestOptions, _WSRequestContextManager
 
 from . import ClientSession, hdrs
 from .abc import AbstractCookieJar
@@ -53,6 +53,9 @@ if TYPE_CHECKING:
     from ssl import SSLContext
 else:
     SSLContext = None
+
+if sys.version_info >= (3, 11) and TYPE_CHECKING:
+    from typing import Unpack
 
 REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
 
@@ -103,7 +106,7 @@ class BaseTestServer(ABC):
         self.host = host
         self.port = port
         self._closed = False
-        self.scheme = scheme
+        self._scheme = scheme
         self.skip_url_asserts = skip_url_asserts
         self.socket_factory = socket_factory
 
@@ -132,12 +135,14 @@ class BaseTestServer(ABC):
         sockets = server.sockets  # type: ignore[attr-defined]
         assert sockets is not None
         self.port = sockets[0].getsockname()[1]
-        if self.scheme is sentinel:
+        if self._scheme is sentinel:
             if self._ssl:
                 scheme = "https"
             else:
                 scheme = "http"
             self.scheme = scheme
+        else:
+            self.scheme = self._scheme
         self._root = URL(f"{self.scheme}://{absolute_host}:{self.port}")
 
     @abstractmethod  # pragma: no cover
@@ -311,45 +316,95 @@ class TestClient:
         self._responses.append(resp)
         return resp
 
-    def request(
-        self, method: str, path: StrOrURL, **kwargs: Any
-    ) -> _RequestContextManager:
-        """Routes a request to tested http server.
+    if sys.version_info >= (3, 11) and TYPE_CHECKING:
 
-        The interface is identical to aiohttp.ClientSession.request,
-        except the loop kwarg is overridden by the instance used by the
-        test server.
+        def request(
+            self, method: str, path: StrOrURL, **kwargs: Unpack[_RequestOptions]
+        ) -> _RequestContextManager: ...
 
-        """
-        return _RequestContextManager(self._request(method, path, **kwargs))
+        def get(
+            self,
+            path: StrOrURL,
+            **kwargs: Unpack[_RequestOptions],
+        ) -> _RequestContextManager: ...
 
-    def get(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
-        """Perform an HTTP GET request."""
-        return _RequestContextManager(self._request(hdrs.METH_GET, path, **kwargs))
+        def options(
+            self,
+            path: StrOrURL,
+            **kwargs: Unpack[_RequestOptions],
+        ) -> _RequestContextManager: ...
 
-    def post(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
-        """Perform an HTTP POST request."""
-        return _RequestContextManager(self._request(hdrs.METH_POST, path, **kwargs))
+        def head(
+            self,
+            path: StrOrURL,
+            **kwargs: Unpack[_RequestOptions],
+        ) -> _RequestContextManager: ...
 
-    def options(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
-        """Perform an HTTP OPTIONS request."""
-        return _RequestContextManager(self._request(hdrs.METH_OPTIONS, path, **kwargs))
+        def post(
+            self,
+            path: StrOrURL,
+            **kwargs: Unpack[_RequestOptions],
+        ) -> _RequestContextManager: ...
 
-    def head(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
-        """Perform an HTTP HEAD request."""
-        return _RequestContextManager(self._request(hdrs.METH_HEAD, path, **kwargs))
+        def put(
+            self,
+            path: StrOrURL,
+            **kwargs: Unpack[_RequestOptions],
+        ) -> _RequestContextManager: ...
 
-    def put(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
-        """Perform an HTTP PUT request."""
-        return _RequestContextManager(self._request(hdrs.METH_PUT, path, **kwargs))
+        def patch(
+            self,
+            path: StrOrURL,
+            **kwargs: Unpack[_RequestOptions],
+        ) -> _RequestContextManager: ...
 
-    def patch(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
-        """Perform an HTTP PATCH request."""
-        return _RequestContextManager(self._request(hdrs.METH_PATCH, path, **kwargs))
+        def delete(
+            self,
+            path: StrOrURL,
+            **kwargs: Unpack[_RequestOptions],
+        ) -> _RequestContextManager: ...
 
-    def delete(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
-        """Perform an HTTP PATCH request."""
-        return _RequestContextManager(self._request(hdrs.METH_DELETE, path, **kwargs))
+    else:
+
+        def request(
+            self, method: str, path: StrOrURL, **kwargs: Any
+        ) -> _RequestContextManager:
+            """Routes a request to tested http server.
+
+            The interface is identical to aiohttp.ClientSession.request,
+            except the loop kwarg is overridden by the instance used by the
+            test server.
+
+            """
+            return _RequestContextManager(self._request(method, path, **kwargs))
+
+        def get(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
+            """Perform an HTTP GET request."""
+            return _RequestContextManager(self._request(hdrs.METH_GET, path, **kwargs))
+
+        def post(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
+            """Perform an HTTP POST request."""
+            return _RequestContextManager(self._request(hdrs.METH_POST, path, **kwargs))
+
+        def options(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
+            """Perform an HTTP OPTIONS request."""
+            return _RequestContextManager(self._request(hdrs.METH_OPTIONS, path, **kwargs))
+
+        def head(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
+            """Perform an HTTP HEAD request."""
+            return _RequestContextManager(self._request(hdrs.METH_HEAD, path, **kwargs))
+
+        def put(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
+            """Perform an HTTP PUT request."""
+            return _RequestContextManager(self._request(hdrs.METH_PUT, path, **kwargs))
+
+        def patch(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
+            """Perform an HTTP PATCH request."""
+            return _RequestContextManager(self._request(hdrs.METH_PATCH, path, **kwargs))
+
+        def delete(self, path: StrOrURL, **kwargs: Any) -> _RequestContextManager:
+            """Perform an HTTP PATCH request."""
+            return _RequestContextManager(self._request(hdrs.METH_DELETE, path, **kwargs))
 
     def ws_connect(self, path: StrOrURL, **kwargs: Any) -> _WSRequestContextManager:
         """Initiate websocket connection.
