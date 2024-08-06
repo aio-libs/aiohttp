@@ -140,8 +140,8 @@ class WebSocketResponse(StreamResponse):
         timeout_ceil_threshold = (
             req._protocol._timeout_ceil_threshold if req is not None else 5
         )
-        assert self._loop is not None
         loop = self._loop
+        assert loop is not None
         now = loop.time()
         when = calculate_timeout_when(now, self._heartbeat, timeout_ceil_threshold)
         self._heartbeat_when = when
@@ -155,8 +155,8 @@ class WebSocketResponse(StreamResponse):
 
     def _send_heartbeat(self) -> None:
         self._heartbeat_cb = None
-        assert self._loop is not None and self._writer is not None
         loop = self._loop
+        assert loop is not None and self._writer is not None
         now = loop.time()
         if now < self._heartbeat_when:
             # Heartbeat fired too early, reschedule

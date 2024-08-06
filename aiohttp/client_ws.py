@@ -100,8 +100,8 @@ class ClientWebSocketResponse:
         if self._heartbeat is None:
             return
         self._cancel_pong_response_cb()
-        assert self._loop is not None
         loop = self._loop
+        assert loop is not None
         conn = self._conn
         timeout_ceil_threshold = (
             conn._connector._timeout_ceil_threshold if conn is not None else 5
