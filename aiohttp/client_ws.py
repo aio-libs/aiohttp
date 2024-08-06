@@ -5,7 +5,7 @@ import dataclasses
 import sys
 from typing import Any, Final, Optional, cast
 
-from .client_exceptions import ClientError, ServerTimeoutError
+from .client_exceptions import ServerTimeoutError
 from .client_reqrep import ClientResponse
 from .helpers import calculate_timeout_when, set_result
 from .http import (
@@ -160,6 +160,14 @@ class ClientWebSocketResponse:
         self._closed = True
         self._cancel_heartbeat()
 
+    def _set_closing(self) -> None:
+        """Set the connection to closing.
+
+        Cancel any heartbeat timers and set the closing flag.
+        """
+        self._closing = True
+        self._cancel_heartbeat()
+
     @property
     def closed(self) -> bool:
         return self._closed
@@ -224,7 +232,7 @@ class ClientWebSocketResponse:
         if self._waiting and not self._closing:
             assert self._loop is not None
             self._close_wait = self._loop.create_future()
-            self._closing = True
+            self._set_closing()
             self._reader.feed_data(WS_CLOSING_MESSAGE)
             await self._close_wait
 
@@ -297,29 +305,25 @@ class ClientWebSocketResponse:
                 self._close_code = WSCloseCode.OK
                 await self.close()
                 return WSMessage(WSMsgType.CLOSED, None, None)
-            except ClientError:
-                self._set_closed()
-                self._close_code = WSCloseCode.ABNORMAL_CLOSURE
-                return WS_CLOSED_MESSAGE
             except WebSocketError as exc:
                 self._close_code = exc.code
                 await self.close(code=exc.code)
                 return WSMessage(WSMsgType.ERROR, exc, None)
             except Exception as exc:
                 self._exception = exc
-                self._closing = True
+                self._set_closing()
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 await self.close()
                 return WSMessage(WSMsgType.ERROR, exc, None)
 
             if msg.type is WSMsgType.CLOSE:
-                self._closing = True
+                self._set_closing()
                 self._close_code = msg.data
                 # Could be closed elsewhere while awaiting reader
                 if not self._closed and self._autoclose:  # type: ignore[redundant-expr]
                     await self.close()
             elif msg.type is WSMsgType.CLOSING:
-                self._closing = True
+                self._set_closing()
             elif msg.type is WSMsgType.PING and self._autoping:
                 await self.pong(msg.data)
                 continue

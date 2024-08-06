@@ -475,6 +475,7 @@ class WebSocketResponse(StreamResponse):
         """Set the close code and mark the connection as closing."""
         self._closing = True
         self._close_code = code
+        self._cancel_heartbeat()
 
     def _set_code_close_transport(self, code: WSCloseCode) -> None:
         """Set the close code and close the transport."""
@@ -587,5 +588,6 @@ class WebSocketResponse(StreamResponse):
         # web_protocol calls this from connection_lost
         # or when the server is shutting down.
         self._closing = True
+        self._cancel_heartbeat()
         if self._reader is not None:
             set_exception(self._reader, exc)
