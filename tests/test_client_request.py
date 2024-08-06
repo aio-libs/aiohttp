@@ -1386,7 +1386,7 @@ def test_insecure_fingerprint_sha1(loop: asyncio.AbstractEventLoop) -> None:
 
 def test_loose_cookies_types(loop: asyncio.AbstractEventLoop) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
-    morsel = Morsel[str]()
+    morsel: "Morsel[str]" = Morsel()
     morsel.set(key="string", val="Another string", coded_val="really")
 
     accepted_types: List[LooseCookies] = [
