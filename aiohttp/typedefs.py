@@ -50,7 +50,6 @@ LooseCookies = Union[
 ]
 
 Handler = Callable[["Request"], Awaitable["StreamResponse"]]
-Middleware = Callable[["Request", Handler], Awaitable["StreamResponse"]]
 
 
 class Middleware(Protocol):
