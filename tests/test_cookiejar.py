@@ -435,7 +435,7 @@ class TestCookieJarBase(unittest.TestCase):
 
     def request_reply_with_same_url(
         self, url: str
-    ) -> Tuple[BaseCookie[str], SimpleCookie]:
+    ) -> Tuple["BaseCookie[str]", SimpleCookie]:
         self.jar.update_cookies(self.cookies_to_send)
         cookies_sent = self.jar.filter_cookies(URL(url))
 
@@ -497,7 +497,7 @@ class TestCookieJarSafe(TestCookieJarBase):
 
     def timed_request(
         self, url: str, update_time: float, send_time: float
-    ) -> BaseCookie[str]:
+    ) -> "BaseCookie[str]":
         freeze_update_time: Union[datetime.datetime, datetime.timedelta]
         freeze_send_time: Union[datetime.datetime, datetime.timedelta]
         if isinstance(update_time, int):
