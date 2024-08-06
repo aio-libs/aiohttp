@@ -58,7 +58,7 @@ cryptography==41.0.3
     # via
     #   pyjwt
     #   trustme
-cython==3.0.10
+cython==3.0.11
     # via -r requirements/cython.in
 distlib==0.3.7
     # via virtualenv
@@ -136,7 +136,7 @@ pluggy==1.4.0
     # via pytest
 pre-commit==3.5.0
     # via -r requirements/lint.in
-proxy-py==2.4.4
+proxy-py==2.4.5
     # via -r requirements/test.in
 pycares==4.3.0
     # via aiodns
