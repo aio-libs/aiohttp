@@ -409,7 +409,10 @@ async def test_close_eofstream(loop: Any, ws_key: Any, key_data: Any) -> None:
                 await session.close()
 
 
-async def test_close_connection_lost(loop: Any, ws_key: Any, key_data: Any) -> None:
+async def test_close_connection_lost(
+    loop: asyncio.AbstractEventLoop, ws_key: Any, key_data: Any
+) -> None:
+    """Test the websocket client handles the connection being closed out from under it."""
     resp = mock.Mock(spec_set=client.ClientResponse)
     resp.status = 101
     resp.headers = {
