@@ -10,7 +10,7 @@ import sys
 import traceback
 import warnings
 from contextlib import suppress
-from types import SimpleNamespace, TracebackType
+from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
