@@ -1064,10 +1064,10 @@ async def test_tcp_connector_resolve_host(loop: asyncio.AbstractEventLoop) -> No
             assert rec["host"] == "127.0.0.1"
             assert rec["hostname"] == "localhost"
             assert rec["port"] == 8080
-
-        assert rec["family"] == socket.AF_INET6
-        assert rec["hostname"] == "localhost"
-        assert rec["port"] == 8080
+        else:
+            assert rec["family"] == socket.AF_INET6
+            assert rec["hostname"] == "localhost"
+            assert rec["port"] == 8080
         if platform.system() == "Darwin":
             assert rec["host"] in ("::1", "fe80::1", "fe80::1%lo0")
         else:
