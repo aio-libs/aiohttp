@@ -11,7 +11,6 @@ from typing import (
     Dict,
     Iterator,
     List,
-    Optional,
     Protocol,
 )
 from unittest import mock
