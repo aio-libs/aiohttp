@@ -1662,6 +1662,7 @@ async def test_base_connector_allows_all_protocols(loop: Any) -> None:
         "https",
         "ws",
         "wss",
+        "tcp",
         "unix",
         "npipe",
     }
