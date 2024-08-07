@@ -75,12 +75,6 @@ NAMED_PIPE_PROTOCOL_SCHEMA_SET = frozenset({"npipe"})
 
 HTTP_AND_EMPTY_SCHEMA_SET = HTTP_SCHEMA_SET | EMPTY_SCHEMA_SET
 HIGH_LEVEL_SCHEMA_SET = HTTP_AND_EMPTY_SCHEMA_SET | WS_SCHEMA_SET
-BASE_PROTOCOL_SCHEMA_SET = (
-    HIGH_LEVEL_SCHEMA_SET
-    | TCP_PROTOCOL_SCHEMA_SET
-    | UNIX_PROTOCOL_SCHEMA_SET
-    | NAMED_PIPE_PROTOCOL_SCHEMA_SET
-)
 
 
 __all__ = ("BaseConnector", "TCPConnector", "UnixConnector", "NamedPipeConnector")
@@ -269,7 +263,7 @@ class BaseConnector:
 
         By default we allow all protocols for backwards compatibility.
         """
-        return BASE_PROTOCOL_SCHEMA_SET
+        return HIGH_LEVEL_SCHEMA_SET
 
     def __del__(self, _warnings: Any = warnings) -> None:
         if self._closed:
@@ -821,7 +815,7 @@ class TCPConnector(BaseConnector):
     @cached_property
     def allowed_protocol_schema_set(self) -> FrozenSet[str]:
         """Return allowed protocol schema set."""
-        return HIGH_LEVEL_SCHEMA_SET | TCP_PROTOCOL_SCHEMA_SET
+        return super().allowed_protocol_schema_set | TCP_PROTOCOL_SCHEMA_SET
 
     @property
     def family(self) -> int:
@@ -1393,7 +1387,7 @@ class UnixConnector(BaseConnector):
     @cached_property
     def allowed_protocol_schema_set(self) -> FrozenSet[str]:
         """Return allowed protocol schema set."""
-        return HIGH_LEVEL_SCHEMA_SET | UNIX_PROTOCOL_SCHEMA_SET
+        return super().allowed_protocol_schema_set | UNIX_PROTOCOL_SCHEMA_SET
 
     @property
     def path(self) -> str:
@@ -1458,7 +1452,7 @@ class NamedPipeConnector(BaseConnector):
     @cached_property
     def allowed_protocol_schema_set(self) -> FrozenSet[str]:
         """Return allowed protocol schema set."""
-        return HIGH_LEVEL_SCHEMA_SET | NAMED_PIPE_PROTOCOL_SCHEMA_SET
+        return super().allowed_protocol_schema_set | NAMED_PIPE_PROTOCOL_SCHEMA_SET
 
     @property
     def path(self) -> str:
