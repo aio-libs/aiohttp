@@ -1492,7 +1492,7 @@ async def test_tcp_connector_ctor(loop: Any) -> None:
 
 async def test_tcp_connector_allowed_protocols(loop: Any) -> None:
     conn = aiohttp.TCPConnector()
-    assert conn.allowed_protocol_schema_set == {"", "http", "https", "ws", "wss"}
+    assert conn.allowed_protocol_schema_set == {"", "tcp", "http", "https", "ws", "wss"}
 
 
 async def test_invalid_ssl_param() -> None:

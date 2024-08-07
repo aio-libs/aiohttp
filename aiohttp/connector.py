@@ -67,13 +67,18 @@ except ImportError:  # pragma: no cover
 
 EMPTY_SCHEMA_SET = frozenset({""})
 HTTP_SCHEMA_SET = frozenset({"http", "https"})
-HTTP_AND_EMPTY_SCHEMA_SET = HTTP_SCHEMA_SET | EMPTY_SCHEMA_SET
 WS_SCHEMA_SET = frozenset({"ws", "wss"})
-HIGH_LEVEL_SCHEMA_SET = HTTP_AND_EMPTY_SCHEMA_SET | WS_SCHEMA_SET
-UNIX_PROTCOL_SCHEMA_SET = frozenset({"unix"})
+TCP_PROTOCOL_SCHEMA_SET = frozenset({"tcp"})
+UNIX_PROTOCOL_SCHEMA_SET = frozenset({"unix"})
 NAMED_PIPE_PROTOCOL_SCHEMA_SET = frozenset({"npipe"})
+
+HTTP_AND_EMPTY_SCHEMA_SET = HTTP_SCHEMA_SET | EMPTY_SCHEMA_SET
+HIGH_LEVEL_SCHEMA_SET = HTTP_AND_EMPTY_SCHEMA_SET | WS_SCHEMA_SET
 ALLOWED_PROTOCOL_SCHEMA_SET = (
-    HIGH_LEVEL_SCHEMA_SET | UNIX_PROTCOL_SCHEMA_SET | NAMED_PIPE_PROTOCOL_SCHEMA_SET
+    HIGH_LEVEL_SCHEMA_SET
+    | TCP_PROTOCOL_SCHEMA_SET
+    | UNIX_PROTOCOL_SCHEMA_SET
+    | NAMED_PIPE_PROTOCOL_SCHEMA_SET
 )
 
 
@@ -815,7 +820,7 @@ class TCPConnector(BaseConnector):
     @cached_property
     def allowed_protocol_schema_set(self) -> FrozenSet[str]:
         """Return allowed protocol schema set."""
-        return HIGH_LEVEL_SCHEMA_SET
+        return HIGH_LEVEL_SCHEMA_SET | TCP_PROTOCOL_SCHEMA_SET
 
     @property
     def family(self) -> int:
@@ -1387,7 +1392,7 @@ class UnixConnector(BaseConnector):
     @cached_property
     def allowed_protocol_schema_set(self) -> FrozenSet[str]:
         """Return allowed protocol schema set."""
-        return HIGH_LEVEL_SCHEMA_SET | UNIX_PROTCOL_SCHEMA_SET
+        return HIGH_LEVEL_SCHEMA_SET | UNIX_PROTOCOL_SCHEMA_SET
 
     @property
     def path(self) -> str:
