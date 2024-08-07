@@ -9,7 +9,6 @@ import traceback
 import warnings
 from collections import defaultdict, deque
 from contextlib import suppress
-from functools import cached_property
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 from itertools import cycle, islice
@@ -69,9 +68,6 @@ except ImportError:  # pragma: no cover
 EMPTY_SCHEMA_SET = frozenset({""})
 HTTP_SCHEMA_SET = frozenset({"http", "https"})
 WS_SCHEMA_SET = frozenset({"ws", "wss"})
-TCP_PROTOCOL_SCHEMA_SET = frozenset({"tcp"})
-UNIX_PROTOCOL_SCHEMA_SET = frozenset({"unix"})
-NAMED_PIPE_PROTOCOL_SCHEMA_SET = frozenset({"npipe"})
 
 HTTP_AND_EMPTY_SCHEMA_SET = HTTP_SCHEMA_SET | EMPTY_SCHEMA_SET
 HIGH_LEVEL_SCHEMA_SET = HTTP_AND_EMPTY_SCHEMA_SET | WS_SCHEMA_SET
@@ -203,6 +199,8 @@ class BaseConnector:
     # abort transport after 2 seconds (cleanup broken connections)
     _cleanup_closed_period = 2.0
 
+    allowed_protocol_schema_set = HIGH_LEVEL_SCHEMA_SET
+
     def __init__(
         self,
         *,
@@ -256,14 +254,6 @@ class BaseConnector:
         self._cleanup_closed_disabled = not enable_cleanup_closed
         self._cleanup_closed_transports: List[Optional[asyncio.Transport]] = []
         self._cleanup_closed()
-
-    @cached_property
-    def allowed_protocol_schema_set(self) -> FrozenSet[str]:
-        """Return allowed protocol schema set.
-
-        By default we allow all high level protocols for backwards compatibility.
-        """
-        return HIGH_LEVEL_SCHEMA_SET
 
     def __del__(self, _warnings: Any = warnings) -> None:
         if self._closed:
@@ -762,6 +752,8 @@ class TCPConnector(BaseConnector):
     loop - Optional event loop.
     """
 
+    allowed_protocol_schema_set = HIGH_LEVEL_SCHEMA_SET | frozenset({"tcp"})
+
     def __init__(
         self,
         *,
@@ -811,11 +803,6 @@ class TCPConnector(BaseConnector):
         for ev in self._throttle_dns_events.values():
             ev.cancel()
         return super()._close_immediately()
-
-    @cached_property
-    def allowed_protocol_schema_set(self) -> FrozenSet[str]:
-        """Return allowed protocol schema set."""
-        return super().allowed_protocol_schema_set | TCP_PROTOCOL_SCHEMA_SET
 
     @property
     def family(self) -> int:
@@ -1368,6 +1355,8 @@ class UnixConnector(BaseConnector):
     loop - Optional event loop.
     """
 
+    allowed_protocol_schema_set = HIGH_LEVEL_SCHEMA_SET | frozenset({"unix"})
+
     def __init__(
         self,
         path: str,
@@ -1383,11 +1372,6 @@ class UnixConnector(BaseConnector):
             limit_per_host=limit_per_host,
         )
         self._path = path
-
-    @cached_property
-    def allowed_protocol_schema_set(self) -> FrozenSet[str]:
-        """Return allowed protocol schema set."""
-        return super().allowed_protocol_schema_set | UNIX_PROTOCOL_SCHEMA_SET
 
     @property
     def path(self) -> str:
@@ -1427,6 +1411,8 @@ class NamedPipeConnector(BaseConnector):
     loop - Optional event loop.
     """
 
+    allowed_protocol_schema_set = HIGH_LEVEL_SCHEMA_SET | frozenset({"npipe"})
+
     def __init__(
         self,
         path: str,
@@ -1448,11 +1434,6 @@ class NamedPipeConnector(BaseConnector):
                 "Named Pipes only available in proactor " "loop under windows"
             )
         self._path = path
-
-    @cached_property
-    def allowed_protocol_schema_set(self) -> FrozenSet[str]:
-        """Return allowed protocol schema set."""
-        return super().allowed_protocol_schema_set | NAMED_PIPE_PROTOCOL_SCHEMA_SET
 
     @property
     def path(self) -> str:
