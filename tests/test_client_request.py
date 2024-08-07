@@ -71,7 +71,7 @@ def protocol(
 
 
 @pytest.fixture
-def transport(buf: bytearray) -> asyncio.Transport:
+def transport(buf: bytearray) -> mock.Mock:
     transport = mock.create_autospec(asyncio.Transport, spec_set=True)
 
     def write(chunk: bytes) -> None:
