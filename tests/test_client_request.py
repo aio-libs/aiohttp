@@ -80,7 +80,7 @@ def transport(buf: bytearray) -> mock.Mock:
     transport.write.side_effect = write
     transport.is_closing.return_value = False
 
-    return transport
+    return transport  # type: ignore[no-any-return]
 
 
 @pytest.fixture
