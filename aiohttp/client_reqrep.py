@@ -179,7 +179,8 @@ class ClientRequest:
         hdrs.ACCEPT_ENCODING: _gen_default_accept_encoding(),
     }
 
-    body = b""
+    # Type of body depends on PAYLOAD_REGISTRY, which is dynamic.
+    body: Any = b""
     auth = None
     response = None
 
@@ -371,7 +372,7 @@ class ClientRequest:
 
         if headers:
             if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
-                headers = headers.items()  # type: ignore[assignment]
+                headers = headers.items()
 
             for key, value in headers:  # type: ignore[misc]
                 # A special case for Host header
@@ -532,6 +533,10 @@ class ClientRequest:
             raise ValueError("proxy_auth must be None or BasicAuth() tuple")
         self.proxy = proxy
         self.proxy_auth = proxy_auth
+        if proxy_headers is not None and not isinstance(
+            proxy_headers, (MultiDict, MultiDictProxy)
+        ):
+            proxy_headers = CIMultiDict(proxy_headers)
         self.proxy_headers = proxy_headers
 
     def keep_alive(self) -> bool:
@@ -567,10 +572,10 @@ class ClientRequest:
                 await self.body.write(writer)
             else:
                 if isinstance(self.body, (bytes, bytearray)):
-                    self.body = (self.body,)  # type: ignore[assignment]
+                    self.body = (self.body,)
 
                 for chunk in self.body:
-                    await writer.write(chunk)  # type: ignore[arg-type]
+                    await writer.write(chunk)
         except OSError as underlying_exc:
             reraised_exc = underlying_exc
 

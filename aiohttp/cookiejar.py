@@ -14,9 +14,9 @@ from math import ceil
 from typing import (
     DefaultDict,
     Dict,
+    FrozenSet,
     Iterable,
     Iterator,
-    List,
     Mapping,
     Optional,
     Set,
@@ -83,7 +83,7 @@ class CookieJar(AbstractCookieJar):
         *,
         unsafe: bool = False,
         quote_cookie: bool = True,
-        treat_as_secure_origin: Union[StrOrURL, List[StrOrURL], None] = None,
+        treat_as_secure_origin: Union[StrOrURL, Iterable[StrOrURL], None] = None,
     ) -> None:
         self._cookies: DefaultDict[Tuple[str, str], SimpleCookie] = defaultdict(
             SimpleCookie
@@ -92,17 +92,20 @@ class CookieJar(AbstractCookieJar):
         self._unsafe = unsafe
         self._quote_cookie = quote_cookie
         if treat_as_secure_origin is None:
-            treat_as_secure_origin = []
+            self._treat_as_secure_origin: FrozenSet[URL] = frozenset()
         elif isinstance(treat_as_secure_origin, URL):
-            treat_as_secure_origin = [treat_as_secure_origin.origin()]
+            self._treat_as_secure_origin = frozenset({treat_as_secure_origin.origin()})
         elif isinstance(treat_as_secure_origin, str):
-            treat_as_secure_origin = [URL(treat_as_secure_origin).origin()]
+            self._treat_as_secure_origin = frozenset(
+                {URL(treat_as_secure_origin).origin()}
+            )
         else:
-            treat_as_secure_origin = [
-                URL(url).origin() if isinstance(url, str) else url.origin()
-                for url in treat_as_secure_origin
-            ]
-        self._treat_as_secure_origin = treat_as_secure_origin
+            self._treat_as_secure_origin = frozenset(
+                {
+                    URL(url).origin() if isinstance(url, str) else url.origin()
+                    for url in treat_as_secure_origin
+                }
+            )
         self._next_expiration: float = ceil(time.time())
         self._expirations: Dict[Tuple[str, str, str], float] = {}
 
@@ -243,7 +246,7 @@ class CookieJar(AbstractCookieJar):
 
         self._do_expiration()
 
-    def filter_cookies(self, request_url: URL = URL()) -> "BaseCookie[str]":
+    def filter_cookies(self, request_url: URL) -> "BaseCookie[str]":
         """Returns this jar's cookies filtered by their attributes."""
         if not isinstance(request_url, URL):
             warnings.warn(

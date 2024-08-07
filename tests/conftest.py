@@ -34,7 +34,7 @@ IS_LINUX = sys.platform.startswith("linux")
 
 
 @pytest.fixture
-def tls_certificate_authority() -> Any:
+def tls_certificate_authority() -> trustme.CA:
     if not TRUSTME:
         pytest.xfail("trustme is not supported")
     return trustme.CA()
@@ -82,7 +82,7 @@ def tls_certificate_pem_bytes(tls_certificate: Any) -> bytes:
 
 
 @pytest.fixture
-def tls_certificate_fingerprint_sha256(tls_certificate_pem_bytes: Any) -> str:
+def tls_certificate_fingerprint_sha256(tls_certificate_pem_bytes: Any) -> bytes:
     tls_cert_der = ssl.PEM_cert_to_DER_cert(tls_certificate_pem_bytes.decode())
     return sha256(tls_cert_der).digest()
 
@@ -223,15 +223,15 @@ def start_connection():
 
 
 @pytest.fixture
-def key_data():
+def key_data() -> bytes:
     return os.urandom(16)
 
 
 @pytest.fixture
-def key(key_data: Any):
+def key(key_data: bytes) -> bytes:
     return base64.b64encode(key_data)
 
 
 @pytest.fixture
-def ws_key(key: Any):
+def ws_key(key: bytes) -> bytes:
     return base64.b64encode(sha1(key + WS_KEY).digest()).decode()
