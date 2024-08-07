@@ -163,6 +163,7 @@ class RequestHandler(BaseProtocol):
         "_lingering_time",
         "_messages",
         "_message_tail",
+        "_handler_waiter",
         "_waiter",
         "_task_handler",
         "_upgrade",
@@ -215,6 +216,7 @@ class RequestHandler(BaseProtocol):
         self._message_tail = b""
 
         self._waiter: Optional[asyncio.Future[None]] = None
+        self._handler_waiter: Optional[asyncio.Future[None]] = None
         self._task_handler: Optional[asyncio.Task[None]] = None
 
         self._upgrade = False
@@ -278,11 +280,11 @@ class RequestHandler(BaseProtocol):
         if self._waiter:
             self._waiter.cancel()
 
-        # Wait for graceful disconnection
-        if self._current_request is not None:
+        # Wait for graceful handler completion
+        if self._handler_waiter is not None:
             with suppress(asyncio.CancelledError, asyncio.TimeoutError):
                 async with ceil_timeout(timeout):
-                    await self._current_request.wait_for_disconnection()
+                    await self._handler_waiter
         # Then cancel handler and wait
         with suppress(asyncio.CancelledError, asyncio.TimeoutError):
             async with ceil_timeout(timeout):
@@ -466,6 +468,7 @@ class RequestHandler(BaseProtocol):
         start_time: float,
         request_handler: Callable[[BaseRequest], Awaitable[StreamResponse]],
     ) -> Tuple[StreamResponse, bool]:
+        self._handler_waiter = self._loop.create_future()
         try:
             try:
                 self._current_request = request
@@ -489,6 +492,8 @@ class RequestHandler(BaseProtocol):
             reset = await self.finish_response(request, resp, start_time)
         else:
             reset = await self.finish_response(request, resp, start_time)
+        finally:
+            self._handler_waiter.set_result(None)
 
         return resp, reset
 
