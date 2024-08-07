@@ -436,20 +436,20 @@ async def test_close_connection_lost(
     loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
 ) -> None:
     """Test the websocket client handles the connection being closed out from under it."""
-    resp = mock.Mock(spec_set=client.ClientResponse)
-    resp.status = 101
-    resp.headers = {
+    mresp = mock.Mock(spec_set=client.ClientResponse)
+    mresp.status = 101
+    mresp.headers = {
         hdrs.UPGRADE: "websocket",
         hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
-    resp.connection.protocol.read_timeout = None
+    mresp.connection.protocol.read_timeout = None
     with mock.patch("aiohttp.client.WebSocketWriter"), mock.patch(
         "aiohttp.client.os"
     ) as m_os, mock.patch("aiohttp.client.ClientSession.request") as m_req:
         m_os.urandom.return_value = key_data
         m_req.return_value = loop.create_future()
-        m_req.return_value.set_result(resp)
+        m_req.return_value.set_result(mresp)
 
         session = aiohttp.ClientSession()
         resp = await session.ws_connect("http://test.org")
