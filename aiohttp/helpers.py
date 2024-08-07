@@ -586,12 +586,23 @@ def call_later(
     loop: asyncio.AbstractEventLoop,
     timeout_ceil_threshold: float = 5,
 ) -> Optional[asyncio.TimerHandle]:
-    if timeout is not None and timeout > 0:
-        when = loop.time() + timeout
-        if timeout > timeout_ceil_threshold:
-            when = ceil(when)
-        return loop.call_at(when, cb)
-    return None
+    if timeout is None or timeout <= 0:
+        return None
+    now = loop.time()
+    when = calculate_timeout_when(now, timeout, timeout_ceil_threshold)
+    return loop.call_at(when, cb)
+
+
+def calculate_timeout_when(
+    loop_time: float,
+    timeout: float,
+    timeout_ceiling_threshold: float,
+) -> float:
+    """Calculate when to execute a timeout."""
+    when = loop_time + timeout
+    if timeout > timeout_ceiling_threshold:
+        return ceil(when)
+    return when
 
 
 class TimeoutHandle:
