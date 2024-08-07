@@ -72,16 +72,12 @@ def protocol(
 
 @pytest.fixture
 def transport(buf: bytearray) -> asyncio.Transport:
-    transport = mock.Mock()
+    transport = mock.create_autospec(asyncio.Transport, spec_set=True)
 
     def write(chunk: bytes) -> None:
         buf.extend(chunk)
 
-    async def write_eof() -> None:
-        pass
-
     transport.write.side_effect = write
-    transport.write_eof.side_effect = write_eof
     transport.is_closing.return_value = False
 
     return transport
@@ -1093,8 +1089,8 @@ async def test_data_stream_exc_chain(
 
     async def gen() -> AsyncIterator[None]:
         await fut
-        return
-        yield
+        assert False
+        yield  # pragma: no cover
 
     req = ClientRequest("POST", URL("http://python.org/"), data=gen(), loop=loop)
 
