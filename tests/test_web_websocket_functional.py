@@ -722,7 +722,64 @@ async def test_heartbeat_no_pong(loop, aiohttp_client) -> None:
     await ws.close()
 
 
-async def test_server_ws_async_for(loop, aiohttp_server) -> None:
+async def test_heartbeat_no_pong_send_many_messages(
+    loop: Any, aiohttp_client: Any
+) -> None:
+    """Test no pong after sending many messages."""
+
+    async def handler(request):
+        ws = web.WebSocketResponse(heartbeat=0.05)
+        await ws.prepare(request)
+        for _ in range(10):
+            await ws.send_str("test")
+
+        await ws.receive()
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    client = await aiohttp_client(app)
+    ws = await client.ws_connect("/", autoping=False)
+    for _ in range(10):
+        msg = await ws.receive()
+        assert msg.type is aiohttp.WSMsgType.TEXT
+        assert msg.data == "test"
+
+    msg = await ws.receive()
+    assert msg.type is aiohttp.WSMsgType.PING
+    await ws.close()
+
+
+async def test_heartbeat_no_pong_receive_many_messages(
+    loop: Any, aiohttp_client: Any
+) -> None:
+    """Test no pong after receiving many messages."""
+
+    async def handler(request):
+        ws = web.WebSocketResponse(heartbeat=0.05)
+        await ws.prepare(request)
+        for _ in range(10):
+            server_msg = await ws.receive()
+            assert server_msg.type is aiohttp.WSMsgType.TEXT
+
+        await ws.receive()
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    client = await aiohttp_client(app)
+    ws = await client.ws_connect("/", autoping=False)
+    for _ in range(10):
+        await ws.send_str("test")
+
+    msg = await ws.receive()
+    assert msg.type is aiohttp.WSMsgType.PING
+    await ws.close()
+
+
+async def test_server_ws_async_for(loop: Any, aiohttp_server: Any) -> None:
     closed = loop.create_future()
 
     async def handler(request):
