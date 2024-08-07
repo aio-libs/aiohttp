@@ -38,7 +38,7 @@ from . import ClientSession, hdrs
 from .abc import AbstractCookieJar
 from .client_reqrep import ClientResponse
 from .client_ws import ClientWebSocketResponse
-from .helpers import _SENTINEL, sentinel
+from .helpers import sentinel
 from .http import HttpVersion, RawRequestMessage
 from .typedefs import StrOrURL
 from .web import (
@@ -96,7 +96,7 @@ class BaseTestServer(ABC):
     def __init__(
         self,
         *,
-        scheme: Union[str, _SENTINEL] = sentinel,
+        scheme: str = "",
         host: str = "127.0.0.1",
         port: Optional[int] = None,
         skip_url_asserts: bool = False,
@@ -110,7 +110,7 @@ class BaseTestServer(ABC):
         self.host = host
         self.port = port
         self._closed = False
-        self._scheme = scheme
+        self.scheme = scheme
         self.skip_url_asserts = skip_url_asserts
         self.socket_factory = socket_factory
 
@@ -139,14 +139,8 @@ class BaseTestServer(ABC):
         sockets = server.sockets  # type: ignore[attr-defined]
         assert sockets is not None
         self.port = sockets[0].getsockname()[1]
-        if self._scheme is sentinel:
-            if self._ssl:
-                scheme = "https"
-            else:
-                scheme = "http"
-            self.scheme = scheme
-        else:
-            self.scheme = self._scheme
+        if not self.scheme:
+            self.scheme = "https" if self._ssl else "http"
         self._root = URL(f"{self.scheme}://{absolute_host}:{self.port}")
 
     @abstractmethod  # pragma: no cover
@@ -216,7 +210,7 @@ class TestServer(BaseTestServer):
         self,
         app: Application,
         *,
-        scheme: Union[str, _SENTINEL] = sentinel,
+        scheme: str = "",
         host: str = "127.0.0.1",
         port: Optional[int] = None,
         **kwargs: Any,
@@ -233,7 +227,7 @@ class RawTestServer(BaseTestServer):
         self,
         handler: _RequestHandler,
         *,
-        scheme: Union[str, _SENTINEL] = sentinel,
+        scheme: str = "",
         host: str = "127.0.0.1",
         port: Optional[int] = None,
         **kwargs: Any,

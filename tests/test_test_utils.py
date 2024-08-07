@@ -214,10 +214,10 @@ async def test_test_client_props() -> None:
     app = _create_example_app()
     server = _TestServer(app, scheme="http", host="127.0.0.1")
     client = _TestClient(server)
+    assert client.scheme == "http"
+    assert client.host == "127.0.0.1"
+    assert client.port is None
     async with client:
-        assert client.scheme == "http"
-        assert client.host == "127.0.0.1"
-        assert client.port is not None
         assert isinstance(client.port, int)
         assert client.server is not None
         assert client.app is not None
@@ -230,10 +230,10 @@ async def test_test_client_raw_server_props() -> None:
 
     server = _RawTestServer(hello, scheme="http", host="127.0.0.1")
     client = _TestClient(server)
+    assert client.scheme == "http"
+    assert client.host == "127.0.0.1"
+    assert client.port is None
     async with client:
-        assert client.scheme == "http"
-        assert client.host == "127.0.0.1"
-        assert client.port is not None
         assert isinstance(client.port, int)
         assert client.server is not None
         assert client.app is None
