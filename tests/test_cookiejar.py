@@ -5,7 +5,7 @@ import pickle
 import unittest
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from pathlib import Path
-from typing import Iterable, List, Mapping, Set, Tuple, Union
+from typing import List, Set, Tuple, Union
 from unittest import mock
 
 import pytest

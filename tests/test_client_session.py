@@ -333,7 +333,6 @@ async def test_create_connector(
     mocker: MockerFixture,
 ) -> None:
     session = await create_session()
-    connector = session.connector
     m = mocker.spy(session.connector, "close")
 
     await session.close()
