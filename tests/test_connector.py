@@ -1064,13 +1064,14 @@ async def test_tcp_connector_resolve_host(loop: asyncio.AbstractEventLoop) -> No
             assert rec["host"] == "127.0.0.1"
             assert rec["hostname"] == "localhost"
             assert rec["port"] == 8080
-        elif rec["family"] == socket.AF_INET6:
-            assert rec["hostname"] == "localhost"
-            assert rec["port"] == 8080
-            if platform.system() == "Darwin":
-                assert rec["host"] in ("::1", "fe80::1", "fe80::1%lo0")
-            else:
-                assert rec["host"] == "::1"
+
+        assert rec["family"] == socket.AF_INET6
+        assert rec["hostname"] == "localhost"
+        assert rec["port"] == 8080
+        if platform.system() == "Darwin":
+            assert rec["host"] in ("::1", "fe80::1", "fe80::1%lo0")
+        else:
+            assert rec["host"] == "::1"
 
 
 @pytest.fixture
@@ -2476,8 +2477,8 @@ async def test_resolver_not_called_with_address_is_ip(
 async def test_tcp_connector_raise_connector_ssl_error(
     aiohttp_server: AiohttpServer, ssl_ctx: ssl.SSLContext
 ) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     app = web.Application()
     app.router.add_get("/", handler)
