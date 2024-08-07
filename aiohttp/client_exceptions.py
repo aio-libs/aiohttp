@@ -100,7 +100,7 @@ class ClientResponseError(ClientError):
         return "{}, message={!r}, url={!r}".format(
             self.status,
             self.message,
-            self.request_info.real_url,
+            str(self.request_info.real_url),
         )
 
     def __repr__(self) -> str:
