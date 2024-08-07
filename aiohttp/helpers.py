@@ -107,19 +107,6 @@ SEPARATORS = {
 }
 TOKEN = CHAR ^ CTL ^ SEPARATORS
 
-EMPTY_SCHEMA_SET = frozenset({""})
-HTTP_SCHEMA_SET = frozenset({"http", "https"})
-WS_SCHEMA_SET = frozenset({"ws", "wss"})
-UNIX_PROTCOL_SCHEMA_SET = frozenset({"unix"})
-NAMED_PIPE_PROTOCOL_SCHEMA_SET = frozenset({"npipe"})
-ALLOWED_PROTOCOL_SCHEMA_SET = (
-    EMPTY_SCHEMA_SET
-    | HTTP_SCHEMA_SET
-    | WS_SCHEMA_SET
-    | UNIX_PROTCOL_SCHEMA_SET
-    | NAMED_PIPE_PROTOCOL_SCHEMA_SET
-)
-
 
 json_re = re.compile(r"(?:application/|[\w.-]+/[\w.+-]+?\+)json$", re.IGNORECASE)
 

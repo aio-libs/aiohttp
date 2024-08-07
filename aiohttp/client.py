@@ -80,11 +80,16 @@ from .client_ws import (
     ClientWebSocketResponse,
     ClientWSTimeout,
 )
-from .connector import BaseConnector, NamedPipeConnector, TCPConnector, UnixConnector
+from .connector import (
+    HTTP_AND_EMPTY_SCHEMA_SET,
+    BaseConnector,
+    NamedPipeConnector,
+    TCPConnector,
+    UnixConnector,
+)
 from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
-    HTTP_SCHEMA_SET,
     BasicAuth,
     TimeoutHandle,
     ceil_timeout,
@@ -681,7 +686,7 @@ class ClientSession:
                             ) from e
 
                         scheme = parsed_redirect_url.scheme
-                        if scheme not in HTTP_SCHEMA_SET:
+                        if scheme not in HTTP_AND_EMPTY_SCHEMA_SET:
                             resp.close()
                             raise NonHttpUrlRedirectClientError(r_url)
                         elif not scheme:

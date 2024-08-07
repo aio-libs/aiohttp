@@ -51,19 +51,7 @@ from .client_exceptions import (
 )
 from .client_proto import ResponseHandler
 from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
-from .helpers import (
-    _SENTINEL,
-    ALLOWED_PROTOCOL_SCHEMA_SET,
-    EMPTY_SCHEMA_SET,
-    HTTP_SCHEMA_SET,
-    NAMED_PIPE_PROTOCOL_SCHEMA_SET,
-    UNIX_PROTCOL_SCHEMA_SET,
-    WS_SCHEMA_SET,
-    ceil_timeout,
-    is_ip_address,
-    sentinel,
-    set_result,
-)
+from .helpers import _SENTINEL, ceil_timeout, is_ip_address, sentinel, set_result
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
@@ -74,6 +62,18 @@ try:
 except ImportError:  # pragma: no cover
     ssl = None  # type: ignore[assignment]
     SSLContext = object  # type: ignore[misc,assignment]
+
+
+EMPTY_SCHEMA_SET = frozenset({""})
+HTTP_SCHEMA_SET = frozenset({"http", "https"})
+HTTP_AND_EMPTY_SCHEMA_SET = HTTP_SCHEMA_SET | EMPTY_SCHEMA_SET
+WS_SCHEMA_SET = frozenset({"ws", "wss"})
+HIGH_LEVEL_SCHEMA_SET = HTTP_AND_EMPTY_SCHEMA_SET | WS_SCHEMA_SET
+UNIX_PROTCOL_SCHEMA_SET = frozenset({"unix"})
+NAMED_PIPE_PROTOCOL_SCHEMA_SET = frozenset({"npipe"})
+ALLOWED_PROTOCOL_SCHEMA_SET = (
+    HIGH_LEVEL_SCHEMA_SET | UNIX_PROTCOL_SCHEMA_SET | NAMED_PIPE_PROTOCOL_SCHEMA_SET
+)
 
 
 __all__ = ("BaseConnector", "TCPConnector", "UnixConnector", "NamedPipeConnector")
@@ -814,7 +814,7 @@ class TCPConnector(BaseConnector):
     @cached_property
     def allowed_protocol_schema_set(self) -> frozenset[str]:
         """Return allowed protocol schema set."""
-        return EMPTY_SCHEMA_SET | HTTP_SCHEMA_SET | WS_SCHEMA_SET
+        return HIGH_LEVEL_SCHEMA_SET
 
     @property
     def family(self) -> int:
@@ -1386,9 +1386,7 @@ class UnixConnector(BaseConnector):
     @cached_property
     def allowed_protocol_schema_set(self) -> frozenset[str]:
         """Return allowed protocol schema set."""
-        return (
-            EMPTY_SCHEMA_SET | HTTP_SCHEMA_SET | WS_SCHEMA_SET | UNIX_PROTCOL_SCHEMA_SET
-        )
+        return HIGH_LEVEL_SCHEMA_SET | UNIX_PROTCOL_SCHEMA_SET
 
     @property
     def path(self) -> str:
@@ -1453,12 +1451,7 @@ class NamedPipeConnector(BaseConnector):
     @cached_property
     def allowed_protocol_schema_set(self) -> frozenset[str]:
         """Return allowed protocol schema set."""
-        return (
-            EMPTY_SCHEMA_SET
-            | HTTP_SCHEMA_SET
-            | WS_SCHEMA_SET
-            | NAMED_PIPE_PROTOCOL_SCHEMA_SET
-        )
+        return HIGH_LEVEL_SCHEMA_SET | NAMED_PIPE_PROTOCOL_SCHEMA_SET
 
     @property
     def path(self) -> str:
