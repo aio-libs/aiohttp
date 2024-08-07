@@ -212,7 +212,7 @@ DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60)
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
 HTTP_SCHEMA_SET = frozenset({"http", "https", ""})
 WS_SCHEMA_SET = frozenset({"ws", "wss"})
-PROTOCOL_SCHEMA_SET = frozenset({"unix"})
+PROTOCOL_SCHEMA_SET = frozenset({"npipe", "unix"})
 ALLOWED_PROTOCOL_SCHEMA_SET = HTTP_SCHEMA_SET | WS_SCHEMA_SET | PROTOCOL_SCHEMA_SET
 
 _RetType = TypeVar("_RetType")
