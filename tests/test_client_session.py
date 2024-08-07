@@ -489,8 +489,10 @@ async def test_ws_connect_allowed_protocols(
     req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
     req_factory = mock.Mock(return_value=req)
     req.send = mock.AsyncMock(return_value=resp)
+    # BaseConnector allows all protocols by default
+    connector = BaseConnector()
 
-    session = await create_session(request_class=req_factory)
+    session = await create_session(connector=connector, request_class=req_factory)
 
     connections = []
     original_connect = session._connector.connect
