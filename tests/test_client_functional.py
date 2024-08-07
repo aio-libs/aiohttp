@@ -591,8 +591,8 @@ async def test_tcp_connector_fingerprint_fail(
     ssl_ctx: ssl.SSLContext,
     tls_certificate_fingerprint_sha256: bytes,
 ) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response(text="Test message")
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     bad_fingerprint = b"\x00" * len(tls_certificate_fingerprint_sha256)
 
@@ -820,11 +820,10 @@ async def test_204_with_gzipped_content_encoding(aiohttp_client: AiohttpClient) 
 async def test_timeout_on_reading_headers(
     aiohttp_client: AiohttpClient, mocker: MockerFixture
 ) -> None:
-    async def handler(request: web.Request) -> web.StreamResponse:
+    async def handler(request: web.Request) -> NoReturn:
         resp = web.StreamResponse()
         await asyncio.sleep(0.1)
-        await resp.prepare(request)
-        return resp
+        assert False
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
@@ -839,11 +838,10 @@ async def test_timeout_on_conn_reading_headers(
 ) -> None:
     # tests case where user did not set a connection timeout
 
-    async def handler(request: web.Request) -> web.StreamResponse:
+    async def handler(request: web.Request) -> NoReturn:
         resp = web.StreamResponse()
         await asyncio.sleep(0.1)
-        await resp.prepare(request)
-        return resp
+        assert False
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
@@ -858,11 +856,10 @@ async def test_timeout_on_conn_reading_headers(
 async def test_timeout_on_session_read_timeout(
     aiohttp_client: AiohttpClient, mocker: MockerFixture
 ) -> None:
-    async def handler(request: web.Request) -> web.StreamResponse:
+    async def handler(request: web.Request) -> NoReturn:
         resp = web.StreamResponse()
         await asyncio.sleep(0.1)
-        await resp.prepare(request)
-        return resp
+        assert False
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
@@ -905,13 +902,12 @@ async def test_read_timeout_between_chunks(
 async def test_read_timeout_on_reading_chunks(
     aiohttp_client: AiohttpClient, mocker: MockerFixture
 ) -> None:
-    async def handler(request: web.Request) -> web.StreamResponse:
+    async def handler(request: web.Request) -> NoReturn:
         resp = aiohttp.web.StreamResponse()
         await resp.prepare(request)
         await resp.write(b"data\n")
         await asyncio.sleep(1)
-        await resp.write(b"data\n")
-        return resp
+        assert False
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
@@ -989,16 +985,16 @@ async def test_timeout_none(
 async def test_readline_error_on_conn_close(aiohttp_client: AiohttpClient) -> None:
     loop = asyncio.get_event_loop()
 
-    async def handler(request: web.Request) -> web.StreamResponse:
-        resp_ = web.StreamResponse()
-        await resp_.prepare(request)
+    async def handler(request: web.Request) -> NoReturn:
+        resp = web.StreamResponse()
+        await resp.prepare(request)
 
         # make sure connection is closed by client.
         with pytest.raises(aiohttp.ServerDisconnectedError):
             for _ in range(10):
-                await resp_.write(b"data\n")
+                await resp.write(b"data\n")
                 await asyncio.sleep(0.5)
-        return resp_
+        assert False
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
@@ -1013,8 +1009,7 @@ async def test_readline_error_on_conn_close(aiohttp_client: AiohttpClient) -> No
             while True:
                 data = await resp.content.readline()
                 data = data.strip()
-                if not data:
-                    break
+                assert data
                 assert data == b"data"
                 if not timer_started:
                     loop.call_later(1.0, resp.release)
@@ -1262,15 +1257,13 @@ async def test_HTTP_308_PERMANENT_REDIRECT_POST(aiohttp_client: AiohttpClient) -
 
 
 async def test_HTTP_302_max_redirects(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response(text=request.method)
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     async def redirect(request: web.Request) -> NoReturn:
         count = int(request.match_info["count"])
-        if count:
-            raise web.HTTPFound(location=f"/redirect/{count - 1}")
-        else:
-            raise web.HTTPFound(location="/")
+        assert count
+        raise web.HTTPFound(location=f"/redirect/{count - 1}")
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -1892,10 +1885,10 @@ async def test_expect_continue(aiohttp_client: AiohttpClient) -> None:
     async def expect_handler(request: web.Request) -> None:
         nonlocal expect_called
         expect = request.headers[hdrs.EXPECT]
-        if expect.lower() == "100-continue":
-            assert request.transport is not None
-            request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
-            expect_called = True
+        assert expect.lower() == "100-continue"
+        assert request.transport is not None
+        request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+        expect_called = True
 
     app = web.Application()
     app.router.add_post("/", handler, expect_handler=expect_handler)
@@ -2416,8 +2409,8 @@ async def test_set_cookies_max_age_overflow(aiohttp_client: AiohttpClient) -> No
     async with client.get("/") as resp:
         assert 200 == resp.status
         for cookie in client.session.cookie_jar:
-            if cookie.key == "overflow":
-                assert int(cookie["max-age"]) == int(overflow)
+            assert cookie.key == "overflow"
+            assert int(cookie["max-age"]) == int(overflow)
 
 
 async def test_request_conn_error() -> None:
@@ -2899,7 +2892,7 @@ async def test_drop_auth_on_redirect_to_other_host(
             ]
 
         async def close(self) -> None:
-            pass
+            """Dummy"""
 
     connector = aiohttp.TCPConnector(resolver=FakeResolver(), ssl=False)
 
@@ -2933,11 +2926,11 @@ async def test_session_close_awaitable() -> None:
 async def test_close_resp_on_error_async_with_session(
     aiohttp_server: AiohttpServer,
 ) -> None:
-    async def handler(request: web.Request) -> web.StreamResponse:
+    async def handler(request: web.Request) -> NoReturn:
         resp = web.StreamResponse(headers={"content-length": "100"})
         await resp.prepare(request)
         await asyncio.sleep(0.1)
-        return resp
+        assert False
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -2974,11 +2967,11 @@ async def test_release_resp_on_normal_exit_from_cm(
 async def test_non_close_detached_session_on_error_cm(
     aiohttp_server: AiohttpServer,
 ) -> None:
-    async def handler(request: web.Request) -> web.StreamResponse:
+    async def handler(request: web.Request) -> NoReturn:
         resp = web.StreamResponse(headers={"content-length": "100"})
         await resp.prepare(request)
         await asyncio.sleep(0.1)
-        return resp
+        assert False
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -3005,7 +2998,7 @@ async def test_close_detached_session_on_non_existing_addr() -> None:
             return []
 
         async def close(self) -> None:
-            pass
+            """Dummy"""
 
     connector = aiohttp.TCPConnector(resolver=FakeResolver())
 
@@ -3036,8 +3029,8 @@ async def test_aiohttp_request_context_manager(aiohttp_server: AiohttpServer) ->
 async def test_aiohttp_request_ctx_manager_close_sess_on_error(
     ssl_ctx: ssl.SSLContext, aiohttp_server: AiohttpServer
 ) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -3093,8 +3086,8 @@ async def test_yield_from_in_session_request(aiohttp_client: AiohttpClient) -> N
 
 async def test_close_context_manager(aiohttp_client: AiohttpClient) -> None:
     # a test for backward compatibility with yield from syntax
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -3137,8 +3130,8 @@ async def test_session_auth_override(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_session_auth_header_conflict(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -3243,16 +3236,16 @@ async def test_server_close_keepalive_connection() -> None:
 
         def data_received(self, data: bytes) -> None:
             self.data += data
-            if data.endswith(b"\r\n\r\n"):
-                assert self.transp is not None
-                self.transp.write(
-                    b"HTTP/1.1 200 OK\r\n"
-                    b"CONTENT-LENGTH: 2\r\n"
-                    b"CONNECTION: close\r\n"
-                    b"\r\n"
-                    b"ok"
-                )
-                self.transp.close()
+            assert data.endswith(b"\r\n\r\n")
+            assert self.transp is not None
+            self.transp.write(
+                b"HTTP/1.1 200 OK\r\n"
+                b"CONTENT-LENGTH: 2\r\n"
+                b"CONNECTION: close\r\n"
+                b"\r\n"
+                b"ok"
+            )
+            self.transp.close()
 
         def connection_lost(self, exc: Optional[BaseException]) -> None:
             self.transp = None
@@ -3286,12 +3279,12 @@ async def test_handle_keepalive_on_closed_connection() -> None:
 
         def data_received(self, data: bytes) -> None:
             self.data += data
-            if data.endswith(b"\r\n\r\n"):
-                assert self.transp is not None
-                self.transp.write(
-                    b"HTTP/1.1 200 OK\r\n" b"CONTENT-LENGTH: 2\r\n" b"\r\n" b"ok"
-                )
-                self.transp.close()
+            assert data.endswith(b"\r\n\r\n")
+            assert self.transp is not None
+            self.transp.write(
+                b"HTTP/1.1 200 OK\r\n" b"CONTENT-LENGTH: 2\r\n" b"\r\n" b"ok"
+            )
+            self.transp.close()
 
         def connection_lost(self, exc: Optional[BaseException]) -> None:
             self.transp = None
@@ -3323,12 +3316,11 @@ async def test_error_in_performing_request(
     aiohttp_client: AiohttpClient,
     aiohttp_server: AiohttpServer,
 ) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     def exception_handler(loop: object, context: object) -> None:
-        # skip log messages about destroyed but pending tasks
-        pass
+        """Skip log messages about destroyed but pending tasks"""
 
     loop = asyncio.get_event_loop()
     loop.set_exception_handler(exception_handler)
@@ -3452,9 +3444,9 @@ async def test_read_from_closed_content(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_read_timeout(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> web.Response:
+    async def handler(request: web.Request) -> NoReturn:
         await asyncio.sleep(5)
-        return web.Response()
+        assert False
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
@@ -3467,9 +3459,9 @@ async def test_read_timeout(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_socket_timeout(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> web.Response:
+    async def handler(request: web.Request) -> NoReturn:
         await asyncio.sleep(5)
-        return web.Response()
+        assert False
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
@@ -3516,12 +3508,11 @@ async def test_read_timeout_closes_connection(aiohttp_client: AiohttpClient) -> 
 
 
 async def test_read_timeout_on_prepared_response(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> web.StreamResponse:
+    async def handler(request: web.Request) -> NoReturn:
         resp = aiohttp.web.StreamResponse()
         await resp.prepare(request)
         await asyncio.sleep(5)
-        await resp.drain()
-        return resp
+        assetr False
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
