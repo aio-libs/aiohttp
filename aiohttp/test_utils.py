@@ -11,16 +11,7 @@ import sys
 import warnings
 from abc import ABC, abstractmethod
 from types import TracebackType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Iterator,
-    List,
-    Optional,
-    Type,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Callable, Iterator, List, Optional, Type, cast
 from unittest import IsolatedAsyncioTestCase, mock
 
 from aiosignal import Signal
