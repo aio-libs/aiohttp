@@ -19,7 +19,6 @@ from typing import (
     List,
     Optional,
     Type,
-    Union,
     cast,
 )
 from unittest import IsolatedAsyncioTestCase, mock
