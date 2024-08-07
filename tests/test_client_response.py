@@ -4,7 +4,6 @@ import asyncio
 import gc
 import sys
 from json import JSONDecodeError
-from typing import Callable
 from unittest import mock
 
 import pytest
