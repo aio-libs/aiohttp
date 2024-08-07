@@ -594,18 +594,21 @@ async def test_connection_header(loop: Any, conn: Any) -> None:
     req.keep_alive.return_value = True
     req.version = HttpVersion(1, 1)
     req.headers.clear()
-    await req.send(conn)
+    async with await req.send(conn):
+        await asyncio.sleep(0)
     assert req.headers.get("CONNECTION") is None
 
     req.version = HttpVersion(1, 0)
     req.headers.clear()
-    await req.send(conn)
+    async with await req.send(conn):
+        await asyncio.sleep(0)
     assert req.headers.get("CONNECTION") == "keep-alive"
 
     req.keep_alive.return_value = False
     req.version = HttpVersion(1, 1)
     req.headers.clear()
-    await req.send(conn)
+    async with await req.send(conn):
+        await asyncio.sleep(0)
     assert req.headers.get("CONNECTION") == "close"
 
 
@@ -698,7 +701,8 @@ async def test_urlencoded_formdata_charset(loop: Any, conn: Any) -> None:
         data=aiohttp.FormData({"hey": "you"}, charset="koi8-r"),
         loop=loop,
     )
-    await req.send(conn)
+    async with await req.send(conn):
+        await asyncio.sleep(0)
     assert "application/x-www-form-urlencoded; charset=koi8-r" == req.headers.get(
         "CONTENT-TYPE"
     )
@@ -715,7 +719,8 @@ async def test_formdata_boundary_from_headers(loop: Any, conn: Any) -> None:
             headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
             loop=loop,
         )
-        await req.send(conn)
+        async with await req.send(conn):
+            await asyncio.sleep(0)
         assert req.body._boundary == boundary.encode()
 
 
@@ -1028,10 +1033,10 @@ async def test_data_stream_exc(loop: Any, conn: Any) -> None:
 
     loop.create_task(throw_exc())
 
-    await req.send(conn)
-    await req._writer
-    # assert conn.close.called
-    assert conn.protocol.set_exception.called
+    async with await req.send(conn):
+        await req._writer
+        # assert conn.close.called
+        assert conn.protocol.set_exception.called
     await req.close()
 
 
@@ -1053,8 +1058,8 @@ async def test_data_stream_exc_chain(loop: Any, conn: Any) -> None:
 
     loop.create_task(throw_exc())
 
-    await req.send(conn)
-    await req._writer
+    async with await req.send(conn):
+        await req._writer
     # assert connection.close.called
     assert conn.protocol.set_exception.called
     outer_exc = conn.protocol.set_exception.call_args[0][0]
