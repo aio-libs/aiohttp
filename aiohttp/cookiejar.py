@@ -17,7 +17,6 @@ from typing import (
     FrozenSet,
     Iterable,
     Iterator,
-    List,
     Mapping,
     Optional,
     Set,
