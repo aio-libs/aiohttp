@@ -7,3 +7,5 @@ omit = site-packages
 exclude_also =
     if TYPE_CHECKING
     assert False
+    : \.\.\.(\s*#.*)?$
+    ^ +\.\.\.$
