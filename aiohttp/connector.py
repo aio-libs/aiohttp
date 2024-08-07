@@ -54,6 +54,7 @@ from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
 from .helpers import (
     _SENTINEL,
     ALLOWED_PROTOCOL_SCHEMA_SET,
+    EMPTY_SCHEMA_SET,
     HTTP_SCHEMA_SET,
     NAMED_PIPE_PROTOCOL_SCHEMA_SET,
     UNIX_PROTCOL_SCHEMA_SET,
@@ -813,7 +814,7 @@ class TCPConnector(BaseConnector):
     @cached_property
     def allowed_protocol_schema_set(self) -> frozenset[str]:
         """Return allowed protocol schema set."""
-        return HTTP_SCHEMA_SET | WS_SCHEMA_SET
+        return EMPTY_SCHEMA_SET | HTTP_SCHEMA_SET | WS_SCHEMA_SET
 
     @property
     def family(self) -> int:
@@ -1385,7 +1386,9 @@ class UnixConnector(BaseConnector):
     @cached_property
     def allowed_protocol_schema_set(self) -> frozenset[str]:
         """Return allowed protocol schema set."""
-        return UNIX_PROTCOL_SCHEMA_SET
+        return (
+            EMPTY_SCHEMA_SET | HTTP_SCHEMA_SET | WS_SCHEMA_SET | UNIX_PROTCOL_SCHEMA_SET
+        )
 
     @property
     def path(self) -> str:
@@ -1450,7 +1453,12 @@ class NamedPipeConnector(BaseConnector):
     @cached_property
     def allowed_protocol_schema_set(self) -> frozenset[str]:
         """Return allowed protocol schema set."""
-        return NAMED_PIPE_PROTOCOL_SCHEMA_SET
+        return (
+            EMPTY_SCHEMA_SET
+            | HTTP_SCHEMA_SET
+            | WS_SCHEMA_SET
+            | NAMED_PIPE_PROTOCOL_SCHEMA_SET
+        )
 
     @property
     def path(self) -> str:

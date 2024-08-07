@@ -1492,7 +1492,7 @@ async def test_tcp_connector_ctor(loop: Any) -> None:
 
 async def test_tcp_connector_allowed_protocols(loop: Any) -> None:
     conn = aiohttp.TCPConnector()
-    assert conn.allowed_protocol_schema_set == {"http", "https", "ws", "wss"}
+    assert conn.allowed_protocol_schema_set == {"", "http", "https", "ws", "wss"}
 
 
 async def test_invalid_ssl_param() -> None:
@@ -1657,6 +1657,7 @@ async def test_ctor_with_default_loop(loop: Any) -> None:
 async def test_base_connector_allows_all_protocols(loop: Any) -> None:
     conn = aiohttp.BaseConnector()
     assert conn.allowed_protocol_schema_set == {
+        "",
         "http",
         "https",
         "ws",
@@ -2437,7 +2438,14 @@ async def test_unix_connector(unix_server: Any, unix_sockname: Any) -> None:
 
     connector = aiohttp.UnixConnector(unix_sockname)
     assert unix_sockname == connector.path
-    assert connector.allowed_protocol_schema_set == {"unix"}
+    assert connector.allowed_protocol_schema_set == {
+        "",
+        "http",
+        "https",
+        "ws",
+        "wss",
+        "unix",
+    }
 
     session = client.ClientSession(connector=connector)
     r = await session.get(url)
@@ -2463,7 +2471,14 @@ async def test_named_pipe_connector(
 
     connector = aiohttp.NamedPipeConnector(pipe_name)
     assert pipe_name == connector.path
-    assert connector.allowed_protocol_schema_set == {"npipe"}
+    assert connector.allowed_protocol_schema_set == {
+        "",
+        "http",
+        "https",
+        "ws",
+        "wss",
+        "npipe",
+    }
 
     session = client.ClientSession(connector=connector)
     r = await session.get(url)
