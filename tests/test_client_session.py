@@ -4,7 +4,7 @@ import gc
 import io
 import json
 from http.cookies import SimpleCookie
-from typing import Any, List
+from typing import Any, Awaitable, Callable, List
 from unittest import mock
 from uuid import uuid4
 
@@ -16,10 +16,12 @@ from yarl import URL
 import aiohttp
 from aiohttp import client, hdrs, web
 from aiohttp.client import ClientSession
+from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientRequest
-from aiohttp.connector import BaseConnector, TCPConnector
+from aiohttp.connector import BaseConnector, Connection, TCPConnector, UnixConnector
 from aiohttp.helpers import DEBUG
 from aiohttp.test_utils import make_mocked_coro
+from aiohttp.tracing import Trace
 
 
 @pytest.fixture
@@ -487,15 +489,17 @@ async def test_ws_connect_allowed_protocols(
         hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
-    resp.url = URL(f"{protocol}://example.com")
+    resp.url = URL(f"{protocol}://example")
     resp.cookies = SimpleCookie()
     resp.start = mock.AsyncMock()
 
     req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
     req_factory = mock.Mock(return_value=req)
     req.send = mock.AsyncMock(return_value=resp)
+    # BaseConnector allows all high level protocols by default
+    connector = BaseConnector()
 
-    session = await create_session(request_class=req_factory)
+    session = await create_session(connector=connector, request_class=req_factory)
 
     connections = []
     original_connect = session._connector.connect
@@ -515,7 +519,68 @@ async def test_ws_connect_allowed_protocols(
         "aiohttp.client.os"
     ) as m_os:
         m_os.urandom.return_value = key_data
-        await session.ws_connect(f"{protocol}://example.com")
+        await session.ws_connect(f"{protocol}://example")
+
+    # normally called during garbage collection.  triggers an exception
+    # if the connection wasn't already closed
+    for c in connections:
+        c.close()
+        c.__del__()
+
+    await session.close()
+
+
+@pytest.mark.parametrize("protocol", ["http", "https", "ws", "wss", "unix"])
+async def test_ws_connect_unix_socket_allowed_protocols(
+    create_session: Callable[..., Awaitable[ClientSession]],
+    create_mocked_conn: Callable[[], ResponseHandler],
+    protocol: str,
+    ws_key: bytes,
+    key_data: bytes,
+) -> None:
+    resp = mock.create_autospec(aiohttp.ClientResponse)
+    resp.status = 101
+    resp.headers = {
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
+        hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
+    }
+    resp.url = URL(f"{protocol}://example")
+    resp.cookies = SimpleCookie()
+    resp.start = mock.AsyncMock()
+
+    req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
+    req_factory = mock.Mock(return_value=req)
+    req.send = mock.AsyncMock(return_value=resp)
+    # UnixConnector allows all high level protocols by default and unix sockets
+    session = await create_session(
+        connector=UnixConnector(path=""), request_class=req_factory
+    )
+
+    connections = []
+    assert session._connector is not None
+    original_connect = session._connector.connect
+
+    async def connect(
+        req: ClientRequest, traces: List[Trace], timeout: aiohttp.ClientTimeout
+    ) -> Connection:
+        conn = await original_connect(req, traces, timeout)
+        connections.append(conn)
+        return conn
+
+    async def create_connection(
+        req: object, traces: object, timeout: object
+    ) -> ResponseHandler:
+        return create_mocked_conn()
+
+    connector = session._connector
+    with mock.patch.object(connector, "connect", connect), mock.patch.object(
+        connector, "_create_connection", create_connection
+    ), mock.patch.object(connector, "_release"), mock.patch(
+        "aiohttp.client.os"
+    ) as m_os:
+        m_os.urandom.return_value = key_data
+        await session.ws_connect(f"{protocol}://example")
 
     # normally called during garbage collection.  triggers an exception
     # if the connection wasn't already closed
