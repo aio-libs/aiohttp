@@ -9,6 +9,7 @@ import pytest
 
 import aiohttp
 from aiohttp import client, hdrs
+from aiohttp.client_exceptions import ServerDisconnectedError
 from aiohttp.http import WS_KEY
 from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro
@@ -404,21 +405,56 @@ async def test_close_eofstream(loop, ws_key, key_data) -> None:
                 await session.close()
 
 
-async def test_close_exc(loop, ws_key, key_data) -> None:
-    resp = mock.Mock()
-    resp.status = 101
-    resp.headers = {
+async def test_close_connection_lost(
+    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+) -> None:
+    """Test the websocket client handles the connection being closed out from under it."""
+    mresp = mock.Mock(spec_set=client.ClientResponse)
+    mresp.status = 101
+    mresp.headers = {
         hdrs.UPGRADE: "websocket",
         hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
-    resp.connection.protocol.read_timeout = None
+    mresp.connection.protocol.read_timeout = None
+    with mock.patch("aiohttp.client.WebSocketWriter"), mock.patch(
+        "aiohttp.client.os"
+    ) as m_os, mock.patch("aiohttp.client.ClientSession.request") as m_req:
+        m_os.urandom.return_value = key_data
+        m_req.return_value = loop.create_future()
+        m_req.return_value.set_result(mresp)
+
+        session = aiohttp.ClientSession()
+        resp = await session.ws_connect("http://test.org")
+        assert not resp.closed
+
+        exc = ServerDisconnectedError()
+        resp._reader.set_exception(exc)
+
+        msg = await resp.receive()
+        assert msg.type is aiohttp.WSMsgType.CLOSED
+        assert resp.closed
+
+        await session.close()
+
+
+async def test_close_exc(
+    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+) -> None:
+    mresp = mock.Mock()
+    mresp.status = 101
+    mresp.headers = {
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
+        hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
+    }
+    mresp.connection.protocol.read_timeout = None
     with mock.patch("aiohttp.client.WebSocketWriter") as WebSocketWriter:
         with mock.patch("aiohttp.client.os") as m_os:
             with mock.patch("aiohttp.client.ClientSession.request") as m_req:
                 m_os.urandom.return_value = key_data
                 m_req.return_value = loop.create_future()
-                m_req.return_value.set_result(resp)
+                m_req.return_value.set_result(mresp)
                 writer = mock.Mock()
                 WebSocketWriter.return_value = writer
                 writer.close = make_mocked_coro()
