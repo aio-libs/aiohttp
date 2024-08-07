@@ -84,6 +84,7 @@ from .connector import BaseConnector, NamedPipeConnector, TCPConnector, UnixConn
 from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
+    HTTP_SCHEMA_SET,
     BasicAuth,
     TimeoutHandle,
     ceil_timeout,
@@ -210,10 +211,7 @@ DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60)
 
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
-HTTP_SCHEMA_SET = frozenset({"http", "https", ""})
-WS_SCHEMA_SET = frozenset({"ws", "wss"})
-PROTOCOL_SCHEMA_SET = frozenset({"npipe", "unix"})
-ALLOWED_PROTOCOL_SCHEMA_SET = HTTP_SCHEMA_SET | WS_SCHEMA_SET | PROTOCOL_SCHEMA_SET
+
 
 _RetType = TypeVar("_RetType")
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
@@ -456,7 +454,7 @@ class ClientSession:
         except ValueError as e:
             raise InvalidUrlClientError(str_or_url) from e
 
-        if url.scheme not in ALLOWED_PROTOCOL_SCHEMA_SET:
+        if url.scheme not in self._connector.allowed_protocol_schema_set:
             raise NonHttpUrlClientError(url)
 
         skip_headers = set(self._skip_auto_headers)

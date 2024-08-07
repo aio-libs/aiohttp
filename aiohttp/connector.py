@@ -9,6 +9,7 @@ import traceback
 import warnings
 from collections import defaultdict, deque
 from contextlib import suppress
+from functools import cached_property
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 from itertools import cycle, islice
@@ -50,7 +51,18 @@ from .client_exceptions import (
 )
 from .client_proto import ResponseHandler
 from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
-from .helpers import _SENTINEL, ceil_timeout, is_ip_address, sentinel, set_result
+from .helpers import (
+    _SENTINEL,
+    ALLOWED_PROTOCOL_SCHEMA_SET,
+    HTTP_SCHEMA_SET,
+    NAMED_PIPE_PROTOCOL_SCHEMA_SET,
+    UNIX_PROTCOL_SCHEMA_SET,
+    WS_SCHEMA_SET,
+    ceil_timeout,
+    is_ip_address,
+    sentinel,
+    set_result,
+)
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
@@ -242,6 +254,14 @@ class BaseConnector:
         self._cleanup_closed_disabled = not enable_cleanup_closed
         self._cleanup_closed_transports: List[Optional[asyncio.Transport]] = []
         self._cleanup_closed()
+
+    @cached_property
+    def allowed_protocol_schema_set(self) -> Set[str]:
+        """Return allowed protocol schema set.
+
+        By default we allow all protocols.
+        """
+        return ALLOWED_PROTOCOL_SCHEMA_SET
 
     def __del__(self, _warnings: Any = warnings) -> None:
         if self._closed:
@@ -789,6 +809,11 @@ class TCPConnector(BaseConnector):
         for ev in self._throttle_dns_events.values():
             ev.cancel()
         return super()._close_immediately()
+
+    @cached_property
+    def allowed_protocol_schema_set(self) -> Set[str]:
+        """Return allowed protocol schema set."""
+        return HTTP_SCHEMA_SET | WS_SCHEMA_SET
 
     @property
     def family(self) -> int:
@@ -1357,6 +1382,11 @@ class UnixConnector(BaseConnector):
         )
         self._path = path
 
+    @cached_property
+    def allowed_protocol_schema_set(self) -> Set[str]:
+        """Return allowed protocol schema set."""
+        return UNIX_PROTCOL_SCHEMA_SET
+
     @property
     def path(self) -> str:
         """Path to unix socket."""
@@ -1416,6 +1446,11 @@ class NamedPipeConnector(BaseConnector):
                 "Named Pipes only available in proactor " "loop under windows"
             )
         self._path = path
+
+    @cached_property
+    def allowed_protocol_schema_set(self) -> Set[str]:
+        """Return allowed protocol schema set."""
+        return NAMED_PIPE_PROTOCOL_SCHEMA_SET
 
     @property
     def path(self) -> str:
