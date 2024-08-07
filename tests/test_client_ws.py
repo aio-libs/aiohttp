@@ -2,7 +2,7 @@ import asyncio
 import base64
 import hashlib
 import os
-from typing import Mapping, Optional
+from typing import Mapping
 from unittest import mock
 
 import pytest
