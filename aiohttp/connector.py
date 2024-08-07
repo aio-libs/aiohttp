@@ -22,6 +22,7 @@ from typing import (  # noqa
     Callable,
     DefaultDict,
     Dict,
+    FrozenSet,
     Iterator,
     List,
     Literal,
@@ -257,7 +258,7 @@ class BaseConnector:
         self._cleanup_closed()
 
     @cached_property
-    def allowed_protocol_schema_set(self) -> frozenset[str]:
+    def allowed_protocol_schema_set(self) -> FrozenSet[str]:
         """Return allowed protocol schema set.
 
         By default we allow all protocols for backwards compatibility.
@@ -812,7 +813,7 @@ class TCPConnector(BaseConnector):
         return super()._close_immediately()
 
     @cached_property
-    def allowed_protocol_schema_set(self) -> frozenset[str]:
+    def allowed_protocol_schema_set(self) -> FrozenSet[str]:
         """Return allowed protocol schema set."""
         return HIGH_LEVEL_SCHEMA_SET
 
@@ -1384,7 +1385,7 @@ class UnixConnector(BaseConnector):
         self._path = path
 
     @cached_property
-    def allowed_protocol_schema_set(self) -> frozenset[str]:
+    def allowed_protocol_schema_set(self) -> FrozenSet[str]:
         """Return allowed protocol schema set."""
         return HIGH_LEVEL_SCHEMA_SET | UNIX_PROTCOL_SCHEMA_SET
 
@@ -1449,7 +1450,7 @@ class NamedPipeConnector(BaseConnector):
         self._path = path
 
     @cached_property
-    def allowed_protocol_schema_set(self) -> frozenset[str]:
+    def allowed_protocol_schema_set(self) -> FrozenSet[str]:
         """Return allowed protocol schema set."""
         return HIGH_LEVEL_SCHEMA_SET | NAMED_PIPE_PROTOCOL_SCHEMA_SET
 
