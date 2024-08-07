@@ -697,7 +697,10 @@ async def test_heartbeat_no_pong_after_receive_many_messages(
         nonlocal ping_received
         ws = web.WebSocketResponse(autoping=False)
         await ws.prepare(request)
-        for _ in range(10):
+        for _ in range(5):
+            await ws.send_str("test")
+        await asyncio.sleep(0.05)
+        for _ in range(5):
             await ws.send_str("test")
         msg = await ws.receive()
         ping_received = msg.type is aiohttp.WSMsgType.PING
@@ -745,9 +748,11 @@ async def test_heartbeat_no_pong_after_send_many_messages(
     client = await aiohttp_client(app)
     resp = await client.ws_connect("/", heartbeat=0.1)
 
-    for _ in range(10):
+    for _ in range(5):
         await resp.send_str("test")
-
+    await asyncio.sleep(0.05)
+    for _ in range(5):
+        await resp.send_str("test")
     # Connection should be closed roughly after 1.5x heartbeat.
     await asyncio.sleep(0.2)
     assert ping_received
