@@ -1481,7 +1481,19 @@ async def test_tcp_connector_ctor() -> None:
     assert conn.family == 0
 
 
-async def test_tcp_connector_ctor_fingerprint_valid(loop) -> None:
+async def test_tcp_connector_allowed_protocols(loop: asyncio.AbstractEventLoop) -> None:
+    conn = aiohttp.TCPConnector()
+    assert conn.allowed_protocol_schema_set == {"", "tcp", "http", "https", "ws", "wss"}
+
+
+async def test_invalid_ssl_param() -> None:
+    with pytest.raises(TypeError):
+        aiohttp.TCPConnector(ssl=object())  # type: ignore[arg-type]
+
+
+async def test_tcp_connector_ctor_fingerprint_valid(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     valid = aiohttp.Fingerprint(hashlib.sha256(b"foo").digest())
     conn = aiohttp.TCPConnector(ssl=valid, loop=loop)
     assert conn._ssl is valid
@@ -1639,8 +1651,23 @@ async def test_ctor_with_default_loop(loop) -> None:
     assert loop is conn._loop
 
 
-async def test_connect_with_limit(loop, key) -> None:
-    proto = mock.Mock()
+async def test_base_connector_allows_high_level_protocols(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    conn = aiohttp.BaseConnector()
+    assert conn.allowed_protocol_schema_set == {
+        "",
+        "http",
+        "https",
+        "ws",
+        "wss",
+    }
+
+
+async def test_connect_with_limit(
+    loop: asyncio.AbstractEventLoop, key: ConnectionKey
+) -> None:
+    proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
 
     req = ClientRequest(
@@ -2412,6 +2439,14 @@ async def test_unix_connector(unix_server, unix_sockname) -> None:
 
     connector = aiohttp.UnixConnector(unix_sockname)
     assert unix_sockname == connector.path
+    assert connector.allowed_protocol_schema_set == {
+        "",
+        "http",
+        "https",
+        "ws",
+        "wss",
+        "unix",
+    }
 
     session = client.ClientSession(connector=connector)
     r = await session.get(url)
@@ -2437,6 +2472,14 @@ async def test_named_pipe_connector(
 
     connector = aiohttp.NamedPipeConnector(pipe_name)
     assert pipe_name == connector.path
+    assert connector.allowed_protocol_schema_set == {
+        "",
+        "http",
+        "https",
+        "ws",
+        "wss",
+        "npipe",
+    }
 
     session = client.ClientSession(connector=connector)
     r = await session.get(url)
