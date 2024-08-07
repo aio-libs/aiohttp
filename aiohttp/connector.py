@@ -74,7 +74,7 @@ NAMED_PIPE_PROTOCOL_SCHEMA_SET = frozenset({"npipe"})
 
 HTTP_AND_EMPTY_SCHEMA_SET = HTTP_SCHEMA_SET | EMPTY_SCHEMA_SET
 HIGH_LEVEL_SCHEMA_SET = HTTP_AND_EMPTY_SCHEMA_SET | WS_SCHEMA_SET
-ALLOWED_PROTOCOL_SCHEMA_SET = (
+BASE_PROTOCOL_SCHEMA_SET = (
     HIGH_LEVEL_SCHEMA_SET
     | TCP_PROTOCOL_SCHEMA_SET
     | UNIX_PROTOCOL_SCHEMA_SET
@@ -268,7 +268,7 @@ class BaseConnector:
 
         By default we allow all protocols for backwards compatibility.
         """
-        return ALLOWED_PROTOCOL_SCHEMA_SET
+        return BASE_PROTOCOL_SCHEMA_SET
 
     def __del__(self, _warnings: Any = warnings) -> None:
         if self._closed:
