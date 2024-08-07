@@ -4,15 +4,7 @@ import io
 import pathlib
 import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
-from typing import (
-    Any,
-    AsyncIterator,
-    Callable,
-    Dict,
-    Iterator,
-    List,
-    Protocol,
-)
+from typing import Any, AsyncIterator, Callable, Dict, Iterator, List, Protocol
 from unittest import mock
 
 import pytest
