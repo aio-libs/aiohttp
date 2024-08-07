@@ -141,6 +141,7 @@ __all__ = (
     # client
     "ClientSession",
     "ClientTimeout",
+    "ClientWSTimeout",
     "request",
 )
 
