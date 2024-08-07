@@ -821,7 +821,6 @@ async def test_timeout_on_reading_headers(
     aiohttp_client: AiohttpClient, mocker: MockerFixture
 ) -> None:
     async def handler(request: web.Request) -> NoReturn:
-        resp = web.StreamResponse()
         await asyncio.sleep(0.1)
         assert False
 
@@ -839,7 +838,6 @@ async def test_timeout_on_conn_reading_headers(
     # tests case where user did not set a connection timeout
 
     async def handler(request: web.Request) -> NoReturn:
-        resp = web.StreamResponse()
         await asyncio.sleep(0.1)
         assert False
 
@@ -857,7 +855,6 @@ async def test_timeout_on_session_read_timeout(
     aiohttp_client: AiohttpClient, mocker: MockerFixture
 ) -> None:
     async def handler(request: web.Request) -> NoReturn:
-        resp = web.StreamResponse()
         await asyncio.sleep(0.1)
         assert False
 
