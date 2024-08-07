@@ -823,6 +823,26 @@ def test_http_request_upgrade(parser: Any) -> None:
     assert tail == b"some raw data"
 
 
+async def test_http_request_upgrade_unknown(parser: Any) -> None:
+    text = (
+        b"POST / HTTP/1.1\r\n"
+        b"Connection: Upgrade\r\n"
+        b"Content-Length: 2\r\n"
+        b"Upgrade: unknown\r\n"
+        b"Content-Type: application/json\r\n\r\n"
+        b"{}"
+    )
+    messages, upgrade, tail = parser.feed_data(text)
+
+    msg = messages[0][0]
+    assert not msg.should_close
+    assert msg.upgrade
+    assert not upgrade
+    assert not msg.chunked
+    assert tail == b""
+    assert await messages[0][-1].read() == b"{}"
+
+
 @pytest.fixture
 def xfail_c_parser_url(request) -> None:
     if isinstance(request.getfixturevalue("parser"), HttpRequestParserPy):
