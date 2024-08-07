@@ -75,6 +75,7 @@ from .client_reqrep import (
 )
 from .client_ws import ClientWebSocketResponse as ClientWebSocketResponse
 from .connector import (
+    HTTP_AND_EMPTY_SCHEMA_SET,
     BaseConnector as BaseConnector,
     NamedPipeConnector as NamedPipeConnector,
     TCPConnector as TCPConnector,
@@ -209,9 +210,6 @@ DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60)
 
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
-HTTP_SCHEMA_SET = frozenset({"http", "https", ""})
-WS_SCHEMA_SET = frozenset({"ws", "wss"})
-ALLOWED_PROTOCOL_SCHEMA_SET = HTTP_SCHEMA_SET | WS_SCHEMA_SET
 
 _RetType = TypeVar("_RetType")
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
@@ -517,7 +515,8 @@ class ClientSession:
         except ValueError as e:
             raise InvalidUrlClientError(str_or_url) from e
 
-        if url.scheme not in ALLOWED_PROTOCOL_SCHEMA_SET:
+        assert self._connector is not None
+        if url.scheme not in self._connector.allowed_protocol_schema_set:
             raise NonHttpUrlClientError(url)
 
         skip_headers = set(self._skip_auto_headers)
@@ -655,7 +654,6 @@ class ClientSession:
                             real_timeout.connect,
                             ceil_threshold=real_timeout.ceil_threshold,
                         ):
-                            assert self._connector is not None
                             conn = await self._connector.connect(
                                 req, traces=traces, timeout=real_timeout
                             )
@@ -752,7 +750,7 @@ class ClientSession:
                             ) from e
 
                         scheme = parsed_redirect_url.scheme
-                        if scheme not in HTTP_SCHEMA_SET:
+                        if scheme not in HTTP_AND_EMPTY_SCHEMA_SET:
                             resp.close()
                             raise NonHttpUrlRedirectClientError(r_url)
                         elif not scheme:
