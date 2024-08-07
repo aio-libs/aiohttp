@@ -21,7 +21,6 @@ from typing import (  # noqa
     Callable,
     DefaultDict,
     Dict,
-    FrozenSet,
     Iterator,
     List,
     Literal,
