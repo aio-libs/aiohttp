@@ -21,9 +21,6 @@ from aiohttp.test_utils import make_mocked_coro
 
 
 class WriterMock(mock.AsyncMock):
-    def add_done_callback(self, cb: Callable[[], None]) -> None:
-        cb()
-
     def done(self) -> bool:
         return True
 
@@ -507,15 +504,10 @@ async def test_get_encoding_body_none(
         session=session,
     )
 
-    def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
-        fut = loop.create_future()
-        fut.set_result('{"encoding": "test"}')
-        return fut
-
     h = {"Content-Type": "text/html"}
     response._headers = CIMultiDictProxy(CIMultiDict(h))
     content = response.content = mock.Mock()
-    content.read.side_effect = side_effect
+    content.read.side_effect = AssertionError
 
     with pytest.raises(
         RuntimeError,
