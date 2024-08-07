@@ -3512,7 +3512,7 @@ async def test_read_timeout_on_prepared_response(aiohttp_client: AiohttpClient) 
         resp = aiohttp.web.StreamResponse()
         await resp.prepare(request)
         await asyncio.sleep(5)
-        assetr False
+        assert False
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
