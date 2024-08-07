@@ -693,7 +693,7 @@ async def test_heartbeat_no_pong_after_many_messages(
     """Test that the connection is closed if no pong is received after many messages."""
     ping_received = False
 
-    async def handler(request):
+    async def handler(request: web.Request) -> NoReturn:
         nonlocal ping_received
         ws = web.WebSocketResponse(autoping=False)
         await ws.prepare(request)
