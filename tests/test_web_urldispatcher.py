@@ -434,10 +434,10 @@ async def test_static_directory_with_mock_permission_error(
             raise PermissionError()
         return real_iterdir(self)
 
-    def mock_is_dir(self: pathlib.Path) -> bool:
+    def mock_is_dir(self: pathlib.Path, **kwargs: Any) -> bool:
         if my_dir.samefile(self.parent):
             raise PermissionError()
-        return real_is_dir(self)
+        return real_is_dir(self, **kwargs)
 
     monkeypatch.setattr("pathlib.Path.iterdir", mock_iterdir)
     monkeypatch.setattr("pathlib.Path.is_dir", mock_is_dir)
@@ -554,8 +554,8 @@ async def test_access_mock_special_resource(
     real_result = my_special.stat()
     real_stat = pathlib.Path.stat
 
-    def mock_stat(self: pathlib.Path) -> os.stat_result:
-        s = real_stat(self)
+    def mock_stat(self: pathlib.Path, **kwargs: Any) -> os.stat_result:
+        s = real_stat(self, **kwargs)
         if os.path.samestat(s, real_result):
             mock_mode = S_IFIFO | S_IMODE(s.st_mode)
             s = os.stat_result([mock_mode] + list(s)[1:])
