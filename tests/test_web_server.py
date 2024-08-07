@@ -6,7 +6,7 @@ from unittest import mock
 
 import pytest
 
-from aiohttp import client, helpers, web
+from aiohttp import client, web
 
 
 async def test_simple_server(aiohttp_raw_server: Any, aiohttp_client: Any) -> None:
@@ -21,12 +21,6 @@ async def test_simple_server(aiohttp_raw_server: Any, aiohttp_client: Any) -> No
     assert txt == "/path/to"
 
 
-@pytest.mark.xfail(
-    not helpers.NO_EXTENSIONS,
-    raises=client.ServerDisconnectedError,
-    reason="The behavior of C-extensions differs from pure-Python: "
-    "https://github.com/aio-libs/aiohttp/issues/6446",
-)
 async def test_unsupported_upgrade(aiohttp_raw_server, aiohttp_client) -> None:
     # don't fail if a client probes for an unsupported protocol upgrade
     # https://github.com/aio-libs/aiohttp/issues/6446#issuecomment-999032039
