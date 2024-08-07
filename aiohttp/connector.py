@@ -7,7 +7,7 @@ import socket
 import sys
 import traceback
 import warnings
-from collections import defaultdict, deque, frozenset
+from collections import defaultdict, deque
 from contextlib import suppress
 from functools import cached_property
 from http import HTTPStatus
