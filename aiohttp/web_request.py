@@ -239,7 +239,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             # a copy semantic
             dct["headers"] = CIMultiDictProxy(CIMultiDict(headers))
             dct["raw_headers"] = tuple(
-                (k.encode("utf-8"), v.encode("utf-8")) for k, v in headers.items()
+                (k.encode("utf-8"), v.encode("utf-8")) for k, v in dct["headers"].items()
             )
 
         message = self._message._replace(**dct)
