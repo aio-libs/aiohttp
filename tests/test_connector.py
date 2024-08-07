@@ -1516,8 +1516,12 @@ async def test_ctor_cleanup() -> None:
 
 
 async def test_cleanup(key: ConnectionKey) -> None:
+    m1 = mock.Mock()
+    m2 = mock.Mock()
+    m1.is_connected.return_value = True
+    m2.is_connected.return_value = False
     testset: Dict[ConnectionKey, List[Tuple[ResponseHandler, float]]] = {
-        key: [(mock.Mock(return_value=True), 10), (mock.Mock(return_value=False), 300)],
+        key: [(m1, 10), (m2, 300)],
     }
 
     loop = mock.Mock()
