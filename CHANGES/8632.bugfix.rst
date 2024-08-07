@@ -1,1 +1,1 @@
-Fixed connecting to ``unix://`` urls -- by :user:`bdraco`.
+Fixed connecting to ``npipe://`` and ``unix://`` urls -- by :user:`bdraco`.
