@@ -1824,7 +1824,7 @@ async def test_ctor_with_default_loop(loop: asyncio.AbstractEventLoop) -> None:
     assert loop is conn._loop
 
 
-async def test_base_connector_allows_all_protocols(
+async def test_base_connector_allows_high_level_protocols(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
     conn = aiohttp.BaseConnector()
@@ -1834,9 +1834,6 @@ async def test_base_connector_allows_all_protocols(
         "https",
         "ws",
         "wss",
-        "tcp",
-        "unix",
-        "npipe",
     }
 
 
