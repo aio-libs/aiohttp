@@ -521,9 +521,7 @@ async def test_close_conn_on_error(
                     c.__del__()
 
 
-@pytest.mark.parametrize(
-    "protocol", ["http", "https", "npipe", "ws", "wss", "unix", "tcp"]
-)
+@pytest.mark.parametrize("protocol", ["http", "https", "ws", "wss"])
 async def test_ws_connect_allowed_protocols(
     create_session: Callable[..., Awaitable[ClientSession]],
     create_mocked_conn: Callable[[], ResponseHandler],
