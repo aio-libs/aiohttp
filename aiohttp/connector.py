@@ -259,7 +259,7 @@ class BaseConnector:
     def allowed_protocol_schema_set(self) -> frozenset[str]:
         """Return allowed protocol schema set.
 
-        By default we allow all protocols.
+        By default we allow all protocols for backwards compatibility.
         """
         return ALLOWED_PROTOCOL_SCHEMA_SET
 
