@@ -702,6 +702,7 @@ async def test_heartbeat_no_pong_after_many_messages(
         msg = await ws.receive()
         ping_received = msg.type is aiohttp.WSMsgType.PING
         await ws.receive()
+        assert False
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
