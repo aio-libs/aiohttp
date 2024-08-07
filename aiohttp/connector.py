@@ -7,7 +7,7 @@ import socket
 import sys
 import traceback
 import warnings
-from collections import defaultdict, deque
+from collections import defaultdict, deque, frozenset
 from contextlib import suppress
 from functools import cached_property
 from http import HTTPStatus
@@ -256,7 +256,7 @@ class BaseConnector:
         self._cleanup_closed()
 
     @cached_property
-    def allowed_protocol_schema_set(self) -> Set[str]:
+    def allowed_protocol_schema_set(self) -> frozenset[str]:
         """Return allowed protocol schema set.
 
         By default we allow all protocols.
@@ -811,7 +811,7 @@ class TCPConnector(BaseConnector):
         return super()._close_immediately()
 
     @cached_property
-    def allowed_protocol_schema_set(self) -> Set[str]:
+    def allowed_protocol_schema_set(self) -> frozenset[str]:
         """Return allowed protocol schema set."""
         return HTTP_SCHEMA_SET | WS_SCHEMA_SET
 
@@ -1383,7 +1383,7 @@ class UnixConnector(BaseConnector):
         self._path = path
 
     @cached_property
-    def allowed_protocol_schema_set(self) -> Set[str]:
+    def allowed_protocol_schema_set(self) -> frozenset[str]:
         """Return allowed protocol schema set."""
         return UNIX_PROTCOL_SCHEMA_SET
 
@@ -1448,7 +1448,7 @@ class NamedPipeConnector(BaseConnector):
         self._path = path
 
     @cached_property
-    def allowed_protocol_schema_set(self) -> Set[str]:
+    def allowed_protocol_schema_set(self) -> frozenset[str]:
         """Return allowed protocol schema set."""
         return NAMED_PIPE_PROTOCOL_SCHEMA_SET
 
