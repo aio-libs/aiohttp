@@ -459,6 +459,7 @@ class ClientSession:
         except ValueError as e:
             raise InvalidUrlClientError(str_or_url) from e
 
+        assert self._connector is not None
         if url.scheme not in self._connector.allowed_protocol_schema_set:
             raise NonHttpUrlClientError(url)
 
@@ -590,7 +591,6 @@ class ClientSession:
                             real_timeout.connect,
                             ceil_threshold=real_timeout.ceil_threshold,
                         ):
-                            assert self._connector is not None
                             conn = await self._connector.connect(
                                 req, traces=traces, timeout=real_timeout
                             )
