@@ -25,6 +25,7 @@ from typing import (  # noqa
     List,
     Literal,
     Optional,
+    Sequence,
     Set,
     Tuple,
     Type,
@@ -812,7 +813,7 @@ class TCPConnector(BaseConnector):
             self._cached_hosts.clear()
 
     async def _resolve_host(
-        self, host: str, port: int, traces: Optional[List["Trace"]] = None
+        self, host: str, port: int, traces: Optional[Sequence["Trace"]] = None
     ) -> List[ResolveResult]:
         """Resolve host and return list of addresses."""
         if is_ip_address(host):
@@ -880,7 +881,7 @@ class TCPConnector(BaseConnector):
         key: Tuple[str, int],
         host: str,
         port: int,
-        traces: Optional[List["Trace"]],
+        traces: Optional[Sequence["Trace"]],
     ) -> List[ResolveResult]:
         """Resolve host with a dns events throttle."""
         if key in self._throttle_dns_events:
