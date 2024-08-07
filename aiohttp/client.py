@@ -10,7 +10,7 @@ import sys
 import traceback
 import warnings
 from contextlib import suppress
-from types import SimpleNamespace, TracebackType
+from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -162,7 +162,7 @@ if sys.version_info >= (3, 11) and TYPE_CHECKING:
 
 
 class _RequestOptions(TypedDict, total=False):
-    params: Union[Mapping[str, str], None]
+    params: Union[Mapping[str, Union[str, int]], str, None]
     data: Any
     json: Any
     cookies: Union[LooseCookies, None]
@@ -182,7 +182,7 @@ class _RequestOptions(TypedDict, total=False):
     ssl: Union[SSLContext, bool, Fingerprint]
     server_hostname: Union[str, None]
     proxy_headers: Union[LooseHeaders, None]
-    trace_request_ctx: Union[SimpleNamespace, None]
+    trace_request_ctx: Union[Mapping[str, str], None]
     read_bufsize: Union[int, None]
     auto_decompress: Union[bool, None]
     max_line_size: Union[int, None]
@@ -378,11 +378,22 @@ class ClientSession:
                 context["source_traceback"] = self._source_traceback
             self._loop.call_exception_handler(context)
 
-    def request(
-        self, method: str, url: StrOrURL, **kwargs: Any
-    ) -> "_RequestContextManager":
-        """Perform HTTP request."""
-        return _RequestContextManager(self._request(method, url, **kwargs))
+    if sys.version_info >= (3, 11) and TYPE_CHECKING:
+
+        def request(
+            self,
+            method: str,
+            url: StrOrURL,
+            **kwargs: Unpack[_RequestOptions],
+        ) -> "_RequestContextManager": ...
+
+    else:
+
+        def request(
+            self, method: str, url: StrOrURL, **kwargs: Any
+        ) -> "_RequestContextManager":
+            """Perform HTTP request."""
+            return _RequestContextManager(self._request(method, url, **kwargs))
 
     def _build_url(self, str_or_url: StrOrURL) -> URL:
         url = URL(str_or_url)
@@ -419,7 +430,7 @@ class ClientSession:
         ssl: Union[SSLContext, bool, Fingerprint] = True,
         server_hostname: Optional[str] = None,
         proxy_headers: Optional[LooseHeaders] = None,
-        trace_request_ctx: Optional[SimpleNamespace] = None,
+        trace_request_ctx: Optional[Mapping[str, str]] = None,
         read_bufsize: Optional[int] = None,
         auto_decompress: Optional[bool] = None,
         max_line_size: Optional[int] = None,
