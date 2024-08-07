@@ -415,7 +415,7 @@ async def test_release_ssl_transport(
     loop: asyncio.AbstractEventLoop, ssl_key: ConnectionKey
 ) -> None:
     conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
-    with mock.patch.object(conn, "_release_waiter", autospec=True, spec_set=True) as m:
+    with mock.patch.object(conn, "_release_waiter", autospec=True, spec_set=True):
         proto = create_mocked_conn(loop)
         transport = proto.transport
         conn._acquired.add(proto)
@@ -532,7 +532,7 @@ async def test_release_waiter_no_available(
     conn._waiters[key].append(w)
     with mock.patch.object(
         conn, "_available_connections", autospec=True, spec_set=True, return_value=0
-    ) as m:
+    ):
         conn._release_waiter()
         assert len(conn._waiters) == 1
         assert not w.done.called
@@ -1474,7 +1474,7 @@ async def test_connect_tracing(loop: asyncio.AbstractEventLoop) -> None:
     conn = aiohttp.BaseConnector()
     with mock.patch.object(
         conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
-    ) as m:
+    ):
         conn2 = await conn.connect(req, traces, ClientTimeout())
         conn2.release()
 
@@ -1828,7 +1828,7 @@ async def test_connect_with_limit(
     conn._conns[key] = [(proto, loop.time())]
     with mock.patch.object(
         conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
-    ) as m:
+    ):
         connection1 = await conn.connect(req, [], ClientTimeout())
         assert connection1._protocol == proto
 
@@ -1885,7 +1885,7 @@ async def test_connect_queued_operation_tracing(
     conn._conns[key] = [(proto, loop.time())]
     with mock.patch.object(
         conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
-    ) as m:
+    ):
         connection1 = await conn.connect(req, traces, ClientTimeout())
 
         async def f() -> None:
@@ -1949,7 +1949,7 @@ async def test_connect_with_limit_and_limit_per_host(
     conn._conns[key] = [(proto, loop.time())]
     with mock.patch.object(
         conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
-    ) as m:
+    ):
         acquired = False
         connection1 = await conn.connect(req, [], ClientTimeout())
 
@@ -1984,7 +1984,7 @@ async def test_connect_with_no_limit_and_limit_per_host(
     conn._conns[key] = [(proto, loop.time())]
     with mock.patch.object(
         conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
-    ) as m:
+    ):
         acquired = False
         connection1 = await conn.connect(req, [], ClientTimeout())
 
@@ -2017,7 +2017,7 @@ async def test_connect_with_no_limits(
     conn._conns[key] = [(proto, loop.time())]
     with mock.patch.object(
         conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
-    ) as m:
+    ):
         acquired = False
         connection1 = await conn.connect(req, [], ClientTimeout())
 
@@ -2050,7 +2050,7 @@ async def test_connect_with_limit_cancelled(
     conn._conns[key] = [(proto, loop.time())]
     with mock.patch.object(
         conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
-    ) as m:
+    ):
         connection = await conn.connect(req, [], ClientTimeout())
         assert connection._protocol == proto
         assert connection.transport == proto.transport
@@ -2072,7 +2072,7 @@ async def test_connect_with_capacity_release_waiters(
         conn = aiohttp.BaseConnector(limit=1)
         with mock.patch.object(
             conn, "_create_connection", autospec=True, spec_set=True, side_effect=err
-        ) as m:
+        ):
             with pytest.raises(Exception):
                 req = mock.Mock()
                 await conn.connect(req, [], ClientTimeout())
@@ -2200,7 +2200,7 @@ async def test_close_with_acquired_connection(
     conn._conns[key] = [(proto, loop.time())]
     with mock.patch.object(
         conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
-    ) as m:
+    ):
         connection = await conn.connect(req, [], ClientTimeout())
 
         assert 1 == len(conn._acquired)
@@ -2248,8 +2248,8 @@ async def test_limit_per_host_property_default(loop: asyncio.AbstractEventLoop) 
 async def test_force_close_and_explicit_keep_alive(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
-    conn = aiohttp.BaseConnector(force_close=True)
-    conn = aiohttp.BaseConnector(force_close=True, keepalive_timeout=None)
+    aiohttp.BaseConnector(force_close=True)
+    aiohttp.BaseConnector(force_close=True, keepalive_timeout=None)
     with pytest.raises(ValueError):
         aiohttp.BaseConnector(keepalive_timeout=30, force_close=True)
 
@@ -2855,7 +2855,7 @@ async def test_connector_does_not_remove_needed_waiters(
             autospec=True,
             spec_set=True,
             return_value=proto,
-        ) as m:
+        ):
             dummy_waiter = loop.create_future()
 
             await asyncio.gather(
