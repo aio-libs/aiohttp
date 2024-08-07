@@ -687,10 +687,10 @@ async def test_heartbeat_no_pong(aiohttp_client: AiohttpClient) -> None:
     assert resp.close_code is WSCloseCode.ABNORMAL_CLOSURE
 
 
-async def test_heartbeat_no_pong_after_many_messages(
+async def test_heartbeat_no_pong_after_receive_many_messages(
     aiohttp_client: AiohttpClient,
 ) -> None:
-    """Test that the connection is closed if no pong is received after many messages."""
+    """Test that the connection is closed if no pong is received after receiving many messages."""
     ping_received = False
 
     async def handler(request: web.Request) -> NoReturn:
@@ -715,6 +715,40 @@ async def test_heartbeat_no_pong_after_many_messages(
         assert test_msg.data == "test"
     # Connection should be closed roughly after 1.5x heartbeat.
 
+    await asyncio.sleep(0.2)
+    assert ping_received
+    assert resp.close_code is WSCloseCode.ABNORMAL_CLOSURE
+
+
+async def test_heartbeat_no_pong_after_send_many_messages(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test that the connection is closed if no pong is received after sending many messages."""
+    ping_received = False
+
+    async def handler(request: web.Request) -> NoReturn:
+        nonlocal ping_received
+        ws = web.WebSocketResponse(autoping=False)
+        await ws.prepare(request)
+        for _ in range(10):
+            msg = await ws.receive()
+            assert msg.data == "test"
+            assert msg.type is aiohttp.WSMsgType.TEXT
+        msg = await ws.receive()
+        ping_received = msg.type is aiohttp.WSMsgType.PING
+        await ws.receive()
+        assert False
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/", heartbeat=0.1)
+
+    for _ in range(10):
+        await resp.send_str("test")
+
+    # Connection should be closed roughly after 1.5x heartbeat.
     await asyncio.sleep(0.2)
     assert ping_received
     assert resp.close_code is WSCloseCode.ABNORMAL_CLOSURE
