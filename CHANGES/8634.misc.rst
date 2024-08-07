@@ -1,0 +1,1 @@
+Minor improvements to various type annotations -- by :user:`Dreamsorcerer`.
