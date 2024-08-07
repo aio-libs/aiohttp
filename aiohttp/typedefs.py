@@ -35,7 +35,13 @@ else:
 Byteish = Union[bytes, bytearray, memoryview]
 JSONEncoder = Callable[[Any], str]
 JSONDecoder = Callable[[str], Any]
-LooseHeaders = Union[Mapping[Union[str, istr], str], _CIMultiDict, _CIMultiDictProxy]
+LooseHeaders = Union[
+    Mapping[str, str],
+    Mapping[istr, str],
+    _CIMultiDict,
+    _CIMultiDictProxy,
+    Iterable[Tuple[Union[str, istr], str]],
+]
 RawHeaders = Tuple[Tuple[bytes, bytes], ...]
 StrOrURL = Union[str, URL]
 
