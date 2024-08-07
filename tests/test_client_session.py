@@ -467,7 +467,7 @@ async def test_close_conn_on_error(
         c.__del__()
 
 
-@pytest.mark.parametrize("protocol", ["http", "https", "ws", "wss"])
+@pytest.mark.parametrize("protocol", ["http", "https", "ws", "wss", "unix"])
 async def test_ws_connect_allowed_protocols(
     create_session: Any,
     create_mocked_conn: Any,
@@ -482,7 +482,7 @@ async def test_ws_connect_allowed_protocols(
         hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
-    resp.url = URL(f"{protocol}://example.com")
+    resp.url = URL(f"{protocol}://example")
     resp.cookies = SimpleCookie()
     resp.start = mock.AsyncMock()
 
@@ -510,7 +510,7 @@ async def test_ws_connect_allowed_protocols(
         "aiohttp.client.os"
     ) as m_os:
         m_os.urandom.return_value = key_data
-        await session.ws_connect(f"{protocol}://example.com")
+        await session.ws_connect(f"{protocol}://example")
 
     # normally called during garbage collection.  triggers an exception
     # if the connection wasn't already closed
