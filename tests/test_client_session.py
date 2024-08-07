@@ -605,9 +605,9 @@ async def test_ws_connect_unix_socket_allowed_protocols(
     req_factory = mock.Mock(return_value=req)
     req.send = mock.AsyncMock(return_value=resp)
     # UnixConnector allows all protocols by default and unix sockets
-    connector = UnixConnector(path="")
-
-    session = await create_session(connector=connector, request_class=req_factory)
+    session = await create_session(
+        connector=UnixConnector(path=""), request_class=req_factory
+    )
 
     connections = []
     assert session._connector is not None
