@@ -817,7 +817,6 @@ async def test_close_websocket_while_ping_inflight(
     resp = await client.ws_connect("/", heartbeat=0.1)
     await resp.send_bytes(b"ask")
 
-    original_ping = resp.ping
     cancelled = False
     ping_stated = False
 
@@ -825,8 +824,7 @@ async def test_close_websocket_while_ping_inflight(
         nonlocal cancelled, ping_stated
         ping_stated = True
         try:
-            await asyncio.sleep(0.2)
-            await original_ping()
+            await asyncio.sleep(1)
         except asyncio.CancelledError:
             cancelled = True
             raise
