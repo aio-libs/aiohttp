@@ -771,7 +771,7 @@ class TestMultipartReader:
                     b"oobar--",
                 ]
 
-            async def read(self, size: Optional[Any] = None) -> bytes:
+            async def read(self, size = None) -> bytes:
                 chunk = self.content.pop(0)
                 assert len(chunk) <= size
                 return chunk
