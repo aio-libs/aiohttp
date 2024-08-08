@@ -184,7 +184,7 @@ class WebSocketResponse(StreamResponse):
             # the task on the event loop.
             ping_task = asyncio.Task(self._writer.ping(), loop=loop, eager_start=True)
         else:
-            ping_task = self.loop.create_task(self._writer.ping())
+            ping_task = loop.create_task(self._writer.ping())
 
         if not ping_task.done():
             self._ping_task = ping_task
