@@ -669,7 +669,7 @@ class TestMultipartReader:
                     b"\r\nwor",
                     b"ld!",
                     b"\r\n--f",
-                    b"oobar--"
+                    b"oobar--",
                 ]
 
             async def read(self, size: Optional[Any] = None) -> bytes:
