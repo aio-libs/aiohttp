@@ -10,6 +10,112 @@
 
 .. towncrier release notes start
 
+3.10.2 (2024-08-08)
+===================
+
+Bug fixes
+---------
+
+- Fixed server checks for circular symbolic links to be compatible with Python 3.13 -- by :user:`steverep`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8565`.
+
+
+
+- Fixed request body not being read when ignoring an Upgrade request -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8597`.
+
+
+
+- Fixed an edge case where shutdown would wait for timeout when the handler was already completed -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8611`.
+
+
+
+- Fixed connecting to ``npipe://``, ``tcp://``, and ``unix://`` urls -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8632`.
+
+
+
+- Fixed WebSocket ping tasks being prematurely garbage collected -- by :user:`bdraco`.
+
+  There was a small risk that WebSocket ping tasks would be prematurely garbage collected because the event loop only holds a weak reference to the task. The garbage collection risk has been fixed by holding a strong reference to the task. Additionally, the task is now scheduled eagerly with Python 3.12+ to increase the chance it can be completed immediately and avoid having to hold any references to the task.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8641`.
+
+
+
+- Fixed incorrectly following symlinks for compressed file variants -- by :user:`steverep`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8652`.
+
+
+
+
+Removals and backward incompatible breaking changes
+---------------------------------------------------
+
+- Removed ``Request.wait_for_disconnection()``, which was mistakenly added briefly in 3.10.0 -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8636`.
+
+
+
+
+Contributor-facing changes
+--------------------------
+
+- Fixed monkey patches for ``Path.stat()`` and ``Path.is_dir()`` for Python 3.13 compatibility -- by :user:`steverep`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8551`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved WebSocket performance when messages are sent or received frequently -- by :user:`bdraco`.
+
+  The WebSocket heartbeat scheduling algorithm was improved to reduce the ``asyncio`` scheduling overhead by decreasing the number of ``asyncio.TimerHandle`` creations and cancellations.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8608`.
+
+
+
+- Minor improvements to various type annotations -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8634`.
+
+
+
+
+----
+
+
 3.10.1 (2024-08-03)
 ========================
 
