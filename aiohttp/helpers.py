@@ -599,7 +599,7 @@ def create_eager_task(
 ) -> "asyncio.Task[None]":
     """Create a task that will be scheduled immediately if possible."""
     if sys.version_info >= (3, 12):
-        # Optimization for Python 3.12, try start eagerly
+        # Optimization for Python 3.12+, try start eagerly
         # to avoid being scheduled on the event loop.
         return asyncio.Task(coro, loop=loop, eager_start=True)
     # For older python versions, we need to schedule the task
