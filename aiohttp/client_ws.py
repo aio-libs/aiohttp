@@ -140,10 +140,9 @@ class ClientWebSocketResponse:
         self._cancel_pong_response_cb()
         self._pong_response_cb = loop.call_at(when, self._pong_not_received)
 
-        self._ping_task = create_eager_task(self._writer.ping(), loop)
-        if self._ping_task.done():
-            self._ping_task = None
-        else:
+        ping_task = create_eager_task(self._writer.ping(), loop)
+        if not ping_task.done():
+            self._ping_task = ping_task
             self._ping_task.add_done_callback(self._ping_task_done)
 
     def _ping_task_done(self, task: "asyncio.Task[None]") -> None:
