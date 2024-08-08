@@ -3,6 +3,7 @@ import asyncio
 import io
 import json
 import pathlib
+import sys
 import zlib
 from typing import Any, Optional
 from unittest import mock
