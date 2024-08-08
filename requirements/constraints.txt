@@ -8,7 +8,7 @@ aiodns==3.2.0 ; sys_platform == "linux" or sys_platform == "darwin"
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
-aiohappyeyeballs==2.3.4
+aiohappyeyeballs==2.3.5
     # via -r requirements/runtime-deps.in
 aiohttp-theme==0.1.6
     # via -r requirements/doc.in
@@ -75,7 +75,9 @@ exceptiongroup==1.1.2
 filelock==3.3.2
     # via virtualenv
 freezegun==1.5.1
-    # via -r requirements/test.in
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/test.in
 frozenlist==1.4.1
     # via
     #   -r requirements/runtime-deps.in
@@ -175,7 +177,9 @@ pytest==8.3.2
 pytest-cov==5.0.0
     # via -r requirements/test.in
 pytest-mock==3.14.0
-    # via -r requirements/test.in
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/test.in
 python-dateutil==2.8.2
     # via freezegun
 python-on-whales==0.72.0
@@ -247,7 +251,9 @@ towncrier==23.11.0
 tqdm==4.62.3
     # via python-on-whales
 trustme==1.1.0 ; platform_machine != "i686"
-    # via -r requirements/test.in
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/test.in
 typer==0.6.1
     # via python-on-whales
 typing-extensions==4.11.0
