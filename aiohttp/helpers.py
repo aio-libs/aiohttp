@@ -29,6 +29,7 @@ from typing import (
     Any,
     Callable,
     ContextManager,
+    Coroutine,
     Dict,
     Generic,
     Iterable,
@@ -593,7 +594,7 @@ def weakref_handle(
 
 
 def create_eager_task(
-    coro: Callable[..., Any],
+    coro: Coroutine[Any, Any, None],
     loop: asyncio.AbstractEventLoop,
 ) -> asyncio.Task:
     """Create a task that will be scheduled immediately if possible."""
