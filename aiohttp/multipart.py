@@ -266,6 +266,7 @@ class BodyPartReader:
     ) -> None:
         self.headers = headers
         self._boundary = boundary
+        self._boundary_len = len(boundary) + 2  # Boundary + \r\n
         self._content = content
         self._default_charset = default_charset
         self._at_eof = False
@@ -346,15 +347,25 @@ class BodyPartReader:
         # Reads content chunk of body part with unknown length.
         # The Content-Length header for body part is not necessary.
         assert (
-            size >= len(self._boundary) + 2
+            size >= self._boundary_len
         ), "Chunk size must be greater or equal than boundary length + 2"
         first_chunk = self._prev_chunk is None
         if first_chunk:
             self._prev_chunk = await self._content.read(size)
 
-        chunk = await self._content.read(size)
-        self._content_eof += int(self._content.at_eof())
-        assert self._content_eof < 3, "Reading after EOF"
+        chunk = b""
+        # content.read() may return less than size, so we need to loop to ensure
+        # we have enough data to detect the boundary.
+        while len(chunk) < self._boundary_len:
+            chunk += await self._content.read(size)
+            self._content_eof += int(self._content.at_eof())
+            assert self._content_eof < 3, "Reading after EOF"
+            if self._content_eof:
+                break
+        if len(chunk) > size:
+            self._content.unread_data(chunk[size:])
+            chunk = chunk[:size]
+
         assert self._prev_chunk is not None
         window = self._prev_chunk + chunk
         sub = b"\r\n" + self._boundary
