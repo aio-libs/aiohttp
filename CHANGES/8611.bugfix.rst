@@ -1,1 +1,1 @@
-Fixed an edge case where shutdown would wait for timeout when handler was already completed -- by :user:`Dreamsorcerer`.
+Fixed an edge case where shutdown would wait for timeout when the handler was already completed -- by :user:`Dreamsorcerer`.
