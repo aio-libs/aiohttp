@@ -793,6 +793,51 @@ async def test_heartbeat_no_pong_concurrent_receive(
         assert isinstance(msg.data, ServerTimeoutError)
 
 
+async def test_close_websocket_while_ping_inflight(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test closing the websocket while a ping is in-flight."""
+    ping_received = False
+
+    async def handler(request: web.Request) -> NoReturn:
+        nonlocal ping_received
+        ws = web.WebSocketResponse(autoping=False)
+        await ws.prepare(request)
+        msg = await ws.receive()
+        assert msg.type is aiohttp.WSMsgType.BINARY
+        msg = await ws.receive()
+        ping_received = msg.type is aiohttp.WSMsgType.PING
+        await ws.receive()
+        assert False
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/", heartbeat=0.1)
+    await resp.send_bytes(b"ask")
+
+    cancelled = False
+    ping_stated = False
+
+    async def delayed_ping() -> None:
+        nonlocal cancelled, ping_stated
+        ping_stated = True
+        try:
+            await asyncio.sleep(1)
+        except asyncio.CancelledError:
+            cancelled = True
+            raise
+
+    with mock.patch.object(resp._writer, "ping", delayed_ping):
+        await asyncio.sleep(0.1)
+
+    await resp.close()
+    await asyncio.sleep(0)
+    assert ping_stated is True
+    assert cancelled is True
+
+
 async def test_send_recv_compress(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
