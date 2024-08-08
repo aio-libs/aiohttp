@@ -1,0 +1,1 @@
+Fixed incorrectly following symlinks for compressed file variants -- by :user:`steverep`.

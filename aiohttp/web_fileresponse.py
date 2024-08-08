@@ -177,7 +177,10 @@ class FileResponse(StreamResponse):
 
             compressed_path = file_path.with_suffix(file_path.suffix + file_extension)
             with suppress(OSError):
-                return compressed_path, compressed_path.stat(), file_encoding
+                # Do not follow symlinks and ignore any non-regular files.
+                st = compressed_path.lstat()
+                if S_ISREG(st.st_mode):
+                    return compressed_path, st, file_encoding
 
         # Fallback to the uncompressed file
         return file_path, file_path.stat(), None
