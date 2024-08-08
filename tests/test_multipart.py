@@ -3,6 +3,7 @@ import asyncio
 import io
 import json
 import pathlib
+import sys
 import zlib
 from typing import Any, Optional
 from unittest import mock
@@ -656,6 +657,66 @@ class TestMultipartReader:
             )
             with pytest.raises(ValueError):
                 await reader.next()
+
+    @pytest.mark.skipif(sys.version_info < (3, 10), reason="Needs anext()")
+    async def test_read_boundary_across_chunks(self) -> None:
+        class SplitBoundaryStream:
+            def __init__(self) -> None:
+                self.content = [
+                    b"--foobar\r\n\r\n",
+                    b"Hello,\r\n-",
+                    b"-fo",
+                    b"ob",
+                    b"ar\r\n",
+                    b"\r\nwor",
+                    b"ld!",
+                    b"\r\n--f",
+                    b"oobar--",
+                ]
+
+            async def read(self, size: Optional[Any] = None) -> bytes:
+                chunk = self.content.pop(0)
+                assert len(chunk) <= size
+                return chunk
+
+            def at_eof(self) -> bool:
+                return not self.content
+
+            async def readline(self) -> bytes:
+                line = b""
+                while self.content and b"\n" not in line:
+                    line += self.content.pop(0)
+                line, *extra = line.split(b"\n", maxsplit=1)
+                if extra and extra[0]:
+                    self.content.insert(0, extra[0])
+                return line + b"\n"
+
+            def unread_data(self, data: bytes) -> None:
+                if self.content:
+                    self.content[0] = data + self.content[0]
+                else:
+                    self.content.append(data)
+
+        stream = SplitBoundaryStream()
+        reader = aiohttp.MultipartReader(
+            {CONTENT_TYPE: 'multipart/related;boundary="foobar"'}, stream
+        )
+        part = await anext(reader)
+        result = await part.read_chunk(10)
+        assert result == b"Hello,"
+        result = await part.read_chunk(10)
+        assert result == b""
+        assert part.at_eof()
+
+        part = await anext(reader)
+        result = await part.read_chunk(10)
+        assert result == b"world!"
+        result = await part.read_chunk(10)
+        assert result == b""
+        assert part.at_eof()
+
+        with pytest.raises(StopAsyncIteration):
+            await anext(reader)
 
     async def test_release(self) -> None:
         with Stream(
