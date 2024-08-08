@@ -673,7 +673,7 @@ class StaticResource(PrefixResource):
                 file_path = unresolved_path.resolve()
                 file_path.relative_to(self._directory)
         except (ValueError, *CIRCULAR_SYMLINK_ERROR) as error:
-            # ValueError is raised for  the relative check. Circular symlinks
+            # ValueError is raised for the relative check. Circular symlinks
             # raise here on resolving for python < 3.13.
             raise HTTPNotFound() from error
 
