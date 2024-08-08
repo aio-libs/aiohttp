@@ -19,7 +19,6 @@ from typing import (
     MutableMapping,
     Optional,
     Pattern,
-    Set,
     Tuple,
     Union,
     cast,
@@ -50,7 +49,6 @@ from .helpers import (
     reify,
     sentinel,
     set_exception,
-    set_result,
 )
 from .http_parser import RawRequestMessage
 from .http_writer import HttpVersion
@@ -146,7 +144,6 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             "_loop",
             "_transport_sslcontext",
             "_transport_peername",
-            "_disconnection_waiters",
         ]
     )
 
@@ -194,7 +191,6 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self._task = task
         self._client_max_size = client_max_size
         self._loop = loop
-        self._disconnection_waiters: Set[asyncio.Future[None]] = set()
 
         transport = self._protocol.transport
         assert transport is not None
@@ -823,21 +819,18 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
     def _cancel(self, exc: BaseException) -> None:
         set_exception(self._payload, exc)
-        for fut in self._disconnection_waiters:
-            set_result(fut, None)
 
     def _finish(self) -> None:
-        for fut in self._disconnection_waiters:
-            fut.cancel()
+        if self._post is None or self.content_type != "multipart/form-data":
+            return
 
-    async def wait_for_disconnection(self) -> None:
-        loop = asyncio.get_event_loop()
-        fut = loop.create_future()  # type: asyncio.Future[None]
-        self._disconnection_waiters.add(fut)
-        try:
-            await fut
-        finally:
-            self._disconnection_waiters.remove(fut)
+        # NOTE: Release file descriptors for the
+        # NOTE: `tempfile.Temporaryfile`-created `_io.BufferedRandom`
+        # NOTE: instances of files sent within multipart request body
+        # NOTE: via HTTP POST request.
+        for file_name, file_field_object in self._post.items():
+            if isinstance(file_field_object, FileField):
+                file_field_object.file.close()
 
 
 class Request(BaseRequest):
