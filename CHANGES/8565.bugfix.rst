@@ -1,0 +1,1 @@
+Fixed server checks for circular symbolic links to be compatible with Python 3.13 -- by :user:`steverep`.
