@@ -1,1 +1,0 @@
-Fixed request body not being read when ignoring an Upgrade request -- by :user:`Dreamsorcerer`.
