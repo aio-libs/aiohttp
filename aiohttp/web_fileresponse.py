@@ -188,7 +188,9 @@ class FileResponse(StreamResponse):
             file_path, st, file_encoding = await loop.run_in_executor(
                 None, self._get_file_path_stat_encoding, accept_encoding
             )
-        except FileNotFoundError:
+        except OSError:
+            # Most likely to be FileNotFoundError or OSError for circular
+            # symlinks in python >= 3.13, so respond with 404.
             self.set_status(HTTPNotFound.status_code)
             return await super().prepare(request)
 
