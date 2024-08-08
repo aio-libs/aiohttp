@@ -520,6 +520,38 @@ async def test_access_symlink_loop(
     assert r.status == 404
 
 
+async def test_access_compressed_file_as_symlink(
+    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+) -> None:
+    """Test that compressed file variants as symlinks are ignored."""
+    private_file = tmp_path / "private.txt"
+    private_file.write_text("private info")
+    www_dir = tmp_path / "www"
+    www_dir.mkdir()
+    gz_link = www_dir / "file.txt.gz"
+    gz_link.symlink_to(f"../{private_file.name}")
+
+    app = web.Application()
+    app.router.add_static("/", www_dir)
+    client = await aiohttp_client(app)
+
+    # Symlink should be ignored; response reflects missing uncompressed file.
+    resp = await client.get(f"/{gz_link.stem}", auto_decompress=False)
+    assert resp.status == 404
+    resp.release()
+
+    # Again symlin is ignored, and then uncompressed is served.
+    txt_file = gz_link.with_suffix("")
+    txt_file.write_text("public data")
+    resp = await client.get(f"/{txt_file.name}")
+    assert resp.status == 200
+    assert resp.headers.get("Content-Encoding") is None
+    assert resp.content_type == "text/plain"
+    assert await resp.text() == "public data"
+    resp.release()
+    await client.close()
+
+
 async def test_access_special_resource(
     tmp_path_factory: pytest.TempPathFactory, aiohttp_client: AiohttpClient
 ) -> None:
