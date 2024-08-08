@@ -29,7 +29,6 @@ from typing import (
     Any,
     Callable,
     ContextManager,
-    Coroutine,
     Dict,
     Generic,
     Iterable,
@@ -591,20 +590,6 @@ def weakref_handle(
 
         return loop.call_at(when, _weakref_handle, (weakref.ref(ob), name))
     return None
-
-
-def create_eager_task(
-    coro: Coroutine[Any, Any, None],
-    loop: asyncio.AbstractEventLoop,
-) -> "asyncio.Task[None]":
-    """Create a task that will be run immediately if possible."""
-    if sys.version_info >= (3, 12):
-        # Optimization for Python 3.12+, try start eagerly
-        # to avoid being scheduled on the event loop.
-        return asyncio.Task(coro, loop=loop, eager_start=True)
-    # For older python versions, we need to schedule the task
-    # on the event loop as eager_start is not available.
-    return loop.create_task(coro)
 
 
 def call_later(

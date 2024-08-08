@@ -48,7 +48,6 @@ from .helpers import (
     HeadersMixin,
     TimerNoop,
     basicauth_from_netrc,
-    create_eager_task,
     is_expected_content_type,
     netrc_from_env,
     parse_mimetype,
@@ -669,10 +668,15 @@ class ClientRequest:
         await writer.write_headers(status_line, self.headers)
         coro = self.write_bytes(writer, conn)
 
-        # Optimization for Python 3.12+, try to write
-        # bytes immediately to avoid having to schedule
-        # the task on the event loop.
-        self._writer = create_eager_task(coro, self.loop)
+        if sys.version_info >= (3, 12):
+            # Optimization for Python 3.12, try to write
+            # bytes immediately to avoid having to schedule
+            # the task on the event loop.
+            task = asyncio.Task(coro, loop=self.loop, eager_start=True)
+        else:
+            task = self.loop.create_task(coro)
+
+        self._writer = task
         response_class = self.response_class
         assert response_class is not None
         self.response = response_class(

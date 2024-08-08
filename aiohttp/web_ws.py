@@ -11,12 +11,7 @@ from multidict import CIMultiDict
 
 from . import hdrs
 from .abc import AbstractStreamWriter
-from .helpers import (
-    calculate_timeout_when,
-    create_eager_task,
-    set_exception,
-    set_result,
-)
+from .helpers import calculate_timeout_when, set_exception, set_result
 from .http import (
     WS_CLOSED_MESSAGE,
     WS_CLOSING_MESSAGE,
@@ -183,7 +178,14 @@ class WebSocketResponse(StreamResponse):
         self._cancel_pong_response_cb()
         self._pong_response_cb = loop.call_at(when, self._pong_not_received)
 
-        ping_task = create_eager_task(self._writer.ping(), loop)
+        if sys.version_info >= (3, 12):
+            # Optimization for Python 3.12, try to send the ping
+            # immediately to avoid having to schedule
+            # the task on the event loop.
+            ping_task = asyncio.Task(self._writer.ping(), loop=loop, eager_start=True)
+        else:
+            ping_task = self.loop.create_task(self._writer.ping())
+
         if not ping_task.done():
             self._ping_task = ping_task
             ping_task.add_done_callback(self._ping_task_done)
