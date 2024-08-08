@@ -448,17 +448,19 @@ class RequestHandler(BaseProtocol):
             return
 
         next = self._keepalive_time + self._keepalive_timeout
+        now = self._loop.time()
 
         # handler in idle state
-        if self._waiter:
-            if self._loop.time() > next:
-                self.force_close()
-                return
+        if self._waiter and now > next:
+            self.force_close()
+            return
 
         # not all request handlers are done,
-        # reschedule itself to next second
-        self._keepalive_handle = self._loop.call_later(
-            self.KEEPALIVE_RESCHEDULE_DELAY,
+        # reschedule itself to next or
+        # the next second, whichever is later
+        reschedule_time = max(next, now + self.KEEPALIVE_RESCHEDULE_DELAY)
+        self._keepalive_handle = self._loop.call_at(
+            reschedule_time,
             self._process_keepalive,
         )
 
