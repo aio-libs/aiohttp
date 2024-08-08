@@ -596,7 +596,7 @@ def weakref_handle(
 def create_eager_task(
     coro: Coroutine[Any, Any, None],
     loop: asyncio.AbstractEventLoop,
-) -> asyncio.Task[Any]:
+) -> asyncio.Task[None]:
     """Create a task that will be scheduled immediately if possible."""
     if sys.version_info >= (3, 12):
         # Optimization for Python 3.12, try to write
