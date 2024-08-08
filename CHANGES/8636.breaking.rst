@@ -1,1 +1,1 @@
-Removed ``Request.wait_for_disconnection()`` which was mistakenly added briefly in 3.10.0 -- by :user:`Dreamsorcerer`.
+Removed ``Request.wait_for_disconnection()``, which was mistakenly added briefly in 3.10.0 -- by :user:`Dreamsorcerer`.
