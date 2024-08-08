@@ -146,7 +146,7 @@ class ClientWebSocketResponse:
         else:
             self._ping_task.add_done_callback(self._ping_task_done)
 
-    def _ping_task_done(self, task: asyncio.Task[None]) -> None:
+    def _ping_task_done(self, task: "asyncio.Task[None]") -> None:
         """Callback for when the ping task completes."""
         self._ping_task = None
 
