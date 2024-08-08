@@ -793,10 +793,10 @@ async def test_heartbeat_no_pong_concurrent_receive(
         assert isinstance(msg.data, ServerTimeoutError)
 
 
-async def test_heartbeat_cancel_while_ping_inflight(
+async def test_close_websocket_while_ping_inflight(
     aiohttp_client: AiohttpClient,
 ) -> None:
-    """Test canceling the websocket while a ping is in-flight."""
+    """Test closing the websocket while a ping is in-flight."""
     ping_received = False
 
     async def handler(request: web.Request) -> NoReturn:
