@@ -546,9 +546,9 @@ class RequestHandler(BaseProtocol):
                 # a new task is used for copy context vars (#3406)
                 coro = self._handle_request(request, start, request_handler)
                 if sys.version_info >= (3, 12):
-                    task = asyncio.create_task(coro, eager_start=True)
+                    task = asyncio.Task(coro, loop=loop, eager_start=True)
                 else:
-                    task = self._loop.create_task(coro)
+                    task = loop.create_task(coro)
                 try:
                     resp, reset = await task
                 except (asyncio.CancelledError, ConnectionError):
