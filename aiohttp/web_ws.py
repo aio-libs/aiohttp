@@ -11,7 +11,12 @@ from multidict import CIMultiDict
 
 from . import hdrs
 from .abc import AbstractStreamWriter
-from .helpers import calculate_timeout_when, set_exception, set_result
+from .helpers import (
+    calculate_timeout_when,
+    create_eager_task,
+    set_exception,
+    set_result,
+)
 from .http import (
     WS_CLOSED_MESSAGE,
     WS_CLOSING_MESSAGE,
@@ -80,6 +85,7 @@ class WebSocketResponse(StreamResponse):
         "_pong_response_cb",
         "_compress",
         "_max_msg_size",
+        "_ping_task",
     )
 
     def __init__(
@@ -120,12 +126,16 @@ class WebSocketResponse(StreamResponse):
         self._pong_response_cb: Optional[asyncio.TimerHandle] = None
         self._compress = compress
         self._max_msg_size = max_msg_size
+        self._ping_task: Optional[asyncio.Task[None]] = None
 
     def _cancel_heartbeat(self) -> None:
         self._cancel_pong_response_cb()
         if self._heartbeat_cb is not None:
             self._heartbeat_cb.cancel()
             self._heartbeat_cb = None
+        if self._ping_task is not None:
+            self._ping_task.cancel()
+            self._ping_task = None
 
     def _cancel_pong_response_cb(self) -> None:
         if self._pong_response_cb is not None:
@@ -165,11 +175,6 @@ class WebSocketResponse(StreamResponse):
             )
             return
 
-        # fire-and-forget a task is not perfect but maybe ok for
-        # sending ping. Otherwise we need a long-living heartbeat
-        # task in the class.
-        loop.create_task(self._writer.ping())  # type: ignore[unused-awaitable]
-
         req = self._req
         timeout_ceil_threshold = (
             req._protocol._timeout_ceil_threshold if req is not None else 5
@@ -177,6 +182,16 @@ class WebSocketResponse(StreamResponse):
         when = calculate_timeout_when(now, self._pong_heartbeat, timeout_ceil_threshold)
         self._cancel_pong_response_cb()
         self._pong_response_cb = loop.call_at(when, self._pong_not_received)
+
+        self._ping_task = create_eager_task(self._writer.ping(), loop)
+        if self._ping_task.done():
+            self._ping_task = None
+        else:
+            self._ping_task.add_done_callback(self._ping_task_done)
+
+    def _ping_task_done(self, task: asyncio.Task[None]) -> None:
+        """Callback for when the ping task completes."""
+        self._ping_task = None
 
     def _pong_not_received(self) -> None:
         if self._req is not None and self._req.transport is not None:

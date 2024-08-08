@@ -592,6 +592,21 @@ def weakref_handle(
     return None
 
 
+def create_eager_task(
+    coro: Callable[..., Any],
+    loop: asyncio.AbstractEventLoop,
+) -> asyncio.Task:
+    """Create a task that will be scheduled immediately if possible."""
+    if sys.version_info >= (3, 12):
+        # Optimization for Python 3.12, try to write
+        # bytes immediately to avoid having to schedule
+        # the task on the event loop.
+        return asyncio.Task(coro, loop=loop, eager_start=True)
+    # For older python versions, we need to schedule the task
+    # on the event loop as eager_start is not available.
+    return loop.create_task(coro)
+
+
 def call_later(
     cb: Callable[[], Any],
     timeout: Optional[float],
