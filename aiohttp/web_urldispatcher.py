@@ -77,9 +77,9 @@ else:
     BaseDict = dict
 
 CIRCULAR_SYMLINK_ERROR = (
-    OSError
+    (OSError,)
     if sys.version_info < (3, 10) and sys.platform.startswith("win32")
-    else RuntimeError
+    else (RuntimeError,) if sys.version_info < (3, 13) else ()
 )
 
 YARL_VERSION: Final[Tuple[int, ...]] = tuple(map(int, yarl_version.split(".")[:2]))
@@ -672,8 +672,9 @@ class StaticResource(PrefixResource):
             else:
                 file_path = unresolved_path.resolve()
                 file_path.relative_to(self._directory)
-        except (ValueError, CIRCULAR_SYMLINK_ERROR) as error:
-            # ValueError for relative check; RuntimeError for circular symlink.
+        except (ValueError, *CIRCULAR_SYMLINK_ERROR) as error:
+            # ValueError is raised for the relative check. Circular symlinks
+            # raise here on resolving for python < 3.13.
             raise HTTPNotFound() from error
 
         # if path is a directory, return the contents if permitted. Note the
