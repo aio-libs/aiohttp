@@ -1,0 +1,3 @@
+Fixed WebSocket ping tasks being prematurely garbage collected -- by :user:`bdraco`.
+
+There was a small risk that WebSocket ping tasks would be prematurely garbage collected because the event loop only holds a weak reference to the task. The garbage collection risk has been fixed by holding a strong reference to the task. Additionally, the task is not scheduled eagerly with Python 3.12+ to increase the chance it can be completed immediately and avoid having to hold any references to the task.
