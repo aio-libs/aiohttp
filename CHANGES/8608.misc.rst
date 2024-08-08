@@ -1,0 +1,3 @@
+Improved WebSocket performance when messages are sent or received frequently -- by :user:`bdraco`.
+
+The WebSocket heartbeat scheduling algorithm was improved to reduce the ``asyncio`` scheduling overhead by decreasing the number of ``asyncio.TimerHandle`` creations and cancellations.
