@@ -752,7 +752,8 @@ class TCPConnector(BaseConnector):
     """
 
     allowed_protocol_schema_set = HIGH_LEVEL_SCHEMA_SET | frozenset({"tcp"})
-    _made_ssl_context: Dict[bool, asyncio.Lock] = {}
+    _made_ssl_context: Set[bool] = set()
+    _make_ssl_context_lock: Dict[bool, asyncio.Lock] = {}
 
     def __init__(
         self,
@@ -1012,10 +1013,11 @@ class TCPConnector(BaseConnector):
             return self._make_ssl_context(verified)
         # _make_ssl_context does blocking I/O to load certificates
         # from disk, so we run it in a separate thread.
-        async with self._made_ssl_context.setdefault(verified, asyncio.Lock()):
+        async with self._make_ssl_context_lock.setdefault(verified, asyncio.Lock()):
             context = await self._loop.run_in_executor(
                 None, self._make_ssl_context, verified
             )
+            self._made_ssl_context.add(verified)
         return context
 
     def _get_fingerprint(self, req: ClientRequest) -> Optional["Fingerprint"]:
