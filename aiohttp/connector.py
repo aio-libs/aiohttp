@@ -752,6 +752,7 @@ class TCPConnector(BaseConnector):
     """
 
     allowed_protocol_schema_set = HIGH_LEVEL_SCHEMA_SET | frozenset({"tcp"})
+    _made_ssl_context: Set[bool] = set()
 
     def __init__(
         self,
@@ -948,27 +949,31 @@ class TCPConnector(BaseConnector):
     @staticmethod
     @functools.lru_cache(None)
     def _make_ssl_context(verified: bool) -> SSLContext:
+        """Create SSL context.
+
+        This method is not async-friendly and should be called from a thread
+        because it will load certificates from disk and do other blocking I/O.
+        """
         if verified:
             return ssl.create_default_context()
-        else:
-            sslcontext = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-            sslcontext.options |= ssl.OP_NO_SSLv2
-            sslcontext.options |= ssl.OP_NO_SSLv3
-            sslcontext.check_hostname = False
-            sslcontext.verify_mode = ssl.CERT_NONE
-            try:
-                sslcontext.options |= ssl.OP_NO_COMPRESSION
-            except AttributeError as attr_err:
-                warnings.warn(
-                    "{!s}: The Python interpreter is compiled "
-                    "against OpenSSL < 1.0.0. Ref: "
-                    "https://docs.python.org/3/library/ssl.html"
-                    "#ssl.OP_NO_COMPRESSION".format(attr_err),
-                )
-            sslcontext.set_default_verify_paths()
-            return sslcontext
+        sslcontext = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        sslcontext.options |= ssl.OP_NO_SSLv2
+        sslcontext.options |= ssl.OP_NO_SSLv3
+        sslcontext.check_hostname = False
+        sslcontext.verify_mode = ssl.CERT_NONE
+        try:
+            sslcontext.options |= ssl.OP_NO_COMPRESSION
+        except AttributeError as attr_err:
+            warnings.warn(
+                "{!s}: The Python interpreter is compiled "
+                "against OpenSSL < 1.0.0. Ref: "
+                "https://docs.python.org/3/library/ssl.html"
+                "#ssl.OP_NO_COMPRESSION".format(attr_err),
+            )
+        sslcontext.set_default_verify_paths()
+        return sslcontext
 
-    def _get_ssl_context(self, req: ClientRequest) -> Optional[SSLContext]:
+    async def _get_ssl_context(self, req: ClientRequest) -> Optional[SSLContext]:
         """Logic to get the correct SSL context
 
         0. if req.ssl is false, return None
@@ -982,24 +987,36 @@ class TCPConnector(BaseConnector):
             3. if verify_ssl is False in req, generate a SSL context that
                won't verify
         """
-        if req.is_ssl():
-            if ssl is None:  # pragma: no cover
-                raise RuntimeError("SSL is not supported.")
-            sslcontext = req.ssl
-            if isinstance(sslcontext, ssl.SSLContext):
-                return sslcontext
-            if sslcontext is not True:
-                # not verified or fingerprinted
-                return self._make_ssl_context(False)
-            sslcontext = self._ssl
-            if isinstance(sslcontext, ssl.SSLContext):
-                return sslcontext
-            if sslcontext is not True:
-                # not verified or fingerprinted
-                return self._make_ssl_context(False)
-            return self._make_ssl_context(True)
-        else:
+        if not req.is_ssl():
             return None
+
+        if ssl is None:  # pragma: no cover
+            raise RuntimeError("SSL is not supported.")
+        sslcontext = req.ssl
+        if isinstance(sslcontext, ssl.SSLContext):
+            return sslcontext
+        if sslcontext is not True:
+            # not verified or fingerprinted
+            return await self._make_or_get_cached_ssl_context(False)
+        sslcontext = self._ssl
+        if isinstance(sslcontext, ssl.SSLContext):
+            return sslcontext
+        if sslcontext is not True:
+            # not verified or fingerprinted
+            return await self._make_or_get_cached_ssl_context(False)
+        return await self._make_or_get_cached_ssl_context(True)
+
+    async def _make_or_get_cached_ssl_context(self, verified: bool) -> SSLContext:
+        """Create or get cached SSL context."""
+        if verified in self._made_ssl_context:
+            return self._make_ssl_context(verified)
+        # _make_ssl_context does blocking I/O to load certificates
+        # from disk, so we run it in a separate thread.
+        context = await self._loop.run_in_executor(
+            None, self._make_ssl_context, verified
+        )
+        self._made_ssl_context.add(verified)
+        return context
 
     def _get_fingerprint(self, req: ClientRequest) -> Optional["Fingerprint"]:
         ret = req.ssl
@@ -1092,7 +1109,7 @@ class TCPConnector(BaseConnector):
         # `req.is_ssl()` evaluates to `False` which is never gonna happen
         # in this code path. Of course, it's rather fragile
         # maintainability-wise but this is to be solved separately.
-        sslcontext = cast(ssl.SSLContext, self._get_ssl_context(req))
+        sslcontext = cast(ssl.SSLContext, await self._get_ssl_context(req))
 
         try:
             async with ceil_timeout(
@@ -1170,7 +1187,7 @@ class TCPConnector(BaseConnector):
         *,
         client_error: Type[Exception] = ClientConnectorError,
     ) -> Tuple[asyncio.Transport, ResponseHandler]:
-        sslcontext = self._get_ssl_context(req)
+        sslcontext = await self._get_ssl_context(req)
         fingerprint = self._get_fingerprint(req)
 
         host = req.url.raw_host
