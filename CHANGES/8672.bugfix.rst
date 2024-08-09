@@ -1,3 +1,3 @@
-Fix TCPConnector doing blocking I/O in the event loop to create the SSLContext -- by :user:`bdraco`.
+Fix :py:class:`aiohttp.TCPConnector` doing blocking I/O in the event loop to create the ``SSLContext`` -- by :user:`bdraco`.
 
-The blocking I/O would only happen once per verify mode. However, it could cause the event loop to block for a long time if the SSLContext creation is slow, which is more likely during startup when the disk cache is not yet present.
+The blocking I/O would only happen once per verify mode. However, it could cause the event loop to block for a long time if the ``SSLContext`` creation is slow, which is more likely during startup when the disk cache is not yet present.
