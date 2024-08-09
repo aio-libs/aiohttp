@@ -8,6 +8,7 @@ import re
 import sys
 import zlib
 from enum import IntEnum
+from functools import partial
 from struct import Struct
 from typing import (
     Any,
@@ -103,6 +104,7 @@ PACK_LEN1 = Struct("!BB").pack
 PACK_LEN2 = Struct("!BBH").pack
 PACK_LEN3 = Struct("!BBQ").pack
 PACK_CLOSE_CODE = Struct("!H").pack
+PACK_RANDBITS = Struct("!L").pack
 MSG_SIZE: Final[int] = 2**14
 DEFAULT_LIMIT: Final[int] = 2**16
 
@@ -612,7 +614,7 @@ class WebSocketWriter:
         self.protocol = protocol
         self.transport = transport
         self.use_mask = use_mask
-        self.randrange = random.randrange
+        self.get_random_bits = partial(random.getrandbits, 32)
         self.compress = compress
         self.notakeover = notakeover
         self._closing = False
@@ -668,8 +670,7 @@ class WebSocketWriter:
         else:
             header = PACK_LEN3(0x80 | rsv | opcode, 127 | mask_bit, msg_length)
         if use_mask:
-            mask_int = self.randrange(0, 0xFFFFFFFF)
-            mask = mask_int.to_bytes(4, "big")
+            mask = PACK_RANDBITS(self.get_random_bits())
             message = bytearray(message)
             _websocket_mask(mask, message)
             self._write(header + mask + message)
