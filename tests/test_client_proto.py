@@ -159,3 +159,13 @@ async def test_connection_lost_sets_transport_to_none(
     proto.connection_lost(OSError())
 
     assert proto.transport is None
+
+
+async def test_connection_proxied(loop: Any) -> None:
+    proto = ResponseHandler(loop=loop)
+    headers = {"Foo": "Bar"}
+    raw_headers = (b"Foo", b"Bar")
+    proto.connection_proxied(headers, raw_headers)
+
+    assert proto._proxy_headers == headers
+    assert proto._raw_proxy_headers == raw_headers
