@@ -443,6 +443,7 @@ class RequestHandler(BaseProtocol):
         self.logger.exception(*args, **kw)
 
     def _process_keepalive(self) -> None:
+        self._keepalive_handle = None
         if self._force_close or not self._keepalive:
             return
 
