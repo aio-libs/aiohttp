@@ -116,6 +116,14 @@ class ClientHttpProxyError(ClientResponseError):
     """
 
 
+class ClientProxyClosedError(ClientResponseError):
+    """Proxy server is closed.
+
+    Raised in :class:`aiohttp.connector.TCPConnector` if
+    proxy server is closed on ``CONNECT`` request.
+    """
+
+
 class TooManyRedirects(ClientResponseError):
     """Client was redirected too many times."""
 
