@@ -1,5 +1,6 @@
 import asyncio
 import asyncio.streams
+import sys
 import traceback
 import warnings
 from collections import deque
@@ -533,9 +534,11 @@ class RequestHandler(BaseProtocol):
             request = self._request_factory(message, payload, self, writer, handler)
             try:
                 # a new task is used for copy context vars (#3406)
-                task = self._loop.create_task(
-                    self._handle_request(request, start, request_handler)
-                )
+                coro = self._handle_request(request, start, request_handler)
+                if sys.version_info >= (3, 12):
+                    task = asyncio.Task(coro, loop=loop, eager_start=True)
+                else:
+                    task = loop.create_task(coro)
                 try:
                     resp, reset = await task
                 except (asyncio.CancelledError, ConnectionError):
