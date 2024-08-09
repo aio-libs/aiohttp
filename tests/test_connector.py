@@ -1772,6 +1772,22 @@ async def test___get_ssl_context6(loop: asyncio.AbstractEventLoop) -> None:
     assert await conn._get_ssl_context(req) is conn._make_ssl_context(True)
 
 
+async def test_ssl_context_once(loop: asyncio.AbstractEventLoop) -> None:
+    """Test the ssl context is created only once and shared between connectors."""
+    conn1 = aiohttp.TCPConnector()
+    conn2 = aiohttp.TCPConnector()
+    conn3 = aiohttp.TCPConnector()
+
+    req = mock.Mock()
+    req.is_ssl.return_value = True
+    req.ssl = True
+    assert await conn1._get_ssl_context(req) is conn1._make_ssl_context(True)
+    assert await conn2._get_ssl_context(req) is conn1._make_ssl_context(True)
+    assert await conn3._get_ssl_context(req) is conn1._make_ssl_context(True)
+    assert conn1._made_ssl_context is conn2._made_ssl_context is conn3._made_ssl_context
+    assert True in conn1._made_ssl_context
+
+
 async def test_close_twice(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
     proto: ResponseHandler = create_mocked_conn(loop)
 
