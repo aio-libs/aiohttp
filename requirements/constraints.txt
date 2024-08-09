@@ -95,9 +95,8 @@ importlib-metadata==7.0.0
     # via
     #   build
     #   sphinx
+    #   towncrier
 importlib-resources==6.1.1
-    # via towncrier
-incremental==22.10.0
     # via towncrier
 iniconfig==2.0.0
     # via pytest
@@ -232,7 +231,7 @@ tomli==2.0.1
     #   pytest
     #   slotscheck
     #   towncrier
-towncrier==23.11.0
+towncrier==24.7.1
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
