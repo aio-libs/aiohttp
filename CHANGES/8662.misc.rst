@@ -1,0 +1,3 @@
+Reduce frequency of HTTP keep-alive checks -- by :user:`bdraco`.
+
+Previously, when processing a request for a keep-alive connection, the keep-alive check would happen every second; the check now occurs when the keep-alive is expected to timeout or 1s later, whichever is later.
