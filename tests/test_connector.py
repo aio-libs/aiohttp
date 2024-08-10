@@ -1709,26 +1709,26 @@ async def test_tcp_connector_clear_dns_cache_bad_args(
         conn.clear_dns_cache("localhost")
 
 
-async def test_dont_recreate_ssl_context(loop: asyncio.AbstractEventLoop) -> None:
+async def test_dont_recreate_ssl_context() -> None:
     conn = aiohttp.TCPConnector()
     ctx = await conn._make_or_get_ssl_context(True)
     assert ctx is await conn._make_or_get_ssl_context(True)
 
 
-async def test_dont_recreate_ssl_context2(loop: asyncio.AbstractEventLoop) -> None:
+async def test_dont_recreate_ssl_context2() -> None:
     conn = aiohttp.TCPConnector()
     ctx = await conn._make_or_get_ssl_context(False)
     assert ctx is await conn._make_or_get_ssl_context(False)
 
 
-async def test___get_ssl_context1(loop: asyncio.AbstractEventLoop) -> None:
+async def test___get_ssl_context1() -> None:
     conn = aiohttp.TCPConnector()
     req = mock.Mock()
     req.is_ssl.return_value = False
     assert await conn._get_ssl_context(req) is None
 
 
-async def test___get_ssl_context2(loop: asyncio.AbstractEventLoop) -> None:
+async def test___get_ssl_context2() -> None:
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     conn = aiohttp.TCPConnector()
     req = mock.Mock()
@@ -1737,7 +1737,7 @@ async def test___get_ssl_context2(loop: asyncio.AbstractEventLoop) -> None:
     assert await conn._get_ssl_context(req) is ctx
 
 
-async def test___get_ssl_context3(loop: asyncio.AbstractEventLoop) -> None:
+async def test___get_ssl_context3() -> None:
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     conn = aiohttp.TCPConnector(ssl=ctx)
     req = mock.Mock()
@@ -1746,7 +1746,7 @@ async def test___get_ssl_context3(loop: asyncio.AbstractEventLoop) -> None:
     assert await conn._get_ssl_context(req) is ctx
 
 
-async def test___get_ssl_context4(loop: asyncio.AbstractEventLoop) -> None:
+async def test___get_ssl_context4() -> None:
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     conn = aiohttp.TCPConnector(ssl=ctx)
     req = mock.Mock()
@@ -1757,7 +1757,7 @@ async def test___get_ssl_context4(loop: asyncio.AbstractEventLoop) -> None:
     )
 
 
-async def test___get_ssl_context5(loop: asyncio.AbstractEventLoop) -> None:
+async def test___get_ssl_context5() -> None:
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     conn = aiohttp.TCPConnector(ssl=ctx)
     req = mock.Mock()
@@ -1768,7 +1768,7 @@ async def test___get_ssl_context5(loop: asyncio.AbstractEventLoop) -> None:
     )
 
 
-async def test___get_ssl_context6(loop: asyncio.AbstractEventLoop) -> None:
+async def test___get_ssl_context6() -> None:
     conn = aiohttp.TCPConnector()
     req = mock.Mock()
     req.is_ssl.return_value = True
@@ -1776,7 +1776,7 @@ async def test___get_ssl_context6(loop: asyncio.AbstractEventLoop) -> None:
     assert await conn._get_ssl_context(req) is await conn._make_or_get_ssl_context(True)
 
 
-async def test_ssl_context_once(loop: asyncio.AbstractEventLoop) -> None:
+async def test_ssl_context_once() -> None:
     """Test the ssl context is created only once and shared between connectors."""
     conn1 = aiohttp.TCPConnector()
     conn2 = aiohttp.TCPConnector()
@@ -1799,9 +1799,7 @@ async def test_ssl_context_once(loop: asyncio.AbstractEventLoop) -> None:
 
 
 @pytest.mark.parametrize("exception", [OSError, ssl.SSLError, asyncio.CancelledError])
-async def test_ssl_context_creation_raises(
-    loop: asyncio.AbstractEventLoop, exception: BaseException
-) -> None:
+async def test_ssl_context_creation_raises(exception: BaseException) -> None:
     """Test that we try again if SSLContext creation fails the first time."""
     conn = aiohttp.TCPConnector()
 
