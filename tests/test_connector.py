@@ -20,6 +20,7 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
+    Type,
 )
 from unittest import mock
 
@@ -1799,16 +1800,14 @@ async def test_ssl_context_once() -> None:
 
 
 @pytest.mark.parametrize("exception", [OSError, ssl.SSLError, asyncio.CancelledError])
-async def test_ssl_context_creation_raises(exception: BaseException) -> None:
+async def test_ssl_context_creation_raises(exception: Type[BaseException]) -> None:
     """Test that we try again if SSLContext creation fails the first time."""
     conn = aiohttp.TCPConnector()
     conn._made_ssl_context.clear()
 
     with mock.patch.object(
         conn, "_make_ssl_context", side_effect=exception
-    ), pytest.raises(  # type: ignore[call-overload]
-        exception
-    ):
+    ), pytest.raises(exception):
         await conn._make_or_get_ssl_context(True)
 
     assert isinstance(await conn._make_or_get_ssl_context(True), ssl.SSLContext)
