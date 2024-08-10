@@ -1016,8 +1016,8 @@ class TCPConnector(BaseConnector):
                 result = await self._loop.run_in_executor(None, self._make_ssl_context)
             # BaseException is used since we might get CancelledError
             except BaseException as ex:
-                set_exception(future, ex)
                 self._made_ssl_context.pop(verified)
+                set_exception(future, ex)
             else:
                 set_result(future, result)
             return result
