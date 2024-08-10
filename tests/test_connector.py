@@ -1806,9 +1806,7 @@ async def test_ssl_context_creation_raises(exception: BaseException) -> None:
 
     with mock.patch.object(
         conn, "_make_ssl_context", side_effect=exception
-    ), pytest.raises(  # type: ignore[call-overload]
-        exception
-    ):
+    ), pytest.raises(exception):
         await conn._make_or_get_ssl_context(True)
 
     assert isinstance(await conn._make_or_get_ssl_context(True), ssl.SSLContext)
