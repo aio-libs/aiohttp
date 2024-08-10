@@ -759,7 +759,7 @@ class TCPConnector(BaseConnector):
     """
 
     allowed_protocol_schema_set = HIGH_LEVEL_SCHEMA_SET | frozenset({"tcp"})
-    _made_ssl_context: Dict[bool, asyncio.Future[SSLContext]] = {}
+    _made_ssl_context: Dict[bool, "asyncio.Future[SSLContext]"] = {}
 
     def __init__(
         self,
