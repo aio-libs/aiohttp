@@ -1799,7 +1799,7 @@ async def test_ssl_context_once() -> None:
 
 
 @pytest.mark.parametrize("exception", [OSError, ssl.SSLError, asyncio.CancelledError])
-async def test_ssl_context_creation_raises(exception: BaseException) -> None:
+async def test_ssl_context_creation_raises(exception: type[BaseException]) -> None:
     """Test that we try again if SSLContext creation fails the first time."""
     conn = aiohttp.TCPConnector()
     conn._made_ssl_context.clear()
