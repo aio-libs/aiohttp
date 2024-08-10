@@ -51,7 +51,14 @@ from .client_exceptions import (
 )
 from .client_proto import ResponseHandler
 from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
-from .helpers import _SENTINEL, ceil_timeout, is_ip_address, sentinel, set_result
+from .helpers import (
+    _SENTINEL,
+    ceil_timeout,
+    is_ip_address,
+    sentinel,
+    set_exception,
+    set_result,
+)
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
@@ -752,8 +759,7 @@ class TCPConnector(BaseConnector):
     """
 
     allowed_protocol_schema_set = HIGH_LEVEL_SCHEMA_SET | frozenset({"tcp"})
-    _made_ssl_context: Set[bool] = set()
-    _make_ssl_context_lock: Dict[bool, asyncio.Lock] = {}
+    _made_ssl_context: Dict[bool, asyncio.Lock] = {}
 
     def __init__(
         self,
@@ -948,7 +954,6 @@ class TCPConnector(BaseConnector):
         return proto
 
     @staticmethod
-    @functools.lru_cache(None)
     def _make_ssl_context(verified: bool) -> SSLContext:
         """Create SSL context.
 
@@ -1002,20 +1007,19 @@ class TCPConnector(BaseConnector):
     async def _make_or_get_cached_ssl_context(self, verified: bool) -> SSLContext:
         """Create or get cached SSL context."""
         try:
-            future = self._make_ssl_context[verified]
+            return await self._made_ssl_context[verified]
         except KeyError:
-            future = asyncio.Future()
-            self._make_ssl_context[verified] = future
+            loop = self._loop
+            future = loop.create_future()
+            self._made_ssl_context[verified] = future
             try:
-                result = await self._loop.run_in_executor(
-                    None, self._make_ssl_context
-                )
-            except Exception as e:
-                future.set_exception(e)
-                self._make_ssl_context.pop(verified)
+                result = await self._loop.run_in_executor(None, self._make_ssl_context)
+            except BaseException as ex:
+                set_exception(future, ex)
+                self._made_ssl_context.pop(verified)
             else:
-                future.set_result(result)
-        return await future
+                set_result(future, result)
+            return result
 
     def _get_fingerprint(self, req: ClientRequest) -> Optional["Fingerprint"]:
         ret = req.ssl
