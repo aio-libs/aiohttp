@@ -1013,11 +1013,14 @@ class TCPConnector(BaseConnector):
             future = loop.create_future()
             self._made_ssl_context[verified] = future
             try:
-                result = await self._loop.run_in_executor(None, self._make_ssl_context)
+                result = await self._loop.run_in_executor(
+                    None, self._make_ssl_context, verified
+                )
             # BaseException is used since we might get CancelledError
             except BaseException as ex:
                 del self._made_ssl_context[verified]
                 set_exception(future, ex)
+                raise
             else:
                 set_result(future, result)
             return result
