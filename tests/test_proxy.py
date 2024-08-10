@@ -817,7 +817,7 @@ class TestProxy(unittest.TestCase):
         self.loop.start_tls.assert_called_with(
             mock.ANY,
             mock.ANY,
-            connector._make_ssl_context(True),
+            self.loop.run_until_complete(connector._make_or_get_ssl_context(True)),
             server_hostname="www.python.org",
             ssl_handshake_timeout=mock.ANY,
         )
