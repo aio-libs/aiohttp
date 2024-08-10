@@ -10,6 +10,74 @@
 
 .. towncrier release notes start
 
+3.10.3 (2024-08-10)
+========================
+
+Bug fixes
+---------
+
+- Fixed multipart reading when stream buffer splits the boundary over several read() calls -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8653`.
+
+
+
+- Fixed :py:class:`aiohttp.TCPConnector` doing blocking I/O in the event loop to create the ``SSLContext`` -- by :user:`bdraco`.
+
+  The blocking I/O would only happen once per verify mode. However, it could cause the event loop to block for a long time if the ``SSLContext`` creation is slow, which is more likely during startup when the disk cache is not yet present.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8672`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of :py:meth:`~aiohttp.ClientWebSocketResponse.receive` and :py:meth:`~aiohttp.web.WebSocketResponse.receive` when there is no timeout. -- by :user:`bdraco`.
+
+  The timeout context manager is now avoided when there is no timeout as it accounted for up to 50% of the time spent in the :py:meth:`~aiohttp.ClientWebSocketResponse.receive` and :py:meth:`~aiohttp.web.WebSocketResponse.receive` methods.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8660`.
+
+
+
+- Improved performance of starting request handlers with Python 3.12+ -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8661`.
+
+
+
+- Improved performance of HTTP keep-alive checks -- by :user:`bdraco`.
+
+  Previously, when processing a request for a keep-alive connection, the keep-alive check would happen every second; the check is now rescheduled if it fires too early instead.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8662`.
+
+
+
+- Improved performance of generating random WebSocket mask -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8667`.
+
+
+
+
+----
+
+
 3.10.2 (2024-08-08)
 ===================
 
