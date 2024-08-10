@@ -1001,16 +1001,21 @@ class TCPConnector(BaseConnector):
 
     async def _make_or_get_cached_ssl_context(self, verified: bool) -> SSLContext:
         """Create or get cached SSL context."""
-        if verified in self._made_ssl_context:
-            return self._make_ssl_context(verified)
-        # _make_ssl_context does blocking I/O to load certificates
-        # from disk, so we run it in a separate thread.
-        async with self._make_ssl_context_lock.setdefault(verified, asyncio.Lock()):
-            context = await self._loop.run_in_executor(
-                None, self._make_ssl_context, verified
-            )
-            self._made_ssl_context.add(verified)
-        return context
+        try:
+            future = self._make_ssl_context[verified]
+        except KeyError:
+            future = asyncio.Future()
+            self._make_ssl_context[verified] = future
+            try:
+                result = await self._loop.run_in_executor(
+                    None, self._make_ssl_context
+                )
+            except Exception as e:
+                future.set_exception(e)
+                self._make_ssl_context.pop(verified)
+            else:
+                future.set_result(result)
+        return await future
 
     def _get_fingerprint(self, req: ClientRequest) -> Optional["Fingerprint"]:
         ret = req.ssl
