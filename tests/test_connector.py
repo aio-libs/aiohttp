@@ -1802,14 +1802,13 @@ async def test_ssl_context_once() -> None:
 async def test_ssl_context_creation_raises(exception: BaseException) -> None:
     """Test that we try again if SSLContext creation fails the first time."""
     conn = aiohttp.TCPConnector()
+    conn._made_ssl_context.clear()
 
     with mock.patch.object(
         conn, "_make_ssl_context", side_effect=exception
     ), pytest.raises(exception):
-        conn._made_ssl_context.clear()
         await conn._make_or_get_ssl_context(True)
 
-    conn._made_ssl_context.clear()
     assert isinstance(await conn._make_or_get_ssl_context(True), ssl.SSLContext)
 
 
