@@ -1798,6 +1798,23 @@ async def test_ssl_context_once(loop: asyncio.AbstractEventLoop) -> None:
     assert True in conn1._made_ssl_context
 
 
+@pytest.mark.parametrize("exception", [OSError, ssl.SSLError, asyncio.CancelledError])
+async def test_ssl_context_creation_raises(
+    loop: asyncio.AbstractEventLoop, exception: BaseException
+) -> None:
+    """Test that we try again if SSLContext creation fails the first time."""
+    conn = aiohttp.TCPConnector()
+
+    with mock.patch.object(
+        conn, "_make_ssl_context", side_effect=exception
+    ), pytest.raises(exception):
+        conn._made_ssl_context.clear()
+        await conn._make_or_get_ssl_context(True)
+
+    conn._made_ssl_context.clear()
+    assert isinstance(await conn._make_or_get_ssl_context(True), ssl.SSLContext)
+
+
 async def test_close_twice(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
     proto: ResponseHandler = create_mocked_conn(loop)
 
