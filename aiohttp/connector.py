@@ -1007,9 +1007,7 @@ class TCPConnector(BaseConnector):
             future = asyncio.Future()
             self._make_ssl_context[verified] = future
             try:
-                result = await self._loop.run_in_executor(
-                    None, self._make_ssl_context
-                )
+                result = await self._loop.run_in_executor(None, self._make_ssl_context)
             except Exception as e:
                 future.set_exception(e)
                 self._make_ssl_context.pop(verified)
