@@ -1,1 +1,0 @@
-Improved performance of generating random WebSocket mask -- by :user:`bdraco`.
