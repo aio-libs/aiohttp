@@ -995,16 +995,16 @@ class TCPConnector(BaseConnector):
             return sslcontext
         if sslcontext is not True:
             # not verified or fingerprinted
-            return await self._make_or_get_cached_ssl_context(False)
+            return await self._make_or_get_ssl_context(False)
         sslcontext = self._ssl
         if isinstance(sslcontext, ssl.SSLContext):
             return sslcontext
         if sslcontext is not True:
             # not verified or fingerprinted
-            return await self._make_or_get_cached_ssl_context(False)
-        return await self._make_or_get_cached_ssl_context(True)
+            return await self._make_or_get_ssl_context(False)
+        return await self._make_or_get_ssl_context(True)
 
-    async def _make_or_get_cached_ssl_context(self, verified: bool) -> SSLContext:
+    async def _make_or_get_ssl_context(self, verified: bool) -> SSLContext:
         """Create or get cached SSL context."""
         try:
             return await self._made_ssl_context[verified]

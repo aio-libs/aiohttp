@@ -1711,14 +1711,14 @@ async def test_tcp_connector_clear_dns_cache_bad_args(
 
 async def test_dont_recreate_ssl_context(loop: asyncio.AbstractEventLoop) -> None:
     conn = aiohttp.TCPConnector()
-    ctx = conn._make_ssl_context(True)
-    assert ctx is conn._make_ssl_context(True)
+    ctx = await conn._make_or_get_ssl_context(True)
+    assert ctx is await conn._make_or_get_ssl_context(True)
 
 
 async def test_dont_recreate_ssl_context2(loop: asyncio.AbstractEventLoop) -> None:
     conn = aiohttp.TCPConnector()
-    ctx = conn._make_ssl_context(False)
-    assert ctx is conn._make_ssl_context(False)
+    ctx = await conn._make_or_get_ssl_context(False)
+    assert ctx is await conn._make_or_get_ssl_context(False)
 
 
 async def test___get_ssl_context1(loop: asyncio.AbstractEventLoop) -> None:
@@ -1752,7 +1752,9 @@ async def test___get_ssl_context4(loop: asyncio.AbstractEventLoop) -> None:
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = False
-    assert await conn._get_ssl_context(req) is conn._make_ssl_context(False)
+    assert await conn._get_ssl_context(req) is await conn._make_or_get_ssl_context(
+        False
+    )
 
 
 async def test___get_ssl_context5(loop: asyncio.AbstractEventLoop) -> None:
@@ -1761,7 +1763,9 @@ async def test___get_ssl_context5(loop: asyncio.AbstractEventLoop) -> None:
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = aiohttp.Fingerprint(hashlib.sha256(b"1").digest())
-    assert await conn._get_ssl_context(req) is conn._make_ssl_context(False)
+    assert await conn._get_ssl_context(req) is await conn._make_or_get_ssl_context(
+        False
+    )
 
 
 async def test___get_ssl_context6(loop: asyncio.AbstractEventLoop) -> None:
@@ -1769,7 +1773,7 @@ async def test___get_ssl_context6(loop: asyncio.AbstractEventLoop) -> None:
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = True
-    assert await conn._get_ssl_context(req) is conn._make_ssl_context(True)
+    assert await conn._get_ssl_context(req) is await conn._make_or_get_ssl_context(True)
 
 
 async def test_ssl_context_once(loop: asyncio.AbstractEventLoop) -> None:
@@ -1781,9 +1785,15 @@ async def test_ssl_context_once(loop: asyncio.AbstractEventLoop) -> None:
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = True
-    assert await conn1._get_ssl_context(req) is conn1._make_ssl_context(True)
-    assert await conn2._get_ssl_context(req) is conn1._make_ssl_context(True)
-    assert await conn3._get_ssl_context(req) is conn1._make_ssl_context(True)
+    assert await conn1._get_ssl_context(req) is await conn1._make_or_get_ssl_context(
+        True
+    )
+    assert await conn2._get_ssl_context(req) is await conn1._make_or_get_ssl_context(
+        True
+    )
+    assert await conn3._get_ssl_context(req) is await conn1._make_or_get_ssl_context(
+        True
+    )
     assert conn1._made_ssl_context is conn2._made_ssl_context is conn3._made_ssl_context
     assert True in conn1._made_ssl_context
 
