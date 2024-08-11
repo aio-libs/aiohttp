@@ -1024,6 +1024,7 @@ async def test_receive_timeout_keeps_connection_open(
 
 
 async def test_websocket_shutdown(aiohttp_client: AiohttpClient) -> None:
+    """Test that the client websocket gets the close message when the server is shutting down."""
     url = "/ws"
     app = web.Application()
     websockets = web.AppKey("websockets", weakref.WeakSet)
