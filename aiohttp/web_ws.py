@@ -453,14 +453,13 @@ class WebSocketResponse(StreamResponse):
             self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
             return True
 
-        # we need to break `receive()` cycle before we
-        # can call `reader.read()` as
-        # `close()` may be called from different task
+        # we need to break `receive()` cycle before we can call
+        # `reader.read()` as `close()` may be called from different task
         if self._waiting:
             if not self._close_wait:
                 assert self._loop is not None
                 self._close_wait = self._loop.create_future()
-                reader.feed_data(WS_CLOSING_MESSAGE)
+            reader.feed_data(WS_CLOSING_MESSAGE)
             await self._close_wait
 
         if self._closing:
