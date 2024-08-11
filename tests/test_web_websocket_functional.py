@@ -1033,11 +1033,10 @@ async def test_websocket_shutdown(aiohttp_client: AiohttpClient) -> None:
     shutdown_websockets = web.AppKey("shutdown_websockets", weakref.WeakSet)
     app[shutdown_websockets] = weakref.WeakSet()
 
-    async def websocket_handler(request):
+    async def websocket_handler(request: web.Request) -> web.WebSocketResponse:
         websocket = web.WebSocketResponse()
         await websocket.prepare(request)
         request.app[websockets].add(websocket)
-
         request.app[shutdown_websockets].add(websocket)
 
         try:
