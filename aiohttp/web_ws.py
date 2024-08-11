@@ -454,11 +454,9 @@ class WebSocketResponse(StreamResponse):
         # we need to break `receive()` cycle before we can call
         # `reader.read()` as `close()` may be called from different task
         if self._waiting:
-            assert (
-                self._close_wait is None
-            ), "Concurrent call to receive() is not allowed"
-            assert self._loop is not None
-            self._close_wait = self._loop.create_future()
+            if not self._close_wait:
+                assert self._loop is not None
+                self._close_wait = self._loop.create_future()
             reader.feed_data(WS_CLOSING_MESSAGE)
             await self._close_wait
 
