@@ -510,7 +510,7 @@ class RequestHandler(BaseProtocol):
         keep_alive(True) specified.
         """
         loop = self._loop
-        handler = self._task_handler
+        handler = asyncio.current_task(loop)
         assert handler is not None
         manager = self._manager
         assert manager is not None
