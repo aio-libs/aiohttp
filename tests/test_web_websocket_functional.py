@@ -313,28 +313,26 @@ async def test_concurrent_close(loop: Any, aiohttp_client: Any) -> None:
     assert msg.type == WSMsgType.CLOSED
 
 
-async def test_concurrent_close_multiple_tasks(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
-) -> None:
-    srv_ws: Optional[web.WebSocketResponse] = None
+async def test_concurrent_close_multiple_tasks(loop: Any, aiohttp_client: Any) -> None:
+    srv_ws = None
 
     async def handler(request):
         nonlocal srv_ws
-        srv_ws = web.WebSocketResponse(autoclose=False, protocols=("foo", "bar"))
-        await srv_ws.prepare(request)
+        ws = srv_ws = web.WebSocketResponse(autoclose=False, protocols=("foo", "bar"))
+        await ws.prepare(request)
 
-        msg = await srv_ws.receive()
-        assert msg.type is WSMsgType.CLOSING
+        msg = await ws.receive()
+        assert msg.type == WSMsgType.CLOSING
 
-        msg = await srv_ws.receive()
-        assert msg.type is WSMsgType.CLOSING
+        msg = await ws.receive()
+        assert msg.type == WSMsgType.CLOSING
 
         await asyncio.sleep(0)
 
-        msg = await srv_ws.receive()
-        assert msg.type is WSMsgType.CLOSED
+        msg = await ws.receive()
+        assert msg.type == WSMsgType.CLOSED
 
-        return srv_ws
+        return ws
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -346,14 +344,14 @@ async def test_concurrent_close_multiple_tasks(
     task2 = asyncio.create_task(srv_ws.close(code=WSCloseCode.INVALID_TEXT))
 
     msg = await ws.receive()
-    assert msg.type is WSMsgType.CLOSE
+    assert msg.type == WSMsgType.CLOSE
 
     await task1
     await task2
 
     await asyncio.sleep(0)
     msg = await ws.receive()
-    assert msg.type is WSMsgType.CLOSED
+    assert msg.type == WSMsgType.CLOSED
 
 
 async def test_close_op_code_from_client(loop: Any, aiohttp_client: Any) -> None:
