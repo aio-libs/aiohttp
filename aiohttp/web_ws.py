@@ -456,7 +456,7 @@ class WebSocketResponse(StreamResponse):
         # we need to break `receive()` cycle before we
         # can call `reader.read()` as
         # `close()` may be called from different task
-        if self._waiting and not self._closed:
+        if self._waiting:
             if not self._close_wait:
                 assert self._loop is not None
                 self._close_wait = self._loop.create_future()
