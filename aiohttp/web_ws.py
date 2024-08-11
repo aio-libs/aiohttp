@@ -431,10 +431,6 @@ class WebSocketResponse(StreamResponse):
         if self._writer is None:
             raise RuntimeError("Call .prepare() first")
 
-        self._cancel_heartbeat()
-        reader = self._reader
-        assert reader is not None
-
         if self._closed:
             return False
         self._set_closed()
@@ -453,6 +449,8 @@ class WebSocketResponse(StreamResponse):
             self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
             return True
 
+        reader = self._reader
+        assert reader is not None
         # we need to break `receive()` cycle before we can call
         # `reader.read()` as `close()` may be called from different task
         if self._waiting:
@@ -466,8 +464,6 @@ class WebSocketResponse(StreamResponse):
             self._close_transport()
             return True
 
-        reader = self._reader
-        assert reader is not None
         try:
             async with async_timeout.timeout(self._timeout):
                 msg = await reader.read()
