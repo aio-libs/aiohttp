@@ -324,15 +324,15 @@ async def test_concurrent_close_multiple_tasks(
         await srv_ws.prepare(request)
 
         msg = await srv_ws.receive()
-        assert msg.type == WSMsgType.CLOSING
+        assert msg.type is WSMsgType.CLOSING
 
         msg = await srv_ws.receive()
-        assert msg.type == WSMsgType.CLOSING
+        assert msg.type is WSMsgType.CLOSING
 
         await asyncio.sleep(0)
 
         msg = await srv_ws.receive()
-        assert msg.type == WSMsgType.CLOSED
+        assert msg.type is WSMsgType.CLOSED
 
         return srv_ws
 
