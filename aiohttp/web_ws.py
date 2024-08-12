@@ -431,23 +431,10 @@ class WebSocketResponse(StreamResponse):
         if self._writer is None:
             raise RuntimeError("Call .prepare() first")
 
-        self._cancel_heartbeat()
-        reader = self._reader
-        assert reader is not None
-
-        # we need to break `receive()` cycle first,
-        # `close()` may be called from different task
-        if self._waiting and not self._closed:
-            if not self._close_wait:
-                assert self._loop is not None
-                self._close_wait = self._loop.create_future()
-            reader.feed_data(WS_CLOSING_MESSAGE)
-            await self._close_wait
-
         if self._closed:
             return False
-
         self._set_closed()
+
         try:
             await self._writer.close(code, message)
             writer = self._payload_writer
@@ -462,12 +449,21 @@ class WebSocketResponse(StreamResponse):
             self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
             return True
 
+        reader = self._reader
+        assert reader is not None
+        # we need to break `receive()` cycle before we can call
+        # `reader.read()` as `close()` may be called from different task
+        if self._waiting:
+            assert self._loop is not None
+            assert self._close_wait is None
+            self._close_wait = self._loop.create_future()
+            reader.feed_data(WS_CLOSING_MESSAGE)
+            await self._close_wait
+
         if self._closing:
             self._close_transport()
             return True
 
-        reader = self._reader
-        assert reader is not None
         try:
             async with async_timeout.timeout(self._timeout):
                 msg = await reader.read()
