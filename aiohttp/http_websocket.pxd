@@ -23,7 +23,7 @@ cdef class WebSocketReader:
 
     @cython.locals(
         start_pos="unsigned int",
-        buf_length="unsigned char",
+        buf_length="unsigned int",
         first_byte="unsigned char",
         second_byte="unsigned char",
         fin="unsigned char",
