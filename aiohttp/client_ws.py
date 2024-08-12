@@ -151,9 +151,13 @@ class ClientWebSocketResponse:
         if not ping_task.done():
             self._ping_task = ping_task
             ping_task.add_done_callback(self._ping_task_done)
+        else:
+            self._ping_task_done(ping_task)
 
     def _ping_task_done(self, task: "asyncio.Task[None]") -> None:
         """Callback for when the ping task completes."""
+        if not task.cancelled() and (exc := task.exception()):
+            self._reader.feed_data(WSMessage(WSMsgType.ERROR, exc, None))
         self._ping_task = None
 
     def _pong_not_received(self) -> None:
