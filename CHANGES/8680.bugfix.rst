@@ -1,0 +1,1 @@
+Fixed a race closing the server-side WebSocket where the close code would not reach the client. -- by :user:`bdraco`.
