@@ -679,6 +679,7 @@ async def test_heartbeat_connection_closed(aiohttp_client: AiohttpClient) -> Non
     # We patch write here to simulate a connection reset error
     # since if we closed the connection normally, the server would
     # would cancel the heartbeat task and we wouldn't get a ping
+    assert resp._conn is not None
     with mock.patch.object(
         resp._conn.transport, "write", side_effect=ConnectionResetError
     ), mock.patch.object(resp._writer, "ping", wraps=resp._writer.ping) as ping:
