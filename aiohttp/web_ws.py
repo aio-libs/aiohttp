@@ -195,6 +195,7 @@ class WebSocketResponse(StreamResponse):
     def _ping_task_done(self, task: "asyncio.Task[None]") -> None:
         """Callback for when the ping task completes."""
         if not task.cancelled() and (exc := task.exception()):
+            assert self._reader is not None
             self._reader.feed_data(WSMessage(WSMsgType.ERROR, exc, None))
         self._ping_task = None
 
