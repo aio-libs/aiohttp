@@ -4,6 +4,7 @@
 import asyncio
 import contextlib
 import sys
+import weakref
 from typing import Any, Optional
 
 import pytest
@@ -11,6 +12,7 @@ import pytest
 import aiohttp
 from aiohttp import WSServerHandshakeError, web
 from aiohttp.http import WSCloseCode, WSMsgType
+from aiohttp.pytest_plugin import AiohttpClient
 
 
 async def test_websocket_can_prepare(loop: Any, aiohttp_client: Any) -> None:
@@ -1019,3 +1021,61 @@ async def test_receive_timeout_keeps_connection_open(
     await ws.close(code=WSCloseCode.OK, message="exit message")
 
     await closed
+
+
+async def test_websocket_shutdown(aiohttp_client: AiohttpClient) -> None:
+    """Test that the client websocket gets the close message when the server is shutting down."""
+    url = "/ws"
+    app = web.Application()
+    websockets = web.AppKey("websockets", weakref.WeakSet)
+    app[websockets] = weakref.WeakSet()
+
+    # need for send signal shutdown server
+    shutdown_websockets = web.AppKey("shutdown_websockets", weakref.WeakSet)
+    app[shutdown_websockets] = weakref.WeakSet()
+
+    async def websocket_handler(request: web.Request) -> web.WebSocketResponse:
+        websocket = web.WebSocketResponse()
+        await websocket.prepare(request)
+        request.app[websockets].add(websocket)
+        request.app[shutdown_websockets].add(websocket)
+
+        try:
+            async for message in websocket:
+                await websocket.send_json({"ok": True, "message": message.json()})
+        finally:
+            request.app[websockets].discard(websocket)
+
+        return websocket
+
+    async def on_shutdown(app: web.Application) -> None:
+        while app[shutdown_websockets]:
+            websocket = app[shutdown_websockets].pop()
+            await websocket.close(
+                code=aiohttp.WSCloseCode.GOING_AWAY,
+                message="Server shutdown",
+            )
+
+    app.router.add_get(url, websocket_handler)
+    app.on_shutdown.append(on_shutdown)
+
+    client = await aiohttp_client(app)
+
+    websocket = await client.ws_connect(url)
+
+    message = {"message": "hi"}
+    await websocket.send_json(message)
+    reply = await websocket.receive_json()
+    assert reply == {"ok": True, "message": message}
+
+    await app.shutdown()
+
+    assert websocket.closed is False
+
+    reply = await websocket.receive()
+
+    assert reply.type is aiohttp.http.WSMsgType.CLOSE
+    assert reply.data == aiohttp.WSCloseCode.GOING_AWAY
+    assert reply.extra == "Server shutdown"
+
+    assert websocket.closed is True
