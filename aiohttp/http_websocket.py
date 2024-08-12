@@ -121,7 +121,7 @@ WS_CLOSING_MESSAGE = WSMessage(WSMsgType.CLOSING, None, None)
 class WebSocketError(Exception):
     """WebSocket protocol parser error."""
 
-    def __init__(self, code: int, message: str) -> None:
+    def __init__(self, code: Union[WSCloseCode, int], message: str) -> None:
         self.code = code
         super().__init__(code, message)
 
@@ -445,7 +445,8 @@ class WebSocketReader:
                     break
                 data = buf[start_pos : start_pos + 2]
                 start_pos += 2
-                first_byte, second_byte = data
+                first_byte = data[0]
+                second_byte = data[1]
 
                 fin = (first_byte >> 7) & 1
                 rsv1 = (first_byte >> 6) & 1
@@ -593,7 +594,10 @@ class WebSocketWriter:
         self._compressobj: Any = None  # actually compressobj
 
     async def _send_frame(
-        self, message: bytes, opcode: int, compress: Optional[int] = None
+        self,
+        message: Union[bytes, bytearray],
+        opcode: Union[WSMsgType, int],
+        compress: Optional[int] = None,
     ) -> None:
         """Send a frame over the websocket with message as its payload."""
         if self._closing and not (opcode & WSMsgType.CLOSE):
@@ -699,7 +703,9 @@ class WebSocketWriter:
         else:
             await self._send_frame(message, WSMsgType.TEXT, compress)
 
-    async def close(self, code: int = 1000, message: Union[bytes, str] = b"") -> None:
+    async def close(
+        self, code: Union[int, WSCloseCode] = 1000, message: Union[bytes, str] = b""
+    ) -> None:
         """Close the websocket, sending the specified code and message."""
         if isinstance(message, str):
             message = message.encode("utf-8")

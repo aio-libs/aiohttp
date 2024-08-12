@@ -60,6 +60,9 @@ aiohttp/_find_header.c: $(call to-hash,aiohttp/hdrs.py ./tools/gen.py)
 aiohttp/%.c: aiohttp/%.pyx $(call to-hash,$(CYS)) aiohttp/_find_header.c
 	cython -3 -o $@ $< -I aiohttp -Werror
 
+aiohttp/http_websocket.c: aiohttp/http_websocket.py
+	cythonize -3 -a -i aiohttp/http_websocket.py
+
 vendor/llhttp/node_modules: vendor/llhttp/package.json
 	cd vendor/llhttp; npm ci
 
@@ -71,7 +74,7 @@ vendor/llhttp/node_modules: vendor/llhttp/package.json
 generate-llhttp: .llhttp-gen
 
 .PHONY: cythonize
-cythonize: .install-cython $(PYXS:.pyx=.c)
+cythonize: .install-cython $(PYXS:.pyx=.c) aiohttp/http_websocket.c
 
 .install-deps: .install-cython $(PYXS:.pyx=.c) $(call to-hash,$(CYS) $(REQS))
 	@python -m pip install -r requirements/dev.in -c requirements/dev.txt
