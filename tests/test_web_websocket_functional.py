@@ -5,12 +5,14 @@ import asyncio
 import contextlib
 import sys
 from typing import Any, Optional
+from unittest import mock
 
 import pytest
 
 import aiohttp
 from aiohttp import WSServerHandshakeError, web
 from aiohttp.http import WSCloseCode, WSMsgType
+from aiohttp.pytest_plugin import AiohttpClient
 
 
 async def test_websocket_can_prepare(loop: Any, aiohttp_client: Any) -> None:
@@ -712,6 +714,40 @@ async def test_heartbeat_no_pong(loop: Any, aiohttp_client: Any) -> None:
     ws = await client.ws_connect("/", autoping=False)
     msg = await ws.receive()
     assert msg.type == aiohttp.WSMsgType.PING
+    await ws.close()
+
+
+async def test_heartbeat_connection_closed(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
+    """Test that the connection is closed while ping is in progress."""
+    ping_count = 0
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        nonlocal ping_count
+        ws_server = web.WebSocketResponse(heartbeat=0.05)
+        await ws_server.prepare(request)
+        # We patch write here to simulate a connection reset error
+        # since if we closed the connection normally, the server would
+        # would cancel the heartbeat task and we wouldn't get a ping
+        with mock.patch.object(
+            ws_server._req.transport, "write", side_effect=ConnectionResetError
+        ), mock.patch.object(
+            ws_server._writer, "ping", wraps=ws_server._writer.ping
+        ) as ping:
+            await ws_server.receive()
+            ping_count = ping.call_count
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    client = await aiohttp_client(app)
+    ws = await client.ws_connect("/", autoping=False)
+    msg = await ws.receive()
+    assert msg.type is aiohttp.WSMsgType.CLOSED
+    assert msg.extra is None
+    assert ping_count == 1
     await ws.close()
 
 

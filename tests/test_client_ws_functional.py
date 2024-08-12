@@ -661,6 +661,35 @@ async def test_heartbeat(aiohttp_client: AiohttpClient) -> None:
     assert ping_received
 
 
+async def test_heartbeat_connection_closed(aiohttp_client: AiohttpClient) -> None:
+    """Test that the connection is closed while ping is in progress."""
+
+    async def handler(request: web.Request) -> NoReturn:
+        ws = web.WebSocketResponse(autoping=False)
+        await ws.prepare(request)
+        await ws.receive()
+        assert False
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/", heartbeat=0.1)
+    ping_count = 0
+    # We patch write here to simulate a connection reset error
+    # since if we closed the connection normally, the server would
+    # would cancel the heartbeat task and we wouldn't get a ping
+    with mock.patch.object(
+        resp._conn.transport, "write", side_effect=ConnectionResetError
+    ), mock.patch.object(resp._writer, "ping", wraps=resp._writer.ping) as ping:
+        await resp.receive()
+        ping_count = ping.call_count
+    # Connection should be closed roughly after 1.5x heartbeat.
+    await asyncio.sleep(0.2)
+    assert ping_count == 1
+    assert resp.close_code is WSCloseCode.ABNORMAL_CLOSURE
+
+
 async def test_heartbeat_no_pong(aiohttp_client: AiohttpClient) -> None:
     """Test that the connection is closed if no pong is received without sending messages."""
     ping_received = False
