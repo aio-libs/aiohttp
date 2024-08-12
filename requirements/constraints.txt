@@ -80,7 +80,7 @@ funcparserlib==1.0.1
     # via blockdiag
 gidgethub==5.3.0
     # via cherry-picker
-gunicorn==22.0.0
+gunicorn==23.0.0
     # via -r requirements/base.in
 identify==2.5.26
     # via pre-commit
