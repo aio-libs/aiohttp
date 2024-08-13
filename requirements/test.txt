@@ -63,7 +63,7 @@ packaging==23.1
     #   pytest
 pluggy==1.4.0
     # via pytest
-proxy-py==2.4.5
+proxy-py==2.4.7
     # via -r requirements/test.in
 pycares==4.3.0
     # via aiodns
