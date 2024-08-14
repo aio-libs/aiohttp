@@ -493,7 +493,7 @@ async def test_ceil_timeout_small_with_overriden_threshold(loop) -> None:
 
 
 @pytest.mark.parametrize(
-    "params, quote_fields, _charset, result",
+    "params, quote_fields, _charset, expected",
     [
         (dict(foo="bar"), True, "utf-8", 'attachment; foo="bar"'),
         (dict(foo="bar[]"), True, "utf-8", 'attachment; foo="bar[]"'),
@@ -512,12 +512,10 @@ async def test_ceil_timeout_small_with_overriden_threshold(loop) -> None:
     ],
 )
 def test_content_disposition(params, quote_fields, _charset, result) -> None:
-    assert (
-        helpers.content_disposition_header(
-            "attachment", quote_fields=quote_fields, _charset=_charset, params=params
-        )
-        == result
+    result = helpers.content_disposition_header(
+        "attachment", quote_fields=quote_fields, _charset=_charset, params=params
     )
+    assert result == expected
 
 
 def test_content_disposition_bad_type() -> None:
