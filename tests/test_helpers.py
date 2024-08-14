@@ -493,24 +493,26 @@ async def test_ceil_timeout_small_with_overriden_threshold(loop) -> None:
 
 
 @pytest.mark.parametrize(
-    "kwargs, result",
+    "params, quote_fields, _charset, result",
     [
-        (dict(foo="bar"), 'attachment; foo="bar"'),
-        (dict(foo="bar[]"), 'attachment; foo="bar[]"'),
-        (dict(foo=' a""b\\'), 'attachment; foo="\\ a\\"\\"b\\\\"'),
-        (dict(foo="bär"), "attachment; foo*=utf-8''b%C3%A4r"),
-        (dict(foo='bär "\\', quote_fields=False), 'attachment; foo="bär \\"\\\\"'),
-        (dict(foo="bär", _charset="latin-1"), "attachment; foo*=latin-1''b%E4r"),
-        (dict(filename="bär"), 'attachment; filename="b%C3%A4r"'),
-        (dict(filename="bär", _charset="latin-1"), 'attachment; filename="b%E4r"'),
+        (dict(foo="bar"), True, "utf-8", 'attachment; foo="bar"'),
+        (dict(foo="bar[]"), True, "utf-8", 'attachment; foo="bar[]"'),
+        (dict(foo=' a""b\\'), True, "utf-8", 'attachment; foo="\\ a\\"\\"b\\\\"'),
+        (dict(foo="bär"), True, "utf-8", "attachment; foo*=utf-8''b%C3%A4r"),
+        (dict(foo='bär "\\'), False, "utf-8", 'attachment; foo="bär \\"\\\\"'),
+        (dict(foo="bär"), True, "latin-1", "attachment; foo*=latin-1''b%E4r"),
+        (dict(filename="bär"), True, "utf-8", 'attachment; filename="b%C3%A4r"'),
+        (dict(filename="bär"), True, "latin-1", 'attachment; filename="b%E4r"'),
         (
-            dict(filename='bär "\\', quote_fields=False),
+            dict(filename='bär "\\'),
+            False,
+            "utf-8",
             'attachment; filename="bär \\"\\\\"',
         ),
     ],
 )
-def test_content_disposition(kwargs, result) -> None:
-    assert helpers.content_disposition_header("attachment", params=kwargs) == result
+def test_content_disposition(params, quote_fields, _charset, result) -> None:
+    assert helpers.content_disposition_header("attachment", quote_fields=quote_fields, _charset=_charset, params=params) == result
 
 
 def test_content_disposition_bad_type() -> None:
