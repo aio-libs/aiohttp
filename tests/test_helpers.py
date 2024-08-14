@@ -510,7 +510,7 @@ async def test_ceil_timeout_small_with_overriden_threshold(loop) -> None:
     ],
 )
 def test_content_disposition(kwargs, result) -> None:
-    assert helpers.content_disposition_header("attachment", **kwargs) == result
+    assert helpers.content_disposition_header("attachment", params=kwargs) == result
 
 
 def test_content_disposition_bad_type() -> None:
@@ -526,13 +526,13 @@ def test_content_disposition_bad_type() -> None:
 
 def test_set_content_disposition_bad_param() -> None:
     with pytest.raises(ValueError):
-        helpers.content_disposition_header("inline", **{"foo bar": "baz"})
+        helpers.content_disposition_header("inline", params={"foo bar": "baz"})
     with pytest.raises(ValueError):
-        helpers.content_disposition_header("inline", **{"—Ç–µ—Å—Ç": "baz"})
+        helpers.content_disposition_header("inline", params={"—Ç–µ—Å—Ç": "baz"})
     with pytest.raises(ValueError):
-        helpers.content_disposition_header("inline", **{"": "baz"})
+        helpers.content_disposition_header("inline", params={"": "baz"})
     with pytest.raises(ValueError):
-        helpers.content_disposition_header("inline", **{"foo\x00bar": "baz"})
+        helpers.content_disposition_header("inline", params={"foo\x00bar": "baz"})
 
 
 # --------------------- proxies_from_env ------------------------------
