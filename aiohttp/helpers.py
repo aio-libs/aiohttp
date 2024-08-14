@@ -373,7 +373,10 @@ def quoted_string(content: str) -> str:
 
 
 def content_disposition_header(
-    disptype: str, quote_fields: bool = True, _charset: str = "utf-8", **params: str
+    disptype: str,
+    quote_fields: bool = True,
+    _charset: str = "utf-8",
+    params: Optional[Dict[str, str]] = None,
 ) -> str:
     """Sets ``Content-Disposition`` header for MIME.
 
