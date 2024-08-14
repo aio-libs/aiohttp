@@ -279,7 +279,18 @@ A subapplication is an isolated unit by design. If you need to share a
 database object, do it explicitly::
 
    subapp[db_key] = mainapp[db_key]
-   mainapp.add_subapp('/prefix', subapp)
+   mainapp.add_subapp("/prefix", subapp)
+
+This can also be done from a :ref:`cleanup context<aiohttp-web-cleanup-ctx>`::
+
+   async def db_context(app: web.Application) -> AsyncIterator[None]:
+      async with create_db() as db:
+         mainapp[db_key] = mainapp[subapp_key][db_key] = db
+         yield
+
+   mainapp[subapp_key] = subapp
+   mainapp.add_subapp("/prefix", subapp)
+   mainapp.cleanup_ctx.append(db_context)
 
 
 How do I perform operations in a request handler after sending the response?
