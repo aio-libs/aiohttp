@@ -200,11 +200,11 @@ class Payload(ABC):
         disptype: str,
         quote_fields: bool = True,
         _charset: str = "utf-8",
-        **params: Any,
+        **params: str,
     ) -> None:
         """Sets ``Content-Disposition`` header."""
         self._headers[hdrs.CONTENT_DISPOSITION] = content_disposition_header(
-            disptype, quote_fields=quote_fields, _charset=_charset, **params
+            disptype, quote_fields=quote_fields, _charset=_charset, params=params
         )
 
     @abstractmethod

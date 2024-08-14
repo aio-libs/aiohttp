@@ -1,0 +1,1 @@
+Changed signature of ``content_disposition_header()`` so ``params`` is now passed as a dict, in order to reduce typing errors -- by :user:`Dreamsorcerer`.
