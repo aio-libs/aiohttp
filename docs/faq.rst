@@ -281,7 +281,7 @@ database object, do it explicitly::
    subapp[db_key] = mainapp[db_key]
    mainapp.add_subapp("/prefix", subapp)
 
-This can also be done from a :ref:`cleanup contexts<aiohttp-web-cleanup-ctx>`::
+This can also be done from a :ref:`cleanup context<aiohttp-web-cleanup-ctx>`::
 
    async def db_context(app: web.Application) -> AsyncIterator[None]:
       async with create_db() as db:
