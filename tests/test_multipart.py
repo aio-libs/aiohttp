@@ -71,7 +71,7 @@ class Stream(StreamReader):
     def unread_data(self, data: bytes) -> None:
         self.content = io.BytesIO(data + self.content.read())
 
-    def __enter__(self: Self) -> Self:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(
