@@ -451,11 +451,8 @@ third-party library, :mod:`aiohttp_session`, that adds *session* support::
     async def handler(request):
         session = await get_session(request)
 
-        if "last_visit" in session:
-            last_visit = session["last_visit"]
-        else:
-            last_visit = None
-            session["last_visit"] = time.time()
+        last_visit = session.get("last_visit")
+        session["last_visit"] = time.time()
         text = "Last visited: {}".format(last_visit)
 
         return web.Response(text=text)
