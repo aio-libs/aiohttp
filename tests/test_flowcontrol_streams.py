@@ -1,5 +1,4 @@
 import asyncio
-from typing import Any
 from unittest import mock
 
 import pytest
