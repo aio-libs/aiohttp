@@ -2,7 +2,6 @@
 
 import asyncio
 import re
-from contextlib import nullcontext
 from typing import Any, Dict, Iterable, List, Type
 from unittest import mock
 from urllib.parse import quote
