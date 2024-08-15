@@ -30,6 +30,10 @@ and located on https://github.com/aio-libs
 aiohttp extensions
 ^^^^^^^^^^^^^^^^^^
 
+- `aiohttp-apischema <https://github.com/aio-libs/aiohttp-apischema>`_
+  provides automatic API schema generation and validation of user input
+  for :mod:`aiohttp.web`.
+
 - `aiohttp-session <https://github.com/aio-libs/aiohttp-session>`_
   provides sessions for :mod:`aiohttp.web`.
 
