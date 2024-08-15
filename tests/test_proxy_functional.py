@@ -484,7 +484,7 @@ async def test_proxy_http_multi_conn_limit(
 
 
 @pytest.mark.xfail
-async def xtest_proxy_https_connect(
+async def test_proxy_https_connect(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]]
 ) -> None:
     proxy = await proxy_test_server()
@@ -502,7 +502,7 @@ async def xtest_proxy_https_connect(
 
 
 @pytest.mark.xfail
-async def xtest_proxy_https_connect_with_port(
+async def test_proxy_https_connect_with_port(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]]
 ) -> None:
     proxy = await proxy_test_server()
@@ -520,7 +520,7 @@ async def xtest_proxy_https_connect_with_port(
 
 
 @pytest.mark.xfail
-async def xtest_proxy_https_send_body(
+async def test_proxy_https_send_body(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]],
     loop: asyncio.AbstractEventLoop,
 ) -> None:
@@ -537,7 +537,7 @@ async def xtest_proxy_https_send_body(
 
 
 @pytest.mark.xfail
-async def xtest_proxy_https_idna_support(
+async def test_proxy_https_idna_support(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]]
 ) -> None:
     url = "https://éé.com/"
@@ -576,7 +576,7 @@ async def test_proxy_https_bad_response(
 
 
 @pytest.mark.xfail
-async def xtest_proxy_https_auth(
+async def test_proxy_https_auth(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]]
 ) -> None:
     url = "https://secure.aiohttp.io/path"
@@ -620,7 +620,7 @@ async def xtest_proxy_https_auth(
 
 
 @pytest.mark.xfail
-async def xtest_proxy_https_acquired_cleanup(
+async def test_proxy_https_acquired_cleanup(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]],
     loop: asyncio.AbstractEventLoop,
 ) -> None:
@@ -644,7 +644,7 @@ async def xtest_proxy_https_acquired_cleanup(
 
 
 @pytest.mark.xfail
-async def xtest_proxy_https_acquired_cleanup_force(
+async def test_proxy_https_acquired_cleanup_force(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]],
     loop: asyncio.AbstractEventLoop,
 ) -> None:
@@ -860,7 +860,7 @@ async def test_proxy_from_env_http_without_auth_from_wrong_netrc(
 
 
 @pytest.mark.xfail
-async def xtest_proxy_from_env_https(
+async def test_proxy_from_env_https(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]], mocker: MockerFixture
 ) -> None:
     url = "https://aiohttp.io/path"
@@ -878,7 +878,7 @@ async def xtest_proxy_from_env_https(
 
 
 @pytest.mark.xfail
-async def xtest_proxy_from_env_https_with_auth(
+async def test_proxy_from_env_https_with_auth(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]], mocker: MockerFixture
 ) -> None:
     url = "https://aiohttp.io/path"
