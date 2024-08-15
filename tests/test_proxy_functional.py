@@ -24,6 +24,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import ClientResponse, web
+from aiohttp.client import _RequestOptions
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.pytest_plugin import AiohttpRawServer, AiohttpServer
 
@@ -916,6 +917,6 @@ async def test_proxy_auth() -> None:
             async with session.get(
                 "http://python.org",
                 proxy="http://proxy.example.com",
-                proxy_auth=("user", "pass"),
+                proxy_auth=("user", "pass"),  # type: ignore[arg-type]
             ):
                 pass
