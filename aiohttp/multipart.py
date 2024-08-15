@@ -288,7 +288,7 @@ class BodyPartReader:
         self._content_eof = 0
         self._cache: Dict[str, Any] = {}
 
-    def __aiter__(self: Self) -> Self:
+    def __aiter__(self) -> Self:
         return self
 
     async def __anext__(self) -> bytes:
