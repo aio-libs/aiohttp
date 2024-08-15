@@ -35,23 +35,35 @@ IS_PYPY = platform.python_implementation() == "PyPy"
     [
         ("", helpers.MimeType("", "", "", MultiDictProxy(MultiDict()))),
         ("*", helpers.MimeType("*", "*", "", MultiDictProxy(MultiDict()))),
-        ("application/json", helpers.MimeType("application", "json", "", MultiDictProxy(MultiDict()))),
+        (
+            "application/json",
+            helpers.MimeType("application", "json", "", MultiDictProxy(MultiDict())),
+        ),
         (
             "application/json;  charset=utf-8",
             helpers.MimeType(
-                "application", "json", "", MultiDictProxy(MultiDict({"charset": "utf-8"}))
+                "application",
+                "json",
+                "",
+                MultiDictProxy(MultiDict({"charset": "utf-8"})),
             ),
         ),
         (
             """application/json; charset=utf-8;""",
             helpers.MimeType(
-                "application", "json", "", MultiDictProxy(MultiDict({"charset": "utf-8"}))
+                "application",
+                "json",
+                "",
+                MultiDictProxy(MultiDict({"charset": "utf-8"})),
             ),
         ),
         (
             'ApPlIcAtIoN/JSON;ChaRseT="UTF-8"',
             helpers.MimeType(
-                "application", "json", "", MultiDictProxy(MultiDict({"charset": "UTF-8"}))
+                "application",
+                "json",
+                "",
+                MultiDictProxy(MultiDict({"charset": "UTF-8"})),
             ),
         ),
         (
@@ -60,7 +72,9 @@ IS_PYPY = platform.python_implementation() == "PyPy"
         ),
         (
             "text/plain;base64",
-            helpers.MimeType("text", "plain", "", MultiDictProxy(MultiDict({"base64": ""}))),
+            helpers.MimeType(
+                "text", "plain", "", MultiDictProxy(MultiDict({"base64": ""}))
+            ),
         ),
     ],
 )
@@ -179,7 +193,9 @@ def test_basic_auth_decode_invalid_credentials() -> None:
         ),
     ),
 )
-def test_basic_auth_decode_blank_username(credentials: str, expected_auth: helpers.BasicAuth) -> None:
+def test_basic_auth_decode_blank_username(
+    credentials: str, expected_auth: helpers.BasicAuth
+) -> None:
     header = f"Basic {base64.b64encode(credentials.encode()).decode()}"
     assert helpers.BasicAuth.decode(header) == expected_auth
 
@@ -363,7 +379,9 @@ def test_when_timeout_smaller_second(loop: asyncio.AbstractEventLoop) -> None:
     assert when - timer == pytest.approx(0, abs=0.001)
 
 
-def test_when_timeout_smaller_second_with_low_threshold(loop: asyncio.AbstractEventLoop) -> None:
+def test_when_timeout_smaller_second_with_low_threshold(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     timeout = 0.1
     timer = loop.time() + timeout
 
@@ -415,7 +433,9 @@ async def test_weakref_handle(loop: asyncio.AbstractEventLoop) -> None:
     assert cb.test.called
 
 
-async def test_weakref_handle_with_small_threshold(loop: asyncio.AbstractEventLoop) -> None:
+async def test_weakref_handle_with_small_threshold(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     cb = mock.Mock()
     loop = mock.Mock()
     loop.time.return_value = 10
@@ -488,7 +508,9 @@ async def test_ceil_timeout_none(loop: asyncio.AbstractEventLoop) -> None:
             assert cm.deadline is None
 
 
-async def test_ceil_timeout_small_with_overriden_threshold(loop: asyncio.AbstractEventLoop) -> None:
+async def test_ceil_timeout_small_with_overriden_threshold(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     async with helpers.ceil_timeout(1.5, ceil_threshold=1) as cm:
         if sys.version_info >= (3, 11):
             frac, integer = modf(cm.when())
@@ -520,7 +542,9 @@ async def test_ceil_timeout_small_with_overriden_threshold(loop: asyncio.Abstrac
         ),
     ],
 )
-def test_content_disposition(params: Dict[str, str], quote_fields: bool, _charset: str, expected: str) -> None:
+def test_content_disposition(
+    params: Dict[str, str], quote_fields: bool, _charset: str, expected: str
+) -> None:
     result = helpers.content_disposition_header(
         "attachment", quote_fields=quote_fields, _charset=_charset, params=params
     )
@@ -586,7 +610,9 @@ def test_proxies_from_env(url_input: str, expected_scheme: str) -> None:
     ids=("https", "wss"),
 )
 @pytest.mark.usefixtures("proxy_env_vars")
-def test_proxies_from_env_skipped(caplog: pytest.LogCaptureFixture, url_input: str, expected_scheme: str) -> None:
+def test_proxies_from_env_skipped(
+    caplog: pytest.LogCaptureFixture, url_input: str, expected_scheme: str
+) -> None:
     url = URL(url_input)
     assert helpers.proxies_from_env() == {}
     assert len(caplog.records) == 1
@@ -625,7 +651,9 @@ def test_proxies_from_env_http_with_auth(url_input: str, expected_scheme: str) -
 
 
 @pytest.fixture
-def proxy_env_vars(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> object:
+def proxy_env_vars(
+    monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest
+) -> object:
     for schema in getproxies_environment().keys():
         monkeypatch.delenv(f"{schema}_proxy", False)
 
@@ -748,6 +776,7 @@ async def test_set_exception_cancelled(loop: asyncio.AbstractEventLoop) -> None:
 # ----------- ChainMapProxy --------------------------
 
 AppKeyDict = Dict[Union[str, web.AppKey[object]], object]
+
 
 class TestChainMapProxy:
     def test_inheritance(self) -> None:

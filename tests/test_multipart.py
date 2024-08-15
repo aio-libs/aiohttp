@@ -74,7 +74,12 @@ class Stream(StreamReader):
     def __enter__(self: Self) -> Self:
         return self
 
-    def __exit__(self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException], traceback: Optional[TracebackType]) -> None:
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
         self.content.close()
 
 
@@ -363,7 +368,9 @@ class TestPartReader:
         assert b"Time to Relax!" == result
 
     async def test_read_with_content_transfer_encoding_quoted_printable(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: "quoted-printable"}))
+        h = CIMultiDictProxy(
+            CIMultiDict({CONTENT_TRANSFER_ENCODING: "quoted-printable"})
+        )
         with Stream(
             b"=D0=9F=D1=80=D0=B8=D0=B2=D0=B5=D1=82," b" =D0=BC=D0=B8=D1=80!\r\n--:--"
         ) as stream:
@@ -425,7 +432,9 @@ class TestPartReader:
         assert "Привет, Мир!" == result
 
     async def test_read_text_compressed(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate", CONTENT_TYPE: "text/plain"}))
+        h = CIMultiDictProxy(
+            CIMultiDict({CONTENT_ENCODING: "deflate", CONTENT_TYPE: "text/plain"})
+        )
         with Stream(b"\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = await obj.text()
@@ -454,14 +463,18 @@ class TestPartReader:
         assert {"тест": "пассед"} == result
 
     async def test_read_json_guess_encoding(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: "application/json; charset=cp1251"}))
+        h = CIMultiDictProxy(
+            CIMultiDict({CONTENT_TYPE: "application/json; charset=cp1251"})
+        )
         with Stream('{"тест": "пассед"}\r\n--:--'.encode("cp1251")) as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = await obj.json()
         assert {"тест": "пассед"} == result
 
     async def test_read_json_compressed(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate", CONTENT_TYPE: "application/json"}))
+        h = CIMultiDictProxy(
+            CIMultiDict({CONTENT_ENCODING: "deflate", CONTENT_TYPE: "application/json"})
+        )
         with Stream(b"\xabV*I-.Q\xb2RP*H,.NMQ\xaa\x05\x00\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = await obj.json()
@@ -476,14 +489,18 @@ class TestPartReader:
         assert result is None
 
     async def test_read_form(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: "application/x-www-form-urlencoded"}))
+        h = CIMultiDictProxy(
+            CIMultiDict({CONTENT_TYPE: "application/x-www-form-urlencoded"})
+        )
         with Stream(b"foo=bar&foo=baz&boo=\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = await obj.form()
         assert [("foo", "bar"), ("foo", "baz"), ("boo", "")] == result
 
     async def test_read_form_invalid_utf8(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: "application/x-www-form-urlencoded"}))
+        h = CIMultiDictProxy(
+            CIMultiDict({CONTENT_TYPE: "application/x-www-form-urlencoded"})
+        )
         with Stream(b"\xff\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             with pytest.raises(
@@ -492,21 +509,29 @@ class TestPartReader:
                 await obj.form()
 
     async def test_read_form_encoding(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: "application/x-www-form-urlencoded"}))
+        h = CIMultiDictProxy(
+            CIMultiDict({CONTENT_TYPE: "application/x-www-form-urlencoded"})
+        )
         with Stream("foo=bar&foo=baz&boo=\r\n--:--".encode("cp1251")) as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = await obj.form(encoding="cp1251")
         assert [("foo", "bar"), ("foo", "baz"), ("boo", "")] == result
 
     async def test_read_form_guess_encoding(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: "application/x-www-form-urlencoded; charset=utf-8"}))
+        h = CIMultiDictProxy(
+            CIMultiDict(
+                {CONTENT_TYPE: "application/x-www-form-urlencoded; charset=utf-8"}
+            )
+        )
         with Stream(b"foo=bar&foo=baz&boo=\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = await obj.form()
         assert [("foo", "bar"), ("foo", "baz"), ("boo", "")] == result
 
     async def test_read_form_while_closed(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: "application/x-www-form-urlencoded"}))
+        h = CIMultiDictProxy(
+            CIMultiDict({CONTENT_TYPE: "application/x-www-form-urlencoded"})
+        )
         with Stream(b"") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             obj._at_eof = True
@@ -551,7 +576,9 @@ class TestPartReader:
             assert b"--:\r\n\r\nworld!\r\n--:--" == stream.content.read()
 
     async def test_filename(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_DISPOSITION: "attachment; filename=foo.html"}))
+        h = CIMultiDictProxy(
+            CIMultiDict({CONTENT_DISPOSITION: "attachment; filename=foo.html"})
+        )
         part = aiohttp.BodyPartReader(BOUNDARY, h, mock.Mock())
         assert "foo.html" == part.filename
 
@@ -569,7 +596,9 @@ class TestPartReader:
 
 class TestMultipartReader:
     def test_from_response(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: 'multipart/related;boundary=":"'}))
+        h = CIMultiDictProxy(
+            CIMultiDict({CONTENT_TYPE: 'multipart/related;boundary=":"'})
+        )
         with Stream(b"--:\r\n\r\nhello\r\n--:--") as stream:
             resp = Response(h, stream)
             res = aiohttp.MultipartReader.from_response(resp)  # type: ignore[arg-type]
@@ -577,7 +606,9 @@ class TestMultipartReader:
         assert isinstance(res.stream, aiohttp.MultipartReader)
 
     def test_bad_boundary(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: "multipart/related;boundary=" + "a" * 80}))
+        h = CIMultiDictProxy(
+            CIMultiDict({CONTENT_TYPE: "multipart/related;boundary=" + "a" * 80})
+        )
         with Stream(b"") as stream:
             resp = Response(h, stream)
             with pytest.raises(ValueError):
@@ -604,7 +635,9 @@ class TestMultipartReader:
         assert isinstance(res, reader.part_reader_cls)
 
     def test_dispatch_multipart(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: "multipart/related;boundary=--:--"}))
+        h = CIMultiDictProxy(
+            CIMultiDict({CONTENT_TYPE: "multipart/related;boundary=--:--"})
+        )
         with Stream(
             b"----:--\r\n"
             b"\r\n"
@@ -626,7 +659,9 @@ class TestMultipartReader:
         class CustomReader(aiohttp.MultipartReader):
             pass
 
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: "multipart/related;boundary=--:--"}))
+        h = CIMultiDictProxy(
+            CIMultiDict({CONTENT_TYPE: "multipart/related;boundary=--:--"})
+        )
         with Stream(
             b"----:--\r\n"
             b"\r\n"
@@ -646,7 +681,9 @@ class TestMultipartReader:
         assert isinstance(res, CustomReader)
 
     async def test_emit_next(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: 'multipart/related;boundary=":"'}))
+        h = CIMultiDictProxy(
+            CIMultiDict({CONTENT_TYPE: 'multipart/related;boundary=":"'})
+        )
         with Stream(b"--:\r\n\r\necho\r\n--:--") as stream:
             reader = aiohttp.MultipartReader(h, stream)
             res = await reader.next()
@@ -942,7 +979,9 @@ async def test_writer(writer: aiohttp.MultipartWriter) -> None:
     assert writer.boundary == ":"
 
 
-async def test_writer_serialize_io_chunk(buf: bytearray, stream: Stream, writer: aiohttp.MultipartWriter) -> None:
+async def test_writer_serialize_io_chunk(
+    buf: bytearray, stream: Stream, writer: aiohttp.MultipartWriter
+) -> None:
     with io.BytesIO(b"foobarbaz") as file_handle:
         writer.append(file_handle)
         await writer.write(stream)
@@ -952,7 +991,9 @@ async def test_writer_serialize_io_chunk(buf: bytearray, stream: Stream, writer:
     )
 
 
-async def test_writer_serialize_json(buf: bytearray, stream: Stream, writer: aiohttp.MultipartWriter) -> None:
+async def test_writer_serialize_json(
+    buf: bytearray, stream: Stream, writer: aiohttp.MultipartWriter
+) -> None:
     writer.append_json({"привет": "мир"})
     await writer.write(stream)
     assert (
@@ -961,7 +1002,9 @@ async def test_writer_serialize_json(buf: bytearray, stream: Stream, writer: aio
     )
 
 
-async def test_writer_serialize_form(buf: bytearray, stream: Stream, writer: aiohttp.MultipartWriter) -> None:
+async def test_writer_serialize_form(
+    buf: bytearray, stream: Stream, writer: aiohttp.MultipartWriter
+) -> None:
     data = [("foo", "bar"), ("foo", "baz"), ("boo", "zoo")]
     writer.append_form(data)
     await writer.write(stream)
@@ -969,7 +1012,9 @@ async def test_writer_serialize_form(buf: bytearray, stream: Stream, writer: aio
     assert b"foo=bar&foo=baz&boo=zoo" in buf
 
 
-async def test_writer_serialize_form_dict(buf: bytearray, stream: Stream, writer: aiohttp.MultipartWriter) -> None:
+async def test_writer_serialize_form_dict(
+    buf: bytearray, stream: Stream, writer: aiohttp.MultipartWriter
+) -> None:
     data = {"hello": "мир"}
     writer.append_form(data)
     await writer.write(stream)
@@ -977,7 +1022,9 @@ async def test_writer_serialize_form_dict(buf: bytearray, stream: Stream, writer
     assert b"hello=%D0%BC%D0%B8%D1%80" in buf
 
 
-async def test_writer_write(buf: bytearray, stream: Stream, writer: aiohttp.MultipartWriter) -> None:
+async def test_writer_write(
+    buf: bytearray, stream: Stream, writer: aiohttp.MultipartWriter
+) -> None:
     writer.append("foo-bar-baz")
     writer.append_json({"test": "passed"})
     writer.append_form({"test": "passed"})
@@ -1055,7 +1102,9 @@ async def test_writer_write_no_close_boundary(buf: bytearray, stream: Stream) ->
     ) == bytes(buf)
 
 
-async def test_writer_write_no_parts(buf: bytearray, stream: Stream, writer: aiohttp.MultipartWriter) -> None:
+async def test_writer_write_no_parts(
+    buf: bytearray, stream: Stream, writer: aiohttp.MultipartWriter
+) -> None:
     await writer.write(stream)
     assert b"--:--\r\n" == bytes(buf)
 
@@ -1218,7 +1267,9 @@ class TestMultipartWriter:
         part = writer._parts[0][0]
         assert part.headers[CONTENT_TYPE] == "test/passed"
 
-    def test_append_json_overrides_content_type(self, writer: aiohttp.MultipartWriter) -> None:
+    def test_append_json_overrides_content_type(
+        self, writer: aiohttp.MultipartWriter
+    ) -> None:
         writer.append_json({"foo": "bar"}, {CONTENT_TYPE: "test/passed"})
         assert 1 == len(writer)
         part = writer._parts[0][0]
@@ -1378,7 +1429,13 @@ class TestMultipartWriter:
 
 
 async def test_async_for_reader() -> None:
-    data: Tuple[Dict[str, str], int, bytes, bytes, bytes] = ({"test": "passed"}, 42, b"plain text", b"aiohttp\n", b"no epilogue")
+    data: Tuple[Dict[str, str], int, bytes, bytes, bytes] = (
+        {"test": "passed"},
+        42,
+        b"plain text",
+        b"aiohttp\n",
+        b"no epilogue",
+    )
     with Stream(
         b"\r\n".join(
             [

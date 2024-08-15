@@ -50,7 +50,9 @@ class TestBadHttpMessage:
         assert err.headers == CIMultiDict()
 
     def test_pickle(self) -> None:
-        err = http_exceptions.BadHttpMessage(message="Bad HTTP message", headers=CIMultiDict())
+        err = http_exceptions.BadHttpMessage(
+            message="Bad HTTP message", headers=CIMultiDict()
+        )
         err.foo = "bar"  # type: ignore[attr-defined]
         for proto in range(pickle.HIGHEST_PROTOCOL + 1):
             pickled = pickle.dumps(err, proto)
@@ -61,11 +63,15 @@ class TestBadHttpMessage:
             assert err2.foo == "bar"
 
     def test_str(self) -> None:
-        err = http_exceptions.BadHttpMessage(message="Bad HTTP message", headers=CIMultiDict())
+        err = http_exceptions.BadHttpMessage(
+            message="Bad HTTP message", headers=CIMultiDict()
+        )
         assert str(err) == "400, message:\n  Bad HTTP message"
 
     def test_repr(self) -> None:
-        err = http_exceptions.BadHttpMessage(message="Bad HTTP message", headers=CIMultiDict())
+        err = http_exceptions.BadHttpMessage(
+            message="Bad HTTP message", headers=CIMultiDict()
+        )
         assert repr(err) == "<BadHttpMessage: 400, message='Bad HTTP message'>"
 
 

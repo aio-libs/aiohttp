@@ -64,7 +64,9 @@ def test_invalid_formdata_filename() -> None:
             form.add_field("foo", "bar", filename=invalid_val)  # type: ignore[arg-type]
 
 
-async def test_formdata_field_name_is_quoted(buf: bytearray, writer: StreamWriter) -> None:
+async def test_formdata_field_name_is_quoted(
+    buf: bytearray, writer: StreamWriter
+) -> None:
     form = FormData(charset="ascii")
     form.add_field("email 1", "xxx@x.co", content_type="multipart/form-data")
     payload = form()
@@ -72,7 +74,9 @@ async def test_formdata_field_name_is_quoted(buf: bytearray, writer: StreamWrite
     assert b'name="email\\ 1"' in buf
 
 
-async def test_formdata_field_name_is_not_quoted(buf: bytearray, writer: StreamWriter) -> None:
+async def test_formdata_field_name_is_not_quoted(
+    buf: bytearray, writer: StreamWriter
+) -> None:
     form = FormData(quote_fields=False, charset="ascii")
     form.add_field("email 1", "xxx@x.co", content_type="multipart/form-data")
     payload = form()

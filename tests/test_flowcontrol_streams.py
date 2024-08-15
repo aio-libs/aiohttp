@@ -14,12 +14,16 @@ def protocol() -> BaseProtocol:
 
 
 @pytest.fixture
-def stream(loop: asyncio.AbstractEventLoop, protocol: BaseProtocol) -> streams.StreamReader:
+def stream(
+    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+) -> streams.StreamReader:
     return streams.StreamReader(protocol, limit=1, loop=loop)
 
 
 @pytest.fixture
-def buffer(loop: asyncio.AbstractEventLoop, protocol: BaseProtocol) -> streams.FlowControlDataQueue[str]:
+def buffer(
+    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+) -> streams.FlowControlDataQueue[str]:
     return streams.FlowControlDataQueue[str](protocol, limit=1, loop=loop)
 
 
@@ -120,7 +124,9 @@ class TestFlowControlDataQueue:
 
         assert buffer._protocol.pause_reading.called  # type: ignore[attr-defined]
 
-    async def test_resume_on_read(self, buffer: streams.FlowControlDataQueue[str]) -> None:
+    async def test_resume_on_read(
+        self, buffer: streams.FlowControlDataQueue[str]
+    ) -> None:
         buffer.feed_data("x" * 100)
 
         buffer._protocol._reading_paused = True
