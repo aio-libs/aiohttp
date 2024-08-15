@@ -467,7 +467,9 @@ def test_ceil_call_later() -> None:
 async def test_ceil_timeout_round(loop: asyncio.AbstractEventLoop) -> None:
     async with helpers.ceil_timeout(7.5) as cm:
         if sys.version_info >= (3, 11):
-            frac, integer = modf(cm.when())
+            w = cm.when()
+            assert w is not None
+            frac, integer = modf(w)
         else:
             assert cm.deadline is not None
             frac, integer = modf(cm.deadline)
@@ -477,7 +479,9 @@ async def test_ceil_timeout_round(loop: asyncio.AbstractEventLoop) -> None:
 async def test_ceil_timeout_small(loop: asyncio.AbstractEventLoop) -> None:
     async with helpers.ceil_timeout(1.1) as cm:
         if sys.version_info >= (3, 11):
-            frac, integer = modf(cm.when())
+            w = cm.when()
+            assert w is not None
+            frac, integer = modf(w)
         else:
             assert cm.deadline is not None
             frac, integer = modf(cm.deadline)
@@ -513,7 +517,9 @@ async def test_ceil_timeout_small_with_overriden_threshold(
 ) -> None:
     async with helpers.ceil_timeout(1.5, ceil_threshold=1) as cm:
         if sys.version_info >= (3, 11):
-            frac, integer = modf(cm.when())
+            w = cm.when()
+            assert w is not None
+            frac, integer = modf(w)
         else:
             assert cm.deadline is not None
             frac, integer = modf(cm.deadline)
