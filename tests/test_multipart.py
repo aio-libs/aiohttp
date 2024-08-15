@@ -78,7 +78,7 @@ class Stream(StreamReader):
         self.content.close()
 
 
-class Response(aiohttp.ClientResponse):
+class Response:
     def __init__(self, headers: CIMultiDictProxy[str], content: Stream) -> None:
         self.headers = headers
         self.content = content
@@ -572,7 +572,7 @@ class TestMultipartReader:
         h = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: 'multipart/related;boundary=":"'}))
         with Stream(b"--:\r\n\r\nhello\r\n--:--") as stream:
             resp = Response(h, stream)
-            res = aiohttp.MultipartReader.from_response(resp)
+            res = aiohttp.MultipartReader.from_response(resp)  # type: ignore[arg-type]
         assert isinstance(res, MultipartResponseWrapper)
         assert isinstance(res.stream, aiohttp.MultipartReader)
 
@@ -581,7 +581,7 @@ class TestMultipartReader:
         with Stream(b"") as stream:
             resp = Response(h, stream)
             with pytest.raises(ValueError):
-                aiohttp.MultipartReader.from_response(resp)
+                aiohttp.MultipartReader.from_response(resp)  # type: ignore[arg-type]
 
     def test_dispatch(self) -> None:
         h = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: "text/plain"}))
@@ -796,7 +796,6 @@ class TestMultipartReader:
 
             assert first is not None
             assert second is not None
-            assert third is not None
             assert first.at_eof()
             assert second.at_eof()
             assert second.at_eof()

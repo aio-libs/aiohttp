@@ -356,7 +356,7 @@ def test_when_timeout_smaller_second(loop: asyncio.AbstractEventLoop) -> None:
     assert handle is not None
     start_handle = handle.start()
     assert start_handle is not None
-    when = start_handle.when
+    when = start_handle.when()
     handle.close()
 
     assert isinstance(when, float)
@@ -371,7 +371,7 @@ def test_when_timeout_smaller_second_with_low_threshold(loop: asyncio.AbstractEv
     assert handle is not None
     start_handle = handle.start()
     assert start_handle is not None
-    when = start_handle.when
+    when = start_handle.when()
     handle.close()
 
     assert isinstance(when, int)
@@ -485,7 +485,6 @@ async def test_ceil_timeout_none(loop: asyncio.AbstractEventLoop) -> None:
         if sys.version_info >= (3, 11):
             assert cm.when() is None
         else:
-            assert cm.deadline is not None
             assert cm.deadline is None
 
 

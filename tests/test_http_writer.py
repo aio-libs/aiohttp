@@ -41,15 +41,14 @@ def test_payloadwriter_properties(transport: asyncio.Transport, protocol: BasePr
 
 
 async def test_write_payload_eof(transport: asyncio.Transport, protocol: BaseProtocol, loop: asyncio.AbstractEventLoop) -> None:
-    with mock.patch.object(transport, "write", autospec=True, spec_set=True) as write:
-        msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, loop)
 
-        await msg.write(b"data1")
-        await msg.write(b"data2")
-        await msg.write_eof()
+    await msg.write(b"data1")
+    await msg.write(b"data2")
+    await msg.write_eof()
 
-        content = b"".join([c[1][0] for c in list(write.mock_calls)])
-        assert b"data1data2" == content.split(b"\r\n\r\n", 1)[-1]
+    content = b"".join([c[1][0] for c in list(transport.write.mock_calls)])  # type: ignore[attr-defined]
+    assert b"data1data2" == content.split(b"\r\n\r\n", 1)[-1]
 
 
 async def test_write_payload_chunked(
@@ -76,63 +75,59 @@ async def test_write_payload_chunked_multiple(
 
 
 async def test_write_payload_length(protocol: BaseProtocol, transport: asyncio.Transport, loop: asyncio.AbstractEventLoop) -> None:
-    with mock.patch.object(transport, "write", autospec=True, spec_set=True) as write:
-        msg = http.StreamWriter(protocol, loop)
-        msg.length = 2
-        await msg.write(b"d")
-        await msg.write(b"ata")
-        await msg.write_eof()
+    msg = http.StreamWriter(protocol, loop)
+    msg.length = 2
+    await msg.write(b"d")
+    await msg.write(b"ata")
+    await msg.write_eof()
 
-        content = b"".join([c[1][0] for c in list(write.mock_calls)])
-        assert b"da" == content.split(b"\r\n\r\n", 1)[-1]
+    content = b"".join([c[1][0] for c in list(transport.write.mock_calls)])  # type: ignore[attr-defined]
+    assert b"da" == content.split(b"\r\n\r\n", 1)[-1]
 
 
 async def test_write_payload_chunked_filter(
     protocol: BaseProtocol, transport: asyncio.Transport, loop: asyncio.AbstractEventLoop
 ) -> None:
-    with mock.patch.object(transport, "write", autospec=True, spec_set=True) as write:
-        msg = http.StreamWriter(protocol, loop)
-        msg.enable_chunking()
-        await msg.write(b"da")
-        await msg.write(b"ta")
-        await msg.write_eof()
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_chunking()
+    await msg.write(b"da")
+    await msg.write(b"ta")
+    await msg.write_eof()
 
-        content = b"".join([c[1][0] for c in list(write.mock_calls)])
-        assert content.endswith(b"2\r\nda\r\n2\r\nta\r\n0\r\n\r\n")
+    content = b"".join([c[1][0] for c in list(transport.write.mock_calls)])  # type: ignore[attr-defined]
+    assert content.endswith(b"2\r\nda\r\n2\r\nta\r\n0\r\n\r\n")
 
 
 async def test_write_payload_chunked_filter_mutiple_chunks(
     protocol: BaseProtocol, transport: asyncio.Transport, loop: asyncio.AbstractEventLoop
 ) -> None:
-    with mock.patch.object(transport, "write", autospec=True, spec_set=True) as write:
-        msg = http.StreamWriter(protocol, loop)
-        msg.enable_chunking()
-        await msg.write(b"da")
-        await msg.write(b"ta")
-        await msg.write(b"1d")
-        await msg.write(b"at")
-        await msg.write(b"a2")
-        await msg.write_eof()
-        content = b"".join([c[1][0] for c in list(write.mock_calls)])
-        assert content.endswith(
-            b"2\r\nda\r\n2\r\nta\r\n2\r\n1d\r\n2\r\nat\r\n" b"2\r\na2\r\n0\r\n\r\n"
-        )
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_chunking()
+    await msg.write(b"da")
+    await msg.write(b"ta")
+    await msg.write(b"1d")
+    await msg.write(b"at")
+    await msg.write(b"a2")
+    await msg.write_eof()
+    content = b"".join([c[1][0] for c in list(transport.write.mock_calls)])  # type: ignore[attr-defined]
+    assert content.endswith(
+        b"2\r\nda\r\n2\r\nta\r\n2\r\n1d\r\n2\r\nat\r\n" b"2\r\na2\r\n0\r\n\r\n"
+    )
 
 
 async def test_write_payload_deflate_compression(
     protocol: BaseProtocol, transport: asyncio.Transport, loop: asyncio.AbstractEventLoop
 ) -> None:
     COMPRESSED = b"x\x9cKI,I\x04\x00\x04\x00\x01\x9b"
-    with mock.patch.object(transport, "write", autospec=True, spec_set=True) as write:
-        msg = http.StreamWriter(protocol, loop)
-        msg.enable_compression("deflate")
-        await msg.write(b"data")
-        await msg.write_eof()
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    await msg.write(b"data")
+    await msg.write_eof()
 
-        chunks = [c[1][0] for c in list(write.mock_calls)]
-        assert all(chunks)
-        content = b"".join(chunks)
-        assert COMPRESSED == content.split(b"\r\n\r\n", 1)[-1]
+    chunks = [c[1][0] for c in list(transport.write.mock_calls)]  # type: ignore[attr-defined]
+    assert all(chunks)
+    content = b"".join(chunks)
+    assert COMPRESSED == content.split(b"\r\n\r\n", 1)[-1]
 
 
 async def test_write_payload_deflate_and_chunked(

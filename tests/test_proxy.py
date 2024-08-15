@@ -14,18 +14,6 @@ from aiohttp.helpers import TimerNoop
 from aiohttp.test_utils import make_mocked_coro
 
 
-async def noop_task() -> asyncio.Task[None]:
-    async def noop() -> None:
-        return
-
-    if sys.version_info >= (3, 12):
-        t = asyncio.Task(noop(), eager_start=True)
-    else:
-        t = asyncio.create_task(noop())
-    await t
-    return t
-
-
 class TestProxy(unittest.TestCase):
     response_mock_attrs = {
         "status": 200,
@@ -74,7 +62,7 @@ class TestProxy(unittest.TestCase):
             "proto": 0,
             "flags": 0,
         }
-        with mock.patch.object(connector, "_resolve_host", autospec=True, return_value=r):
+        with mock.patch.object(connector, "_resolve_host", autospec=True, return_value=[r]):
             proto = mock.Mock(
                 **{
                     "transport.get_extra_info.return_value": False,
@@ -128,7 +116,7 @@ class TestProxy(unittest.TestCase):
             "proto": 0,
             "flags": 0,
         }
-        with mock.patch.object(connector, "_resolve_host", autospec=True, return_value=r):
+        with mock.patch.object(connector, "_resolve_host", autospec=True, return_value=[r]):
             proto = mock.Mock(
                 **{
                     "transport.get_extra_info.return_value": False,
@@ -215,8 +203,8 @@ class TestProxy(unittest.TestCase):
             "proto": 0,
             "flags": socket.AI_NUMERICHOST,
         }
-        with mock.patch.object(connector, "_resolve_host", autospec=True, return_value=r):
-            with mock.patch.object(connector, "_loop.create_connection", autospec=True, side_effect=OSError("dont take it serious")):
+        with mock.patch.object(connector, "_resolve_host", autospec=True, return_value=[r]):
+            with mock.patch.object(connector._loop, "create_connection", autospec=True, side_effect=OSError("dont take it serious")):
                 req = ClientRequest(
                     "GET",
                     URL("http://www.python.org"),
@@ -234,7 +222,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    async def test_proxy_server_hostname_default(
+    def test_proxy_server_hostname_default(
         self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         proxy_req = ClientRequest(
@@ -246,7 +234,7 @@ class TestProxy(unittest.TestCase):
             "get",
             URL("http://proxy.example.com"),
             request_info=mock.Mock(),
-            writer=await noop_task(),
+            writer=None,  # type: ignore[arg-type]
             continue100=None,
             timer=TimerNoop(),
             traces=[],
@@ -255,7 +243,7 @@ class TestProxy(unittest.TestCase):
         )
         with mock.patch.object(proxy_req, "send", autospec=True, return_value=proxy_resp):
             with mock.patch.object(proxy_resp, "start", autospec=True) as m:
-                m.return_value.status_code = 200
+                m.return_value.status = 200
                 async def make_conn() -> aiohttp.TCPConnector:
                     return aiohttp.TCPConnector()
 
@@ -271,7 +259,7 @@ class TestProxy(unittest.TestCase):
                 with mock.patch.object(connector, "_resolve_host", autospec=True, return_value=[r]):
                     tr, proto = mock.Mock(), mock.Mock()
                     with mock.patch.object(self.loop, "create_connection", autospec=True, return_value=(tr, proto)):
-                        with mock.patch.object(self.loop, "start_tls", autospec=True) as tls_m:
+                        with mock.patch.object(self.loop, "start_tls", autospec=True, return_value=mock.Mock()) as tls_m:
                             req = ClientRequest(
                                 "GET",
                                 URL("https://www.python.org"),
@@ -296,7 +284,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    async def test_proxy_server_hostname_override(
+    def test_proxy_server_hostname_override(
         self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         proxy_req = ClientRequest(
@@ -310,7 +298,7 @@ class TestProxy(unittest.TestCase):
             "get",
             URL("http://proxy.example.com"),
             request_info=mock.Mock(),
-            writer=await noop_task(),
+            writer=None,  # type: ignore[arg-type]
             continue100=None,
             timer=TimerNoop(),
             traces=[],
@@ -319,7 +307,7 @@ class TestProxy(unittest.TestCase):
         )
         with mock.patch.object(proxy_req, "send", autospec=True, return_value=proxy_resp):
             with mock.patch.object(proxy_resp, "start", autospec=True) as m:
-                m.return_value.status_code = 200
+                m.return_value.status = 200
 
                 async def make_conn() -> aiohttp.TCPConnector:
                     return aiohttp.TCPConnector()
@@ -336,7 +324,7 @@ class TestProxy(unittest.TestCase):
                 with mock.patch.object(connector, "_resolve_host", autospec=True, return_value=[r]):
                     tr, proto = mock.Mock(), mock.Mock()
                     with mock.patch.object(self.loop, "create_connection", autospec=True, return_value=(tr, proto)):
-                        with mock.patch.object(self.loop, "start_tls", autospec=True) as tls_m:
+                        with mock.patch.object(self.loop, "start_tls", autospec=True, return_value=mock.Mock()) as tls_m:
                             req = ClientRequest(
                                 "GET",
                                 URL("https://www.python.org"),
@@ -363,7 +351,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    async def test_https_connect(self, start_connection: mock.Mock, ClientRequestMock: mock.Mock) -> None:
+    def test_https_connect(self, start_connection: mock.Mock, ClientRequestMock: mock.Mock) -> None:
         proxy_req = ClientRequest(
             "GET", URL("http://proxy.example.com"), loop=self.loop
         )
@@ -373,7 +361,7 @@ class TestProxy(unittest.TestCase):
             "get",
             URL("http://proxy.example.com"),
             request_info=mock.Mock(),
-            writer=await noop_task(),
+            writer=None,  # type: ignore[arg-type]
             continue100=None,
             timer=TimerNoop(),
             traces=[],
@@ -382,7 +370,7 @@ class TestProxy(unittest.TestCase):
         )
         with mock.patch.object(proxy_req, "send", autospec=True, return_value=proxy_resp):
             with mock.patch.object(proxy_resp, "start", autospec=True) as m:
-                m.return_value.status_code = 200
+                m.return_value.status = 200
 
                 async def make_conn() -> aiohttp.TCPConnector:
                     return aiohttp.TCPConnector()
@@ -399,7 +387,7 @@ class TestProxy(unittest.TestCase):
                 with mock.patch.object(connector, "_resolve_host", autospec=True, return_value=[r]):
                     tr, proto = mock.Mock(), mock.Mock()
                     with mock.patch.object(self.loop, "create_connection", autospec=True, return_value=(tr, proto)):
-                        with mock.patch.object(self.loop, "start_tls", autospec=True):
+                        with mock.patch.object(self.loop, "start_tls", autospec=True, return_value=mock.Mock()):
                             req = ClientRequest(
                                 "GET",
                                 URL("https://www.python.org"),
@@ -424,7 +412,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    async def test_https_connect_certificate_error(
+    def test_https_connect_certificate_error(
         self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         proxy_req = ClientRequest(
@@ -436,7 +424,7 @@ class TestProxy(unittest.TestCase):
             "get",
             URL("http://proxy.example.com"),
             request_info=mock.Mock(),
-            writer=await noop_task(),
+            writer=None,  # type: ignore[arg-type]
             continue100=None,
             timer=TimerNoop(),
             traces=[],
@@ -445,7 +433,7 @@ class TestProxy(unittest.TestCase):
         )
         with mock.patch.object(proxy_req, "send", autospec=True, return_value=proxy_resp):
             with mock.patch.object(proxy_resp, "start", autospec=True) as m:
-                m.return_value.status_code = 200
+                m.return_value.status = 200
 
                 async def make_conn() -> aiohttp.TCPConnector:
                     return aiohttp.TCPConnector()
@@ -482,7 +470,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    async def test_https_connect_ssl_error(
+    def test_https_connect_ssl_error(
         self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         proxy_req = ClientRequest(
@@ -494,7 +482,7 @@ class TestProxy(unittest.TestCase):
             "get",
             URL("http://proxy.example.com"),
             request_info=mock.Mock(),
-            writer=await noop_task(),
+            writer=None,  # type: ignore[arg-type]
             continue100=None,
             timer=TimerNoop(),
             traces=[],
@@ -503,7 +491,7 @@ class TestProxy(unittest.TestCase):
         )
         with mock.patch.object(proxy_req, "send", autospec=True, return_value=proxy_resp):
             with mock.patch.object(proxy_resp, "start", autospec=True) as m:
-                m.return_value.status_code = 200
+                m.return_value.status = 200
 
                 async def make_conn() -> aiohttp.TCPConnector:
                     return aiohttp.TCPConnector()
@@ -540,7 +528,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    async def test_https_connect_http_proxy_error(
+    def test_https_connect_http_proxy_error(
         self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         proxy_req = ClientRequest(
@@ -552,7 +540,7 @@ class TestProxy(unittest.TestCase):
             "get",
             URL("http://proxy.example.com"),
             request_info=mock.Mock(),
-            writer=await noop_task(),
+            writer=None,  # type: ignore[arg-type]
             continue100=None,
             timer=TimerNoop(),
             traces=[],
@@ -561,7 +549,8 @@ class TestProxy(unittest.TestCase):
         )
         with mock.patch.object(proxy_req, "send", autospec=True, return_value=proxy_resp):
             with mock.patch.object(proxy_resp, "start", autospec=True) as m:
-                m.return_value.status_code = 200
+                m.return_value.status = 400
+                m.return_value.reason = "bad request"
 
                 async def make_conn() -> aiohttp.TCPConnector:
                     return aiohttp.TCPConnector()
@@ -603,7 +592,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    async def test_https_connect_resp_start_error(
+    def test_https_connect_resp_start_error(
         self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         proxy_req = ClientRequest(
@@ -615,7 +604,7 @@ class TestProxy(unittest.TestCase):
             "get",
             URL("http://proxy.example.com"),
             request_info=mock.Mock(),
-            writer=await noop_task(),
+            writer=None,  # type: ignore[arg-type]
             continue100=None,
             timer=TimerNoop(),
             traces=[],
@@ -717,7 +706,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    async def test_https_connect_pass_ssl_context(
+    def test_https_connect_pass_ssl_context(
         self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         proxy_req = ClientRequest(
@@ -729,7 +718,7 @@ class TestProxy(unittest.TestCase):
             "get",
             URL("http://proxy.example.com"),
             request_info=mock.Mock(),
-            writer=await noop_task(),
+            writer=None,  # type: ignore[arg-type]
             continue100=None,
             timer=TimerNoop(),
             traces=[],
@@ -738,7 +727,7 @@ class TestProxy(unittest.TestCase):
         )
         with mock.patch.object(proxy_req, "send", autospec=True, return_value=proxy_resp):
             with mock.patch.object(proxy_resp, "start", autospec=True) as m:
-                m.return_value.status_code = 200
+                m.return_value.status = 200
 
                 async def make_conn() -> aiohttp.TCPConnector:
                     return aiohttp.TCPConnector()
@@ -755,7 +744,7 @@ class TestProxy(unittest.TestCase):
                 with mock.patch.object(connector, "_resolve_host", autospec=True, return_value=[r]):
                     tr, proto = mock.Mock(), mock.Mock()
                     with mock.patch.object(self.loop, "create_connection", autospec=True, return_value=(tr, proto)):
-                        with mock.patch.object(self.loop, "start_tls", autospec=True) as tls_m:
+                        with mock.patch.object(self.loop, "start_tls", autospec=True, return_value=mock.Mock()) as tls_m:
                             req = ClientRequest(
                                 "GET",
                                 URL("https://www.python.org"),
@@ -788,7 +777,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    async def test_https_auth(self, start_connection: mock.Mock, ClientRequestMock: mock.Mock) -> None:
+    def test_https_auth(self, start_connection: mock.Mock, ClientRequestMock: mock.Mock) -> None:
         proxy_req = ClientRequest(
             "GET",
             URL("http://proxy.example.com"),
@@ -801,7 +790,7 @@ class TestProxy(unittest.TestCase):
             "get",
             URL("http://proxy.example.com"),
             request_info=mock.Mock(),
-            writer=await noop_task(),
+            writer=None,  # type: ignore[arg-type]
             continue100=None,
             timer=TimerNoop(),
             traces=[],
@@ -810,7 +799,7 @@ class TestProxy(unittest.TestCase):
         )
         with mock.patch.object(proxy_req, "send", autospec=True, return_value=proxy_resp):
             with mock.patch.object(proxy_resp, "start", autospec=True) as m:
-                m.return_value.status_code = 200
+                m.return_value.status = 200
 
                 async def make_conn() -> aiohttp.TCPConnector:
                     return aiohttp.TCPConnector()
@@ -827,7 +816,7 @@ class TestProxy(unittest.TestCase):
                 with mock.patch.object(connector, "_resolve_host", autospec=True, return_value=[r]) as host_m:
                     tr, proto = mock.Mock(), mock.Mock()
                     with mock.patch.object(self.loop, "create_connection", autospec=True, return_value=(tr, proto)):
-                        with mock.patch.object(self.loop, "start_tls", autospec=True):
+                        with mock.patch.object(self.loop, "start_tls", autospec=True, return_value=mock.Mock()):
                             self.assertIn("AUTHORIZATION", proxy_req.headers)
                             self.assertNotIn("PROXY-AUTHORIZATION", proxy_req.headers)
 
