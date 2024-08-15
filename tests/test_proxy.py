@@ -2,7 +2,6 @@ import asyncio
 import gc
 import socket
 import ssl
-import sys
 import unittest
 from unittest import mock
 
