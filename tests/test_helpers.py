@@ -214,7 +214,7 @@ def test_basic_auth_from_not_url() -> None:
 
 
 class ReifyMixin:
-    reify: Type[helpers.reify[Any]]
+    reify: Type["helpers.reify[Any]"]
 
     def test_reify(self) -> None:
         class A:
