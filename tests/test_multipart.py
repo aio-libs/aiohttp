@@ -22,7 +22,6 @@ from aiohttp.hdrs import (
 from aiohttp.helpers import parse_mimetype
 from aiohttp.multipart import BodyPartReader, MultipartReader, MultipartResponseWrapper
 from aiohttp.streams import StreamReader
-from aiohttp.test_utils import make_mocked_coro
 
 if sys.version_info >= (3, 11):
     from typing import Self
