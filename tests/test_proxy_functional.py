@@ -4,7 +4,16 @@ import pathlib
 import ssl
 import sys
 from re import match as match_regex
-from typing import TYPE_CHECKING, Awaitable, Callable, Dict, Iterator, Optional, TypedDict, Union
+from typing import (
+    TYPE_CHECKING,
+    Awaitable,
+    Callable,
+    Dict,
+    Iterator,
+    Optional,
+    TypedDict,
+    Union,
+)
 from unittest import mock
 from uuid import uuid4
 
