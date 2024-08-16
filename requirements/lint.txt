@@ -15,7 +15,9 @@ async-timeout==4.0.3
 certifi==2024.7.4
     # via requests
 cffi==1.16.0
-    # via pycares
+    # via
+    #   cryptography
+    #   pycares
 cfgv==3.3.1
     # via pre-commit
 charset-normalizer==3.3.2
@@ -24,6 +26,8 @@ click==8.1.6
     # via
     #   slotscheck
     #   typer
+cryptography==43.0.0
+    # via trustme
 distlib==0.3.7
     # via virtualenv
 exceptiongroup==1.1.2
@@ -35,7 +39,9 @@ freezegun==1.5.1
 identify==2.5.26
     # via pre-commit
 idna==3.7
-    # via requests
+    # via
+    #   requests
+    #   trustme
 iniconfig==2.0.0
     # via pytest
 markdown-it-py==3.0.0
@@ -67,9 +73,13 @@ pydantic-core==2.18.2
 pygments==2.17.2
     # via rich
 pytest==8.1.1
-    # via -r requirements/lint.in
+    # via
+    #   -r requirements/lint.in
+    #   pytest-mock
 pytest-mock==3.14.0
     # via -r requirements/lint.in
+python-dateutil==2.9.0.post0
+    # via freezegun
 python-on-whales==0.72.0
     # via -r requirements/lint.in
 pyyaml==6.0.1
@@ -80,6 +90,8 @@ rich==13.7.1
     # via typer
 shellingham==1.5.4
     # via typer
+six==1.16.0
+    # via python-dateutil
 slotscheck==0.19.0
     # via -r requirements/lint.in
 tomli==2.0.1
@@ -105,7 +117,7 @@ typing-extensions==4.10.0
     #   typer
 urllib3==2.2.2
     # via requests
-uvloop==0.19.0 ; platform_system != "Windows"
+uvloop==0.20.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
 virtualenv==20.24.2
     # via pre-commit
