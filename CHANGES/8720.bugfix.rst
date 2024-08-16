@@ -1,0 +1,1 @@
+Fixed an edge case in the Python parser when chunk separators happen to align with network chunks -- by :user:`Dreamsorcerer`.
