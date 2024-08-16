@@ -1484,6 +1484,7 @@ async def test_async_for_reader() -> None:
 
         async def check(reader: aiohttp.MultipartReader) -> None:
             async for part in reader:
+                assert part is not None
                 if isinstance(part, aiohttp.BodyPartReader):
                     if part.headers[CONTENT_TYPE] == "application/json":
                         assert next(idata) == (await part.json())
