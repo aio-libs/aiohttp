@@ -1463,7 +1463,9 @@ def test_parse_chunked_payload_empty_body_than_another_chunked(
 
 async def test_parse_chunked_payload_split_chunks(response: HttpResponseParser) -> None:
     network_chunks = (
-        b"HTTP/1.1 200 OK\r\n" b"Transfer-Encoding: chunked\r\n\r\n" b"5\r\nfi",
+        b"HTTP/1.1 200 OK\r\n",
+        b"Transfer-Encoding: chunked\r\n\r\n",
+        b"5\r\nfi",
         b"rst",
         # This simulates a bug in lax mode caused when the \r\n separator, before the
         # next HTTP chunk, appears at the start of the next network chunk.
