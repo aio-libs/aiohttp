@@ -11,7 +11,6 @@ from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncIterator,
     Deque,
     Dict,
     Iterator,
@@ -610,10 +609,8 @@ class MultipartReader:
         self._at_bof = True
         self._unread: List[bytes] = []
 
-    def __aiter__(
-        self,
-    ) -> AsyncIterator["BodyPartReader"]:
-        return self  # type: ignore[return-value]
+    def __aiter__(self) -> Self:
+        return self
 
     async def __anext__(
         self,
