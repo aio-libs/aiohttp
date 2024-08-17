@@ -14,10 +14,12 @@ from typing import (
     Awaitable,
     Callable,
     Deque,
+    Generic,
     Optional,
     Sequence,
     Tuple,
     Type,
+    TypeVar,
     Union,
     cast,
 )
@@ -39,7 +41,7 @@ from .streams import EMPTY_PAYLOAD, StreamReader
 from .tcp_helpers import tcp_keepalive
 from .web_exceptions import HTTPException
 from .web_log import AccessLogger
-from .web_request import BaseRequest
+from .web_request import BaseRequest, Request
 from .web_response import Response, StreamResponse
 
 __all__ = ("RequestHandler", "RequestPayloadError", "PayloadAccessError")
@@ -48,18 +50,19 @@ if TYPE_CHECKING:
     from .web_server import Server
 
 
+_Request = TypeVar("_Request", bound=BaseRequest)
 _RequestFactory = Callable[
     [
         RawRequestMessage,
         StreamReader,
-        "RequestHandler",
+        "RequestHandler[_Request]",
         AbstractStreamWriter,
         "asyncio.Task[None]",
     ],
-    BaseRequest,
+    _Request,
 ]
 
-_RequestHandler = Callable[[BaseRequest], Awaitable[StreamResponse]]
+_RequestHandler = Callable[[_Request], Awaitable[StreamResponse]]
 _AnyAbstractAccessLogger = Union[
     Type[AbstractAsyncAccessLogger],
     Type[AbstractAccessLogger],
@@ -113,7 +116,7 @@ class _ErrInfo:
 _MsgType = Tuple[Union[RawRequestMessage, _ErrInfo], StreamReader]
 
 
-class RequestHandler(BaseProtocol):
+class RequestHandler(BaseProtocol, Generic[_Request]):
     """HTTP protocol implementation.
 
     RequestHandler handles incoming HTTP request. It reads request line,
@@ -179,7 +182,7 @@ class RequestHandler(BaseProtocol):
 
     def __init__(
         self,
-        manager: "Server",
+        manager: "Server[_Request]",
         *,
         loop: asyncio.AbstractEventLoop,
         keepalive_timeout: float = 75.0,  # NGINX default is 75 secs
@@ -199,10 +202,10 @@ class RequestHandler(BaseProtocol):
 
         self._request_count = 0
         self._keepalive = False
-        self._current_request: Optional[BaseRequest] = None
-        self._manager: Optional[Server] = manager
-        self._request_handler: Optional[_RequestHandler] = manager.request_handler
-        self._request_factory: Optional[_RequestFactory] = manager.request_factory
+        self._current_request: Optional[_Request] = None
+        self._manager: Optional[Server[_Request]] = manager
+        self._request_handler: Optional[_RequestHandler[_Request]] = manager.request_handler
+        self._request_factory: Optional[_RequestFactory[_Request]] = manager.request_factory
 
         self._tcp_keepalive = tcp_keepalive
         # placeholder to be replaced on keepalive timeout setup
@@ -461,9 +464,9 @@ class RequestHandler(BaseProtocol):
 
     async def _handle_request(
         self,
-        request: BaseRequest,
+        request: _Request,
         start_time: float,
-        request_handler: Callable[[BaseRequest], Awaitable[StreamResponse]],
+        request_handler: Callable[[_Request], Awaitable[StreamResponse]],
     ) -> Tuple[StreamResponse, bool]:
         self._handler_waiter = self._loop.create_future()
         try:
@@ -530,14 +533,15 @@ class RequestHandler(BaseProtocol):
 
             manager.requests_count += 1
             writer = StreamWriter(self, loop)
-            if isinstance(message, _ErrInfo):
+            if not isinstance(message, _ErrInfo):
+                request_handler = self._request_handler
+            else:
                 # make request_factory work
                 request_handler = self._make_error_handler(message)
                 message = ERROR
-            else:
-                request_handler = self._request_handler
 
             request = self._request_factory(message, payload, self, writer, handler)
+            print(1, type(request))
             try:
                 # a new task is used for copy context vars (#3406)
                 coro = self._handle_request(request, start, request_handler)

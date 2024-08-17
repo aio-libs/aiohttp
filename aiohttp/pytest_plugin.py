@@ -11,12 +11,14 @@ from typing import (
     Optional,
     Protocol,
     Type,
+    TypeVar,
     Union,
+    overload,
 )
 
 import pytest
 
-from aiohttp.web import Application
+from aiohttp.web import Application, BaseRequest, Request
 
 from .test_utils import (
     BaseTestServer,
@@ -34,17 +36,29 @@ try:
 except ImportError:  # pragma: no cover
     uvloop = None  # type: ignore[assignment]
 
+_Request = TypeVar("_Request", bound=BaseRequest)
 AiohttpRawServer = Callable[[Application], Awaitable[RawTestServer]]
 
 
 class AiohttpClient(Protocol):
-    def __call__(
+    @overload
+    async def __call__(
         self,
-        __param: Union[Application, BaseTestServer],
+        __param: Application,
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs: Any
-    ) -> Awaitable[TestClient]: ...
+    ) -> TestClient[Request]:
+        ...
+    @overload
+    async def __call__(
+        self,
+        __param: BaseTestServer[_Request],
+        *,
+        server_kwargs: Optional[Dict[str, Any]] = None,
+        **kwargs: Any
+    ) -> TestClient[_Request]:
+        ...
 
 
 class AiohttpServer(Protocol):
@@ -323,7 +337,7 @@ def aiohttp_raw_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpRawSe
 
 
 @pytest.fixture
-def aiohttp_client_cls() -> Type[TestClient]:
+def aiohttp_client_cls() -> Type[TestClient[Any]]:
     """
     Client class to use in ``aiohttp_client`` factory.
 
@@ -351,7 +365,7 @@ def aiohttp_client_cls() -> Type[TestClient]:
 
 @pytest.fixture
 def aiohttp_client(
-    loop: asyncio.AbstractEventLoop, aiohttp_client_cls: Type[TestClient]
+    loop: asyncio.AbstractEventLoop, aiohttp_client_cls: Type[TestClient[Any]]
 ) -> Iterator[AiohttpClient]:
     """Factory to create a TestClient instance.
 
@@ -361,12 +375,28 @@ def aiohttp_client(
     """
     clients = []
 
+    @overload
     async def go(
-        __param: Union[Application, BaseTestServer],
+        __param: Application,
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs: Any
-    ) -> TestClient:
+    ) -> TestClient[Request]:
+        ...
+    @overload
+    async def go(
+        __param: BaseTestServer[_Request],
+        *,
+        server_kwargs: Optional[Dict[str, Any]] = None,
+        **kwargs: Any
+    ) -> TestClient[_Request]:
+        ...
+    async def go(
+        __param: Union[Application, BaseTestServer[Any]],
+        *,
+        server_kwargs: Optional[Dict[str, Any]] = None,
+        **kwargs: Any
+    ) -> TestClient[Any]:
         if isinstance(__param, Application):
             server_kwargs = server_kwargs or {}
             server = TestServer(__param, **server_kwargs)

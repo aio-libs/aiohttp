@@ -14,10 +14,12 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    Generic,
     Iterator,
     List,
     Optional,
     Type,
+    TypeVar,
     Union,
     cast,
 )
@@ -45,6 +47,7 @@ from .web import (
     Application,
     AppRunner,
     BaseRunner,
+    BaseRequest,
     Request,
     Server,
     ServerRunner,
@@ -60,6 +63,13 @@ else:
 
 if sys.version_info >= (3, 11) and TYPE_CHECKING:
     from typing import Unpack
+
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    Self = Any
+
+_Request = TypeVar("_Request", bound=BaseRequest)
 
 REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
 
@@ -90,7 +100,7 @@ def unused_port() -> int:
         return cast(int, s.getsockname()[1])
 
 
-class BaseTestServer(ABC):
+class BaseTestServer(ABC, Generic[_Request]):
     __test__ = False
 
     def __init__(
@@ -105,7 +115,7 @@ class BaseTestServer(ABC):
         ] = get_port_socket,
         **kwargs: Any,
     ) -> None:
-        self.runner: Optional[BaseRunner] = None
+        self.runner: Optional[BaseRunner[_Request]] = None
         self._root: Optional[URL] = None
         self.host = host
         self.port = port
@@ -144,7 +154,7 @@ class BaseTestServer(ABC):
         self._root = URL(f"{self.scheme}://{absolute_host}:{self.port}")
 
     @abstractmethod  # pragma: no cover
-    async def _make_runner(self, **kwargs: Any) -> BaseRunner:
+    async def _make_runner(self, **kwargs: Any) -> BaseRunner[_Request]:
         pass
 
     def make_url(self, path: StrOrURL) -> URL:
@@ -165,7 +175,7 @@ class BaseTestServer(ABC):
         return self._closed
 
     @property
-    def handler(self) -> Server:
+    def handler(self) -> Server[_Request]:
         # for backward compatibility
         # web.Server instance
         runner = self.runner
@@ -192,7 +202,7 @@ class BaseTestServer(ABC):
             self.port = None
             self._closed = True
 
-    async def __aenter__(self) -> "BaseTestServer":
+    async def __aenter__(self) -> Self:
         await self.start_server()
         return self
 
@@ -205,7 +215,7 @@ class BaseTestServer(ABC):
         await self.close()
 
 
-class TestServer(BaseTestServer):
+class TestServer(BaseTestServer[Request]):
     def __init__(
         self,
         app: Application,
@@ -218,14 +228,14 @@ class TestServer(BaseTestServer):
         self.app = app
         super().__init__(scheme=scheme, host=host, port=port, **kwargs)
 
-    async def _make_runner(self, **kwargs: Any) -> BaseRunner:
+    async def _make_runner(self, **kwargs: Any) -> AppRunner:
         return AppRunner(self.app, **kwargs)
 
 
-class RawTestServer(BaseTestServer):
+class RawTestServer(BaseTestServer[BaseRequest]):
     def __init__(
         self,
-        handler: _RequestHandler,
+        handler: _RequestHandler[BaseRequest],
         *,
         scheme: str = "",
         host: str = "127.0.0.1",
@@ -240,7 +250,7 @@ class RawTestServer(BaseTestServer):
         return ServerRunner(srv, **kwargs)
 
 
-class TestClient:
+class TestClient(Generic[_Request]):
     """
     A test client implementation.
 
@@ -252,7 +262,7 @@ class TestClient:
 
     def __init__(
         self,
-        server: BaseTestServer,
+        server: BaseTestServer[_Request],
         *,
         cookie_jar: Optional[AbstractCookieJar] = None,
         **kwargs: Any,
@@ -285,7 +295,7 @@ class TestClient:
         return self._server.port
 
     @property
-    def server(self) -> BaseTestServer:
+    def server(self) -> BaseTestServer[_Request]:
         return self._server
 
     @property
@@ -446,7 +456,7 @@ class TestClient:
             await self._server.close()
             self._closed = True
 
-    async def __aenter__(self) -> "TestClient":
+    async def __aenter__(self) -> Self:
         await self.start_server()
         return self
 
@@ -494,7 +504,7 @@ class AioHTTPTestCase(IsolatedAsyncioTestCase, ABC):
         """Return a TestServer instance."""
         return TestServer(app)
 
-    async def get_client(self, server: TestServer) -> TestClient:
+    async def get_client(self, server: TestServer) -> TestClient[Request]:
         """Return a TestClient instance."""
         return TestClient(server)
 
