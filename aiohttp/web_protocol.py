@@ -204,8 +204,12 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         self._keepalive = False
         self._current_request: Optional[_Request] = None
         self._manager: Optional[Server[_Request]] = manager
-        self._request_handler: Optional[_RequestHandler[_Request]] = manager.request_handler
-        self._request_factory: Optional[_RequestFactory[_Request]] = manager.request_factory
+        self._request_handler: Optional[_RequestHandler[_Request]] = (
+            manager.request_handler
+        )
+        self._request_factory: Optional[_RequestFactory[_Request]] = (
+            manager.request_factory
+        )
 
         self._tcp_keepalive = tcp_keepalive
         # placeholder to be replaced on keepalive timeout setup

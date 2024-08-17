@@ -9,7 +9,20 @@ import ssl
 import subprocess
 import sys
 import time
-from typing import Any, AsyncIterator, Awaitable, Callable, Coroutine, Dict, Iterator, List, NoReturn, Optional, Set, Tuple
+from typing import (
+    Any,
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Coroutine,
+    Dict,
+    Iterator,
+    List,
+    NoReturn,
+    Optional,
+    Set,
+    Tuple,
+)
 from unittest import mock
 from uuid import uuid4
 
@@ -62,13 +75,23 @@ def skip_if_on_windows() -> None:
 
 
 @pytest.fixture
-def patched_loop(loop: asyncio.AbstractEventLoop) -> Iterator[asyncio.AbstractEventLoop]:
+def patched_loop(
+    loop: asyncio.AbstractEventLoop,
+) -> Iterator[asyncio.AbstractEventLoop]:
     server = mock.create_autospec(asyncio.Server, spec_set=True, instance=True)
     server.wait_closed.return_value = None
     unix_server = mock.create_autospec(asyncio.Server, spec_set=True, instance=True)
     unix_server.wait_closed.return_value = None
-    with mock.patch.object(loop, "create_server", autospec=True, spec_set=True, return_value=server):
-        with mock.patch.object(loop, "create_unix_server", autospec=True, spec_set=True, return_value=unix_server):
+    with mock.patch.object(
+        loop, "create_server", autospec=True, spec_set=True, return_value=server
+    ):
+        with mock.patch.object(
+            loop,
+            "create_unix_server",
+            autospec=True,
+            spec_set=True,
+            return_value=unix_server,
+        ):
             asyncio.set_event_loop(loop)
             yield loop
 
@@ -153,7 +176,9 @@ mock_server_default_8989 = [
     )
 ]
 mock_socket: Any = mock.Mock(getsockname=lambda: ("mock-socket", 123))
-mixed_bindings_tests: Tuple[Tuple[str, Dict[str, Any], List[mock._Call], List[mock._Call]], ...] = (
+mixed_bindings_tests: Tuple[
+    Tuple[str, Dict[str, Any], List[mock._Call], List[mock._Call]], ...
+] = (
     (
         "Nothing Specified",
         {},
@@ -511,7 +536,9 @@ def test_run_app_custom_backlog_unix(patched_loop: asyncio.AbstractEventLoop) ->
 
 
 @skip_if_no_unix_socks
-def test_run_app_http_unix_socket(patched_loop: asyncio.AbstractEventLoop, unix_sockname: str) -> None:
+def test_run_app_http_unix_socket(
+    patched_loop: asyncio.AbstractEventLoop, unix_sockname: str
+) -> None:
     app = web.Application()
 
     printer = mock.Mock(wraps=stopper(patched_loop))
@@ -524,7 +551,9 @@ def test_run_app_http_unix_socket(patched_loop: asyncio.AbstractEventLoop, unix_
 
 
 @skip_if_no_unix_socks
-def test_run_app_https_unix_socket(patched_loop: asyncio.AbstractEventLoop, unix_sockname: str) -> None:
+def test_run_app_https_unix_socket(
+    patched_loop: asyncio.AbstractEventLoop, unix_sockname: str
+) -> None:
     app = web.Application()
 
     ssl_context = ssl.create_default_context()
@@ -560,7 +589,9 @@ def test_run_app_abstract_linux_socket(patched_loop: asyncio.AbstractEventLoop) 
     )
 
 
-def test_run_app_preexisting_inet_socket(patched_loop: asyncio.AbstractEventLoop, mocker: MockerFixture) -> None:
+def test_run_app_preexisting_inet_socket(
+    patched_loop: asyncio.AbstractEventLoop, mocker: MockerFixture
+) -> None:
     app = web.Application()
 
     sock = socket.socket()
@@ -578,7 +609,9 @@ def test_run_app_preexisting_inet_socket(patched_loop: asyncio.AbstractEventLoop
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not available")
-def test_run_app_preexisting_inet6_socket(patched_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_preexisting_inet6_socket(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
     app = web.Application()
 
     sock = socket.socket(socket.AF_INET6)
@@ -596,7 +629,9 @@ def test_run_app_preexisting_inet6_socket(patched_loop: asyncio.AbstractEventLoo
 
 
 @skip_if_no_unix_socks
-def test_run_app_preexisting_unix_socket(patched_loop: asyncio.AbstractEventLoop, mocker: MockerFixture) -> None:
+def test_run_app_preexisting_unix_socket(
+    patched_loop: asyncio.AbstractEventLoop, mocker: MockerFixture
+) -> None:
     app = web.Application()
 
     sock_path = "/tmp/test_preexisting_sock1"
@@ -614,7 +649,9 @@ def test_run_app_preexisting_unix_socket(patched_loop: asyncio.AbstractEventLoop
         assert f"http://unix:{sock_path}:" in printer.call_args[0][0]
 
 
-def test_run_app_multiple_preexisting_sockets(patched_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_multiple_preexisting_sockets(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
     app = web.Application()
 
     sock1 = socket.socket()
@@ -674,8 +711,10 @@ def test_sigterm() -> None:
         assert proc.wait() == 0
 
 
-def test_startup_cleanup_signals_even_on_failure(patched_loop: asyncio.AbstractEventLoop) -> None:
-    patched_loop.create_server.side_effect=RuntimeError()  # type: ignore[attr-defined]
+def test_startup_cleanup_signals_even_on_failure(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
+    patched_loop.create_server.side_effect = RuntimeError()  # type: ignore[attr-defined]
 
     app = web.Application()
     startup_handler = make_mocked_coro()
@@ -713,7 +752,9 @@ def test_run_app_coro(patched_loop: asyncio.AbstractEventLoop) -> None:
     cleanup_handler.assert_called_once_with(mock.ANY)
 
 
-def test_run_app_default_logger(monkeypatch: pytest.MonkeyPatch, patched_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_default_logger(
+    monkeypatch: pytest.MonkeyPatch, patched_loop: asyncio.AbstractEventLoop
+) -> None:
     logger = access_logger
     attrs = {
         "hasHandlers.return_value": False,
@@ -736,7 +777,9 @@ def test_run_app_default_logger(monkeypatch: pytest.MonkeyPatch, patched_loop: a
     assert isinstance(mock_logger.addHandler.call_args[0][0], logging.StreamHandler)
 
 
-def test_run_app_default_logger_setup_requires_debug(patched_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_default_logger_setup_requires_debug(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
     logger = access_logger
     attrs = {
         "hasHandlers.return_value": False,
@@ -784,7 +827,9 @@ def test_run_app_default_logger_setup_requires_default_logger(
     mock_logger.addHandler.assert_not_called()
 
 
-def test_run_app_default_logger_setup_only_if_unconfigured(patched_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_default_logger_setup_only_if_unconfigured(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
     logger = access_logger
     attrs = {
         "hasHandlers.return_value": True,
@@ -807,7 +852,9 @@ def test_run_app_default_logger_setup_only_if_unconfigured(patched_loop: asyncio
     mock_logger.addHandler.assert_not_called()
 
 
-def test_run_app_cancels_all_pending_tasks(patched_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_cancels_all_pending_tasks(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
     app = web.Application()
     task = None
 
@@ -877,12 +924,16 @@ def test_run_app_cancels_failed_tasks(patched_loop: asyncio.AbstractEventLoop) -
 
 
 def test_run_app_keepalive_timeout(
-    patched_loop: asyncio.AbstractEventLoop, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+    patched_loop: asyncio.AbstractEventLoop,
+    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     new_timeout = 1234
     base_runner_init_orig = BaseRunner.__init__
 
-    def base_runner_init_spy(self: BaseRunner[web.Request], *args: Any, **kwargs: Any) -> None:
+    def base_runner_init_spy(
+        self: BaseRunner[web.Request], *args: Any, **kwargs: Any
+    ) -> None:
         assert kwargs["keepalive_timeout"] == new_timeout
         base_runner_init_orig(self, *args, **kwargs)
 
@@ -936,7 +987,13 @@ class TestShutdown:
         asyncio.get_running_loop().call_soon(self.raiser)
         return web.Response()
 
-    def run_app(self, port: int, timeout: int, task: Callable[[], Coroutine[None, None, None]], extra_test: Optional[Callable[[ClientSession], Awaitable[None]]] = None) -> Tuple[asyncio.Task[None], int]:
+    def run_app(
+        self,
+        port: int,
+        timeout: int,
+        task: Callable[[], Coroutine[None, None, None]],
+        extra_test: Optional[Callable[[ClientSession], Awaitable[None]]] = None,
+    ) -> Tuple[asyncio.Task[None], int]:
         num_connections = -1
         t = test_task = None
 

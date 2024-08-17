@@ -1,6 +1,17 @@
 import dataclasses
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Any, Awaitable, Generic, Mapping, Optional, Protocol, Type, TypeVar, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Generic,
+    Mapping,
+    Optional,
+    Protocol,
+    Type,
+    TypeVar,
+    overload,
+)
 
 from aiosignal import Signal
 from multidict import CIMultiDict
@@ -46,19 +57,16 @@ _T = TypeVar("_T", covariant=True)
 
 
 class _Factory(Protocol[_T]):
-    def __call__(self, **kwargs: Any) -> _T:
-        ...
+    def __call__(self, **kwargs: Any) -> _T: ...
 
 
 class TraceConfig(Generic[_T]):
     """First-class used to trace requests launched via ClientSession objects."""
 
     @overload
-    def __init__(self: "TraceConfig[SimpleNamespace]") -> None:
-        ...
+    def __init__(self: "TraceConfig[SimpleNamespace]") -> None: ...
     @overload
-    def __init__(self, trace_config_ctx_factory: _Factory[_T]) -> None:
-        ...
+    def __init__(self, trace_config_ctx_factory: _Factory[_T]) -> None: ...
     def __init__(
         self, trace_config_ctx_factory: _Factory[Any] = SimpleNamespace
     ) -> None:
@@ -113,9 +121,7 @@ class TraceConfig(Generic[_T]):
 
         self._trace_config_ctx_factory: _Factory[_T] = trace_config_ctx_factory
 
-    def trace_config_ctx(
-        self, trace_request_ctx: Any = None
-    ) -> _T:
+    def trace_config_ctx(self, trace_request_ctx: Any = None) -> _T:
         """Return a new trace_config_ctx instance"""
         return self._trace_config_ctx_factory(trace_request_ctx=trace_request_ctx)
 

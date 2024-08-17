@@ -69,7 +69,9 @@ def app() -> web.Application:
 
 
 @pytest.fixture
-def test_client(loop: asyncio.AbstractEventLoop, app: web.Application) -> Iterator[_TestClient]:
+def test_client(
+    loop: asyncio.AbstractEventLoop, app: web.Application
+) -> Iterator[_TestClient]:
     async def make_client() -> TestClient[web.Request]:
         return TestClient(TestServer(app))
 
@@ -125,7 +127,9 @@ def test_get_route(loop: asyncio.AbstractEventLoop, test_client: _TestClient) ->
     loop.run_until_complete(test_get_route())
 
 
-async def test_client_websocket(loop: asyncio.AbstractEventLoop, test_client: _TestClient) -> None:
+async def test_client_websocket(
+    loop: asyncio.AbstractEventLoop, test_client: _TestClient
+) -> None:
     resp = await test_client.ws_connect("/websocket")
     await resp.send_str("foo")
     msg = await resp.receive()
@@ -136,7 +140,9 @@ async def test_client_websocket(loop: asyncio.AbstractEventLoop, test_client: _T
     assert msg.type == aiohttp.WSMsgType.CLOSE
 
 
-async def test_client_cookie(loop: asyncio.AbstractEventLoop, test_client: _TestClient) -> None:
+async def test_client_cookie(
+    loop: asyncio.AbstractEventLoop, test_client: _TestClient
+) -> None:
     assert not test_client.session.cookie_jar
     await test_client.get("/cookie")
     cookies = list(test_client.session.cookie_jar)
@@ -147,14 +153,18 @@ async def test_client_cookie(loop: asyncio.AbstractEventLoop, test_client: _Test
 @pytest.mark.parametrize(
     "method", ["get", "post", "options", "post", "put", "patch", "delete"]
 )
-async def test_test_client_methods(method: str, loop: asyncio.AbstractEventLoop, test_client: _TestClient) -> None:
+async def test_test_client_methods(
+    method: str, loop: asyncio.AbstractEventLoop, test_client: _TestClient
+) -> None:
     resp = await getattr(test_client, method)("/")
     assert resp.status == 200
     text = await resp.text()
     assert _hello_world_str == text
 
 
-async def test_test_client_head(loop: asyncio.AbstractEventLoop, test_client: _TestClient) -> None:
+async def test_test_client_head(
+    loop: asyncio.AbstractEventLoop, test_client: _TestClient
+) -> None:
     resp = await test_client.head("/")
     assert resp.status == 200
 
@@ -264,7 +274,9 @@ def test_client_unsupported_arg() -> None:
     )
 
 
-async def test_server_make_url_yarl_compatibility(loop: asyncio.AbstractEventLoop) -> None:
+async def test_server_make_url_yarl_compatibility(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     app = _create_example_app()
     async with TestServer(app) as server:
         make_url = server.make_url
@@ -275,7 +287,9 @@ async def test_server_make_url_yarl_compatibility(loop: asyncio.AbstractEventLoo
             make_url(URL("http://foo.com"))
 
 
-def test_testcase_no_app(testdir: pytest.Testdir, loop: asyncio.AbstractEventLoop) -> None:
+def test_testcase_no_app(
+    testdir: pytest.Testdir, loop: asyncio.AbstractEventLoop
+) -> None:
     testdir.makepyfile(
         """
         from aiohttp.test_utils import AioHTTPTestCase
@@ -290,7 +304,9 @@ def test_testcase_no_app(testdir: pytest.Testdir, loop: asyncio.AbstractEventLoo
     result.stdout.fnmatch_lines(["*TypeError*"])
 
 
-async def test_server_context_manager(app: web.Application, loop: asyncio.AbstractEventLoop) -> None:
+async def test_server_context_manager(
+    app: web.Application, loop: asyncio.AbstractEventLoop
+) -> None:
     async with TestServer(app) as server:
         async with aiohttp.ClientSession() as client:
             async with client.head(server.make_url("/")) as resp:
@@ -311,7 +327,11 @@ async def test_client_context_manager_response(
                 assert "Hello, world" in text
 
 
-async def test_custom_port(loop: asyncio.AbstractEventLoop, app: web.Application, aiohttp_unused_port: Callable[[], int]) -> None:
+async def test_custom_port(
+    loop: asyncio.AbstractEventLoop,
+    app: web.Application,
+    aiohttp_unused_port: Callable[[], int],
+) -> None:
     port = aiohttp_unused_port()
     client = TestClient(TestServer(app, port=port))
     await client.start_server()

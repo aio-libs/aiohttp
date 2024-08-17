@@ -46,8 +46,8 @@ from .typedefs import StrOrURL
 from .web import (
     Application,
     AppRunner,
-    BaseRunner,
     BaseRequest,
+    BaseRunner,
     Request,
     Server,
     ServerRunner,

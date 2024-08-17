@@ -76,7 +76,9 @@ async def test_close(writer: WebSocketWriter) -> None:
     writer.transport.write.assert_called_with(b"\x88\x05\x03\xf4msg")  # type: ignore[attr-defined]
 
 
-async def test_send_text_masked(protocol: BaseProtocol, transport: asyncio.Transport) -> None:
+async def test_send_text_masked(
+    protocol: BaseProtocol, transport: asyncio.Transport
+) -> None:
     writer = WebSocketWriter(
         protocol, transport, use_mask=True, random=random.Random(123)
     )
@@ -84,7 +86,9 @@ async def test_send_text_masked(protocol: BaseProtocol, transport: asyncio.Trans
     writer.transport.write.assert_called_with(b"\x81\x84\rg\xb3fy\x02\xcb\x12")  # type: ignore[attr-defined]
 
 
-async def test_send_compress_text(protocol: BaseProtocol, transport: asyncio.Transport) -> None:
+async def test_send_compress_text(
+    protocol: BaseProtocol, transport: asyncio.Transport
+) -> None:
     writer = WebSocketWriter(protocol, transport, compress=15)
     await writer.send(b"text")
     writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")  # type: ignore[attr-defined]
@@ -92,7 +96,9 @@ async def test_send_compress_text(protocol: BaseProtocol, transport: asyncio.Tra
     writer.transport.write.assert_called_with(b"\xc1\x05*\x01b\x00\x00")  # type: ignore[attr-defined]
 
 
-async def test_send_compress_text_notakeover(protocol: BaseProtocol, transport: asyncio.Transport) -> None:
+async def test_send_compress_text_notakeover(
+    protocol: BaseProtocol, transport: asyncio.Transport
+) -> None:
     writer = WebSocketWriter(protocol, transport, compress=15, notakeover=True)
     await writer.send(b"text")
     writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")  # type: ignore[attr-defined]
@@ -100,7 +106,9 @@ async def test_send_compress_text_notakeover(protocol: BaseProtocol, transport: 
     writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")  # type: ignore[attr-defined]
 
 
-async def test_send_compress_text_per_message(protocol: BaseProtocol, transport: asyncio.Transport) -> None:
+async def test_send_compress_text_per_message(
+    protocol: BaseProtocol, transport: asyncio.Transport
+) -> None:
     writer = WebSocketWriter(protocol, transport)
     await writer.send(b"text", compress=15)
     writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")  # type: ignore[attr-defined]

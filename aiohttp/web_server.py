@@ -2,7 +2,17 @@
 
 import asyncio
 import warnings
-from typing import Any, Awaitable, Callable, Dict, Generic, List, Optional, TypeVar, overload
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    TypeVar,
+    overload,
+)
 
 from .abc import AbstractStreamWriter
 from .http_parser import RawRequestMessage
@@ -37,8 +47,7 @@ class Server(Generic[_Request]):
         debug: Optional[bool] = None,
         handler_cancellation: bool = False,
         **kwargs: Any,
-    ) -> None:
-        ...
+    ) -> None: ...
     @overload
     def __init__(
         self,
@@ -48,8 +57,7 @@ class Server(Generic[_Request]):
         debug: Optional[bool] = None,
         handler_cancellation: bool = False,
         **kwargs: Any,
-    ) -> None:
-        ...
+    ) -> None: ...
     def __init__(
         self,
         handler: Callable[[_Request], Awaitable[StreamResponse]],

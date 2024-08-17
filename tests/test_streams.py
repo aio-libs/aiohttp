@@ -73,7 +73,7 @@ def get_memory_usage(obj: object) -> int:
 class TestStreamReader:
     DATA: bytes = b"line1\nline2\nline3\n"
 
-    def _make_one(self, limit: int=2**16) -> streams.StreamReader:
+    def _make_one(self, limit: int = 2**16) -> streams.StreamReader:
         loop = asyncio.get_event_loop()
         return streams.StreamReader(mock.Mock(_reading_paused=False), limit, loop=loop)
 
@@ -1223,7 +1223,9 @@ class TestDataQueue:
         with pytest.raises(ValueError):
             await buffer.read()
 
-    async def test_read_exception_with_data(self, buffer: streams.DataQueue[bytes]) -> None:
+    async def test_read_exception_with_data(
+        self, buffer: streams.DataQueue[bytes]
+    ) -> None:
         val = b""
         buffer.feed_data(val)
         buffer.set_exception(ValueError())
@@ -1232,7 +1234,9 @@ class TestDataQueue:
         with pytest.raises(ValueError):
             await buffer.read()
 
-    async def test_read_exception_on_wait(self, buffer: streams.DataQueue[bytes]) -> None:
+    async def test_read_exception_on_wait(
+        self, buffer: streams.DataQueue[bytes]
+    ) -> None:
         loop = asyncio.get_event_loop()
         read_task = loop.create_task(buffer.read())
         await asyncio.sleep(0)
@@ -1511,7 +1515,9 @@ async def test_stream_reader_iter_chunks_no_chunked_encoding() -> None:
     pytest.raises(StopIteration, next, it)
 
 
-async def test_stream_reader_iter_chunks_chunked_encoding(protocol: BaseProtocol) -> None:
+async def test_stream_reader_iter_chunks_chunked_encoding(
+    protocol: BaseProtocol,
+) -> None:
     loop = asyncio.get_event_loop()
     stream = streams.StreamReader(protocol, 2**16, loop=loop)
     for line in DATA.splitlines(keepends=True):

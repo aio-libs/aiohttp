@@ -340,7 +340,11 @@ class ServerRunner(BaseRunner[BaseRequest]):
     __slots__ = ("_web_server",)
 
     def __init__(
-        self, web_server: Server[BaseRequest], *, handle_signals: bool = False, **kwargs: Any
+        self,
+        web_server: Server[BaseRequest],
+        *,
+        handle_signals: bool = False,
+        **kwargs: Any,
     ) -> None:
         super().__init__(handle_signals=handle_signals, **kwargs)
         self._web_server = web_server

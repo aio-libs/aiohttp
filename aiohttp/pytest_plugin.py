@@ -48,8 +48,7 @@ class AiohttpClient(Protocol):
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs: Any
-    ) -> TestClient[Request]:
-        ...
+    ) -> TestClient[Request]: ...
     @overload
     async def __call__(
         self,
@@ -57,8 +56,7 @@ class AiohttpClient(Protocol):
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs: Any
-    ) -> TestClient[_Request]:
-        ...
+    ) -> TestClient[_Request]: ...
 
 
 class AiohttpServer(Protocol):
@@ -381,16 +379,14 @@ def aiohttp_client(
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs: Any
-    ) -> TestClient[Request]:
-        ...
+    ) -> TestClient[Request]: ...
     @overload
     async def go(
         __param: BaseTestServer[_Request],
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs: Any
-    ) -> TestClient[_Request]:
-        ...
+    ) -> TestClient[_Request]: ...
     async def go(
         __param: Union[Application, BaseTestServer[Any]],
         *,

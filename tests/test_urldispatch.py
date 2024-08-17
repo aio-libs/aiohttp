@@ -3,7 +3,7 @@ import pathlib
 import re
 from collections.abc import Container, Iterable, Mapping, MutableMapping, Sized
 from functools import partial
-from typing import Awaitable, Callable, Optional, NoReturn, Type
+from typing import Awaitable, Callable, NoReturn, Optional, Type
 from urllib.parse import unquote
 
 import pytest
@@ -353,7 +353,9 @@ def test_route_dynamic(router: web.UrlDispatcher) -> None:
     assert route is route2
 
 
-def test_add_static_path_checks(router: web.UrlDispatcher, tmp_path: pathlib.Path) -> None:
+def test_add_static_path_checks(
+    router: web.UrlDispatcher, tmp_path: pathlib.Path
+) -> None:
     """Test that static paths must exist and be directories."""
     with pytest.raises(ValueError, match="does not exist"):
         router.add_static("/", tmp_path / "does-not-exist")
@@ -387,7 +389,9 @@ def test_add_static_append_version(router: web.UrlDispatcher) -> None:
     assert expect_url == str(url)
 
 
-def test_add_static_append_version_set_from_constructor(router: web.UrlDispatcher) -> None:
+def test_add_static_append_version_set_from_constructor(
+    router: web.UrlDispatcher,
+) -> None:
     resource = router.add_static(
         "/st", pathlib.Path(__file__).parent, append_version=True, name="static"
     )
@@ -398,7 +402,9 @@ def test_add_static_append_version_set_from_constructor(router: web.UrlDispatche
     assert expect_url == str(url)
 
 
-def test_add_static_append_version_override_constructor(router: web.UrlDispatcher) -> None:
+def test_add_static_append_version_override_constructor(
+    router: web.UrlDispatcher,
+) -> None:
     resource = router.add_static(
         "/st", pathlib.Path(__file__).parent, append_version=True, name="static"
     )
@@ -407,7 +413,9 @@ def test_add_static_append_version_override_constructor(router: web.UrlDispatche
     assert expect_url == str(url)
 
 
-def test_add_static_append_version_filename_without_slash(router: web.UrlDispatcher) -> None:
+def test_add_static_append_version_filename_without_slash(
+    router: web.UrlDispatcher,
+) -> None:
     resource = router.add_static("/st", pathlib.Path(__file__).parent, name="static")
     url = resource.url_for(filename="data.unknown_mime_type", append_version=True)
     expect_url = (
@@ -422,13 +430,17 @@ def test_add_static_append_version_non_exists_file(router: web.UrlDispatcher) ->
     assert "/st/non_exists_file" == str(url)
 
 
-def test_add_static_append_version_non_exists_file_without_slash(router: web.UrlDispatcher) -> None:
+def test_add_static_append_version_non_exists_file_without_slash(
+    router: web.UrlDispatcher,
+) -> None:
     resource = router.add_static("/st", pathlib.Path(__file__).parent, name="static")
     url = resource.url_for(filename="non_exists_file", append_version=True)
     assert "/st/non_exists_file" == str(url)
 
 
-def test_add_static_append_version_follow_symlink(router: web.UrlDispatcher, tmp_path: pathlib.Path) -> None:
+def test_add_static_append_version_follow_symlink(
+    router: web.UrlDispatcher, tmp_path: pathlib.Path
+) -> None:
     # Tests the access to a symlink, in static folder with apeend_version
     symlink_path = tmp_path / "append_version_symlink"
     symlink_target_path = pathlib.Path(__file__).parent
@@ -624,7 +636,9 @@ def test_route_dynamic_with_regex_spec(router: web.UrlDispatcher) -> None:
     assert "/get/123" == str(url)
 
 
-def test_route_dynamic_with_regex_spec_and_trailing_slash(router: web.UrlDispatcher) -> None:
+def test_route_dynamic_with_regex_spec_and_trailing_slash(
+    router: web.UrlDispatcher,
+) -> None:
     handler = make_handler()
     route = router.add_route("GET", r"/get/{num:^\d+}/", handler, name="name")
 
@@ -780,17 +794,23 @@ def test_add_route_invalid_method(router: web.UrlDispatcher) -> None:
             router.add_route(bad_method, "/path", handler)
 
 
-def test_routes_view_len(router: web.UrlDispatcher, fill_routes: Callable[[], list[web.AbstractRoute]]) -> None:
+def test_routes_view_len(
+    router: web.UrlDispatcher, fill_routes: Callable[[], list[web.AbstractRoute]]
+) -> None:
     fill_routes()
     assert 4 == len(router.routes())
 
 
-def test_routes_view_iter(router: web.UrlDispatcher, fill_routes: Callable[[], list[web.AbstractRoute]]) -> None:
+def test_routes_view_iter(
+    router: web.UrlDispatcher, fill_routes: Callable[[], list[web.AbstractRoute]]
+) -> None:
     routes = fill_routes()
     assert list(routes) == list(router.routes())
 
 
-def test_routes_view_contains(router: web.UrlDispatcher, fill_routes: Callable[[], list[web.AbstractRoute]]) -> None:
+def test_routes_view_contains(
+    router: web.UrlDispatcher, fill_routes: Callable[[], list[web.AbstractRoute]]
+) -> None:
     routes = fill_routes()
     for route in routes:
         assert route in router.routes()
@@ -881,7 +901,9 @@ async def test_http_exception_is_none_when_resolved(router: web.UrlDispatcher) -
     assert info.http_exception is None
 
 
-async def test_http_exception_is_not_none_when_not_resolved(router: web.UrlDispatcher) -> None:
+async def test_http_exception_is_not_none_when_not_resolved(
+    router: web.UrlDispatcher,
+) -> None:
     handler = make_handler()
     router.add_route("GET", "/", handler)
     req = make_mocked_request("GET", "/abc")
@@ -996,7 +1018,9 @@ async def test_405_for_resource_adapter(router: web.UrlDispatcher) -> None:
     assert (None, {"HEAD", "GET"}) == ret
 
 
-async def test_check_allowed_method_for_found_resource(router: web.UrlDispatcher) -> None:
+async def test_check_allowed_method_for_found_resource(
+    router: web.UrlDispatcher,
+) -> None:
     handler = make_handler()
     resource = router.add_resource("/")
     resource.add_route("GET", handler)
@@ -1091,13 +1115,17 @@ def test_subapp_rule_resource(app: web.Application) -> None:
         resource.url_for()
 
 
-async def test_add_domain_not_str(app: web.Application, loop: asyncio.AbstractEventLoop) -> None:
+async def test_add_domain_not_str(
+    app: web.Application, loop: asyncio.AbstractEventLoop
+) -> None:
     app = web.Application()
     with pytest.raises(TypeError):
         app.add_domain(1, app)  # type: ignore[arg-type]
 
 
-async def test_add_domain(app: web.Application, loop: asyncio.AbstractEventLoop) -> None:
+async def test_add_domain(
+    app: web.Application, loop: asyncio.AbstractEventLoop
+) -> None:
     subapp1 = web.Application()
     h1 = make_handler()
     subapp1.router.add_get("/", h1)
@@ -1208,7 +1236,9 @@ def test_set_options_route(router: web.UrlDispatcher) -> None:
         resource.set_options_route(make_handler())
 
 
-def test_dynamic_url_with_name_started_from_underscore(router: web.UrlDispatcher) -> None:
+def test_dynamic_url_with_name_started_from_underscore(
+    router: web.UrlDispatcher,
+) -> None:
     route = router.add_route("GET", "/get/{_name}", make_handler())
     assert URL("/get/John") == route.url_for(_name="John")
 
@@ -1225,7 +1255,9 @@ def test_cannot_add_subapp_with_slash_prefix(app: web.Application) -> None:
         app.add_subapp("/", subapp)
 
 
-async def test_convert_empty_path_to_slash_on_freezing(router: web.UrlDispatcher) -> None:
+async def test_convert_empty_path_to_slash_on_freezing(
+    router: web.UrlDispatcher,
+) -> None:
     handler = make_handler()
     route = router.add_get("", handler)
     resource = route.resource
