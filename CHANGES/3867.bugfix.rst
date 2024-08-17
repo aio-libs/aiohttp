@@ -1,1 +1,0 @@
-Fixed decoding base64 chunk in BodyPartReader -- by :user:`hyzyla`.
