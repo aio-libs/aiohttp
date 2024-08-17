@@ -292,9 +292,15 @@ class RequestHandler(BaseProtocol):
         if self._tcp_keepalive:
             tcp_keepalive(real_transport)
 
-        self._task_handler = self._loop.create_task(self.start())
         assert self._manager is not None
         self._manager.connection_made(self, real_transport)
+
+        loop = self._loop
+        if sys.version_info >= (3, 12):
+            task = asyncio.Task(self.start(), loop=loop, eager_start=True)
+        else:
+            task = loop.create_task(self.start())
+        self._task_handler = task
 
     def connection_lost(self, exc: Optional[BaseException]) -> None:
         if self._manager is None:
@@ -494,7 +500,7 @@ class RequestHandler(BaseProtocol):
         keep_alive(True) specified.
         """
         loop = self._loop
-        handler = self._task_handler
+        handler = asyncio.current_task(loop)
         assert handler is not None
         manager = self._manager
         assert manager is not None
