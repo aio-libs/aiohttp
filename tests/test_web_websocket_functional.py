@@ -736,8 +736,10 @@ async def test_heartbeat_connection_closed(
         ), mock.patch.object(
             ws_server._writer, "ping", wraps=ws_server._writer.ping
         ) as ping:
-            await ws_server.receive()
-            ping_count = ping.call_count
+            try:
+                await ws_server.receive()
+            finally:
+                ping_count = ping.call_count
         return ws
 
     app = web.Application()
