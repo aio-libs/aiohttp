@@ -209,7 +209,7 @@ class WebSocketResponse(StreamResponse):
         self._set_closed()
         self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
         self._exception = exc
-        if self._waiting and not self._closing and self._reader:
+        if self._waiting and not self._closing and self._reader is not None:
             self._reader.feed_data(WSMessage(WSMsgType.ERROR, exc, None))
 
     def _set_closed(self) -> None:
