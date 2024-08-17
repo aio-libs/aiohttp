@@ -750,6 +750,7 @@ async def test_heartbeat_connection_closed(
     msg = await ws.receive()
     assert msg.type is aiohttp.WSMsgType.CLOSED
     assert msg.extra is None
+    assert ws.close_code == WSCloseCode.ABNORMAL_CLOSURE
     assert ping_count == 1
     await ws.close()
 
