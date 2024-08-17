@@ -1,3 +1,0 @@
-Fixed unconsumed exceptions raised by the WebSocket heartbeat -- by :user:`bdraco`.
-
-If the heartbeat ping raised an exception, it would not be consumed and would be logged as an warning.
