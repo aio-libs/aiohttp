@@ -8,7 +8,7 @@ aiodns==3.2.0 ; sys_platform == "linux" or sys_platform == "darwin"
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
-aiohappyeyeballs==2.3.5
+aiohappyeyeballs==2.3.6
     # via -r requirements/runtime-deps.in
 aiohttp-theme==0.1.6
     # via -r requirements/doc.in
@@ -138,7 +138,7 @@ pluggy==1.4.0
     # via pytest
 pre-commit==3.5.0
     # via -r requirements/lint.in
-proxy-py==2.4.5
+proxy-py==2.4.7
     # via -r requirements/test.in
 pycares==4.3.0
     # via aiodns
@@ -255,7 +255,7 @@ uritemplate==4.1.1
     # via gidgethub
 urllib3==2.0.4
     # via requests
-uvloop==0.19.0 ; platform_system != "Windows"
+uvloop==0.20.0 ; platform_system != "Windows"
     # via
     #   -r requirements/base.in
     #   -r requirements/lint.in
