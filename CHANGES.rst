@@ -10,6 +10,76 @@
 
 .. towncrier release notes start
 
+3.10.4 (2024-08-17)
+===================
+
+Bug fixes
+---------
+
+- Fixed decoding base64 chunk in BodyPartReader -- by :user:`hyzyla`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`3867`.
+
+
+
+- Fixed a race closing the server-side WebSocket where the close code would not reach the client. -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8680`.
+
+
+
+- Fixed unconsumed exceptions raised by the WebSocket heartbeat -- by :user:`bdraco`.
+
+  If the heartbeat ping raised an exception, it would not be consumed and would be logged as an warning.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8685`.
+
+
+
+- Fixed an edge case in the Python parser when chunk separators happen to align with network chunks -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8720`.
+
+
+
+
+Improved documentation
+----------------------
+
+- Added ``aiohttp-apischema`` to supported libraries -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8700`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of starting request handlers with Python 3.12+ -- by :user:`bdraco`.
+
+  This change is a followup to :issue:`8661` to make the same optimization for Python 3.12+ where the request is connected.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8681`.
+
+
+
+
+----
+
+
 3.10.3 (2024-08-10)
 ========================
 
