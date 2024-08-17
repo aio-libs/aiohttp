@@ -755,6 +755,39 @@ async def test_heartbeat_connection_closed(
     await ws.close()
 
 
+async def test_heartbeat_failure_ends_receive(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
+    """Test that no heartbeat response to the server ends the receive call."""
+    ws_server_close_code = None
+    ws_server_exception = None
+
+    async def handler(request: web.Request) -> NoReturn:
+        nonlocal ws_server_close_code, ws_server_exception
+        ws_server = web.WebSocketResponse(heartbeat=0.05)
+        await ws_server.prepare(request)
+        try:
+            await ws_server.receive()
+        finally:
+            ws_server_close_code = ws_server.close_code
+            ws_server_exception = ws_server.exception()
+        assert False
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    client = await aiohttp_client(app)
+    ws = await client.ws_connect("/", autoping=False)
+    msg = await ws.receive()
+    assert msg.type is aiohttp.WSMsgType.PING
+    msg = await ws.receive()
+    assert msg.type is aiohttp.WSMsgType.CLOSED
+    assert ws.close_code == WSCloseCode.ABNORMAL_CLOSURE
+    assert ws_server_close_code == WSCloseCode.ABNORMAL_CLOSURE
+    assert isinstance(ws_server_exception, asyncio.TimeoutError)
+    await ws.close()
+
+
 async def test_heartbeat_no_pong_send_many_messages(
     loop: Any, aiohttp_client: Any
 ) -> None:
