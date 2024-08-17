@@ -5,7 +5,7 @@ import asyncio
 import contextlib
 import sys
 import weakref
-from typing import Any, Optional
+from typing import Any, NoReturn, Optional
 from unittest import mock
 
 import pytest
@@ -724,7 +724,7 @@ async def test_heartbeat_connection_closed(
     """Test that the connection is closed while ping is in progress."""
     ping_count = 0
 
-    async def handler(request: web.Request) -> web.WebSocketResponse:
+    async def handler(request: web.Request) -> NoReturn:
         nonlocal ping_count
         ws_server = web.WebSocketResponse(heartbeat=0.05)
         await ws_server.prepare(request)
@@ -740,7 +740,7 @@ async def test_heartbeat_connection_closed(
                 await ws_server.receive()
             finally:
                 ping_count = ping.call_count
-        return ws
+        assert False
 
     app = web.Application()
     app.router.add_get("/", handler)
