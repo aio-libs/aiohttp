@@ -373,7 +373,10 @@ def quoted_string(content: str) -> str:
 
 
 def content_disposition_header(
-    disptype: str, quote_fields: bool = True, _charset: str = "utf-8", **params: str
+    disptype: str,
+    quote_fields: bool = True,
+    _charset: str = "utf-8",
+    params: Optional[Dict[str, str]] = None,
 ) -> str:
     """Sets ``Content-Disposition`` header for MIME.
 
@@ -641,7 +644,7 @@ class TimeoutHandle:
     def close(self) -> None:
         self._callbacks.clear()
 
-    def start(self) -> Optional[asyncio.Handle]:
+    def start(self) -> Optional[asyncio.TimerHandle]:
         timeout = self._timeout
         if timeout is not None and timeout > 0:
             when = self._loop.time() + timeout

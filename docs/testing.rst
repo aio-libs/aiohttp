@@ -32,20 +32,6 @@ insert ``pytest_plugins = 'aiohttp.pytest_plugin'`` line into
 
 
 
-Provisional Status
-~~~~~~~~~~~~~~~~~~
-
-The module is a **provisional**.
-
-*aiohttp* has a year and half period for removing deprecated API
-(:ref:`aiohttp-backward-compatibility-policy`).
-
-But for :mod:`aiohttp.test_tools` the deprecation period could be reduced.
-
-Moreover we may break *backward compatibility* without *deprecation
-period* for some very strong reason.
-
-
 The Test Client and Servers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -76,7 +62,12 @@ Pytest
 The :data:`aiohttp_client` fixture available from pytest-aiohttp_ plugin
 allows you to create a client to make requests to test your app.
 
-A simple would be::
+To run these examples, you need to use `--asyncio-mode=auto` or add to your
+pytest config file::
+
+    asyncio_mode = auto
+
+A simple test would be::
 
     from aiohttp import web
 
