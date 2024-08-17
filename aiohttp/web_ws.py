@@ -189,16 +189,28 @@ class WebSocketResponse(StreamResponse):
         if not ping_task.done():
             self._ping_task = ping_task
             ping_task.add_done_callback(self._ping_task_done)
+        else:
+            self._ping_task_done(ping_task)
 
     def _ping_task_done(self, task: "asyncio.Task[None]") -> None:
         """Callback for when the ping task completes."""
+        if not task.cancelled() and (exc := task.exception()):
+            self._handle_ping_pong_exception(exc)
         self._ping_task = None
 
     def _pong_not_received(self) -> None:
         if self._req is not None and self._req.transport is not None:
-            self._set_closed()
-            self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
-            self._exception = asyncio.TimeoutError()
+            self._handle_ping_pong_exception(asyncio.TimeoutError())
+
+    def _handle_ping_pong_exception(self, exc: BaseException) -> None:
+        """Handle exceptions raised during ping/pong processing."""
+        if self._closed:
+            return
+        self._set_closed()
+        self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
+        self._exception = exc
+        if self._waiting and not self._closing and self._reader is not None:
+            self._reader.feed_data(WSMessage(WSMsgType.ERROR, exc, None))
 
     def _set_closed(self) -> None:
         """Set the connection to closed.
