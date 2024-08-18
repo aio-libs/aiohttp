@@ -430,11 +430,12 @@ class WebSocketReader:
         if opcode == WSMsgType.TEXT:
             try:
                 text = payload_merged.decode("utf-8")
-                self.queue.feed_data(WSMessage(WSMsgType.TEXT, text, ""))
             except UnicodeDecodeError as exc:
                 raise WebSocketError(
                     WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
                 ) from exc
+
+            self.queue.feed_data(WSMessage(WSMsgType.TEXT, text, ""))
             return
 
         self.queue.feed_data(WSMessage(WSMsgType.BINARY, payload_merged, ""))
