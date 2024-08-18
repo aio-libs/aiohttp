@@ -386,15 +386,6 @@ class WebSocketReader:
                 )
             return
 
-        # previous frame was non finished
-        # we should get continuation opcode
-        if self._partial and not is_continuation:
-            raise WebSocketError(
-                WSCloseCode.PROTOCOL_ERROR,
-                "The opcode in non-fin frame is expected "
-                "to be zero, got {!r}".format(opcode),
-            )
-
         if is_continuation:
             if self._opcode is None:
                 raise WebSocketError(
@@ -403,6 +394,14 @@ class WebSocketReader:
                 )
             opcode = self._opcode
             self._opcode = None
+        # previous frame was non finished
+        # we should get continuation opcode
+        elif self._partial:
+            raise WebSocketError(
+                WSCloseCode.PROTOCOL_ERROR,
+                "The opcode in non-fin frame is expected "
+                "to be zero, got {!r}".format(opcode),
+            )
 
         self._partial.extend(payload)
         if self._max_msg_size and len(self._partial) >= self._max_msg_size:
