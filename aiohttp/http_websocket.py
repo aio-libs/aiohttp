@@ -383,6 +383,7 @@ class WebSocketReader:
                 )
             return
 
+        has_partial = bool(self._partial)
         if is_continuation:
             if self._opcode is None:
                 raise WebSocketError(
@@ -393,20 +394,25 @@ class WebSocketReader:
             self._opcode = None
         # previous frame was non finished
         # we should get continuation opcode
-        elif self._partial:
+        elif has_partial:
             raise WebSocketError(
                 WSCloseCode.PROTOCOL_ERROR,
                 "The opcode in non-fin frame is expected "
                 "to be zero, got {!r}".format(opcode),
             )
 
-        # += is much faster than bytearray.extend()
-        self._partial += payload
-        if self._max_msg_size and len(self._partial) >= self._max_msg_size:
+        if has_partial:
+            # + is much faster than bytearray.extend()
+            assembled_payload = self._partial + payload
+            self._partial.clear()
+        else:
+            assembled_payload = payload
+
+        if self._max_msg_size and len(assembled_payload) >= self._max_msg_size:
             raise WebSocketError(
                 WSCloseCode.MESSAGE_TOO_BIG,
                 "Message size {} exceeds limit {}".format(
-                    len(self._partial), self._max_msg_size
+                    len(assembled_payload), self._max_msg_size
                 ),
             )
 
@@ -415,10 +421,9 @@ class WebSocketReader:
         if compressed:
             if not self._decompressobj:
                 self._decompressobj = ZLibDecompressor(suppress_deflate_header=True)
-            # += is much faster than bytearray.extend()
-            self._partial += _WS_DEFLATE_TRAILING
+            # + is much faster than bytearray.extend()
             payload_merged = self._decompressobj.decompress_sync(
-                self._partial, self._max_msg_size
+                assembled_payload + _WS_DEFLATE_TRAILING, self._max_msg_size
             )
             if self._decompressobj.unconsumed_tail:
                 left = len(self._decompressobj.unconsumed_tail)
@@ -429,9 +434,7 @@ class WebSocketReader:
                     ),
                 )
         else:
-            payload_merged = bytes(self._partial)
-
-        self._partial.clear()
+            payload_merged = bytes(assembled_payload)
 
         if opcode == WSMsgType.TEXT:
             try:
