@@ -440,12 +440,12 @@ class WebSocketReader:
         self.queue.feed_data(WSMessage(WSMsgType.BINARY, payload_merged, ""))
 
     _handlers = {
-        WSMsgType.CLOSE: _handle_frame_op_close,
-        WSMsgType.PING: _handle_frame_op_ping,
-        WSMsgType.PONG: _handle_frame_op_pong,
-        WSMsgType.TEXT: _handle_frame_text_or_binary,
-        WSMsgType.BINARY: _handle_frame_text_or_binary,
-        WSMsgType.CONTINUATION: _handle_frame_text_or_binary,
+        WSMsgType.CLOSE.value: _handle_frame_op_close,
+        WSMsgType.PING.value: _handle_frame_op_ping,
+        WSMsgType.PONG.value: _handle_frame_op_pong,
+        WSMsgType.TEXT.value: _handle_frame_text_or_binary,
+        WSMsgType.BINARY.value: _handle_frame_text_or_binary,
+        WSMsgType.CONTINUATION.value: _handle_frame_text_or_binary,
     }
 
     def parse_frame(self, buf: bytes) -> List[_FrameType]:
