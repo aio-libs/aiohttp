@@ -396,7 +396,11 @@ class WebSocketReader:
             )
 
         if is_continuation:
-            assert self._opcode is not None
+            if self._opcode is None:
+                raise WebSocketError(
+                    WSCloseCode.PROTOCOL_ERROR,
+                    "Continuation frame for non started message",
+                )
             opcode = self._opcode
             self._opcode = None
 
