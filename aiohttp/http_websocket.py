@@ -307,18 +307,22 @@ class WebSocketReader:
             return True, data
 
         try:
-            for fin, opcode, payload, compressed in self.parse_frame(data):
-                try:
-                    handler = self._handlers[opcode]
-                except KeyError:
-                    raise WebSocketError(
-                        WSCloseCode.PROTOCOL_ERROR, f"Unexpected opcode={opcode!r}"
-                    )
-                handler(self, fin, opcode, payload, compressed)
+            return self._feed_data(data)
         except Exception as exc:
             self._exc = exc
             set_exception(self.queue, exc)
             return True, b""
+
+    def _feed_data(self, data: bytes) -> Tuple[bool, bytes]:
+        """Feed data to the parser."""
+        for fin, opcode, payload, compressed in self.parse_frame(data):
+            try:
+                handler = self._handlers[opcode]
+            except KeyError:
+                raise WebSocketError(
+                    WSCloseCode.PROTOCOL_ERROR, f"Unexpected opcode={opcode!r}"
+                )
+            handler(self, fin, opcode, payload, compressed)
 
         return False, b""
 
