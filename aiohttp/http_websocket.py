@@ -366,7 +366,7 @@ class WebSocketReader:
         """Handle PONG frame."""
         self.queue.feed_data(WSMessage(WSMsgType.PONG, payload, ""))
 
-    def _handle_frame_text_or_binary(
+    def _handle_frame_with_payload(
         self, fin: bool, opcode: int, payload: bytearray, compressed: Optional[bool]
     ) -> None:
         """Handle TEXT/BINARY/CONTINUATION frames."""
@@ -454,9 +454,9 @@ class WebSocketReader:
         WSMsgType.CLOSE.value: _handle_frame_op_close,
         WSMsgType.PING.value: _handle_frame_op_ping,
         WSMsgType.PONG.value: _handle_frame_op_pong,
-        WSMsgType.TEXT.value: _handle_frame_text_or_binary,
-        WSMsgType.BINARY.value: _handle_frame_text_or_binary,
-        WSMsgType.CONTINUATION.value: _handle_frame_text_or_binary,
+        WSMsgType.TEXT.value: _handle_frame_with_payload,
+        WSMsgType.BINARY.value: _handle_frame_with_payload,
+        WSMsgType.CONTINUATION.value: _handle_frame_with_payload,
     }
 
     def parse_frame(self, buf: bytes) -> List[_FrameType]:
