@@ -314,7 +314,7 @@ class WebSocketReader:
                     raise WebSocketError(
                         WSCloseCode.PROTOCOL_ERROR, f"Unexpected opcode={opcode!r}"
                     )
-                handler(fin, opcode, payload, compressed)
+                handler(self, fin, opcode, payload, compressed)
         except Exception as exc:
             self._exc = exc
             set_exception(self.queue, exc)
