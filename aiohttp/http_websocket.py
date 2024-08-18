@@ -376,7 +376,8 @@ class WebSocketReader:
             # got partial frame payload
             if not is_continuation:
                 self._opcode = opcode
-            self._partial.extend(payload)
+            # += is much faster than bytearray.extend()
+            self._partial += payload
             if self._max_msg_size and len(self._partial) >= self._max_msg_size:
                 raise WebSocketError(
                     WSCloseCode.MESSAGE_TOO_BIG,
@@ -403,7 +404,8 @@ class WebSocketReader:
                 "to be zero, got {!r}".format(opcode),
             )
 
-        self._partial.extend(payload)
+        # += is much faster than bytearray.extend()
+        self._partial += payload
         if self._max_msg_size and len(self._partial) >= self._max_msg_size:
             raise WebSocketError(
                 WSCloseCode.MESSAGE_TOO_BIG,
@@ -417,7 +419,8 @@ class WebSocketReader:
         if compressed:
             if not self._decompressobj:
                 self._decompressobj = ZLibDecompressor(suppress_deflate_header=True)
-            self._partial.extend(_WS_DEFLATE_TRAILING)
+            # += is much faster than bytearray.extend()
+            self._partial += _WS_DEFLATE_TRAILING
             payload_merged = self._decompressobj.decompress_sync(
                 self._partial, self._max_msg_size
             )
@@ -571,11 +574,13 @@ class WebSocketReader:
                 chunk_len = buf_length - start_pos
                 if length >= chunk_len:
                     self._payload_length = length - chunk_len
-                    payload.extend(buf[start_pos:])
+                    # += is much faster than bytearray.extend()
+                    payload += buf[start_pos:]
                     start_pos = buf_length
                 else:
                     self._payload_length = 0
-                    payload.extend(buf[start_pos : start_pos + length])
+                    # += is much faster than bytearray.extend()
+                    payload += buf[start_pos : start_pos + length]
                     start_pos = start_pos + length
 
                 if self._payload_length != 0:
