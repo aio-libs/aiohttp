@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Optional, Tuple, Union
 from multidict import MultiMapping
 
 from .http_parser import RawResponseMessage
-from .typedefs import LooseHeaders, StrOrURL
+from .typedefs import StrOrURL
 
 try:
     import ssl
