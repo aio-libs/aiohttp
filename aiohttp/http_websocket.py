@@ -433,9 +433,9 @@ class WebSocketReader:
 
     def parse_frame(
         self, buf: bytes
-    ) -> List[Tuple[bool, int, bytearray, Optional[bool]]]:
+    ) -> List[Tuple[bool, Optional[int], bytearray, Optional[bool]]]:
         """Return the next frame from the socket."""
-        frames: List[Tuple[bool, int, bytearray, Optional[bool]]] = []
+        frames: List[Tuple[bool, Optional[int], bytearray, Optional[bool]]] = []
         if self._tail:
             buf, self._tail = self._tail + buf, b""
 
@@ -562,7 +562,6 @@ class WebSocketReader:
                     assert self._frame_mask is not None
                     _websocket_mask(self._frame_mask, payload)
 
-                assert self._frame_opcode is not None
                 frames.append(
                     (self._frame_fin, self._frame_opcode, payload, self._compressed)
                 )
