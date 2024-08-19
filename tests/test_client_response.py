@@ -659,11 +659,13 @@ async def test_json_invalid_content_type(loop, session) -> None:
     )
     response._headers = {"Content-Type": "data/octet-stream"}
     response._body = b""
+    response.status = 500
 
     with pytest.raises(aiohttp.ContentTypeError) as info:
         await response.json()
 
     assert info.value.request_info == response.request_info
+    assert info.value.status == 500
 
 
 async def test_json_no_content(loop, session) -> None:
