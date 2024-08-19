@@ -1199,6 +1199,7 @@ class ClientResponse(HeadersMixin):
                 raise ContentTypeError(
                     self.request_info,
                     self.history,
+                    status=self.status,
                     message=(
                         "Attempt to decode JSON with " "unexpected mimetype: %s" % ctype
                     ),
