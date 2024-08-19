@@ -1,9 +1,9 @@
 import asyncio
 import pathlib
 import re
-from collections.abc import Container, Iterable, List, Mapping, MutableMapping, Sized
+from collections.abc import Container, Iterable, Mapping, MutableMapping, Sized
 from functools import partial
-from typing import Awaitable, Callable, NoReturn, Optional, Type
+from typing import Awaitable, Callable, List, NoReturn, Optional, Type
 from urllib.parse import unquote
 
 import pytest
