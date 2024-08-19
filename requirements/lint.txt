@@ -14,8 +14,10 @@ async-timeout==4.0.3
     # via aioredis
 certifi==2024.2.2
     # via requests
-cffi==1.16.0
-    # via pycares
+cffi==1.17.0
+    # via
+    #   cryptography
+    #   pycares
 cfgv==3.3.1
     # via pre-commit
 charset-normalizer==3.3.2
