@@ -510,23 +510,21 @@ class WebSocketReader:
 
             # read payload length
             if self._state is WSParserState.READ_PAYLOAD_LENGTH:
-                length = self._payload_length_flag
-                if length == 126:
+                length_flag = self._payload_length_flag
+                if length_flag == 126:
                     if buf_length - start_pos < 2:
                         break
                     data = buf[start_pos : start_pos + 2]
                     start_pos += 2
-                    length = UNPACK_LEN2(data)[0]
-                    self._payload_length = length
-                elif length > 126:
+                    self._payload_length = UNPACK_LEN2(data)[0]
+                elif length_flag > 126:
                     if buf_length - start_pos < 8:
                         break
                     data = buf[start_pos : start_pos + 8]
                     start_pos += 8
-                    length = UNPACK_LEN3(data)[0]
-                    self._payload_length = length
+                    self._payload_length = UNPACK_LEN3(data)[0]
                 else:
-                    self._payload_length = length
+                    self._payload_length = length_flag
 
                 self._state = (
                     WSParserState.READ_PAYLOAD_MASK
