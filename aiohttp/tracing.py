@@ -1,17 +1,6 @@
 import dataclasses
 from types import SimpleNamespace
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Awaitable,
-    Generic,
-    Mapping,
-    Optional,
-    Protocol,
-    Type,
-    TypeVar,
-    overload,
-)
+from typing import TYPE_CHECKING, Any, Awaitable, Generic, Protocol, TypeVar, overload
 
 from aiosignal import Signal
 from multidict import CIMultiDict
