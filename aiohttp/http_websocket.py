@@ -314,7 +314,6 @@ class WebSocketReader:
         return False, b""
 
     def _feed_data(self, data: bytes) -> None:
-        feed_data = self.queue.feed_data
         for fin, opcode, payload, compressed in self.parse_frame(data):
             if opcode == WSMsgType.CLOSE:
                 if len(payload) >= 2:
@@ -339,13 +338,13 @@ class WebSocketReader:
                 else:
                     msg = WSMessage(WSMsgType.CLOSE, 0, "")
 
-                feed_data(msg)
+                self.queue.feed_data(msg)
 
             elif opcode == WSMsgType.PING:
-                feed_data(WSMessage(WSMsgType.PING, payload, ""))
+                self.queue.feed_data(WSMessage(WSMsgType.PING, payload, ""))
 
             elif opcode == WSMsgType.PONG:
-                feed_data(WSMessage(WSMsgType.PONG, payload, ""))
+                self.queue.feed_data(WSMessage(WSMsgType.PONG, payload, ""))
 
             elif (
                 opcode not in (WSMsgType.TEXT, WSMsgType.BINARY)
@@ -428,9 +427,10 @@ class WebSocketReader:
                             WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
                         ) from exc
 
-                    feed_data(WSMessage(WSMsgType.TEXT, text, ""))
-                else:
-                    feed_data(WSMessage(WSMsgType.BINARY, payload_merged, ""))
+                    self.queue.feed_data(WSMessage(WSMsgType.TEXT, text, ""))
+                    continue
+
+                self.queue.feed_data(WSMessage(WSMsgType.BINARY, payload_merged, ""))
 
     def parse_frame(
         self, buf: bytes
