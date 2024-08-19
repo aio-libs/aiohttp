@@ -14,7 +14,7 @@ async-timeout==4.0.3
     # via aioredis
 certifi==2024.7.4
     # via requests
-cffi==1.16.0
+cffi==1.17.0
     # via
     #   cryptography
     #   pycares

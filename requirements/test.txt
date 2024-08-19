@@ -16,7 +16,7 @@ brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
 certifi==2023.7.22
     # via requests
-cffi==1.15.1
+cffi==1.17.0
     # via
     #   cryptography
     #   pycares
