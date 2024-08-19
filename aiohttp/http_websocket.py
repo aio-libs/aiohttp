@@ -11,6 +11,7 @@ from enum import IntEnum
 from functools import partial
 from struct import Struct
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Final,
@@ -354,84 +355,91 @@ class WebSocketReader:
                 )
             else:
                 # load text/binary
+                is_continuation = opcode == WSMsgType.CONTINUATION
                 if not fin:
                     # got partial frame payload
-                    if opcode != WSMsgType.CONTINUATION:
+                    if not is_continuation:
                         self._opcode = opcode
-                    self._partial.extend(payload)
+                    self._partial += payload
                     if self._max_msg_size and len(self._partial) >= self._max_msg_size:
                         raise WebSocketError(
                             WSCloseCode.MESSAGE_TOO_BIG,
                             "Message size {} exceeds limit {}".format(
                                 len(self._partial), self._max_msg_size
+                            ),
+                        )
+                    continue
+
+                has_partial = bool(self._partial)
+                if is_continuation:
+                    opcode = self._opcode
+                    self._opcode = None
+                # previous frame was non finished
+                # we should get continuation opcode
+                elif has_partial:
+                    raise WebSocketError(
+                        WSCloseCode.PROTOCOL_ERROR,
+                        "The opcode in non-fin frame is expected "
+                        "to be zero, got {!r}".format(opcode),
+                    )
+
+                if has_partial:
+                    assembled_payload = self._partial + payload
+                    self._partial.clear()
+                else:
+                    assembled_payload = payload
+
+                if self._max_msg_size and len(assembled_payload) >= self._max_msg_size:
+                    raise WebSocketError(
+                        WSCloseCode.MESSAGE_TOO_BIG,
+                        "Message size {} exceeds limit {}".format(
+                            len(assembled_payload), self._max_msg_size
+                        ),
+                    )
+
+                # Decompress process must to be done after all packets
+                # received.
+                if compressed:
+                    if not self._decompressobj:
+                        self._decompressobj = ZLibDecompressor(
+                            suppress_deflate_header=True
+                        )
+                    # + is much faster than bytearray.extend()
+                    payload_merged = self._decompressobj.decompress_sync(
+                        assembled_payload + _WS_DEFLATE_TRAILING, self._max_msg_size
+                    )
+                    if self._decompressobj.unconsumed_tail:
+                        left = len(self._decompressobj.unconsumed_tail)
+                        raise WebSocketError(
+                            WSCloseCode.MESSAGE_TOO_BIG,
+                            "Decompressed message size {} exceeds limit {}".format(
+                                self._max_msg_size + left, self._max_msg_size
                             ),
                         )
                 else:
-                    # previous frame was non finished
-                    # we should get continuation opcode
-                    if self._partial:
-                        if opcode != WSMsgType.CONTINUATION:
-                            raise WebSocketError(
-                                WSCloseCode.PROTOCOL_ERROR,
-                                "The opcode in non-fin frame is expected "
-                                "to be zero, got {!r}".format(opcode),
-                            )
+                    payload_merged = bytes(assembled_payload)
 
-                    if opcode == WSMsgType.CONTINUATION:
-                        assert self._opcode is not None
-                        opcode = self._opcode
-                        self._opcode = None
-
-                    self._partial.extend(payload)
-                    if self._max_msg_size and len(self._partial) >= self._max_msg_size:
+                if opcode == WSMsgType.TEXT:
+                    try:
+                        text = payload_merged.decode("utf-8")
+                    except UnicodeDecodeError as exc:
                         raise WebSocketError(
-                            WSCloseCode.MESSAGE_TOO_BIG,
-                            "Message size {} exceeds limit {}".format(
-                                len(self._partial), self._max_msg_size
-                            ),
-                        )
+                            WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
+                        ) from exc
 
-                    # Decompress process must to be done after all packets
-                    # received.
-                    if compressed:
-                        assert self._decompressobj is not None
-                        self._partial.extend(_WS_DEFLATE_TRAILING)
-                        payload_merged = self._decompressobj.decompress_sync(
-                            self._partial, self._max_msg_size
-                        )
-                        if self._decompressobj.unconsumed_tail:
-                            left = len(self._decompressobj.unconsumed_tail)
-                            raise WebSocketError(
-                                WSCloseCode.MESSAGE_TOO_BIG,
-                                "Decompressed message size {} exceeds limit {}".format(
-                                    self._max_msg_size + left, self._max_msg_size
-                                ),
-                            )
-                    else:
-                        payload_merged = bytes(self._partial)
-
-                    self._partial.clear()
-
-                    if opcode == WSMsgType.TEXT:
-                        try:
-                            text = payload_merged.decode("utf-8")
-                            self.queue.feed_data(WSMessage(WSMsgType.TEXT, text, ""))
-                        except UnicodeDecodeError as exc:
-                            raise WebSocketError(
-                                WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
-                            ) from exc
-                    else:
-                        self.queue.feed_data(
-                            WSMessage(WSMsgType.BINARY, payload_merged, ""),
-                        )
+                    self.queue.feed_data(WSMessage(WSMsgType.TEXT, text, ""))
+                else:
+                    self.queue.feed_data(
+                        WSMessage(WSMsgType.BINARY, payload_merged, "")
+                    )
 
         return False, b""
 
     def parse_frame(
         self, buf: bytes
-    ) -> List[Tuple[bool, Optional[int], bytearray, Optional[bool]]]:
+    ) -> List[Tuple[bool, int, bytearray, Optional[bool]]]:
         """Return the next frame from the socket."""
-        frames: List[Tuple[bool, Optional[int], bytearray, Optional[bool]]] = []
+        frames: List[Tuple[bool, int, bytearray, Optional[bool]]] = []
         if self._tail:
             buf, self._tail = self._tail + buf, b""
 
@@ -544,11 +552,11 @@ class WebSocketReader:
                 chunk_len = buf_length - start_pos
                 if length >= chunk_len:
                     self._payload_length = length - chunk_len
-                    payload.extend(buf[start_pos:])
+                    payload += buf[start_pos:]
                     start_pos = buf_length
                 else:
                     self._payload_length = 0
-                    payload.extend(buf[start_pos : start_pos + length])
+                    payload += buf[start_pos : start_pos + length]
                     start_pos = start_pos + length
 
                 if self._payload_length != 0:
@@ -558,6 +566,8 @@ class WebSocketReader:
                     assert self._frame_mask is not None
                     _websocket_mask(self._frame_mask, payload)
 
+                if TYPE_CHECKING:
+                    assert self._frame_opcode is not None
                 frames.append(
                     (self._frame_fin, self._frame_opcode, payload, self._compressed)
                 )
