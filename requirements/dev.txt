@@ -149,7 +149,7 @@ pydantic==2.2.0
     # via python-on-whales
 pydantic-core==2.6.0
     # via pydantic
-pygments==2.15.1
+pygments==2.18.0
     # via sphinx
 pyjwt==2.8.0
     # via
