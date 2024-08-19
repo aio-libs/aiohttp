@@ -676,11 +676,13 @@ async def test_json_invalid_content_type(
     h = {"Content-Type": "data/octet-stream"}
     response._headers = CIMultiDictProxy(CIMultiDict(h))
     response._body = b""
+    response.status = 500
 
     with pytest.raises(aiohttp.ContentTypeError) as info:
         await response.json()
 
     assert info.value.request_info == response.request_info
+    assert info.value.status == 500
 
 
 async def test_json_no_content(
