@@ -145,7 +145,7 @@ pycparser==2.21
     # via cffi
 pydantic==1.10.12
     # via python-on-whales
-pygments==2.15.1
+pygments==2.18.0
     # via sphinx
 pyjwt==2.8.0
     # via
