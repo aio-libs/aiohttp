@@ -28,7 +28,7 @@ multidict==6.0.5
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-pycares==4.3.0
+pycares==4.4.0
     # via aiodns
 pycparser==2.21
     # via cffi
