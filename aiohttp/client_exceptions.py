@@ -3,6 +3,8 @@
 import asyncio
 from typing import TYPE_CHECKING, Optional, Tuple, Union
 
+from multidict import MultiMapping
+
 from .http_parser import RawResponseMessage
 from .typedefs import LooseHeaders, StrOrURL
 
@@ -69,7 +71,7 @@ class ClientResponseError(ClientError):
         *,
         status: Optional[int] = None,
         message: str = "",
-        headers: Optional[LooseHeaders] = None,
+        headers: Optional[MultiMapping[str]] = None,
     ) -> None:
         self.request_info = request_info
         if status is not None:
