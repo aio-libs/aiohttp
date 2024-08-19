@@ -403,7 +403,6 @@ class WebSocketReader:
                         self._decompressobj = ZLibDecompressor(
                             suppress_deflate_header=True
                         )
-                    # + is much faster than bytearray.extend()
                     payload_merged = self._decompressobj.decompress_sync(
                         assembled_payload + _WS_DEFLATE_TRAILING, self._max_msg_size
                     )
