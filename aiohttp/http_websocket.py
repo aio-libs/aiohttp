@@ -399,7 +399,6 @@ class WebSocketReader:
 
                 # Decompress process must to be done after all packets
                 # received.
-                payload_merged: Optional[bytes] = None
                 if compressed:
                     if not self._decompressobj:
                         self._decompressobj = ZLibDecompressor(
@@ -416,6 +415,8 @@ class WebSocketReader:
                                 self._max_msg_size + left, self._max_msg_size
                             ),
                         )
+                else:
+                    payload_merged = bytes(assembled_payload)
 
                 if opcode == WSMsgType.TEXT:
                     try:
@@ -428,8 +429,7 @@ class WebSocketReader:
                     self.queue.feed_data(WSMessage(WSMsgType.TEXT, text, ""))
                     continue
 
-                data = payload_merged or bytes(assembled_payload)
-                self.queue.feed_data(WSMessage(WSMsgType.BINARY, data, ""))
+                self.queue.feed_data(WSMessage(WSMsgType.BINARY, payload_merged, ""))
 
     def parse_frame(
         self, buf: bytes
