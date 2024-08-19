@@ -85,6 +85,12 @@ class WSMsgType(IntEnum):
     ERROR = 0x102
 
 
+MESSAGE_TYPES_WITH_CONTENT: Final = (
+    WSMsgType.BINARY,
+    WSMsgType.TEXT,
+    WSMsgType.CONTINUATION,
+)
+
 WS_KEY: Final[bytes] = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 
@@ -314,7 +320,7 @@ class WebSocketReader:
 
     def _feed_data(self, data: bytes) -> None:
         for fin, opcode, payload, compressed in self.parse_frame(data):
-            if opcode in (WSMsgType.TEXT, WSMsgType.BINARY, WSMsgType.CONTINUATION):
+            if opcode in MESSAGE_TYPES_WITH_CONTENT:
                 # load text/binary
                 is_continuation = opcode == WSMsgType.CONTINUATION
                 if not fin:
