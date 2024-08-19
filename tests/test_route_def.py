@@ -1,5 +1,4 @@
 import pathlib
-from typing import Any
 
 import pytest
 from yarl import URL
