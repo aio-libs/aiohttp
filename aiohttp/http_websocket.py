@@ -314,7 +314,7 @@ class WebSocketReader:
 
     def _feed_data(self, data: bytes) -> None:
         for fin, opcode, payload, compressed in self.parse_frame(data):
-            if opcode in (WSMsgType.TEXT, WSMsgType.BINARY) or self._opcode is not None:
+            if opcode in (WSMsgType.TEXT, WSMsgType.BINARY, WSMsgType.CONTINUATION):
                 # load text/binary
                 is_continuation = opcode == WSMsgType.CONTINUATION
                 if not fin:
@@ -333,7 +333,11 @@ class WebSocketReader:
 
                 has_partial = bool(self._partial)
                 if is_continuation:
-                    assert self._opcode is not None
+                    if self._opcode is None:
+                        raise WebSocketError(
+                            WSCloseCode.PROTOCOL_ERROR,
+                            "Continuation frame for non started message",
+                        )
                     opcode = self._opcode
                     self._opcode = None
                 # previous frame was non finished
