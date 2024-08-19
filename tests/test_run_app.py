@@ -993,7 +993,7 @@ class TestShutdown:
         timeout: int,
         task: Callable[[], Coroutine[None, None, None]],
         extra_test: Optional[Callable[[ClientSession], Awaitable[None]]] = None,
-    ) -> Tuple[asyncio.Task[None], int]:
+    ) -> Tuple["asyncio.Task[None]", int]:
         num_connections = -1
         t = test_task = None
 
