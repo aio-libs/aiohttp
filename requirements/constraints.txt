@@ -42,7 +42,7 @@ cffi==1.17.0
     # via
     #   cryptography
     #   pycares
-cfgv==3.3.1
+cfgv==3.4.0
     # via pre-commit
 charset-normalizer==3.2.0
     # via requests
