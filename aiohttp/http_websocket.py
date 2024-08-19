@@ -373,6 +373,7 @@ class WebSocketReader:
 
                 has_partial = bool(self._partial)
                 if is_continuation:
+                    assert self._opcode is not None
                     opcode = self._opcode
                     self._opcode = None
                 # previous frame was non finished
