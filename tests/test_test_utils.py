@@ -1,7 +1,6 @@
 import asyncio
 import gzip
 import socket
-from pathlib import Path
 from typing import Callable, Iterator, List, Mapping, NoReturn
 from unittest import mock
 
