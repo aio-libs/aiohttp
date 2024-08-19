@@ -399,6 +399,7 @@ class WebSocketReader:
 
                 # Decompress process must to be done after all packets
                 # received.
+                payload_merged: Optional[bytes] = None
                 if compressed:
                     if not self._decompressobj:
                         self._decompressobj = ZLibDecompressor(
@@ -415,12 +416,10 @@ class WebSocketReader:
                                 self._max_msg_size + left, self._max_msg_size
                             ),
                         )
-                else:
-                    payload_merged = bytes(assembled_payload)
 
                 if opcode == WSMsgType.TEXT:
                     try:
-                        text = payload_merged.decode("utf-8")
+                        text = (payload_merged or assembled_payload).decode("utf-8")
                     except UnicodeDecodeError as exc:
                         raise WebSocketError(
                             WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
@@ -429,7 +428,11 @@ class WebSocketReader:
                     self.queue.feed_data(WSMessage(WSMsgType.TEXT, text, ""))
                     continue
 
-                self.queue.feed_data(WSMessage(WSMsgType.BINARY, payload_merged, ""))
+                self.queue.feed_data(
+                    WSMessage(
+                        WSMsgType.BINARY, payload_merged or bytes(assembled_payload), ""
+                    )
+                )
 
     def parse_frame(
         self, buf: bytes
