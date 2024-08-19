@@ -41,7 +41,7 @@ from .streams import EMPTY_PAYLOAD, StreamReader
 from .tcp_helpers import tcp_keepalive
 from .web_exceptions import HTTPException
 from .web_log import AccessLogger
-from .web_request import BaseRequest, Request
+from .web_request import BaseRequest
 from .web_response import Response, StreamResponse
 
 __all__ = ("RequestHandler", "RequestPayloadError", "PayloadAccessError")
