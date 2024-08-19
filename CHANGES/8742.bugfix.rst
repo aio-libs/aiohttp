@@ -1,0 +1,1 @@
+Fixed :meth:`ClientResponse.json()` not setting ``status`` when :exc:`ContentTypeError` is raised -- by :user:`bdraco`.
