@@ -215,7 +215,7 @@ sphinx==7.1.2
     #   sphinxcontrib-blockdiag
     #   sphinxcontrib-spelling
     #   sphinxcontrib-towncrier
-sphinxcontrib-applehelp==1.0.2
+sphinxcontrib-applehelp==1.0.4
     # via sphinx
 sphinxcontrib-blockdiag==3.0.0
     # via -r requirements/doc.in
