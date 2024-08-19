@@ -1,1 +1,1 @@
-Fixed :meth:`ClientResponse.json()` not setting ``status`` when :exc:`ContentTypeError` is raised -- by :user:`bdraco`.
+Fixed :meth:`aiohttp.client.ClientResponse.json()` not setting ``status`` when :exc:`aiohttp.client_exceptions.ContentTypeError` is raised -- by :user:`bdraco`.
