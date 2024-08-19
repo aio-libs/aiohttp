@@ -22,7 +22,7 @@ async-timeout==4.0.3 ; python_version < "3.11"
     # via
     #   -r requirements/runtime-deps.in
     #   aioredis
-babel==2.12.1
+babel==2.16.0
     # via sphinx
 blockdiag==3.0.0
     # via sphinxcontrib-blockdiag
