@@ -11,7 +11,6 @@ from enum import IntEnum
 from functools import partial
 from struct import Struct
 from typing import (
-    TYPE_CHECKING,
     Any,
     Callable,
     Final,
@@ -563,8 +562,7 @@ class WebSocketReader:
                     assert self._frame_mask is not None
                     _websocket_mask(self._frame_mask, payload)
 
-                if TYPE_CHECKING:
-                    assert self._frame_opcode is not None
+                assert self._frame_opcode is not None
                 frames.append(
                     (self._frame_fin, self._frame_opcode, payload, self._compressed)
                 )
