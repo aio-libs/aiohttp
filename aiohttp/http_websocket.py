@@ -428,11 +428,8 @@ class WebSocketReader:
                     self.queue.feed_data(WSMessage(WSMsgType.TEXT, text, ""))
                     continue
 
-                self.queue.feed_data(
-                    WSMessage(
-                        WSMsgType.BINARY, payload_merged or bytes(assembled_payload), ""
-                    )
-                )
+                data = payload_merged or bytes(assembled_payload)
+                self.queue.feed_data(WSMessage(WSMsgType.BINARY, data, ""))
 
     def parse_frame(
         self, buf: bytes
