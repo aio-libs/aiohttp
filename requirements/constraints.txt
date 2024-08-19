@@ -132,7 +132,7 @@ pillow==9.5.0
     #   blockdiag
 pip-tools==7.4.1
     # via -r requirements/dev.in
-platformdirs==3.10.0
+platformdirs==3.11.0
     # via virtualenv
 pluggy==1.4.0
     # via pytest
