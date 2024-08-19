@@ -10,6 +10,36 @@
 
 .. towncrier release notes start
 
+3.10.5 (2024-08-19)
+=========================
+
+Bug fixes
+---------
+
+- Fixed :meth:`aiohttp.ClientResponse.json()` not setting ``status`` when :exc:`aiohttp.ContentTypeError` is raised -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8742`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of the WebSocket reader -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8736`, :issue:`8747`.
+
+
+
+
+----
+
+
 3.10.4 (2024-08-17)
 ===================
 

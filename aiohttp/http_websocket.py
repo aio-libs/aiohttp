@@ -93,6 +93,14 @@ MESSAGE_TYPES_WITH_CONTENT: Final = frozenset(
     }
 )
 
+MESSAGE_TYPES_WITH_CONTENT: Final = frozenset(
+    {
+        WSMsgType.BINARY,
+        WSMsgType.TEXT,
+        WSMsgType.CONTINUATION,
+    }
+)
+
 WS_KEY: Final[bytes] = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 
