@@ -545,7 +545,6 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 message = ERROR
 
             request = self._request_factory(message, payload, self, writer, handler)
-            print(1, type(request))
             try:
                 # a new task is used for copy context vars (#3406)
                 coro = self._handle_request(request, start, request_handler)
