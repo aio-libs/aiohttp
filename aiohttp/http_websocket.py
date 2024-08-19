@@ -305,13 +305,15 @@ class WebSocketReader:
             return True, data
 
         try:
-            return self._feed_data(data)
+            self._feed_data(data)
         except Exception as exc:
             self._exc = exc
             set_exception(self.queue, exc)
             return True, b""
 
-    def _feed_data(self, data: bytes) -> Tuple[bool, bytes]:
+        return False, b""
+
+    def _feed_data(self, data: bytes) -> None:
         feed_data = self.queue.feed_data
         for fin, opcode, payload, compressed in self.parse_frame(data):
             if opcode == WSMsgType.CLOSE:
@@ -428,8 +430,6 @@ class WebSocketReader:
                     feed_data(WSMessage(WSMsgType.TEXT, text, ""))
                 else:
                     feed_data(WSMessage(WSMsgType.BINARY, payload_merged, ""))
-
-        return False, b""
 
     def parse_frame(
         self, buf: bytes
