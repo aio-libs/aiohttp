@@ -121,7 +121,7 @@ urllib3==2.2.2
     # via requests
 uvloop==0.20.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
-virtualenv==20.24.2
+virtualenv==20.26.3
     # via pre-commit
 
 # The following packages are considered to be unsafe in a requirements file:
