@@ -70,7 +70,7 @@ class TestClientResponseError:
         )
         assert repr(err) == (
             "ClientResponseError(%r, (), status=400, "
-            "message='Something wrong', headers={})" % (self.request_info,)
+            "message='Something wrong', headers=<CIMultiDict()>)" % (self.request_info,)
         )
 
     def test_str(self) -> None:
