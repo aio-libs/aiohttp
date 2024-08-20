@@ -5,6 +5,7 @@ import io
 import re
 import socket
 import string
+import sys
 import tempfile
 import types
 from http.cookies import SimpleCookie
@@ -60,6 +61,11 @@ from .web_exceptions import (
     HTTPUnsupportedMediaType,
 )
 from .web_response import StreamResponse
+
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    Self = Any
 
 __all__ = ("BaseRequest", "FileField", "Request")
 
@@ -146,7 +152,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self,
         message: RawRequestMessage,
         payload: StreamReader,
-        protocol: "RequestHandler",
+        protocol: "RequestHandler[Self]",
         payload_writer: AbstractStreamWriter,
         task: "asyncio.Task[None]",
         loop: asyncio.AbstractEventLoop,
@@ -250,7 +256,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self.__class__(
             message,
             self._payload,
-            self._protocol,
+            self._protocol,  # type: ignore[arg-type]
             self._payload_writer,
             self._task,
             self._loop,
@@ -264,7 +270,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._task
 
     @property
-    def protocol(self) -> "RequestHandler":
+    def protocol(self) -> "RequestHandler[Self]":
         return self._protocol
 
     @property
