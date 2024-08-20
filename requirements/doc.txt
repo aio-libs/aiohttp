@@ -81,7 +81,7 @@ towncrier==23.11.0
     #   sphinxcontrib-towncrier
 urllib3==2.2.2
     # via requests
-webcolors==1.13
+webcolors==24.8.0
     # via blockdiag
 zipp==3.19.1
     # via
