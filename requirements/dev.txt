@@ -175,7 +175,7 @@ python-on-whales==0.72.0
     #   -r requirements/test.in
 pytz==2023.3.post1
     # via babel
-pyyaml==6.0.1
+pyyaml==6.0.2
     # via pre-commit
 re-assert==1.1.0
     # via -r requirements/test.in
