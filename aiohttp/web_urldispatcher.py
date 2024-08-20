@@ -1170,7 +1170,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         show_index: bool = False,
         follow_symlinks: bool = False,
         append_version: bool = False,
-    ) -> AbstractResource:
+    ) -> StaticResource:
         """Add static files view.
 
         prefix - url prefix

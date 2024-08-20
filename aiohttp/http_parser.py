@@ -920,7 +920,7 @@ class DeflateBuffer:
 
     def set_exception(
         self,
-        exc: BaseException,
+        exc: Union[Type[BaseException], BaseException],
         exc_cause: BaseException = _EXC_SENTINEL,
     ) -> None:
         set_exception(self.out, exc, exc_cause)
