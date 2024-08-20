@@ -125,15 +125,13 @@ jobs:
     needs: gen_llhttp
     strategy:
       matrix:
-        pyver: [3.8, 3.9, '3.10', '3.11', '3.12']
+        pyver: [3.9, '3.10', '3.11', '3.12']
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         experimental: [false]
         exclude:
           - os: macos
             no-extensions: 'Y'
-          - os: macos
-            pyver: 3.8
           - os: windows
             no-extensions: 'Y'
         include:

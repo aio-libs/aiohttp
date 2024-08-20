@@ -1,7 +1,6 @@
 import asyncio
 import os
 import pathlib
-import sys
 from contextlib import suppress
 from mimetypes import MimeTypes
 from stat import S_ISREG
@@ -47,9 +46,6 @@ _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
 NOSENDFILE: Final[bool] = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
 
 CONTENT_TYPES: Final[MimeTypes] = MimeTypes()
-
-if sys.version_info < (3, 9):
-    CONTENT_TYPES.encodings_map[".br"] = "br"
 
 # File extension to IANA encodings map that will be checked in the order defined.
 ENCODING_EXTENSIONS = MappingProxyType(
