@@ -115,7 +115,7 @@ typing-extensions==4.11.0
     #   python-on-whales
     #   rich
     #   typer
-urllib3==2.2.1
+urllib3==2.2.2
     # via requests
 uvloop==0.20.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
