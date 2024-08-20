@@ -4,8 +4,10 @@ import asyncio
 import warnings
 from typing import TYPE_CHECKING, Optional, Tuple, Union
 
+from multidict import MultiMapping
+
 from .http_parser import RawResponseMessage
-from .typedefs import LooseHeaders, StrOrURL
+from .typedefs import StrOrURL
 
 try:
     import ssl
@@ -71,7 +73,7 @@ class ClientResponseError(ClientError):
         code: Optional[int] = None,
         status: Optional[int] = None,
         message: str = "",
-        headers: Optional[LooseHeaders] = None,
+        headers: Optional[MultiMapping[str]] = None,
     ) -> None:
         self.request_info = request_info
         if code is not None:
