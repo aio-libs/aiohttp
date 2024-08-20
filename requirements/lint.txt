@@ -14,7 +14,7 @@ async-timeout==4.0.3
     # via aioredis
 certifi==2024.7.4
     # via requests
-cffi==1.16.0
+cffi==1.17.0
     # via
     #   cryptography
     #   pycares
@@ -32,11 +32,11 @@ distlib==0.3.7
     # via virtualenv
 exceptiongroup==1.1.2
     # via pytest
-filelock==3.12.2
+filelock==3.15.4
     # via virtualenv
 freezegun==1.5.1
     # via -r requirements/lint.in
-identify==2.5.26
+identify==2.6.0
     # via pre-commit
 idna==3.7
     # via
@@ -56,7 +56,7 @@ nodeenv==1.8.0
     # via pre-commit
 packaging==23.1
     # via pytest
-platformdirs==3.10.0
+platformdirs==4.2.2
     # via virtualenv
 pluggy==1.4.0
     # via pytest
@@ -72,7 +72,7 @@ pydantic==2.7.1
     # via python-on-whales
 pydantic-core==2.18.2
     # via pydantic
-pygments==2.17.2
+pygments==2.18.0
     # via rich
 pytest==8.1.1
     # via
@@ -84,7 +84,7 @@ python-dateutil==2.9.0.post0
     # via freezegun
 python-on-whales==0.72.0
     # via -r requirements/lint.in
-pyyaml==6.0.1
+pyyaml==6.0.2
     # via pre-commit
 requests==2.32.0
     # via python-on-whales
@@ -101,7 +101,7 @@ tomli==2.0.1
     #   mypy
     #   pytest
     #   slotscheck
-tqdm==4.66.3
+tqdm==4.66.5
     # via python-on-whales
 trustme==1.1.0
     # via -r requirements/lint.in
@@ -121,7 +121,7 @@ urllib3==2.2.2
     # via requests
 uvloop==0.20.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
-virtualenv==20.24.2
+virtualenv==20.26.3
     # via pre-commit
 
 # The following packages are considered to be unsafe in a requirements file:

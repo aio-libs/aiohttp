@@ -8,7 +8,7 @@ aiodns==3.2.0 ; sys_platform == "linux" or sys_platform == "darwin"
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
-aiohappyeyeballs==2.3.6
+aiohappyeyeballs==2.3.7
     # via -r requirements/runtime-deps.in
 aiohttp-theme==0.1.6
     # via -r requirements/doc.in
@@ -22,7 +22,7 @@ async-timeout==4.0.3 ; python_version < "3.11"
     # via
     #   -r requirements/runtime-deps.in
     #   aioredis
-babel==2.12.1
+babel==2.16.0
     # via sphinx
 blockdiag==3.0.0
     # via sphinxcontrib-blockdiag
@@ -32,13 +32,13 @@ build==1.0.3
     # via pip-tools
 certifi==2023.7.22
     # via requests
-cffi==1.15.1
+cffi==1.17.0
     # via
     #   cryptography
     #   pycares
 cfgv==3.3.1
     # via pre-commit
-charset-normalizer==3.2.0
+charset-normalizer==3.3.2
     # via requests
 cherry-picker==2.2.0
     # via -r requirements/dev.in
@@ -66,7 +66,7 @@ docutils==0.20.1
     # via sphinx
 exceptiongroup==1.1.2
     # via pytest
-filelock==3.12.2
+filelock==3.15.4
     # via virtualenv
 freezegun==1.5.1
     # via
@@ -82,7 +82,7 @@ gidgethub==5.3.0
     # via cherry-picker
 gunicorn==23.0.0
     # via -r requirements/base.in
-identify==2.5.26
+identify==2.6.0
     # via pre-commit
 idna==3.4
     # via
@@ -91,13 +91,13 @@ idna==3.4
     #   yarl
 imagesize==1.4.1
     # via sphinx
-importlib-metadata==7.0.0
+importlib-metadata==8.3.0
     # via
     #   build
     #   sphinx
 importlib-resources==6.1.1
     # via towncrier
-incremental==22.10.0
+incremental==24.7.2
     # via towncrier
 iniconfig==2.0.0
     # via pytest
@@ -132,15 +132,17 @@ pillow==9.5.0
     #   blockdiag
 pip-tools==7.4.1
     # via -r requirements/dev.in
-platformdirs==3.10.0
+platformdirs==4.2.2
     # via virtualenv
 pluggy==1.4.0
     # via pytest
 pre-commit==3.5.0
     # via -r requirements/lint.in
 proxy-py==2.4.7
-    # via -r requirements/test.in
-pycares==4.3.0
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/test.in
+pycares==4.4.0
     # via aiodns
 pycparser==2.21
     # via cffi
@@ -148,7 +150,7 @@ pydantic==1.10.12
     # via python-on-whales
 pyenchant==3.2.2
     # via sphinxcontrib-spelling
-pygments==2.15.1
+pygments==2.18.0
     # via sphinx
 pyjwt==2.8.0
     # via
@@ -178,7 +180,7 @@ python-on-whales==0.72.0
     #   -r requirements/test.in
 pytz==2023.3.post1
     # via babel
-pyyaml==6.0.1
+pyyaml==6.0.2
     # via pre-commit
 re-assert==1.1.0
     # via -r requirements/test.in
@@ -226,6 +228,7 @@ tomli==2.0.1
     #   build
     #   cherry-picker
     #   coverage
+    #   incremental
     #   mypy
     #   pip-tools
     #   pyproject-hooks
@@ -236,7 +239,7 @@ towncrier==23.11.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
-tqdm==4.65.0
+tqdm==4.66.5
     # via python-on-whales
 trustme==1.1.0 ; platform_machine != "i686"
     # via
@@ -259,11 +262,11 @@ uvloop==0.20.0 ; platform_system != "Windows"
     # via
     #   -r requirements/base.in
     #   -r requirements/lint.in
-virtualenv==20.24.2
+virtualenv==20.26.3
     # via pre-commit
 wait-for-it==2.2.2
     # via -r requirements/test.in
-webcolors==1.13
+webcolors==24.8.0
     # via blockdiag
 wheel==0.41.0
     # via pip-tools
@@ -280,5 +283,6 @@ pip==23.2.1
 setuptools==68.0.0
     # via
     #   blockdiag
+    #   incremental
     #   nodeenv
     #   pip-tools
