@@ -95,7 +95,7 @@ idna==3.3
     #   requests
     #   trustme
     #   yarl
-imagesize==1.3.0
+imagesize==1.4.1
     # via sphinx
 importlib-metadata==7.0.0
     # via
