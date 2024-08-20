@@ -12,7 +12,7 @@ annotated-types==0.6.0
     # via pydantic
 async-timeout==4.0.3
     # via aioredis
-certifi==2024.2.2
+certifi==2024.7.4
     # via requests
 cffi==1.17.0
     # via
