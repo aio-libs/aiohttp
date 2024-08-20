@@ -1,4 +1,5 @@
 import pathlib
+from typing import NoReturn
 
 import pytest
 from yarl import URL
@@ -13,8 +14,8 @@ def router() -> UrlDispatcher:
 
 
 def test_get(router: UrlDispatcher) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     router.add_routes([web.get("/", handler)])
     assert len(router.routes()) == 2  # GET and HEAD
@@ -30,8 +31,8 @@ def test_get(router: UrlDispatcher) -> None:
 
 
 def test_head(router: UrlDispatcher) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     router.add_routes([web.head("/", handler)])
     assert len(router.routes()) == 1
@@ -43,8 +44,8 @@ def test_head(router: UrlDispatcher) -> None:
 
 
 def test_options(router: UrlDispatcher) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     router.add_routes([web.options("/", handler)])
     assert len(router.routes()) == 1
@@ -56,8 +57,8 @@ def test_options(router: UrlDispatcher) -> None:
 
 
 def test_post(router: UrlDispatcher) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     router.add_routes([web.post("/", handler)])
 
@@ -68,8 +69,8 @@ def test_post(router: UrlDispatcher) -> None:
 
 
 def test_put(router: UrlDispatcher) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     router.add_routes([web.put("/", handler)])
     assert len(router.routes()) == 1
@@ -81,8 +82,8 @@ def test_put(router: UrlDispatcher) -> None:
 
 
 def test_patch(router: UrlDispatcher) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     router.add_routes([web.patch("/", handler)])
     assert len(router.routes()) == 1
@@ -94,8 +95,8 @@ def test_patch(router: UrlDispatcher) -> None:
 
 
 def test_delete(router: UrlDispatcher) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     router.add_routes([web.delete("/", handler)])
     assert len(router.routes()) == 1
@@ -107,8 +108,8 @@ def test_delete(router: UrlDispatcher) -> None:
 
 
 def test_route(router: UrlDispatcher) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     router.add_routes([web.route("OTHER", "/", handler)])
     assert len(router.routes()) == 1
@@ -136,8 +137,8 @@ def test_head_deco(router: UrlDispatcher) -> None:
     routes = web.RouteTableDef()
 
     @routes.head("/path")
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     router.add_routes(routes)
 
@@ -152,8 +153,8 @@ def test_get_deco(router: UrlDispatcher) -> None:
     routes = web.RouteTableDef()
 
     @routes.get("/path")
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     router.add_routes(routes)
 
@@ -172,8 +173,8 @@ def test_post_deco(router: UrlDispatcher) -> None:
     routes = web.RouteTableDef()
 
     @routes.post("/path")
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     router.add_routes(routes)
 
@@ -188,8 +189,8 @@ def test_put_deco(router: UrlDispatcher) -> None:
     routes = web.RouteTableDef()
 
     @routes.put("/path")
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     router.add_routes(routes)
 
@@ -204,8 +205,8 @@ def test_patch_deco(router: UrlDispatcher) -> None:
     routes = web.RouteTableDef()
 
     @routes.patch("/path")
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     router.add_routes(routes)
 
@@ -220,8 +221,8 @@ def test_delete_deco(router: UrlDispatcher) -> None:
     routes = web.RouteTableDef()
 
     @routes.delete("/path")
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     router.add_routes(routes)
 
@@ -236,8 +237,8 @@ def test_options_deco(router: UrlDispatcher) -> None:
     routes = web.RouteTableDef()
 
     @routes.options("/path")
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     router.add_routes(routes)
 
@@ -252,8 +253,8 @@ def test_route_deco(router: UrlDispatcher) -> None:
     routes = web.RouteTableDef()
 
     @routes.route("OTHER", "/path")
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     router.add_routes(routes)
 
@@ -268,8 +269,8 @@ def test_routedef_sequence_protocol() -> None:
     routes = web.RouteTableDef()
 
     @routes.delete("/path")
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     assert len(routes) == 1
 
@@ -283,8 +284,8 @@ def test_repr_route_def() -> None:
     routes = web.RouteTableDef()
 
     @routes.get("/path")
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     rd = routes[0]
     assert repr(rd) == "<RouteDef GET /path -> 'handler'>"
@@ -294,8 +295,8 @@ def test_repr_route_def_with_extra_info() -> None:
     routes = web.RouteTableDef()
 
     @routes.get("/path", extra="info")
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     rd = routes[0]
     assert repr(rd) == "<RouteDef GET /path -> 'handler', extra='info'>"
@@ -314,7 +315,7 @@ def test_repr_route_table_def() -> None:
     routes = web.RouteTableDef()
 
     @routes.get("/path")
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     assert repr(routes) == "<RouteTableDef count=1>"
