@@ -276,6 +276,10 @@ def test_testcase_no_app(testdir: Any, loop: Any) -> None:
         from aiohttp.test_utils import AioHTTPTestCase
 
 
+        def test_foo() -> None:
+            assert True
+
+
         class InvalidTestCase(AioHTTPTestCase):
             def test_noop(self) -> None:
                 pass
