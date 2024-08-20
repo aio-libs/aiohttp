@@ -90,6 +90,4 @@ zipp==3.17.0
 
 # The following packages are considered to be unsafe in a requirements file:
 setuptools==68.0.0
-    # via
-    #   blockdiag
-    #   sphinx
+    # via blockdiag
