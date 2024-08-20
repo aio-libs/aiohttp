@@ -1,7 +1,6 @@
 import asyncio
 import os
 import pathlib
-import sys
 from contextlib import suppress
 from mimetypes import MimeTypes
 from stat import S_ISREG
