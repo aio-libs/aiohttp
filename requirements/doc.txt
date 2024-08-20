@@ -30,7 +30,7 @@ importlib-metadata==8.3.0
     # via sphinx
 importlib-resources==6.1.1
     # via towncrier
-incremental==22.10.0
+incremental==24.7.2
     # via towncrier
 jinja2==3.1.4
     # via
@@ -74,7 +74,9 @@ sphinxcontrib-serializinghtml==1.1.5
 sphinxcontrib-towncrier==0.4.0a0
     # via -r requirements/doc.in
 tomli==2.0.1
-    # via towncrier
+    # via
+    #   incremental
+    #   towncrier
 towncrier==23.11.0
     # via
     #   -r requirements/doc.in
@@ -90,4 +92,6 @@ zipp==3.19.1
 
 # The following packages are considered to be unsafe in a requirements file:
 setuptools==70.0.0
-    # via blockdiag
+    # via
+    #   blockdiag
+    #   incremental
