@@ -198,7 +198,7 @@ jobs:
         PIP_USER: 1
       run: >-
         PATH="${HOME}/Library/Python/3.11/bin:${HOME}/.local/bin:${PATH}"
-        pytest
+        pytest --junitxml=junit.xml
       shell: bash
     - name: Re-run the failing tests with maximum verbosity
       if: failure()
@@ -233,6 +233,12 @@ jobs:
           }},Py-${{
             steps.python-install.outputs.python-version
           }}
+        token: ${{ secrets.CODECOV_TOKEN }}
+    - name: Upload test results to Codecov
+      if: ${{ !cancelled() }}
+      uses: codecov/test-results-action@v1
+      with:
+        fail_ci_if_error: true
         token: ${{ secrets.CODECOV_TOKEN }}
 
   check:  # This job does nothing and is only used for the branch protection
