@@ -18,7 +18,6 @@ except ImportError:  # pragma: no cover
 
 
 _NUMERIC_SOCKET_FLAGS = socket.AI_NUMERICHOST | socket.AI_NUMERICSERV
-_SUPPORTS_SCOPE_ID = sys.version_info >= (3, 9, 0)
 
 
 class ThreadedResolver(AbstractResolver):
@@ -49,7 +48,7 @@ class ThreadedResolver(AbstractResolver):
                     # IPv6 is not supported by Python build,
                     # or IPv6 is not enabled in the host
                     continue
-                if address[3] and _SUPPORTS_SCOPE_ID:
+                if address[3]:
                     # This is essential for link-local IPv6 addresses.
                     # LL IPv6 is a VERY rare case. Strictly speaking, we should use
                     # getnameinfo() unconditionally, but performance makes sense.
@@ -107,7 +106,7 @@ class AsyncResolver(AbstractResolver):
             address: Union[Tuple[bytes, int], Tuple[bytes, int, int, int]] = node.addr
             family = node.family
             if family == socket.AF_INET6:
-                if len(address) > 3 and address[3] and _SUPPORTS_SCOPE_ID:
+                if len(address) > 3 and address[3]:
                     # This is essential for link-local IPv6 addresses.
                     # LL IPv6 is a VERY rare case. Strictly speaking, we should use
                     # getnameinfo() unconditionally, but performance makes sense.

@@ -45,9 +45,6 @@ NOSENDFILE: Final[bool] = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
 
 CONTENT_TYPES: Final[MimeTypes] = MimeTypes()
 
-if sys.version_info < (3, 9):
-    CONTENT_TYPES.encodings_map[".br"] = "br"
-
 # File extension to IANA encodings map that will be checked in the order defined.
 ENCODING_EXTENSIONS = MappingProxyType(
     {ext: CONTENT_TYPES.encodings_map[ext] for ext in (".br", ".gz")}
