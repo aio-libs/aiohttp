@@ -7,7 +7,12 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from aiohttp.resolver import _NUMERIC_SOCKET_FLAGS, AsyncResolver, DefaultResolver, ThreadedResolver
+from aiohttp.resolver import (
+    _NUMERIC_SOCKET_FLAGS,
+    AsyncResolver,
+    DefaultResolver,
+    ThreadedResolver,
+)
 
 try:
     import aiodns
