@@ -78,7 +78,7 @@ class TestClientResponseError:
             history=(),
             status=400,
             message="Something wrong",
-            headers=CIMultiDict,
+            headers=CIMultiDict(),
         )
         assert str(err) == ("400, message='Something wrong', url='http://example.com'")
 
