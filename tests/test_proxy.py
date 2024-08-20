@@ -94,6 +94,7 @@ class TestProxy(unittest.TestCase):
                 )
 
                 conn.close()
+        self.loop.run_until_complete(connector.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
     @mock.patch(
@@ -157,6 +158,7 @@ class TestProxy(unittest.TestCase):
                 )
 
                 conn.close()
+        self.loop.run_until_complete(connector.close())
 
     @mock.patch(
         "aiohttp.connector.aiohappyeyeballs.start_connection",
@@ -206,6 +208,7 @@ class TestProxy(unittest.TestCase):
                 )
             self.assertEqual(req.url.path, "/")
             self.assertEqual(dict(req.headers), expected_headers)
+        self.loop.run_until_complete(connector.close())
 
     @mock.patch(
         "aiohttp.connector.aiohappyeyeballs.start_connection",
@@ -244,6 +247,7 @@ class TestProxy(unittest.TestCase):
                     self.loop.run_until_complete(
                         connector.connect(req, [], aiohttp.ClientTimeout())
                     )
+        self.loop.run_until_complete(connector.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
     @mock.patch(
@@ -324,6 +328,7 @@ class TestProxy(unittest.TestCase):
                             self.loop.run_until_complete(proxy_req.close())
                             proxy_resp.close()
                             self.loop.run_until_complete(req.close())
+                self.loop.run_until_complete(connector.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
     @mock.patch(
@@ -407,6 +412,7 @@ class TestProxy(unittest.TestCase):
                             self.loop.run_until_complete(proxy_req.close())
                             proxy_resp.close()
                             self.loop.run_until_complete(req.close())
+                self.loop.run_until_complete(connector.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
     @mock.patch(
@@ -488,6 +494,7 @@ class TestProxy(unittest.TestCase):
                             self.loop.run_until_complete(proxy_req.close())
                             proxy_resp.close()
                             self.loop.run_until_complete(req.close())
+                self.loop.run_until_complete(connector.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
     @mock.patch(
@@ -564,6 +571,7 @@ class TestProxy(unittest.TestCase):
                                         req, [], aiohttp.ClientTimeout()
                                     )
                                 )
+                self.loop.run_until_complete(connector.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
     @mock.patch(
@@ -638,6 +646,7 @@ class TestProxy(unittest.TestCase):
                                         req, [], aiohttp.ClientTimeout()
                                     )
                                 )
+                self.loop.run_until_complete(connector.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
     @mock.patch(
@@ -713,6 +722,7 @@ class TestProxy(unittest.TestCase):
                         self.loop.run_until_complete(proxy_req.close())
                         proxy_resp.close()
                         self.loop.run_until_complete(req.close())
+                self.loop.run_until_complete(connector.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
     @mock.patch(
@@ -782,6 +792,7 @@ class TestProxy(unittest.TestCase):
                                     req, [], aiohttp.ClientTimeout()
                                 )
                             )
+                self.loop.run_until_complete(connector.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
     @mock.patch(
@@ -828,6 +839,7 @@ class TestProxy(unittest.TestCase):
                     connector._create_connection(req, [], aiohttp.ClientTimeout())
                 )
                 self.assertEqual(req.url, URL("http://localhost:1234/path"))
+        self.loop.run_until_complete(connector.close())
 
     def test_proxy_auth_property(self) -> None:
         req = aiohttp.ClientRequest(
@@ -938,6 +950,7 @@ class TestProxy(unittest.TestCase):
                             self.loop.run_until_complete(proxy_req.close())
                             proxy_resp.close()
                             self.loop.run_until_complete(req.close())
+                self.loop.run_until_complete(connector.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
     @mock.patch(
@@ -1031,3 +1044,4 @@ class TestProxy(unittest.TestCase):
                             self.loop.run_until_complete(proxy_req.close())
                             proxy_resp.close()
                             self.loop.run_until_complete(req.close())
+                self.loop.run_until_complete(connector.close())
