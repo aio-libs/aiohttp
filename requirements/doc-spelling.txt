@@ -32,7 +32,7 @@ importlib-resources==6.1.1
     # via towncrier
 incremental==22.10.0
     # via towncrier
-jinja2==3.1.2
+jinja2==3.1.4
     # via
     #   sphinx
     #   towncrier
