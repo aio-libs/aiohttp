@@ -56,7 +56,7 @@ nodeenv==1.8.0
     # via pre-commit
 packaging==23.1
     # via pytest
-platformdirs==3.11.0
+platformdirs==4.2.2
     # via virtualenv
 pluggy==1.4.0
     # via pytest
