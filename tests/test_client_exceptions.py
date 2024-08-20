@@ -43,7 +43,7 @@ class TestClientResponseError:
             history=(),
             status=400,
             message="Something wrong",
-            headers=CIMultiDict(),
+            headers=CIMultiDict(foo="bar"),
         )
         err.foo = "bar"  # type: ignore[attr-defined]
         for proto in range(pickle.HIGHEST_PROTOCOL + 1):
@@ -53,7 +53,8 @@ class TestClientResponseError:
             assert err2.history == ()
             assert err2.status == 400
             assert err2.message == "Something wrong"
-            assert err2.headers == {}
+            # Use headers.get() to verify static type is correct.
+            assert err2.headers.get("foo") == "bar"
             assert err2.foo == "bar"
 
     def test_repr(self) -> None:
