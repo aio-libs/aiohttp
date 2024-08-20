@@ -138,29 +138,33 @@ def test_parse_frame_mask(parser: WebSocketReader) -> None:
 def test_parse_frame_header_reversed_bits(
     out: aiohttp.DataQueue[WSMessage], parser: WebSocketReader
 ) -> None:
-    parser.parse_frame(struct.pack("!BB", 0b01100000, 0b00000000))
-    assert isinstance(out.exception(), WebSocketError)
+    with pytest.raises(WebSocketError):
+        parser.parse_frame(struct.pack("!BB", 0b01100000, 0b00000000))
+        assert isinstance(out.exception(), WebSocketError)
 
 
 def test_parse_frame_header_control_frame(
     out: aiohttp.DataQueue[WSMessage], parser: WebSocketReader
 ) -> None:
-    parser.parse_frame(struct.pack("!BB", 0b00001000, 0b00000000))
-    assert isinstance(out.exception(), WebSocketError)
+    with pytest.raises(WebSocketError):
+        parser.parse_frame(struct.pack("!BB", 0b00001000, 0b00000000))
+        assert isinstance(out.exception(), WebSocketError)
 
 
-def _test_parse_frame_header_new_data_err(
+def test_parse_frame_header_new_data_err(
     out: aiohttp.DataQueue[WSMessage], parser: WebSocketReader
 ) -> None:
-    parser.parse_frame(struct.pack("!BB", 0b000000000, 0b00000000))
-    assert isinstance(out.exception(), WebSocketError)
+    with pytest.raises(WebSocketError):
+        parser.parse_frame(struct.pack("!BB", 0b000000000, 0b00000000))
+        assert isinstance(out.exception(), WebSocketError)
 
 
 def test_parse_frame_header_payload_size(
     out: aiohttp.DataQueue[WSMessage], parser: WebSocketReader
 ) -> None:
-    parser.parse_frame(struct.pack("!BB", 0b10001000, 0b01111110))
-    assert isinstance(out.exception(), WebSocketError)
+    with pytest.raises(WebSocketError):
+        parser.parse_frame(struct.pack("!BB", 0b10001000, 0b01111110))
+        assert isinstance(out.exception(), WebSocketError)
 
 
 def test_ping_frame(out: aiohttp.DataQueue[WSMessage], parser: WebSocketReader) -> None:
