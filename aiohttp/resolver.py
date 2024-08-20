@@ -1,6 +1,5 @@
 import asyncio
 import socket
-import sys
 from typing import Any, List, Tuple, Type, Union
 
 from .abc import AbstractResolver, ResolveResult
