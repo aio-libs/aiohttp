@@ -5,6 +5,7 @@ import pickle
 from unittest import mock
 
 import pytest
+from multidict import CIMultDict
 from yarl import URL
 
 from aiohttp import client, client_reqrep
