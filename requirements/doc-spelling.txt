@@ -28,7 +28,7 @@ imagesize==1.4.1
     # via sphinx
 importlib-metadata==8.3.0
     # via sphinx
-importlib-resources==6.1.1
+importlib-resources==6.4.3
     # via towncrier
 incremental==24.7.2
     # via towncrier
