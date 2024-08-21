@@ -32,7 +32,7 @@ coverage==7.6.1
     #   pytest-cov
 cryptography==41.0.3
     # via trustme
-exceptiongroup==1.1.2
+exceptiongroup==1.2.2
     # via pytest
 freezegun==1.5.1
     # via -r requirements/test.in
