@@ -267,12 +267,10 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         self._headers_parser = HeadersParser(max_line_size, max_field_size, self.lax)
 
     @abc.abstractmethod
-    def parse_message(self, lines: List[bytes]) -> _MsgT:
-        ...
+    def parse_message(self, lines: List[bytes]) -> _MsgT: ...
 
     @abc.abstractmethod
-    def _is_chunked_te(self, te: str) -> bool:
-        ...
+    def _is_chunked_te(self, te: str) -> bool: ...
 
     def feed_eof(self) -> Optional[_MsgT]:
         if self._payload_parser is not None:

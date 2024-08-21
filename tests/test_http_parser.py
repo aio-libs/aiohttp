@@ -1210,9 +1210,7 @@ async def test_http_response_parser_bad_chunked_strict_c(
 async def test_http_response_parser_notchunked(
     response: HttpResponseParser,
 ) -> None:
-    text = (
-        b"HTTP/1.1 200 OK\r\nTransfer-Encoding: notchunked\r\n\r\n1\r\nT\r\n3\r\nest\r\n0\r\n\r\n"
-    )
+    text = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: notchunked\r\n\r\n1\r\nT\r\n3\r\nest\r\n0\r\n\r\n"
     messages, upgrade, tail = response.feed_data(text)
     response.feed_eof()
 
@@ -1222,9 +1220,7 @@ async def test_http_response_parser_notchunked(
 async def test_http_response_parser_last_chunked(
     response: HttpResponseParser,
 ) -> None:
-    text = (
-        b"HTTP/1.1 200 OK\r\nTransfer-Encoding: not, chunked\r\n\r\n1\r\nT\r\n3\r\nest\r\n0\r\n\r\n"
-    )
+    text = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: not, chunked\r\n\r\n1\r\nT\r\n3\r\nest\r\n0\r\n\r\n"
     messages, upgrade, tail = response.feed_data(text)
 
     assert await messages[0][1].read() == b"Test"
