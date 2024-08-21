@@ -275,7 +275,7 @@ zipp==3.20.0
     #   importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
-pip==23.2.1
+pip==24.2
     # via pip-tools
 setuptools==68.0.0
     # via
