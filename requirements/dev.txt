@@ -272,7 +272,7 @@ zipp==3.17.0
 # The following packages are considered to be unsafe in a requirements file:
 pip==23.2.1
     # via pip-tools
-setuptools==68.0.0
+setuptools==73.0.1
     # via
     #   blockdiag
     #   incremental
