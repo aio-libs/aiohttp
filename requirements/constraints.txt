@@ -124,7 +124,7 @@ mypy-extensions==1.0.0
     # via mypy
 nodeenv==1.6.0
     # via pre-commit
-packaging==21.2
+packaging==24.1
     # via
     #   build
     #   gunicorn
@@ -160,8 +160,6 @@ pyjwt==2.3.0
     # via
     #   gidgethub
     #   pyjwt
-pyparsing==2.4.7
-    # via packaging
 pyproject-hooks==1.0.0
     # via
     #   build
