@@ -54,7 +54,7 @@ mypy-extensions==1.0.0
     # via mypy
 nodeenv==1.8.0
     # via pre-commit
-packaging==23.1
+packaging==24.1
     # via pytest
 platformdirs==3.10.0
     # via virtualenv
