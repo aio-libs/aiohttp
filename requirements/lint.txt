@@ -86,7 +86,7 @@ python-on-whales==0.72.0
     # via -r requirements/lint.in
 pyyaml==6.0.2
     # via pre-commit
-requests==2.32.0
+requests==2.32.3
     # via python-on-whales
 rich==13.7.1
     # via typer
