@@ -105,7 +105,7 @@ trustme==1.1.0
     # via -r requirements/lint.in
 typer==0.12.4
     # via python-on-whales
-typing-extensions==4.11.0
+typing-extensions==4.12.2
     # via
     #   aioredis
     #   annotated-types
