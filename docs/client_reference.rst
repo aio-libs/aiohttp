@@ -125,7 +125,7 @@ The client session supports the context manager protocol for self closing.
       Automatically call :meth:`ClientResponse.raise_for_status()` for
       each response, ``False`` by default.
 
-      This parameter can be overridden when you are making a request, e.g.::
+      This parameter can be overridden when making a request, e.g.::
 
           client_session = aiohttp.ClientSession(raise_for_status=True)
           resp = await client_session.get(url, raise_for_status=False)
