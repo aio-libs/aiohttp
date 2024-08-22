@@ -182,7 +182,7 @@ python-on-whales==0.72.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-pytz==2023.3.post1
+pytz==2024.1
     # via babel
 pyyaml==6.0.2
     # via pre-commit
