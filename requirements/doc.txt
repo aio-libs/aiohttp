@@ -8,7 +8,7 @@ aiohttp-theme==0.1.6
     # via -r requirements/doc.in
 alabaster==0.7.13
     # via sphinx
-babel==2.12.1
+babel==2.16.0
     # via sphinx
 blockdiag==3.0.0
     # via sphinxcontrib-blockdiag
