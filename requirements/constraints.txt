@@ -82,7 +82,7 @@ frozenlist==1.4.1
     #   aiosignal
 funcparserlib==1.0.1
     # via blockdiag
-gidgethub==5.0.1
+gidgethub==5.3.0
     # via cherry-picker
 gunicorn==23.0.0
     # via -r requirements/base.in
@@ -156,7 +156,7 @@ pyenchant==3.2.2
     # via sphinxcontrib-spelling
 pygments==2.18.0
     # via sphinx
-pyjwt==2.3.0
+pyjwt==2.9.0
     # via
     #   gidgethub
     #   pyjwt
