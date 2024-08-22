@@ -536,11 +536,13 @@ def test_request_te_chunked123(parser: HttpRequestParser) -> None:
 async def test_request_te_last_chunked(parser: HttpRequestParser) -> None:
     text = b"GET /test HTTP/1.1\r\nTransfer-Encoding: not, chunked\r\n\r\n1\r\nT\r\n3\r\nest\r\n0\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)
+    # https://www.rfc-editor.org/rfc/rfc9112#section-6.3-2.4.3
     assert await messages[0][1].read() == b"Test"
 
 
 def test_request_te_first_chunked(parser: HttpRequestParser) -> None:
     text = b"GET /test HTTP/1.1\r\nTransfer-Encoding: chunked, not\r\n\r\n1\r\nT\r\n3\r\nest\r\n0\r\n\r\n"
+    # https://www.rfc-editor.org/rfc/rfc9112#section-6.3-2.4.3
     with pytest.raises(
         http_exceptions.BadHttpMessage,
         match="nvalid `Transfer-Encoding`",
@@ -1214,6 +1216,7 @@ async def test_http_response_parser_notchunked(
     messages, upgrade, tail = response.feed_data(text)
     response.feed_eof()
 
+    https://www.rfc-editor.org/rfc/rfc9112#section-6.3-2.4.2
     assert await messages[0][1].read() == b"1\r\nT\r\n3\r\nest\r\n0\r\n\r\n"
 
 
@@ -1223,6 +1226,7 @@ async def test_http_response_parser_last_chunked(
     text = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: not, chunked\r\n\r\n1\r\nT\r\n3\r\nest\r\n0\r\n\r\n"
     messages, upgrade, tail = response.feed_data(text)
 
+    # https://www.rfc-editor.org/rfc/rfc9112#section-6.3-2.4.2
     assert await messages[0][1].read() == b"Test"
 
 
