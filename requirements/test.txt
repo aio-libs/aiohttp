@@ -53,6 +53,10 @@ idna==3.4
     #   yarl
 iniconfig==2.0.0
     # via pytest
+markdown-it-py==3.0.0
+    # via rich
+mdurl==0.1.2
+    # via markdown-it-py
 multidict==6.0.5
     # via
     #   -r requirements/runtime-deps.in
@@ -77,6 +81,8 @@ pydantic==2.2.0
     # via python-on-whales
 pydantic-core==2.6.0
     # via pydantic
+pygments==2.18.0
+    # via rich
 pytest==8.3.2
     # via
     #   -r requirements/test.in
@@ -96,8 +102,12 @@ regex==2024.7.24
     # via re-assert
 requests==2.31.0
     # via python-on-whales
+rich==13.7.1
+    # via typer
 setuptools-git==1.2
     # via -r requirements/test.in
+shellingham==1.5.4
+    # via typer
 six==1.16.0
     # via python-dateutil
 tomli==2.0.1
@@ -109,7 +119,7 @@ tqdm==4.66.5
     # via python-on-whales
 trustme==1.1.0 ; platform_machine != "i686"
     # via -r requirements/test.in
-typer==0.9.0
+typer==0.12.4
     # via python-on-whales
 typing-extensions==4.11.0
     # via
@@ -118,6 +128,7 @@ typing-extensions==4.11.0
     #   pydantic
     #   pydantic-core
     #   python-on-whales
+    #   rich
     #   typer
 urllib3==2.2.2
     # via requests
