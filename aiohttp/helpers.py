@@ -46,12 +46,8 @@ from typing import (
 from urllib.parse import quote
 from urllib.request import getproxies, proxy_bypass
 
-<<<<<<< HEAD
 import attr
 from multidict import MultiDict, MultiDictProxy, MultiMapping
-=======
-from multidict import CIMultiDict, MultiDict, MultiDictProxy, MultiMapping
->>>>>>> 26772ad32... No default Content-Type when no content (#8858)
 from yarl import URL
 
 from . import hdrs
