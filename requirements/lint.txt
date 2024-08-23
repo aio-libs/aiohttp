@@ -30,7 +30,7 @@ cryptography==43.0.0
     # via trustme
 distlib==0.3.8
     # via virtualenv
-exceptiongroup==1.1.2
+exceptiongroup==1.2.2
     # via pytest
 filelock==3.12.2
     # via virtualenv
