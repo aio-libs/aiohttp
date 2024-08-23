@@ -15,7 +15,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Collection,
     Dict,
     Iterable,
     List,
@@ -383,7 +382,7 @@ class ClientRequest:
                     self.headers.add(key, value)
 
     def update_auto_headers(self, skip_auto_headers: Iterable[str]) -> None:
-        if not isinstance(skip_auto_headers, Collection) or skip_auto_headers:
+        if not isinstance(skip_auto_headers, (set, frozenset)) or skip_auto_headers:
             self.skip_auto_headers = CIMultiDict(
                 (hdr, None) for hdr in sorted(skip_auto_headers)
             )
