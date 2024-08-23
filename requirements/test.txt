@@ -24,7 +24,7 @@ cffi==1.17.0
     # via
     #   cryptography
     #   pycares
-charset-normalizer==3.2.0
+charset-normalizer==3.3.2
     # via requests
 click==8.1.6
     # via
