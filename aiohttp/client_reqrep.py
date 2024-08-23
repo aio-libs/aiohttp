@@ -199,7 +199,7 @@ class ClientRequest:
         *,
         params: Optional[Mapping[str, str]] = None,
         headers: Optional[LooseHeaders] = None,
-        skip_auto_headers: Optional[Iterable[str]] = None,
+        skip_auto_headers: Iterable[str] = frozenset(),
         data: Any = None,
         cookies: Optional[LooseCookies] = None,
         auth: Optional[BasicAuth] = None,
@@ -381,8 +381,8 @@ class ClientRequest:
                 else:
                     self.headers.add(key, value)
 
-    def update_auto_headers(self, skip_auto_headers: Optional[Iterable[str]]) -> None:
-        if skip_auto_headers is not None:
+    def update_auto_headers(self, skip_auto_headers: Iterable[str]) -> None:
+        if skip_auto_headers:
             self.skip_auto_headers = CIMultiDict(
                 (hdr, None) for hdr in sorted(skip_auto_headers)
             )
