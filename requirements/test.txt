@@ -63,7 +63,7 @@ packaging==24.1
     # via
     #   gunicorn
     #   pytest
-pluggy==1.4.0
+pluggy==1.5.0
     # via pytest
 proxy-py==2.4.7
     # via -r requirements/test.in
