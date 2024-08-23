@@ -236,7 +236,6 @@ jobs:
       if: ${{ !cancelled() }}
       uses: codecov/test-results-action@v1
       with:
-        fail_ci_if_error: true
         token: ${{ secrets.CODECOV_TOKEN }}
 
   check:  # This job does nothing and is only used for the branch protection
