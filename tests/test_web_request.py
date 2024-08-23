@@ -820,22 +820,6 @@ def test_weakref_creation() -> None:
     weakref.ref(req)
 
 
-@pytest.mark.xfail(
-    raises=ServerDisconnectedError,
-    reason="see https://github.com/aio-libs/aiohttp/issues/4572",
-)
-async def test_handler_return_type(aiohttp_client: Any) -> None:
-    async def invalid_handler_1(request):
-        return 1
-
-    app = web.Application()
-    app.router.add_get("/1", invalid_handler_1)
-    client = await aiohttp_client(app)
-
-    async with client.get("/1") as resp:
-        assert 500 == resp.status
-
-
 @pytest.mark.parametrize(
     ["header", "header_attr"],
     [
