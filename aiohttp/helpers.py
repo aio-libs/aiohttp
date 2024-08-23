@@ -753,13 +753,15 @@ def ceil_timeout(
 class HeadersMixin:
     __slots__ = ("_content_type", "_content_dict", "_stored_content_type")
 
+    headers: CIMultiDict[str]
+
     def __init__(self) -> None:
         super().__init__()
         self._content_type: Optional[str] = None
         self._content_dict: Optional[Dict[str, str]] = None
-        self._stored_content_type: Union[str, _SENTINEL] = sentinel
+        self._stored_content_type: Union[str, None, _SENTINEL] = sentinel
 
-    def _parse_content_type(self, raw: str) -> None:
+    def _parse_content_type(self, raw: Optional[str]) -> None:
         self._stored_content_type = raw
         if raw is None:
             # default value according to RFC 2616
@@ -774,23 +776,24 @@ class HeadersMixin:
     @property
     def content_type(self) -> str:
         """The value of content part for Content-Type HTTP header."""
-        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore[attr-defined]
+        raw = self._headers.get(hdrs.CONTENT_TYPE)
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
-        return self._content_type  # type: ignore[return-value]
+        return self._content_type
 
     @property
     def charset(self) -> Optional[str]:
         """The value of charset part for Content-Type HTTP header."""
-        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore[attr-defined]
+        raw = self._headers.get(hdrs.CONTENT_TYPE)
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
-        return self._content_dict.get("charset")  # type: ignore[union-attr]
+        assert self._content_dict is not None
+        return self._content_dict.get("charset")
 
     @property
     def content_length(self) -> Optional[int]:
         """The value of Content-Length HTTP header."""
-        content_length = self._headers.get(  # type: ignore[attr-defined]
+        content_length = self._headers.get(
             hdrs.CONTENT_LENGTH
         )
 

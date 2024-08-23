@@ -150,6 +150,21 @@ async def test_head_returns_empty_body(aiohttp_client: Any) -> None:
     assert resp.headers["Content-Length"] == "4"
 
 
+@pytest.mark.parametrize("status", (201, 204, 404))
+async def test_default_content_type_no_body(aiohttp_client: Any, status: int) -> None:
+    async def handler(request):
+        return web.Response(status=status)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == status
+        assert await resp.read() == b""
+        assert "Content-Type" not in resp.headers
+
+
 async def test_response_before_complete(aiohttp_client: Any) -> None:
     async def handler(request):
         return web.Response(body=b"OK")
