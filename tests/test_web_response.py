@@ -1006,7 +1006,6 @@ async def test_send_headers_for_empty_body(buf: Any, writer: Any) -> None:
         Matches(
             "HTTP/1.1 200 OK\r\n"
             "Content-Length: 0\r\n"
-            "Content-Type: application/octet-stream\r\n"
             "Date: .+\r\n"
             "Server: .+\r\n\r\n"
         )
@@ -1049,7 +1048,6 @@ async def test_send_set_cookie_header(buf: Any, writer: Any) -> None:
             "HTTP/1.1 200 OK\r\n"
             "Content-Length: 0\r\n"
             "Set-Cookie: name=value\r\n"
-            "Content-Type: application/octet-stream\r\n"
             "Date: .+\r\n"
             "Server: .+\r\n\r\n"
         )

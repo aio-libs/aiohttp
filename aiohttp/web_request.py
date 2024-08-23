@@ -82,7 +82,7 @@ class FileField:
     filename: str
     file: io.BufferedReader
     content_type: str
-    headers: "CIMultiDictProxy[str]"
+    headers: CIMultiDictProxy[str]
 
 
 _TCHAR: Final[str] = string.digits + string.ascii_letters + r"!#$%&'*+.^_`|~-"
@@ -171,7 +171,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self._payload_writer = payload_writer
 
         self._payload = payload
-        self._headers = message.headers
+        self._headers: CIMultiDictProxy[str] = message.headers
         self._method = message.method
         self._version = message.version
         self._cache: Dict[str, Any] = {}
@@ -483,7 +483,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._rel_url.query_string
 
     @reify
-    def headers(self) -> "CIMultiDictProxy[str]":
+    def headers(self) -> CIMultiDictProxy[str]:
         """A case-insensitive multidict proxy with all headers."""
         return self._headers
 
