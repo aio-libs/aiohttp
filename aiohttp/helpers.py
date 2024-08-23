@@ -49,7 +49,7 @@ from typing import (
 from urllib.parse import quote
 from urllib.request import getproxies, proxy_bypass
 
-from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
+from multidict import CIMultiDict, MultiDict, MultiDictProxy, MultiMapping
 from yarl import URL
 
 from . import hdrs
@@ -753,7 +753,7 @@ def ceil_timeout(
 class HeadersMixin:
     __slots__ = ("_content_type", "_content_dict", "_stored_content_type")
 
-    _headers: CIMultiDictProxy[str]
+    _headers: MultiMapping[str]
 
     def __init__(self) -> None:
         super().__init__()
