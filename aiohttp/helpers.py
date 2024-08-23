@@ -753,7 +753,7 @@ def ceil_timeout(
 class HeadersMixin:
     __slots__ = ("_content_type", "_content_dict", "_stored_content_type")
 
-    _headers: CIMultiDict[str]
+    _headers: CIMultiDictProxy[str]
 
     def __init__(self) -> None:
         super().__init__()
