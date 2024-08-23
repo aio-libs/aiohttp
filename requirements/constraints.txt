@@ -136,7 +136,7 @@ pip-tools==7.4.1
     # via -r requirements/dev.in
 platformdirs==4.2.2
     # via virtualenv
-pluggy==1.4.0
+pluggy==1.5.0
     # via pytest
 pre-commit==3.5.0
     # via -r requirements/lint.in
