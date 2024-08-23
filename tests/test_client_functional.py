@@ -759,7 +759,6 @@ async def test_raw_headers(aiohttp_client: AiohttpClient) -> None:
         raw_headers = tuple((bytes(h), bytes(v)) for h, v in resp.raw_headers)
         assert raw_headers == (
             (b"Content-Length", b"0"),
-            (b"Content-Type", b"application/octet-stream"),
             (b"Date", mock.ANY),
             (b"Server", mock.ANY),
         )
@@ -792,7 +791,6 @@ async def test_empty_header_values(aiohttp_client: AiohttpClient) -> None:
         assert raw_headers == (
             (b"X-Empty", b""),
             (b"Content-Length", b"0"),
-            (b"Content-Type", b"application/octet-stream"),
             (b"Date", mock.ANY),
             (b"Server", mock.ANY),
         )
