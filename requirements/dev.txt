@@ -66,7 +66,7 @@ distlib==0.3.8
     # via virtualenv
 docutils==0.20.1
     # via sphinx
-exceptiongroup==1.1.2
+exceptiongroup==1.2.2
     # via pytest
 filelock==3.12.2
     # via virtualenv
