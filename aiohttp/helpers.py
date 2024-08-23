@@ -779,6 +779,7 @@ class HeadersMixin:
         raw = self._headers.get(hdrs.CONTENT_TYPE)
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
+        assert self._content_type is not None
         return self._content_type
 
     @property
