@@ -52,9 +52,51 @@ directly as shown above, but it is more convenient to use special keyword
 
     await session.post(url, json={'example': 'text'})
 
-For *text/plain* ::
+For ``text/plain``::
 
     await session.post(url, data='Привет, Мир!')
+
+Authentication
+--------------
+
+Instead of setting the ``Authorization`` header directly,
+:class:`ClientSession` and individual request methods provide an ``auth``
+argument. An instance of :class:`BasicAuth` can be passed in like this::
+
+    auth = BasicAuth(login="...", password="...")
+    async with ClientSession(auth=auth) as session:
+        ...
+
+For other authentication flows, the ``Authorization`` header can be set
+directly::
+
+    headers = {"Authorization": "Bearer eyJh...0M30"}
+    async with ClientSession(headers=headers) as session:
+        ...
+
+The authentication header for a session may be updated as and when required.
+For example::
+
+    session.headers["Authorization"] = "Bearer eyJh...1OH0"
+
+Note that a *copy* of the headers dictionary is set as an attribute when
+creating a :class:`ClientSession` instance (as a :class:`multidict.CIMultiDict`
+object). Updating the original dictionary does not have any effect.
+
+In cases where the authentication header value expires periodically, an
+:mod:`asyncio` task may be used to update the session's default headers in the
+background.
+
+.. note::
+
+   The ``Authorization`` header will be removed if you get redirected
+   to a different host or protocol, except the case when  HTTP → HTTPS
+   redirect is performed on the same host.
+
+.. versionchanged:: 4.0
+
+   Started keeping the ``Authorization`` header during HTTP → HTTPS
+   redirects when the host remains the same.
 
 Custom Cookies
 --------------
@@ -295,7 +337,7 @@ nature are installed to perform their job in each signal handle::
 
 All signals take as a parameters first, the :class:`ClientSession`
 instance used by the specific request related to that signals and
-second, a :class:`SimpleNamespace` instance called
+second, a :class:`~types.SimpleNamespace` instance called
 ``trace_config_ctx``. The ``trace_config_ctx`` object can be used to
 share the state through to the different signals that belong to the
 same request and to the same :class:`TraceConfig` class, perhaps::
@@ -310,7 +352,7 @@ same request and to the same :class:`TraceConfig` class, perhaps::
 
 
 The ``trace_config_ctx`` param is by default a
-:class:`SimpleNampespace` that is initialized at the beginning of the
+:class:`~types.SimpleNamespace` that is initialized at the beginning of the
 request flow. However, the factory used to create this object can be
 overwritten using the ``trace_config_ctx_factory`` constructor param of
 the :class:`TraceConfig` class.
@@ -438,26 +480,12 @@ checks can be relaxed by setting *ssl* to ``False``::
 
   r = await session.get('https://example.com', ssl=False)
 
-
 If you need to setup custom ssl parameters (use own certification
 files for example) you can create a :class:`ssl.SSLContext` instance and
-pass it into the proper :class:`ClientSession` method::
+pass it into the :meth:`ClientSession.request` methods or set it for the
+entire session with ``ClientSession(connector=TCPConnector(ssl=ssl_context))``.
 
-  sslcontext = ssl.create_default_context(
-     cafile='/path/to/ca-bundle.crt')
-  r = await session.get('https://example.com', ssl=sslcontext)
-
-If you need to verify *self-signed* certificates, you can do the
-same thing as the previous example, but add another call to
-:meth:`ssl.SSLContext.load_cert_chain` with the key pair::
-
-  sslcontext = ssl.create_default_context(
-     cafile='/path/to/ca-bundle.crt')
-  sslcontext.load_cert_chain('/path/to/client/public/device.pem',
-                             '/path/to/client/private/device.key')
-  r = await session.get('https://example.com', ssl=sslcontext)
-
-There is explicit errors when ssl verification fails
+There are explicit errors when ssl verification fails
 
 :class:`aiohttp.ClientConnectorSSLError`::
 
@@ -486,6 +514,34 @@ If you need to skip both ssl related errors
       await session.get('https://wrong.host.badssl.com/')
   except aiohttp.ClientSSLError as e:
       assert isinstance(e, ssl.CertificateError)
+
+Example: Use certifi
+^^^^^^^^^^^^^^^^^^^^
+
+By default, Python uses the system CA certificates. In rare cases, these may not be
+installed or Python is unable to find them, resulting in a error like
+`ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate`
+
+One way to work around this problem is to use the `certifi` package::
+
+  ssl_context = ssl.create_default_context(cafile=certifi.where())
+  async with ClientSession(connector=TCPConnector(ssl=ssl_context)) as sess:
+      ...
+
+Example: Use self-signed certificate
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you need to verify *self-signed* certificates, you need to add a call to
+:meth:`ssl.SSLContext.load_cert_chain` with the key pair::
+
+  ssl_context = ssl.create_default_context()
+  ssl_context.load_cert_chain("/path/to/client/public/device.pem",
+                              "/path/to/client/private/device.key")
+  async with sess.get("https://example.com", ssl=ssl_context) as resp:
+      ...
+
+Example: Verify certificate fingerprint
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You may also verify certificates via *SHA256* fingerprint::
 
@@ -519,12 +575,16 @@ DER with e.g::
    to :class:`TCPConnector` as default, the value from
    :meth:`ClientSession.get` and others override default.
 
+.. _aiohttp-client-proxy-support:
+
 Proxy support
 -------------
 
-aiohttp supports plain HTTP proxies and HTTP proxies that can be upgraded to HTTPS
-via the HTTP CONNECT method. aiohttp does not support proxies that must be
-connected to via ``https://``. To connect, use the *proxy* parameter::
+aiohttp supports plain HTTP proxies and HTTP proxies that can be
+upgraded to HTTPS via the HTTP CONNECT method. aiohttp has a limited
+support for proxies that must be connected to via ``https://`` — see
+the info box below for more details.
+To connect, use the *proxy* parameter::
 
    async with aiohttp.ClientSession() as session:
        async with session.get("http://python.org",
@@ -548,23 +608,53 @@ Authentication credentials can be passed in proxy URL::
 Contrary to the ``requests`` library, it won't read environment
 variables by default. But you can do so by passing
 ``trust_env=True`` into :class:`aiohttp.ClientSession`
-constructor for extracting proxy configuration from
-*HTTP_PROXY*, *HTTPS_PROXY*, *WS_PROXY* or *WSS_PROXY* *environment
-variables* (all are case insensitive)::
+constructor.::
 
    async with aiohttp.ClientSession(trust_env=True) as session:
        async with session.get("http://python.org") as resp:
            print(resp.status)
 
+.. note::
+    aiohttp uses :func:`urllib.request.getproxies`
+    for reading the proxy configuration (e.g. from the *HTTP_PROXY* etc. environment variables) and applies them for the *HTTP*, *HTTPS*, *WS* and *WSS* schemes.
+
+    Hosts defined in ``no_proxy`` will bypass the proxy.
+
 Proxy credentials are given from ``~/.netrc`` file if present (see
 :class:`aiohttp.ClientSession` for more details).
+
+.. attention::
+
+   As of now (Python 3.10), support for TLS in TLS is disabled for the transports that
+   :py:mod:`asyncio` uses. If the further release of Python (say v3.11)
+   toggles one attribute, it'll *just work™*.
+
+   aiohttp v3.8 and higher is ready for this to happen and has code in
+   place supports TLS-in-TLS, hence sending HTTPS requests over HTTPS
+   proxy tunnels.
+
+   ⚠️ For as long as your Python runtime doesn't declare the support for
+   TLS-in-TLS, please don't file bugs with aiohttp but rather try to
+   help the CPython upstream enable this feature. Meanwhile, if you
+   *really* need this to work, there's a patch that may help you make
+   it happen, include it into your app's code base:
+   https://github.com/aio-libs/aiohttp/discussions/6044#discussioncomment-1432443.
+
+.. important::
+
+   When supplying a custom :py:class:`ssl.SSLContext` instance, bear in
+   mind that it will be used not only to establish a TLS session with
+   the HTTPS endpoint you're hitting but also to establish a TLS tunnel
+   to the HTTPS proxy. To avoid surprises, make sure to set up the trust
+   chain that would recognize TLS certificates used by both the endpoint
+   and the proxy.
 
 .. _aiohttp-persistent-session:
 
 Persistent session
 ------------------
 
-Even though creating a session on demand seems like tempting idea, we
+Even though creating a session on demand seems like a tempting idea, we
 advise against it. :class:`aiohttp.ClientSession` maintains a
 connection pool. Contained connections can be reused if necessary to gain some
 performance improvements. If you plan on reusing the session, a.k.a. creating
@@ -573,37 +663,38 @@ performance improvements. If you plan on reusing the session, a.k.a. creating
 as it results in more compact code::
 
     app.cleanup_ctx.append(persistent_session)
+    persistent_session = aiohttp.web.AppKey("persistent_session", aiohttp.ClientSession)
 
     async def persistent_session(app):
-       app['PERSISTENT_SESSION'] = session = aiohttp.ClientSession()
+       app[persistent_session] = session = aiohttp.ClientSession()
        yield
        await session.close()
 
     async def my_request_handler(request):
-       session = request.app['PERSISTENT_SESSION']
+       session = request.app[persistent_session]
        async with session.get("http://python.org") as resp:
            print(resp.status)
 
 
-This approach can be successfully used to define numerous of session given certain
+This approach can be successfully used to define numerous sessions given certain
 requirements. It benefits from having a single location where :class:`aiohttp.ClientSession`
-instances are created and where artifacts such as :class:`aiohttp.connector.BaseConnector`
+instances are created and where artifacts such as :class:`aiohttp.BaseConnector`
 can be safely shared between sessions if needed.
 
-In the end all you have to do is to close all sessions after `yield` statement::
+In the end all you have to do is to close all sessions after the `yield` statement::
 
     async def multiple_sessions(app):
-       app['PERSISTENT_SESSION_1'] = session_1 = aiohttp.ClientSession()
-       app['PERSISTENT_SESSION_2'] = session_2 = aiohttp.ClientSession()
-       app['PERSISTENT_SESSION_3'] = session_3 = aiohttp.ClientSession()
+       app[persistent_session_1] = session_1 = aiohttp.ClientSession()
+       app[persistent_session_2] = session_2 = aiohttp.ClientSession()
+       app[persistent_session_3] = session_3 = aiohttp.ClientSession()
 
        yield
 
-       await asyncio.gather(*[
+       await asyncio.gather(
            session_1.close(),
            session_2.close(),
            session_3.close(),
-       ])
+       )
 
 Graceful Shutdown
 -----------------
@@ -626,20 +717,15 @@ asyncio.sleep(0)``) will suffice::
         async with aiohttp.ClientSession() as session:
             async with session.get('http://example.org/') as resp:
                 await resp.read()
-
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(read_website())
-    # Zero-sleep to allow underlying connections to close
-    loop.run_until_complete(asyncio.sleep(0))
-    loop.close()
+        # Zero-sleep to allow underlying connections to close
+        await asyncio.sleep(0)
 
 For a :class:`ClientSession` with SSL, the application must wait a
 short duration before closing::
 
     ...
     # Wait 250 ms for the underlying SSL connections to close
-    loop.run_until_complete(asyncio.sleep(0.250))
-    loop.close()
+    await asyncio.sleep(0.250)
 
 Note that the appropriate amount of time to wait will vary from
 application to application.
@@ -654,3 +740,33 @@ HTTP Pipelining
 ---------------
 
 aiohttp does not support HTTP/HTTPS pipelining.
+
+
+Character Set Detection
+-----------------------
+
+If you encounter a :exc:`UnicodeDecodeError` when using :meth:`ClientResponse.text()`
+this may be because the response does not include the charset needed
+to decode the body.
+
+If you know the correct encoding for a request, you can simply specify
+the encoding as a parameter (e.g. ``resp.text("windows-1252")``).
+
+Alternatively, :class:`ClientSession` accepts a ``fallback_charset_resolver`` parameter which
+can be used to introduce charset guessing functionality. When a charset is not found
+in the Content-Type header, this function will be called to get the charset encoding. For
+example, this can be used with the ``chardetng_py`` library.::
+
+    from chardetng_py import detect
+
+    def charset_resolver(resp: ClientResponse, body: bytes) -> str:
+        tld = resp.url.host.rsplit(".", maxsplit=1)[-1]
+        return detect(body, allow_utf8=True, tld=tld.encode())
+
+    ClientSession(fallback_charset_resolver=charset_resolver)
+
+Or, if ``chardetng_py`` doesn't work for you, then ``charset-normalizer`` is another option::
+
+    from charset_normalizer import detect
+
+    ClientSession(fallback_charset_resolver=lambda r, b: detect(b)["encoding"] or "utf-8")

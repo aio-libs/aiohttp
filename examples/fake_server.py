@@ -3,25 +3,27 @@ import asyncio
 import pathlib
 import socket
 import ssl
-from typing import Any, Dict, List, Union
+from typing import Dict, List
 
-from aiohttp import ClientSession, TCPConnector, resolver, test_utils, web
+from aiohttp import ClientSession, TCPConnector, test_utils, web
+from aiohttp.abc import AbstractResolver, ResolveResult
+from aiohttp.resolver import DefaultResolver
 
 
-class FakeResolver:
+class FakeResolver(AbstractResolver):
     _LOCAL_HOST = {0: "127.0.0.1", socket.AF_INET: "127.0.0.1", socket.AF_INET6: "::1"}
 
     def __init__(self, fakes: Dict[str, int]) -> None:
         """fakes -- dns -> port dict"""
         self._fakes = fakes
-        self._resolver = resolver.DefaultResolver()
+        self._resolver = DefaultResolver()
 
     async def resolve(
         self,
         host: str,
         port: int = 0,
-        family: Union[socket.AddressFamily, int] = socket.AF_INET,
-    ) -> List[Dict[str, Any]]:
+        family: socket.AddressFamily = socket.AF_INET,
+    ) -> List[ResolveResult]:
         fake_port = self._fakes.get(host)
         if fake_port is not None:
             return [
@@ -38,7 +40,7 @@ class FakeResolver:
             return await self._resolver.resolve(host, port, family)
 
     async def close(self) -> None:
-        self._resolver.close()
+        await self._resolver.close()
 
 
 class FakeFacebook:
@@ -50,7 +52,7 @@ class FakeFacebook:
                 web.get("/v2.7/me/friends", self.on_my_friends),
             ]
         )
-        self.runner = None
+        self.runner = web.AppRunner(self.app)
         here = pathlib.Path(__file__)
         ssl_cert = here.parent / "server.crt"
         ssl_key = here.parent / "server.key"

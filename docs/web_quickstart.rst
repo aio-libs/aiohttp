@@ -137,7 +137,7 @@ requests on a *path* having **any** *HTTP method*::
   app.add_routes([web.route('*', '/path', all_handler)])
 
 The *HTTP method* can be queried later in the request handler using the
-:attr:`Request.method` property.
+:attr:`aiohttp.web.BaseRequest.method` property.
 
 By default endpoints added with ``GET`` method will accept
 ``HEAD`` requests and return the same response headers as they would
@@ -147,6 +147,12 @@ for a ``GET`` request. You can also deny ``HEAD`` requests on a route::
 
 Here ``handler`` won't be called on ``HEAD`` request and the server
 will respond with ``405: Method Not Allowed``.
+
+.. seealso::
+
+   :ref:`aiohttp-web-peer-disconnection` section explains how handlers
+   behave when a client connection drops and ways to optimize handling
+   of this.
 
 .. _aiohttp-web-resource-and-route:
 
@@ -355,7 +361,7 @@ Route tables look like Django way::
                           web.post('/post', handle_post),
 
 
-The snippet calls :meth:`~aiohttp.web.UrlDispather.add_routes` to
+The snippet calls :meth:`~aiohttp.web.UrlDispatcher.add_routes` to
 register a list of *route definitions* (:class:`aiohttp.web.RouteDef`
 instances) created by :func:`aiohttp.web.get` or
 :func:`aiohttp.web.post` functions.
@@ -399,7 +405,7 @@ The container is a list-like object with additional decorators
 routes.
 
 After filling the container
-:meth:`~aiohttp.web.UrlDispather.add_routes` is used for adding
+:meth:`~aiohttp.web.UrlDispatcher.add_routes` is used for adding
 registered *route definitions* into application's router.
 
 .. seealso:: :ref:`aiohttp-web-route-table-def` reference.
@@ -444,8 +450,11 @@ third-party library, :mod:`aiohttp_session`, that adds *session* support::
 
     async def handler(request):
         session = await get_session(request)
-        last_visit = session['last_visit'] if 'last_visit' in session else None
-        text = 'Last visited: {}'.format(last_visit)
+
+        last_visit = session.get("last_visit")
+        session["last_visit"] = time.time()
+        text = "Last visited: {}".format(last_visit)
+
         return web.Response(text=text)
 
     async def make_app():
@@ -468,17 +477,17 @@ HTTP Forms
 HTTP Forms are supported out of the box.
 
 If form's method is ``"GET"`` (``<form method="get">``) use
-:attr:`Request.query` for getting form data.
+:attr:`aiohttp.web.BaseRequest.query` for getting form data.
 
 To access form data with ``"POST"`` method use
-:meth:`Request.post` or :meth:`Request.multipart`.
+:meth:`aiohttp.web.BaseRequest.post` or :meth:`aiohttp.web.BaseRequest.multipart`.
 
-:meth:`Request.post` accepts both
+:meth:`aiohttp.web.BaseRequest.post` accepts both
 ``'application/x-www-form-urlencoded'`` and ``'multipart/form-data'``
 form's data encoding (e.g. ``<form enctype="multipart/form-data">``).
 It stores files data in temporary directory. If `client_max_size` is
 specified `post` raises `ValueError` exception.
-For efficiency use :meth:`Request.multipart`, It is especially effective
+For efficiency use :meth:`aiohttp.web.BaseRequest.multipart`, It is especially effective
 for uploading large files (:ref:`aiohttp-web-file-upload`).
 
 Values submitted by the following form:
@@ -552,10 +561,10 @@ a container for the file as well as some of its metadata::
 
 
 You might have noticed a big warning in the example above. The general issue is
-that :meth:`Request.post` reads the whole payload in memory,
+that :meth:`aiohttp.web.BaseRequest.post` reads the whole payload in memory,
 resulting in possible
 :abbr:`OOM (Out Of Memory)` errors. To avoid this, for multipart uploads, you
-should use :meth:`Request.multipart` which returns a :ref:`multipart reader
+should use :meth:`aiohttp.web.BaseRequest.multipart` which returns a :ref:`multipart reader
 <aiohttp-multipart>`::
 
     async def store_mp3_handler(request):

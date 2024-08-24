@@ -143,7 +143,7 @@ def gen(dct):
     out.write(HEADER)
     missing = set()
     gen_block(dct, "", set(), missing, out)
-    missing_labels = "\n".join(m for m in sorted(missing))
+    missing_labels = "\n".join(sorted(missing))
     out.write(FOOTER.format(missing=missing_labels))
     return out
 

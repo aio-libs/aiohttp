@@ -5,13 +5,14 @@ import pytest
 from yarl import URL
 
 from aiohttp import web
+from aiohttp.typedefs import Handler
 
 
 async def test_middleware_modifies_response(loop: Any, aiohttp_client: Any) -> None:
     async def handler(request):
         return web.Response(body=b"OK")
 
-    async def middleware(request, handler):
+    async def middleware(request, handler: Handler):
         resp = await handler(request)
         assert 200 == resp.status
         resp.set_status(201)
@@ -32,7 +33,7 @@ async def test_middleware_handles_exception(loop: Any, aiohttp_client: Any) -> N
     async def handler(request):
         raise RuntimeError("Error text")
 
-    async def middleware(request, handler):
+    async def middleware(request, handler: Handler):
         with pytest.raises(RuntimeError) as ctx:
             await handler(request)
         return web.Response(status=501, text=str(ctx.value) + "[MIDDLEWARE]")
@@ -59,7 +60,7 @@ async def test_middleware_chain(loop: Any, aiohttp_client: Any) -> None:
     middleware_annotation_seen_values = []
 
     def make_middleware(num):
-        async def middleware(request, handler):
+        async def middleware(request, handler: Handler):
             middleware_annotation_seen_values.append(
                 getattr(handler, "annotation", None)
             )
@@ -104,7 +105,7 @@ async def test_middleware_subapp(loop: Any, aiohttp_client: Any) -> None:
     middleware_annotation_seen_values = []
 
     def make_middleware(num):
-        async def middleware(request, handler):
+        async def middleware(request, handler: Handler):
             annotation = getattr(handler, "annotation", None)
             if annotation is not None:
                 middleware_annotation_seen_values.append(f"{annotation}/{num}")
@@ -361,6 +362,38 @@ class TestNormalizePathMiddleware:
         with pytest.raises(AssertionError):
             web.normalize_path_middleware(append_slash=True, remove_slash=True)
 
+    @pytest.mark.parametrize(
+        ["append_slash", "remove_slash"],
+        [
+            (True, False),
+            (False, True),
+            (False, False),
+        ],
+    )
+    async def test_open_redirects(
+        self, append_slash: bool, remove_slash: bool, aiohttp_client: Any
+    ) -> None:
+        async def handle(request: web.Request) -> web.StreamResponse:
+            pytest.fail(
+                msg="Security advisory 'GHSA-v6wp-4m6f-gcjg' test handler "
+                "matched unexpectedly",
+                pytrace=False,
+            )
+
+        app = web.Application(
+            middlewares=[
+                web.normalize_path_middleware(
+                    append_slash=append_slash, remove_slash=remove_slash
+                )
+            ]
+        )
+        app.add_routes([web.get("/", handle), web.get("/google.com", handle)])
+        client = await aiohttp_client(app, server_kwargs={"skip_url_asserts": True})
+        resp = await client.get("//google.com", allow_redirects=False)
+        assert resp.status == 308
+        assert resp.headers["Location"] == "/google.com"
+        assert resp.url.query == URL("//google.com").query
+
 
 async def test_bug_3669(aiohttp_client: Any):
     async def paymethod(request):
@@ -383,10 +416,13 @@ async def test_old_style_middleware(loop: Any, aiohttp_client: Any) -> None:
     async def view_handler(request):
         return web.Response(body=b"OK")
 
-    with pytest.warns(DeprecationWarning, match="Middleware decorator is deprecated"):
+    with pytest.deprecated_call(
+        match=r"^Middleware decorator is deprecated since 4\.0 and its "
+        r"behaviour is default, you can simply remove this decorator\.$",
+    ):
 
         @web.middleware
-        async def middleware(request, handler):
+        async def middleware(request, handler: Handler):
             resp = await handler(request)
             assert 200 == resp.status
             resp.set_status(201)
@@ -407,24 +443,21 @@ async def test_new_style_middleware_class(loop: Any, aiohttp_client: Any) -> Non
         return web.Response(body=b"OK")
 
     class Middleware:
-        async def __call__(self, request, handler):
+        async def __call__(self, request, handler: Handler):
             resp = await handler(request)
             assert 200 == resp.status
             resp.set_status(201)
             resp.text = resp.text + "[new style middleware]"
             return resp
 
-    with pytest.warns(None) as warning_checker:
-        app = web.Application()
-        app.middlewares.append(Middleware())
-        app.router.add_route("GET", "/", handler)
-        client = await aiohttp_client(app)
-        resp = await client.get("/")
-        assert 201 == resp.status
-        txt = await resp.text()
-        assert "OK[new style middleware]" == txt
-
-    assert len(warning_checker) == 0
+    app = web.Application()
+    app.middlewares.append(Middleware())
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.get("/")
+    assert 201 == resp.status
+    txt = await resp.text()
+    assert "OK[new style middleware]" == txt
 
 
 async def test_new_style_middleware_method(loop: Any, aiohttp_client: Any) -> None:
@@ -432,21 +465,18 @@ async def test_new_style_middleware_method(loop: Any, aiohttp_client: Any) -> No
         return web.Response(body=b"OK")
 
     class Middleware:
-        async def call(self, request, handler):
+        async def call(self, request, handler: Handler):
             resp = await handler(request)
             assert 200 == resp.status
             resp.set_status(201)
             resp.text = resp.text + "[new style middleware]"
             return resp
 
-    with pytest.warns(None) as warning_checker:
-        app = web.Application()
-        app.middlewares.append(Middleware().call)
-        app.router.add_route("GET", "/", handler)
-        client = await aiohttp_client(app)
-        resp = await client.get("/")
-        assert 201 == resp.status
-        txt = await resp.text()
-        assert "OK[new style middleware]" == txt
-
-    assert len(warning_checker) == 0
+    app = web.Application()
+    app.middlewares.append(Middleware().call)
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.get("/")
+    assert 201 == resp.status
+    txt = await resp.text()
+    assert "OK[new style middleware]" == txt

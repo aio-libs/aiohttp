@@ -14,6 +14,15 @@
 
 import os
 import re
+from pathlib import Path
+
+PROJECT_ROOT_DIR = Path(__file__).parents[1].resolve()
+IS_RELEASE_ON_RTD = (
+    os.getenv("READTHEDOCS", "False") == "True"
+    and os.environ["READTHEDOCS_VERSION_TYPE"] == "tag"
+)
+if IS_RELEASE_ON_RTD:
+    tags.add("is_release")
 
 _docs_path = os.path.dirname(__file__)
 _version_path = os.path.abspath(
@@ -43,10 +52,13 @@ with open(_version_path, encoding="latin1") as fp:
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "sphinx.ext.viewcode",
+    # stdlib-party extensions:
+    "sphinx.ext.extlinks",
     "sphinx.ext.intersphinx",
-    "sphinxcontrib.asyncio",
+    "sphinx.ext.viewcode",
+    # Third-party extensions:
     "sphinxcontrib.blockdiag",
+    "sphinxcontrib.towncrier.ext",  # provides `towncrier-draft-entries` directive
 ]
 
 
@@ -59,14 +71,16 @@ except ImportError:
 
 
 intersphinx_mapping = {
+    "pytest": ("http://docs.pytest.org/en/latest/", None),
     "python": ("http://docs.python.org/3", None),
     "multidict": ("https://multidict.readthedocs.io/en/stable/", None),
     "yarl": ("https://yarl.readthedocs.io/en/stable/", None),
+    "aiosignal": ("https://aiosignal.readthedocs.io/en/stable/", None),
     "aiohttpjinja2": ("https://aiohttp-jinja2.readthedocs.io/en/stable/", None),
     "aiohttpremotes": ("https://aiohttp-remotes.readthedocs.io/en/stable/", None),
     "aiohttpsession": ("https://aiohttp-session.readthedocs.io/en/stable/", None),
     "aiohttpdemos": ("https://aiohttp-demos.readthedocs.io/en/latest/", None),
-    "asynctest": ("https://asynctest.readthedocs.io/en/latest/", None),
+    "aiojobs": ("https://aiojobs.readthedocs.io/en/stable/", None),
 }
 
 # Add any paths that contain templates here, relative to this directory.
@@ -81,9 +95,17 @@ source_suffix = ".rst"
 # The master toctree document.
 master_doc = "index"
 
-# General information about the project.
-project = "aiohttp"
-copyright = "2013-2020, aiohttp maintainers"
+# -- Project information -----------------------------------------------------
+
+github_url = "https://github.com"
+github_repo_org = "aio-libs"
+github_repo_name = "aiohttp"
+github_repo_slug = f"{github_repo_org}/{github_repo_name}"
+github_repo_url = f"{github_url}/{github_repo_slug}"
+github_sponsors_url = f"{github_url}/sponsors"
+
+project = github_repo_name
+copyright = f"{project} contributors"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -136,6 +158,17 @@ highlight_language = "python3"
 # keep_warnings = False
 
 
+# -- Extension configuration -------------------------------------------------
+
+# -- Options for extlinks extension ---------------------------------------
+extlinks = {
+    "issue": (f"{github_repo_url}/issues/%s", "#%s"),
+    "pr": (f"{github_repo_url}/pull/%s", "PR #%s"),
+    "commit": (f"{github_repo_url}/commit/%s", "%s"),
+    "gh": (f"{github_url}/%s", "GitHub: %s"),
+    "user": (f"{github_sponsors_url}/%s", "@%s"),
+}
+
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -146,47 +179,44 @@ html_theme = "aiohttp_theme"
 # further.  For a list of options available for each theme, see the
 # documentation.
 html_theme_options = {
-    "logo": "aiohttp-icon-128x128.png",
     "description": "Async HTTP client/server for asyncio and Python",
     "canonical_url": "http://docs.aiohttp.org/en/stable/",
-    "github_user": "aio-libs",
-    "github_repo": "aiohttp",
+    "github_user": github_repo_org,
+    "github_repo": github_repo_name,
     "github_button": True,
     "github_type": "star",
     "github_banner": True,
     "badges": [
         {
-            "image": "https://github.com/aio-libs/aiohttp/workflows/CI/badge.svg",
-            "target": "https://github.com/aio-libs/aiohttp/actions?query=workflow%3ACI",
+            "image": f"{github_repo_url}/workflows/CI/badge.svg",
+            "target": f"{github_repo_url}/actions?query=workflow%3ACI",
             "height": "20",
             "alt": "Azure Pipelines CI status",
         },
         {
-            "image": "https://codecov.io/github/aio-libs/aiohttp/coverage.svg?branch=master",
-            "target": "https://codecov.io/github/aio-libs/aiohttp",
+            "image": f"https://codecov.io/github/{github_repo_slug}/coverage.svg?branch=master",
+            "target": f"https://codecov.io/github/{github_repo_slug}",
             "height": "20",
             "alt": "Code coverage status",
         },
         {
-            "image": "https://badge.fury.io/py/aiohttp.svg",
-            "target": "https://badge.fury.io/py/aiohttp",
+            "image": f"https://badge.fury.io/py/{project}.svg",
+            "target": f"https://badge.fury.io/py/{project}",
             "height": "20",
             "alt": "Latest PyPI package version",
         },
         {
-            "image": "https://img.shields.io/discourse/status?server=https%3A%2F%2Faio-libs.discourse.group",
-            "target": "https://aio-libs.discourse.group",
-            "height": "20",
-            "alt": "Discourse status",
-        },
-        {
             "image": "https://badges.gitter.im/Join%20Chat.svg",
-            "target": "https://gitter.im/aio-libs/Lobby",
+            "target": f"https://gitter.im/{github_repo_org}/Lobby",
             "height": "20",
             "alt": "Chat on Gitter",
         },
     ],
 }
+
+html_css_files = [
+    "css/logo-adjustments.css",
+]
 
 # Add any paths that contain custom themes here, relative to this directory.
 # html_theme_path = [alabaster.get_path()]
@@ -200,7 +230,7 @@ html_theme_options = {
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-# html_logo = 'aiohttp-icon.svg'
+html_logo = "aiohttp-plain.svg"
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
@@ -265,7 +295,7 @@ html_sidebars = {
 # html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "aiohttpdoc"
+htmlhelp_basename = f"{project}doc"
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -283,7 +313,13 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    ("index", "aiohttp.tex", "aiohttp Documentation", "aiohttp contributors", "manual"),
+    (
+        "index",
+        f"{project}.tex",
+        f"{project} Documentation",
+        f"{project} contributors",
+        "manual",
+    ),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -311,7 +347,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [("index", "aiohttp", "aiohttp Documentation", ["aiohttp"], 1)]
+man_pages = [("index", project, f"{project} Documentation", [project], 1)]
 
 # If true, show URL addresses after external links.
 # man_show_urls = False
@@ -325,10 +361,10 @@ man_pages = [("index", "aiohttp", "aiohttp Documentation", ["aiohttp"], 1)]
 texinfo_documents = [
     (
         "index",
-        "aiohttp",
-        "aiohttp Documentation",
+        project,
+        f"{project} Documentation",
         "Aiohttp contributors",
-        "aiohttp",
+        project,
         "One line description of project.",
         "Miscellaneous",
     ),
@@ -345,3 +381,54 @@ texinfo_documents = [
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 # texinfo_no_detailmenu = False
+
+
+# -------------------------------------------------------------------------
+nitpicky = True
+nitpick_ignore = [
+    ("py:mod", "aiohttp"),  # undocumented, no `.. currentmodule:: aiohttp` in docs
+    ("py:class", "aiohttp.SimpleCookie"),  # undocumented
+    ("py:class", "aiohttp.web.RequestHandler"),  # undocumented
+    ("py:class", "aiohttp.NamedPipeConnector"),  # undocumented
+    ("py:class", "aiohttp.protocol.HttpVersion"),  # undocumented
+    ("py:class", "aiohttp.ClientRequest"),  # undocumented
+    ("py:class", "aiohttp.payload.Payload"),  # undocumented
+    ("py:class", "aiohttp.resolver.AsyncResolver"),  # undocumented
+    ("py:class", "aiohttp.resolver.ThreadedResolver"),  # undocumented
+    ("py:func", "aiohttp.ws_connect"),  # undocumented
+    ("py:meth", "start"),  # undocumented
+    ("py:exc", "aiohttp.ClientHttpProxyError"),  # undocumented
+    ("py:class", "asyncio.AbstractServer"),  # undocumented
+    ("py:mod", "aiohttp.test_tools"),  # undocumented
+    ("py:class", "list of pairs"),  # undocumented
+    ("py:class", "aiohttp.protocol.HttpVersion"),  # undocumented
+    ("py:meth", "aiohttp.ClientSession.request"),  # undocumented
+    ("py:class", "aiohttp.StreamWriter"),  # undocumented
+    ("py:attr", "aiohttp.StreamResponse.body"),  # undocumented
+    ("py:class", "aiohttp.payload.StringPayload"),  # undocumented
+    ("py:meth", "aiohttp.web.Application.copy"),  # undocumented
+    ("py:meth", "asyncio.AbstractEventLoop.create_server"),  # undocumented
+    ("py:data", "aiohttp.log.server_logger"),  # undocumented
+    ("py:data", "aiohttp.log.access_logger"),  # undocumented
+    ("py:data", "aiohttp.helpers.AccessLogger"),  # undocumented
+    ("py:attr", "helpers.AccessLogger.LOG_FORMAT"),  # undocumented
+    ("py:meth", "aiohttp.web.AbstractRoute.url"),  # undocumented
+    ("py:class", "aiohttp.web.MatchedSubAppResource"),  # undocumented
+    ("py:attr", "body"),  # undocumented
+    ("py:class", "socket.socket"),  # undocumented
+    ("py:class", "socket.AddressFamily"),  # undocumented
+    ("py:obj", "logging.DEBUG"),  # undocumented
+    ("py:class", "aiohttp.abc.AbstractAsyncAccessLogger"),  # undocumented
+    ("py:meth", "aiohttp.web.Response.write_eof"),  # undocumented
+    ("py:meth", "aiohttp.payload.Payload.set_content_disposition"),  # undocumented
+    ("py:class", "cgi.FieldStorage"),  # undocumented
+    ("py:meth", "aiohttp.web.UrlDispatcher.register_resource"),  # undocumented
+    ("py:func", "aiohttp_debugtoolbar.setup"),  # undocumented
+]
+
+# -- Options for towncrier_draft extension -----------------------------------
+
+towncrier_draft_autoversion_mode = "draft"  # or: 'sphinx-version', 'sphinx-release'
+towncrier_draft_include_empty = True
+towncrier_draft_working_directory = PROJECT_ROOT_DIR
+# Not yet supported: towncrier_draft_config_path = 'pyproject.toml'  # relative to cwd

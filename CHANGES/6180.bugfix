@@ -1,0 +1,1 @@
+Fixed matching the JSON media type to not accept arbitrary characters after ``application/json`` or the ``+json`` media type suffix.

@@ -1,1 +1,0 @@
-Ensure a cleanup context is cleaned up even when an exception occurs during startup.

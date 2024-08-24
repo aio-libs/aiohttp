@@ -11,11 +11,56 @@
 {{ underline * definitions[category]['name']|length }}
 
 {% if definitions[category]['showcontent'] %}
-{% for text, values in sections[section][category].items() %}
-- {{ text }}
-  {{ values|join(',\n  ') }}
-{% endfor %}
+{% for text, change_note_refs in sections[section][category].items() %}
+- {{ text + '\n' }}
 
+  {#
+      NOTE: Replacing 'e' with 'f' is a hack that prevents Jinja's `int`
+      NOTE: filter internal implementation from treating the input as an
+      NOTE: infinite float when it looks like a scientific notation (with a
+      NOTE: single 'e' char in between digits), raising an `OverflowError`,
+      NOTE: subsequently. 'f' is still a hex letter so it won't affect the
+      NOTE: check for whether it's a (short or long) commit hash or not.
+      Ref: https://github.com/pallets/jinja/issues/1921
+  -#}
+  {%-
+    set pr_issue_numbers = change_note_refs
+    | map('lower')
+    | map('replace', 'e', 'f')
+    | map('int', default=None)
+    | select('integer')
+    | map('string')
+    | list
+  -%}
+  {%- set arbitrary_refs = [] -%}
+  {%- set commit_refs = [] -%}
+  {%- with -%}
+    {%- set commit_ref_candidates = change_note_refs | reject('in', pr_issue_numbers) -%}
+    {%- for cf in commit_ref_candidates -%}
+      {%- if cf | length in (7, 8, 40) and cf | int(default=None, base=16) is not none -%}
+        {%- set _ = commit_refs.append(cf) -%}
+      {%- else -%}
+        {%- set _ = arbitrary_refs.append(cf) -%}
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endwith -%}
+
+  {% if pr_issue_numbers -%}
+  *Related issues and pull requests on GitHub:*
+  :issue:`{{ pr_issue_numbers | join('`, :issue:`') }}`.
+  {% endif %}
+
+  {% if commit_refs -%}
+  *Related commits on GitHub:*
+  :commit:`{{ commit_refs | join('`, :commit:`') }}`.
+  {% endif %}
+
+  {% if arbitrary_refs -%}
+  *Unlinked references:*
+  {{ arbitrary_refs | join(', ') }}`.
+  {% endif %}
+
+{% endfor %}
 {% else %}
 - {{ sections[section][category]['']|join(', ') }}
 
@@ -34,3 +79,4 @@ No significant changes.
 {% endif %}
 {% endfor %}
 ----
+{{ '\n' * 2 }}

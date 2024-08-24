@@ -5,20 +5,21 @@ import io
 import re
 import socket
 import string
+import sys
 import tempfile
 import types
-from email.utils import parsedate
 from http.cookies import SimpleCookie
 from types import MappingProxyType
 from typing import (
     TYPE_CHECKING,
     Any,
     Dict,
+    Final,
     Iterator,
     Mapping,
     MutableMapping,
     Optional,
-    Set,
+    Pattern,
     Tuple,
     Union,
     cast,
@@ -32,12 +33,16 @@ from . import hdrs
 from .abc import AbstractStreamWriter
 from .helpers import (
     _SENTINEL,
+    ETAG_ANY,
+    LIST_QUOTED_ETAG_RE,
     ChainMapProxy,
+    ETag,
     HeadersMixin,
     is_expected_content_type,
+    parse_http_date,
     reify,
     sentinel,
-    set_result,
+    set_exception,
 )
 from .http_parser import RawRequestMessage
 from .http_writer import HttpVersion
@@ -57,10 +62,15 @@ from .web_exceptions import (
 )
 from .web_response import StreamResponse
 
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    Self = Any
+
 __all__ = ("BaseRequest", "FileField", "Request")
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .web_app import Application
     from .web_protocol import RequestHandler
     from .web_urldispatcher import UrlMappingMatchInfo
@@ -72,34 +82,36 @@ class FileField:
     filename: str
     file: io.BufferedReader
     content_type: str
-    headers: "CIMultiDictProxy[str]"
+    headers: CIMultiDictProxy[str]
 
 
-_TCHAR = string.digits + string.ascii_letters + r"!#$%&'*+.^_`|~-"
+_TCHAR: Final[str] = string.digits + string.ascii_letters + r"!#$%&'*+.^_`|~-"
 # '-' at the end to prevent interpretation as range in a char class
 
-_TOKEN = fr"[{_TCHAR}]+"
+_TOKEN: Final[str] = rf"[{_TCHAR}]+"
 
-_QDTEXT = r"[{}]".format(
+_QDTEXT: Final[str] = r"[{}]".format(
     r"".join(chr(c) for c in (0x09, 0x20, 0x21) + tuple(range(0x23, 0x7F)))
 )
 # qdtext includes 0x5C to escape 0x5D ('\]')
 # qdtext excludes obs-text (because obsoleted, and encoding not specified)
 
-_QUOTED_PAIR = r"\\[\t !-~]"
+_QUOTED_PAIR: Final[str] = r"\\[\t !-~]"
 
-_QUOTED_STRING = r'"(?:{quoted_pair}|{qdtext})*"'.format(
+_QUOTED_STRING: Final[str] = r'"(?:{quoted_pair}|{qdtext})*"'.format(
     qdtext=_QDTEXT, quoted_pair=_QUOTED_PAIR
 )
 
-_FORWARDED_PAIR = r"({token})=({token}|{quoted_string})(:\d{{1,4}})?".format(
-    token=_TOKEN, quoted_string=_QUOTED_STRING
+_FORWARDED_PAIR: Final[str] = (
+    r"({token})=({token}|{quoted_string})(:\d{{1,4}})?".format(
+        token=_TOKEN, quoted_string=_QUOTED_STRING
+    )
 )
 
-_QUOTED_PAIR_REPLACE_RE = re.compile(r"\\([\t !-~])")
+_QUOTED_PAIR_REPLACE_RE: Final[Pattern[str]] = re.compile(r"\\([\t !-~])")
 # same pattern as _QUOTED_PAIR but contains a capture group
 
-_FORWARDED_PAIR_RE = re.compile(_FORWARDED_PAIR)
+_FORWARDED_PAIR_RE: Final[Pattern[str]] = re.compile(_FORWARDED_PAIR)
 
 ############################################################
 # HTTP Request
@@ -107,7 +119,6 @@ _FORWARDED_PAIR_RE = re.compile(_FORWARDED_PAIR)
 
 
 class BaseRequest(MutableMapping[str, Any], HeadersMixin):
-
     POST_METHODS = {
         hdrs.METH_PATCH,
         hdrs.METH_POST,
@@ -134,7 +145,6 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         "_loop",
         "_transport_sslcontext",
         "_transport_peername",
-        "_disconnection_waiters",
         "__weakref__",
     )
 
@@ -142,12 +152,12 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self,
         message: RawRequestMessage,
         payload: StreamReader,
-        protocol: "RequestHandler",
+        protocol: "RequestHandler[Self]",
         payload_writer: AbstractStreamWriter,
         task: "asyncio.Task[None]",
         loop: asyncio.AbstractEventLoop,
         *,
-        client_max_size: int = 1024 ** 2,
+        client_max_size: int = 1024**2,
         state: Optional[Dict[str, Any]] = None,
         scheme: Optional[str] = None,
         host: Optional[str] = None,
@@ -161,21 +171,28 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self._payload_writer = payload_writer
 
         self._payload = payload
-        self._headers = message.headers
+        self._headers: CIMultiDictProxy[str] = message.headers
         self._method = message.method
         self._version = message.version
-        self._rel_url = message.url
-        self._post = (
-            None
-        )  # type: Optional[MultiDictProxy[Union[str, bytes, FileField]]]
-        self._read_bytes = None  # type: Optional[bytes]
+        self._cache: Dict[str, Any] = {}
+        url = message.url
+        if url.is_absolute():
+            # absolute URL is given,
+            # override auto-calculating url, host, and scheme
+            # all other properties should be good
+            self._cache["url"] = url
+            self._cache["host"] = url.host
+            self._cache["scheme"] = url.scheme
+            self._rel_url = url.relative()
+        else:
+            self._rel_url = message.url
+        self._post: Optional[MultiDictProxy[Union[str, bytes, FileField]]] = None
+        self._read_bytes: Optional[bytes] = None
 
         self._state = state
-        self._cache = {}  # type: Dict[str, Any]
         self._task = task
         self._client_max_size = client_max_size
         self._loop = loop
-        self._disconnection_waiters = set()  # type: Set[asyncio.Future[None]]
 
         transport = self._protocol.transport
         assert transport is not None
@@ -198,28 +215,27 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         scheme: Union[str, _SENTINEL] = sentinel,
         host: Union[str, _SENTINEL] = sentinel,
         remote: Union[str, _SENTINEL] = sentinel,
+        client_max_size: Union[int, _SENTINEL] = sentinel,
     ) -> "BaseRequest":
         """Clone itself with replacement some attributes.
 
         Creates and returns a new instance of Request object. If no parameters
         are given, an exact copy is returned. If a parameter is not passed, it
         will reuse the one from the current request object.
-
         """
-
         if self._read_bytes:
             raise RuntimeError("Cannot clone request " "after reading its content")
 
-        dct = {}  # type: Dict[str, Any]
+        dct: Dict[str, Any] = {}
         if method is not sentinel:
             dct["method"] = method
         if rel_url is not sentinel:
-            new_url: URL = URL(rel_url)  # type: ignore
+            new_url: URL = URL(rel_url)
             dct["url"] = new_url
             dct["path"] = str(new_url)
         if headers is not sentinel:
             # a copy semantic
-            new_headers = CIMultiDictProxy(CIMultiDict(headers))  # type: ignore
+            new_headers = CIMultiDictProxy(CIMultiDict(headers))
             dct["headers"] = new_headers
             dct["raw_headers"] = tuple(
                 (k.encode("utf-8"), v.encode("utf-8")) for k, v in new_headers.items()
@@ -229,20 +245,22 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
         kwargs: Dict[str, str] = {}
         if scheme is not sentinel:
-            kwargs["scheme"] = scheme  # type: ignore
+            kwargs["scheme"] = scheme
         if host is not sentinel:
-            kwargs["host"] = host  # type: ignore
+            kwargs["host"] = host
         if remote is not sentinel:
-            kwargs["remote"] = remote  # type: ignore
+            kwargs["remote"] = remote
+        if client_max_size is sentinel:
+            client_max_size = self._client_max_size
 
         return self.__class__(
             message,
             self._payload,
-            self._protocol,
+            self._protocol,  # type: ignore[arg-type]
             self._payload_writer,
             self._task,
             self._loop,
-            client_max_size=self._client_max_size,
+            client_max_size=client_max_size,
             state=self._state.copy(),
             **kwargs,
         )
@@ -252,7 +270,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._task
 
     @property
-    def protocol(self) -> "RequestHandler":
+    def protocol(self) -> "RequestHandler[Self]":
         return self._protocol
 
     @property
@@ -264,6 +282,10 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
     @property
     def writer(self) -> AbstractStreamWriter:
         return self._payload_writer
+
+    @property
+    def client_max_size(self) -> int:
+        return self._client_max_size
 
     @reify
     def rel_url(self) -> URL:
@@ -318,7 +340,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             length = len(field_value)
             pos = 0
             need_separator = False
-            elem = {}  # type: Dict[str, str]
+            elem: Dict[str, str] = {}
             elems.append(types.MappingProxyType(elem))
             while 0 <= pos < length:
                 match = _FORWARDED_PAIR_RE.match(field_value, pos)
@@ -399,8 +421,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         host = self._message.headers.get(hdrs.HOST)
         if host is not None:
             return host
-        else:
-            return socket.getfqdn()
+        return socket.getfqdn()
 
     @reify
     def remote(self) -> Optional[str]:
@@ -411,10 +432,11 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         - overridden value by .clone(remote=new_remote) call.
         - peername of opened socket
         """
+        if self._transport_peername is None:
+            return None
         if isinstance(self._transport_peername, (list, tuple)):
-            return self._transport_peername[0]
-        else:
-            return self._transport_peername
+            return str(self._transport_peername[0])
+        return str(self._transport_peername)
 
     @reify
     def url(self) -> URL:
@@ -440,6 +462,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
     @reify
     def raw_path(self) -> str:
         """The URL including raw *PATH INFO* without the host or scheme.
+
         Warning, the path is unquoted and may contains non valid URL characters
 
         E.g., ``/my%2Fpath%7Cwith%21some%25strange%24characters``
@@ -447,9 +470,9 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._message.path
 
     @reify
-    def query(self) -> "MultiDictProxy[str]":
+    def query(self) -> MultiDictProxy[str]:
         """A multidict with all the variables in the query string."""
-        return self._rel_url.query
+        return MultiDictProxy(self._rel_url.query)
 
     @reify
     def query_string(self) -> str:
@@ -460,7 +483,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._rel_url.query_string
 
     @reify
-    def headers(self) -> "CIMultiDictProxy[str]":
+    def headers(self) -> CIMultiDictProxy[str]:
         """A case-insensitive multidict proxy with all headers."""
         return self._headers
 
@@ -469,22 +492,13 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         """A sequence of pairs for all headers."""
         return self._message.raw_headers
 
-    @staticmethod
-    def _http_date(_date_str: Optional[str]) -> Optional[datetime.datetime]:
-        """Process a date string, return a datetime object"""
-        if _date_str is not None:
-            timetuple = parsedate(_date_str)
-            if timetuple is not None:
-                return datetime.datetime(*timetuple[:6], tzinfo=datetime.timezone.utc)
-        return None
-
     @reify
     def if_modified_since(self) -> Optional[datetime.datetime]:
         """The value of If-Modified-Since HTTP header, or None.
 
         This header is represented as a `datetime` object.
         """
-        return self._http_date(self.headers.get(hdrs.IF_MODIFIED_SINCE))
+        return parse_http_date(self.headers.get(hdrs.IF_MODIFIED_SINCE))
 
     @reify
     def if_unmodified_since(self) -> Optional[datetime.datetime]:
@@ -492,7 +506,53 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
         This header is represented as a `datetime` object.
         """
-        return self._http_date(self.headers.get(hdrs.IF_UNMODIFIED_SINCE))
+        return parse_http_date(self.headers.get(hdrs.IF_UNMODIFIED_SINCE))
+
+    @staticmethod
+    def _etag_values(etag_header: str) -> Iterator[ETag]:
+        """Extract `ETag` objects from raw header."""
+        if etag_header == ETAG_ANY:
+            yield ETag(
+                is_weak=False,
+                value=ETAG_ANY,
+            )
+        else:
+            for match in LIST_QUOTED_ETAG_RE.finditer(etag_header):
+                is_weak, value, garbage = match.group(2, 3, 4)
+                # Any symbol captured by 4th group means
+                # that the following sequence is invalid.
+                if garbage:
+                    break
+
+                yield ETag(
+                    is_weak=bool(is_weak),
+                    value=value,
+                )
+
+    @classmethod
+    def _if_match_or_none_impl(
+        cls, header_value: Optional[str]
+    ) -> Optional[Tuple[ETag, ...]]:
+        if not header_value:
+            return None
+
+        return tuple(cls._etag_values(header_value))
+
+    @reify
+    def if_match(self) -> Optional[Tuple[ETag, ...]]:
+        """The value of If-Match HTTP header, or None.
+
+        This header is represented as a `tuple` of `ETag` objects.
+        """
+        return self._if_match_or_none_impl(self.headers.get(hdrs.IF_MATCH))
+
+    @reify
+    def if_none_match(self) -> Optional[Tuple[ETag, ...]]:
+        """The value of If-None-Match HTTP header, or None.
+
+        This header is represented as a `tuple` of `ETag` objects.
+        """
+        return self._if_match_or_none_impl(self.headers.get(hdrs.IF_NONE_MATCH))
 
     @reify
     def if_range(self) -> Optional[datetime.datetime]:
@@ -500,7 +560,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
         This header is represented as a `datetime` object.
         """
-        return self._http_date(self.headers.get(hdrs.IF_RANGE))
+        return parse_http_date(self.headers.get(hdrs.IF_RANGE))
 
     @reify
     def keep_alive(self) -> bool:
@@ -514,7 +574,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         A read-only dictionary-like object.
         """
         raw = self.headers.get(hdrs.COOKIE, "")
-        parsed = SimpleCookie(raw)  # type: SimpleCookie[str]
+        parsed = SimpleCookie(raw)
         return MappingProxyType({key: val.value for key, val in parsed.items()})
 
     @reify
@@ -615,11 +675,11 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         """Return BODY as JSON."""
         body = await self.text()
         if content_type:
-            ctype = self.headers.get(hdrs.CONTENT_TYPE, "").lower()
-            if not is_expected_content_type(ctype, content_type):
+            if not is_expected_content_type(self.content_type, content_type):
                 raise HTTPBadRequest(
                     text=(
-                        "Attempt to decode JSON with " "unexpected mimetype: %s" % ctype
+                        "Attempt to decode JSON with "
+                        "unexpected mimetype: %s" % self.content_type
                     )
                 )
 
@@ -646,7 +706,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             self._post = MultiDictProxy(MultiDict())
             return self._post
 
-        out = MultiDict()  # type: MultiDict[Union[str, bytes, FileField]]
+        out: MultiDict[Union[str, bytes, FileField]] = MultiDict()
 
         if content_type == "multipart/form-data":
             multipart = await self.multipart()
@@ -666,18 +726,21 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
                     # https://tools.ietf.org/html/rfc7578#section-4.4
                     if field.filename:
                         # store file in temp file
-                        tmp = tempfile.TemporaryFile()
-                        chunk = await field.read_chunk(size=2 ** 16)
+                        tmp = await self._loop.run_in_executor(
+                            None, tempfile.TemporaryFile
+                        )
+                        chunk = await field.read_chunk(size=2**16)
                         while chunk:
                             chunk = field.decode(chunk)
-                            tmp.write(chunk)
+                            await self._loop.run_in_executor(None, tmp.write, chunk)
                             size += len(chunk)
                             if 0 < max_size < size:
+                                await self._loop.run_in_executor(None, tmp.close)
                                 raise HTTPRequestEntityTooLarge(
                                     max_size=max_size, actual_size=size
                                 )
-                            chunk = await field.read_chunk(size=2 ** 16)
-                        tmp.seek(0)
+                            chunk = await field.read_chunk(size=2**16)
+                        await self._loop.run_in_executor(None, tmp.seek, 0)
 
                         if field_ct is None:
                             field_ct = "application/octet-stream"
@@ -755,26 +818,22 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return
 
     def _cancel(self, exc: BaseException) -> None:
-        self._payload.set_exception(exc)
-        for fut in self._disconnection_waiters:
-            set_result(fut, None)
+        set_exception(self._payload, exc)
 
     def _finish(self) -> None:
-        for fut in self._disconnection_waiters:
-            fut.cancel()
+        if self._post is None or self.content_type != "multipart/form-data":
+            return
 
-    async def wait_for_disconnection(self) -> None:
-        loop = asyncio.get_event_loop()
-        fut = loop.create_future()  # type: asyncio.Future[None]
-        self._disconnection_waiters.add(fut)
-        try:
-            await fut
-        finally:
-            self._disconnection_waiters.remove(fut)
+        # NOTE: Release file descriptors for the
+        # NOTE: `tempfile.Temporaryfile`-created `_io.BufferedRandom`
+        # NOTE: instances of files sent within multipart request body
+        # NOTE: via HTTP POST request.
+        for file_name, file_field_object in self._post.items():
+            if isinstance(file_field_object, FileField):
+                file_field_object.file.close()
 
 
 class Request(BaseRequest):
-
     __slots__ = ("_match_info",)
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -784,7 +843,7 @@ class Request(BaseRequest):
         # or information about traversal lookup
 
         # initialized after route resolving
-        self._match_info = None  # type: Optional[UrlMappingMatchInfo]
+        self._match_info: Optional[UrlMappingMatchInfo] = None
 
     def clone(
         self,
@@ -795,6 +854,7 @@ class Request(BaseRequest):
         scheme: Union[str, _SENTINEL] = sentinel,
         host: Union[str, _SENTINEL] = sentinel,
         remote: Union[str, _SENTINEL] = sentinel,
+        client_max_size: Union[int, _SENTINEL] = sentinel,
     ) -> "Request":
         ret = super().clone(
             method=method,
@@ -803,6 +863,7 @@ class Request(BaseRequest):
             scheme=scheme,
             host=host,
             remote=remote,
+            client_max_size=client_max_size,
         )
         new_ret = cast(Request, ret)
         new_ret._match_info = self._match_info

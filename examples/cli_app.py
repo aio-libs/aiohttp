@@ -13,14 +13,16 @@ needs (i.e. ``-H``, ``-P`` & ``entry-func``) and passes on any additional
 arguments to the `cli_app:init` function for processing.
 """
 
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from typing import Optional, Sequence
 
 from aiohttp import web
 
+args_key = web.AppKey("args_key", Namespace)
+
 
 async def display_message(req: web.Request) -> web.StreamResponse:
-    args = req.app["args"]
+    args = req.app[args_key]
     text = "\n".join([args.message] * args.repeat)
     return web.Response(text=text)
 
@@ -46,7 +48,7 @@ def init(argv: Optional[Sequence[str]]) -> web.Application:
     args = arg_parser.parse_args(argv)
 
     app = web.Application()
-    app["args"] = args
+    app[args_key] = args
     app.router.add_get("/", display_message)
 
     return app

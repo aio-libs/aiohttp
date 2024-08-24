@@ -7,8 +7,9 @@ CYS := $(wildcard aiohttp/*.pyx) $(wildcard aiohttp/*.pyi)  $(wildcard aiohttp/*
 PYXS := $(wildcard aiohttp/*.pyx)
 CS := $(wildcard aiohttp/*.c)
 PYS := $(wildcard aiohttp/*.py)
-REQS := $(wildcard requirements/*.txt)
+IN := doc-spelling lint cython dev
 ALLS := $(sort $(CYS) $(CS) $(PYS) $(REQS))
+
 
 .PHONY: all
 all: test
@@ -24,7 +25,7 @@ FORCE:
 # check_sum.py works perfectly fine but slow when called for every file from $(ALLS)
 # (perhaps even several times for each file).
 # That is why much less readable but faster solution exists
-ifneq (, $(shell which sha256sum))
+ifneq (, $(shell command -v sha256sum))
 %.hash: FORCE
 	$(eval $@_ABS := $(abspath $@))
 	$(eval $@_NAME := $($@_ABS))
@@ -45,9 +46,11 @@ endif
 # Enumerate intermediate files to don't remove them automatically.
 .SECONDARY: $(call to-hash,$(ALLS))
 
+.update-pip:
+	@python -m pip install --upgrade pip
 
-.install-cython: $(call to-hash,requirements/cython.txt)
-	pip install -r requirements/cython.txt
+.install-cython: .update-pip $(call to-hash,requirements/cython.txt)
+	@python -m pip install -r requirements/cython.in -c requirements/cython.txt
 	@touch .install-cython
 
 aiohttp/_find_header.c: $(call to-hash,aiohttp/hdrs.py ./tools/gen.py)
@@ -55,14 +58,23 @@ aiohttp/_find_header.c: $(call to-hash,aiohttp/hdrs.py ./tools/gen.py)
 
 # _find_headers generator creates _headers.pyi as well
 aiohttp/%.c: aiohttp/%.pyx $(call to-hash,$(CYS)) aiohttp/_find_header.c
-	cython -3 -o $@ $< -I aiohttp
+	cython -3 -o $@ $< -I aiohttp -Werror
 
+vendor/llhttp/node_modules: vendor/llhttp/package.json
+	cd vendor/llhttp; npm ci
+
+.llhttp-gen: vendor/llhttp/node_modules
+	$(MAKE) -C vendor/llhttp generate
+	@touch .llhttp-gen
+
+.PHONY: generate-llhttp
+generate-llhttp: .llhttp-gen
 
 .PHONY: cythonize
 cythonize: .install-cython $(PYXS:.pyx=.c)
 
 .install-deps: .install-cython $(PYXS:.pyx=.c) $(call to-hash,$(CYS) $(REQS))
-	pip install -r requirements/dev.txt
+	@python -m pip install -r requirements/dev.in -c requirements/dev.txt
 	@touch .install-deps
 
 .PHONY: lint
@@ -74,10 +86,10 @@ fmt format:
 
 .PHONY: mypy
 mypy:
-	mypy aiohttp tests
+	mypy
 
-.develop: .install-deps $(call to-hash,$(PYS) $(CYS) $(CS))
-	pip install -e .
+.develop: .install-deps generate-llhttp $(call to-hash,$(PYS) $(CYS) $(CS))
+	python -m pip install -e . -c requirements/runtime-deps.txt
 	@touch .develop
 
 .PHONY: test
@@ -87,10 +99,33 @@ test: .develop
 .PHONY: vtest
 vtest: .develop
 	@pytest -s -v
+	@python -X dev -m pytest --cov-append -s -v -m dev_mode
 
 .PHONY: vvtest
 vvtest: .develop
 	@pytest -vv
+	@python -X dev -m pytest --cov-append -s -vv -m dev_mode
+
+.PHONY: cov-dev
+cov-dev: .develop
+	@pytest --cov-report=html
+	@echo "xdg-open file://`pwd`/htmlcov/index.html"
+
+
+define run_tests_in_docker
+	DOCKER_BUILDKIT=1 docker build --build-arg PYTHON_VERSION=$(1) --build-arg AIOHTTP_NO_EXTENSIONS=$(2) -t "aiohttp-test-$(1)-$(2)" -f tools/testing/Dockerfile .
+	docker run --rm -ti -v `pwd`:/src -w /src "aiohttp-test-$(1)-$(2)" $(TEST_SPEC)
+endef
+
+.PHONY: test-3.9-no-extensions test
+test-3.9-no-extensions:
+	$(call run_tests_in_docker,3.9,y)
+test-3.9:
+	$(call run_tests_in_docker,3.9,n)
+test-3.10-no-extensions:
+	$(call run_tests_in_docker,3.10,y)
+test-3.10:
+	$(call run_tests_in_docker,3.10,n)
 
 .PHONY: clean
 clean:
@@ -125,20 +160,27 @@ clean:
 	@rm -rf aiohttp.egg-info
 	@rm -f .install-deps
 	@rm -f .install-cython
+	@rm -rf vendor/llhttp/node_modules
+	@rm -f .llhttp-gen
+	@$(MAKE) -C vendor/llhttp clean
 
 .PHONY: doc
 doc:
-	@make -C docs html SPHINXOPTS="-W -E"
+	@make -C docs html SPHINXOPTS="-W --keep-going -n -E"
 	@echo "open file://`pwd`/docs/_build/html/index.html"
 
 .PHONY: doc-spelling
 doc-spelling:
-	@make -C docs spelling SPHINXOPTS="-W -E"
+	@make -C docs spelling SPHINXOPTS="-W --keep-going -n -E"
 
 .PHONY: install
-install:
-	@pip install -U 'pip'
-	@pip install -Ur requirements/dev.txt
+install: .update-pip
+	@python -m pip install -r requirements/dev.in -c requirements/dev.txt
 
 .PHONY: install-dev
 install-dev: .develop
+
+.PHONY: sync-direct-runtime-deps
+sync-direct-runtime-deps:
+	@echo Updating 'requirements/runtime-deps.in' from 'setup.cfg'... >&2
+	@python requirements/sync-direct-runtime-deps.py
