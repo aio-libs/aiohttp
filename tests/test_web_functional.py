@@ -103,12 +103,8 @@ async def test_handler_returns_not_response(
     server = await aiohttp_server(app, logger=logger)
     client = await aiohttp_client(server)
 
-    with pytest.raises(aiohttp.ServerDisconnectedError):
-        await client.get("/")
-
-    logger.exception.assert_called_with(
-        "Unhandled runtime exception", exc_info=mock.ANY
-    )
+    async with client.get("/") as resp:
+        assert resp.status == 500
 
 
 async def test_handler_returns_none(aiohttp_server: Any, aiohttp_client: Any) -> None:
@@ -123,13 +119,8 @@ async def test_handler_returns_none(aiohttp_server: Any, aiohttp_client: Any) ->
     server = await aiohttp_server(app, logger=logger)
     client = await aiohttp_client(server)
 
-    with pytest.raises(aiohttp.ServerDisconnectedError):
-        await client.get("/")
-
-    # Actual error text is placed in exc_info
-    logger.exception.assert_called_with(
-        "Unhandled runtime exception", exc_info=mock.ANY
-    )
+    async with client.get("/") as resp:
+        assert resp.status == 500
 
 
 async def test_head_returns_empty_body(aiohttp_client: Any) -> None:
