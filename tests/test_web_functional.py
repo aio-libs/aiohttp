@@ -103,12 +103,8 @@ async def test_handler_returns_not_response(
     server = await aiohttp_server(app, logger=logger)
     client = await aiohttp_client(server)
 
-    with pytest.raises(aiohttp.ServerDisconnectedError):
-        await client.get("/")
-
-    logger.exception.assert_called_with(
-        "Unhandled runtime exception", exc_info=mock.ANY
-    )
+    async with client.get("/") as resp:
+        assert resp.status == 500
 
 
 async def test_handler_returns_none(aiohttp_server: Any, aiohttp_client: Any) -> None:
@@ -123,13 +119,8 @@ async def test_handler_returns_none(aiohttp_server: Any, aiohttp_client: Any) ->
     server = await aiohttp_server(app, logger=logger)
     client = await aiohttp_client(server)
 
-    with pytest.raises(aiohttp.ServerDisconnectedError):
-        await client.get("/")
-
-    # Actual error text is placed in exc_info
-    logger.exception.assert_called_with(
-        "Unhandled runtime exception", exc_info=mock.ANY
-    )
+    async with client.get("/") as resp:
+        assert resp.status == 500
 
 
 async def test_head_returns_empty_body(aiohttp_client: Any) -> None:
@@ -148,6 +139,21 @@ async def test_head_returns_empty_body(aiohttp_client: Any) -> None:
     # the length of the response body if it would have been
     # returned by a GET request.
     assert resp.headers["Content-Length"] == "4"
+
+
+@pytest.mark.parametrize("status", (201, 204, 404))
+async def test_default_content_type_no_body(aiohttp_client: Any, status: int) -> None:
+    async def handler(request):
+        return web.Response(status=status)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == status
+        assert await resp.read() == b""
+        assert "Content-Type" not in resp.headers
 
 
 async def test_response_before_complete(aiohttp_client: Any) -> None:

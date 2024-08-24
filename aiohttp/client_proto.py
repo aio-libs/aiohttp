@@ -1,6 +1,6 @@
 import asyncio
 from contextlib import suppress
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Tuple, Type, Union
 
 from .base_protocol import BaseProtocol
 from .client_exceptions import (
@@ -162,7 +162,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
     def set_exception(
         self,
-        exc: BaseException,
+        exc: Union[Type[BaseException], BaseException],
         exc_cause: BaseException = _EXC_SENTINEL,
     ) -> None:
         self._should_close = True

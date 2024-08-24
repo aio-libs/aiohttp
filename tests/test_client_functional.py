@@ -759,7 +759,6 @@ async def test_raw_headers(aiohttp_client: AiohttpClient) -> None:
         raw_headers = tuple((bytes(h), bytes(v)) for h, v in resp.raw_headers)
         assert raw_headers == (
             (b"Content-Length", b"0"),
-            (b"Content-Type", b"application/octet-stream"),
             (b"Date", mock.ANY),
             (b"Server", mock.ANY),
         )
@@ -792,7 +791,6 @@ async def test_empty_header_values(aiohttp_client: AiohttpClient) -> None:
         assert raw_headers == (
             (b"X-Empty", b""),
             (b"Content-Length", b"0"),
-            (b"Content-Type", b"application/octet-stream"),
             (b"Date", mock.ANY),
             (b"Server", mock.ANY),
         )
@@ -3484,7 +3482,7 @@ async def test_read_timeout_closes_connection(aiohttp_client: AiohttpClient) -> 
     app.add_routes([web.get("/", handler)])
 
     timeout = aiohttp.ClientTimeout(total=0.1)
-    client: TestClient = await aiohttp_client(app, timeout=timeout)
+    client = await aiohttp_client(app, timeout=timeout)
     with pytest.raises(asyncio.TimeoutError):
         await client.get("/")
 
@@ -3531,7 +3529,7 @@ async def test_timeout_with_full_buffer(aiohttp_client: AiohttpClient) -> None:
             await resp.write(b"1" * 1000)
             await asyncio.sleep(0.01)
 
-    async def request(client: TestClient) -> None:
+    async def request(client: TestClient[web.Request]) -> None:
         timeout = aiohttp.ClientTimeout(total=0.5)
         async with await client.get("/", timeout=timeout) as resp:
             with pytest.raises(asyncio.TimeoutError):
