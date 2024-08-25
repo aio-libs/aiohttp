@@ -5,7 +5,7 @@ import json
 import pathlib
 import socket
 import zlib
-from typing import Any, Optional
+from typing import Any, Optional, NoReturn
 from unittest import mock
 
 import pytest
@@ -120,6 +120,20 @@ async def test_handler_returns_none(aiohttp_server: Any, aiohttp_client: Any) ->
     client = await aiohttp_client(server)
 
     async with client.get("/") as resp:
+        assert resp.status == 500
+
+
+async def test_handler_returns_not_response_after_100expect(
+    aiohttp_server: Any, aiohttp_client: Any
+) -> None:
+    async def handler(request: web.Request) -> NoReturn:
+        raise Exception("foo")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/", expect100=True) as resp:
         assert resp.status == 500
 
 
