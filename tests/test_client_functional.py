@@ -3777,3 +3777,18 @@ async def test_header_too_large_error(aiohttp_client: AiohttpClient) -> None:
     ) as exc_info:
         await client.get("/")
     assert exc_info.value.status == 400
+
+
+async def test_exception_when_read_outside_of_session(aiohttp_server: AiohttpServer) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=b"1"*100000)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    server = await aiohttp_server(app)
+    async with aiohttp.ClientSession() as sess:
+        resp = await sess.get(server.make_url("/"))
+
+    with pytest.raises(RuntimeError, match="Connection closed"):
+        await resp.read()
