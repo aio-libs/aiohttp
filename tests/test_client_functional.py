@@ -3783,7 +3783,7 @@ async def test_exception_when_read_outside_of_session(
     aiohttp_server: AiohttpServer,
 ) -> None:
     async def handler(request: web.Request) -> web.Response:
-        return web.Response(body=b"1" * 100000)
+        return web.Response(body=b"1" * 1000000)
 
     app = web.Application()
     app.router.add_get("/", handler)
