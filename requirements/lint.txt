@@ -103,7 +103,7 @@ tqdm==4.66.5
     # via python-on-whales
 trustme==1.1.0
     # via -r requirements/lint.in
-typer==0.12.4
+typer==0.12.5
     # via python-on-whales
 typing-extensions==4.12.2
     # via
