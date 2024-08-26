@@ -1,0 +1,1 @@
+Fixed StreamResponse.prepared to return True after EOF is sent -- by :user:`arthurdarcet`.
