@@ -275,7 +275,7 @@ virtualenv==20.26.3
     # via pre-commit
 wait-for-it==2.2.2
     # via -r requirements/test.in
-webcolors==1.13
+webcolors==24.8.0
     # via blockdiag
 wheel==0.41.0
     # via pip-tools
