@@ -29,7 +29,7 @@ from aiohttp.client_exceptions import (
     SocketTimeoutError,
     TooManyRedirects,
 )
-from aiohttp.pytest_plugin import AiohttpClient, TestClient
+from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer, TestClient
 from aiohttp.test_utils import unused_port
 
 
@@ -3645,3 +3645,20 @@ async def test_raise_for_status_is_none(aiohttp_client: AiohttpClient) -> None:
     session = await aiohttp_client(app, raise_for_status=None)  # type: ignore[arg-type]
 
     await session.get("/")
+
+
+async def test_exception_when_read_outside_of_session(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=b"1" * 1000000)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    server = await aiohttp_server(app)
+    async with aiohttp.ClientSession() as sess:
+        resp = await sess.get(server.make_url("/"))
+
+    with pytest.raises(RuntimeError, match="Connection closed"):
+        await resp.read()
