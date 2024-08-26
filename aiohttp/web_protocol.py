@@ -646,10 +646,10 @@ class RequestHandler(BaseProtocol):
             await prepare_meth(request)
             await resp.write_eof()
         except ConnectionError:
-            await self.log_access(request, resp, start_time)
+            self.log_access(request, resp, start_time)
             return resp, True
 
-        await self.log_access(request, resp, start_time)
+        self.log_access(request, resp, start_time)
         return resp, False
 
     def handle_error(
