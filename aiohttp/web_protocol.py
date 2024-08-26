@@ -463,16 +463,8 @@ class RequestHandler(BaseProtocol):
             finally:
                 self._current_request = None
         except HTTPException as exc:
-<<<<<<< HEAD
             resp = exc
-            reset = await self.finish_response(request, resp, start_time)
-=======
-            resp = Response(
-                status=exc.status, reason=exc.reason, text=exc.text, headers=exc.headers
-            )
-            resp._cookies = exc._cookies
             resp, reset = await self.finish_response(request, resp, start_time)
->>>>>>> 48a5e07ad... Return 500 error when handler has wrong return type (#8845)
         except asyncio.CancelledError:
             raise
         except asyncio.TimeoutError as exc:
@@ -483,7 +475,6 @@ class RequestHandler(BaseProtocol):
             resp = self.handle_error(request, 500, exc)
             resp, reset = await self.finish_response(request, resp, start_time)
         else:
-<<<<<<< HEAD
             # Deprecation warning (See #2415)
             if getattr(resp, "__http_exception__", False):
                 warnings.warn(
@@ -493,10 +484,7 @@ class RequestHandler(BaseProtocol):
                     DeprecationWarning,
                 )
 
-            reset = await self.finish_response(request, resp, start_time)
-=======
             resp, reset = await self.finish_response(request, resp, start_time)
->>>>>>> 48a5e07ad... Return 500 error when handler has wrong return type (#8845)
         finally:
             self._handler_waiter.set_result(None)
 
@@ -596,13 +584,6 @@ class RequestHandler(BaseProtocol):
             except asyncio.CancelledError:
                 self.log_debug("Ignored premature client disconnection ")
                 break
-<<<<<<< HEAD
-            except RuntimeError as exc:
-                if self.debug:
-                    self.log_exception("Unhandled runtime exception", exc_info=exc)
-                self.force_close()
-=======
->>>>>>> 48a5e07ad... Return 500 error when handler has wrong return type (#8845)
             except Exception as exc:
                 self.log_exception("Unhandled exception", exc_info=exc)
                 self.force_close()
@@ -665,19 +646,11 @@ class RequestHandler(BaseProtocol):
             await prepare_meth(request)
             await resp.write_eof()
         except ConnectionError:
-<<<<<<< HEAD
-            self.log_access(request, resp, start_time)
-            return True
-        else:
-            self.log_access(request, resp, start_time)
-            return False
-=======
             await self.log_access(request, resp, start_time)
             return resp, True
 
         await self.log_access(request, resp, start_time)
         return resp, False
->>>>>>> 48a5e07ad... Return 500 error when handler has wrong return type (#8845)
 
     def handle_error(
         self,
