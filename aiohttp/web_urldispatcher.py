@@ -1140,7 +1140,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
             if resource.name == name and resource.raw_match(path):
                 return cast(Resource, resource)
         if not ("{" in path or "}" in path or ROUTE_RE.search(path)):
-            resource = PlainResource(_requote_path(path), name=name)
+            resource = PlainResource(path, name=name)
             self.register_resource(resource)
             return resource
         resource = DynamicResource(path, name=name)
@@ -1267,7 +1267,7 @@ def _quote_path(value: str) -> str:
 
 
 def _unquote_path(value: str) -> str:
-    return URL.build(path=value, encoded=True).path
+    return URL.build(path=value, encoded=True).path.replace("%2F", "/")
 
 
 def _requote_path(value: str) -> str:
