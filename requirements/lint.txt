@@ -22,7 +22,7 @@ cfgv==3.3.1
     # via pre-commit
 charset-normalizer==3.3.2
     # via requests
-click==8.1.6
+click==8.1.7
     # via
     #   slotscheck
     #   typer
