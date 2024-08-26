@@ -358,7 +358,7 @@ class Resource(AbstractResource):
     async def resolve(self, request: Request) -> _Resolve:
         allowed_methods: Set[str] = set()
 
-        match_dict = self._match(request.rel_url.raw_path)
+        match_dict = self._match(request.rel_url.path)
         if match_dict is None:
             return None, allowed_methods
 
@@ -626,7 +626,7 @@ class StaticResource(PrefixResource):
         )
 
     async def resolve(self, request: Request) -> _Resolve:
-        path = request.rel_url.raw_path
+        path = request.rel_url.path
         method = request.method
         allowed_methods = set(self._routes)
         if not path.startswith(self._prefix2) and path != self._prefix:
@@ -1015,7 +1015,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         # candidates for a given url part because there are multiple resources
         # registered for the same canonical path, we resolve them in a linear
         # fashion to ensure registration order is respected.
-        url_part = request.rel_url.raw_path
+        url_part = request.rel_url.path
         while url_part:
             for candidate in resource_index.get(url_part, ()):
                 match_dict, allowed = await candidate.resolve(request)
