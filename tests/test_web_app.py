@@ -335,7 +335,9 @@ async def test_cleanup_ctx_cleanup_after_exception() -> None:
 
 
 @pytest.mark.parametrize("exc", (Exception, asyncio.CancelledError))
-async def test_cleanup_ctx_exception_on_cleanup_multiple(exc: Type[BaseException]) -> None:
+async def test_cleanup_ctx_exception_on_cleanup_multiple(
+    exc: Type[BaseException],
+) -> None:
     app = web.Application()
     out = []
 
