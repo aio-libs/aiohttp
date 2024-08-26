@@ -38,7 +38,7 @@ from .http import (
 from .log import access_logger, server_logger
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .tcp_helpers import tcp_keepalive
-from .web_exceptions import HTTPException
+from .web_exceptions import HTTPException, HTTPInternalServerError
 from .web_log import AccessLogger
 from .web_request import BaseRequest
 from .web_response import Response, StreamResponse
@@ -464,16 +464,16 @@ class RequestHandler(BaseProtocol):
                 self._current_request = None
         except HTTPException as exc:
             resp = exc
-            reset = await self.finish_response(request, resp, start_time)
+            resp, reset = await self.finish_response(request, resp, start_time)
         except asyncio.CancelledError:
             raise
         except asyncio.TimeoutError as exc:
             self.log_debug("Request handler timed out.", exc_info=exc)
             resp = self.handle_error(request, 504)
-            reset = await self.finish_response(request, resp, start_time)
+            resp, reset = await self.finish_response(request, resp, start_time)
         except Exception as exc:
             resp = self.handle_error(request, 500, exc)
-            reset = await self.finish_response(request, resp, start_time)
+            resp, reset = await self.finish_response(request, resp, start_time)
         else:
             # Deprecation warning (See #2415)
             if getattr(resp, "__http_exception__", False):
@@ -484,7 +484,7 @@ class RequestHandler(BaseProtocol):
                     DeprecationWarning,
                 )
 
-            reset = await self.finish_response(request, resp, start_time)
+            resp, reset = await self.finish_response(request, resp, start_time)
         finally:
             self._handler_waiter.set_result(None)
 
@@ -584,10 +584,6 @@ class RequestHandler(BaseProtocol):
             except asyncio.CancelledError:
                 self.log_debug("Ignored premature client disconnection ")
                 break
-            except RuntimeError as exc:
-                if self.debug:
-                    self.log_exception("Unhandled runtime exception", exc_info=exc)
-                self.force_close()
             except Exception as exc:
                 self.log_exception("Unhandled exception", exc_info=exc)
                 self.force_close()
@@ -616,7 +612,7 @@ class RequestHandler(BaseProtocol):
 
     async def finish_response(
         self, request: BaseRequest, resp: StreamResponse, start_time: float
-    ) -> bool:
+    ) -> Tuple[StreamResponse, bool]:
         """Prepare the response and write_eof, then log access.
 
         This has to
@@ -635,22 +631,26 @@ class RequestHandler(BaseProtocol):
             prepare_meth = resp.prepare
         except AttributeError:
             if resp is None:
-                raise RuntimeError("Missing return " "statement on request handler")
+                self.log_exception("Missing return statement on request handler")
             else:
-                raise RuntimeError(
-                    "Web-handler should return "
-                    "a response instance, "
+                self.log_exception(
+                    "Web-handler should return a response instance, "
                     "got {!r}".format(resp)
                 )
+            exc = HTTPInternalServerError()
+            resp = Response(
+                status=exc.status, reason=exc.reason, text=exc.text, headers=exc.headers
+            )
+            prepare_meth = resp.prepare
         try:
             await prepare_meth(request)
             await resp.write_eof()
         except ConnectionError:
             self.log_access(request, resp, start_time)
-            return True
-        else:
-            self.log_access(request, resp, start_time)
-            return False
+            return resp, True
+
+        self.log_access(request, resp, start_time)
+        return resp, False
 
     def handle_error(
         self,
