@@ -102,7 +102,7 @@ class StreamResponse(BaseClass, HeadersMixin):
 
     @property
     def prepared(self) -> bool:
-        return self._payload_writer is not None
+        return self._eof_sent or self._payload_writer is not None
 
     @property
     def task(self) -> "Optional[asyncio.Task[None]]":
