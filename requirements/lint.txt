@@ -18,11 +18,11 @@ cffi==1.17.0
     # via
     #   cryptography
     #   pycares
-cfgv==3.3.1
+cfgv==3.4.0
     # via pre-commit
 charset-normalizer==3.3.2
     # via requests
-click==8.1.6
+click==8.1.7
     # via
     #   slotscheck
     #   typer
@@ -105,9 +105,9 @@ tqdm==4.66.5
     # via python-on-whales
 trustme==1.1.0
     # via -r requirements/lint.in
-typer==0.12.3
+typer==0.12.5
     # via python-on-whales
-typing-extensions==4.10.0
+typing-extensions==4.12.2
     # via
     #   aioredis
     #   annotated-types
