@@ -334,9 +334,9 @@ async def test_cleanup_ctx_cleanup_after_exception() -> None:
     assert ctx_state == "CLEAN"
 
 
-@pytest.mark.parametrize("exc", (Exception, asyncio.CancelledError))
+@pytest.mark.parametrize("exc_cls", (Exception, asyncio.CancelledError))
 async def test_cleanup_ctx_exception_on_cleanup_multiple(
-    exc: Type[BaseException],
+    exc_cls: Type[BaseException],
 ) -> None:
     app = web.Application()
     out = []
@@ -349,7 +349,7 @@ async def test_cleanup_ctx_exception_on_cleanup_multiple(
             yield None
             out.append("post_" + str(num))
             if fail:
-                raise exc("fail_" + str(num))
+                raise exc_cls("fail_" + str(num))
 
         return inner
 
