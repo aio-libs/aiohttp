@@ -209,7 +209,7 @@ def _merge_ssl_params(
     return ssl
 
 
-@attr.s(auto_attribs=True, slots=True, frozen=True)
+@attr.s(auto_attribs=True, slots=True, frozen=True, cache_hash=True)
 class ConnectionKey:
     # the key should contain an information about used proxy / TLS
     # to prevent reusing wrong connections from a pool
