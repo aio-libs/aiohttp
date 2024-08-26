@@ -283,9 +283,6 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         if self._keepalive_handle is not None:
             self._keepalive_handle.cancel()
 
-        if self._waiter:
-            self._waiter.cancel()
-
         # Wait for graceful handler completion
         if self._handler_waiter is not None:
             with suppress(asyncio.CancelledError, asyncio.TimeoutError):
@@ -304,9 +301,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         if self._task_handler is not None:
             self._task_handler.cancel()
 
-        if self.transport is not None:
-            self.transport.close()
-            self.transport = None
+        self.force_close()
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
         super().connection_made(transport)
