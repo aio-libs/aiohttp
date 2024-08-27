@@ -16,7 +16,7 @@ aioredis==2.0.1
     # via -r requirements/lint.in
 aiosignal==1.3.1
     # via -r requirements/runtime-deps.in
-alabaster==0.7.12
+alabaster==0.7.13
     # via sphinx
 annotated-types==0.7.0
     # via pydantic
