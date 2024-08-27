@@ -1,4 +1,6 @@
--r lint.txt
--r test.txt
--r doc.txt
-cherry_picker==1.3.2; python_version>="3.6"
+-r lint.in
+-r test.in
+-r doc.in
+
+cherry_picker
+pip-tools

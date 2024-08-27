@@ -15,7 +15,6 @@ if hasattr(socket, "SO_KEEPALIVE"):
         if sock is not None:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
 
-
 else:
 
     def tcp_keepalive(transport: asyncio.Transport) -> None:  # pragma: no cover

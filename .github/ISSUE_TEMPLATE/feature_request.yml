@@ -1,0 +1,75 @@
+---
+name: 🚀 Feature request
+description: Suggest an idea for this project.
+labels: enhancement
+body:
+- type: markdown
+  attributes:
+    value: |
+      **Thanks for taking a minute to file a feature for aiohttp!**
+
+      ⚠
+      Verify first that your feature request is not [already reported on
+      GitHub][issue search].
+
+      _Please fill out the form below with as many precise
+      details as possible._
+
+      [issue search]: ../search?q=is%3Aissue&type=issues
+
+- type: textarea
+  attributes:
+    label: Is your feature request related to a problem?
+    description: >-
+       Please add a clear and concise description of what
+       the problem is. _Ex. I'm always frustrated when [...]_
+
+- type: textarea
+  attributes:
+    label: Describe the solution you'd like
+    description: >-
+      A clear and concise description of what you want to happen.
+  validations:
+    required: true
+
+- type: textarea
+  attributes:
+    label: Describe alternatives you've considered
+    description: >-
+      A clear and concise description of any alternative solutions
+      or features you've considered.
+  validations:
+    required: true
+
+- type: dropdown
+  attributes:
+    label: Related component
+    description: >-
+      aiohttp is both server framework and client library.
+      For getting rid of confusing make sure to select
+      'server', 'client' or both.
+    multiple: true
+    options:
+    - Server
+    - Client
+  validations:
+    required: true
+
+- type: textarea
+  attributes:
+    label: Additional context
+    description: >-
+      Add any other context or screenshots about
+      the feature request here.
+
+- type: checkboxes
+  attributes:
+    label: Code of Conduct
+    description: |
+      Read the [aio-libs Code of Conduct][CoC] first.
+
+      [CoC]: https://github.com/aio-libs/.github/blob/master/CODE_OF_CONDUCT.md
+    options:
+    - label: I agree to follow the aio-libs Code of Conduct
+      required: true
+...

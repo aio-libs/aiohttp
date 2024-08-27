@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Example for aiohttp.web basic server
-"""
+"""Example for aiohttp.web basic server."""
 
 import textwrap
 

@@ -1,1 +1,0 @@
-FileResponse now supports ETag.

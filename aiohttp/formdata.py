@@ -12,17 +12,21 @@ __all__ = ("FormData",)
 
 
 class FormData:
-    """Helper class for multipart/form-data and
-    application/x-www-form-urlencoded body generation."""
+    """Helper class for form body generation.
+
+    Supports multipart/form-data and application/x-www-form-urlencoded.
+    """
 
     def __init__(
         self,
         fields: Iterable[Any] = (),
         quote_fields: bool = True,
         charset: Optional[str] = None,
+        boundary: Optional[str] = None,
     ) -> None:
-        self._writer = multipart.MultipartWriter("form-data")
-        self._fields = []  # type: List[Any]
+        self._boundary = boundary
+        self._writer = multipart.MultipartWriter("form-data", boundary=self._boundary)
+        self._fields: List[Any] = []
         self._is_multipart = False
         self._is_processed = False
         self._quote_fields = quote_fields
@@ -45,14 +49,9 @@ class FormData:
         *,
         content_type: Optional[str] = None,
         filename: Optional[str] = None,
-        content_transfer_encoding: Optional[str] = None,
     ) -> None:
-
-        if isinstance(value, io.IOBase):
+        if isinstance(value, (io.IOBase, bytes, bytearray, memoryview)):
             self._is_multipart = True
-        elif isinstance(value, (bytes, bytearray, memoryview)):
-            if filename is None and content_transfer_encoding is None:
-                filename = name
 
         type_options: MultiDict[str] = MultiDict({"name": name})
         if filename is not None and not isinstance(filename, str):
@@ -72,14 +71,6 @@ class FormData:
                     "content_type must be an instance of str. " "Got: %s" % content_type
                 )
             headers[hdrs.CONTENT_TYPE] = content_type
-            self._is_multipart = True
-        if content_transfer_encoding is not None:
-            if not isinstance(content_transfer_encoding, str):
-                raise TypeError(
-                    "content_transfer_encoding must be an instance"
-                    " of str. Got: %s" % content_transfer_encoding
-                )
-            headers[hdrs.CONTENT_TRANSFER_ENCODING] = content_transfer_encoding
             self._is_multipart = True
 
         self._fields.append((type_options, headers, value))

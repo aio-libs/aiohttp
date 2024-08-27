@@ -1,0 +1,24 @@
+name: Labels
+on:
+  pull_request:
+    branches:
+      - 'master'
+    types: [labeled, opened, synchronize, reopened, unlabeled]
+
+jobs:
+  backport:
+    runs-on: ubuntu-latest
+    name: Backport label added
+    if: ${{ github.event.pull_request.user.type != 'Bot' }}
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number
+            });
+            if (!pr.data.labels.find(l => l.name.startsWith("backport")))
+              process.exit(1);

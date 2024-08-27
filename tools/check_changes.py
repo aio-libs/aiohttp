@@ -1,9 +1,24 @@
 #!/usr/bin/env python3
 
+import re
 import sys
 from pathlib import Path
 
-ALLOWED_SUFFIXES = [".feature", ".bugfix", ".doc", ".removal", ".misc"]
+ALLOWED_SUFFIXES = (
+    "bugfix",
+    "feature",
+    "deprecation",
+    "breaking",
+    "doc",
+    "packaging",
+    "contrib",
+    "misc",
+)
+PATTERN = re.compile(
+    r"(\d+|[0-9a-f]{8}|[0-9a-f]{7}|[0-9a-f]{40})\.("
+    + "|".join(ALLOWED_SUFFIXES)
+    + r")(\.\d+)?(\.rst)?",
+)
 
 
 def get_root(script_path):
@@ -22,17 +37,17 @@ def main(argv):
     changes = root / "CHANGES"
     failed = False
     for fname in changes.iterdir():
-        if fname.name in (".gitignore", ".TEMPLATE.rst"):
+        if fname.name in (".gitignore", ".TEMPLATE.rst", "README.rst"):
             continue
-        if fname.suffix not in ALLOWED_SUFFIXES:
+        if not PATTERN.match(fname.name):
             if not failed:
                 print("")
-            print(fname, "has illegal suffix", file=sys.stderr)
+            print("Illegal CHANGES record", fname, file=sys.stderr)
             failed = True
 
     if failed:
         print("", file=sys.stderr)
-        print("Allowed suffixes are:", ALLOWED_SUFFIXES, file=sys.stderr)
+        print("See ./CHANGES/README.rst for the naming instructions", file=sys.stderr)
         print("", file=sys.stderr)
     else:
         print("OK")
