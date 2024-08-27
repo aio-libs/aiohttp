@@ -2,11 +2,23 @@ import asyncio
 import contextlib
 import inspect
 import warnings
-from typing import Any, Awaitable, Callable, Dict, Iterator, Optional, Type, Union
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    Iterator,
+    Optional,
+    Protocol,
+    Type,
+    TypeVar,
+    Union,
+    overload,
+)
 
 import pytest
 
-from aiohttp.web import Application
+from aiohttp.web import Application, BaseRequest, Request
 
 from .test_utils import (
     BaseTestServer,
@@ -24,9 +36,33 @@ try:
 except ImportError:  # pragma: no cover
     uvloop = None  # type: ignore[assignment]
 
-AiohttpClient = Callable[[Union[Application, BaseTestServer]], Awaitable[TestClient]]
+_Request = TypeVar("_Request", bound=BaseRequest)
 AiohttpRawServer = Callable[[Application], Awaitable[RawTestServer]]
-AiohttpServer = Callable[[Application], Awaitable[TestServer]]
+
+
+class AiohttpClient(Protocol):
+    @overload
+    async def __call__(
+        self,
+        __param: Application,
+        *,
+        server_kwargs: Optional[Dict[str, Any]] = None,
+        **kwargs: Any
+    ) -> TestClient[Request]: ...
+    @overload
+    async def __call__(
+        self,
+        __param: BaseTestServer[_Request],
+        *,
+        server_kwargs: Optional[Dict[str, Any]] = None,
+        **kwargs: Any
+    ) -> TestClient[_Request]: ...
+
+
+class AiohttpServer(Protocol):
+    def __call__(
+        self, app: Application, *, port: Optional[int] = None, **kwargs: Any
+    ) -> Awaitable[TestServer]: ...
 
 
 def pytest_addoption(parser):  # type: ignore[no-untyped-def]
@@ -258,7 +294,9 @@ def aiohttp_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpServer]:
     """
     servers = []
 
-    async def go(app, *, port=None, **kwargs):  # type: ignore[no-untyped-def]
+    async def go(
+        app: Application, *, port: Optional[int] = None, **kwargs: Any
+    ) -> TestServer:
         server = TestServer(app, port=port)
         await server.start_server(**kwargs)
         servers.append(server)
@@ -297,7 +335,7 @@ def aiohttp_raw_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpRawSe
 
 
 @pytest.fixture
-def aiohttp_client_cls() -> Type[TestClient]:
+def aiohttp_client_cls() -> Type[TestClient[Any]]:
     """
     Client class to use in ``aiohttp_client`` factory.
 
@@ -325,7 +363,7 @@ def aiohttp_client_cls() -> Type[TestClient]:
 
 @pytest.fixture
 def aiohttp_client(
-    loop: asyncio.AbstractEventLoop, aiohttp_client_cls: Type[TestClient]
+    loop: asyncio.AbstractEventLoop, aiohttp_client_cls: Type[TestClient[Any]]
 ) -> Iterator[AiohttpClient]:
     """Factory to create a TestClient instance.
 
@@ -335,12 +373,26 @@ def aiohttp_client(
     """
     clients = []
 
+    @overload
     async def go(
-        __param: Union[Application, BaseTestServer],
+        __param: Application,
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs: Any
-    ) -> TestClient:
+    ) -> TestClient[Request]: ...
+    @overload
+    async def go(
+        __param: BaseTestServer[_Request],
+        *,
+        server_kwargs: Optional[Dict[str, Any]] = None,
+        **kwargs: Any
+    ) -> TestClient[_Request]: ...
+    async def go(
+        __param: Union[Application, BaseTestServer[Any]],
+        *,
+        server_kwargs: Optional[Dict[str, Any]] = None,
+        **kwargs: Any
+    ) -> TestClient[Any]:
         if isinstance(__param, Application):
             server_kwargs = server_kwargs or {}
             server = TestServer(__param, **server_kwargs)

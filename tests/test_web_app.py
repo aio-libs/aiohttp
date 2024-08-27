@@ -144,8 +144,12 @@ def test_appkey_repr_annotated() -> None:
 
 def test_app_str_keys() -> None:
     app = web.Application()
-    with pytest.warns(UserWarning, match=r"web_advanced\.html#application-s-config"):
+    with pytest.warns(
+        UserWarning, match=r"web_advanced\.html#application-s-config"
+    ) as checker:
         app["key"] = "value"
+        # Check that the error is emitted at the call site (stacklevel=2)
+        assert checker[0].filename == __file__
     assert app["key"] == "value"
 
 
@@ -186,7 +190,7 @@ def test_app_run_middlewares() -> None:
     assert root._run_middlewares is False
 
     async def middleware(request: web.Request, handler: Handler) -> web.StreamResponse:
-        return await handler(request)
+        return await handler(request)  # pragma: no cover
 
     root = web.Application(middlewares=[middleware])
     sub = web.Application()

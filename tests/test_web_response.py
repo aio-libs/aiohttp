@@ -16,7 +16,7 @@ from re_assert import Matches
 
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs
 from aiohttp.helpers import ETag
-from aiohttp.http_writer import _serialize_headers
+from aiohttp.http_writer import StreamWriter, _serialize_headers
 from aiohttp.payload import BytesPayload
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
@@ -603,7 +603,6 @@ async def test_rm_content_length_if_compression_http11() -> None:
     req = make_request("GET", "/", writer=writer)
     payload = BytesPayload(b"answer", headers={"X-Test-Header": "test"})
     resp = Response(body=payload)
-    assert resp.content_length == 6
     resp.body = payload
     resp.enable_compression(ContentCoding.gzip)
     await resp.prepare(req)
@@ -623,6 +622,74 @@ async def test_rm_content_length_if_compression_http10() -> None:
     resp.enable_compression(ContentCoding.gzip)
     await resp.prepare(req)
     assert resp.content_length is None
+
+
+@pytest.mark.parametrize("status", (100, 101, 204, 304))
+async def test_rm_transfer_encoding_rfc_9112_6_3_http_11(status: int) -> None:
+    """Remove transfer encoding for RFC 9112 sec 6.3 with HTTP/1.1."""
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
+    req = make_request("GET", "/", version=HttpVersion11, writer=writer)
+    resp = Response(status=status, headers={hdrs.TRANSFER_ENCODING: "chunked"})
+    await resp.prepare(req)
+    assert resp.content_length == 0
+    assert not resp.chunked
+    assert hdrs.CONTENT_LENGTH not in resp.headers
+    assert hdrs.TRANSFER_ENCODING not in resp.headers
+
+
+@pytest.mark.parametrize("status", (100, 101, 102, 204, 304))
+async def test_rm_content_length_1xx_204_304_responses(status: int) -> None:
+    """Remove content length for 1xx, 204, and 304 responses.
+
+    Content-Length is forbidden for 1xx and 204
+    https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.2
+
+    Content-Length is discouraged for 304.
+    https://datatracker.ietf.org/doc/html/rfc7232#section-4.1
+    """
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
+    req = make_request("GET", "/", version=HttpVersion11, writer=writer)
+    resp = Response(status=status, body="answer")
+    await resp.prepare(req)
+    assert not resp.chunked
+    assert hdrs.CONTENT_LENGTH not in resp.headers
+    assert hdrs.TRANSFER_ENCODING not in resp.headers
+
+
+async def test_head_response_keeps_content_length_of_original_body() -> None:
+    """Verify HEAD response keeps the content length of the original body HTTP/1.1."""
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
+    req = make_request("HEAD", "/", version=HttpVersion11, writer=writer)
+    resp = Response(status=200, body=b"answer")
+    await resp.prepare(req)
+    assert resp.content_length == 6
+    assert not resp.chunked
+    assert resp.headers[hdrs.CONTENT_LENGTH] == "6"
+    assert hdrs.TRANSFER_ENCODING not in resp.headers
+
+
+async def test_head_response_omits_content_length_when_body_unset() -> None:
+    """Verify HEAD response omits content-length body when its unset."""
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
+    req = make_request("HEAD", "/", version=HttpVersion11, writer=writer)
+    resp = Response(status=200)
+    await resp.prepare(req)
+    assert resp.content_length == 0
+    assert not resp.chunked
+    assert hdrs.CONTENT_LENGTH not in resp.headers
+    assert hdrs.TRANSFER_ENCODING not in resp.headers
+
+
+async def test_304_response_omits_content_length_when_body_unset() -> None:
+    """Verify 304 response omits content-length body when its unset."""
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
+    req = make_request("GET", "/", version=HttpVersion11, writer=writer)
+    resp = Response(status=304)
+    await resp.prepare(req)
+    assert resp.content_length == 0
+    assert not resp.chunked
+    assert hdrs.CONTENT_LENGTH not in resp.headers
+    assert hdrs.TRANSFER_ENCODING not in resp.headers
 
 
 async def test_content_length_on_chunked() -> None:
@@ -667,11 +734,8 @@ async def test___repr___after_eof() -> None:
     resp = StreamResponse()
     await resp.prepare(make_request("GET", "/"))
 
-    assert resp.prepared
-
     await resp.write(b"data")
     await resp.write_eof()
-    assert not resp.prepared
     resp_repr = repr(resp)
     assert resp_repr == "<StreamResponse OK eof>"
 
@@ -944,7 +1008,6 @@ async def test_send_headers_for_empty_body(buf: Any, writer: Any) -> None:
         Matches(
             "HTTP/1.1 200 OK\r\n"
             "Content-Length: 0\r\n"
-            "Content-Type: application/octet-stream\r\n"
             "Date: .+\r\n"
             "Server: .+\r\n\r\n"
         )
@@ -987,7 +1050,6 @@ async def test_send_set_cookie_header(buf: Any, writer: Any) -> None:
             "HTTP/1.1 200 OK\r\n"
             "Content-Length: 0\r\n"
             "Set-Cookie: name=value\r\n"
-            "Content-Type: application/octet-stream\r\n"
             "Date: .+\r\n"
             "Server: .+\r\n\r\n"
         )
@@ -1050,14 +1112,22 @@ def test_content_type_with_set_body() -> None:
     assert resp.content_type == "application/octet-stream"
 
 
-def test_started_when_not_started() -> None:
+def test_prepared_when_not_started() -> None:
     resp = StreamResponse()
     assert not resp.prepared
 
 
-async def test_started_when_started() -> None:
+async def test_prepared_when_started() -> None:
     resp = StreamResponse()
     await resp.prepare(make_request("GET", "/"))
+    assert resp.prepared
+
+
+async def test_prepared_after_eof() -> None:
+    resp = StreamResponse()
+    await resp.prepare(make_request("GET", "/"))
+    await resp.write(b"data")
+    await resp.write_eof()
     assert resp.prepared
 
 

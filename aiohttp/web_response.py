@@ -8,7 +8,6 @@ import time
 import warnings
 from concurrent.futures import Executor
 from http import HTTPStatus
-from http.cookies import Morsel
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -27,15 +26,16 @@ from .abc import AbstractStreamWriter
 from .compression_utils import ZLibCompressor
 from .helpers import (
     ETAG_ANY,
-    PY_38,
     QUOTED_ETAG_RE,
     CookieMixin,
     ETag,
     HeadersMixin,
+    must_be_empty_body,
     parse_http_date,
     populate_with_cookies,
     rfc822_formatted_time,
     sentinel,
+    should_remove_content_length,
     validate_etag_value,
 )
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11
@@ -45,7 +45,7 @@ from .typedefs import JSONEncoder, LooseHeaders
 __all__ = ("ContentCoding", "StreamResponse", "Response", "json_response")
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .web_request import BaseRequest
 
     BaseClass = MutableMapping[str, Any]
@@ -53,12 +53,7 @@ else:
     BaseClass = collections.abc.MutableMapping
 
 
-if not PY_38:
-    # allow samesite to be used in python < 3.8
-    # already permitted in python 3.8, see https://bugs.python.org/issue29613
-    Morsel._reserved["samesite"] = "SameSite"  # type: ignore[attr-defined]
-
-
+# TODO(py311): Convert to StrEnum for wider use
 class ContentCoding(enum.Enum):
     # The content codings that we have support for.
     #
@@ -85,6 +80,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         "_req",
         "_payload_writer",
         "_eof_sent",
+        "_must_be_empty_body",
         "_body_length",
         "_state",
         "_headers",
@@ -114,6 +110,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         self._req: Optional[BaseRequest] = None
         self._payload_writer: Optional[AbstractStreamWriter] = None
         self._eof_sent = False
+        self._must_be_empty_body: Optional[bool] = None
         self._body_length = 0
         self._state: Dict[str, Any] = {}
 
@@ -126,7 +123,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
 
     @property
     def prepared(self) -> bool:
-        return self._payload_writer is not None
+        return self._eof_sent or self._payload_writer is not None
 
     @property
     def task(self) -> "Optional[asyncio.Task[None]]":
@@ -189,7 +186,6 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
 
     def enable_compression(self, force: Optional[ContentCoding] = None) -> None:
         """Enables response compression encoding."""
-        # Backwards compatibility for when force was a bool <0.17.
         self._compression = True
         self._compression_force = force
 
@@ -297,7 +293,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         elif isinstance(value, str):
             validate_etag_value(value)
             self._headers[hdrs.ETAG] = f'"{value}"'
-        elif isinstance(value, ETag) and isinstance(value.value, str):
+        elif isinstance(value, ETag) and isinstance(value.value, str):  # type: ignore[redundant-expr]
             validate_etag_value(value.value)
             hdr_value = f'W/"{value.value}"' if value.is_weak else f'"{value.value}"'
             self._headers[hdrs.ETAG] = hdr_value
@@ -332,6 +328,8 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         if self._compression_force:
             await self._do_start_compression(self._compression_force)
         else:
+            # Encoding comparisons should be case-insensitive
+            # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1
             accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "").lower()
             for coding in ContentCoding:
                 if coding.value in accept_encoding:
@@ -343,7 +341,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             return None
         if self._payload_writer is not None:
             return self._payload_writer
-
+        self._must_be_empty_body = must_be_empty_body(request.method, self.status)
         return await self._start(request)
 
     async def _start(self, request: "BaseRequest") -> AbstractStreamWriter:
@@ -380,26 +378,34 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
                     "Using chunked encoding is forbidden "
                     "for HTTP/{0.major}.{0.minor}".format(request.version)
                 )
-            writer.enable_chunking()
-            headers[hdrs.TRANSFER_ENCODING] = "chunked"
+            if not self._must_be_empty_body:
+                writer.enable_chunking()
+                headers[hdrs.TRANSFER_ENCODING] = "chunked"
             if hdrs.CONTENT_LENGTH in headers:
                 del headers[hdrs.CONTENT_LENGTH]
         elif self._length_check:
             writer.length = self.content_length
             if writer.length is None:
-                if version >= HttpVersion11 and self.status != 204:
-                    writer.enable_chunking()
-                    headers[hdrs.TRANSFER_ENCODING] = "chunked"
-                    if hdrs.CONTENT_LENGTH in headers:
-                        del headers[hdrs.CONTENT_LENGTH]
-                else:
+                if version >= HttpVersion11:
+                    if not self._must_be_empty_body:
+                        writer.enable_chunking()
+                        headers[hdrs.TRANSFER_ENCODING] = "chunked"
+                elif not self._must_be_empty_body:
                     keep_alive = False
-            # HTTP 1.1: https://tools.ietf.org/html/rfc7230#section-3.3.2
-            # HTTP 1.0: https://tools.ietf.org/html/rfc1945#section-10.4
-            elif version >= HttpVersion11 and self.status in (100, 101, 102, 103, 204):
-                del headers[hdrs.CONTENT_LENGTH]
 
-        if self.status not in (204, 304):
+        # HTTP 1.1: https://tools.ietf.org/html/rfc7230#section-3.3.2
+        # HTTP 1.0: https://tools.ietf.org/html/rfc1945#section-10.4
+        if self._must_be_empty_body:
+            if hdrs.CONTENT_LENGTH in headers and should_remove_content_length(
+                request.method, self.status
+            ):
+                del headers[hdrs.CONTENT_LENGTH]
+            # https://datatracker.ietf.org/doc/html/rfc9112#section-6.1-10
+            # https://datatracker.ietf.org/doc/html/rfc9112#section-6.1-13
+            if hdrs.TRANSFER_ENCODING in headers:
+                del headers[hdrs.TRANSFER_ENCODING]
+        elif self.content_length != 0:
+            # https://www.rfc-editor.org/rfc/rfc9110#section-8.3-5
             headers.setdefault(hdrs.CONTENT_TYPE, "application/octet-stream")
         headers.setdefault(hdrs.DATE, rfc822_formatted_time())
         headers.setdefault(hdrs.SERVER, SERVER_SOFTWARE)
@@ -420,9 +426,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         assert writer is not None
         # status line
         version = request.version
-        status_line = "HTTP/{}.{} {} {}".format(
-            version[0], version[1], self._status, self._reason
-        )
+        status_line = f"HTTP/{version[0]}.{version[1]} {self._status} {self._reason}"
         await writer.write_headers(status_line, self._headers)
 
     async def write(self, data: bytes) -> None:
@@ -580,12 +584,7 @@ class Response(StreamResponse):
         return self._body
 
     @body.setter
-    def body(
-        self,
-        body: Any,
-        CONTENT_TYPE: istr = hdrs.CONTENT_TYPE,
-        CONTENT_LENGTH: istr = hdrs.CONTENT_LENGTH,
-    ) -> None:
+    def body(self, body: Any) -> None:
         if body is None:
             self._body = None
             self._body_payload = False
@@ -602,15 +601,9 @@ class Response(StreamResponse):
 
             headers = self._headers
 
-            # set content-length header if needed
-            if not self._chunked and CONTENT_LENGTH not in headers:
-                size = body.size
-                if size is not None:
-                    headers[CONTENT_LENGTH] = str(size)
-
             # set content-type
-            if CONTENT_TYPE not in headers:
-                headers[CONTENT_TYPE] = body.content_type
+            if hdrs.CONTENT_TYPE not in headers:
+                headers[hdrs.CONTENT_TYPE] = body.content_type
 
             # copy payload headers
             if body.headers:
@@ -628,9 +621,7 @@ class Response(StreamResponse):
 
     @text.setter
     def text(self, text: str) -> None:
-        assert text is None or isinstance(
-            text, str
-        ), "text argument must be str (%r)" % type(text)
+        assert isinstance(text, str), "text argument must be str (%r)" % type(text)
 
         if self.content_type == "application/octet-stream":
             self.content_type = "text/plain"
@@ -675,7 +666,7 @@ class Response(StreamResponse):
         assert self._req is not None
         assert self._payload_writer is not None
         if body is not None:
-            if self._req._method == hdrs.METH_HEAD or self._status in [204, 304]:
+            if self._must_be_empty_body:
                 await super().write_eof()
             elif self._body_payload:
                 payload = cast(Payload, body)
@@ -687,12 +678,21 @@ class Response(StreamResponse):
             await super().write_eof()
 
     async def _start(self, request: "BaseRequest") -> AbstractStreamWriter:
-        if not self._chunked and hdrs.CONTENT_LENGTH not in self._headers:
-            if not self._body_payload:
-                if self._body is not None:
-                    self._headers[hdrs.CONTENT_LENGTH] = str(len(self._body))
-                else:
-                    self._headers[hdrs.CONTENT_LENGTH] = "0"
+        if should_remove_content_length(request.method, self.status):
+            if hdrs.CONTENT_LENGTH in self._headers:
+                del self._headers[hdrs.CONTENT_LENGTH]
+        elif not self._chunked and hdrs.CONTENT_LENGTH not in self._headers:
+            if self._body_payload:
+                size = cast(Payload, self._body).size
+                if size is not None:
+                    self._headers[hdrs.CONTENT_LENGTH] = str(size)
+            else:
+                body_len = len(self._body) if self._body else "0"
+                # https://www.rfc-editor.org/rfc/rfc9110.html#section-8.6-7
+                if body_len != "0" or (
+                    self.status != 304 and request.method.upper() != hdrs.METH_HEAD
+                ):
+                    self._headers[hdrs.CONTENT_LENGTH] = str(body_len)
 
         return await super()._start(request)
 

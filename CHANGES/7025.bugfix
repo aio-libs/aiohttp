@@ -1,1 +1,0 @@
-Fix response returned from expect handler being thrown away. -- by :user:`Dreamsorcerer`

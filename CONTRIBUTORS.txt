@@ -27,6 +27,7 @@ Alexander Shorin
 Alexander Travov
 Alexandru Mihai
 Alexey Firsov
+Alexey Nikitin
 Alexey Popravka
 Alexey Stepanov
 Almaz Salakhov
@@ -46,6 +47,7 @@ Anes Abismail
 Antoine Pietri
 Anton Kasyanov
 Anton Zhdan-Pushkin
+Arcadiy Ivanov
 Arie Bovenberg
 Arseny Timoniq
 Artem Yushkovskiy
@@ -53,6 +55,7 @@ Arthur Darcet
 Austin Scola
 Ben Bader
 Ben Greiner
+Ben Kallus
 Ben Timby
 Benedikt Reinartz
 Bob Haddleton
@@ -82,11 +85,13 @@ Damien Nadé
 Dan King
 Dan Xu
 Daniel García
+Daniel Golding
 Daniel Grossmann-Kavanagh
 Daniel Nelson
 Daniele Trifirò
 Danny Song
 David Bibb
+David Dzhalaev
 David Michael Brown
 Denilson Amorim
 Denis Matiychuk
@@ -144,9 +149,11 @@ Hrishikesh Paranjape
 Hu Bo
 Hugh Young
 Hugo Herter
+Hugo Hromic
 Hugo van Kemenade
 Hynek Schlawack
 Igor Alexandrov
+Igor Bolshakov
 Igor Davydenko
 Igor Mozharovsky
 Igor Pavlov
@@ -163,6 +170,7 @@ Jake Davis
 Jakob Ackermann
 Jakub Wilk
 Jan Buchar
+Jan Gosmann
 Jarno Elonen
 Jashandeep Sohi
 Jean-Baptiste Estival
@@ -174,9 +182,11 @@ Jesus Cea
 Jian Zeng
 Jinkyu Yi
 Joel Watts
+John Parton
 Jon Nabozny
 Jonas Krüger Svensson
 Jonas Obrist
+Jonathan Ballet
 Jonathan Wright
 Jonny Tan
 Joongi Kim
@@ -214,6 +224,7 @@ Lukasz Marcin Dobrzanski
 Makc Belousow
 Manuel Miranda
 Marat Sharafutdinov
+Marc Mueller
 Marco Paolini
 Mariano Anaya
 Mariusz Masztalerczuk
@@ -221,9 +232,11 @@ Marko Kohtala
 Martijn Pieters
 Martin Melka
 Martin Richard
+Martin Sucha
 Mathias Fröjdman
 Mathieu Dugré
 Matt VanEseltine
+Matthias Marquardt
 Matthieu Hauglustaine
 Matthieu Rigal
 Matvey Tingaev
@@ -251,8 +264,10 @@ Oleg Höfling
 Pahaz Blinov
 Panagiotis Kolokotronis
 Pankaj Pandey
+Parag Jain
 Pau Freixes
 Paul Colomiets
+Paul J. Dorn
 Paulius Šileikis
 Paulus Schoutsen
 Pavel Kamaev
@@ -273,6 +288,7 @@ Robert Lu
 Robert Nikolich
 Roman Markeloff
 Roman Podoliaka
+Rong Zhang
 Samir Akarioh
 Samuel Colvin
 Sean Hunt
@@ -295,6 +311,7 @@ Stepan Pletnev
 Stephan Jaensch
 Stephen Cirelli
 Stephen Granade
+Steve Repsher
 Steven Seguin
 Sunghyun Hwang
 Sunit Deshpande
@@ -311,6 +328,7 @@ Tolga Tezel
 Tomasz Trebski
 Toshiaki Tanaka
 Trinh Hoang Nhu
+Tymofii Tsiapa
 Vadim Suharnikov
 Vaibhav Sagar
 Vamsi Krishna Avula
@@ -344,6 +362,7 @@ William Grzybowski
 William S.
 Wilson Ong
 wouter bolsterlee
+Xiang Li
 Yang Zhou
 Yannick Koechlin
 Yannick Péroux
@@ -360,5 +379,6 @@ Yuvi Panda
 Zainab Lawal
 Zeal Wierslee
 Zlatan Sičanica
+Łukasz Setla
 Марк Коренберг
 Семён Марьясин

@@ -11,8 +11,8 @@ from typing import (
     IO,
     TYPE_CHECKING,
     Any,
-    ByteString,
     Dict,
+    Final,
     Iterable,
     Optional,
     TextIO,
@@ -22,7 +22,6 @@ from typing import (
 )
 
 from multidict import CIMultiDict
-from typing_extensions import Final
 
 from . import hdrs
 from .abc import AbstractStreamWriter
@@ -54,7 +53,7 @@ __all__ = (
 
 TOO_LARGE_BYTES_BODY: Final[int] = 2**20  # 1 MB
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from typing import List
 
 
@@ -201,11 +200,11 @@ class Payload(ABC):
         disptype: str,
         quote_fields: bool = True,
         _charset: str = "utf-8",
-        **params: Any,
+        **params: str,
     ) -> None:
         """Sets ``Content-Disposition`` header."""
         self._headers[hdrs.CONTENT_DISPOSITION] = content_disposition_header(
-            disptype, quote_fields=quote_fields, _charset=_charset, **params
+            disptype, quote_fields=quote_fields, _charset=_charset, params=params
         )
 
     @abstractmethod
@@ -231,7 +230,9 @@ class Payload(ABC):
 class BytesPayload(Payload):
     _value: bytes
 
-    def __init__(self, value: ByteString, *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, value: Union[bytes, bytearray, memoryview], *args: Any, **kwargs: Any
+    ) -> None:
         if not isinstance(value, (bytes, bytearray, memoryview)):
             raise TypeError(f"value argument must be byte-ish, not {type(value)!r}")
 
@@ -440,7 +441,7 @@ class JsonPayload(BytesPayload):
         )
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from typing import AsyncIterable, AsyncIterator
 
     _AsyncIterator = AsyncIterator[bytes]
@@ -460,7 +461,7 @@ class AsyncIterablePayload(Payload):
         if not isinstance(value, AsyncIterable):
             raise TypeError(
                 "value argument must support "
-                "collections.abc.AsyncIterablebe interface, "
+                "collections.abc.AsyncIterable interface, "
                 "got {!r}".format(type(value))
             )
 

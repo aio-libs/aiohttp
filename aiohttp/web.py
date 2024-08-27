@@ -3,6 +3,7 @@ import logging
 import os
 import socket
 import sys
+import warnings
 from argparse import ArgumentParser
 from collections.abc import Iterable
 from importlib import import_module
@@ -83,6 +84,7 @@ from .web_exceptions import (
     HTTPUseProxy,
     HTTPVariantAlsoNegotiates,
     HTTPVersionNotSupported,
+    NotAppKeyWarning,
 )
 from .web_fileresponse import FileResponse
 from .web_log import AccessLogger
@@ -139,6 +141,7 @@ __all__ = (
     "Application",
     "CleanupError",
     # web_exceptions
+    "NotAppKeyWarning",
     "HTTPAccepted",
     "HTTPBadGateway",
     "HTTPBadRequest",
@@ -268,6 +271,9 @@ try:
 except ImportError:  # pragma: no cover
     SSLContext = Any  # type: ignore[misc,assignment]
 
+# Only display warning when using -Wdefault, -We, -X dev or similar.
+warnings.filterwarnings("ignore", category=NotAppKeyWarning, append=True)
+
 HostSequence = TypingIterable[str]
 
 
@@ -304,6 +310,7 @@ async def _run_app(
         access_log_format=access_log_format,
         access_log=access_log,
         keepalive_timeout=keepalive_timeout,
+        shutdown_timeout=shutdown_timeout,
         handler_cancellation=handler_cancellation,
     )
 
@@ -319,7 +326,6 @@ async def _run_app(
                         runner,
                         host,
                         port,
-                        shutdown_timeout=shutdown_timeout,
                         ssl_context=ssl_context,
                         backlog=backlog,
                         reuse_address=reuse_address,
@@ -333,7 +339,6 @@ async def _run_app(
                             runner,
                             h,
                             port,
-                            shutdown_timeout=shutdown_timeout,
                             ssl_context=ssl_context,
                             backlog=backlog,
                             reuse_address=reuse_address,
@@ -345,7 +350,6 @@ async def _run_app(
                 TCPSite(
                     runner,
                     port=port,
-                    shutdown_timeout=shutdown_timeout,
                     ssl_context=ssl_context,
                     backlog=backlog,
                     reuse_address=reuse_address,
@@ -359,7 +363,6 @@ async def _run_app(
                     UnixSite(
                         runner,
                         path,
-                        shutdown_timeout=shutdown_timeout,
                         ssl_context=ssl_context,
                         backlog=backlog,
                     )
@@ -370,7 +373,6 @@ async def _run_app(
                         UnixSite(
                             runner,
                             p,
-                            shutdown_timeout=shutdown_timeout,
                             ssl_context=ssl_context,
                             backlog=backlog,
                         )
@@ -382,7 +384,6 @@ async def _run_app(
                     SockSite(
                         runner,
                         sock,
-                        shutdown_timeout=shutdown_timeout,
                         ssl_context=ssl_context,
                         backlog=backlog,
                     )
@@ -393,7 +394,6 @@ async def _run_app(
                         SockSite(
                             runner,
                             s,
-                            shutdown_timeout=shutdown_timeout,
                             ssl_context=ssl_context,
                             backlog=backlog,
                         )
@@ -409,15 +409,8 @@ async def _run_app(
             )
 
         # sleep forever by 1 hour intervals,
-        # on Windows before Python 3.8 wake up every 1 second to handle
-        # Ctrl+C smoothly
-        if sys.platform == "win32" and sys.version_info < (3, 8):
-            delay = 1
-        else:
-            delay = 3600
-
         while True:
-            await asyncio.sleep(delay)
+            await asyncio.sleep(3600)
     finally:
         await runner.cleanup()
 
