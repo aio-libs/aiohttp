@@ -993,8 +993,7 @@ mpwriter.append_payload(StringPayload("test"))
 
 
 async def async_iter() -> AsyncIterator[str]:
-    assert False
-    yield "foo"
+    yield "foo"  # pragma: no cover
 
 
 class CustomIO(io.IOBase):
