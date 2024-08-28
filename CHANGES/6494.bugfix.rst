@@ -1,0 +1,1 @@
+Added support for URL credentials with empty (zero-length) username, e.g. ``https://:password@host`` -- by :user:`shuckc`

@@ -164,9 +164,9 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
         """Create BasicAuth from url."""
         if not isinstance(url, URL):
             raise TypeError("url should be yarl.URL instance")
-        if url.user is None:
+        if url.user is None and url.password is None:
             return None
-        return cls(url.user, url.password or "", encoding=encoding)
+        return cls(url.user or "", url.password or "", encoding=encoding)
 
     def encode(self) -> str:
         """Encode credentials."""
