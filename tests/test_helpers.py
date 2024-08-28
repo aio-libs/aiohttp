@@ -211,6 +211,7 @@ def test_basic_auth_from_url() -> None:
 def test_basic_auth_no_user_from_url() -> None:
     url = URL("http://:pass@example.com")
     auth = helpers.BasicAuth.from_url(url)
+    assert auth is not None
     assert auth.login == ""
     assert auth.password == "pass"
 
