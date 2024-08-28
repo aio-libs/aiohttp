@@ -1,6 +1,6 @@
 import array
 from io import StringIO
-from typing import Any, AsyncIterator, Iterator, Optional
+from typing import Any, AsyncIterator, Iterator
 
 import pytest
 
