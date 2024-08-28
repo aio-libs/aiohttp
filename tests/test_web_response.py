@@ -987,11 +987,14 @@ def test_assign_nonstr_text() -> None:
     assert b"test" == resp.body
     assert 4 == resp.content_length
 
+
 mpwriter = MultipartWriter(boundary="x")
 mpwriter.append_payload(StringPayload("test"))
 
+
 async def async_iter() -> AsyncIterator[str]:
     yield "foo"  # pragma: no cover
+
 
 class CustomIO(io.IOBase):
     def __init__(self):
@@ -1000,6 +1003,7 @@ class CustomIO(io.IOBase):
     def read(self, size: int = -1) -> bytes:
         return self._lines.pop()
 
+
 @pytest.mark.parametrize(
     "payload,expected",
     (
@@ -1007,11 +1011,14 @@ class CustomIO(io.IOBase):
         (CustomIO(), "test"),
         (io.StringIO("test"), "test"),
         (io.BytesIO(b"test"), "test"),
-        (io.BufferedReader(io.BytesIO(b'test')), "test"),
+        (io.BufferedReader(io.BytesIO(b"test")), "test"),
         (async_iter(), None),
         (BodyPartReader("x", CIMultiDictProxy(CIMultiDict()), mock.Mock()), None),
-        (mpwriter, "--x\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: 4\r\n\r\ntest")
-    )
+        (
+            mpwriter,
+            "--x\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: 4\r\n\r\ntest",
+        ),
+    ),
 )
 def test_payload_body_get_text(payload, expected: Optional[str]) -> None:
     resp = Response(body=payload)
