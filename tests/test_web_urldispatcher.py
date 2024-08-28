@@ -1,10 +1,11 @@
 import asyncio
 import functools
+import os
 import pathlib
+import socket
 import sys
-from typing import Optional
-from unittest import mock
-from unittest.mock import MagicMock
+from stat import S_IFIFO, S_IMODE
+from typing import Any, Generator, Optional
 
 import pytest
 import yarl
@@ -388,31 +389,111 @@ async def test_handler_metadata_persistence() -> None:
             assert route.handler.__doc__ == "Doc"
 
 
-async def test_unauthorized_folder_access(
-    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+@pytest.mark.skipif(
+    sys.platform.startswith("win32"), reason="Cannot remove read access on Windows"
+)
+@pytest.mark.parametrize("file_request", ["", "my_file.txt"])
+async def test_static_directory_without_read_permission(
+    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient, file_request: str
 ) -> None:
-    # Tests the unauthorized access to a folder of static file server.
-    # Try to list a folder content of static file server when server does not
-    # have permissions to do so for the folder.
+    """Test static directory without read permission receives forbidden response."""
+    my_dir = tmp_path / "my_dir"
+    my_dir.mkdir()
+    my_dir.chmod(0o000)
+
+    app = web.Application()
+    app.router.add_static("/", str(tmp_path), show_index=True)
+    client = await aiohttp_client(app)
+
+    r = await client.get(f"/{my_dir.name}/{file_request}")
+    assert r.status == 403
+
+
+@pytest.mark.parametrize("file_request", ["", "my_file.txt"])
+async def test_static_directory_with_mock_permission_error(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    aiohttp_client: AiohttpClient,
+    file_request: str,
+) -> None:
+    """Test static directory with mock permission errors receives forbidden response."""
     my_dir = tmp_path / "my_dir"
     my_dir.mkdir()
 
+    real_iterdir = pathlib.Path.iterdir
+    real_is_dir = pathlib.Path.is_dir
+
+    def mock_iterdir(self: pathlib.Path) -> Generator[pathlib.Path, None, None]:
+        if my_dir.samefile(self):
+            raise PermissionError()
+        return real_iterdir(self)
+
+    def mock_is_dir(self: pathlib.Path, **kwargs: Any) -> bool:
+        if my_dir.samefile(self.parent):
+            raise PermissionError()
+        return real_is_dir(self, **kwargs)
+
+    monkeypatch.setattr("pathlib.Path.iterdir", mock_iterdir)
+    monkeypatch.setattr("pathlib.Path.is_dir", mock_is_dir)
+
     app = web.Application()
+    app.router.add_static("/", str(tmp_path), show_index=True)
+    client = await aiohttp_client(app)
 
-    with mock.patch("pathlib.Path.__new__") as path_constructor:
-        path = MagicMock()
-        path.joinpath.return_value = path
-        path.resolve.return_value = path
-        path.iterdir.return_value.__iter__.side_effect = PermissionError()
-        path_constructor.return_value = path
+    r = await client.get("/")
+    assert r.status == 200
+    r = await client.get(f"/{my_dir.name}/{file_request}")
+    assert r.status == 403
 
-        # Register global static route:
-        app.router.add_static("/", str(tmp_path), show_index=True)
-        client = await aiohttp_client(app)
 
-        # Request the root of the static directory.
-        r = await client.get("/" + my_dir.name)
-        assert r.status == 403
+@pytest.mark.skipif(
+    sys.platform.startswith("win32"), reason="Cannot remove read access on Windows"
+)
+async def test_static_file_without_read_permission(
+    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+) -> None:
+    """Test static file without read permission receives forbidden response."""
+    my_file = tmp_path / "my_file.txt"
+    my_file.write_text("secret")
+    my_file.chmod(0o000)
+
+    app = web.Application()
+    app.router.add_static("/", str(tmp_path))
+    client = await aiohttp_client(app)
+
+    r = await client.get(f"/{my_file.name}")
+    assert r.status == 403
+
+
+async def test_static_file_with_mock_permission_error(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test static file with mock permission errors receives forbidden response."""
+    my_file = tmp_path / "my_file.txt"
+    my_file.write_text("secret")
+    my_readable = tmp_path / "my_readable.txt"
+    my_readable.write_text("info")
+
+    real_open = pathlib.Path.open
+
+    def mock_open(self: pathlib.Path, *args: Any, **kwargs: Any) -> Any:
+        if my_file.samefile(self):
+            raise PermissionError()
+        return real_open(self, *args, **kwargs)
+
+    monkeypatch.setattr("pathlib.Path.open", mock_open)
+
+    app = web.Application()
+    app.router.add_static("/", str(tmp_path))
+    client = await aiohttp_client(app)
+
+    # Test the mock only applies to my_file, then test the permission error.
+    r = await client.get(f"/{my_readable.name}")
+    assert r.status == 200
+    r = await client.get(f"/{my_file.name}")
+    assert r.status == 403
 
 
 async def test_access_symlink_loop(
@@ -433,33 +514,87 @@ async def test_access_symlink_loop(
     assert r.status == 404
 
 
-async def test_access_special_resource(
+async def test_access_compressed_file_as_symlink(
     tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
 ) -> None:
-    # Tests the access to a resource that is neither a file nor a directory.
-    # Checks that if a special resource is accessed (f.e. named pipe or UNIX
-    # domain socket) then 404 HTTP status returned.
+    """Test that compressed file variants as symlinks are ignored."""
+    private_file = tmp_path / "private.txt"
+    private_file.write_text("private info")
+    www_dir = tmp_path / "www"
+    www_dir.mkdir()
+    gz_link = www_dir / "file.txt.gz"
+    gz_link.symlink_to(f"../{private_file.name}")
+
     app = web.Application()
+    app.router.add_static("/", www_dir)
+    client = await aiohttp_client(app)
 
-    with mock.patch("pathlib.Path.__new__") as path_constructor:
-        special = MagicMock()
-        special.is_dir.return_value = False
-        special.is_file.return_value = False
+    # Symlink should be ignored; response reflects missing uncompressed file.
+    resp = await client.get(f"/{gz_link.stem}", auto_decompress=False)
+    assert resp.status == 404
+    resp.release()
 
-        path = MagicMock()
-        path.joinpath.side_effect = lambda p: (special if p == "special" else path)
-        path.resolve.return_value = path
-        special.resolve.return_value = special
+    # Again symlin is ignored, and then uncompressed is served.
+    txt_file = gz_link.with_suffix("")
+    txt_file.write_text("public data")
+    resp = await client.get(f"/{txt_file.name}")
+    assert resp.status == 200
+    assert resp.headers.get("Content-Encoding") is None
+    assert resp.content_type == "text/plain"
+    assert await resp.text() == "public data"
+    resp.release()
+    await client.close()
 
-        path_constructor.return_value = path
 
-        # Register global static route:
-        app.router.add_static("/", str(tmp_path), show_index=True)
-        client = await aiohttp_client(app)
+async def test_access_special_resource(
+    tmp_path_factory: pytest.TempPathFactory, aiohttp_client: AiohttpClient
+) -> None:
+    """Test access to non-regular files is forbidden using a UNIX domain socket."""
+    if not getattr(socket, "AF_UNIX", None):
+        pytest.skip("UNIX domain sockets not supported")
 
-        # Request the root of the static directory.
-        r = await client.get("/special")
-        assert r.status == 403
+    tmp_path = tmp_path_factory.mktemp("special")
+    my_special = tmp_path / "sock"
+    my_socket = socket.socket(socket.AF_UNIX)
+    my_socket.bind(str(my_special))
+    assert my_special.is_socket()
+
+    app = web.Application()
+    app.router.add_static("/", str(tmp_path))
+
+    client = await aiohttp_client(app)
+    r = await client.get(f"/{my_special.name}")
+    assert r.status == 403
+    my_socket.close()
+
+
+async def test_access_mock_special_resource(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test access to non-regular files is forbidden using a mock FIFO."""
+    my_special = tmp_path / "my_special"
+    my_special.touch()
+
+    real_result = my_special.stat()
+    real_stat = pathlib.Path.stat
+
+    def mock_stat(self: pathlib.Path, **kwargs: Any) -> os.stat_result:
+        s = real_stat(self, **kwargs)
+        if os.path.samestat(s, real_result):
+            mock_mode = S_IFIFO | S_IMODE(s.st_mode)
+            s = os.stat_result([mock_mode] + list(s)[1:])
+        return s
+
+    monkeypatch.setattr("pathlib.Path.stat", mock_stat)
+
+    app = web.Application()
+    app.router.add_static("/", str(tmp_path))
+    client = await aiohttp_client(app)
+
+    r = await client.get(f"/{my_special.name}")
+    assert r.status == 403
 
 
 async def test_partially_applied_handler(aiohttp_client: AiohttpClient) -> None:
@@ -530,19 +665,19 @@ async def test_allow_head(aiohttp_client: AiohttpClient) -> None:
 
     r = await client.get("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.head("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.get("/b")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.head("/b")
     assert r.status == 405
-    await r.release()
+    r.release()
 
 
 @pytest.mark.parametrize(
@@ -600,15 +735,15 @@ async def test_add_view(aiohttp_client: AiohttpClient) -> None:
 
     r = await client.get("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.post("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.put("/a")
     assert r.status == 405
-    await r.release()
+    r.release()
 
 
 async def test_decorate_view(aiohttp_client: AiohttpClient) -> None:
@@ -629,15 +764,15 @@ async def test_decorate_view(aiohttp_client: AiohttpClient) -> None:
 
     r = await client.get("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.post("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.put("/a")
     assert r.status == 405
-    await r.release()
+    r.release()
 
 
 async def test_web_view(aiohttp_client: AiohttpClient) -> None:
@@ -656,15 +791,15 @@ async def test_web_view(aiohttp_client: AiohttpClient) -> None:
 
     r = await client.get("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.post("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.put("/a")
     assert r.status == 405
-    await r.release()
+    r.release()
 
 
 async def test_static_absolute_url(
@@ -729,7 +864,7 @@ async def test_decoded_url_match(
 
     r = await client.get(yarl.URL(urlencoded_path, encoded=True))
     assert r.status == expected_http_resp_status
-    await r.release()
+    r.release()
 
 
 async def test_order_is_preserved(aiohttp_client: AiohttpClient) -> None:
@@ -812,4 +947,28 @@ async def test_url_with_many_slashes(aiohttp_client: AiohttpClient) -> None:
 
     r = await client.get("///a")
     assert r.status == 200
-    await r.release()
+    r.release()
+
+
+async def test_route_with_regex(aiohttp_client: AiohttpClient) -> None:
+    """Test a route with a regex preceded by a fixed string."""
+    app = web.Application()
+
+    async def handler(request: web.Request) -> web.Response:
+        assert isinstance(request.match_info._route.resource, Resource)
+        return web.Response(text=request.match_info._route.resource.canonical)
+
+    app.router.add_get("/core/locations{tail:.*}", handler)
+    client = await aiohttp_client(app)
+
+    r = await client.get("/core/locations/tail/here")
+    assert r.status == 200
+    assert await r.text() == "/core/locations{tail}"
+
+    r = await client.get("/core/locations_tail_here")
+    assert r.status == 200
+    assert await r.text() == "/core/locations{tail}"
+
+    r = await client.get("/core/locations_tail;id=abcdef")
+    assert r.status == 200
+    assert await r.text() == "/core/locations{tail}"

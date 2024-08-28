@@ -30,7 +30,6 @@ from typing import (
     Callable,
     ContextManager,
     Dict,
-    Generator,
     Generic,
     Iterable,
     Iterator,
@@ -50,7 +49,7 @@ from typing import (
 from urllib.parse import quote
 from urllib.request import getproxies, proxy_bypass
 
-from multidict import CIMultiDict, MultiDict, MultiDictProxy
+from multidict import CIMultiDict, MultiDict, MultiDictProxy, MultiMapping
 from yarl import URL
 
 from . import hdrs
@@ -107,11 +106,6 @@ SEPARATORS = {
     chr(9),
 }
 TOKEN = CHAR ^ CTL ^ SEPARATORS
-
-
-class noop:
-    def __await__(self) -> Generator[None, None, None]:
-        yield
 
 
 json_re = re.compile(r"(?:application/|[\w.-]+/[\w.+-]+?\+)json$", re.IGNORECASE)
@@ -379,7 +373,10 @@ def quoted_string(content: str) -> str:
 
 
 def content_disposition_header(
-    disptype: str, quote_fields: bool = True, _charset: str = "utf-8", **params: str
+    disptype: str,
+    quote_fields: bool = True,
+    _charset: str = "utf-8",
+    params: Optional[Dict[str, str]] = None,
 ) -> str:
     """Sets ``Content-Disposition`` header for MIME.
 
@@ -604,12 +601,23 @@ def call_later(
     loop: asyncio.AbstractEventLoop,
     timeout_ceil_threshold: float = 5,
 ) -> Optional[asyncio.TimerHandle]:
-    if timeout is not None and timeout > 0:
-        when = loop.time() + timeout
-        if timeout > timeout_ceil_threshold:
-            when = ceil(when)
-        return loop.call_at(when, cb)
-    return None
+    if timeout is None or timeout <= 0:
+        return None
+    now = loop.time()
+    when = calculate_timeout_when(now, timeout, timeout_ceil_threshold)
+    return loop.call_at(when, cb)
+
+
+def calculate_timeout_when(
+    loop_time: float,
+    timeout: float,
+    timeout_ceiling_threshold: float,
+) -> float:
+    """Calculate when to execute a timeout."""
+    when = loop_time + timeout
+    if timeout > timeout_ceiling_threshold:
+        return ceil(when)
+    return when
 
 
 class TimeoutHandle:
@@ -636,7 +644,7 @@ class TimeoutHandle:
     def close(self) -> None:
         self._callbacks.clear()
 
-    def start(self) -> Optional[asyncio.Handle]:
+    def start(self) -> Optional[asyncio.TimerHandle]:
         timeout = self._timeout
         if timeout is not None and timeout > 0:
             when = self._loop.time() + timeout
@@ -745,13 +753,15 @@ def ceil_timeout(
 class HeadersMixin:
     __slots__ = ("_content_type", "_content_dict", "_stored_content_type")
 
+    _headers: MultiMapping[str]
+
     def __init__(self) -> None:
         super().__init__()
         self._content_type: Optional[str] = None
         self._content_dict: Optional[Dict[str, str]] = None
-        self._stored_content_type: Union[str, _SENTINEL] = sentinel
+        self._stored_content_type: Union[str, None, _SENTINEL] = sentinel
 
-    def _parse_content_type(self, raw: str) -> None:
+    def _parse_content_type(self, raw: Optional[str]) -> None:
         self._stored_content_type = raw
         if raw is None:
             # default value according to RFC 2616
@@ -766,25 +776,25 @@ class HeadersMixin:
     @property
     def content_type(self) -> str:
         """The value of content part for Content-Type HTTP header."""
-        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore[attr-defined]
+        raw = self._headers.get(hdrs.CONTENT_TYPE)
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
-        return self._content_type  # type: ignore[return-value]
+        assert self._content_type is not None
+        return self._content_type
 
     @property
     def charset(self) -> Optional[str]:
         """The value of charset part for Content-Type HTTP header."""
-        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore[attr-defined]
+        raw = self._headers.get(hdrs.CONTENT_TYPE)
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
-        return self._content_dict.get("charset")  # type: ignore[union-attr]
+        assert self._content_dict is not None
+        return self._content_dict.get("charset")
 
     @property
     def content_length(self) -> Optional[int]:
         """The value of Content-Length HTTP header."""
-        content_length = self._headers.get(  # type: ignore[attr-defined]
-            hdrs.CONTENT_LENGTH
-        )
+        content_length = self._headers.get(hdrs.CONTENT_LENGTH)
 
         if content_length is not None:
             return int(content_length)
@@ -803,14 +813,14 @@ _EXC_SENTINEL = BaseException()
 class ErrorableProtocol(Protocol):
     def set_exception(
         self,
-        exc: BaseException,
+        exc: Union[Type[BaseException], BaseException],
         exc_cause: BaseException = ...,
     ) -> None: ...  # pragma: no cover
 
 
 def set_exception(
-    fut: "asyncio.Future[_T] | ErrorableProtocol",
-    exc: BaseException,
+    fut: Union["asyncio.Future[_T]", ErrorableProtocol],
+    exc: Union[Type[BaseException], BaseException],
     exc_cause: BaseException = _EXC_SENTINEL,
 ) -> None:
     """Set future exception.

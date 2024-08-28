@@ -7,6 +7,7 @@ import html
 import keyword
 import os
 import re
+import sys
 from contextlib import contextmanager
 from pathlib import Path
 from types import MappingProxyType
@@ -35,7 +36,7 @@ from typing import (
     cast,
 )
 
-from yarl import URL, __version__ as yarl_version  # type: ignore[attr-defined]
+from yarl import URL
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
@@ -75,7 +76,11 @@ if TYPE_CHECKING:
 else:
     BaseDict = dict
 
-YARL_VERSION: Final[Tuple[int, ...]] = tuple(map(int, yarl_version.split(".")[:2]))
+CIRCULAR_SYMLINK_ERROR = (
+    (OSError,)
+    if sys.version_info < (3, 10) and sys.platform.startswith("win32")
+    else (RuntimeError,) if sys.version_info < (3, 13) else ()
+)
 
 HTTP_METHOD_RE: Final[Pattern[str]] = re.compile(
     r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$"
@@ -314,6 +319,8 @@ async def _default_expect_handler(request: Request) -> None:
     if request.version == HttpVersion11:
         if expect.lower() == "100-continue":
             await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+            # Reset output_size as we haven't started the main body yet.
+            request.writer.output_size = 0
         else:
             raise HTTPExpectationFailed(text="Unknown Expect: %s" % expect)
 
@@ -568,10 +575,7 @@ class StaticResource(PrefixResource):
 
         url = URL.build(path=self._prefix, encoded=True)
         # filename is not encoded
-        if YARL_VERSION < (1, 6):
-            url = url / filename.replace("%", "%25")
-        else:
-            url = url / filename
+        url = url / filename
 
         if append_version:
             unresolved_path = self._directory.joinpath(filename)
@@ -639,59 +643,64 @@ class StaticResource(PrefixResource):
 
     async def _handle(self, request: Request) -> StreamResponse:
         rel_url = request.match_info["filename"]
+        filename = Path(rel_url)
+        if filename.anchor:
+            # rel_url is an absolute name like
+            # /static/\\machine_name\c$ or /static/D:\path
+            # where the static dir is totally different
+            raise HTTPForbidden()
+
+        unresolved_path = self._directory.joinpath(filename)
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, self._resolve_path_to_response, unresolved_path
+        )
+
+    def _resolve_path_to_response(self, unresolved_path: Path) -> StreamResponse:
+        """Take the unresolved path and query the file system to form a response."""
+        # Check for access outside the root directory. For follow symlinks, URI
+        # cannot traverse out, but symlinks can. Otherwise, no access outside
+        # root is permitted.
         try:
-            filename = Path(rel_url)
-            if filename.anchor:
-                # rel_url is an absolute name like
-                # /static/\\machine_name\c$ or /static/D:\path
-                # where the static dir is totally different
-                raise HTTPForbidden()
-            unresolved_path = self._directory.joinpath(filename)
             if self._follow_symlinks:
                 normalized_path = Path(os.path.normpath(unresolved_path))
                 normalized_path.relative_to(self._directory)
-                filepath = normalized_path.resolve()
+                file_path = normalized_path.resolve()
             else:
-                filepath = unresolved_path.resolve()
-                filepath.relative_to(self._directory)
-        except (ValueError, FileNotFoundError) as error:
-            # relatively safe
-            raise HTTPNotFound() from error
-        except HTTPForbidden:
-            raise
-        except Exception as error:
-            # perm error or other kind!
-            request.app.logger.exception(error)
+                file_path = unresolved_path.resolve()
+                file_path.relative_to(self._directory)
+        except (ValueError, *CIRCULAR_SYMLINK_ERROR) as error:
+            # ValueError is raised for the relative check. Circular symlinks
+            # raise here on resolving for python < 3.13.
             raise HTTPNotFound() from error
 
-        # on opening a dir, load its contents if allowed
-        if filepath.is_dir():
-            if self._show_index:
-                try:
+        # if path is a directory, return the contents if permitted. Note the
+        # directory check will raise if a segment is not readable.
+        try:
+            if file_path.is_dir():
+                if self._show_index:
                     return Response(
-                        text=self._directory_as_html(filepath), content_type="text/html"
+                        text=self._directory_as_html(file_path),
+                        content_type="text/html",
                     )
-                except PermissionError:
+                else:
                     raise HTTPForbidden()
-            else:
-                raise HTTPForbidden()
-        elif filepath.is_file():
-            return FileResponse(filepath, chunk_size=self._chunk_size)
-        else:
-            raise HTTPNotFound
+        except PermissionError as error:
+            raise HTTPForbidden() from error
 
-    def _directory_as_html(self, filepath: Path) -> str:
-        # returns directory's index as html
+        # Return the file response, which handles all other checks.
+        return FileResponse(file_path, chunk_size=self._chunk_size)
 
-        # sanity check
-        assert filepath.is_dir()
+    def _directory_as_html(self, dir_path: Path) -> str:
+        """returns directory's index as html."""
+        assert dir_path.is_dir()
 
-        relative_path_to_dir = filepath.relative_to(self._directory).as_posix()
+        relative_path_to_dir = dir_path.relative_to(self._directory).as_posix()
         index_of = f"Index of /{html_escape(relative_path_to_dir)}"
         h1 = f"<h1>{index_of}</h1>"
 
         index_list = []
-        dir_index = filepath.iterdir()
+        dir_index = dir_path.iterdir()
         for _file in sorted(dir_index):
             # show file url as relative to static path
             rel_path = _file.relative_to(self._directory).as_posix()
@@ -1097,8 +1106,14 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
     def _get_resource_index_key(self, resource: AbstractResource) -> str:
         """Return a key to index the resource in the resource index."""
-        # strip at the first { to allow for variables
-        return resource.canonical.partition("{")[0].rstrip("/") or "/"
+        if "{" in (index_key := resource.canonical):
+            # strip at the first { to allow for variables, and than
+            # rpartition at / to allow for variable parts in the path
+            # For example if the canonical path is `/core/locations{tail:.*}`
+            # the index key will be `/core` since index is based on the
+            # url parts split by `/`
+            index_key = index_key.partition("{")[0].rpartition("/")[0]
+        return index_key.rstrip("/") or "/"
 
     def index_resource(self, resource: AbstractResource) -> None:
         """Add a resource to the resource index."""
@@ -1152,7 +1167,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         show_index: bool = False,
         follow_symlinks: bool = False,
         append_version: bool = False,
-    ) -> AbstractResource:
+    ) -> StaticResource:
         """Add static files view.
 
         prefix - url prefix
@@ -1243,8 +1258,6 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
 
 def _quote_path(value: str) -> str:
-    if YARL_VERSION < (1, 6):
-        value = value.replace("%", "%25")
     return URL.build(path=value, encoded=False).raw_path
 
 

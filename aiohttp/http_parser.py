@@ -267,8 +267,10 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         self._headers_parser = HeadersParser(max_line_size, max_field_size, self.lax)
 
     @abc.abstractmethod
-    def parse_message(self, lines: List[bytes]) -> _MsgT:
-        pass
+    def parse_message(self, lines: List[bytes]) -> _MsgT: ...
+
+    @abc.abstractmethod
+    def _is_chunked_te(self, te: str) -> bool: ...
 
     def feed_eof(self) -> Optional[_MsgT]:
         if self._payload_parser is not None:
@@ -525,10 +527,8 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         # chunking
         te = headers.get(hdrs.TRANSFER_ENCODING)
         if te is not None:
-            if "chunked" == te.lower():
+            if self._is_chunked_te(te):
                 chunked = True
-            else:
-                raise BadHttpMessage("Request has invalid `Transfer-Encoding`")
 
             if hdrs.CONTENT_LENGTH in headers:
                 raise BadHttpMessage(
@@ -638,6 +638,12 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
             url,
         )
 
+    def _is_chunked_te(self, te: str) -> bool:
+        if te.rsplit(",", maxsplit=1)[-1].strip(" \t").lower() == "chunked":
+            return True
+        # https://www.rfc-editor.org/rfc/rfc9112#section-6.3-2.4.3
+        raise BadHttpMessage("Request has invalid `Transfer-Encoding`")
+
 
 class HttpResponseParser(HttpParser[RawResponseMessage]):
     """Read response status line and headers.
@@ -722,6 +728,10 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
             upgrade,
             chunked,
         )
+
+    def _is_chunked_te(self, te: str) -> bool:
+        # https://www.rfc-editor.org/rfc/rfc9112#section-6.3-2.4.2
+        return te.rsplit(",", maxsplit=1)[-1].strip(" \t").lower() == "chunked"
 
 
 class HttpPayloadParser:
@@ -845,13 +855,13 @@ class HttpPayloadParser:
                     if self._chunk_size:
                         return False, b""
                     chunk = chunk[required:]
-                    if self._lax and chunk.startswith(b"\r"):
-                        chunk = chunk[1:]
                     self._chunk = ChunkState.PARSE_CHUNKED_CHUNK_EOF
                     self.payload.end_http_chunk_receiving()
 
                 # toss the CRLF at the end of the chunk
                 if self._chunk == ChunkState.PARSE_CHUNKED_CHUNK_EOF:
+                    if self._lax and chunk.startswith(b"\r"):
+                        chunk = chunk[1:]
                     if chunk[: len(SEP)] == SEP:
                         chunk = chunk[len(SEP) :]
                         self._chunk = ChunkState.PARSE_CHUNKED_SIZE
@@ -920,7 +930,7 @@ class DeflateBuffer:
 
     def set_exception(
         self,
-        exc: BaseException,
+        exc: Union[Type[BaseException], BaseException],
         exc_cause: BaseException = _EXC_SENTINEL,
     ) -> None:
         set_exception(self.out, exc, exc_cause)

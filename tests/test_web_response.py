@@ -734,11 +734,8 @@ async def test___repr___after_eof() -> None:
     resp = StreamResponse()
     await resp.prepare(make_request("GET", "/"))
 
-    assert resp.prepared
-
     await resp.write(b"data")
     await resp.write_eof()
-    assert not resp.prepared
     resp_repr = repr(resp)
     assert resp_repr == "<StreamResponse OK eof>"
 
@@ -1006,7 +1003,6 @@ async def test_send_headers_for_empty_body(buf: Any, writer: Any) -> None:
         Matches(
             "HTTP/1.1 200 OK\r\n"
             "Content-Length: 0\r\n"
-            "Content-Type: application/octet-stream\r\n"
             "Date: .+\r\n"
             "Server: .+\r\n\r\n"
         )
@@ -1049,7 +1045,6 @@ async def test_send_set_cookie_header(buf: Any, writer: Any) -> None:
             "HTTP/1.1 200 OK\r\n"
             "Content-Length: 0\r\n"
             "Set-Cookie: name=value\r\n"
-            "Content-Type: application/octet-stream\r\n"
             "Date: .+\r\n"
             "Server: .+\r\n\r\n"
         )
@@ -1112,14 +1107,22 @@ def test_content_type_with_set_body() -> None:
     assert resp.content_type == "application/octet-stream"
 
 
-def test_started_when_not_started() -> None:
+def test_prepared_when_not_started() -> None:
     resp = StreamResponse()
     assert not resp.prepared
 
 
-async def test_started_when_started() -> None:
+async def test_prepared_when_started() -> None:
     resp = StreamResponse()
     await resp.prepare(make_request("GET", "/"))
+    assert resp.prepared
+
+
+async def test_prepared_after_eof() -> None:
+    resp = StreamResponse()
+    await resp.prepare(make_request("GET", "/"))
+    await resp.write(b"data")
+    await resp.write_eof()
     assert resp.prepared
 
 

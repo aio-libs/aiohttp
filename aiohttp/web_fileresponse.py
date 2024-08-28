@@ -1,9 +1,9 @@
 import asyncio
 import os
 import pathlib
-import sys
 from contextlib import suppress
 from mimetypes import MimeTypes
+from stat import S_ISREG
 from types import MappingProxyType
 from typing import (
     IO,
@@ -22,6 +22,8 @@ from .abc import AbstractStreamWriter
 from .helpers import ETAG_ANY, ETag, must_be_empty_body
 from .typedefs import LooseHeaders, PathLike
 from .web_exceptions import (
+    HTTPForbidden,
+    HTTPNotFound,
     HTTPNotModified,
     HTTPPartialContent,
     HTTPPreconditionFailed,
@@ -41,9 +43,6 @@ _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
 NOSENDFILE: Final[bool] = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
 
 CONTENT_TYPES: Final[MimeTypes] = MimeTypes()
-
-if sys.version_info < (3, 9):
-    CONTENT_TYPES.encodings_map[".br"] = "br"
 
 # File extension to IANA encodings map that will be checked in the order defined.
 ENCODING_EXTENSIONS = MappingProxyType(
@@ -171,19 +170,33 @@ class FileResponse(StreamResponse):
 
             compressed_path = file_path.with_suffix(file_path.suffix + file_extension)
             with suppress(OSError):
-                return compressed_path, compressed_path.stat(), file_encoding
+                # Do not follow symlinks and ignore any non-regular files.
+                st = compressed_path.lstat()
+                if S_ISREG(st.st_mode):
+                    return compressed_path, st, file_encoding
 
         # Fallback to the uncompressed file
         return file_path, file_path.stat(), None
 
     async def prepare(self, request: "BaseRequest") -> Optional[AbstractStreamWriter]:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         # Encoding comparisons should be case-insensitive
         # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1
         accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "").lower()
-        file_path, st, file_encoding = await loop.run_in_executor(
-            None, self._get_file_path_stat_encoding, accept_encoding
-        )
+        try:
+            file_path, st, file_encoding = await loop.run_in_executor(
+                None, self._get_file_path_stat_encoding, accept_encoding
+            )
+        except OSError:
+            # Most likely to be FileNotFoundError or OSError for circular
+            # symlinks in python >= 3.13, so respond with 404.
+            self.set_status(HTTPNotFound.status_code)
+            return await super().prepare(request)
+
+        # Forbid special files like sockets, pipes, devices, etc.
+        if not S_ISREG(st.st_mode):
+            self.set_status(HTTPForbidden.status_code)
+            return await super().prepare(request)
 
         etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
         last_modified = st.st_mtime
@@ -320,7 +333,12 @@ class FileResponse(StreamResponse):
         if count == 0 or must_be_empty_body(request.method, self.status):
             return await super().prepare(request)
 
-        fobj = await loop.run_in_executor(None, file_path.open, "rb")
+        try:
+            fobj = await loop.run_in_executor(None, file_path.open, "rb")
+        except PermissionError:
+            self.set_status(HTTPForbidden.status_code)
+            return await super().prepare(request)
+
         if start:  # be aware that start could be None or int=0 here.
             offset = start
         else:

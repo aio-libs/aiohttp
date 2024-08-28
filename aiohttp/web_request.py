@@ -5,6 +5,7 @@ import io
 import re
 import socket
 import string
+import sys
 import tempfile
 import types
 from http.cookies import SimpleCookie
@@ -19,7 +20,6 @@ from typing import (
     MutableMapping,
     Optional,
     Pattern,
-    Set,
     Tuple,
     Union,
     cast,
@@ -43,7 +43,6 @@ from .helpers import (
     reify,
     sentinel,
     set_exception,
-    set_result,
 )
 from .http_parser import RawRequestMessage
 from .http_writer import HttpVersion
@@ -63,6 +62,11 @@ from .web_exceptions import (
 )
 from .web_response import StreamResponse
 
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    Self = Any
+
 __all__ = ("BaseRequest", "FileField", "Request")
 
 
@@ -78,7 +82,7 @@ class FileField:
     filename: str
     file: io.BufferedReader
     content_type: str
-    headers: "CIMultiDictProxy[str]"
+    headers: CIMultiDictProxy[str]
 
 
 _TCHAR: Final[str] = string.digits + string.ascii_letters + r"!#$%&'*+.^_`|~-"
@@ -141,7 +145,6 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         "_loop",
         "_transport_sslcontext",
         "_transport_peername",
-        "_disconnection_waiters",
         "__weakref__",
     )
 
@@ -149,7 +152,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self,
         message: RawRequestMessage,
         payload: StreamReader,
-        protocol: "RequestHandler",
+        protocol: "RequestHandler[Self]",
         payload_writer: AbstractStreamWriter,
         task: "asyncio.Task[None]",
         loop: asyncio.AbstractEventLoop,
@@ -168,7 +171,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self._payload_writer = payload_writer
 
         self._payload = payload
-        self._headers = message.headers
+        self._headers: CIMultiDictProxy[str] = message.headers
         self._method = message.method
         self._version = message.version
         self._cache: Dict[str, Any] = {}
@@ -190,7 +193,6 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self._task = task
         self._client_max_size = client_max_size
         self._loop = loop
-        self._disconnection_waiters: Set[asyncio.Future[None]] = set()
 
         transport = self._protocol.transport
         assert transport is not None
@@ -254,7 +256,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self.__class__(
             message,
             self._payload,
-            self._protocol,
+            self._protocol,  # type: ignore[arg-type]
             self._payload_writer,
             self._task,
             self._loop,
@@ -268,7 +270,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._task
 
     @property
-    def protocol(self) -> "RequestHandler":
+    def protocol(self) -> "RequestHandler[Self]":
         return self._protocol
 
     @property
@@ -481,7 +483,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._rel_url.query_string
 
     @reify
-    def headers(self) -> "CIMultiDictProxy[str]":
+    def headers(self) -> CIMultiDictProxy[str]:
         """A case-insensitive multidict proxy with all headers."""
         return self._headers
 
@@ -817,13 +819,8 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
     def _cancel(self, exc: BaseException) -> None:
         set_exception(self._payload, exc)
-        for fut in self._disconnection_waiters:
-            set_result(fut, None)
 
     def _finish(self) -> None:
-        for fut in self._disconnection_waiters:
-            fut.cancel()
-
         if self._post is None or self.content_type != "multipart/form-data":
             return
 
@@ -832,19 +829,8 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         # NOTE: instances of files sent within multipart request body
         # NOTE: via HTTP POST request.
         for file_name, file_field_object in self._post.items():
-            if not isinstance(file_field_object, FileField):
-                continue
-
-            file_field_object.file.close()
-
-    async def wait_for_disconnection(self) -> None:
-        loop = asyncio.get_event_loop()
-        fut: asyncio.Future[None] = loop.create_future()
-        self._disconnection_waiters.add(fut)
-        try:
-            await fut
-        finally:
-            self._disconnection_waiters.remove(fut)
+            if isinstance(file_field_object, FileField):
+                file_field_object.file.close()
 
 
 class Request(BaseRequest):

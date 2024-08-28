@@ -12,7 +12,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: 3.8
+        python-version: 3.9
     - name: Install dependencies
       run: >-
         pip install -r requirements/lint.in -c requirements/lint.txt
@@ -33,4 +33,4 @@ jobs:
         body: |
           Update versions of tools in pre-commit
           configs to latest version
-        labels: dependencies backport-3.7 backport-3.8
+        labels: dependencies backport-3.10 backport-3.11

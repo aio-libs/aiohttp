@@ -1,0 +1,1 @@
+Dropped support for yarl<1.6 -- by :user:`Dreamsorcerer`.
