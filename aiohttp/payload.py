@@ -208,9 +208,7 @@ class Payload(ABC):
         )
 
     @abstractmethod
-    def decode(
-        self, encoding: Optional[str] = None, errors: Optional[str] = None
-    ) -> str:
+    def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         """Return string representation of the value.
 
         This is named decode() to allow compatibility with bytes objects.
@@ -222,9 +220,6 @@ class Payload(ABC):
 
         writer is an AbstractStreamWriter instance:
         """
-
-    def __len__(self) -> int:
-        return self.size or 0
 
 
 class BytesPayload(Payload):
@@ -255,10 +250,8 @@ class BytesPayload(Payload):
                 source=self,
             )
 
-    def decode(
-        self, encoding: Optional[str] = None, errors: Optional[str] = None
-    ) -> str:
-        return self._value.decode()
+    def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        return self._value.decode(encoding, errors)
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         await writer.write(self._value)
@@ -324,10 +317,8 @@ class IOBasePayload(Payload):
         finally:
             await loop.run_in_executor(None, self._value.close)
 
-    def decode(
-        self, encoding: Optional[str] = None, errors: Optional[str] = None
-    ) -> str:
-        return "".join(r.decode() for r in self._value.readlines())
+    def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        return "".join(r.decode(encoding, errors) for r in self._value.readlines())
 
 
 class TextIOPayload(IOBasePayload):
@@ -367,9 +358,7 @@ class TextIOPayload(IOBasePayload):
         except OSError:
             return None
 
-    def decode(
-        self, encoding: Optional[str] = None, errors: Optional[str] = None
-    ) -> str:
+    def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return self._value.read()
 
     async def write(self, writer: AbstractStreamWriter) -> None:
@@ -398,10 +387,8 @@ class BytesIOPayload(IOBasePayload):
         self._value.seek(position)
         return end - position
 
-    def decode(
-        self, encoding: Optional[str] = None, errors: Optional[str] = None
-    ) -> str:
-        return self._value.read().decode()
+    def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        return self._value.read().decode(encoding, errors)
 
 
 class BufferedReaderPayload(IOBasePayload):
@@ -416,10 +403,8 @@ class BufferedReaderPayload(IOBasePayload):
             # io.BufferedReader(io.BytesIO(b'data'))
             return None
 
-    def decode(
-        self, encoding: Optional[str] = None, errors: Optional[str] = None
-    ) -> str:
-        return self._value.read().decode()
+    def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        return self._value.read().decode(encoding, errors)
 
 
 class JsonPayload(BytesPayload):
@@ -483,9 +468,7 @@ class AsyncIterablePayload(Payload):
             except StopAsyncIteration:
                 self._iter = None
 
-    def decode(
-        self, encoding: Optional[str] = None, errors: Optional[str] = None
-    ) -> str:
+    def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         raise TypeError("Unable to decode.")
 
 
