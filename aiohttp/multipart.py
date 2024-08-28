@@ -981,7 +981,11 @@ class MultipartWriter(Payload):
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return "".join(
-            "--" + self.boundary + "\n" + part._binary_headers.decode(encoding, errors) + part.decode()
+            "--"
+            + self.boundary
+            + "\n"
+            + part._binary_headers.decode(encoding, errors)
+            + part.decode()
             for part, _e, _te in self._parts
         )
 
