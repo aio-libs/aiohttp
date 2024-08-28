@@ -448,6 +448,13 @@ def test_basic_auth_from_url(make_request: _RequestMaker) -> None:
     assert "python.org" == req.host
 
 
+def test_basic_auth_no_user_from_url(make_request: _RequestMaker) -> None:
+    req = make_request("get", "http://:1234@python.org")
+    assert "AUTHORIZATION" in req.headers
+    assert "Basic OjEyMzQ=" == req.headers["AUTHORIZATION"]
+    assert "python.org" == req.host
+
+
 def test_basic_auth_from_url_overridden(make_request: _RequestMaker) -> None:
     req = make_request(
         "get", "http://garbage@python.org", auth=aiohttp.BasicAuth("nkim", "1234")
