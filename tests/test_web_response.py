@@ -1011,6 +1011,7 @@ class CustomIO(io.IOBase):
         ("test", "test"),
         (CustomIO(), "test"),
         (io.StringIO("test"), "test"),
+        (io.TextIOWrapper(io.BytesIO(b"test")), "test"),
         (io.BytesIO(b"test"), "test"),
         (io.BufferedReader(io.BytesIO(b"test")), "test"),
         (async_iter(), None),
