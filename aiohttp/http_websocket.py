@@ -650,7 +650,6 @@ class WebSocketWriter:
         # Depending on the message length, the header is assembled differently.
         # The first byte is reserved for the opcode and the RSV bits.
         first_byte = 0x80 | rsv | opcode
-
         if msg_length < 126:
             header = PACK_LEN1(first_byte, msg_length | mask_bit)
             header_len = 2
@@ -661,6 +660,7 @@ class WebSocketWriter:
             header = PACK_LEN3(first_byte, 127 | mask_bit, msg_length)
             header_len = 10
 
+        # https://datatracker.ietf.org/doc/html/rfc6455#section-5.3
         # If we are using a mask, we need to generate it randomly
         # and apply it to the message before sending it. A mask is
         # a 32-bit value that is applied to the message using a
