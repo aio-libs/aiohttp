@@ -17,6 +17,9 @@ def registry():
 
 
 class Payload(payload.Payload):
+    def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        assert False
+
     async def write(self, writer):
         pass
 
