@@ -1,0 +1,1 @@
+Fixed ``Response.text`` when body is a ``Payload`` -- by :user:`Dreamsorcerer`.

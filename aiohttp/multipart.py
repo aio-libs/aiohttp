@@ -561,6 +561,8 @@ class BodyPartReader:
 
 @payload_type(BodyPartReader, order=Order.try_first)
 class BodyPartReaderPayload(Payload):
+    _value: BodyPartReader
+
     def __init__(self, value: BodyPartReader, *args: Any, **kwargs: Any) -> None:
         super().__init__(value, *args, **kwargs)
 
@@ -572,6 +574,9 @@ class BodyPartReaderPayload(Payload):
 
         if params:
             self.set_content_disposition("attachment", True, **params)
+
+    def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        raise TypeError("Unable to decode.")
 
     async def write(self, writer: Any) -> None:
         field = self._value
@@ -790,6 +795,8 @@ _Part = Tuple[Payload, str, str]
 class MultipartWriter(Payload):
     """Multipart body writer."""
 
+    _value: None
+
     def __init__(self, subtype: str = "mixed", boundary: Optional[str] = None) -> None:
         boundary = boundary if boundary is not None else uuid.uuid4().hex
         # The underlying Payload API demands a str (utf-8), not bytes,
@@ -969,6 +976,16 @@ class MultipartWriter(Payload):
 
         total += 2 + len(self._boundary) + 4  # b'--'+self._boundary+b'--\r\n'
         return total
+
+    def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        return "".join(
+            "--"
+            + self.boundary
+            + "\n"
+            + part._binary_headers.decode(encoding, errors)
+            + part.decode()
+            for part, _e, _te in self._parts
+        )
 
     async def write(self, writer: Any, close_boundary: bool = True) -> None:
         """Write body."""
