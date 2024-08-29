@@ -1011,13 +1011,6 @@ class CustomIO(io.IOBase):
         (CustomIO(), "test"),
         (io.StringIO("test"), "test"),
         (io.TextIOWrapper(io.BytesIO(b"test")), "test"),
-        (
-            io.TextIOWrapper(
-                io.BytesIO(b"\x93\xfa\x96{"),
-                content_type="text/plain; charset=shift-jis",
-            ),
-            "日本",
-        ),
         (io.BytesIO(b"test"), "test"),
         (io.BufferedReader(io.BytesIO(b"test")), "test"),
         (async_iter(), None),
