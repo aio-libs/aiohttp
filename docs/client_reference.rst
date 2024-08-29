@@ -990,7 +990,7 @@ is controlled by *force_close* constructor's parameter).
                                    flag.
 
    :param int limit: total number simultaneous connections. If *limit* is
-                     ``None`` the connector has no limit (default: 100).
+                     ``0`` the connector has no limit (default: 100).
 
    :param int limit_per_host: limit simultaneous connections to the same
       endpoint.  Endpoints are the same if they are
@@ -1035,7 +1035,7 @@ is controlled by *force_close* constructor's parameter).
       Endpoints are the same if they are have equal ``(host, port,
       is_ssl)`` triple.
 
-      If *limit_per_host* is ``None`` the connector has no limit per host.
+      If *limit_per_host* is ``0`` the connector has no limit per host.
 
       Read-only property.
 
@@ -1130,7 +1130,7 @@ is controlled by *force_close* constructor's parameter).
       updated refreshing each entry after N seconds.
 
    :param int limit: total number simultaneous connections. If *limit* is
-                     ``None`` the connector has no limit (default: 100).
+                     ``0`` the connector has no limit (default: 100).
 
    :param int limit_per_host: limit simultaneous connections to the same
       endpoint.  Endpoints are the same if they are
