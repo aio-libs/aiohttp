@@ -66,9 +66,6 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
             or bool(self._tail)
         )
 
-    def force_close(self) -> None:
-        self._should_close = True
-
     def close(self) -> None:
         transport = self.transport
         if transport is not None:
