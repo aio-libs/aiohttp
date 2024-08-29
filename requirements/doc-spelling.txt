@@ -96,7 +96,7 @@ zipp==3.20.1
     #   importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==73.0.1
+setuptools==74.0.0
     # via
     #   blockdiag
     #   incremental
