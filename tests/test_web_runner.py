@@ -243,6 +243,13 @@ async def test_tcpsite_default_host(make_runner: Any) -> None:
     assert port == 8080
 
 
+async def test_tcpsite_empty_str_host(make_runner: Any) -> None:
+    runner = make_runner()
+    await runner.setup()
+    site = web.TCPSite(runner, host="")
+    assert site.name == "http://0.0.0.0:8080"
+
+
 def test_run_after_asyncio_run() -> None:
     async def nothing():
         pass
