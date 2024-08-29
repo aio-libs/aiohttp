@@ -648,10 +648,14 @@ class WebSocketWriter:
         mask_bit = 0x80 if use_mask else 0
 
         # Depending on the message length, the header is assembled differently
-        # if the message length is less than 126 bytes, it is encoded in the
-        # second byte of the header. If it is less than 2^16 bytes, it is
-        # encoded in the second and third bytes of the header. Otherwise, it is
-        # encoded in the second to ninth bytes of the header.
+        # and placed at the second byte of the frame. The first byte is reserved
+        # for the opcode and the RSV bits.
+        # - If the message length is less than 126 bytes, it is encoded in one
+        #   byte along with the mask bit.
+        # - If the message length is less than 2^16 bytes, it is encoded in four
+        #   bytes, and the second byte is set to 126 along with the mask bit.
+        # - Otherwise, it is encoded in ten bytes, and the second byte is set to
+        #   127 along with the mask bit.
         if msg_length < 126:
             header = PACK_LEN1(0x80 | rsv | opcode, msg_length | mask_bit)
             header_len = 2
