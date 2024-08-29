@@ -569,9 +569,11 @@ def test_static_remove_trailing_slash(router: web.UrlDispatcher) -> None:
         ("{name}.html", "test.html", {"name": "test"}),
         (r"{fn:\w+ \d+}", "abc 123", {"fn": "abc 123"}),
         (r"{fn:\w+\s\d+}", "abc 123", {"fn": "abc 123"}),
-    )
+    ),
 )
-async def test_add_route_with_re(router: web.UrlDispatcher, pattern: str, url: str, expected) -> None:
+async def test_add_route_with_re(
+    router: web.UrlDispatcher, pattern: str, url: str, expected
+) -> None:
     handler = make_handler()
     router.add_route("GET", f"/handler/{pattern}", handler)
     req = make_mocked_request("GET", f"/handler/{url}")
