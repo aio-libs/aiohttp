@@ -72,6 +72,8 @@ class StreamResponse(BaseClass, HeadersMixin):
 
     _length_check = True
 
+    _body: Union[None, bytes, bytearray, Payload]
+
     def __init__(
         self,
         *,
@@ -650,20 +652,16 @@ class Response(StreamResponse):
         return self._body
 
     @body.setter
-    def body(self, body: bytes) -> None:
+    def body(self, body: Any) -> None:
         if body is None:
-            self._body: Optional[bytes] = None
-            self._body_payload: bool = False
+            self._body = None
         elif isinstance(body, (bytes, bytearray)):
             self._body = body
-            self._body_payload = False
         else:
             try:
                 self._body = body = payload.PAYLOAD_REGISTRY.get(body)
             except payload.LookupError:
                 raise ValueError("Unsupported body type %r" % type(body))
-
-            self._body_payload = True
 
             headers = self._headers
 
@@ -697,7 +695,6 @@ class Response(StreamResponse):
             self.charset = "utf-8"
 
         self._body = text.encode(self.charset)
-        self._body_payload = False
         self._compressed_body = None
 
     @property
@@ -711,7 +708,7 @@ class Response(StreamResponse):
         if self._compressed_body is not None:
             # Return length of the compressed body
             return len(self._compressed_body)
-        elif self._body_payload:
+        elif isinstance(self._body, Payload):
             # A payload without content length, or a compressed payload
             return None
         elif self._body is not None:
@@ -736,9 +733,8 @@ class Response(StreamResponse):
         if body is not None:
             if self._must_be_empty_body:
                 await super().write_eof()
-            elif self._body_payload:
-                payload = cast(Payload, body)
-                await payload.write(self._payload_writer)
+            elif isinstance(self._body, Payload):
+                await self._body.write(self._payload_writer)
                 await super().write_eof()
             else:
                 await super().write_eof(cast(bytes, body))
@@ -750,10 +746,9 @@ class Response(StreamResponse):
             if hdrs.CONTENT_LENGTH in self._headers:
                 del self._headers[hdrs.CONTENT_LENGTH]
         elif not self._chunked and hdrs.CONTENT_LENGTH not in self._headers:
-            if self._body_payload:
-                size = cast(Payload, self._body).size
-                if size is not None:
-                    self._headers[hdrs.CONTENT_LENGTH] = str(size)
+            if isinstance(self._body, Payload):
+                if self._body.size is not None:
+                    self._headers[hdrs.CONTENT_LENGTH] = str(self._body.size)
             else:
                 body_len = len(self._body) if self._body else "0"
                 # https://www.rfc-editor.org/rfc/rfc9110.html#section-8.6-7
@@ -765,7 +760,7 @@ class Response(StreamResponse):
         return await super()._start(request)
 
     async def _do_start_compression(self, coding: ContentCoding) -> None:
-        if self._body_payload or self._chunked:
+        if self._chunked or isinstance(self._body, Payload):
             return await super()._do_start_compression(coding)
 
         if coding != ContentCoding.identity:
