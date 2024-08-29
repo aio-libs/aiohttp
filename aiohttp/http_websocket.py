@@ -647,23 +647,18 @@ class WebSocketWriter:
         use_mask = self.use_mask
         mask_bit = 0x80 if use_mask else 0
 
-        # Depending on the message length, the header is assembled differently
-        # and placed at the second byte of the frame. The first byte is reserved
-        # for the opcode and the RSV bits.
-        # - If the message length is less than 126 bytes, it is encoded in one
-        #   byte along with the mask bit.
-        # - If the message length is less than 2^16 bytes, it is encoded in four
-        #   bytes, and the second byte is set to 126 along with the mask bit.
-        # - Otherwise, it is encoded in ten bytes, and the second byte is set to
-        #   127 along with the mask bit.
+        # Depending on the message length, the header is assembled differently.
+        # The first byte is reserved for the opcode and the RSV bits.
+        first_byte = 0x80 | rsv | opcode
+
         if msg_length < 126:
-            header = PACK_LEN1(0x80 | rsv | opcode, msg_length | mask_bit)
+            header = PACK_LEN1(first_byte, msg_length | mask_bit)
             header_len = 2
         elif msg_length < (1 << 16):
-            header = PACK_LEN2(0x80 | rsv | opcode, 126 | mask_bit, msg_length)
+            header = PACK_LEN2(first_byte, 126 | mask_bit, msg_length)
             header_len = 4
         else:
-            header = PACK_LEN3(0x80 | rsv | opcode, 127 | mask_bit, msg_length)
+            header = PACK_LEN3(first_byte, 127 | mask_bit, msg_length)
             header_len = 10
 
         # If we are using a mask, we need to generate it randomly
