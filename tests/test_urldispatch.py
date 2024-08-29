@@ -562,19 +562,22 @@ def test_static_remove_trailing_slash(router: web.UrlDispatcher) -> None:
     assert "/prefix" == route._prefix
 
 
-async def test_add_route_with_re(router: web.UrlDispatcher) -> None:
+@pytest.mark.parametrize(
+    "pattern,url,expected",
+    (
+        (r"{to:\d+}", r"1234", {"to": "1234"}),
+        ("{name}.html", "test.html", {"name": "test"}),
+        (r"{fn:\w+ \d+}", "abc 123", {"fn": "abc 123"}),
+        (r"{fn:\w+\s\d+}", "abc 123", {"fn": "abc 123"}),
+    )
+)
+async def test_add_route_with_re(router: web.UrlDispatcher, pattern: str, url: str, expected) -> None:
     handler = make_handler()
-    router.add_route("GET", r"/handler/{to:\d+}", handler)
-
-    req = make_mocked_request("GET", "/handler/1234")
+    router.add_route("GET", f"/handler/{pattern}", handler)
+    req = make_mocked_request("GET", f"/handler/{url}")
     info = await router.resolve(req)
     assert info is not None
-    assert {"to": "1234"} == info
-
-    router.add_route("GET", r"/handler/{name}.html", handler)
-    req = make_mocked_request("GET", "/handler/test.html")
-    info = await router.resolve(req)
-    assert {"name": "test"} == info
+    assert info == expected
 
 
 async def test_add_route_with_re_and_slashes(router: web.UrlDispatcher) -> None:
