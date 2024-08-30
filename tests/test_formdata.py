@@ -51,7 +51,7 @@ def test_invalid_formdata_params2() -> None:
 
 async def test_formdata_textio_charset(buf: bytearray, writer: StreamWriter) -> None:
     form = FormData()
-    body = io.TextIOWrapper(io.BytesIO(b"\xe6\x97\xa5\xe6\x9c\xac"))
+    body = io.TextIOWrapper(io.BytesIO(b"\xe6\x97\xa5\xe6\x9c\xac"), encoding="utf-8")
     form.add_field("foo", body, content_type="text/plain; charset=shift-jis")
     payload = form()
     await payload.write(writer)
