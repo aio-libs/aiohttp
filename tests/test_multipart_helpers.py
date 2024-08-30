@@ -558,7 +558,7 @@ class TestParseContentDisposition:
             "attachment; filename*0*=UTF-8" + 'foo-%c3%a4; filename*1=".html"'
         )
         assert "attachment" == disptype
-        assert {"filename*0*": "UTF-8" + "foo-%c3%a4", "filename*1": ".html"} == params
+        assert {"filename*0*": "UTF-8foo-%c3%a4", "filename*1": ".html"} == params
 
     def test_attfncontlz(self) -> None:
         disptype, params = parse_content_disposition(
