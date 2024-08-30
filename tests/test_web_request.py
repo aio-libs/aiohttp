@@ -12,8 +12,6 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 from yarl import URL
 
 from aiohttp import HttpVersion, web
-from aiohttp.client_exceptions import ServerDisconnectedError
-from aiohttp.helpers import DEBUG
 from aiohttp.http_parser import RawRequestMessage
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
@@ -725,13 +723,6 @@ def test_clone_remote() -> None:
     assert req2.remote == "11.11.11.11"
 
 
-@pytest.mark.skipif(not DEBUG, reason="The check is applied in DEBUG mode only")
-def test_request_custom_attr() -> None:
-    req = make_mocked_request("GET", "/")
-    with pytest.warns(DeprecationWarning):
-        req.custom = None
-
-
 def test_remote_with_closed_transport() -> None:
     transp = mock.Mock()
     transp.get_extra_info.return_value = ("10.10.10.10", 1234)
@@ -808,7 +799,6 @@ async def test_json_invalid_content_type(aiohttp_client: Any) -> None:
         assert body_text == '{"some": "data"}'
         assert request.headers["Content-Type"] == "text/plain"
         await request.json()  # raises HTTP 400
-        return web.Response()
 
     app = web.Application()
     app.router.add_post("/", handler)
@@ -827,22 +817,6 @@ async def test_json_invalid_content_type(aiohttp_client: Any) -> None:
 def test_weakref_creation() -> None:
     req = make_mocked_request("GET", "/")
     weakref.ref(req)
-
-
-@pytest.mark.xfail(
-    raises=ServerDisconnectedError,
-    reason="see https://github.com/aio-libs/aiohttp/issues/4572",
-)
-async def test_handler_return_type(aiohttp_client: Any) -> None:
-    async def invalid_handler_1(request):
-        return 1
-
-    app = web.Application()
-    app.router.add_get("/1", invalid_handler_1)
-    client = await aiohttp_client(app)
-
-    async with client.get("/1") as resp:
-        assert 500 == resp.status
 
 
 @pytest.mark.parametrize(

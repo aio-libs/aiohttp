@@ -40,24 +40,17 @@
 
       https://pypi.org/project/Brotli/
 
+   brotlicffi
+
+      An alternative implementation of :term:`Brotli` built using the CFFI
+      library. This implementation supports PyPy correctly.
+
+      https://pypi.org/project/brotlicffi/
+
    callable
 
       Any object that can be called. Use :func:`callable` to check
       that.
-
-   charset-normalizer
-
-       The Real First Universal Charset Detector.
-       Open, modern and actively maintained alternative to Chardet.
-
-       https://pypi.org/project/charset-normalizer/
-
-   cchardet
-
-       cChardet is high speed universal character encoding detector -
-       binding to charsetdetect.
-
-       https://pypi.python.org/pypi/cchardet/
 
    gunicorn
 
@@ -86,6 +79,8 @@
 
        It makes communication faster by getting rid of connection
        establishment for every request.
+
+
 
    nginx
 
@@ -151,3 +146,16 @@
       A library for operating with URL objects.
 
       https://pypi.python.org/pypi/yarl
+
+
+Environment Variables
+=====================
+
+.. envvar:: NETRC
+
+   If set, HTTP Basic Auth will be read from the file pointed to by this environment variable,
+   rather than from :file:`~/.netrc`.
+
+   .. seealso::
+
+      ``.netrc`` documentation: https://www.gnu.org/software/inetutils/manual/html_node/The-_002enetrc-file.html

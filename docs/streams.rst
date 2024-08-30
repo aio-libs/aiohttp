@@ -23,7 +23,8 @@ Streaming API
 Reading Methods
 ---------------
 
-.. comethod:: StreamReader.read(n=-1)
+.. method:: StreamReader.read(n=-1)
+      :async:
 
    Read up to *n* bytes. If *n* is not provided, or set to ``-1``, read until
    EOF and return all read bytes.
@@ -35,7 +36,8 @@ Reading Methods
 
    :return bytes: the given data
 
-.. comethod:: StreamReader.readany()
+.. method:: StreamReader.readany()
+      :async:
 
    Read next data portion for the stream.
 
@@ -43,7 +45,8 @@ Reading Methods
 
    :return bytes: the given data
 
-.. comethod:: StreamReader.readexactly(n)
+.. method:: StreamReader.readexactly(n)
+      :async:
 
    Read exactly *n* bytes.
 
@@ -57,7 +60,8 @@ Reading Methods
    :return bytes: the given data
 
 
-.. comethod:: StreamReader.readline()
+.. method:: StreamReader.readline()
+      :async:
 
    Read one line, where “line” is a sequence of bytes ending
    with ``\n``.
@@ -70,7 +74,8 @@ Reading Methods
 
    :return bytes: the given line
 
-.. comethod:: StreamReader.readuntil(separator="\n")
+.. method:: StreamReader.readuntil(separator="\n")
+      :async:
 
    Read until separator, where `separator` is a sequence of bytes.
 
@@ -84,7 +89,8 @@ Reading Methods
 
    :return bytes: the given data
 
-.. comethod:: StreamReader.readchunk()
+.. method:: StreamReader.readchunk()
+      :async:
 
    Read a chunk of data as it was received by the server.
 
@@ -113,24 +119,24 @@ By default it iterates over lines::
 Also there are methods for iterating over data chunks with maximum
 size limit and over any available data.
 
-.. comethod:: StreamReader.iter_chunked(n)
-   :async-for:
+.. method:: StreamReader.iter_chunked(n)
+   :async:
 
    Iterates over data chunks with maximum size limit::
 
       async for data in response.content.iter_chunked(1024):
           print(data)
 
-.. comethod:: StreamReader.iter_any()
-   :async-for:
+.. method:: StreamReader.iter_any()
+   :async:
 
    Iterates over data chunks in order of intaking them into the stream::
 
       async for data in response.content.iter_any():
           print(data)
 
-.. comethod:: StreamReader.iter_chunks()
-   :async-for:
+.. method:: StreamReader.iter_chunks()
+   :async:
 
    Iterates over data chunks as received from the server::
 
@@ -193,6 +199,7 @@ Helpers
       E.g. :meth:`~StreamReader.read()` will not be resumed.
 
 
-.. comethod:: wait_eof()
+.. method:: wait_eof()
+      :async:
 
    Wait for EOF. The given data may be accessible by upcoming read calls.

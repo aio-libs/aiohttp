@@ -1,6 +1,6 @@
 import dataclasses
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Awaitable, Optional, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Awaitable, Generic, Protocol, TypeVar, overload
 
 from aiosignal import Signal
 from multidict import CIMultiDict
@@ -8,9 +8,7 @@ from yarl import URL
 
 from .client_reqrep import ClientResponse
 
-if TYPE_CHECKING:  # pragma: no cover
-    from typing_extensions import Protocol
-
+if TYPE_CHECKING:
     from .client import ClientSession
 
     _ParamT_contra = TypeVar("_ParamT_contra", contravariant=True)
@@ -21,8 +19,7 @@ if TYPE_CHECKING:  # pragma: no cover
             __client_session: ClientSession,
             __trace_config_ctx: SimpleNamespace,
             __params: _ParamT_contra,
-        ) -> Awaitable[None]:
-            ...
+        ) -> Awaitable[None]: ...
 
 
 __all__ = (
@@ -45,16 +42,26 @@ __all__ = (
     "TraceRequestHeadersSentParams",
 )
 
+_T = TypeVar("_T", covariant=True)
 
-class TraceConfig:
+
+class _Factory(Protocol[_T]):
+    def __call__(self, **kwargs: Any) -> _T: ...
+
+
+class TraceConfig(Generic[_T]):
     """First-class used to trace requests launched via ClientSession objects."""
 
+    @overload
+    def __init__(self: "TraceConfig[SimpleNamespace]") -> None: ...
+    @overload
+    def __init__(self, trace_config_ctx_factory: _Factory[_T]) -> None: ...
     def __init__(
-        self, trace_config_ctx_factory: Type[SimpleNamespace] = SimpleNamespace
+        self, trace_config_ctx_factory: _Factory[Any] = SimpleNamespace
     ) -> None:
-        self._on_request_start: Signal[
-            _SignalCallback[TraceRequestStartParams]
-        ] = Signal(self)
+        self._on_request_start: Signal[_SignalCallback[TraceRequestStartParams]] = (
+            Signal(self)
+        )
         self._on_request_chunk_sent: Signal[
             _SignalCallback[TraceRequestChunkSentParams]
         ] = Signal(self)
@@ -91,21 +98,19 @@ class TraceConfig:
         self._on_dns_resolvehost_end: Signal[
             _SignalCallback[TraceDnsResolveHostEndParams]
         ] = Signal(self)
-        self._on_dns_cache_hit: Signal[
-            _SignalCallback[TraceDnsCacheHitParams]
-        ] = Signal(self)
-        self._on_dns_cache_miss: Signal[
-            _SignalCallback[TraceDnsCacheMissParams]
-        ] = Signal(self)
+        self._on_dns_cache_hit: Signal[_SignalCallback[TraceDnsCacheHitParams]] = (
+            Signal(self)
+        )
+        self._on_dns_cache_miss: Signal[_SignalCallback[TraceDnsCacheMissParams]] = (
+            Signal(self)
+        )
         self._on_request_headers_sent: Signal[
             _SignalCallback[TraceRequestHeadersSentParams]
         ] = Signal(self)
 
-        self._trace_config_ctx_factory = trace_config_ctx_factory
+        self._trace_config_ctx_factory: _Factory[_T] = trace_config_ctx_factory
 
-    def trace_config_ctx(
-        self, trace_request_ctx: Optional[SimpleNamespace] = None
-    ) -> SimpleNamespace:
+    def trace_config_ctx(self, trace_request_ctx: Any = None) -> _T:
         """Return a new trace_config_ctx instance"""
         return self._trace_config_ctx_factory(trace_request_ctx=trace_request_ctx)
 
@@ -345,8 +350,8 @@ class Trace:
     def __init__(
         self,
         session: "ClientSession",
-        trace_config: TraceConfig,
-        trace_config_ctx: SimpleNamespace,
+        trace_config: TraceConfig[object],
+        trace_config_ctx: Any,
     ) -> None:
         self._trace_config = trace_config
         self._trace_config_ctx = trace_config_ctx
