@@ -172,7 +172,7 @@ class NamedPipeSite(BaseSite):
             loop, asyncio.ProactorEventLoop  # type: ignore[attr-defined]
         ):
             raise RuntimeError(
-                "Named Pipes only available in proactor" "loop under windows"
+                "Named Pipes only available in proactor loop under windows"
             )
         super().__init__(runner)
         self._path = path

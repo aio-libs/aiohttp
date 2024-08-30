@@ -635,7 +635,7 @@ async def test_multipart_formdata(protocol: Any) -> None:
         b"-----------------------------326931944431359--\r\n"
     )
     content_type = (
-        "multipart/form-data; boundary=" "---------------------------326931944431359"
+        "multipart/form-data; boundary=---------------------------326931944431359"
     )
     payload.feed_eof()
     req = make_mocked_request(
@@ -656,7 +656,7 @@ async def test_multipart_formdata_file(protocol: Any) -> None:
         b"-----------------------------326931944431359--\r\n"
     )
     content_type = (
-        "multipart/form-data; boundary=" "---------------------------326931944431359"
+        "multipart/form-data; boundary=---------------------------326931944431359"
     )
     payload.feed_eof()
     req = make_mocked_request(
@@ -810,7 +810,7 @@ async def test_json_invalid_content_type(aiohttp_client: Any) -> None:
         assert 400 == resp.status
         resp_text = await resp.text()
         assert resp_text == (
-            "Attempt to decode JSON with " "unexpected mimetype: text/plain"
+            "Attempt to decode JSON with unexpected mimetype: text/plain"
         )
 
 
