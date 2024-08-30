@@ -987,7 +987,9 @@ def test_run_app_raises_exception(patched_loop: asyncio.AbstractEventLoop) -> No
     app = web.Application()
     app.cleanup_ctx.append(context)
 
-    with mock.patch.object(patched_loop, "call_exception_handler", autospec=True, spec_set=True) as m:
+    with mock.patch.object(
+        patched_loop, "call_exception_handler", autospec=True, spec_set=True
+    ) as m:
         with pytest.raises(RuntimeError, match="foo"):
             web.run_app(app, loop=patched_loop)
 
