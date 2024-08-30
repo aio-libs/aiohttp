@@ -103,6 +103,7 @@ from .tracing import (
     TraceRequestEndParams,
     TraceRequestExceptionParams,
     TraceRequestRedirectParams,
+    TraceRequestHeadersSentParams,
     TraceRequestStartParams,
     TraceResponseChunkReceivedParams,
 )
