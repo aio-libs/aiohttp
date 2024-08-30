@@ -102,8 +102,8 @@ from .tracing import (
     TraceRequestChunkSentParams,
     TraceRequestEndParams,
     TraceRequestExceptionParams,
-    TraceRequestRedirectParams,
     TraceRequestHeadersSentParams,
+    TraceRequestRedirectParams,
     TraceRequestStartParams,
     TraceResponseChunkReceivedParams,
 )
