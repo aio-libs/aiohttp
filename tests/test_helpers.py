@@ -982,7 +982,6 @@ def test_cookies_mixin_path() -> None:
         max_age="10",
         secure=True,
         httponly=True,
-        version="2.0",
         samesite="lax",
     )
     assert (
@@ -993,8 +992,7 @@ def test_cookies_mixin_path() -> None:
         "max-age=10; "
         "path=/home; "
         "samesite=lax; "
-        "secure; "
-        "version=2.0"
+        "secure"
     )
 
 
