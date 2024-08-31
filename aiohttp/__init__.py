@@ -217,7 +217,8 @@ __all__: Tuple[str, ...] = (
     "TraceRequestChunkSentParams",
     "TraceRequestEndParams",
     "TraceRequestExceptionParams",
-    "TraceRequestHeadersSentParams" "TraceRequestRedirectParams",
+    "TraceRequestHeadersSentParams".
+    "TraceRequestRedirectParams",
     "TraceRequestStartParams",
     "TraceResponseChunkReceivedParams",
     # workers (imported lazily with __getattr__)
