@@ -4,6 +4,8 @@ import asyncio
 import sys
 from typing import Any, Optional, cast
 
+import attr
+
 from .client_exceptions import ClientError, ServerTimeoutError
 from .client_reqrep import ClientResponse
 from .helpers import calculate_timeout_when, set_result
