@@ -224,7 +224,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         will reuse the one from the current request object.
         """
         if self._read_bytes:
-            raise RuntimeError("Cannot clone request " "after reading its content")
+            raise RuntimeError("Cannot clone request after reading its content")
 
         dct: Dict[str, Any] = {}
         if method is not sentinel:
@@ -768,7 +768,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
                             )
                 else:
                     raise ValueError(
-                        "To decode nested multipart you need " "to use custom reader",
+                        "To decode nested multipart you need to use custom reader",
                     )
 
                 field = await multipart.next()

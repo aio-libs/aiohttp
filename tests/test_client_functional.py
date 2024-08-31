@@ -9,7 +9,9 @@ import pathlib
 import socket
 import ssl
 import sys
+import tarfile
 import time
+import zipfile
 from typing import (
     Any,
     AsyncIterator,
@@ -539,6 +541,61 @@ async def test_post_data_textio_encoding(aiohttp_client: AiohttpClient) -> None:
 
     pl = aiohttp.TextIOPayload(io.StringIO(data), encoding="koi8-r")
     async with client.post("/", data=pl) as resp:
+        assert 200 == resp.status
+
+
+async def test_post_data_zipfile_filelike(aiohttp_client: AiohttpClient) -> None:
+    data = b"This is a zip file payload text file."
+
+    async def handler(request: web.Request) -> web.Response:
+        val = await request.read()
+        assert data == val, "Transmitted zipfile member failed to match original data."
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("POST", "/", handler)
+    client = await aiohttp_client(app)
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(file=buf, mode="w") as zf:
+        with zf.open("payload1.txt", mode="w") as zip_filelike_writing:
+            zip_filelike_writing.write(data)
+
+    buf.seek(0)
+    zf = zipfile.ZipFile(file=buf, mode="r")
+    resp = await client.post("/", data=zf.open("payload1.txt"))
+    assert 200 == resp.status
+
+
+async def test_post_data_tarfile_filelike(aiohttp_client: AiohttpClient) -> None:
+    data = b"This is a tar file payload text file."
+
+    async def handler(request: web.Request) -> web.Response:
+        val = await request.read()
+        assert data == val, "Transmitted tarfile member failed to match original data."
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("POST", "/", handler)
+    client = await aiohttp_client(app)
+
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w") as tf:
+        ti = tarfile.TarInfo(name="payload1.txt")
+        ti.size = len(data)
+        tf.addfile(tarinfo=ti, fileobj=io.BytesIO(data))
+
+    # Random-access tarfile.
+    buf.seek(0)
+    tf = tarfile.open(fileobj=buf, mode="r:")
+    resp = await client.post("/", data=tf.extractfile("payload1.txt"))
+    assert 200 == resp.status
+
+    # Streaming tarfile.
+    buf.seek(0)
+    tf = tarfile.open(fileobj=buf, mode="r|")
+    for entry in tf:
+        resp = await client.post("/", data=tf.extractfile(entry))
         assert 200 == resp.status
 
 
@@ -2342,7 +2399,7 @@ async def test_set_cookies_expired(aiohttp_client: AiohttpClient) -> None:
         ret.set_cookie("c2", "cookie2")
         ret.headers.add(
             "Set-Cookie",
-            "c3=cookie3; " "HttpOnly; Path=/" " Expires=Tue, 1 Jan 1980 12:00:00 GMT; ",
+            "c3=cookie3; HttpOnly; Path=/ Expires=Tue, 1 Jan 1980 12:00:00 GMT; ",
         )
         return ret
 
@@ -2361,7 +2418,7 @@ async def test_set_cookies_max_age(aiohttp_client: AiohttpClient) -> None:
         ret = web.Response()
         ret.set_cookie("c1", "cookie1")
         ret.set_cookie("c2", "cookie2")
-        ret.headers.add("Set-Cookie", "c3=cookie3; " "HttpOnly; Path=/" " Max-Age=1; ")
+        ret.headers.add("Set-Cookie", "c3=cookie3; HttpOnly; Path=/ Max-Age=1; ")
         return ret
 
     app = web.Application()
@@ -2382,7 +2439,7 @@ async def test_set_cookies_max_age_overflow(aiohttp_client: AiohttpClient) -> No
         ret = web.Response()
         ret.headers.add(
             "Set-Cookie",
-            "overflow=overflow; " "HttpOnly; Path=/" " Max-Age=" + str(overflow) + "; ",
+            "overflow=overflow; HttpOnly; Path=/ Max-Age=" + str(overflow) + "; ",
         )
         return ret
 
@@ -3276,9 +3333,7 @@ async def test_handle_keepalive_on_closed_connection() -> None:
             self.data += data
             assert data.endswith(b"\r\n\r\n")
             assert self.transp is not None
-            self.transp.write(
-                b"HTTP/1.1 200 OK\r\n" b"CONTENT-LENGTH: 2\r\n" b"\r\n" b"ok"
-            )
+            self.transp.write(b"HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 2\r\n\r\nok")
             self.transp.close()
 
         def connection_lost(self, exc: Optional[BaseException]) -> None:
@@ -3777,3 +3832,20 @@ async def test_header_too_large_error(aiohttp_client: AiohttpClient) -> None:
     ) as exc_info:
         await client.get("/")
     assert exc_info.value.status == 400
+
+
+async def test_exception_when_read_outside_of_session(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=b"1" * 1000000)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    server = await aiohttp_server(app)
+    async with aiohttp.ClientSession() as sess:
+        resp = await sess.get(server.make_url("/"))
+
+    with pytest.raises(RuntimeError, match="Connection closed"):
+        await resp.read()

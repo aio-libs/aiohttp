@@ -32,7 +32,7 @@ brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
 build==1.2.1
     # via pip-tools
-certifi==2024.7.4
+certifi==2024.8.30
     # via requests
 cffi==1.17.0
     # via
@@ -62,7 +62,7 @@ cryptography==43.0.0
     #   trustme
 cython==3.0.11
     # via -r requirements/cython.in
-distlib==0.3.7
+distlib==0.3.8
     # via virtualenv
 docutils==0.20.1
     # via sphinx
@@ -118,7 +118,7 @@ multidict==6.0.5
     #   -r requirements/multidict.in
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.11.1 ; implementation_name == "cpython"
+mypy==1.11.2 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -201,7 +201,7 @@ requests==2.32.3
     #   cherry-picker
     #   python-on-whales
     #   sphinx
-rich==13.7.1
+rich==13.8.0
     # via typer
 setuptools-git==1.2
     # via -r requirements/test.in
@@ -284,11 +284,11 @@ wait-for-it==2.2.2
     # via -r requirements/test.in
 webcolors==24.8.0
     # via blockdiag
-wheel==0.41.0
+wheel==0.44.0
     # via pip-tools
-yarl==1.9.4
+yarl==1.9.5
     # via -r requirements/runtime-deps.in
-zipp==3.20.0
+zipp==3.20.1
     # via
     #   importlib-metadata
     #   importlib-resources
@@ -296,7 +296,7 @@ zipp==3.20.0
 # The following packages are considered to be unsafe in a requirements file:
 pip==24.2
     # via pip-tools
-setuptools==73.0.1
+setuptools==74.0.0
     # via
     #   blockdiag
     #   incremental

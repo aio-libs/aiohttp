@@ -257,7 +257,7 @@ def ws_ext_gen(
     # compress wbit 8 does not support in zlib
     if compress < 9 or compress > 15:
         raise ValueError(
-            "Compress wbits must between 9 and 15, " "zlib does not support wbits=8"
+            "Compress wbits must between 9 and 15, zlib does not support wbits=8"
         )
     enabledext = ["permessage-deflate"]
     if not isserver:
@@ -496,7 +496,7 @@ class WebSocketReader:
                 if opcode > 0x7 and length > 125:
                     raise WebSocketError(
                         WSCloseCode.PROTOCOL_ERROR,
-                        "Control frame payload cannot be " "larger than 125 bytes",
+                        "Control frame payload cannot be larger than 125 bytes",
                     )
 
                 # Set compress status if last package is FIN

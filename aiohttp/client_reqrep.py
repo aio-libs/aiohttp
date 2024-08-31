@@ -124,9 +124,7 @@ class Fingerprint:
         if not hashfunc:
             raise ValueError("fingerprint has invalid length")
         elif hashfunc is md5 or hashfunc is sha1:
-            raise ValueError(
-                "md5 and sha1 are insecure and " "not supported. Use sha256."
-            )
+            raise ValueError("md5 and sha1 are insecure and not supported. Use sha256.")
         self._hashfunc = hashfunc
         self._fingerprint = fingerprint
 
@@ -199,7 +197,7 @@ class ClientRequest:
         *,
         params: Optional[Mapping[str, str]] = None,
         headers: Optional[LooseHeaders] = None,
-        skip_auto_headers: Iterable[str] = frozenset(),
+        skip_auto_headers: Optional[Iterable[str]] = None,
         data: Any = None,
         cookies: Optional[LooseCookies] = None,
         auth: Optional[BasicAuth] = None,
@@ -338,8 +336,8 @@ class ClientRequest:
 
         # basic auth info
         username, password = url.user, url.password
-        if username:
-            self.auth = helpers.BasicAuth(username, password or "")
+        if username or password:
+            self.auth = helpers.BasicAuth(username or "", password or "")
 
     def update_version(self, version: Union[http.HttpVersion, str]) -> None:
         """Convert request version to two elements tuple.
@@ -381,12 +379,18 @@ class ClientRequest:
                 else:
                     self.headers.add(key, value)
 
-    def update_auto_headers(self, skip_auto_headers: Iterable[str]) -> None:
-        self.skip_auto_headers = CIMultiDict(
-            (hdr, None) for hdr in sorted(skip_auto_headers)
-        )
-        used_headers = self.headers.copy()
-        used_headers.extend(self.skip_auto_headers)  # type: ignore[arg-type]
+    def update_auto_headers(self, skip_auto_headers: Optional[Iterable[str]]) -> None:
+        if skip_auto_headers is not None:
+            self.skip_auto_headers = CIMultiDict(
+                (hdr, None) for hdr in sorted(skip_auto_headers)
+            )
+            used_headers = self.headers.copy()
+            used_headers.extend(self.skip_auto_headers)  # type: ignore[arg-type]
+        else:
+            # Fast path when there are no headers to skip
+            # which is the most common case.
+            self.skip_auto_headers = CIMultiDict()
+            used_headers = self.headers
 
         for hdr, val in self.DEFAULT_HEADERS.items():
             if hdr not in used_headers:
@@ -429,7 +433,7 @@ class ClientRequest:
         if enc:
             if self.compress:
                 raise ValueError(
-                    "compress can not be set " "if Content-Encoding header is set"
+                    "compress can not be set if Content-Encoding header is set"
                 )
         elif self.compress:
             if not isinstance(self.compress, str):
@@ -451,7 +455,7 @@ class ClientRequest:
         elif self.chunked:
             if hdrs.CONTENT_LENGTH in self.headers:
                 raise ValueError(
-                    "chunked can not be set " "if Content-Length header is set"
+                    "chunked can not be set if Content-Length header is set"
                 )
 
             self.headers[hdrs.TRANSFER_ENCODING] = "chunked"
@@ -508,9 +512,7 @@ class ClientRequest:
         # copy payload headers
         assert body.headers
         for key, value in body.headers.items():
-            if key in self.headers:
-                continue
-            if key in self.skip_auto_headers:
+            if key in self.headers or key in self.skip_auto_headers:
                 continue
             self.headers[key] = value
 

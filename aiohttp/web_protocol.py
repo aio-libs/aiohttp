@@ -283,9 +283,6 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         if self._keepalive_handle is not None:
             self._keepalive_handle.cancel()
 
-        if self._waiter:
-            self._waiter.cancel()
-
         # Wait for graceful handler completion
         if self._handler_waiter is not None:
             with suppress(asyncio.CancelledError, asyncio.TimeoutError):
@@ -304,9 +301,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         if self._task_handler is not None:
             self._task_handler.cancel()
 
-        if self.transport is not None:
-            self.transport.close()
-            self.transport = None
+        self.force_close()
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
         super().connection_made(transport)
@@ -330,13 +325,12 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             return
         self._manager.connection_lost(self, exc)
 
-        super().connection_lost(exc)
-
         # Grab value before setting _manager to None.
         handler_cancellation = self._manager.handler_cancellation
 
+        self.force_close()
+        super().connection_lost(exc)
         self._manager = None
-        self._force_close = True
         self._request_factory = None
         self._request_handler = None
         self._request_parser = None
@@ -348,9 +342,6 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             if exc is None:
                 exc = ConnectionResetError("Connection lost")
             self._current_request._cancel(exc)
-
-        if self._waiter is not None:
-            self._waiter.cancel()
 
         if handler_cancellation and self._task_handler is not None:
             self._task_handler.cancel()

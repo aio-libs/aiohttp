@@ -221,7 +221,7 @@ class TestServerDisconnectedError:
 
     def test_repr(self) -> None:
         err = client.ServerDisconnectedError()
-        assert repr(err) == ("ServerDisconnectedError" "('Server disconnected')")
+        assert repr(err) == ("ServerDisconnectedError('Server disconnected')")
 
         err = client.ServerDisconnectedError(message="No connection")
         assert repr(err) == "ServerDisconnectedError('No connection')"

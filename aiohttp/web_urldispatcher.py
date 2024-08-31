@@ -36,7 +36,7 @@ from typing import (
     cast,
 )
 
-from yarl import URL, __version__ as yarl_version  # type: ignore[attr-defined]
+from yarl import URL
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
@@ -81,8 +81,6 @@ CIRCULAR_SYMLINK_ERROR = (
     if sys.version_info < (3, 10) and sys.platform.startswith("win32")
     else (RuntimeError,) if sys.version_info < (3, 13) else ()
 )
-
-YARL_VERSION: Final[Tuple[int, ...]] = tuple(map(int, yarl_version.split(".")[:2]))
 
 HTTP_METHOD_RE: Final[Pattern[str]] = re.compile(
     r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$"
@@ -321,6 +319,8 @@ async def _default_expect_handler(request: Request) -> None:
     if request.version == HttpVersion11:
         if expect.lower() == "100-continue":
             await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+            # Reset output_size as we haven't started the main body yet.
+            request.writer.output_size = 0
         else:
             raise HTTPExpectationFailed(text="Unknown Expect: %s" % expect)
 
@@ -575,10 +575,7 @@ class StaticResource(PrefixResource):
 
         url = URL.build(path=self._prefix, encoded=True)
         # filename is not encoded
-        if YARL_VERSION < (1, 6):
-            url = url / filename.replace("%", "%25")
-        else:
-            url = url / filename
+        url = url / filename
 
         if append_version:
             unresolved_path = self._directory.joinpath(filename)
@@ -753,7 +750,7 @@ class PrefixedSubAppResource(PrefixResource):
             router.index_resource(resource)
 
     def url_for(self, *args: str, **kwargs: str) -> URL:
-        raise RuntimeError(".url_for() is not supported " "by sub-application root")
+        raise RuntimeError(".url_for() is not supported by sub-application root")
 
     def get_info(self) -> _InfoDict:
         return {"app": self._app, "prefix": self._prefix}
@@ -876,7 +873,7 @@ class MatchedSubAppResource(PrefixedSubAppResource):
         return match_info, methods
 
     def __repr__(self) -> str:
-        return "<MatchedSubAppResource -> {app!r}>" "".format(app=self._app)
+        return f"<MatchedSubAppResource -> {self._app!r}>"
 
 
 class ResourceRoute(AbstractRoute):
@@ -1261,8 +1258,6 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
 
 def _quote_path(value: str) -> str:
-    if YARL_VERSION < (1, 6):
-        value = value.replace("%", "%25")
     return URL.build(path=value, encoded=False).raw_path
 
 

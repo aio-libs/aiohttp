@@ -54,7 +54,7 @@ class CookieJar(AbstractCookieJar):
     DATE_DAY_OF_MONTH_RE = re.compile(r"(\d{1,2})")
 
     DATE_MONTH_RE = re.compile(
-        "(jan)|(feb)|(mar)|(apr)|(may)|(jun)|(jul)|" "(aug)|(sep)|(oct)|(nov)|(dec)",
+        "(jan)|(feb)|(mar)|(apr)|(may)|(jun)|(jul)|(aug)|(sep)|(oct)|(nov)|(dec)",
         re.I,
     )
 

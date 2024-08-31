@@ -162,9 +162,9 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
         """Create BasicAuth from url."""
         if not isinstance(url, URL):
             raise TypeError("url should be yarl.URL instance")
-        if url.user is None:
+        if url.user is None and url.password is None:
             return None
-        return cls(url.user, url.password or "", encoding=encoding)
+        return cls(url.user or "", url.password or "", encoding=encoding)
 
     def encode(self) -> str:
         """Encode credentials."""
@@ -396,16 +396,14 @@ def content_disposition_header(
     params is a dict with disposition params.
     """
     if not disptype or not (TOKEN > set(disptype)):
-        raise ValueError("bad content disposition type {!r}" "".format(disptype))
+        raise ValueError(f"bad content disposition type {disptype!r}")
 
     value = disptype
     if params:
         lparams = []
         for key, val in params.items():
             if not key or not (TOKEN > set(key)):
-                raise ValueError(
-                    "bad content disposition parameter" " {!r}={!r}".format(key, val)
-                )
+                raise ValueError(f"bad content disposition parameter {key!r}={val!r}")
             if quote_fields:
                 if key.lower() == "filename":
                     qval = quote(val, "", encoding=_charset)
@@ -705,9 +703,7 @@ class TimerContext(BaseTimerContext):
         task = asyncio.current_task(loop=self._loop)
 
         if task is None:
-            raise RuntimeError(
-                "Timeout context manager should be used " "inside a task"
-            )
+            raise RuntimeError("Timeout context manager should be used inside a task")
 
         if self._cancelled:
             raise asyncio.TimeoutError from None

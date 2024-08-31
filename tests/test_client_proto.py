@@ -53,7 +53,7 @@ async def test_uncompleted_message(loop: asyncio.AbstractEventLoop) -> None:
     proto.set_response_params(read_until_eof=True)
 
     proto.data_received(
-        b"HTTP/1.1 301 Moved Permanently\r\n" b"Location: http://python.org/"
+        b"HTTP/1.1 301 Moved Permanently\r\nLocation: http://python.org/"
     )
     proto.connection_lost(None)
 

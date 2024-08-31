@@ -1,3 +1,4 @@
+import io
 from unittest import mock
 
 import pytest
@@ -46,6 +47,16 @@ def test_invalid_formdata_params() -> None:
 def test_invalid_formdata_params2() -> None:
     with pytest.raises(TypeError):
         FormData("as")  # 2-char str is not allowed
+
+
+async def test_formdata_textio_charset(buf: bytearray, writer: StreamWriter) -> None:
+    form = FormData()
+    body = io.TextIOWrapper(io.BytesIO(b"\xe6\x97\xa5\xe6\x9c\xac"), encoding="utf-8")
+    form.add_field("foo", body, content_type="text/plain; charset=shift-jis")
+    payload = form()
+    await payload.write(writer)
+    assert b"charset=shift-jis" in buf
+    assert b"\x93\xfa\x96{" in buf
 
 
 def test_invalid_formdata_content_type() -> None:

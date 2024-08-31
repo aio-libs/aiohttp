@@ -220,7 +220,7 @@ class BaseConnector:
         if force_close:
             if keepalive_timeout is not None and keepalive_timeout is not sentinel:
                 raise ValueError(
-                    "keepalive_timeout cannot " "be set if force_close is True"
+                    "keepalive_timeout cannot be set if force_close is True"
                 )
         else:
             if keepalive_timeout is sentinel:
@@ -828,7 +828,7 @@ class TCPConnector(BaseConnector):
         if host is not None and port is not None:
             self._cached_hosts.remove((host, port))
         elif host is not None or port is not None:
-            raise ValueError("either both host and port " "or none of them are allowed")
+            raise ValueError("either both host and port or none of them are allowed")
         else:
             self._cached_hosts.clear()
 
@@ -1284,11 +1284,6 @@ class TCPConnector(BaseConnector):
             proxy_req, [], timeout, client_error=ClientProxyConnectionError
         )
 
-        # Many HTTP proxies has buggy keepalive support.  Let's not
-        # reuse connection but close it after processing every
-        # response.
-        proto.force_close()
-
         auth = proxy_req.headers.pop(hdrs.AUTHORIZATION, None)
         if auth is not None:
             if not req.is_ssl():
@@ -1454,7 +1449,7 @@ class NamedPipeConnector(BaseConnector):
             self._loop, asyncio.ProactorEventLoop  # type: ignore[attr-defined]
         ):
             raise RuntimeError(
-                "Named Pipes only available in proactor " "loop under windows"
+                "Named Pipes only available in proactor loop under windows"
             )
         self._path = path
 

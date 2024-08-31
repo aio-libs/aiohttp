@@ -269,7 +269,7 @@ class TestClient(Generic[_Request]):
     ) -> None:
         if not isinstance(server, BaseTestServer):
             raise TypeError(
-                "server must be TestServer " "instance, found type: %r" % type(server)
+                "server must be TestServer instance, found type: %r" % type(server)
             )
         self._server = server
         if cookie_jar is None:

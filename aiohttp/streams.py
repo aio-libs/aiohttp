@@ -263,7 +263,7 @@ class StreamReader(AsyncStreamReaderMixin):
         if self._http_chunk_splits is None:
             if self.total_bytes:
                 raise RuntimeError(
-                    "Called begin_http_chunk_receiving when" "some data was already fed"
+                    "Called begin_http_chunk_receiving when some data was already fed"
                 )
             self._http_chunk_splits = []
 
@@ -298,6 +298,9 @@ class StreamReader(AsyncStreamReaderMixin):
             set_result(waiter, None)
 
     async def _wait(self, func_name: str) -> None:
+        if not self._protocol.connected:
+            raise RuntimeError("Connection closed.")
+
         # StreamReader uses a future to link the protocol feed_data() method
         # to a read coroutine. Running two read coroutines at the same time
         # would have an unexpected behaviour. It would not possible to know
