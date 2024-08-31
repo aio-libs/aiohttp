@@ -408,12 +408,12 @@ async def test_close_timeout_sock_close_read(aiohttp_client) -> None:
     app.router.add_route("GET", "/", handler)
     client = await aiohttp_client(app)
     timeout = ClientWSTimeout(ws_close=0.2)
-    resp = await client.ws_connect('/', timeout=timeout, autoclose=False)
+    resp = await client.ws_connect("/", timeout=timeout, autoclose=False)
 
-    await resp.send_bytes(b'ask')
+    await resp.send_bytes(b"ask")
 
     msg = await resp.receive()
-    assert msg.data == 'test'
+    assert msg.data == "test"
     assert msg.type == aiohttp.WSMsgType.TEXT
 
     msg = await resp.close()
@@ -426,19 +426,20 @@ async def test_close_timeout_deprecated(aiohttp_client) -> None:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         await ws.receive_bytes()
-        await ws.send_str('test')
+        await ws.send_str("test")
         await asyncio.sleep(1)
         return ws
 
     app = web.Application()
-    app.router.add_route('GET', '/', handler)
+    app.router.add_route("GET", "/", handler)
     client = await aiohttp_client(app)
-    with pytest.warns(DeprecationWarning,
-                      match="parameter 'timeout' of type 'float' "
-                            "is deprecated, please use "
-                            r"'timeout=ClientWSTimeout\(ws_close=...\)'"
-                      ):
-        resp = await client.ws_connect('/', timeout=0.2, autoclose=False)
+    with pytest.warns(
+        DeprecationWarning,
+        match="parameter 'timeout' of type 'float' "
+        "is deprecated, please use "
+        r"'timeout=ClientWSTimeout\(ws_close=...\)'",
+    ):
+        resp = await client.ws_connect("/", timeout=0.2, autoclose=False)
 
     await resp.send_bytes(b"ask")
 
@@ -580,7 +581,7 @@ async def test_receive_timeout_sock_read(aiohttp_client) -> None:
 
     client = await aiohttp_client(app)
     receive_timeout = ClientWSTimeout(ws_receive=0.1)
-    resp = await client.ws_connect('/', timeout=receive_timeout)
+    resp = await client.ws_connect("/", timeout=receive_timeout)
 
     with pytest.raises(asyncio.TimeoutError):
         await resp.receive(timeout=0.05)
@@ -598,16 +599,16 @@ async def test_receive_timeout_deprecation(aiohttp_client) -> None:
         return ws
 
     app = web.Application()
-    app.router.add_route('GET', '/', handler)
+    app.router.add_route("GET", "/", handler)
 
     client = await aiohttp_client(app)
     with pytest.warns(
         DeprecationWarning,
         match="float parameter 'receive_timeout' "
-              "is deprecated, please use parameter "
-              r"'timeout=ClientWSTimeout\(ws_receive=...\)'"
+        "is deprecated, please use parameter "
+        r"'timeout=ClientWSTimeout\(ws_receive=...\)'",
     ):
-        resp = await client.ws_connect('/', receive_timeout=0.1)
+        resp = await client.ws_connect("/", receive_timeout=0.1)
 
     with pytest.raises(asyncio.TimeoutError):
         await resp.receive(timeout=0.05)
