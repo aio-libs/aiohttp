@@ -91,7 +91,7 @@ async def test_ws_connect_read_timeout_stays_inf(
         res = await aiohttp.ClientSession().ws_connect(
             "http://test.org",
             protocols=("t1", "t2", "chat"),
-            receive_timeout=aiohttp.ClintWSTimeout(ws_receive=0.5),
+            timeout=aiohttp.ClientWSTimeout(ws_receive=0.5),
         )
 
     assert isinstance(res, client.ClientWebSocketResponse)
@@ -122,7 +122,7 @@ async def test_ws_connect_read_timeout_reset_to_max(
         res = await aiohttp.ClientSession().ws_connect(
             "http://test.org",
             protocols=("t1", "t2", "chat"),
-            receive_timeout=aiohttp.ClientWSTimeout(ws_receive=1.0),
+            timeout=aiohttp.ClientWSTimeout(ws_receive=1.0),
         )
 
     assert isinstance(res, client.ClientWebSocketResponse)
