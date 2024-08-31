@@ -91,7 +91,7 @@ async def test_ws_connect_read_timeout_stays_inf(
         res = await aiohttp.ClientSession().ws_connect(
             "http://test.org",
             protocols=("t1", "t2", "chat"),
-            receive_timeout=0.5,
+            receive_timeout=aiohttp.ClintWSTimeout(ws_receive=0.5),
         )
 
     assert isinstance(res, client.ClientWebSocketResponse)
@@ -122,7 +122,7 @@ async def test_ws_connect_read_timeout_reset_to_max(
         res = await aiohttp.ClientSession().ws_connect(
             "http://test.org",
             protocols=("t1", "t2", "chat"),
-            receive_timeout=1.0,
+            receive_timeout=aiohttp.ClientWSTimeout(ws_receive=1.0),
         )
 
     assert isinstance(res, client.ClientWebSocketResponse)
@@ -600,8 +600,9 @@ async def test_reader_read_exception(ws_key, key_data, loop) -> None:
 
 
 async def test_receive_runtime_err(loop) -> None:
+    timeout = aiohttp.ClientWSTimeout(ws_receive=10.0)
     resp = client.ClientWebSocketResponse(
-        mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock(), 10.0, True, True, loop
+        mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock(), timeout, True, True, loop
     )
     resp._waiting = True
 
