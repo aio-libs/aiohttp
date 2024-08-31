@@ -572,7 +572,7 @@ def test_static_remove_trailing_slash(router: web.UrlDispatcher) -> None:
     ),
 )
 async def test_add_route_with_re(
-    router: web.UrlDispatcher, pattern: str, url: str, expected: Dict[str ,str]
+    router: web.UrlDispatcher, pattern: str, url: str, expected: Dict[str, str]
 ) -> None:
     handler = make_handler()
     router.add_route("GET", f"/handler/{pattern}", handler)
