@@ -979,7 +979,6 @@ class CookieMixin:
         path: str = "/",
         secure: Optional[bool] = None,
         httponly: Optional[bool] = None,
-        version: Optional[str] = None,
         samesite: Optional[str] = None,
     ) -> None:
         """Set or update response cookie.
@@ -1014,8 +1013,6 @@ class CookieMixin:
             c["secure"] = secure
         if httponly is not None:
             c["httponly"] = httponly
-        if version is not None:
-            c["version"] = version
         if samesite is not None:
             c["samesite"] = samesite
 
