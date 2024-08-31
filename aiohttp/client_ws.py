@@ -29,6 +29,7 @@ if sys.version_info >= (3, 11):
 else:
     import async_timeout
 
+
 @attr.s(frozen=True, slots=True)
 class ClientWSTimeout:
     ws_receive = attr.ib(type=Optional[float], default=None)

@@ -824,7 +824,7 @@ class ClientSession:
         *,
         method: str = hdrs.METH_GET,
         protocols: Iterable[str] = (),
-        timeout: Union[ClientWSTimeout, float]=sentinel,
+        timeout: Union[ClientWSTimeout, float] = sentinel,
         receive_timeout: Optional[float] = None,
         autoclose: bool = True,
         autoping: bool = True,
@@ -876,7 +876,7 @@ class ClientSession:
         *,
         method: str = hdrs.METH_GET,
         protocols: Iterable[str] = (),
-        timeout: Union[ClientWSTimeout, float]=sentinel,
+        timeout: Union[ClientWSTimeout, float] = sentinel,
         receive_timeout: Optional[float] = None,
         autoclose: bool = True,
         autoping: bool = True,
@@ -899,20 +899,24 @@ class ClientSession:
             if isinstance(timeout, ClientWSTimeout):
                 ws_timeout = timeout
             else:
-                warnings.warn("parameter 'timeout' of type 'float' "
-                              "is deprecated, please use "
-                              "'timeout=ClientWSTimeout(ws_close=...)'",
-                              DeprecationWarning,
-                              stacklevel=2)
+                warnings.warn(
+                    "parameter 'timeout' of type 'float' "
+                    "is deprecated, please use "
+                    "'timeout=ClientWSTimeout(ws_close=...)'",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
                 ws_timeout = ClientWSTimeout(ws_close=timeout)
         else:
             ws_timeout = DEFAULT_WS_CLIENT_TIMEOUT
         if receive_timeout is not None:
-            warnings.warn("float parameter 'receive_timeout' "
-                          "is deprecated, please use parameter "
-                          "'timeout=ClientWSTimeout(ws_receive=...)'",
-                          DeprecationWarning,
-                          stacklevel=2)
+            warnings.warn(
+                "float parameter 'receive_timeout' "
+                "is deprecated, please use parameter "
+                "'timeout=ClientWSTimeout(ws_receive=...)'",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             ws_timeout = attr.evolve(ws_timeout, ws_receive=receive_timeout)
 
         if headers is None:
