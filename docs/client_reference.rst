@@ -689,7 +689,7 @@ The client session supports the context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-   .. comethod:: ws_connect(url, *, method='GET', \
+   .. method:: ws_connect(url, *, method='GET', \
                             protocols=(), \
                             timeout=sentinel,\
                             auth=None,\
