@@ -3,7 +3,7 @@ import pathlib
 import re
 from collections.abc import Container, Iterable, Mapping, MutableMapping, Sized
 from functools import partial
-from typing import Awaitable, Callable, List, NoReturn, Optional, Type
+from typing import Awaitable, Callable, Dict, List, NoReturn, Optional, Type
 from urllib.parse import unquote
 
 import pytest
@@ -572,7 +572,7 @@ def test_static_remove_trailing_slash(router: web.UrlDispatcher) -> None:
     ),
 )
 async def test_add_route_with_re(
-    router: web.UrlDispatcher, pattern: str, url: str, expected
+    router: web.UrlDispatcher, pattern: str, url: str, expected: Dict[str ,str]
 ) -> None:
     handler = make_handler()
     router.add_route("GET", f"/handler/{pattern}", handler)
