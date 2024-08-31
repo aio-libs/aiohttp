@@ -1029,7 +1029,14 @@ class CookieMixin:
                 )
 
     def del_cookie(
-        self, name: str, *, domain: Optional[str] = None, path: str = "/"
+        self,
+        name: str,
+        *,
+        domain: Optional[str] = None,
+        path: str = "/",
+        secure: Optional[bool] = None,
+        httponly: Optional[bool] = None,
+        samesite: Optional[str] = None,
     ) -> None:
         """Delete cookie.
 
@@ -1044,6 +1051,9 @@ class CookieMixin:
             expires="Thu, 01 Jan 1970 00:00:00 GMT",
             domain=domain,
             path=path,
+            secure=secure,
+            httponly=httponly,
+            samesite=samesite,
         )
 
 
