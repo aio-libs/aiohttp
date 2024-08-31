@@ -750,7 +750,7 @@ class PrefixedSubAppResource(PrefixResource):
             router.index_resource(resource)
 
     def url_for(self, *args: str, **kwargs: str) -> URL:
-        raise RuntimeError(".url_for() is not supported " "by sub-application root")
+        raise RuntimeError(".url_for() is not supported by sub-application root")
 
     def get_info(self) -> _InfoDict:
         return {"app": self._app, "prefix": self._prefix}
@@ -873,7 +873,7 @@ class MatchedSubAppResource(PrefixedSubAppResource):
         return match_info, methods
 
     def __repr__(self) -> str:
-        return "<MatchedSubAppResource -> {app!r}>" "".format(app=self._app)
+        return f"<MatchedSubAppResource -> {self._app!r}>"
 
 
 class ResourceRoute(AbstractRoute):
