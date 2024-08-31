@@ -371,7 +371,7 @@ class TestPartReader:
             CIMultiDict({CONTENT_TRANSFER_ENCODING: "quoted-printable"})
         )
         with Stream(
-            b"=D0=9F=D1=80=D0=B8=D0=B2=D0=B5=D1=82," b" =D0=BC=D0=B8=D1=80!\r\n--:--"
+            b"=D0=9F=D1=80=D0=B8=D0=B2=D0=B5=D1=82, =D0=BC=D0=B8=D1=80!\r\n--:--"
         ) as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = await obj.read(decode=True)
@@ -804,9 +804,7 @@ class TestMultipartReader:
             assert res is None
 
     async def test_second_next_releases_previous_object(self) -> None:
-        with Stream(
-            b"--:\r\n" b"\r\n" b"test\r\n" b"--:\r\n" b"\r\n" b"passed\r\n" b"--:--"
-        ) as stream:
+        with Stream(b"--:\r\n\r\ntest\r\n--:\r\n\r\npassed\r\n--:--") as stream:
             reader = aiohttp.MultipartReader(
                 {CONTENT_TYPE: 'multipart/related;boundary=":"'},
                 stream,
@@ -819,9 +817,7 @@ class TestMultipartReader:
             assert not second.at_eof()
 
     async def test_release_without_read_the_last_object(self) -> None:
-        with Stream(
-            b"--:\r\n" b"\r\n" b"test\r\n" b"--:\r\n" b"\r\n" b"passed\r\n" b"--:--"
-        ) as stream:
+        with Stream(b"--:\r\n\r\ntest\r\n--:\r\n\r\npassed\r\n--:--") as stream:
             reader = aiohttp.MultipartReader(
                 {CONTENT_TYPE: 'multipart/related;boundary=":"'},
                 stream,

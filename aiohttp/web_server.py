@@ -69,7 +69,7 @@ class Server(Generic[_Request]):
     ) -> None:
         if debug is not None:
             warnings.warn(
-                "debug argument is no-op since 4.0 " "and scheduled for removal in 5.0",
+                "debug argument is no-op since 4.0 and scheduled for removal in 5.0",
                 DeprecationWarning,
                 stacklevel=2,
             )

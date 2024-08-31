@@ -344,7 +344,8 @@ def test_ipv6_addresses() -> None:
 
 def test_host_addresses() -> None:
     hosts = [
-        "www.four.part.host" "www.python.org",
+        "www.four.part.host",
+        "www.python.org",
         "foo.bar",
         "localhost",
     ]

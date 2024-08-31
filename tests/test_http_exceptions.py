@@ -89,7 +89,7 @@ class TestLineTooLong:
             pickled = pickle.dumps(err, proto)
             err2 = pickle.loads(pickled)
             assert err2.code == 400
-            assert err2.message == ("Got more than 10 bytes (12) " "when reading spam.")
+            assert err2.message == ("Got more than 10 bytes (12) when reading spam.")
             assert err2.headers is None
             assert err2.foo == "bar"
 

@@ -384,7 +384,7 @@ def test_add_static_append_version(router: web.UrlDispatcher) -> None:
     resource = router.add_static("/st", pathlib.Path(__file__).parent, name="static")
     url = resource.url_for(filename="/data.unknown_mime_type", append_version=True)
     expect_url = (
-        "/st/data.unknown_mime_type?" "v=aUsn8CHEhhszc81d28QmlcBW0KQpfS2F4trgQKhOYd8%3D"
+        "/st/data.unknown_mime_type?v=aUsn8CHEhhszc81d28QmlcBW0KQpfS2F4trgQKhOYd8%3D"
     )
     assert expect_url == str(url)
 
@@ -397,7 +397,7 @@ def test_add_static_append_version_set_from_constructor(
     )
     url = resource.url_for(filename="/data.unknown_mime_type")
     expect_url = (
-        "/st/data.unknown_mime_type?" "v=aUsn8CHEhhszc81d28QmlcBW0KQpfS2F4trgQKhOYd8%3D"
+        "/st/data.unknown_mime_type?v=aUsn8CHEhhszc81d28QmlcBW0KQpfS2F4trgQKhOYd8%3D"
     )
     assert expect_url == str(url)
 
@@ -419,7 +419,7 @@ def test_add_static_append_version_filename_without_slash(
     resource = router.add_static("/st", pathlib.Path(__file__).parent, name="static")
     url = resource.url_for(filename="data.unknown_mime_type", append_version=True)
     expect_url = (
-        "/st/data.unknown_mime_type?" "v=aUsn8CHEhhszc81d28QmlcBW0KQpfS2F4trgQKhOYd8%3D"
+        "/st/data.unknown_mime_type?v=aUsn8CHEhhszc81d28QmlcBW0KQpfS2F4trgQKhOYd8%3D"
     )
     assert expect_url == str(url)
 

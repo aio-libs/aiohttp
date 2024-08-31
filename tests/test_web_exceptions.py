@@ -322,7 +322,7 @@ class TestHTTPRequestEntityTooLarge:
             reason="Too large",
         )
         assert resp.text == (
-            "Maximum request body size 100 exceeded, " "actual body size 123"
+            "Maximum request body size 100 exceeded, actual body size 123"
         )
         compare: Mapping[str, str] = {"X-Custom": "value", "Content-Type": "text/plain"}
         assert resp.headers == compare

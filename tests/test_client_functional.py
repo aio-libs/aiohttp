@@ -2399,7 +2399,7 @@ async def test_set_cookies_expired(aiohttp_client: AiohttpClient) -> None:
         ret.set_cookie("c2", "cookie2")
         ret.headers.add(
             "Set-Cookie",
-            "c3=cookie3; " "HttpOnly; Path=/" " Expires=Tue, 1 Jan 1980 12:00:00 GMT; ",
+            "c3=cookie3; HttpOnly; Path=/ Expires=Tue, 1 Jan 1980 12:00:00 GMT; ",
         )
         return ret
 
@@ -2418,7 +2418,7 @@ async def test_set_cookies_max_age(aiohttp_client: AiohttpClient) -> None:
         ret = web.Response()
         ret.set_cookie("c1", "cookie1")
         ret.set_cookie("c2", "cookie2")
-        ret.headers.add("Set-Cookie", "c3=cookie3; " "HttpOnly; Path=/" " Max-Age=1; ")
+        ret.headers.add("Set-Cookie", "c3=cookie3; HttpOnly; Path=/ Max-Age=1; ")
         return ret
 
     app = web.Application()
@@ -2439,7 +2439,7 @@ async def test_set_cookies_max_age_overflow(aiohttp_client: AiohttpClient) -> No
         ret = web.Response()
         ret.headers.add(
             "Set-Cookie",
-            "overflow=overflow; " "HttpOnly; Path=/" " Max-Age=" + str(overflow) + "; ",
+            "overflow=overflow; HttpOnly; Path=/ Max-Age=" + str(overflow) + "; ",
         )
         return ret
 
@@ -3333,9 +3333,7 @@ async def test_handle_keepalive_on_closed_connection() -> None:
             self.data += data
             assert data.endswith(b"\r\n\r\n")
             assert self.transp is not None
-            self.transp.write(
-                b"HTTP/1.1 200 OK\r\n" b"CONTENT-LENGTH: 2\r\n" b"\r\n" b"ok"
-            )
+            self.transp.write(b"HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 2\r\n\r\nok")
             self.transp.close()
 
         def connection_lost(self, exc: Optional[BaseException]) -> None:

@@ -107,6 +107,7 @@ repos:
   - id: flake8
     additional_dependencies:
       - flake8-docstrings==1.6.0
+      - flake8-no-implicit-concat==0.3.4
       - flake8-requirements==1.7.8
     exclude: "^docs/"
 - repo: https://github.com/Lucas-C/pre-commit-hooks-markup

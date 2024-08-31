@@ -92,7 +92,7 @@ def test_path_when_unsupported(mocker: Any, monkeypatch: Any) -> None:
         web.main(argv)
 
     error.assert_called_with(
-        "file system paths not supported by your" " operating environment"
+        "file system paths not supported by your operating environment"
     )
 
 
@@ -109,7 +109,7 @@ def test_entry_func_call(mocker: Any) -> None:
         web.main(argv)
 
     module.func.assert_called_with(
-        ("--extra-optional-eins --extra-optional-zwei extra positional " "args").split()
+        ("--extra-optional-eins --extra-optional-zwei extra positional args").split()
     )
 
 
