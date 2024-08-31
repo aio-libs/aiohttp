@@ -310,7 +310,7 @@ class ClientSession:
             self._timeout = DEFAULT_TIMEOUT
             if read_timeout is not sentinel:
                 warnings.warn(
-                    "read_timeout is deprecated, " "use timeout argument instead",
+                    "read_timeout is deprecated, use timeout argument instead",
                     DeprecationWarning,
                     stacklevel=2,
                 )
@@ -318,7 +318,7 @@ class ClientSession:
             if conn_timeout is not None:
                 self._timeout = attr.evolve(self._timeout, connect=conn_timeout)
                 warnings.warn(
-                    "conn_timeout is deprecated, " "use timeout argument instead",
+                    "conn_timeout is deprecated, use timeout argument instead",
                     DeprecationWarning,
                     stacklevel=2,
                 )
@@ -1255,7 +1255,7 @@ class ClientSession:
     def requote_redirect_url(self, val: bool) -> None:
         """Do URL requoting on redirection handling."""
         warnings.warn(
-            "session.requote_redirect_url modification " "is deprecated #2778",
+            "session.requote_redirect_url modification is deprecated #2778",
             DeprecationWarning,
             stacklevel=2,
         )
