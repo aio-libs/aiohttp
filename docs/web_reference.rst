@@ -702,8 +702,7 @@ and :ref:`aiohttp-web-signals` handlers::
 
    .. method:: set_cookie(name, value, *, path='/', expires=None, \
                           domain=None, max_age=None, \
-                          secure=None, httponly=None, version=None, \
-                          samesite=None)
+                          secure=None, httponly=None, samesite=None)
 
       Convenient way for setting :attr:`cookies`, allows to specify
       some additional properties like *max_age* in a single call.
@@ -743,11 +742,6 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :param bool httponly: ``True`` if the cookie HTTP only (optional)
 
-      :param int version: a decimal integer, identifies to which
-                          version of the state management
-                          specification the cookie
-                          conforms. (optional)
-
       :param str samesite: Asserts that a cookie must not be sent with
          cross-origin requests, providing some protection
          against cross-site request forgery attacks.
@@ -755,12 +749,6 @@ and :ref:`aiohttp-web-signals` handlers::
          ``Lax`` or ``Strict``. (optional)
 
             .. versionadded:: 3.7
-
-      .. warning::
-
-         In HTTP version 1.1, ``expires`` was deprecated and replaced with
-         the easier-to-use ``max-age``, but Internet Explorer (IE6, IE7,
-         and IE8) **does not** support ``max-age``.
 
    .. method:: del_cookie(name, *, path='/', domain=None)
 
