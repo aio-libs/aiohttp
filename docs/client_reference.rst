@@ -99,7 +99,10 @@ The client session supports the context manager protocol for self closing.
       Iterable of :class:`str` or :class:`~multidict.istr` (optional)
 
    :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
-                                  Authorization (optional)
+                                  Authorization (optional). It will be included
+                                  with any request to any origin and will not be
+                                  removed, event during redirect to a different
+                                  origin.
 
    :param version: supported HTTP version, ``HTTP 1.1`` by default.
 
