@@ -578,7 +578,7 @@ async def test_receive_timeout_sock_read(aiohttp_client) -> None:
     app = web.Application()
     app.router.add_route("GET", "/", handler)
 
-    client = await aiohttp_client(app
+    client = await aiohttp_client(app)
     receive_timeout = ClientWSTimeout(ws_receive=0.1)
     resp = await client.ws_connect('/', timeout=receive_timeout)
 
