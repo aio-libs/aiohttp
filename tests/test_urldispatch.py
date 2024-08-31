@@ -457,7 +457,7 @@ def test_add_static_quoting(router) -> None:
     )
     assert router["static"] is resource
     url = resource.url_for(filename="/1 2/файл%2F.txt")
-    assert url.path == "/пре /фикс/1 2/файл%2F.txt"
+    assert url.path == "/пре %2Fфикс/1 2/файл%2F.txt"
     assert str(url) == (
         "/%D0%BF%D1%80%D0%B5%20%2F%D1%84%D0%B8%D0%BA%D1%81"
         "/1%202/%D1%84%D0%B0%D0%B9%D0%BB%252F.txt"
@@ -530,19 +530,24 @@ def test_static_remove_trailing_slash(router) -> None:
     assert "/prefix" == route._prefix
 
 
-async def test_add_route_with_re(router) -> None:
+@pytest.mark.parametrize(
+    "pattern,url,expected",
+    (
+        (r"{to:\d+}", r"1234", {"to": "1234"}),
+        ("{name}.html", "test.html", {"name": "test"}),
+        (r"{fn:\w+ \d+}", "abc 123", {"fn": "abc 123"}),
+        (r"{fn:\w+\s\d+}", "abc 123", {"fn": "abc 123"}),
+    ),
+)
+async def test_add_route_with_re(
+    router: web.UrlDispatcher, pattern: str, url: str, expected
+) -> None:
     handler = make_handler()
-    router.add_route("GET", r"/handler/{to:\d+}", handler)
-
-    req = make_mocked_request("GET", "/handler/1234")
+    router.add_route("GET", f"/handler/{pattern}", handler)
+    req = make_mocked_request("GET", f"/handler/{url}")
     info = await router.resolve(req)
     assert info is not None
-    assert {"to": "1234"} == info
-
-    router.add_route("GET", r"/handler/{name}.html", handler)
-    req = make_mocked_request("GET", "/handler/test.html")
-    info = await router.resolve(req)
-    assert {"name": "test"} == info
+    assert info == expected
 
 
 async def test_add_route_with_re_and_slashes(router) -> None:
@@ -625,7 +630,7 @@ def test_route_dynamic_quoting(router) -> None:
     route = router.add_route("GET", r"/пре %2Fфикс/{arg}", handler)
 
     url = route.url_for(arg="1 2/текст%2F")
-    assert url.path == "/пре /фикс/1 2/текст%2F"
+    assert url.path == "/пре %2Fфикс/1 2/текст%2F"
     assert str(url) == (
         "/%D0%BF%D1%80%D0%B5%20%2F%D1%84%D0%B8%D0%BA%D1%81"
         "/1%202/%D1%82%D0%B5%D0%BA%D1%81%D1%82%252F"
