@@ -9,7 +9,7 @@ import ssl
 import subprocess
 import sys
 import time
-from typing import Callable, NoReturn, Set
+from typing import AsyncIterator, Callable, NoReturn, Set
 from unittest import mock
 from uuid import uuid4
 
@@ -904,6 +904,23 @@ def test_run_app_context_vars(patched_loop):
 
     web.run_app(init(), print=stopper(patched_loop), loop=patched_loop)
     assert count == 3
+
+
+def test_run_app_raises_exception(patched_loop: asyncio.AbstractEventLoop) -> None:
+    async def context(app: web.Application) -> AsyncIterator[None]:
+        raise RuntimeError("foo")
+        yield  # pragma: no cover
+
+    app = web.Application()
+    app.cleanup_ctx.append(context)
+
+    with mock.patch.object(
+        patched_loop, "call_exception_handler", autospec=True, spec_set=True
+    ) as m:
+        with pytest.raises(RuntimeError, match="foo"):
+            web.run_app(app, loop=patched_loop)
+
+    assert not m.called
 
 
 class TestShutdown:

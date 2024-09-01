@@ -6,6 +6,7 @@ import sys
 import warnings
 from argparse import ArgumentParser
 from collections.abc import Iterable
+from contextlib import suppress
 from importlib import import_module
 from typing import (
     Any,
@@ -519,10 +520,14 @@ def run_app(
     except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
         pass
     finally:
-        _cancel_tasks({main_task}, loop)
-        _cancel_tasks(asyncio.all_tasks(loop), loop)
-        loop.run_until_complete(loop.shutdown_asyncgens())
-        loop.close()
+        try:
+            main_task.cancel()
+            with suppress(asyncio.CancelledError):
+                loop.run_until_complete(main_task)
+        finally:
+            _cancel_tasks(asyncio.all_tasks(loop), loop)
+            loop.run_until_complete(loop.shutdown_asyncgens())
+            loop.close()
 
 
 def main(argv: List[str]) -> None:

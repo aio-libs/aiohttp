@@ -1,0 +1,1 @@
+Stopped logging exceptions from ``web.run_app()`` that would be raised regardless -- by :user:`Dreamsorcerer`.
