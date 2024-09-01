@@ -10,7 +10,6 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import web
-from aiohttp.streams import EmptyStreamReader
 from aiohttp.test_utils import (
     AioHTTPTestCase,
     RawTestServer,
