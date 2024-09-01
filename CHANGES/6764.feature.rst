@@ -1,0 +1,1 @@
+Updated auth logic to clear authorization during redirects to a different origin when _base_url is defined  -- by :user:`MaximZemskov`.
