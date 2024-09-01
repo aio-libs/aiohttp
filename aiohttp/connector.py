@@ -404,8 +404,8 @@ class BaseConnector:
                     err_msg = "Error while closing connector: " + repr(res)
                     logging.error(err_msg)
 
-    def _close_immediately(self) -> List["asyncio.Future[None]"]:
-        waiters: List["asyncio.Future[None]"] = []
+    def _close_immediately(self) -> List[Awaitable[object]]:
+        waiters: List[Awaitable[object]] = []
 
         if self._closed:
             return waiters
@@ -807,7 +807,7 @@ class TCPConnector(BaseConnector):
         self._interleave = interleave
         self._resolve_host_tasks: Set["asyncio.Task[List[ResolveResult]]"] = set()
 
-    def _close_immediately(self) -> List["asyncio.Future[None]"]:
+    def _close_immediately(self) -> List[Awaitable[object]]:
         for ev in self._throttle_dns_events.values():
             ev.cancel()
 
