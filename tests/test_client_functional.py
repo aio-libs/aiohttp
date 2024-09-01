@@ -2911,7 +2911,7 @@ async def test_auth_persist_on_redirect_to_other_host_with_global_auth(
     url_from = URL("http://host1.com/path1")
     url_to = URL("http://host2.com/path2")
 
-    async def srv_from(request: web.Request) -> NoReturn:
+    async def srv_from(request: web.Request):
         assert request.host == url_from.host
         assert request.headers["Authorization"] == "Basic dXNlcjpwYXNz"
         raise web.HTTPFound(url_to)
@@ -2943,7 +2943,7 @@ async def test_auth_persist_on_redirect_to_other_host_with_global_auth(
             host: str,
             port: int = 0,
             family: socket.AddressFamily = socket.AF_INET,
-        ) -> List[ResolveResult]:
+        ):
             server = etc_hosts[(host, port)]
             assert server.port is not None
 
@@ -2976,7 +2976,7 @@ async def test_drop_auth_on_redirect_to_other_host_with_global_auth_and_base_url
     url_from = URL("http://host1.com/path1")
     url_to = URL("http://host2.com/path2")
 
-    async def srv_from(request: web.Request) -> NoReturn:
+    async def srv_from(request: web.Request):
         assert request.host == url_from.host
         assert request.headers["Authorization"] == "Basic dXNlcjpwYXNz"
         raise web.HTTPFound(url_to)
@@ -3008,7 +3008,7 @@ async def test_drop_auth_on_redirect_to_other_host_with_global_auth_and_base_url
             host: str,
             port: int = 0,
             family: socket.AddressFamily = socket.AF_INET,
-        ) -> List[ResolveResult]:
+        ):
             server = etc_hosts[(host, port)]
             assert server.port is not None
 
