@@ -1,0 +1,1 @@
+Changed ``make_mocked_request()`` to use empty payload by default -- by :user:`rahulnht`.
