@@ -805,7 +805,7 @@ class TCPConnector(BaseConnector):
         self._local_addr_infos = aiohappyeyeballs.addr_to_addr_infos(local_addr)
         self._happy_eyeballs_delay = happy_eyeballs_delay
         self._interleave = interleave
-        self._resolve_host_tasks: Set["asyncio.Task[None]"] = set()
+        self._resolve_host_tasks: Set["asyncio.Task[List[ResolveResult]]"] = set()
 
     def _close_immediately(self) -> List["asyncio.Future[None]"]:
         for ev in self._throttle_dns_events.values():
