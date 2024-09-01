@@ -217,7 +217,7 @@ def test_make_mocked_request_content() -> None:
 
 def test_make_mocked_request_empty_payload() -> None:
     req = make_mocked_request("GET", "/")
-    assert isinstance(req.content, EmptyStreamReader)
+    assert await req.read() == b""
 
 
 def test_make_mocked_request_transport() -> None:
