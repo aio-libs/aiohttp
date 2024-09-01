@@ -2906,7 +2906,7 @@ async def test_drop_auth_on_redirect_to_other_host(
 
 
 async def test_auth_persist_on_redirect_to_other_host_with_global_auth(
-    create_server_for_url_and_handler: Callable[[URL, Handler], Awaitable[TestServer]],
+    create_server_for_url_and_handler,
 ) -> None:
     url_from = URL("http://host1.com/path1")
     url_to = URL("http://host2.com/path2")
@@ -2971,7 +2971,7 @@ async def test_auth_persist_on_redirect_to_other_host_with_global_auth(
 
 
 async def test_drop_auth_on_redirect_to_other_host_with_global_auth_and_base_url(
-    create_server_for_url_and_handler: Callable[[URL, Handler], Awaitable[TestServer]],
+    create_server_for_url_and_handler,
 ) -> None:
     url_from = URL("http://host1.com/path1")
     url_to = URL("http://host2.com/path2")
