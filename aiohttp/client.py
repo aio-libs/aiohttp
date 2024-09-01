@@ -524,7 +524,6 @@ class ClientSession:
             with timer:
                 # https://www.rfc-editor.org/rfc/rfc9112.html#name-retrying-requests
                 retry_persistent_connection = method in IDEMPOTENT_METHODS
-                is_redirect_to_different_origin = False
                 while True:
                     url, auth_from_url = strip_auth_from_url(url)
                     if not url.raw_host:
@@ -545,13 +544,11 @@ class ClientSession:
                     if auth is None:
                         auth = auth_from_url
 
-                    # If the session has a _base_url set and this is a redirect to a different origin
-                    # we should not set the auth
-                    is_auth_reset_needed = (
-                        is_redirect_to_different_origin and self._base_url is not None
-                    )
-                    if auth is None and not is_auth_reset_needed:
+                    if auth is None and (
+                        not self._base_url or self._base_url.origin() == url.origin()
+                    ):
                         auth = self._default_auth
+
                     # It would be confusing if we support explicit
                     # Authorization header with auth argument
                     if auth is not None and hdrs.AUTHORIZATION in headers:
@@ -723,14 +720,12 @@ class ClientSession:
                                 "Invalid redirect URL origin",
                             ) from origin_val_err
 
-                        is_redirect_to_different_origin = False
                         if (
                             url.origin() != redirect_origin
                             and not is_same_host_https_redirect
                         ):
                             auth = None
                             headers.pop(hdrs.AUTHORIZATION, None)
-                            is_redirect_to_different_origin = True
 
                         url = parsed_redirect_url
                         params = {}
