@@ -1068,13 +1068,10 @@ below::
       async with client.pubsub() as pubsub:
           await pubsub.subscribe(channel)
           while True:
-              try:
-                  msg = await pubsub.get_message(ignore_subscribe_messages=True)
-                  if msg is not None:
-                      for ws in app["websockets"]:
-                          await ws.send_str("{}: {}".format(channel, msg))
-              except asyncio.CancelledError:
-                  break
+              msg = await pubsub.get_message(ignore_subscribe_messages=True)
+              if msg is not None:
+                  for ws in app["websockets"]:
+                      await ws.send_str("{}: {}".format(channel, msg))
 
 
   async def background_tasks(app):
@@ -1083,7 +1080,8 @@ below::
       yield
 
       app[redis_listener].cancel()
-      await app[redis_listener]
+      with contextlib.suppress(asyncio.CancelledError):
+          await app[redis_listener]
 
 
   app = web.Application()
