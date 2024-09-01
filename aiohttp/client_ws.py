@@ -4,6 +4,8 @@ import asyncio
 import sys
 from typing import Any, Optional, cast
 
+import attr
+
 from .client_exceptions import ClientError, ServerTimeoutError
 from .client_reqrep import ClientResponse
 from .helpers import calculate_timeout_when, set_result
@@ -30,6 +32,15 @@ else:
     import async_timeout
 
 
+@attr.s(frozen=True, slots=True)
+class ClientWSTimeout:
+    ws_receive = attr.ib(type=Optional[float], default=None)
+    ws_close = attr.ib(type=Optional[float], default=None)
+
+
+DEFAULT_WS_CLIENT_TIMEOUT = ClientWSTimeout(ws_receive=None, ws_close=10.0)
+
+
 class ClientWebSocketResponse:
     def __init__(
         self,
@@ -37,12 +48,11 @@ class ClientWebSocketResponse:
         writer: WebSocketWriter,
         protocol: Optional[str],
         response: ClientResponse,
-        timeout: float,
+        timeout: ClientWSTimeout,
         autoclose: bool,
         autoping: bool,
         loop: asyncio.AbstractEventLoop,
         *,
-        receive_timeout: Optional[float] = None,
         heartbeat: Optional[float] = None,
         compress: int = 0,
         client_notakeover: bool = False,
@@ -57,7 +67,6 @@ class ClientWebSocketResponse:
         self._closing = False
         self._close_code: Optional[int] = None
         self._timeout = timeout
-        self._receive_timeout = receive_timeout
         self._autoclose = autoclose
         self._autoping = autoping
         self._heartbeat = heartbeat
@@ -268,7 +277,7 @@ class ClientWebSocketResponse:
 
             while True:
                 try:
-                    async with async_timeout.timeout(self._timeout):
+                    async with async_timeout.timeout(self._timeout.ws_close):
                         msg = await self._reader.read()
                 except asyncio.CancelledError:
                     self._close_code = WSCloseCode.ABNORMAL_CLOSURE
@@ -288,7 +297,7 @@ class ClientWebSocketResponse:
             return False
 
     async def receive(self, timeout: Optional[float] = None) -> WSMessage:
-        receive_timeout = timeout or self._receive_timeout
+        receive_timeout = timeout or self._timeout.ws_receive
 
         while True:
             if self._waiting:

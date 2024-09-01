@@ -73,7 +73,11 @@ from .client_reqrep import (
     RequestInfo as RequestInfo,
     _merge_ssl_params,
 )
-from .client_ws import ClientWebSocketResponse as ClientWebSocketResponse
+from .client_ws import (
+    DEFAULT_WS_CLIENT_TIMEOUT,
+    ClientWebSocketResponse as ClientWebSocketResponse,
+    ClientWSTimeout as ClientWSTimeout,
+)
 from .connector import (
     HTTP_AND_EMPTY_SCHEMA_SET,
     BaseConnector as BaseConnector,
@@ -142,6 +146,7 @@ __all__ = (
     # client
     "ClientSession",
     "ClientTimeout",
+    "ClientWSTimeout",
     "request",
 )
 
@@ -820,7 +825,7 @@ class ClientSession:
         *,
         method: str = hdrs.METH_GET,
         protocols: Iterable[str] = (),
-        timeout: float = 10.0,
+        timeout: Union[ClientWSTimeout, _SENTINEL] = sentinel,
         receive_timeout: Optional[float] = None,
         autoclose: bool = True,
         autoping: bool = True,
@@ -872,7 +877,7 @@ class ClientSession:
         *,
         method: str = hdrs.METH_GET,
         protocols: Iterable[str] = (),
-        timeout: float = 10.0,
+        timeout: Union[ClientWSTimeout, _SENTINEL] = sentinel,
         receive_timeout: Optional[float] = None,
         autoclose: bool = True,
         autoping: bool = True,
@@ -891,6 +896,29 @@ class ClientSession:
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
     ) -> ClientWebSocketResponse:
+        if timeout is not sentinel:
+            if isinstance(timeout, ClientWSTimeout):
+                ws_timeout = timeout
+            else:
+                warnings.warn(
+                    "parameter 'timeout' of type 'float' "
+                    "is deprecated, please use "
+                    "'timeout=ClientWSTimeout(ws_close=...)'",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                ws_timeout = ClientWSTimeout(ws_close=timeout)
+        else:
+            ws_timeout = DEFAULT_WS_CLIENT_TIMEOUT
+        if receive_timeout is not None:
+            warnings.warn(
+                "float parameter 'receive_timeout' "
+                "is deprecated, please use parameter "
+                "'timeout=ClientWSTimeout(ws_receive=...)'",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            ws_timeout = attr.evolve(ws_timeout, ws_receive=receive_timeout)
 
         if headers is None:
             real_headers: CIMultiDict[str] = CIMultiDict()
@@ -1021,12 +1049,13 @@ class ClientSession:
 
             # For WS connection the read_timeout must be either receive_timeout or greater
             # None == no timeout, i.e. infinite timeout, so None is the max timeout possible
-            if receive_timeout is None:
+            if ws_timeout.ws_receive is None:
                 # Reset regardless
-                conn_proto.read_timeout = receive_timeout
+                conn_proto.read_timeout = None
             elif conn_proto.read_timeout is not None:
-                # If read_timeout was set check which wins
-                conn_proto.read_timeout = max(receive_timeout, conn_proto.read_timeout)
+                conn_proto.read_timeout = max(
+                    ws_timeout.ws_receive, conn_proto.read_timeout
+                )
 
             transport = conn.transport
             assert transport is not None
@@ -1050,11 +1079,10 @@ class ClientSession:
                 writer,
                 protocol,
                 resp,
-                timeout,
+                ws_timeout,
                 autoclose,
                 autoping,
                 self._loop,
-                receive_timeout=receive_timeout,
                 heartbeat=heartbeat,
                 compress=compress,
                 client_notakeover=notakeover,
