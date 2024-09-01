@@ -48,7 +48,7 @@ class AiohttpClient(Protocol):
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs: Any
-    ) -> TestClient[Request]: ...
+    ) -> TestClient[Request, Application]: ...
     @overload
     async def __call__(
         self,
@@ -56,7 +56,7 @@ class AiohttpClient(Protocol):
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs: Any
-    ) -> TestClient[_Request]: ...
+    ) -> TestClient[_Request, None]: ...
 
 
 class AiohttpServer(Protocol):
@@ -335,7 +335,7 @@ def aiohttp_raw_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpRawSe
 
 
 @pytest.fixture
-def aiohttp_client_cls() -> Type[TestClient[Any]]:
+def aiohttp_client_cls() -> Type[TestClient[Any, Any]]:
     """
     Client class to use in ``aiohttp_client`` factory.
 
@@ -363,7 +363,7 @@ def aiohttp_client_cls() -> Type[TestClient[Any]]:
 
 @pytest.fixture
 def aiohttp_client(
-    loop: asyncio.AbstractEventLoop, aiohttp_client_cls: Type[TestClient[Any]]
+    loop: asyncio.AbstractEventLoop, aiohttp_client_cls: Type[TestClient[Any, Any]]
 ) -> Iterator[AiohttpClient]:
     """Factory to create a TestClient instance.
 
@@ -379,20 +379,20 @@ def aiohttp_client(
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs: Any
-    ) -> TestClient[Request]: ...
+    ) -> TestClient[Request, Application]: ...
     @overload
     async def go(
         __param: BaseTestServer[_Request],
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs: Any
-    ) -> TestClient[_Request]: ...
+    ) -> TestClient[_Request, None]: ...
     async def go(
         __param: Union[Application, BaseTestServer[Any]],
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs: Any
-    ) -> TestClient[Any]:
+    ) -> TestClient[Any, Any]:
         if isinstance(__param, Application):
             server_kwargs = server_kwargs or {}
             server = TestServer(__param, **server_kwargs)
