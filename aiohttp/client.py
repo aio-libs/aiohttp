@@ -548,7 +548,6 @@ class ClientSession:
                         not self._base_url or self._base_url.origin() == url.origin()
                     ):
                         auth = self._default_auth
-
                     # It would be confusing if we support explicit
                     # Authorization header with auth argument
                     if auth is not None and hdrs.AUTHORIZATION in headers:
