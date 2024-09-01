@@ -595,7 +595,7 @@ def make_mocked_request(
     writer: Any = sentinel,
     protocol: Any = sentinel,
     transport: Any = sentinel,
-    payload: Any = sentinel,
+    payload: Any = EMPTY_PAYLOAD,
     sslcontext: Optional[SSLContext] = None,
     client_max_size: int = 1024**2,
     loop: Any = ...,
@@ -663,9 +663,6 @@ def make_mocked_request(
 
     protocol.transport = transport
     protocol.writer = writer
-
-    if payload is sentinel:
-        payload = EMPTY_PAYLOAD
 
     req = Request(
         message, payload, protocol, writer, task, loop, client_max_size=client_max_size
