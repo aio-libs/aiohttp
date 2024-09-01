@@ -270,8 +270,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         *,
         cookie_jar: Optional[AbstractCookieJar] = None,
         **kwargs: Any,
-    ) -> None:
-        ...
+    ) -> None: ...
     @overload
     def __init__(
         self: TestClient[_Request, None],
@@ -279,8 +278,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         *,
         cookie_jar: Optional[AbstractCookieJar] = None,
         **kwargs: Any,
-    ) -> None:
-        ...
+    ) -> None: ...
     def __init__(  # type: ignore[misc]
         self,
         server: BaseTestServer[_Request],
