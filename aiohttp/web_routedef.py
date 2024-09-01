@@ -19,7 +19,7 @@ from . import hdrs
 from .abc import AbstractView
 from .typedefs import Handler, PathLike
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .web_request import Request
     from .web_response import StreamResponse
     from .web_urldispatcher import AbstractRoute, UrlDispatcher
@@ -65,7 +65,7 @@ class RouteDef(AbstractRouteDef):
         info = []
         for name, value in sorted(self.kwargs.items()):
             info.append(f", {name}={value!r}")
-        return "<RouteDef {method} {path} -> {handler.__name__!r}" "{info}>".format(
+        return "<RouteDef {method} {path} -> {handler.__name__!r}{info}>".format(
             method=self.method, path=self.path, handler=self.handler, info="".join(info)
         )
 
@@ -89,7 +89,7 @@ class StaticDef(AbstractRouteDef):
         info = []
         for name, value in sorted(self.kwargs.items()):
             info.append(f", {name}={value!r}")
-        return "<StaticDef {prefix} -> {path}" "{info}>".format(
+        return "<StaticDef {prefix} -> {path}{info}>".format(
             prefix=self.prefix, path=self.path, info="".join(info)
         )
 
@@ -161,12 +161,10 @@ class RouteTableDef(Sequence[AbstractRouteDef]):
         return f"<RouteTableDef count={len(self._items)}>"
 
     @overload
-    def __getitem__(self, index: int) -> AbstractRouteDef:
-        ...
+    def __getitem__(self, index: int) -> AbstractRouteDef: ...
 
     @overload
-    def __getitem__(self, index: slice) -> List[AbstractRouteDef]:
-        ...
+    def __getitem__(self, index: slice) -> List[AbstractRouteDef]: ...
 
     def __getitem__(self, index):  # type: ignore[no-untyped-def]
         return self._items[index]

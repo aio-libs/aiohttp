@@ -12,7 +12,6 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 from yarl import URL
 
 from aiohttp import HttpVersion, web
-from aiohttp.client_exceptions import ServerDisconnectedError
 from aiohttp.http_parser import RawRequestMessage
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
@@ -636,7 +635,7 @@ async def test_multipart_formdata(protocol: Any) -> None:
         b"-----------------------------326931944431359--\r\n"
     )
     content_type = (
-        "multipart/form-data; boundary=" "---------------------------326931944431359"
+        "multipart/form-data; boundary=---------------------------326931944431359"
     )
     payload.feed_eof()
     req = make_mocked_request(
@@ -657,7 +656,7 @@ async def test_multipart_formdata_file(protocol: Any) -> None:
         b"-----------------------------326931944431359--\r\n"
     )
     content_type = (
-        "multipart/form-data; boundary=" "---------------------------326931944431359"
+        "multipart/form-data; boundary=---------------------------326931944431359"
     )
     payload.feed_eof()
     req = make_mocked_request(
@@ -811,29 +810,13 @@ async def test_json_invalid_content_type(aiohttp_client: Any) -> None:
         assert 400 == resp.status
         resp_text = await resp.text()
         assert resp_text == (
-            "Attempt to decode JSON with " "unexpected mimetype: text/plain"
+            "Attempt to decode JSON with unexpected mimetype: text/plain"
         )
 
 
 def test_weakref_creation() -> None:
     req = make_mocked_request("GET", "/")
     weakref.ref(req)
-
-
-@pytest.mark.xfail(
-    raises=ServerDisconnectedError,
-    reason="see https://github.com/aio-libs/aiohttp/issues/4572",
-)
-async def test_handler_return_type(aiohttp_client: Any) -> None:
-    async def invalid_handler_1(request):
-        return 1
-
-    app = web.Application()
-    app.router.add_get("/1", invalid_handler_1)
-    client = await aiohttp_client(app)
-
-    async with client.get("/1") as resp:
-        assert 500 == resp.status
 
 
 @pytest.mark.parametrize(

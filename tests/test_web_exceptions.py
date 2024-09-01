@@ -1,13 +1,13 @@
-# type: ignore
 import collections
 import pickle
 from traceback import format_exception
-from typing import Any
+from typing import Mapping, NoReturn
 
 import pytest
 from yarl import URL
 
 from aiohttp import web
+from aiohttp.pytest_plugin import AiohttpClient
 
 
 def test_all_http_exceptions_exported() -> None:
@@ -23,7 +23,8 @@ def test_all_http_exceptions_exported() -> None:
 async def test_ctor() -> None:
     resp = web.HTTPOk()
     assert resp.text == "200: OK"
-    assert resp.headers == {"Content-Type": "text/plain"}
+    compare: Mapping[str, str] = {"Content-Type": "text/plain"}
+    assert resp.headers == compare
     assert resp.reason == "OK"
     assert resp.status == 200
     assert bool(resp)
@@ -32,7 +33,8 @@ async def test_ctor() -> None:
 async def test_ctor_with_headers() -> None:
     resp = web.HTTPOk(headers={"X-Custom": "value"})
     assert resp.text == "200: OK"
-    assert resp.headers == {"Content-Type": "text/plain", "X-Custom": "value"}
+    compare: Mapping[str, str] = {"Content-Type": "text/plain", "X-Custom": "value"}
+    assert resp.headers == compare
     assert resp.reason == "OK"
     assert resp.status == 200
 
@@ -40,7 +42,8 @@ async def test_ctor_with_headers() -> None:
 async def test_ctor_content_type() -> None:
     resp = web.HTTPOk(text="text", content_type="custom")
     assert resp.text == "text"
-    assert resp.headers == {"Content-Type": "custom"}
+    compare: Mapping[str, str] = {"Content-Type": "custom"}
+    assert resp.headers == compare
     assert resp.reason == "OK"
     assert resp.status == 200
     assert bool(resp)
@@ -53,7 +56,8 @@ async def test_ctor_content_type_without_text() -> None:
     ):
         resp = web.HTTPResetContent(content_type="custom")
     assert resp.text is None
-    assert resp.headers == {"Content-Type": "custom"}
+    compare: Mapping[str, str] = {"Content-Type": "custom"}
+    assert resp.headers == compare
     assert resp.reason == "Reset Content"
     assert resp.status == 205
     assert bool(resp)
@@ -67,7 +71,8 @@ async def test_ctor_text_for_empty_body() -> None:
     ):
         resp = web.HTTPResetContent(text="text")
     assert resp.text == "text"
-    assert resp.headers == {"Content-Type": "text/plain"}
+    compare: Mapping[str, str] = {"Content-Type": "text/plain"}
+    assert resp.headers == compare
     assert resp.reason == "Reset Content"
     assert resp.status == 205
 
@@ -119,6 +124,40 @@ def test_empty_text_304() -> None:
     resp.text is None
 
 
+def test_no_link_451() -> None:
+    with pytest.raises(TypeError):
+        web.HTTPUnavailableForLegalReasons()  # type: ignore[call-arg]
+
+
+def test_link_none_451() -> None:
+    resp = web.HTTPUnavailableForLegalReasons(link=None)
+    assert resp.link is None
+    assert "Link" not in resp.headers
+
+
+def test_link_empty_451() -> None:
+    resp = web.HTTPUnavailableForLegalReasons(link="")
+    assert resp.link is None
+    assert "Link" not in resp.headers
+
+
+def test_link_str_451() -> None:
+    resp = web.HTTPUnavailableForLegalReasons(link="http://warning.or.kr/")
+    assert resp.link == URL("http://warning.or.kr/")
+    assert resp.headers["Link"] == '<http://warning.or.kr/>; rel="blocked-by"'
+
+
+def test_link_url_451() -> None:
+    resp = web.HTTPUnavailableForLegalReasons(link=URL("http://warning.or.kr/"))
+    assert resp.link == URL("http://warning.or.kr/")
+    assert resp.headers["Link"] == '<http://warning.or.kr/>; rel="blocked-by"'
+
+
+def test_link_CRLF_451() -> None:
+    resp = web.HTTPUnavailableForLegalReasons(link="http://warning.or.kr/\r\n")
+    assert "\r\n" not in resp.headers["Link"]
+
+
 def test_HTTPException_retains_cause() -> None:
     with pytest.raises(web.HTTPException) as ei:
         try:
@@ -139,7 +178,8 @@ class TestHTTPOk:
             content_type="custom",
         )
         assert resp.text == "text"
-        assert resp.headers == {"X-Custom": "value", "Content-Type": "custom"}
+        compare: Mapping[str, str] = {"X-Custom": "value", "Content-Type": "custom"}
+        assert resp.headers == compare
         assert resp.reason == "Done"
         assert resp.status == 200
 
@@ -150,7 +190,7 @@ class TestHTTPOk:
             text="text",
             content_type="custom",
         )
-        resp.foo = "bar"
+        resp.foo = "bar"  # type: ignore[attr-defined]
         for proto in range(2, pickle.HIGHEST_PROTOCOL + 1):
             pickled = pickle.dumps(resp, proto)
             resp2 = pickle.loads(pickled)
@@ -160,8 +200,8 @@ class TestHTTPOk:
             assert resp2.status == 200
             assert resp2.foo == "bar"
 
-    async def test_app(self, aiohttp_client: Any) -> None:
-        async def handler(request):
+    async def test_app(self, aiohttp_client: AiohttpClient) -> None:
+        async def handler(request: web.Request) -> NoReturn:
             raise web.HTTPOk()
 
         app = web.Application()
@@ -189,7 +229,7 @@ class TestHTTPFound:
         with pytest.raises(ValueError):
             web.HTTPFound(location="")
         with pytest.raises(ValueError):
-            web.HTTPFound(location=None)
+            web.HTTPFound(location=None)  # type: ignore[arg-type]
 
     def test_location_CRLF(self) -> None:
         exc = web.HTTPFound(location="/redirect\r\n")
@@ -203,7 +243,7 @@ class TestHTTPFound:
             text="text",
             content_type="custom",
         )
-        resp.foo = "bar"
+        resp.foo = "bar"  # type: ignore[attr-defined]
         for proto in range(2, pickle.HIGHEST_PROTOCOL + 1):
             pickled = pickle.dumps(resp, proto)
             resp2 = pickle.loads(pickled)
@@ -214,8 +254,8 @@ class TestHTTPFound:
             assert resp2.status == 302
             assert resp2.foo == "bar"
 
-    async def test_app(self, aiohttp_client: Any) -> None:
-        async def handler(request):
+    async def test_app(self, aiohttp_client: AiohttpClient) -> None:
+        async def handler(request: web.Request) -> NoReturn:
             raise web.HTTPFound(location="/redirect")
 
         app = web.Application()
@@ -242,11 +282,12 @@ class TestHTTPMethodNotAllowed:
         assert resp.method == "GET"
         assert resp.allowed_methods == {"POST", "PUT"}
         assert resp.text == "text"
-        assert resp.headers == {
+        compare: Mapping[str, str] = {
             "X-Custom": "value",
             "Content-Type": "custom",
             "Allow": "POST,PUT",
         }
+        assert resp.headers == compare
         assert resp.reason == "Unsupported"
         assert resp.status == 405
 
@@ -259,7 +300,7 @@ class TestHTTPMethodNotAllowed:
             text="text",
             content_type="custom",
         )
-        resp.foo = "bar"
+        resp.foo = "bar"  # type: ignore[attr-defined]
         for proto in range(2, pickle.HIGHEST_PROTOCOL + 1):
             pickled = pickle.dumps(resp, proto)
             resp2 = pickle.loads(pickled)
@@ -281,9 +322,10 @@ class TestHTTPRequestEntityTooLarge:
             reason="Too large",
         )
         assert resp.text == (
-            "Maximum request body size 100 exceeded, " "actual body size 123"
+            "Maximum request body size 100 exceeded, actual body size 123"
         )
-        assert resp.headers == {"X-Custom": "value", "Content-Type": "text/plain"}
+        compare: Mapping[str, str] = {"X-Custom": "value", "Content-Type": "text/plain"}
+        assert resp.headers == compare
         assert resp.reason == "Too large"
         assert resp.status == 413
 
@@ -291,7 +333,7 @@ class TestHTTPRequestEntityTooLarge:
         resp = web.HTTPRequestEntityTooLarge(
             100, actual_size=123, headers={"X-Custom": "value"}, reason="Too large"
         )
-        resp.foo = "bar"
+        resp.foo = "bar"  # type: ignore[attr-defined]
         for proto in range(2, pickle.HIGHEST_PROTOCOL + 1):
             pickled = pickle.dumps(resp, proto)
             resp2 = pickle.loads(pickled)
@@ -304,22 +346,51 @@ class TestHTTPRequestEntityTooLarge:
 
 class TestHTTPUnavailableForLegalReasons:
     def test_ctor(self) -> None:
-        resp = web.HTTPUnavailableForLegalReasons(
+        exc = web.HTTPUnavailableForLegalReasons(
             link="http://warning.or.kr/",
             headers={"X-Custom": "value"},
             reason="Zaprescheno",
             text="text",
             content_type="custom",
         )
-        assert resp.link == URL("http://warning.or.kr/")
-        assert resp.text == "text"
-        assert resp.headers == {
+        assert exc.link == URL("http://warning.or.kr/")
+        assert exc.text == "text"
+        compare: Mapping[str, str] = {
             "X-Custom": "value",
             "Content-Type": "custom",
             "Link": '<http://warning.or.kr/>; rel="blocked-by"',
         }
-        assert resp.reason == "Zaprescheno"
-        assert resp.status == 451
+        assert exc.headers == compare
+        assert exc.reason == "Zaprescheno"
+        assert exc.status == 451
+
+    def test_no_link(self) -> None:
+        with pytest.raises(TypeError):
+            web.HTTPUnavailableForLegalReasons()  # type: ignore[call-arg]
+
+    def test_none_link(self) -> None:
+        exc = web.HTTPUnavailableForLegalReasons(link=None)
+        assert exc.link is None
+        assert "Link" not in exc.headers
+
+    def test_empty_link(self) -> None:
+        exc = web.HTTPUnavailableForLegalReasons(link="")
+        assert exc.link is None
+        assert "Link" not in exc.headers
+
+    def test_link_str(self) -> None:
+        exc = web.HTTPUnavailableForLegalReasons(link="http://warning.or.kr/")
+        assert exc.link == URL("http://warning.or.kr/")
+        assert exc.headers["Link"] == '<http://warning.or.kr/>; rel="blocked-by"'
+
+    def test_link_url(self) -> None:
+        exc = web.HTTPUnavailableForLegalReasons(link=URL("http://warning.or.kr/"))
+        assert exc.link == URL("http://warning.or.kr/")
+        assert exc.headers["Link"] == '<http://warning.or.kr/>; rel="blocked-by"'
+
+    def test_link_CRLF(self) -> None:
+        exc = web.HTTPUnavailableForLegalReasons(link="http://warning.or.kr/\r\n")
+        assert "\r\n" not in exc.headers["Link"]
 
     def test_pickle(self) -> None:
         resp = web.HTTPUnavailableForLegalReasons(
@@ -329,7 +400,7 @@ class TestHTTPUnavailableForLegalReasons:
             text="text",
             content_type="custom",
         )
-        resp.foo = "bar"
+        resp.foo = "bar"  # type: ignore[attr-defined]
         for proto in range(2, pickle.HIGHEST_PROTOCOL + 1):
             pickled = pickle.dumps(resp, proto)
             resp2 = pickle.loads(pickled)

@@ -3,10 +3,11 @@ import asyncio
 import pathlib
 import socket
 import ssl
-from typing import Any, Dict, List, Union
+from typing import Dict, List
 
-from aiohttp import ClientSession, TCPConnector, resolver, test_utils, web
-from aiohttp.abc import AbstractResolver
+from aiohttp import ClientSession, TCPConnector, test_utils, web
+from aiohttp.abc import AbstractResolver, ResolveResult
+from aiohttp.resolver import DefaultResolver
 
 
 class FakeResolver(AbstractResolver):
@@ -15,14 +16,14 @@ class FakeResolver(AbstractResolver):
     def __init__(self, fakes: Dict[str, int]) -> None:
         """fakes -- dns -> port dict"""
         self._fakes = fakes
-        self._resolver = resolver.DefaultResolver()
+        self._resolver = DefaultResolver()
 
     async def resolve(
         self,
         host: str,
         port: int = 0,
-        family: Union[socket.AddressFamily, int] = socket.AF_INET,
-    ) -> List[Dict[str, Any]]:
+        family: socket.AddressFamily = socket.AF_INET,
+    ) -> List[ResolveResult]:
         fake_port = self._fakes.get(host)
         if fake_port is not None:
             return [
