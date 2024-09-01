@@ -42,7 +42,7 @@ from .client_reqrep import ClientResponse
 from .client_ws import ClientWebSocketResponse
 from .helpers import sentinel
 from .http import HttpVersion, RawRequestMessage
-from .streams import EMPTY_PAYLOAD
+from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import StrOrURL
 from .web import (
     Application,
@@ -595,7 +595,7 @@ def make_mocked_request(
     writer: Any = sentinel,
     protocol: Any = sentinel,
     transport: Any = sentinel,
-    payload: Any = EMPTY_PAYLOAD,
+    payload: StreamReader = EMPTY_PAYLOAD,
     sslcontext: Optional[SSLContext] = None,
     client_max_size: int = 1024**2,
     loop: Any = ...,
