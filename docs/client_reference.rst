@@ -100,9 +100,11 @@ The client session supports the context manager protocol for self closing.
 
    :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
                                   Authorization (optional). It will be included
-                                  with any request to any origin and will not be
-                                  removed, event during redirect to a different
-                                  origin.
+                                  with any request. However, if the
+                                  ``_base_url`` parameter is set, the request
+                                  URL's origin must match the base URL's origin;
+                                  otherwise, the default auth will not be
+                                  included.
 
    :param version: supported HTTP version, ``HTTP 1.1`` by default.
 
