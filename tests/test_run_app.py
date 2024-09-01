@@ -9,7 +9,7 @@ import ssl
 import subprocess
 import sys
 import time
-from typing import Callable, NoReturn, Set
+from typing import AsyncIterator, Callable, NoReturn, Set
 from unittest import mock
 from uuid import uuid4
 
