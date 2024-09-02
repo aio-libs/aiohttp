@@ -1820,6 +1820,26 @@ Utilities
    .. versionadded:: 3.8
 
 
+.. class:: ContentDisposition
+
+    A data class to represent the Content-Disposition header,
+    available as :attr:`ClientResponse.content_disposition` attribute.
+
+    .. attribute:: type
+
+    A :class:`str` instance. Value of Content-Disposition header
+    itself, e.g. ``attachment``.
+
+    .. attribute:: filename
+
+    A :class:`str` instance. Content filename extracted from
+    parameters. May be ``None``.
+
+    .. attribute:: parameters
+
+    Read-only mapping contains all parameters.
+
+
 .. class:: RequestInfo()
 
    A data class with request URL and headers from :class:`~aiohttp.ClientRequest`
@@ -2169,25 +2189,6 @@ All exceptions are available as members of *aiohttp* module.
    Redirect URL does not contain http schema.
 
    Derived from :exc:`RedirectClientError` and :exc:`NonHttpUrlClientError`
-
-
-.. class:: ContentDisposition
-
-    Represent Content-Disposition header
-
-    .. attribute:: type
-
-    A :class:`str` instance. Value of Content-Disposition header
-    itself, e.g. ``attachment``.
-
-    .. attribute:: filename
-
-    A :class:`str` instance. Content filename extracted from
-    parameters. May be ``None``.
-
-    .. attribute:: parameters
-
-    Read-only mapping contains all parameters.
 
 Response errors
 ^^^^^^^^^^^^^^^
