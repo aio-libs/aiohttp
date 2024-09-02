@@ -9,7 +9,7 @@ import ssl
 import sys
 import uuid
 from collections import deque
-from contextlib import closing
+from contextlib import closing, suppress
 from typing import (
     Awaitable,
     Callable,
@@ -1837,6 +1837,39 @@ async def test_close_cancels_cleanup_handle(
     assert conn._cleanup_handle is not None
     await conn.close()
     assert conn._cleanup_handle is None
+
+
+async def test_close_cancels_resolve_host(loop: asyncio.AbstractEventLoop) -> None:
+    cancelled = False
+
+    async def delay_resolve_host(*args: object) -> None:
+        """Delay _resolve_host() task in order to test cancellation."""
+        nonlocal cancelled
+        try:
+            await asyncio.sleep(10)
+        except asyncio.CancelledError:
+            cancelled = True
+            raise
+
+    conn = aiohttp.TCPConnector()
+    req = ClientRequest(
+        "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
+    )
+    with mock.patch.object(conn, "_resolve_host_with_throttle", delay_resolve_host):
+        t = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
+        # Let it create the internal task
+        await asyncio.sleep(0)
+        # Let that task start running
+        await asyncio.sleep(0)
+
+        # We now have a task being tracked and can ensure that .close() cancels it.
+        assert len(conn._resolve_host_tasks) == 1
+        await conn.close()
+        assert cancelled
+        assert len(conn._resolve_host_tasks) == 0
+
+        with suppress(asyncio.CancelledError):
+            await t
 
 
 async def test_close_abort_closed_transports(loop: asyncio.AbstractEventLoop) -> None:

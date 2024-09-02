@@ -14,7 +14,7 @@ from http.cookies import SimpleCookie
 from itertools import cycle, islice
 from time import monotonic
 from types import TracebackType
-from typing import (  # noqa
+from typing import (
     TYPE_CHECKING,
     Any,
     Awaitable,
@@ -404,8 +404,8 @@ class BaseConnector:
                     err_msg = "Error while closing connector: " + repr(res)
                     logging.error(err_msg)
 
-    def _close_immediately(self) -> List["asyncio.Future[None]"]:
-        waiters: List["asyncio.Future[None]"] = []
+    def _close_immediately(self) -> List[Awaitable[object]]:
+        waiters: List[Awaitable[object]] = []
 
         if self._closed:
             return waiters
@@ -805,11 +805,19 @@ class TCPConnector(BaseConnector):
         self._local_addr_infos = aiohappyeyeballs.addr_to_addr_infos(local_addr)
         self._happy_eyeballs_delay = happy_eyeballs_delay
         self._interleave = interleave
+        self._resolve_host_tasks: Set["asyncio.Task[List[ResolveResult]]"] = set()
 
-    def _close_immediately(self) -> List["asyncio.Future[None]"]:
+    def _close_immediately(self) -> List[Awaitable[object]]:
         for ev in self._throttle_dns_events.values():
             ev.cancel()
-        return super()._close_immediately()
+
+        waiters = super()._close_immediately()
+
+        for t in self._resolve_host_tasks:
+            t.cancel()
+            waiters.append(t)
+
+        return waiters
 
     @property
     def family(self) -> int:
@@ -885,6 +893,8 @@ class TCPConnector(BaseConnector):
         resolved_host_task = asyncio.create_task(
             self._resolve_host_with_throttle(key, host, port, traces)
         )
+        self._resolve_host_tasks.add(resolved_host_task)
+        resolved_host_task.add_done_callback(self._resolve_host_tasks.discard)
         try:
             return await asyncio.shield(resolved_host_task)
         except asyncio.CancelledError:
