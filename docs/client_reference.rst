@@ -45,7 +45,7 @@ The client session supports the context manager protocol for self closing.
                          response_class=ClientResponse, \
                          ws_response_class=ClientWebSocketResponse, \
                          version=aiohttp.HttpVersion11, \
-                         cookie_jar=None, read_timeout=None, \
+                         cookie_jar=None, \
                          connector_owner=True, \
                          raise_for_status=False, \
                          timeout=sentinel, \
