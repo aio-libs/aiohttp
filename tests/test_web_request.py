@@ -169,6 +169,22 @@ def test_absolute_url() -> None:
     assert req.rel_url == URL.build(path="/path/to", query={"a": "1"})
 
 
+def test_clone_absolute_scheme() -> None:
+    req = make_mocked_request("GET", "https://example.com/path/to?a=1")
+    assert req.scheme == "https"
+    req2 = req.clone(scheme="http")
+    assert req2.scheme == "http"
+    assert req2.url.scheme == "http"
+
+
+def test_clone_absolute_host() -> None:
+    req = make_mocked_request("GET", "https://example.com/path/to?a=1")
+    assert req.host == "example.com"
+    req2 = req.clone(host="foo.test")
+    assert req2.host == "foo.test"
+    assert req2.url.host == "foo.test"
+
+
 def test_content_length() -> None:
     req = make_mocked_request("Get", "/", CIMultiDict([("CONTENT-LENGTH", "123")]))
 
@@ -707,18 +723,22 @@ def test_save_state_on_clone() -> None:
 
 def test_clone_scheme() -> None:
     req = make_mocked_request("GET", "/")
+    assert req.scheme == "http"
     req2 = req.clone(scheme="https")
     assert req2.scheme == "https"
+    assert req2.url.scheme == "https"
 
 
 def test_clone_host() -> None:
     req = make_mocked_request("GET", "/")
+    assert req.host != "example.com"
     req2 = req.clone(host="example.com")
     assert req2.host == "example.com"
 
 
 def test_clone_remote() -> None:
     req = make_mocked_request("GET", "/")
+    assert req.remote != "11.11.11.11"
     req2 = req.clone(remote="11.11.11.11")
     assert req2.remote == "11.11.11.11"
 
