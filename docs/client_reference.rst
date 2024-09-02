@@ -41,17 +41,21 @@ The client session supports the context manager protocol for self closing.
                          connector=None, cookies=None, \
                          headers=None, skip_auto_headers=None, \
                          auth=None, json_serialize=json.dumps, \
+                         request_class=ClientRequest, \
+                         response_class=ClientResponse, \
+                         ws_response_class=ClientWebSocketResponse, \
                          version=aiohttp.HttpVersion11, \
                          cookie_jar=None, read_timeout=None, \
-                         conn_timeout=None, \
-                         timeout=sentinel, \
-                         raise_for_status=False, \
                          connector_owner=True, \
+                         raise_for_status=False, \
+                         timeout=sentinel, \
                          auto_decompress=True, \
-                         read_bufsize=2**16, \
-                         requote_redirect_url=True, \
                          trust_env=False, \
+                         requote_redirect_url=True, \
                          trace_configs=None, \
+                         read_bufsize=2**16, \
+                         max_line_size=8190, \
+                         max_field_size=8190, \
                          fallback_charset_resolver=lambda r, b: "utf-8")
 
    The class for creating client sessions and making requests.
