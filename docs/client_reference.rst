@@ -2295,17 +2295,20 @@ Connection errors
 
    Server operation timeout: read timeout, etc.
 
+   To catch all timeouts, including the ``total`` timeout, use
+   :exc:`asyncio.TimeoutError`.
+
    Derived from :exc:`ServerConnectionError` and :exc:`asyncio.TimeoutError`
 
 .. class:: ConnectionTimeoutError
 
-   Connection timeout on request: e.g. read timeout.
+   Connection timeout on ``connect`` and ``sock_connect`` timeouts.
 
    Derived from :exc:`ServerTimeoutError`
 
 .. class:: SocketTimeoutError
 
-   Reading from socket timeout.
+   Reading from socket timeout on ``sock_read`` timeout.
 
    Derived from :exc:`ServerTimeoutError`
 
