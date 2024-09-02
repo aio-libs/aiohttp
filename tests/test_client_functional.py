@@ -3882,7 +3882,6 @@ async def test_max_line_size_request_explicit(aiohttp_client: AiohttpClient) -> 
         assert resp.reason == "x" * 8191
 
 
-@pytest.mark.xfail(raises=asyncio.TimeoutError, reason="#7599")
 async def test_rejected_upload(
     aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
 ) -> None:
@@ -3903,13 +3902,11 @@ async def test_rejected_upload(
 
     with open(file_path, "rb") as file:
         data = {"file": file}
-        async with await client.post("/not_ok", data=data) as resp_not_ok:
-            assert 400 == resp_not_ok.status
+        async with client.post("/not_ok", data=data) as resp_not_ok:
+            assert resp_not_ok.status == 400
 
-    async with await client.get(
-        "/ok", timeout=aiohttp.ClientTimeout(total=0.01)
-    ) as resp_ok:
-        assert 200 == resp_ok.status
+    async with client.get("/ok", timeout=aiohttp.ClientTimeout(total=1)) as resp_ok:
+        assert resp_ok.status == 200
 
 
 async def test_request_with_wrong_ssl_type(aiohttp_client: AiohttpClient) -> None:
