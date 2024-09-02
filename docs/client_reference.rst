@@ -103,7 +103,7 @@ The client session supports the context manager protocol for self closing.
 
       By default :func:`json.dumps` function.
 
-   :param ClientRequest request_class: Custom class to use for client requests.
+   :param aiohttp.ClientRequest request_class: Custom class to use for client requests.
 
    :param ClientResponse response_class: Custom class to use for client responses.
 
