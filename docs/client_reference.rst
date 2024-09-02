@@ -105,9 +105,9 @@ The client session supports the context manager protocol for self closing.
 
    :param ClientRequest request_class: Custom class to use for client requests.
 
-   :param ClientRequest response_class: Custom class to use for client responses.
+   :param ClientResponse response_class: Custom class to use for client responses.
 
-   :param ClientRequest ws_response_class: Custom class to use for websocket responses.
+   :param ClientWebSocketResponse ws_response_class: Custom class to use for websocket responses.
 
    :param version: supported HTTP version, ``HTTP 1.1`` by default.
 
