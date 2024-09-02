@@ -366,10 +366,11 @@ async def test_stream_request_on_server_eof(aiohttp_client: AiohttpClient) -> No
     async with client.get("/") as resp:
         assert 200 == resp.status
 
-    # Connection should have been reused
+    # First connection should have been closed, otherwise server won't know if it
+    # received the full message.
     conns = next(iter(client.session.connector._conns.values()))
     assert len(conns) == 1
-    assert conns[0][0] is conn
+    assert conns[0][0] is not conn
 
 
 async def test_stream_request_on_server_eof_nested(
@@ -390,14 +391,20 @@ async def test_stream_request_on_server_eof_nested(
             await asyncio.sleep(0.1)
 
     async with client.put("/", data=data_gen()) as resp:
+        first_conn = resp.connection
         assert 200 == resp.status
-        async with client.get("/") as resp:
-            assert 200 == resp.status
+
+        async with client.get("/") as resp2:
+            assert 200 == resp2.status
 
     # Should be 2 separate connections
     assert client.session.connector is not None
     conns = next(iter(client.session.connector._conns.values()))
-    assert len(conns) == 2
+    assert len(conns) == 1
+
+    assert first_conn is not None
+    assert first_conn.closed
+    assert first_conn is not conns[0]
 
 
 async def test_HTTP_304_WITH_BODY(aiohttp_client: AiohttpClient) -> None:
