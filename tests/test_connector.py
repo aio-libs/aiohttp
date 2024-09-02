@@ -1692,7 +1692,7 @@ async def test_close_cancels_resolve_host(loop: asyncio.AbstractEventLoop) -> No
 
         # We now have a task being tracked and can ensure that .close() cancels it.
         assert len(conn._resolve_host_tasks) == 1
-        conn.close()
+        await conn.close()
         await asyncio.sleep(0.01)
         assert cancelled
         assert len(conn._resolve_host_tasks) == 0
