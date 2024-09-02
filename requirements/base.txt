@@ -38,5 +38,5 @@ pycparser==2.22
     # via cffi
 uvloop==0.20.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
-yarl==1.9.6
+yarl==1.9.7
     # via -r requirements/runtime-deps.in
