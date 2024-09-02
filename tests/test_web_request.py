@@ -734,6 +734,7 @@ def test_clone_host() -> None:
     assert req.host != "example.com"
     req2 = req.clone(host="example.com")
     assert req2.host == "example.com"
+    assert req2.url.host == "example.com"
 
 
 def test_clone_remote() -> None:
