@@ -659,7 +659,8 @@ class ClientRequest:
 
             set_exception(protocol, reraised_exc, underlying_exc)
         except asyncio.CancelledError:
-            await writer.write_eof()
+            # Body hasn't been fully sent, so connection can't be reused.
+            conn.close()
         except Exception as underlying_exc:
             set_exception(
                 protocol,

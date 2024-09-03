@@ -341,10 +341,11 @@ async def test_stream_request_on_server_eof(aiohttp_client) -> None:
     async with client.get("/") as resp:
         assert 200 == resp.status
 
-    # Connection should have been reused
+    # First connection should have been closed, otherwise server won't know if it
+    # received the full message.
     conns = next(iter(client.session.connector._conns.values()))
     assert len(conns) == 1
-    assert conns[0][0] is conn
+    assert conns[0][0] is not conn
 
 
 async def test_stream_request_on_server_eof_nested(aiohttp_client) -> None:
@@ -362,14 +363,21 @@ async def test_stream_request_on_server_eof_nested(aiohttp_client) -> None:
             yield b"just data"
             await asyncio.sleep(0.1)
 
+    assert client.session.connector is not None
     async with client.put("/", data=data_gen()) as resp:
+        first_conn = next(iter(client.session.connector._acquired))
         assert 200 == resp.status
-        async with client.get("/") as resp:
-            assert 200 == resp.status
+
+        async with client.get("/") as resp2:
+            assert 200 == resp2.status
 
     # Should be 2 separate connections
     conns = next(iter(client.session.connector._conns.values()))
-    assert len(conns) == 2
+    assert len(conns) == 1
+
+    assert first_conn is not None
+    assert not first_conn.is_connected()
+    assert first_conn is not conns[0][0]
 
 
 async def test_HTTP_304_WITH_BODY(aiohttp_client) -> None:
@@ -3651,9 +3659,10 @@ async def test_max_line_size_request_explicit(aiohttp_client) -> None:
         assert resp.reason == "x" * 8191
 
 
-@pytest.mark.xfail(raises=asyncio.TimeoutError, reason="#7599")
-async def test_rejected_upload(aiohttp_client, tmp_path) -> None:
-    async def ok_handler(request):
+async def test_rejected_upload(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+) -> None:
+    async def ok_handler(request: web.Request) -> web.Response:
         return web.Response()
 
     async def not_ok_handler(request):
@@ -3670,13 +3679,11 @@ async def test_rejected_upload(aiohttp_client, tmp_path) -> None:
 
     with open(file_path, "rb") as file:
         data = {"file": file}
-        async with await client.post("/not_ok", data=data) as resp_not_ok:
-            assert 400 == resp_not_ok.status
+        async with client.post("/not_ok", data=data) as resp_not_ok:
+            assert resp_not_ok.status == 400
 
-    async with await client.get(
-        "/ok", timeout=aiohttp.ClientTimeout(total=0.01)
-    ) as resp_ok:
-        assert 200 == resp_ok.status
+    async with client.get("/ok", timeout=aiohttp.ClientTimeout(total=1)) as resp_ok:
+        assert resp_ok.status == 200
 
 
 @pytest.mark.parametrize(
