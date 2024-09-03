@@ -463,7 +463,7 @@ class TestPartReader:
         assert data == result
 
     async def test_read_text_compressed(self) -> None:
-        data = b"\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00" b"%s--:--" % newline
+        data = b"\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00%s--:--" % newline
         with Stream(data) as stream:
             obj = aiohttp.BodyPartReader(
                 BOUNDARY,
@@ -515,9 +515,7 @@ class TestPartReader:
         assert {"тест": "пассед"} == result
 
     async def test_read_json_compressed(self) -> None:
-        with Stream(
-            b"\xabV*I-.Q\xb2RP*H,.NMQ\xaa\x05\x00" b"%s--:--" % newline
-        ) as stream:
+        with Stream(b"\xabV*I-.Q\xb2RP*H,.NMQ\xaa\x05\x00%s--:--" % newline) as stream:
             obj = aiohttp.BodyPartReader(
                 BOUNDARY,
                 {CONTENT_ENCODING: "deflate", CONTENT_TYPE: "application/json"},
@@ -712,7 +710,7 @@ class TestMultipartReader:
                     b"----:--",
                     b"",
                     b"passed",
-                    b"----:----" b"--:--",
+                    b"----:------:--",
                 ]
             )
         ) as stream:

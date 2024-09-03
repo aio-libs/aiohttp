@@ -581,7 +581,7 @@ def main(argv: List[str]) -> None:
     # Compatibility logic
     if args.path is not None and not hasattr(socket, "AF_UNIX"):
         arg_parser.error(
-            "file system paths not supported by your operating" " environment"
+            "file system paths not supported by your operating environment"
         )
 
     logging.basicConfig(level=logging.DEBUG)

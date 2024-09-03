@@ -261,7 +261,7 @@ class StreamReader(AsyncStreamReaderMixin):
         if self._http_chunk_splits is None:
             if self.total_bytes:
                 raise RuntimeError(
-                    "Called begin_http_chunk_receiving when" "some data was already fed"
+                    "Called begin_http_chunk_receiving when some data was already fed"
                 )
             self._http_chunk_splits = []
 

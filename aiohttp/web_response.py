@@ -134,9 +134,9 @@ class StreamResponse(BaseClass, HeadersMixin):
         status: int,
         reason: Optional[str] = None,
     ) -> None:
-        assert not self.prepared, (
-            "Cannot change the response status code after " "the headers have been sent"
-        )
+        assert (
+            not self.prepared
+        ), "Cannot change the response status code after the headers have been sent"
         self._status = int(status)
         if reason is None:
             try:
@@ -168,7 +168,7 @@ class StreamResponse(BaseClass, HeadersMixin):
 
         if hdrs.CONTENT_LENGTH in self._headers:
             raise RuntimeError(
-                "You can't enable chunked encoding when " "a content length is set"
+                "You can't enable chunked encoding when a content length is set"
             )
         if chunk_size is not None:
             warnings.warn("Chunk size is deprecated #1615", DeprecationWarning)
@@ -184,9 +184,9 @@ class StreamResponse(BaseClass, HeadersMixin):
                 "Using boolean for force is deprecated #3318", DeprecationWarning
             )
         elif force is not None:
-            assert isinstance(force, ContentCoding), (
-                "force should one of " "None, bool or " "ContentEncoding"
-            )
+            assert isinstance(
+                force, ContentCoding
+            ), "force should one of None, bool or ContentEncoding"
 
         self._compression = True
         self._compression_force = force
@@ -289,7 +289,7 @@ class StreamResponse(BaseClass, HeadersMixin):
             value = int(value)
             if self._chunked:
                 raise RuntimeError(
-                    "You can't set content length when " "chunked encoding is enable"
+                    "You can't set content length when chunked encoding is enable"
                 )
             self._headers[hdrs.CONTENT_LENGTH] = str(value)
         else:
@@ -611,7 +611,7 @@ class Response(StreamResponse):
             real_headers = headers  # = cast('CIMultiDict[str]', headers)
 
         if content_type is not None and "charset" in content_type:
-            raise ValueError("charset must not be in content_type " "argument")
+            raise ValueError("charset must not be in content_type argument")
 
         if text is not None:
             if hdrs.CONTENT_TYPE in real_headers:

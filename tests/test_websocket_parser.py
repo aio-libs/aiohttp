@@ -382,7 +382,7 @@ def test_continuation_with_close_empty(out, parser) -> None:
 websocket_mask_data = b"some very long data for masking by websocket"
 websocket_mask_mask = b"1234"
 websocket_mask_masked = (
-    b"B]^Q\x11DVFH\x12_[_U\x13PPFR\x14W]A\x14\\S@_X" b"\\T\x14SK\x13CTP@[RYV@"
+    b"B]^Q\x11DVFH\x12_[_U\x13PPFR\x14W]A\x14\\S@_X\\T\x14SK\x13CTP@[RYV@"
 )
 
 

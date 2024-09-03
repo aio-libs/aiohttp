@@ -127,9 +127,7 @@ class Fingerprint:
         if not hashfunc:
             raise ValueError("fingerprint has invalid length")
         elif hashfunc is md5 or hashfunc is sha1:
-            raise ValueError(
-                "md5 and sha1 are insecure and " "not supported. Use sha256."
-            )
+            raise ValueError("md5 and sha1 are insecure and not supported. Use sha256.")
         self._hashfunc = hashfunc
         self._fingerprint = fingerprint
 
@@ -190,7 +188,7 @@ def _merge_ssl_params(
             ssl = ssl_context
     if fingerprint is not None:
         warnings.warn(
-            "fingerprint is deprecated, " "use ssl=Fingerprint(fingerprint) instead",
+            "fingerprint is deprecated, use ssl=Fingerprint(fingerprint) instead",
             DeprecationWarning,
             stacklevel=3,
         )
@@ -505,7 +503,7 @@ class ClientRequest:
         if enc:
             if self.compress:
                 raise ValueError(
-                    "compress can not be set " "if Content-Encoding header is set"
+                    "compress can not be set if Content-Encoding header is set"
                 )
         elif self.compress:
             if not isinstance(self.compress, str):
@@ -527,7 +525,7 @@ class ClientRequest:
         elif self.chunked:
             if hdrs.CONTENT_LENGTH in self.headers:
                 raise ValueError(
-                    "chunked can not be set " "if Content-Length header is set"
+                    "chunked can not be set if Content-Length header is set"
                 )
 
             self.headers[hdrs.TRANSFER_ENCODING] = "chunked"
@@ -1205,7 +1203,7 @@ class ClientResponse(HeadersMixin):
                     self.history,
                     status=self.status,
                     message=(
-                        "Attempt to decode JSON with " "unexpected mimetype: %s" % ctype
+                        "Attempt to decode JSON with unexpected mimetype: %s" % ctype
                     ),
                     headers=self.headers,
                 )

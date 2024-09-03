@@ -83,9 +83,7 @@ class TestClientResponseError:
             message="Something wrong",
             headers=CIMultiDict(),
         )
-        assert str(err) == (
-            "400, message='Something wrong', " "url='http://example.com'"
-        )
+        assert str(err) == ("400, message='Something wrong', url='http://example.com'")
 
 
 def test_response_status() -> None:
@@ -254,7 +252,7 @@ class TestServerDisconnectedError:
 
     def test_repr(self) -> None:
         err = client.ServerDisconnectedError()
-        assert repr(err) == ("ServerDisconnectedError" "('Server disconnected')")
+        assert repr(err) == ("ServerDisconnectedError('Server disconnected')")
 
         err = client.ServerDisconnectedError(message="No connection")
         assert repr(err) == "ServerDisconnectedError('No connection')"

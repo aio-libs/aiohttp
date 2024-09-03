@@ -195,7 +195,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     def _check_frozen(self) -> None:
         if self._frozen:
             warnings.warn(
-                "Changing state of started or joined " "application is deprecated",
+                "Changing state of started or joined application is deprecated",
                 DeprecationWarning,
                 stacklevel=3,
             )
@@ -433,7 +433,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     ) -> Server:
 
         warnings.warn(
-            "Application.make_handler(...) is deprecated, " "use AppRunner API instead",
+            "Application.make_handler(...) is deprecated, use AppRunner API instead",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -492,7 +492,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
                 yield m, True
             else:
                 warnings.warn(
-                    'old-style middleware "{!r}" deprecated, ' "see #2252".format(m),
+                    f'old-style middleware "{m!r}" deprecated, see #2252',
                     DeprecationWarning,
                     stacklevel=2,
                 )

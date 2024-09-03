@@ -194,14 +194,14 @@ class AbstractRoute(abc.ABC):
             pass
         elif inspect.isgeneratorfunction(handler):
             warnings.warn(
-                "Bare generators are deprecated, " "use @coroutine wrapper",
+                "Bare generators are deprecated, use @coroutine wrapper",
                 DeprecationWarning,
             )
         elif isinstance(handler, type) and issubclass(handler, AbstractView):
             pass
         else:
             warnings.warn(
-                "Bare functions are deprecated, " "use async ones", DeprecationWarning
+                "Bare functions are deprecated, use async ones", DeprecationWarning
             )
 
             @wraps(handler)
@@ -777,7 +777,7 @@ class PrefixedSubAppResource(PrefixResource):
             router.index_resource(resource)
 
     def url_for(self, *args: str, **kwargs: str) -> URL:
-        raise RuntimeError(".url_for() is not supported " "by sub-application root")
+        raise RuntimeError(".url_for() is not supported by sub-application root")
 
     def get_info(self) -> _InfoDict:
         return {"app": self._app, "prefix": self._prefix}
@@ -900,7 +900,7 @@ class MatchedSubAppResource(PrefixedSubAppResource):
         return match_info, methods
 
     def __repr__(self) -> str:
-        return "<MatchedSubAppResource -> {app!r}>" "".format(app=self._app)
+        return f"<MatchedSubAppResource -> {self._app!r}>"
 
 
 class ResourceRoute(AbstractRoute):
