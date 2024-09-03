@@ -983,11 +983,12 @@ async def test_client_session_timeout_zero(
         req: object, traces: object, timeout: object
     ) -> ResponseHandler:
         await asyncio.sleep(0.01)
-        conn = create_mocked_conn(conn_closing_result=False)
-        conn.connected = True
-        conn.transport.is_closing.return_value = False
+        conn = create_mocked_conn()
+        conn.connected = True  # type: ignore[misc]
+        assert conn.transport is not None
+        conn.transport.is_closing.return_value = False  # type: ignore[attr-defined]
         msg = mock.create_autospec(RawResponseMessage, spec_set=True, code=200)
-        conn.read.return_value = (msg, mock.Mock())
+        conn.read.return_value = (msg, mock.Mock())  # type: ignore[attr-defined]
         return conn
 
     timeout = client.ClientTimeout(total=10, connect=0, sock_connect=0, sock_read=0)
