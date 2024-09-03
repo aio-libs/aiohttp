@@ -266,7 +266,7 @@ class TestClient:
     ) -> None:
         if not isinstance(server, BaseTestServer):
             raise TypeError(
-                "server must be TestServer " "instance, found type: %r" % type(server)
+                "server must be TestServer instance, found type: %r" % type(server)
             )
         self._server = server
         self._loop = loop
