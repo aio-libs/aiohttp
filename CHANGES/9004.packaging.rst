@@ -1,0 +1,1 @@
+Fixed ``test_client_session_timeout_zero`` to not require internet access -- by :user:`Dreamsorcerer`.

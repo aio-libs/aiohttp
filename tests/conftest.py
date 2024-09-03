@@ -13,6 +13,7 @@ from uuid import uuid4
 
 import pytest
 
+from aiohttp.client_proto import ResponseHandler
 from aiohttp.http import WS_KEY
 from aiohttp.test_utils import loop_context
 
@@ -174,7 +175,7 @@ def pipe_name():
 @pytest.fixture
 def create_mocked_conn(loop: Any):
     def _proto_factory(conn_closing_result=None, **kwargs):
-        proto = mock.Mock(**kwargs)
+        proto = mock.create_autospec(ResponseHandler, **kwargs)
         proto.closed = loop.create_future()
         proto.closed.set_result(conn_closing_result)
         return proto
