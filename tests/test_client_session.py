@@ -29,6 +29,7 @@ from aiohttp.client import ClientSession
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientRequest, ConnectionKey
 from aiohttp.connector import BaseConnector, Connection, TCPConnector, UnixConnector
+from aiohttp.http import RawResponseMessage
 from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.tracing import Trace
@@ -975,13 +976,31 @@ async def test_client_session_timeout_default_args(
     await session1.close()
 
 
-async def test_client_session_timeout_zero() -> None:
+async def test_client_session_timeout_zero(
+    create_mocked_conn: Callable[[], ResponseHandler]
+) -> None:
+    async def create_connection(
+        req: object, traces: object, timeout: object
+    ) -> ResponseHandler:
+        await asyncio.sleep(0.01)
+        conn = create_mocked_conn()
+        conn.connected = True  # type: ignore[misc]
+        assert conn.transport is not None
+        conn.transport.is_closing.return_value = False  # type: ignore[attr-defined]
+        msg = mock.create_autospec(RawResponseMessage, spec_set=True, code=200)
+        conn.read.return_value = (msg, mock.Mock())  # type: ignore[attr-defined]
+        return conn
+
     timeout = client.ClientTimeout(total=10, connect=0, sock_connect=0, sock_read=0)
-    try:
-        async with ClientSession(timeout=timeout) as session:
-            await session.get("http://example.com")
-    except asyncio.TimeoutError:  # pragma: no cover
-        pytest.fail("0 should disable timeout.")
+    async with ClientSession(timeout=timeout) as session:
+        with mock.patch.object(
+            session._connector, "_create_connection", create_connection
+        ):
+            try:
+                resp = await session.get("http://example.com")
+            except asyncio.TimeoutError:  # pragma: no cover
+                pytest.fail("0 should disable timeout.")
+            resp.close()
 
 
 async def test_client_session_timeout_bad_argument() -> None:
