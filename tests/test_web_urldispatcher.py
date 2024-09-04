@@ -682,10 +682,11 @@ async def test_allow_head(aiohttp_client: AiohttpClient) -> None:
 
 @pytest.mark.parametrize(
     "path",
-    [
+    (
         "/a",
         "/{a}",
-    ],
+        "/{a:.*}",
+    ),
 )
 def test_reuse_last_added_resource(path: str) -> None:
     # Test that adding a route with the same name and path of the last added
