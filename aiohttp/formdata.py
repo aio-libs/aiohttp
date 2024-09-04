@@ -101,6 +101,8 @@ class FormData:
         # form data (x-www-form-urlencoded)
         data = []
         for type_options, _, value in self._fields:
+            if not isinstance(value, str):
+                raise TypeError("expected str, got {!r}".format(value))
             data.append((type_options["name"], value))
 
         charset = self._charset if self._charset is not None else "utf-8"
