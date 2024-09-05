@@ -1,4 +1,5 @@
 from typing import Any
+from unittest import mock
 
 import pytest
 
@@ -80,6 +81,28 @@ def test_entry_func_non_existent_attribute(mocker: Any) -> None:
     error.assert_called_with(
         "module {!r} has no attribute {!r}".format("alpha.beta", "func")
     )
+
+
+def test_path_no_host(mocker: Any, monkeypatch: Any) -> None:
+    argv = "--path=test_path.sock alpha.beta:func".split()
+    mocker.patch("aiohttp.web.import_module")
+
+    run_app = mocker.patch("aiohttp.web.run_app")
+    with pytest.raises(SystemExit):
+        web.main(argv)
+
+    run_app.assert_called_with(mock.ANY, path="test_path.sock", host=None, port=None)
+
+
+def test_path_and_host(mocker: Any, monkeypatch: Any) -> None:
+    argv = "--path=test_path.sock --host=localhost --port=8000 alpha.beta:func".split()
+    mocker.patch("aiohttp.web.import_module")
+
+    run_app = mocker.patch("aiohttp.web.run_app")
+    with pytest.raises(SystemExit):
+        web.main(argv)
+
+    run_app.assert_called_with(mock.ANY, path="test_path.sock", host="localhost", port=8000)
 
 
 def test_path_when_unsupported(mocker: Any, monkeypatch: Any) -> None:

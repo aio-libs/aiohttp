@@ -529,7 +529,9 @@ def main(argv: List[str]) -> None:
         "-H",
         "--hostname",
         help="TCP/IP hostname to serve on (default: %(default)r)",
-        default="localhost",
+        # Use bytes so default is still shown in help, but we can test it below to
+        # figure out if the user has passed an explicit value (which is always str).
+        default=b"localhost",
     )
     arg_parser.add_argument(
         "-P",
@@ -541,8 +543,8 @@ def main(argv: List[str]) -> None:
     arg_parser.add_argument(
         "-U",
         "--path",
-        help="Unix file system path to serve on. Specifying a path will cause "
-        "hostname and port arguments to be ignored.",
+        help="Unix file system path to serve on. Can be combined with hostname "
+        "to serve on both Unix and TCP.",
     )
     args, extra_argv = arg_parser.parse_known_args(argv)
 
@@ -569,8 +571,14 @@ def main(argv: List[str]) -> None:
 
     logging.basicConfig(level=logging.DEBUG)
 
+    if args.path and args.hostname == b"localhost":
+        host = port = None
+    else:
+        host = str(args.hostname)
+        port = args.port
+
     app = func(extra_argv)
-    run_app(app, host=args.hostname, port=args.port, path=args.path)
+    run_app(app, host=host, port=port, path=args.path)
     arg_parser.exit(message="Stopped\n")
 
 
