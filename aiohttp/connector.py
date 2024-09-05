@@ -722,7 +722,7 @@ class _DNSCacheTable:
         return self._timestamps[key] + self._ttl < monotonic()
 
 
-def _make_ssl_context(verified: bool) -> SSLContext:
+def _make_ssl_context(verified: bool) -> "ssl.SSLContext":
     """Create SSL context.
 
     This method is not async-friendly and should be called from a thread
@@ -1102,13 +1102,7 @@ class TCPConnector(BaseConnector):
     ) -> Tuple[asyncio.BaseTransport, ResponseHandler]:
         """Wrap the raw TCP transport with TLS."""
         tls_proto = self._factory()  # Create a brand new proto for TLS
-
-        # Safety of the `cast()` call here is based on the fact that
-        # internally `_get_ssl_context()` only returns `None` when
-        # `req.is_ssl()` evaluates to `False` which is never gonna happen
-        # in this code path. Of course, it's rather fragile
-        # maintainability-wise but this is to be solved separately.
-        sslcontext = cast(ssl.SSLContext, self._get_ssl_context(req))
+        sslcontext = self._get_ssl_context(req)
 
         try:
             async with ceil_timeout(
