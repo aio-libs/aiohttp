@@ -8,8 +8,8 @@ from unittest.mock import Mock, patch
 import pytest
 
 from aiohttp.resolver import (
-    _NUMERIC_SOCKET_FLAGS,
     _NAME_SOCKET_FLAGS,
+    _NUMERIC_SOCKET_FLAGS,
     AsyncResolver,
     DefaultResolver,
     ThreadedResolver,
@@ -156,9 +156,7 @@ async def test_async_resolver_positive_link_local_ipv6_lookup(loop: Any) -> None
             port=0,
             type=socket.SOCK_STREAM,
         )
-        mock().getnameinfo.assert_called_with(
-            ("fe80::1", 0, 0, 3), _NAME_SOCKET_FLAGS
-        )
+        mock().getnameinfo.assert_called_with(("fe80::1", 0, 0, 3), _NAME_SOCKET_FLAGS)
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
