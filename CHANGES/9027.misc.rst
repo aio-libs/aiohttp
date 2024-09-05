@@ -1,0 +1,1 @@
+Include aiodns in `[speedups]` for Windows -- by :user:`Dreamsorcerer`.
