@@ -32,5 +32,5 @@ pycares==4.4.0
     # via aiodns
 pycparser==2.22
     # via cffi
-yarl==1.9.7
+yarl==1.9.11
     # via -r requirements/runtime-deps.in
