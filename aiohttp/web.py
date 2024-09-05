@@ -536,7 +536,7 @@ def main(argv: List[str]) -> None:
         "--port",
         help="TCP/IP port to serve on (default: %(default)r)",
         type=int,
-        default="8080",
+        default=8080,
     )
     arg_parser.add_argument(
         "-U",
