@@ -102,7 +102,9 @@ def test_path_and_host(mocker: Any, monkeypatch: Any) -> None:
     with pytest.raises(SystemExit):
         web.main(argv)
 
-    run_app.assert_called_with(mock.ANY, path="test_path.sock", host="localhost", port=8000)
+    run_app.assert_called_with(
+        mock.ANY, path="test_path.sock", host="localhost", port=8000
+    )
 
 
 def test_path_when_unsupported(mocker: Any, monkeypatch: Any) -> None:
