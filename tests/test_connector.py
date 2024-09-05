@@ -17,6 +17,7 @@ from typing import (
     Dict,
     Iterator,
     List,
+    Literal,
     NoReturn,
     Optional,
     Sequence,
@@ -2984,7 +2985,7 @@ async def test_connector_does_not_remove_needed_waiters(
 def test_connector_multiple_event_loop() -> None:
     """Test the connector with multiple event loops."""
 
-    async def async_connect():
+    async def async_connect() -> Literal[True]:
         conn = aiohttp.TCPConnector()
         loop = asyncio.get_running_loop()
         req = ClientRequest("GET", URL("https://127.0.0.1"), loop=loop)
@@ -2999,10 +3000,8 @@ def test_connector_multiple_event_loop() -> None:
                 await conn.connect(req, [], ClientTimeout())
         return True
 
-    def test_connect():
-        loop = asyncio.new_event_loop()
-        results = loop.run_until_complete(async_connect())
-        return results
+    def test_connect() -> Literal[True]:
+        return asyncio.new_event_loop().run_until_complete(async_connect())
 
     with ThreadPoolExecutor() as executor:
         res_list = [executor.submit(test_connect) for _ in range(2)]
