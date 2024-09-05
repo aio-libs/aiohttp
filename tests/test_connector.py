@@ -9,6 +9,7 @@ import ssl
 import sys
 import uuid
 from collections import deque
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import closing, suppress
 from typing import (
     Awaitable,
@@ -2977,3 +2978,33 @@ async def test_connector_does_not_remove_needed_waiters(
             )
 
             await connector.close()
+
+
+@pytest.mark.xfail
+def test_connector_multiple_event_loop() -> None:
+    """Test the connector with multiple event loops."""
+
+    async def async_connect():
+        conn = aiohttp.TCPConnector()
+        loop = asyncio.get_running_loop()
+        req = ClientRequest("GET", URL("https://127.0.0.1:443"), loop=loop)
+        with mock.patch.object(
+            conn._loop,
+            "create_connection",
+            autospec=True,
+            spec_set=True,
+            side_effect=ssl.CertificateError,
+        ):
+            await conn.connect(req, [], ClientTimeout())
+        return True
+
+    def test_connect():
+        loop = asyncio.new_event_loop()
+        results = loop.run_until_complete(async_connect())
+        return results
+
+    with ThreadPoolExecutor() as executor:
+        res_list = [executor.submit(test_connect) for _ in range(2)]
+        raw_response_list = [res.result() for res in as_completed(res_list)]
+
+    assert raw_response_list == [True, True]
