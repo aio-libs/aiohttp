@@ -200,13 +200,17 @@ async def test_cancel_shutdown(aiohttp_client: Any) -> None:
         with pytest.raises(asyncio.CancelledError):
             await t
 
-
         # Repeat for second waiter in shutdown()
         t = asyncio.create_task(request.protocol.shutdown())
         fut = asyncio.Future()
         fut.set_result(None)
         with mock.patch.object(request.protocol, "_handler_waiter", fut):
-            with mock.patch.object(request.protocol._current_request, "_cancel", autospec=True, spec_set=True):
+            with mock.patch.object(
+                request.protocol._current_request,
+                "_cancel",
+                autospec=True,
+                spec_set=True,
+            ):
                 await asyncio.sleep(0)
 
                 t.cancel()

@@ -1235,9 +1235,7 @@ async def test_oserror_on_write_bytes(
 
 
 @pytest.mark.skipif(sys.version_info < (3, 11), reason="Needs Task.cancelling()")
-async def test_cancel_close(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
-) -> None:
+async def test_cancel_close(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
     req._writer = asyncio.Future()
 
