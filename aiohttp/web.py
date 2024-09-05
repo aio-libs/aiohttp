@@ -528,10 +528,8 @@ def main(argv: List[str]) -> None:
     arg_parser.add_argument(
         "-H",
         "--hostname",
-        help="TCP/IP hostname to serve on (default: %(default)r)",
-        # Use bytes so default is still shown in help, but we can test it below to
-        # figure out if the user has passed an explicit value (which is always str).
-        default=b"localhost",
+        help="TCP/IP hostname to serve on (default: localhost)",
+        default=None,
     )
     arg_parser.add_argument(
         "-P",
@@ -571,10 +569,10 @@ def main(argv: List[str]) -> None:
 
     logging.basicConfig(level=logging.DEBUG)
 
-    if args.path and args.hostname == b"localhost":
+    if args.path and args.hostname is None:
         host = port = None
     else:
-        host = str(args.hostname)
+        host = args.hostname or "localhost"
         port = args.port
 
     app = func(extra_argv)
