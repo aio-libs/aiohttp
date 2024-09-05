@@ -8,7 +8,7 @@ import ssl
 import sys
 import uuid
 from collections import deque
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent import futures
 from contextlib import closing, suppress
 from typing import (
     Awaitable,
@@ -2972,8 +2972,8 @@ def test_connector_multiple_event_loop() -> None:
         finally:
             loop.close()
 
-    with ThreadPoolExecutor() as executor:
+    with futures.ThreadPoolExecutor() as executor:
         res_list = [executor.submit(test_connect) for _ in range(2)]
-        raw_response_list = [res.result() for res in as_completed(res_list)]
+        raw_response_list = [res.result() for res in futures.as_completed(res_list)]
 
     assert raw_response_list == [True, True]
