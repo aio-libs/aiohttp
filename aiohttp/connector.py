@@ -728,6 +728,9 @@ def _make_ssl_context(verified: bool) -> SSLContext:
     This method is not async-friendly and should be called from a thread
     because it will load certificates from disk and do other blocking I/O.
     """
+    if ssl is None:
+        # No ssl support
+        return None
     if verified:
         return ssl.create_default_context()
     sslcontext = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
