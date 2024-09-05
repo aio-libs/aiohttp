@@ -188,6 +188,43 @@ async def test_response_before_complete(aiohttp_client: Any) -> None:
     resp.release()
 
 
+@pytest.mark.skipif(sys.version_info < (3, 11), reason="Needs Task.cancelling()")
+async def test_cancel_shutdown(aiohttp_client: Any) -> None:
+    async def handler(request):
+        t = asyncio.create_task(request.protocol.shutdown())
+        # Ensure it's started waiting
+        await asyncio.sleep(0)
+
+        t.cancel()
+        # Cancellation should not be suppressed
+        with pytest.raises(asyncio.CancelledError):
+            await t
+
+
+        # Repeat for second waiter in shutdown()
+        t = asyncio.create_task(request.protocol.shutdown())
+        fut = asyncio.Future()
+        fut.set_result(None)
+        with mock.patch.object(request.protocol, "_handler_waiter", fut):
+            with mock.patch.object(request.protocol._current_request, "_cancel", autospec=True, spec_set=True):
+                await asyncio.sleep(0)
+
+                t.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await t
+
+        return web.Response(body=b"OK")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+        txt = await resp.text()
+        assert txt == "OK"
+
+
 async def test_post_form(aiohttp_client: Any) -> None:
     async def handler(request):
         data = await request.post()

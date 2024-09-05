@@ -561,11 +561,8 @@ class ClientRequest:
         """Support coroutines that yields bytes objects."""
         # 100 response
         if self._continue is not None:
-            try:
-                await writer.drain()
-                await self._continue
-            except asyncio.CancelledError:
-                return
+            await writer.drain()
+            await self._continue
 
         protocol = conn.protocol
         assert protocol is not None
@@ -594,6 +591,7 @@ class ClientRequest:
         except asyncio.CancelledError:
             # Body hasn't been fully sent, so connection can't be reused.
             conn.close()
+            raise
         except Exception as underlying_exc:
             set_exception(
                 protocol,
@@ -696,8 +694,15 @@ class ClientRequest:
 
     async def close(self) -> None:
         if self._writer is not None:
-            with contextlib.suppress(asyncio.CancelledError):
+            try:
                 await self._writer
+            except asyncio.CancelledError:
+                if (
+                    sys.version_info >= (3, 11)
+                    and (task := asyncio.current_task())
+                    and task.cancelling()
+                ):
+                    raise
 
     def terminate(self) -> None:
         if self._writer is not None:
