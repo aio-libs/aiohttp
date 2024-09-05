@@ -30,7 +30,13 @@ from pytest_mock import MockerFixture
 from yarl import URL
 
 import aiohttp
-from aiohttp import ClientRequest, ClientSession, ClientTimeout, connector, web
+from aiohttp import (
+    ClientRequest,
+    ClientSession,
+    ClientTimeout,
+    connector as connector_module,
+    web,
+)
 from aiohttp.abc import ResolveResult
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ConnectionKey
@@ -2981,6 +2987,6 @@ def test_connector_multiple_event_loop() -> None:
 
 def test_default_ssl_context_creation_without_ssl():
     """Verify _make_ssl_context does not raise when ssl is not available."""
-    with mock.patch.object(connector, "ssl", None):
-        assert connector._make_ssl_context(False) is None
-        assert connector._make_ssl_context(True) is None
+    with mock.patch.object(connector_module, "ssl", None):
+        assert connector_module._make_ssl_context(False) is None
+        assert connector_module._make_ssl_context(True) is None
