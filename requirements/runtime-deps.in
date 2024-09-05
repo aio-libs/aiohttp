@@ -1,6 +1,6 @@
 # Extracted from `setup.cfg` via `make sync-direct-runtime-deps`
 
-aiodns >= 3.2.0; sys_platform=="linux" or sys_platform=="darwin"
+aiodns >= 3.2.0
 aiohappyeyeballs >= 2.3.0
 aiosignal >= 1.1.2
 async-timeout >= 4.0, < 5.0 ; python_version < "3.11"
