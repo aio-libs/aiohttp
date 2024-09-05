@@ -743,8 +743,8 @@ def _make_ssl_context(verified: bool) -> SSLContext:
     return sslcontext
 
 
-# These are created at import time when since they
-# do blocking I/O to load certificates from disk,
+# The default SSLContext objects are created at import time
+# since they do blocking I/O to load certificates from disk,
 # and imports should always be done before the event loop starts
 # or in a thread.
 _SSL_CONTEXT_VERIFIED = _make_ssl_context(True)
