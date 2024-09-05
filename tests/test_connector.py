@@ -2985,7 +2985,7 @@ def test_connector_multiple_event_loop() -> None:
     assert raw_response_list == [True, True]
 
 
-def test_default_ssl_context_creation_without_ssl():
+def test_default_ssl_context_creation_without_ssl() -> None:
     """Verify _make_ssl_context does not raise when ssl is not available."""
     with mock.patch.object(connector_module, "ssl", None):
         assert connector_module._make_ssl_context(False) is None
