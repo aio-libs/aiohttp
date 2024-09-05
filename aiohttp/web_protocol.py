@@ -609,6 +609,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                         self.close()
 
                 set_exception(payload, PayloadAccessError())
+            except asyncio.CancelledError:
+                self.log_debug("Ignored premature client disconnection")
+                raise
             except Exception as exc:
                 self.log_exception("Unhandled exception", exc_info=exc)
                 self.force_close()
