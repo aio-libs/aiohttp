@@ -4,6 +4,7 @@ import io
 import json
 import pathlib
 import socket
+import sys
 import zlib
 from typing import Any, NoReturn, Optional
 from unittest import mock
