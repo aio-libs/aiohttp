@@ -9,6 +9,7 @@ import pytest
 
 from aiohttp.resolver import (
     _NUMERIC_SOCKET_FLAGS,
+    _NAME_SOCKET_FLAGS,
     AsyncResolver,
     DefaultResolver,
     ThreadedResolver,
@@ -156,7 +157,7 @@ async def test_async_resolver_positive_link_local_ipv6_lookup(loop: Any) -> None
             type=socket.SOCK_STREAM,
         )
         mock().getnameinfo.assert_called_with(
-            ("fe80::1", 0, 0, 3), _NUMERIC_SOCKET_FLAGS
+            ("fe80::1", 0, 0, 3), _NAME_SOCKET_FLAGS
         )
 
 
