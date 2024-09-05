@@ -984,7 +984,7 @@ class TCPConnector(BaseConnector):
 
         return proto
 
-    async def _get_ssl_context(self, req: ClientRequest) -> Optional[SSLContext]:
+    def _get_ssl_context(self, req: ClientRequest) -> Optional[SSLContext]:
         """Logic to get the correct SSL context
 
         0. if req.ssl is false, return None
@@ -1108,7 +1108,7 @@ class TCPConnector(BaseConnector):
         # `req.is_ssl()` evaluates to `False` which is never gonna happen
         # in this code path. Of course, it's rather fragile
         # maintainability-wise but this is to be solved separately.
-        sslcontext = cast(ssl.SSLContext, await self._get_ssl_context(req))
+        sslcontext = cast(ssl.SSLContext, self._get_ssl_context(req))
 
         try:
             async with ceil_timeout(
@@ -1186,7 +1186,7 @@ class TCPConnector(BaseConnector):
         *,
         client_error: Type[Exception] = ClientConnectorError,
     ) -> Tuple[asyncio.Transport, ResponseHandler]:
-        sslcontext = await self._get_ssl_context(req)
+        sslcontext = self._get_ssl_context(req)
         fingerprint = self._get_fingerprint(req)
 
         host = req.url.raw_host

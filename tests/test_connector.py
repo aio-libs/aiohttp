@@ -30,7 +30,7 @@ from pytest_mock import MockerFixture
 from yarl import URL
 
 import aiohttp
-from aiohttp import ClientRequest, ClientSession, ClientTimeout, web
+from aiohttp import ClientRequest, ClientSession, ClientTimeout, connector, web
 from aiohttp.abc import ResolveResult
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ConnectionKey
@@ -1720,7 +1720,7 @@ async def test___get_ssl_context1() -> None:
     conn = aiohttp.TCPConnector()
     req = mock.Mock()
     req.is_ssl.return_value = False
-    assert await conn._get_ssl_context(req) is None
+    assert conn._get_ssl_context(req) is None
 
 
 async def test___get_ssl_context2() -> None:
@@ -1729,7 +1729,7 @@ async def test___get_ssl_context2() -> None:
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = ctx
-    assert await conn._get_ssl_context(req) is ctx
+    assert conn._get_ssl_context(req) is ctx
 
 
 async def test___get_ssl_context3() -> None:
@@ -1738,7 +1738,7 @@ async def test___get_ssl_context3() -> None:
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = True
-    assert await conn._get_ssl_context(req) is ctx
+    assert conn._get_ssl_context(req) is ctx
 
 
 async def test___get_ssl_context4() -> None:
@@ -1747,7 +1747,7 @@ async def test___get_ssl_context4() -> None:
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = False
-    assert await conn._get_ssl_context(req) is _SSL_CONTEXT_UNVERIFIED
+    assert conn._get_ssl_context(req) is _SSL_CONTEXT_UNVERIFIED
 
 
 async def test___get_ssl_context5() -> None:
@@ -1756,7 +1756,7 @@ async def test___get_ssl_context5() -> None:
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = aiohttp.Fingerprint(hashlib.sha256(b"1").digest())
-    assert await conn._get_ssl_context(req) is _SSL_CONTEXT_UNVERIFIED
+    assert conn._get_ssl_context(req) is _SSL_CONTEXT_UNVERIFIED
 
 
 async def test___get_ssl_context6() -> None:
@@ -1764,7 +1764,7 @@ async def test___get_ssl_context6() -> None:
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = True
-    assert await conn._get_ssl_context(req) is _SSL_CONTEXT_VERIFIED
+    assert conn._get_ssl_context(req) is _SSL_CONTEXT_VERIFIED
 
 
 async def test_ssl_context_once() -> None:
@@ -1776,9 +1776,9 @@ async def test_ssl_context_once() -> None:
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = True
-    assert await conn1._get_ssl_context(req) is _SSL_CONTEXT_VERIFIED
-    assert await conn2._get_ssl_context(req) is _SSL_CONTEXT_VERIFIED
-    assert await conn3._get_ssl_context(req) is _SSL_CONTEXT_VERIFIED
+    assert conn1._get_ssl_context(req) is _SSL_CONTEXT_VERIFIED
+    assert conn2._get_ssl_context(req) is _SSL_CONTEXT_VERIFIED
+    assert conn3._get_ssl_context(req) is _SSL_CONTEXT_VERIFIED
 
 
 async def test_close_twice(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
@@ -2977,3 +2977,10 @@ def test_connector_multiple_event_loop() -> None:
         raw_response_list = [res.result() for res in futures.as_completed(res_list)]
 
     assert raw_response_list == [True, True]
+
+
+def test_default_ssl_context_creation_without_ssl():
+    """Verify _make_ssl_context does not raise when ssl is not available."""
+    with mock.patch.object(connector, "ssl", None):
+        assert connector._make_ssl_context(False) is None
+        assert connector._make_ssl_context(True) is None
