@@ -598,8 +598,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                         except (asyncio.CancelledError, asyncio.TimeoutError):
                             if (
                                 sys.version_info >= (3, 11)
-                                and (task := asyncio.current_task())
-                                and task.cancelling()
+                                and (t := asyncio.current_task())
+                                and t.cancelling()
                             ):
                                 raise
 
