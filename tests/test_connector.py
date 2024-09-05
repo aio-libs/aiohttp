@@ -3001,7 +3001,11 @@ def test_connector_multiple_event_loop() -> None:
         return True
 
     def test_connect() -> Literal[True]:
-        return asyncio.new_event_loop().run_until_complete(async_connect())
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(async_connect())
+        finally:
+            loop.close()
 
     with ThreadPoolExecutor() as executor:
         res_list = [executor.submit(test_connect) for _ in range(2)]
