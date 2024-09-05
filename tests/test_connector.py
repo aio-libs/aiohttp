@@ -2987,15 +2987,16 @@ def test_connector_multiple_event_loop() -> None:
     async def async_connect():
         conn = aiohttp.TCPConnector()
         loop = asyncio.get_running_loop()
-        req = ClientRequest("GET", URL("https://127.0.0.1:443"), loop=loop)
-        with mock.patch.object(
-            conn._loop,
-            "create_connection",
-            autospec=True,
-            spec_set=True,
-            side_effect=ssl.CertificateError,
-        ):
-            await conn.connect(req, [], ClientTimeout())
+        req = ClientRequest("GET", URL("https://127.0.0.1"), loop=loop)
+        with suppress(aiohttp.ClientConnectorError):
+            with mock.patch.object(
+                conn._loop,
+                "create_connection",
+                autospec=True,
+                spec_set=True,
+                side_effect=ssl.CertificateError,
+            ):
+                await conn.connect(req, [], ClientTimeout())
         return True
 
     def test_connect():
