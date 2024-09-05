@@ -1,5 +1,4 @@
 # Tests of http client with custom Connector
-
 import asyncio
 import gc
 import hashlib
@@ -22,7 +21,6 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
-    Type,
 )
 from unittest import mock
 
@@ -36,7 +34,13 @@ from aiohttp import ClientRequest, ClientSession, ClientTimeout, web
 from aiohttp.abc import ResolveResult
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ConnectionKey
-from aiohttp.connector import Connection, TCPConnector, _DNSCacheTable
+from aiohttp.connector import (
+    _SSL_CONTEXT_UNVERIFIED,
+    _SSL_CONTEXT_VERIFIED,
+    Connection,
+    TCPConnector,
+    _DNSCacheTable,
+)
 from aiohttp.locks import EventResultOrError
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import make_mocked_coro, unused_port
@@ -1712,18 +1716,6 @@ async def test_tcp_connector_clear_dns_cache_bad_args(
         conn.clear_dns_cache("localhost")
 
 
-async def test_dont_recreate_ssl_context() -> None:
-    conn = aiohttp.TCPConnector()
-    ctx = await conn._make_or_get_ssl_context(True)
-    assert ctx is await conn._make_or_get_ssl_context(True)
-
-
-async def test_dont_recreate_ssl_context2() -> None:
-    conn = aiohttp.TCPConnector()
-    ctx = await conn._make_or_get_ssl_context(False)
-    assert ctx is await conn._make_or_get_ssl_context(False)
-
-
 async def test___get_ssl_context1() -> None:
     conn = aiohttp.TCPConnector()
     req = mock.Mock()
@@ -1755,9 +1747,7 @@ async def test___get_ssl_context4() -> None:
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = False
-    assert await conn._get_ssl_context(req) is await conn._make_or_get_ssl_context(
-        False
-    )
+    assert await conn._get_ssl_context(req) is _SSL_CONTEXT_UNVERIFIED
 
 
 async def test___get_ssl_context5() -> None:
@@ -1766,9 +1756,7 @@ async def test___get_ssl_context5() -> None:
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = aiohttp.Fingerprint(hashlib.sha256(b"1").digest())
-    assert await conn._get_ssl_context(req) is await conn._make_or_get_ssl_context(
-        False
-    )
+    assert await conn._get_ssl_context(req) is _SSL_CONTEXT_UNVERIFIED
 
 
 async def test___get_ssl_context6() -> None:
@@ -1776,7 +1764,7 @@ async def test___get_ssl_context6() -> None:
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = True
-    assert await conn._get_ssl_context(req) is await conn._make_or_get_ssl_context(True)
+    assert await conn._get_ssl_context(req) is _SSL_CONTEXT_VERIFIED
 
 
 async def test_ssl_context_once() -> None:
@@ -1788,31 +1776,9 @@ async def test_ssl_context_once() -> None:
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = True
-    assert await conn1._get_ssl_context(req) is await conn1._make_or_get_ssl_context(
-        True
-    )
-    assert await conn2._get_ssl_context(req) is await conn1._make_or_get_ssl_context(
-        True
-    )
-    assert await conn3._get_ssl_context(req) is await conn1._make_or_get_ssl_context(
-        True
-    )
-    assert conn1._made_ssl_context is conn2._made_ssl_context is conn3._made_ssl_context
-    assert True in conn1._made_ssl_context
-
-
-@pytest.mark.parametrize("exception", [OSError, ssl.SSLError, asyncio.CancelledError])
-async def test_ssl_context_creation_raises(exception: Type[BaseException]) -> None:
-    """Test that we try again if SSLContext creation fails the first time."""
-    conn = aiohttp.TCPConnector()
-    conn._made_ssl_context.clear()
-
-    with mock.patch.object(
-        conn, "_make_ssl_context", side_effect=exception
-    ), pytest.raises(exception):
-        await conn._make_or_get_ssl_context(True)
-
-    assert isinstance(await conn._make_or_get_ssl_context(True), ssl.SSLContext)
+    assert await conn1._get_ssl_context(req) is _SSL_CONTEXT_VERIFIED
+    assert await conn2._get_ssl_context(req) is _SSL_CONTEXT_VERIFIED
+    assert await conn3._get_ssl_context(req) is _SSL_CONTEXT_VERIFIED
 
 
 async def test_close_twice(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
