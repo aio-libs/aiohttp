@@ -2981,7 +2981,6 @@ async def test_connector_does_not_remove_needed_waiters(
             await connector.close()
 
 
-@pytest.mark.xfail
 def test_connector_multiple_event_loop() -> None:
     """Test the connector with multiple event loops."""
 

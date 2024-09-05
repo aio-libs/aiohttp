@@ -51,14 +51,7 @@ from .client_exceptions import (
 )
 from .client_proto import ResponseHandler
 from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
-from .helpers import (
-    _SENTINEL,
-    ceil_timeout,
-    is_ip_address,
-    sentinel,
-    set_exception,
-    set_result,
-)
+from .helpers import _SENTINEL, ceil_timeout, is_ip_address, sentinel, set_result
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
@@ -729,6 +722,32 @@ class _DNSCacheTable:
         return self._timestamps[key] + self._ttl < monotonic()
 
 
+def _make_ssl_context(verified: bool) -> SSLContext:
+    """Create SSL context.
+
+    This method is not async-friendly and should be called from a thread
+    because it will load certificates from disk and do other blocking I/O.
+    """
+    if verified:
+        return ssl.create_default_context()
+    sslcontext = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    sslcontext.options |= ssl.OP_NO_SSLv2
+    sslcontext.options |= ssl.OP_NO_SSLv3
+    sslcontext.check_hostname = False
+    sslcontext.verify_mode = ssl.CERT_NONE
+    sslcontext.options |= ssl.OP_NO_COMPRESSION
+    sslcontext.set_default_verify_paths()
+    return sslcontext
+
+
+# These are created at import time when since they
+# do blocking I/O to load certificates from disk,
+# and imports should always be done before the event loop starts
+# or in a thread.
+_SSL_CONTEXT_VERIFIED = _make_ssl_context(True)
+_SSL_CONTEXT_UNVERIFIED = _make_ssl_context(False)
+
+
 class TCPConnector(BaseConnector):
     """TCP connector.
 
@@ -759,7 +778,6 @@ class TCPConnector(BaseConnector):
     """
 
     allowed_protocol_schema_set = HIGH_LEVEL_SCHEMA_SET | frozenset({"tcp"})
-    _made_ssl_context: Dict[bool, "asyncio.Future[SSLContext]"] = {}
 
     def __init__(
         self,
@@ -963,24 +981,6 @@ class TCPConnector(BaseConnector):
 
         return proto
 
-    @staticmethod
-    def _make_ssl_context(verified: bool) -> SSLContext:
-        """Create SSL context.
-
-        This method is not async-friendly and should be called from a thread
-        because it will load certificates from disk and do other blocking I/O.
-        """
-        if verified:
-            return ssl.create_default_context()
-        sslcontext = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        sslcontext.options |= ssl.OP_NO_SSLv2
-        sslcontext.options |= ssl.OP_NO_SSLv3
-        sslcontext.check_hostname = False
-        sslcontext.verify_mode = ssl.CERT_NONE
-        sslcontext.options |= ssl.OP_NO_COMPRESSION
-        sslcontext.set_default_verify_paths()
-        return sslcontext
-
     async def _get_ssl_context(self, req: ClientRequest) -> Optional[SSLContext]:
         """Logic to get the correct SSL context
 
@@ -1005,35 +1005,14 @@ class TCPConnector(BaseConnector):
             return sslcontext
         if sslcontext is not True:
             # not verified or fingerprinted
-            return await self._make_or_get_ssl_context(False)
+            return _SSL_CONTEXT_UNVERIFIED
         sslcontext = self._ssl
         if isinstance(sslcontext, ssl.SSLContext):
             return sslcontext
         if sslcontext is not True:
             # not verified or fingerprinted
-            return await self._make_or_get_ssl_context(False)
-        return await self._make_or_get_ssl_context(True)
-
-    async def _make_or_get_ssl_context(self, verified: bool) -> SSLContext:
-        """Create or get cached SSL context."""
-        try:
-            return await self._made_ssl_context[verified]
-        except KeyError:
-            loop = self._loop
-            future = loop.create_future()
-            self._made_ssl_context[verified] = future
-            try:
-                result = await loop.run_in_executor(
-                    None, self._make_ssl_context, verified
-                )
-            # BaseException is used since we might get CancelledError
-            except BaseException as ex:
-                del self._made_ssl_context[verified]
-                set_exception(future, ex)
-                raise
-            else:
-                set_result(future, result)
-            return result
+            return _SSL_CONTEXT_UNVERIFIED
+        return _SSL_CONTEXT_VERIFIED
 
     def _get_fingerprint(self, req: ClientRequest) -> Optional["Fingerprint"]:
         ret = req.ssl
