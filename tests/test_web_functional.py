@@ -207,8 +207,7 @@ async def test_cancel_shutdown(aiohttp_client: Any) -> None:
         fut.set_result(None)
         with mock.patch.object(request.protocol, "_handler_waiter", fut):
             with mock.patch.object(
-                request.protocol._current_request,
-                "_cancel",
+                request.protocol, "_current_request",
                 autospec=True,
                 spec_set=True,
             ):
