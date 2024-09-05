@@ -1045,7 +1045,15 @@ class ClientResponse(HeadersMixin):
 
     async def _wait_released(self) -> None:
         if self._writer is not None:
-            await self._writer
+            try:
+                await self._writer
+            except asyncio.CancelledError:
+                if (
+                    sys.version_info >= (3, 11)
+                    and (task := asyncio.current_task())
+                    and task.cancelling()
+                ):
+                    raise
         self._release_connection()
 
     def _cleanup_writer(self) -> None:
@@ -1062,7 +1070,15 @@ class ClientResponse(HeadersMixin):
 
     async def wait_for_close(self) -> None:
         if self._writer is not None:
-            await self._writer
+            try:
+                await self._writer
+            except asyncio.CancelledError:
+                if (
+                    sys.version_info >= (3, 11)
+                    and (task := asyncio.current_task())
+                    and task.cancelling()
+                ):
+                    raise
         self.release()
 
     async def read(self) -> bytes:
