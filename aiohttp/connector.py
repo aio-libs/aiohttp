@@ -722,7 +722,7 @@ class _DNSCacheTable:
         return self._timestamps[key] + self._ttl < monotonic()
 
 
-def _make_ssl_context(verified: bool) -> "ssl.SSLContext":
+def _make_ssl_context(verified: bool) -> SSLContext:
     """Create SSL context.
 
     This method is not async-friendly and should be called from a thread
@@ -1103,6 +1103,10 @@ class TCPConnector(BaseConnector):
         """Wrap the raw TCP transport with TLS."""
         tls_proto = self._factory()  # Create a brand new proto for TLS
         sslcontext = self._get_ssl_context(req)
+        if TYPE_CHECKING:
+            # _start_tls_connection is unreachable in the current code path
+            # if sslcontext is None.
+            assert sslcontext is not None
 
         try:
             async with ceil_timeout(
