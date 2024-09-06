@@ -17,6 +17,7 @@ except ImportError:  # pragma: no cover
 
 
 _NUMERIC_SOCKET_FLAGS = socket.AI_NUMERICHOST | socket.AI_NUMERICSERV
+_NAME_SOCKET_FLAGS = socket.NI_NUMERICHOST | socket.NI_NUMERICSERV
 
 
 class ThreadedResolver(AbstractResolver):
@@ -52,7 +53,7 @@ class ThreadedResolver(AbstractResolver):
                     # LL IPv6 is a VERY rare case. Strictly speaking, we should use
                     # getnameinfo() unconditionally, but performance makes sense.
                     resolved_host, _port = await self._loop.getnameinfo(
-                        address, _NUMERIC_SOCKET_FLAGS
+                        address, _NAME_SOCKET_FLAGS
                     )
                     port = int(_port)
                 else:
@@ -120,7 +121,7 @@ class AsyncResolver(AbstractResolver):
                     # getnameinfo() unconditionally, but performance makes sense.
                     result = await self._resolver.getnameinfo(
                         (address[0].decode("ascii"), *address[1:]),
-                        _NUMERIC_SOCKET_FLAGS,
+                        _NAME_SOCKET_FLAGS,
                     )
                     resolved_host = result.node
                 else:
