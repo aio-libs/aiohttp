@@ -3,12 +3,12 @@ import ipaddress
 import socket
 from ipaddress import ip_address
 from typing import Any, Awaitable, Callable, Collection, List, NamedTuple, Tuple, Union
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, create_autospec, patch
 
 import pytest
 
 from aiohttp.resolver import (
-    _NUMERIC_SOCKET_FLAGS,
+    _NAME_SOCKET_FLAGS,
     _SUPPORTS_SCOPE_ID,
     AsyncResolver,
     DefaultResolver,
@@ -157,9 +157,7 @@ async def test_async_resolver_positive_link_local_ipv6_lookup(loop: Any) -> None
             port=0,
             type=socket.SOCK_STREAM,
         )
-        mock().getnameinfo.assert_called_with(
-            ("fe80::1", 0, 0, 3), _NUMERIC_SOCKET_FLAGS
-        )
+        mock().getnameinfo.assert_called_with(("fe80::1", 0, 0, 3), _NAME_SOCKET_FLAGS)
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
@@ -218,11 +216,30 @@ async def test_threaded_resolver_positive_ipv6_link_local_lookup() -> None:
     loop = Mock()
     loop.getaddrinfo = fake_ipv6_addrinfo(["fe80::1"])
     loop.getnameinfo = fake_ipv6_nameinfo("fe80::1%eth0")
+
+    # Mock the fake function that was returned by helper functions
+    loop.getaddrinfo = create_autospec(loop.getaddrinfo)
+    loop.getnameinfo = create_autospec(loop.getnameinfo)
+
+    # Set the correct return values for mock functions
+    loop.getaddrinfo.return_value = await fake_ipv6_addrinfo(["fe80::1"])()
+    loop.getnameinfo.return_value = await fake_ipv6_nameinfo("fe80::1%eth0")()
+
     resolver = ThreadedResolver()
     resolver._loop = loop
     real = await resolver.resolve("www.python.org")
     assert real[0]["hostname"] == "www.python.org"
     ipaddress.ip_address(real[0]["host"])
+
+    loop.getaddrinfo.assert_called_with(
+        "www.python.org",
+        0,
+        type=socket.SOCK_STREAM,
+        family=socket.AF_INET,
+        flags=socket.AI_ADDRCONFIG,
+    )
+
+    loop.getnameinfo.assert_called_with(("fe80::1", 0, 0, 3), _NAME_SOCKET_FLAGS)
 
 
 async def test_threaded_resolver_multiple_replies() -> None:
