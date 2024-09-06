@@ -1,0 +1,1 @@
+Fixed creation of ``SSLContext`` inside of :py:class:`aiohttp.TCPConnector` with multiple event loops in different threads -- by :user:`bdraco`.
