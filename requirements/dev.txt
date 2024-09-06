@@ -149,9 +149,9 @@ pycares==4.4.0
     # via aiodns
 pycparser==2.22
     # via cffi
-pydantic==2.8.2
+pydantic==2.9.0
     # via python-on-whales
-pydantic-core==2.20.1
+pydantic-core==2.23.2
     # via pydantic
 pygments==2.18.0
     # via
@@ -179,7 +179,7 @@ pytest-mock==3.14.0
     #   -r requirements/test.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.72.0
+python-on-whales==0.73.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
