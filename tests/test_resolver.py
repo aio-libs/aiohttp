@@ -9,7 +9,6 @@ import pytest
 
 from aiohttp.resolver import (
     _NAME_SOCKET_FLAGS,
-    _NUMERIC_SOCKET_FLAGS,
     AsyncResolver,
     DefaultResolver,
     ThreadedResolver,
