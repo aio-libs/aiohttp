@@ -8,8 +8,12 @@ from unittest.mock import Mock, create_autospec, patch
 import pytest
 
 from aiohttp.resolver import (
-    _NAME_SOCKET_FLAGS,
+<<<<<<< HEAD
+    _NUMERIC_SOCKET_FLAGS,
     _SUPPORTS_SCOPE_ID,
+=======
+    _NAME_SOCKET_FLAGS,
+>>>>>>> c693a816 (Fix Link-Local IPv6 Flags in the Resolver (#9032))
     AsyncResolver,
     DefaultResolver,
     ThreadedResolver,
