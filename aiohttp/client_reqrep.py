@@ -629,11 +629,15 @@ class ClientRequest:
         writer = StreamWriter(
             protocol,
             self.loop,
-            on_chunk_sent=functools.partial(
-                self._on_chunk_request_sent, self.method, self.url
+            on_chunk_sent=(
+                functools.partial(self._on_chunk_request_sent, self.method, self.url)
+                if self._traces
+                else None
             ),
-            on_headers_sent=functools.partial(
-                self._on_headers_request_sent, self.method, self.url
+            on_headers_sent=(
+                functools.partial(self._on_headers_request_sent, self.method, self.url)
+                if self._traces
+                else None
             ),
         )
 
