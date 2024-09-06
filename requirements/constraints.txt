@@ -184,7 +184,7 @@ pytest-mock==3.14.0
     #   -r requirements/test.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.72.0
+python-on-whales==0.73.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
