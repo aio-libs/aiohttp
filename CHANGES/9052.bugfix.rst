@@ -1,0 +1,1 @@
+Fixed some exception information getting lost -- by :user:`Dreamsorcerer`.
