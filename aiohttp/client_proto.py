@@ -283,7 +283,11 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
                         self.transport.close()
                     # should_close is True after the call
                     if isinstance(underlying_exc, HttpProcessingError):
-                        exc = HttpProcessingError(code=underlying_exc.code, message=underlying_exc.message, headers=underlying_exc.headers)
+                        exc = HttpProcessingError(
+                            code=underlying_exc.code,
+                            message=underlying_exc.message,
+                            headers=underlying_exc.headers,
+                        )
                     else:
                         exc = HttpProcessingError()
                     self.set_exception(exc, underlying_exc)
