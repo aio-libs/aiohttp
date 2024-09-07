@@ -3949,10 +3949,6 @@ async def test_raise_for_status_is_none(aiohttp_client: AiohttpClient) -> None:
     await session.get("/")
 
 
-@pytest.mark.xfail(
-    reason="#8395 Error message regression for large headers in 3.9.4",
-    raises=AssertionError,
-)
 async def test_header_too_large_error(aiohttp_client: AiohttpClient) -> None:
     """By default when not specifying `max_field_size` requests should fail with a 400 status code."""
 
