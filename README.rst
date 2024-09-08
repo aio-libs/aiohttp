@@ -157,7 +157,6 @@ Please add *aiohttp* tag to your question there.
 Requirements
 ============
 
-- async-timeout_
 - attrs_
 - multidict_
 - yarl_
