@@ -8,6 +8,7 @@ from typing import (
     Iterable,
     Mapping,
     Sequence,
+    Protocol,
     Tuple,
     Union,
 )
@@ -35,7 +36,13 @@ else:
 Byteish = Union[bytes, bytearray, memoryview]
 JSONEncoder = Callable[[Any], str]
 JSONDecoder = Callable[[str], Any]
-LooseHeaders = Union[Mapping[Union[str, istr], str], _CIMultiDict, _CIMultiDictProxy]
+LooseHeaders = Union[
+    Mapping[str, str],
+    Mapping[istr, str],
+    _CIMultiDict,
+    _CIMultiDictProxy,
+    Iterable[Tuple[Union[str, istr], str]],
+]
 RawHeaders = Tuple[Tuple[bytes, bytes], ...]
 StrOrURL = Union[str, URL]
 
@@ -50,7 +57,13 @@ LooseCookies = Union[
 ]
 
 Handler = Callable[["Request"], Awaitable["StreamResponse"]]
-Middleware = Callable[["Request", Handler], Awaitable["StreamResponse"]]
+
+
+class Middleware(Protocol):
+    def __call__(
+        self, request: "Request", handler: Handler
+    ) -> Awaitable["StreamResponse"]: ...
+
 
 PathLike = Union[str, "os.PathLike[str]"]
 

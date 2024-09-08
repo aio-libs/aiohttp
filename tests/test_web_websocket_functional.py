@@ -4,13 +4,16 @@
 import asyncio
 import contextlib
 import sys
-from typing import Any, Optional
+import weakref
+from typing import Any, NoReturn, Optional
+from unittest import mock
 
 import pytest
 
 import aiohttp
 from aiohttp import WSServerHandshakeError, web
 from aiohttp.http import WSCloseCode, WSMsgType
+from aiohttp.pytest_plugin import AiohttpClient
 
 
 async def test_websocket_can_prepare(loop: Any, aiohttp_client: Any) -> None:
@@ -269,7 +272,7 @@ async def test_close_timeout(loop: Any, aiohttp_client: Any) -> None:
     await asyncio.sleep(0.08)
     assert await aborted
 
-    assert elapsed < 0.25, "close() should have returned before " "at most 2x timeout."
+    assert elapsed < 0.25, "close() should have returned before at most 2x timeout."
 
     await ws.close()
 
@@ -715,6 +718,133 @@ async def test_heartbeat_no_pong(loop: Any, aiohttp_client: Any) -> None:
     await ws.close()
 
 
+async def test_heartbeat_connection_closed(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
+    """Test that the connection is closed while ping is in progress."""
+    ping_count = 0
+
+    async def handler(request: web.Request) -> NoReturn:
+        nonlocal ping_count
+        ws_server = web.WebSocketResponse(heartbeat=0.05)
+        await ws_server.prepare(request)
+        # We patch write here to simulate a connection reset error
+        # since if we closed the connection normally, the server would
+        # would cancel the heartbeat task and we wouldn't get a ping
+        with mock.patch.object(
+            ws_server._req.transport, "write", side_effect=ConnectionResetError
+        ), mock.patch.object(
+            ws_server._writer, "ping", wraps=ws_server._writer.ping
+        ) as ping:
+            try:
+                await ws_server.receive()
+            finally:
+                ping_count = ping.call_count
+        assert False
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    client = await aiohttp_client(app)
+    ws = await client.ws_connect("/", autoping=False)
+    msg = await ws.receive()
+    assert msg.type is aiohttp.WSMsgType.CLOSED
+    assert msg.extra is None
+    assert ws.close_code == WSCloseCode.ABNORMAL_CLOSURE
+    assert ping_count == 1
+    await ws.close()
+
+
+async def test_heartbeat_failure_ends_receive(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
+    """Test that no heartbeat response to the server ends the receive call."""
+    ws_server_close_code = None
+    ws_server_exception = None
+
+    async def handler(request: web.Request) -> NoReturn:
+        nonlocal ws_server_close_code, ws_server_exception
+        ws_server = web.WebSocketResponse(heartbeat=0.05)
+        await ws_server.prepare(request)
+        try:
+            await ws_server.receive()
+        finally:
+            ws_server_close_code = ws_server.close_code
+            ws_server_exception = ws_server.exception()
+        assert False
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    client = await aiohttp_client(app)
+    ws = await client.ws_connect("/", autoping=False)
+    msg = await ws.receive()
+    assert msg.type is aiohttp.WSMsgType.PING
+    msg = await ws.receive()
+    assert msg.type is aiohttp.WSMsgType.CLOSED
+    assert ws.close_code == WSCloseCode.ABNORMAL_CLOSURE
+    assert ws_server_close_code == WSCloseCode.ABNORMAL_CLOSURE
+    assert isinstance(ws_server_exception, asyncio.TimeoutError)
+    await ws.close()
+
+
+async def test_heartbeat_no_pong_send_many_messages(
+    loop: Any, aiohttp_client: Any
+) -> None:
+    """Test no pong after sending many messages."""
+
+    async def handler(request):
+        ws = web.WebSocketResponse(heartbeat=0.05)
+        await ws.prepare(request)
+        for _ in range(10):
+            await ws.send_str("test")
+
+        await ws.receive()
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    client = await aiohttp_client(app)
+    ws = await client.ws_connect("/", autoping=False)
+    for _ in range(10):
+        msg = await ws.receive()
+        assert msg.type is aiohttp.WSMsgType.TEXT
+        assert msg.data == "test"
+
+    msg = await ws.receive()
+    assert msg.type is aiohttp.WSMsgType.PING
+    await ws.close()
+
+
+async def test_heartbeat_no_pong_receive_many_messages(
+    loop: Any, aiohttp_client: Any
+) -> None:
+    """Test no pong after receiving many messages."""
+
+    async def handler(request):
+        ws = web.WebSocketResponse(heartbeat=0.05)
+        await ws.prepare(request)
+        for _ in range(10):
+            server_msg = await ws.receive()
+            assert server_msg.type is aiohttp.WSMsgType.TEXT
+
+        await ws.receive()
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    client = await aiohttp_client(app)
+    ws = await client.ws_connect("/", autoping=False)
+    for _ in range(10):
+        await ws.send_str("test")
+
+    msg = await ws.receive()
+    assert msg.type is aiohttp.WSMsgType.PING
+    await ws.close()
+
+
 async def test_server_ws_async_for(loop: Any, aiohttp_server: Any) -> None:
     closed = loop.create_future()
 
@@ -962,3 +1092,81 @@ async def test_receive_timeout_keeps_connection_open(
     await ws.close(code=WSCloseCode.OK, message="exit message")
 
     await closed
+
+
+async def test_websocket_shutdown(aiohttp_client: AiohttpClient) -> None:
+    """Test that the client websocket gets the close message when the server is shutting down."""
+    url = "/ws"
+    app = web.Application()
+    websockets = web.AppKey("websockets", weakref.WeakSet)
+    app[websockets] = weakref.WeakSet()
+
+    # need for send signal shutdown server
+    shutdown_websockets = web.AppKey("shutdown_websockets", weakref.WeakSet)
+    app[shutdown_websockets] = weakref.WeakSet()
+
+    async def websocket_handler(request: web.Request) -> web.WebSocketResponse:
+        websocket = web.WebSocketResponse()
+        await websocket.prepare(request)
+        request.app[websockets].add(websocket)
+        request.app[shutdown_websockets].add(websocket)
+
+        try:
+            async for message in websocket:
+                await websocket.send_json({"ok": True, "message": message.json()})
+        finally:
+            request.app[websockets].discard(websocket)
+
+        return websocket
+
+    async def on_shutdown(app: web.Application) -> None:
+        while app[shutdown_websockets]:
+            websocket = app[shutdown_websockets].pop()
+            await websocket.close(
+                code=aiohttp.WSCloseCode.GOING_AWAY,
+                message="Server shutdown",
+            )
+
+    app.router.add_get(url, websocket_handler)
+    app.on_shutdown.append(on_shutdown)
+
+    client = await aiohttp_client(app)
+
+    websocket = await client.ws_connect(url)
+
+    message = {"message": "hi"}
+    await websocket.send_json(message)
+    reply = await websocket.receive_json()
+    assert reply == {"ok": True, "message": message}
+
+    await app.shutdown()
+
+    assert websocket.closed is False
+
+    reply = await websocket.receive()
+
+    assert reply.type is aiohttp.http.WSMsgType.CLOSE
+    assert reply.data == aiohttp.WSCloseCode.GOING_AWAY
+    assert reply.extra == "Server shutdown"
+
+    assert websocket.closed is True
+
+
+@pytest.mark.xfail(reason="close never reaches client per issue #5180")
+async def test_ws_close_return_code(aiohttp_client: AiohttpClient) -> None:
+    """Test that the close code is returned when the server closes the connection."""
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/")
+    await resp.send_str("some data")
+    await asyncio.sleep(0.1)
+    await resp.receive()
+    assert resp.close_code is WSCloseCode.OK

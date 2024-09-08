@@ -12,7 +12,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: 3.8
+        python-version: 3.9
     - name: Install dependencies
       run: >-
         pip install -r requirements/lint.in -c requirements/lint.txt
@@ -24,7 +24,7 @@ jobs:
         app_id: ${{ secrets.BOT_APP_ID }}
         private_key: ${{ secrets.BOT_PRIVATE_KEY }}
     - name: Create Pull Request
-      uses: peter-evans/create-pull-request@v6
+      uses: peter-evans/create-pull-request@v7
       with:
         token: ${{ steps.generate_token.outputs.token }}
         branch: update/pre-commit-autoupdate
@@ -33,4 +33,4 @@ jobs:
         body: |
           Update versions of tools in pre-commit
           configs to latest version
-        labels: dependencies backport-3.7 backport-3.8
+        labels: dependencies backport-3.10 backport-3.11

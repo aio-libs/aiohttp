@@ -10,7 +10,7 @@ import sys
 import traceback
 import warnings
 from contextlib import suppress
-from types import SimpleNamespace, TracebackType
+from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -79,7 +79,13 @@ from .client_ws import (
     ClientWebSocketResponse,
     ClientWSTimeout,
 )
-from .connector import BaseConnector, NamedPipeConnector, TCPConnector, UnixConnector
+from .connector import (
+    HTTP_AND_EMPTY_SCHEMA_SET,
+    BaseConnector,
+    NamedPipeConnector,
+    TCPConnector,
+    UnixConnector,
+)
 from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
@@ -140,6 +146,7 @@ __all__ = (
     # client
     "ClientSession",
     "ClientTimeout",
+    "ClientWSTimeout",
     "request",
 )
 
@@ -174,7 +181,7 @@ class _RequestOptions(TypedDict, total=False):
     ssl: Union[SSLContext, bool, Fingerprint]
     server_hostname: Union[str, None]
     proxy_headers: Union[LooseHeaders, None]
-    trace_request_ctx: Union[SimpleNamespace, None]
+    trace_request_ctx: Union[Mapping[str, str], None]
     read_bufsize: Union[int, None]
     auto_decompress: Union[bool, None]
     max_line_size: Union[int, None]
@@ -208,9 +215,6 @@ DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60)
 
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
-HTTP_SCHEMA_SET = frozenset({"http", "https", ""})
-WS_SCHEMA_SET = frozenset({"ws", "wss"})
-ALLOWED_PROTOCOL_SCHEMA_SET = HTTP_SCHEMA_SET | WS_SCHEMA_SET
 
 _RetType = TypeVar("_RetType")
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
@@ -270,7 +274,7 @@ class ClientSession:
         auto_decompress: bool = True,
         trust_env: bool = False,
         requote_redirect_url: bool = True,
-        trace_configs: Optional[List[TraceConfig]] = None,
+        trace_configs: Optional[List[TraceConfig[object]]] = None,
         read_bufsize: int = 2**16,
         max_line_size: int = 8190,
         max_field_size: int = 8190,
@@ -372,11 +376,22 @@ class ClientSession:
                 context["source_traceback"] = self._source_traceback
             self._loop.call_exception_handler(context)
 
-    def request(
-        self, method: str, url: StrOrURL, **kwargs: Any
-    ) -> "_RequestContextManager":
-        """Perform HTTP request."""
-        return _RequestContextManager(self._request(method, url, **kwargs))
+    if sys.version_info >= (3, 11) and TYPE_CHECKING:
+
+        def request(
+            self,
+            method: str,
+            url: StrOrURL,
+            **kwargs: Unpack[_RequestOptions],
+        ) -> "_RequestContextManager": ...
+
+    else:
+
+        def request(
+            self, method: str, url: StrOrURL, **kwargs: Any
+        ) -> "_RequestContextManager":
+            """Perform HTTP request."""
+            return _RequestContextManager(self._request(method, url, **kwargs))
 
     def _build_url(self, str_or_url: StrOrURL) -> URL:
         url = URL(str_or_url)
@@ -413,7 +428,7 @@ class ClientSession:
         ssl: Union[SSLContext, bool, Fingerprint] = True,
         server_hostname: Optional[str] = None,
         proxy_headers: Optional[LooseHeaders] = None,
-        trace_request_ctx: Optional[SimpleNamespace] = None,
+        trace_request_ctx: Optional[Mapping[str, str]] = None,
         read_bufsize: Optional[int] = None,
         auto_decompress: Optional[bool] = None,
         max_line_size: Optional[int] = None,
@@ -453,7 +468,8 @@ class ClientSession:
         except ValueError as e:
             raise InvalidUrlClientError(str_or_url) from e
 
-        if url.scheme not in ALLOWED_PROTOCOL_SCHEMA_SET:
+        assert self._connector is not None
+        if url.scheme not in self._connector.allowed_protocol_schema_set:
             raise NonHttpUrlClientError(url)
 
         skip_headers = set(self._skip_auto_headers)
@@ -526,7 +542,10 @@ class ClientSession:
 
                     if auth is None:
                         auth = auth_from_url
-                    if auth is None:
+
+                    if auth is None and (
+                        not self._base_url or self._base_url.origin() == url.origin()
+                    ):
                         auth = self._default_auth
                     # It would be confusing if we support explicit
                     # Authorization header with auth argument
@@ -557,7 +576,7 @@ class ClientSession:
                         url,
                         params=params,
                         headers=headers,
-                        skip_auto_headers=skip_headers,
+                        skip_auto_headers=skip_headers if skip_headers else None,
                         data=data,
                         cookies=all_cookies,
                         auth=auth,
@@ -584,7 +603,6 @@ class ClientSession:
                             real_timeout.connect,
                             ceil_threshold=real_timeout.ceil_threshold,
                         ):
-                            assert self._connector is not None
                             conn = await self._connector.connect(
                                 req, traces=traces, timeout=real_timeout
                             )
@@ -680,7 +698,7 @@ class ClientSession:
                             ) from e
 
                         scheme = parsed_redirect_url.scheme
-                        if scheme not in HTTP_SCHEMA_SET:
+                        if scheme not in HTTP_AND_EMPTY_SCHEMA_SET:
                             resp.close()
                             raise NonHttpUrlRedirectClientError(r_url)
                         elif not scheme:
@@ -1227,7 +1245,7 @@ class ClientSession:
         return self._trust_env
 
     @property
-    def trace_configs(self) -> List[TraceConfig]:
+    def trace_configs(self) -> List[TraceConfig[Any]]:
         """A list of TraceConfig instances used for client tracing"""
         return self._trace_configs
 

@@ -1,0 +1,1 @@
+Fixed response reading from closed session to throw an error immediately instead of timing out -- by :user:`Dreamsorcerer`.

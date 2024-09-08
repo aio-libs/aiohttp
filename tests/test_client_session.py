@@ -1,44 +1,71 @@
-# type: ignore
 import asyncio
 import contextlib
 import gc
 import io
 import json
 from http.cookies import SimpleCookie
-from typing import Any, List
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    NoReturn,
+    TypedDict,
+    Union,
+)
 from unittest import mock
 from uuid import uuid4
 
 import pytest
 from multidict import CIMultiDict, MultiDict
-from re_assert import Matches
+from pytest_mock import MockerFixture
 from yarl import URL
 
 import aiohttp
-from aiohttp import client, hdrs, web
+from aiohttp import client, hdrs, tracing, web
 from aiohttp.client import ClientSession
-from aiohttp.client_reqrep import ClientRequest
-from aiohttp.connector import BaseConnector, TCPConnector
+from aiohttp.client_proto import ResponseHandler
+from aiohttp.client_reqrep import ClientRequest, ConnectionKey
+from aiohttp.connector import BaseConnector, Connection, TCPConnector, UnixConnector
+from aiohttp.http import RawResponseMessage
+from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.test_utils import make_mocked_coro
+from aiohttp.tracing import Trace
+
+
+class _Params(TypedDict):
+    headers: Dict[str, str]
+    max_redirects: int
+    compress: str
+    chunked: bool
+    expect100: bool
+    read_until_eof: bool
 
 
 @pytest.fixture
-def connector(loop: Any, create_mocked_conn: Any):
-    async def make_conn():
+def connector(
+    loop: asyncio.AbstractEventLoop, create_mocked_conn: Callable[[], ResponseHandler]
+) -> Iterator[BaseConnector]:
+    async def make_conn() -> BaseConnector:
         return BaseConnector()
 
+    key = ConnectionKey("localhost", 80, False, True, None, None, None)
     conn = loop.run_until_complete(make_conn())
     proto = create_mocked_conn()
-    conn._conns["a"] = [(proto, 123)]
+    conn._conns[key] = [(proto, 123)]
     yield conn
     loop.run_until_complete(conn.close())
 
 
 @pytest.fixture
-def create_session(loop: Any):
+def create_session(
+    loop: asyncio.AbstractEventLoop,
+) -> Iterator[Callable[..., Awaitable[ClientSession]]]:
     session = None
 
-    async def maker(*args, **kwargs):
+    async def maker(*args: Any, **kwargs: Any) -> ClientSession:
         nonlocal session
         session = ClientSession(*args, **kwargs)
         return session
@@ -49,17 +76,18 @@ def create_session(loop: Any):
 
 
 @pytest.fixture
-def session(create_session: Any, loop: Any):
+def session(
+    create_session: Callable[..., Awaitable[ClientSession]],
+    loop: asyncio.AbstractEventLoop,
+) -> ClientSession:
     return loop.run_until_complete(create_session())
 
 
 @pytest.fixture
-def params():
+def params() -> _Params:
     return dict(
         headers={"Authorization": "Basic ..."},
         max_redirects=2,
-        encoding="latin1",
-        version=aiohttp.HttpVersion10,
         compress="deflate",
         chunked=True,
         expect100=True,
@@ -67,17 +95,23 @@ def params():
     )
 
 
-async def test_close_coro(create_session: Any) -> None:
+async def test_close_coro(
+    create_session: Callable[..., Awaitable[ClientSession]]
+) -> None:
     session = await create_session()
     await session.close()
 
 
-async def test_init_headers_simple_dict(create_session: Any) -> None:
+async def test_init_headers_simple_dict(
+    create_session: Callable[..., Awaitable[ClientSession]]
+) -> None:
     session = await create_session(headers={"h1": "header1", "h2": "header2"})
     assert sorted(session.headers.items()) == ([("h1", "header1"), ("h2", "header2")])
 
 
-async def test_init_headers_list_of_tuples(create_session: Any) -> None:
+async def test_init_headers_list_of_tuples(
+    create_session: Callable[..., Awaitable[ClientSession]]
+) -> None:
     session = await create_session(
         headers=[("h1", "header1"), ("h2", "header2"), ("h3", "header3")]
     )
@@ -86,7 +120,9 @@ async def test_init_headers_list_of_tuples(create_session: Any) -> None:
     )
 
 
-async def test_init_headers_MultiDict(create_session: Any) -> None:
+async def test_init_headers_MultiDict(
+    create_session: Callable[..., Awaitable[ClientSession]]
+) -> None:
     session = await create_session(
         headers=MultiDict([("h1", "header1"), ("h2", "header2"), ("h3", "header3")])
     )
@@ -95,7 +131,9 @@ async def test_init_headers_MultiDict(create_session: Any) -> None:
     )
 
 
-async def test_init_headers_list_of_tuples_with_duplicates(create_session: Any) -> None:
+async def test_init_headers_list_of_tuples_with_duplicates(
+    create_session: Callable[..., Awaitable[ClientSession]]
+) -> None:
     session = await create_session(
         headers=[("h1", "header11"), ("h2", "header21"), ("h1", "header12")]
     )
@@ -104,24 +142,30 @@ async def test_init_headers_list_of_tuples_with_duplicates(create_session: Any) 
     )
 
 
-async def test_init_cookies_with_simple_dict(create_session: Any) -> None:
+async def test_init_cookies_with_simple_dict(
+    create_session: Callable[..., Awaitable[ClientSession]]
+) -> None:
     session = await create_session(cookies={"c1": "cookie1", "c2": "cookie2"})
-    cookies = session.cookie_jar.filter_cookies()
+    cookies = session.cookie_jar.filter_cookies(URL())
     assert set(cookies) == {"c1", "c2"}
     assert cookies["c1"].value == "cookie1"
     assert cookies["c2"].value == "cookie2"
 
 
-async def test_init_cookies_with_list_of_tuples(create_session: Any) -> None:
+async def test_init_cookies_with_list_of_tuples(
+    create_session: Callable[..., Awaitable[ClientSession]]
+) -> None:
     session = await create_session(cookies=[("c1", "cookie1"), ("c2", "cookie2")])
 
-    cookies = session.cookie_jar.filter_cookies()
+    cookies = session.cookie_jar.filter_cookies(URL())
     assert set(cookies) == {"c1", "c2"}
     assert cookies["c1"].value == "cookie1"
     assert cookies["c2"].value == "cookie2"
 
 
-async def test_merge_headers(create_session: Any) -> None:
+async def test_merge_headers(
+    create_session: Callable[..., Awaitable[ClientSession]]
+) -> None:
     # Check incoming simple dict
     session = await create_session(headers={"h1": "header1", "h2": "header2"})
     headers = session._prepare_headers({"h1": "h1"})
@@ -130,14 +174,18 @@ async def test_merge_headers(create_session: Any) -> None:
     assert headers == {"h1": "h1", "h2": "header2"}
 
 
-async def test_merge_headers_with_multi_dict(create_session: Any) -> None:
+async def test_merge_headers_with_multi_dict(
+    create_session: Callable[..., Awaitable[ClientSession]]
+) -> None:
     session = await create_session(headers={"h1": "header1", "h2": "header2"})
     headers = session._prepare_headers(MultiDict([("h1", "h1")]))
     assert isinstance(headers, CIMultiDict)
     assert headers == {"h1": "h1", "h2": "header2"}
 
 
-async def test_merge_headers_with_list_of_tuples(create_session: Any) -> None:
+async def test_merge_headers_with_list_of_tuples(
+    create_session: Callable[..., Awaitable[ClientSession]]
+) -> None:
     session = await create_session(headers={"h1": "header1", "h2": "header2"})
     headers = session._prepare_headers([("h1", "h1")])
     assert isinstance(headers, CIMultiDict)
@@ -145,7 +193,7 @@ async def test_merge_headers_with_list_of_tuples(create_session: Any) -> None:
 
 
 async def test_merge_headers_with_list_of_tuples_duplicated_names(
-    create_session: Any,
+    create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:
     session = await create_session(headers={"h1": "header1", "h2": "header2"})
 
@@ -159,118 +207,99 @@ async def test_merge_headers_with_list_of_tuples_duplicated_names(
     ]
 
 
-def test_http_GET(session: Any, params: Any) -> None:
+async def test_http_GET(session: ClientSession, params: _Params) -> None:
     with mock.patch(
-        "aiohttp.client.ClientSession._request", new_callable=mock.MagicMock
+        "aiohttp.client.ClientSession._request", autospec=True, spec_set=True
     ) as patched:
-        session.get("http://test.example.com", params={"x": 1}, **params)
+        await session.get("http://test.example.com", params={"x": 1}, **params)
     assert patched.called, "`ClientSession._request` not called"
     assert list(patched.call_args) == [
-        (
-            "GET",
-            "http://test.example.com",
-        ),
+        (session, "GET", "http://test.example.com"),
         dict(params={"x": 1}, allow_redirects=True, **params),
     ]
 
 
-def test_http_OPTIONS(session: Any, params: Any) -> None:
+async def test_http_OPTIONS(session: ClientSession, params: _Params) -> None:
     with mock.patch(
-        "aiohttp.client.ClientSession._request", new_callable=mock.MagicMock
+        "aiohttp.client.ClientSession._request", autospec=True, spec_set=True
     ) as patched:
-        session.options("http://opt.example.com", params={"x": 2}, **params)
+        await session.options("http://opt.example.com", params={"x": 2}, **params)
     assert patched.called, "`ClientSession._request` not called"
     assert list(patched.call_args) == [
-        (
-            "OPTIONS",
-            "http://opt.example.com",
-        ),
+        (session, "OPTIONS", "http://opt.example.com"),
         dict(params={"x": 2}, allow_redirects=True, **params),
     ]
 
 
-def test_http_HEAD(session: Any, params: Any) -> None:
+async def test_http_HEAD(session: ClientSession, params: _Params) -> None:
     with mock.patch(
-        "aiohttp.client.ClientSession._request", new_callable=mock.MagicMock
+        "aiohttp.client.ClientSession._request", autospec=True, spec_set=True
     ) as patched:
-        session.head("http://head.example.com", params={"x": 2}, **params)
+        await session.head("http://head.example.com", params={"x": 2}, **params)
     assert patched.called, "`ClientSession._request` not called"
     assert list(patched.call_args) == [
-        (
-            "HEAD",
-            "http://head.example.com",
-        ),
+        (session, "HEAD", "http://head.example.com"),
         dict(params={"x": 2}, allow_redirects=False, **params),
     ]
 
 
-def test_http_POST(session: Any, params: Any) -> None:
+async def test_http_POST(session: ClientSession, params: _Params) -> None:
     with mock.patch(
-        "aiohttp.client.ClientSession._request", new_callable=mock.MagicMock
+        "aiohttp.client.ClientSession._request", autospec=True, spec_set=True
     ) as patched:
-        session.post(
+        await session.post(
             "http://post.example.com", params={"x": 2}, data="Some_data", **params
         )
     assert patched.called, "`ClientSession._request` not called"
     assert list(patched.call_args) == [
-        (
-            "POST",
-            "http://post.example.com",
-        ),
+        (session, "POST", "http://post.example.com"),
         dict(params={"x": 2}, data="Some_data", **params),
     ]
 
 
-def test_http_PUT(session: Any, params: Any) -> None:
+async def test_http_PUT(session: ClientSession, params: _Params) -> None:
     with mock.patch(
-        "aiohttp.client.ClientSession._request", new_callable=mock.MagicMock
+        "aiohttp.client.ClientSession._request", autospec=True, spec_set=True
     ) as patched:
-        session.put(
+        await session.put(
             "http://put.example.com", params={"x": 2}, data="Some_data", **params
         )
     assert patched.called, "`ClientSession._request` not called"
     assert list(patched.call_args) == [
-        (
-            "PUT",
-            "http://put.example.com",
-        ),
+        (session, "PUT", "http://put.example.com"),
         dict(params={"x": 2}, data="Some_data", **params),
     ]
 
 
-def test_http_PATCH(session: Any, params: Any) -> None:
+async def test_http_PATCH(session: ClientSession, params: _Params) -> None:
     with mock.patch(
-        "aiohttp.client.ClientSession._request", new_callable=mock.MagicMock
+        "aiohttp.client.ClientSession._request", autospec=True, spec_set=True
     ) as patched:
-        session.patch(
+        await session.patch(
             "http://patch.example.com", params={"x": 2}, data="Some_data", **params
         )
     assert patched.called, "`ClientSession._request` not called"
     assert list(patched.call_args) == [
-        (
-            "PATCH",
-            "http://patch.example.com",
-        ),
+        (session, "PATCH", "http://patch.example.com"),
         dict(params={"x": 2}, data="Some_data", **params),
     ]
 
 
-def test_http_DELETE(session: Any, params: Any) -> None:
+async def test_http_DELETE(session: ClientSession, params: _Params) -> None:
     with mock.patch(
-        "aiohttp.client.ClientSession._request", new_callable=mock.MagicMock
+        "aiohttp.client.ClientSession._request", autospec=True, spec_set=True
     ) as patched:
-        session.delete("http://delete.example.com", params={"x": 2}, **params)
+        await session.delete("http://delete.example.com", params={"x": 2}, **params)
     assert patched.called, "`ClientSession._request` not called"
     assert list(patched.call_args) == [
-        (
-            "DELETE",
-            "http://delete.example.com",
-        ),
+        (session, "DELETE", "http://delete.example.com"),
         dict(params={"x": 2}, **params),
     ]
 
 
-async def test_close(create_session: Any, connector: Any) -> None:
+async def test_close(
+    create_session: Callable[..., Awaitable[ClientSession]], connector: BaseConnector
+) -> None:
     session = await create_session(connector=connector)
 
     await session.close()
@@ -278,56 +307,63 @@ async def test_close(create_session: Any, connector: Any) -> None:
     assert connector.closed
 
 
-async def test_closed(session: Any) -> None:
+async def test_closed(session: ClientSession) -> None:
     assert not session.closed
     await session.close()
     assert session.closed
 
 
-async def test_connector(create_session: Any, loop: Any, mocker: Any) -> None:
+async def test_connector(
+    create_session: Callable[..., Awaitable[ClientSession]],
+    loop: asyncio.AbstractEventLoop,
+    mocker: MockerFixture,
+) -> None:
     connector = TCPConnector()
-    mocker.spy(connector, "close")
+    m = mocker.spy(connector, "close")
     session = await create_session(connector=connector)
     assert session.connector is connector
 
     await session.close()
-    assert connector.close.called
+    assert m.called
     await connector.close()
 
 
-async def test_create_connector(create_session: Any, loop: Any, mocker: Any) -> None:
+async def test_create_connector(
+    create_session: Callable[..., Awaitable[ClientSession]],
+    loop: asyncio.AbstractEventLoop,
+    mocker: MockerFixture,
+) -> None:
     session = await create_session()
-    connector = session.connector
-    mocker.spy(session.connector, "close")
+    m = mocker.spy(session.connector, "close")
 
     await session.close()
-    assert connector.close.called
+    assert m.called
 
 
-def test_connector_loop(loop: Any) -> None:
+def test_connector_loop(loop: asyncio.AbstractEventLoop) -> None:
     with contextlib.ExitStack() as stack:
         another_loop = asyncio.new_event_loop()
         stack.enter_context(contextlib.closing(another_loop))
 
-        async def make_connector():
+        async def make_connector() -> TCPConnector:
             return TCPConnector()
 
         connector = another_loop.run_until_complete(make_connector())
 
         with pytest.raises(RuntimeError) as ctx:
 
-            async def make_sess():
+            async def make_sess() -> ClientSession:
                 return ClientSession(connector=connector)
 
             loop.run_until_complete(make_sess())
-        assert Matches("Session and connector have to use same event loop") == str(
-            ctx.value
-        )
+        expected = "Session and connector have to use same event loop"
+        assert str(ctx.value).startswith(expected)
         another_loop.run_until_complete(connector.close())
 
 
-def test_detach(loop: Any, session: Any) -> None:
+def test_detach(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
     conn = session.connector
+    assert conn is not None
     try:
         assert not conn.closed
         session.detach()
@@ -338,20 +374,23 @@ def test_detach(loop: Any, session: Any) -> None:
         loop.run_until_complete(conn.close())
 
 
-async def test_request_closed_session(session: Any) -> None:
+async def test_request_closed_session(session: ClientSession) -> None:
     await session.close()
     with pytest.raises(RuntimeError):
         await session.request("get", "/")
 
 
-async def test_close_flag_for_closed_connector(session: Any) -> None:
+async def test_close_flag_for_closed_connector(session: ClientSession) -> None:
     conn = session.connector
+    assert conn is not None
     assert not session.closed
     await conn.close()
     assert session.closed
 
 
-async def test_double_close(connector: Any, create_session: Any) -> None:
+async def test_double_close(
+    connector: BaseConnector, create_session: Callable[..., Awaitable[ClientSession]]
+) -> None:
     session = await create_session(connector=connector)
 
     await session.close()
@@ -361,7 +400,7 @@ async def test_double_close(connector: Any, create_session: Any) -> None:
     assert connector.closed
 
 
-async def test_del(connector: Any, loop: Any) -> None:
+async def test_del(connector: BaseConnector, loop: asyncio.AbstractEventLoop) -> None:
     loop.set_debug(False)
     # N.B. don't use session fixture, it stores extra reference internally
     session = ClientSession(connector=connector)
@@ -377,7 +416,9 @@ async def test_del(connector: Any, loop: Any) -> None:
     assert logs[0] == expected
 
 
-async def test_del_debug(connector: Any, loop: Any) -> None:
+async def test_del_debug(
+    connector: BaseConnector, loop: asyncio.AbstractEventLoop
+) -> None:
     loop.set_debug(True)
     # N.B. don't use session fixture, it stores extra reference internally
     session = ClientSession(connector=connector)
@@ -398,38 +439,44 @@ async def test_del_debug(connector: Any, loop: Any) -> None:
 
 
 async def test_borrow_connector_loop(
-    connector: Any, create_session: Any, loop: Any
+    connector: BaseConnector,
+    create_session: Callable[..., Awaitable[ClientSession]],
+    loop: asyncio.AbstractEventLoop,
 ) -> None:
-    session = ClientSession(connector=connector)
-    try:
-        assert session._loop, loop
-    finally:
-        await session.close()
+    async with ClientSession(connector=connector) as session:
+        assert session._loop is loop
 
 
-async def test_reraise_os_error(create_session: Any, create_mocked_conn: Any) -> None:
+async def test_reraise_os_error(
+    create_session: Callable[..., Awaitable[ClientSession]],
+    create_mocked_conn: Callable[[], ResponseHandler],
+) -> None:
     err = OSError(1, "permission error")
     req = mock.Mock()
     req_factory = mock.Mock(return_value=req)
     req.send = mock.Mock(side_effect=err)
     session = await create_session(request_class=req_factory)
 
-    async def create_connection(req, traces, timeout):
+    async def create_connection(
+        req: object, traces: object, timeout: object
+    ) -> ResponseHandler:
         # return self.transport, self.protocol
         return create_mocked_conn()
 
-    session._connector._create_connection = create_connection
-    session._connector._release = mock.Mock()
-
-    with pytest.raises(aiohttp.ClientOSError) as ctx:
-        await session.request("get", "http://example.com")
-    e = ctx.value
-    assert e.errno == err.errno
-    assert e.strerror == err.strerror
+    with mock.patch.object(session._connector, "_create_connection", create_connection):
+        with mock.patch.object(
+            session._connector, "_release", autospec=True, spec_set=True
+        ):
+            with pytest.raises(aiohttp.ClientOSError) as ctx:
+                await session.request("get", "http://example.com")
+            e = ctx.value
+            assert e.errno == err.errno
+            assert e.strerror == err.strerror
 
 
 async def test_close_conn_on_error(
-    create_session: Any, create_mocked_conn: Any
+    create_session: Callable[..., Awaitable[ClientSession]],
+    create_mocked_conn: Callable[[], ResponseHandler],
 ) -> None:
     class UnexpectedException(BaseException):
         pass
@@ -441,39 +488,47 @@ async def test_close_conn_on_error(
     session = await create_session(request_class=req_factory)
 
     connections = []
+    assert session._connector is not None
     original_connect = session._connector.connect
 
-    async def connect(req, traces, timeout):
+    async def connect(
+        req: ClientRequest, traces: List[Trace], timeout: aiohttp.ClientTimeout
+    ) -> Connection:
         conn = await original_connect(req, traces, timeout)
         connections.append(conn)
         return conn
 
-    async def create_connection(req, traces, timeout):
+    async def create_connection(
+        req: object, traces: object, timeout: object
+    ) -> ResponseHandler:
         # return self.transport, self.protocol
         conn = create_mocked_conn()
         return conn
 
-    session._connector.connect = connect
-    session._connector._create_connection = create_connection
-    session._connector._release = mock.Mock()
+    with mock.patch.object(session._connector, "connect", connect):
+        with mock.patch.object(
+            session._connector, "_create_connection", create_connection
+        ):
+            with mock.patch.object(
+                session._connector, "_release", autospec=True, spec_set=True
+            ):
+                with pytest.raises(UnexpectedException):
+                    async with session.request("get", "http://example.com") as resp:
+                        await resp.text()
 
-    with pytest.raises(UnexpectedException):
-        async with session.request("get", "http://example.com") as resp:
-            await resp.text()
-
-    # normally called during garbage collection.  triggers an exception
-    # if the connection wasn't already closed
-    for c in connections:
-        c.__del__()
+                # normally called during garbage collection.  triggers an exception
+                # if the connection wasn't already closed
+                for c in connections:
+                    c.__del__()
 
 
 @pytest.mark.parametrize("protocol", ["http", "https", "ws", "wss"])
 async def test_ws_connect_allowed_protocols(
-    create_session: Any,
-    create_mocked_conn: Any,
+    create_session: Callable[..., Awaitable[ClientSession]],
+    create_mocked_conn: Callable[[], ResponseHandler],
     protocol: str,
-    ws_key: Any,
-    key_data: Any,
+    ws_key: bytes,
+    key_data: bytes,
 ) -> None:
     resp = mock.create_autospec(aiohttp.ClientResponse)
     resp.status = 101
@@ -482,25 +537,32 @@ async def test_ws_connect_allowed_protocols(
         hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
-    resp.url = URL(f"{protocol}://example.com")
+    resp.url = URL(f"{protocol}://example")
     resp.cookies = SimpleCookie()
     resp.start = mock.AsyncMock()
 
     req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
     req_factory = mock.Mock(return_value=req)
     req.send = mock.AsyncMock(return_value=resp)
+    # BaseConnector allows all high level protocols by default
+    connector = BaseConnector()
 
-    session = await create_session(request_class=req_factory)
+    session = await create_session(connector=connector, request_class=req_factory)
 
     connections = []
+    assert session._connector is not None
     original_connect = session._connector.connect
 
-    async def connect(req, traces, timeout):
+    async def connect(
+        req: ClientRequest, traces: List[Trace], timeout: aiohttp.ClientTimeout
+    ) -> Connection:
         conn = await original_connect(req, traces, timeout)
         connections.append(conn)
         return conn
 
-    async def create_connection(req, traces, timeout):
+    async def create_connection(
+        req: object, traces: object, timeout: object
+    ) -> ResponseHandler:
         return create_mocked_conn()
 
     connector = session._connector
@@ -510,7 +572,7 @@ async def test_ws_connect_allowed_protocols(
         "aiohttp.client.os"
     ) as m_os:
         m_os.urandom.return_value = key_data
-        await session.ws_connect(f"{protocol}://example.com")
+        await session.ws_connect(f"{protocol}://example")
 
     # normally called during garbage collection.  triggers an exception
     # if the connection wasn't already closed
@@ -521,13 +583,76 @@ async def test_ws_connect_allowed_protocols(
     await session.close()
 
 
-async def test_cookie_jar_usage(loop: Any, aiohttp_client: Any) -> None:
+@pytest.mark.parametrize("protocol", ["http", "https", "ws", "wss", "unix"])
+async def test_ws_connect_unix_socket_allowed_protocols(
+    create_session: Callable[..., Awaitable[ClientSession]],
+    create_mocked_conn: Callable[[], ResponseHandler],
+    protocol: str,
+    ws_key: bytes,
+    key_data: bytes,
+) -> None:
+    resp = mock.create_autospec(aiohttp.ClientResponse)
+    resp.status = 101
+    resp.headers = {
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
+        hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
+    }
+    resp.url = URL(f"{protocol}://example")
+    resp.cookies = SimpleCookie()
+    resp.start = mock.AsyncMock()
+
+    req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
+    req_factory = mock.Mock(return_value=req)
+    req.send = mock.AsyncMock(return_value=resp)
+    # UnixConnector allows all high level protocols by default and unix sockets
+    session = await create_session(
+        connector=UnixConnector(path=""), request_class=req_factory
+    )
+
+    connections = []
+    assert session._connector is not None
+    original_connect = session._connector.connect
+
+    async def connect(
+        req: ClientRequest, traces: List[Trace], timeout: aiohttp.ClientTimeout
+    ) -> Connection:
+        conn = await original_connect(req, traces, timeout)
+        connections.append(conn)
+        return conn
+
+    async def create_connection(
+        req: object, traces: object, timeout: object
+    ) -> ResponseHandler:
+        return create_mocked_conn()
+
+    connector = session._connector
+    with mock.patch.object(connector, "connect", connect), mock.patch.object(
+        connector, "_create_connection", create_connection
+    ), mock.patch.object(connector, "_release"), mock.patch(
+        "aiohttp.client.os"
+    ) as m_os:
+        m_os.urandom.return_value = key_data
+        await session.ws_connect(f"{protocol}://example")
+
+    # normally called during garbage collection.  triggers an exception
+    # if the connection wasn't already closed
+    for c in connections:
+        c.close()
+        c.__del__()
+
+    await session.close()
+
+
+async def test_cookie_jar_usage(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
     req_url = None
 
     jar = mock.Mock()
     jar.filter_cookies.return_value = None
 
-    async def handler(request):
+    async def handler(request: web.Request) -> web.Response:
         nonlocal req_url
         req_url = "http://%s/" % request.host
 
@@ -546,7 +671,8 @@ async def test_cookie_jar_usage(loop: Any, aiohttp_client: Any) -> None:
 
     jar.update_cookies.reset_mock()
     resp = await session.get("/")
-    await resp.release()
+    resp.release()
+    assert req_url is not None
 
     # Filtering the cookie jar before sending the request,
     # getting the request URL as only parameter
@@ -560,51 +686,61 @@ async def test_cookie_jar_usage(loop: Any, aiohttp_client: Any) -> None:
     assert resp_cookies["response"].value == "resp_value"
 
 
-async def test_session_default_version(loop: Any) -> None:
+async def test_session_default_version(loop: asyncio.AbstractEventLoop) -> None:
     session = aiohttp.ClientSession()
     assert session.version == aiohttp.HttpVersion11
     await session.close()
 
 
-def test_proxy_str(session: Any, params: Any) -> None:
+async def test_proxy_str(session: ClientSession, params: _Params) -> None:
     with mock.patch(
-        "aiohttp.client.ClientSession._request", new_callable=mock.MagicMock
+        "aiohttp.client.ClientSession._request", autospec=True, spec_set=True
     ) as patched:
-        session.get("http://test.example.com", proxy="http://proxy.com", **params)
+        await session.get("http://test.example.com", proxy="http://proxy.com", **params)
     assert patched.called, "`ClientSession._request` not called"
     assert list(patched.call_args) == [
-        (
-            "GET",
-            "http://test.example.com",
-        ),
+        (session, "GET", "http://test.example.com"),
         dict(allow_redirects=True, proxy="http://proxy.com", **params),
     ]
 
 
-async def test_request_tracing(loop: Any, aiohttp_client: Any) -> None:
-    async def handler(request):
+async def test_request_tracing(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
         return web.json_response({"ok": True})
 
     app = web.Application()
     app.router.add_post("/", handler)
 
     trace_config_ctx = mock.Mock()
-    trace_request_ctx = {}
     body = "This is request body"
-    gathered_req_headers = CIMultiDict()
+    gathered_req_headers: CIMultiDict[str] = CIMultiDict()
     on_request_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
     on_request_redirect = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
     on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
 
     with io.BytesIO() as gathered_req_body, io.BytesIO() as gathered_res_body:
 
-        async def on_request_chunk_sent(session, context, params):
+        async def on_request_chunk_sent(
+            session: object,
+            context: object,
+            params: tracing.TraceRequestChunkSentParams,
+        ) -> None:
             gathered_req_body.write(params.chunk)
 
-        async def on_response_chunk_received(session, context, params):
+        async def on_response_chunk_received(
+            session: object,
+            context: object,
+            params: tracing.TraceResponseChunkReceivedParams,
+        ) -> None:
             gathered_res_body.write(params.chunk)
 
-        async def on_request_headers_sent(session, context, params):
+        async def on_request_headers_sent(
+            session: object,
+            context: object,
+            params: tracing.TraceRequestHeadersSentParams,
+        ) -> None:
             gathered_req_headers.extend(**params.headers)
 
         trace_config = aiohttp.TraceConfig(
@@ -622,9 +758,7 @@ async def test_request_tracing(loop: Any, aiohttp_client: Any) -> None:
             app, trace_configs=[trace_config], headers=headers
         )
 
-        async with session.post(
-            "/", data=body, trace_request_ctx=trace_request_ctx
-        ) as resp:
+        async with session.post("/", data=body, trace_request_ctx={}) as resp:
             await resp.json()
 
             on_request_start.assert_called_once_with(
@@ -650,11 +784,13 @@ async def test_request_tracing(loop: Any, aiohttp_client: Any) -> None:
             assert gathered_req_headers["Custom-Header"] == "Custom value"
 
 
-async def test_request_tracing_url_params(loop: Any, aiohttp_client: Any) -> None:
-    async def root_handler(request):
+async def test_request_tracing_url_params(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
+    async def root_handler(request: web.Request) -> web.Response:
         return web.Response()
 
-    async def redirect_handler(request):
+    async def redirect_handler(request: web.Request) -> NoReturn:
         raise web.HTTPFound("/")
 
     app = web.Application()
@@ -696,10 +832,11 @@ async def test_request_tracing_url_params(loop: Any, aiohttp_client: Any) -> Non
         return session.make_url(path)
 
     # Standard
-    for req in [
+    req: Callable[[], Awaitable[aiohttp.ClientResponse]]
+    for req in (
         lambda: session.get("/?x=0"),
         lambda: session.get("/", params=dict(x=0)),
-    ]:
+    ):
         reset_mocks()
         async with req() as resp:
             await resp.text()
@@ -712,10 +849,10 @@ async def test_request_tracing_url_params(loop: Any, aiohttp_client: Any) -> Non
             assert to_trace_urls(on_request_headers_sent) == [to_url("/?x=0")]
 
     # Redirect
-    for req in [
+    for req in (
         lambda: session.get("/redirect?x=0"),
         lambda: session.get("/redirect", params=dict(x=0)),
-    ]:
+    ):
         reset_mocks()
         async with req() as resp:
             await resp.text()
@@ -737,10 +874,10 @@ async def test_request_tracing_url_params(loop: Any, aiohttp_client: Any) -> Non
     with mock.patch("aiohttp.client.TCPConnector.connect") as connect_patched:
         connect_patched.side_effect = Exception()
 
-        for req in [
+        for req in (
             lambda: session.get("/?x=0"),
             lambda: session.get("/", params=dict(x=0)),
-        ]:
+        ):
             reset_mocks()
             with contextlib.suppress(Exception):
                 await req()
@@ -785,22 +922,25 @@ async def test_request_tracing_exception() -> None:
 
 
 async def test_request_tracing_interpose_headers(
-    loop: Any, aiohttp_client: Any
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
-    async def handler(request):
+    async def handler(request: web.Request) -> web.Response:
         return web.Response()
 
     app = web.Application()
     app.router.add_get("/", handler)
 
+    headers: CIMultiDict[str] = CIMultiDict()
+
     class MyClientRequest(ClientRequest):
-        headers = None
-
-        def __init__(self, *args, **kwargs):
+        def __init__(self, *args: Any, **kwargs: Any):
+            nonlocal headers
             super().__init__(*args, **kwargs)
-            MyClientRequest.headers = self.headers
+            headers = self.headers
 
-    async def new_headers(session, trace_config_ctx, data):
+    async def new_headers(
+        session: object, trace_config_ctx: object, data: tracing.TraceRequestStartParams
+    ) -> None:
         data.headers["foo"] = "bar"
 
     trace_config = aiohttp.TraceConfig()
@@ -811,43 +951,63 @@ async def test_request_tracing_interpose_headers(
     )
 
     await session.get("/")
-    assert MyClientRequest.headers["foo"] == "bar"
+    assert headers["foo"] == "bar"
 
 
 def test_client_session_inheritance() -> None:
     with pytest.raises(TypeError):
 
-        class A(ClientSession):
+        class A(ClientSession):  # type: ignore[misc]
             pass
 
 
 async def test_client_session_custom_attr() -> None:
     session = ClientSession()
     with pytest.raises(AttributeError):
-        session.custom = None
+        session.custom = None  # type: ignore[attr-defined]
     await session.close()
 
 
-async def test_client_session_timeout_default_args(loop: Any) -> None:
+async def test_client_session_timeout_default_args(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     session1 = ClientSession()
     assert session1.timeout == client.DEFAULT_TIMEOUT
     await session1.close()
 
 
-async def test_client_session_timeout_zero() -> None:
+async def test_client_session_timeout_zero(
+    create_mocked_conn: Callable[[], ResponseHandler]
+) -> None:
+    async def create_connection(
+        req: object, traces: object, timeout: object
+    ) -> ResponseHandler:
+        await asyncio.sleep(0.01)
+        conn = create_mocked_conn()
+        conn.connected = True  # type: ignore[misc]
+        assert conn.transport is not None
+        conn.transport.is_closing.return_value = False  # type: ignore[attr-defined]
+        msg = mock.create_autospec(RawResponseMessage, spec_set=True, code=200)
+        conn.read.return_value = (msg, mock.Mock())  # type: ignore[attr-defined]
+        return conn
+
     timeout = client.ClientTimeout(total=10, connect=0, sock_connect=0, sock_read=0)
-    try:
-        async with ClientSession(timeout=timeout) as session:
-            await session.get("http://example.com")
-    except asyncio.TimeoutError:
-        pytest.fail("0 should disable timeout.")
+    async with ClientSession(timeout=timeout) as session:
+        with mock.patch.object(
+            session._connector, "_create_connection", create_connection
+        ):
+            try:
+                resp = await session.get("http://example.com")
+            except asyncio.TimeoutError:  # pragma: no cover
+                pytest.fail("0 should disable timeout.")
+            resp.close()
 
 
 async def test_client_session_timeout_bad_argument() -> None:
     with pytest.raises(ValueError):
-        ClientSession(timeout="test_bad_argumnet")
+        ClientSession(timeout="test_bad_argumnet")  # type: ignore[arg-type]
     with pytest.raises(ValueError):
-        ClientSession(timeout=100)
+        ClientSession(timeout=100)  # type: ignore[arg-type]
 
 
 async def test_requote_redirect_url_default() -> None:
@@ -892,18 +1052,23 @@ async def test_requote_redirect_url_default_disable() -> None:
     ],
 )
 async def test_build_url_returns_expected_url(
-    create_session, base_url, url, expected_url
+    create_session: Callable[..., Awaitable[ClientSession]],
+    base_url: Union[URL, str, None],
+    url: Union[URL, str],
+    expected_url: URL,
 ) -> None:
     session = await create_session(base_url)
     assert session._build_url(url) == expected_url
 
 
-async def test_instantiation_with_invalid_timeout_value(loop):
+async def test_instantiation_with_invalid_timeout_value(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     loop.set_debug(False)
     logs = []
     loop.set_exception_handler(lambda loop, ctx: logs.append(ctx))
     with pytest.raises(ValueError, match="timeout parameter cannot be .*"):
-        ClientSession(timeout=1)
+        ClientSession(timeout=1)  # type: ignore[arg-type]
     # should not have "Unclosed client session" warning
     assert not logs
 

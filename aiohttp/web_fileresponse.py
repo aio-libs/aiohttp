@@ -1,7 +1,6 @@
 import asyncio
 import os
 import pathlib
-import sys
 from contextlib import suppress
 from mimetypes import MimeTypes
 from stat import S_ISREG
@@ -44,9 +43,6 @@ _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
 NOSENDFILE: Final[bool] = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
 
 CONTENT_TYPES: Final[MimeTypes] = MimeTypes()
-
-if sys.version_info < (3, 9):
-    CONTENT_TYPES.encodings_map[".br"] = "br"
 
 # File extension to IANA encodings map that will be checked in the order defined.
 ENCODING_EXTENSIONS = MappingProxyType(
@@ -174,7 +170,10 @@ class FileResponse(StreamResponse):
 
             compressed_path = file_path.with_suffix(file_path.suffix + file_extension)
             with suppress(OSError):
-                return compressed_path, compressed_path.stat(), file_encoding
+                # Do not follow symlinks and ignore any non-regular files.
+                st = compressed_path.lstat()
+                if S_ISREG(st.st_mode):
+                    return compressed_path, st, file_encoding
 
         # Fallback to the uncompressed file
         return file_path, file_path.stat(), None
@@ -188,7 +187,9 @@ class FileResponse(StreamResponse):
             file_path, st, file_encoding = await loop.run_in_executor(
                 None, self._get_file_path_stat_encoding, accept_encoding
             )
-        except FileNotFoundError:
+        except OSError:
+            # Most likely to be FileNotFoundError or OSError for circular
+            # symlinks in python >= 3.13, so respond with 404.
             self.set_status(HTTPNotFound.status_code)
             return await super().prepare(request)
 

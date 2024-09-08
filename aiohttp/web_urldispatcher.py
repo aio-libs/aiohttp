@@ -36,7 +36,7 @@ from typing import (
     cast,
 )
 
-from yarl import URL, __version__ as yarl_version  # type: ignore[attr-defined]
+from yarl import URL
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
@@ -77,12 +77,10 @@ else:
     BaseDict = dict
 
 CIRCULAR_SYMLINK_ERROR = (
-    OSError
+    (OSError,)
     if sys.version_info < (3, 10) and sys.platform.startswith("win32")
-    else RuntimeError
+    else (RuntimeError,) if sys.version_info < (3, 13) else ()
 )
-
-YARL_VERSION: Final[Tuple[int, ...]] = tuple(map(int, yarl_version.split(".")[:2]))
 
 HTTP_METHOD_RE: Final[Pattern[str]] = re.compile(
     r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$"
@@ -321,6 +319,8 @@ async def _default_expect_handler(request: Request) -> None:
     if request.version == HttpVersion11:
         if expect.lower() == "100-continue":
             await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+            # Reset output_size as we haven't started the main body yet.
+            request.writer.output_size = 0
         else:
             raise HTTPExpectationFailed(text="Unknown Expect: %s" % expect)
 
@@ -358,7 +358,7 @@ class Resource(AbstractResource):
     async def resolve(self, request: Request) -> _Resolve:
         allowed_methods: Set[str] = set()
 
-        match_dict = self._match(request.rel_url.raw_path)
+        match_dict = self._match(request.rel_url.path)
         if match_dict is None:
             return None, allowed_methods
 
@@ -432,6 +432,7 @@ class DynamicResource(Resource):
 
     def __init__(self, path: str, *, name: Optional[str] = None) -> None:
         super().__init__(name=name)
+        self._orig_path = path
         pattern = ""
         formatter = ""
         for part in ROUTE_RE.split(path):
@@ -484,7 +485,7 @@ class DynamicResource(Resource):
             }
 
     def raw_match(self, path: str) -> bool:
-        return self._formatter == path
+        return self._orig_path == path
 
     def get_info(self) -> _InfoDict:
         return {"formatter": self._formatter, "pattern": self._pattern}
@@ -575,10 +576,7 @@ class StaticResource(PrefixResource):
 
         url = URL.build(path=self._prefix, encoded=True)
         # filename is not encoded
-        if YARL_VERSION < (1, 6):
-            url = url / filename.replace("%", "%25")
-        else:
-            url = url / filename
+        url = url / filename
 
         if append_version:
             unresolved_path = self._directory.joinpath(filename)
@@ -626,7 +624,7 @@ class StaticResource(PrefixResource):
         )
 
     async def resolve(self, request: Request) -> _Resolve:
-        path = request.rel_url.raw_path
+        path = request.rel_url.path
         method = request.method
         allowed_methods = set(self._routes)
         if not path.startswith(self._prefix2) and path != self._prefix:
@@ -672,8 +670,9 @@ class StaticResource(PrefixResource):
             else:
                 file_path = unresolved_path.resolve()
                 file_path.relative_to(self._directory)
-        except (ValueError, CIRCULAR_SYMLINK_ERROR) as error:
-            # ValueError for relative check; RuntimeError for circular symlink.
+        except (ValueError, *CIRCULAR_SYMLINK_ERROR) as error:
+            # ValueError is raised for the relative check. Circular symlinks
+            # raise here on resolving for python < 3.13.
             raise HTTPNotFound() from error
 
         # if path is a directory, return the contents if permitted. Note the
@@ -752,7 +751,7 @@ class PrefixedSubAppResource(PrefixResource):
             router.index_resource(resource)
 
     def url_for(self, *args: str, **kwargs: str) -> URL:
-        raise RuntimeError(".url_for() is not supported " "by sub-application root")
+        raise RuntimeError(".url_for() is not supported by sub-application root")
 
     def get_info(self) -> _InfoDict:
         return {"app": self._app, "prefix": self._prefix}
@@ -875,7 +874,7 @@ class MatchedSubAppResource(PrefixedSubAppResource):
         return match_info, methods
 
     def __repr__(self) -> str:
-        return "<MatchedSubAppResource -> {app!r}>" "".format(app=self._app)
+        return f"<MatchedSubAppResource -> {self._app!r}>"
 
 
 class ResourceRoute(AbstractRoute):
@@ -1014,7 +1013,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         # candidates for a given url part because there are multiple resources
         # registered for the same canonical path, we resolve them in a linear
         # fashion to ensure registration order is respected.
-        url_part = request.rel_url.raw_path
+        url_part = request.rel_url.path
         while url_part:
             for candidate in resource_index.get(url_part, ()):
                 match_dict, allowed = await candidate.resolve(request)
@@ -1108,8 +1107,14 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
     def _get_resource_index_key(self, resource: AbstractResource) -> str:
         """Return a key to index the resource in the resource index."""
-        # strip at the first { to allow for variables
-        return resource.canonical.partition("{")[0].rstrip("/") or "/"
+        if "{" in (index_key := resource.canonical):
+            # strip at the first { to allow for variables, and than
+            # rpartition at / to allow for variable parts in the path
+            # For example if the canonical path is `/core/locations{tail:.*}`
+            # the index key will be `/core` since index is based on the
+            # url parts split by `/`
+            index_key = index_key.partition("{")[0].rpartition("/")[0]
+        return index_key.rstrip("/") or "/"
 
     def index_resource(self, resource: AbstractResource) -> None:
         """Add a resource to the resource index."""
@@ -1133,7 +1138,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
             if resource.name == name and resource.raw_match(path):
                 return cast(Resource, resource)
         if not ("{" in path or "}" in path or ROUTE_RE.search(path)):
-            resource = PlainResource(_requote_path(path), name=name)
+            resource = PlainResource(path, name=name)
             self.register_resource(resource)
             return resource
         resource = DynamicResource(path, name=name)
@@ -1163,7 +1168,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         show_index: bool = False,
         follow_symlinks: bool = False,
         append_version: bool = False,
-    ) -> AbstractResource:
+    ) -> StaticResource:
         """Add static files view.
 
         prefix - url prefix
@@ -1254,13 +1259,11 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
 
 def _quote_path(value: str) -> str:
-    if YARL_VERSION < (1, 6):
-        value = value.replace("%", "%25")
     return URL.build(path=value, encoded=False).raw_path
 
 
 def _unquote_path(value: str) -> str:
-    return URL.build(path=value, encoded=True).path
+    return URL.build(path=value, encoded=True).path.replace("%2F", "/")
 
 
 def _requote_path(value: str) -> str:

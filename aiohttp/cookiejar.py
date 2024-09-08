@@ -14,9 +14,9 @@ from math import ceil
 from typing import (
     DefaultDict,
     Dict,
+    FrozenSet,
     Iterable,
     Iterator,
-    List,
     Mapping,
     Optional,
     Set,
@@ -54,7 +54,7 @@ class CookieJar(AbstractCookieJar):
     DATE_DAY_OF_MONTH_RE = re.compile(r"(\d{1,2})")
 
     DATE_MONTH_RE = re.compile(
-        "(jan)|(feb)|(mar)|(apr)|(may)|(jun)|(jul)|" "(aug)|(sep)|(oct)|(nov)|(dec)",
+        "(jan)|(feb)|(mar)|(apr)|(may)|(jun)|(jul)|(aug)|(sep)|(oct)|(nov)|(dec)",
         re.I,
     )
 
@@ -70,7 +70,7 @@ class CookieJar(AbstractCookieJar):
     except (OSError, ValueError):
         # Hit the maximum representable time on Windows
         # https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/localtime-localtime32-localtime64
-        # Throws ValueError on PyPy 3.8 and 3.9, OSError elsewhere
+        # Throws ValueError on PyPy 3.9, OSError elsewhere
         MAX_TIME = calendar.timegm((3000, 12, 31, 23, 59, 59, -1, -1, -1))
     except OverflowError:
         # #4515: datetime.max may not be representable on 32-bit platforms
@@ -83,7 +83,7 @@ class CookieJar(AbstractCookieJar):
         *,
         unsafe: bool = False,
         quote_cookie: bool = True,
-        treat_as_secure_origin: Union[StrOrURL, List[StrOrURL], None] = None,
+        treat_as_secure_origin: Union[StrOrURL, Iterable[StrOrURL], None] = None,
     ) -> None:
         self._cookies: DefaultDict[Tuple[str, str], SimpleCookie] = defaultdict(
             SimpleCookie
@@ -92,17 +92,20 @@ class CookieJar(AbstractCookieJar):
         self._unsafe = unsafe
         self._quote_cookie = quote_cookie
         if treat_as_secure_origin is None:
-            treat_as_secure_origin = []
+            self._treat_as_secure_origin: FrozenSet[URL] = frozenset()
         elif isinstance(treat_as_secure_origin, URL):
-            treat_as_secure_origin = [treat_as_secure_origin.origin()]
+            self._treat_as_secure_origin = frozenset({treat_as_secure_origin.origin()})
         elif isinstance(treat_as_secure_origin, str):
-            treat_as_secure_origin = [URL(treat_as_secure_origin).origin()]
+            self._treat_as_secure_origin = frozenset(
+                {URL(treat_as_secure_origin).origin()}
+            )
         else:
-            treat_as_secure_origin = [
-                URL(url).origin() if isinstance(url, str) else url.origin()
-                for url in treat_as_secure_origin
-            ]
-        self._treat_as_secure_origin = treat_as_secure_origin
+            self._treat_as_secure_origin = frozenset(
+                {
+                    URL(url).origin() if isinstance(url, str) else url.origin()
+                    for url in treat_as_secure_origin
+                }
+            )
         self._next_expiration: float = ceil(time.time())
         self._expirations: Dict[Tuple[str, str, str], float] = {}
 
@@ -243,7 +246,7 @@ class CookieJar(AbstractCookieJar):
 
         self._do_expiration()
 
-    def filter_cookies(self, request_url: URL = URL()) -> "BaseCookie[str]":
+    def filter_cookies(self, request_url: URL) -> "BaseCookie[str]":
         """Returns this jar's cookies filtered by their attributes."""
         if not isinstance(request_url, URL):
             warnings.warn(

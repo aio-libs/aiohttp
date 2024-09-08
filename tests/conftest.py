@@ -14,6 +14,7 @@ from uuid import uuid4
 
 import pytest
 
+from aiohttp.client_proto import ResponseHandler
 from aiohttp.http import WS_KEY
 from aiohttp.test_utils import loop_context
 
@@ -34,7 +35,7 @@ IS_LINUX = sys.platform.startswith("linux")
 
 
 @pytest.fixture
-def tls_certificate_authority() -> Any:
+def tls_certificate_authority() -> trustme.CA:
     if not TRUSTME:
         pytest.xfail("trustme is not supported")
     return trustme.CA()
@@ -82,7 +83,7 @@ def tls_certificate_pem_bytes(tls_certificate: Any) -> bytes:
 
 
 @pytest.fixture
-def tls_certificate_fingerprint_sha256(tls_certificate_pem_bytes: Any) -> str:
+def tls_certificate_fingerprint_sha256(tls_certificate_pem_bytes: Any) -> bytes:
     tls_cert_der = ssl.PEM_cert_to_DER_cert(tls_certificate_pem_bytes.decode())
     return sha256(tls_cert_der).digest()
 
@@ -95,8 +96,8 @@ def pipe_name() -> str:
 
 @pytest.fixture
 def create_mocked_conn(loop: Any):
-    def _proto_factory(conn_closing_result=None, **kwargs):
-        proto = mock.Mock(**kwargs)
+    def _proto_factory(conn_closing_result=None, **kwargs) -> ResponseHandler:
+        proto = mock.create_autospec(ResponseHandler, **kwargs)
         proto.closed = loop.create_future()
         proto.closed.set_result(conn_closing_result)
         return proto
@@ -223,15 +224,15 @@ def start_connection():
 
 
 @pytest.fixture
-def key_data():
+def key_data() -> bytes:
     return os.urandom(16)
 
 
 @pytest.fixture
-def key(key_data: Any):
+def key(key_data: bytes) -> bytes:
     return base64.b64encode(key_data)
 
 
 @pytest.fixture
-def ws_key(key: Any):
+def ws_key(key: bytes) -> bytes:
     return base64.b64encode(sha1(key + WS_KEY).digest()).decode()

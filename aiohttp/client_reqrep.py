@@ -50,7 +50,6 @@ from .helpers import (
     basicauth_from_netrc,
     is_expected_content_type,
     netrc_from_env,
-    noop,
     parse_mimetype,
     reify,
     set_exception,
@@ -126,9 +125,7 @@ class Fingerprint:
         if not hashfunc:
             raise ValueError("fingerprint has invalid length")
         elif hashfunc is md5 or hashfunc is sha1:
-            raise ValueError(
-                "md5 and sha1 are insecure and " "not supported. Use sha256."
-            )
+            raise ValueError("md5 and sha1 are insecure and not supported. Use sha256.")
         self._hashfunc = hashfunc
         self._fingerprint = fingerprint
 
@@ -181,7 +178,8 @@ class ClientRequest:
         hdrs.ACCEPT_ENCODING: _gen_default_accept_encoding(),
     }
 
-    body = b""
+    # Type of body depends on PAYLOAD_REGISTRY, which is dynamic.
+    body: Any = b""
     auth = None
     response = None
 
@@ -200,7 +198,7 @@ class ClientRequest:
         *,
         params: Query = None,
         headers: Optional[LooseHeaders] = None,
-        skip_auto_headers: Iterable[str] = frozenset(),
+        skip_auto_headers: Optional[Iterable[str]] = None,
         data: Any = None,
         cookies: Optional[LooseCookies] = None,
         auth: Optional[BasicAuth] = None,
@@ -339,8 +337,8 @@ class ClientRequest:
 
         # basic auth info
         username, password = url.user, url.password
-        if username:
-            self.auth = helpers.BasicAuth(username, password or "")
+        if username or password:
+            self.auth = helpers.BasicAuth(username or "", password or "")
 
     def update_version(self, version: Union[http.HttpVersion, str]) -> None:
         """Convert request version to two elements tuple.
@@ -373,7 +371,7 @@ class ClientRequest:
 
         if headers:
             if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
-                headers = headers.items()  # type: ignore[assignment]
+                headers = headers.items()
 
             for key, value in headers:  # type: ignore[misc]
                 # A special case for Host header
@@ -382,12 +380,18 @@ class ClientRequest:
                 else:
                     self.headers.add(key, value)
 
-    def update_auto_headers(self, skip_auto_headers: Iterable[str]) -> None:
-        self.skip_auto_headers = CIMultiDict(
-            (hdr, None) for hdr in sorted(skip_auto_headers)
-        )
-        used_headers = self.headers.copy()
-        used_headers.extend(self.skip_auto_headers)  # type: ignore[arg-type]
+    def update_auto_headers(self, skip_auto_headers: Optional[Iterable[str]]) -> None:
+        if skip_auto_headers is not None:
+            self.skip_auto_headers = CIMultiDict(
+                (hdr, None) for hdr in sorted(skip_auto_headers)
+            )
+            used_headers = self.headers.copy()
+            used_headers.extend(self.skip_auto_headers)  # type: ignore[arg-type]
+        else:
+            # Fast path when there are no headers to skip
+            # which is the most common case.
+            self.skip_auto_headers = CIMultiDict()
+            used_headers = self.headers
 
         for hdr, val in self.DEFAULT_HEADERS.items():
             if hdr not in used_headers:
@@ -430,7 +434,7 @@ class ClientRequest:
         if enc:
             if self.compress:
                 raise ValueError(
-                    "compress can not be set " "if Content-Encoding header is set"
+                    "compress can not be set if Content-Encoding header is set"
                 )
         elif self.compress:
             if not isinstance(self.compress, str):
@@ -452,7 +456,7 @@ class ClientRequest:
         elif self.chunked:
             if hdrs.CONTENT_LENGTH in self.headers:
                 raise ValueError(
-                    "chunked can not be set " "if Content-Length header is set"
+                    "chunked can not be set if Content-Length header is set"
                 )
 
             self.headers[hdrs.TRANSFER_ENCODING] = "chunked"
@@ -509,9 +513,7 @@ class ClientRequest:
         # copy payload headers
         assert body.headers
         for key, value in body.headers.items():
-            if key in self.headers:
-                continue
-            if key in self.skip_auto_headers:
+            if key in self.headers or key in self.skip_auto_headers:
                 continue
             self.headers[key] = value
 
@@ -534,6 +536,10 @@ class ClientRequest:
             raise ValueError("proxy_auth must be None or BasicAuth() tuple")
         self.proxy = proxy
         self.proxy_auth = proxy_auth
+        if proxy_headers is not None and not isinstance(
+            proxy_headers, (MultiDict, MultiDictProxy)
+        ):
+            proxy_headers = CIMultiDict(proxy_headers)
         self.proxy_headers = proxy_headers
 
     def keep_alive(self) -> bool:
@@ -569,10 +575,10 @@ class ClientRequest:
                 await self.body.write(writer)
             else:
                 if isinstance(self.body, (bytes, bytearray)):
-                    self.body = (self.body,)  # type: ignore[assignment]
+                    self.body = (self.body,)
 
                 for chunk in self.body:
-                    await writer.write(chunk)  # type: ignore[arg-type]
+                    await writer.write(chunk)
         except OSError as underlying_exc:
             reraised_exc = underlying_exc
 
@@ -587,7 +593,8 @@ class ClientRequest:
 
             set_exception(protocol, reraised_exc, underlying_exc)
         except asyncio.CancelledError:
-            await writer.write_eof()
+            # Body hasn't been fully sent, so connection can't be reused.
+            conn.close()
         except Exception as underlying_exc:
             set_exception(
                 protocol,
@@ -623,11 +630,15 @@ class ClientRequest:
         writer = StreamWriter(
             protocol,
             self.loop,
-            on_chunk_sent=functools.partial(
-                self._on_chunk_request_sent, self.method, self.url
+            on_chunk_sent=(
+                functools.partial(self._on_chunk_request_sent, self.method, self.url)
+                if self._traces
+                else None
             ),
-            on_headers_sent=functools.partial(
-                self._on_headers_request_sent, self.method, self.url
+            on_headers_sent=(
+                functools.partial(self._on_headers_request_sent, self.method, self.url)
+                if self._traces
+                else None
             ),
         )
 
@@ -659,9 +670,8 @@ class ClientRequest:
             self.headers[hdrs.CONNECTION] = connection
 
         # status + headers
-        status_line = "{0} {1} HTTP/{v.major}.{v.minor}".format(
-            self.method, path, v=self.version
-        )
+        v = self.version
+        status_line = f"{self.method} {path} HTTP/{v.major}.{v.minor}"
         await writer.write_headers(status_line, self.headers)
         coro = self.write_bytes(writer, conn)
 
@@ -994,7 +1004,7 @@ class ClientResponse(HeadersMixin):
             self._connection.close()
             self._connection = None
 
-    def release(self) -> Any:
+    def release(self) -> None:
         if not self._released:
             self._notify_content()
 
@@ -1002,7 +1012,6 @@ class ClientResponse(HeadersMixin):
 
         self._cleanup_writer()
         self._release_connection()
-        return noop()
 
     @property
     def ok(self) -> bool:
@@ -1125,6 +1134,7 @@ class ClientResponse(HeadersMixin):
                 raise ContentTypeError(
                     self.request_info,
                     self.history,
+                    status=self.status,
                     message=(
                         "Attempt to decode JSON with "
                         "unexpected mimetype: %s" % self.content_type

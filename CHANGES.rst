@@ -10,6 +10,324 @@
 
 .. towncrier release notes start
 
+3.10.5 (2024-08-19)
+=========================
+
+Bug fixes
+---------
+
+- Fixed :meth:`aiohttp.ClientResponse.json()` not setting ``status`` when :exc:`aiohttp.ContentTypeError` is raised -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8742`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of the WebSocket reader -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8736`, :issue:`8747`.
+
+
+
+
+----
+
+
+3.10.4 (2024-08-17)
+===================
+
+Bug fixes
+---------
+
+- Fixed decoding base64 chunk in BodyPartReader -- by :user:`hyzyla`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`3867`.
+
+
+
+- Fixed a race closing the server-side WebSocket where the close code would not reach the client -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8680`.
+
+
+
+- Fixed unconsumed exceptions raised by the WebSocket heartbeat -- by :user:`bdraco`.
+
+  If the heartbeat ping raised an exception, it would not be consumed and would be logged as an warning.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8685`.
+
+
+
+- Fixed an edge case in the Python parser when chunk separators happen to align with network chunks -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8720`.
+
+
+
+
+Improved documentation
+----------------------
+
+- Added ``aiohttp-apischema`` to supported libraries -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8700`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of starting request handlers with Python 3.12+ -- by :user:`bdraco`.
+
+  This change is a followup to :issue:`8661` to make the same optimization for Python 3.12+ where the request is connected.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8681`.
+
+
+
+
+----
+
+
+3.10.3 (2024-08-10)
+========================
+
+Bug fixes
+---------
+
+- Fixed multipart reading when stream buffer splits the boundary over several read() calls -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8653`.
+
+
+
+- Fixed :py:class:`aiohttp.TCPConnector` doing blocking I/O in the event loop to create the ``SSLContext`` -- by :user:`bdraco`.
+
+  The blocking I/O would only happen once per verify mode. However, it could cause the event loop to block for a long time if the ``SSLContext`` creation is slow, which is more likely during startup when the disk cache is not yet present.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8672`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of :py:meth:`~aiohttp.ClientWebSocketResponse.receive` and :py:meth:`~aiohttp.web.WebSocketResponse.receive` when there is no timeout. -- by :user:`bdraco`.
+
+  The timeout context manager is now avoided when there is no timeout as it accounted for up to 50% of the time spent in the :py:meth:`~aiohttp.ClientWebSocketResponse.receive` and :py:meth:`~aiohttp.web.WebSocketResponse.receive` methods.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8660`.
+
+
+
+- Improved performance of starting request handlers with Python 3.12+ -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8661`.
+
+
+
+- Improved performance of HTTP keep-alive checks -- by :user:`bdraco`.
+
+  Previously, when processing a request for a keep-alive connection, the keep-alive check would happen every second; the check is now rescheduled if it fires too early instead.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8662`.
+
+
+
+- Improved performance of generating random WebSocket mask -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8667`.
+
+
+
+
+----
+
+
+3.10.2 (2024-08-08)
+===================
+
+Bug fixes
+---------
+
+- Fixed server checks for circular symbolic links to be compatible with Python 3.13 -- by :user:`steverep`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8565`.
+
+
+
+- Fixed request body not being read when ignoring an Upgrade request -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8597`.
+
+
+
+- Fixed an edge case where shutdown would wait for timeout when the handler was already completed -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8611`.
+
+
+
+- Fixed connecting to ``npipe://``, ``tcp://``, and ``unix://`` urls -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8632`.
+
+
+
+- Fixed WebSocket ping tasks being prematurely garbage collected -- by :user:`bdraco`.
+
+  There was a small risk that WebSocket ping tasks would be prematurely garbage collected because the event loop only holds a weak reference to the task. The garbage collection risk has been fixed by holding a strong reference to the task. Additionally, the task is now scheduled eagerly with Python 3.12+ to increase the chance it can be completed immediately and avoid having to hold any references to the task.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8641`.
+
+
+
+- Fixed incorrectly following symlinks for compressed file variants -- by :user:`steverep`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8652`.
+
+
+
+
+Removals and backward incompatible breaking changes
+---------------------------------------------------
+
+- Removed ``Request.wait_for_disconnection()``, which was mistakenly added briefly in 3.10.0 -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8636`.
+
+
+
+
+Contributor-facing changes
+--------------------------
+
+- Fixed monkey patches for ``Path.stat()`` and ``Path.is_dir()`` for Python 3.13 compatibility -- by :user:`steverep`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8551`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved WebSocket performance when messages are sent or received frequently -- by :user:`bdraco`.
+
+  The WebSocket heartbeat scheduling algorithm was improved to reduce the ``asyncio`` scheduling overhead by decreasing the number of ``asyncio.TimerHandle`` creations and cancellations.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8608`.
+
+
+
+- Minor improvements to various type annotations -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8634`.
+
+
+
+
+----
+
+
+3.10.1 (2024-08-03)
+========================
+
+Bug fixes
+---------
+
+- Fixed WebSocket server heartbeat timeout logic to terminate :py:meth:`~aiohttp.ClientWebSocketResponse.receive` and return :py:class:`~aiohttp.ServerTimeoutError` -- by :user:`arcivanov`.
+
+  When a WebSocket pong message was not received, the :py:meth:`~aiohttp.ClientWebSocketResponse.receive` operation did not terminate. This change causes ``_pong_not_received`` to feed the ``reader`` an error message, causing pending :py:meth:`~aiohttp.ClientWebSocketResponse.receive` to terminate and return the error message. The error message contains the exception :py:class:`~aiohttp.ServerTimeoutError`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8540`.
+
+
+
+- Fixed url dispatcher index not matching when a variable is preceded by a fixed string after a slash -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8566`.
+
+
+
+
+Removals and backward incompatible breaking changes
+---------------------------------------------------
+
+- Creating :py:class:`aiohttp.TCPConnector`, :py:class:`aiohttp.ClientSession`, :py:class:`~aiohttp.resolver.ThreadedResolver` :py:class:`aiohttp.web.Server`, or :py:class:`aiohttp.CookieJar` instances without a running event loop now raises a :exc:`RuntimeError` -- by :user:`asvetlov`.
+
+  Creating these objects without a running event loop was deprecated in :issue:`3372` which was released in version 3.5.0.
+
+  This change first appeared in version 3.10.0 as :issue:`6378`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8555`, :issue:`8583`.
+
+
+
+
+----
+
+
 3.10.0 (2024-07-30)
 ========================
 
