@@ -229,10 +229,7 @@ class ClientRequest:
         # assert session is not None
         self._session = cast("ClientSession", session)
         if params:
-            q = MultiDict(url.query)
-            url2 = url.with_query(params)
-            q.extend(url2.query)
-            url = url.with_query(q)
+            url = url.update_query(params)
         self.original_url = url
         self.url = url.with_fragment(None)
         self.method = method.upper()
