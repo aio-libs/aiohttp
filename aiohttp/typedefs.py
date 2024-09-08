@@ -7,14 +7,23 @@ from typing import (
     Callable,
     Iterable,
     Mapping,
-    Sequence,
     Protocol,
+    Sequence,
     Tuple,
     Union,
 )
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, istr
 from yarl import URL
+
+try:
+    from yarl import Query, QueryVariable, SimpleQuery
+except ImportError:
+    SimpleQuery = Union[str, int, float]
+    QueryVariable = Union[SimpleQuery, Sequence[SimpleQuery]]
+    Query = Union[
+        None, str, Mapping[str, QueryVariable], Sequence[Tuple[str, QueryVariable]]
+    ]
 
 DEFAULT_JSON_ENCODER = json.dumps
 DEFAULT_JSON_DECODER = json.loads
@@ -66,10 +75,3 @@ class Middleware(Protocol):
 
 
 PathLike = Union[str, "os.PathLike[str]"]
-
-# from yarl https://github.com/aio-libs/yarl/blob/efea830d088309214450b359f0d02792ba2eaa50/yarl/__init__.pyi#L18-L22
-SimpleQuery = Union[str, int, float]
-QueryVariable = Union[SimpleQuery, Sequence[SimpleQuery]]
-Query = Union[
-    None, str, Mapping[str, QueryVariable], Sequence[Tuple[str, QueryVariable]]
-]
