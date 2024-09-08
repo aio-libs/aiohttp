@@ -261,7 +261,7 @@ webcolors==1.13
     # via blockdiag
 wheel==0.41.0
     # via pip-tools
-yarl==1.9.6
+yarl==1.11.0
     # via -r requirements/runtime-deps.in
 zipp==3.17.0
     # via
