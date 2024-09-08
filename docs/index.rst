@@ -147,7 +147,6 @@ or have some suggestion in order to improve the library.
 Dependencies
 ============
 
-- *async_timeout*
 - *multidict*
 - *yarl*
 
