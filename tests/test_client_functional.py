@@ -672,8 +672,41 @@ async def test_str_params(aiohttp_client) -> None:
         assert 200 == resp.status
 
 
-async def test_drop_params_on_redirect(aiohttp_client) -> None:
-    async def handler_redirect(request):
+async def test_params_and_query_string(aiohttp_client: AiohttpClient) -> None:
+    """Test combining params with an existing query_string."""
+
+    async def handler(request: web.Request) -> web.Response:
+        assert request.rel_url.query_string == "q=abc&q=test&d=dog"
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/?q=abc", params="q=test&d=dog") as resp:
+        assert resp.status == 200
+
+
+@pytest.mark.parametrize("params", [None, "", {}, MultiDict()])
+async def test_empty_params_and_query_string(
+    aiohttp_client: AiohttpClient, params: Any
+) -> None:
+    """Test combining empty params with an existing query_string."""
+
+    async def handler(request: web.Request) -> web.Response:
+        assert request.rel_url.query_string == "q=abc"
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/?q=abc", params=params) as resp:
+        assert resp.status == 200
+
+
+async def test_drop_params_on_redirect(aiohttp_client: AiohttpClient) -> None:
+    async def handler_redirect(request: web.Request) -> web.Response:
         return web.Response(status=301, headers={"Location": "/ok?a=redirect"})
 
     async def handler_ok(request):
