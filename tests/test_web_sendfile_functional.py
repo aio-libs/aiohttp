@@ -72,7 +72,13 @@ def sender(request: Any, loop: Any):
         return ret
 
     if request.param == "no_sendfile":
-        with mock.patch.object(loop, "sendfile", autospec=True, spec_set=True, side_effect=NotImplementedError) as sendfile_mock:
+        with mock.patch.object(
+            loop,
+            "sendfile",
+            autospec=True,
+            spec_set=True,
+            side_effect=NotImplementedError,
+        ) as sendfile_mock:
             yield maker
     else:
         yield maker
