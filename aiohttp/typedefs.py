@@ -7,8 +7,8 @@ from typing import (
     Callable,
     Iterable,
     Mapping,
-    Sequence,
     Protocol,
+    Sequence,
     Tuple,
     Union,
 )
