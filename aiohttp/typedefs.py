@@ -21,9 +21,9 @@ try:
     from yarl import Query, QueryVariable, SimpleQuery
 except ImportError:
     SimpleQuery = Union[str, int, float]
-    QueryVariable = Union[SimpleQuery, Sequence[SimpleQuery]]
+    QueryVariable = Union[SimpleQuery, "Sequence[SimpleQuery]"]
     Query = Union[
-        None, str, Mapping[str, QueryVariable], Sequence[Tuple[str, QueryVariable]]
+        None, str, "Mapping[str, QueryVariable]", "Sequence[Tuple[str, QueryVariable]]"
     ]
 
 DEFAULT_JSON_ENCODER = json.dumps
