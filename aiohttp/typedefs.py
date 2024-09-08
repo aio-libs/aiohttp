@@ -18,7 +18,7 @@ from yarl import URL
 
 try:
     # Available in yarl>=1.10.0
-    from yarl import Query, QueryVariable, SimpleQuery
+    from yarl import Query
 except ImportError:
     SimpleQuery = Union[str, int, float]
     QueryVariable = Union[SimpleQuery, "Sequence[SimpleQuery]"]
