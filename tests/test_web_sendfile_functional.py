@@ -500,10 +500,9 @@ async def test_static_file_if_none_match(
 
     resp = await client.get("/")
     assert 200 == resp.status
-    original_etag = resp.headers.get("ETag")
+    original_etag = resp.headers["ETag"]
 
     assert resp.headers.get("Last-Modified") is not None
-    assert original_etag is not None
     resp.close()
     resp.release()
 
@@ -539,6 +538,38 @@ async def test_static_file_if_none_match_star(
     resp.close()
 
     resp.release()
+    await client.close()
+
+
+@pytest.mark.parametrize("if_modified_since", ("", "Fri, 31 Dec 9999 23:59:59 GMT"))
+async def test_static_file_if_none_match_weak(
+    aiohttp_client: Any,
+    app_with_static_route: web.Application,
+    if_modified_since: str,
+) -> None:
+    client = await aiohttp_client(app_with_static_route)
+
+    resp = await client.get("/")
+    assert 200 == resp.status
+    original_etag = resp.headers["ETag"]
+
+    assert resp.headers.get("Last-Modified") is not None
+    resp.close()
+    resp.release()
+
+    weak_etag = f"W/{original_etag}"
+
+    resp = await client.get(
+        "/", headers={"If-None-Match": weak_etag, "If-Modified-Since": if_modified_since}
+    )
+    body = await resp.read()
+    assert 304 == resp.status
+    assert resp.headers.get("Content-Length") is None
+    assert resp.headers.get("ETag") == original_etag
+    assert b"" == body
+    resp.close()
+    resp.release()
+
     await client.close()
 
 
