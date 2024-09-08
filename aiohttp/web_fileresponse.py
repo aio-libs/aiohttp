@@ -132,7 +132,9 @@ class FileResponse(StreamResponse):
     def _etag_match(etag_value: str, etags: Tuple[ETag, ...], *, weak: bool) -> bool:
         if len(etags) == 1 and etags[0].value == ETAG_ANY:
             return True
-        return any(etag.value == etag_value for etag in etags if weak or not etag.is_weak)
+        return any(
+            etag.value == etag_value for etag in etags if weak or not etag.is_weak
+        )
 
     async def _not_modified(
         self, request: "BaseRequest", etag_value: str, last_modified: float
@@ -203,7 +205,9 @@ class FileResponse(StreamResponse):
 
         # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1-2
         ifmatch = request.if_match
-        if ifmatch is not None and not self._etag_match(etag_value, ifmatch, weak=False):
+        if ifmatch is not None and not self._etag_match(
+            etag_value, ifmatch, weak=False
+        ):
             return await self._precondition_failed(request)
 
         unmodsince = request.if_unmodified_since
@@ -216,7 +220,9 @@ class FileResponse(StreamResponse):
 
         # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.2-2
         ifnonematch = request.if_none_match
-        if ifnonematch is not None and self._etag_match(etag_value, ifnonematch, weak=True):
+        if ifnonematch is not None and self._etag_match(
+            etag_value, ifnonematch, weak=True
+        ):
             return await self._not_modified(request, etag_value, last_modified)
 
         modsince = request.if_modified_since

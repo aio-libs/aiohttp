@@ -560,7 +560,8 @@ async def test_static_file_if_none_match_weak(
     weak_etag = f"W/{original_etag}"
 
     resp = await client.get(
-        "/", headers={"If-None-Match": weak_etag, "If-Modified-Since": if_modified_since}
+        "/",
+        headers={"If-None-Match": weak_etag, "If-Modified-Since": if_modified_since},
     )
     body = await resp.read()
     assert 304 == resp.status
