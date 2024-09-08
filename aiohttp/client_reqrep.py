@@ -90,7 +90,7 @@ if TYPE_CHECKING:
 
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
-_YARL_SUPPORTS_EXTEND_QUERY = tuple(map(int, yarl_version.split(".")[:2])) > (1, 10)
+_YARL_SUPPORTS_EXTEND_QUERY = tuple(map(int, yarl_version.split(".")[:2])) >= (1, 11)
 
 
 def _gen_default_accept_encoding() -> str:
