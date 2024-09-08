@@ -17,6 +17,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, 
 from yarl import URL
 
 try:
+    # Available in yarl>=1.10.0
     from yarl import Query, QueryVariable, SimpleQuery
 except ImportError:
     SimpleQuery = Union[str, int, float]
