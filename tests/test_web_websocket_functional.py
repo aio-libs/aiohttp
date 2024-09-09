@@ -1121,9 +1121,30 @@ async def test_websocket_shutdown(aiohttp_client: AiohttpClient) -> None:
     assert websocket.closed is True
 
 
-@pytest.mark.xfail(reason="close never reaches client per issue #5180")
 async def test_ws_close_return_code(aiohttp_client: AiohttpClient) -> None:
     """Test that the close code is returned when the server closes the connection."""
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.receive()
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/")
+    await resp.send_str("some data")
+    msg = await resp.receive()
+    assert msg.type is aiohttp.WSMsgType.CLOSE
+    assert resp.close_code == WSCloseCode.OK
+
+
+async def test_abnormal_closure_when_server_does_not_receive(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test abnormal closure when the server closes and a message is pending."""
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
@@ -1137,5 +1158,6 @@ async def test_ws_close_return_code(aiohttp_client: AiohttpClient) -> None:
     resp = await client.ws_connect("/")
     await resp.send_str("some data")
     await asyncio.sleep(0.1)
-    await resp.receive()
-    assert resp.close_code is WSCloseCode.OK
+    msg = await resp.receive()
+    assert msg.type is aiohttp.WSMsgType.CLOSE
+    assert resp.close_code == WSCloseCode.ABNORMAL_CLOSURE
