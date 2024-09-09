@@ -1,2 +1,0 @@
-Excluded :term:`cchardet` from the ``speedups`` extra in the package
-metadata under Python 3.10 or higher -- by :user:`webknjaz`.

@@ -1,0 +1,1 @@
+Stopped adding a default Content-Type header when response has no content -- by :user:`Dreamsorcerer`.

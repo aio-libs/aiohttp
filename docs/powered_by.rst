@@ -36,3 +36,4 @@ make a Pull Request!
 * `Glose <https://www.glose.com/>`_ - Social reader for E-Books
 * `Emoji Generator <https://emoji-gen.ninja>`_ - Text icon generator
 * `SerpsBot Google Search API <https://serpsbot.com>`_ - SerpsBot Google Search API
+* `PyChess <https://www.pychess.org>`_ - Chess variant server

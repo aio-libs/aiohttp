@@ -23,6 +23,8 @@ from unittest import mock
 
 from aiohttp import web
 
+value = web.AppKey('value', str)
+
 
 async def hello(request):
     return web.Response(body=b'Hello, world')
@@ -66,11 +68,11 @@ async def test_noop() -> None:
 
 async def previous(request):
     if request.method == 'POST':
-        with pytest.warns(DeprecationWarning):
-            request.app['value'] = (await request.post())['value']
+        with pytest.deprecated_call():  # FIXME: this isn't actually called
+            request.app[value] = (await request.post())['value']
         return web.Response(body=b'thanks for the data')
     else:
-        v = request.app.get('value', 'unknown')
+        v = request.app.get(value, 'unknown')
         return web.Response(body='value: {}'.format(v).encode())
 
 
@@ -114,7 +116,6 @@ async def test_custom_port_test_server(aiohttp_server, aiohttp_unused_port):
     port = aiohttp_unused_port()
     server = await aiohttp_server(app, port=port)
     assert server.port == port
-
 """
     )
     testdir.makeconftest(CONFTEST)

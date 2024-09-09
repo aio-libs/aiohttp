@@ -1,1 +1,0 @@
-Fixed suppression of :py:class:`ResourceWarning`s in the pytest setup -- by :user:`graingert`.

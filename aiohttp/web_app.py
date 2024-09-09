@@ -2,7 +2,7 @@ import asyncio
 import logging
 import warnings
 from functools import partial, update_wrapper
-from typing import (  # noqa
+from typing import (
     TYPE_CHECKING,
     Any,
     AsyncIterator,
@@ -16,22 +16,22 @@ from typing import (  # noqa
     MutableMapping,
     Optional,
     Sequence,
-    Tuple,
     Type,
     TypeVar,
     Union,
     cast,
+    final,
     overload,
 )
 
 from aiosignal import Signal
 from frozenlist import FrozenList
-from typing_extensions import final
 
 from . import hdrs
 from .helpers import AppKey
 from .log import web_logger
 from .typedefs import Middleware
+from .web_exceptions import NotAppKeyWarning
 from .web_middlewares import _fix_request_current_app
 from .web_request import Request
 from .web_response import StreamResponse
@@ -49,7 +49,7 @@ from .web_urldispatcher import (
 __all__ = ("Application", "CleanupError")
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     _AppSignal = Signal[Callable[["Application"], Awaitable[None]]]
     _RespPrepareSignal = Signal[Callable[[Request, StreamResponse], Awaitable[None]]]
     _Middlewares = FrozenList[Middleware]
@@ -66,6 +66,7 @@ else:
 
 _T = TypeVar("_T")
 _U = TypeVar("_U")
+_Resource = TypeVar("_Resource", bound=AbstractResource)
 
 
 @final
@@ -100,10 +101,9 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         client_max_size: int = 1024**2,
         debug: Any = ...,  # mypy doesn't support ellipsis
     ) -> None:
-
         if debug is not ...:
             warnings.warn(
-                "debug argument is no-op since 4.0 " "and scheduled for removal in 5.0",
+                "debug argument is no-op since 4.0 and scheduled for removal in 5.0",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -144,12 +144,10 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         return self is other
 
     @overload  # type: ignore[override]
-    def __getitem__(self, key: AppKey[_T]) -> _T:
-        ...
+    def __getitem__(self, key: AppKey[_T]) -> _T: ...
 
     @overload
-    def __getitem__(self, key: str) -> Any:
-        ...
+    def __getitem__(self, key: str) -> Any: ...
 
     def __getitem__(self, key: Union[str, AppKey[_T]]) -> Any:
         return self._state[key]
@@ -157,16 +155,14 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     def _check_frozen(self) -> None:
         if self._frozen:
             raise RuntimeError(
-                "Changing state of started or joined " "application is forbidden"
+                "Changing state of started or joined application is forbidden"
             )
 
     @overload  # type: ignore[override]
-    def __setitem__(self, key: AppKey[_T], value: _T) -> None:
-        ...
+    def __setitem__(self, key: AppKey[_T], value: _T) -> None: ...
 
     @overload
-    def __setitem__(self, key: str, value: Any) -> None:
-        ...
+    def __setitem__(self, key: str, value: Any) -> None: ...
 
     def __setitem__(self, key: Union[str, AppKey[_T]], value: Any) -> None:
         self._check_frozen()
@@ -174,7 +170,9 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             warnings.warn(
                 "It is recommended to use web.AppKey instances for keys.\n"
                 + "https://docs.aiohttp.org/en/stable/web_advanced.html"
-                + "#application-s-config"
+                + "#application-s-config",
+                category=NotAppKeyWarning,
+                stacklevel=2,
             )
         self._state[key] = value
 
@@ -189,16 +187,13 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         return iter(self._state)
 
     @overload  # type: ignore[override]
-    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]:
-        ...
+    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]: ...
 
     @overload
-    def get(self, key: AppKey[_T], default: _U) -> Union[_T, _U]:
-        ...
+    def get(self, key: AppKey[_T], default: _U) -> Union[_T, _U]: ...
 
     @overload
-    def get(self, key: str, default: Any = ...) -> Any:
-        ...
+    def get(self, key: str, default: Any = ...) -> Any: ...
 
     def get(self, key: Union[str, AppKey[_T]], default: Any = None) -> Any:
         return self._state.get(key, default)
@@ -206,7 +201,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     ########
     def _set_loop(self, loop: Optional[asyncio.AbstractEventLoop]) -> None:
         warnings.warn(
-            "_set_loop() is no-op since 4.0 " "and scheduled for removal in 5.0",
+            "_set_loop() is no-op since 4.0 and scheduled for removal in 5.0",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -256,7 +251,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     @property
     def debug(self) -> bool:
         warnings.warn(
-            "debug property is deprecated since 4.0" "and scheduled for removal in 5.0",
+            "debug property is deprecated since 4.0 and scheduled for removal in 5.0",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -276,7 +271,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         reg_handler("on_shutdown")
         reg_handler("on_cleanup")
 
-    def add_subapp(self, prefix: str, subapp: "Application") -> AbstractResource:
+    def add_subapp(self, prefix: str, subapp: "Application") -> PrefixedSubAppResource:
         if not isinstance(prefix, str):
             raise TypeError("Prefix must be str")
         prefix = prefix.rstrip("/")
@@ -286,8 +281,8 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         return self._add_subapp(factory, subapp)
 
     def _add_subapp(
-        self, resource_factory: Callable[[], AbstractResource], subapp: "Application"
-    ) -> AbstractResource:
+        self, resource_factory: Callable[[], _Resource], subapp: "Application"
+    ) -> _Resource:
         if self.frozen:
             raise RuntimeError("Cannot add sub application to frozen application")
         if subapp.frozen:
@@ -299,7 +294,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         subapp.pre_freeze()
         return resource
 
-    def add_domain(self, domain: str, subapp: "Application") -> AbstractResource:
+    def add_domain(self, domain: str, subapp: "Application") -> MatchedSubAppResource:
         if not isinstance(domain, str):
             raise TypeError("Domain must be str")
         elif "*" in domain:
@@ -411,7 +406,7 @@ class CleanupError(RuntimeError):
         return cast(List[BaseException], self.args[1])
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     _CleanupContextBase = FrozenList[Callable[[Application], AsyncIterator[None]]]
 else:
     _CleanupContextBase = FrozenList
@@ -435,7 +430,7 @@ class CleanupContext(_CleanupContextBase):
                 await it.__anext__()
             except StopAsyncIteration:
                 pass
-            except Exception as exc:
+            except (Exception, asyncio.CancelledError) as exc:
                 errors.append(exc)
             else:
                 errors.append(RuntimeError(f"{it!r} has more than one 'yield'"))

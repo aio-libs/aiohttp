@@ -416,7 +416,10 @@ async def test_old_style_middleware(loop: Any, aiohttp_client: Any) -> None:
     async def view_handler(request):
         return web.Response(body=b"OK")
 
-    with pytest.warns(DeprecationWarning, match="Middleware decorator is deprecated"):
+    with pytest.deprecated_call(
+        match=r"^Middleware decorator is deprecated since 4\.0 and its "
+        r"behaviour is default, you can simply remove this decorator\.$",
+    ):
 
         @web.middleware
         async def middleware(request, handler: Handler):
