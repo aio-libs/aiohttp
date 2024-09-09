@@ -19,10 +19,10 @@ from yarl import URL
 try:
     # Available in yarl>=1.10.0
     from yarl import Query as _Query
-except ImportError:
-    SimpleQuery = Union[str, int, float]
-    QueryVariable = Union[SimpleQuery, "Sequence[SimpleQuery]"]
-    _Query = Union[  # type: ignore[misc]
+except ImportError:  # pragma: no cover
+    SimpleQuery = Union[str, int, float]  # pragma: no cover
+    QueryVariable = Union[SimpleQuery, "Sequence[SimpleQuery]"]  # pragma: no cover
+    _Query = Union[  # pragma: no cover # type: ignore[misc]
         None, str, "Mapping[str, QueryVariable]", "Sequence[Tuple[str, QueryVariable]]"
     ]
 
