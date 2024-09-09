@@ -344,6 +344,18 @@ def test_is_ip_address_invalid_type() -> None:
     with pytest.raises(TypeError):
         helpers.is_ip_address(object())  # type: ignore[arg-type]
 
+    with pytest.raises(TypeError):
+        helpers.is_ipv4_address(123)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError):
+        helpers.is_ipv4_address(object())  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError):
+        helpers.is_ipv6_address(123)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError):
+        helpers.is_ipv6_address(object())  # type: ignore[arg-type]
+
 
 # ----------------------------------- TimeoutHandle -------------------
 
