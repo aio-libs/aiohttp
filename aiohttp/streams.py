@@ -10,11 +10,19 @@ from typing import (
     List,
     Optional,
     Tuple,
+    Type,
     TypeVar,
+    Union,
 )
 
 from .base_protocol import BaseProtocol
-from .helpers import BaseTimerContext, TimerNoop, set_exception, set_result
+from .helpers import (
+    _EXC_SENTINEL,
+    BaseTimerContext,
+    TimerNoop,
+    set_exception,
+    set_result,
+)
 from .log import internal_logger
 
 __all__ = (
@@ -26,6 +34,7 @@ __all__ = (
 )
 
 _T = TypeVar("_T")
+_SizedT = TypeVar("_SizedT", bound=collections.abc.Sized)
 
 
 class EofStream(Exception):
@@ -122,7 +131,7 @@ class StreamReader(AsyncStreamReaderMixin):
         self._eof = False
         self._waiter: Optional[asyncio.Future[None]] = None
         self._eof_waiter: Optional[asyncio.Future[None]] = None
-        self._exception: Optional[BaseException] = None
+        self._exception: Optional[Union[Type[BaseException], BaseException]] = None
         self._timer = TimerNoop() if timer is None else timer
         self._eof_callbacks: List[Callable[[], None]] = []
 
@@ -143,22 +152,26 @@ class StreamReader(AsyncStreamReaderMixin):
     def get_read_buffer_limits(self) -> Tuple[int, int]:
         return (self._low_water, self._high_water)
 
-    def exception(self) -> Optional[BaseException]:
+    def exception(self) -> Optional[Union[Type[BaseException], BaseException]]:
         return self._exception
 
-    def set_exception(self, exc: BaseException) -> None:
+    def set_exception(
+        self,
+        exc: Union[Type[BaseException], BaseException],
+        exc_cause: BaseException = _EXC_SENTINEL,
+    ) -> None:
         self._exception = exc
         self._eof_callbacks.clear()
 
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            set_exception(waiter, exc)
+            set_exception(waiter, exc, exc_cause)
 
         waiter = self._eof_waiter
         if waiter is not None:
             self._eof_waiter = None
-            set_exception(waiter, exc)
+            set_exception(waiter, exc, exc_cause)
 
     def on_eof(self, callback: Callable[[], None]) -> None:
         if self._eof:
@@ -228,8 +241,7 @@ class StreamReader(AsyncStreamReaderMixin):
         self._buffer.appendleft(data)
         self._eof_counter = 0
 
-    # TODO: size is ignored, remove the param later
-    def feed_data(self, data: bytes, size: int = 0) -> None:
+    def feed_data(self, data: bytes) -> None:
         assert not self._eof, "feed_data after feed_eof"
 
         if not data:
@@ -251,7 +263,7 @@ class StreamReader(AsyncStreamReaderMixin):
         if self._http_chunk_splits is None:
             if self.total_bytes:
                 raise RuntimeError(
-                    "Called begin_http_chunk_receiving when" "some data was already fed"
+                    "Called begin_http_chunk_receiving when some data was already fed"
                 )
             self._http_chunk_splits = []
 
@@ -286,6 +298,9 @@ class StreamReader(AsyncStreamReaderMixin):
             set_result(waiter, None)
 
     async def _wait(self, func_name: str) -> None:
+        if not self._protocol.connected:
+            raise RuntimeError("Connection closed.")
+
         # StreamReader uses a future to link the protocol feed_data() method
         # to a read coroutine. Running two read coroutines at the same time
         # would have an unexpected behaviour. It would not possible to know
@@ -499,7 +514,11 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     def exception(self) -> Optional[BaseException]:
         return None
 
-    def set_exception(self, exc: BaseException) -> None:
+    def set_exception(
+        self,
+        exc: Union[Type[BaseException], BaseException],
+        exc_cause: BaseException = _EXC_SENTINEL,
+    ) -> None:
         pass
 
     def on_eof(self, callback: Callable[[], None]) -> None:
@@ -520,7 +539,7 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     async def wait_eof(self) -> None:
         return
 
-    def feed_data(self, data: bytes, n: int = 0) -> None:
+    def feed_data(self, data: bytes) -> None:
         pass
 
     async def readline(self) -> bytes:
@@ -551,16 +570,16 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
 EMPTY_PAYLOAD: Final[StreamReader] = EmptyStreamReader()
 
 
-class DataQueue(Generic[_T]):
+class DataQueue(Generic[_SizedT]):
     """DataQueue is a general-purpose blocking queue with one reader."""
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
         self._eof = False
         self._waiter: Optional[asyncio.Future[None]] = None
-        self._exception: Optional[BaseException] = None
+        self._exception: Union[Type[BaseException], BaseException, None] = None
         self._size = 0
-        self._buffer: Deque[Tuple[_T, int]] = collections.deque()
+        self._buffer: Deque[_SizedT] = collections.deque()
 
     def __len__(self) -> int:
         return len(self._buffer)
@@ -571,21 +590,25 @@ class DataQueue(Generic[_T]):
     def at_eof(self) -> bool:
         return self._eof and not self._buffer
 
-    def exception(self) -> Optional[BaseException]:
+    def exception(self) -> Optional[Union[Type[BaseException], BaseException]]:
         return self._exception
 
-    def set_exception(self, exc: BaseException) -> None:
+    def set_exception(
+        self,
+        exc: Union[Type[BaseException], BaseException],
+        exc_cause: BaseException = _EXC_SENTINEL,
+    ) -> None:
         self._eof = True
         self._exception = exc
 
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            set_exception(waiter, exc)
+            set_exception(waiter, exc, exc_cause)
 
-    def feed_data(self, data: _T, size: int = 0) -> None:
-        self._size += size
-        self._buffer.append((data, size))
+    def feed_data(self, data: _SizedT) -> None:
+        self._size += len(data)
+        self._buffer.append(data)
 
         waiter = self._waiter
         if waiter is not None:
@@ -600,7 +623,7 @@ class DataQueue(Generic[_T]):
             self._waiter = None
             set_result(waiter, None)
 
-    async def read(self) -> _T:
+    async def read(self) -> _SizedT:
         if not self._buffer and not self._eof:
             assert not self._waiter
             self._waiter = self._loop.create_future()
@@ -611,8 +634,8 @@ class DataQueue(Generic[_T]):
                 raise
 
         if self._buffer:
-            data, size = self._buffer.popleft()
-            self._size -= size
+            data = self._buffer.popleft()
+            self._size -= len(data)
             return data
         else:
             if self._exception is not None:
@@ -620,11 +643,11 @@ class DataQueue(Generic[_T]):
             else:
                 raise EofStream
 
-    def __aiter__(self) -> AsyncStreamIterator[_T]:
+    def __aiter__(self) -> AsyncStreamIterator[_SizedT]:
         return AsyncStreamIterator(self.read)
 
 
-class FlowControlDataQueue(DataQueue[_T]):
+class FlowControlDataQueue(DataQueue[_SizedT]):
     """FlowControlDataQueue resumes and pauses an underlying stream.
 
     It is a destination for parsed data.
@@ -638,13 +661,13 @@ class FlowControlDataQueue(DataQueue[_T]):
         self._protocol = protocol
         self._limit = limit * 2
 
-    def feed_data(self, data: _T, size: int = 0) -> None:
-        super().feed_data(data, size)
+    def feed_data(self, data: _SizedT) -> None:
+        super().feed_data(data)
 
         if self._size > self._limit and not self._protocol._reading_paused:
             self._protocol.pause_reading()
 
-    async def read(self) -> _T:
+    async def read(self) -> _SizedT:
         try:
             return await super().read()
         finally:

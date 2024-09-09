@@ -1,8 +1,12 @@
--r typing-extensions.in
-
+aiodns
 aioredis
+freezegun
 mypy; implementation_name == "cpython"
 pre-commit
+proxy.py
 pytest
+pytest-mock
+python-on-whales
 slotscheck
+trustme
 uvloop; platform_system != "Windows"

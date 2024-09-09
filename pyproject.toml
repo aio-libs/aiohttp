@@ -81,4 +81,4 @@ skip = "pp*"
 
 [tool.codespell]
 skip = '.git,*.pdf,*.svg,Makefile,CONTRIBUTORS.txt,venvs,_build'
-ignore-words-list = 'te'
+ignore-words-list = 'te,assertIn'

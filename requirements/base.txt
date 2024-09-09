@@ -4,9 +4,9 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/base.txt --strip-extras requirements/base.in
 #
-aiodns==3.1.1 ; sys_platform == "linux" or sys_platform == "darwin"
+aiodns==3.2.0 ; sys_platform == "linux" or sys_platform == "darwin"
     # via -r requirements/runtime-deps.in
-aiohappyeyeballs==2.3.2
+aiohappyeyeballs==2.4.0
     # via -r requirements/runtime-deps.in
 aiosignal==1.3.1
     # via -r requirements/runtime-deps.in
@@ -14,29 +14,27 @@ async-timeout==4.0.3 ; python_version < "3.11"
     # via -r requirements/runtime-deps.in
 brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
-cffi==1.15.1
+cffi==1.17.1
     # via pycares
 frozenlist==1.4.1
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-gunicorn==21.2.0
+gunicorn==23.0.0
     # via -r requirements/base.in
 idna==3.4
     # via yarl
-multidict==6.0.4
+multidict==6.0.5
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-packaging==23.1
+packaging==24.1
     # via gunicorn
-pycares==4.3.0
+pycares==4.4.0
     # via aiodns
-pycparser==2.21
+pycparser==2.22
     # via cffi
-typing-extensions==4.9.0
-    # via -r requirements/typing-extensions.in
-uvloop==0.19.0 ; platform_system != "Windows" and implementation_name == "cpython"
+uvloop==0.20.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
-yarl==1.9.4
+yarl==1.11.0
     # via -r requirements/runtime-deps.in

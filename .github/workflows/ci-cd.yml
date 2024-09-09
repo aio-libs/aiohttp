@@ -49,9 +49,9 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
-        python-version: 3.9
+        python-version: 3.11
     - name: Cache PyPI
-      uses: actions/cache@v4.0.0
+      uses: actions/cache@v4.0.2
       with:
         key: pip-lint-${{ hashFiles('requirements/*.txt') }}
         path: ~/.cache/pip
@@ -112,16 +112,16 @@ jobs:
       with:
         submodules: true
     - name: Cache llhttp generated files
-      uses: actions/cache@v4.0.0
+      uses: actions/cache@v4.0.2
       id: cache
       with:
-        key: llhttp-${{ hashFiles('vendor/llhttp/package.json', 'vendor/llhttp/src/**/*') }}
+        key: llhttp-${{ hashFiles('vendor/llhttp/package*.json', 'vendor/llhttp/src/**/*') }}
         path:  vendor/llhttp/build
     - name: Setup NodeJS
       if: steps.cache.outputs.cache-hit != 'true'
       uses: actions/setup-node@v4
       with:
-        node-version: '14'
+        node-version: 18
     - name: Generate llhttp sources
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
@@ -141,15 +141,13 @@ jobs:
     needs: gen_llhttp
     strategy:
       matrix:
-        pyver: [3.8, 3.9, '3.10']
+        pyver: [3.9, '3.10', '3.11', '3.12']
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         experimental: [false]
         exclude:
           - os: macos
             no-extensions: 'Y'
-          - os: macos
-            pyver: 3.8
           - os: windows
             no-extensions: 'Y'
         include:
@@ -157,28 +155,8 @@ jobs:
             no-extensions: 'Y'
             os: ubuntu
             experimental: false
-          - os: macos
-            pyver: "3.11"
-            experimental: true
-            no-extensions: 'Y'
           - os: ubuntu
-            pyver: "3.11"
-            experimental: false
-            no-extensions: 'Y'
-          - os: windows
-            pyver: "3.11"
-            experimental: true
-            no-extensions: 'Y'
-          - os: ubuntu
-            pyver: "3.12"
-            experimental: true
-            no-extensions: 'Y'
-          - os: macos
-            pyver: "3.12"
-            experimental: true
-            no-extensions: 'Y'
-          - os: windows
-            pyver: "3.12"
+            pyver: "3.13"
             experimental: true
             no-extensions: 'Y'
       fail-fast: true
@@ -198,9 +176,10 @@ jobs:
     - name: Get pip cache dir
       id: pip-cache
       run: |
-        echo "::set-output name=dir::$(pip cache dir)"    # - name: Cache
+        echo "dir=$(pip cache dir)" >> "${GITHUB_OUTPUT}"
+      shell: bash
     - name: Cache PyPI
-      uses: actions/cache@v4.0.0
+      uses: actions/cache@v4.0.2
       with:
         key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-${{ hashFiles('requirements/*.txt') }}
         path: ${{ steps.pip-cache.outputs.dir }}
@@ -233,7 +212,7 @@ jobs:
         PIP_USER: 1
       run: >-
         PATH="${HOME}/Library/Python/3.11/bin:${HOME}/.local/bin:${PATH}"
-        pytest
+        pytest --junitxml=junit.xml
       shell: bash
     - name: Re-run the failing tests with maximum verbosity
       if: failure()
@@ -257,7 +236,7 @@ jobs:
       run: |
         python -m coverage xml
     - name: Upload coverage
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         file: ./coverage.xml
         flags: >-
@@ -268,6 +247,12 @@ jobs:
           }},Py-${{
             steps.python-install.outputs.python-version
           }}
+        token: ${{ secrets.CODECOV_TOKEN }}
+    - name: Upload test results to Codecov
+      if: ${{ !cancelled() }}
+      uses: codecov/test-results-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
 
   check:  # This job does nothing and is only used for the branch protection
     if: always()
@@ -391,7 +376,7 @@ jobs:
       run: |
         make cythonize
     - name: Build wheels
-      uses: pypa/cibuildwheel@v2.16.2
+      uses: pypa/cibuildwheel@v2.20.0
       env:
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
     - uses: actions/upload-artifact@v3
@@ -446,7 +431,7 @@ jobs:
       uses: pypa/gh-action-pypi-publish@release/v1
 
     - name: Sign the dists with Sigstore
-      uses: sigstore/gh-action-sigstore-python@v2.1.0
+      uses: sigstore/gh-action-sigstore-python@v3.0.0
       with:
         inputs: >-
           ./dist/*.tar.gz
@@ -456,7 +441,7 @@ jobs:
       # Confusingly, this action also supports updating releases, not
       # just creating them. This is what we want here, since we've manually
       # created the release above.
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         # dist/ contains the built packages, which smoketest-artifacts/
         # contains the signatures and certificates.

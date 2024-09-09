@@ -58,7 +58,7 @@ extensions = [
     "sphinx.ext.viewcode",
     # Third-party extensions:
     "sphinxcontrib.blockdiag",
-    "sphinxcontrib.towncrier",  # provides `towncrier-draft-entries` directive
+    "sphinxcontrib.towncrier.ext",  # provides `towncrier-draft-entries` directive
 ]
 
 
@@ -393,7 +393,8 @@ nitpick_ignore = [
     ("py:class", "aiohttp.protocol.HttpVersion"),  # undocumented
     ("py:class", "aiohttp.ClientRequest"),  # undocumented
     ("py:class", "aiohttp.payload.Payload"),  # undocumented
-    ("py:class", "aiohttp.abc.AbstractResolver"),  # undocumented
+    ("py:class", "aiohttp.resolver.AsyncResolver"),  # undocumented
+    ("py:class", "aiohttp.resolver.ThreadedResolver"),  # undocumented
     ("py:func", "aiohttp.ws_connect"),  # undocumented
     ("py:meth", "start"),  # undocumented
     ("py:exc", "aiohttp.ClientHttpProxyError"),  # undocumented

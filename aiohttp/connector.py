@@ -14,7 +14,7 @@ from http.cookies import SimpleCookie
 from itertools import cycle, islice
 from time import monotonic
 from types import TracebackType
-from typing import (  # noqa
+from typing import (
     TYPE_CHECKING,
     Any,
     Awaitable,
@@ -25,6 +25,7 @@ from typing import (  # noqa
     List,
     Literal,
     Optional,
+    Sequence,
     Set,
     Tuple,
     Type,
@@ -35,7 +36,7 @@ from typing import (  # noqa
 import aiohappyeyeballs
 
 from . import hdrs, helpers
-from .abc import AbstractResolver
+from .abc import AbstractResolver, ResolveResult
 from .client_exceptions import (
     ClientConnectionError,
     ClientConnectorCertificateError,
@@ -61,6 +62,14 @@ try:
 except ImportError:  # pragma: no cover
     ssl = None  # type: ignore[assignment]
     SSLContext = object  # type: ignore[misc,assignment]
+
+
+EMPTY_SCHEMA_SET = frozenset({""})
+HTTP_SCHEMA_SET = frozenset({"http", "https"})
+WS_SCHEMA_SET = frozenset({"ws", "wss"})
+
+HTTP_AND_EMPTY_SCHEMA_SET = HTTP_SCHEMA_SET | EMPTY_SCHEMA_SET
+HIGH_LEVEL_SCHEMA_SET = HTTP_AND_EMPTY_SCHEMA_SET | WS_SCHEMA_SET
 
 
 __all__ = ("BaseConnector", "TCPConnector", "UnixConnector", "NamedPipeConnector")
@@ -189,6 +198,8 @@ class BaseConnector:
     # abort transport after 2 seconds (cleanup broken connections)
     _cleanup_closed_period = 2.0
 
+    allowed_protocol_schema_set = HIGH_LEVEL_SCHEMA_SET
+
     def __init__(
         self,
         *,
@@ -202,7 +213,7 @@ class BaseConnector:
         if force_close:
             if keepalive_timeout is not None and keepalive_timeout is not sentinel:
                 raise ValueError(
-                    "keepalive_timeout cannot " "be set if force_close is True"
+                    "keepalive_timeout cannot be set if force_close is True"
                 )
         else:
             if keepalive_timeout is sentinel:
@@ -220,9 +231,9 @@ class BaseConnector:
         self._limit = limit
         self._limit_per_host = limit_per_host
         self._acquired: Set[ResponseHandler] = set()
-        self._acquired_per_host: DefaultDict[
-            ConnectionKey, Set[ResponseHandler]
-        ] = defaultdict(set)
+        self._acquired_per_host: DefaultDict[ConnectionKey, Set[ResponseHandler]] = (
+            defaultdict(set)
+        )
         self._keepalive_timeout = cast(float, keepalive_timeout)
         self._force_close = force_close
 
@@ -386,8 +397,8 @@ class BaseConnector:
                     err_msg = "Error while closing connector: " + repr(res)
                     logging.error(err_msg)
 
-    def _close_immediately(self) -> List["asyncio.Future[None]"]:
-        waiters: List["asyncio.Future[None]"] = []
+    def _close_immediately(self) -> List[Awaitable[object]]:
+        waiters: List[Awaitable[object]] = []
 
         if self._closed:
             return waiters
@@ -674,14 +685,14 @@ class BaseConnector:
 
 class _DNSCacheTable:
     def __init__(self, ttl: Optional[float] = None) -> None:
-        self._addrs_rr: Dict[Tuple[str, int], Tuple[Iterator[Dict[str, Any]], int]] = {}
+        self._addrs_rr: Dict[Tuple[str, int], Tuple[Iterator[ResolveResult], int]] = {}
         self._timestamps: Dict[Tuple[str, int], float] = {}
         self._ttl = ttl
 
     def __contains__(self, host: object) -> bool:
         return host in self._addrs_rr
 
-    def add(self, key: Tuple[str, int], addrs: List[Dict[str, Any]]) -> None:
+    def add(self, key: Tuple[str, int], addrs: List[ResolveResult]) -> None:
         self._addrs_rr[key] = (cycle(addrs), len(addrs))
 
         if self._ttl is not None:
@@ -697,7 +708,7 @@ class _DNSCacheTable:
         self._addrs_rr.clear()
         self._timestamps.clear()
 
-    def next_addrs(self, key: Tuple[str, int]) -> List[Dict[str, Any]]:
+    def next_addrs(self, key: Tuple[str, int]) -> List[ResolveResult]:
         loop, length = self._addrs_rr[key]
         addrs = list(islice(loop, length))
         # Consume one more element to shift internal state of `cycle`
@@ -711,6 +722,35 @@ class _DNSCacheTable:
         return self._timestamps[key] + self._ttl < monotonic()
 
 
+def _make_ssl_context(verified: bool) -> SSLContext:
+    """Create SSL context.
+
+    This method is not async-friendly and should be called from a thread
+    because it will load certificates from disk and do other blocking I/O.
+    """
+    if ssl is None:
+        # No ssl support
+        return None
+    if verified:
+        return ssl.create_default_context()
+    sslcontext = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    sslcontext.options |= ssl.OP_NO_SSLv2
+    sslcontext.options |= ssl.OP_NO_SSLv3
+    sslcontext.check_hostname = False
+    sslcontext.verify_mode = ssl.CERT_NONE
+    sslcontext.options |= ssl.OP_NO_COMPRESSION
+    sslcontext.set_default_verify_paths()
+    return sslcontext
+
+
+# The default SSLContext objects are created at import time
+# since they do blocking I/O to load certificates from disk,
+# and imports should always be done before the event loop starts
+# or in a thread.
+_SSL_CONTEXT_VERIFIED = _make_ssl_context(True)
+_SSL_CONTEXT_UNVERIFIED = _make_ssl_context(False)
+
+
 class TCPConnector(BaseConnector):
     """TCP connector.
 
@@ -718,7 +758,7 @@ class TCPConnector(BaseConnector):
     fingerprint - Pass the binary sha256
         digest of the expected certificate in DER format to verify
         that the certificate the server presents matches. See also
-        https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning
+        https://en.wikipedia.org/wiki/HTTP_Public_Key_Pinning
     resolver - Enable DNS lookups and use this
         resolver
     use_dns_cache - Use memory cache for DNS lookups.
@@ -740,12 +780,14 @@ class TCPConnector(BaseConnector):
     loop - Optional event loop.
     """
 
+    allowed_protocol_schema_set = HIGH_LEVEL_SCHEMA_SET | frozenset({"tcp"})
+
     def __init__(
         self,
         *,
         use_dns_cache: bool = True,
         ttl_dns_cache: Optional[int] = 10,
-        family: int = 0,
+        family: socket.AddressFamily = socket.AddressFamily.AF_UNSPEC,
         ssl: Union[bool, Fingerprint, SSLContext] = True,
         local_addr: Optional[Tuple[str, int]] = None,
         resolver: Optional[AbstractResolver] = None,
@@ -784,11 +826,19 @@ class TCPConnector(BaseConnector):
         self._local_addr_infos = aiohappyeyeballs.addr_to_addr_infos(local_addr)
         self._happy_eyeballs_delay = happy_eyeballs_delay
         self._interleave = interleave
+        self._resolve_host_tasks: Set["asyncio.Task[List[ResolveResult]]"] = set()
 
-    def _close_immediately(self) -> List["asyncio.Future[None]"]:
+    def _close_immediately(self) -> List[Awaitable[object]]:
         for ev in self._throttle_dns_events.values():
             ev.cancel()
-        return super()._close_immediately()
+
+        waiters = super()._close_immediately()
+
+        for t in self._resolve_host_tasks:
+            t.cancel()
+            waiters.append(t)
+
+        return waiters
 
     @property
     def family(self) -> int:
@@ -807,13 +857,14 @@ class TCPConnector(BaseConnector):
         if host is not None and port is not None:
             self._cached_hosts.remove((host, port))
         elif host is not None or port is not None:
-            raise ValueError("either both host and port " "or none of them are allowed")
+            raise ValueError("either both host and port or none of them are allowed")
         else:
             self._cached_hosts.clear()
 
     async def _resolve_host(
-        self, host: str, port: int, traces: Optional[List["Trace"]] = None
-    ) -> List[Dict[str, Any]]:
+        self, host: str, port: int, traces: Optional[Sequence["Trace"]] = None
+    ) -> List[ResolveResult]:
+        """Resolve host and return list of addresses."""
         if is_ip_address(host):
             return [
                 {
@@ -840,8 +891,7 @@ class TCPConnector(BaseConnector):
             return res
 
         key = (host, port)
-
-        if (key in self._cached_hosts) and (not self._cached_hosts.expired(key)):
+        if key in self._cached_hosts and not self._cached_hosts.expired(key):
             # get result early, before any await (#4014)
             result = self._cached_hosts.next_addrs(key)
 
@@ -850,6 +900,41 @@ class TCPConnector(BaseConnector):
                     await trace.send_dns_cache_hit(host)
             return result
 
+        #
+        # If multiple connectors are resolving the same host, we wait
+        # for the first one to resolve and then use the result for all of them.
+        # We use a throttle event to ensure that we only resolve the host once
+        # and then use the result for all the waiters.
+        #
+        # In this case we need to create a task to ensure that we can shield
+        # the task from cancellation as cancelling this lookup should not cancel
+        # the underlying lookup or else the cancel event will get broadcast to
+        # all the waiters across all connections.
+        #
+        resolved_host_task = asyncio.create_task(
+            self._resolve_host_with_throttle(key, host, port, traces)
+        )
+        self._resolve_host_tasks.add(resolved_host_task)
+        resolved_host_task.add_done_callback(self._resolve_host_tasks.discard)
+        try:
+            return await asyncio.shield(resolved_host_task)
+        except asyncio.CancelledError:
+
+            def drop_exception(fut: "asyncio.Future[List[ResolveResult]]") -> None:
+                with suppress(Exception, asyncio.CancelledError):
+                    fut.result()
+
+            resolved_host_task.add_done_callback(drop_exception)
+            raise
+
+    async def _resolve_host_with_throttle(
+        self,
+        key: Tuple[str, int],
+        host: str,
+        port: int,
+        traces: Optional[Sequence["Trace"]],
+    ) -> List[ResolveResult]:
+        """Resolve host with a dns events throttle."""
         if key in self._throttle_dns_events:
             # get event early, before any await (#4014)
             event = self._throttle_dns_events[key]
@@ -899,29 +984,6 @@ class TCPConnector(BaseConnector):
 
         return proto
 
-    @staticmethod
-    @functools.lru_cache(None)
-    def _make_ssl_context(verified: bool) -> SSLContext:
-        if verified:
-            return ssl.create_default_context()
-        else:
-            sslcontext = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-            sslcontext.options |= ssl.OP_NO_SSLv2
-            sslcontext.options |= ssl.OP_NO_SSLv3
-            sslcontext.check_hostname = False
-            sslcontext.verify_mode = ssl.CERT_NONE
-            try:
-                sslcontext.options |= ssl.OP_NO_COMPRESSION
-            except AttributeError as attr_err:
-                warnings.warn(
-                    "{!s}: The Python interpreter is compiled "
-                    "against OpenSSL < 1.0.0. Ref: "
-                    "https://docs.python.org/3/library/ssl.html"
-                    "#ssl.OP_NO_COMPRESSION".format(attr_err),
-                )
-            sslcontext.set_default_verify_paths()
-            return sslcontext
-
     def _get_ssl_context(self, req: ClientRequest) -> Optional[SSLContext]:
         """Logic to get the correct SSL context
 
@@ -936,24 +998,24 @@ class TCPConnector(BaseConnector):
             3. if verify_ssl is False in req, generate a SSL context that
                won't verify
         """
-        if req.is_ssl():
-            if ssl is None:  # pragma: no cover
-                raise RuntimeError("SSL is not supported.")
-            sslcontext = req.ssl
-            if isinstance(sslcontext, ssl.SSLContext):
-                return sslcontext
-            if sslcontext is not True:
-                # not verified or fingerprinted
-                return self._make_ssl_context(False)
-            sslcontext = self._ssl
-            if isinstance(sslcontext, ssl.SSLContext):
-                return sslcontext
-            if sslcontext is not True:
-                # not verified or fingerprinted
-                return self._make_ssl_context(False)
-            return self._make_ssl_context(True)
-        else:
+        if not req.is_ssl():
             return None
+
+        if ssl is None:  # pragma: no cover
+            raise RuntimeError("SSL is not supported.")
+        sslcontext = req.ssl
+        if isinstance(sslcontext, ssl.SSLContext):
+            return sslcontext
+        if sslcontext is not True:
+            # not verified or fingerprinted
+            return _SSL_CONTEXT_UNVERIFIED
+        sslcontext = self._ssl
+        if isinstance(sslcontext, ssl.SSLContext):
+            return sslcontext
+        if sslcontext is not True:
+            # not verified or fingerprinted
+            return _SSL_CONTEXT_UNVERIFIED
+        return _SSL_CONTEXT_VERIFIED
 
     def _get_fingerprint(self, req: ClientRequest) -> Optional["Fingerprint"]:
         ret = req.ssl
@@ -1040,13 +1102,11 @@ class TCPConnector(BaseConnector):
     ) -> Tuple[asyncio.BaseTransport, ResponseHandler]:
         """Wrap the raw TCP transport with TLS."""
         tls_proto = self._factory()  # Create a brand new proto for TLS
-
-        # Safety of the `cast()` call here is based on the fact that
-        # internally `_get_ssl_context()` only returns `None` when
-        # `req.is_ssl()` evaluates to `False` which is never gonna happen
-        # in this code path. Of course, it's rather fragile
-        # maintainability-wise but this is to be solved separately.
-        sslcontext = cast(ssl.SSLContext, self._get_ssl_context(req))
+        sslcontext = self._get_ssl_context(req)
+        if TYPE_CHECKING:
+            # _start_tls_connection is unreachable in the current code path
+            # if sslcontext is None.
+            assert sslcontext is not None
 
         try:
             async with ceil_timeout(
@@ -1096,7 +1156,7 @@ class TCPConnector(BaseConnector):
         return tls_transport, tls_proto
 
     def _convert_hosts_to_addr_infos(
-        self, hosts: List[Dict[str, Any]]
+        self, hosts: List[ResolveResult]
     ) -> List[aiohappyeyeballs.AddrInfoType]:
         """Converts the list of hosts to a list of addr_infos.
 
@@ -1136,22 +1196,11 @@ class TCPConnector(BaseConnector):
             host = host.rstrip(".") + "."
         port = req.port
         assert port is not None
-        host_resolved = asyncio.ensure_future(
-            self._resolve_host(host, port, traces=traces), loop=self._loop
-        )
         try:
             # Cancelling this lookup should not cancel the underlying lookup
             #  or else the cancel event will get broadcast to all the waiters
             #  across all connections.
-            hosts = await asyncio.shield(host_resolved)
-        except asyncio.CancelledError:
-
-            def drop_exception(fut: "asyncio.Future[List[Dict[str, Any]]]") -> None:
-                with suppress(Exception, asyncio.CancelledError):
-                    fut.result()
-
-            host_resolved.add_done_callback(drop_exception)
-            raise
+            hosts = await self._resolve_host(host, port, traces=traces)
         except OSError as exc:
             if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
                 raise
@@ -1224,11 +1273,6 @@ class TCPConnector(BaseConnector):
         transport, proto = await self._create_direct_connection(
             proxy_req, [], timeout, client_error=ClientProxyConnectionError
         )
-
-        # Many HTTP proxies has buggy keepalive support.  Let's not
-        # reuse connection but close it after processing every
-        # response.
-        proto.force_close()
 
         auth = proxy_req.headers.pop(hdrs.AUTHORIZATION, None)
         if auth is not None:
@@ -1319,6 +1363,8 @@ class UnixConnector(BaseConnector):
     loop - Optional event loop.
     """
 
+    allowed_protocol_schema_set = HIGH_LEVEL_SCHEMA_SET | frozenset({"unix"})
+
     def __init__(
         self,
         path: str,
@@ -1373,6 +1419,8 @@ class NamedPipeConnector(BaseConnector):
     loop - Optional event loop.
     """
 
+    allowed_protocol_schema_set = HIGH_LEVEL_SCHEMA_SET | frozenset({"npipe"})
+
     def __init__(
         self,
         path: str,
@@ -1391,7 +1439,7 @@ class NamedPipeConnector(BaseConnector):
             self._loop, asyncio.ProactorEventLoop  # type: ignore[attr-defined]
         ):
             raise RuntimeError(
-                "Named Pipes only available in proactor " "loop under windows"
+                "Named Pipes only available in proactor loop under windows"
             )
         self._path = path
 

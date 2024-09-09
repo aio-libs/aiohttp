@@ -1,7 +1,10 @@
 import asyncio
-import mimetypes
 import os
 import pathlib
+from contextlib import suppress
+from mimetypes import MimeTypes
+from stat import S_ISREG
+from types import MappingProxyType
 from typing import (
     IO,
     TYPE_CHECKING,
@@ -19,6 +22,8 @@ from .abc import AbstractStreamWriter
 from .helpers import ETAG_ANY, ETag, must_be_empty_body
 from .typedefs import LooseHeaders, PathLike
 from .web_exceptions import (
+    HTTPForbidden,
+    HTTPNotFound,
     HTTPNotModified,
     HTTPPartialContent,
     HTTPPreconditionFailed,
@@ -36,6 +41,32 @@ _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
 
 
 NOSENDFILE: Final[bool] = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
+
+CONTENT_TYPES: Final[MimeTypes] = MimeTypes()
+
+# File extension to IANA encodings map that will be checked in the order defined.
+ENCODING_EXTENSIONS = MappingProxyType(
+    {ext: CONTENT_TYPES.encodings_map[ext] for ext in (".br", ".gz")}
+)
+
+FALLBACK_CONTENT_TYPE = "application/octet-stream"
+
+# Provide additional MIME type/extension pairs to be recognized.
+# https://en.wikipedia.org/wiki/List_of_archive_formats#Compression_only
+ADDITIONAL_CONTENT_TYPES = MappingProxyType(
+    {
+        "application/gzip": ".gz",
+        "application/x-brotli": ".br",
+        "application/x-bzip2": ".bz2",
+        "application/x-compress": ".Z",
+        "application/x-xz": ".xz",
+    }
+)
+
+# Add custom pairs and clear the encodings map so guess_type ignores them.
+CONTENT_TYPES.encodings_map.clear()
+for content_type, extension in ADDITIONAL_CONTENT_TYPES.items():
+    CONTENT_TYPES.add_type(content_type, extension)  # type: ignore[attr-defined]
 
 
 class FileResponse(StreamResponse):
@@ -121,31 +152,51 @@ class FileResponse(StreamResponse):
         self.content_length = 0
         return await super().prepare(request)
 
-    def _get_file_path_stat_and_gzip(
-        self, check_for_gzipped_file: bool
-    ) -> Tuple[pathlib.Path, os.stat_result, bool]:
-        """Return the file path, stat result, and gzip status.
+    def _get_file_path_stat_encoding(
+        self, accept_encoding: str
+    ) -> Tuple[pathlib.Path, os.stat_result, Optional[str]]:
+        """Return the file path, stat result, and encoding.
+
+        If an uncompressed file is returned, the encoding is set to
+        :py:data:`None`.
 
         This method should be called from a thread executor
         since it calls os.stat which may block.
         """
-        filepath = self._path
-        if check_for_gzipped_file:
-            gzip_path = filepath.with_name(filepath.name + ".gz")
-            try:
-                return gzip_path, gzip_path.stat(), True
-            except OSError:
-                # Fall through and try the non-gzipped file
-                pass
+        file_path = self._path
+        for file_extension, file_encoding in ENCODING_EXTENSIONS.items():
+            if file_encoding not in accept_encoding:
+                continue
 
-        return filepath, filepath.stat(), False
+            compressed_path = file_path.with_suffix(file_path.suffix + file_extension)
+            with suppress(OSError):
+                # Do not follow symlinks and ignore any non-regular files.
+                st = compressed_path.lstat()
+                if S_ISREG(st.st_mode):
+                    return compressed_path, st, file_encoding
+
+        # Fallback to the uncompressed file
+        return file_path, file_path.stat(), None
 
     async def prepare(self, request: "BaseRequest") -> Optional[AbstractStreamWriter]:
-        loop = asyncio.get_event_loop()
-        check_for_gzipped_file = "gzip" in request.headers.get(hdrs.ACCEPT_ENCODING, "")
-        filepath, st, gzip = await loop.run_in_executor(
-            None, self._get_file_path_stat_and_gzip, check_for_gzipped_file
-        )
+        loop = asyncio.get_running_loop()
+        # Encoding comparisons should be case-insensitive
+        # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1
+        accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "").lower()
+        try:
+            file_path, st, file_encoding = await loop.run_in_executor(
+                None, self._get_file_path_stat_encoding, accept_encoding
+            )
+        except OSError:
+            # Most likely to be FileNotFoundError or OSError for circular
+            # symlinks in python >= 3.13, so respond with 404.
+            self.set_status(HTTPNotFound.status_code)
+            return await super().prepare(request)
+
+        # Forbid special files like sockets, pipes, devices, etc.
+        if not S_ISREG(st.st_mode):
+            self.set_status(HTTPForbidden.status_code)
+            return await super().prepare(request)
 
         etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
         last_modified = st.st_mtime
@@ -174,14 +225,6 @@ class FileResponse(StreamResponse):
             and st.st_mtime <= modsince.timestamp()
         ):
             return await self._not_modified(request, etag_value, last_modified)
-
-        ct = None
-        if hdrs.CONTENT_TYPE not in self.headers:
-            ct, encoding = mimetypes.guess_type(str(filepath))
-            if not ct:
-                ct = "application/octet-stream"
-        else:
-            encoding = "gzip" if gzip else None
 
         status = self._status
         file_size = st.st_size
@@ -257,11 +300,16 @@ class FileResponse(StreamResponse):
                 # return a HTTP 206 for a Range request.
                 self.set_status(status)
 
-        if ct:
-            self.content_type = ct
-        if encoding:
-            self.headers[hdrs.CONTENT_ENCODING] = encoding
-        if gzip:
+        # If the Content-Type header is not already set, guess it based on the
+        # extension of the request path. The encoding returned by guess_type
+        #  can be ignored since the map was cleared above.
+        if hdrs.CONTENT_TYPE not in self.headers:
+            self.content_type = (
+                CONTENT_TYPES.guess_type(self._path)[0] or FALLBACK_CONTENT_TYPE
+            )
+
+        if file_encoding:
+            self.headers[hdrs.CONTENT_ENCODING] = file_encoding
             self.headers[hdrs.VARY] = hdrs.ACCEPT_ENCODING
             # Disable compression if we are already sending
             # a compressed file since we don't want to double
@@ -285,7 +333,12 @@ class FileResponse(StreamResponse):
         if count == 0 or must_be_empty_body(request.method, self.status):
             return await super().prepare(request)
 
-        fobj = await loop.run_in_executor(None, filepath.open, "rb")
+        try:
+            fobj = await loop.run_in_executor(None, file_path.open, "rb")
+        except PermissionError:
+            self.set_status(HTTPForbidden.status_code)
+            return await super().prepare(request)
+
         if start:  # be aware that start could be None or int=0 here.
             offset = start
         else:
