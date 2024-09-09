@@ -39,7 +39,7 @@ from typing import (
     cast,
 )
 
-from yarl import URL, __version__ as yarl_version  # type: ignore[attr-defined]
+from yarl import URL, __version__ as yarl_version
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView

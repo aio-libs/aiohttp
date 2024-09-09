@@ -125,5 +125,5 @@ uvloop==0.19.0 ; platform_system != "Windows" and implementation_name == "cpytho
     # via -r requirements/base.in
 wait-for-it==2.2.2
     # via -r requirements/test.in
-yarl==1.9.6
+yarl==1.11.0
     # via -r requirements/runtime-deps.in
