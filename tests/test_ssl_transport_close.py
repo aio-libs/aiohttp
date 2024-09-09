@@ -63,9 +63,7 @@ async def _restart(
     site = next(iter(runner.sites))
     await site.stop()
     await cq.put(0)
-    site = web.TCPSite(
-        runner, "127.0.0.1", port=port, ssl_context=ssl_ctx
-    )
+    site = web.TCPSite(runner, "127.0.0.1", port=port, ssl_context=ssl_ctx)
     await site.start()
 
 
