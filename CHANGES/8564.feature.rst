@@ -1,0 +1,1 @@
+Improved type on ``params`` to match the underlying type allowed by ``yarl`` -- by :user:`lpetre`.

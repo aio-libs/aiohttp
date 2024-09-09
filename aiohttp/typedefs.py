@@ -8,12 +8,25 @@ from typing import (
     Iterable,
     Mapping,
     Protocol,
+    Sequence,
     Tuple,
     Union,
 )
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, istr
 from yarl import URL
+
+try:
+    # Available in yarl>=1.10.0
+    from yarl import Query as _Query
+except ImportError:  # pragma: no cover
+    SimpleQuery = Union[str, int, float]  # pragma: no cover
+    QueryVariable = Union[SimpleQuery, "Sequence[SimpleQuery]"]  # pragma: no cover
+    _Query = Union[  # type: ignore[misc]  # pragma: no cover
+        None, str, "Mapping[str, QueryVariable]", "Sequence[Tuple[str, QueryVariable]]"
+    ]
+
+Query = _Query
 
 DEFAULT_JSON_ENCODER = json.dumps
 DEFAULT_JSON_DECODER = json.loads
