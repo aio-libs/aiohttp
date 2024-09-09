@@ -18,13 +18,15 @@ from yarl import URL
 
 try:
     # Available in yarl>=1.10.0
-    from yarl import Query
+    from yarl import _Query
 except ImportError:
     SimpleQuery = Union[str, int, float]
     QueryVariable = Union[SimpleQuery, "Sequence[SimpleQuery]"]
-    Query = Union[
+    _Query = Union[  # type: ignore[misc]
         None, str, "Mapping[str, QueryVariable]", "Sequence[Tuple[str, QueryVariable]]"
     ]
+
+Query = _Query
 
 DEFAULT_JSON_ENCODER = json.dumps
 DEFAULT_JSON_DECODER = json.loads
