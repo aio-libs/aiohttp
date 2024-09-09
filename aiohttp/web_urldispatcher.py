@@ -39,7 +39,7 @@ from typing import (
     cast,
 )
 
-from yarl import URL, __version__ as yarl_version  # type: ignore[attr-defined]
+from yarl import URL
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
@@ -84,8 +84,6 @@ CIRCULAR_SYMLINK_ERROR = (
     if sys.version_info < (3, 10) and sys.platform.startswith("win32")
     else (RuntimeError,) if sys.version_info < (3, 13) else ()
 )
-
-YARL_VERSION: Final[Tuple[int, ...]] = tuple(map(int, yarl_version.split(".")[:2]))
 
 HTTP_METHOD_RE: Final[Pattern[str]] = re.compile(
     r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$"
@@ -597,10 +595,7 @@ class StaticResource(PrefixResource):
 
         url = URL.build(path=self._prefix, encoded=True)
         # filename is not encoded
-        if YARL_VERSION < (1, 6):
-            url = url / filename.replace("%", "%25")
-        else:
-            url = url / filename
+        url = url / filename
 
         if append_version:
             unresolved_path = self._directory.joinpath(filename)
@@ -1284,8 +1279,6 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
 
 def _quote_path(value: str) -> str:
-    if YARL_VERSION < (1, 6):
-        value = value.replace("%", "%25")
     return URL.build(path=value, encoded=False).raw_path
 
 
