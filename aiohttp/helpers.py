@@ -36,7 +36,6 @@ from typing import (
     List,
     Mapping,
     Optional,
-    Pattern,
     Protocol,
     Tuple,
     Type,
@@ -504,24 +503,36 @@ _ipv4_regexb = re.compile(_ipv4_pattern.encode("ascii"))
 _ipv6_regexb = re.compile(_ipv6_pattern.encode("ascii"), flags=re.IGNORECASE)
 
 
-def _is_ip_address(
-    regex: Pattern[str], regexb: Pattern[bytes], host: Optional[Union[str, bytes]]
-) -> bool:
+def is_ipv4_address(host: Optional[Union[str, bytes]]) -> bool:
+    """Check if host is an valid IPv4 address."""
     if host is None:
         return False
     if isinstance(host, str):
-        return bool(regex.match(host))
-    elif isinstance(host, (bytes, bytearray, memoryview)):
-        return bool(regexb.match(host))
-    else:
-        raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
+        # The last character of the host must be a digit to be an IPv4 address.
+        # We check this first to avoid the overhead of the regex.
+        return host[-1].isdigit() and bool(_ipv4_regex.match(host))
+    if isinstance(host, (bytes, bytearray, memoryview)):
+        return bool(_ipv4_regexb.match(host))
+    raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
 
 
-is_ipv4_address = functools.partial(_is_ip_address, _ipv4_regex, _ipv4_regexb)
-is_ipv6_address = functools.partial(_is_ip_address, _ipv6_regex, _ipv6_regexb)
+def is_ipv6_address(host: Optional[Union[str, bytes]]) -> bool:
+    """Check if host is an valid IPv6 address."""
+    if host is None:
+        return False
+    if isinstance(host, str):
+        # The host must contain a colon to be an IPv6 address.
+        # We check this first to avoid the overhead of the regex.
+        return ":" in host and bool(_ipv6_regex.match(host))
+    if isinstance(host, (bytes, bytearray, memoryview)):
+        # The host must contain a colon to be an IPv6 address.
+        # We check this first to avoid the overhead of the regex.
+        return b":" in host and bool(_ipv6_regexb.match(host))
+    raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
 
 
 def is_ip_address(host: Optional[Union[str, bytes, bytearray, memoryview]]) -> bool:
+    """Check if host is an valid IP address."""
     return is_ipv4_address(host) or is_ipv6_address(host)
 
 
