@@ -27,7 +27,7 @@ from typing import (
 
 import attr
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
-from yarl import URL, __version__ as yarl_version
+from yarl import URL
 
 from . import hdrs, helpers, http, multipart, payload
 from .abc import AbstractStreamWriter
@@ -89,7 +89,6 @@ if TYPE_CHECKING:
 
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
-_YARL_SUPPORTS_EXTEND_QUERY = tuple(map(int, yarl_version.split(".")[:2])) >= (1, 11)
 json_re = re.compile(r"^application/(?:[\w.+-]+?\+)?json")
 
 
@@ -301,13 +300,7 @@ class ClientRequest:
         # assert session is not None
         self._session = cast("ClientSession", session)
         if params:
-            if _YARL_SUPPORTS_EXTEND_QUERY:
-                url = url.extend_query(params)
-            else:
-                q = MultiDict(url.query)
-                url2 = url.with_query(params)
-                q.extend(url2.query)
-                url = url.with_query(q)
+            url = url.extend_query(params)
         self.original_url = url
         self.url = url.with_fragment(None)
         self.method = method.upper()
