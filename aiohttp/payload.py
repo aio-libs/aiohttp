@@ -11,11 +11,10 @@ from typing import (
     IO,
     TYPE_CHECKING,
     Any,
-    ByteString,
     Dict,
+    Final,
     Iterable,
     Optional,
-    Text,
     TextIO,
     Tuple,
     Type,
@@ -23,7 +22,6 @@ from typing import (
 )
 
 from multidict import CIMultiDict
-from typing_extensions import Final
 
 from . import hdrs
 from .abc import AbstractStreamWriter
@@ -53,10 +51,9 @@ __all__ = (
     "AsyncIterablePayload",
 )
 
-TOO_LARGE_BYTES_BODY: Final[int] = 2 ** 20  # 1 MB
+TOO_LARGE_BYTES_BODY: Final[int] = 2**20  # 1 MB
 
-
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from typing import List
 
 
@@ -90,6 +87,10 @@ class payload_type:
         return factory
 
 
+PayloadType = Type["Payload"]
+_PayloadRegistryItem = Tuple[PayloadType, Any]
+
+
 class PayloadRegistry:
     """Payload registry.
 
@@ -97,12 +98,16 @@ class PayloadRegistry:
     """
 
     def __init__(self) -> None:
-        self._first = []  # type: List[Tuple[Type[Payload], Any]]
-        self._normal = []  # type: List[Tuple[Type[Payload], Any]]
-        self._last = []  # type: List[Tuple[Type[Payload], Any]]
+        self._first: List[_PayloadRegistryItem] = []
+        self._normal: List[_PayloadRegistryItem] = []
+        self._last: List[_PayloadRegistryItem] = []
 
     def get(
-        self, data: Any, *args: Any, _CHAIN: Any = chain, **kwargs: Any
+        self,
+        data: Any,
+        *args: Any,
+        _CHAIN: "Type[chain[_PayloadRegistryItem]]" = chain,
+        **kwargs: Any,
     ) -> "Payload":
         if isinstance(data, Payload):
             return data
@@ -113,7 +118,7 @@ class PayloadRegistry:
         raise LookupError()
 
     def register(
-        self, factory: Type["Payload"], type: Any, *, order: Order = Order.normal
+        self, factory: PayloadType, type: Any, *, order: Order = Order.normal
     ) -> None:
         if order is Order.try_first:
             self._first.append((factory, type))
@@ -126,9 +131,8 @@ class PayloadRegistry:
 
 
 class Payload(ABC):
-
-    _default_content_type = "application/octet-stream"  # type: str
-    _size = None  # type: Optional[int]
+    _default_content_type: str = "application/octet-stream"
+    _size: Optional[int] = None
 
     def __init__(
         self,
@@ -143,7 +147,7 @@ class Payload(ABC):
     ) -> None:
         self._encoding = encoding
         self._filename = filename
-        self._headers = CIMultiDict()  # type: _CIMultiDict
+        self._headers: _CIMultiDict = CIMultiDict()
         self._value = value
         if content_type is not sentinel and content_type is not None:
             assert isinstance(content_type, str)
@@ -196,12 +200,19 @@ class Payload(ABC):
         disptype: str,
         quote_fields: bool = True,
         _charset: str = "utf-8",
-        **params: Any,
+        **params: str,
     ) -> None:
         """Sets ``Content-Disposition`` header."""
         self._headers[hdrs.CONTENT_DISPOSITION] = content_disposition_header(
-            disptype, quote_fields=quote_fields, _charset=_charset, **params
+            disptype, quote_fields=quote_fields, _charset=_charset, params=params
         )
+
+    @abstractmethod
+    def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        """Return string representation of the value.
+
+        This is named decode() to allow compatibility with bytes objects.
+        """
 
     @abstractmethod
     async def write(self, writer: AbstractStreamWriter) -> None:
@@ -212,11 +223,13 @@ class Payload(ABC):
 
 
 class BytesPayload(Payload):
-    def __init__(self, value: ByteString, *args: Any, **kwargs: Any) -> None:
+    _value: bytes
+
+    def __init__(
+        self, value: Union[bytes, bytearray, memoryview], *args: Any, **kwargs: Any
+    ) -> None:
         if not isinstance(value, (bytes, bytearray, memoryview)):
-            raise TypeError(
-                "value argument must be byte-ish, not {!r}".format(type(value))
-            )
+            raise TypeError(f"value argument must be byte-ish, not {type(value)!r}")
 
         if "content_type" not in kwargs:
             kwargs["content_type"] = "application/octet-stream"
@@ -237,6 +250,9 @@ class BytesPayload(Payload):
                 source=self,
             )
 
+    def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        return self._value.decode(encoding, errors)
+
     async def write(self, writer: AbstractStreamWriter) -> None:
         await writer.write(self._value)
 
@@ -244,13 +260,12 @@ class BytesPayload(Payload):
 class StringPayload(BytesPayload):
     def __init__(
         self,
-        value: Text,
+        value: str,
         *args: Any,
         encoding: Optional[str] = None,
         content_type: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
-
         if encoding is None:
             if content_type is None:
                 real_encoding = "utf-8"
@@ -278,6 +293,8 @@ class StringIOPayload(StringPayload):
 
 
 class IOBasePayload(Payload):
+    _value: io.IOBase
+
     def __init__(
         self, value: IO[Any], disposition: str = "attachment", *args: Any, **kwargs: Any
     ) -> None:
@@ -293,15 +310,20 @@ class IOBasePayload(Payload):
     async def write(self, writer: AbstractStreamWriter) -> None:
         loop = asyncio.get_event_loop()
         try:
-            chunk = await loop.run_in_executor(None, self._value.read, 2 ** 16)
+            chunk = await loop.run_in_executor(None, self._value.read, 2**16)
             while chunk:
                 await writer.write(chunk)
-                chunk = await loop.run_in_executor(None, self._value.read, 2 ** 16)
+                chunk = await loop.run_in_executor(None, self._value.read, 2**16)
         finally:
             await loop.run_in_executor(None, self._value.close)
 
+    def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        return "".join(r.decode(encoding, errors) for r in self._value.readlines())
+
 
 class TextIOPayload(IOBasePayload):
+    _value: io.TextIOBase
+
     def __init__(
         self,
         value: TextIO,
@@ -310,7 +332,6 @@ class TextIOPayload(IOBasePayload):
         content_type: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
-
         if encoding is None:
             if content_type is None:
                 encoding = "utf-8"
@@ -337,18 +358,28 @@ class TextIOPayload(IOBasePayload):
         except OSError:
             return None
 
+    def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        return self._value.read()
+
     async def write(self, writer: AbstractStreamWriter) -> None:
         loop = asyncio.get_event_loop()
         try:
-            chunk = await loop.run_in_executor(None, self._value.read, 2 ** 16)
+            chunk = await loop.run_in_executor(None, self._value.read, 2**16)
             while chunk:
-                await writer.write(chunk.encode(self._encoding))
-                chunk = await loop.run_in_executor(None, self._value.read, 2 ** 16)
+                data = (
+                    chunk.encode(encoding=self._encoding)
+                    if self._encoding
+                    else chunk.encode()
+                )
+                await writer.write(data)
+                chunk = await loop.run_in_executor(None, self._value.read, 2**16)
         finally:
             await loop.run_in_executor(None, self._value.close)
 
 
 class BytesIOPayload(IOBasePayload):
+    _value: io.BytesIO
+
     @property
     def size(self) -> int:
         position = self._value.tell()
@@ -356,16 +387,26 @@ class BytesIOPayload(IOBasePayload):
         self._value.seek(position)
         return end - position
 
+    def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        return self._value.read().decode(encoding, errors)
+
 
 class BufferedReaderPayload(IOBasePayload):
+    _value: io.BufferedIOBase
+
     @property
     def size(self) -> Optional[int]:
         try:
             return os.fstat(self._value.fileno()).st_size - self._value.tell()
-        except OSError:
+        except (OSError, AttributeError):
             # data.fileno() is not supported, e.g.
             # io.BufferedReader(io.BytesIO(b'data'))
+            # For some file-like objects (e.g. tarfile), the fileno() attribute may
+            # not exist at all, and will instead raise an AttributeError.
             return None
+
+    def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        return self._value.read().decode(encoding, errors)
 
 
 class JsonPayload(BytesPayload):
@@ -378,7 +419,6 @@ class JsonPayload(BytesPayload):
         *args: Any,
         **kwargs: Any,
     ) -> None:
-
         super().__init__(
             dumps(value).encode(encoding),
             content_type=content_type,
@@ -388,7 +428,7 @@ class JsonPayload(BytesPayload):
         )
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from typing import AsyncIterable, AsyncIterator
 
     _AsyncIterator = AsyncIterator[bytes]
@@ -401,14 +441,14 @@ else:
 
 
 class AsyncIterablePayload(Payload):
-
-    _iter = None  # type: Optional[_AsyncIterator]
+    _iter: Optional[_AsyncIterator] = None
+    _value: _AsyncIterable
 
     def __init__(self, value: _AsyncIterable, *args: Any, **kwargs: Any) -> None:
         if not isinstance(value, AsyncIterable):
             raise TypeError(
                 "value argument must support "
-                "collections.abc.AsyncIterablebe interface, "
+                "collections.abc.AsyncIterable interface, "
                 "got {!r}".format(type(value))
             )
 
@@ -429,6 +469,9 @@ class AsyncIterablePayload(Payload):
                     await writer.write(chunk)
             except StopAsyncIteration:
                 self._iter = None
+
+    def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        raise TypeError("Unable to decode.")
 
 
 class StreamReaderPayload(AsyncIterablePayload):

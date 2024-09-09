@@ -61,8 +61,10 @@ interface and provides a place to store your database connections or any
 other resource you want to share between handlers.
 ::
 
+    db_key = web.AppKey("db_key", DB)
+
     async def go(request):
-        db = request.app['db']
+        db = request.app[db_key]
         cursor = await db.cursor()
         await cursor.execute('SELECT 42')
         # ...
@@ -72,7 +74,7 @@ other resource you want to share between handlers.
     async def init_app():
         app = Application()
         db = await create_connection(user='user', password='123')
-        app['db'] = db
+        app[db_key] = db
         app.router.add_get('/', go)
         return app
 
@@ -118,12 +120,10 @@ However, other tasks may use the same WebSocket object for sending data to
 peers. ::
 
     async def handler(request):
-
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         task = asyncio.create_task(
-            read_subscription(ws,
-                              request.app['redis']))
+            read_subscription(ws, request.app[redis_key]))
         try:
             async for msg in ws:
                 # handle incoming messages
@@ -166,12 +166,12 @@ and call :meth:`aiohttp.web.WebSocketResponse.close` on all of them in
         ws = web.WebSocketResponse()
         user_id = authenticate_user(request)
         await ws.prepare(request)
-        request.app['websockets'][user_id].add(ws)
+        request.app[websockets_key][user_id].add(ws)
         try:
             async for msg in ws:
                 ws.send_str(msg.data)
         finally:
-            request.app['websockets'][user_id].remove(ws)
+            request.app[websockets_key][user_id].remove(ws)
 
         return ws
 
@@ -181,10 +181,10 @@ and call :meth:`aiohttp.web.WebSocketResponse.close` on all of them in
         user_id = authenticate_user(request)
 
         ws_closers = [ws.close()
-                      for ws in request.app['websockets'][user_id]
+                      for ws in request.app[websockets_key][user_id]
                       if not ws.closed]
 
-        # Watch out, this will keep us from returing the response
+        # Watch out, this will keep us from returning the response
         # until all are closed
         ws_closers and await asyncio.gather(*ws_closers)
 
@@ -196,7 +196,7 @@ and call :meth:`aiohttp.web.WebSocketResponse.close` on all of them in
         app = web.Application()
         app.router.add_route('GET', '/echo', echo_handler)
         app.router.add_route('POST', '/logout', logout_handler)
-        app['websockets'] = defaultdict(set)
+        app[websockets_key] = defaultdict(set)
         web.run_app(app, host='localhost', port=8080)
 
 
@@ -278,8 +278,19 @@ deliberate choice.
 A subapplication is an isolated unit by design. If you need to share a
 database object, do it explicitly::
 
-   subapp['db'] = mainapp['db']
-   mainapp.add_subapp('/prefix', subapp)
+   subapp[db_key] = mainapp[db_key]
+   mainapp.add_subapp("/prefix", subapp)
+
+This can also be done from a :ref:`cleanup context<aiohttp-web-cleanup-ctx>`::
+
+   async def db_context(app: web.Application) -> AsyncIterator[None]:
+      async with create_db() as db:
+         mainapp[db_key] = mainapp[subapp_key][db_key] = db
+         yield
+
+   mainapp[subapp_key] = subapp
+   mainapp.add_subapp("/prefix", subapp)
+   mainapp.cleanup_ctx.append(db_context)
 
 
 How do I perform operations in a request handler after sending the response?
@@ -300,12 +311,12 @@ operations::
         await resp.write_eof()
 
         # increase the pong count
-        APP['db'].inc_pong()
+        request.app[db_key].inc_pong()
 
         return resp
 
 A :class:`aiohttp.web.Response` object must be returned. This is
-required by aiohttp web contracts, even though the response
+required by aiohttp web contracts, even though the response has
 already been sent.
 
 

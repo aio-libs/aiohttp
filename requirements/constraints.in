@@ -1,0 +1,4 @@
+-r cython.in
+-r dev.in
+-r doc-spelling.in
+-r lint.in

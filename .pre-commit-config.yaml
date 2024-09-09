@@ -1,37 +1,80 @@
 repos:
 - repo: local
   hooks:
+  - id: changelogs-rst
+    name: changelog filenames
+    language: fail
+    entry: >-
+      Changelog files must be named
+      ####.(
+      bugfix
+      | feature
+      | deprecation
+      | breaking
+      | doc
+      | packaging
+      | contrib
+      | misc
+      )(.#)?(.rst)?
+    exclude: >-
+      (?x)
+      ^
+        CHANGES/(
+          \.gitignore
+          |(\d+|[0-9a-f]{8}|[0-9a-f]{7}|[0-9a-f]{40})\.(
+            bugfix
+            |feature
+            |deprecation
+            |breaking
+            |doc
+            |packaging
+            |contrib
+            |misc
+          )(\.\d+)?(\.rst)?
+          |README\.rst
+          |\.TEMPLATE\.rst
+        )
+      $
+    files: ^CHANGES/
+  - id: changelogs-user-role
+    name: Changelog files should use a non-broken :user:`name` role
+    language: pygrep
+    entry: :user:([^`]+`?|`[^`]+[\s,])
+    pass_filenames: true
+    types: [file, rst]
   - id: check-changes
     name: Check CHANGES
     language: system
     entry: ./tools/check_changes.py
     pass_filenames: false
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v3.3.0'
+  rev: 'v4.6.0'
   hooks:
   - id: check-merge-conflict
 - repo: https://github.com/asottile/yesqa
-  rev: v1.2.2
+  rev: v1.5.0
   hooks:
   - id: yesqa
-- repo: https://github.com/pre-commit/mirrors-isort
-  rev: 'v5.6.4'
+- repo: https://github.com/PyCQA/isort
+  rev: '5.13.2'
   hooks:
   - id: isort
 - repo: https://github.com/psf/black
-  rev: '20.8b1'
+  rev: '24.8.0'
   hooks:
     - id: black
-      language_version: python3 # Should be a command that runs python3.6+
+      language_version: python3 # Should be a command that runs python
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v3.3.0'
+  rev: 'v4.6.0'
   hooks:
   - id: end-of-file-fixer
     exclude: >-
       ^docs/[^/]*\.svg$
   - id: requirements-txt-fixer
+    files: requirements/.*\.in$
   - id: trailing-whitespace
   - id: file-contents-sorter
+    args: ['--ignore-case']
     files: |
       CONTRIBUTORS.txt|
       docs/spelling_wordlist.txt|
@@ -42,35 +85,42 @@ repos:
   - id: check-xml
   - id: check-executables-have-shebangs
   - id: check-toml
-  - id: check-xml
   - id: check-yaml
   - id: debug-statements
   - id: check-added-large-files
   - id: check-symlinks
-  - id: debug-statements
   - id: fix-byte-order-marker
   - id: fix-encoding-pragma
     args: ['--remove']
-  - id: check-executables-have-shebangs
-  - id: check-case-conflict
   - id: detect-aws-credentials
     args: ['--allow-missing-credentials']
   - id: detect-private-key
     exclude: ^examples/
 - repo: https://github.com/asottile/pyupgrade
-  rev: 'v2.7.4'
+  rev: 'v3.17.0'
   hooks:
   - id: pyupgrade
-    args: ['--py36-plus']
-- repo: https://gitlab.com/pycqa/flake8
-  rev: '3.8.4'
+    args: ['--py37-plus']
+- repo: https://github.com/PyCQA/flake8
+  rev: '7.1.1'
   hooks:
   - id: flake8
+    additional_dependencies:
+      - flake8-docstrings==1.6.0
+      - flake8-no-implicit-concat==0.3.4
+      - flake8-requirements==1.7.8
     exclude: "^docs/"
-
-- repo: git://github.com/Lucas-C/pre-commit-hooks-markup
-  rev: v1.0.0
+- repo: https://github.com/Lucas-C/pre-commit-hooks-markup
+  rev: v1.0.1
   hooks:
   - id: rst-linter
     files: >-
       ^[^/]+[.]rst$
+    exclude: >-
+      ^CHANGES\.rst$
+- repo: https://github.com/codespell-project/codespell
+  rev: v2.3.0
+  hooks:
+  - id: codespell
+    additional_dependencies:
+    - tomli

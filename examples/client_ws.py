@@ -1,27 +1,18 @@
 #!/usr/bin/env python3
-"""websocket cmd client for wssrv.py example."""
+"""websocket cmd client for web_ws.py example."""
+
 import argparse
 import asyncio
-import signal
 import sys
+from contextlib import suppress
 
 import aiohttp
 
 
-async def start_client(loop: asyncio.AbstractEventLoop, url: str) -> None:
+async def start_client(url: str) -> None:
     name = input("Please enter your name: ")
 
-    # input reader
-    def stdin_callback() -> None:
-        line = sys.stdin.buffer.readline().decode("utf-8")
-        if not line:
-            loop.stop()
-        else:
-            ws.send_str(name + ": " + line)
-
-    loop.add_reader(sys.stdin.fileno(), stdin_callback)
-
-    async def dispatch() -> None:
+    async def dispatch(ws: aiohttp.ClientWebSocketResponse) -> None:
         while True:
             msg = await ws.receive()
 
@@ -43,10 +34,18 @@ async def start_client(loop: asyncio.AbstractEventLoop, url: str) -> None:
 
                 break
 
-    # send request
-    async with aiohttp.ClientSession() as client:
-        async with client.ws_connect(url, autoclose=False, autoping=False) as ws:
-            await dispatch()
+    async with aiohttp.ClientSession() as session:
+        async with session.ws_connect(url, autoclose=False, autoping=False) as ws:
+            # send request
+            dispatch_task = asyncio.create_task(dispatch(ws))
+
+            # Exit with Ctrl+D
+            while line := await asyncio.to_thread(sys.stdin.readline):
+                await ws.send_str(name + ": " + line)
+
+            dispatch_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await dispatch_task
 
 
 ARGS = argparse.ArgumentParser(
@@ -67,8 +66,4 @@ if __name__ == "__main__":
 
     url = f"http://{args.host}:{args.port}"
 
-    loop = asyncio.get_event_loop()
-
-    loop.add_signal_handler(signal.SIGINT, loop.stop)
-    loop.create_task(start_client(loop, url))
-    loop.run_forever()
+    asyncio.run(start_client(url))

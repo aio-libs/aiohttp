@@ -2,23 +2,24 @@ import asyncio
 import signal
 import socket
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Set, Type
+from typing import Any, Generic, List, Optional, Set, Type, TypeVar
 
 from yarl import URL
 
 from .abc import AbstractAccessLogger, AbstractStreamWriter
 from .http_parser import RawRequestMessage
 from .streams import StreamReader
+from .typedefs import PathLike
 from .web_app import Application
 from .web_log import AccessLogger
 from .web_protocol import RequestHandler
-from .web_request import Request
+from .web_request import BaseRequest, Request
 from .web_server import Server
 
 try:
     from ssl import SSLContext
 except ImportError:
-    SSLContext = object  # type: ignore
+    SSLContext = object  # type: ignore[misc,assignment]
 
 
 __all__ = (
@@ -33,6 +34,8 @@ __all__ = (
     "GracefulExit",
 )
 
+_Request = TypeVar("_Request", bound=BaseRequest)
+
 
 class GracefulExit(SystemExit):
     code = 1
@@ -43,23 +46,21 @@ def _raise_graceful_exit() -> None:
 
 
 class BaseSite(ABC):
-    __slots__ = ("_runner", "_shutdown_timeout", "_ssl_context", "_backlog", "_server")
+    __slots__ = ("_runner", "_ssl_context", "_backlog", "_server")
 
     def __init__(
         self,
-        runner: "BaseRunner",
+        runner: "BaseRunner[Any]",
         *,
-        shutdown_timeout: float = 60.0,
         ssl_context: Optional[SSLContext] = None,
         backlog: int = 128,
     ) -> None:
         if runner.server is None:
             raise RuntimeError("Call runner.setup() before making a site")
         self._runner = runner
-        self._shutdown_timeout = shutdown_timeout
         self._ssl_context = ssl_context
         self._backlog = backlog
-        self._server = None  # type: Optional[asyncio.AbstractServer]
+        self._server: Optional[asyncio.AbstractServer] = None
 
     @property
     @abstractmethod
@@ -72,16 +73,9 @@ class BaseSite(ABC):
 
     async def stop(self) -> None:
         self._runner._check_site(self)
-        if self._server is None:
-            self._runner._unreg_site(self)
-            return  # not started yet
-        self._server.close()
-        # named pipes do not have wait_closed property
-        if hasattr(self._server, "wait_closed"):
-            await self._server.wait_closed()
-        await self._runner.shutdown()
-        assert self._runner.server
-        await self._runner.server.shutdown(self._shutdown_timeout)
+        if self._server is not None:  # Maybe not started yet
+            self._server.close()
+
         self._runner._unreg_site(self)
 
 
@@ -90,11 +84,10 @@ class TCPSite(BaseSite):
 
     def __init__(
         self,
-        runner: "BaseRunner",
+        runner: "BaseRunner[Any]",
         host: Optional[str] = None,
         port: Optional[int] = None,
         *,
-        shutdown_timeout: float = 60.0,
         ssl_context: Optional[SSLContext] = None,
         backlog: int = 128,
         reuse_address: Optional[bool] = None,
@@ -102,7 +95,6 @@ class TCPSite(BaseSite):
     ) -> None:
         super().__init__(
             runner,
-            shutdown_timeout=shutdown_timeout,
             ssl_context=ssl_context,
             backlog=backlog,
         )
@@ -116,7 +108,7 @@ class TCPSite(BaseSite):
     @property
     def name(self) -> str:
         scheme = "https" if self._ssl_context else "http"
-        host = "0.0.0.0" if self._host is None else self._host
+        host = "0.0.0.0" if not self._host else self._host
         return str(URL.build(scheme=scheme, host=host, port=self._port))
 
     async def start(self) -> None:
@@ -140,16 +132,14 @@ class UnixSite(BaseSite):
 
     def __init__(
         self,
-        runner: "BaseRunner",
-        path: str,
+        runner: "BaseRunner[Any]",
+        path: PathLike,
         *,
-        shutdown_timeout: float = 60.0,
         ssl_context: Optional[SSLContext] = None,
         backlog: int = 128,
     ) -> None:
         super().__init__(
             runner,
-            shutdown_timeout=shutdown_timeout,
             ssl_context=ssl_context,
             backlog=backlog,
         )
@@ -166,22 +156,25 @@ class UnixSite(BaseSite):
         server = self._runner.server
         assert server is not None
         self._server = await loop.create_unix_server(
-            server, self._path, ssl=self._ssl_context, backlog=self._backlog
+            server,
+            self._path,
+            ssl=self._ssl_context,
+            backlog=self._backlog,
         )
 
 
 class NamedPipeSite(BaseSite):
     __slots__ = ("_path",)
 
-    def __init__(
-        self, runner: "BaseRunner", path: str, *, shutdown_timeout: float = 60.0
-    ) -> None:
+    def __init__(self, runner: "BaseRunner[Any]", path: str) -> None:
         loop = asyncio.get_event_loop()
-        if not isinstance(loop, asyncio.ProactorEventLoop):  # type: ignore
+        if not isinstance(
+            loop, asyncio.ProactorEventLoop  # type: ignore[attr-defined]
+        ):
             raise RuntimeError(
-                "Named Pipes only available in proactor" "loop under windows"
+                "Named Pipes only available in proactor loop under windows"
             )
-        super().__init__(runner, shutdown_timeout=shutdown_timeout)
+        super().__init__(runner)
         self._path = path
 
     @property
@@ -193,7 +186,9 @@ class NamedPipeSite(BaseSite):
         loop = asyncio.get_event_loop()
         server = self._runner.server
         assert server is not None
-        _server = await loop.start_serving_pipe(server, self._path)  # type: ignore
+        _server = await loop.start_serving_pipe(  # type: ignore[attr-defined]
+            server, self._path
+        )
         self._server = _server[0]
 
 
@@ -202,16 +197,14 @@ class SockSite(BaseSite):
 
     def __init__(
         self,
-        runner: "BaseRunner",
+        runner: "BaseRunner[Any]",
         sock: socket.socket,
         *,
-        shutdown_timeout: float = 60.0,
         ssl_context: Optional[SSLContext] = None,
         backlog: int = 128,
     ) -> None:
         super().__init__(
             runner,
-            shutdown_timeout=shutdown_timeout,
             ssl_context=ssl_context,
             backlog=backlog,
         )
@@ -238,26 +231,33 @@ class SockSite(BaseSite):
         )
 
 
-class BaseRunner(ABC):
-    __slots__ = ("_handle_signals", "_kwargs", "_server", "_sites")
+class BaseRunner(ABC, Generic[_Request]):
+    __slots__ = ("_handle_signals", "_kwargs", "_server", "_sites", "_shutdown_timeout")
 
-    def __init__(self, *, handle_signals: bool = False, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *,
+        handle_signals: bool = False,
+        shutdown_timeout: float = 60.0,
+        **kwargs: Any,
+    ) -> None:
         self._handle_signals = handle_signals
         self._kwargs = kwargs
-        self._server = None  # type: Optional[Server]
-        self._sites = []  # type: List[BaseSite]
+        self._server: Optional[Server[_Request]] = None
+        self._sites: List[BaseSite] = []
+        self._shutdown_timeout = shutdown_timeout
 
     @property
-    def server(self) -> Optional[Server]:
+    def server(self) -> Optional[Server[_Request]]:
         return self._server
 
     @property
     def addresses(self) -> List[Any]:
-        ret = []  # type: List[Any]
+        ret: List[Any] = []
         for site in self._sites:
             server = site._server
             if server is not None:
-                sockets = server.sockets
+                sockets = server.sockets  # type: ignore[attr-defined]
                 if sockets is not None:
                     for sock in sockets:
                         ret.append(sock.getsockname())
@@ -282,20 +282,28 @@ class BaseRunner(ABC):
 
     @abstractmethod
     async def shutdown(self) -> None:
-        pass  # pragma: no cover
+        """Call any shutdown hooks to help server close gracefully."""
 
     async def cleanup(self) -> None:
-        loop = asyncio.get_event_loop()
-
         # The loop over sites is intentional, an exception on gather()
         # leaves self._sites in unpredictable state.
         # The loop guarantees that a site is either deleted on success or
         # still present on failure
         for site in list(self._sites):
             await site.stop()
+
+        if self._server:  # If setup succeeded
+            # Yield to event loop to ensure incoming requests prior to stopping the sites
+            # have all started to be handled before we proceed to close idle connections.
+            await asyncio.sleep(0)
+            self._server.pre_shutdown()
+            await self.shutdown()
+            await self._server.shutdown(self._shutdown_timeout)
         await self._cleanup_server()
+
         self._server = None
         if self._handle_signals:
+            loop = asyncio.get_running_loop()
             try:
                 loop.remove_signal_handler(signal.SIGINT)
                 loop.remove_signal_handler(signal.SIGTERM)
@@ -304,7 +312,7 @@ class BaseRunner(ABC):
                 pass
 
     @abstractmethod
-    async def _make_server(self) -> Server:
+    async def _make_server(self) -> Server[_Request]:
         pass  # pragma: no cover
 
     @abstractmethod
@@ -326,13 +334,17 @@ class BaseRunner(ABC):
         self._sites.remove(site)
 
 
-class ServerRunner(BaseRunner):
+class ServerRunner(BaseRunner[BaseRequest]):
     """Low-level web server runner"""
 
     __slots__ = ("_web_server",)
 
     def __init__(
-        self, web_server: Server, *, handle_signals: bool = False, **kwargs: Any
+        self,
+        web_server: Server[BaseRequest],
+        *,
+        handle_signals: bool = False,
+        **kwargs: Any,
     ) -> None:
         super().__init__(handle_signals=handle_signals, **kwargs)
         self._web_server = web_server
@@ -340,14 +352,14 @@ class ServerRunner(BaseRunner):
     async def shutdown(self) -> None:
         pass
 
-    async def _make_server(self) -> Server:
+    async def _make_server(self) -> Server[BaseRequest]:
         return self._web_server
 
     async def _cleanup_server(self) -> None:
         pass
 
 
-class AppRunner(BaseRunner):
+class AppRunner(BaseRunner[Request]):
     """Web Application runner"""
 
     __slots__ = ("_app",)
@@ -360,7 +372,6 @@ class AppRunner(BaseRunner):
         access_log_class: Type[AbstractAccessLogger] = AccessLogger,
         **kwargs: Any,
     ) -> None:
-
         if not isinstance(app, Application):
             raise TypeError(
                 "The first argument should be web.Application "
@@ -390,13 +401,13 @@ class AppRunner(BaseRunner):
     async def shutdown(self) -> None:
         await self._app.shutdown()
 
-    async def _make_server(self) -> Server:
+    async def _make_server(self) -> Server[Request]:
         self._app.on_startup.freeze()
         await self._app.startup()
         self._app.freeze()
 
         return Server(
-            self._app._handle,  # type: ignore
+            self._app._handle,
             request_factory=self._make_request,
             **self._kwargs,
         )
@@ -405,7 +416,7 @@ class AppRunner(BaseRunner):
         self,
         message: RawRequestMessage,
         payload: StreamReader,
-        protocol: RequestHandler,
+        protocol: RequestHandler[Request],
         writer: AbstractStreamWriter,
         task: "asyncio.Task[None]",
         _cls: Type[Request] = Request,

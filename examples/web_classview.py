@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Example for aiohttp.web class based views
-"""
+"""Example for aiohttp.web class based views."""
 
 import functools
 import json

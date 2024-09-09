@@ -1,5 +1,7 @@
 codecov:
   branch: master
+  notify:
+    after_n_builds: 13
 
 coverage:
   range: "95..100"

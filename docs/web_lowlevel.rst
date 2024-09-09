@@ -19,7 +19,7 @@ request and returns a response object.
 
 This is done by introducing :class:`aiohttp.web.Server` class which
 serves a *protocol factory* role for
-:meth:`asyncio.AbstractEventLoop.create_server` and bridges data
+:meth:`asyncio.loop.create_server` and bridges data
 stream to *web handler* and sends result back.
 
 
@@ -69,13 +69,7 @@ The following code demonstrates very trivial usage example::
        await asyncio.sleep(100*3600)
 
 
-   loop = asyncio.get_event_loop()
-
-   try:
-       loop.run_until_complete(main())
-   except KeyboardInterrupt:
-       pass
-   loop.close()
+   asyncio.run(main())
 
 
 In the snippet we have ``handler`` which returns a regular

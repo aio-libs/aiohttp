@@ -1,4 +1,4 @@
-[submodule "vendor/http-parser"]
-	path = vendor/http-parser
-	url = git://github.com/nodejs/http-parser.git
-	branch = 54f55a2
+[submodule "vendor/llhttp"]
+    path = vendor/llhttp
+    url = https://github.com/nodejs/llhttp.git
+    branch = main

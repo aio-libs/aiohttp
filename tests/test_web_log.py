@@ -1,5 +1,6 @@
 # type: ignore
 import datetime
+import logging
 import platform
 import sys
 from typing import Any
@@ -10,6 +11,7 @@ import pytest
 import aiohttp
 from aiohttp import web
 from aiohttp.abc import AbstractAccessLogger, AbstractAsyncAccessLogger
+from aiohttp.typedefs import Handler
 from aiohttp.web_log import AccessLogger
 from aiohttp.web_response import Response
 
@@ -50,7 +52,7 @@ def test_access_logger_format() -> None:
     Ref: https://bitbucket.org/pypy/pypy/issues/1187/call-to-isinstance-in-__sub__-self-other
     Ref: https://github.com/celery/celery/issues/811
     Ref: https://stackoverflow.com/a/46102240/595220
-    """,  # noqa: E501
+    """,
 )
 @pytest.mark.parametrize(
     "log_format,expected,extra",
@@ -232,7 +234,7 @@ async def test_contextvars_logger(aiohttp_server: Any, aiohttp_client: Any):
     async def handler(request):
         return web.Response()
 
-    async def middleware(request, handler):
+    async def middleware(request, handler: Handler):
         VAR.set("uuid")
         return await handler(request)
 
@@ -250,3 +252,14 @@ async def test_contextvars_logger(aiohttp_server: Any, aiohttp_client: Any):
     resp = await client.get("/")
     assert 200 == resp.status
     assert msg == "contextvars: uuid"
+
+
+def test_logger_does_nothing_when_disabled(caplog: pytest.LogCaptureFixture) -> None:
+    """Test that the logger does nothing when the log level is disabled."""
+    mock_logger = logging.getLogger("test.aiohttp.log")
+    mock_logger.setLevel(logging.INFO)
+    access_logger = AccessLogger(mock_logger, "%b")
+    access_logger.log(
+        mock.Mock(name="mock_request"), mock.Mock(name="mock_response"), 42
+    )
+    assert "mock_response" in caplog.text

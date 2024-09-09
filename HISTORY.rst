@@ -950,7 +950,7 @@ Misc
 - Added session's `raise_for_status` parameter, automatically calls
   raise_for_status() on any request. (`#1724 <https://github.com/aio-libs/aiohttp/pull/1724>`_)
 
-- `response.json()` raises `ClientReponseError` exception if response's
+- `response.json()` raises `ClientResponseError` exception if response's
   content type does not match (`#1723 <https://github.com/aio-libs/aiohttp/pull/1723>`_)
 
   - Cleanup timer and loop handle on any client exception.

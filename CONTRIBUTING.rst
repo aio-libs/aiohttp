@@ -14,7 +14,7 @@ Workflow is pretty straightforward:
 
   1. Clone the GitHub_ repo using the ``--recurse-submodules`` argument
 
-  2. Setup your machine with the required dev environment
+  2. Setup your machine with the required development environment
 
   3. Make a change
 
@@ -31,6 +31,6 @@ Workflow is pretty straightforward:
 .. important::
 
     Please open the "`contributing <https://docs.aiohttp.org/en/stable/contributing.html>`_"
-    documentation page to get detailed informations about all steps.
+    documentation page to get detailed information about all steps.
 
 .. _GitHub: https://github.com/aio-libs/aiohttp
