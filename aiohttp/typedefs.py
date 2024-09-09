@@ -22,7 +22,7 @@ try:
 except ImportError:  # pragma: no cover
     SimpleQuery = Union[str, int, float]  # pragma: no cover
     QueryVariable = Union[SimpleQuery, "Sequence[SimpleQuery]"]  # pragma: no cover
-    _Query = Union[  # pragma: no cover # type: ignore[misc]
+    _Query = Union[  # type: ignore[misc]  # pragma: no cover
         None, str, "Mapping[str, QueryVariable]", "Sequence[Tuple[str, QueryVariable]]"
     ]
 
