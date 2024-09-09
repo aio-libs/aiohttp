@@ -1,0 +1,3 @@
+Use :meth:`URL.extend_query() <yarl.URL.extend_query>` to extend query params (requires yarl 1.11.0+) -- by :user:`bdraco`.
+
+If yarl is older than 1.11.0, the previous slower hand rolled version will be used.
