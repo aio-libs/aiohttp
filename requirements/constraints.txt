@@ -70,7 +70,7 @@ docutils==0.20.1
     # via sphinx
 exceptiongroup==1.2.2
     # via pytest
-filelock==3.15.4
+filelock==3.16.0
     # via virtualenv
 freezegun==1.5.1
     # via
