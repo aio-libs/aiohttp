@@ -505,7 +505,7 @@ _ipv6_regexb = re.compile(_ipv6_pattern.encode("ascii"), flags=re.IGNORECASE)
 
 def is_ipv4_address(host: Optional[Union[str, bytes]]) -> bool:
     """Check if host is an valid IPv4 address."""
-    if host is None:
+    if not host:
         return False
     if isinstance(host, str):
         # The last character of the host must be a digit to be an IPv4 address.
@@ -518,7 +518,7 @@ def is_ipv4_address(host: Optional[Union[str, bytes]]) -> bool:
 
 def is_ipv6_address(host: Optional[Union[str, bytes]]) -> bool:
     """Check if host is an valid IPv6 address."""
-    if host is None:
+    if not host:
         return False
     if isinstance(host, str):
         # The host must contain a colon to be an IPv6 address.
