@@ -286,14 +286,6 @@ def test_is_ip_address() -> None:
     assert not helpers.is_ip_address("localhost")
     assert not helpers.is_ip_address("www.example.com")
 
-    # Out of range
-    assert not helpers.is_ip_address("999.999.999.999")
-    # Contain a port
-    assert not helpers.is_ip_address("127.0.0.1:80")
-    assert not helpers.is_ip_address("[2001:db8:0:1]:80")
-    # Too many "::"
-    assert not helpers.is_ip_address("1200::AB00:1234::2552:7777:1313")
-
 
 def test_is_ip_address_bytes() -> None:
     assert helpers.is_ip_address(b"127.0.0.1")
@@ -303,14 +295,6 @@ def test_is_ip_address_bytes() -> None:
     # Hostnames
     assert not helpers.is_ip_address(b"localhost")
     assert not helpers.is_ip_address(b"www.example.com")
-
-    # Out of range
-    assert not helpers.is_ip_address(b"999.999.999.999")
-    # Contain a port
-    assert not helpers.is_ip_address(b"127.0.0.1:80")
-    assert not helpers.is_ip_address(b"[2001:db8:0:1]:80")
-    # Too many "::"
-    assert not helpers.is_ip_address(b"1200::AB00:1234::2552:7777:1313")
 
 
 def test_ipv4_addresses() -> None:
