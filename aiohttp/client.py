@@ -171,7 +171,7 @@ class _RequestOptions(TypedDict, total=False):
     auth: Union[BasicAuth, None]
     allow_redirects: bool
     max_redirects: int
-    compress: Union[str, bool, None]
+    compress: Union[str, bool]
     chunked: Union[bool, None]
     expect100: bool
     raise_for_status: Union[None, bool, Callable[[ClientResponse], Awaitable[None]]]
@@ -416,7 +416,7 @@ class ClientSession:
         auth: Optional[BasicAuth] = None,
         allow_redirects: bool = True,
         max_redirects: int = 10,
-        compress: Union[str, bool, None] = None,
+        compress: Union[str, bool] = False,
         chunked: Optional[bool] = None,
         expect100: bool = False,
         raise_for_status: Union[
@@ -1370,7 +1370,7 @@ def request(
     auth: Optional[BasicAuth] = None,
     allow_redirects: bool = True,
     max_redirects: int = 10,
-    compress: Optional[str] = None,
+    compress: Union[str, bool] = False,
     chunked: Optional[bool] = None,
     expect100: bool = False,
     raise_for_status: Optional[bool] = None,

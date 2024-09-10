@@ -203,7 +203,7 @@ class ClientRequest:
         cookies: Optional[LooseCookies] = None,
         auth: Optional[BasicAuth] = None,
         version: http.HttpVersion = http.HttpVersion11,
-        compress: Union[str, bool, None] = None,
+        compress: Union[str, bool] = False,
         chunked: Optional[bool] = None,
         expect100: bool = False,
         loop: asyncio.AbstractEventLoop,
@@ -235,7 +235,6 @@ class ClientRequest:
         self.url = url.with_fragment(None)
         self.method = method.upper()
         self.chunked = chunked
-        self.compress = compress
         self.loop = loop
         self.length = None
         if response_class is None:
@@ -255,7 +254,7 @@ class ClientRequest:
         self.update_headers(headers)
         self.update_auto_headers(skip_auto_headers)
         self.update_cookies(cookies)
-        self.update_content_encoding(data)
+        self.update_content_encoding(data, compress)
         self.update_auth(auth, trust_env)
         self.update_proxy(proxy, proxy_auth, proxy_headers)
 
@@ -422,7 +421,7 @@ class ClientRequest:
 
         self.headers[hdrs.COOKIE] = c.output(header="", sep=";").strip()
 
-    def update_content_encoding(self, data: Any) -> None:
+    def update_content_encoding(self, data: Any, compress: Union[bool, str]) -> None:
         """Set request content encoding."""
         if not data:
             # Don't compress an empty body.
@@ -431,13 +430,12 @@ class ClientRequest:
 
         enc = self.headers.get(hdrs.CONTENT_ENCODING, "").lower()
         if enc:
-            if self.compress:
+            if compress:
                 raise ValueError(
                     "compress can not be set if Content-Encoding header is set"
                 )
-        elif self.compress:
-            if not isinstance(self.compress, str):
-                self.compress = "deflate"
+        elif compress:
+            self.compress = compress if isinstance(compress, str) else "deflate"
             self.headers[hdrs.CONTENT_ENCODING] = self.compress
             self.chunked = True  # enable chunked, no need to deal with length
 
@@ -642,7 +640,7 @@ class ClientRequest:
         )
 
         if self.compress:
-            writer.enable_compression(self.compress)  # type: ignore[arg-type]
+            writer.enable_compression(self.compress)
 
         if self.chunked is not None:
             writer.enable_chunking()
