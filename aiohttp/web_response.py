@@ -39,7 +39,6 @@ from .helpers import (
     validate_etag_value,
 )
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11
-from .http_writer import StreamWriter
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
 
