@@ -208,6 +208,7 @@ Kevin Samuel
 Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
+Konstantin Shutkin
 Konstantin Valetov
 Krzysztof Blazewicz
 Kyrylo Perevozchikov

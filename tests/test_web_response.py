@@ -6,6 +6,7 @@ import io
 import json
 import re
 import weakref
+import zlib
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, AsyncIterator, Optional
 from unittest import mock
@@ -421,7 +422,7 @@ async def test_compression_default_coding() -> None:
 
     msg = await resp.prepare(req)
 
-    msg.enable_compression.assert_called_with("deflate")
+    msg.enable_compression.assert_called_with("deflate", zlib.Z_DEFAULT_STRATEGY)
     assert "deflate" == resp.headers.get(hdrs.CONTENT_ENCODING)
     assert msg.filter is not None
 
@@ -436,7 +437,7 @@ async def test_force_compression_deflate() -> None:
     assert resp.compression
 
     msg = await resp.prepare(req)
-    msg.enable_compression.assert_called_with("deflate")
+    msg.enable_compression.assert_called_with("deflate", zlib.Z_DEFAULT_STRATEGY)
     assert "deflate" == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 
@@ -448,7 +449,7 @@ async def test_force_compression_no_accept_deflate() -> None:
     assert resp.compression
 
     msg = await resp.prepare(req)
-    msg.enable_compression.assert_called_with("deflate")
+    msg.enable_compression.assert_called_with("deflate", zlib.Z_DEFAULT_STRATEGY)
     assert "deflate" == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 
@@ -462,7 +463,7 @@ async def test_force_compression_gzip() -> None:
     assert resp.compression
 
     msg = await resp.prepare(req)
-    msg.enable_compression.assert_called_with("gzip")
+    msg.enable_compression.assert_called_with("gzip", zlib.Z_DEFAULT_STRATEGY)
     assert "gzip" == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 
@@ -474,7 +475,7 @@ async def test_force_compression_no_accept_gzip() -> None:
     assert resp.compression
 
     msg = await resp.prepare(req)
-    msg.enable_compression.assert_called_with("gzip")
+    msg.enable_compression.assert_called_with("gzip", zlib.Z_DEFAULT_STRATEGY)
     assert "gzip" == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 
