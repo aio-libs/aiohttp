@@ -1,5 +1,6 @@
 import logging
 import socket
+import zlib
 from abc import ABC, abstractmethod
 from collections.abc import Sized
 from http.cookies import BaseCookie, Morsel
