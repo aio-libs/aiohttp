@@ -12,7 +12,7 @@ import sys
 import tarfile
 import time
 import zipfile
-from typing import Any, AsyncIterator, Type
+from typing import Any, AsyncIterator, Optional, Type
 from unittest import mock
 
 import pytest
@@ -31,6 +31,9 @@ from aiohttp.client_exceptions import (
     SocketTimeoutError,
     TooManyRedirects,
 )
+from aiohttp.client_reqrep import ClientRequest
+from aiohttp.connector import Connection
+from aiohttp.http_writer import StreamWriter
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer, TestClient
 from aiohttp.test_utils import unused_port
 
@@ -1498,8 +1501,44 @@ async def test_POST_MultiDict(aiohttp_client) -> None:
         assert 200 == resp.status
 
 
-async def test_POST_DATA_DEFLATE(aiohttp_client) -> None:
-    async def handler(request):
+@pytest.mark.parametrize("data", (None, b""))
+async def test_GET_DEFLATE(
+    aiohttp_client: AiohttpClient, data: Optional[bytes]
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.json_response({"ok": True})
+
+    write_mock = None
+    original_write_bytes = ClientRequest.write_bytes
+
+    async def write_bytes(
+        self: ClientRequest, writer: StreamWriter, conn: Connection
+    ) -> None:
+        nonlocal write_mock
+        original_write = writer._write
+
+        with mock.patch.object(
+            writer, "_write", autospec=True, spec_set=True, side_effect=original_write
+        ) as write_mock:
+            await original_write_bytes(self, writer, conn)
+
+    with mock.patch.object(ClientRequest, "write_bytes", write_bytes):
+        app = web.Application()
+        app.router.add_get("/", handler)
+        client = await aiohttp_client(app)
+
+        async with client.get("/", data=data, compress=True) as resp:
+            assert resp.status == 200
+            content = await resp.json()
+            assert content == {"ok": True}
+
+    assert write_mock is not None
+    # No chunks should have been sent for an empty body.
+    write_mock.assert_not_called()
+
+
+async def test_POST_DATA_DEFLATE(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
         data = await request.post()
         return web.json_response(dict(data))
 
