@@ -31,7 +31,6 @@ from aiohttp.client_exceptions import (
     SocketTimeoutError,
     TooManyRedirects,
 )
-from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import Connection
 from aiohttp.http_writer import StreamWriter
