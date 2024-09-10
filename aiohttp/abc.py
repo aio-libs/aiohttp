@@ -204,7 +204,7 @@ class AbstractStreamWriter(ABC):
         """Flush the write buffer."""
 
     @abstractmethod
-    def enable_compression(self, encoding: str = "deflate") -> None:
+    def enable_compression(self, encoding: str = "deflate", strategy: int = ...) -> None:
         """Enable HTTP body compression"""
 
     @abstractmethod
