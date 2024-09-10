@@ -26,13 +26,17 @@ Reading Methods
 .. method:: StreamReader.read(n=-1)
       :async:
 
-   Read up to *n* bytes. If *n* is not provided, or set to ``-1``, read until
-   EOF and return all read bytes.
+   Read up to a maximum of *n* bytes. If *n* is not provided, or set to ``-1``,
+   read until EOF and return all read bytes.
+
+   When *n* is provided, data will be returned as soon as it is available.
+   Therefore it will return less than *n* bytes if there are less than *n*
+   bytes in the buffer.
 
    If the EOF was received and the internal buffer is empty, return an
    empty bytes object.
 
-   :param int n: how many bytes to read, ``-1`` for the whole stream.
+   :param int n: maximum number of bytes to read, ``-1`` for the whole stream.
 
    :return bytes: the given data
 
@@ -125,6 +129,14 @@ size limit and over any available data.
    Iterates over data chunks with maximum size limit::
 
       async for data in response.content.iter_chunked(1024):
+          print(data)
+
+   To get chunks that are exactly *n* bytes, you could use the
+   `asyncstdlib.itertools <https://asyncstdlib.readthedocs.io/en/stable/source/api/itertools.html>`_
+   module::
+
+      chunks = batched(chain.from_iterable(response.content.iter_chunked(n)), n)
+      async for data in chunks:
           print(data)
 
 .. method:: StreamReader.iter_any()

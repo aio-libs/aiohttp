@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, AsyncIterator, Callable, Iterator, NoReturn
+from typing import Any, AsyncIterator, Callable, Iterator, NoReturn, Type
 from unittest import mock
 
 import pytest
@@ -334,7 +334,10 @@ async def test_cleanup_ctx_cleanup_after_exception() -> None:
     assert ctx_state == "CLEAN"
 
 
-async def test_cleanup_ctx_exception_on_cleanup_multiple() -> None:
+@pytest.mark.parametrize("exc_cls", (Exception, asyncio.CancelledError))
+async def test_cleanup_ctx_exception_on_cleanup_multiple(
+    exc_cls: Type[BaseException],
+) -> None:
     app = web.Application()
     out = []
 
@@ -346,7 +349,7 @@ async def test_cleanup_ctx_exception_on_cleanup_multiple() -> None:
             yield None
             out.append("post_" + str(num))
             if fail:
-                raise Exception("fail_" + str(num))
+                raise exc_cls("fail_" + str(num))
 
         return inner
 

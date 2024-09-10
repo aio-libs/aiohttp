@@ -77,6 +77,7 @@ Chih-Yuan Chen
 Chris AtLee
 Chris Laws
 Chris Moore
+Chris Shucksmith
 Christopher Schmitt
 Claudiu Popa
 Colin Dunklau
@@ -281,6 +282,7 @@ Philipp A.
 Pieter van Beek
 Qiao Han
 Rafael Viotti
+Rahul Nahata
 Raphael Bialon
 Raúl Cumplido
 Required Field
@@ -362,6 +364,7 @@ William Grzybowski
 William S.
 Wilson Ong
 wouter bolsterlee
+Xavier Halloran
 Xiang Li
 Yang Zhou
 Yannick Koechlin

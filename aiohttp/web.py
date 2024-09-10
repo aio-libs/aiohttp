@@ -6,6 +6,7 @@ import sys
 import warnings
 from argparse import ArgumentParser
 from collections.abc import Iterable
+from contextlib import suppress
 from importlib import import_module
 from typing import (
     Any,
@@ -501,11 +502,15 @@ def run_app(
     except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
         pass
     finally:
-        _cancel_tasks({main_task}, loop)
-        _cancel_tasks(asyncio.all_tasks(loop), loop)
-        loop.run_until_complete(loop.shutdown_asyncgens())
-        loop.close()
-        asyncio.set_event_loop(None)
+        try:
+            main_task.cancel()
+            with suppress(asyncio.CancelledError):
+                loop.run_until_complete(main_task)
+        finally:
+            _cancel_tasks(asyncio.all_tasks(loop), loop)
+            loop.run_until_complete(loop.shutdown_asyncgens())
+            loop.close()
+            asyncio.set_event_loop(None)
 
 
 def main(argv: List[str]) -> None:
@@ -559,7 +564,7 @@ def main(argv: List[str]) -> None:
     # Compatibility logic
     if args.path is not None and not hasattr(socket, "AF_UNIX"):
         arg_parser.error(
-            "file system paths not supported by your operating" " environment"
+            "file system paths not supported by your operating environment"
         )
 
     logging.basicConfig(level=logging.DEBUG)

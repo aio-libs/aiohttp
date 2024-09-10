@@ -108,7 +108,7 @@ class TCPSite(BaseSite):
     @property
     def name(self) -> str:
         scheme = "https" if self._ssl_context else "http"
-        host = "0.0.0.0" if self._host is None else self._host
+        host = "0.0.0.0" if not self._host else self._host
         return str(URL.build(scheme=scheme, host=host, port=self._port))
 
     async def start(self) -> None:
@@ -172,7 +172,7 @@ class NamedPipeSite(BaseSite):
             loop, asyncio.ProactorEventLoop  # type: ignore[attr-defined]
         ):
             raise RuntimeError(
-                "Named Pipes only available in proactor" "loop under windows"
+                "Named Pipes only available in proactor loop under windows"
             )
         super().__init__(runner)
         self._path = path

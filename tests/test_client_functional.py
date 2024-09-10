@@ -9,7 +9,9 @@ import pathlib
 import socket
 import ssl
 import sys
+import tarfile
 import time
+import zipfile
 from typing import (
     Any,
     AsyncIterator,
@@ -364,10 +366,11 @@ async def test_stream_request_on_server_eof(aiohttp_client: AiohttpClient) -> No
     async with client.get("/") as resp:
         assert 200 == resp.status
 
-    # Connection should have been reused
+    # First connection should have been closed, otherwise server won't know if it
+    # received the full message.
     conns = next(iter(client.session.connector._conns.values()))
     assert len(conns) == 1
-    assert conns[0][0] is conn
+    assert conns[0][0] is not conn
 
 
 async def test_stream_request_on_server_eof_nested(
@@ -387,15 +390,21 @@ async def test_stream_request_on_server_eof_nested(
             yield b"just data"
             await asyncio.sleep(0.1)
 
+    assert client.session.connector is not None
     async with client.put("/", data=data_gen()) as resp:
+        first_conn = next(iter(client.session.connector._acquired))
         assert 200 == resp.status
-        async with client.get("/") as resp:
-            assert 200 == resp.status
+
+        async with client.get("/") as resp2:
+            assert 200 == resp2.status
 
     # Should be 2 separate connections
-    assert client.session.connector is not None
     conns = next(iter(client.session.connector._conns.values()))
-    assert len(conns) == 2
+    assert len(conns) == 1
+
+    assert first_conn is not None
+    assert not first_conn.is_connected()
+    assert first_conn is not conns[0][0]
 
 
 async def test_HTTP_304_WITH_BODY(aiohttp_client: AiohttpClient) -> None:
@@ -542,6 +551,61 @@ async def test_post_data_textio_encoding(aiohttp_client: AiohttpClient) -> None:
         assert 200 == resp.status
 
 
+async def test_post_data_zipfile_filelike(aiohttp_client: AiohttpClient) -> None:
+    data = b"This is a zip file payload text file."
+
+    async def handler(request: web.Request) -> web.Response:
+        val = await request.read()
+        assert data == val, "Transmitted zipfile member failed to match original data."
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("POST", "/", handler)
+    client = await aiohttp_client(app)
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(file=buf, mode="w") as zf:
+        with zf.open("payload1.txt", mode="w") as zip_filelike_writing:
+            zip_filelike_writing.write(data)
+
+    buf.seek(0)
+    zf = zipfile.ZipFile(file=buf, mode="r")
+    resp = await client.post("/", data=zf.open("payload1.txt"))
+    assert 200 == resp.status
+
+
+async def test_post_data_tarfile_filelike(aiohttp_client: AiohttpClient) -> None:
+    data = b"This is a tar file payload text file."
+
+    async def handler(request: web.Request) -> web.Response:
+        val = await request.read()
+        assert data == val, "Transmitted tarfile member failed to match original data."
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("POST", "/", handler)
+    client = await aiohttp_client(app)
+
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w") as tf:
+        ti = tarfile.TarInfo(name="payload1.txt")
+        ti.size = len(data)
+        tf.addfile(tarinfo=ti, fileobj=io.BytesIO(data))
+
+    # Random-access tarfile.
+    buf.seek(0)
+    tf = tarfile.open(fileobj=buf, mode="r:")
+    resp = await client.post("/", data=tf.extractfile("payload1.txt"))
+    assert 200 == resp.status
+
+    # Streaming tarfile.
+    buf.seek(0)
+    tf = tarfile.open(fileobj=buf, mode="r|")
+    for entry in tf:
+        resp = await client.post("/", data=tf.extractfile(entry))
+        assert 200 == resp.status
+
+
 async def test_ssl_client(
     aiohttp_server: AiohttpServer,
     ssl_ctx: ssl.SSLContext,
@@ -636,6 +700,39 @@ async def test_str_params(aiohttp_client: AiohttpClient) -> None:
 
     async with client.get("/", params="q=t+est") as resp:
         assert 200 == resp.status
+
+
+async def test_params_and_query_string(aiohttp_client: AiohttpClient) -> None:
+    """Test combining params with an existing query_string."""
+
+    async def handler(request: web.Request) -> web.Response:
+        assert request.rel_url.query_string == "q=abc&q=test&d=dog"
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/?q=abc", params="q=test&d=dog") as resp:
+        assert resp.status == 200
+
+
+@pytest.mark.parametrize("params", [None, "", {}, MultiDict()])
+async def test_empty_params_and_query_string(
+    aiohttp_client: AiohttpClient, params: Any
+) -> None:
+    """Test combining empty params with an existing query_string."""
+
+    async def handler(request: web.Request) -> web.Response:
+        assert request.rel_url.query_string == "q=abc"
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/?q=abc", params=params) as resp:
+        assert resp.status == 200
 
 
 async def test_drop_params_on_redirect(aiohttp_client: AiohttpClient) -> None:
@@ -2342,7 +2439,7 @@ async def test_set_cookies_expired(aiohttp_client: AiohttpClient) -> None:
         ret.set_cookie("c2", "cookie2")
         ret.headers.add(
             "Set-Cookie",
-            "c3=cookie3; " "HttpOnly; Path=/" " Expires=Tue, 1 Jan 1980 12:00:00 GMT; ",
+            "c3=cookie3; HttpOnly; Path=/ Expires=Tue, 1 Jan 1980 12:00:00 GMT; ",
         )
         return ret
 
@@ -2361,7 +2458,7 @@ async def test_set_cookies_max_age(aiohttp_client: AiohttpClient) -> None:
         ret = web.Response()
         ret.set_cookie("c1", "cookie1")
         ret.set_cookie("c2", "cookie2")
-        ret.headers.add("Set-Cookie", "c3=cookie3; " "HttpOnly; Path=/" " Max-Age=1; ")
+        ret.headers.add("Set-Cookie", "c3=cookie3; HttpOnly; Path=/ Max-Age=1; ")
         return ret
 
     app = web.Application()
@@ -2382,7 +2479,7 @@ async def test_set_cookies_max_age_overflow(aiohttp_client: AiohttpClient) -> No
         ret = web.Response()
         ret.headers.add(
             "Set-Cookie",
-            "overflow=overflow; " "HttpOnly; Path=/" " Max-Age=" + str(overflow) + "; ",
+            "overflow=overflow; HttpOnly; Path=/ Max-Age=" + str(overflow) + "; ",
         )
         return ret
 
@@ -2904,6 +3001,138 @@ async def test_drop_auth_on_redirect_to_other_host(
         assert resp.status == 200
 
 
+async def test_auth_persist_on_redirect_to_other_host_with_global_auth(
+    create_server_for_url_and_handler: Callable[[URL, Handler], Awaitable[TestServer]],
+) -> None:
+    url_from = URL("http://host1.com/path1")
+    url_to = URL("http://host2.com/path2")
+
+    async def srv_from(request: web.Request) -> NoReturn:
+        assert request.host == url_from.host
+        assert request.headers["Authorization"] == "Basic dXNlcjpwYXNz"
+        raise web.HTTPFound(url_to)
+
+    async def srv_to(request: web.Request) -> web.Response:
+        assert request.host == url_to.host
+        assert "Authorization" in request.headers, "Header was dropped"
+        return web.Response()
+
+    server_from = await create_server_for_url_and_handler(url_from, srv_from)
+    server_to = await create_server_for_url_and_handler(url_to, srv_to)
+
+    assert (
+        url_from.host != url_to.host or server_from.scheme != server_to.scheme
+    ), "Invalid test case, host or scheme must differ"
+
+    protocol_port_map = {
+        "http": 80,
+        "https": 443,
+    }
+    etc_hosts = {
+        (url_from.host, protocol_port_map[server_from.scheme]): server_from,
+        (url_to.host, protocol_port_map[server_to.scheme]): server_to,
+    }
+
+    class FakeResolver(AbstractResolver):
+        async def resolve(
+            self,
+            host: str,
+            port: int = 0,
+            family: socket.AddressFamily = socket.AF_INET,
+        ) -> List[ResolveResult]:
+            server = etc_hosts[(host, port)]
+            assert server.port is not None
+
+            return [
+                {
+                    "hostname": host,
+                    "host": server.host,
+                    "port": server.port,
+                    "family": socket.AF_INET,
+                    "proto": 0,
+                    "flags": socket.AI_NUMERICHOST,
+                }
+            ]
+
+        async def close(self) -> None:
+            """Dummy"""
+
+    connector = aiohttp.TCPConnector(resolver=FakeResolver(), ssl=False)
+
+    async with aiohttp.ClientSession(
+        connector=connector, auth=aiohttp.BasicAuth("user", "pass")
+    ) as client:
+        resp = await client.get(url_from)
+        assert resp.status == 200
+
+
+async def test_drop_auth_on_redirect_to_other_host_with_global_auth_and_base_url(
+    create_server_for_url_and_handler: Callable[[URL, Handler], Awaitable[TestServer]],
+) -> None:
+    url_from = URL("http://host1.com/path1")
+    url_to = URL("http://host2.com/path2")
+
+    async def srv_from(request: web.Request) -> NoReturn:
+        assert request.host == url_from.host
+        assert request.headers["Authorization"] == "Basic dXNlcjpwYXNz"
+        raise web.HTTPFound(url_to)
+
+    async def srv_to(request: web.Request) -> web.Response:
+        assert request.host == url_to.host
+        assert "Authorization" not in request.headers, "Header was not dropped"
+        return web.Response()
+
+    server_from = await create_server_for_url_and_handler(url_from, srv_from)
+    server_to = await create_server_for_url_and_handler(url_to, srv_to)
+
+    assert (
+        url_from.host != url_to.host or server_from.scheme != server_to.scheme
+    ), "Invalid test case, host or scheme must differ"
+
+    protocol_port_map = {
+        "http": 80,
+        "https": 443,
+    }
+    etc_hosts = {
+        (url_from.host, protocol_port_map[server_from.scheme]): server_from,
+        (url_to.host, protocol_port_map[server_to.scheme]): server_to,
+    }
+
+    class FakeResolver(AbstractResolver):
+        async def resolve(
+            self,
+            host: str,
+            port: int = 0,
+            family: socket.AddressFamily = socket.AF_INET,
+        ) -> List[ResolveResult]:
+            server = etc_hosts[(host, port)]
+            assert server.port is not None
+
+            return [
+                {
+                    "hostname": host,
+                    "host": server.host,
+                    "port": server.port,
+                    "family": socket.AF_INET,
+                    "proto": 0,
+                    "flags": socket.AI_NUMERICHOST,
+                }
+            ]
+
+        async def close(self) -> None:
+            """Dummy"""
+
+    connector = aiohttp.TCPConnector(resolver=FakeResolver(), ssl=False)
+
+    async with aiohttp.ClientSession(
+        connector=connector,
+        base_url="http://host1.com",
+        auth=aiohttp.BasicAuth("user", "pass"),
+    ) as client:
+        resp = await client.get("/path1")
+        assert resp.status == 200
+
+
 async def test_async_with_session() -> None:
     async with aiohttp.ClientSession() as session:
         pass
@@ -3276,9 +3505,7 @@ async def test_handle_keepalive_on_closed_connection() -> None:
             self.data += data
             assert data.endswith(b"\r\n\r\n")
             assert self.transp is not None
-            self.transp.write(
-                b"HTTP/1.1 200 OK\r\n" b"CONTENT-LENGTH: 2\r\n" b"\r\n" b"ok"
-            )
+            self.transp.write(b"HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 2\r\n\r\nok")
             self.transp.close()
 
         def connection_lost(self, exc: Optional[BaseException]) -> None:
@@ -3695,7 +3922,6 @@ async def test_max_line_size_request_explicit(aiohttp_client: AiohttpClient) -> 
         assert resp.reason == "x" * 8191
 
 
-@pytest.mark.xfail(raises=asyncio.TimeoutError, reason="#7599")
 async def test_rejected_upload(
     aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
 ) -> None:
@@ -3716,13 +3942,11 @@ async def test_rejected_upload(
 
     with open(file_path, "rb") as file:
         data = {"file": file}
-        async with await client.post("/not_ok", data=data) as resp_not_ok:
-            assert 400 == resp_not_ok.status
+        async with client.post("/not_ok", data=data) as resp_not_ok:
+            assert resp_not_ok.status == 400
 
-    async with await client.get(
-        "/ok", timeout=aiohttp.ClientTimeout(total=0.01)
-    ) as resp_ok:
-        assert 200 == resp_ok.status
+    async with client.get("/ok", timeout=aiohttp.ClientTimeout(total=1)) as resp_ok:
+        assert resp_ok.status == 200
 
 
 async def test_request_with_wrong_ssl_type(aiohttp_client: AiohttpClient) -> None:
@@ -3777,3 +4001,20 @@ async def test_header_too_large_error(aiohttp_client: AiohttpClient) -> None:
     ) as exc_info:
         await client.get("/")
     assert exc_info.value.status == 400
+
+
+async def test_exception_when_read_outside_of_session(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=b"1" * 1000000)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    server = await aiohttp_server(app)
+    async with aiohttp.ClientSession() as sess:
+        resp = await sess.get(server.make_url("/"))
+
+    with pytest.raises(RuntimeError, match="Connection closed"):
+        await resp.read()

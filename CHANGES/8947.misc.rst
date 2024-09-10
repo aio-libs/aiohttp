@@ -1,0 +1,1 @@
+Exported ``aiohttp.TraceRequestHeadersSentParams`` -- by :user:`Hadock-is-ok`.

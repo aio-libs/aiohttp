@@ -102,7 +102,7 @@ from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, WSMessage, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
 from .tracing import Trace, TraceConfig
-from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
+from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, Query, StrOrURL
 
 __all__ = (
     # client_exceptions
@@ -162,7 +162,7 @@ if sys.version_info >= (3, 11) and TYPE_CHECKING:
 
 
 class _RequestOptions(TypedDict, total=False):
-    params: Union[Mapping[str, Union[str, int]], str, None]
+    params: Query
     data: Any
     json: Any
     cookies: Union[LooseCookies, None]
@@ -407,7 +407,7 @@ class ClientSession:
         method: str,
         str_or_url: StrOrURL,
         *,
-        params: Optional[Mapping[str, str]] = None,
+        params: Query = None,
         data: Any = None,
         json: Any = None,
         cookies: Optional[LooseCookies] = None,
@@ -543,7 +543,10 @@ class ClientSession:
 
                     if auth is None:
                         auth = auth_from_url
-                    if auth is None:
+
+                    if auth is None and (
+                        not self._base_url or self._base_url.origin() == url.origin()
+                    ):
                         auth = self._default_auth
                     # It would be confusing if we support explicit
                     # Authorization header with auth argument
@@ -574,7 +577,7 @@ class ClientSession:
                         url,
                         params=params,
                         headers=headers,
-                        skip_auto_headers=skip_headers,
+                        skip_auto_headers=skip_headers if skip_headers else None,
                         data=data,
                         cookies=all_cookies,
                         auth=auth,
@@ -782,7 +785,7 @@ class ClientSession:
         heartbeat: Optional[float] = None,
         auth: Optional[BasicAuth] = None,
         origin: Optional[str] = None,
-        params: Optional[Mapping[str, str]] = None,
+        params: Query = None,
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
@@ -830,7 +833,7 @@ class ClientSession:
         heartbeat: Optional[float] = None,
         auth: Optional[BasicAuth] = None,
         origin: Optional[str] = None,
-        params: Optional[Mapping[str, str]] = None,
+        params: Query = None,
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
@@ -1359,7 +1362,7 @@ def request(
     method: str,
     url: StrOrURL,
     *,
-    params: Optional[Mapping[str, str]] = None,
+    params: Query = None,
     data: Any = None,
     json: Any = None,
     headers: Optional[LooseHeaders] = None,

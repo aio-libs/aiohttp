@@ -208,6 +208,14 @@ def test_basic_auth_from_url() -> None:
     assert auth.password == "pass"
 
 
+def test_basic_auth_no_user_from_url() -> None:
+    url = URL("http://:pass@example.com")
+    auth = helpers.BasicAuth.from_url(url)
+    assert auth is not None
+    assert auth.login == ""
+    assert auth.password == "pass"
+
+
 def test_basic_auth_from_not_url() -> None:
     with pytest.raises(TypeError):
         helpers.BasicAuth.from_url("http://user:pass@example.com")  # type: ignore[arg-type]
@@ -278,14 +286,6 @@ def test_is_ip_address() -> None:
     assert not helpers.is_ip_address("localhost")
     assert not helpers.is_ip_address("www.example.com")
 
-    # Out of range
-    assert not helpers.is_ip_address("999.999.999.999")
-    # Contain a port
-    assert not helpers.is_ip_address("127.0.0.1:80")
-    assert not helpers.is_ip_address("[2001:db8:0:1]:80")
-    # Too many "::"
-    assert not helpers.is_ip_address("1200::AB00:1234::2552:7777:1313")
-
 
 def test_is_ip_address_bytes() -> None:
     assert helpers.is_ip_address(b"127.0.0.1")
@@ -295,14 +295,6 @@ def test_is_ip_address_bytes() -> None:
     # Hostnames
     assert not helpers.is_ip_address(b"localhost")
     assert not helpers.is_ip_address(b"www.example.com")
-
-    # Out of range
-    assert not helpers.is_ip_address(b"999.999.999.999")
-    # Contain a port
-    assert not helpers.is_ip_address(b"127.0.0.1:80")
-    assert not helpers.is_ip_address(b"[2001:db8:0:1]:80")
-    # Too many "::"
-    assert not helpers.is_ip_address(b"1200::AB00:1234::2552:7777:1313")
 
 
 def test_ipv4_addresses() -> None:
@@ -336,7 +328,8 @@ def test_ipv6_addresses() -> None:
 
 def test_host_addresses() -> None:
     hosts = [
-        "www.four.part.host" "www.python.org",
+        "www.four.part.host",
+        "www.python.org",
         "foo.bar",
         "localhost",
     ]
@@ -350,6 +343,18 @@ def test_is_ip_address_invalid_type() -> None:
 
     with pytest.raises(TypeError):
         helpers.is_ip_address(object())  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError):
+        helpers.is_ipv4_address(123)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError):
+        helpers.is_ipv4_address(object())  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError):
+        helpers.is_ipv6_address(123)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError):
+        helpers.is_ipv6_address(object())  # type: ignore[arg-type]
 
 
 # ----------------------------------- TimeoutHandle -------------------
@@ -973,7 +978,6 @@ def test_cookies_mixin_path() -> None:
         max_age="10",
         secure=True,
         httponly=True,
-        version="2.0",
         samesite="lax",
     )
     assert (
@@ -984,8 +988,7 @@ def test_cookies_mixin_path() -> None:
         "max-age=10; "
         "path=/home; "
         "samesite=lax; "
-        "secure; "
-        "version=2.0"
+        "secure"
     )
 
 

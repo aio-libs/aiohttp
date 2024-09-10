@@ -135,7 +135,7 @@ async def test_write_payload_chunked_filter_mutiple_chunks(
     await msg.write_eof()
     content = b"".join([c[1][0] for c in list(transport.write.mock_calls)])  # type: ignore[attr-defined]
     assert content.endswith(
-        b"2\r\nda\r\n2\r\nta\r\n2\r\n1d\r\n2\r\nat\r\n" b"2\r\na2\r\n0\r\n\r\n"
+        b"2\r\nda\r\n2\r\nta\r\n2\r\n1d\r\n2\r\nat\r\n2\r\na2\r\n0\r\n\r\n"
     )
 
 
@@ -170,7 +170,7 @@ async def test_write_payload_deflate_and_chunked(
     await msg.write(b"ta")
     await msg.write_eof()
 
-    thing = b"2\r\nx\x9c\r\n" b"a\r\nKI,I\x04\x00\x04\x00\x01\x9b\r\n" b"0\r\n\r\n"
+    thing = b"2\r\nx\x9c\r\na\r\nKI,I\x04\x00\x04\x00\x01\x9b\r\n0\r\n\r\n"
     assert thing == buf
 
 
@@ -206,8 +206,8 @@ async def test_write_payload_short_ints_memoryview(
     await msg.write_eof()
 
     endians = (
-        (b"6\r\n" b"\x00A\x00B\x00C\r\n" b"0\r\n\r\n"),
-        (b"6\r\n" b"A\x00B\x00C\x00\r\n" b"0\r\n\r\n"),
+        (b"6\r\n\x00A\x00B\x00C\r\n0\r\n\r\n"),
+        (b"6\r\nA\x00B\x00C\x00\r\n0\r\n\r\n"),
     )
     assert buf in endians
 
@@ -227,7 +227,7 @@ async def test_write_payload_2d_shape_memoryview(
     await msg.write(payload)
     await msg.write_eof()
 
-    thing = b"6\r\n" b"ABCDEF\r\n" b"0\r\n\r\n"
+    thing = b"6\r\nABCDEF\r\n0\r\n\r\n"
     assert thing == buf
 
 

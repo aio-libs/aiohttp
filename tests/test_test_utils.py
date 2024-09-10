@@ -218,6 +218,11 @@ def test_make_mocked_request_content() -> None:
     assert req.content is payload
 
 
+async def test_make_mocked_request_empty_payload() -> None:
+    req = make_mocked_request("GET", "/")
+    assert await req.read() == b""
+
+
 def test_make_mocked_request_transport() -> None:
     transport = mock.Mock()
     req = make_mocked_request("GET", "/", transport=transport)

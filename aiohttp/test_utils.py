@@ -42,6 +42,7 @@ from .client_reqrep import ClientResponse
 from .client_ws import ClientWebSocketResponse
 from .helpers import sentinel
 from .http import HttpVersion, RawRequestMessage
+from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import StrOrURL
 from .web import (
     Application,
@@ -269,7 +270,7 @@ class TestClient(Generic[_Request]):
     ) -> None:
         if not isinstance(server, BaseTestServer):
             raise TypeError(
-                "server must be TestServer " "instance, found type: %r" % type(server)
+                "server must be TestServer instance, found type: %r" % type(server)
             )
         self._server = server
         if cookie_jar is None:
@@ -594,7 +595,7 @@ def make_mocked_request(
     writer: Any = sentinel,
     protocol: Any = sentinel,
     transport: Any = sentinel,
-    payload: Any = sentinel,
+    payload: StreamReader = EMPTY_PAYLOAD,
     sslcontext: Optional[SSLContext] = None,
     client_max_size: int = 1024**2,
     loop: Any = ...,
@@ -662,9 +663,6 @@ def make_mocked_request(
 
     protocol.transport = transport
     protocol.writer = writer
-
-    if payload is sentinel:
-        payload = mock.Mock()
 
     req = Request(
         message, payload, protocol, writer, task, loop, client_max_size=client_max_size

@@ -14,7 +14,7 @@ async-timeout==4.0.3 ; python_version < "3.11"
     # via -r requirements/runtime-deps.in
 brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
-cffi==1.17.0
+cffi==1.17.1
     # via pycares
 frozenlist==1.4.1
     # via
@@ -36,5 +36,5 @@ pycparser==2.22
     # via cffi
 uvloop==0.20.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
-yarl==1.9.4
+yarl==1.11.0
     # via -r requirements/runtime-deps.in

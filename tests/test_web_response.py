@@ -2,11 +2,12 @@
 import collections.abc
 import datetime
 import gzip
+import io
 import json
 import re
 import weakref
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Optional
+from typing import Any, AsyncIterator, Optional
 from unittest import mock
 
 import aiosignal
@@ -17,7 +18,8 @@ from re_assert import Matches
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs
 from aiohttp.helpers import ETag
 from aiohttp.http_writer import StreamWriter, _serialize_headers
-from aiohttp.payload import BytesPayload
+from aiohttp.multipart import BodyPartReader, MultipartWriter
+from aiohttp.payload import BytesPayload, StringPayload
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
 
@@ -734,11 +736,8 @@ async def test___repr___after_eof() -> None:
     resp = StreamResponse()
     await resp.prepare(make_request("GET", "/"))
 
-    assert resp.prepared
-
     await resp.write(b"data")
     await resp.write_eof()
-    assert not resp.prepared
     resp_repr = repr(resp)
     assert resp_repr == "<StreamResponse OK eof>"
 
@@ -989,6 +988,48 @@ def test_assign_nonstr_text() -> None:
     assert 4 == resp.content_length
 
 
+mpwriter = MultipartWriter(boundary="x")
+mpwriter.append_payload(StringPayload("test"))
+
+
+async def async_iter() -> AsyncIterator[str]:
+    yield "foo"  # pragma: no cover
+
+
+class CustomIO(io.IOBase):
+    def __init__(self):
+        self._lines = [b"", b"", b"test"]
+
+    def read(self, size: int = -1) -> bytes:
+        return self._lines.pop()
+
+
+@pytest.mark.parametrize(
+    "payload,expected",
+    (
+        ("test", "test"),
+        (CustomIO(), "test"),
+        (io.StringIO("test"), "test"),
+        (io.TextIOWrapper(io.BytesIO(b"test")), "test"),
+        (io.BytesIO(b"test"), "test"),
+        (io.BufferedReader(io.BytesIO(b"test")), "test"),
+        (async_iter(), None),
+        (BodyPartReader("x", CIMultiDictProxy(CIMultiDict()), mock.Mock()), None),
+        (
+            mpwriter,
+            "--x\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: 4\r\n\r\ntest",
+        ),
+    ),
+)
+def test_payload_body_get_text(payload, expected: Optional[str]) -> None:
+    resp = Response(body=payload)
+    if expected is None:
+        with pytest.raises(TypeError):
+            resp.text
+    else:
+        assert resp.text == expected
+
+
 def test_response_set_content_length() -> None:
     resp = Response()
     with pytest.raises(RuntimeError):
@@ -1110,14 +1151,22 @@ def test_content_type_with_set_body() -> None:
     assert resp.content_type == "application/octet-stream"
 
 
-def test_started_when_not_started() -> None:
+def test_prepared_when_not_started() -> None:
     resp = StreamResponse()
     assert not resp.prepared
 
 
-async def test_started_when_started() -> None:
+async def test_prepared_when_started() -> None:
     resp = StreamResponse()
     await resp.prepare(make_request("GET", "/"))
+    assert resp.prepared
+
+
+async def test_prepared_after_eof() -> None:
+    resp = StreamResponse()
+    await resp.prepare(make_request("GET", "/"))
+    await resp.write(b"data")
+    await resp.write_eof()
     assert resp.prepared
 
 

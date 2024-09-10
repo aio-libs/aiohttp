@@ -103,7 +103,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     ) -> None:
         if debug is not ...:
             warnings.warn(
-                "debug argument is no-op since 4.0 " "and scheduled for removal in 5.0",
+                "debug argument is no-op since 4.0 and scheduled for removal in 5.0",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -155,7 +155,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     def _check_frozen(self) -> None:
         if self._frozen:
             raise RuntimeError(
-                "Changing state of started or joined " "application is forbidden"
+                "Changing state of started or joined application is forbidden"
             )
 
     @overload  # type: ignore[override]
@@ -201,7 +201,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     ########
     def _set_loop(self, loop: Optional[asyncio.AbstractEventLoop]) -> None:
         warnings.warn(
-            "_set_loop() is no-op since 4.0 " "and scheduled for removal in 5.0",
+            "_set_loop() is no-op since 4.0 and scheduled for removal in 5.0",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -251,7 +251,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     @property
     def debug(self) -> bool:
         warnings.warn(
-            "debug property is deprecated since 4.0" "and scheduled for removal in 5.0",
+            "debug property is deprecated since 4.0 and scheduled for removal in 5.0",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -430,7 +430,7 @@ class CleanupContext(_CleanupContextBase):
                 await it.__anext__()
             except StopAsyncIteration:
                 pass
-            except Exception as exc:
+            except (Exception, asyncio.CancelledError) as exc:
                 errors.append(exc)
             else:
                 errors.append(RuntimeError(f"{it!r} has more than one 'yield'"))

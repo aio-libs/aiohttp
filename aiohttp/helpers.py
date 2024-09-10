@@ -36,7 +36,6 @@ from typing import (
     List,
     Mapping,
     Optional,
-    Pattern,
     Protocol,
     Tuple,
     Type,
@@ -162,9 +161,9 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
         """Create BasicAuth from url."""
         if not isinstance(url, URL):
             raise TypeError("url should be yarl.URL instance")
-        if url.user is None:
+        if url.user is None and url.password is None:
             return None
-        return cls(url.user, url.password or "", encoding=encoding)
+        return cls(url.user or "", url.password or "", encoding=encoding)
 
     def encode(self) -> str:
         """Encode credentials."""
@@ -396,16 +395,14 @@ def content_disposition_header(
     params is a dict with disposition params.
     """
     if not disptype or not (TOKEN > set(disptype)):
-        raise ValueError("bad content disposition type {!r}" "".format(disptype))
+        raise ValueError(f"bad content disposition type {disptype!r}")
 
     value = disptype
     if params:
         lparams = []
         for key, val in params.items():
             if not key or not (TOKEN > set(key)):
-                raise ValueError(
-                    "bad content disposition parameter" " {!r}={!r}".format(key, val)
-                )
+                raise ValueError(f"bad content disposition parameter {key!r}={val!r}")
             if quote_fields:
                 if key.lower() == "filename":
                     qval = quote(val, "", encoding=_charset)
@@ -486,44 +483,51 @@ try:
 except ImportError:
     pass
 
-_ipv4_pattern = (
-    r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}"
-    r"(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
-)
-_ipv6_pattern = (
-    r"^(?:(?:(?:[A-F0-9]{1,4}:){6}|(?=(?:[A-F0-9]{0,4}:){0,6}"
-    r"(?:[0-9]{1,3}\.){3}[0-9]{1,3}$)(([0-9A-F]{1,4}:){0,5}|:)"
-    r"((:[0-9A-F]{1,4}){1,5}:|:)|::(?:[A-F0-9]{1,4}:){5})"
-    r"(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}"
-    r"(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])|(?:[A-F0-9]{1,4}:){7}"
-    r"[A-F0-9]{1,4}|(?=(?:[A-F0-9]{0,4}:){0,7}[A-F0-9]{0,4}$)"
-    r"(([0-9A-F]{1,4}:){1,7}|:)((:[0-9A-F]{1,4}){1,7}|:)|(?:[A-F0-9]{1,4}:){7}"
-    r":|:(:[A-F0-9]{1,4}){7})$"
-)
-_ipv4_regex = re.compile(_ipv4_pattern)
-_ipv6_regex = re.compile(_ipv6_pattern, flags=re.IGNORECASE)
-_ipv4_regexb = re.compile(_ipv4_pattern.encode("ascii"))
-_ipv6_regexb = re.compile(_ipv6_pattern.encode("ascii"), flags=re.IGNORECASE)
 
+def is_ipv4_address(host: Optional[Union[str, bytes]]) -> bool:
+    """Check if host looks like an IPv4 address.
 
-def _is_ip_address(
-    regex: Pattern[str], regexb: Pattern[bytes], host: Optional[Union[str, bytes]]
-) -> bool:
-    if host is None:
+    This function does not validate that the format is correct, only that
+    the host is a str or bytes, and its all numeric.
+
+    This check is only meant as a heuristic to ensure that
+    a host is not a domain name.
+    """
+    if not host:
         return False
+    # For a host to be an ipv4 address, it must be all numeric.
     if isinstance(host, str):
-        return bool(regex.match(host))
-    elif isinstance(host, (bytes, bytearray, memoryview)):
-        return bool(regexb.match(host))
-    else:
-        raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
+        return host.replace(".", "").isdigit()
+    if isinstance(host, (bytes, bytearray, memoryview)):
+        return host.decode("ascii").replace(".", "").isdigit()
+    raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
 
 
-is_ipv4_address = functools.partial(_is_ip_address, _ipv4_regex, _ipv4_regexb)
-is_ipv6_address = functools.partial(_is_ip_address, _ipv6_regex, _ipv6_regexb)
+def is_ipv6_address(host: Optional[Union[str, bytes]]) -> bool:
+    """Check if host looks like an IPv6 address.
+
+    This function does not validate that the format is correct, only that
+    the host contains a colon and that it is a str or bytes.
+
+    This check is only meant as a heuristic to ensure that
+    a host is not a domain name.
+    """
+    if not host:
+        return False
+    # The host must contain a colon to be an IPv6 address.
+    if isinstance(host, str):
+        return ":" in host
+    if isinstance(host, (bytes, bytearray, memoryview)):
+        return b":" in host
+    raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
 
 
 def is_ip_address(host: Optional[Union[str, bytes, bytearray, memoryview]]) -> bool:
+    """Check if host looks like an IP Address.
+
+    This check is only meant as a heuristic to ensure that
+    a host is not a domain name.
+    """
     return is_ipv4_address(host) or is_ipv6_address(host)
 
 
@@ -705,9 +709,7 @@ class TimerContext(BaseTimerContext):
         task = asyncio.current_task(loop=self._loop)
 
         if task is None:
-            raise RuntimeError(
-                "Timeout context manager should be used " "inside a task"
-            )
+            raise RuntimeError("Timeout context manager should be used inside a task")
 
         if self._cancelled:
             raise asyncio.TimeoutError from None
@@ -983,7 +985,6 @@ class CookieMixin:
         path: str = "/",
         secure: Optional[bool] = None,
         httponly: Optional[bool] = None,
-        version: Optional[str] = None,
         samesite: Optional[str] = None,
     ) -> None:
         """Set or update response cookie.
@@ -1018,8 +1019,6 @@ class CookieMixin:
             c["secure"] = secure
         if httponly is not None:
             c["httponly"] = httponly
-        if version is not None:
-            c["version"] = version
         if samesite is not None:
             c["samesite"] = samesite
 
@@ -1033,7 +1032,14 @@ class CookieMixin:
                 )
 
     def del_cookie(
-        self, name: str, *, domain: Optional[str] = None, path: str = "/"
+        self,
+        name: str,
+        *,
+        domain: Optional[str] = None,
+        path: str = "/",
+        secure: Optional[bool] = None,
+        httponly: Optional[bool] = None,
+        samesite: Optional[str] = None,
     ) -> None:
         """Delete cookie.
 
@@ -1048,6 +1054,9 @@ class CookieMixin:
             expires="Thu, 01 Jan 1970 00:00:00 GMT",
             domain=domain,
             path=path,
+            secure=secure,
+            httponly=httponly,
+            samesite=samesite,
         )
 
 
