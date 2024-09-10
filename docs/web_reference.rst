@@ -660,8 +660,7 @@ and :ref:`aiohttp-web-signals` handlers::
       :class:`ContentCoding`.
 
       *strategy* accepts a :mod:`zlib` compression strategy.
-      Possible values are :data:`zlib.Z_DEFAULT_STRATEGY`,
-      :data:`zlib.Z_FILTERED`, :data:`zlib.Z_HUFFMAN_ONLY`, :data:`zlib.Z_RLE` and :data:`zlib.Z_FIXED`.
+      See :func:`zlib.compressobj` for possible values.
 
       .. seealso:: :attr:`compression`
 

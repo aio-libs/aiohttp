@@ -424,11 +424,6 @@ nitpick_ignore = [
     ("py:class", "cgi.FieldStorage"),  # undocumented
     ("py:meth", "aiohttp.web.UrlDispatcher.register_resource"),  # undocumented
     ("py:func", "aiohttp_debugtoolbar.setup"),  # undocumented
-    ("py:data", "zlib.Z_DEFAULT_STRATEGY"),  # undocumented
-    ("py:data", "zlib.Z_FILTERED"),  # undocumented
-    ("py:data", "zlib.Z_HUFFMAN_ONLY"),  # undocumented
-    ("py:data", "zlib.Z_RLE"),  # undocumented
-    ("py:data", "zlib.Z_FIXED"),  # undocumented
 ]
 
 # -- Options for towncrier_draft extension -----------------------------------
