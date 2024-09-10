@@ -6,6 +6,7 @@ import io
 import json
 import re
 import weakref
+import zlib
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, AsyncIterator, Optional
 from unittest import mock
