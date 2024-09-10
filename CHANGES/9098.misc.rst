@@ -1,0 +1,3 @@
+Remove extra ``MultiDictProxy`` wrapper from ``BaseRequest.query`` -- by :user:`bdraco`.
+
+The underlying object returned from ``yarl`` is already a ``MultiDictProxy``.
