@@ -6,6 +6,7 @@ import json
 import math
 import time
 import warnings
+import zlib
 from concurrent.futures import Executor
 from http import HTTPStatus
 from http.cookies import SimpleCookie
@@ -85,6 +86,7 @@ class StreamResponse(BaseClass, HeadersMixin):
         self._keep_alive: Optional[bool] = None
         self._chunked = False
         self._compression = False
+        self._compression_strategy: int = zlib.Z_DEFAULT_STRATEGY
         self._compression_force: Optional[ContentCoding] = None
         self._cookies = SimpleCookie()
 
@@ -174,7 +176,9 @@ class StreamResponse(BaseClass, HeadersMixin):
             warnings.warn("Chunk size is deprecated #1615", DeprecationWarning)
 
     def enable_compression(
-        self, force: Optional[Union[bool, ContentCoding]] = None
+        self,
+        force: Optional[Union[bool, ContentCoding]] = None,
+        strategy: int = zlib.Z_DEFAULT_STRATEGY,
     ) -> None:
         """Enables response compression encoding."""
         # Backwards compatibility for when force was a bool <0.17.
@@ -190,6 +194,7 @@ class StreamResponse(BaseClass, HeadersMixin):
 
         self._compression = True
         self._compression_force = force
+        self._compression_strategy = strategy
 
     @property
     def headers(self) -> "CIMultiDict[str]":
@@ -404,7 +409,9 @@ class StreamResponse(BaseClass, HeadersMixin):
         if coding != ContentCoding.identity:
             assert self._payload_writer is not None
             self._headers[hdrs.CONTENT_ENCODING] = coding.value
-            self._payload_writer.enable_compression(coding.value)
+            self._payload_writer.enable_compression(
+                coding.value, self._compression_strategy
+            )
             # Compressed payload may have different content length,
             # remove the header
             self._headers.popall(hdrs.CONTENT_LENGTH, None)
