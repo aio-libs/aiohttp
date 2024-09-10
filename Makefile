@@ -25,7 +25,7 @@ FORCE:
 # check_sum.py works perfectly fine but slow when called for every file from $(ALLS)
 # (perhaps even several times for each file).
 # That is why much less readable but faster solution exists
-ifneq (, $(shell which sha256sum))
+ifneq (, $(shell command -v sha256sum))
 %.hash: FORCE
 	$(eval $@_ABS := $(abspath $@))
 	$(eval $@_NAME := $($@_ABS))
@@ -50,7 +50,7 @@ endif
 	@python -m pip install --upgrade pip
 
 .install-cython: .update-pip $(call to-hash,requirements/cython.txt)
-	@pip install -r requirements/cython.txt -c requirements/constraints.txt
+	@python -m pip install -r requirements/cython.in -c requirements/cython.txt
 	@touch .install-cython
 
 aiohttp/_find_header.c: $(call to-hash,aiohttp/hdrs.py ./tools/gen.py)
@@ -58,10 +58,10 @@ aiohttp/_find_header.c: $(call to-hash,aiohttp/hdrs.py ./tools/gen.py)
 
 # _find_headers generator creates _headers.pyi as well
 aiohttp/%.c: aiohttp/%.pyx $(call to-hash,$(CYS)) aiohttp/_find_header.c
-	cython -3 -o $@ $< -I aiohttp
+	cython -3 -o $@ $< -I aiohttp -Werror
 
 vendor/llhttp/node_modules: vendor/llhttp/package.json
-	cd vendor/llhttp; npm install
+	cd vendor/llhttp; npm ci
 
 .llhttp-gen: vendor/llhttp/node_modules
 	$(MAKE) -C vendor/llhttp generate
@@ -74,7 +74,7 @@ generate-llhttp: .llhttp-gen
 cythonize: .install-cython $(PYXS:.pyx=.c)
 
 .install-deps: .install-cython $(PYXS:.pyx=.c) $(call to-hash,$(CYS) $(REQS))
-	@pip install -r requirements/dev.txt -c requirements/constraints.txt
+	@python -m pip install -r requirements/dev.in -c requirements/dev.txt
 	@touch .install-deps
 
 .PHONY: lint
@@ -89,7 +89,7 @@ mypy:
 	mypy
 
 .develop: .install-deps generate-llhttp $(call to-hash,$(PYS) $(CYS) $(CS))
-	pip install -e . -c requirements/constraints.txt
+	python -m pip install -e . -c requirements/runtime-deps.txt
 	@touch .develop
 
 .PHONY: test
@@ -99,12 +99,12 @@ test: .develop
 .PHONY: vtest
 vtest: .develop
 	@pytest -s -v
-	@python -X dev -m pytest -s -v -m dev_mode
+	@python -X dev -m pytest --cov-append -s -v -m dev_mode
 
 .PHONY: vvtest
 vvtest: .develop
 	@pytest -vv
-	@python -X dev -m pytest -s -vv -m dev_mode
+	@python -X dev -m pytest --cov-append -s -vv -m dev_mode
 
 .PHONY: cov-dev
 cov-dev: .develop
@@ -117,15 +117,7 @@ define run_tests_in_docker
 	docker run --rm -ti -v `pwd`:/src -w /src "aiohttp-test-$(1)-$(2)" $(TEST_SPEC)
 endef
 
-.PHONY: test-3.7-no-extensions test-3.7 test-3.8-no-extensions test-3.8 test-3.9-no-extensions test-3.9 test-3.10-no-extensions test-3.10
-test-3.7-no-extensions:
-	$(call run_tests_in_docker,3.7,y)
-test-3.7:
-	$(call run_tests_in_docker,3.7,n)
-test-3.8-no-extensions:
-	$(call run_tests_in_docker,3.8,y)
-test-3.8:
-	$(call run_tests_in_docker,3.8,n)
+.PHONY: test-3.9-no-extensions test
 test-3.9-no-extensions:
 	$(call run_tests_in_docker,3.9,y)
 test-3.9:
@@ -181,15 +173,14 @@ doc:
 doc-spelling:
 	@make -C docs spelling SPHINXOPTS="-W --keep-going -n -E"
 
-.PHONY: compile-deps
-compile-deps: .update-pip $(REQS)
-	pip-compile --no-header --allow-unsafe -q --strip-extras \
-		-o requirements/constraints.txt \
-		requirements/constraints.in
-
 .PHONY: install
 install: .update-pip
-	@pip install -r requirements/dev.txt -c requirements/constraints.txt
+	@python -m pip install -r requirements/dev.in -c requirements/dev.txt
 
 .PHONY: install-dev
 install-dev: .develop
+
+.PHONY: sync-direct-runtime-deps
+sync-direct-runtime-deps:
+	@echo Updating 'requirements/runtime-deps.in' from 'setup.cfg'... >&2
+	@python requirements/sync-direct-runtime-deps.py

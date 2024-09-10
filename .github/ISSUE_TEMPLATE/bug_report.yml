@@ -35,6 +35,8 @@ body:
       1. Implement the following server or a client '...'
       2. Then run '...'
       3. An error occurs.
+      The chances of someone looking at your issue are *vastly* improved if you provide
+      complete code that can be copy/pasted and executed directly in Python.
   validations:
     required: true
 

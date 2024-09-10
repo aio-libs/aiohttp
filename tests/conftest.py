@@ -1,10 +1,11 @@
 # type: ignore
 import asyncio
+import base64
 import os
 import socket
 import ssl
 import sys
-from hashlib import md5, sha256
+from hashlib import md5, sha1, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, List
@@ -13,11 +14,10 @@ from uuid import uuid4
 
 import pytest
 
+from aiohttp.client_proto import ResponseHandler
+from aiohttp.http import WS_KEY
 from aiohttp.test_utils import loop_context
 
-IS_LINUX: bool
-IS_UNIX: bool
-needs_unix: bool
 try:
     import trustme
 
@@ -30,18 +30,12 @@ except ImportError:
 
 pytest_plugins: List[str] = ["aiohttp.pytest_plugin", "pytester"]
 
-IS_HPUX: bool = sys.platform.startswith("hp-ux")
-# Specifies whether the current runtime is HP-UX.
+IS_HPUX = sys.platform.startswith("hp-ux")
 IS_LINUX = sys.platform.startswith("linux")
-# Specifies whether the current runtime is HP-UX.
-IS_UNIX = hasattr(socket, "AF_UNIX")
-# Specifies whether the current runtime is *NIX.
-
-needs_unix = pytest.mark.skipif(not IS_UNIX, reason="requires UNIX sockets")
 
 
 @pytest.fixture
-def tls_certificate_authority() -> Any:
+def tls_certificate_authority() -> trustme.CA:
     if not TRUSTME:
         pytest.xfail("trustme is not supported")
     return trustme.CA()
@@ -51,6 +45,7 @@ def tls_certificate_authority() -> Any:
 def tls_certificate(tls_certificate_authority: Any) -> Any:
     return tls_certificate_authority.issue_cert(
         "localhost",
+        "xn--prklad-4va.localhost",
         "127.0.0.1",
         "::1",
     )
@@ -88,21 +83,21 @@ def tls_certificate_pem_bytes(tls_certificate: Any) -> bytes:
 
 
 @pytest.fixture
-def tls_certificate_fingerprint_sha256(tls_certificate_pem_bytes: Any) -> str:
+def tls_certificate_fingerprint_sha256(tls_certificate_pem_bytes: Any) -> bytes:
     tls_cert_der = ssl.PEM_cert_to_DER_cert(tls_certificate_pem_bytes.decode())
     return sha256(tls_cert_der).digest()
 
 
 @pytest.fixture
 def pipe_name() -> str:
-    name = fr"\\.\pipe\{uuid4().hex}"
+    name = rf"\\.\pipe\{uuid4().hex}"
     return name
 
 
 @pytest.fixture
 def create_mocked_conn(loop: Any):
-    def _proto_factory(conn_closing_result=None, **kwargs):
-        proto = mock.Mock(**kwargs)
+    def _proto_factory(conn_closing_result=None, **kwargs) -> ResponseHandler:
+        proto = mock.create_autospec(ResponseHandler, **kwargs)
         proto.closed = loop.create_future()
         proto.closed.set_result(conn_closing_result)
         return proto
@@ -120,7 +115,7 @@ def unix_sockname(tmp_path: Any, tmp_path_factory: Any):
     # mostly 104 but sometimes it can be down to 100.
 
     # Ref: https://github.com/aio-libs/aiohttp/issues/3572
-    if not IS_UNIX:
+    if not hasattr(socket, "AF_UNIX"):
         pytest.skip("requires UNIX sockets")
 
     max_sock_len = 92 if IS_HPUX else 108 if IS_LINUX else 100
@@ -188,16 +183,56 @@ def unix_sockname(tmp_path: Any, tmp_path_factory: Any):
 
 @pytest.fixture
 def selector_loop() -> None:
-    if sys.version_info < (3, 7):
-        policy = asyncio.get_event_loop_policy()
-        policy._loop_factory = asyncio.SelectorEventLoop
-    else:
-        if sys.version_info >= (3, 8):
-            policy = asyncio.WindowsSelectorEventLoopPolicy()
-        else:
-            policy = asyncio.DefaultEventLoopPolicy()
-        asyncio.set_event_loop_policy(policy)
+    policy = asyncio.WindowsSelectorEventLoopPolicy()
+    asyncio.set_event_loop_policy(policy)
 
     with loop_context(policy.new_event_loop) as _loop:
         asyncio.set_event_loop(_loop)
         yield _loop
+
+
+@pytest.fixture
+def netrc_contents(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    request: pytest.FixtureRequest,
+):
+    """
+    Prepare :file:`.netrc` with given contents.
+
+    Monkey-patches :envvar:`NETRC` to point to created file.
+    """
+    netrc_contents = getattr(request, "param", None)
+
+    netrc_file_path = tmp_path / ".netrc"
+    if netrc_contents is not None:
+        netrc_file_path.write_text(netrc_contents)
+
+    monkeypatch.setenv("NETRC", str(netrc_file_path))
+
+    return netrc_file_path
+
+
+@pytest.fixture
+def start_connection():
+    with mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        autospec=True,
+        spec_set=True,
+    ) as start_connection_mock:
+        yield start_connection_mock
+
+
+@pytest.fixture
+def key_data() -> bytes:
+    return os.urandom(16)
+
+
+@pytest.fixture
+def key(key_data: bytes) -> bytes:
+    return base64.b64encode(key_data)
+
+
+@pytest.fixture
+def ws_key(key: bytes) -> bytes:
+    return base64.b64encode(sha1(key + WS_KEY).digest()).decode()

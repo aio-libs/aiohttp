@@ -6,16 +6,20 @@
 version: 2
 
 submodules:
-  include: all  # []
+  include: all
   exclude: []
   recursive: true
 
 build:
-  image: latest
-python:
-  version: 3.8
-  install:
-  - method: pip
-    path: .
-  - requirements: requirements/doc.txt
+  os: ubuntu-22.04
+  tools:
+    python: "3.11"
+
+  jobs:
+    post_create_environment:
+    - >-
+      pip install
+      . -c requirements/runtime-deps.txt
+      -r requirements/doc.in -c requirements/doc.txt
+
 ...

@@ -1,4 +1,0 @@
-Fixed the multipart POST requests processing to always release file
-descriptors for the ``tempfile.Temporaryfile``-created
-``_io.BufferedRandom`` instances of files sent within multipart request
-bodies via HTTP POST requests.

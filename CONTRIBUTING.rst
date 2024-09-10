@@ -31,6 +31,6 @@ Workflow is pretty straightforward:
 .. important::
 
     Please open the "`contributing <https://docs.aiohttp.org/en/stable/contributing.html>`_"
-    documentation page to get detailed informations about all steps.
+    documentation page to get detailed information about all steps.
 
 .. _GitHub: https://github.com/aio-libs/aiohttp

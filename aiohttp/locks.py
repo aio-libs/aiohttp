@@ -1,16 +1,12 @@
 import asyncio
 import collections
-from typing import Any, Optional
-
-try:
-    from typing import Deque
-except ImportError:
-    from typing_extensions import Deque
+from typing import Any, Deque, Optional
 
 
 class EventResultOrError:
-    """
-    This class wrappers the Event asyncio lock allowing either awake the
+    """Event asyncio lock helper class.
+
+    Wraps the Event asyncio lock allowing either to awake the
     locked Tasks without any error or raising an exception.
 
     thanks to @vorpalsmith for the simple design.
@@ -18,9 +14,9 @@ class EventResultOrError:
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
-        self._exc = None  # type: Optional[BaseException]
+        self._exc: Optional[BaseException] = None
         self._event = asyncio.Event()
-        self._waiters = collections.deque()  # type: Deque[asyncio.Future[Any]]
+        self._waiters: Deque[asyncio.Future[Any]] = collections.deque()
 
     def set(self, exc: Optional[BaseException] = None) -> None:
         self._exc = exc
