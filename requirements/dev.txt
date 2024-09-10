@@ -95,7 +95,7 @@ importlib-metadata==8.4.0
     # via
     #   build
     #   sphinx
-importlib-resources==6.4.4
+importlib-resources==6.4.5
     # via towncrier
 incremental==24.7.2
     # via towncrier
