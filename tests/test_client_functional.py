@@ -34,7 +34,7 @@ from aiohttp.client_exceptions import (
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import Connection
 from aiohttp.http_writer import StreamWriter
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
+from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer, TestClient
 from aiohttp.test_utils import unused_port
 
 
