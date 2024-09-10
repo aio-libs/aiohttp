@@ -78,6 +78,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         "_chunked",
         "_compression",
         "_compression_force",
+        "_compression_strategy",
         "_req",
         "_payload_writer",
         "_eof_sent",
