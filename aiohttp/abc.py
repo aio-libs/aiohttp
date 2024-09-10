@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import socket
+import zlib
 from abc import ABC, abstractmethod
 from collections.abc import Sized
 from http.cookies import BaseCookie, Morsel
@@ -208,7 +209,9 @@ class AbstractStreamWriter(ABC):
         """Flush the write buffer."""
 
     @abstractmethod
-    def enable_compression(self, encoding: str = "deflate") -> None:
+    def enable_compression(
+        self, encoding: str = "deflate", strategy: int = zlib.Z_DEFAULT_STRATEGY
+    ) -> None:
         """Enable HTTP body compression"""
 
     @abstractmethod
