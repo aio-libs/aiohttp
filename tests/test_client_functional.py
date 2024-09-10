@@ -1540,18 +1540,24 @@ async def test_POST_MultiDict(aiohttp_client: AiohttpClient) -> None:
 
 
 @pytest.mark.parametrize("data", (None, b""))
-async def test_GET_DEFLATE(aiohttp_client: AiohttpClient, data: Optional[bytes]) -> None:
+async def test_GET_DEFLATE(
+    aiohttp_client: AiohttpClient, data: Optional[bytes]
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.json_response({"ok": True})
 
     write_mock = None
     original_write_bytes = ClientRequest.write_bytes
 
-    async def write_bytes(self: ClientRequest, writer: StreamWriter, conn: Connection) -> None:
+    async def write_bytes(
+        self: ClientRequest, writer: StreamWriter, conn: Connection
+    ) -> None:
         nonlocal write_mock
         original_write = writer._write
 
-        with mock.patch.object(writer, "_write", autospec=True, spec_set=True, side_effect=original_write) as write_mock:
+        with mock.patch.object(
+            writer, "_write", autospec=True, spec_set=True, side_effect=original_write
+        ) as write_mock:
             await original_write_bytes(self, writer, conn)
 
     with mock.patch.object(ClientRequest, "write_bytes", write_bytes):
