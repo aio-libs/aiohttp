@@ -649,7 +649,7 @@ and :ref:`aiohttp-web-signals` handlers::
 
       .. seealso:: :meth:`enable_compression`
 
-   .. method:: enable_compression(force=None)
+   .. method:: enable_compression(force=None, strategy=zlib.Z_DEFAULT_STRATEGY)
 
       Enable compression.
 
@@ -658,6 +658,9 @@ and :ref:`aiohttp-web-signals` handlers::
 
       *Accept-Encoding* is not checked if *force* is set to a
       :class:`ContentCoding`.
+
+      *strategy* accepts a :mod:`zlib` compression strategy.
+      See :func:`zlib.compressobj` for possible values.
 
       .. seealso:: :attr:`compression`
 
