@@ -115,7 +115,7 @@ markupsafe==2.1.5
     # via jinja2
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.0.5
+multidict==6.1.0
     # via
     #   -r requirements/multidict.in
     #   -r requirements/runtime-deps.in
@@ -264,6 +264,7 @@ typing-extensions==4.12.2
     # via
     #   aioredis
     #   annotated-types
+    #   multidict
     #   mypy
     #   pydantic
     #   pydantic-core
