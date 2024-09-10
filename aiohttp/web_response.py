@@ -6,6 +6,7 @@ import json
 import math
 import time
 import warnings
+import zlib
 from concurrent.futures import Executor
 from http import HTTPStatus
 from typing import (
