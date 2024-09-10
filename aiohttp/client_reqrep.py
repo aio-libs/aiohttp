@@ -423,9 +423,8 @@ class ClientRequest:
 
     def update_content_encoding(self, data: Any, compress: Union[bool, str]) -> None:
         """Set request content encoding."""
+        self.compress = None
         if not data:
-            # Don't compress an empty body.
-            self.compress = None
             return
 
         enc = self.headers.get(hdrs.CONTENT_ENCODING, "").lower()
