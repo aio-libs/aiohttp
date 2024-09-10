@@ -203,7 +203,7 @@ class ClientRequest:
         cookies: Optional[LooseCookies] = None,
         auth: Optional[BasicAuth] = None,
         version: http.HttpVersion = http.HttpVersion11,
-        compress: Optional[str] = None,
+        compress: Union[str, bool, None] = None,
         chunked: Optional[bool] = None,
         expect100: bool = False,
         loop: asyncio.AbstractEventLoop,
@@ -424,7 +424,9 @@ class ClientRequest:
 
     def update_content_encoding(self, data: Any) -> None:
         """Set request content encoding."""
-        if data is None:
+        if not data:
+            # Don't compress an empty body.
+            self.compress = None
             return
 
         enc = self.headers.get(hdrs.CONTENT_ENCODING, "").lower()
@@ -640,7 +642,7 @@ class ClientRequest:
         )
 
         if self.compress:
-            writer.enable_compression(self.compress)
+            writer.enable_compression(self.compress)  # type: ignore[arg-type]
 
         if self.chunked is not None:
             writer.enable_chunking()
