@@ -205,7 +205,7 @@ class AbstractStreamWriter(ABC):
 
     @abstractmethod
     def enable_compression(
-        self, encoding: str = "deflate", strategy: int = ...
+        self, encoding: str = "deflate", strategy: int = zlib.Z_DEFAULT_STRATEGY
     ) -> None:
         """Enable HTTP body compression"""
 
