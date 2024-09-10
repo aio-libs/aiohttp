@@ -36,7 +36,6 @@ from aiohttp.connector import Connection
 from aiohttp.http_writer import StreamWriter
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import unused_port
-from aiohttp.typedefs import Handler
 
 
 @pytest.fixture
