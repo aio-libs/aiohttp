@@ -48,7 +48,7 @@ pyenchant==3.2.2
     # via sphinxcontrib-spelling
 pygments==2.18.0
     # via sphinx
-pytz==2024.1
+pytz==2024.2
     # via babel
 requests==2.32.3
     # via sphinx
