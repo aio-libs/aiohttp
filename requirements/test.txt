@@ -100,7 +100,7 @@ regex==2024.7.24
     # via re-assert
 requests==2.32.3
     # via python-on-whales
-rich==13.8.0
+rich==13.8.1
     # via typer
 setuptools-git==1.2
     # via -r requirements/test.in
