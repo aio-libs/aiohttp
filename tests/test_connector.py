@@ -21,6 +21,7 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
+    Union,
 )
 from unittest import mock
 
