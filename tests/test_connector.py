@@ -1084,7 +1084,7 @@ async def test_tcp_connector_multiple_hosts_one_timeout(
     )
 
     async def _resolve_host(
-        host: str, por: intt, traces: Optional[Sequence[Trace]] = None
+        host: str, port: int, traces: Optional[Sequence[Trace]] = None
     ) -> List[ResolveResult]:
         return [
             {
@@ -1097,8 +1097,6 @@ async def test_tcp_connector_multiple_hosts_one_timeout(
             }
             for ip in ips
         ]
-
-    conn._resolve_host = _resolve_host
 
     timeout_error = False
     connected = False
@@ -1121,7 +1119,7 @@ async def test_tcp_connector_multiple_hosts_one_timeout(
             tr = create_mocked_conn(loop)
             pr = create_mocked_conn(loop)
 
-            def get_extra_info(param):
+            def get_extra_info(param: str) -> Union[bool, mock.Mock]:
                 if param == "sslcontext":
                     return True
 
@@ -1137,15 +1135,15 @@ async def test_tcp_connector_multiple_hosts_one_timeout(
 
         assert False
 
-    conn._loop.create_connection = create_connection
-
-    established_connection = await conn.connect(req, [], ClientTimeout())
-    assert ips == ips_tried
-
-    assert timeout_error
-    assert connected
-
-    established_connection.close()
+    with mock.patch.object(conn, "_resolve_host", _resolve_host):
+        with mock.patch.object(conn._loop, "create_connection", create_connection):
+            established_connection = await conn.connect(req, [], ClientTimeout())
+            assert ips == ips_tried
+        
+            assert timeout_error
+            assert connected
+        
+            established_connection.close()
 
 
 async def test_tcp_connector_resolve_host(loop: asyncio.AbstractEventLoop) -> None:
