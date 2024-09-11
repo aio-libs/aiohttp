@@ -1104,6 +1104,7 @@ class TestStreamReader:
 async def test_empty_stream_reader() -> None:
     s = streams.EmptyStreamReader()
     assert str(s) is not None
+    assert repr(s) == "<EmptyStreamReader>"
     assert s.set_exception(ValueError()) is None  # type: ignore[func-returns-value]
     assert s.exception() is None
     assert s.feed_eof() is None  # type: ignore[func-returns-value]
