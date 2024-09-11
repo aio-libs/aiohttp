@@ -46,7 +46,7 @@ pillow==9.5.0
     #   blockdiag
 pygments==2.18.0
     # via sphinx
-pytz==2024.1
+pytz==2024.2
     # via babel
 requests==2.32.3
     # via sphinx
