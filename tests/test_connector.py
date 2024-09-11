@@ -1139,10 +1139,10 @@ async def test_tcp_connector_multiple_hosts_one_timeout(
         with mock.patch.object(conn._loop, "create_connection", create_connection):
             established_connection = await conn.connect(req, [], ClientTimeout())
             assert ips == ips_tried
-        
+
             assert timeout_error
             assert connected
-        
+
             established_connection.close()
 
 
