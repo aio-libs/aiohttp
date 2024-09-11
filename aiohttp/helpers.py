@@ -3,6 +3,7 @@
 import asyncio
 import base64
 import binascii
+import contextlib
 import dataclasses
 import datetime
 import enum
@@ -29,41 +30,38 @@ from typing import (
     Callable,
     ContextManager,
     Dict,
-    Generator,
     Generic,
     Iterable,
     Iterator,
     List,
     Mapping,
     Optional,
-    Pattern,
+    Protocol,
     Tuple,
     Type,
     TypeVar,
     Union,
-    cast,
+    final,
+    get_args,
     overload,
 )
 from urllib.parse import quote
 from urllib.request import getproxies, proxy_bypass
 
-import async_timeout
-from multidict import CIMultiDict, MultiDict, MultiDictProxy
-from typing_extensions import Protocol, final
+from multidict import CIMultiDict, MultiDict, MultiDictProxy, MultiMapping
 from yarl import URL
 
 from . import hdrs
 from .log import client_logger
 from .typedefs import PathLike  # noqa
 
-if sys.version_info >= (3, 8):
-    from typing import get_args
+if sys.version_info >= (3, 11):
+    import asyncio as async_timeout
 else:
-    from typing_extensions import get_args
+    import async_timeout
 
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
-PY_38 = sys.version_info >= (3, 8)
 PY_310 = sys.version_info >= (3, 10)
 
 COOKIE_MAX_LENGTH = 4096
@@ -107,21 +105,6 @@ SEPARATORS = {
     chr(9),
 }
 TOKEN = CHAR ^ CTL ^ SEPARATORS
-
-
-class noop:
-    def __await__(self) -> Generator[None, None, None]:
-        yield
-
-
-if PY_38:
-    iscoroutinefunction = asyncio.iscoroutinefunction
-else:
-
-    def iscoroutinefunction(func: Any) -> bool:
-        while isinstance(func, functools.partial):
-            func = func.func
-        return asyncio.iscoroutinefunction(func)
 
 
 json_re = re.compile(r"(?:application/|[\w.-]+/[\w.+-]+?\+)json$", re.IGNORECASE)
@@ -178,9 +161,9 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
         """Create BasicAuth from url."""
         if not isinstance(url, URL):
             raise TypeError("url should be yarl.URL instance")
-        if url.user is None:
+        if url.user is None and url.password is None:
             return None
-        return cls(url.user, url.password or "", encoding=encoding)
+        return cls(url.user or "", url.password or "", encoding=encoding)
 
     def encode(self) -> str:
         """Encode credentials."""
@@ -229,8 +212,11 @@ def netrc_from_env() -> Optional[netrc.netrc]:
     except netrc.NetrcParseError as e:
         client_logger.warning("Could not parse .netrc file: %s", e)
     except OSError as e:
+        netrc_exists = False
+        with contextlib.suppress(OSError):
+            netrc_exists = netrc_path.is_file()
         # we couldn't read the file (doesn't exist, permissions, etc.)
-        if netrc_env or netrc_path.is_file():
+        if netrc_env or netrc_exists:
             # only warn if the environment wanted us to load it,
             # or it appears like the default file does actually exist
             client_logger.warning("Could not read .netrc file: %s", e)
@@ -242,6 +228,35 @@ def netrc_from_env() -> Optional[netrc.netrc]:
 class ProxyInfo:
     proxy: URL
     proxy_auth: Optional[BasicAuth]
+
+
+def basicauth_from_netrc(netrc_obj: Optional[netrc.netrc], host: str) -> BasicAuth:
+    """
+    Return :py:class:`~aiohttp.BasicAuth` credentials for ``host`` from ``netrc_obj``.
+
+    :raises LookupError: if ``netrc_obj`` is :py:data:`None` or if no
+            entry is found for the ``host``.
+    """
+    if netrc_obj is None:
+        raise LookupError("No .netrc file found")
+    auth_from_netrc = netrc_obj.authenticators(host)
+
+    if auth_from_netrc is None:
+        raise LookupError(f"No entry for {host!s} found in the `.netrc` file.")
+    login, account, password = auth_from_netrc
+
+    # TODO(PY311): username = login or account
+    # Up to python 3.10, account could be None if not specified,
+    # and login will be empty string if not specified. From 3.11,
+    # login and account will be empty string if not specified.
+    username = login if (login or account is None) else account
+
+    # TODO(PY311): Remove this, as password will be empty string
+    # if not specified
+    if password is None:
+        password = ""
+
+    return BasicAuth(username, password)
 
 
 def proxies_from_env() -> Dict[str, ProxyInfo]:
@@ -261,16 +276,11 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
             )
             continue
         if netrc_obj and auth is None:
-            auth_from_netrc = None
             if proxy.host is not None:
-                auth_from_netrc = netrc_obj.authenticators(proxy.host)
-            if auth_from_netrc is not None:
-                # auth_from_netrc is a (`user`, `account`, `password`) tuple,
-                # `user` and `account` both can be username,
-                # if `user` is None, use `account`
-                *logins, password = auth_from_netrc
-                login = logins[0] if logins[0] else logins[-1]
-                auth = BasicAuth(cast(str, login), cast(str, password))
+                try:
+                    auth = basicauth_from_netrc(netrc_obj, proxy.host)
+                except LookupError:
+                    auth = None
         ret[proto] = ProxyInfo(proxy, auth)
     return ret
 
@@ -362,7 +372,10 @@ def quoted_string(content: str) -> str:
 
 
 def content_disposition_header(
-    disptype: str, quote_fields: bool = True, _charset: str = "utf-8", **params: str
+    disptype: str,
+    quote_fields: bool = True,
+    _charset: str = "utf-8",
+    params: Optional[Dict[str, str]] = None,
 ) -> str:
     """Sets ``Content-Disposition`` header for MIME.
 
@@ -382,16 +395,14 @@ def content_disposition_header(
     params is a dict with disposition params.
     """
     if not disptype or not (TOKEN > set(disptype)):
-        raise ValueError("bad content disposition type {!r}" "".format(disptype))
+        raise ValueError(f"bad content disposition type {disptype!r}")
 
     value = disptype
     if params:
         lparams = []
         for key, val in params.items():
             if not key or not (TOKEN > set(key)):
-                raise ValueError(
-                    "bad content disposition parameter" " {!r}={!r}".format(key, val)
-                )
+                raise ValueError(f"bad content disposition parameter {key!r}={val!r}")
             if quote_fields:
                 if key.lower() == "filename":
                     qval = quote(val, "", encoding=_charset)
@@ -472,52 +483,52 @@ try:
 except ImportError:
     pass
 
-_ipv4_pattern = (
-    r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}"
-    r"(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
-)
-_ipv6_pattern = (
-    r"^(?:(?:(?:[A-F0-9]{1,4}:){6}|(?=(?:[A-F0-9]{0,4}:){0,6}"
-    r"(?:[0-9]{1,3}\.){3}[0-9]{1,3}$)(([0-9A-F]{1,4}:){0,5}|:)"
-    r"((:[0-9A-F]{1,4}){1,5}:|:)|::(?:[A-F0-9]{1,4}:){5})"
-    r"(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}"
-    r"(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])|(?:[A-F0-9]{1,4}:){7}"
-    r"[A-F0-9]{1,4}|(?=(?:[A-F0-9]{0,4}:){0,7}[A-F0-9]{0,4}$)"
-    r"(([0-9A-F]{1,4}:){1,7}|:)((:[0-9A-F]{1,4}){1,7}|:)|(?:[A-F0-9]{1,4}:){7}"
-    r":|:(:[A-F0-9]{1,4}){7})$"
-)
-_ipv4_regex = re.compile(_ipv4_pattern)
-_ipv6_regex = re.compile(_ipv6_pattern, flags=re.IGNORECASE)
-_ipv4_regexb = re.compile(_ipv4_pattern.encode("ascii"))
-_ipv6_regexb = re.compile(_ipv6_pattern.encode("ascii"), flags=re.IGNORECASE)
 
+def is_ipv4_address(host: Optional[Union[str, bytes]]) -> bool:
+    """Check if host looks like an IPv4 address.
 
-def _is_ip_address(
-    regex: Pattern[str], regexb: Pattern[bytes], host: Optional[Union[str, bytes]]
-) -> bool:
-    if host is None:
+    This function does not validate that the format is correct, only that
+    the host is a str or bytes, and its all numeric.
+
+    This check is only meant as a heuristic to ensure that
+    a host is not a domain name.
+    """
+    if not host:
         return False
+    # For a host to be an ipv4 address, it must be all numeric.
     if isinstance(host, str):
-        return bool(regex.match(host))
-    elif isinstance(host, (bytes, bytearray, memoryview)):
-        return bool(regexb.match(host))
-    else:
-        raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
+        return host.replace(".", "").isdigit()
+    if isinstance(host, (bytes, bytearray, memoryview)):
+        return host.decode("ascii").replace(".", "").isdigit()
+    raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
 
 
-is_ipv4_address = functools.partial(_is_ip_address, _ipv4_regex, _ipv4_regexb)
-is_ipv6_address = functools.partial(_is_ip_address, _ipv6_regex, _ipv6_regexb)
+def is_ipv6_address(host: Optional[Union[str, bytes]]) -> bool:
+    """Check if host looks like an IPv6 address.
+
+    This function does not validate that the format is correct, only that
+    the host contains a colon and that it is a str or bytes.
+
+    This check is only meant as a heuristic to ensure that
+    a host is not a domain name.
+    """
+    if not host:
+        return False
+    # The host must contain a colon to be an IPv6 address.
+    if isinstance(host, str):
+        return ":" in host
+    if isinstance(host, (bytes, bytearray, memoryview)):
+        return b":" in host
+    raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
 
 
 def is_ip_address(host: Optional[Union[str, bytes, bytearray, memoryview]]) -> bool:
+    """Check if host looks like an IP Address.
+
+    This check is only meant as a heuristic to ensure that
+    a host is not a domain name.
+    """
     return is_ipv4_address(host) or is_ipv6_address(host)
-
-
-def next_whole_second() -> datetime.datetime:
-    """Return current time rounded up to the next whole second."""
-    return datetime.datetime.now(datetime.timezone.utc).replace(
-        microsecond=0
-    ) + datetime.timedelta(seconds=0)
 
 
 _cached_current_datetime: Optional[int] = None
@@ -575,7 +586,7 @@ def _weakref_handle(info: "Tuple[weakref.ref[object], str]") -> None:
 def weakref_handle(
     ob: object,
     name: str,
-    timeout: float,
+    timeout: Optional[float],
     loop: asyncio.AbstractEventLoop,
     timeout_ceil_threshold: float = 5,
 ) -> Optional[asyncio.TimerHandle]:
@@ -590,16 +601,27 @@ def weakref_handle(
 
 def call_later(
     cb: Callable[[], Any],
-    timeout: float,
+    timeout: Optional[float],
     loop: asyncio.AbstractEventLoop,
     timeout_ceil_threshold: float = 5,
 ) -> Optional[asyncio.TimerHandle]:
-    if timeout is not None and timeout > 0:
-        when = loop.time() + timeout
-        if timeout > timeout_ceil_threshold:
-            when = ceil(when)
-        return loop.call_at(when, cb)
-    return None
+    if timeout is None or timeout <= 0:
+        return None
+    now = loop.time()
+    when = calculate_timeout_when(now, timeout, timeout_ceil_threshold)
+    return loop.call_at(when, cb)
+
+
+def calculate_timeout_when(
+    loop_time: float,
+    timeout: float,
+    timeout_ceiling_threshold: float,
+) -> float:
+    """Calculate when to execute a timeout."""
+    when = loop_time + timeout
+    if timeout > timeout_ceiling_threshold:
+        return ceil(when)
+    return when
 
 
 class TimeoutHandle:
@@ -626,7 +648,7 @@ class TimeoutHandle:
     def close(self) -> None:
         self._callbacks.clear()
 
-    def start(self) -> Optional[asyncio.Handle]:
+    def start(self) -> Optional[asyncio.TimerHandle]:
         timeout = self._timeout
         if timeout is not None and timeout > 0:
             when = self._loop.time() + timeout
@@ -653,7 +675,8 @@ class TimeoutHandle:
 
 
 class BaseTimerContext(ContextManager["BaseTimerContext"]):
-    pass
+    def assert_timeout(self) -> None:
+        """Raise TimeoutError if timeout has been exceeded."""
 
 
 class TimerNoop(BaseTimerContext):
@@ -677,13 +700,16 @@ class TimerContext(BaseTimerContext):
         self._tasks: List[asyncio.Task[Any]] = []
         self._cancelled = False
 
+    def assert_timeout(self) -> None:
+        """Raise TimeoutError if timer has already been cancelled."""
+        if self._cancelled:
+            raise asyncio.TimeoutError from None
+
     def __enter__(self) -> BaseTimerContext:
         task = asyncio.current_task(loop=self._loop)
 
         if task is None:
-            raise RuntimeError(
-                "Timeout context manager should be used " "inside a task"
-            )
+            raise RuntimeError("Timeout context manager should be used inside a task")
 
         if self._cancelled:
             raise asyncio.TimeoutError from None
@@ -698,7 +724,7 @@ class TimerContext(BaseTimerContext):
         exc_tb: Optional[TracebackType],
     ) -> Optional[bool]:
         if self._tasks:
-            self._tasks.pop()
+            self._tasks.pop()  # type: ignore[unused-awaitable]
 
         if exc_type is asyncio.CancelledError and self._cancelled:
             raise asyncio.TimeoutError from None
@@ -727,16 +753,17 @@ def ceil_timeout(
 
 
 class HeadersMixin:
-
     __slots__ = ("_content_type", "_content_dict", "_stored_content_type")
+
+    _headers: MultiMapping[str]
 
     def __init__(self) -> None:
         super().__init__()
         self._content_type: Optional[str] = None
         self._content_dict: Optional[Dict[str, str]] = None
-        self._stored_content_type: Union[str, _SENTINEL] = sentinel
+        self._stored_content_type: Union[str, None, _SENTINEL] = sentinel
 
-    def _parse_content_type(self, raw: str) -> None:
+    def _parse_content_type(self, raw: Optional[str]) -> None:
         self._stored_content_type = raw
         if raw is None:
             # default value according to RFC 2616
@@ -745,31 +772,31 @@ class HeadersMixin:
         else:
             msg = HeaderParser().parsestr("Content-Type: " + raw)
             self._content_type = msg.get_content_type()
-            params = msg.get_params()
+            params = msg.get_params(())
             self._content_dict = dict(params[1:])  # First element is content type again
 
     @property
     def content_type(self) -> str:
         """The value of content part for Content-Type HTTP header."""
-        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore[attr-defined]
+        raw = self._headers.get(hdrs.CONTENT_TYPE)
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
-        return self._content_type  # type: ignore[return-value]
+        assert self._content_type is not None
+        return self._content_type
 
     @property
     def charset(self) -> Optional[str]:
         """The value of charset part for Content-Type HTTP header."""
-        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore[attr-defined]
+        raw = self._headers.get(hdrs.CONTENT_TYPE)
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
-        return self._content_dict.get("charset")  # type: ignore[union-attr]
+        assert self._content_dict is not None
+        return self._content_dict.get("charset")
 
     @property
     def content_length(self) -> Optional[int]:
         """The value of Content-Length HTTP header."""
-        content_length = self._headers.get(  # type: ignore[attr-defined]
-            hdrs.CONTENT_LENGTH
-        )
+        content_length = self._headers.get(hdrs.CONTENT_LENGTH)
 
         if content_length is not None:
             return int(content_length)
@@ -782,9 +809,38 @@ def set_result(fut: "asyncio.Future[_T]", result: _T) -> None:
         fut.set_result(result)
 
 
-def set_exception(fut: "asyncio.Future[_T]", exc: BaseException) -> None:
-    if not fut.done():
-        fut.set_exception(exc)
+_EXC_SENTINEL = BaseException()
+
+
+class ErrorableProtocol(Protocol):
+    def set_exception(
+        self,
+        exc: Union[Type[BaseException], BaseException],
+        exc_cause: BaseException = ...,
+    ) -> None: ...  # pragma: no cover
+
+
+def set_exception(
+    fut: Union["asyncio.Future[_T]", ErrorableProtocol],
+    exc: Union[Type[BaseException], BaseException],
+    exc_cause: BaseException = _EXC_SENTINEL,
+) -> None:
+    """Set future exception.
+
+    If the future is marked as complete, this function is a no-op.
+
+    :param exc_cause: An exception that is a direct cause of ``exc``.
+                      Only set if provided.
+    """
+    if asyncio.isfuture(fut) and fut.done():
+        return
+
+    exc_is_sentinel = exc_cause is _EXC_SENTINEL
+    exc_causes_itself = exc is exc_cause
+    if not exc_is_sentinel and not exc_causes_itself:
+        exc.__cause__ = exc_cause
+
+    fut.set_exception(exc)
 
 
 @functools.total_ordering
@@ -806,8 +862,11 @@ class AppKey(Generic[_T]):
                 module: str = frame.f_globals["__name__"]
                 break
             frame = frame.f_back
+        else:
+            raise RuntimeError("Failed to get module name.")
 
-        self._name = module + "." + name
+        # https://github.com/python/mypy/issues/14209
+        self._name = module + "." + name  # type: ignore[possibly-undefined]
         self._t = t
 
     def __lt__(self, other: object) -> bool:
@@ -823,7 +882,7 @@ class AppKey(Generic[_T]):
                 t = get_args(self.__orig_class__)[0]
 
         if t is None:
-            t_repr = "<<Unkown>>"
+            t_repr = "<<Unknown>>"
         elif isinstance(t, type):
             if t.__module__ == "builtins":
                 t_repr = t.__qualname__
@@ -848,12 +907,10 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
         )
 
     @overload  # type: ignore[override]
-    def __getitem__(self, key: AppKey[_T]) -> _T:
-        ...
+    def __getitem__(self, key: AppKey[_T]) -> _T: ...
 
     @overload
-    def __getitem__(self, key: str) -> Any:
-        ...
+    def __getitem__(self, key: str) -> Any: ...
 
     def __getitem__(self, key: Union[str, AppKey[_T]]) -> Any:
         for mapping in self._maps:
@@ -864,16 +921,13 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
         raise KeyError(key)
 
     @overload  # type: ignore[override]
-    def get(self, key: AppKey[_T], default: _S) -> Union[_T, _S]:
-        ...
+    def get(self, key: AppKey[_T], default: _S) -> Union[_T, _S]: ...
 
     @overload
-    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]:
-        ...
+    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]: ...
 
     @overload
-    def get(self, key: str, default: Any = ...) -> Any:
-        ...
+    def get(self, key: str, default: Any = ...) -> Any: ...
 
     def get(self, key: Union[str, AppKey[_T]], default: Any = None) -> Any:
         try:
@@ -914,10 +968,10 @@ class CookieMixin:
         super().__init__()
         # Mypy doesn't like that _cookies isn't in __slots__.
         # See the comment on this class's __slots__ for why this is OK.
-        self._cookies: SimpleCookie[str] = SimpleCookie()  # type: ignore[misc]
+        self._cookies = SimpleCookie()  # type: ignore[misc]
 
     @property
-    def cookies(self) -> "SimpleCookie[str]":
+    def cookies(self) -> SimpleCookie:
         return self._cookies
 
     def set_cookie(
@@ -931,7 +985,6 @@ class CookieMixin:
         path: str = "/",
         secure: Optional[bool] = None,
         httponly: Optional[bool] = None,
-        version: Optional[str] = None,
         samesite: Optional[str] = None,
     ) -> None:
         """Set or update response cookie.
@@ -966,8 +1019,6 @@ class CookieMixin:
             c["secure"] = secure
         if httponly is not None:
             c["httponly"] = httponly
-        if version is not None:
-            c["version"] = version
         if samesite is not None:
             c["samesite"] = samesite
 
@@ -981,7 +1032,14 @@ class CookieMixin:
                 )
 
     def del_cookie(
-        self, name: str, *, domain: Optional[str] = None, path: str = "/"
+        self,
+        name: str,
+        *,
+        domain: Optional[str] = None,
+        path: str = "/",
+        secure: Optional[bool] = None,
+        httponly: Optional[bool] = None,
+        samesite: Optional[str] = None,
     ) -> None:
         """Delete cookie.
 
@@ -996,19 +1054,20 @@ class CookieMixin:
             expires="Thu, 01 Jan 1970 00:00:00 GMT",
             domain=domain,
             path=path,
+            secure=secure,
+            httponly=httponly,
+            samesite=samesite,
         )
 
 
-def populate_with_cookies(
-    headers: "CIMultiDict[str]", cookies: "SimpleCookie[str]"
-) -> None:
+def populate_with_cookies(headers: "CIMultiDict[str]", cookies: SimpleCookie) -> None:
     for cookie in cookies.values():
         value = cookie.output(header="")[1:]
         headers.add(hdrs.SET_COOKIE, value)
 
 
 # https://tools.ietf.org/html/rfc7232#section-2.3
-_ETAGC = r"[!#-}\x80-\xff]+"
+_ETAGC = r"[!\x23-\x7E\x80-\xff]+"
 _ETAGC_RE = re.compile(_ETAGC)
 _QUOTED_ETAG = rf'(W/)?"({_ETAGC})"'
 QUOTED_ETAG_RE = re.compile(_QUOTED_ETAG)
@@ -1038,3 +1097,39 @@ def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
             with suppress(ValueError):
                 return datetime.datetime(*timetuple[:6], tzinfo=datetime.timezone.utc)
     return None
+
+
+def must_be_empty_body(method: str, code: int) -> bool:
+    """Check if a request must return an empty body."""
+    return (
+        status_code_must_be_empty_body(code)
+        or method_must_be_empty_body(method)
+        or (200 <= code < 300 and method.upper() == hdrs.METH_CONNECT)
+    )
+
+
+def method_must_be_empty_body(method: str) -> bool:
+    """Check if a method must return an empty body."""
+    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
+    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.2
+    return method.upper() == hdrs.METH_HEAD
+
+
+def status_code_must_be_empty_body(code: int) -> bool:
+    """Check if a status code must return an empty body."""
+    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
+    return code in {204, 304} or 100 <= code < 200
+
+
+def should_remove_content_length(method: str, code: int) -> bool:
+    """Check if a Content-Length header should be removed.
+
+    This should always be a subset of must_be_empty_body
+    """
+    # https://www.rfc-editor.org/rfc/rfc9110.html#section-8.6-8
+    # https://www.rfc-editor.org/rfc/rfc9110.html#section-15.4.5-4
+    return (
+        code in {204, 304}
+        or 100 <= code < 200
+        or (200 <= code < 300 and method.upper() == hdrs.METH_CONNECT)
+    )

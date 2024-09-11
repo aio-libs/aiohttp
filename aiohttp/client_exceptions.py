@@ -1,10 +1,12 @@
 """HTTP related errors."""
 
 import asyncio
-from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Optional, Tuple, Union
+
+from multidict import MultiMapping
 
 from .http_parser import RawResponseMessage
-from .typedefs import LooseHeaders
+from .typedefs import StrOrURL
 
 try:
     import ssl
@@ -14,7 +16,7 @@ except ImportError:  # pragma: no cover
     ssl = SSLContext = None  # type: ignore[assignment]
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .client_reqrep import ClientResponse, ConnectionKey, Fingerprint, RequestInfo
 else:
     RequestInfo = ClientResponse = ConnectionKey = None
@@ -28,6 +30,8 @@ __all__ = (
     "ClientSSLError",
     "ClientConnectorSSLError",
     "ClientConnectorCertificateError",
+    "ConnectionTimeoutError",
+    "SocketTimeoutError",
     "ServerConnectionError",
     "ServerTimeoutError",
     "ServerDisconnectedError",
@@ -38,6 +42,11 @@ __all__ = (
     "ContentTypeError",
     "ClientPayloadError",
     "InvalidURL",
+    "InvalidUrlClientError",
+    "RedirectClientError",
+    "NonHttpUrlClientError",
+    "InvalidUrlRedirectClientError",
+    "NonHttpUrlRedirectClientError",
 )
 
 
@@ -62,7 +71,7 @@ class ClientResponseError(ClientError):
         *,
         status: Optional[int] = None,
         message: str = "",
-        headers: Optional[LooseHeaders] = None,
+        headers: Optional[MultiMapping[str]] = None,
     ) -> None:
         self.request_info = request_info
         if status is not None:
@@ -78,7 +87,7 @@ class ClientResponseError(ClientError):
         return "{}, message={!r}, url={!r}".format(
             self.status,
             self.message,
-            self.request_info.real_url,
+            str(self.request_info.real_url),
         )
 
     def __repr__(self) -> str:
@@ -147,12 +156,12 @@ class ClientConnectorError(ClientOSError):
         return self._conn_key.port
 
     @property
-    def ssl(self) -> Union[SSLContext, None, bool, "Fingerprint"]:
+    def ssl(self) -> Union[SSLContext, bool, "Fingerprint"]:
         return self._conn_key.ssl
 
     def __str__(self) -> str:
         return "Cannot connect to host {0.host}:{0.port} ssl:{1} [{2}]".format(
-            self, self.ssl if self.ssl is not None else "default", self.strerror
+            self, "default" if self.ssl is True else self.ssl, self.strerror
         )
 
     # OSError.__reduce__ does too much black magick
@@ -186,7 +195,7 @@ class UnixClientConnectorError(ClientConnectorError):
 
     def __str__(self) -> str:
         return "Cannot connect to unix socket {0.path} ssl:{1} [{2}]".format(
-            self, self.ssl if self.ssl is not None else "default", self.strerror
+            self, "default" if self.ssl is True else self.ssl, self.strerror
         )
 
 
@@ -207,6 +216,14 @@ class ServerDisconnectedError(ServerConnectionError):
 
 class ServerTimeoutError(ServerConnectionError, asyncio.TimeoutError):
     """Server timeout error."""
+
+
+class ConnectionTimeoutError(ServerTimeoutError):
+    """Connection timeout error."""
+
+
+class SocketTimeoutError(ServerTimeoutError):
+    """Socket timeout error."""
 
 
 class ServerFingerprintMismatch(ServerConnectionError):
@@ -238,17 +255,52 @@ class InvalidURL(ClientError, ValueError):
 
     # Derive from ValueError for backward compatibility
 
-    def __init__(self, url: Any) -> None:
+    def __init__(self, url: StrOrURL, description: Union[str, None] = None) -> None:
         # The type of url is not yarl.URL because the exception can be raised
         # on URL(url) call
-        super().__init__(url)
+        self._url = url
+        self._description = description
+
+        if description:
+            super().__init__(url, description)
+        else:
+            super().__init__(url)
 
     @property
-    def url(self) -> Any:
-        return self.args[0]
+    def url(self) -> StrOrURL:
+        return self._url
+
+    @property
+    def description(self) -> "str | None":
+        return self._description
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {self.url}>"
+        return f"<{self.__class__.__name__} {self}>"
+
+    def __str__(self) -> str:
+        if self._description:
+            return f"{self._url} - {self._description}"
+        return str(self._url)
+
+
+class InvalidUrlClientError(InvalidURL):
+    """Invalid URL client error."""
+
+
+class RedirectClientError(ClientError):
+    """Client redirect error."""
+
+
+class NonHttpUrlClientError(ClientError):
+    """Non http URL client error."""
+
+
+class InvalidUrlRedirectClientError(InvalidUrlClientError, RedirectClientError):
+    """Invalid URL redirect client error."""
+
+
+class NonHttpUrlRedirectClientError(NonHttpUrlClientError, RedirectClientError):
+    """Non http URL redirect client error."""
 
 
 class ClientSSLError(ClientConnectorError):

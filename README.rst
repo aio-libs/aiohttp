@@ -29,13 +29,13 @@ Async http client/server framework
    :target: https://docs.aiohttp.org/
    :alt: Latest Read The Docs
 
-.. image:: https://img.shields.io/discourse/status?server=https%3A%2F%2Faio-libs.discourse.group
-   :target: https://aio-libs.discourse.group
-   :alt: Discourse status
+.. image:: https://img.shields.io/matrix/aio-libs:matrix.org?label=Discuss%20on%20Matrix%20at%20%23aio-libs%3Amatrix.org&logo=matrix&server_fqdn=matrix.org&style=flat
+   :target: https://matrix.to/#/%23aio-libs:matrix.org
+   :alt: Matrix Room — #aio-libs:matrix.org
 
-.. image:: https://badges.gitter.im/Join%20Chat.svg
-   :target: https://gitter.im/aio-libs/Lobby
-   :alt: Chat on Gitter
+.. image:: https://img.shields.io/matrix/aio-libs-space:matrix.org?label=Discuss%20on%20Matrix%20at%20%23aio-libs-space%3Amatrix.org&logo=matrix&server_fqdn=matrix.org&style=flat
+   :target: https://matrix.to/#/%23aio-libs-space:matrix.org
+   :alt: Matrix Space — #aio-libs-space:matrix.org
 
 
 Key Features
@@ -44,7 +44,7 @@ Key Features
 - Supports both client and server side of HTTP protocol.
 - Supports both client and server Web-Sockets out-of-the-box and avoids
   Callback Hell.
-- Provides Web-server with middlewares and plugable routing.
+- Provides Web-server with middleware and pluggable routing.
 
 
 Getting started
@@ -150,9 +150,9 @@ Feel free to make a Pull Request for adding your link to these pages!
 Communication channels
 ======================
 
-*aio-libs discourse group*: https://aio-libs.discourse.group
+*aio-libs Discussions*: https://github.com/aio-libs/aiohttp/discussions
 
-*gitter chat* https://gitter.im/aio-libs/Lobby
+*Matrix*: `#aio-libs:matrix.org <https://matrix.to/#/#aio-libs:matrix.org>`_
 
 We support `Stack Overflow
 <https://stackoverflow.com/questions/tagged/aiohttp>`_.
@@ -161,23 +161,16 @@ Please add *aiohttp* tag to your question there.
 Requirements
 ============
 
-- Python >= 3.7
-- async-timeout_
-- charset-normalizer_
 - multidict_
 - yarl_
 - frozenlist_
 
-Optionally you may install the cChardet_ and aiodns_ libraries (highly
-recommended for sake of speed).
+Optionally you may install the aiodns_ library (highly recommended for sake of speed).
 
-.. _charset-normalizer: https://pypi.org/project/charset-normalizer
 .. _aiodns: https://pypi.python.org/pypi/aiodns
 .. _multidict: https://pypi.python.org/pypi/multidict
 .. _frozenlist: https://pypi.org/project/frozenlist/
 .. _yarl: https://pypi.python.org/pypi/yarl
-.. _async-timeout: https://pypi.python.org/pypi/async_timeout
-.. _cChardet: https://pypi.python.org/pypi/cchardet
 
 License
 =======
