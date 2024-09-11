@@ -1,6 +1,5 @@
 """Low-level http related exceptions."""
 
-
 from textwrap import indent
 from typing import Optional, Union
 
@@ -93,8 +92,6 @@ class InvalidHeader(BadHttpMessage):
 
 class BadStatusLine(BadHttpMessage):
     def __init__(self, line: str = "", error: Optional[str] = None) -> None:
-        if not isinstance(line, str):
-            line = repr(line)
         super().__init__(error or f"Bad status line {line!r}")
         self.args = (line,)
         self.line = line

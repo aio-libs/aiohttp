@@ -30,6 +30,10 @@ and located on https://github.com/aio-libs
 aiohttp extensions
 ^^^^^^^^^^^^^^^^^^
 
+- `aiohttp-apischema <https://github.com/aio-libs/aiohttp-apischema>`_
+  provides automatic API schema generation and validation of user input
+  for :mod:`aiohttp.web`.
+
 - `aiohttp-session <https://github.com/aio-libs/aiohttp-session>`_
   provides sessions for :mod:`aiohttp.web`.
 
@@ -296,3 +300,9 @@ ask to raise the status.
 
 - `rsocket <https://github.com/rsocket/rsocket-py>`_
   Python implementation of `RSocket protocol <https://rsocket.io>`_.
+
+- `nacl_middleware <https://github.com/CosmicDNA/nacl_middleware>`_
+  An aiohttp middleware library for asymmetric encryption of data transmitted via http and/or websocket connections.
+
+- `aiohttp-asgi-connector <https://github.com/thearchitector/aiohttp-asgi-connector>`_
+  An aiohttp connector for using a ``ClientSession`` to interface directly with separate ASGI applications.

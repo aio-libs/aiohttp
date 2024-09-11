@@ -19,7 +19,7 @@ from multidict import CIMultiDict as _CIMultiDict, CIMultiDictProxy as _CIMultiD
 from yarl import URL as _URL
 
 from aiohttp import hdrs
-from aiohttp.helpers import DEBUG
+from aiohttp.helpers import DEBUG, set_exception
 
 from .http_exceptions import (
     BadHttpMessage,
@@ -47,6 +47,7 @@ include "_headers.pxi"
 
 from aiohttp cimport _find_header
 
+ALLOWED_UPGRADES = frozenset({"websocket"})
 DEF DEFAULT_FREELIST_SIZE = 250
 
 cdef extern from "Python.h":
@@ -417,7 +418,6 @@ cdef class HttpParser:
     cdef _on_headers_complete(self):
         self._process_header()
 
-        method = http_method_str(self._cparser.method)
         should_close = not cparser.llhttp_should_keep_alive(self._cparser)
         upgrade = self._cparser.upgrade
         chunked = self._cparser.flags & cparser.F_CHUNKED
@@ -425,8 +425,13 @@ cdef class HttpParser:
         raw_headers = tuple(self._raw_headers)
         headers = CIMultiDictProxy(self._headers)
 
-        if upgrade or self._cparser.method == cparser.HTTP_CONNECT:
-            self._upgraded = True
+        if self._cparser.type == cparser.HTTP_REQUEST:
+            allowed = upgrade and headers.get("upgrade", "").lower() in ALLOWED_UPGRADES
+            if allowed or self._cparser.method == cparser.HTTP_CONNECT:
+                self._upgraded = True
+        else:
+            if upgrade and self._cparser.status_code == 101:
+                self._upgraded = True
 
         # do not support old websocket spec
         if SEC_WEBSOCKET_KEY1 in headers:
@@ -441,6 +446,7 @@ cdef class HttpParser:
                 encoding = enc
 
         if self._cparser.type == cparser.HTTP_REQUEST:
+            method = http_method_str(self._cparser.method)
             msg = _new_request_message(
                 method, self._path,
                 self.http_version(), headers, raw_headers,
@@ -565,7 +571,7 @@ cdef class HttpParser:
         if self._upgraded:
             return messages, True, data[nb:]
         else:
-            return messages, False, b''
+            return messages, False, b""
 
     def set_upgraded(self, val):
         self._upgraded = val
@@ -748,10 +754,7 @@ cdef int cb_on_headers_complete(cparser.llhttp_t* parser) except -1:
         pyparser._last_error = exc
         return -1
     else:
-        if (
-            pyparser._cparser.upgrade or
-            pyparser._cparser.method == cparser.HTTP_CONNECT
-        ):
+        if pyparser._upgraded or pyparser._cparser.method == cparser.HTTP_CONNECT:
             return 2
         else:
             return 0
@@ -762,12 +765,14 @@ cdef int cb_on_body(cparser.llhttp_t* parser,
     cdef HttpParser pyparser = <HttpParser>parser.data
     cdef bytes body = at[:length]
     try:
-        pyparser._payload.feed_data(body, length)
-    except BaseException as exc:
+        pyparser._payload.feed_data(body)
+    except BaseException as underlying_exc:
+        reraised_exc = underlying_exc
         if pyparser._payload_exception is not None:
-            pyparser._payload.set_exception(pyparser._payload_exception(str(exc)))
-        else:
-            pyparser._payload.set_exception(exc)
+            reraised_exc = pyparser._payload_exception(str(underlying_exc))
+
+        set_exception(pyparser._payload, reraised_exc, underlying_exc)
+
         pyparser._payload_error = 1
         return -1
     else:

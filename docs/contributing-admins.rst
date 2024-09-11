@@ -47,11 +47,11 @@ first merge into the newer release branch (e.g. 3.8 into 3.9) and then to master
      the target branch (as tests have passed on the merge commit now).
   #. This should automatically consider the PR merged and delete the temporary branch.
 
-Back on the original release branch, append ``.dev0`` to the version number in ``__init__.py``.
+Back on the original release branch, bump the version number and append ``.dev0`` in ``__init__.py``.
 
 If doing a minor release:
 
 #. Create a new release branch for future features to go to: e.g. ``git checkout -b 3.10 3.9 && git push``
-#. Update ``target-branch`` for Dependabot to reference the new branch name in ``.github/dependabot.yml``.
+#. Update both ``target-branch`` backports for Dependabot to reference the new branch name in ``.github/dependabot.yml``.
 #. Delete the older backport label (e.g. backport-3.8): https://github.com/aio-libs/aiohttp/labels
 #. Add a new backport label (e.g. backport-3.10).

@@ -23,7 +23,7 @@ def build_autobahn_testsuite() -> Generator[None, None, None]:
             context_path=".",
         )
     except DockerException:
-        pytest.skip(msg="The docker daemon is not running.")
+        pytest.skip("The docker daemon is not running.")
 
     try:
         yield
@@ -72,7 +72,8 @@ def test_client(report_dir: Path, request: Any) -> None:
         print("Stopping client and server")
         client.terminate()
         client.wait()
-        autobahn_container.stop()
+        # https://github.com/gabrieldemarmiesse/python-on-whales/pull/580
+        autobahn_container.stop()  # type: ignore[union-attr]
 
     failed_messages = get_failed_tests(f"{report_dir}/clients", "aiohttp")
 

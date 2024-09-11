@@ -47,6 +47,8 @@ socket closing on the peer side without reading the full server response.
        except OSError:
            # disconnected
 
+.. _web-handler-cancellation:
+
 Web handler cancellation
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -67,38 +69,48 @@ needed to deal with them.
 
 .. warning::
 
-   :term:`web-handler` execution could be canceled on every ``await``
-   if client drops connection without reading entire response's BODY.
+   :term:`web-handler` execution could be canceled on every ``await`` or
+   ``async with`` if client drops connection without reading entire response's BODY.
 
 Sometimes it is a desirable behavior: on processing ``GET`` request the
 code might fetch data from a database or other web resource, the
 fetching is potentially slow.
 
-Canceling this fetch is a good idea: the peer dropped connection
+Canceling this fetch is a good idea: the client dropped the connection
 already, so there is no reason to waste time and resources (memory etc)
-by getting data from a DB without any chance to send it back to peer.
+by getting data from a DB without any chance to send it back to the client.
 
-But sometimes the cancellation is bad: on ``POST`` request very often
-it is needed to save data to a DB regardless of peer closing.
+But sometimes the cancellation is bad: on ``POST`` requests very often
+it is needed to save data to a DB regardless of connection closing.
 
 Cancellation prevention could be implemented in several ways:
 
-* Applying :func:`asyncio.shield` to a coroutine that saves data.
-* Using aiojobs_ or another third party library.
+* Applying :func:`aiojobs.aiohttp.shield` to a coroutine that saves data.
+* Using aiojobs_ or another third party library to run a task in the background.
 
-:func:`asyncio.shield` can work well. The only disadvantage is you
-need to split web handler into exactly two async functions: one
-for handler itself and other for protected code.
+:func:`aiojobs.aiohttp.shield` can work well. The only disadvantage is you
+need to split the web handler into two async functions: one for the handler
+itself and another for protected code.
+
+.. warning::
+
+   We don't recommend using :func:`asyncio.shield` for this because the shielded
+   task cannot be tracked by the application and therefore there is a risk that
+   the task will get cancelled during application shutdown. The function provided
+   by aiojobs_ operates in the same way except the inner task will be tracked
+   by the Scheduler and will get waited on during the cleanup phase.
 
 For example the following snippet is not safe::
 
+   from aiojobs.aiohttp import shield
+
    async def handler(request):
-       await asyncio.shield(write_to_redis(request))
-       await asyncio.shield(write_to_postgres(request))
+       await shield(request, write_to_redis(request))
+       await shield(request, write_to_postgres(request))
        return web.Response(text="OK")
 
-Cancellation might occur while saving data in REDIS, so
-``write_to_postgres`` will not be called, potentially
+Cancellation might occur while saving data in REDIS, so the
+``write_to_postgres`` function will not be called, potentially
 leaving your data in an inconsistent state.
 
 Instead, you would need to write something like::
@@ -108,7 +120,7 @@ Instead, you would need to write something like::
        await write_to_postgres(request)
 
    async def handler(request):
-       await asyncio.shield(write_data(request))
+       await shield(request, write_data(request))
        return web.Response(text="OK")
 
 Alternatively, if you want to spawn a task without waiting for
@@ -159,7 +171,7 @@ restoring the default disconnection behavior only for specific handlers::
    app.router.add_post("/", handler)
 
 It prevents all of the ``handler`` async function from cancellation,
-so ``write_to_db`` will be never interrupted.
+so ``write_to_db`` will never be interrupted.
 
 .. _aiojobs: http://aiojobs.readthedocs.io/en/latest/
 
@@ -940,20 +952,22 @@ always satisfactory.
 When aiohttp is run with :func:`run_app`, it will attempt a graceful shutdown
 by following these steps (if using a :ref:`runner <aiohttp-web-app-runners>`,
 then calling :meth:`AppRunner.cleanup` will perform these steps, excluding
-steps 4 and 7).
+step 7).
 
 1. Stop each site listening on sockets, so new connections will be rejected.
 2. Close idle keep-alive connections (and set active ones to close upon completion).
 3. Call the :attr:`Application.on_shutdown` signal. This should be used to shutdown
    long-lived connections, such as websockets (see below).
-4. Wait a short time for running tasks to complete. This allows any pending handlers
-   or background tasks to complete successfully. The timeout can be adjusted with
-   ``shutdown_timeout`` in :func:`run_app`.
+4. Wait a short time for running handlers to complete. This allows any pending handlers
+   to complete successfully. The timeout can be adjusted with ``shutdown_timeout``
+   in :func:`run_app`.
 5. Close any remaining connections and cancel their handlers. It will wait on the
    canceling handlers for a short time, again adjustable with ``shutdown_timeout``.
 6. Call the :attr:`Application.on_cleanup` signal. This should be used to cleanup any
    resources (such as DB connections). This includes completing the
-   :ref:`cleanup contexts<aiohttp-web-cleanup-ctx>`.
+   :ref:`cleanup contexts<aiohttp-web-cleanup-ctx>` which may be used to ensure
+   background tasks are completed successfully (see
+   :ref:`handler cancellation<web-handler-cancellation>` or aiojobs_ for examples).
 7. Cancel any remaining tasks and wait on them to complete.
 
 Websocket shutdown
@@ -1054,13 +1068,10 @@ below::
       async with client.pubsub() as pubsub:
           await pubsub.subscribe(channel)
           while True:
-              try:
-                  msg = await pubsub.get_message(ignore_subscribe_messages=True)
-                  if msg is not None:
-                      for ws in app["websockets"]:
-                          await ws.send_str("{}: {}".format(channel, msg))
-              except asyncio.CancelledError:
-                  break
+              msg = await pubsub.get_message(ignore_subscribe_messages=True)
+              if msg is not None:
+                  for ws in app["websockets"]:
+                      await ws.send_str("{}: {}".format(channel, msg))
 
 
   async def background_tasks(app):
@@ -1069,7 +1080,8 @@ below::
       yield
 
       app[redis_listener].cancel()
-      await app[redis_listener]
+      with contextlib.suppress(asyncio.CancelledError):
+          await app[redis_listener]
 
 
   app = web.Application()

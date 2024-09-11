@@ -14,9 +14,9 @@ from math import ceil
 from typing import (
     DefaultDict,
     Dict,
+    FrozenSet,
     Iterable,
     Iterator,
-    List,
     Mapping,
     Optional,
     Set,
@@ -36,6 +36,10 @@ __all__ = ("CookieJar", "DummyCookieJar")
 
 CookieItem = Union[str, "Morsel[str]"]
 
+# We cache these string methods here as their use is in performance critical code.
+_FORMAT_PATH = "{}/{}".format
+_FORMAT_DOMAIN_REVERSED = "{1}.{0}".format
+
 
 class CookieJar(AbstractCookieJar):
     """Implements cookie storage adhering to RFC 6265."""
@@ -50,7 +54,7 @@ class CookieJar(AbstractCookieJar):
     DATE_DAY_OF_MONTH_RE = re.compile(r"(\d{1,2})")
 
     DATE_MONTH_RE = re.compile(
-        "(jan)|(feb)|(mar)|(apr)|(may)|(jun)|(jul)|" "(aug)|(sep)|(oct)|(nov)|(dec)",
+        "(jan)|(feb)|(mar)|(apr)|(may)|(jun)|(jul)|(aug)|(sep)|(oct)|(nov)|(dec)",
         re.I,
     )
 
@@ -66,7 +70,7 @@ class CookieJar(AbstractCookieJar):
     except (OSError, ValueError):
         # Hit the maximum representable time on Windows
         # https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/localtime-localtime32-localtime64
-        # Throws ValueError on PyPy 3.8 and 3.9, OSError elsewhere
+        # Throws ValueError on PyPy 3.9, OSError elsewhere
         MAX_TIME = calendar.timegm((3000, 12, 31, 23, 59, 59, -1, -1, -1))
     except OverflowError:
         # #4515: datetime.max may not be representable on 32-bit platforms
@@ -79,7 +83,7 @@ class CookieJar(AbstractCookieJar):
         *,
         unsafe: bool = False,
         quote_cookie: bool = True,
-        treat_as_secure_origin: Union[StrOrURL, List[StrOrURL], None] = None,
+        treat_as_secure_origin: Union[StrOrURL, Iterable[StrOrURL], None] = None,
     ) -> None:
         self._cookies: DefaultDict[Tuple[str, str], SimpleCookie] = defaultdict(
             SimpleCookie
@@ -88,17 +92,20 @@ class CookieJar(AbstractCookieJar):
         self._unsafe = unsafe
         self._quote_cookie = quote_cookie
         if treat_as_secure_origin is None:
-            treat_as_secure_origin = []
+            self._treat_as_secure_origin: FrozenSet[URL] = frozenset()
         elif isinstance(treat_as_secure_origin, URL):
-            treat_as_secure_origin = [treat_as_secure_origin.origin()]
+            self._treat_as_secure_origin = frozenset({treat_as_secure_origin.origin()})
         elif isinstance(treat_as_secure_origin, str):
-            treat_as_secure_origin = [URL(treat_as_secure_origin).origin()]
+            self._treat_as_secure_origin = frozenset(
+                {URL(treat_as_secure_origin).origin()}
+            )
         else:
-            treat_as_secure_origin = [
-                URL(url).origin() if isinstance(url, str) else url.origin()
-                for url in treat_as_secure_origin
-            ]
-        self._treat_as_secure_origin = treat_as_secure_origin
+            self._treat_as_secure_origin = frozenset(
+                {
+                    URL(url).origin() if isinstance(url, str) else url.origin()
+                    for url in treat_as_secure_origin
+                }
+            )
         self._next_expiration: float = ceil(time.time())
         self._expirations: Dict[Tuple[str, str, str], float] = {}
 
@@ -239,7 +246,7 @@ class CookieJar(AbstractCookieJar):
 
         self._do_expiration()
 
-    def filter_cookies(self, request_url: URL = URL()) -> "BaseCookie[str]":
+    def filter_cookies(self, request_url: URL) -> "BaseCookie[str]":
         """Returns this jar's cookies filtered by their attributes."""
         if not isinstance(request_url, URL):
             warnings.warn(
@@ -279,12 +286,11 @@ class CookieJar(AbstractCookieJar):
         else:
             # Get all the subdomains that might match a cookie (e.g. "foo.bar.com", "bar.com", "com")
             domains = itertools.accumulate(
-                reversed(hostname.split(".")), lambda x, y: f"{y}.{x}"
+                reversed(hostname.split(".")), _FORMAT_DOMAIN_REVERSED
             )
+
         # Get all the path prefixes that might match a cookie (e.g. "", "/foo", "/foo/bar")
-        paths = itertools.accumulate(
-            request_url.path.split("/"), lambda x, y: f"{x}/{y}"
-        )
+        paths = itertools.accumulate(request_url.path.split("/"), _FORMAT_PATH)
         # Create every combination of (domain, path) pairs.
         pairs = itertools.product(domains, paths)
 
