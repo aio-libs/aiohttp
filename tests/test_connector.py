@@ -1067,7 +1067,9 @@ async def test_tcp_connector_family_is_respected(
                 established_connection.close()
 
 
-async def test_tcp_connector_multiple_hosts_one_timeout(loop: asyncio.AbstractEventLoop) -> None:
+async def test_tcp_connector_multiple_hosts_one_timeout(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     conn = aiohttp.TCPConnector()
 
     ip1 = "192.168.1.1"
@@ -1081,7 +1083,9 @@ async def test_tcp_connector_multiple_hosts_one_timeout(loop: asyncio.AbstractEv
         loop=loop,
     )
 
-    async def _resolve_host(host: str, por: intt, traces: Optional[Sequence[Trace]] = None) -> List[ResolveResult]:
+    async def _resolve_host(
+        host: str, por: intt, traces: Optional[Sequence[Trace]] = None
+    ) -> List[ResolveResult]:
         return [
             {
                 "hostname": host,
@@ -1099,7 +1103,9 @@ async def test_tcp_connector_multiple_hosts_one_timeout(loop: asyncio.AbstractEv
     timeout_error = False
     connected = False
 
-    async def create_connection(*args: object, **kwargs: object) -> Tuple[mock.Mock, mock.Mock]:
+    async def create_connection(
+        *args: object, **kwargs: object
+    ) -> Tuple[mock.Mock, mock.Mock]:
         nonlocal timeout_error, connected
 
         ip = args[1]
