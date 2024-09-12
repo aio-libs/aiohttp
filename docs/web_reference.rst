@@ -933,8 +933,8 @@ and :ref:`aiohttp-web-signals` handlers::
    :meth:`receive` and others.
 
    To enable back-pressure from slow websocket clients treat methods
-   :meth:`ping()`, :meth:`pong()`, :meth:`send_str()`,
-   :meth:`send_bytes()`, :meth:`send_json()` as coroutines.  By
+   :meth:`ping`, :meth:`pong`, :meth:`send_str`,
+   :meth:`send_bytes`, :meth:`send_json` as coroutines.  By
    default write buffer size is set to 64k.
 
    :param bool autoping: Automatically send
@@ -1512,7 +1512,7 @@ Application and Router
       :async:
 
       A :ref:`coroutine<coroutine>` that should be called on
-      server stopping but before :meth:`cleanup()`.
+      server stopping but before :meth:`cleanup`.
 
       The purpose of the method is calling :attr:`on_shutdown` signal
       handlers.
