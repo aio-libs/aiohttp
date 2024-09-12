@@ -93,7 +93,7 @@ idna==3.4
     #   yarl
 imagesize==1.4.1
     # via sphinx
-importlib-metadata==8.4.0
+importlib-metadata==8.5.0
     # via
     #   build
     #   sphinx
