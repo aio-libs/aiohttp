@@ -1284,10 +1284,10 @@ def get_auth_from_netrc(url):
             # `user` and `account` both can be username,
             # if `user` is None, use `account`
             *logins, password = auth_from_netrc
-            auth = BasicAuth(logins[0] if logins[0] else logins[-1],
-                                password)
+            auth = BasicAuth(logins[0] if logins[0] else logins[-1], password)
 
     return auth
+
 
 class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType]):
     __slots__ = ("_coro", "_resp")
