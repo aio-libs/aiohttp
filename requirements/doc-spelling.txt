@@ -26,7 +26,7 @@ idna==3.4
     # via requests
 imagesize==1.4.1
     # via sphinx
-importlib-metadata==8.4.0
+importlib-metadata==8.5.0
     # via sphinx
 importlib-resources==6.4.5
     # via towncrier
