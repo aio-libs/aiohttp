@@ -147,7 +147,6 @@ or have some suggestion in order to improve the library.
 Dependencies
 ============
 
-- *async_timeout*
 - *multidict*
 - *yarl*
 
@@ -173,7 +172,7 @@ Communication channels
 
 Feel free to post your questions and ideas here.
 
-*gitter chat* https://gitter.im/aio-libs/Lobby
+*Matrix*: `#aio-libs:matrix.org <https://matrix.to/#/#aio-libs:matrix.org>`_
 
 We support `Stack Overflow
 <https://stackoverflow.com/questions/tagged/aiohttp>`_.

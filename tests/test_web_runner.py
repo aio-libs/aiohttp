@@ -166,7 +166,7 @@ async def test_app_make_handler_access_log_class_bad_type2() -> None:
 async def test_app_make_handler_access_log_class1() -> None:
     class Logger(AbstractAccessLogger):
         def log(self, request, response, time):
-            pass
+            """Pass log method."""
 
     app = web.Application()
     runner = web.AppRunner(app, access_log_class=Logger)
@@ -176,7 +176,7 @@ async def test_app_make_handler_access_log_class1() -> None:
 async def test_app_make_handler_access_log_class2() -> None:
     class Logger(AbstractAccessLogger):
         def log(self, request, response, time):
-            pass
+            """Pass log method."""
 
     app = web.Application(handler_args={"access_log_class": Logger})
     runner = web.AppRunner(app)
@@ -241,6 +241,13 @@ async def test_tcpsite_default_host(make_runner: Any) -> None:
     assert server is runner.server
     assert host is None
     assert port == 8080
+
+
+async def test_tcpsite_empty_str_host(make_runner: Any) -> None:
+    runner = make_runner()
+    await runner.setup()
+    site = web.TCPSite(runner, host="")
+    assert site.name == "http://0.0.0.0:8080"
 
 
 def test_run_after_asyncio_run() -> None:

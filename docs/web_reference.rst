@@ -490,20 +490,6 @@ and :ref:`aiohttp-web-signals` handlers.
           required work will be processed by :mod:`aiohttp.web`
           internal machinery.
 
-   .. method:: wait_for_disconnection()
-      :async:
-
-      Returns when the connection that sent this request closes
-
-      If there is no client disconnection during request handling, this
-      coroutine gets cancelled automatically at the end of this request being
-      handled.
-
-      This can be used in handlers as a means of receiving a notification of
-      premature client disconnection.
-
-      .. versionadded:: 4.0
-
 .. class:: Request
 
    A request used for receiving request's information by *web handler*.
@@ -663,7 +649,7 @@ and :ref:`aiohttp-web-signals` handlers::
 
       .. seealso:: :meth:`enable_compression`
 
-   .. method:: enable_compression(force=None)
+   .. method:: enable_compression(force=None, strategy=zlib.Z_DEFAULT_STRATEGY)
 
       Enable compression.
 
@@ -672,6 +658,9 @@ and :ref:`aiohttp-web-signals` handlers::
 
       *Accept-Encoding* is not checked if *force* is set to a
       :class:`ContentCoding`.
+
+      *strategy* accepts a :mod:`zlib` compression strategy.
+      See :func:`zlib.compressobj` for possible values.
 
       .. seealso:: :attr:`compression`
 
@@ -716,8 +705,7 @@ and :ref:`aiohttp-web-signals` handlers::
 
    .. method:: set_cookie(name, value, *, path='/', expires=None, \
                           domain=None, max_age=None, \
-                          secure=None, httponly=None, version=None, \
-                          samesite=None)
+                          secure=None, httponly=None, samesite=None)
 
       Convenient way for setting :attr:`cookies`, allows to specify
       some additional properties like *max_age* in a single call.
@@ -757,11 +745,6 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :param bool httponly: ``True`` if the cookie HTTP only (optional)
 
-      :param int version: a decimal integer, identifies to which
-                          version of the state management
-                          specification the cookie
-                          conforms. (optional)
-
       :param str samesite: Asserts that a cookie must not be sent with
          cross-origin requests, providing some protection
          against cross-site request forgery attacks.
@@ -769,12 +752,6 @@ and :ref:`aiohttp-web-signals` handlers::
          ``Lax`` or ``Strict``. (optional)
 
             .. versionadded:: 3.7
-
-      .. warning::
-
-         In HTTP version 1.1, ``expires`` was deprecated and replaced with
-         the easier-to-use ``max-age``, but Internet Explorer (IE6, IE7,
-         and IE8) **does not** support ``max-age``.
 
    .. method:: del_cookie(name, *, path='/', domain=None)
 
@@ -1755,8 +1732,9 @@ Application and Router
       system call even if the platform supports it. This can be accomplished by
       by setting environment variable ``AIOHTTP_NOSENDFILE=1``.
 
-      If a gzip version of the static content exists at file path + ``.gz``, it
-      will be used for the response.
+      If a Brotli or gzip compressed version of the static content exists at
+      the requested path with the ``.br`` or ``.gz`` extension, it will be used
+      for the response. Brotli will be preferred over gzip if both files exist.
 
       .. warning::
 
@@ -2618,7 +2596,8 @@ application on specific TCP or Unix socket, e.g.::
    :param bool handle_signals: add signal handlers for
                                :data:`signal.SIGINT` and
                                :data:`signal.SIGTERM` (``False`` by
-                               default).
+                               default). These handlers will raise
+                               :exc:`GracefulExit`.
 
    :param kwargs: named parameters to pass into
                   web protocol.
@@ -2691,7 +2670,8 @@ application on specific TCP or Unix socket, e.g.::
    :param bool handle_signals: add signal handlers for
                                :data:`signal.SIGINT` and
                                :data:`signal.SIGTERM` (``False`` by
-                               default).
+                               default). These handlers will raise
+                               :exc:`GracefulExit`.
 
    :param kwargs: named parameters to pass into
                   web protocol.
@@ -2821,6 +2801,16 @@ application on specific TCP or Unix socket, e.g.::
                        connections, see :meth:`socket.socket.listen` for details.
 
                        ``128`` by default.
+
+.. exception:: GracefulExit
+
+   Raised by signal handlers for :data:`signal.SIGINT` and :data:`signal.SIGTERM`
+   defined in :class:`AppRunner` and :class:`ServerRunner`
+   when ``handle_signals`` is set to ``True``.
+
+   Inherited from :exc:`SystemExit`,
+   which exits with error code ``1`` if not handled.
+
 
 Utilities
 ---------

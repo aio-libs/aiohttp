@@ -4,9 +4,9 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/cython.txt --resolver=backtracking --strip-extras requirements/cython.in
 #
-cython==3.0.8
+cython==3.0.11
     # via -r requirements/cython.in
-multidict==6.0.4
+multidict==6.1.0
     # via -r requirements/multidict.in
-typing-extensions==4.9.0
-    # via -r requirements/typing-extensions.in
+typing-extensions==4.12.2
+    # via multidict

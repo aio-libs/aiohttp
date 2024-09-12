@@ -48,7 +48,7 @@ repos:
     entry: ./tools/check_changes.py
     pass_filenames: false
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v4.5.0'
+  rev: 'v4.6.0'
   hooks:
   - id: check-merge-conflict
 - repo: https://github.com/asottile/yesqa
@@ -56,16 +56,16 @@ repos:
   hooks:
   - id: yesqa
 - repo: https://github.com/PyCQA/isort
-  rev: '5.12.0'
+  rev: '5.13.2'
   hooks:
   - id: isort
 - repo: https://github.com/psf/black
-  rev: '23.11.0'
+  rev: '24.8.0'
   hooks:
     - id: black
       language_version: python3 # Should be a command that runs python
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v4.5.0'
+  rev: 'v4.6.0'
   hooks:
   - id: end-of-file-fixer
     exclude: >-
@@ -97,16 +97,17 @@ repos:
   - id: detect-private-key
     exclude: ^examples/
 - repo: https://github.com/asottile/pyupgrade
-  rev: 'v3.15.0'
+  rev: 'v3.17.0'
   hooks:
   - id: pyupgrade
     args: ['--py37-plus']
 - repo: https://github.com/PyCQA/flake8
-  rev: '6.1.0'
+  rev: '7.1.1'
   hooks:
   - id: flake8
     additional_dependencies:
       - flake8-docstrings==1.6.0
+      - flake8-no-implicit-concat==0.3.4
       - flake8-requirements==1.7.8
     exclude: "^docs/"
 - repo: https://github.com/Lucas-C/pre-commit-hooks-markup
@@ -118,7 +119,7 @@ repos:
     exclude: >-
       ^CHANGES\.rst$
 - repo: https://github.com/codespell-project/codespell
-  rev: v2.2.6
+  rev: v2.3.0
   hooks:
   - id: codespell
     additional_dependencies:
