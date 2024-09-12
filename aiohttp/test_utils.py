@@ -119,10 +119,13 @@ class BaseTestServer(ABC):
         await self.runner.setup()
         if not self.port:
             self.port = 0
+        absolute_host = self.host
         try:
             version = ipaddress.ip_address(self.host).version
         except ValueError:
             version = 4
+        if version == 6:
+            absolute_host = f"[{self.host}]"
         family = socket.AF_INET6 if version == 6 else socket.AF_INET
         _sock = self.socket_factory(self.host, self.port, family)
         self.host, self.port = _sock.getsockname()[:2]
@@ -135,7 +138,7 @@ class BaseTestServer(ABC):
         self.port = sockets[0].getsockname()[1]
         if not self.scheme:
             self.scheme = "https" if self._ssl else "http"
-        self._root = URL(f"{self.scheme}://{self.host}:{self.port}")
+        self._root = URL(f"{self.scheme}://{absolute_host}:{self.port}")
 
     @abstractmethod  # pragma: no cover
     async def _make_runner(self, **kwargs: Any) -> BaseRunner:
