@@ -95,6 +95,7 @@ from .helpers import (
     ceil_timeout,
     get_env_proxy_for_url,
     method_must_be_empty_body,
+    netrc_from_env,
     sentinel,
     strip_auth_from_url,
 )
@@ -543,6 +544,9 @@ class ClientSession:
 
                     if auth is None:
                         auth = auth_from_url
+
+                    if auth is None:
+                        auth = get_auth_from_netrc(url)
 
                     if auth is None and (
                         not self._base_url or self._base_url.origin() == url.origin()
@@ -1268,6 +1272,22 @@ class ClientSession:
     ) -> None:
         await self.close()
 
+
+def get_auth_from_netrc(url):
+    """Get authentication through netrc."""
+    auth = None
+    netrc_obj = netrc_from_env()
+    if netrc_obj:
+        auth_from_netrc = netrc_obj.authenticators(url.host)
+        if auth_from_netrc is not None:
+            # auth_from_netrc is a (`user`, `account`, `password`) tuple,
+            # `user` and `account` both can be username,
+            # if `user` is None, use `account`
+            *logins, password = auth_from_netrc
+            auth = BasicAuth(logins[0] if logins[0] else logins[-1],
+                                password)
+
+    return auth
 
 class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType]):
     __slots__ = ("_coro", "_resp")
