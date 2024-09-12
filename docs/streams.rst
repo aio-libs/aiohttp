@@ -182,7 +182,7 @@ Helpers
 
    .. seealso::
 
-      :meth:`StreamReader.at_eof()`
+      :meth:`StreamReader.at_eof`
 
 .. method:: StreamReader.at_eof()
 
@@ -208,7 +208,7 @@ Helpers
 
    .. warning:: The method does not wake up waiters.
 
-      E.g. :meth:`~StreamReader.read()` will not be resumed.
+      E.g. :meth:`~StreamReader.read` will not be resumed.
 
 
 .. method:: wait_eof()
