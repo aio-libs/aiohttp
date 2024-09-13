@@ -460,7 +460,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             return
 
         # handler in idle state
-        if self._waiter:
+        if self._waiter and not self._waiter.done():
             self.force_close()
 
     async def _handle_request(
