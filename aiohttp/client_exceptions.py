@@ -126,6 +126,10 @@ class ClientConnectionError(ClientError):
     """Base class for client socket errors."""
 
 
+class ClientConnectionResetError(ClientConnectionError, ConnectionResetError):
+    """ConnectionResetError"""
+
+
 class ClientOSError(ClientConnectionError, OSError):
     """OSError error."""
 
