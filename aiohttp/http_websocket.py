@@ -25,6 +25,7 @@ from typing import (
 )
 
 from .base_protocol import BaseProtocol
+from .client_exceptions import ClientConnectionResetError
 from .compression_utils import ZLibCompressor, ZLibDecompressor
 from .helpers import NO_EXTENSIONS, set_exception
 from .streams import DataQueue
