@@ -782,6 +782,8 @@ class ClientSession:
 
     def get_auth_from_netrc(self, url: URL) -> Optional[BasicAuth]:
         """Get authentication through netrc."""
+        if not url.host:
+            return None
         try:
             return basicauth_from_netrc(self._netrc_obj, url.host)
         except LookupError:
