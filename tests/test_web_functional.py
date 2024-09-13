@@ -25,6 +25,7 @@ from aiohttp import (
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.typedefs import Handler
+from aiohttp.web_protocol import RequestHandler
 
 try:
     import brotlicffi as brotli
@@ -2180,3 +2181,50 @@ async def test_no_body_for_1xx_204_304_responses(
     assert TRANSFER_ENCODING not in resp.headers
     await resp.read() == b""
     resp.release()
+
+
+async def test_keepalive_race_condition(aiohttp_client: Any) -> None:
+    protocol = None
+    orig_data_received = RequestHandler.data_received
+
+    def delay_received(self, data: bytes) -> None:
+        """Emulate race condition.
+
+        The keepalive callback needs to be called between data_received() and
+        when start() resumes from the waiter set within data_received().
+        """
+        data = orig_data_received(self, data)
+        if protocol is None:  # First request creating the keepalive connection.
+            return data
+
+        assert self is protocol
+        assert protocol._keepalive_handle is not None
+        # Cancel existing callback that would run at some point in future.
+        protocol._keepalive_handle.cancel()
+        protocol._keepalive_handle = None
+
+        # Set next run time into the past and run callback manually.
+        protocol._next_keepalive_close_time = asyncio.get_running_loop().time() - 1
+        protocol._process_keepalive()
+
+        return data
+
+    async def handler(request: web.Request) -> web.Response:
+        nonlocal protocol
+        protocol = request.protocol
+        return web.Response()
+
+    target = "aiohttp.web_protocol.RequestHandler.data_received"
+    with mock.patch(target, delay_received):
+        app = web.Application()
+        app.router.add_get("/", handler)
+        client = await aiohttp_client(app)
+
+        # Open connection, so we have a keepalive connection and reference to protocol.
+        async with await client.get("/") as resp:
+            assert resp.status == 200
+            await resp.read()
+        assert protocol is not None
+        # Make 2nd request which will hit the race condition.
+        async with await client.get("/") as resp:
+            assert resp.status == 200
