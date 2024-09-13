@@ -251,7 +251,7 @@ class ClientSession:
         "_max_line_size",
         "_max_field_size",
         "_resolve_charset",
-        "_netrc_obj"
+        "_netrc_obj",
     )
 
     def __init__(
