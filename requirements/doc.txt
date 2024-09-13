@@ -81,7 +81,7 @@ towncrier==23.11.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
-urllib3==2.2.2
+urllib3==2.2.3
     # via requests
 webcolors==24.8.0
     # via blockdiag
