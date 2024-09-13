@@ -92,6 +92,7 @@ from .helpers import (
     _SENTINEL,
     BasicAuth,
     TimeoutHandle,
+    basicauth_from_netrc,
     ceil_timeout,
     get_env_proxy_for_url,
     method_must_be_empty_body,
@@ -548,9 +549,6 @@ class ClientSession:
                     if auth is None:
                         auth = auth_from_url
 
-                    if auth is None:
-                        auth = self.get_auth_from_netrc(url)
-
                     if auth is None and (
                         not self._base_url or self._base_url.origin() == url.origin()
                     ):
@@ -563,6 +561,9 @@ class ClientSession:
                             "with AUTH argument or credentials "
                             "encoded in URL"
                         )
+
+                    if auth is None and hdrs.AUTHORIZATION not in headers:
+                        auth = self.get_auth_from_netrc(url)
 
                     all_cookies = self._cookie_jar.filter_cookies(url)
 
@@ -781,14 +782,10 @@ class ClientSession:
 
     def get_auth_from_netrc(self, url: URL) -> Optional[BasicAuth]:
         """Get authentication through netrc."""
-        auth = None
-        if self._netrc_obj:
-            auth_from_netrc = self._netrc_obj.authenticators(url.host)
-            if auth_from_netrc is not None:
-                user, account, password = auth_from_netrc
-                auth = BasicAuth(user if user else account, password)
-
-        return auth
+        try:
+            return basicauth_from_netrc(self._netrc_obj, url.host)
+        except LookupError:
+            return None
 
     def ws_connect(
         self,

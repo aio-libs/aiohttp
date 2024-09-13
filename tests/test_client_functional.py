@@ -3405,6 +3405,57 @@ async def test_session_auth_header_conflict(aiohttp_client: AiohttpClient) -> No
         await client.get("/", headers=headers)
 
 
+@pytest.mark.parametrize(
+    [
+        "netrc_contents",
+    ],
+    [
+        ("machine 127.0.0.1 login login password pass\n",),
+    ],
+    indirect=("netrc_contents",),
+)
+@pytest.mark.usefixtures("netrc_contents")
+async def test_session_netrc_auth(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.json_response({"headers": dict(request.headers)})
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    client = await aiohttp_client(app)
+
+    r = await client.get("/")
+    assert r.status == 200
+    content = await r.json()
+    assert content["headers"]["Authorization"] == "Basic bG9naW46cGFzcw=="
+
+
+@pytest.mark.parametrize(
+    [
+        "netrc_contents",
+    ],
+    [
+        ("machine 127.0.0.1 login login password pass\n",),
+    ],
+    indirect=("netrc_contents",),
+)
+@pytest.mark.usefixtures("netrc_contents")
+async def test_session_netrc_auth_override(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.json_response({"headers": dict(request.headers)})
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    client = await aiohttp_client(app, auth=aiohttp.BasicAuth("other_login", "pass"))
+
+    r = await client.get("/")
+    assert r.status == 200
+    content = await r.json()
+    val = content["headers"]["Authorization"]
+    assert val == "Basic b3RoZXJfbG9naW46cGFzcw=="
+
+
 async def test_session_headers(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.json_response({"headers": dict(request.headers)})
