@@ -360,6 +360,9 @@ class ClientSession:
 
         self._resolve_charset = fallback_charset_resolver
 
+        self._netrc_obj = netrc_from_env()
+
+
     def __init_subclass__(cls: Type["ClientSession"]) -> None:
         raise TypeError(
             "Inheritance class {} from ClientSession "
@@ -546,7 +549,7 @@ class ClientSession:
                         auth = auth_from_url
 
                     if auth is None:
-                        auth = get_auth_from_netrc(url)
+                        auth = self.get_auth_from_netrc(url)
 
                     if auth is None and (
                         not self._base_url or self._base_url.origin() == url.origin()
@@ -775,6 +778,17 @@ class ClientSession:
                     method, url.update_query(params), headers, e
                 )
             raise
+
+    def get_auth_from_netrc(self, url):
+        """Get authentication through netrc."""
+        auth = None
+        if self._netrc_obj:
+            auth_from_netrc = self._netrc_obj.authenticators(url.host)
+            if auth_from_netrc is not None:
+                user, account, password = auth_from_netrc
+                auth = BasicAuth(user if user else account, password)
+
+        return auth
 
     def ws_connect(
         self,
@@ -1271,19 +1285,6 @@ class ClientSession:
         exc_tb: Optional[TracebackType],
     ) -> None:
         await self.close()
-
-
-def get_auth_from_netrc(url):
-    """Get authentication through netrc."""
-    auth = None
-    netrc_obj = netrc_from_env()
-    if netrc_obj:
-        auth_from_netrc = netrc_obj.authenticators(url.host)
-        if auth_from_netrc is not None:
-            user, account, password = auth_from_netrc
-            auth = BasicAuth(user if user else account, password)
-
-    return auth
 
 
 class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType]):
