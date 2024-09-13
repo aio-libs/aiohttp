@@ -251,6 +251,7 @@ class ClientSession:
         "_max_line_size",
         "_max_field_size",
         "_resolve_charset",
+        "_netrc_obj"
     )
 
     def __init__(
@@ -778,7 +779,7 @@ class ClientSession:
                 )
             raise
 
-    def get_auth_from_netrc(self, url):
+    def get_auth_from_netrc(self, url: URL) -> Optional[BasicAuth]:
         """Get authentication through netrc."""
         auth = None
         if self._netrc_obj:
