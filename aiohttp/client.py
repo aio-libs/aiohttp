@@ -1280,11 +1280,8 @@ def get_auth_from_netrc(url):
     if netrc_obj:
         auth_from_netrc = netrc_obj.authenticators(url.host)
         if auth_from_netrc is not None:
-            # auth_from_netrc is a (`user`, `account`, `password`) tuple,
-            # `user` and `account` both can be username,
-            # if `user` is None, use `account`
-            *logins, password = auth_from_netrc
-            auth = BasicAuth(logins[0] if logins[0] else logins[-1], password)
+            user, account, password = auth_from_netrc
+            auth = BasicAuth(user if user else account, password)
 
     return auth
 
