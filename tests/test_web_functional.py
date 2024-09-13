@@ -2221,9 +2221,9 @@ async def test_keepalive_race_condition(aiohttp_client: Any) -> None:
         client = await aiohttp_client(app)
 
         # Open connection, so we have a keepalive connection and reference to protocol.
-        async with await client.get("/") as resp:
+        async with client.get("/") as resp:
             assert resp.status == 200
         assert protocol is not None
         # Make 2nd request which will hit the race condition.
-        async with await client.get("/") as resp:
+        async with client.get("/") as resp:
             assert resp.status == 200
