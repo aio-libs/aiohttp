@@ -362,7 +362,6 @@ class ClientSession:
 
         self._netrc_obj = netrc_from_env()
 
-
     def __init_subclass__(cls: Type["ClientSession"]) -> None:
         raise TypeError(
             "Inheritance class {} from ClientSession "
