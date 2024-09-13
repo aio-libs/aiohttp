@@ -1,0 +1,2 @@
+Added ``ClientConnectionResetError``. Client code that previously threw ``ConnectionResetError``
+will now throw this -- by :user:`Dreamsorcerer`.
