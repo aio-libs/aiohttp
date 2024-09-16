@@ -144,8 +144,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         self._middlewares_handlers: _MiddlewaresHandlers = None
         # initialized on freezing
         self._run_middlewares: Optional[bool] = None
-        #
-        self._middleware_cache: Dict[Tuple[Handler, Tuple[int, ...]]] = {}
+        self._middleware_cache: Dict[Tuple[Handler, Tuple[int, ...]], Handler] = {}
 
         self._state: Dict[Union[AppKey[Any], str], object] = {}
         self._frozen = False
