@@ -533,34 +533,23 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             handler = match_info.handler
 
             if self._run_middlewares:
-                if self._has_legacy_middlewares:
-                    # Slow path for legacy handlers
-                    handler = await self._apply_middlewares(
-                        handler, match_info.apps[::-1]
-                    )
-                else:
+                if not self._has_legacy_middlewares:
                     handler = Application._build_middlewares(
                         handler, match_info.apps[::-1]
                     )
+                else:
+                    for app in match_info.apps[::-1]:
+                        for m, new_style in app._middlewares_handlers:  # type: ignore[union-attr]
+                            if new_style:
+                                handler = update_wrapper(
+                                    partial(m, handler=handler), handler  # type: ignore[misc]
+                                )
+                            else:
+                                handler = await m(app, handler)  # type: ignore[arg-type,assignment]
 
             resp = await handler(request)
 
         return resp
-
-    async def _apply_middlewares(
-        self, handler: Handler, apps: Tuple["Application", ...]
-    ) -> Callable[[Request], Awaitable[StreamResponse]]:
-        """Apply middlewares to handler with support for legacy handlers."""
-        for app in apps:
-            for m, new_style in app._middlewares_handlers:
-                if new_style:
-                    handler = update_wrapper(
-                        partial(m, handler=handler), handler  # type: ignore[misc]
-                    )
-                else:
-                    handler = await m(app, handler)
-
-        return handler
 
     @staticmethod
     @cache
