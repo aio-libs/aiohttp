@@ -38,7 +38,7 @@ from .helpers import DEBUG, AppKey
 from .http_parser import RawRequestMessage
 from .log import web_logger
 from .streams import StreamReader
-from .typedefs import Middleware
+from .typedefs import Handler, Middleware
 from .web_exceptions import NotAppKeyWarning
 from .web_log import AccessLogger
 from .web_middlewares import _fix_request_current_app
@@ -145,9 +145,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         # initialized on freezing
         self._run_middlewares: Optional[bool] = None
         #
-        self._middleware_cache: Dict[
-            Tuple[int, Callable[[Request], Awaitable[StreamResponse]], Tuple[int, ...]]
-        ] = {}
+        self._middleware_cache: Dict[Tuple[Handler, Tuple[int, ...]]] = {}
 
         self._state: Dict[Union[AppKey[Any], str], object] = {}
         self._frozen = False
@@ -538,7 +536,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
 
     async def _apply_middlewares(
         self,
-        handler: Callable[[Request], Awaitable[StreamResponse]],
+        handler: Handler,
         apps: Tuple["Application", ...],
     ) -> Callable[[Request], Awaitable[StreamResponse]]:
         """Apply middlewares to handler."""
