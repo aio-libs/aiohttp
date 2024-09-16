@@ -16,6 +16,7 @@ from typing import (
     MutableMapping,
     Optional,
     Sequence,
+    Tuple,
     Type,
     TypeVar,
     Union,
@@ -30,7 +31,7 @@ from frozenlist import FrozenList
 from . import hdrs
 from .helpers import AppKey
 from .log import web_logger
-from .typedefs import Middleware
+from .typedefs import Handler, Middleware
 from .web_exceptions import NotAppKeyWarning
 from .web_middlewares import _fix_request_current_app
 from .web_request import Request
@@ -79,6 +80,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         "_handler_args",
         "_middlewares",
         "_middlewares_handlers",
+        "_middlewares_cache",
         "_run_middlewares",
         "_state",
         "_frozen",
@@ -117,6 +119,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         self._middlewares_handlers: _MiddlewaresHandlers = tuple()
         # initialized on freezing
         self._run_middlewares: Optional[bool] = None
+        self._middlewares_cache: Dict[Tuple[Handler, Tuple[int, ...]], Handler] = {}
 
         self._state: Dict[Union[AppKey[Any], str], object] = {}
         self._frozen = False
@@ -380,14 +383,30 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             handler = match_info.handler
 
             if self._run_middlewares:
-                for app in match_info.apps[::-1]:
-                    assert app.pre_frozen, "middleware handlers are not ready"
-                    for m in app._middlewares_handlers:
-                        handler = update_wrapper(partial(m, handler=handler), handler)
+                handler = await self._apply_middlewares(handler, match_info.apps[::-1])
 
             resp = await handler(request)
 
         return resp
+
+    async def _apply_middlewares(
+        self,
+        handler: Handler,
+        apps: Tuple["Application", ...],
+    ) -> Callable[[Request], Awaitable[StreamResponse]]:
+        """Apply middlewares to handler."""
+        cache_key = (handler, tuple(id(app) for app in apps))
+
+        if cache_key in self._middlewares_cache:
+            return self._middlewares_cache[cache_key]
+
+        for app in apps:
+            assert app.pre_frozen, "middleware handlers are not ready"
+            for m in app._middlewares_handlers:
+                handler = update_wrapper(partial(m, handler=handler), handler)
+
+        self._middlewares_cache[cache_key] = handler
+        return handler
 
     def __call__(self) -> "Application":
         """gunicorn compatibility"""
