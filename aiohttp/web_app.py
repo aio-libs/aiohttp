@@ -73,8 +73,7 @@ _Resource = TypeVar("_Resource", bound=AbstractResource)
 @staticmethod
 @cache
 def _build_middlewares(
-    handler: Handler,
-    apps: Tuple["Application", ...],
+    handler: Handler, apps: Tuple["Application", ...]
 ) -> Callable[[Request], Awaitable[StreamResponse]]:
     """Apply middlewares to handler."""
     for app in apps:
