@@ -70,7 +70,6 @@ _U = TypeVar("_U")
 _Resource = TypeVar("_Resource", bound=AbstractResource)
 
 
-@staticmethod
 @cache
 def _build_middlewares(
     handler: Handler, apps: Tuple["Application", ...]
