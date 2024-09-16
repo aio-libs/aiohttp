@@ -530,9 +530,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             handler = match_info.handler
 
             if self._run_middlewares:
-                handler = await self._apply_middlewares(
-                    self, handler, match_info.apps[::-1]
-                )
+                handler = await self._apply_middlewares(handler, match_info.apps[::-1])
 
             resp = await handler(request)
 
@@ -540,12 +538,12 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
 
     async def _apply_middlewares(
         self,
-        app: "Application",
         handler: Callable[[Request], Awaitable[StreamResponse]],
         apps: Tuple["Application", ...],
     ) -> Callable[[Request], Awaitable[StreamResponse]]:
         """Apply middlewares to handler."""
-        cache_key = (id(app), handler, tuple(id(app) for app in apps))
+        cache_key = (handler, tuple(id(app) for app in apps))
+
         if cache_key in self._middleware_cache:
             return self._middleware_cache[cache_key]
 
