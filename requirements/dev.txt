@@ -281,7 +281,7 @@ wheel==0.44.0
     # via pip-tools
 yarl==1.11.1
     # via -r requirements/runtime-deps.in
-zipp==3.20.1
+zipp==3.20.2
     # via
     #   importlib-metadata
     #   importlib-resources
