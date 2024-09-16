@@ -38,7 +38,7 @@ from .helpers import DEBUG, AppKey
 from .http_parser import RawRequestMessage
 from .log import web_logger
 from .streams import StreamReader
-from .typedefs import Middleware
+from .typedefs import Handler, Middleware
 from .web_exceptions import NotAppKeyWarning
 from .web_log import AccessLogger
 from .web_middlewares import _fix_request_current_app
@@ -89,6 +89,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             "_handler_args",
             "_middlewares",
             "_middlewares_handlers",
+            "_middlewares_cache",
             "_run_middlewares",
             "_state",
             "_frozen",
@@ -143,6 +144,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         self._middlewares_handlers: _MiddlewaresHandlers = None
         # initialized on freezing
         self._run_middlewares: Optional[bool] = None
+        self._middlewares_cache: Dict[Tuple[Handler, Tuple[int, ...]], Handler] = {}
 
         self._state: Dict[Union[AppKey[Any], str], object] = {}
         self._frozen = False
@@ -525,18 +527,38 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             handler = match_info.handler
 
             if self._run_middlewares:
-                for app in match_info.apps[::-1]:
-                    for m, new_style in app._middlewares_handlers:  # type: ignore[union-attr]
-                        if new_style:
-                            handler = update_wrapper(
-                                partial(m, handler=handler), handler  # type: ignore[misc]
-                            )
-                        else:
-                            handler = await m(app, handler)  # type: ignore[arg-type,assignment]
+                handler = await self._apply_middlewares(handler, match_info.apps[::-1])
 
             resp = await handler(request)
 
         return resp
+
+    async def _apply_middlewares(
+        self,
+        handler: Handler,
+        apps: Tuple["Application", ...],
+    ) -> Callable[[Request], Awaitable[StreamResponse]]:
+        """Apply middlewares to handler."""
+        cache_key = (handler, tuple(id(app) for app in apps))
+
+        if cache_key in self._middlewares_cache:
+            return self._middlewares_cache[cache_key]
+
+        can_cache: bool = True
+        for app in apps:
+            for m, new_style in app._middlewares_handlers:  # type: ignore[union-attr]
+                if new_style:
+                    handler = update_wrapper(
+                        partial(m, handler=handler), handler  # type: ignore[misc]
+                    )
+                else:
+                    handler = await m(app, handler)  # type: ignore[arg-type,assignment]
+                    can_cache = False
+
+        if can_cache:
+            self._middlewares_cache[cache_key] = handler
+
+        return handler
 
     def __call__(self) -> "Application":
         """gunicorn compatibility"""
