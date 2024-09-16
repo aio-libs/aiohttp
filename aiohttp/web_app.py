@@ -79,6 +79,17 @@ _U = TypeVar("_U")
 _Resource = TypeVar("_Resource", bound=AbstractResource)
 
 
+@cache
+def _build_middlewares(
+    handler: Handler, apps: Tuple["Application", ...]
+) -> Callable[[Request], Awaitable[StreamResponse]]:
+    """Apply middlewares to handler."""
+    for app in apps:
+        for m, _ in app._middlewares_handlers:  # type: ignore[union-attr]
+            handler = update_wrapper(partial(m, handler=handler), handler)  # type: ignore[misc]
+    return handler
+
+
 class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     ATTRS = frozenset(
         [
@@ -534,9 +545,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
 
             if self._run_middlewares:
                 if not self._has_legacy_middlewares:
-                    handler = Application._build_middlewares(
-                        handler, match_info.apps[::-1]
-                    )
+                    handler = _build_middlewares(handler, match_info.apps[::-1])
                 else:
                     for app in match_info.apps[::-1]:
                         for m, new_style in app._middlewares_handlers:  # type: ignore[union-attr]
@@ -550,18 +559,6 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             resp = await handler(request)
 
         return resp
-
-    @staticmethod
-    @cache
-    def _build_middlewares(
-        handler: Handler,
-        apps: Tuple["Application", ...],
-    ) -> Callable[[Request], Awaitable[StreamResponse]]:
-        """Apply middlewares to handler."""
-        for app in apps:
-            for m, _ in app._middlewares_handlers:  # type: ignore[union-attr]
-                handler = update_wrapper(partial(m, handler=handler), handler)  # type: ignore[misc]
-        return handler
 
     def __call__(self) -> "Application":
         """gunicorn compatibility"""
