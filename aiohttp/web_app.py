@@ -89,7 +89,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             "_handler_args",
             "_middlewares",
             "_middlewares_handlers",
-            "_middleware_cache",
+            "_middlewares_cache",
             "_run_middlewares",
             "_state",
             "_frozen",
@@ -144,7 +144,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         self._middlewares_handlers: _MiddlewaresHandlers = None
         # initialized on freezing
         self._run_middlewares: Optional[bool] = None
-        self._middleware_cache: Dict[Tuple[Handler, Tuple[int, ...]], Handler] = {}
+        self._middlewares_cache: Dict[Tuple[Handler, Tuple[int, ...]], Handler] = {}
 
         self._state: Dict[Union[AppKey[Any], str], object] = {}
         self._frozen = False
@@ -541,8 +541,8 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         """Apply middlewares to handler."""
         cache_key = (handler, tuple(id(app) for app in apps))
 
-        if cache_key in self._middleware_cache:
-            return self._middleware_cache[cache_key]
+        if cache_key in self._middlewares_cache:
+            return self._middlewares_cache[cache_key]
 
         can_cache: bool = True
         for app in apps:
@@ -556,7 +556,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
                     can_cache = False
 
         if can_cache:
-            self._middleware_cache[cache_key] = handler
+            self._middlewares_cache[cache_key] = handler
 
         return handler
 
