@@ -70,6 +70,20 @@ _U = TypeVar("_U")
 _Resource = TypeVar("_Resource", bound=AbstractResource)
 
 
+@staticmethod
+@cache
+def _build_middlewares(
+    handler: Handler,
+    apps: Tuple["Application", ...],
+) -> Callable[[Request], Awaitable[StreamResponse]]:
+    """Apply middlewares to handler."""
+    for app in apps:
+        assert app.pre_frozen, "middleware handlers are not ready"
+        for m in app._middlewares_handlers:
+            handler = update_wrapper(partial(m, handler=handler), handler)
+    return handler
+
+
 @final
 class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     __slots__ = (
@@ -384,24 +398,11 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             handler = match_info.handler
 
             if self._run_middlewares:
-                handler = Application._build_middlewares(handler, match_info.apps[::-1])
+                handler = _build_middlewares(handler, match_info.apps[::-1])
 
             resp = await handler(request)
 
         return resp
-
-    @staticmethod
-    @cache
-    def _build_middlewares(
-        handler: Handler,
-        apps: Tuple["Application", ...],
-    ) -> Callable[[Request], Awaitable[StreamResponse]]:
-        """Apply middlewares to handler."""
-        for app in apps:
-            assert app.pre_frozen, "middleware handlers are not ready"
-            for m in app._middlewares_handlers:
-                handler = update_wrapper(partial(m, handler=handler), handler)
-        return handler
 
     def __call__(self) -> "Application":
         """gunicorn compatibility"""
