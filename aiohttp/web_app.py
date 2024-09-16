@@ -89,7 +89,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             "_handler_args",
             "_middlewares",
             "_middlewares_handlers",
-            "_middlewares_cache",
+            "_has_legacy_middlewares",
             "_run_middlewares",
             "_state",
             "_frozen",
@@ -144,7 +144,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         self._middlewares_handlers: _MiddlewaresHandlers = None
         # initialized on freezing
         self._run_middlewares: Optional[bool] = None
-        self._middlewares_cache: Dict[Tuple[Handler, Tuple[int, ...]], Handler] = {}
+        self._has_legacy_middlewares: bool = True
 
         self._state: Dict[Union[AppKey[Any], str], object] = {}
         self._frozen = False
