@@ -383,13 +383,13 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             handler = match_info.handler
 
             if self._run_middlewares:
-                handler = await self._apply_middlewares(handler, match_info.apps[::-1])
+                handler = self._apply_middlewares(handler, match_info.apps[::-1])
 
             resp = await handler(request)
 
         return resp
 
-    async def _apply_middlewares(
+    def _apply_middlewares(
         self,
         handler: Handler,
         apps: Tuple["Application", ...],
