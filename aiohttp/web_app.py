@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import warnings
-from functools import partial, update_wrapper
+from functools import lru_cache, partial, update_wrapper
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -38,7 +38,7 @@ from .helpers import DEBUG, AppKey
 from .http_parser import RawRequestMessage
 from .log import web_logger
 from .streams import StreamReader
-from .typedefs import Middleware
+from .typedefs import Handler, Middleware
 from .web_exceptions import NotAppKeyWarning
 from .web_log import AccessLogger
 from .web_middlewares import _fix_request_current_app
@@ -79,6 +79,17 @@ _U = TypeVar("_U")
 _Resource = TypeVar("_Resource", bound=AbstractResource)
 
 
+@lru_cache(None)
+def _build_middlewares(
+    handler: Handler, apps: Tuple["Application", ...]
+) -> Callable[[Request], Awaitable[StreamResponse]]:
+    """Apply middlewares to handler."""
+    for app in apps:
+        for m, _ in app._middlewares_handlers:  # type: ignore[union-attr]
+            handler = update_wrapper(partial(m, handler=handler), handler)  # type: ignore[misc]
+    return handler
+
+
 class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     ATTRS = frozenset(
         [
@@ -89,6 +100,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             "_handler_args",
             "_middlewares",
             "_middlewares_handlers",
+            "_has_legacy_middlewares",
             "_run_middlewares",
             "_state",
             "_frozen",
@@ -143,6 +155,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         self._middlewares_handlers: _MiddlewaresHandlers = None
         # initialized on freezing
         self._run_middlewares: Optional[bool] = None
+        self._has_legacy_middlewares: bool = True
 
         self._state: Dict[Union[AppKey[Any], str], object] = {}
         self._frozen = False
@@ -228,6 +241,9 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     def __iter__(self) -> Iterator[Union[str, AppKey[Any]]]:
         return iter(self._state)
 
+    def __hash__(self) -> int:
+        return id(self)
+
     @overload  # type: ignore[override]
     def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]: ...
 
@@ -284,6 +300,9 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         self._on_shutdown.freeze()
         self._on_cleanup.freeze()
         self._middlewares_handlers = tuple(self._prepare_middleware())
+        self._has_legacy_middlewares = any(
+            not new_style for _, new_style in self._middlewares_handlers
+        )
 
         # If current app and any subapp do not have middlewares avoid run all
         # of the code footprint that it implies, which have a middleware
@@ -525,14 +544,17 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             handler = match_info.handler
 
             if self._run_middlewares:
-                for app in match_info.apps[::-1]:
-                    for m, new_style in app._middlewares_handlers:  # type: ignore[union-attr]
-                        if new_style:
-                            handler = update_wrapper(
-                                partial(m, handler=handler), handler  # type: ignore[misc]
-                            )
-                        else:
-                            handler = await m(app, handler)  # type: ignore[arg-type,assignment]
+                if not self._has_legacy_middlewares:
+                    handler = _build_middlewares(handler, match_info.apps[::-1])
+                else:
+                    for app in match_info.apps[::-1]:
+                        for m, new_style in app._middlewares_handlers:  # type: ignore[union-attr]
+                            if new_style:
+                                handler = update_wrapper(
+                                    partial(m, handler=handler), handler  # type: ignore[misc]
+                                )
+                            else:
+                                handler = await m(app, handler)  # type: ignore[arg-type,assignment]
 
             resp = await handler(request)
 

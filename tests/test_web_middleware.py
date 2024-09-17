@@ -24,10 +24,13 @@ async def test_middleware_modifies_response(loop, aiohttp_client) -> None:
     app.middlewares.append(middleware)
     app.router.add_route("GET", "/", handler)
     client = await aiohttp_client(app)
-    resp = await client.get("/")
-    assert 201 == resp.status
-    txt = await resp.text()
-    assert "OK[MIDDLEWARE]" == txt
+
+    # Call twice to verify cache works
+    for _ in range(2):
+        resp = await client.get("/")
+        assert 201 == resp.status
+        txt = await resp.text()
+        assert "OK[MIDDLEWARE]" == txt
 
 
 async def test_middleware_handles_exception(loop, aiohttp_client) -> None:
@@ -44,10 +47,13 @@ async def test_middleware_handles_exception(loop, aiohttp_client) -> None:
     app.middlewares.append(middleware)
     app.router.add_route("GET", "/", handler)
     client = await aiohttp_client(app)
-    resp = await client.get("/")
-    assert 501 == resp.status
-    txt = await resp.text()
-    assert "Error text[MIDDLEWARE]" == txt
+
+    # Call twice to verify cache works
+    for _ in range(2):
+        resp = await client.get("/")
+        assert 501 == resp.status
+        txt = await resp.text()
+        assert "Error text[MIDDLEWARE]" == txt
 
 
 async def test_middleware_chain(loop, aiohttp_client) -> None:
