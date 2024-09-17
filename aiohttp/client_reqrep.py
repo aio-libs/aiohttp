@@ -1090,7 +1090,7 @@ class ClientResponse(HeadersMixin):
 
         encoding = mimetype.parameters.get("charset")
         if encoding:
-            with contextlib.suppress(LookupError):
+            with contextlib.suppress(LookupError, ValueError):
                 return codecs.lookup(encoding).name
 
         if mimetype.type == "application" and (
