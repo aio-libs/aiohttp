@@ -99,9 +99,8 @@ importlib-metadata==8.5.0
     # via
     #   build
     #   sphinx
+    #   towncrier
 importlib-resources==6.4.5
-    # via towncrier
-incremental==24.7.2
     # via towncrier
 iniconfig==2.0.0
     # via pytest
@@ -242,13 +241,12 @@ tomli==2.0.1
     #   build
     #   cherry-picker
     #   coverage
-    #   incremental
     #   mypy
     #   pip-tools
     #   pytest
     #   slotscheck
     #   towncrier
-towncrier==23.11.0
+towncrier==24.8.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
@@ -300,5 +298,4 @@ pip==24.2
 setuptools==75.1.0
     # via
     #   blockdiag
-    #   incremental
     #   pip-tools
