@@ -1077,7 +1077,6 @@ async def test_render_with_body(buf: Any, writer: Any) -> None:
 
 
 async def test_multiline_reason(buf: Any, writer: Any) -> None:
-    req = make_request("GET", "/", writer=writer)
     with pytest.raises(ValueError, match=r"Reason cannot contain \\n"):
         Response(reason="Bad\r\nInjected-header: foo")
 
