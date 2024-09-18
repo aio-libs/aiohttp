@@ -43,6 +43,8 @@ from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
 
+REASON_PHRASES = {http_status.value: http_status.phrase for http_status in HTTPStatus}
+
 __all__ = ("ContentCoding", "StreamResponse", "Response", "json_response")
 
 
@@ -160,12 +162,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             not self.prepared
         ), "Cannot change the response status code after the headers have been sent"
         self._status = int(status)
-        if reason is None:
-            try:
-                reason = HTTPStatus(self._status).phrase
-            except ValueError:
-                reason = ""
-        self._reason = reason
+        self._reason = reason or REASON_PHRASES.get(self._status, "")
 
     @property
     def keep_alive(self) -> Optional[bool]:
