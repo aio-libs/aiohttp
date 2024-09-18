@@ -1,2 +1,2 @@
-Added ``ClientConnectionResetError``. Client code that previously threw ``ConnectionResetError``
+Added :exc:`ClientConnectionResetError`. Client code that previously threw :exc:`ConnectionResetError`
 will now throw this -- by :user:`Dreamsorcerer`.
