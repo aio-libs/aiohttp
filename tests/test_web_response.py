@@ -627,6 +627,22 @@ async def test_rm_content_length_if_compression_http10() -> None:
     assert resp.content_length is None
 
 
+async def test_rm_content_length_if_204() -> None:
+    """Ensure content-length is removed for 204 responses."""
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
+
+    async def write_headers(status_line, headers):
+        assert hdrs.CONTENT_LENGTH not in headers
+
+    writer.write_headers.side_effect = write_headers
+    req = make_request("GET", "/", writer=writer)
+    payload = BytesPayload(b"answer", headers={"Content-Length": "6"})
+    resp = Response(body=payload, status=204)
+    resp.body = payload
+    await resp.prepare(req)
+    assert resp.content_length is None
+
+
 @pytest.mark.parametrize("status", (100, 101, 204, 304))
 async def test_rm_transfer_encoding_rfc_9112_6_3_http_11(status: int) -> None:
     """Remove transfer encoding for RFC 9112 sec 6.3 with HTTP/1.1."""
