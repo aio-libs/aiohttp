@@ -287,6 +287,10 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
         # Wait for graceful handler completion
         if self._request_in_progress:
+            # The future is only created when we are shutting
+            # down the connection while the handler is still
+            # processing a request to avoid creating a future
+            # for every request.
             self._handler_waiter = self._loop.create_future()
             with suppress(asyncio.CancelledError, asyncio.TimeoutError):
                 async with ceil_timeout(timeout):
@@ -498,7 +502,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             resp, reset = await self.finish_response(request, resp, start_time)
         finally:
             self._request_in_progress = False
-            if self._handler_waiter is not None and not self._handler_waiter.done():
+            if self._handler_waiter is not None:
                 self._handler_waiter.set_result(None)
 
         return resp, reset
