@@ -537,7 +537,10 @@ async def test_close_exc2(
 
 @pytest.mark.parametrize("exc", (ClientConnectionResetError, ConnectionResetError))
 async def test_send_data_after_close(
-    exc: Type[Exception], ws_key: bytes, key_data: bytes, loop: asyncio.AbstractEventLoop
+    exc: Type[Exception],
+    ws_key: bytes,
+    key_data: bytes,
+    loop: asyncio.AbstractEventLoop,
 ) -> None:
     mresp = mock.Mock()
     mresp.status = 101
