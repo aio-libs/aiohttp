@@ -627,7 +627,7 @@ async def test_rm_content_length_if_compression_http10() -> None:
     assert resp.content_length is None
 
 
-async def test_rm_content_length_if_for_204() -> None:
+async def test_rm_content_length_if_204() -> None:
     """Ensure content-length is removed for 204 responses."""
     writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
 
