@@ -40,6 +40,7 @@ from . import hdrs, http, payload
 from .abc import AbstractCookieJar
 from .client_exceptions import (
     ClientConnectionError,
+    ClientConnectionResetError,
     ClientConnectorCertificateError,
     ClientConnectorError,
     ClientConnectorSSLError,
@@ -106,6 +107,7 @@ from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, Query, StrOrURL
 __all__ = (
     # client_exceptions
     "ClientConnectionError",
+    "ClientConnectionResetError",
     "ClientConnectorCertificateError",
     "ClientConnectorError",
     "ClientConnectorSSLError",
