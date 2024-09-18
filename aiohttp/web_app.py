@@ -75,7 +75,9 @@ def _build_middlewares(
     handler: Handler, apps: Tuple["Application", ...]
 ) -> Callable[[Request], Awaitable[StreamResponse]]:
     """Apply middlewares to handler."""
-    for app in apps:
+    # The slice is to reverse the order of the apps
+    # so they are applied in the order they were added
+    for app in apps[::-1]:
         assert app.pre_frozen, "middleware handlers are not ready"
         for m in app._middlewares_handlers:
             handler = update_wrapper(partial(m, handler=handler), handler)
@@ -396,7 +398,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             handler = match_info.handler
 
             if self._run_middlewares:
-                handler = _build_middlewares(handler, match_info.apps[::-1])
+                handler = _build_middlewares(handler, match_info.apps)
 
             resp = await handler(request)
 
