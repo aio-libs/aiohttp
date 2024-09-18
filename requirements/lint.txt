@@ -121,5 +121,5 @@ urllib3==2.2.3
     # via requests
 uvloop==0.20.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
-virtualenv==20.26.4
+virtualenv==20.26.5
     # via pre-commit
