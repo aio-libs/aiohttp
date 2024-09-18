@@ -973,6 +973,7 @@ def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
     return None
 
 
+@functools.lru_cache
 def must_be_empty_body(method: str, code: int) -> bool:
     """Check if a request must return an empty body."""
     return (
