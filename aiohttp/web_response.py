@@ -124,8 +124,8 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         else:
             self._headers = CIMultiDict()
 
-        self._status = int(status)
-        self._reason = reason or REASON_PHRASES.get(self._status, "")
+        self._status = status
+        self._reason = reason or REASON_PHRASES.get(status, "")
 
     @property
     def prepared(self) -> bool:
