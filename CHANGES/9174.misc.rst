@@ -1,1 +1,1 @@
-Improved performance of preparing web requests -- by :user:`bdraco`.
+Improved performance of web requests -- by :user:`bdraco`.
