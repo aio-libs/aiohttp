@@ -6,6 +6,7 @@ from . import hdrs
 from .client import (
     BaseConnector,
     ClientConnectionError,
+    ClientConnectionResetError,
     ClientConnectorCertificateError,
     ClientConnectorError,
     ClientConnectorSSLError,
@@ -117,6 +118,7 @@ __all__: Tuple[str, ...] = (
     # client
     "BaseConnector",
     "ClientConnectionError",
+    "ClientConnectionResetError",
     "ClientConnectorCertificateError",
     "ClientConnectorError",
     "ClientConnectorSSLError",
