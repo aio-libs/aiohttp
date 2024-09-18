@@ -271,7 +271,7 @@ uvloop==0.20.0 ; platform_system != "Windows" and implementation_name == "cpytho
     # via
     #   -r requirements/base.in
     #   -r requirements/lint.in
-virtualenv==20.26.4
+virtualenv==20.26.5
     # via pre-commit
 wait-for-it==2.2.2
     # via -r requirements/test.in
