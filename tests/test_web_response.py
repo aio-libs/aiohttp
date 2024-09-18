@@ -636,9 +636,7 @@ async def test_rm_content_length_if_for_204() -> None:
 
     writer.write_headers.side_effect = write_headers
     req = make_request("GET", "/", writer=writer)
-    payload = BytesPayload(
-        b"answer", headers={"X-Test-Header": "test", "Content-Length": "6"}
-    )
+    payload = BytesPayload(b"answer", headers={"Content-Length": "6"})
     resp = Response(body=payload, status=204)
     resp.body = payload
     await resp.prepare(req)
