@@ -24,8 +24,8 @@ else:
 __all__ = (
     "ClientError",
     "ClientConnectionError",
-    "ClientOSError",
     "ClientConnectionResetError",
+    "ClientOSError",
     "ClientConnectorError",
     "ClientProxyConnectionError",
     "ClientSSLError",
