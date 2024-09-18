@@ -124,8 +124,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         else:
             self._headers = CIMultiDict()
 
-        self._status = status
-        self._reason = reason or REASON_PHRASES.get(status, "")
+        self._set_status(status, reason)
 
     @property
     def prepared(self) -> bool:
@@ -162,8 +161,13 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         assert (
             not self.prepared
         ), "Cannot change the response status code after the headers have been sent"
-        self._status = int(status)
-        self._reason = reason or REASON_PHRASES.get(self._status, "")
+        self._set_status(int(status), reason)
+
+    def _set_status(self, status: int, reason: Optional[str]) -> None:
+        self._status = status
+        self._reason = (
+            REASON_PHRASES.get(self._status, "") if reason is None else reason
+        )
 
     @property
     def keep_alive(self) -> Optional[bool]:
