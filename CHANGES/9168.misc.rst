@@ -1,0 +1,3 @@
+Improved performance of handling web requests -- by :user:`bdraco`.
+
+Creation of an :py:class:`asyncio.Future` is avoided on every request unless the server is shutting down.
