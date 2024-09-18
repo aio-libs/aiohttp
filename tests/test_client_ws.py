@@ -8,12 +8,7 @@ from unittest import mock
 import pytest
 
 import aiohttp
-from aiohttp import (
-    ClientConnectionResetError,
-    ServerDisconnectedError,
-    client,
-    hdrs,
-)
+from aiohttp import ClientConnectionResetError, ServerDisconnectedError, client, hdrs
 from aiohttp.http import WS_KEY
 from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro
