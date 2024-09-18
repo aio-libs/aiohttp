@@ -25,6 +25,7 @@ __all__ = (
     "ClientError",
     "ClientConnectionError",
     "ClientOSError",
+    "ClientConnectionResetError",
     "ClientConnectorError",
     "ClientProxyConnectionError",
     "ClientSSLError",
