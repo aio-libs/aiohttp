@@ -161,7 +161,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         assert (
             not self.prepared
         ), "Cannot change the response status code after the headers have been sent"
-        self._set_status(int(status), reason)
+        self._set_status(status, reason)
 
     def _set_status(self, status: int, reason: Optional[str]) -> None:
         self._status = status
