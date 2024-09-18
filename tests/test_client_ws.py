@@ -519,6 +519,9 @@ async def test_send_data_after_close(
     key_data: bytes,
     loop: asyncio.AbstractEventLoop,
 ) -> None:
+    resp = mock.Mock()
+    resp.status = 101
+    resp.headers = {
         hdrs.UPGRADE: "websocket",
         hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
