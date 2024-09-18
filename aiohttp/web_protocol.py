@@ -288,7 +288,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         # Wait for graceful handler completion
         if self._request_in_progress:
             # The future is only created when we are shutting
-            # down the connection while the handler is still
+            # down while the handler is still
             # processing a request to avoid creating a future
             # for every request.
             self._handler_waiter = self._loop.create_future()
