@@ -1,2 +1,2 @@
-Added :exc:`ClientConnectionResetError`. Client code that previously threw :exc:`ConnectionResetError`
+Added :exc:`aiohttp.ClientConnectionResetError`. Client code that previously threw :exc:`ConnectionResetError`
 will now throw this -- by :user:`Dreamsorcerer`.
