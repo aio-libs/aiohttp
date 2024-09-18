@@ -1,0 +1,1 @@
+Improved performance of starting web requests when there is no response prepare hook -- by :user:`bdraco`.
