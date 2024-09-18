@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import warnings
-from functools import lru_cache, partial, update_wrapper
+from functools import cache, partial, update_wrapper
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -79,7 +79,7 @@ _U = TypeVar("_U")
 _Resource = TypeVar("_Resource", bound=AbstractResource)
 
 
-@lru_cache(None)
+@cache
 def _build_middlewares(
     handler: Handler, apps: Tuple["Application", ...]
 ) -> Callable[[Request], Awaitable[StreamResponse]]:
@@ -545,7 +545,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
 
             if self._run_middlewares:
                 if not self._has_legacy_middlewares:
-                    handler = _build_middlewares(handler, match_info.apps[::-1])
+                    handler = _build_middlewares(handler, match_info.apps)
                 else:
                     for app in match_info.apps[::-1]:
                         for m, new_style in app._middlewares_handlers:  # type: ignore[union-attr]
