@@ -783,6 +783,14 @@ def test_set_status_with_reason() -> None:
     assert "Everything is fine!" == resp.reason
 
 
+def test_set_status_with_empty_reason() -> None:
+    resp = StreamResponse()
+
+    resp.set_status(200, "")
+    assert resp.status == 200
+    assert resp.reason == ""
+
+
 async def test_start_force_close() -> None:
     req = make_request("GET", "/")
     resp = StreamResponse()
