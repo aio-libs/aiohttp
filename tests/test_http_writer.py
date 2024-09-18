@@ -5,7 +5,7 @@ from unittest import mock
 import pytest
 from multidict import CIMultiDict
 
-from aiohttp import http
+from aiohttp import ClientConnectionResetError, http
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -232,12 +232,12 @@ async def test_write_to_closing_transport(protocol, transport, loop) -> None:
     await msg.write(b"Before closing")
     transport.is_closing.return_value = True
 
-    with pytest.raises(ConnectionResetError):
+    with pytest.raises(ClientConnectionResetError):
         await msg.write(b"After closing")
 
 
 async def test_write_to_closed_transport(protocol, transport, loop) -> None:
-    """Test that writing to a closed transport raises ConnectionResetError.
+    """Test that writing to a closed transport raises ClientConnectionResetError.
 
     The StreamWriter checks to see if protocol.transport is None before
     writing to the transport. If it is None, it raises ConnectionResetError.
@@ -247,7 +247,9 @@ async def test_write_to_closed_transport(protocol, transport, loop) -> None:
     await msg.write(b"Before transport close")
     protocol.transport = None
 
-    with pytest.raises(ConnectionResetError, match="Cannot write to closing transport"):
+    with pytest.raises(
+        ClientConnectionResetError, match="Cannot write to closing transport"
+    ):
         await msg.write(b"After transport closed")
 
 
