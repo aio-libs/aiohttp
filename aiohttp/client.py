@@ -399,7 +399,7 @@ class ClientSession:
         if self._base_url is None:
             return url
         else:
-            assert not url.is_absolute() and url.path.startswith("/")
+            assert not url.absolute and url.path.startswith("/")
             return self._base_url.join(url)
 
     async def _request(
