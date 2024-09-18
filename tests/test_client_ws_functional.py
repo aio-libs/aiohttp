@@ -6,7 +6,7 @@ from unittest import mock
 import pytest
 
 import aiohttp
-from aiohttp import ServerTimeoutError, WSMsgType, hdrs, web
+from aiohttp import ClientConnectionResetError, ServerTimeoutError, WSMsgType, hdrs, web
 from aiohttp.client_ws import ClientWSTimeout
 from aiohttp.http import WSCloseCode
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
@@ -681,7 +681,7 @@ async def test_heartbeat_connection_closed(aiohttp_client: AiohttpClient) -> Non
     # would cancel the heartbeat task and we wouldn't get a ping
     assert resp._conn is not None
     with mock.patch.object(
-        resp._conn.transport, "write", side_effect=ConnectionResetError
+        resp._conn.transport, "write", side_effect=ClientConnectionResetError
     ), mock.patch.object(resp._writer, "ping", wraps=resp._writer.ping) as ping:
         await resp.receive()
         ping_count = ping.call_count
