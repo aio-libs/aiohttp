@@ -148,7 +148,7 @@ class BaseTestServer(ABC):
         assert self._root is not None
         url = URL(path)
         if not self.skip_url_asserts:
-            assert not url.is_absolute()
+            assert not url.absolute
             return self._root.join(url)
         else:
             return URL(str(self._root) + str(path))
