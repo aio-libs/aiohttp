@@ -1,6 +1,7 @@
 import asyncio
 from typing import Optional, cast
 
+from .client_exceptions import ClientConnectionResetError
 from .helpers import set_exception
 from .tcp_helpers import tcp_nodelay
 
@@ -85,7 +86,7 @@ class BaseProtocol(asyncio.Protocol):
 
     async def _drain_helper(self) -> None:
         if not self.connected:
-            raise ConnectionResetError("Connection lost")
+            raise ClientConnectionResetError("Connection lost")
         if not self._paused:
             return
         waiter = self._drain_waiter

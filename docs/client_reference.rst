@@ -2207,6 +2207,10 @@ Connection errors
 
    Derived from :exc:`ClientError`
 
+.. class:: ClientConnectionResetError
+
+   Derived from :exc:`ClientConnectionError` and :exc:`ConnectionResetError`
+
 .. class:: ClientOSError
 
    Subset of connection errors that are initiated by an :exc:`OSError`
@@ -2292,6 +2296,8 @@ Hierarchy of exceptions
 * :exc:`ClientError`
 
   * :exc:`ClientConnectionError`
+
+    * :exc:`ClientConnectionResetError`
 
     * :exc:`ClientOSError`
 
