@@ -6,7 +6,7 @@ from typing import Callable
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDict
+from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
 import aiohttp
@@ -421,6 +421,36 @@ async def test_text_bad_encoding(loop, session) -> None:
     res = await response.text(errors="ignore")
     assert res == '{"key": "value"}'
     assert response._connection is None
+
+
+async def test_text_badly_encoded_encoding_header(loop, session) -> None:
+    session._resolve_charset = lambda *_: "utf-8"
+    response = ClientResponse(
+        "get",
+        URL("http://def-cl-resp.org"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+
+    def side_effect(*args: object, **kwargs: object):
+        fut = loop.create_future()
+        fut.set_result(b"foo")
+        return fut
+
+    h = {"Content-Type": "text/html; charset=\udc81gutf-8\udc81\udc8d"}
+    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    content = response.content = mock.Mock()
+    content.read.side_effect = side_effect
+
+    await response.read()
+    encoding = response.get_encoding()
+
+    assert encoding == "utf-8"
 
 
 async def test_text_custom_encoding(loop, session) -> None:
