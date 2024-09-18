@@ -320,7 +320,9 @@ async def test_write_to_closed_transport(
     await msg.write(b"Before transport close")
     protocol.transport = None
 
-    with pytest.raises(ClientConnectionResetError, match="Cannot write to closing transport"):
+    with pytest.raises(
+        ClientConnectionResetError, match="Cannot write to closing transport"
+    ):
         await msg.write(b"After transport closed")
 
 
