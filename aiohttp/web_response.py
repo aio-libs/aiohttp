@@ -168,7 +168,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         if reason is None:
             reason = REASON_PHRASES.get(self._status, "")
         elif "\n" in reason:
-            raise ValueError("Reason cannot contain \\n")        
+            raise ValueError("Reason cannot contain \\n")
         self._reason = reason
 
     @property
