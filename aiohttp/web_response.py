@@ -143,6 +143,8 @@ class StreamResponse(BaseClass, HeadersMixin):
                 reason = HTTPStatus(self._status).phrase
             except ValueError:
                 reason = ""
+        if "\n" in reason:
+            raise ValueError("Reason cannot contain \\n")
         self._reason = reason
 
     @property

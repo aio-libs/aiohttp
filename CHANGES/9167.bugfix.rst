@@ -1,0 +1,1 @@
+Rejected `\n` in `reason` values to avoid sending broken HTTP messages -- by :user:`Dreamsorcerer`.
