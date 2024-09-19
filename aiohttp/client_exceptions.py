@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Optional, Tuple, Union
 
 from multidict import MultiMapping
 
-from .http_parser import RawResponseMessage
 from .typedefs import StrOrURL
 
 try:
@@ -18,12 +17,14 @@ except ImportError:  # pragma: no cover
 
 if TYPE_CHECKING:
     from .client_reqrep import ClientResponse, ConnectionKey, Fingerprint, RequestInfo
+    from .http_parser import RawResponseMessage
 else:
-    RequestInfo = ClientResponse = ConnectionKey = None
+    RequestInfo = ClientResponse = ConnectionKey = RawResponseMessage = None
 
 __all__ = (
     "ClientError",
     "ClientConnectionError",
+    "ClientConnectionResetError",
     "ClientOSError",
     "ClientConnectorError",
     "ClientProxyConnectionError",
@@ -124,6 +125,10 @@ class TooManyRedirects(ClientResponseError):
 
 class ClientConnectionError(ClientError):
     """Base class for client socket errors."""
+
+
+class ClientConnectionResetError(ClientConnectionError, ConnectionResetError):
+    """ConnectionResetError"""
 
 
 class ClientOSError(ClientConnectionError, OSError):

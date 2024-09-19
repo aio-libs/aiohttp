@@ -627,6 +627,22 @@ async def test_rm_content_length_if_compression_http10() -> None:
     assert resp.content_length is None
 
 
+async def test_rm_content_length_if_204() -> None:
+    """Ensure content-length is removed for 204 responses."""
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
+
+    async def write_headers(status_line, headers):
+        assert hdrs.CONTENT_LENGTH not in headers
+
+    writer.write_headers.side_effect = write_headers
+    req = make_request("GET", "/", writer=writer)
+    payload = BytesPayload(b"answer", headers={"Content-Length": "6"})
+    resp = Response(body=payload, status=204)
+    resp.body = payload
+    await resp.prepare(req)
+    assert resp.content_length is None
+
+
 @pytest.mark.parametrize("status", (100, 101, 204, 304))
 async def test_rm_transfer_encoding_rfc_9112_6_3_http_11(status: int) -> None:
     """Remove transfer encoding for RFC 9112 sec 6.3 with HTTP/1.1."""
@@ -803,14 +819,14 @@ async def test_start_force_close() -> None:
 
 async def test___repr__() -> None:
     req = make_request("GET", "/path/to")
-    resp = StreamResponse(reason=301)
+    resp = StreamResponse(reason="foo")
     await resp.prepare(req)
-    assert "<StreamResponse 301 GET /path/to >" == repr(resp)
+    assert "<StreamResponse foo GET /path/to >" == repr(resp)
 
 
 def test___repr___not_prepared() -> None:
-    resp = StreamResponse(reason=301)
-    assert "<StreamResponse 301 not prepared>" == repr(resp)
+    resp = StreamResponse(reason="foo")
+    assert "<StreamResponse foo not prepared>" == repr(resp)
 
 
 async def test_keep_alive_http10_default() -> None:
@@ -1082,6 +1098,11 @@ async def test_render_with_body(buf: Any, writer: Any) -> None:
         )
         == txt
     )
+
+
+async def test_multiline_reason(buf: Any, writer: Any) -> None:
+    with pytest.raises(ValueError, match=r"Reason cannot contain \\n"):
+        Response(reason="Bad\r\nInjected-header: foo")
 
 
 async def test_send_set_cookie_header(buf: Any, writer: Any) -> None:

@@ -165,9 +165,11 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
 
     def _set_status(self, status: int, reason: Optional[str]) -> None:
         self._status = status
-        self._reason = (
-            REASON_PHRASES.get(self._status, "") if reason is None else reason
-        )
+        if reason is None:
+            reason = REASON_PHRASES.get(self._status, "")
+        elif "\n" in reason:
+            raise ValueError("Reason cannot contain \\n")        
+        self._reason = reason
 
     @property
     def keep_alive(self) -> Optional[bool]:
@@ -681,10 +683,10 @@ class Response(StreamResponse):
             await super().write_eof()
 
     async def _start(self, request: "BaseRequest") -> AbstractStreamWriter:
-        if should_remove_content_length(request.method, self.status):
-            if hdrs.CONTENT_LENGTH in self._headers:
+        if hdrs.CONTENT_LENGTH in self._headers:
+            if should_remove_content_length(request.method, self.status):
                 del self._headers[hdrs.CONTENT_LENGTH]
-        elif not self._chunked and hdrs.CONTENT_LENGTH not in self._headers:
+        elif not self._chunked:
             if isinstance(self._body, Payload):
                 if self._body.size is not None:
                     self._headers[hdrs.CONTENT_LENGTH] = str(self._body.size)
