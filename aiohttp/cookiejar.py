@@ -107,9 +107,8 @@ class CookieJar(AbstractCookieJar):
                     for url in treat_as_secure_origin
                 }
             )
-        self._expirations: Dict[Tuple[str, str, str], float] = {}
-        # heap of cookies by expiration time
         self._expire_heap: List[Tuple[float, str, str, str]] = []
+        self._expirations: Dict[Tuple[str, str, str], float] = {}
 
     def save(self, file_path: PathLike) -> None:
         file_path = pathlib.Path(file_path)
@@ -123,10 +122,10 @@ class CookieJar(AbstractCookieJar):
 
     def clear(self, predicate: Optional[ClearCookiePredicate] = None) -> None:
         if predicate is None:
+            self._expire_heap.clear()
             self._cookies.clear()
             self._host_only_cookies.clear()
             self._expirations.clear()
-            self._expire_heap.clear()
             return
 
         now = time.time()
@@ -193,8 +192,8 @@ class CookieJar(AbstractCookieJar):
             self._expirations.pop((domain, path, name), None)
 
     def _expire_cookie(self, when: float, domain: str, path: str, name: str) -> None:
-        self._expirations[(domain, path, name)] = when
         heapq.heappush(self._expire_heap, (when, domain, path, name))
+        self._expirations[(domain, path, name)] = when
 
     def update_cookies(self, cookies: LooseCookies, response_url: URL = URL()) -> None:
         """Update cookies."""
