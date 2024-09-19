@@ -944,14 +944,14 @@ async def test_start_force_close() -> None:
 
 async def test___repr__() -> None:
     req = make_request("GET", "/path/to")
-    resp = StreamResponse(reason=301)
+    resp = StreamResponse(reason="foo")
     await resp.prepare(req)
-    assert "<StreamResponse 301 GET /path/to >" == repr(resp)
+    assert "<StreamResponse foo GET /path/to >" == repr(resp)
 
 
 def test___repr___not_prepared() -> None:
-    resp = StreamResponse(reason=301)
-    assert "<StreamResponse 301 not prepared>" == repr(resp)
+    resp = StreamResponse(reason="foo")
+    assert "<StreamResponse foo not prepared>" == repr(resp)
 
 
 async def test_keep_alive_http10_default() -> None:
@@ -1223,6 +1223,11 @@ async def test_render_with_body(buf, writer) -> None:
         )
         == txt
     )
+
+
+async def test_multiline_reason(buf: Any, writer: Any) -> None:
+    with pytest.raises(ValueError, match=r"Reason cannot contain \\n"):
+        Response(reason="Bad\r\nInjected-header: foo")
 
 
 async def test_send_set_cookie_header(buf, writer) -> None:
