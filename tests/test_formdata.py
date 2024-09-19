@@ -114,7 +114,8 @@ async def test_formdata_on_redirect(aiohttp_client: AiohttpClient) -> None:
 
         async def handler_1(request: web.Request) -> web.Response:
             req_data = await request.post()
-            target_file: web.FileField = req_data["sample.txt"]
+            target_file = req_data["sample.txt"]
+            assert isinstance(tarfile, web.FileField)
             assert target_file.file.read() == content
             return web.Response()
 
@@ -141,13 +142,15 @@ async def test_formdata_on_redirect_after_recv(aiohttp_client: AiohttpClient) ->
 
         async def handler_0(request: web.Request) -> web.Response:
             req_data = await request.post()
-            target_file: web.FileField = req_data["sample.txt"]
+            target_file = req_data["sample.txt"]
+            assert isinstance(tarfile, web.FileField)
             assert target_file.file.read() == content
             raise web.HTTPPermanentRedirect("/1")
 
         async def handler_1(request: web.Request) -> web.Response:
             req_data = await request.post()
-            target_file: web.FileField = req_data["sample.txt"]
+            target_file = req_data["sample.txt"]
+            assert isinstance(tarfile, web.FileField)
             assert target_file.file.read() == content
             return web.Response()
 
@@ -196,7 +199,8 @@ async def test_streaming_tarfile_on_redirect(aiohttp_client: AiohttpClient) -> N
     for entry in tf:
         with pytest.raises(ClientConnectionError) as exc_info:
             await client.post("/0", data=tf.extractfile(entry))
-        raw_exc_info: tuple = exc_info._excinfo
+        raw_exc_info = exc_info._excinfo
+        assert isinstance(raw_exc_info, tuple)
         cause_exc = raw_exc_info[1].__cause__
         assert isinstance(cause_exc, RuntimeError)
         assert len(cause_exc.args) == 1

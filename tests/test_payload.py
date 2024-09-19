@@ -153,10 +153,6 @@ def test_async_iterable_payload_not_async_iterable() -> None:
         payload.AsyncIterablePayload(object())  # type: ignore[arg-type]
 
 
-async def write_mock(*args, **kwargs) -> None:
-    pass
-
-
 async def test_string_io_payload_write() -> None:
     content = "ű" * 5000
 
@@ -165,7 +161,7 @@ async def test_string_io_payload_write() -> None:
 
     with mock.patch("aiohttp.http_writer.StreamWriter") as mock_obj:
         instance = mock_obj.return_value
-        instance.write = mock.Mock(write_mock)
+        instance.write = mock.AsyncMock()
 
         await p.write(instance)
         instance.write.assert_called_once_with(content.encode("utf-8"))
@@ -186,7 +182,7 @@ async def test_text_io_payload_write() -> None:
 
         with mock.patch("aiohttp.http_writer.StreamWriter") as mock_obj:
             instance = mock_obj.return_value
-            instance.write = mock.Mock(write_mock)
+            instance.write = mock.AsyncMock()
 
             await p.write(instance)
             instance.write.assert_called_once_with(content.encode("utf-8"))  # 1 chunk
@@ -207,7 +203,7 @@ async def test_bytes_io_payload_write() -> None:
 
             with mock.patch("aiohttp.http_writer.StreamWriter") as mock_obj:
                 instance = mock_obj.return_value
-                instance.write = mock.Mock(write_mock)
+                instance.write = mock.AsyncMock()
 
                 await p.write(instance)
                 instance.write.assert_called_once_with(content)  # 1 chunk
@@ -228,7 +224,7 @@ async def test_buffered_reader_payload_write() -> None:
 
         with mock.patch("aiohttp.http_writer.StreamWriter") as mock_obj:
             instance = mock_obj.return_value
-            instance.write = mock.Mock(write_mock)
+            instance.write = mock.AsyncMock()
 
             await p.write(instance)
             instance.write.assert_called_once_with(content)  # 1 chunk

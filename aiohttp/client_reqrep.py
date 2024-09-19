@@ -163,7 +163,7 @@ class ConnectionKey:
     proxy_headers_hash: Optional[int]  # hash(CIMultiDict)
 
 
-def process_data_to_payload(body):
+def process_data_to_payload(body: Any) -> Optional[payload.Payload]:
     # this function is used to convert data to payload before looping into redirects,
     # so payload with io objects can be keep alive and use the stored data for the next request
     if body is None:
