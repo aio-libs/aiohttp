@@ -294,31 +294,28 @@ class CookieJar(AbstractCookieJar):
         # Create every combination of (domain, path) pairs.
         pairs = itertools.product(domains, paths)
 
-        # Point 2: https://www.rfc-editor.org/rfc/rfc6265.html#section-5.4
-        cookies = itertools.chain.from_iterable(
-            self._cookies[p].values() for p in pairs
-        )
         path_len = len(request_url.path)
-        for cookie in cookies:
-            name = cookie.key
-            domain = cookie["domain"]
+        # Point 2: https://www.rfc-editor.org/rfc/rfc6265.html#section-5.4
+        for p in pairs:
+            for name, cookie in self._cookies[p].items():
+                domain = cookie["domain"]
 
-            if (domain, name) in self._host_only_cookies:
-                if domain != hostname:
+                if (domain, name) in self._host_only_cookies:
+                    if domain != hostname:
+                        continue
+
+                # Skip edge case when the cookie has a trailing slash but request doesn't.
+                if len(cookie["path"]) > path_len:
                     continue
 
-            # Skip edge case when the cookie has a trailing slash but request doesn't.
-            if len(cookie["path"]) > path_len:
-                continue
+                if is_not_secure and cookie["secure"]:
+                    continue
 
-            if is_not_secure and cookie["secure"]:
-                continue
-
-            # It's critical we use the Morsel so the coded_value
-            # (based on cookie version) is preserved
-            mrsl_val = cast("Morsel[str]", cookie.get(cookie.key, Morsel()))
-            mrsl_val.set(cookie.key, cookie.value, cookie.coded_value)
-            filtered[name] = mrsl_val
+                # It's critical we use the Morsel so the coded_value
+                # (based on cookie version) is preserved
+                mrsl_val = cast("Morsel[str]", cookie.get(cookie.key, Morsel()))
+                mrsl_val.set(cookie.key, cookie.value, cookie.coded_value)
+                filtered[name] = mrsl_val
 
         return filtered
 
