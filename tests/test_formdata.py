@@ -114,9 +114,10 @@ async def test_formdata_on_redirect(aiohttp_client: AiohttpClient) -> None:
 
         async def handler_1(request: web.Request) -> web.Response:
             req_data = await request.post()
-            target_file = req_data["sample.txt"]
-            assert isinstance(tarfile, web.FileField)
-            assert target_file.file.read() == content
+            assert ["sample.txt"] == list(req_data.keys())
+            file_field = req_data["sample.txt"]
+            assert isinstance(file_field, web.FileField)
+            assert content == file_field.file.read()
             return web.Response()
 
         app = web.Application()
@@ -142,16 +143,18 @@ async def test_formdata_on_redirect_after_recv(aiohttp_client: AiohttpClient) ->
 
         async def handler_0(request: web.Request) -> web.Response:
             req_data = await request.post()
-            target_file = req_data["sample.txt"]
-            assert isinstance(tarfile, web.FileField)
-            assert target_file.file.read() == content
+            assert ["sample.txt"] == list(req_data.keys())
+            file_field = req_data["sample.txt"]
+            assert isinstance(file_field, web.FileField)
+            assert content == file_field.file.read()
             raise web.HTTPPermanentRedirect("/1")
 
         async def handler_1(request: web.Request) -> web.Response:
             req_data = await request.post()
-            target_file = req_data["sample.txt"]
-            assert isinstance(tarfile, web.FileField)
-            assert target_file.file.read() == content
+            assert ["sample.txt"] == list(req_data.keys())
+            file_field = req_data["sample.txt"]
+            assert isinstance(file_field, web.FileField)
+            assert content == file_field.file.read()
             return web.Response()
 
         app = web.Application()
