@@ -1422,6 +1422,33 @@ class TestMultipartWriter:
             b' attachments; filename="bug.py"'
         )
 
+    async def test_multiple_write_on_io_payload(self, buf: bytearray, stream: Stream):
+        with aiohttp.MultipartWriter("form-data", boundary=":") as writer:
+            with pathlib.Path(pathlib.Path(__file__).parent / "sample.txt").open(
+                "rb"
+            ) as fobj:
+                content = fobj.read()
+                fobj.seek(0)
+
+                target_buf = (
+                    b'--:\r\nContent-Type: text/plain\r\nContent-Disposition: attachment; filename="sample.txt"\r\n\r\n'
+                    + content
+                    + b"\r\n--:--\r\n"
+                )
+
+                writer.append(fobj)
+                assert len(writer._parts) == 1
+                assert isinstance(writer._parts[0][0], payload.BufferedReaderPayload)
+
+                await writer.write(stream)
+                assert bytes(buf) == target_buf
+
+                buf.clear()
+                assert bytes(buf) == b""
+
+                await writer.write(stream)
+                assert bytes(buf) == target_buf
+
 
 async def test_async_for_reader() -> None:
     data: Tuple[Dict[str, str], int, bytes, bytes, bytes] = (

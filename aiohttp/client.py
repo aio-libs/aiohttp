@@ -75,6 +75,7 @@ from .client_reqrep import (
     ClientResponse,
     Fingerprint,
     RequestInfo,
+    process_data_to_payload,
 )
 from .client_ws import (
     DEFAULT_WS_CLIENT_TIMEOUT,
@@ -520,6 +521,9 @@ class ClientSession:
 
         for trace in traces:
             await trace.send_request_start(method, url.update_query(params), headers)
+
+        # preprocess the data so we can reuse the Payload object when redirect is needed
+        data = process_data_to_payload(data)
 
         timer = tm.timer()
         try:

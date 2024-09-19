@@ -163,6 +163,24 @@ class ConnectionKey:
     proxy_headers_hash: Optional[int]  # hash(CIMultiDict)
 
 
+def process_data_to_payload(body):
+    # this function is used to convert data to payload before looping into redirects,
+    # so payload with io objects can be keep alive and use the stored data for the next request
+    if body is None:
+        return None
+
+    # FormData
+    if isinstance(body, FormData):
+        body = body()
+
+    try:
+        body = payload.PAYLOAD_REGISTRY.get(body, disposition=None)
+    except payload.LookupError:
+        pass  # keep for ClientRequest to handle
+
+    return body
+
+
 class ClientRequest:
     GET_METHODS = {
         hdrs.METH_GET,

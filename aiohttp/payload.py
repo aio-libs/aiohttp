@@ -307,17 +307,39 @@ class IOBasePayload(Payload):
             if hdrs.CONTENT_DISPOSITION not in self.headers:
                 self.set_content_disposition(disposition, filename=self._filename)
 
+        self._writable = True
+        self._seekable = True
+        try:
+            # It is weird but some IO object dont have `seekable()` method as IOBase object,
+            # it seems better for us to direct try if the `seek()` and `tell()` is available
+            # e.g. tarfile.TarFile._Stream
+            self._value.seek(self._value.tell())
+        except (AttributeError, OSError):
+            self._seekable = False
+
+        if self._seekable:
+            self._stream_pos = self._value.tell()
+        else:
+            self._stream_pos = 0
+
     async def write(self, writer: AbstractStreamWriter) -> None:
         loop = asyncio.get_event_loop()
-        try:
+        if self._seekable:
+            await loop.run_in_executor(None, self._value.seek, self._stream_pos)
+        elif not self._writable:
+            raise RuntimeError(
+                f'Non-seekable IO payload "{self._value}" is already consumed (possibly due to redirect, consider storing in a seekable IO buffer instead)'
+            )
+        chunk = await loop.run_in_executor(None, self._value.read, 2**16)
+        while chunk:
+            await writer.write(chunk)
             chunk = await loop.run_in_executor(None, self._value.read, 2**16)
-            while chunk:
-                await writer.write(chunk)
-                chunk = await loop.run_in_executor(None, self._value.read, 2**16)
-        finally:
-            await loop.run_in_executor(None, self._value.close)
+        if not self._seekable:
+            self._writable = False  # Non-seekable IO `_value` can only be consumed once
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        if self._seekable:
+            self._value.seek(self._stream_pos)
         return "".join(r.decode(encoding, errors) for r in self._value.readlines())
 
 
@@ -354,27 +376,34 @@ class TextIOPayload(IOBasePayload):
     @property
     def size(self) -> Optional[int]:
         try:
-            return os.fstat(self._value.fileno()).st_size - self._value.tell()
+            return os.fstat(self._value.fileno()).st_size - self._stream_pos
         except OSError:
             return None
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        if self._seekable:
+            self._value.seek(self._stream_pos)
         return self._value.read()
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         loop = asyncio.get_event_loop()
-        try:
+        if self._seekable:
+            await loop.run_in_executor(None, self._value.seek, self._stream_pos)
+        elif not self._writable:
+            raise RuntimeError(
+                f'Non-seekable IO payload "{self._value}" is already consumed (possibly due to redirect, consider storing in a seekable IO buffer instead)'
+            )
+        chunk = await loop.run_in_executor(None, self._value.read, 2**16)
+        while chunk:
+            data = (
+                chunk.encode(encoding=self._encoding)
+                if self._encoding
+                else chunk.encode()
+            )
+            await writer.write(data)
             chunk = await loop.run_in_executor(None, self._value.read, 2**16)
-            while chunk:
-                data = (
-                    chunk.encode(encoding=self._encoding)
-                    if self._encoding
-                    else chunk.encode()
-                )
-                await writer.write(data)
-                chunk = await loop.run_in_executor(None, self._value.read, 2**16)
-        finally:
-            await loop.run_in_executor(None, self._value.close)
+        if not self._seekable:
+            self._writable = False  # Non-seekable IO `_value` can only be consumed once
 
 
 class BytesIOPayload(IOBasePayload):
@@ -382,12 +411,15 @@ class BytesIOPayload(IOBasePayload):
 
     @property
     def size(self) -> int:
-        position = self._value.tell()
-        end = self._value.seek(0, os.SEEK_END)
-        self._value.seek(position)
-        return end - position
+        if self._seekable:
+            end = self._value.seek(0, os.SEEK_END)
+            self._value.seek(self._stream_pos)
+            return end - self._stream_pos
+        return None
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        if self._seekable:
+            self._value.seek(self._stream_pos)
         return self._value.read().decode(encoding, errors)
 
 
@@ -397,7 +429,7 @@ class BufferedReaderPayload(IOBasePayload):
     @property
     def size(self) -> Optional[int]:
         try:
-            return os.fstat(self._value.fileno()).st_size - self._value.tell()
+            return os.fstat(self._value.fileno()).st_size - self._stream_pos
         except (OSError, AttributeError):
             # data.fileno() is not supported, e.g.
             # io.BufferedReader(io.BytesIO(b'data'))
@@ -406,6 +438,8 @@ class BufferedReaderPayload(IOBasePayload):
             return None
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        if self._seekable:
+            self._value.seek(self._stream_pos)
         return self._value.read().decode(encoding, errors)
 
 

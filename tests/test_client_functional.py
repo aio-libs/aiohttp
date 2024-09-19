@@ -1544,6 +1544,8 @@ async def test_GET_DEFLATE(
     aiohttp_client: AiohttpClient, data: Optional[bytes]
 ) -> None:
     async def handler(request: web.Request) -> web.Response:
+        recv_data = await request.read()
+        assert recv_data == b""  # both cases should receive empty bytes
         return web.json_response({"ok": True})
 
     write_mock = None
@@ -1553,10 +1555,10 @@ async def test_GET_DEFLATE(
         self: ClientRequest, writer: StreamWriter, conn: Connection
     ) -> None:
         nonlocal write_mock
-        original_write = writer._write
+        original_write = writer.write
 
         with mock.patch.object(
-            writer, "_write", autospec=True, spec_set=True, side_effect=original_write
+            writer, "write", autospec=True, spec_set=True, side_effect=original_write
         ) as write_mock:
             await original_write_bytes(self, writer, conn)
 
@@ -1571,8 +1573,8 @@ async def test_GET_DEFLATE(
             assert content == {"ok": True}
 
     assert write_mock is not None
-    # No chunks should have been sent for an empty body.
-    write_mock.assert_not_called()
+    # Empty b"" should have been sent for an empty body.
+    write_mock.assert_called_once_with(b"")
 
 
 async def test_POST_DATA_DEFLATE(aiohttp_client: AiohttpClient) -> None:
