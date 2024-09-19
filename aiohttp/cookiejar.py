@@ -110,8 +110,6 @@ class CookieJar(AbstractCookieJar):
         self._expirations: Dict[Tuple[str, str, str], float] = {}
         # heap of cookies by expiration time
         self._expire_heap: List[Tuple[float, str, str, str]] = []
-        # set of deleted items with expiration time
-        self._deleted: Set[Tuple[float, str, str, str]] = set()
 
     def save(self, file_path: PathLike) -> None:
         file_path = pathlib.Path(file_path)
@@ -129,7 +127,6 @@ class CookieJar(AbstractCookieJar):
             self._host_only_cookies.clear()
             self._expirations.clear()
             self._expire_heap.clear()
-            self._deleted.clear()
             return
 
         now = time.time()
@@ -163,29 +160,29 @@ class CookieJar(AbstractCookieJar):
         return sum(len(cookie.values()) for cookie in self._cookies.values())
 
     def _do_expiration(self) -> None:
-        # If the number of deleted items is greater than twice the number of
-        # expired heap, rebuild the expired heap without the deleted items
-        # and clear the deleted items.
-        deleted_len = len(self._deleted)
-        if deleted_len > 100 and deleted_len > len(self._expire_heap) * 2:
+        expire_heap_len = len(self._expire_heap)
+        if not expire_heap_len:
+            return
+
+        if expire_heap_len > 100 and expire_heap_len > len(self._expirations) * 2:
             self._expire_heap = [
-                item for item in self._expire_heap if item not in self._deleted
+                entry
+                for entry in self._expire_heap
+                if self._expirations.get(entry[1:]) != entry[0]
             ]
-            self._deleted.clear()
             heapq.heapify(self._expire_heap)
 
         now = time.time()
         to_del: List[Tuple[str, str, str]] = []
         while self._expire_heap:
-            heap_key = self._expire_heap[0]
-            if heap_key[0] > now:
+            entry = self._expire_heap[0]
+            when = entry[0]
+            if when > now:
                 break
-            _, domain, path, name = heapq.heappop(self._expire_heap)
-            if heap_key in self._deleted:
-                # Already deleted
-                self._deleted.remove(heap_key)
-                continue
-            to_del.append((domain, path, name))
+            heapq.heappop(self._expire_heap)
+            cookie_key = entry[1:]
+            if self._expirations.get(cookie_key) == when:
+                to_del.append(cookie_key)
         if to_del:
             self._delete_cookies(to_del)
 
@@ -193,8 +190,7 @@ class CookieJar(AbstractCookieJar):
         for domain, path, name in to_del:
             self._host_only_cookies.discard((domain, name))
             self._cookies[(domain, path)].pop(name, None)
-            if when := self._expirations.pop((domain, path, name), None):
-                self._deleted.add((when, domain, path, name))
+            self._expirations.pop((domain, path, name), None)
 
     def _expire_cookie(self, when: float, domain: str, path: str, name: str) -> None:
         self._expirations[(domain, path, name)] = when
