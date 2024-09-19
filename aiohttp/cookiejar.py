@@ -1,6 +1,7 @@
 import calendar
 import contextlib
 import datetime
+import heapq
 import itertools
 import os  # noqa
 import pathlib
@@ -10,13 +11,13 @@ import time
 import warnings
 from collections import defaultdict
 from http.cookies import BaseCookie, Morsel, SimpleCookie
-from math import ceil
 from typing import (
     DefaultDict,
     Dict,
     FrozenSet,
     Iterable,
     Iterator,
+    List,
     Mapping,
     Optional,
     Set,
@@ -106,8 +107,11 @@ class CookieJar(AbstractCookieJar):
                     for url in treat_as_secure_origin
                 }
             )
-        self._next_expiration: float = ceil(time.time())
         self._expirations: Dict[Tuple[str, str, str], float] = {}
+        # heap of cookies by expiration time
+        self._expire_heap: List[Tuple[float, str, str, str]] = []
+        # set of deleted items with expiration time
+        self._deleted: Set[Tuple[float, str, str, str]] = set()
 
     def save(self, file_path: PathLike) -> None:
         file_path = pathlib.Path(file_path)
@@ -121,34 +125,26 @@ class CookieJar(AbstractCookieJar):
 
     def clear(self, predicate: Optional[ClearCookiePredicate] = None) -> None:
         if predicate is None:
-            self._next_expiration = ceil(time.time())
             self._cookies.clear()
             self._host_only_cookies.clear()
             self._expirations.clear()
+            self._expire_heap.clear()
+            self._deleted.clear()
             return
 
-        to_del = []
         now = time.time()
-        for (domain, path), cookie in self._cookies.items():
-            for name, morsel in cookie.items():
-                key = (domain, path, name)
-                if (
-                    key in self._expirations and self._expirations[key] <= now
-                ) or predicate(morsel):
-                    to_del.append(key)
-
-        for domain, path, name in to_del:
-            self._host_only_cookies.discard((domain, name))
-            key = (domain, path, name)
-            if key in self._expirations:
-                del self._expirations[(domain, path, name)]
-            self._cookies[(domain, path)].pop(name, None)
-
-        self._next_expiration = (
-            min(*self._expirations.values(), self.SUB_MAX_TIME) + 1
-            if self._expirations
-            else self.MAX_TIME
-        )
+        to_del = [
+            key
+            for (domain, path), cookie in self._cookies.items()
+            for name, morsel in cookie.items()
+            if (
+                (key := (domain, path, name)) in self._expirations
+                and self._expirations[key] <= now
+            )
+            or predicate(morsel)
+        ]
+        if to_del:
+            self._delete_cookies(to_del)
 
     def clear_domain(self, domain: str) -> None:
         self.clear(lambda x: self._is_domain_match(domain, x["domain"]))
@@ -167,11 +163,42 @@ class CookieJar(AbstractCookieJar):
         return sum(len(cookie.values()) for cookie in self._cookies.values())
 
     def _do_expiration(self) -> None:
-        self.clear(lambda x: False)
+        # If the number of deleted items is greater than twice the number of
+        # expired heap, rebuild the expired heap without the deleted items
+        # and clear the deleted items.
+        deleted_len = len(self._deleted)
+        if deleted_len > 100 and deleted_len > len(self._expire_heap) * 2:
+            self._expire_heap = [
+                item for item in self._expire_heap if item not in self._deleted
+            ]
+            self._deleted.clear()
+            heapq.heapify(self._expire_heap)
+
+        now = time.time()
+        to_del: List[Tuple[str, str, str]] = []
+        while self._expire_heap:
+            heap_key = self._expire_heap[0]
+            if heap_key[0] > now:
+                break
+            _, domain, path, name = heapq.heappop(self._expire_heap)
+            if heap_key in self._deleted:
+                # Already deleted
+                self._deleted.remove(heap_key)
+                continue
+            to_del.append((domain, path, name))
+        if to_del:
+            self._delete_cookies(to_del)
+
+    def _delete_cookies(self, to_del: List[Tuple[str, str, str]]) -> None:
+        for domain, path, name in to_del:
+            self._host_only_cookies.discard((domain, name))
+            self._cookies[(domain, path)].pop(name, None)
+            if when := self._expirations.pop((domain, path, name), None):
+                self._deleted.add((when, domain, path, name))
 
     def _expire_cookie(self, when: float, domain: str, path: str, name: str) -> None:
-        self._next_expiration = min(self._next_expiration, when)
         self._expirations[(domain, path, name)] = when
+        heapq.heappush(self._expire_heap, (when, domain, path, name))
 
     def update_cookies(self, cookies: LooseCookies, response_url: URL = URL()) -> None:
         """Update cookies."""
