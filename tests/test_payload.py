@@ -153,7 +153,7 @@ def test_async_iterable_payload_not_async_iterable() -> None:
         payload.AsyncIterablePayload(object())  # type: ignore[arg-type]
 
 
-async def write_mock(*args, **kwargs):
+async def write_mock(*args, **kwargs) -> None:
     pass
 
 

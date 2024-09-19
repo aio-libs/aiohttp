@@ -410,7 +410,7 @@ class BytesIOPayload(IOBasePayload):
     _value: io.BytesIO
 
     @property
-    def size(self) -> int:
+    def size(self) -> Optional[int]:
         if self._seekable:
             end = self._value.seek(0, os.SEEK_END)
             self._value.seek(self._stream_pos)

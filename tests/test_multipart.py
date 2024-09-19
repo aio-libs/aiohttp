@@ -1422,7 +1422,9 @@ class TestMultipartWriter:
             b' attachments; filename="bug.py"'
         )
 
-    async def test_multiple_write_on_io_payload(self, buf: bytearray, stream: Stream):
+    async def test_multiple_write_on_io_payload(
+        self, buf: bytearray, stream: Stream
+    ) -> None:
         with aiohttp.MultipartWriter("form-data", boundary=":") as writer:
             with pathlib.Path(pathlib.Path(__file__).parent / "sample.txt").open(
                 "rb"

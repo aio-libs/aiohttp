@@ -109,12 +109,13 @@ async def test_formdata_on_redirect(aiohttp_client: AiohttpClient) -> None:
         content = fobj.read()
         fobj.seek(0)
 
-        async def handler_0(request: web.Request):
+        async def handler_0(request: web.Request) -> web.Response:
             raise web.HTTPPermanentRedirect("/1")
 
         async def handler_1(request: web.Request) -> web.Response:
             req_data = await request.post()
-            assert req_data["sample.txt"].file.read() == content
+            target_file: web.FileField = req_data["sample.txt"]
+            assert target_file.file.read() == content
             return web.Response()
 
         app = web.Application()
@@ -124,7 +125,6 @@ async def test_formdata_on_redirect(aiohttp_client: AiohttpClient) -> None:
         client = await aiohttp_client(app)
 
         data = FormData()
-        data._gen_form_data = mock.Mock(wraps=data._gen_form_data)
         data.add_field("sample.txt", fobj)
 
         resp = await client.post("/0", data=data)
@@ -139,14 +139,16 @@ async def test_formdata_on_redirect_after_recv(aiohttp_client: AiohttpClient) ->
         content = fobj.read()
         fobj.seek(0)
 
-        async def handler_0(request: web.Request):
+        async def handler_0(request: web.Request) -> web.Response:
             req_data = await request.post()
-            assert req_data["sample.txt"].file.read() == content
+            target_file: web.FileField = req_data["sample.txt"]
+            assert target_file.file.read() == content
             raise web.HTTPPermanentRedirect("/1")
 
         async def handler_1(request: web.Request) -> web.Response:
             req_data = await request.post()
-            assert req_data["sample.txt"].file.read() == content
+            target_file: web.FileField = req_data["sample.txt"]
+            assert target_file.file.read() == content
             return web.Response()
 
         app = web.Application()
@@ -156,7 +158,6 @@ async def test_formdata_on_redirect_after_recv(aiohttp_client: AiohttpClient) ->
         client = await aiohttp_client(app)
 
         data = FormData()
-        data._gen_form_data = mock.Mock(wraps=data._gen_form_data)
         data.add_field("sample.txt", fobj)
 
         resp = await client.post("/0", data=data)
@@ -169,7 +170,7 @@ async def test_formdata_on_redirect_after_recv(aiohttp_client: AiohttpClient) ->
 async def test_streaming_tarfile_on_redirect(aiohttp_client: AiohttpClient) -> None:
     data = b"This is a tar file payload text file."
 
-    async def handler_0(request: web.Request):
+    async def handler_0(request: web.Request) -> web.Response:
         await request.read()
         raise web.HTTPPermanentRedirect("/1")
 
@@ -195,7 +196,8 @@ async def test_streaming_tarfile_on_redirect(aiohttp_client: AiohttpClient) -> N
     for entry in tf:
         with pytest.raises(ClientConnectionError) as exc_info:
             await client.post("/0", data=tf.extractfile(entry))
-        cause_exc = exc_info._excinfo[1].__cause__
+        raw_exc_info: tuple = exc_info._excinfo
+        cause_exc = raw_exc_info[1].__cause__
         assert isinstance(cause_exc, RuntimeError)
         assert len(cause_exc.args) == 1
         assert cause_exc.args[0].startswith("Non-seekable IO payload")
