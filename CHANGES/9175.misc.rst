@@ -1,0 +1,1 @@
+Add default proxy variables to ClientSession -- by :user:`meshya`.
