@@ -309,20 +309,8 @@ class IOBasePayload(Payload):
 
         self._writable = True
 
-        # Below try-except code segment is a temporary workaround for the issue now:
-        # It is weird but some IO objects don't have `seekable()` method as io.IOBase,
-        # the workaround here is to directly check if `seek()` and `tell()` methods are available
-        # e.g. tarfile.TarFile._Stream
-        #
-        # TODO: version check should be added after those libs are updated to prevent the issue
-        # seealso: https://github.com/aio-libs/aiohttp/pull/9201
-
-        # if sys.version_info >= (3, xx)
-        #     self._seekable = self._value.seekable()
-        # else:
-        self._seekable = True
         try:
-            self._value.seek(self._value.tell())
+            self._seekable = self._value.seekable()
         except (AttributeError, OSError):
             self._seekable = False
 

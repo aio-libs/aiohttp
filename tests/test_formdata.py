@@ -231,7 +231,7 @@ async def test_nonseekable_text_io_on_redirect(aiohttp_client: AiohttpClient) ->
 
         f = getattr(temp_file, "_file")
         assert isinstance(f, io.TextIOBase)
-        with mock.patch.object(f, "seek", side_effect=OSError):
+        with mock.patch.object(f, "seekable", return_value=False):
             with pytest.raises(ClientConnectionError) as exc_info:
                 await client.post("/0", data=f)
             raw_exc_info = exc_info._excinfo
