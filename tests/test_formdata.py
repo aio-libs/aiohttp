@@ -1,6 +1,8 @@
 import io
 import pathlib
 import tarfile
+import tempfile
+from typing import NoReturn
 from unittest import mock
 
 import pytest
@@ -173,23 +175,21 @@ async def test_formdata_on_redirect_after_recv(aiohttp_client: AiohttpClient) ->
         resp.release()
 
 
-async def test_streaming_tarfile_on_redirect(aiohttp_client: AiohttpClient) -> None:
-    data = b"This is a tar file payload text file."
-
+async def test_nonseekable_io_on_redirect(aiohttp_client: AiohttpClient) -> None:
     async def handler_0(request: web.Request) -> web.Response:
         await request.read()
         raise web.HTTPPermanentRedirect("/1")
 
-    async def handler_1(request: web.Request) -> web.Response:
+    async def handler_1(request: web.Request) -> NoReturn:
         await request.read()
-        return web.Response()
+        assert False
 
     app = web.Application()
     app.router.add_post("/0", handler_0)
     app.router.add_post("/1", handler_1)
-
     client = await aiohttp_client(app)
 
+    data = b"Test io data."
     buf = io.BytesIO()
     with tarfile.open(fileobj=buf, mode="w") as tf:
         ti = tarfile.TarInfo(name="payload1.txt")
@@ -208,3 +208,35 @@ async def test_streaming_tarfile_on_redirect(aiohttp_client: AiohttpClient) -> N
         assert isinstance(cause_exc, RuntimeError)
         assert len(cause_exc.args) == 1
         assert cause_exc.args[0].startswith("Non-seekable IO payload")
+
+
+async def test_nonseekable_text_io_on_redirect(aiohttp_client: AiohttpClient) -> None:
+    async def handler_0(request: web.Request) -> web.Response:
+        await request.read()
+        raise web.HTTPPermanentRedirect("/1")
+
+    async def handler_1(request: web.Request) -> NoReturn:
+        await request.read()
+        assert False
+
+    app = web.Application()
+    app.router.add_post("/0", handler_0)
+    app.router.add_post("/1", handler_1)
+    client = await aiohttp_client(app)
+
+    data = "Test io data."
+    with tempfile.SpooledTemporaryFile(mode="w+") as temp_file:
+        temp_file.write(data)
+        temp_file.seek(0)
+
+        f = getattr(temp_file, "_file")
+        assert isinstance(f, io.TextIOBase)
+        with mock.patch.object(f, "seek", side_effect=OSError):
+            with pytest.raises(ClientConnectionError) as exc_info:
+                await client.post("/0", data=f)
+            raw_exc_info = exc_info._excinfo
+            assert isinstance(raw_exc_info, tuple)
+            cause_exc = raw_exc_info[1].__cause__
+            assert isinstance(cause_exc, RuntimeError)
+            assert len(cause_exc.args) == 1
+            assert cause_exc.args[0].startswith("Non-seekable IO payload")

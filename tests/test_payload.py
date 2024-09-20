@@ -118,6 +118,10 @@ def test_bytes_io_payload() -> None:
     with filepath.open("rb") as f:
         p = payload.BytesIOPayload(f)
         assert p.size == filesize
+
+        p._seekable = False
+        assert p.size is None
+
         assert not f.closed
 
 
@@ -159,6 +163,8 @@ async def test_string_io_payload_write() -> None:
     s = io.StringIO(content)
     p = payload.StringIOPayload(s)
 
+    assert p.decode() == content
+
     with mock.patch("aiohttp.http_writer.StreamWriter") as mock_obj:
         instance = mock_obj.return_value
         instance.write = mock.AsyncMock()
@@ -179,6 +185,8 @@ async def test_text_io_payload_write() -> None:
         f.seek(0)
 
         p = payload.TextIOPayload(f)
+
+        assert p.decode() == content
 
         with mock.patch("aiohttp.http_writer.StreamWriter") as mock_obj:
             instance = mock_obj.return_value
@@ -201,6 +209,8 @@ async def test_bytes_io_payload_write() -> None:
 
             p = payload.BytesIOPayload(bf)
 
+            assert p.decode() == content.decode()
+
             with mock.patch("aiohttp.http_writer.StreamWriter") as mock_obj:
                 instance = mock_obj.return_value
                 instance.write = mock.AsyncMock()
@@ -221,6 +231,8 @@ async def test_buffered_reader_payload_write() -> None:
         f.seek(0)
 
         p = payload.BufferedReaderPayload(f)
+
+        assert p.decode() == content.decode()
 
         with mock.patch("aiohttp.http_writer.StreamWriter") as mock_obj:
             instance = mock_obj.return_value
