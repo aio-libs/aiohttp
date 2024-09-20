@@ -178,6 +178,29 @@ async def test_string_io_payload_write() -> None:
         instance.write.assert_called_once_with(content.encode("utf-8"))
 
 
+async def test_io_base_payload_write() -> None:
+    filepath = pathlib.Path(__file__).parent / "sample.txt"
+    with filepath.open("rb") as f:
+        content = f.read()
+        with io.BytesIO(content) as bf:
+
+            p = payload.IOBasePayload(bf)
+
+            assert p.decode() == content.decode()
+
+            with mock.patch("aiohttp.http_writer.StreamWriter") as mock_obj:
+                instance = mock_obj.return_value
+                instance.write = mock.AsyncMock()
+
+                await p.write(instance)
+                instance.write.assert_called_once_with(content)  # 1 chunk
+
+                instance.write.reset_mock()
+
+                await p.write(instance)
+                instance.write.assert_called_once_with(content)  # 1 chunk
+
+
 async def test_text_io_payload_write() -> None:
     filepath = pathlib.Path(__file__).parent / "sample.txt"
     with filepath.open("r") as f:
