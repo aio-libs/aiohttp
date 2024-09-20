@@ -935,6 +935,38 @@ async def test_cookie_jar_expired_changes() -> None:
         assert len(matched_cookies) == 0
 
 
+async def test_cookie_jar_duplicates_with_expire_heap() -> None:
+    """Test that duplicate cookies to not grow the expires heap."""
+    jar = CookieJar()
+
+    cookie_eleven_am = SimpleCookie()
+    cookie_eleven_am["foo"] = "bar"
+    cookie_eleven_am["foo"]["expires"] = "Tue, 1 Jan 1990 11:00:00 GMT"
+
+    cookie_two_pm = SimpleCookie()
+    cookie_two_pm["foo"] = "bar"
+    cookie_two_pm["foo"]["expires"] = "Tue, 1 Jan 1990 14:00:00 GMT"
+
+    with freeze_time() as freezer:
+        freezer.move_to("1990-01-01 10:00:00+00:00")
+
+        for _ in range(10):
+            jar.update_cookies(cookie_eleven_am)
+
+        assert len(jar) == 1
+        matched_cookies = jar.filter_cookies(URL("/"))
+        assert len(matched_cookies) == 1
+        assert "foo" in matched_cookies
+
+        assert len(jar._expire_heap) == 1
+
+        freezer.move_to("1990-01-01 16:00:00+00:00")
+        jar.update_cookies(cookie_two_pm)
+        matched_cookies = jar.filter_cookies(URL("/"))
+        assert len(matched_cookies) == 0
+        assert len(jar._expire_heap) == 0
+
+
 async def test_cookie_jar_filter_cookies_expires() -> None:
     """Test that calling filter_cookies will expire stale cookies."""
     jar = CookieJar()
