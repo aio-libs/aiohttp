@@ -159,7 +159,10 @@ class CookieJar(AbstractCookieJar):
         return sum(len(cookie.values()) for cookie in self._cookies.values())
 
     def _cleanup_expirations(self) -> None:
-        """Remove expired entries from the expiration heap."""
+        """Remove expired entries from the expiration heap.
+
+        This method is called when the expiration heap grows too large.
+        """
         self._expire_heap = [
             entry
             for entry in self._expire_heap
