@@ -158,18 +158,23 @@ class CookieJar(AbstractCookieJar):
         """
         return sum(len(cookie.values()) for cookie in self._cookies.values())
 
+    def _cleanup_expirations(self) -> None:
+        """Remove expired entries from the expiration heap."""
+        self._expire_heap = [
+            entry
+            for entry in self._expire_heap
+            if self._expirations.get(entry[1]) != entry[0]
+        ]
+        heapq.heapify(self._expire_heap)
+
     def _do_expiration(self) -> None:
+        """Remove expired cookies."""
         expire_heap_len = len(self._expire_heap)
         if not expire_heap_len:
             return
 
         if expire_heap_len > 100 and expire_heap_len > len(self._expirations) * 2:
-            self._expire_heap = [
-                entry
-                for entry in self._expire_heap
-                if self._expirations.get(entry[1]) != entry[0]
-            ]
-            heapq.heapify(self._expire_heap)
+            self._cleanup_expirations()
 
         now = time.time()
         to_del: List[Tuple[str, str, str]] = []
@@ -178,8 +183,13 @@ class CookieJar(AbstractCookieJar):
             if when > now:
                 break
             heapq.heappop(self._expire_heap)
+            # Check if the cookie hasn't been re-added to the heap
+            # with a different expiration time as it will be removed
+            # later when it reaches the top of the heap and its
+            # expiration time is met.
             if self._expirations.get(cookie_key) == when:
                 to_del.append(cookie_key)
+
         if to_del:
             self._delete_cookies(to_del)
 
