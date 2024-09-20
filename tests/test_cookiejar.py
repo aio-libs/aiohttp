@@ -5,6 +5,7 @@ import itertools
 import pickle
 import unittest
 from http.cookies import BaseCookie, Morsel, SimpleCookie
+from operator import not_
 from pathlib import Path
 from typing import List, Set, Tuple, Union
 from unittest import mock
@@ -878,7 +879,7 @@ async def test_cookie_jar_clear_expired() -> None:
         sut.update_cookies(cookie)
 
     for _ in range(2):
-        sut.clear(lambda x: False)
+        sut.clear(not_)
         with freeze_time("1980-01-01"):
             assert len(sut) == 0
 
