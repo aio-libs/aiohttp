@@ -275,18 +275,21 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
                 # parse http messages
                 try:
                     messages, upgraded, tail = self._parser.feed_data(data)
-                except HttpProcessingError as underlying_exc:
+                except BaseException as underlying_exc:
                     if self.transport is not None:
                         # connection.release() could be called BEFORE
                         # data_received(), the transport is already
                         # closed in this case
                         self.transport.close()
                     # should_close is True after the call
-                    exc = HttpProcessingError(
-                        code=underlying_exc.code,
-                        message=underlying_exc.message,
-                        headers=underlying_exc.headers,
-                    )
+                    if isinstance(underlying_exc, HttpProcessingError):
+                        exc = HttpProcessingError(
+                            code=underlying_exc.code,
+                            message=underlying_exc.message,
+                            headers=underlying_exc.headers,
+                        )
+                    else:
+                        exc = HttpProcessingError()
                     self.set_exception(exc, underlying_exc)
                     return
 
