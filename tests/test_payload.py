@@ -188,6 +188,10 @@ async def test_io_base_payload_write() -> None:
 
             assert p.decode() == content.decode()
 
+            p._seekable = False
+            assert p.decode() == ""
+            p._seekable = True
+
             with mock.patch("aiohttp.http_writer.StreamWriter") as mock_obj:
                 instance = mock_obj.return_value
                 instance.write = mock.AsyncMock()
@@ -210,6 +214,10 @@ async def test_text_io_payload_write() -> None:
         p = payload.TextIOPayload(f)
 
         assert p.decode() == content
+
+        p._seekable = False
+        assert p.decode() == ""
+        p._seekable = True
 
         with mock.patch("aiohttp.http_writer.StreamWriter") as mock_obj:
             instance = mock_obj.return_value
@@ -234,6 +242,10 @@ async def test_bytes_io_payload_write() -> None:
 
             assert p.decode() == content.decode()
 
+            p._seekable = False
+            assert p.decode() == ""
+            p._seekable = True
+
             with mock.patch("aiohttp.http_writer.StreamWriter") as mock_obj:
                 instance = mock_obj.return_value
                 instance.write = mock.AsyncMock()
@@ -256,6 +268,10 @@ async def test_buffered_reader_payload_write() -> None:
         p = payload.BufferedReaderPayload(f)
 
         assert p.decode() == content.decode()
+
+        p._seekable = False
+        assert p.decode() == ""
+        p._seekable = True
 
         with mock.patch("aiohttp.http_writer.StreamWriter") as mock_obj:
             instance = mock_obj.return_value
