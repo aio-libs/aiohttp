@@ -703,6 +703,17 @@ async def test_proxy_str(session: ClientSession, params: _Params) -> None:
         dict(allow_redirects=True, proxy="http://proxy.com", **params),
     ]
 
+async def test_default_proxy(params: _Params) -> None:
+    session = ClientSession(proxy="http://proxy.com")
+    with mock.patch(
+        "aiohttp.client.ClientSession._request", autospec=True, spec_set=True
+    ) as patched:
+        await session.get("http://test.example.com", **params)
+    assert patched.called, "`ClientSession._request` not called"
+    assert list(patched.call_args) == [
+        (session, "GET", "http://test.example.com"),
+        dict(allow_redirects=True, **params),
+    ]
 
 async def test_request_tracing(
     loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
