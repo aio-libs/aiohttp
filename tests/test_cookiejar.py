@@ -882,6 +882,59 @@ async def test_cookie_jar_clear_expired() -> None:
             assert len(sut) == 0
 
 
+async def test_cookie_jar_expired_changes() -> None:
+    """Test that expire time changes are handled as expected."""
+    jar = CookieJar()
+
+    cookie_eleven_am = SimpleCookie()
+    cookie_eleven_am["foo"] = "bar"
+    cookie_eleven_am["foo"]["expires"] = "Tue, 1 Jan 1990 11:00:00 GMT"
+
+    cookie_noon = SimpleCookie()
+    cookie_noon["foo"] = "bar"
+    cookie_noon["foo"]["expires"] = "Tue, 1 Jan 1990 12:00:00 GMT"
+
+    cookie_one_pm = SimpleCookie()
+    cookie_one_pm["foo"] = "bar"
+    cookie_one_pm["foo"]["expires"] = "Tue, 1 Jan 1990 13:00:00 GMT"
+
+    cookie_two_pm = SimpleCookie()
+    cookie_two_pm["foo"] = "bar"
+    cookie_two_pm["foo"]["expires"] = "Tue, 1 Jan 1990 14:00:00 GMT"
+
+    with freeze_time() as freezer:
+        freezer.move_to("1990-01-01 10:00:00+00:00")
+        jar.update_cookies(cookie_noon)
+        assert len(jar) == 1
+        matched_cookies = jar.filter_cookies(URL("/"))
+        assert len(matched_cookies) == 1
+        assert "foo" in matched_cookies
+
+        jar.update_cookies(cookie_eleven_am)
+        matched_cookies = jar.filter_cookies(URL("/"))
+        assert len(matched_cookies) == 1
+        assert "foo" in matched_cookies
+
+        jar.update_cookies(cookie_one_pm)
+        matched_cookies = jar.filter_cookies(URL("/"))
+        assert len(matched_cookies) == 1
+        assert "foo" in matched_cookies
+
+        jar.update_cookies(cookie_two_pm)
+        matched_cookies = jar.filter_cookies(URL("/"))
+        assert len(matched_cookies) == 1
+        assert "foo" in matched_cookies
+
+        freezer.move_to("1990-01-01 13:00:00+00:00")
+        matched_cookies = jar.filter_cookies(URL("/"))
+        assert len(matched_cookies) == 1
+        assert "foo" in matched_cookies
+
+        freezer.move_to("1990-01-01 14:00:00+00:00")
+        matched_cookies = jar.filter_cookies(URL("/"))
+        assert len(matched_cookies) == 0
+
+
 async def test_cookie_jar_filter_cookies_expires() -> None:
     """Test that calling filter_cookies will expire stale cookies."""
     jar = CookieJar()
