@@ -181,6 +181,11 @@ class CookieJar(AbstractCookieJar):
         if not expire_heap_len:
             return
 
+        # If the expiration heap grows larger than the number expirations
+        # times two, we clean it up to avoid keeping expired entries in
+        # the heap and consuming memory. We guard this with a minimum
+        # threshold to avoid cleaning up the heap too often when there are
+        # only a few scheduled expirations.
         if (
             expire_heap_len > _MIN_SCHEDULED_COOKIE_EXPIRATION
             and expire_heap_len > len(self._expirations) * 2
@@ -189,6 +194,7 @@ class CookieJar(AbstractCookieJar):
 
         now = time.time()
         to_del: List[Tuple[str, str, str]] = []
+        # Find any expired cookies and add them to the to-delete list
         while self._expire_heap:
             when, cookie_key = self._expire_heap[0]
             if when > now:
