@@ -168,17 +168,18 @@ class CookieJar(AbstractCookieJar):
 
         This method is called when the expiration heap grows too large.
         """
+        # Remove any expired entries from the expiration heap
+        # that do not match the expiration time in the expirations
         self._expire_heap = [
             entry
             for entry in self._expire_heap
-            if self._expirations.get(entry[1]) != entry[0]
+            if self._expirations.get(entry[1]) == entry[0]
         ]
         heapq.heapify(self._expire_heap)
 
     def _do_expiration(self) -> None:
         """Remove expired cookies."""
-        expire_heap_len = len(self._expire_heap)
-        if not expire_heap_len:
+        if not (expire_heap_len := len(self._expire_heap)):
             return
 
         # If the expiration heap grows larger than the number expirations

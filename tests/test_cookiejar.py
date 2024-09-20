@@ -988,6 +988,47 @@ async def test_cookie_jar_filter_cookies_expires() -> None:
     assert len(jar) == 0
 
 
+async def test_cookie_jar_heap_cleanup() -> None:
+    """Test that the heap gets cleaned up when there are many old expirations."""
+    jar = CookieJar()
+    # The heap should not be cleaned up when there are less than 100 expiration changes
+    min_cookies_to_cleanup = 100
+
+    with freeze_time() as freezer:
+        freezer.move_to("1990-01-01 09:00:00+00:00")
+
+        start_time = datetime.datetime(
+            1990, 1, 1, 10, 0, 0, tzinfo=datetime.timezone.utc
+        )
+        for i in range(min_cookies_to_cleanup):
+            cookie = SimpleCookie()
+            cookie["foo"] = "bar"
+            cookie["foo"]["expires"] = (
+                start_time + datetime.timedelta(seconds=i)
+            ).strftime("%a, %d %b %Y %H:%M:%S GMT")
+            jar.update_cookies(cookie)
+            assert len(jar._expire_heap) == i + 1
+
+        assert len(jar._expire_heap) == min_cookies_to_cleanup
+
+        # Now that we reached the minimum number of cookies to cleanup,
+        # add one more cookie to trigger the cleanup
+        cookie = SimpleCookie()
+        cookie["foo"] = "bar"
+        cookie["foo"]["expires"] = (
+            start_time + datetime.timedelta(seconds=i + 1)
+        ).strftime("%a, %d %b %Y %H:%M:%S GMT")
+        jar.update_cookies(cookie)
+
+        # Verify that the heap has been cleaned up
+        assert len(jar) == 1
+        matched_cookies = jar.filter_cookies(URL("/"))
+        assert len(matched_cookies) == 1
+        assert "foo" in matched_cookies
+        # The heap should have been cleaned up
+        assert len(jar._expire_heap) == 1
+
+
 async def test_cookie_jar_clear_domain() -> None:
     sut = CookieJar()
     cookie = SimpleCookie()
