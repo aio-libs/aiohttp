@@ -41,6 +41,11 @@ CookieItem = Union[str, "Morsel[str]"]
 _FORMAT_PATH = "{}/{}".format
 _FORMAT_DOMAIN_REVERSED = "{1}.{0}".format
 
+# The minimum number of scheduled cookie expirations before we start cleaning up
+# the expiration heap. This is a performance optimization to avoid cleaning up the
+# heap too often when there are only a few scheduled expirations.
+_MIN_SCHEDULED_COOKIE_EXPIRATION = 100
+
 
 class CookieJar(AbstractCookieJar):
     """Implements cookie storage adhering to RFC 6265."""
@@ -176,7 +181,10 @@ class CookieJar(AbstractCookieJar):
         if not expire_heap_len:
             return
 
-        if expire_heap_len > 100 and expire_heap_len > len(self._expirations) * 2:
+        if (
+            expire_heap_len > _MIN_SCHEDULED_COOKIE_EXPIRATION
+            and expire_heap_len > len(self._expirations) * 2
+        ):
             self._cleanup_expirations()
 
         now = time.time()
