@@ -703,6 +703,7 @@ async def test_proxy_str(session: ClientSession, params: _Params) -> None:
         dict(allow_redirects=True, proxy="http://proxy.com", **params),
     ]
 
+
 async def test_default_proxy(params: _Params) -> None:
     session = ClientSession(proxy="http://proxy.com")
     with mock.patch(
@@ -714,6 +715,7 @@ async def test_default_proxy(params: _Params) -> None:
         (session, "GET", "http://test.example.com"),
         dict(allow_redirects=True, **params),
     ]
+
 
 async def test_request_tracing(
     loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
