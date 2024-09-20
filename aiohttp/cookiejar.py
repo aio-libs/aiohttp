@@ -179,6 +179,8 @@ class CookieJar(AbstractCookieJar):
         ):
             # Remove any expired entries from the expiration heap
             # that do not match the expiration time in the expirations
+            # as it means the cookie has been re-added to the heap
+            # with a different expiration time.
             self._expire_heap = [
                 entry
                 for entry in self._expire_heap
