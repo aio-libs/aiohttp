@@ -495,8 +495,6 @@ class ClientSession:
 
         if proxy is None and self._default_proxy is not None:
             proxy = self._default_proxy
-
-        if proxy_auth is None and self._default_proxy_auth is not None:
             proxy_auth = self._default_proxy_auth
 
         if proxy is not None:
