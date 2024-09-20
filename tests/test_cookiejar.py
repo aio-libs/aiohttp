@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import heapq
 import itertools
 import pickle
 import unittest
@@ -1027,6 +1028,43 @@ async def test_cookie_jar_heap_cleanup() -> None:
         assert "foo" in matched_cookies
         # The heap should have been cleaned up
         assert len(jar._expire_heap) == 1
+
+
+async def test_cookie_jar_heap_maintains_order_after_cleanup() -> None:
+    """Test that order is maintained after cleanup."""
+    jar = CookieJar()
+    # The heap should not be cleaned up when there are less than 100 expiration changes
+    min_cookies_to_cleanup = 100
+
+    with freeze_time() as freezer:
+        freezer.move_to("1990-01-01 09:00:00+00:00")
+
+        for hour in (12, 13):
+            for i in range(min_cookies_to_cleanup):
+                cookie = SimpleCookie()
+                cookie["foo"] = "bar"
+                cookie["foo"]["domain"] = f"example{i}.com"
+                cookie["foo"]["expires"] = f"Tue, 1 Jan 1990 {hour}:00:00 GMT"
+                jar.update_cookies(cookie)
+
+        # Get the jar into a state where the next cookie will trigger the cleanup
+        assert len(jar._expire_heap) == min_cookies_to_cleanup * 2
+        assert len(jar._expirations) == min_cookies_to_cleanup
+
+        cookie = SimpleCookie()
+        cookie["foo"] = "bar"
+        cookie["foo"]["domain"] = "example0.com"
+        cookie["foo"]["expires"] = "Tue, 1 Jan 1990 14:00:00 GMT"
+        jar.update_cookies(cookie)
+
+        assert len(jar) == 100
+        # The heap should have been cleaned up
+        assert len(jar._expire_heap) == 100
+
+        # Verify that the heap is still ordered
+        heap_before = jar._expire_heap.copy()
+        heapq.heapify(jar._expire_heap)
+        assert heap_before == jar._expire_heap
 
 
 async def test_cookie_jar_clear_domain() -> None:

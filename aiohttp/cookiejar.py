@@ -186,6 +186,7 @@ class CookieJar(AbstractCookieJar):
                 for entry in self._expire_heap
                 if self._expirations.get(entry[1]) == entry[0]
             ]
+            heapq.heapify(self._expire_heap)
 
         now = time.time()
         to_del: List[Tuple[str, str, str]] = []
