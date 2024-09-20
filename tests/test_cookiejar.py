@@ -876,9 +876,10 @@ async def test_cookie_jar_clear_expired() -> None:
     with freeze_time("1980-01-01"):
         sut.update_cookies(cookie)
 
-    sut.clear(lambda x: False)
-    with freeze_time("1980-01-01"):
-        assert len(sut) == 0
+    for _ in range(2):
+        sut.clear(lambda x: False)
+        with freeze_time("1980-01-01"):
+            assert len(sut) == 0
 
 
 async def test_cookie_jar_filter_cookies_expires() -> None:

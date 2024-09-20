@@ -191,6 +191,9 @@ class CookieJar(AbstractCookieJar):
 
     def _expire_cookie(self, when: float, domain: str, path: str, name: str) -> None:
         cookie_key = (domain, path, name)
+        if self._expirations.get(cookie_key) == when:
+            # Avoid adding duplicates to the heap
+            return
         heapq.heappush(self._expire_heap, (when, cookie_key))
         self._expirations[cookie_key] = when
 
