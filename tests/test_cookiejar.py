@@ -937,7 +937,7 @@ async def test_cookie_jar_expired_changes() -> None:
 
 
 async def test_cookie_jar_duplicates_with_expire_heap() -> None:
-    """Test that duplicate cookies to not grow the expires heap."""
+    """Test that duplicate cookies do not grow the expires heap."""
     jar = CookieJar()
 
     cookie_eleven_am = SimpleCookie()
