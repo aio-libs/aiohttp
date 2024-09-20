@@ -253,7 +253,7 @@ class ClientSession:
         "_max_field_size",
         "_resolve_charset",
         "_default_proxy",
-        "_default_proxy_auth"
+        "_default_proxy_auth",
     )
 
     def __init__(
@@ -372,7 +372,6 @@ class ClientSession:
                 raise InvalidURL(proxy) from e
         self._default_proxy = proxy
         self._default_proxy_auth = proxy_auth
-
 
     def __init_subclass__(cls: Type["ClientSession"]) -> None:
         raise TypeError(
