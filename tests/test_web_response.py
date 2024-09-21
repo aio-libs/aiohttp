@@ -1,4 +1,3 @@
-import asyncio
 import collections.abc
 import datetime
 import gzip
@@ -8,7 +7,7 @@ import re
 import weakref
 import zlib
 from concurrent.futures import ThreadPoolExecutor
-from typing import AsyncIterator, Callable, Optional, Union
+from typing import AsyncIterator, Optional, Union
 from unittest import mock
 
 import aiosignal
