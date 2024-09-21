@@ -169,7 +169,7 @@ async def test_test_client_head(
 
 
 @pytest.mark.parametrize("headers", [{"token": "x"}, CIMultiDict({"token": "x"}), {}])
-def test_make_mocked_request(headers: List[Mapping[str, str]]) -> None:
+def test_make_mocked_request(headers: Mapping[str, str]) -> None:
     req = make_mocked_request("GET", "/", headers=headers)
     assert req.method == "GET"
     assert req.path == "/"
