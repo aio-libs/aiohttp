@@ -2,6 +2,7 @@ import datetime
 import logging
 import platform
 import sys
+from contextvars import ContextVar
 from typing import Dict, NoReturn, Optional
 from unittest import mock
 
@@ -20,11 +21,6 @@ if sys.version_info >= (3, 11):
     from typing import Self
 else:
     from typing import Any as Self
-
-try:
-    from contextvars import ContextVar
-except ImportError:
-    ContextVar = None  # type: ignore[assignment,misc]
 
 IS_PYPY = platform.python_implementation() == "PyPy"
 

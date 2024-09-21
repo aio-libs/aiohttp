@@ -50,17 +50,8 @@ def buf() -> bytearray:
 
 
 @pytest.fixture
-def writer(buf: bytearray) -> mock.Mock:
-    writer = mock.Mock()
-
-    def acquire(cb: Callable[[asyncio.Transport], None]) -> None:
-        cb(writer.transport)
-
-    def buffer_data(chunk: bytes) -> None:
-        buf.extend(chunk)
-
-    def write(chunk: bytes) -> None:
-        buf.extend(chunk)
+def writer(buf: bytearray) -> AbstractStreamWriter:
+    writer = mock.create_autospec(AbstractStreamWriter, spec_set=True)
 
     async def write_headers(status_line: str, headers: CIMultiDict[str]) -> None:
         b_headers = _serialize_headers(status_line, headers)
@@ -69,15 +60,10 @@ def writer(buf: bytearray) -> mock.Mock:
     async def write_eof(chunk: bytes = b"") -> None:
         buf.extend(chunk)
 
-    writer.acquire.side_effect = acquire
-    writer.transport.write.side_effect = write
-    writer.write.side_effect = write
     writer.write_eof.side_effect = write_eof
     writer.write_headers.side_effect = write_headers
-    writer.buffer_data.side_effect = buffer_data
-    writer.drain.return_value = ()
 
-    return writer
+    return writer  # type: ignore[no-any-return]
 
 
 def test_stream_response_ctor() -> None:

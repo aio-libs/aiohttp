@@ -422,8 +422,8 @@ class TestNormalizePathMiddleware:
 
 
 async def test_bug_3669(aiohttp_client: AiohttpClient) -> None:
-    async def paymethod(request: web.Request) -> web.Response:
-        return web.Response(text="OK")
+    async def paymethod(request: web.Request) -> NoReturn:
+        assert False
 
     app = web.Application()
     app.router.add_route("GET", "/paymethod", paymethod)

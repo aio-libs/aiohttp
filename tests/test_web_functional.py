@@ -525,11 +525,7 @@ async def test_expect_default_handler_unknown(aiohttp_client: AiohttpClient) -> 
 
     # http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.20
     async def handler(request: web.Request) -> web.Response:
-        await request.post()
-        pytest.xfail(
-            "Handler should not proceed to this point in case of "
-            "unknown Expect header"
-        )
+        assert False
 
     app = web.Application()
     app.router.add_post("/", handler)
@@ -571,8 +567,8 @@ async def test_100_continue_custom(aiohttp_client: AiohttpClient) -> None:
     async def expect_handler(request: web.Request) -> None:
         nonlocal expect_received
         expect_received = True
-        if request.version == HttpVersion11:
-            await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+        assert request.version == HttpVersion11
+        await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
 
     app = web.Application()
     app.router.add_post("/", handler, expect_handler=expect_handler)
@@ -592,11 +588,11 @@ async def test_100_continue_custom_response(aiohttp_client: AiohttpClient) -> No
         return web.Response()
 
     async def expect_handler(request: web.Request) -> None:
-        if request.version == HttpVersion11:
-            if auth_err:
-                raise web.HTTPForbidden()
+        assert request.version == HttpVersion11
+        if auth_err:
+            raise web.HTTPForbidden()
 
-            await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+        await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
 
     app = web.Application()
     app.router.add_post("/", handler, expect_handler=expect_handler)
@@ -649,8 +645,8 @@ async def test_100_continue_for_not_found(aiohttp_client: AiohttpClient) -> None
 
 
 async def test_100_continue_for_not_allowed(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     app = web.Application()
     app.router.add_post("/", handler)
@@ -687,12 +683,10 @@ async def test_http10_keep_alive_default(aiohttp_client: AiohttpClient) -> None:
     app.router.add_get("/", handler)
     client = await aiohttp_client(app, version=HttpVersion10)
 
-    resp = await client.get("/")
-    assert 200 == resp.status
-    assert resp.version == HttpVersion10
-    assert resp.headers["Connection"] == "keep-alive"
-
-    resp.release()
+    async with client.get("/") as resp:
+        assert 200 == resp.status
+        assert resp.version == HttpVersion10
+        assert resp.headers["Connection"] == "keep-alive"
 
 
 async def test_http10_keep_alive_with_headers_close(
@@ -837,8 +831,8 @@ async def test_get_with_empty_arg(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_large_header(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -981,8 +975,8 @@ async def test_response_with_file(
 
     resp.release()
 
-    if outer_file_descriptor:
-        outer_file_descriptor.close()
+    assert outer_file_descriptor is not None
+    outer_file_descriptor.close()
 
 
 async def test_response_with_file_ctype(
@@ -1016,8 +1010,8 @@ async def test_response_with_file_ctype(
 
     resp.release()
 
-    if outer_file_descriptor:
-        outer_file_descriptor.close()
+    assert outer_file_descriptor is not None
+    outer_file_descriptor.close()
 
 
 async def test_response_with_payload_disp(
@@ -1049,8 +1043,8 @@ async def test_response_with_payload_disp(
 
     resp.release()
 
-    if outer_file_descriptor:
-        outer_file_descriptor.close()
+    assert outer_file_descriptor is not None
+    outer_file_descriptor.close()
 
 
 async def test_response_with_payload_stringio(
@@ -1329,8 +1323,8 @@ async def test_subapp_app(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_subapp_not_found(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response(text="OK")
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     app = web.Application()
     subapp = web.Application()
@@ -1345,8 +1339,8 @@ async def test_subapp_not_found(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_subapp_not_found2(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response(text="OK")
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     app = web.Application()
     subapp = web.Application()
@@ -1361,8 +1355,8 @@ async def test_subapp_not_found2(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_subapp_not_allowed(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response(text="OK")
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
 
     app = web.Application()
     subapp = web.Application()
@@ -1378,9 +1372,9 @@ async def test_subapp_not_allowed(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_subapp_cannot_add_app_in_handler(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> web.Response:
+    async def handler(request: web.Request) -> NoReturn:
         request.match_info.add_app(app)
-        return web.Response(text="OK")
+        assert False
 
     app = web.Application()
     subapp = web.Application()
@@ -1629,9 +1623,9 @@ async def test_response_prepared_with_clone(aiohttp_client: AiohttpClient) -> No
 
 
 async def test_app_max_client_size(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> web.Response:
+    async def handler(request: web.Request) -> NoReturn:
         await request.post()
-        return web.Response(body=b"ok")
+        assert False
 
     max_size = 1024**2
     app = web.Application()
@@ -1710,9 +1704,9 @@ async def test_app_max_client_size_none(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_post_max_client_size(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> web.Response:
+    async def handler(request: web.Request) -> NoReturn:
         await request.post()
-        return web.Response()
+        assert False
 
     app = web.Application(client_max_size=10)
     app.router.add_post("/", handler)
@@ -1734,9 +1728,9 @@ async def test_post_max_client_size(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_post_max_client_size_for_file(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> web.Response:
+    async def handler(request: web.Request) -> NoReturn:
         await request.post()
-        return web.Response()
+        assert False
 
     app = web.Application(client_max_size=2)
     app.router.add_post("/", handler)
@@ -1910,7 +1904,7 @@ async def test_response_context_manager_error(aiohttp_server: AiohttpServer) -> 
     await session.close()
 
 
-async def aiohttp_client_api_context_manager(aiohttp_server: AiohttpServer) -> None:
+async def test_client_api_context_manager(aiohttp_server: AiohttpServer) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response()
 
@@ -2014,7 +2008,7 @@ async def test_request_tracing(aiohttp_server: AiohttpServer) -> None:
             self._resolver = aiohttp.DefaultResolver()
 
         async def close(self) -> None:
-            pass
+            assert False
 
         async def resolve(
             self,
@@ -2023,19 +2017,17 @@ async def test_request_tracing(aiohttp_server: AiohttpServer) -> None:
             family: socket.AddressFamily = socket.AF_INET,
         ) -> List[ResolveResult]:
             fake_port = self._fakes.get(host)
-            if fake_port is not None:
-                return [
-                    {
-                        "hostname": host,
-                        "host": self._LOCAL_HOST[family],
-                        "port": fake_port,
-                        "family": socket.AF_INET,
-                        "proto": 0,
-                        "flags": socket.AI_NUMERICHOST,
-                    }
-                ]
-            else:
-                return await self._resolver.resolve(host, port, family)
+            assert fake_port is not None
+            return [
+                {
+                    "hostname": host,
+                    "host": self._LOCAL_HOST[family],
+                    "port": fake_port,
+                    "family": socket.AF_INET,
+                    "proto": 0,
+                    "flags": socket.AI_NUMERICHOST,
+                }
+            ]
 
     resolver = FakeResolver({"example.com": server.port})
     connector = aiohttp.TCPConnector(resolver=resolver)
