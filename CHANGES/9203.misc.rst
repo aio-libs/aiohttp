@@ -1,0 +1,3 @@
+Significantly improved performance of expiring cookies -- by :user:`bdraco`.
+
+Expiring cookies has been redesigned to use :mod:`heapq` instead of a linear search, to better scale.
