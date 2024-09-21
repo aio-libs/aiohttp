@@ -295,8 +295,11 @@ class CookieJar(AbstractCookieJar):
                         cookie["expires"] = ""
 
             key = (domain, path)
-            self._cookies[key][name] = cookie
-            self._morsel_cache[key].pop(name, None)
+            if self._cookies[key].get(name) != cookie:
+                # Don't blow away the cache is the same
+                # cookie gets set again
+                self._cookies[key][name] = cookie
+                self._morsel_cache[key].pop(name, None)
 
         self._do_expiration()
 
