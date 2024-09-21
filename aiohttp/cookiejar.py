@@ -365,7 +365,7 @@ class CookieJar(AbstractCookieJar):
 
                 # We already built the Morsel so reuse it here
                 if name in self._morsel_cache[p]:
-                    filtered[name] = self._morsel_cache[p][name]
+                    dict.__setitem__(filtered, name, self._morsel_cache[p][name])
                     continue
 
                 # It's critical we use the Morsel so the coded_value
@@ -373,7 +373,7 @@ class CookieJar(AbstractCookieJar):
                 mrsl_val = cast("Morsel[str]", cookie.get(cookie.key, Morsel()))
                 mrsl_val.set(cookie.key, cookie.value, cookie.coded_value)
                 self._morsel_cache[p][name] = mrsl_val
-                filtered[name] = mrsl_val
+                dict.__setitem__(filtered, name, mrsl_val)
 
         return filtered
 
