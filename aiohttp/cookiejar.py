@@ -354,9 +354,8 @@ class CookieJar(AbstractCookieJar):
             for name, cookie in self._cookies[p].items():
                 domain = cookie["domain"]
 
-                if (domain, name) in self._host_only_cookies:
-                    if domain != hostname:
-                        continue
+                if (domain, name) in self._host_only_cookies and domain != hostname:
+                    continue
 
                 # Skip edge case when the cookie has a trailing slash but request doesn't.
                 if len(cookie["path"]) > path_len:
