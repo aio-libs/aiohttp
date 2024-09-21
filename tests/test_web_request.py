@@ -4,7 +4,7 @@ import socket
 import ssl
 import weakref
 from collections.abc import MutableMapping
-from typing import Iterator, NoReturn, Optional, Tuple
+from typing import NoReturn, Optional, Tuple
 from unittest import mock
 
 import pytest

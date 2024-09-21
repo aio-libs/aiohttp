@@ -8,7 +8,7 @@ import re
 import weakref
 import zlib
 from concurrent.futures import ThreadPoolExecutor
-from typing import AsyncIterator, Callable, Mapping, Optional, Union
+from typing import AsyncIterator, Callable, Optional, Union
 from unittest import mock
 
 import aiosignal

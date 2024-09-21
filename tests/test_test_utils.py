@@ -1,7 +1,7 @@
 import asyncio
 import gzip
 import socket
-from typing import Callable, Iterator, List, Mapping, NoReturn
+from typing import Callable, Iterator, Mapping, NoReturn
 from unittest import mock
 
 import pytest

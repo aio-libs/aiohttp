@@ -18,7 +18,6 @@ from typing import (
     Generic,
     Iterator,
     List,
-    Mapping,
     Optional,
     Type,
     TypeVar,
