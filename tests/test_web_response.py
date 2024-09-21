@@ -35,7 +35,9 @@ def make_request(
     writer: Optional[AbstractStreamWriter] = None,
 ) -> web.Request:
     if app is None:
-        app = mock.create_autospec(web.Application, spec_set=True, on_response_prepare=aiosignal.Signal(app))
+        app = mock.create_autospec(
+            web.Application, spec_set=True, on_response_prepare=aiosignal.Signal(app)
+        )
     app.on_response_prepare.freeze()
     return make_mocked_request(
         method, path, headers, version=version, app=app, writer=writer
@@ -986,7 +988,9 @@ def test_ctor_both_charset_param_and_header_with_text() -> None:
 
 def test_ctor_both_content_type_param_and_header() -> None:
     with pytest.raises(ValueError):
-        web.Response(headers={"Content-Type": "application/json"}, content_type="text/html")
+        web.Response(
+            headers={"Content-Type": "application/json"}, content_type="text/html"
+        )
 
 
 def test_ctor_both_charset_param_and_header() -> None:
@@ -1066,7 +1070,9 @@ def test_response_set_content_length() -> None:
         resp.content_length = 1
 
 
-async def test_send_headers_for_empty_body(buf: bytearray, writer: AbstractStreamWriter) -> None:
+async def test_send_headers_for_empty_body(
+    buf: bytearray, writer: AbstractStreamWriter
+) -> None:
     req = make_request("GET", "/", writer=writer)
     resp = web.Response()
 
@@ -1107,7 +1113,9 @@ async def test_multiline_reason(buf: bytearray, writer: AbstractStreamWriter) ->
         web.Response(reason="Bad\r\nInjected-header: foo")
 
 
-async def test_send_set_cookie_header(buf: bytearray, writer: AbstractStreamWriter) -> None:
+async def test_send_set_cookie_header(
+    buf: bytearray, writer: AbstractStreamWriter
+) -> None:
     resp = web.Response()
     resp.cookies["name"] = "value"
     req = make_request("GET", "/", writer=writer)
@@ -1225,7 +1233,9 @@ def test_text_in_ctor_with_content_type() -> None:
 
 
 def test_text_in_ctor_with_content_type_header() -> None:
-    resp = web.Response(text="текст", headers={"Content-Type": "text/html; charset=koi8-r"})
+    resp = web.Response(
+        text="текст", headers={"Content-Type": "text/html; charset=koi8-r"}
+    )
     assert "текст".encode("koi8-r") == resp.body
     assert "text/html" == resp.content_type
     assert "koi8-r" == resp.charset
@@ -1328,7 +1338,9 @@ class TestJSONResponse:
 
 
 @pytest.mark.dev_mode
-async def test_no_warn_small_cookie(buf: bytearray, writer: AbstractStreamWriter) -> None:
+async def test_no_warn_small_cookie(
+    buf: bytearray, writer: AbstractStreamWriter
+) -> None:
     resp = web.Response()
     resp.set_cookie("foo", "ÿ" + "8" * 4064, max_age=2600)  # No warning
     req = make_request("GET", "/", writer=writer)

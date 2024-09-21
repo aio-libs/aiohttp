@@ -12,7 +12,9 @@ from aiohttp.typedefs import Handler, Middleware
 CLI = Callable[[Iterable[Middleware]], Awaitable[TestClient[web.Request]]]
 
 
-async def test_middleware_modifies_response(loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient) -> None:
+async def test_middleware_modifies_response(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(body=b"OK")
 
@@ -38,7 +40,9 @@ async def test_middleware_modifies_response(loop: asyncio.AbstractEventLoop, aio
         assert "OK[MIDDLEWARE]" == txt
 
 
-async def test_middleware_handles_exception(loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient) -> None:
+async def test_middleware_handles_exception(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
     async def handler(request: web.Request) -> NoReturn:
         raise RuntimeError("Error text")
 
@@ -60,7 +64,9 @@ async def test_middleware_handles_exception(loop: asyncio.AbstractEventLoop, aio
         assert "Error text[MIDDLEWARE]" == txt
 
 
-async def test_middleware_chain(loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient) -> None:
+async def test_middleware_chain(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(text="OK")
 
@@ -107,7 +113,9 @@ async def test_middleware_chain(loop: asyncio.AbstractEventLoop, aiohttp_client:
     ]
 
 
-async def test_middleware_subapp(loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient) -> None:
+async def test_middleware_subapp(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
     async def sub_handler(request: web.Request) -> web.Response:
         return web.Response(text="OK")
 
@@ -119,7 +127,9 @@ async def test_middleware_subapp(loop: asyncio.AbstractEventLoop, aiohttp_client
     middleware_annotation_seen_values = []
 
     def make_middleware(num: int) -> Middleware:
-        async def middleware(request: web.Request, handler: Handler) -> web.StreamResponse:
+        async def middleware(
+            request: web.Request, handler: Handler
+        ) -> web.StreamResponse:
             annotation = getattr(handler, "annotation", None)
             if annotation is not None:
                 middleware_annotation_seen_values.append(f"{annotation}/{num}")
@@ -157,7 +167,9 @@ def cli(loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient) -> CLI:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(text="OK")
 
-    def wrapper(extra_middlewares: Iterable[Middleware]) -> Awaitable[TestClient[web.Request]]:
+    def wrapper(
+        extra_middlewares: Iterable[Middleware],
+    ) -> Awaitable[TestClient[web.Request]]:
         app = web.Application()
         app.router.add_route("GET", "/resource1", handler)
         app.router.add_route("GET", "/resource2/", handler)
@@ -426,7 +438,9 @@ async def test_bug_3669(aiohttp_client: AiohttpClient) -> None:
     assert resp.url.path != "/paymethod"
 
 
-async def test_old_style_middleware(loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient) -> None:
+async def test_old_style_middleware(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
     async def view_handler(request: web.Request) -> web.Response:
         return web.Response(body=b"OK")
 
@@ -454,12 +468,16 @@ async def test_old_style_middleware(loop: asyncio.AbstractEventLoop, aiohttp_cli
     assert "OK[old style middleware]" == txt
 
 
-async def test_new_style_middleware_class(loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient) -> None:
+async def test_new_style_middleware_class(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(body=b"OK")
 
     class Middleware:
-        async def __call__(self, request: web.Request, handler: Handler) -> web.Response:
+        async def __call__(
+            self, request: web.Request, handler: Handler
+        ) -> web.Response:
             resp = await handler(request)
             assert 200 == resp.status
             resp.set_status(201)
@@ -478,7 +496,9 @@ async def test_new_style_middleware_class(loop: asyncio.AbstractEventLoop, aioht
     assert "OK[new style middleware]" == txt
 
 
-async def test_new_style_middleware_method(loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient) -> None:
+async def test_new_style_middleware_method(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(body=b"OK")
 
