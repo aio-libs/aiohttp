@@ -750,7 +750,7 @@ async def test_get_extra_info() -> None:
     valid_value = "existent"
     default_value = "default"
 
-    def get_extra_info(name: str, default: str) -> str:
+    def get_extra_info(name: str, default: object = None) -> object:
         return {valid_key: valid_value}.get(name, default)
 
     transp = mock.Mock()

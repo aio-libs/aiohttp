@@ -760,7 +760,7 @@ async def test___repr___after_eof() -> None:
     await resp.write(b"data")
     await resp.write_eof()
     resp_repr = repr(resp)
-    assert resp_repr == "<web.StreamResponse OK eof>"
+    assert resp_repr == "<StreamResponse OK eof>"
 
 
 async def test_cannot_write_eof_before_headers() -> None:
@@ -772,19 +772,20 @@ async def test_cannot_write_eof_before_headers() -> None:
 
 async def test_cannot_write_eof_twice() -> None:
     resp = web.StreamResponse()
-    writer = mock.Mock()
-    resp_impl = await resp.prepare(make_request("GET", "/"))
-    with mock.patch.object(resp_impl, "write", autospec=True, spec_set=True, return_value=None):
-        with mock.patch.object(resp_impl, "write_eof", autospec=True, spec_set=True, return_value=None):
-            await resp.write(b"data")
-            assert resp_impl is not None
-            assert resp_impl.write.called  # type: ignore[attr-defined]
+    writer = mock.create_autospec(AbstractStreamWriter, spec_set=True)
+    writer.write.return_value = None
+    writer.write_eof.return_value = None
+    resp_impl = await resp.prepare(make_request("GET", "/", writer=writer))
 
-            await resp.write_eof()
+    await resp.write(b"data")
+    assert resp_impl is not None
+    assert resp_impl.write.called  # type: ignore[attr-defined]
 
-            resp_impl.write.reset_mock()  # type: ignore[attr-defined]
-            await resp.write_eof()
-            assert not writer.write.called
+    await resp.write_eof()
+
+    resp_impl.write.reset_mock()  # type: ignore[attr-defined]
+    await resp.write_eof()
+    assert not writer.write.called
 
 
 def test_force_close() -> None:
@@ -825,12 +826,12 @@ async def test___repr__() -> None:
     req = make_request("GET", "/path/to")
     resp = web.StreamResponse(reason="foo")
     await resp.prepare(req)
-    assert "<web.StreamResponse foo GET /path/to >" == repr(resp)
+    assert "<StreamResponse foo GET /path/to >" == repr(resp)
 
 
 def test___repr___not_prepared() -> None:
     resp = web.StreamResponse(reason="foo")
-    assert "<web.StreamResponse foo not prepared>" == repr(resp)
+    assert "<StreamResponse foo not prepared>" == repr(resp)
 
 
 async def test_keep_alive_http10_default() -> None:
@@ -1073,13 +1074,13 @@ async def test_send_headers_for_empty_body(buf: bytearray, writer: AbstractStrea
     await resp.write_eof()
     txt = buf.decode("utf8")
 
-    expected = (
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Length: 0\r\n"
-        "Date: .+\r\n"
-        "Server: .+\r\n\r\n"
-    )
-    assert txt == expected
+    lines = txt.split("\r\n")
+    assert len(lines) == 6
+    assert lines[0] == "HTTP/1.1 200 OK"
+    assert lines[1] == "Content-Length: 0"
+    assert lines[2].startswith("Date: ")
+    assert lines[3].startswith("Server: ")
+    assert lines[4] == lines[5] == ""
 
 
 async def test_render_with_body(buf: bytearray, writer: AbstractStreamWriter) -> None:
@@ -1088,17 +1089,17 @@ async def test_render_with_body(buf: bytearray, writer: AbstractStreamWriter) ->
 
     await resp.prepare(req)
     await resp.write_eof()
-
     txt = buf.decode("utf8")
-    expected = (
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Length: 4\r\n"
-        "Content-Type: application/octet-stream\r\n"
-        "Date: .+\r\n"
-        "Server: .+\r\n\r\n"
-        "data"
-    )
-    assert txt == expected
+
+    lines = txt.split("\r\n")
+    assert len(lines) == 7
+    assert lines[0] == "HTTP/1.1 200 OK"
+    assert lines[1] == "Content-Length: 4"
+    assert lines[2] == "Content-Type: application/octet-stream"
+    assert lines[3].startswith("Date: ")
+    assert lines[4].startswith("Server: ")
+    assert lines[5] == ""
+    assert lines[6] == "data"
 
 
 async def test_multiline_reason(buf: bytearray, writer: AbstractStreamWriter) -> None:
@@ -1113,16 +1114,16 @@ async def test_send_set_cookie_header(buf: bytearray, writer: AbstractStreamWrit
 
     await resp.prepare(req)
     await resp.write_eof()
-
     txt = buf.decode("utf8")
-    expected = (
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Length: 0\r\n"
-        "Set-Cookie: name=value\r\n"
-        "Date: .+\r\n"
-        "Server: .+\r\n\r\n"
-    )
-    assert txt == expected
+
+    lines = txt.split("\r\n")
+    assert len(lines) == 7
+    assert lines[0] == "HTTP/1.1 200 OK"
+    assert lines[1] == "Content-Length: 0"
+    assert lines[2] == "Set-Cookie: name=value"
+    assert lines[3].startswith("Date: ")
+    assert lines[4].startswith("Server: ")
+    assert lines[5] == lines[6] == ""
 
 
 async def test_consecutive_write_eof() -> None:

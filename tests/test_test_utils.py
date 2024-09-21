@@ -235,12 +235,12 @@ async def test_test_client_props() -> None:
     client = TestClient(server)
     assert client.scheme == "http"
     assert client.host == "127.0.0.1"
-    assert client.port is None
+    assert client.port == 0
     async with client:
         assert isinstance(client.port, int)
         assert client.server is not None
         assert client.app is not None
-    assert client.port is None
+    assert client.port == 0
 
 
 async def test_test_client_raw_server_props() -> None:
@@ -251,12 +251,12 @@ async def test_test_client_raw_server_props() -> None:
     client = TestClient(server)
     assert client.scheme == "http"
     assert client.host == "127.0.0.1"
-    assert client.port is None
+    assert client.port == 0
     async with client:
         assert isinstance(client.port, int)
         assert client.server is not None
         assert client.app is None
-    assert client.port is None
+    assert client.port == 0
 
 
 async def test_test_server_context_manager(loop: asyncio.AbstractEventLoop) -> None:

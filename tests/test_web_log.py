@@ -11,9 +11,15 @@ import aiohttp
 from aiohttp import web
 from aiohttp.abc import AbstractAccessLogger, AbstractAsyncAccessLogger
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpRawServer, AiohttpServer
+from aiohttp.test_utils import make_mocked_request
 from aiohttp.typedefs import Handler
 from aiohttp.web_log import AccessLogger
 from aiohttp.web_response import Response
+
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing import Any as Self
 
 try:
     from contextvars import ContextVar
@@ -88,7 +94,7 @@ def test_access_logger_atoms(
 ) -> None:
     class PatchedDatetime(datetime.datetime):
         @classmethod
-        def now(cls, tz: Optional[datetime.tzinfo] = None) -> PatchedDatetime:
+        def now(cls, tz: Optional[datetime.tzinfo] = None) -> Self:
             return cls(1843, 1, 1, 0, 30, tzinfo=tz)
 
     monkeypatch.setattr("datetime.datetime", PatchedDatetime)
@@ -145,25 +151,25 @@ def test_logger_no_message() -> None:
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, "%r %{content-type}i")
     extra_dict = {
-        "first_request_line": "-",
-        "request_header": {"content-type": "(no headers)"},
+        "first_request_line": "GET / HTTP/1.1",
+        "request_header": {"content-type": "-"},
     }
 
-    access_logger.log(web.Request(), web.Response(), 0.0)
-    mock_logger.info.assert_called_with("- (no headers)", extra=extra_dict)
+    access_logger.log(make_mocked_request("GET", "/"), web.Response(), 0.0)
+    mock_logger.info.assert_called_with("GET / HTTP/1.1 -", extra=extra_dict)
 
 
 def test_logger_internal_error() -> None:
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, "%D")
-    access_logger.log(web.Request(), web.Response(), "invalid")  # type: ignore[arg-type]
+    access_logger.log(make_mocked_request("GET", "/"), web.Response(), "invalid")  # type: ignore[arg-type]
     mock_logger.exception.assert_called_with("Error in logging")
 
 
 def test_logger_no_transport() -> None:
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, "%a")
-    access_logger.log(web.Request(), web.Response(), 0.0)
+    access_logger.log(make_mocked_request("GET", "/"), web.Response(), 0.0)
     mock_logger.info.assert_called_with("-", extra={"remote_address": "-"})
 
 
@@ -176,7 +182,7 @@ def test_logger_abc() -> None:
     access_logger: AbstractAccessLogger = Logger(mock_logger, "")
 
     with pytest.raises(ZeroDivisionError):
-        access_logger.log(web.Request(), web.Response(), 0.0)
+        access_logger.log(make_mocked_request("GET", "/"), web.Response(), 0.0)
 
     class Logger2(AbstractAccessLogger):
         def log(self, request: web.BaseRequest, response: web.StreamResponse, time: float) -> None:
