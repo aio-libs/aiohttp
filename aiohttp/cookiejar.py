@@ -245,7 +245,7 @@ class CookieJar(AbstractCookieJar):
             domain = cookie["domain"]
 
             # ignore domains with trailing dots
-            if domain.endswith("."):
+            if domain and domain[-1] == ".":
                 domain = ""
                 del cookie["domain"]
 
@@ -255,7 +255,7 @@ class CookieJar(AbstractCookieJar):
                 self._host_only_cookies.add((hostname, name))
                 domain = cookie["domain"] = hostname
 
-            if domain.startswith("."):
+            if domain and domain[0] == ".":
                 # Remove leading dot
                 domain = domain[1:]
                 cookie["domain"] = domain
@@ -265,7 +265,7 @@ class CookieJar(AbstractCookieJar):
                 continue
 
             path = cookie["path"]
-            if not path or not path.startswith("/"):
+            if not path or path[0] != "/":
                 # Set the cookie's path to the response path
                 path = response_url.path
                 if not path.startswith("/"):
