@@ -1426,9 +1426,7 @@ class TestMultipartWriter:
         self, buf: bytearray, stream: Stream
     ) -> None:
         with aiohttp.MultipartWriter("form-data", boundary=":") as writer:
-            with pathlib.Path(pathlib.Path(__file__).parent / "sample.txt").open(
-                "rb"
-            ) as fobj:
+            with pathlib.Path(__file__).with_name("sample.txt").open("rb") as fobj:
                 content = fobj.read()
                 fobj.seek(0)
 

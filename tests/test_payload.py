@@ -1,6 +1,6 @@
 import array
 import io
-import pathlib
+from pathlib import Path
 from typing import Any, AsyncIterator, Iterator
 from unittest import mock
 
@@ -102,7 +102,7 @@ def test_string_io_payload() -> None:
 
 
 def test_text_io_payload() -> None:
-    filepath = pathlib.Path(__file__).parent / "sample.txt"
+    filepath = Path(__file__).with_name("sample.txt")
     filesize = filepath.stat().st_size
     with filepath.open("r") as f:
         p = payload.TextIOPayload(f)
@@ -113,7 +113,7 @@ def test_text_io_payload() -> None:
 
 
 def test_bytes_io_payload() -> None:
-    filepath = pathlib.Path(__file__).parent / "sample.txt"
+    filepath = Path(__file__).with_name("sample.txt")
     filesize = filepath.stat().st_size
     with filepath.open("rb") as f:
         p = payload.BytesIOPayload(f)
@@ -126,7 +126,7 @@ def test_bytes_io_payload() -> None:
 
 
 def test_buffered_reader_payload() -> None:
-    filepath = pathlib.Path(__file__).parent / "sample.txt"
+    filepath = Path(__file__).with_name("sample.txt")
     filesize = filepath.stat().st_size
     with filepath.open("rb") as f:
         p = payload.BufferedReaderPayload(f)
@@ -179,7 +179,7 @@ async def test_string_io_payload_write() -> None:
 
 
 async def test_io_base_payload_write() -> None:
-    filepath = pathlib.Path(__file__).parent / "sample.txt"
+    filepath = Path(__file__).with_name("sample.txt")
     with filepath.open("rb") as f:
         content = f.read()
         with io.BytesIO(content) as bf:
@@ -206,7 +206,7 @@ async def test_io_base_payload_write() -> None:
 
 
 async def test_text_io_payload_write() -> None:
-    filepath = pathlib.Path(__file__).parent / "sample.txt"
+    filepath = Path(__file__).with_name("sample.txt")
     with filepath.open("r") as f:
         content = f.read()
         f.seek(0)
@@ -233,7 +233,7 @@ async def test_text_io_payload_write() -> None:
 
 
 async def test_bytes_io_payload_write() -> None:
-    filepath = pathlib.Path(__file__).parent / "sample.txt"
+    filepath = Path(__file__).with_name("sample.txt")
     with filepath.open("rb") as f:
         content = f.read()
         with io.BytesIO(content) as bf:
@@ -260,7 +260,7 @@ async def test_bytes_io_payload_write() -> None:
 
 
 async def test_buffered_reader_payload_write() -> None:
-    filepath = pathlib.Path(__file__).parent / "sample.txt"
+    filepath = Path(__file__).with_name("sample.txt")
     with filepath.open("rb") as f:
         content = f.read()
         f.seek(0)

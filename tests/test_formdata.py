@@ -1,7 +1,7 @@
 import io
-import pathlib
 import tarfile
 import tempfile
+from pathlib import Path
 from typing import NoReturn
 from unittest import mock
 
@@ -107,7 +107,7 @@ async def test_formdata_boundary_param() -> None:
 
 
 async def test_formdata_on_redirect(aiohttp_client: AiohttpClient) -> None:
-    with pathlib.Path(pathlib.Path(__file__).parent / "sample.txt").open("rb") as fobj:
+    with Path(__file__).with_name("sample.txt").open("rb") as fobj:
         content = fobj.read()
         fobj.seek(0)
 
@@ -139,7 +139,7 @@ async def test_formdata_on_redirect(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_formdata_on_redirect_after_recv(aiohttp_client: AiohttpClient) -> None:
-    with pathlib.Path(pathlib.Path(__file__).parent / "sample.txt").open("rb") as fobj:
+    with Path(__file__).with_name("sample.txt").open("rb") as fobj:
         content = fobj.read()
         fobj.seek(0)
 

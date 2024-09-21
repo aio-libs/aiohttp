@@ -169,14 +169,11 @@ def process_data_to_payload(body: Any) -> Any:
     if body is None:
         return None
 
-    # FormData
     if isinstance(body, FormData):
         body = body()
 
-    try:
+    with contextlib.suppress(payload.LookupError):
         body = payload.PAYLOAD_REGISTRY.get(body, disposition=None)
-    except payload.LookupError:
-        pass  # keep for ClientRequest to handle
 
     return body
 

@@ -311,7 +311,7 @@ class IOBasePayload(Payload):
 
         try:
             self._seekable = self._value.seekable()
-        except (AttributeError, OSError):
+        except AttributeError:  # https://github.com/python/cpython/issues/124293
             self._seekable = False
 
         if self._seekable:
