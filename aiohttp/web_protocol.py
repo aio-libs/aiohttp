@@ -162,6 +162,7 @@ class RequestHandler(BaseProtocol):
         "_force_close",
         "_current_request",
         "_timeout_ceil_threshold",
+        "_request_in_progress",
     )
 
     def __init__(
@@ -238,6 +239,7 @@ class RequestHandler(BaseProtocol):
 
         self._close = False
         self._force_close = False
+        self._request_in_progress = False
 
     def __repr__(self) -> str:
         return "<{} {}>".format(
@@ -261,7 +263,11 @@ class RequestHandler(BaseProtocol):
             self._keepalive_handle.cancel()
 
         # Wait for graceful handler completion
-        if self._handler_waiter is not None:
+        if self._request_in_progress:
+            # The future is only created when we are shutting
+            # down while the handler is still processing a request
+            # to avoid creating a future for every request.
+            self._handler_waiter = self._loop.create_future()
             with suppress(asyncio.CancelledError, asyncio.TimeoutError):
                 async with ceil_timeout(timeout):
                     await self._handler_waiter
@@ -446,7 +452,7 @@ class RequestHandler(BaseProtocol):
         start_time: float,
         request_handler: Callable[[BaseRequest], Awaitable[StreamResponse]],
     ) -> Tuple[StreamResponse, bool]:
-        self._handler_waiter = self._loop.create_future()
+        self._request_in_progress = True
         try:
             try:
                 self._current_request = request
@@ -477,7 +483,9 @@ class RequestHandler(BaseProtocol):
 
             resp, reset = await self.finish_response(request, resp, start_time)
         finally:
-            self._handler_waiter.set_result(None)
+            self._request_in_progress = False
+            if self._handler_waiter is not None:
+                self._handler_waiter.set_result(None)
 
         return resp, reset
 
