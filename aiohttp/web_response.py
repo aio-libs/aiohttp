@@ -144,7 +144,7 @@ class StreamResponse(BaseClass, HeadersMixin):
         self._set_status(status, reason)
 
     def _set_status(self, status: int, reason: Optional[str]) -> None:
-        self._status = status
+        self._status = int(status)
         if reason is None:
             reason = REASON_PHRASES.get(self._status, "")
         elif "\n" in reason:
