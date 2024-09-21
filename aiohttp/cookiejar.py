@@ -276,8 +276,7 @@ class CookieJar(AbstractCookieJar):
                 cookie["path"] = path
             path = path.rstrip("/")
 
-            max_age = cookie["max-age"]
-            if max_age:
+            if max_age := cookie["max-age"]:
                 try:
                     delta_seconds = int(max_age)
                     max_age_expiration = min(time.time() + delta_seconds, self.MAX_TIME)
@@ -285,14 +284,12 @@ class CookieJar(AbstractCookieJar):
                 except ValueError:
                     cookie["max-age"] = ""
 
-            else:
-                expires = cookie["expires"]
-                if expires:
-                    expire_time = self._parse_date(expires)
-                    if expire_time:
-                        self._expire_cookie(expire_time, domain, path, name)
-                    else:
-                        cookie["expires"] = ""
+            elif expires := cookie["expires"]:
+                expire_time = self._parse_date(expires)
+                if expire_time:
+                    self._expire_cookie(expire_time, domain, path, name)
+                else:
+                    cookie["expires"] = ""
 
             key = (domain, path)
             if self._cookies[key].get(name) != cookie:
