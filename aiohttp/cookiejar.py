@@ -94,7 +94,7 @@ class CookieJar(AbstractCookieJar):
         self._cookies: DefaultDict[Tuple[str, str], SimpleCookie] = defaultdict(
             SimpleCookie
         )
-        self._morsel_cache: DefaultDict[Tuple[str, str], Dict[str, Morsel]] = (
+        self._morsel_cache: DefaultDict[Tuple[str, str], Dict[str, Morsel[str]]] = (
             defaultdict(dict)
         )
         self._host_only_cookies: Set[Tuple[str, str]] = set()
