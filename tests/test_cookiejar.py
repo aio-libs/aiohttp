@@ -1,10 +1,12 @@
 import asyncio
 import datetime
+import heapq
 import itertools
 import pathlib
 import pickle
 import unittest
 from http.cookies import BaseCookie, Morsel, SimpleCookie
+from operator import not_
 from unittest import mock
 
 import pytest
@@ -847,12 +849,98 @@ async def test_cookie_jar_clear_expired():
     with freeze_time("1980-01-01"):
         sut.update_cookies(cookie)
 
-    sut.clear(lambda x: False)
-    with freeze_time("1980-01-01"):
-        assert len(sut) == 0
+    for _ in range(2):
+        sut.clear(not_)
+        with freeze_time("1980-01-01"):
+            assert len(sut) == 0
 
 
-async def test_cookie_jar_filter_cookies_expires():
+async def test_cookie_jar_expired_changes() -> None:
+    """Test that expire time changes are handled as expected."""
+    jar = CookieJar()
+
+    cookie_eleven_am = SimpleCookie()
+    cookie_eleven_am["foo"] = "bar"
+    cookie_eleven_am["foo"]["expires"] = "Tue, 1 Jan 1990 11:00:00 GMT"
+
+    cookie_noon = SimpleCookie()
+    cookie_noon["foo"] = "bar"
+    cookie_noon["foo"]["expires"] = "Tue, 1 Jan 1990 12:00:00 GMT"
+
+    cookie_one_pm = SimpleCookie()
+    cookie_one_pm["foo"] = "bar"
+    cookie_one_pm["foo"]["expires"] = "Tue, 1 Jan 1990 13:00:00 GMT"
+
+    cookie_two_pm = SimpleCookie()
+    cookie_two_pm["foo"] = "bar"
+    cookie_two_pm["foo"]["expires"] = "Tue, 1 Jan 1990 14:00:00 GMT"
+
+    with freeze_time() as freezer:
+        freezer.move_to("1990-01-01 10:00:00+00:00")
+        jar.update_cookies(cookie_noon)
+        assert len(jar) == 1
+        matched_cookies = jar.filter_cookies(URL("/"))
+        assert len(matched_cookies) == 1
+        assert "foo" in matched_cookies
+
+        jar.update_cookies(cookie_eleven_am)
+        matched_cookies = jar.filter_cookies(URL("/"))
+        assert len(matched_cookies) == 1
+        assert "foo" in matched_cookies
+
+        jar.update_cookies(cookie_one_pm)
+        matched_cookies = jar.filter_cookies(URL("/"))
+        assert len(matched_cookies) == 1
+        assert "foo" in matched_cookies
+
+        jar.update_cookies(cookie_two_pm)
+        matched_cookies = jar.filter_cookies(URL("/"))
+        assert len(matched_cookies) == 1
+        assert "foo" in matched_cookies
+
+        freezer.move_to("1990-01-01 13:00:00+00:00")
+        matched_cookies = jar.filter_cookies(URL("/"))
+        assert len(matched_cookies) == 1
+        assert "foo" in matched_cookies
+
+        freezer.move_to("1990-01-01 14:00:00+00:00")
+        matched_cookies = jar.filter_cookies(URL("/"))
+        assert len(matched_cookies) == 0
+
+
+async def test_cookie_jar_duplicates_with_expire_heap() -> None:
+    """Test that duplicate cookies do not grow the expires heap."""
+    jar = CookieJar()
+
+    cookie_eleven_am = SimpleCookie()
+    cookie_eleven_am["foo"] = "bar"
+    cookie_eleven_am["foo"]["expires"] = "Tue, 1 Jan 1990 11:00:00 GMT"
+
+    cookie_two_pm = SimpleCookie()
+    cookie_two_pm["foo"] = "bar"
+    cookie_two_pm["foo"]["expires"] = "Tue, 1 Jan 1990 14:00:00 GMT"
+
+    with freeze_time() as freezer:
+        freezer.move_to("1990-01-01 10:00:00+00:00")
+
+        for _ in range(10):
+            jar.update_cookies(cookie_eleven_am)
+
+        assert len(jar) == 1
+        matched_cookies = jar.filter_cookies(URL("/"))
+        assert len(matched_cookies) == 1
+        assert "foo" in matched_cookies
+
+        assert len(jar._expire_heap) == 1
+
+        freezer.move_to("1990-01-01 16:00:00+00:00")
+        jar.update_cookies(cookie_two_pm)
+        matched_cookies = jar.filter_cookies(URL("/"))
+        assert len(matched_cookies) == 0
+        assert len(jar._expire_heap) == 0
+
+
+async def test_cookie_jar_filter_cookies_expires() -> None:
     """Test that calling filter_cookies will expire stale cookies."""
     jar = CookieJar()
     assert len(jar) == 0
@@ -871,6 +959,84 @@ async def test_cookie_jar_filter_cookies_expires():
     jar.filter_cookies(URL("http://any.com/"))
 
     assert len(jar) == 0
+
+
+async def test_cookie_jar_heap_cleanup() -> None:
+    """Test that the heap gets cleaned up when there are many old expirations."""
+    jar = CookieJar()
+    # The heap should not be cleaned up when there are less than 100 expiration changes
+    min_cookies_to_cleanup = 100
+
+    with freeze_time() as freezer:
+        freezer.move_to("1990-01-01 09:00:00+00:00")
+
+        start_time = datetime.datetime(
+            1990, 1, 1, 10, 0, 0, tzinfo=datetime.timezone.utc
+        )
+        for i in range(min_cookies_to_cleanup):
+            cookie = SimpleCookie()
+            cookie["foo"] = "bar"
+            cookie["foo"]["expires"] = (
+                start_time + datetime.timedelta(seconds=i)
+            ).strftime("%a, %d %b %Y %H:%M:%S GMT")
+            jar.update_cookies(cookie)
+            assert len(jar._expire_heap) == i + 1
+
+        assert len(jar._expire_heap) == min_cookies_to_cleanup
+
+        # Now that we reached the minimum number of cookies to cleanup,
+        # add one more cookie to trigger the cleanup
+        cookie = SimpleCookie()
+        cookie["foo"] = "bar"
+        cookie["foo"]["expires"] = (
+            start_time + datetime.timedelta(seconds=i + 1)
+        ).strftime("%a, %d %b %Y %H:%M:%S GMT")
+        jar.update_cookies(cookie)
+
+        # Verify that the heap has been cleaned up
+        assert len(jar) == 1
+        matched_cookies = jar.filter_cookies(URL("/"))
+        assert len(matched_cookies) == 1
+        assert "foo" in matched_cookies
+        # The heap should have been cleaned up
+        assert len(jar._expire_heap) == 1
+
+
+async def test_cookie_jar_heap_maintains_order_after_cleanup() -> None:
+    """Test that order is maintained after cleanup."""
+    jar = CookieJar()
+    # The heap should not be cleaned up when there are less than 100 expiration changes
+    min_cookies_to_cleanup = 100
+
+    with freeze_time() as freezer:
+        freezer.move_to("1990-01-01 09:00:00+00:00")
+
+        for hour in (12, 13):
+            for i in range(min_cookies_to_cleanup):
+                cookie = SimpleCookie()
+                cookie["foo"] = "bar"
+                cookie["foo"]["domain"] = f"example{i}.com"
+                cookie["foo"]["expires"] = f"Tue, 1 Jan 1990 {hour}:00:00 GMT"
+                jar.update_cookies(cookie)
+
+        # Get the jar into a state where the next cookie will trigger the cleanup
+        assert len(jar._expire_heap) == min_cookies_to_cleanup * 2
+        assert len(jar._expirations) == min_cookies_to_cleanup
+
+        cookie = SimpleCookie()
+        cookie["foo"] = "bar"
+        cookie["foo"]["domain"] = "example0.com"
+        cookie["foo"]["expires"] = "Tue, 1 Jan 1990 14:00:00 GMT"
+        jar.update_cookies(cookie)
+
+        assert len(jar) == 100
+        # The heap should have been cleaned up
+        assert len(jar._expire_heap) == 100
+
+        # Verify that the heap is still ordered
+        heap_before = jar._expire_heap.copy()
+        heapq.heapify(jar._expire_heap)
+        assert heap_before == jar._expire_heap
 
 
 async def test_cookie_jar_clear_domain() -> None:
