@@ -42,6 +42,8 @@ from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
 
+REASON_PHRASES = {http_status.value: http_status.phrase for http_status in HTTPStatus}
+
 __all__ = ("ContentCoding", "StreamResponse", "Response", "json_response")
 
 
@@ -102,7 +104,7 @@ class StreamResponse(BaseClass, HeadersMixin):
         else:
             self._headers = CIMultiDict()
 
-        self.set_status(status, reason)
+        self._set_status(status, reason)
 
     @property
     def prepared(self) -> bool:
@@ -139,13 +141,13 @@ class StreamResponse(BaseClass, HeadersMixin):
         assert (
             not self.prepared
         ), "Cannot change the response status code after the headers have been sent"
+        self._set_status(status, reason)
+
+    def _set_status(self, status: int, reason: Optional[str]) -> None:
         self._status = int(status)
         if reason is None:
-            try:
-                reason = HTTPStatus(self._status).phrase
-            except ValueError:
-                reason = ""
-        if "\n" in reason:
+            reason = REASON_PHRASES.get(self._status, "")
+        elif "\n" in reason:
             raise ValueError("Reason cannot contain \\n")
         self._reason = reason
 
