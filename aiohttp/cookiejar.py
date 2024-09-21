@@ -94,6 +94,9 @@ class CookieJar(AbstractCookieJar):
         self._cookies: DefaultDict[Tuple[str, str], SimpleCookie] = defaultdict(
             SimpleCookie
         )
+        self._morsel_cache: DefaultDict[Tuple[str, str], Dict[str, Morsel]] = (
+            defaultdict(dict)
+        )
         self._host_only_cookies: Set[Tuple[str, str]] = set()
         self._unsafe = unsafe
         self._quote_cookie = quote_cookie
@@ -129,6 +132,7 @@ class CookieJar(AbstractCookieJar):
         if predicate is None:
             self._expire_heap.clear()
             self._cookies.clear()
+            self._morsel_cache.clear()
             self._host_only_cookies.clear()
             self._expirations.clear()
             return
@@ -210,6 +214,7 @@ class CookieJar(AbstractCookieJar):
         for domain, path, name in to_del:
             self._host_only_cookies.discard((domain, name))
             self._cookies[(domain, path)].pop(name, None)
+            self._morsel_cache[(domain, path)].pop(name, None)
             self._expirations.pop((domain, path, name), None)
 
     def _expire_cookie(self, when: float, domain: str, path: str, name: str) -> None:
@@ -289,7 +294,9 @@ class CookieJar(AbstractCookieJar):
                     else:
                         cookie["expires"] = ""
 
-            self._cookies[(domain, path)][name] = cookie
+            key = (domain, path)
+            self._cookies[key][name] = cookie
+            self._morsel_cache[key].pop(name, None)
 
         self._do_expiration()
 
@@ -358,10 +365,16 @@ class CookieJar(AbstractCookieJar):
                 if is_not_secure and cookie["secure"]:
                     continue
 
+                # We already built the Morsel so reuse it here
+                if name in self._morsel_cache[p]:
+                    filtered[name] = self._morsel_cache[p][name]
+                    continue
+
                 # It's critical we use the Morsel so the coded_value
                 # (based on cookie version) is preserved
                 mrsl_val = cast("Morsel[str]", cookie.get(cookie.key, Morsel()))
                 mrsl_val.set(cookie.key, cookie.value, cookie.coded_value)
+                self._morsel_cache[p][name] = mrsl_val
                 filtered[name] = mrsl_val
 
         return filtered
