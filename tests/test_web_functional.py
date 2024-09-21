@@ -4,7 +4,16 @@ import json
 import pathlib
 import socket
 import zlib
-from typing import AsyncIterator, Awaitable, Callable, Dict, List, NoReturn, Optional, cast
+from typing import (
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Dict,
+    List,
+    NoReturn,
+    Optional,
+    cast,
+)
 from unittest import mock
 
 import pytest
@@ -110,7 +119,9 @@ async def test_handler_returns_not_response(
         assert resp.status == 500
 
 
-async def test_handler_returns_none(aiohttp_server: AiohttpServer, aiohttp_client: AiohttpClient) -> None:
+async def test_handler_returns_none(
+    aiohttp_server: AiohttpServer, aiohttp_client: AiohttpClient
+) -> None:
     asyncio.get_event_loop().set_debug(True)
     logger = mock.Mock()
 
@@ -159,7 +170,9 @@ async def test_head_returns_empty_body(aiohttp_client: AiohttpClient) -> None:
 
 
 @pytest.mark.parametrize("status", (201, 204, 404))
-async def test_default_content_type_no_body(aiohttp_client: AiohttpClient, status: int) -> None:
+async def test_default_content_type_no_body(
+    aiohttp_client: AiohttpClient, status: int
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(status=status)
 
@@ -309,7 +322,9 @@ async def test_multipart_empty(aiohttp_client: AiohttpClient) -> None:
     resp.release()
 
 
-async def test_multipart_content_transfer_encoding(aiohttp_client: AiohttpClient) -> None:
+async def test_multipart_content_transfer_encoding(
+    aiohttp_client: AiohttpClient,
+) -> None:
     # For issue #1168
     with multipart.MultipartWriter() as writer:
         writer.append(
@@ -680,7 +695,9 @@ async def test_http10_keep_alive_default(aiohttp_client: AiohttpClient) -> None:
     resp.release()
 
 
-async def test_http10_keep_alive_with_headers_close(aiohttp_client: AiohttpClient) -> None:
+async def test_http10_keep_alive_with_headers_close(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         await request.read()
         return web.Response(body=b"OK")
@@ -834,7 +851,9 @@ async def test_large_header(aiohttp_client: AiohttpClient) -> None:
     resp.release()
 
 
-async def test_large_header_allowed(aiohttp_client: AiohttpClient, aiohttp_server: AiohttpServer) -> None:
+async def test_large_header_allowed(
+    aiohttp_client: AiohttpClient, aiohttp_server: AiohttpServer
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response()
 
@@ -866,7 +885,9 @@ async def test_get_with_empty_arg_with_equal(aiohttp_client: AiohttpClient) -> N
     resp.release()
 
 
-async def test_response_with_async_gen(aiohttp_client: AiohttpClient, fname: pathlib.Path) -> None:
+async def test_response_with_async_gen(
+    aiohttp_client: AiohttpClient, fname: pathlib.Path
+) -> None:
     with fname.open("rb") as f:
         data = f.read()
 
@@ -928,7 +949,9 @@ async def test_response_with_async_gen_no_params(
     resp.release()
 
 
-async def test_response_with_file(aiohttp_client: AiohttpClient, fname: pathlib.Path) -> None:
+async def test_response_with_file(
+    aiohttp_client: AiohttpClient, fname: pathlib.Path
+) -> None:
     outer_file_descriptor = None
 
     with fname.open("rb") as f:
@@ -962,7 +985,9 @@ async def test_response_with_file(aiohttp_client: AiohttpClient, fname: pathlib.
         outer_file_descriptor.close()
 
 
-async def test_response_with_file_ctype(aiohttp_client: AiohttpClient, fname: pathlib.Path) -> None:
+async def test_response_with_file_ctype(
+    aiohttp_client: AiohttpClient, fname: pathlib.Path
+) -> None:
     outer_file_descriptor = None
 
     with fname.open("rb") as f:
@@ -995,7 +1020,9 @@ async def test_response_with_file_ctype(aiohttp_client: AiohttpClient, fname: pa
         outer_file_descriptor.close()
 
 
-async def test_response_with_payload_disp(aiohttp_client: AiohttpClient, fname: pathlib.Path) -> None:
+async def test_response_with_payload_disp(
+    aiohttp_client: AiohttpClient, fname: pathlib.Path
+) -> None:
     outer_file_descriptor = None
 
     with fname.open("rb") as f:
@@ -1026,7 +1053,9 @@ async def test_response_with_payload_disp(aiohttp_client: AiohttpClient, fname: 
         outer_file_descriptor.close()
 
 
-async def test_response_with_payload_stringio(aiohttp_client: AiohttpClient, fname: pathlib.Path) -> None:
+async def test_response_with_payload_stringio(
+    aiohttp_client: AiohttpClient, fname: pathlib.Path
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(body=io.StringIO("test"))
 
@@ -1073,7 +1102,9 @@ async def test_response_with_precompressed_body(
     resp.release()
 
 
-async def test_response_with_precompressed_body_brotli(aiohttp_client: AiohttpClient) -> None:
+async def test_response_with_precompressed_body_brotli(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         headers = {"Content-Encoding": "br"}
         return web.Response(body=brotli.compress(b"mydata"), headers=headers)
@@ -1376,7 +1407,9 @@ async def test_old_style_subapp_middlewares(aiohttp_client: AiohttpClient) -> No
     ):
 
         @web.middleware
-        async def middleware(request: web.Request, handler: Handler) -> web.StreamResponse:
+        async def middleware(
+            request: web.Request, handler: Handler
+        ) -> web.StreamResponse:
             order.append((1, request.app[name]))
             resp = await handler(request)
             assert 200 == resp.status
@@ -1417,9 +1450,11 @@ async def test_subapp_on_response_prepare(aiohttp_client: AiohttpClient) -> None
         return web.Response(text="OK")
 
     def make_signal(
-        app: web.Application
+        app: web.Application,
     ) -> Callable[[web.Request, web.StreamResponse], Awaitable[None]]:
-        async def on_response(request: web.Request, response: web.StreamResponse) -> None:
+        async def on_response(
+            request: web.Request, response: web.StreamResponse
+        ) -> None:
             order.append(app)
 
         return on_response
@@ -1522,10 +1557,10 @@ async def test_subapp_middleware_context(
 ) -> None:
     values = []
 
-    def show_app_context(
-        appname: str
-    ) -> Middleware:
-        async def middleware(request: web.Request, handler: Handler) -> web.StreamResponse:
+    def show_app_context(appname: str) -> Middleware:
+        async def middleware(
+            request: web.Request, handler: Handler
+        ) -> web.StreamResponse:
             values.append(f"{appname}: {request.app[my_value]}")
             return await handler(request)
 
@@ -1740,7 +1775,9 @@ async def test_response_with_bodypart(aiohttp_client: AiohttpClient) -> None:
         resp.release()
 
 
-async def test_response_with_bodypart_named(aiohttp_client: AiohttpClient, tmp_path: pathlib.Path) -> None:
+async def test_response_with_bodypart_named(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         reader = await request.multipart()
         part = await reader.next()
@@ -1766,7 +1803,9 @@ async def test_response_with_bodypart_named(aiohttp_client: AiohttpClient, tmp_p
     resp.release()
 
 
-async def test_response_with_bodypart_invalid_name(aiohttp_client: AiohttpClient) -> None:
+async def test_response_with_bodypart_invalid_name(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         reader = await request.multipart()
         part = await reader.next()
@@ -1978,7 +2017,10 @@ async def test_request_tracing(aiohttp_server: AiohttpServer) -> None:
             pass
 
         async def resolve(
-            self, host: str, port: int = 0, family: socket.AddressFamily = socket.AF_INET
+            self,
+            host: str,
+            port: int = 0,
+            family: socket.AddressFamily = socket.AF_INET,
         ) -> List[ResolveResult]:
             fake_port = self._fakes.get(host)
             if fake_port is not None:
@@ -2089,7 +2131,9 @@ async def test_signal_on_error_handler(aiohttp_client: AiohttpClient) -> None:
     "HttpRequestParserC" not in dir(aiohttp.http_parser),
     reason="C based HTTP parser not available",
 )
-async def test_bad_method_for_c_http_parser_not_hangs(aiohttp_client: AiohttpClient) -> None:
+async def test_bad_method_for_c_http_parser_not_hangs(
+    aiohttp_client: AiohttpClient,
+) -> None:
     app = web.Application()
     timeout = aiohttp.ClientTimeout(sock_read=0.2)
     client = await aiohttp_client(app, timeout=timeout)

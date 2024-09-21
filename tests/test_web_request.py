@@ -4,7 +4,7 @@ import socket
 import ssl
 import weakref
 from collections.abc import MutableMapping
-from typing import Iterator, Optional, NoReturn, Tuple
+from typing import Iterator, NoReturn, Optional, Tuple
 from unittest import mock
 
 import pytest
@@ -863,7 +863,9 @@ def test_weakref_creation() -> None:
         ),
     ),
 )
-def test_etag_headers(header: str, header_attr: str, header_val: str, expected: Tuple[ETag, ...]) -> None:
+def test_etag_headers(
+    header: str, header_attr: str, header_val: str, expected: Tuple[ETag, ...]
+) -> None:
     req = make_mocked_request("GET", "/", headers={header: header_val})
     assert getattr(req, header_attr) == expected
 
@@ -888,6 +890,11 @@ def test_etag_headers(header: str, header_attr: str, header_val: str, expected: 
         ),
     ),
 )
-def test_datetime_headers(header: str, header_attr: str, header_val: str, expected: Optional[datetime.datetime]) -> None:
+def test_datetime_headers(
+    header: str,
+    header_attr: str,
+    header_val: str,
+    expected: Optional[datetime.datetime],
+) -> None:
     req = make_mocked_request("GET", "/", headers={header: header_val})
     assert getattr(req, header_attr) == expected

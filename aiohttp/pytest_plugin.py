@@ -66,7 +66,11 @@ class AiohttpServer(Protocol):
 
 class AiohttpRawServer(Protocol):
     def __call__(
-        self, handler: _RequestHandler[BaseRequest], *, port: Optional[int] = None, **kwargs: Any
+        self,
+        handler: _RequestHandler[BaseRequest],
+        *,
+        port: Optional[int] = None,
+        **kwargs: Any
     ) -> Awaitable[RawTestServer]: ...
 
 
@@ -324,7 +328,12 @@ def aiohttp_raw_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpRawSe
     """
     servers = []
 
-    async def go(handler: _RequestHandler[BaseRequest], *, port: Optional[int] = None, **kwargs: Any) -> RawTestServer:
+    async def go(
+        handler: _RequestHandler[BaseRequest],
+        *,
+        port: Optional[int] = None,
+        **kwargs: Any
+    ) -> RawTestServer:
         server = RawTestServer(handler, port=port)
         await server.start_server(**kwargs)
         servers.append(server)

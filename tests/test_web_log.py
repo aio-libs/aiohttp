@@ -84,7 +84,10 @@ def test_access_logger_format() -> None:
     ],
 )
 def test_access_logger_atoms(
-    monkeypatch: pytest.MonkeyPatch, log_format: str, expected: str, extra: Dict[str, object]
+    monkeypatch: pytest.MonkeyPatch,
+    log_format: str,
+    expected: str,
+    extra: Dict[str, object],
 ) -> None:
     class PatchedDatetime(datetime.datetime):
         @classmethod
@@ -169,7 +172,9 @@ def test_logger_no_transport() -> None:
 
 def test_logger_abc() -> None:
     class Logger(AbstractAccessLogger):
-        def log(self, request: web.BaseRequest, response: web.StreamResponse, time: float) -> None:
+        def log(
+            self, request: web.BaseRequest, response: web.StreamResponse, time: float
+        ) -> None:
             1 / 0
 
     mock_logger = mock.Mock()
@@ -179,7 +184,9 @@ def test_logger_abc() -> None:
         access_logger.log(web.Request(), web.Response(), 0.0)
 
     class Logger2(AbstractAccessLogger):
-        def log(self, request: web.BaseRequest, response: web.StreamResponse, time: float) -> None:
+        def log(
+            self, request: web.BaseRequest, response: web.StreamResponse, time: float
+        ) -> None:
             self.logger.info(
                 self.log_format.format(request=request, response=response, time=time)
             )
@@ -190,11 +197,15 @@ def test_logger_abc() -> None:
     mock_logger.info.assert_called_with("request response 1")
 
 
-async def test_exc_info_context(aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient) -> None:
+async def test_exc_info_context(
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
     exc_msg = None
 
     class Logger(AbstractAccessLogger):
-        def log(self, request: web.BaseRequest, response: web.StreamResponse, time: float) -> None:
+        def log(
+            self, request: web.BaseRequest, response: web.StreamResponse, time: float
+        ) -> None:
             nonlocal exc_msg
             exc_msg = "{0.__name__}: {1}".format(*sys.exc_info())
 
@@ -209,11 +220,15 @@ async def test_exc_info_context(aiohttp_raw_server: AiohttpRawServer, aiohttp_cl
     assert exc_msg == "RuntimeError: intentional runtime error"
 
 
-async def test_async_logger(aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient) -> None:
+async def test_async_logger(
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
     msg = None
 
     class Logger(AbstractAsyncAccessLogger):
-        async def log(self, request: web.BaseRequest, response: web.StreamResponse, time: float) -> None:
+        async def log(
+            self, request: web.BaseRequest, response: web.StreamResponse, time: float
+        ) -> None:
             nonlocal msg
             msg = f"{request.path}: {response.status}"
 
@@ -228,7 +243,9 @@ async def test_async_logger(aiohttp_raw_server: AiohttpRawServer, aiohttp_client
     assert msg == "/path/to: 200"
 
 
-async def test_contextvars_logger(aiohttp_server: AiohttpServer, aiohttp_client: AiohttpClient) -> None:
+async def test_contextvars_logger(
+    aiohttp_server: AiohttpServer, aiohttp_client: AiohttpClient
+) -> None:
     VAR = ContextVar[str]("VAR")
 
     async def handler(request: web.Request) -> web.Response:
@@ -241,7 +258,9 @@ async def test_contextvars_logger(aiohttp_server: AiohttpServer, aiohttp_client:
     msg = None
 
     class Logger(AbstractAccessLogger):
-        def log(self, request: web.BaseRequest, response: web.StreamResponse, time: float) -> None:
+        def log(
+            self, request: web.BaseRequest, response: web.StreamResponse, time: float
+        ) -> None:
             nonlocal msg
             msg = f"contextvars: {VAR.get()}"
 
