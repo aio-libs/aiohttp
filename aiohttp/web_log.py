@@ -121,9 +121,6 @@ class AccessLogger(AbstractAccessLogger):
     def _format_i(
         key: str, request: BaseRequest, response: StreamResponse, time: float
     ) -> str:
-        if request is None:
-            return "(no headers)"
-
         # suboptimal, make istr(key) once
         return request.headers.get(key, "-")
 
@@ -136,8 +133,6 @@ class AccessLogger(AbstractAccessLogger):
 
     @staticmethod
     def _format_a(request: BaseRequest, response: StreamResponse, time: float) -> str:
-        if request is None:
-            return "-"
         ip = request.remote
         return ip if ip is not None else "-"
 
@@ -154,8 +149,6 @@ class AccessLogger(AbstractAccessLogger):
 
     @staticmethod
     def _format_r(request: BaseRequest, response: StreamResponse, time: float) -> str:
-        if request is None:
-            return "-"
         return "{} {} HTTP/{}.{}".format(
             request.method,
             request.path_qs,
