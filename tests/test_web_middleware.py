@@ -9,7 +9,7 @@ from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.test_utils import TestClient
 from aiohttp.typedefs import Handler, Middleware
 
-CLI = Callable[[Iterable[Middleware]], Awaitable[TestClient[web.Request]]]
+CLI = Callable[[Iterable[Middleware]], Awaitable[TestClient[web.Request, web.Application]]]
 
 
 async def test_middleware_modifies_response(
@@ -169,7 +169,7 @@ def cli(loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient) -> CLI:
 
     def wrapper(
         extra_middlewares: Iterable[Middleware],
-    ) -> Awaitable[TestClient[web.Request]]:
+    ) -> Awaitable[TestClient[web.Request, web.Application]]:
         app = web.Application()
         app.router.add_route("GET", "/resource1", handler)
         app.router.add_route("GET", "/resource2/", handler)
