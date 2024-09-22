@@ -3721,7 +3721,7 @@ async def test_read_after_raise_outside_context(aiohttp_client: AiohttpClient) -
         # No async with, so should release and therefore read() will fail.
         await resp.raise_for_status()
 
-    with pytest.raises(aiohttp.ClientConnectionError, match="Connection closed"):
+    with pytest.raises(aiohttp.ClientConnectionError, match=r"^Connection closed$"):
         await resp.read()
 
 
