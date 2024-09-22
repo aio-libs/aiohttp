@@ -533,32 +533,30 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
 
         match_info.freeze()
 
-        resp = None
         request._match_info = match_info
-        expect = request.headers.get(hdrs.EXPECT)
-        if expect:
+
+        if request.headers.get(hdrs.EXPECT):
             resp = await match_info.expect_handler(request)
             await request.writer.drain()
+            if resp is not None:
+                return resp
 
-        if resp is None:
-            handler = match_info.handler
+        handler = match_info.handler
 
-            if self._run_middlewares:
-                if not self._has_legacy_middlewares:
-                    handler = _build_middlewares(handler, match_info.apps)
-                else:
-                    for app in match_info.apps[::-1]:
-                        for m, new_style in app._middlewares_handlers:  # type: ignore[union-attr]
-                            if new_style:
-                                handler = update_wrapper(
-                                    partial(m, handler=handler), handler  # type: ignore[misc]
-                                )
-                            else:
-                                handler = await m(app, handler)  # type: ignore[arg-type,assignment]
+        if self._run_middlewares:
+            if not self._has_legacy_middlewares:
+                handler = _build_middlewares(handler, match_info.apps)
+            else:
+                for app in match_info.apps[::-1]:
+                    for m, new_style in app._middlewares_handlers:  # type: ignore[union-attr]
+                        if new_style:
+                            handler = update_wrapper(
+                                partial(m, handler=handler), handler  # type: ignore[misc]
+                            )
+                        else:
+                            handler = await m(app, handler)  # type: ignore[arg-type,assignment]
 
-            resp = await handler(request)
-
-        return resp
+        return await handler(request)
 
     def __call__(self) -> "Application":
         """gunicorn compatibility"""
