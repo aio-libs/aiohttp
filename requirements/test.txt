@@ -94,10 +94,6 @@ python-dateutil==2.9.0.post0
     # via freezegun
 python-on-whales==0.73.0
     # via -r requirements/test.in
-re-assert==1.1.0
-    # via -r requirements/test.in
-regex==2024.9.11
-    # via re-assert
 requests==2.32.3
     # via python-on-whales
 rich==13.8.1

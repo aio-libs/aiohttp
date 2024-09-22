@@ -9,7 +9,6 @@ pytest
 pytest-cov
 pytest-mock
 python-on-whales
-re-assert
 setuptools-git
 trustme; platform_machine != "i686"  # no 32-bit wheels
 wait-for-it

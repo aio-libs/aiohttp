@@ -88,7 +88,6 @@ def _build_middlewares(
 class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     __slots__ = (
         "logger",
-        "_debug",
         "_router",
         "_loop",
         "_handler_args",
