@@ -1275,7 +1275,7 @@ class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType
     __slots__ = ("_coro", "_resp")
 
     def __init__(self, coro: Coroutine["asyncio.Future[Any]", None, _RetType]) -> None:
-        self._coro = coro
+        self._coro: Coroutine["asyncio.Future[Any]", None, _RetType] = coro
 
     def send(self, arg: None) -> "asyncio.Future[Any]":
         return self._coro.send(arg)
@@ -1294,7 +1294,7 @@ class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType
         return self.__await__()
 
     async def __aenter__(self) -> _RetType:
-        self._resp = await self._coro
+        self._resp: _RetType = await self._coro
         return await self._resp.__aenter__()
 
     async def __aexit__(
