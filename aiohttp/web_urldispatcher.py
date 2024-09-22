@@ -8,7 +8,6 @@ import keyword
 import os
 import re
 import sys
-from contextlib import contextmanager
 from pathlib import Path
 from types import MappingProxyType
 from typing import (
@@ -271,8 +270,8 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
         assert app is not None
         return app
 
-    @contextmanager
-    def set_current_app(self, app: "Application") -> Generator[None, None, None]:
+    @current_app.setter
+    def current_app(self, app: "Application") -> None:
         if DEBUG:  # pragma: no cover
             if app not in self._apps:
                 raise RuntimeError(
@@ -280,12 +279,7 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
                         self._apps, app
                     )
                 )
-        prev = self._current_app
         self._current_app = app
-        try:
-            yield
-        finally:
-            self._current_app = prev
 
     def freeze(self) -> None:
         self._frozen = True
