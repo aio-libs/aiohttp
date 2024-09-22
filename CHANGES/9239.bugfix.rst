@@ -1,1 +1,1 @@
-Stopped ``ClientResponse.raise_for_status()`` releasing the connection within an `async with` context -- by :user:`Dreamsorcerer`.
+Stopped ``ClientResponse.raise_for_status()`` releasing the connection within an ``async with`` context -- by :user:`Dreamsorcerer`.
