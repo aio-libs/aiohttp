@@ -1295,11 +1295,7 @@ class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType
 
     async def __aenter__(self) -> _RetType:
         self._resp = await self._coro
-        return self._resp
-
-
-class _RequestContextManager(_BaseRequestContextManager[ClientResponse]):
-    __slots__ = ()
+        return await self._resp.__aenter__()
 
     async def __aexit__(
         self,
@@ -1307,25 +1303,11 @@ class _RequestContextManager(_BaseRequestContextManager[ClientResponse]):
         exc: Optional[BaseException],
         tb: Optional[TracebackType],
     ) -> None:
-        # We're basing behavior on the exception as it can be caused by
-        # user code unrelated to the status of the connection.  If you
-        # would like to close a connection you must do that
-        # explicitly.  Otherwise connection error handling should kick in
-        # and close/recycle the connection as required.
-        self._resp.release()
-        await self._resp.wait_for_close()
+        await self._resp.__aexit__(exc_type, exc, tb)
 
 
-class _WSRequestContextManager(_BaseRequestContextManager[ClientWebSocketResponse]):
-    __slots__ = ()
-
-    async def __aexit__(
-        self,
-        exc_type: Optional[Type[BaseException]],
-        exc: Optional[BaseException],
-        tb: Optional[TracebackType],
-    ) -> None:
-        await self._resp.close()
+_RequestContextManager = _BaseRequestContextManager[ClientResponse]
+_WSRequestContextManager = _BaseRequestContextManager[ClientWebSocketResponse]
 
 
 class _SessionRequestContextManager:

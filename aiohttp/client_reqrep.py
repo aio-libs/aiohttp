@@ -737,6 +737,7 @@ class ClientResponse(HeadersMixin):
     # post-init stage allows to not change ctor signature
     _closed = True  # to allow __del__ for non-initialized properly response
     _released = False
+    _in_context = False
     __writer = None
 
     def __init__(
@@ -1022,7 +1023,12 @@ class ClientResponse(HeadersMixin):
         if not self.ok:
             # reason should always be not None for a started response
             assert self.reason is not None
-            self.release()
+
+            # If we're in a context we can rely on __aexit__() to release as the
+            # exception propagates.
+            if not self._in_context:
+                self.release()
+
             raise ClientResponseError(
                 self.request_info,
                 self.history,
@@ -1144,6 +1150,7 @@ class ClientResponse(HeadersMixin):
         return loads(self._body.decode(encoding))  # type: ignore[union-attr]
 
     async def __aenter__(self) -> "ClientResponse":
+        self._in_context = True
         return self
 
     async def __aexit__(
@@ -1152,6 +1159,7 @@ class ClientResponse(HeadersMixin):
         exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
     ) -> None:
+        self._in_context = False
         # similar to _RequestContextManager, we do not need to check
         # for exceptions, response object can close connection
         # if state is broken

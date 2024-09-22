@@ -36,6 +36,7 @@ import aiohttp
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.client_exceptions import (
+    ClientResponseError,
     InvalidURL,
     InvalidUrlClientError,
     InvalidUrlRedirectClientError,
@@ -3686,6 +3687,42 @@ async def test_read_from_closed_response2(aiohttp_client: AiohttpClient) -> None
 
     with pytest.raises(aiohttp.ClientConnectionError):
         await resp.read()
+
+
+async def test_read_after_catch_raise_for_status(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=b"data", status=404)
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        with pytest.raises(ClientResponseError):
+            # Should not release response when in async with context.
+            await resp.raise_for_status()
+
+        result = await resp.read()
+        assert result == b"data"
+
+
+async def test_read_after_raise_outside_context(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=b"data", status=404)
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/")
+    with pytest.raises(ClientResponseError):
+        # No async with, so should release and therefore read() will fail.
+        await resp.raise_for_status()
+
+    with pytest.raises(aiohttp.ClientConnectionError):
+        result = await resp.read()
 
 
 async def test_read_from_closed_content(aiohttp_client: AiohttpClient) -> None:
