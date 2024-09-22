@@ -959,7 +959,7 @@ async def test_precompressed_data_stays_intact(loop: asyncio.AbstractEventLoop) 
         URL("http://python.org/"),
         data=data,
         headers={"CONTENT-ENCODING": "deflate"},
-        compress=None,
+        compress=False,
         loop=loop,
     )
     assert not req.compress

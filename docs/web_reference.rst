@@ -1740,7 +1740,10 @@ Application and Router
 
          Use :meth:`add_static` for development only. In production,
          static content should be processed by web servers like *nginx*
-         or *apache*.
+         or *apache*. Such web servers will be able to provide significantly
+         better performance and security for static assets. Several past security
+         vulnerabilities in aiohttp only affected applications using
+         :meth:`add_static`.
 
       :param str prefix: URL path prefix for handled static files
 

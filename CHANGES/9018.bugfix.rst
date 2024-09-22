@@ -1,0 +1,1 @@
+Updated Python parser to reject messages after a close message, matching C parser behaviour -- by :user:`Dreamsorcerer`.

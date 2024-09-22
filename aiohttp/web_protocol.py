@@ -28,7 +28,7 @@ import yarl
 
 from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
 from .base_protocol import BaseProtocol
-from .helpers import ceil_timeout, set_exception
+from .helpers import ceil_timeout
 from .http import (
     HttpProcessingError,
     HttpRequestParser,
@@ -88,6 +88,9 @@ class RequestPayloadError(Exception):
 
 class PayloadAccessError(Exception):
     """Payload was accessed after response was sent."""
+
+
+_PAYLOAD_ACCESS_ERROR = PayloadAccessError()
 
 
 class AccessLoggerWrapper(AbstractAsyncAccessLogger):
@@ -617,7 +620,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                         self.log_debug("Uncompleted request.")
                         self.close()
 
-                set_exception(payload, PayloadAccessError())
+                payload.set_exception(_PAYLOAD_ACCESS_ERROR)
+
             except asyncio.CancelledError:
                 self.log_debug("Ignored premature client disconnection")
                 raise
