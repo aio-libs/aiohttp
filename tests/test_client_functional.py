@@ -3722,7 +3722,7 @@ async def test_read_after_raise_outside_context(aiohttp_client: AiohttpClient) -
         await resp.raise_for_status()
 
     with pytest.raises(aiohttp.ClientConnectionError):
-        result = await resp.read()
+        await resp.read()
 
 
 async def test_read_from_closed_content(aiohttp_client: AiohttpClient) -> None:
