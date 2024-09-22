@@ -292,7 +292,7 @@ class CookieJar(AbstractCookieJar):
 
             key = (domain, path)
             if self._cookies[key].get(name) != cookie:
-                # Don't blow away the cache is the same
+                # Don't blow away the cache if the same
                 # cookie gets set again
                 self._cookies[key][name] = cookie
                 self._morsel_cache[key].pop(name, None)
