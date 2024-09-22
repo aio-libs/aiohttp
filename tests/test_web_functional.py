@@ -4,15 +4,7 @@ import json
 import pathlib
 import socket
 import zlib
-from typing import (
-    AsyncIterator,
-    Awaitable,
-    Callable,
-    Dict,
-    List,
-    NoReturn,
-    Optional,
-)
+from typing import AsyncIterator, Awaitable, Callable, Dict, List, NoReturn, Optional
 from unittest import mock
 
 import pytest
