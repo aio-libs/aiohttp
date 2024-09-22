@@ -16,8 +16,6 @@ from typing import (
 
 import pytest
 
-from aiohttp.web import Application
-
 from .test_utils import (
     BaseTestServer,
     RawTestServer,
@@ -28,13 +26,13 @@ from .test_utils import (
     teardown_test_loop,
     unused_port as _unused_port,
 )
+from .web import Application
+from .web_protocol import _RequestHandler
 
 try:
     import uvloop
 except ImportError:  # pragma: no cover
     uvloop = None  # type: ignore[assignment]
-
-AiohttpRawServer = Callable[[Application], Awaitable[RawTestServer]]
 
 
 class AiohttpClient(Protocol):
@@ -51,6 +49,12 @@ class AiohttpServer(Protocol):
     def __call__(
         self, app: Application, *, port: Optional[int] = None, **kwargs: Any
     ) -> Awaitable[TestServer]: ...
+
+
+class AiohttpRawServer(Protocol):
+    def __call__(
+        self, handler: _RequestHandler, *, port: Optional[int] = None, **kwargs: Any
+    ) -> Awaitable[RawTestServer]: ...
 
 
 def pytest_addoption(parser):  # type: ignore[no-untyped-def]
@@ -321,7 +325,9 @@ def aiohttp_raw_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpRawSe
     """
     servers = []
 
-    async def go(handler, *, port=None, **kwargs):  # type: ignore[no-untyped-def]
+    async def go(
+        handler: _RequestHandler, *, port: Optional[int] = None, **kwargs: Any
+    ) -> RawTestServer:
         server = RawTestServer(handler, port=port)
         await server.start_server(loop=loop, **kwargs)
         servers.append(server)
