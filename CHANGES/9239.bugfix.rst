@@ -1,1 +1,1 @@
-Stopped ``ClientResponse.raise_for_status()`` releasing the connection within an ``async with`` context -- by :user:`Dreamsorcerer`.
+Changed ``ClientResponse.raise_for_status()`` to only release the connection when invoked outside an ``async with`` context -- by :user:`Dreamsorcerer`.
