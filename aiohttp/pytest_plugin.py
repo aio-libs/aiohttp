@@ -26,7 +26,7 @@ from .test_utils import (
     teardown_test_loop,
     unused_port as _unused_port,
 )
-from .web import Application, BaseRequest
+from .web import Application
 from .web_protocol import _RequestHandler
 
 try:
@@ -54,7 +54,7 @@ class AiohttpServer(Protocol):
 class AiohttpRawServer(Protocol):
     def __call__(
         self,
-        handler: _RequestHandler[BaseRequest],
+        handler: _RequestHandler,
         *,
         port: Optional[int] = None,
         **kwargs: Any
@@ -330,7 +330,7 @@ def aiohttp_raw_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpRawSe
     servers = []
 
     async def go(
-        handler: _RequestHandler[BaseRequest],
+        handler: _RequestHandler,
         *,
         port: Optional[int] = None,
         **kwargs: Any
