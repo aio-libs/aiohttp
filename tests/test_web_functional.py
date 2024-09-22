@@ -12,7 +12,6 @@ from typing import (
     List,
     NoReturn,
     Optional,
-    cast,
 )
 from unittest import mock
 
