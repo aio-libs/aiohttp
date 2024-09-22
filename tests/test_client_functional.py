@@ -3699,7 +3699,7 @@ async def test_read_after_catch_raise_for_status(aiohttp_client: AiohttpClient) 
     client = await aiohttp_client(app)
 
     async with client.get("/") as resp:
-        with pytest.raises(ClientResponseError):
+        with pytest.raises(ClientResponseError, match="404"):
             # Should not release response when in async with context.
             await resp.raise_for_status()
 
@@ -3717,11 +3717,11 @@ async def test_read_after_raise_outside_context(aiohttp_client: AiohttpClient) -
     client = await aiohttp_client(app)
 
     resp = await client.get("/")
-    with pytest.raises(ClientResponseError):
+    with pytest.raises(ClientResponseError, match="404"):
         # No async with, so should release and therefore read() will fail.
         await resp.raise_for_status()
 
-    with pytest.raises(aiohttp.ClientConnectionError):
+    with pytest.raises(aiohttp.ClientConnectionError, matches="Connection closed"):
         await resp.read()
 
 
