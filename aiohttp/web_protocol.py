@@ -295,6 +295,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 async with ceil_timeout(timeout):
                     await self._handler_waiter
             except (asyncio.CancelledError, asyncio.TimeoutError):
+                self._handler_waiter = None
                 if (
                     sys.version_info >= (3, 11)
                     and (task := asyncio.current_task())
