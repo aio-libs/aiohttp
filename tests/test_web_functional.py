@@ -387,7 +387,7 @@ async def test_post_single_file(aiohttp_client: AiohttpClient) -> None:
         data = await request.post()
         assert ["data.unknown_mime_type"] == list(data.keys())
         for fs in data.values():
-            fs = cast(aiohttp.web_request.FileField, fs)
+            assert isinstance(fs, aiohttp.web_request.FileField)
             check_file(fs)
             fs.file.close()
         resp = web.Response(body=b"OK")
@@ -412,7 +412,7 @@ async def test_files_upload_with_same_key(aiohttp_client: AiohttpClient) -> None
         files = data.getall("file")
         file_names = set()
         for _file in files:
-            _file = cast(aiohttp.web_request.FileField, _file)
+            assert isinstance(_file, aiohttp.web_request.FileField)
             assert not _file.file.closed
             if _file.filename == "test1.jpeg":
                 assert _file.file.read() == b"binary data 1"
@@ -456,7 +456,7 @@ async def test_post_files(aiohttp_client: AiohttpClient) -> None:
         data = await request.post()
         assert ["data.unknown_mime_type", "conftest.py"] == list(data.keys())
         for fs in data.values():
-            fs = cast(aiohttp.web_request.FileField, fs)
+            assert isinstance(fs, aiohttp.web_request.FileField)
             check_file(fs)
             fs.file.close()
         resp = web.Response(body=b"OK")
@@ -1722,7 +1722,9 @@ async def test_post_max_client_size(aiohttp_client: AiohttpClient) -> None:
             "Maximum request body size 10 exceeded, "
             "actual body size 1024" in resp_text
         )
-        cast(io.BytesIO, data["file"]).close()
+        data_file = data["file"]
+        assert isintsance(data_file, io.BytesIO)
+        data_file.close()
 
         resp.release()
 
