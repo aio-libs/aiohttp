@@ -85,6 +85,10 @@ accepts a list of any non-parsed command-line arguments and returns an
         return app
 
 
+.. note::
+   For local development we typically recommend using
+   `aiohttp-devtools <https://github.com/aio-libs/aiohttp-devtools>`_.
+
 .. _aiohttp-web-handler:
 
 Handler
