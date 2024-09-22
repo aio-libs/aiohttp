@@ -391,7 +391,8 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         if request.headers.get(hdrs.EXPECT):
             resp = await match_info.expect_handler(request)
             await request.writer.drain()
-            return resp
+            if resp is not None:
+                return resp
 
         handler = match_info.handler
 
