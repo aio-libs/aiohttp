@@ -2267,8 +2267,6 @@ async def test_keepalive_race_condition(aiohttp_client: AiohttpClient) -> None:
         protocol._next_keepalive_close_time = asyncio.get_running_loop().time() - 1
         protocol._process_keepalive()
 
-        return data
-
     async def handler(request: web.Request) -> web.Response:
         nonlocal protocol
         protocol = request.protocol
