@@ -9,7 +9,9 @@ from aiohttp import client, web
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpRawServer
 
 
-async def test_simple_server(aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient) -> None:
+async def test_simple_server(
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
     async def handler(request: web.BaseRequest) -> web.Response:
         return web.Response(text=str(request.rel_url))
 
@@ -21,7 +23,9 @@ async def test_simple_server(aiohttp_raw_server: AiohttpRawServer, aiohttp_clien
     assert txt == "/path/to"
 
 
-async def test_unsupported_upgrade(aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient) -> None:
+async def test_unsupported_upgrade(
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
     # don't fail if a client probes for an unsupported protocol upgrade
     # https://github.com/aio-libs/aiohttp/issues/6446#issuecomment-999032039
     async def handler(request: web.BaseRequest) -> web.Response:
@@ -38,7 +42,9 @@ async def test_unsupported_upgrade(aiohttp_raw_server: AiohttpRawServer, aiohttp
 
 
 async def test_raw_server_not_http_exception(
-    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient, loop: asyncio.AbstractEventLoop
+    aiohttp_raw_server: AiohttpRawServer,
+    aiohttp_client: AiohttpClient,
+    loop: asyncio.AbstractEventLoop,
 ) -> None:
     # disable debug mode not to print traceback
     loop.set_debug(False)
@@ -148,7 +154,9 @@ async def test_raw_server_not_http_exception_debug(
 
 
 async def test_raw_server_html_exception(
-    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient, loop: asyncio.AbstractEventLoop
+    aiohttp_raw_server: AiohttpRawServer,
+    aiohttp_client: AiohttpClient,
+    loop: asyncio.AbstractEventLoop,
 ) -> None:
     # disable debug mode not to print traceback
     loop.set_debug(False)

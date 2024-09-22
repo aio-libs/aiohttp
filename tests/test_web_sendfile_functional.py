@@ -33,7 +33,9 @@ HELLO_AIOHTTP = b"Hello aiohttp! :-)\n"
 
 
 @pytest.fixture(scope="module")
-def hello_txt(request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory) -> pathlib.Path:
+def hello_txt(
+    request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory
+) -> pathlib.Path:
     """Create a temp path with hello.txt and compressed versions.
 
     The uncompressed text file path is returned by default. Alternatively, an
@@ -55,7 +57,9 @@ def hello_txt(request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathF
 
 
 @pytest.fixture
-def loop_with_mocked_native_sendfile(loop: asyncio.AbstractEventLoop) -> Iterator[asyncio.AbstractEventLoop]:
+def loop_with_mocked_native_sendfile(
+    loop: asyncio.AbstractEventLoop,
+) -> Iterator[asyncio.AbstractEventLoop]:
     def sendfile(transport: object, fobj: object, offset: int, count: int) -> NoReturn:
         if count == 0:
             raise ValueError("count must be a positive integer (got 0)")
@@ -117,7 +121,9 @@ async def test_static_file_ok(
     await client.close()
 
 
-async def test_zero_bytes_file_ok(aiohttp_client: AiohttpClient, sender: _Sender) -> None:
+async def test_zero_bytes_file_ok(
+    aiohttp_client: AiohttpClient, sender: _Sender
+) -> None:
     filepath = pathlib.Path(__file__).parent / "data.zero_bytes"
 
     async def handler(request: web.Request) -> web.FileResponse:
@@ -143,7 +149,8 @@ async def test_zero_bytes_file_ok(aiohttp_client: AiohttpClient, sender: _Sender
 
 
 async def test_zero_bytes_file_mocked_native_sendfile(
-    aiohttp_client: AiohttpClient, loop_with_mocked_native_sendfile: asyncio.AbstractEventLoop
+    aiohttp_client: AiohttpClient,
+    loop_with_mocked_native_sendfile: asyncio.AbstractEventLoop,
 ) -> None:
     filepath = pathlib.Path(__file__).parent / "data.zero_bytes"
 
@@ -216,7 +223,9 @@ async def test_static_file_upper_directory(aiohttp_client: AiohttpClient) -> Non
     await client.close()
 
 
-async def test_static_file_with_content_type(aiohttp_client: AiohttpClient, sender: _Sender) -> None:
+async def test_static_file_with_content_type(
+    aiohttp_client: AiohttpClient, sender: _Sender
+) -> None:
     filepath = pathlib.Path(__file__).parent / "aiohttp.jpg"
 
     async def handler(request: web.Request) -> web.FileResponse:
@@ -340,7 +349,10 @@ async def test_static_file_with_encoding_and_enable_compression(
     indirect=["hello_txt"],
 )
 async def test_static_file_with_content_encoding(
-    hello_txt: pathlib.Path, aiohttp_client: AiohttpClient, sender: _Sender, expect_type: str
+    hello_txt: pathlib.Path,
+    aiohttp_client: AiohttpClient,
+    sender: _Sender,
+    expect_type: str,
 ) -> None:
     """Test requesting static compressed files returns the correct content type and encoding."""
 
@@ -579,7 +591,9 @@ async def test_static_file_ssl(
     await client.close()
 
 
-async def test_static_file_directory_traversal_attack(aiohttp_client: AiohttpClient) -> None:
+async def test_static_file_directory_traversal_attack(
+    aiohttp_client: AiohttpClient,
+) -> None:
     dirname = pathlib.Path(__file__).parent
     relpath = "../README.rst"
     full_path = dirname / relpath
@@ -606,7 +620,9 @@ async def test_static_file_directory_traversal_attack(aiohttp_client: AiohttpCli
     await client.close()
 
 
-async def test_static_file_huge(aiohttp_client: AiohttpClient, tmp_path: pathlib.Path) -> None:
+async def test_static_file_huge(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+) -> None:
     file_path = tmp_path / "huge_data.unknown_mime_type"
 
     # fill 20MB file
@@ -642,7 +658,9 @@ async def test_static_file_huge(aiohttp_client: AiohttpClient, tmp_path: pathlib
     await client.close()
 
 
-async def test_static_file_range(aiohttp_client: AiohttpClient, sender: _Sender) -> None:
+async def test_static_file_range(
+    aiohttp_client: AiohttpClient, sender: _Sender
+) -> None:
     filepath = pathlib.Path(__file__).parent / "sample.txt"
 
     filesize = filepath.stat().st_size
@@ -701,7 +719,9 @@ async def test_static_file_range(aiohttp_client: AiohttpClient, sender: _Sender)
     await client.close()
 
 
-async def test_static_file_range_end_bigger_than_size(aiohttp_client: AiohttpClient, sender: _Sender) -> None:
+async def test_static_file_range_end_bigger_than_size(
+    aiohttp_client: AiohttpClient, sender: _Sender
+) -> None:
     filepath = pathlib.Path(__file__).parent / "aiohttp.png"
 
     async def handler(request: web.Request) -> web.FileResponse:
@@ -735,7 +755,9 @@ async def test_static_file_range_end_bigger_than_size(aiohttp_client: AiohttpCli
     await client.close()
 
 
-async def test_static_file_range_beyond_eof(aiohttp_client: AiohttpClient, sender: _Sender) -> None:
+async def test_static_file_range_beyond_eof(
+    aiohttp_client: AiohttpClient, sender: _Sender
+) -> None:
     filepath = pathlib.Path(__file__).parent / "aiohttp.png"
 
     async def handler(request: web.Request) -> web.FileResponse:
@@ -756,7 +778,9 @@ async def test_static_file_range_beyond_eof(aiohttp_client: AiohttpClient, sende
     await client.close()
 
 
-async def test_static_file_range_tail(aiohttp_client: AiohttpClient, sender: _Sender) -> None:
+async def test_static_file_range_tail(
+    aiohttp_client: AiohttpClient, sender: _Sender
+) -> None:
     filepath = pathlib.Path(__file__).parent / "aiohttp.png"
 
     async def handler(request: web.Request) -> web.FileResponse:
@@ -791,7 +815,9 @@ async def test_static_file_range_tail(aiohttp_client: AiohttpClient, sender: _Se
     await client.close()
 
 
-async def test_static_file_invalid_range(aiohttp_client: AiohttpClient, sender: _Sender) -> None:
+async def test_static_file_invalid_range(
+    aiohttp_client: AiohttpClient, sender: _Sender
+) -> None:
     filepath = pathlib.Path(__file__).parent / "aiohttp.png"
 
     async def handler(request: web.Request) -> web.FileResponse:
@@ -1001,7 +1027,9 @@ async def test_static_file_if_range_invalid_date(
     await client.close()
 
 
-async def test_static_file_compression(aiohttp_client: AiohttpClient, sender: _Sender) -> None:
+async def test_static_file_compression(
+    aiohttp_client: AiohttpClient, sender: _Sender
+) -> None:
     filepath = pathlib.Path(__file__).parent / "data.unknown_mime_type"
 
     async def handler(request: web.Request) -> web.FileResponse:
@@ -1025,7 +1053,9 @@ async def test_static_file_compression(aiohttp_client: AiohttpClient, sender: _S
     await client.close()
 
 
-async def test_static_file_huge_cancel(aiohttp_client: AiohttpClient, tmp_path: pathlib.Path) -> None:
+async def test_static_file_huge_cancel(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+) -> None:
     file_path = tmp_path / "huge_data.unknown_mime_type"
 
     # fill 100MB file
@@ -1068,7 +1098,9 @@ async def test_static_file_huge_cancel(aiohttp_client: AiohttpClient, tmp_path: 
     await client.close()
 
 
-async def test_static_file_huge_error(aiohttp_client: AiohttpClient, tmp_path: pathlib.Path) -> None:
+async def test_static_file_huge_error(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+) -> None:
     file_path = tmp_path / "huge_data.unknown_mime_type"
 
     # fill 20MB file

@@ -13,8 +13,7 @@ from aiohttp.web_log import AccessLogger
 
 
 class _RunnerMaker(Protocol):
-    def __call__(self, handle_signals: bool = ..., **kwargs: Any) -> web.AppRunner:
-        ...
+    def __call__(self, handle_signals: bool = ..., **kwargs: Any) -> web.AppRunner: ...
 
 
 @pytest.fixture
@@ -23,7 +22,9 @@ def app() -> web.Application:
 
 
 @pytest.fixture
-def make_runner(loop: asyncio.AbstractEventLoop, app: web.Application) -> Iterator[_RunnerMaker]:
+def make_runner(
+    loop: asyncio.AbstractEventLoop, app: web.Application
+) -> Iterator[_RunnerMaker]:
     asyncio.set_event_loop(loop)
     runners = []
 
@@ -138,7 +139,9 @@ async def test_app_handler_args_failure() -> None:
         ("2", 2),
     ),
 )
-async def test_app_handler_args_ceil_threshold(value: Union[int, str, None], expected: int) -> None:
+async def test_app_handler_args_ceil_threshold(
+    value: Union[int, str, None], expected: int
+) -> None:
     app = web.Application(handler_args={"timeout_ceil_threshold": value})
     runner = web.AppRunner(app)
     await runner.setup()
@@ -171,7 +174,9 @@ async def test_app_make_handler_access_log_class_bad_type2() -> None:
 
 async def test_app_make_handler_access_log_class1() -> None:
     class Logger(AbstractAccessLogger):
-        def log(self, request: web.BaseRequest, response: web.StreamResponse, time: float) -> None:
+        def log(
+            self, request: web.BaseRequest, response: web.StreamResponse, time: float
+        ) -> None:
             """Pass log method."""
 
     app = web.Application()
@@ -181,7 +186,9 @@ async def test_app_make_handler_access_log_class1() -> None:
 
 async def test_app_make_handler_access_log_class2() -> None:
     class Logger(AbstractAccessLogger):
-        def log(self, request: web.BaseRequest, response: web.StreamResponse, time: float) -> None:
+        def log(
+            self, request: web.BaseRequest, response: web.StreamResponse, time: float
+        ) -> None:
             """Pass log method."""
 
     app = web.Application(handler_args={"access_log_class": Logger})
@@ -234,7 +241,9 @@ async def test_tcpsite_default_host(make_runner: _RunnerMaker) -> None:
     assert site.name == "http://0.0.0.0:8080"
 
     m = mock.create_autospec(asyncio.AbstractEventLoop, spec_set=True, instance=True)
-    with mock.patch("asyncio.get_event_loop", autospec=True, spec_set=True, return_value=m) as mock_get_loop:
+    with mock.patch(
+        "asyncio.get_event_loop", autospec=True, spec_set=True, return_value=m
+    ) as mock_get_loop:
         await site.start()
 
     m.create_server.assert_called_once()
