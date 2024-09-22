@@ -90,14 +90,14 @@ def test_client(
 def test_with_test_server_fails(loop) -> None:
     app = _create_example_app()
     with pytest.raises(TypeError):
-        with _TestServer(app, loop=loop):
+        with TestServer(app, loop=loop):
             pass
 
 
 async def test_with_client_fails(loop) -> None:
     app = _create_example_app()
     with pytest.raises(TypeError):
-        with _TestClient(_TestServer(app, loop=loop), loop=loop):
+        with _TestClient(TestServer(app, loop=loop), loop=loop):
             pass
 
 
@@ -105,7 +105,7 @@ async def test_aiohttp_client_close_is_idempotent() -> None:
     # a test client, called multiple times, should
     # not attempt to close the server again.
     app = _create_example_app()
-    client = _TestClient(_TestServer(app))
+    client = _TestClient(TestServer(app))
     await client.close()
     await client.close()
 
@@ -261,7 +261,7 @@ def test_make_mocked_request_transport() -> None:
 
 async def test_test_client_props(loop) -> None:
     app = _create_example_app()
-    client = _TestClient(_TestServer(app, host="127.0.0.1", loop=loop), loop=loop)
+    client = _TestClient(TestServer(app, host="127.0.0.1", loop=loop), loop=loop)
     assert client.host == "127.0.0.1"
     assert client.port is None
     async with client:
@@ -291,7 +291,7 @@ async def test_test_client_raw_server_props(loop) -> None:
 
 async def test_test_server_context_manager(loop) -> None:
     app = _create_example_app()
-    async with _TestServer(app, loop=loop) as server:
+    async with TestServer(app, loop=loop) as server:
         client = aiohttp.ClientSession(loop=loop)
         resp = await client.head(server.make_url("/"))
         assert resp.status == 200
@@ -310,7 +310,7 @@ def test_client_unsupported_arg() -> None:
 
 async def test_server_make_url_yarl_compatibility(loop) -> None:
     app = _create_example_app()
-    async with _TestServer(app, loop=loop) as server:
+    async with TestServer(app, loop=loop) as server:
         make_url = server.make_url
         assert make_url(URL("/foo")) == make_url("/foo")
         with pytest.raises(AssertionError):
@@ -335,7 +335,7 @@ def test_testcase_no_app(testdir, loop) -> None:
 
 
 async def test_server_context_manager(app, loop) -> None:
-    async with _TestServer(app, loop=loop) as server:
+    async with TestServer(app, loop=loop) as server:
         async with aiohttp.ClientSession(loop=loop) as client:
             async with client.head(server.make_url("/")) as resp:
                 assert resp.status == 200
@@ -345,7 +345,7 @@ async def test_server_context_manager(app, loop) -> None:
     "method", ["head", "get", "post", "options", "post", "put", "patch", "delete"]
 )
 async def test_client_context_manager_response(method, app, loop) -> None:
-    async with _TestClient(_TestServer(app), loop=loop) as client:
+    async with _TestClient(TestServer(app), loop=loop) as client:
         async with getattr(client, method)("/") as resp:
             assert resp.status == 200
             if method != "head":
@@ -355,7 +355,7 @@ async def test_client_context_manager_response(method, app, loop) -> None:
 
 async def test_custom_port(loop, app, aiohttp_unused_port) -> None:
     port = aiohttp_unused_port()
-    client = _TestClient(_TestServer(app, loop=loop, port=port), loop=loop)
+    client = _TestClient(TestServer(app, loop=loop, port=port), loop=loop)
     await client.start_server()
 
     assert client.server.port == port
@@ -368,7 +368,7 @@ async def test_custom_port(loop, app, aiohttp_unused_port) -> None:
     await client.close()
 
 
-@pytest.mark.parametrize("test_server_cls", [_TestServer, _RawTestServer])
+@pytest.mark.parametrize("test_server_cls", [TestServer, _RawTestServer])
 async def test_base_test_server_socket_factory(
     test_server_cls: type, app: Any, loop: Any
 ) -> None:
@@ -392,7 +392,7 @@ async def test_base_test_server_socket_factory(
 )
 async def test_test_server_hostnames(hostname, expected_host, loop) -> None:
     app = _create_example_app()
-    server = _TestServer(app, host=hostname, loop=loop)
+    server = TestServer(app, host=hostname, loop=loop)
     async with server:
         pass
     assert server.host == expected_host
