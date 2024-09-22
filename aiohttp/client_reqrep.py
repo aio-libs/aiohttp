@@ -427,8 +427,7 @@ class ClientRequest:
         if not data:
             return
 
-        enc = self.headers.get(hdrs.CONTENT_ENCODING, "").lower()
-        if enc:
+        if self.headers.get(hdrs.CONTENT_ENCODING):
             if compress:
                 raise ValueError(
                     "compress can not be set if Content-Encoding header is set"
