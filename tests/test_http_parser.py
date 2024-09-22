@@ -17,6 +17,7 @@ from aiohttp.http_parser import (
     NO_EXTENSIONS,
     DeflateBuffer,
     HttpPayloadParser,
+    HttpRequestParser,
     HttpRequestParserPy,
     HttpResponseParserPy,
     HttpVersion,
@@ -826,7 +827,15 @@ def test_http_request_bad_status_line_whitespace(parser: Any) -> None:
         parser.feed_data(text)
 
 
-def test_http_request_upgrade(parser: Any) -> None:
+def test_http_request_message_after_close(parser: HttpRequestParser) -> None:
+    text = b"GET / HTTP/1.1\r\nConnection: close\r\n\r\nInvalid\r\n\r\n"
+    with pytest.raises(
+        http_exceptions.BadHttpMessage, match="Data after `Connection: close`"
+    ):
+        parser.feed_data(text)
+
+
+def test_http_request_upgrade(parser: HttpRequestParser) -> None:
     text = (
         b"GET /test HTTP/1.1\r\n"
         b"connection: upgrade\r\n"
