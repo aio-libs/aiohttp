@@ -1723,7 +1723,7 @@ async def test_post_max_client_size(aiohttp_client: AiohttpClient) -> None:
             "actual body size 1024" in resp_text
         )
         data_file = data["file"]
-        assert isintsance(data_file, io.BytesIO)
+        assert isinstance(data_file, io.BytesIO)
         data_file.close()
 
         resp.release()
