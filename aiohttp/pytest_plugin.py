@@ -381,6 +381,7 @@ def aiohttp_client(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpClient]:
         server_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs: Any
     ) -> TestClient[Request, Application]: ...
+
     @overload
     async def go(
         __param: BaseTestServer,
@@ -388,6 +389,7 @@ def aiohttp_client(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpClient]:
         server_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs: Any
     ) -> TestClient[BaseRequest, None]: ...
+
     async def go(
         __param: Union[Application, BaseTestServer],
         *args: Any,
