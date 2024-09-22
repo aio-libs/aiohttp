@@ -3699,7 +3699,7 @@ async def test_timeout_with_full_buffer(aiohttp_client) -> None:
             await resp.write(b"1" * 1000)
             await asyncio.sleep(0.01)
 
-    async def request(client):
+    async def request(client: TestClient[web.Request, web.Application]) -> None:
         timeout = aiohttp.ClientTimeout(total=0.5)
         async with await client.get("/", timeout=timeout) as resp:
             with pytest.raises(asyncio.TimeoutError):

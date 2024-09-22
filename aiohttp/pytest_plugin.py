@@ -12,6 +12,7 @@ from typing import (
     Protocol,
     Type,
     Union,
+    overload,
 )
 
 import pytest
@@ -26,7 +27,7 @@ from .test_utils import (
     teardown_test_loop,
     unused_port as _unused_port,
 )
-from .web import Application
+from .web import Application, BaseRequest, Request
 from .web_protocol import _RequestHandler
 
 try:
@@ -36,13 +37,22 @@ except ImportError:  # pragma: no cover
 
 
 class AiohttpClient(Protocol):
-    def __call__(
+    @overload
+    async def __call__(
         self,
-        __param: Union[Application, BaseTestServer],
+        __param: Application,
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs: Any
-    ) -> Awaitable[TestClient]: ...
+    ) -> TestClient[Request, Application]: ...
+    @overload
+    async def __call__(
+        self,
+        __param: BaseTestServer,
+        *,
+        server_kwargs: Optional[Dict[str, Any]] = None,
+        **kwargs: Any
+    ) -> TestClient[BaseRequest, None]: ...
 
 
 class AiohttpServer(Protocol):
@@ -355,9 +365,7 @@ def raw_test_server(  # type: ignore[no-untyped-def]  # pragma: no cover
 
 
 @pytest.fixture
-def aiohttp_client(
-    loop: asyncio.AbstractEventLoop,
-) -> Iterator[AiohttpClient]:
+def aiohttp_client(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpClient]:
     """Factory to create a TestClient instance.
 
     aiohttp_client(app, **kwargs)
@@ -366,13 +374,26 @@ def aiohttp_client(
     """
     clients = []
 
+    @overload
+    async def go(
+        __param: Application,
+        *,
+        server_kwargs: Optional[Dict[str, Any]] = None,
+        **kwargs: Any
+    ) -> TestClient[Request, Application]: ...
+    @overload
+    async def go(
+        __param: BaseTestServer,
+        *,
+        server_kwargs: Optional[Dict[str, Any]] = None,
+        **kwargs: Any
+    ) -> TestClient[BaseRequest, None]: ...
     async def go(
         __param: Union[Application, BaseTestServer],
         *args: Any,
         server_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs: Any
-    ) -> TestClient:
-
+    ) -> TestClient[Any, Any]:
         if isinstance(__param, Callable) and not isinstance(  # type: ignore[arg-type]
             __param, (Application, BaseTestServer)
         ):

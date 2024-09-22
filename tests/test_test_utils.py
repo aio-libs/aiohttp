@@ -1,4 +1,5 @@
 import gzip
+import sys
 from socket import socket
 from typing import Any
 from unittest import mock
@@ -12,13 +13,18 @@ from aiohttp import web
 from aiohttp.test_utils import (
     AioHTTPTestCase,
     RawTestServer as _RawTestServer,
-    TestClient as _TestClient,
+    TestClient,
     TestServer as _TestServer,
     get_port_socket,
     loop_context,
     make_mocked_request,
     unittest_run_loop,
 )
+
+if sys.version_info >= (3, 11):
+    from typing import assert_type
+
+_TestClient = TestClient[web.Request, web.Application]
 
 _hello_world_str = "Hello, world"
 _hello_world_bytes = _hello_world_str.encode("utf-8")
@@ -67,9 +73,11 @@ def app():
 
 
 @pytest.fixture
-def test_client(loop, app) -> None:
-    async def make_client():
-        return _TestClient(_TestServer(app, loop=loop), loop=loop)
+def test_client(
+    loop: asyncio.AbstractEventLoop, app: web.Application
+) -> Iterator[_TestClient]:
+    async def make_client() -> TestClient[web.Request, web.Application]:
+        return TestClient(TestServer(app))
 
     client = loop.run_until_complete(make_client())
 
@@ -258,6 +266,8 @@ async def test_test_client_props(loop) -> None:
     async with client:
         assert isinstance(client.port, int)
         assert client.server is not None
+        if sys.version_info >= (3, 11):
+            assert_type(client.app, web.Application)
         assert client.app is not None
     assert client.port is None
 
@@ -272,6 +282,8 @@ async def test_test_client_raw_server_props(loop) -> None:
     async with client:
         assert isinstance(client.port, int)
         assert client.server is not None
+        if sys.version_info >= (3, 11):
+            assert_type(client.app, None)
         assert client.app is None
     assert client.port is None
 
@@ -288,7 +300,7 @@ async def test_test_server_context_manager(loop) -> None:
 
 def test_client_unsupported_arg() -> None:
     with pytest.raises(TypeError) as e:
-        _TestClient("string")
+        TestClient("string")  # type: ignore[call-overload]
 
     assert (
         str(e.value) == "server must be TestServer instance, found type: <class 'str'>"
