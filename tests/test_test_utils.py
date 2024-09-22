@@ -2,7 +2,7 @@ import asyncio
 import gzip
 import socket
 import sys
-from typing import Callable, Iterator, List, Mapping, NoReturn
+from typing import Callable, Iterator, Mapping, NoReturn
 from unittest import mock
 
 import pytest
@@ -173,7 +173,7 @@ async def test_test_client_head(
 
 
 @pytest.mark.parametrize("headers", [{"token": "x"}, CIMultiDict({"token": "x"}), {}])
-def test_make_mocked_request(headers: List[Mapping[str, str]]) -> None:
+def test_make_mocked_request(headers: Mapping[str, str]) -> None:
     req = make_mocked_request("GET", "/", headers=headers)
     assert req.method == "GET"
     assert req.path == "/"
@@ -239,14 +239,14 @@ async def test_test_client_props() -> None:
     client = TestClient(server)
     assert client.scheme == "http"
     assert client.host == "127.0.0.1"
-    assert client.port is None
+    assert client.port == 0
     async with client:
         assert isinstance(client.port, int)
         assert client.server is not None
         if sys.version_info >= (3, 11):
             assert_type(client.app, web.Application)
         assert client.app is not None
-    assert client.port is None
+    assert client.port == 0
 
 
 async def test_test_client_raw_server_props() -> None:
@@ -257,14 +257,14 @@ async def test_test_client_raw_server_props() -> None:
     client = TestClient(server)
     assert client.scheme == "http"
     assert client.host == "127.0.0.1"
-    assert client.port is None
+    assert client.port == 0
     async with client:
         assert isinstance(client.port, int)
         assert client.server is not None
         if sys.version_info >= (3, 11):
             assert_type(client.app, None)
         assert client.app is None
-    assert client.port is None
+    assert client.port == 0
 
 
 async def test_test_server_context_manager(loop: asyncio.AbstractEventLoop) -> None:

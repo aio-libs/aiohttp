@@ -42,6 +42,7 @@ from . import hdrs, http, payload
 from .abc import AbstractCookieJar
 from .client_exceptions import (
     ClientConnectionError,
+    ClientConnectionResetError,
     ClientConnectorCertificateError,
     ClientConnectorError,
     ClientConnectorSSLError,
@@ -102,11 +103,12 @@ from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, WSMessage, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
 from .tracing import Trace, TraceConfig
-from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
+from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, Query, StrOrURL
 
 __all__ = (
     # client_exceptions
     "ClientConnectionError",
+    "ClientConnectionResetError",
     "ClientConnectorCertificateError",
     "ClientConnectorError",
     "ClientConnectorSSLError",
@@ -162,7 +164,7 @@ if sys.version_info >= (3, 11) and TYPE_CHECKING:
 
 
 class _RequestOptions(TypedDict, total=False):
-    params: Union[Mapping[str, Union[str, int]], str, None]
+    params: Query
     data: Any
     json: Any
     cookies: Union[LooseCookies, None]
@@ -171,7 +173,7 @@ class _RequestOptions(TypedDict, total=False):
     auth: Union[BasicAuth, None]
     allow_redirects: bool
     max_redirects: int
-    compress: Union[str, None]
+    compress: Union[str, bool]
     chunked: Union[bool, None]
     expect100: bool
     raise_for_status: Union[None, bool, Callable[[ClientResponse], Awaitable[None]]]
@@ -399,7 +401,7 @@ class ClientSession:
         if self._base_url is None:
             return url
         else:
-            assert not url.is_absolute() and url.path.startswith("/")
+            assert not url.absolute and url.path.startswith("/")
             return self._base_url.join(url)
 
     async def _request(
@@ -407,7 +409,7 @@ class ClientSession:
         method: str,
         str_or_url: StrOrURL,
         *,
-        params: Optional[Mapping[str, str]] = None,
+        params: Query = None,
         data: Any = None,
         json: Any = None,
         cookies: Optional[LooseCookies] = None,
@@ -416,7 +418,7 @@ class ClientSession:
         auth: Optional[BasicAuth] = None,
         allow_redirects: bool = True,
         max_redirects: int = 10,
-        compress: Optional[str] = None,
+        compress: Union[str, bool] = False,
         chunked: Optional[bool] = None,
         expect100: bool = False,
         raise_for_status: Union[
@@ -785,7 +787,7 @@ class ClientSession:
         heartbeat: Optional[float] = None,
         auth: Optional[BasicAuth] = None,
         origin: Optional[str] = None,
-        params: Optional[Mapping[str, str]] = None,
+        params: Query = None,
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
@@ -833,7 +835,7 @@ class ClientSession:
         heartbeat: Optional[float] = None,
         auth: Optional[BasicAuth] = None,
         origin: Optional[str] = None,
-        params: Optional[Mapping[str, str]] = None,
+        params: Query = None,
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
@@ -1362,7 +1364,7 @@ def request(
     method: str,
     url: StrOrURL,
     *,
-    params: Optional[Mapping[str, str]] = None,
+    params: Query = None,
     data: Any = None,
     json: Any = None,
     headers: Optional[LooseHeaders] = None,
@@ -1370,7 +1372,7 @@ def request(
     auth: Optional[BasicAuth] = None,
     allow_redirects: bool = True,
     max_redirects: int = 10,
-    compress: Optional[str] = None,
+    compress: Union[str, bool] = False,
     chunked: Optional[bool] = None,
     expect100: bool = False,
     raise_for_status: Optional[bool] = None,

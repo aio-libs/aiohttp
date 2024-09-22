@@ -44,6 +44,9 @@ from aiohttp.client_exceptions import (
     SocketTimeoutError,
     TooManyRedirects,
 )
+from aiohttp.client_reqrep import ClientRequest
+from aiohttp.connector import Connection
+from aiohttp.http_writer import StreamWriter
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import TestClient, TestServer, unused_port
 from aiohttp.typedefs import Handler
@@ -366,10 +369,11 @@ async def test_stream_request_on_server_eof(aiohttp_client: AiohttpClient) -> No
     async with client.get("/") as resp:
         assert 200 == resp.status
 
-    # Connection should have been reused
+    # First connection should have been closed, otherwise server won't know if it
+    # received the full message.
     conns = next(iter(client.session.connector._conns.values()))
     assert len(conns) == 1
-    assert conns[0][0] is conn
+    assert conns[0][0] is not conn
 
 
 async def test_stream_request_on_server_eof_nested(
@@ -389,15 +393,21 @@ async def test_stream_request_on_server_eof_nested(
             yield b"just data"
             await asyncio.sleep(0.1)
 
+    assert client.session.connector is not None
     async with client.put("/", data=data_gen()) as resp:
+        first_conn = next(iter(client.session.connector._acquired))
         assert 200 == resp.status
-        async with client.get("/") as resp:
-            assert 200 == resp.status
+
+        async with client.get("/") as resp2:
+            assert 200 == resp2.status
 
     # Should be 2 separate connections
-    assert client.session.connector is not None
     conns = next(iter(client.session.connector._conns.values()))
-    assert len(conns) == 2
+    assert len(conns) == 1
+
+    assert first_conn is not None
+    assert not first_conn.is_connected()
+    assert first_conn is not conns[0][0]
 
 
 async def test_HTTP_304_WITH_BODY(aiohttp_client: AiohttpClient) -> None:
@@ -693,6 +703,39 @@ async def test_str_params(aiohttp_client: AiohttpClient) -> None:
 
     async with client.get("/", params="q=t+est") as resp:
         assert 200 == resp.status
+
+
+async def test_params_and_query_string(aiohttp_client: AiohttpClient) -> None:
+    """Test combining params with an existing query_string."""
+
+    async def handler(request: web.Request) -> web.Response:
+        assert request.rel_url.query_string == "q=abc&q=test&d=dog"
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/?q=abc", params="q=test&d=dog") as resp:
+        assert resp.status == 200
+
+
+@pytest.mark.parametrize("params", [None, "", {}, MultiDict()])
+async def test_empty_params_and_query_string(
+    aiohttp_client: AiohttpClient, params: Any
+) -> None:
+    """Test combining empty params with an existing query_string."""
+
+    async def handler(request: web.Request) -> web.Response:
+        assert request.rel_url.query_string == "q=abc"
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/?q=abc", params=params) as resp:
+        assert resp.status == 200
 
 
 async def test_drop_params_on_redirect(aiohttp_client: AiohttpClient) -> None:
@@ -1496,6 +1539,42 @@ async def test_POST_MultiDict(aiohttp_client: AiohttpClient) -> None:
         assert 200 == resp.status
 
 
+@pytest.mark.parametrize("data", (None, b""))
+async def test_GET_DEFLATE(
+    aiohttp_client: AiohttpClient, data: Optional[bytes]
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.json_response({"ok": True})
+
+    write_mock = None
+    original_write_bytes = ClientRequest.write_bytes
+
+    async def write_bytes(
+        self: ClientRequest, writer: StreamWriter, conn: Connection
+    ) -> None:
+        nonlocal write_mock
+        original_write = writer._write
+
+        with mock.patch.object(
+            writer, "_write", autospec=True, spec_set=True, side_effect=original_write
+        ) as write_mock:
+            await original_write_bytes(self, writer, conn)
+
+    with mock.patch.object(ClientRequest, "write_bytes", write_bytes):
+        app = web.Application()
+        app.router.add_get("/", handler)
+        client = await aiohttp_client(app)
+
+        async with client.get("/", data=data, compress=True) as resp:
+            assert resp.status == 200
+            content = await resp.json()
+            assert content == {"ok": True}
+
+    assert write_mock is not None
+    # No chunks should have been sent for an empty body.
+    write_mock.assert_not_called()
+
+
 async def test_POST_DATA_DEFLATE(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         data = await request.post()
@@ -1506,7 +1585,7 @@ async def test_POST_DATA_DEFLATE(aiohttp_client: AiohttpClient) -> None:
     client = await aiohttp_client(app)
 
     # True is not a valid type, but still tested for backwards compatibility.
-    resp = await client.post("/", data={"some": "data"}, compress=True)  # type: ignore[arg-type]
+    resp = await client.post("/", data={"some": "data"}, compress=True)
     assert 200 == resp.status
     content = await resp.json()
     assert content == {"some": "data"}
@@ -3882,7 +3961,6 @@ async def test_max_line_size_request_explicit(aiohttp_client: AiohttpClient) -> 
         assert resp.reason == "x" * 8191
 
 
-@pytest.mark.xfail(raises=asyncio.TimeoutError, reason="#7599")
 async def test_rejected_upload(
     aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
 ) -> None:
@@ -3903,13 +3981,11 @@ async def test_rejected_upload(
 
     with open(file_path, "rb") as file:
         data = {"file": file}
-        async with await client.post("/not_ok", data=data) as resp_not_ok:
-            assert 400 == resp_not_ok.status
+        async with client.post("/not_ok", data=data) as resp_not_ok:
+            assert resp_not_ok.status == 400
 
-    async with await client.get(
-        "/ok", timeout=aiohttp.ClientTimeout(total=0.01)
-    ) as resp_ok:
-        assert 200 == resp_ok.status
+    async with client.get("/ok", timeout=aiohttp.ClientTimeout(total=1)) as resp_ok:
+        assert resp_ok.status == 200
 
 
 async def test_request_with_wrong_ssl_type(aiohttp_client: AiohttpClient) -> None:
@@ -3945,10 +4021,6 @@ async def test_raise_for_status_is_none(aiohttp_client: AiohttpClient) -> None:
     await session.get("/")
 
 
-@pytest.mark.xfail(
-    reason="#8395 Error message regression for large headers in 3.9.4",
-    raises=AssertionError,
-)
 async def test_header_too_large_error(aiohttp_client: AiohttpClient) -> None:
     """By default when not specifying `max_field_size` requests should fail with a 400 status code."""
 

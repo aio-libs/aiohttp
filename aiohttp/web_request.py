@@ -176,7 +176,11 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self._version = message.version
         self._cache: Dict[str, Any] = {}
         url = message.url
-        if url.is_absolute():
+        if url.absolute:
+            if scheme is not None:
+                url = url.with_scheme(scheme)
+            if host is not None:
+                url = url.with_host(host)
             # absolute URL is given,
             # override auto-calculating url, host, and scheme
             # all other properties should be good
@@ -186,6 +190,10 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             self._rel_url = url.relative()
         else:
             self._rel_url = message.url
+            if scheme is not None:
+                self._cache["scheme"] = scheme
+            if host is not None:
+                self._cache["host"] = host
         self._post: Optional[MultiDictProxy[Union[str, bytes, FileField]]] = None
         self._read_bytes: Optional[bytes] = None
 
@@ -199,10 +207,6 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self._transport_sslcontext = transport.get_extra_info("sslcontext")
         self._transport_peername = transport.get_extra_info("peername")
 
-        if scheme is not None:
-            self._cache["scheme"] = scheme
-        if host is not None:
-            self._cache["host"] = host
         if remote is not None:
             self._cache["remote"] = remote
 
@@ -472,7 +476,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
     @reify
     def query(self) -> MultiDictProxy[str]:
         """A multidict with all the variables in the query string."""
-        return MultiDictProxy(self._rel_url.query)
+        return self._rel_url.query
 
     @reify
     def query_string(self) -> str:
@@ -898,4 +902,5 @@ class Request(BaseRequest):
         if match_info is None:
             return
         for app in match_info._apps:
-            await app.on_response_prepare.send(self, response)
+            if on_response_prepare := app.on_response_prepare:
+                await on_response_prepare.send(self, response)

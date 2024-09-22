@@ -1,0 +1,3 @@
+Fixed the incorrect use of flags for ``getnameinfo()`` in the Resolver --by :user:`GitNMLee`
+
+Link-Local IPv6 addresses can now be handled by the Resolver correctly.

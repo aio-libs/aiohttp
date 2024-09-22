@@ -69,6 +69,7 @@ from .typedefs import (
     JSONDecoder,
     LooseCookies,
     LooseHeaders,
+    Query,
     RawHeaders,
 )
 
@@ -195,14 +196,14 @@ class ClientRequest:
         method: str,
         url: URL,
         *,
-        params: Optional[Mapping[str, str]] = None,
+        params: Query = None,
         headers: Optional[LooseHeaders] = None,
         skip_auto_headers: Optional[Iterable[str]] = None,
         data: Any = None,
         cookies: Optional[LooseCookies] = None,
         auth: Optional[BasicAuth] = None,
         version: http.HttpVersion = http.HttpVersion11,
-        compress: Optional[str] = None,
+        compress: Union[str, bool] = False,
         chunked: Optional[bool] = None,
         expect100: bool = False,
         loop: asyncio.AbstractEventLoop,
@@ -229,15 +230,11 @@ class ClientRequest:
         # assert session is not None
         self._session = cast("ClientSession", session)
         if params:
-            q = MultiDict(url.query)
-            url2 = url.with_query(params)
-            q.extend(url2.query)
-            url = url.with_query(q)
+            url = url.extend_query(params)
         self.original_url = url
         self.url = url.with_fragment(None)
         self.method = method.upper()
         self.chunked = chunked
-        self.compress = compress
         self.loop = loop
         self.length = None
         if response_class is None:
@@ -257,7 +254,7 @@ class ClientRequest:
         self.update_headers(headers)
         self.update_auto_headers(skip_auto_headers)
         self.update_cookies(cookies)
-        self.update_content_encoding(data)
+        self.update_content_encoding(data, compress)
         self.update_auth(auth, trust_env)
         self.update_proxy(proxy, proxy_auth, proxy_headers)
 
@@ -424,20 +421,20 @@ class ClientRequest:
 
         self.headers[hdrs.COOKIE] = c.output(header="", sep=";").strip()
 
-    def update_content_encoding(self, data: Any) -> None:
+    def update_content_encoding(self, data: Any, compress: Union[bool, str]) -> None:
         """Set request content encoding."""
-        if data is None:
+        self.compress = None
+        if not data:
             return
 
         enc = self.headers.get(hdrs.CONTENT_ENCODING, "").lower()
         if enc:
-            if self.compress:
+            if compress:
                 raise ValueError(
                     "compress can not be set if Content-Encoding header is set"
                 )
-        elif self.compress:
-            if not isinstance(self.compress, str):
-                self.compress = "deflate"
+        elif compress:
+            self.compress = compress if isinstance(compress, str) else "deflate"
             self.headers[hdrs.CONTENT_ENCODING] = self.compress
             self.chunked = True  # enable chunked, no need to deal with length
 
@@ -592,7 +589,8 @@ class ClientRequest:
 
             set_exception(protocol, reraised_exc, underlying_exc)
         except asyncio.CancelledError:
-            await writer.write_eof()
+            # Body hasn't been fully sent, so connection can't be reused.
+            conn.close()
         except Exception as underlying_exc:
             set_exception(
                 protocol,
@@ -628,11 +626,15 @@ class ClientRequest:
         writer = StreamWriter(
             protocol,
             self.loop,
-            on_chunk_sent=functools.partial(
-                self._on_chunk_request_sent, self.method, self.url
+            on_chunk_sent=(
+                functools.partial(self._on_chunk_request_sent, self.method, self.url)
+                if self._traces
+                else None
             ),
-            on_headers_sent=functools.partial(
-                self._on_headers_request_sent, self.method, self.url
+            on_headers_sent=(
+                functools.partial(self._on_headers_request_sent, self.method, self.url)
+                if self._traces
+                else None
             ),
         )
 
@@ -1085,7 +1087,7 @@ class ClientResponse(HeadersMixin):
 
         encoding = mimetype.parameters.get("charset")
         if encoding:
-            with contextlib.suppress(LookupError):
+            with contextlib.suppress(LookupError, ValueError):
                 return codecs.lookup(encoding).name
 
         if mimetype.type == "application" and (

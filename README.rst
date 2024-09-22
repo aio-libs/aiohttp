@@ -161,7 +161,6 @@ Please add *aiohttp* tag to your question there.
 Requirements
 ============
 
-- async-timeout_
 - multidict_
 - yarl_
 - frozenlist_
@@ -172,7 +171,6 @@ Optionally you may install the aiodns_ library (highly recommended for sake of s
 .. _multidict: https://pypi.python.org/pypi/multidict
 .. _frozenlist: https://pypi.org/project/frozenlist/
 .. _yarl: https://pypi.python.org/pypi/yarl
-.. _async-timeout: https://pypi.python.org/pypi/async_timeout
 
 License
 =======
