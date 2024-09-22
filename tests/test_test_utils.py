@@ -1,7 +1,8 @@
+import asyncio
 import gzip
 import sys
 from socket import socket
-from typing import Any
+from typing import Any, Iterator
 from unittest import mock
 
 import pytest
@@ -14,7 +15,7 @@ from aiohttp.test_utils import (
     AioHTTPTestCase,
     RawTestServer as _RawTestServer,
     TestClient,
-    TestServer as _TestServer,
+    TestServer,
     get_port_socket,
     loop_context,
     make_mocked_request,
