@@ -1,0 +1,3 @@
+Improved middleware performance -- by :user:`bdraco`.
+
+The ``set_current_app`` method was removed from ``UrlMappingMatchInfo`` because it is no longer used, and it was unlikely external caller would ever use it.
