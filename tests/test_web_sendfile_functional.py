@@ -6,6 +6,7 @@ import pathlib
 import socket
 import zlib
 from typing import Any, Iterable, Optional
+from unittest import mock
 
 import pytest
 
@@ -49,15 +50,6 @@ def hello_txt(request, tmp_path_factory) -> pathlib.Path:
 
 
 @pytest.fixture
-def loop_without_sendfile(loop: Any):
-    def sendfile(*args, **kwargs):
-        raise NotImplementedError
-
-    loop.sendfile = sendfile
-    return loop
-
-
-@pytest.fixture
 def loop_with_mocked_native_sendfile(loop: Any):
     def sendfile(transport, fobj, offset, count):
         if count == 0:
@@ -69,14 +61,27 @@ def loop_with_mocked_native_sendfile(loop: Any):
 
 
 @pytest.fixture(params=["sendfile", "no_sendfile"], ids=["sendfile", "no_sendfile"])
-def sender(request: Any, loop_without_sendfile: Any):
+def sender(request: Any, loop: Any):
+    sendfile_mock = None
+
     def maker(*args, **kwargs):
         ret = web.FileResponse(*args, **kwargs)
-        if request.param == "no_sendfile":
-            asyncio.set_event_loop(loop_without_sendfile)
+        rloop = asyncio.get_running_loop()
+        is_patched = rloop.sendfile is sendfile_mock
+        assert is_patched if request.param == "no_sendfile" else not is_patched
         return ret
 
-    return maker
+    if request.param == "no_sendfile":
+        with mock.patch.object(
+            loop,
+            "sendfile",
+            autospec=True,
+            spec_set=True,
+            side_effect=NotImplementedError,
+        ) as sendfile_mock:
+            yield maker
+    else:
+        yield maker
 
 
 @pytest.fixture
