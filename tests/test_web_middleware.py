@@ -9,7 +9,9 @@ from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.test_utils import TestClient
 from aiohttp.typedefs import Handler, Middleware
 
-CLI = Callable[[Iterable[Middleware]], Awaitable[TestClient[web.Request, web.Application]]]
+CLI = Callable[
+    [Iterable[Middleware]], Awaitable[TestClient[web.Request, web.Application]]
+]
 
 
 async def test_middleware_modifies_response(
