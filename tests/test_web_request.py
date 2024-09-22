@@ -1,26 +1,26 @@
-# type: ignore
 import asyncio
 import datetime
 import socket
+import ssl
 import weakref
 from collections.abc import MutableMapping
-from typing import Any
+from typing import NoReturn, Optional, Tuple
 from unittest import mock
 
 import pytest
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 from yarl import URL
 
-from aiohttp import HttpVersion, web
+from aiohttp import ETag, HttpVersion, web
+from aiohttp.base_protocol import BaseProtocol
 from aiohttp.http_parser import RawRequestMessage
+from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
-from aiohttp.web import HTTPRequestEntityTooLarge, HTTPUnsupportedMediaType
-from aiohttp.web_request import ETag
 
 
 @pytest.fixture
-def protocol():
+def protocol() -> mock.Mock:
     return mock.Mock(_reading_paused=False)
 
 
@@ -32,7 +32,7 @@ def test_base_ctor() -> None:
         CIMultiDictProxy(CIMultiDict()),
         (),
         False,
-        False,
+        None,
         False,
         False,
         URL("/path/to?a=1&b=2"),
@@ -169,6 +169,22 @@ def test_absolute_url() -> None:
     assert req.rel_url == URL.build(path="/path/to", query={"a": "1"})
 
 
+def test_clone_absolute_scheme() -> None:
+    req = make_mocked_request("GET", "https://example.com/path/to?a=1")
+    assert req.scheme == "https"
+    req2 = req.clone(scheme="http")
+    assert req2.scheme == "http"
+    assert req2.url.scheme == "http"
+
+
+def test_clone_absolute_host() -> None:
+    req = make_mocked_request("GET", "https://example.com/path/to?a=1")
+    assert req.host == "example.com"
+    req2 = req.clone(host="foo.test")
+    assert req2.host == "foo.test"
+    assert req2.url.host == "foo.test"
+
+
 def test_content_length() -> None:
     req = make_mocked_request("Get", "/", CIMultiDict([("CONTENT-LENGTH", "123")]))
 
@@ -176,55 +192,35 @@ def test_content_length() -> None:
 
 
 def test_range_to_slice_head() -> None:
-    def bytes_gen(size):
-        for i in range(size):
-            yield i % 256
-
-    payload = bytearray(bytes_gen(10000))
     req = make_mocked_request(
-        "GET", "/", headers=CIMultiDict([("RANGE", "bytes=0-499")]), payload=payload
+        "GET", "/", headers=CIMultiDict([("RANGE", "bytes=0-499")])
     )
     assert isinstance(req.http_range, slice)
-    assert req.content[req.http_range] == payload[:500]
+    assert req.http_range.start == 0 and req.http_range.stop == 500
 
 
 def test_range_to_slice_mid() -> None:
-    def bytes_gen(size):
-        for i in range(size):
-            yield i % 256
-
-    payload = bytearray(bytes_gen(10000))
     req = make_mocked_request(
-        "GET", "/", headers=CIMultiDict([("RANGE", "bytes=500-999")]), payload=payload
+        "GET", "/", headers=CIMultiDict([("RANGE", "bytes=500-999")])
     )
     assert isinstance(req.http_range, slice)
-    assert req.content[req.http_range] == payload[500:1000]
+    assert req.http_range.start == 500 and req.http_range.stop == 1000
 
 
 def test_range_to_slice_tail_start() -> None:
-    def bytes_gen(size):
-        for i in range(size):
-            yield i % 256
-
-    payload = bytearray(bytes_gen(10000))
     req = make_mocked_request(
-        "GET", "/", headers=CIMultiDict([("RANGE", "bytes=9500-")]), payload=payload
+        "GET", "/", headers=CIMultiDict([("RANGE", "bytes=9500-")])
     )
     assert isinstance(req.http_range, slice)
-    assert req.content[req.http_range] == payload[-500:]
+    assert req.http_range.start == 9500 and req.http_range.stop is None
 
 
 def test_range_to_slice_tail_stop() -> None:
-    def bytes_gen(size):
-        for i in range(size):
-            yield i % 256
-
-    payload = bytearray(bytes_gen(10000))
     req = make_mocked_request(
-        "GET", "/", headers=CIMultiDict([("RANGE", "bytes=-500")]), payload=payload
+        "GET", "/", headers=CIMultiDict([("RANGE", "bytes=-500")])
     )
     assert isinstance(req.http_range, slice)
-    assert req.content[req.http_range] == payload[-500:]
+    assert req.http_range.start == -500 and req.http_range.stop is None
 
 
 def test_non_keepalive_on_http10() -> None:
@@ -284,7 +280,7 @@ def test_request_cookie__set_item() -> None:
     assert req.cookies == {"name": "value"}
 
     with pytest.raises(TypeError):
-        req.cookies["my"] = "value"
+        req.cookies["my"] = "value"  # type: ignore[index]
 
 
 def test_match_info() -> None:
@@ -338,8 +334,9 @@ def test_http_scheme() -> None:
 
 
 def test_https_scheme_by_ssl_transport() -> None:
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     req = make_mocked_request(
-        "GET", "/", headers={"Host": "example.com"}, sslcontext=True
+        "GET", "/", headers={"Host": "example.com"}, sslcontext=context
     )
     assert "https" == req.scheme
     assert req.secure is True
@@ -363,7 +360,7 @@ def test_single_forwarded_header() -> None:
         ('"[2001:db8:cafe::17]"', "[2001:db8:cafe::17]"),
     ],
 )
-def test_forwarded_node_identifier(forward_for_in: Any, forward_for_out: Any) -> None:
+def test_forwarded_node_identifier(forward_for_in: str, forward_for_out: str) -> None:
     header = f"for={forward_for_in}"
     req = make_mocked_request("GET", "/", headers=CIMultiDict({"Forwarded": header}))
     assert req.forwarded == ({"for": forward_for_out},)
@@ -451,7 +448,7 @@ def test_single_forwarded_header_long_quoted_string() -> None:
 
 
 def test_multiple_forwarded_headers() -> None:
-    headers = CIMultiDict()
+    headers = CIMultiDict[str]()
     headers.add("Forwarded", "By=identifier1;for=identifier2, BY=identifier3")
     headers.add("Forwarded", "By=identifier4;fOr=identifier5")
     req = make_mocked_request("GET", "/", headers=headers)
@@ -464,7 +461,7 @@ def test_multiple_forwarded_headers() -> None:
 
 
 def test_multiple_forwarded_headers_bad_syntax() -> None:
-    headers = CIMultiDict()
+    headers = CIMultiDict[str]()
     headers.add("Forwarded", "for=_1;by=_2")
     headers.add("Forwarded", "invalid value")
     headers.add("Forwarded", "")
@@ -478,7 +475,7 @@ def test_multiple_forwarded_headers_bad_syntax() -> None:
 
 
 def test_multiple_forwarded_headers_injection() -> None:
-    headers = CIMultiDict()
+    headers = CIMultiDict[str]()
     # This could be sent by an attacker, hoping to "shadow" the second header.
     headers.add("Forwarded", 'for=_injected;by="')
     # This is added by our trusted reverse proxy.
@@ -563,7 +560,7 @@ def test_clone_headers_dict() -> None:
     assert req2.raw_headers == ((b"B", b"C"),)
 
 
-async def test_cannot_clone_after_read(protocol: Any) -> None:
+async def test_cannot_clone_after_read(protocol: BaseProtocol) -> None:
     payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
     payload.feed_data(b"data")
     payload.feed_eof()
@@ -573,32 +570,32 @@ async def test_cannot_clone_after_read(protocol: Any) -> None:
         req.clone()
 
 
-async def test_make_too_big_request(protocol: Any) -> None:
+async def test_make_too_big_request(protocol: BaseProtocol) -> None:
     payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
     large_file = 1024**2 * b"x"
     too_large_file = large_file + b"x"
     payload.feed_data(too_large_file)
     payload.feed_eof()
     req = make_mocked_request("POST", "/", payload=payload)
-    with pytest.raises(HTTPRequestEntityTooLarge) as err:
+    with pytest.raises(web.HTTPRequestEntityTooLarge) as err:
         await req.read()
 
     assert err.value.status_code == 413
 
 
-async def test_request_with_wrong_content_type_encoding(protocol: Any) -> None:
+async def test_request_with_wrong_content_type_encoding(protocol: BaseProtocol) -> None:
     payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
     payload.feed_data(b"{}")
     payload.feed_eof()
     headers = {"Content-Type": "text/html; charset=test"}
     req = make_mocked_request("POST", "/", payload=payload, headers=headers)
 
-    with pytest.raises(HTTPUnsupportedMediaType) as err:
+    with pytest.raises(web.HTTPUnsupportedMediaType) as err:
         await req.text()
     assert err.value.status_code == 415
 
 
-async def test_make_too_big_request_same_size_to_max(protocol: Any) -> None:
+async def test_make_too_big_request_same_size_to_max(protocol: BaseProtocol) -> None:
     payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
     large_file = 1024**2 * b"x"
     payload.feed_data(large_file)
@@ -609,7 +606,7 @@ async def test_make_too_big_request_same_size_to_max(protocol: Any) -> None:
     assert resp_text == large_file
 
 
-async def test_make_too_big_request_adjust_limit(protocol: Any) -> None:
+async def test_make_too_big_request_adjust_limit(protocol: BaseProtocol) -> None:
     payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
     large_file = 1024**2 * b"x"
     too_large_file = large_file + b"x"
@@ -621,7 +618,7 @@ async def test_make_too_big_request_adjust_limit(protocol: Any) -> None:
     assert len(txt) == 1024**2 + 1
 
 
-async def test_multipart_formdata(protocol: Any) -> None:
+async def test_multipart_formdata(protocol: BaseProtocol) -> None:
     payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
     payload.feed_data(
         b"-----------------------------326931944431359\r\n"
@@ -645,7 +642,7 @@ async def test_multipart_formdata(protocol: Any) -> None:
     assert dict(result) == {"a": "b", "c": "d"}
 
 
-async def test_multipart_formdata_file(protocol: Any) -> None:
+async def test_multipart_formdata_file(protocol: BaseProtocol) -> None:
     # Make sure file uploads work, even without a content type
     payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
     payload.feed_data(
@@ -670,14 +667,13 @@ async def test_multipart_formdata_file(protocol: Any) -> None:
     req._finish()
 
 
-async def test_make_too_big_request_limit_None(protocol: Any) -> None:
+async def test_make_too_big_request_limit_None(protocol: BaseProtocol) -> None:
     payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
     large_file = 1024**2 * b"x"
     too_large_file = large_file + b"x"
     payload.feed_data(too_large_file)
     payload.feed_eof()
-    max_size = None
-    req = make_mocked_request("POST", "/", payload=payload, client_max_size=max_size)
+    req = make_mocked_request("POST", "/", payload=payload, client_max_size=0)
     txt = await req.read()
     assert len(txt) == 1024**2 + 1
 
@@ -707,18 +703,23 @@ def test_save_state_on_clone() -> None:
 
 def test_clone_scheme() -> None:
     req = make_mocked_request("GET", "/")
+    assert req.scheme == "http"
     req2 = req.clone(scheme="https")
     assert req2.scheme == "https"
+    assert req2.url.scheme == "https"
 
 
 def test_clone_host() -> None:
     req = make_mocked_request("GET", "/")
+    assert req.host != "example.com"
     req2 = req.clone(host="example.com")
     assert req2.host == "example.com"
+    assert req2.url.host == "example.com"
 
 
 def test_clone_remote() -> None:
     req = make_mocked_request("GET", "/")
+    assert req.remote != "11.11.11.11"
     req2 = req.clone(remote="11.11.11.11")
     assert req2.remote == "11.11.11.11"
 
@@ -727,19 +728,20 @@ def test_remote_with_closed_transport() -> None:
     transp = mock.Mock()
     transp.get_extra_info.return_value = ("10.10.10.10", 1234)
     req = make_mocked_request("GET", "/", transport=transp)
-    req._protocol = None
+    req._protocol = None  # type: ignore[assignment]
     assert req.remote == "10.10.10.10"
 
 
 def test_url_http_with_closed_transport() -> None:
     req = make_mocked_request("GET", "/")
-    req._protocol = None
+    req._protocol = None  # type: ignore[assignment]
     assert str(req.url).startswith("http://")
 
 
 def test_url_https_with_closed_transport() -> None:
-    req = make_mocked_request("GET", "/", sslcontext=True)
-    req._protocol = None
+    c = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    req = make_mocked_request("GET", "/", sslcontext=c)
+    req._protocol = None  # type: ignore[assignment]
     assert str(req.url).startswith("https://")
 
 
@@ -748,14 +750,16 @@ async def test_get_extra_info() -> None:
     valid_value = "existent"
     default_value = "default"
 
-    def get_extra_info(name: str, default: Any = None):
+    def get_extra_info(name: str, default: object = None) -> object:
         return {valid_key: valid_value}.get(name, default)
 
     transp = mock.Mock()
     transp.get_extra_info.side_effect = get_extra_info
     req = make_mocked_request("GET", "/", transport=transp)
 
+    assert req is not None
     req_extra_info = req.get_extra_info(valid_key, default_value)
+    assert req._protocol.transport is not None
     transp_extra_info = req._protocol.transport.get_extra_info(valid_key, default_value)
     assert req_extra_info == transp_extra_info
 
@@ -763,7 +767,7 @@ async def test_get_extra_info() -> None:
     extra_info = req.get_extra_info(valid_key, default_value)
     assert extra_info == default_value
 
-    req._protocol = None
+    req._protocol = None  # type: ignore[assignment]
     extra_info = req.get_extra_info(valid_key, default_value)
     assert extra_info == default_value
 
@@ -775,8 +779,8 @@ def test_eq() -> None:
     assert req1 == req1
 
 
-async def test_json(aiohttp_client: Any) -> None:
-    async def handler(request):
+async def test_json(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
         body_text = await request.text()
         assert body_text == '{"some": "data"}'
         assert request.headers["Content-Type"] == "application/json"
@@ -793,12 +797,13 @@ async def test_json(aiohttp_client: Any) -> None:
         assert 200 == resp.status
 
 
-async def test_json_invalid_content_type(aiohttp_client: Any) -> None:
-    async def handler(request):
+async def test_json_invalid_content_type(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> NoReturn:
         body_text = await request.text()
         assert body_text == '{"some": "data"}'
         assert request.headers["Content-Type"] == "text/plain"
         await request.json()  # raises HTTP 400
+        assert False
 
     app = web.Application()
     app.router.add_post("/", handler)
@@ -820,15 +825,15 @@ def test_weakref_creation() -> None:
 
 
 @pytest.mark.parametrize(
-    ["header", "header_attr"],
-    [
+    ("header", "header_attr"),
+    (
         pytest.param("If-Match", "if_match"),
         pytest.param("If-None-Match", "if_none_match"),
-    ],
+    ),
 )
 @pytest.mark.parametrize(
-    ["header_val", "expected"],
-    [
+    ("header_val", "expected"),
+    (
         pytest.param(
             '"67ab43", W/"54ed21", "7892,dd"',
             (
@@ -856,24 +861,26 @@ def test_weakref_creation() -> None:
             "*",
             (ETag(is_weak=False, value="*"),),
         ),
-    ],
+    ),
 )
-def test_etag_headers(header, header_attr, header_val, expected) -> None:
+def test_etag_headers(
+    header: str, header_attr: str, header_val: str, expected: Tuple[ETag, ...]
+) -> None:
     req = make_mocked_request("GET", "/", headers={header: header_val})
     assert getattr(req, header_attr) == expected
 
 
 @pytest.mark.parametrize(
-    ["header", "header_attr"],
-    [
+    ("header", "header_attr"),
+    (
         pytest.param("If-Modified-Since", "if_modified_since"),
         pytest.param("If-Unmodified-Since", "if_unmodified_since"),
         pytest.param("If-Range", "if_range"),
-    ],
+    ),
 )
 @pytest.mark.parametrize(
-    ["header_val", "expected"],
-    [
+    ("header_val", "expected"),
+    (
         pytest.param("xxyyzz", None),
         pytest.param("Tue, 08 Oct 4446413 00:56:40 GMT", None),
         pytest.param("Tue, 08 Oct 2000 00:56:80 GMT", None),
@@ -881,8 +888,13 @@ def test_etag_headers(header, header_attr, header_val, expected) -> None:
             "Tue, 08 Oct 2000 00:56:40 GMT",
             datetime.datetime(2000, 10, 8, 0, 56, 40, tzinfo=datetime.timezone.utc),
         ),
-    ],
+    ),
 )
-def test_datetime_headers(header, header_attr, header_val, expected) -> None:
+def test_datetime_headers(
+    header: str,
+    header_attr: str,
+    header_val: str,
+    expected: Optional[datetime.datetime],
+) -> None:
     req = make_mocked_request("GET", "/", headers={header: header_val})
     assert getattr(req, header_attr) == expected

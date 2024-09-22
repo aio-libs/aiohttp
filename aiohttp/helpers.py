@@ -36,7 +36,6 @@ from typing import (
     List,
     Mapping,
     Optional,
-    Pattern,
     Protocol,
     Tuple,
     Type,
@@ -484,44 +483,51 @@ try:
 except ImportError:
     pass
 
-_ipv4_pattern = (
-    r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}"
-    r"(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
-)
-_ipv6_pattern = (
-    r"^(?:(?:(?:[A-F0-9]{1,4}:){6}|(?=(?:[A-F0-9]{0,4}:){0,6}"
-    r"(?:[0-9]{1,3}\.){3}[0-9]{1,3}$)(([0-9A-F]{1,4}:){0,5}|:)"
-    r"((:[0-9A-F]{1,4}){1,5}:|:)|::(?:[A-F0-9]{1,4}:){5})"
-    r"(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}"
-    r"(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])|(?:[A-F0-9]{1,4}:){7}"
-    r"[A-F0-9]{1,4}|(?=(?:[A-F0-9]{0,4}:){0,7}[A-F0-9]{0,4}$)"
-    r"(([0-9A-F]{1,4}:){1,7}|:)((:[0-9A-F]{1,4}){1,7}|:)|(?:[A-F0-9]{1,4}:){7}"
-    r":|:(:[A-F0-9]{1,4}){7})$"
-)
-_ipv4_regex = re.compile(_ipv4_pattern)
-_ipv6_regex = re.compile(_ipv6_pattern, flags=re.IGNORECASE)
-_ipv4_regexb = re.compile(_ipv4_pattern.encode("ascii"))
-_ipv6_regexb = re.compile(_ipv6_pattern.encode("ascii"), flags=re.IGNORECASE)
 
+def is_ipv4_address(host: Optional[Union[str, bytes]]) -> bool:
+    """Check if host looks like an IPv4 address.
 
-def _is_ip_address(
-    regex: Pattern[str], regexb: Pattern[bytes], host: Optional[Union[str, bytes]]
-) -> bool:
-    if host is None:
+    This function does not validate that the format is correct, only that
+    the host is a str or bytes, and its all numeric.
+
+    This check is only meant as a heuristic to ensure that
+    a host is not a domain name.
+    """
+    if not host:
         return False
+    # For a host to be an ipv4 address, it must be all numeric.
     if isinstance(host, str):
-        return bool(regex.match(host))
-    elif isinstance(host, (bytes, bytearray, memoryview)):
-        return bool(regexb.match(host))
-    else:
-        raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
+        return host.replace(".", "").isdigit()
+    if isinstance(host, (bytes, bytearray, memoryview)):
+        return host.decode("ascii").replace(".", "").isdigit()
+    raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
 
 
-is_ipv4_address = functools.partial(_is_ip_address, _ipv4_regex, _ipv4_regexb)
-is_ipv6_address = functools.partial(_is_ip_address, _ipv6_regex, _ipv6_regexb)
+def is_ipv6_address(host: Optional[Union[str, bytes]]) -> bool:
+    """Check if host looks like an IPv6 address.
+
+    This function does not validate that the format is correct, only that
+    the host contains a colon and that it is a str or bytes.
+
+    This check is only meant as a heuristic to ensure that
+    a host is not a domain name.
+    """
+    if not host:
+        return False
+    # The host must contain a colon to be an IPv6 address.
+    if isinstance(host, str):
+        return ":" in host
+    if isinstance(host, (bytes, bytearray, memoryview)):
+        return b":" in host
+    raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
 
 
 def is_ip_address(host: Optional[Union[str, bytes, bytearray, memoryview]]) -> bool:
+    """Check if host looks like an IP Address.
+
+    This check is only meant as a heuristic to ensure that
+    a host is not a domain name.
+    """
     return is_ipv4_address(host) or is_ipv6_address(host)
 
 
@@ -1093,6 +1099,7 @@ def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
     return None
 
 
+@functools.lru_cache
 def must_be_empty_body(method: str, code: int) -> bool:
     """Check if a request must return an empty body."""
     return (

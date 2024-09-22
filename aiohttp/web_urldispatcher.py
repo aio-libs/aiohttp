@@ -432,6 +432,7 @@ class DynamicResource(Resource):
 
     def __init__(self, path: str, *, name: Optional[str] = None) -> None:
         super().__init__(name=name)
+        self._orig_path = path
         pattern = ""
         formatter = ""
         for part in ROUTE_RE.split(path):
@@ -484,7 +485,7 @@ class DynamicResource(Resource):
             }
 
     def raw_match(self, path: str) -> bool:
-        return self._formatter == path
+        return self._orig_path == path
 
     def get_info(self) -> _InfoDict:
         return {"formatter": self._formatter, "pattern": self._pattern}
