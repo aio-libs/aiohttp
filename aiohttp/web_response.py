@@ -67,6 +67,8 @@ class ContentCoding(enum.Enum):
     identity = "identity"
 
 
+CONTENT_CODINGS = {coding.value: coding for coding in ContentCoding}
+
 ############################################################
 # HTTP Response classes
 ############################################################
@@ -345,8 +347,8 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             # Encoding comparisons should be case-insensitive
             # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1
             accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "").lower()
-            for coding in ContentCoding:
-                if coding.value in accept_encoding:
+            for value, coding in CONTENT_CODINGS.items():
+                if value in accept_encoding:
                     await self._do_start_compression(coding)
                     return
 
