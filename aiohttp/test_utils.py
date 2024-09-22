@@ -23,6 +23,7 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    overload,
 )
 from unittest import IsolatedAsyncioTestCase, mock
 
@@ -72,6 +73,7 @@ if sys.version_info >= (3, 11):
 else:
     Self = Any
 
+_ApplicationNone = TypeVar("_ApplicationNone", Application, None)
 _Request = TypeVar("_Request", bound=BaseRequest)
 
 REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
@@ -251,7 +253,7 @@ class RawTestServer(BaseTestServer[BaseRequest]):
         return ServerRunner(srv, **kwargs)
 
 
-class TestClient(Generic[_Request]):
+class TestClient(Generic[_Request, _ApplicationNone]):
     """
     A test client implementation.
 
@@ -261,7 +263,23 @@ class TestClient(Generic[_Request]):
 
     __test__ = False
 
+    @overload
     def __init__(
+        self: "TestClient[Request, Application]",
+        server: TestServer,
+        *,
+        cookie_jar: Optional[AbstractCookieJar] = None,
+        **kwargs: Any,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self: "TestClient[_Request, None]",
+        server: BaseTestServer[_Request],
+        *,
+        cookie_jar: Optional[AbstractCookieJar] = None,
+        **kwargs: Any,
+    ) -> None: ...
+    def __init__(  # type: ignore[misc]
         self,
         server: BaseTestServer[_Request],
         *,
@@ -300,8 +318,8 @@ class TestClient(Generic[_Request]):
         return self._server
 
     @property
-    def app(self) -> Optional[Application]:
-        return cast(Optional[Application], getattr(self._server, "app", None))
+    def app(self) -> _ApplicationNone:
+        return getattr(self._server, "app", None)  # type: ignore[return-value]
 
     @property
     def session(self) -> ClientSession:
@@ -505,7 +523,7 @@ class AioHTTPTestCase(IsolatedAsyncioTestCase, ABC):
         """Return a TestServer instance."""
         return TestServer(app)
 
-    async def get_client(self, server: TestServer) -> TestClient[Request]:
+    async def get_client(self, server: TestServer) -> TestClient[Request, Application]:
         """Return a TestClient instance."""
         return TestClient(server)
 

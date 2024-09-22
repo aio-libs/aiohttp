@@ -1,6 +1,7 @@
 import asyncio
 import gzip
 import socket
+import sys
 from typing import Callable, Iterator, Mapping, NoReturn
 from unittest import mock
 
@@ -20,7 +21,10 @@ from aiohttp.test_utils import (
     make_mocked_request,
 )
 
-_TestClient = TestClient[web.Request]
+if sys.version_info >= (3, 11):
+    from typing import assert_type
+
+_TestClient = TestClient[web.Request, web.Application]
 
 _hello_world_str = "Hello, world"
 _hello_world_bytes = _hello_world_str.encode("utf-8")
@@ -71,7 +75,7 @@ def app() -> web.Application:
 def test_client(
     loop: asyncio.AbstractEventLoop, app: web.Application
 ) -> Iterator[_TestClient]:
-    async def make_client() -> TestClient[web.Request]:
+    async def make_client() -> TestClient[web.Request, web.Application]:
         return TestClient(TestServer(app))
 
     client = loop.run_until_complete(make_client())
@@ -239,6 +243,8 @@ async def test_test_client_props() -> None:
     async with client:
         assert isinstance(client.port, int)
         assert client.server is not None
+        if sys.version_info >= (3, 11):
+            assert_type(client.app, web.Application)
         assert client.app is not None
     assert client.port == 0
 
@@ -255,6 +261,8 @@ async def test_test_client_raw_server_props() -> None:
     async with client:
         assert isinstance(client.port, int)
         assert client.server is not None
+        if sys.version_info >= (3, 11):
+            assert_type(client.app, None)
         assert client.app is None
     assert client.port == 0
 
@@ -271,7 +279,7 @@ async def test_test_server_context_manager(loop: asyncio.AbstractEventLoop) -> N
 
 def test_client_unsupported_arg() -> None:
     with pytest.raises(TypeError) as e:
-        TestClient("string")  # type: ignore[arg-type]
+        TestClient("string")  # type: ignore[call-overload]
 
     assert (
         str(e.value) == "server must be TestServer instance, found type: <class 'str'>"
