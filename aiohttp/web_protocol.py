@@ -309,7 +309,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                     self._current_request._cancel(asyncio.CancelledError())
 
                 if self._task_handler is not None and not self._task_handler.done():
-                    await self._task_handler
+                    await asyncio.shield(self._task_handler)
         except (asyncio.CancelledError, asyncio.TimeoutError):
             if (
                 sys.version_info >= (3, 11)
