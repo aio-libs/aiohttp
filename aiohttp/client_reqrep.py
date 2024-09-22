@@ -69,6 +69,7 @@ from .typedefs import (
     JSONDecoder,
     LooseCookies,
     LooseHeaders,
+    Query,
     RawHeaders,
 )
 
@@ -195,14 +196,14 @@ class ClientRequest:
         method: str,
         url: URL,
         *,
-        params: Optional[Mapping[str, str]] = None,
+        params: Query = None,
         headers: Optional[LooseHeaders] = None,
         skip_auto_headers: Optional[Iterable[str]] = None,
         data: Any = None,
         cookies: Optional[LooseCookies] = None,
         auth: Optional[BasicAuth] = None,
         version: http.HttpVersion = http.HttpVersion11,
-        compress: Optional[str] = None,
+        compress: Union[str, bool, None] = None,
         chunked: Optional[bool] = None,
         expect100: bool = False,
         loop: asyncio.AbstractEventLoop,
@@ -229,10 +230,7 @@ class ClientRequest:
         # assert session is not None
         self._session = cast("ClientSession", session)
         if params:
-            q = MultiDict(url.query)
-            url2 = url.with_query(params)
-            q.extend(url2.query)
-            url = url.with_query(q)
+            url = url.extend_query(params)
         self.original_url = url
         self.url = url.with_fragment(None)
         self.method = method.upper()
@@ -426,7 +424,9 @@ class ClientRequest:
 
     def update_content_encoding(self, data: Any) -> None:
         """Set request content encoding."""
-        if data is None:
+        if not data:
+            # Don't compress an empty body.
+            self.compress = None
             return
 
         enc = self.headers.get(hdrs.CONTENT_ENCODING, "").lower()
@@ -627,16 +627,20 @@ class ClientRequest:
         writer = StreamWriter(
             protocol,
             self.loop,
-            on_chunk_sent=functools.partial(
-                self._on_chunk_request_sent, self.method, self.url
+            on_chunk_sent=(
+                functools.partial(self._on_chunk_request_sent, self.method, self.url)
+                if self._traces
+                else None
             ),
-            on_headers_sent=functools.partial(
-                self._on_headers_request_sent, self.method, self.url
+            on_headers_sent=(
+                functools.partial(self._on_headers_request_sent, self.method, self.url)
+                if self._traces
+                else None
             ),
         )
 
         if self.compress:
-            writer.enable_compression(self.compress)
+            writer.enable_compression(self.compress)  # type: ignore[arg-type]
 
         if self.chunked is not None:
             writer.enable_chunking()
@@ -1107,7 +1111,7 @@ class ClientResponse(HeadersMixin):
 
         encoding = mimetype.parameters.get("charset")
         if encoding:
-            with contextlib.suppress(LookupError):
+            with contextlib.suppress(LookupError, ValueError):
                 return codecs.lookup(encoding).name
 
         if mimetype.type == "application" and (

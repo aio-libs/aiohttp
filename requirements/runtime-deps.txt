@@ -20,9 +20,9 @@ frozenlist==1.4.1
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-idna==3.4
+idna==3.6
     # via yarl
-multidict==6.0.5
+multidict==6.1.0
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
@@ -30,5 +30,7 @@ pycares==4.4.0
     # via aiodns
 pycparser==2.22
     # via cffi
-yarl==1.9.11
+typing-extensions==4.12.2
+    # via multidict
+yarl==1.11.1
     # via -r requirements/runtime-deps.in

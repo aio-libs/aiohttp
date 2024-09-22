@@ -1,6 +1,7 @@
 import calendar
 import contextlib
 import datetime
+import heapq
 import itertools
 import os  # noqa
 import pathlib
@@ -10,13 +11,13 @@ import time
 import warnings
 from collections import defaultdict
 from http.cookies import BaseCookie, Morsel, SimpleCookie
-from math import ceil
 from typing import (
     DefaultDict,
     Dict,
     FrozenSet,
     Iterable,
     Iterator,
+    List,
     Mapping,
     Optional,
     Set,
@@ -39,6 +40,11 @@ CookieItem = Union[str, "Morsel[str]"]
 # We cache these string methods here as their use is in performance critical code.
 _FORMAT_PATH = "{}/{}".format
 _FORMAT_DOMAIN_REVERSED = "{1}.{0}".format
+
+# The minimum number of scheduled cookie expirations before we start cleaning up
+# the expiration heap. This is a performance optimization to avoid cleaning up the
+# heap too often when there are only a few scheduled expirations.
+_MIN_SCHEDULED_COOKIE_EXPIRATION = 100
 
 
 class CookieJar(AbstractCookieJar):
@@ -106,7 +112,7 @@ class CookieJar(AbstractCookieJar):
                     for url in treat_as_secure_origin
                 }
             )
-        self._next_expiration: float = ceil(time.time())
+        self._expire_heap: List[Tuple[float, Tuple[str, str, str]]] = []
         self._expirations: Dict[Tuple[str, str, str], float] = {}
 
     def save(self, file_path: PathLike) -> None:
@@ -121,34 +127,25 @@ class CookieJar(AbstractCookieJar):
 
     def clear(self, predicate: Optional[ClearCookiePredicate] = None) -> None:
         if predicate is None:
-            self._next_expiration = ceil(time.time())
+            self._expire_heap.clear()
             self._cookies.clear()
             self._host_only_cookies.clear()
             self._expirations.clear()
             return
 
-        to_del = []
         now = time.time()
-        for (domain, path), cookie in self._cookies.items():
-            for name, morsel in cookie.items():
-                key = (domain, path, name)
-                if (
-                    key in self._expirations and self._expirations[key] <= now
-                ) or predicate(morsel):
-                    to_del.append(key)
-
-        for domain, path, name in to_del:
-            self._host_only_cookies.discard((domain, name))
-            key = (domain, path, name)
-            if key in self._expirations:
-                del self._expirations[(domain, path, name)]
-            self._cookies[(domain, path)].pop(name, None)
-
-        self._next_expiration = (
-            min(*self._expirations.values(), self.SUB_MAX_TIME) + 1
-            if self._expirations
-            else self.MAX_TIME
-        )
+        to_del = [
+            key
+            for (domain, path), cookie in self._cookies.items()
+            for name, morsel in cookie.items()
+            if (
+                (key := (domain, path, name)) in self._expirations
+                and self._expirations[key] <= now
+            )
+            or predicate(morsel)
+        ]
+        if to_del:
+            self._delete_cookies(to_del)
 
     def clear_domain(self, domain: str) -> None:
         self.clear(lambda x: self._is_domain_match(domain, x["domain"]))
@@ -167,11 +164,61 @@ class CookieJar(AbstractCookieJar):
         return sum(len(cookie.values()) for cookie in self._cookies.values())
 
     def _do_expiration(self) -> None:
-        self.clear(lambda x: False)
+        """Remove expired cookies."""
+        if not (expire_heap_len := len(self._expire_heap)):
+            return
+
+        # If the expiration heap grows larger than the number expirations
+        # times two, we clean it up to avoid keeping expired entries in
+        # the heap and consuming memory. We guard this with a minimum
+        # threshold to avoid cleaning up the heap too often when there are
+        # only a few scheduled expirations.
+        if (
+            expire_heap_len > _MIN_SCHEDULED_COOKIE_EXPIRATION
+            and expire_heap_len > len(self._expirations) * 2
+        ):
+            # Remove any expired entries from the expiration heap
+            # that do not match the expiration time in the expirations
+            # as it means the cookie has been re-added to the heap
+            # with a different expiration time.
+            self._expire_heap = [
+                entry
+                for entry in self._expire_heap
+                if self._expirations.get(entry[1]) == entry[0]
+            ]
+            heapq.heapify(self._expire_heap)
+
+        now = time.time()
+        to_del: List[Tuple[str, str, str]] = []
+        # Find any expired cookies and add them to the to-delete list
+        while self._expire_heap:
+            when, cookie_key = self._expire_heap[0]
+            if when > now:
+                break
+            heapq.heappop(self._expire_heap)
+            # Check if the cookie hasn't been re-added to the heap
+            # with a different expiration time as it will be removed
+            # later when it reaches the top of the heap and its
+            # expiration time is met.
+            if self._expirations.get(cookie_key) == when:
+                to_del.append(cookie_key)
+
+        if to_del:
+            self._delete_cookies(to_del)
+
+    def _delete_cookies(self, to_del: List[Tuple[str, str, str]]) -> None:
+        for domain, path, name in to_del:
+            self._host_only_cookies.discard((domain, name))
+            self._cookies[(domain, path)].pop(name, None)
+            self._expirations.pop((domain, path, name), None)
 
     def _expire_cookie(self, when: float, domain: str, path: str, name: str) -> None:
-        self._next_expiration = min(self._next_expiration, when)
-        self._expirations[(domain, path, name)] = when
+        cookie_key = (domain, path, name)
+        if self._expirations.get(cookie_key) == when:
+            # Avoid adding duplicates to the heap
+            return
+        heapq.heappush(self._expire_heap, (when, cookie_key))
+        self._expirations[cookie_key] = when
 
     def update_cookies(self, cookies: LooseCookies, response_url: URL = URL()) -> None:
         """Update cookies."""
@@ -193,7 +240,7 @@ class CookieJar(AbstractCookieJar):
             domain = cookie["domain"]
 
             # ignore domains with trailing dots
-            if domain.endswith("."):
+            if domain and domain[-1] == ".":
                 domain = ""
                 del cookie["domain"]
 
@@ -203,7 +250,7 @@ class CookieJar(AbstractCookieJar):
                 self._host_only_cookies.add((hostname, name))
                 domain = cookie["domain"] = hostname
 
-            if domain.startswith("."):
+            if domain and domain[0] == ".":
                 # Remove leading dot
                 domain = domain[1:]
                 cookie["domain"] = domain
@@ -213,7 +260,7 @@ class CookieJar(AbstractCookieJar):
                 continue
 
             path = cookie["path"]
-            if not path or not path.startswith("/"):
+            if not path or path[0] != "/":
                 # Set the cookie's path to the response path
                 path = response_url.path
                 if not path.startswith("/"):
@@ -224,8 +271,7 @@ class CookieJar(AbstractCookieJar):
                 cookie["path"] = path
             path = path.rstrip("/")
 
-            max_age = cookie["max-age"]
-            if max_age:
+            if max_age := cookie["max-age"]:
                 try:
                     delta_seconds = int(max_age)
                     max_age_expiration = min(time.time() + delta_seconds, self.MAX_TIME)
@@ -233,14 +279,11 @@ class CookieJar(AbstractCookieJar):
                 except ValueError:
                     cookie["max-age"] = ""
 
-            else:
-                expires = cookie["expires"]
-                if expires:
-                    expire_time = self._parse_date(expires)
-                    if expire_time:
-                        self._expire_cookie(expire_time, domain, path, name)
-                    else:
-                        cookie["expires"] = ""
+            elif expires := cookie["expires"]:
+                if expire_time := self._parse_date(expires):
+                    self._expire_cookie(expire_time, domain, path, name)
+                else:
+                    cookie["expires"] = ""
 
             self._cookies[(domain, path)][name] = cookie
 
@@ -303,9 +346,8 @@ class CookieJar(AbstractCookieJar):
             name = cookie.key
             domain = cookie["domain"]
 
-            if (domain, name) in self._host_only_cookies:
-                if domain != hostname:
-                    continue
+            if (domain, name) in self._host_only_cookies and domain != hostname:
+                continue
 
             # Skip edge case when the cookie has a trailing slash but request doesn't.
             if len(cookie["path"]) > path_len:

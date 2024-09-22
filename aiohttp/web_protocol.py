@@ -178,6 +178,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         "_force_close",
         "_current_request",
         "_timeout_ceil_threshold",
+        "_request_in_progress",
     )
 
     def __init__(
@@ -261,6 +262,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
         self._close = False
         self._force_close = False
+        self._request_in_progress = False
 
     def __repr__(self) -> str:
         return "<{} {}>".format(
@@ -284,7 +286,11 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self._keepalive_handle.cancel()
 
         # Wait for graceful handler completion
-        if self._handler_waiter is not None:
+        if self._request_in_progress:
+            # The future is only created when we are shutting
+            # down while the handler is still processing a request
+            # to avoid creating a future for every request.
+            self._handler_waiter = self._loop.create_future()
             try:
                 async with ceil_timeout(timeout):
                     await self._handler_waiter
@@ -474,7 +480,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             return
 
         # handler in idle state
-        if self._waiter:
+        if self._waiter and not self._waiter.done():
             self.force_close()
 
     async def _handle_request(
@@ -483,7 +489,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         start_time: float,
         request_handler: Callable[[_Request], Awaitable[StreamResponse]],
     ) -> Tuple[StreamResponse, bool]:
-        self._handler_waiter = self._loop.create_future()
+        self._request_in_progress = True
         try:
             try:
                 self._current_request = request
@@ -508,7 +514,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         else:
             resp, reset = await self.finish_response(request, resp, start_time)
         finally:
-            self._handler_waiter.set_result(None)
+            self._request_in_progress = False
+            if self._handler_waiter is not None:
+                self._handler_waiter.set_result(None)
 
         return resp, reset
 

@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import warnings
-from functools import partial, update_wrapper
+from functools import cache, partial, update_wrapper
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -16,6 +16,7 @@ from typing import (
     MutableMapping,
     Optional,
     Sequence,
+    Tuple,
     Type,
     TypeVar,
     Union,
@@ -30,7 +31,7 @@ from frozenlist import FrozenList
 from . import hdrs
 from .helpers import AppKey
 from .log import web_logger
-from .typedefs import Middleware
+from .typedefs import Handler, Middleware
 from .web_exceptions import NotAppKeyWarning
 from .web_middlewares import _fix_request_current_app
 from .web_request import Request
@@ -69,11 +70,24 @@ _U = TypeVar("_U")
 _Resource = TypeVar("_Resource", bound=AbstractResource)
 
 
+@cache
+def _build_middlewares(
+    handler: Handler, apps: Tuple["Application", ...]
+) -> Callable[[Request], Awaitable[StreamResponse]]:
+    """Apply middlewares to handler."""
+    # The slice is to reverse the order of the apps
+    # so they are applied in the order they were added
+    for app in apps[::-1]:
+        assert app.pre_frozen, "middleware handlers are not ready"
+        for m in app._middlewares_handlers:
+            handler = update_wrapper(partial(m, handler=handler), handler)
+    return handler
+
+
 @final
 class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     __slots__ = (
         "logger",
-        "_debug",
         "_router",
         "_loop",
         "_handler_args",
@@ -185,6 +199,9 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
 
     def __iter__(self) -> Iterator[Union[str, AppKey[Any]]]:
         return iter(self._state)
+
+    def __hash__(self) -> int:
+        return id(self)
 
     @overload  # type: ignore[override]
     def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]: ...
@@ -380,10 +397,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             handler = match_info.handler
 
             if self._run_middlewares:
-                for app in match_info.apps[::-1]:
-                    assert app.pre_frozen, "middleware handlers are not ready"
-                    for m in app._middlewares_handlers:
-                        handler = update_wrapper(partial(m, handler=handler), handler)
+                handler = _build_middlewares(handler, match_info.apps)
 
             resp = await handler(request)
 

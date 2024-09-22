@@ -9,6 +9,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
+from aiohttp.connector import _SSL_CONTEXT_VERIFIED
 from aiohttp.helpers import TimerNoop
 from aiohttp.test_utils import make_mocked_coro
 
@@ -934,9 +935,7 @@ class TestProxy(unittest.TestCase):
                             tls_m.assert_called_with(
                                 mock.ANY,
                                 mock.ANY,
-                                self.loop.run_until_complete(
-                                    connector._make_or_get_ssl_context(True)
-                                ),
+                                _SSL_CONTEXT_VERIFIED,
                                 server_hostname="www.python.org",
                                 ssl_handshake_timeout=mock.ANY,
                             )

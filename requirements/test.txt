@@ -44,7 +44,7 @@ frozenlist==1.4.1
     #   aiosignal
 gunicorn==23.0.0
     # via -r requirements/base.in
-idna==3.4
+idna==3.6
     # via
     #   requests
     #   trustme
@@ -55,7 +55,7 @@ markdown-it-py==3.0.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.0.5
+multidict==6.1.0
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
@@ -75,9 +75,9 @@ pycares==4.4.0
     # via aiodns
 pycparser==2.22
     # via cffi
-pydantic==2.8.2
+pydantic==2.9.2
     # via python-on-whales
-pydantic-core==2.20.1
+pydantic-core==2.23.4
     # via pydantic
 pygments==2.18.0
     # via rich
@@ -92,15 +92,11 @@ pytest-mock==3.14.0
     # via -r requirements/test.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.72.0
+python-on-whales==0.73.0
     # via -r requirements/test.in
-re-assert==1.1.0
-    # via -r requirements/test.in
-regex==2024.7.24
-    # via re-assert
 requests==2.32.3
     # via python-on-whales
-rich==13.8.0
+rich==13.8.1
     # via typer
 setuptools-git==1.2
     # via -r requirements/test.in
@@ -122,17 +118,18 @@ typer==0.12.5
 typing-extensions==4.12.2
     # via
     #   annotated-types
+    #   multidict
     #   mypy
     #   pydantic
     #   pydantic-core
     #   python-on-whales
     #   rich
     #   typer
-urllib3==2.2.2
+urllib3==2.2.3
     # via requests
 uvloop==0.20.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
 wait-for-it==2.2.2
     # via -r requirements/test.in
-yarl==1.9.11
+yarl==1.11.1
     # via -r requirements/runtime-deps.in
