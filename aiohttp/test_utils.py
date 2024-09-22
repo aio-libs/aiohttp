@@ -11,7 +11,19 @@ import sys
 import warnings
 from abc import ABC, abstractmethod
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Callable, Iterator, List, Optional, Type, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Generic,
+    Iterator,
+    List,
+    Optional,
+    Type,
+    TypeVar,
+    cast,
+    overload,
+)
 from unittest import IsolatedAsyncioTestCase, mock
 
 from aiosignal import Signal
@@ -36,6 +48,7 @@ from .typedefs import StrOrURL
 from .web import (
     Application,
     AppRunner,
+    BaseRequest,
     BaseRunner,
     Request,
     Server,
@@ -52,6 +65,14 @@ else:
 
 if sys.version_info >= (3, 11) and TYPE_CHECKING:
     from typing import Unpack
+
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    Self = Any
+
+_ApplicationNone = TypeVar("_ApplicationNone", Application, None)
+_Request = TypeVar("_Request", bound=BaseRequest)
 
 REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
 
@@ -249,7 +270,7 @@ class RawTestServer(BaseTestServer):
         return ServerRunner(srv, debug=debug, **kwargs)
 
 
-class TestClient:
+class TestClient(Generic[_Request, _ApplicationNone]):
     """
     A test client implementation.
 
@@ -259,6 +280,22 @@ class TestClient:
 
     __test__ = False
 
+    @overload
+    def __init__(
+        self: "TestClient[Request, Application]",
+        server: TestServer,
+        *,
+        cookie_jar: Optional[AbstractCookieJar] = None,
+        **kwargs: Any,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self: "TestClient[_Request, None]",
+        server: BaseTestServer,
+        *,
+        cookie_jar: Optional[AbstractCookieJar] = None,
+        **kwargs: Any,
+    ) -> None: ...
     def __init__(
         self,
         server: BaseTestServer,
@@ -296,8 +333,8 @@ class TestClient:
         return self._server
 
     @property
-    def app(self) -> Optional[Application]:
-        return cast(Optional[Application], getattr(self._server, "app", None))
+    def app(self) -> _ApplicationNone:
+        return getattr(self._server, "app", None)  # type: ignore[return-value]
 
     @property
     def session(self) -> ClientSession:
@@ -465,7 +502,7 @@ class TestClient:
         # __exit__ should exist in pair with __enter__ but never executed
         pass  # pragma: no cover
 
-    async def __aenter__(self) -> "TestClient":
+    async def __aenter__(self) -> Self:
         await self.start_server()
         return self
 
@@ -530,7 +567,7 @@ class AioHTTPTestCase(IsolatedAsyncioTestCase):
         """Return a TestServer instance."""
         return TestServer(app, loop=self.loop)
 
-    async def get_client(self, server: TestServer) -> TestClient:
+    async def get_client(self, server: TestServer) -> TestClient[Request, Application]:
         """Return a TestClient instance."""
         return TestClient(server, loop=self.loop)
 
