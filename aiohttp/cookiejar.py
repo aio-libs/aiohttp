@@ -240,7 +240,7 @@ class CookieJar(AbstractCookieJar):
             domain = cookie["domain"]
 
             # ignore domains with trailing dots
-            if domain.endswith("."):
+            if domain and domain[-1] == ".":
                 domain = ""
                 del cookie["domain"]
 
@@ -250,7 +250,7 @@ class CookieJar(AbstractCookieJar):
                 self._host_only_cookies.add((hostname, name))
                 domain = cookie["domain"] = hostname
 
-            if domain.startswith("."):
+            if domain and domain[0] == ".":
                 # Remove leading dot
                 domain = domain[1:]
                 cookie["domain"] = domain
@@ -260,7 +260,7 @@ class CookieJar(AbstractCookieJar):
                 continue
 
             path = cookie["path"]
-            if not path or not path.startswith("/"):
+            if not path or path[0] != "/":
                 # Set the cookie's path to the response path
                 path = response_url.path
                 if not path.startswith("/"):
@@ -271,8 +271,7 @@ class CookieJar(AbstractCookieJar):
                 cookie["path"] = path
             path = path.rstrip("/")
 
-            max_age = cookie["max-age"]
-            if max_age:
+            if max_age := cookie["max-age"]:
                 try:
                     delta_seconds = int(max_age)
                     max_age_expiration = min(time.time() + delta_seconds, self.MAX_TIME)
@@ -280,14 +279,11 @@ class CookieJar(AbstractCookieJar):
                 except ValueError:
                     cookie["max-age"] = ""
 
-            else:
-                expires = cookie["expires"]
-                if expires:
-                    expire_time = self._parse_date(expires)
-                    if expire_time:
-                        self._expire_cookie(expire_time, domain, path, name)
-                    else:
-                        cookie["expires"] = ""
+            elif expires := cookie["expires"]:
+                if expire_time := self._parse_date(expires):
+                    self._expire_cookie(expire_time, domain, path, name)
+                else:
+                    cookie["expires"] = ""
 
             self._cookies[(domain, path)][name] = cookie
 
@@ -350,9 +346,8 @@ class CookieJar(AbstractCookieJar):
             name = cookie.key
             domain = cookie["domain"]
 
-            if (domain, name) in self._host_only_cookies:
-                if domain != hostname:
-                    continue
+            if (domain, name) in self._host_only_cookies and domain != hostname:
+                continue
 
             # Skip edge case when the cookie has a trailing slash but request doesn't.
             if len(cookie["path"]) > path_len:
