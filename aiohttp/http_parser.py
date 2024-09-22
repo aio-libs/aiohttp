@@ -317,6 +317,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         start_pos = 0
         loop = self.loop
 
+        should_close = False
         while start_pos < data_len:
 
             # read HTTP message (request/response line + headers), \r\n\r\n
@@ -329,6 +330,9 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                     continue
 
                 if pos >= start_pos:
+                    if should_close:
+                        raise BadHttpMessage("Data after `Connection: close`")
+
                     # line found
                     line = data[start_pos:pos]
                     if SEP == b"\n":  # For lax response parsing
@@ -438,6 +442,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                             payload = EMPTY_PAYLOAD
 
                         messages.append((msg, payload))
+                        should_close = msg.should_close
                 else:
                     self._tail = data[start_pos:]
                     data = EMPTY
