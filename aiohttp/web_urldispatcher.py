@@ -1257,7 +1257,15 @@ def _quote_path(value: str) -> str:
 
 
 def _unquote_path(value: str) -> str:
-    return value.replace("%2F", "/")
+    # Note that older yarl versions already unquote "%2F" to "/"
+    # so we only want to unquote if we see "%2F" or "%2f"
+    # and the yarl version is new enough to not unquote it.
+    if "%" in value:
+        if "%2F" in value:
+            value = value.replace("%2F", "/")
+        if "%2f" in value:
+            value = value.replace("%2f", "/")
+    return value
 
 
 def _requote_path(value: str) -> str:
