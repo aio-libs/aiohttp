@@ -781,10 +781,11 @@ async def test_dynamic_match_double_quoted_path(router: web.UrlDispatcher) -> No
     """Verify that double-quoted path is unquoted only once."""
     handler = make_handler()
     router.add_route("GET", "/{path}/{subpath}", handler)
-    resource_id = quote("my%2Fpath%7Cwith%21some%25strange%24characters", safe="")
-    req = make_mocked_request("GET", f"/path/{resource_id}")
+    resource_id = quote("my/path|with!some%strange$characters", safe="")
+    double_quoted_resource_id = quote(resource_id, safe="")
+    req = make_mocked_request("GET", f"/path/{double_quoted_resource_id}")
     match_info = await router.resolve(req)
-    assert match_info == {"path": "path", "subpath": unquote(resource_id)}
+    assert match_info == {"path": "path", "subpath": resource_id}
 
 
 def test_add_route_not_started_with_slash(router: web.UrlDispatcher) -> None:
