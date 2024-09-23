@@ -869,7 +869,7 @@ async def test_decoded_raw_match_regex(aiohttp_client: AiohttpClient) -> None:
     app = web.Application()
 
     async def handler(request: web.Request) -> NoReturn:
-        return False
+        assert False
 
     app.router.add_get("/467%2C802%2C24834%2C24952%2C25362%2C40574/hello", handler)
     client = await aiohttp_client(app)
