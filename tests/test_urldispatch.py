@@ -486,7 +486,7 @@ def test_add_static_quoting(router: web.UrlDispatcher) -> None:
     )
     assert router["static"] is resource
     url = resource.url_for(filename="/1 2/файл%2F.txt")
-    assert url.path == "/пре %2Fфикс/1 2/файл%2F.txt"
+    assert url.path == "/пре /фикс/1 2/файл%2F.txt"
     assert str(url) == (
         "/%D0%BF%D1%80%D0%B5%20%2F%D1%84%D0%B8%D0%BA%D1%81"
         "/1%202/%D1%84%D0%B0%D0%B9%D0%BB%252F.txt"
@@ -664,7 +664,7 @@ def test_route_dynamic_quoting(router: web.UrlDispatcher) -> None:
     route = router.add_route("GET", r"/пре %2Fфикс/{arg}", handler)
 
     url = route.url_for(arg="1 2/текст%2F")
-    assert url.path == "/пре %2Fфикс/1 2/текст%2F"
+    assert url.path == "/пре /фикс/1 2/текст%2F"
     assert str(url) == (
         "/%D0%BF%D1%80%D0%B5%20%2F%D1%84%D0%B8%D0%BA%D1%81"
         "/1%202/%D1%82%D0%B5%D0%BA%D1%81%D1%82%252F"
