@@ -1111,8 +1111,7 @@ class ClientResponse(HeadersMixin):
 
     async def text(self, encoding: Optional[str] = None, errors: str = "strict") -> str:
         """Read response payload and decode."""
-        if self._body is None:
-            await self.read()
+        await self.read()
 
         if encoding is None:
             encoding = self.get_encoding()
@@ -1127,8 +1126,7 @@ class ClientResponse(HeadersMixin):
         content_type: Optional[str] = "application/json",
     ) -> Any:
         """Read and decodes JSON response."""
-        if self._body is None:
-            await self.read()
+        await self.read()
 
         if content_type:
             if not is_expected_content_type(self.content_type, content_type):

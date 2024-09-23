@@ -3689,6 +3689,42 @@ async def test_read_from_closed_response2(aiohttp_client: AiohttpClient) -> None
         await resp.read()
 
 
+async def test_json_from_closed_response(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.json_response(42)
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+        await resp.read()
+
+    # Should not allow reading outside of resp context even when body is available.
+    with pytest.raises(aiohttp.ClientConnectionError):
+        await resp.json()
+
+
+async def test_text_from_closed_response(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(text="data")
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+        await resp.read()
+
+    # Should not allow reading outside of resp context even when body is available.
+    with pytest.raises(aiohttp.ClientConnectionError):
+        await resp.text()
+
+
 async def test_read_after_catch_raise_for_status(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(body=b"data", status=404)
