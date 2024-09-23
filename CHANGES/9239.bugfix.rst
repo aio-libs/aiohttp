@@ -1,0 +1,1 @@
+Changed :py:meth:`ClientResponse.raise_for_status() <aiohttp.ClientResponse.raise_for_status>` to only release the connection when invoked outside an ``async with`` context -- by :user:`Dreamsorcerer`.
