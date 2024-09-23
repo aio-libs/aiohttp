@@ -1257,7 +1257,7 @@ def _quote_path(value: str) -> str:
 
 
 def _unquote_path(value: str) -> str:
-    return URL.build(path=value, encoded=True).path.replace("%2F", "/")
+    return value.replace("%2F", "/")
 
 
 def _requote_path(value: str) -> str:
