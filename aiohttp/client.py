@@ -218,7 +218,7 @@ DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60)
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
 
-_RetType = TypeVar("_RetType")
+_RetType = TypeVar("_RetType", ClientResponse, ClientWebSocketResponse)
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
 
 
@@ -1364,7 +1364,7 @@ class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType
     __slots__ = ("_coro", "_resp")
 
     def __init__(self, coro: Coroutine["asyncio.Future[Any]", None, _RetType]) -> None:
-        self._coro = coro
+        self._coro: Coroutine["asyncio.Future[Any]", None, _RetType] = coro
 
     def send(self, arg: None) -> "asyncio.Future[Any]":
         return self._coro.send(arg)
@@ -1383,12 +1383,8 @@ class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType
         return self.__await__()
 
     async def __aenter__(self) -> _RetType:
-        self._resp = await self._coro
-        return self._resp
-
-
-class _RequestContextManager(_BaseRequestContextManager[ClientResponse]):
-    __slots__ = ()
+        self._resp: _RetType = await self._coro
+        return await self._resp.__aenter__()
 
     async def __aexit__(
         self,
@@ -1396,25 +1392,11 @@ class _RequestContextManager(_BaseRequestContextManager[ClientResponse]):
         exc: Optional[BaseException],
         tb: Optional[TracebackType],
     ) -> None:
-        # We're basing behavior on the exception as it can be caused by
-        # user code unrelated to the status of the connection.  If you
-        # would like to close a connection you must do that
-        # explicitly.  Otherwise connection error handling should kick in
-        # and close/recycle the connection as required.
-        self._resp.release()
-        await self._resp.wait_for_close()
+        await self._resp.__aexit__(exc_type, exc, tb)
 
 
-class _WSRequestContextManager(_BaseRequestContextManager[ClientWebSocketResponse]):
-    __slots__ = ()
-
-    async def __aexit__(
-        self,
-        exc_type: Optional[Type[BaseException]],
-        exc: Optional[BaseException],
-        tb: Optional[TracebackType],
-    ) -> None:
-        await self._resp.close()
+_RequestContextManager = _BaseRequestContextManager[ClientResponse]
+_WSRequestContextManager = _BaseRequestContextManager[ClientWebSocketResponse]
 
 
 class _SessionRequestContextManager:
