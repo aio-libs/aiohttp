@@ -33,7 +33,7 @@ from pytest_mock import MockerFixture
 from yarl import URL
 
 import aiohttp
-from aiohttp import Fingerprint, ServerFingerprintMismatch, client_reqrep, hdrs, web
+from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.client_exceptions import (
     ClientResponseError,
@@ -706,10 +706,7 @@ async def test_str_params(aiohttp_client: AiohttpClient) -> None:
         assert 200 == resp.status
 
 
-@pytest.mark.parametrize("yarl_supports_extend_query", [True, False])
-async def test_params_and_query_string(
-    aiohttp_client: AiohttpClient, yarl_supports_extend_query: bool
-) -> None:
+async def test_params_and_query_string(aiohttp_client: AiohttpClient) -> None:
     """Test combining params with an existing query_string."""
 
     async def handler(request: web.Request) -> web.Response:
@@ -720,18 +717,13 @@ async def test_params_and_query_string(
     app.router.add_route("GET", "/", handler)
     client = await aiohttp_client(app)
 
-    # Ensure the old path is tested for old yarl versions
-    with mock.patch.object(
-        client_reqrep, "_YARL_SUPPORTS_EXTEND_QUERY", yarl_supports_extend_query
-    ):
-        async with client.get("/?q=abc", params="q=test&d=dog") as resp:
-            assert resp.status == 200
+    async with client.get("/?q=abc", params="q=test&d=dog") as resp:
+        assert resp.status == 200
 
 
 @pytest.mark.parametrize("params", [None, "", {}, MultiDict()])
-@pytest.mark.parametrize("yarl_supports_extend_query", [True, False])
 async def test_empty_params_and_query_string(
-    aiohttp_client: AiohttpClient, params: Any, yarl_supports_extend_query: bool
+    aiohttp_client: AiohttpClient, params: Any
 ) -> None:
     """Test combining empty params with an existing query_string."""
 
@@ -743,12 +735,8 @@ async def test_empty_params_and_query_string(
     app.router.add_route("GET", "/", handler)
     client = await aiohttp_client(app)
 
-    # Ensure the old path is tested for old yarl versions
-    with mock.patch.object(
-        client_reqrep, "_YARL_SUPPORTS_EXTEND_QUERY", yarl_supports_extend_query
-    ):
-        async with client.get("/?q=abc", params=params) as resp:
-            assert resp.status == 200
+    async with client.get("/?q=abc", params=params) as resp:
+        assert resp.status == 200
 
 
 async def test_drop_params_on_redirect(aiohttp_client: AiohttpClient) -> None:
