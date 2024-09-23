@@ -3,6 +3,7 @@ import io
 import json
 import pathlib
 import socket
+import sys
 import zlib
 from typing import AsyncIterator, Awaitable, Callable, Dict, List, NoReturn, Optional
 from unittest import mock
@@ -193,6 +194,40 @@ async def test_response_before_complete(aiohttp_client: AiohttpClient) -> None:
     assert "OK" == text
 
     resp.release()
+
+
+@pytest.mark.skipif(sys.version_info < (3, 11), reason="Needs Task.cancelling()")
+async def test_cancel_shutdown(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        t = asyncio.create_task(request.protocol.shutdown())
+        # Ensure it's started waiting
+        await asyncio.sleep(0)
+
+        t.cancel()
+        # Cancellation should not be suppressed
+        with pytest.raises(asyncio.CancelledError):
+            await t
+
+        # Repeat for second waiter in shutdown()
+        with mock.patch.object(request.protocol, "_request_in_progress", False):
+            with mock.patch.object(request.protocol, "_current_request", None):
+                t = asyncio.create_task(request.protocol.shutdown())
+                await asyncio.sleep(0)
+
+                t.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await t
+
+        return web.Response(body=b"OK")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+        txt = await resp.text()
+        assert txt == "OK"
 
 
 async def test_post_form(aiohttp_client: AiohttpClient) -> None:
