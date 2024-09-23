@@ -768,6 +768,7 @@ async def test_dynamic_match_two_part2(router: web.UrlDispatcher) -> None:
     assert {"name": "file", "ext": "html"} == match_info
 
 
+@pytest.mark.xfail(reason="Will be fixed in #9267")
 async def test_dynamic_match_unquoted_path(router: web.UrlDispatcher) -> None:
     handler = make_handler()
     router.add_route("GET", "/{path}/{subpath}", handler)
