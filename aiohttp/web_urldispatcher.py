@@ -1267,9 +1267,11 @@ def _unquote_path(value: str) -> str:
     # so we only want to unquote if we see "%2F" or "%2f"
     # and the yarl version is new enough to not unquote it.
     if "%" in value:
+        # Only decode %2F or %2f as if we decode both we may
+        # we would be unquoting twice.
         if "%2F" in value:
             value = value.replace("%2F", "/")
-        if "%2f" in value:
+        elif "%2f" in value:
             value = value.replace("%2f", "/")
     return value
 
