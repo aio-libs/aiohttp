@@ -1,1 +1,1 @@
-Significantly speed up filtering cookies -- by :user:`bdraco`.
+Significantly sped up filtering cookies -- by :user:`bdraco`.
