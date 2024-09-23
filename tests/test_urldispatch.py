@@ -4,7 +4,7 @@ import re
 from collections.abc import Container, Iterable, Mapping, MutableMapping, Sized
 from functools import partial
 from typing import Awaitable, Callable, Dict, List, NoReturn, Optional, Type
-from urllib.parse import unquote
+from urllib.parse import quote, unquote
 
 import pytest
 from yarl import URL
@@ -772,6 +772,16 @@ async def test_dynamic_match_unquoted_path(router: web.UrlDispatcher) -> None:
     handler = make_handler()
     router.add_route("GET", "/{path}/{subpath}", handler)
     resource_id = "my%2Fpath%7Cwith%21some%25strange%24characters"
+    req = make_mocked_request("GET", f"/path/{resource_id}")
+    match_info = await router.resolve(req)
+    assert match_info == {"path": "path", "subpath": unquote(resource_id)}
+
+
+async def test_dynamic_match_double_quoted_path(router: web.UrlDispatcher) -> None:
+    """Verify that double-quoted path is unquoted only once."""
+    handler = make_handler()
+    router.add_route("GET", "/{path}/{subpath}", handler)
+    resource_id = quote("my%2Fpath%7Cwith%21some%25strange%24characters", safe="")
     req = make_mocked_request("GET", f"/path/{resource_id}")
     match_info = await router.resolve(req)
     assert match_info == {"path": "path", "subpath": unquote(resource_id)}
