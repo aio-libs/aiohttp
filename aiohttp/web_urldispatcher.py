@@ -375,7 +375,7 @@ class Resource(AbstractResource):
     async def resolve(self, request: Request) -> _Resolve:
         allowed_methods: Set[str] = set()
 
-        match_dict = self._match(request.rel_url.path)
+        match_dict = self._match(request.rel_url.path_safe)
         if match_dict is None:
             return None, allowed_methods
 
@@ -425,8 +425,7 @@ class PlainResource(Resource):
         # string comparison is about 10 times faster than regexp matching
         if self._path == path:
             return {}
-        else:
-            return None
+        return None
 
     def raw_match(self, path: str) -> bool:
         return self._path == path
@@ -497,10 +496,9 @@ class DynamicResource(Resource):
         match = self._pattern.fullmatch(path)
         if match is None:
             return None
-        else:
-            return {
-                key: _unquote_path(value) for key, value in match.groupdict().items()
-            }
+        return {
+            key: _unquote_path_safe(value) for key, value in match.groupdict().items()
+        }
 
     def raw_match(self, path: str) -> bool:
         return self._orig_path == path
@@ -645,7 +643,7 @@ class StaticResource(PrefixResource):
         )
 
     async def resolve(self, request: Request) -> _Resolve:
-        path = request.rel_url.path
+        path = request.rel_url.path_safe
         method = request.method
         allowed_methods = set(self._routes)
         if not path.startswith(self._prefix2) and path != self._prefix:
@@ -654,7 +652,7 @@ class StaticResource(PrefixResource):
         if method not in allowed_methods:
             return None, allowed_methods
 
-        match_dict = {"filename": _unquote_path(path[len(self._prefix) + 1 :])}
+        match_dict = {"filename": _unquote_path_safe(path[len(self._prefix) + 1 :])}
         return (UrlMappingMatchInfo(match_dict, self._routes[method]), allowed_methods)
 
     def __len__(self) -> int:
@@ -1035,7 +1033,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         # candidates for a given url part because there are multiple resources
         # registered for the same canonical path, we resolve them in a linear
         # fashion to ensure registration order is respected.
-        url_part = request.rel_url.path
+        url_part = request.rel_url.path_safe
         while url_part:
             for candidate in resource_index.get(url_part, ()):
                 match_dict, allowed = await candidate.resolve(request)
@@ -1286,8 +1284,10 @@ def _quote_path(value: str) -> str:
     return URL.build(path=value, encoded=False).raw_path
 
 
-def _unquote_path(value: str) -> str:
-    return URL.build(path=value, encoded=True).path.replace("%2F", "/")
+def _unquote_path_safe(value: str) -> str:
+    if "%" not in value:
+        return value
+    return value.replace("%2F", "/").replace("%25", "%")
 
 
 def _requote_path(value: str) -> str:
