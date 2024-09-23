@@ -1257,6 +1257,12 @@ def _quote_path(value: str) -> str:
 
 
 def _unquote_path(value: str) -> str:
+    """Unquote a URL path.
+
+    This method is used to unquote %2F to / in the URL path
+    for paths returned from yarl.URL.path. It is not intended
+    for use with yarl.URL.raw_path.
+    """
     # Note that older yarl versions already unquote "%2F" to "/"
     # so we only want to unquote if we see "%2F" or "%2f"
     # and the yarl version is new enough to not unquote it.
