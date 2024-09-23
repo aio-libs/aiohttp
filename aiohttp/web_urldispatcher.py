@@ -351,9 +351,8 @@ class Resource(AbstractResource):
 
     async def resolve(self, request: Request) -> _Resolve:
         allowed_methods: Set[str] = set()
-        rel_url = request.rel_url
 
-        match_dict = self._match(rel_url.path, rel_url.raw_path)
+        match_dict = self._match(request.rel_url.path)
         if match_dict is None:
             return None, allowed_methods
 
@@ -367,7 +366,7 @@ class Resource(AbstractResource):
             return None, allowed_methods
 
     @abc.abstractmethod
-    def _match(self, path: str, raw_path: str) -> Optional[Dict[str, str]]:
+    def _match(self, path: str) -> Optional[Dict[str, str]]:
         pass  # pragma: no cover
 
     def __len__(self) -> int:
@@ -399,7 +398,7 @@ class PlainResource(Resource):
         assert len(prefix) > 1
         self._path = prefix + self._path
 
-    def _match(self, path: str, raw_path: str) -> Optional[Dict[str, str]]:
+    def _match(self, path: str) -> Optional[Dict[str, str]]:
         # string comparison is about 10 times faster than regexp matching
         if self._path == path:
             return {}
@@ -469,7 +468,7 @@ class DynamicResource(Resource):
         self._pattern = re.compile(re.escape(prefix) + self._pattern.pattern)
         self._formatter = prefix + self._formatter
 
-    def _match(self, path: str, raw_path: str) -> Optional[Dict[str, str]]:
+    def _match(self, path: str) -> Optional[Dict[str, str]]:
         match = self._pattern.fullmatch(path)
         if match is None:
             return None
