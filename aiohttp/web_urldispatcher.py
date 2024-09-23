@@ -412,7 +412,7 @@ class PlainResource(Resource):
         return {"path": self._path}
 
     def url_for(self) -> URL:  # type: ignore[override]
-        return URL.build(path=self._path, encoded=True)
+        return URL.build(path=_requote_path(self._path), encoded=True)
 
     def __repr__(self) -> str:
         name = "'" + self.name + "' " if self.name is not None else ""
