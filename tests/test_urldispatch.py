@@ -777,7 +777,7 @@ async def test_dynamic_match_unquoted_path(router: web.UrlDispatcher) -> None:
     # %2f never gets unquoted
     assert match_info == {
         "path": "path",
-        "subpath": "my%2fpath|with!some%strange$characters",
+        "subpath": "my%2Fpath|with!some%strange$characters",
     }
 
 
