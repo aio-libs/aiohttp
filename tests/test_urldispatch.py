@@ -1,7 +1,7 @@
 import pathlib
 import re
 from collections.abc import Container, Iterable, Mapping, MutableMapping, Sized
-from urllib.parse import unquote
+from urllib.parse import quote, unquote
 
 import pytest
 from re_assert import Matches
@@ -457,7 +457,7 @@ def test_add_static_quoting(router) -> None:
     )
     assert router["static"] is resource
     url = resource.url_for(filename="/1 2/файл%2F.txt")
-    assert url.path == "/пре %2Fфикс/1 2/файл%2F.txt"
+    assert url.path == "/пре /фикс/1 2/файл%2F.txt"
     assert str(url) == (
         "/%D0%BF%D1%80%D0%B5%20%2F%D1%84%D0%B8%D0%BA%D1%81"
         "/1%202/%D1%84%D0%B0%D0%B9%D0%BB%252F.txt"
@@ -630,7 +630,7 @@ def test_route_dynamic_quoting(router) -> None:
     route = router.add_route("GET", r"/пре %2Fфикс/{arg}", handler)
 
     url = route.url_for(arg="1 2/текст%2F")
-    assert url.path == "/пре %2Fфикс/1 2/текст%2F"
+    assert url.path == "/пре /фикс/1 2/текст%2F"
     assert str(url) == (
         "/%D0%BF%D1%80%D0%B5%20%2F%D1%84%D0%B8%D0%BA%D1%81"
         "/1%202/%D1%82%D0%B5%D0%BA%D1%81%D1%82%252F"
@@ -740,6 +740,17 @@ async def test_dynamic_match_unquoted_path(router) -> None:
     req = make_mocked_request("GET", f"/path/{resource_id}")
     match_info = await router.resolve(req)
     assert match_info == {"path": "path", "subpath": unquote(resource_id)}
+
+
+async def test_dynamic_match_double_quoted_path(router: web.UrlDispatcher) -> None:
+    """Verify that double-quoted path is unquoted only once."""
+    handler = make_handler()
+    router.add_route("GET", "/{path}/{subpath}", handler)
+    resource_id = quote("my/path|with!some%strange$characters", safe="")
+    double_quoted_resource_id = quote(resource_id, safe="")
+    req = make_mocked_request("GET", f"/path/{double_quoted_resource_id}")
+    match_info = await router.resolve(req)
+    assert match_info == {"path": "path", "subpath": resource_id}
 
 
 def test_add_route_not_started_with_slash(router) -> None:
