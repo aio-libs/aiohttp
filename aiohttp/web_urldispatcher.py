@@ -474,7 +474,9 @@ class DynamicResource(Resource):
         if match is None:
             return None
         else:
-            return {key: value for key, value in match.groupdict().items()}
+            return {
+                key: _unquote_path(value) for key, value in match.groupdict().items()
+            }
 
     def raw_match(self, path: str) -> bool:
         return self._orig_path == path
@@ -625,7 +627,7 @@ class StaticResource(PrefixResource):
         if method not in allowed_methods:
             return None, allowed_methods
 
-        match_dict = {"filename": path[len(self._prefix) + 1 :]}
+        match_dict = {"filename": _unquote_path(path[len(self._prefix) + 1 :])}
         return (UrlMappingMatchInfo(match_dict, self._routes[method]), allowed_methods)
 
     def __len__(self) -> int:
@@ -1252,6 +1254,26 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
 def _quote_path(value: str) -> str:
     return URL.build(path=value, encoded=False).raw_path
+
+
+def _unquote_path(value: str) -> str:
+    """Unquote a URL path.
+
+    This method is used to unquote %2F to / in the URL path
+    for paths returned from yarl.URL.path. It is not intended
+    for use with yarl.URL.raw_path.
+    """
+    # Note that older yarl versions already unquote "%2F" to "/"
+    # so we only want to unquote if we see "%2F" or "%2f"
+    # and the yarl version is new enough to not unquote it.
+    if "%" in value:
+        # Only decode %2F or %2f as if we decode both we may
+        # we would be unquoting twice.
+        if "%2F" in value:
+            value = value.replace("%2F", "/")
+        elif "%2f" in value:
+            value = value.replace("%2f", "/")
+    return value
 
 
 def _requote_path(value: str) -> str:
