@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import io
 import pathlib
+import sys
 import urllib.parse
 import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
@@ -1213,7 +1214,23 @@ async def test_oserror_on_write_bytes(loop, conn) -> None:
     await req.close()
 
 
-async def test_terminate(loop, conn) -> None:
+@pytest.mark.skipif(sys.version_info < (3, 11), reason="Needs Task.cancelling()")
+async def test_cancel_close(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+    req = ClientRequest("get", URL("http://python.org"), loop=loop)
+    req._writer = asyncio.Future()  # type: ignore[assignment]
+
+    t = asyncio.create_task(req.close())
+
+    # Start waiting on _writer
+    await asyncio.sleep(0)
+
+    t.cancel()
+    # Cancellation should not be suppressed.
+    with pytest.raises(asyncio.CancelledError):
+        await t
+
+
+async def test_terminate(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
 
     async def _mock_write_bytes(*args, **kwargs):
