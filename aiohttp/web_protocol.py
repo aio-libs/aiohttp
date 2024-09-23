@@ -294,17 +294,32 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             # down while the handler is still processing a request
             # to avoid creating a future for every request.
             self._handler_waiter = self._loop.create_future()
-            with suppress(asyncio.CancelledError, asyncio.TimeoutError):
+            try:
                 async with ceil_timeout(timeout):
                     await self._handler_waiter
+            except (asyncio.CancelledError, asyncio.TimeoutError):
+                self._handler_waiter = None
+                if (
+                    sys.version_info >= (3, 11)
+                    and (task := asyncio.current_task())
+                    and task.cancelling()
+                ):
+                    raise
         # Then cancel handler and wait
-        with suppress(asyncio.CancelledError, asyncio.TimeoutError):
+        try:
             async with ceil_timeout(timeout):
                 if self._current_request is not None:
                     self._current_request._cancel(asyncio.CancelledError())
 
                 if self._task_handler is not None and not self._task_handler.done():
-                    await self._task_handler
+                    await asyncio.shield(self._task_handler)
+        except (asyncio.CancelledError, asyncio.TimeoutError):
+            if (
+                sys.version_info >= (3, 11)
+                and (task := asyncio.current_task())
+                and task.cancelling()
+            ):
+                raise
 
         # force-close non-idle handler
         if self._task_handler is not None:
@@ -534,8 +549,6 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                     # wait for next request
                     self._waiter = loop.create_future()
                     await self._waiter
-                except asyncio.CancelledError:
-                    break
                 finally:
                     self._waiter = None
 
@@ -562,7 +575,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                     task = loop.create_task(coro)
                 try:
                     resp, reset = await task
-                except (asyncio.CancelledError, ConnectionError):
+                except ConnectionError:
                     self.log_debug("Ignored premature client disconnection")
                     break
 
@@ -588,12 +601,19 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                         now = loop.time()
                         end_t = now + lingering_time
 
-                        with suppress(asyncio.TimeoutError, asyncio.CancelledError):
+                        try:
                             while not payload.is_eof() and now < end_t:
                                 async with ceil_timeout(end_t - now):
                                     # read and ignore
                                     await payload.readany()
                                 now = loop.time()
+                        except (asyncio.CancelledError, asyncio.TimeoutError):
+                            if (
+                                sys.version_info >= (3, 11)
+                                and (t := asyncio.current_task())
+                                and t.cancelling()
+                            ):
+                                raise
 
                     # if payload still uncompleted
                     if not payload.is_eof() and not self._force_close:
@@ -603,8 +623,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 payload.set_exception(_PAYLOAD_ACCESS_ERROR)
 
             except asyncio.CancelledError:
-                self.log_debug("Ignored premature client disconnection ")
-                break
+                self.log_debug("Ignored premature client disconnection")
+                raise
             except Exception as exc:
                 self.log_exception("Unhandled exception", exc_info=exc)
                 self.force_close()
