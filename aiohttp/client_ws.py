@@ -2,7 +2,8 @@
 
 import asyncio
 import sys
-from typing import Any, Optional, cast
+from types import TracebackType
+from typing import Any, Optional, Type, cast
 
 import attr
 
@@ -393,3 +394,14 @@ class ClientWebSocketResponse:
         if msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSING, WSMsgType.CLOSED):
             raise StopAsyncIteration
         return msg
+
+    async def __aenter__(self) -> "ClientWebSocketResponse":
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
+        await self.close()
