@@ -5,7 +5,7 @@ import pathlib
 import socket
 import sys
 from stat import S_IFIFO, S_IMODE
-from typing import Any, Generator, Optional
+from typing import Any, Generator, NoReturn, Optional
 
 import pytest
 import yarl
@@ -868,8 +868,8 @@ async def test_decoded_raw_match_regex(aiohttp_client: AiohttpClient) -> None:
     """Verify that raw_match only matches decoded url."""
     app = web.Application()
 
-    async def handler(_):
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        return False
 
     app.router.add_get("/467%2C802%2C24834%2C24952%2C25362%2C40574/hello", handler)
     client = await aiohttp_client(app)
