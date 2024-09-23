@@ -176,7 +176,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self._version = message.version
         self._cache: Dict[str, Any] = {}
         url = message.url
-        if url.absolute:
+        if url.is_absolute():
             if scheme is not None:
                 url = url.with_scheme(scheme)
             if host is not None:

@@ -164,7 +164,7 @@ class BaseTestServer(ABC, Generic[_Request]):
         assert self._root is not None
         url = URL(path)
         if not self.skip_url_asserts:
-            assert not url.absolute
+            assert not url.is_absolute()
             return self._root.join(url)
         else:
             return URL(str(self._root) + str(path))
