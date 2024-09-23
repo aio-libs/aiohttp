@@ -4,7 +4,7 @@ import re
 from collections.abc import Container, Iterable, Mapping, MutableMapping, Sized
 from functools import partial
 from typing import Awaitable, Callable, Dict, List, NoReturn, Optional, Type
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 import pytest
 from yarl import URL
