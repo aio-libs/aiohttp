@@ -144,7 +144,7 @@ pluggy==1.5.0
     # via pytest
 pre-commit==3.5.0
     # via -r requirements/lint.in
-proxy-py==2.4.7
+proxy-py==2.4.8
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
