@@ -774,7 +774,8 @@ async def test_dynamic_match_unquoted_path(router: web.UrlDispatcher) -> None:
     resource_id = "my%2Fpath%7Cwith%21some%25strange%24characters"
     req = make_mocked_request("GET", f"/path/{resource_id}")
     match_info = await router.resolve(req)
-    # %2F never gets unquoted
+    # %2F never gets unquoted because we have no way of known if
+    # it was quoted in the original path or if yarl skipped unquoting it.
     assert match_info == {
         "path": "path",
         "subpath": "my%2Fpath|with!some%strange$characters",
