@@ -1257,13 +1257,7 @@ def _quote_path(value: str) -> str:
 def _unquote_path_safe(value: str) -> str:
     if "%" not in value:
         return value
-    if "%2F" in value:
-        value = value.replace("%2F", "/")
-    if "%2f" in value:
-        value = value.replace("%2f", "/")
-    if "%25" in value:
-        value = value.replace("%25", "%")
-    return value
+    return value.replace("%2F", "/").replace("%25", "%")
 
 
 def _requote_path(value: str) -> str:
