@@ -23,6 +23,7 @@ from aiohttp import (
     web,
 )
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
+from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.typedefs import Handler
 from aiohttp.web_protocol import RequestHandler
