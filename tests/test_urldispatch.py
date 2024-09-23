@@ -770,7 +770,7 @@ async def test_dynamic_match_two_part2(router: web.UrlDispatcher) -> None:
 
 async def test_dynamic_match_unquoted_path(router: web.UrlDispatcher) -> None:
     handler = make_handler()
-    router.add_route("GET", "/{path}/{subpath:.+}", handler)
+    router.add_route("GET", "/{path}/{subpath}", handler)
     resource_id = "my%2Fpath%7Cwith%21some%25strange%24characters"
     req = make_mocked_request("GET", f"/path/{resource_id}")
     match_info = await router.resolve(req)
