@@ -10,6 +10,15 @@
 
 .. towncrier release notes start
 
+3.10.6rc2 (2024-09-23)
+======================
+
+No significant changes.
+
+
+----
+
+
 3.10.6rc1 (2024-09-22)
 ======================
 
