@@ -18,7 +18,7 @@ build:
   jobs:
     post_create_environment:
     - >-
-      pip install
+      pip install -U pip && pip install
       . -c requirements/runtime-deps.txt
       -r requirements/doc.in -c requirements/doc.txt
 
