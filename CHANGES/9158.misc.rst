@@ -1,3 +1,0 @@
-Significantly improved performance of middlewares -- by :user:`bdraco`.
-
-The construction of the middleware wrappers is now cached and is built once per handler instead of on every request.

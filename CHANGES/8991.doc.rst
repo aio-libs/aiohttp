@@ -1,1 +1,0 @@
-Updated ``ClientSession`` parameters to match current code -- by :user:`Dreamsorcerer`.
