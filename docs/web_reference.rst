@@ -2609,7 +2609,9 @@ application on specific TCP or Unix socket, e.g.::
 
    :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
    :param int keepalive_timeout: Number of seconds before closing Keep-Alive
-        connection. Default: ``75`` seconds (NGINX's default value).
+        connection. Default: ``3630`` seconds (when deployed behind a reverse proxy
+        it's important for this value to be higher than the proxy's timeout. To avoid
+        race conditions we always want the proxy to close the connection).
    :param logger: Custom logger object. Default:
         :data:`aiohttp.log.server_logger`.
    :param access_log: Custom logging object. Default:
@@ -2844,7 +2846,7 @@ Utilities
 
 .. function:: run_app(app, *, debug=False, host=None, port=None, \
                       path=None, sock=None, shutdown_timeout=60.0, \
-                      keepalive_timeout=75.0, ssl_context=None, \
+                      keepalive_timeout=3630, ssl_context=None, \
                       print=print, backlog=128, \
                       access_log_class=aiohttp.helpers.AccessLogger, \
                       access_log_format=aiohttp.helpers.AccessLogger.LOG_FORMAT, \
@@ -2912,6 +2914,12 @@ Utilities
    :param float keepalive_timeout: a delay before a TCP connection is
                                    closed after a HTTP request. The delay
                                    allows for reuse of a TCP connection.
+
+                                   When deployed behind a reverse proxy
+                                   it's important for this value to be
+                                   higher than the proxy's timeout. To avoid
+                                   race conditions, we always want the proxy
+                                   to handle connection closing.
 
       .. versionadded:: 3.8
 
