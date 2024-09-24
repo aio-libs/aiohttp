@@ -1,1 +1,0 @@
-Fixed badly encoded charset crashing when getting response text instead of falling back to charset detector.

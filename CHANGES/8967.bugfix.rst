@@ -1,1 +1,0 @@
-Fixed resolve_host() 'Task was destroyed but is pending' errors -- by :user:`Dreamsorcerer`.

@@ -1,1 +1,0 @@
-Improved performance of making requests when there are no auto headers to skip -- by :user:`bdraco`.
