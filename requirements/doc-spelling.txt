@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/doc-spelling.txt --resolver=backtracking --strip-extras requirements/doc-spelling.in
 #
-aiohttp-theme==0.1.6
+aiohttp-theme==0.1.7
     # via -r requirements/doc.in
 alabaster==0.7.13
     # via sphinx
