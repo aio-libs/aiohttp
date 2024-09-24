@@ -780,7 +780,7 @@ class ClientSession:
         *,
         method: str = hdrs.METH_GET,
         protocols: Collection[str] = (),
-        timeout: Union[ClientWSTimeout, float, _SENTINEL, None] = sentinel,
+        timeout: Union[ClientWSTimeout, _SENTINEL] = sentinel,
         receive_timeout: Optional[float] = None,
         autoclose: bool = True,
         autoping: bool = True,
@@ -828,7 +828,7 @@ class ClientSession:
         *,
         method: str = hdrs.METH_GET,
         protocols: Collection[str] = (),
-        timeout: Union[ClientWSTimeout, float, _SENTINEL, None] = sentinel,
+        timeout: Union[ClientWSTimeout, _SENTINEL] = sentinel,
         receive_timeout: Optional[float] = None,
         autoclose: bool = True,
         autoping: bool = True,
@@ -845,9 +845,7 @@ class ClientSession:
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
     ) -> ClientWebSocketResponse:
-        if timeout is sentinel or timeout is None:
-            ws_timeout = DEFAULT_WS_CLIENT_TIMEOUT
-        else:
+        if timeout is not sentinel:
             if isinstance(timeout, ClientWSTimeout):
                 ws_timeout = timeout
             else:
@@ -859,7 +857,8 @@ class ClientSession:
                     stacklevel=2,
                 )
                 ws_timeout = ClientWSTimeout(ws_close=timeout)
-
+        else:
+            ws_timeout = DEFAULT_WS_CLIENT_TIMEOUT
         if receive_timeout is not None:
             warnings.warn(
                 "float parameter 'receive_timeout' "

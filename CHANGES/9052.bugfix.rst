@@ -1,1 +1,0 @@
-Fixed exception information getting lost on ``HttpProcessingError`` -- by :user:`Dreamsorcerer`.
