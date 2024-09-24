@@ -1,1 +1,0 @@
-Fixed ``CancelledError`` from one cleanup context stopping other contexts from completing -- by :user:`Dreamsorcerer`.

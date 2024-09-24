@@ -10,26 +10,8 @@
 
 .. towncrier release notes start
 
-3.10.6rc1 (2024-09-22)
-======================
-
-Removals and backward incompatible breaking changes
----------------------------------------------------
-
-- Increased minimum yarl version to 1.12.0 -- by :user:`bdraco`.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`9267`.
-
-
-
-
-----
-
-
-3.10.6rc0 (2024-09-22)
-======================
+3.10.6 (2024-09-23)
+===================
 
 Bug fixes
 ---------
@@ -150,7 +132,7 @@ Bug fixes
 
 
   *Related issues and pull requests on GitHub:*
-  :issue:`8898`.
+  :issue:`8898`, :issue:`9267`.
 
 
 
@@ -324,6 +306,14 @@ Removals and backward incompatible breaking changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`9200`.
+
+
+
+- Increased minimum yarl version to 1.12.0 -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9267`.
 
 
 
