@@ -10,7 +10,7 @@ aiodns==3.2.0 ; sys_platform == "linux" or sys_platform == "darwin"
     #   -r requirements/runtime-deps.in
 aiohappyeyeballs==2.4.0
     # via -r requirements/runtime-deps.in
-aiohttp-theme==0.1.6
+aiohttp-theme==0.1.7
     # via -r requirements/doc.in
 aioredis==2.0.1
     # via -r requirements/lint.in
@@ -30,11 +30,11 @@ blockdiag==3.0.0
     # via sphinxcontrib-blockdiag
 brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
-build==1.2.1
+build==1.2.2
     # via pip-tools
 certifi==2024.8.30
     # via requests
-cffi==1.17.0
+cffi==1.17.1
     # via
     #   cryptography
     #   pycares
@@ -56,7 +56,7 @@ coverage==7.6.1
     # via
     #   -r requirements/test.in
     #   pytest-cov
-cryptography==43.0.0
+cryptography==43.0.1
     # via
     #   pyjwt
     #   trustme
@@ -68,7 +68,7 @@ docutils==0.20.1
     # via sphinx
 exceptiongroup==1.2.2
     # via pytest
-filelock==3.15.4
+filelock==3.16.1
     # via virtualenv
 freezegun==1.5.1
     # via
@@ -84,20 +84,20 @@ gidgethub==5.3.0
     # via cherry-picker
 gunicorn==23.0.0
     # via -r requirements/base.in
-identify==2.6.0
+identify==2.6.1
     # via pre-commit
-idna==3.4
+idna==3.6
     # via
     #   requests
     #   trustme
     #   yarl
 imagesize==1.4.1
     # via sphinx
-importlib-metadata==8.4.0
+importlib-metadata==8.5.0
     # via
     #   build
     #   sphinx
-importlib-resources==6.4.4
+importlib-resources==6.4.5
     # via towncrier
 incremental==24.7.2
     # via towncrier
@@ -113,7 +113,7 @@ markupsafe==2.1.5
     # via jinja2
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.0.5
+multidict==6.1.0
     # via
     #   -r requirements/multidict.in
     #   -r requirements/runtime-deps.in
@@ -138,13 +138,13 @@ pillow==9.5.0
     #   blockdiag
 pip-tools==7.4.1
     # via -r requirements/dev.in
-platformdirs==4.2.2
+platformdirs==4.3.6
     # via virtualenv
 pluggy==1.5.0
     # via pytest
 pre-commit==3.5.0
     # via -r requirements/lint.in
-proxy-py==2.4.7
+proxy-py==2.4.8
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -152,9 +152,9 @@ pycares==4.4.0
     # via aiodns
 pycparser==2.22
     # via cffi
-pydantic==2.8.2
+pydantic==2.9.2
     # via python-on-whales
-pydantic-core==2.20.1
+pydantic-core==2.23.4
     # via pydantic
 pyenchant==3.2.2
     # via sphinxcontrib-spelling
@@ -184,24 +184,20 @@ pytest-mock==3.14.0
     #   -r requirements/test.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.72.0
+python-on-whales==0.73.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-pytz==2024.1
+pytz==2024.2
     # via babel
 pyyaml==6.0.2
     # via pre-commit
-re-assert==1.1.0
-    # via -r requirements/test.in
-regex==2024.7.24
-    # via re-assert
 requests==2.32.3
     # via
     #   cherry-picker
     #   python-on-whales
     #   sphinx
-rich==13.8.0
+rich==13.8.1
     # via typer
 setuptools-git==1.2
     # via -r requirements/test.in
@@ -264,6 +260,7 @@ typing-extensions==4.12.2
     # via
     #   aioredis
     #   annotated-types
+    #   multidict
     #   mypy
     #   pydantic
     #   pydantic-core
@@ -272,13 +269,13 @@ typing-extensions==4.12.2
     #   typer
 uritemplate==4.1.1
     # via gidgethub
-urllib3==2.2.2
+urllib3==2.2.3
     # via requests
-uvloop==0.20.0 ; platform_system != "Windows"
+uvloop==0.21.0b1 ; platform_system != "Windows"
     # via
     #   -r requirements/base.in
     #   -r requirements/lint.in
-virtualenv==20.26.3
+virtualenv==20.26.5
     # via pre-commit
 wait-for-it==2.2.2
     # via -r requirements/test.in
@@ -286,9 +283,9 @@ webcolors==24.8.0
     # via blockdiag
 wheel==0.44.0
     # via pip-tools
-yarl==1.9.7
+yarl==1.12.1
     # via -r requirements/runtime-deps.in
-zipp==3.20.1
+zipp==3.20.2
     # via
     #   importlib-metadata
     #   importlib-resources
@@ -296,7 +293,7 @@ zipp==3.20.1
 # The following packages are considered to be unsafe in a requirements file:
 pip==24.2
     # via pip-tools
-setuptools==74.1.0
+setuptools==75.1.0
     # via
     #   blockdiag
     #   incremental

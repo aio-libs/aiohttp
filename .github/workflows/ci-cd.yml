@@ -141,7 +141,7 @@ jobs:
     needs: gen_llhttp
     strategy:
       matrix:
-        pyver: [3.9, '3.10', '3.11', '3.12']
+        pyver: [3.9, '3.10', '3.11', '3.12', '3.13']
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         experimental: [false]
@@ -156,7 +156,7 @@ jobs:
             os: ubuntu
             experimental: false
           - os: ubuntu
-            pyver: "3.13"
+            pyver: "3.14"
             experimental: true
             no-extensions: 'Y'
       fail-fast: true
@@ -376,7 +376,7 @@ jobs:
       run: |
         make cythonize
     - name: Build wheels
-      uses: pypa/cibuildwheel@v2.20.0
+      uses: pypa/cibuildwheel@v2.21.1
       env:
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
     - uses: actions/upload-artifact@v3

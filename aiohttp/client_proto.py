@@ -54,15 +54,13 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
     @property
     def should_close(self) -> bool:
-        if self._payload is not None and not self._payload.is_eof():
-            return True
-
         return (
             self._should_close
+            or (self._payload is not None and not self._payload.is_eof())
             or self._upgraded
-            or self.exception() is not None
+            or self._exception is not None
             or self._payload_parser is not None
-            or len(self) > 0
+            or bool(self._buffer)
             or bool(self._tail)
         )
 
@@ -282,7 +280,15 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
                         # closed in this case
                         self.transport.close()
                     # should_close is True after the call
-                    self.set_exception(HttpProcessingError(), underlying_exc)
+                    if isinstance(underlying_exc, HttpProcessingError):
+                        exc = HttpProcessingError(
+                            code=underlying_exc.code,
+                            message=underlying_exc.message,
+                            headers=underlying_exc.headers,
+                        )
+                    else:
+                        exc = HttpProcessingError()
+                    self.set_exception(exc, underlying_exc)
                     return
 
                 self._upgraded = upgraded

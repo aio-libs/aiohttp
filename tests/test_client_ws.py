@@ -2,15 +2,19 @@ import asyncio
 import base64
 import hashlib
 import os
-from typing import Mapping
+from typing import Mapping, Type
 from unittest import mock
 
 import pytest
 
 import aiohttp
-from aiohttp import client, hdrs
-from aiohttp.client_exceptions import ServerDisconnectedError
-from aiohttp.client_ws import ClientWSTimeout
+from aiohttp import (
+    ClientConnectionResetError,
+    ClientWSTimeout,
+    ServerDisconnectedError,
+    client,
+    hdrs,
+)
 from aiohttp.http import WS_KEY
 from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro
@@ -535,8 +539,12 @@ async def test_close_exc2(
                     await resp.close()
 
 
+@pytest.mark.parametrize("exc", (ClientConnectionResetError, ConnectionResetError))
 async def test_send_data_after_close(
-    ws_key: bytes, key_data: bytes, loop: asyncio.AbstractEventLoop
+    exc: Type[Exception],
+    ws_key: bytes,
+    key_data: bytes,
+    loop: asyncio.AbstractEventLoop,
 ) -> None:
     mresp = mock.Mock()
     mresp.status = 101
@@ -562,7 +570,7 @@ async def test_send_data_after_close(
                 (resp.send_bytes, (b"b",)),
                 (resp.send_json, ({},)),
             ):
-                with pytest.raises(ConnectionResetError):
+                with pytest.raises(exc):  # Verify exc can be caught with both classes
                     await meth(*args)
 
 

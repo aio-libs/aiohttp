@@ -1,1 +1,0 @@
-Fixed web router not matching pre-encoded URLs (requires yarl 1.9.6+) -- by :user:`Dreamsorcerer`.

@@ -25,6 +25,7 @@ from typing import (
 )
 
 from .base_protocol import BaseProtocol
+from .client_exceptions import ClientConnectionResetError
 from .compression_utils import ZLibCompressor, ZLibDecompressor
 from .helpers import NO_EXTENSIONS, set_exception
 from .streams import DataQueue
@@ -609,7 +610,7 @@ class WebSocketWriter:
     ) -> None:
         """Send a frame over the websocket with message as its payload."""
         if self._closing and not (opcode & WSMsgType.CLOSE):
-            raise ConnectionResetError("Cannot write to closing transport")
+            raise ClientConnectionResetError("Cannot write to closing transport")
 
         # RSV are the reserved bits in the frame header. They are used to
         # indicate that the frame is using an extension.
@@ -704,7 +705,7 @@ class WebSocketWriter:
 
     def _write(self, data: bytes) -> None:
         if self.transport.is_closing():
-            raise ConnectionResetError("Cannot write to closing transport")
+            raise ClientConnectionResetError("Cannot write to closing transport")
         self.transport.write(data)
 
     async def pong(self, message: Union[bytes, str] = b"") -> None:

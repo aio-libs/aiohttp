@@ -28,7 +28,7 @@ import yarl
 
 from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
 from .base_protocol import BaseProtocol
-from .helpers import ceil_timeout, set_exception
+from .helpers import ceil_timeout
 from .http import (
     HttpProcessingError,
     HttpRequestParser,
@@ -88,6 +88,9 @@ class RequestPayloadError(Exception):
 
 class PayloadAccessError(Exception):
     """Payload was accessed after response was sent."""
+
+
+_PAYLOAD_ACCESS_ERROR = PayloadAccessError()
 
 
 class AccessLoggerWrapper(AbstractAsyncAccessLogger):
@@ -178,6 +181,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         "_force_close",
         "_current_request",
         "_timeout_ceil_threshold",
+        "_request_in_progress",
     )
 
     def __init__(
@@ -261,6 +265,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
         self._close = False
         self._force_close = False
+        self._request_in_progress = False
 
     def __repr__(self) -> str:
         return "<{} {}>".format(
@@ -284,18 +289,37 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self._keepalive_handle.cancel()
 
         # Wait for graceful handler completion
-        if self._handler_waiter is not None:
-            with suppress(asyncio.CancelledError, asyncio.TimeoutError):
+        if self._request_in_progress:
+            # The future is only created when we are shutting
+            # down while the handler is still processing a request
+            # to avoid creating a future for every request.
+            self._handler_waiter = self._loop.create_future()
+            try:
                 async with ceil_timeout(timeout):
                     await self._handler_waiter
+            except (asyncio.CancelledError, asyncio.TimeoutError):
+                self._handler_waiter = None
+                if (
+                    sys.version_info >= (3, 11)
+                    and (task := asyncio.current_task())
+                    and task.cancelling()
+                ):
+                    raise
         # Then cancel handler and wait
-        with suppress(asyncio.CancelledError, asyncio.TimeoutError):
+        try:
             async with ceil_timeout(timeout):
                 if self._current_request is not None:
                     self._current_request._cancel(asyncio.CancelledError())
 
                 if self._task_handler is not None and not self._task_handler.done():
-                    await self._task_handler
+                    await asyncio.shield(self._task_handler)
+        except (asyncio.CancelledError, asyncio.TimeoutError):
+            if (
+                sys.version_info >= (3, 11)
+                and (task := asyncio.current_task())
+                and task.cancelling()
+            ):
+                raise
 
         # force-close non-idle handler
         if self._task_handler is not None:
@@ -460,7 +484,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             return
 
         # handler in idle state
-        if self._waiter:
+        if self._waiter and not self._waiter.done():
             self.force_close()
 
     async def _handle_request(
@@ -469,7 +493,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         start_time: float,
         request_handler: Callable[[_Request], Awaitable[StreamResponse]],
     ) -> Tuple[StreamResponse, bool]:
-        self._handler_waiter = self._loop.create_future()
+        self._request_in_progress = True
         try:
             try:
                 self._current_request = request
@@ -494,7 +518,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         else:
             resp, reset = await self.finish_response(request, resp, start_time)
         finally:
-            self._handler_waiter.set_result(None)
+            self._request_in_progress = False
+            if self._handler_waiter is not None:
+                self._handler_waiter.set_result(None)
 
         return resp, reset
 
@@ -523,8 +549,6 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                     # wait for next request
                     self._waiter = loop.create_future()
                     await self._waiter
-                except asyncio.CancelledError:
-                    break
                 finally:
                     self._waiter = None
 
@@ -551,7 +575,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                     task = loop.create_task(coro)
                 try:
                     resp, reset = await task
-                except (asyncio.CancelledError, ConnectionError):
+                except ConnectionError:
                     self.log_debug("Ignored premature client disconnection")
                     break
 
@@ -577,23 +601,30 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                         now = loop.time()
                         end_t = now + lingering_time
 
-                        with suppress(asyncio.TimeoutError, asyncio.CancelledError):
+                        try:
                             while not payload.is_eof() and now < end_t:
                                 async with ceil_timeout(end_t - now):
                                     # read and ignore
                                     await payload.readany()
                                 now = loop.time()
+                        except (asyncio.CancelledError, asyncio.TimeoutError):
+                            if (
+                                sys.version_info >= (3, 11)
+                                and (t := asyncio.current_task())
+                                and t.cancelling()
+                            ):
+                                raise
 
                     # if payload still uncompleted
                     if not payload.is_eof() and not self._force_close:
                         self.log_debug("Uncompleted request.")
                         self.close()
 
-                set_exception(payload, PayloadAccessError())
+                payload.set_exception(_PAYLOAD_ACCESS_ERROR)
 
             except asyncio.CancelledError:
-                self.log_debug("Ignored premature client disconnection ")
-                break
+                self.log_debug("Ignored premature client disconnection")
+                raise
             except Exception as exc:
                 self.log_exception("Unhandled exception", exc_info=exc)
                 self.force_close()

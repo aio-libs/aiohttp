@@ -208,6 +208,7 @@ Kevin Samuel
 Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
+Konstantin Shutkin
 Konstantin Valetov
 Krzysztof Blazewicz
 Kyrylo Perevozchikov
@@ -279,6 +280,7 @@ Pawel Kowalski
 Pawel Miech
 Pepe Osca
 Philipp A.
+Pierre-Louis Peeters
 Pieter van Beek
 Qiao Han
 Rafael Viotti
