@@ -11,14 +11,14 @@ submodules:
   recursive: true
 
 build:
-  os: ubuntu-22.04
+  os: ubuntu-24.04
   tools:
     python: "3.11"
 
   jobs:
     post_create_environment:
     - >-
-      pip install -U pip && pip install
+      pip install
       . -c requirements/runtime-deps.txt
       -r requirements/doc.in -c requirements/doc.txt
 
