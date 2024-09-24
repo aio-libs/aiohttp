@@ -6,6 +6,7 @@ from . import hdrs
 from .client import (
     BaseConnector,
     ClientConnectionError,
+    ClientConnectionResetError,
     ClientConnectorCertificateError,
     ClientConnectorError,
     ClientConnectorSSLError,
@@ -102,6 +103,7 @@ from .tracing import (
     TraceRequestChunkSentParams,
     TraceRequestEndParams,
     TraceRequestExceptionParams,
+    TraceRequestHeadersSentParams,
     TraceRequestRedirectParams,
     TraceRequestStartParams,
     TraceResponseChunkReceivedParams,
@@ -116,6 +118,7 @@ __all__: Tuple[str, ...] = (
     # client
     "BaseConnector",
     "ClientConnectionError",
+    "ClientConnectionResetError",
     "ClientConnectorCertificateError",
     "ClientConnectorError",
     "ClientConnectorSSLError",
@@ -216,6 +219,7 @@ __all__: Tuple[str, ...] = (
     "TraceRequestChunkSentParams",
     "TraceRequestEndParams",
     "TraceRequestExceptionParams",
+    "TraceRequestHeadersSentParams",
     "TraceRequestRedirectParams",
     "TraceRequestStartParams",
     "TraceResponseChunkReceivedParams",

@@ -7,7 +7,7 @@ from unittest import mock
 import pytest
 from multidict import CIMultiDict
 
-from aiohttp import http
+from aiohttp import ClientConnectionResetError, http
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.test_utils import make_mocked_coro
 
@@ -135,7 +135,7 @@ async def test_write_payload_chunked_filter_mutiple_chunks(
     await msg.write_eof()
     content = b"".join([c[1][0] for c in list(transport.write.mock_calls)])  # type: ignore[attr-defined]
     assert content.endswith(
-        b"2\r\nda\r\n2\r\nta\r\n2\r\n1d\r\n2\r\nat\r\n" b"2\r\na2\r\n0\r\n\r\n"
+        b"2\r\nda\r\n2\r\nta\r\n2\r\n1d\r\n2\r\nat\r\n2\r\na2\r\n0\r\n\r\n"
     )
 
 
@@ -170,7 +170,7 @@ async def test_write_payload_deflate_and_chunked(
     await msg.write(b"ta")
     await msg.write_eof()
 
-    thing = b"2\r\nx\x9c\r\n" b"a\r\nKI,I\x04\x00\x04\x00\x01\x9b\r\n" b"0\r\n\r\n"
+    thing = b"2\r\nx\x9c\r\na\r\nKI,I\x04\x00\x04\x00\x01\x9b\r\n0\r\n\r\n"
     assert thing == buf
 
 
@@ -206,8 +206,8 @@ async def test_write_payload_short_ints_memoryview(
     await msg.write_eof()
 
     endians = (
-        (b"6\r\n" b"\x00A\x00B\x00C\r\n" b"0\r\n\r\n"),
-        (b"6\r\n" b"A\x00B\x00C\x00\r\n" b"0\r\n\r\n"),
+        (b"6\r\n\x00A\x00B\x00C\r\n0\r\n\r\n"),
+        (b"6\r\nA\x00B\x00C\x00\r\n0\r\n\r\n"),
     )
     assert buf in endians
 
@@ -227,7 +227,7 @@ async def test_write_payload_2d_shape_memoryview(
     await msg.write(payload)
     await msg.write_eof()
 
-    thing = b"6\r\n" b"ABCDEF\r\n" b"0\r\n\r\n"
+    thing = b"6\r\nABCDEF\r\n0\r\n\r\n"
     assert thing == buf
 
 
@@ -301,7 +301,7 @@ async def test_write_to_closing_transport(
     await msg.write(b"Before closing")
     transport.is_closing.return_value = True  # type: ignore[attr-defined]
 
-    with pytest.raises(ConnectionResetError):
+    with pytest.raises(ClientConnectionResetError):
         await msg.write(b"After closing")
 
 
@@ -310,7 +310,7 @@ async def test_write_to_closed_transport(
     transport: asyncio.Transport,
     loop: asyncio.AbstractEventLoop,
 ) -> None:
-    """Test that writing to a closed transport raises ConnectionResetError.
+    """Test that writing to a closed transport raises ClientConnectionResetError.
 
     The StreamWriter checks to see if protocol.transport is None before
     writing to the transport. If it is None, it raises ConnectionResetError.
@@ -320,7 +320,9 @@ async def test_write_to_closed_transport(
     await msg.write(b"Before transport close")
     protocol.transport = None
 
-    with pytest.raises(ConnectionResetError, match="Cannot write to closing transport"):
+    with pytest.raises(
+        ClientConnectionResetError, match="Cannot write to closing transport"
+    ):
         await msg.write(b"After transport closed")
 
 

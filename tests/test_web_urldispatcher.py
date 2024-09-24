@@ -5,7 +5,7 @@ import pathlib
 import socket
 import sys
 from stat import S_IFIFO, S_IMODE
-from typing import Any, Generator, Optional
+from typing import Any, Generator, NoReturn, Optional
 
 import pytest
 import yarl
@@ -682,10 +682,11 @@ async def test_allow_head(aiohttp_client: AiohttpClient) -> None:
 
 @pytest.mark.parametrize(
     "path",
-    [
+    (
         "/a",
         "/{a}",
-    ],
+        "/{a:.*}",
+    ),
 )
 def test_reuse_last_added_resource(path: str) -> None:
     # Test that adding a route with the same name and path of the last added
@@ -835,18 +836,15 @@ async def test_for_issue_5250(
         assert (await resp.text()) == "success!"
 
 
-@pytest.mark.xfail(
-    raises=AssertionError,
-    reason="Regression in v3.7: https://github.com/aio-libs/aiohttp/issues/5621",
-)
 @pytest.mark.parametrize(
     ("route_definition", "urlencoded_path", "expected_http_resp_status"),
     (
         ("/467,802,24834/hello", "/467%2C802%2C24834/hello", 200),
         ("/{user_ids:([0-9]+)(,([0-9]+))*}/hello", "/467%2C802%2C24834/hello", 200),
+        ("/467,802,24834/hello", "/467,802,24834/hello", 200),
+        ("/{user_ids:([0-9]+)(,([0-9]+))*}/hello", "/467,802,24834/hello", 200),
         ("/1%2C3/hello", "/1%2C3/hello", 404),
     ),
-    ids=("urldecoded_route", "urldecoded_route_with_regex", "urlencoded_route"),
 )
 async def test_decoded_url_match(
     aiohttp_client: AiohttpClient,
@@ -862,9 +860,24 @@ async def test_decoded_url_match(
     app.router.add_get(route_definition, handler)
     client = await aiohttp_client(app)
 
-    r = await client.get(yarl.URL(urlencoded_path, encoded=True))
-    assert r.status == expected_http_resp_status
-    r.release()
+    async with client.get(yarl.URL(urlencoded_path, encoded=True)) as resp:
+        assert resp.status == expected_http_resp_status
+
+
+async def test_decoded_raw_match_regex(aiohttp_client: AiohttpClient) -> None:
+    """Verify that raw_match only matches decoded url."""
+    app = web.Application()
+
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
+
+    app.router.add_get("/467%2C802%2C24834%2C24952%2C25362%2C40574/hello", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get(
+        yarl.URL("/467%2C802%2C24834%2C24952%2C25362%2C40574/hello", encoded=True)
+    ) as resp:
+        assert resp.status == 404  # should only match decoded url
 
 
 async def test_order_is_preserved(aiohttp_client: AiohttpClient) -> None:

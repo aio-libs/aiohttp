@@ -3,8 +3,9 @@
 import asyncio
 from typing import TYPE_CHECKING, Optional, Tuple, Union
 
-from .http_parser import RawResponseMessage
-from .typedefs import LooseHeaders, StrOrURL
+from multidict import MultiMapping
+
+from .typedefs import StrOrURL
 
 try:
     import ssl
@@ -16,12 +17,14 @@ except ImportError:  # pragma: no cover
 
 if TYPE_CHECKING:
     from .client_reqrep import ClientResponse, ConnectionKey, Fingerprint, RequestInfo
+    from .http_parser import RawResponseMessage
 else:
-    RequestInfo = ClientResponse = ConnectionKey = None
+    RequestInfo = ClientResponse = ConnectionKey = RawResponseMessage = None
 
 __all__ = (
     "ClientError",
     "ClientConnectionError",
+    "ClientConnectionResetError",
     "ClientOSError",
     "ClientConnectorError",
     "ClientProxyConnectionError",
@@ -69,7 +72,7 @@ class ClientResponseError(ClientError):
         *,
         status: Optional[int] = None,
         message: str = "",
-        headers: Optional[LooseHeaders] = None,
+        headers: Optional[MultiMapping[str]] = None,
     ) -> None:
         self.request_info = request_info
         if status is not None:
@@ -122,6 +125,10 @@ class TooManyRedirects(ClientResponseError):
 
 class ClientConnectionError(ClientError):
     """Base class for client socket errors."""
+
+
+class ClientConnectionResetError(ClientConnectionError, ConnectionResetError):
+    """ConnectionResetError"""
 
 
 class ClientOSError(ClientConnectionError, OSError):

@@ -77,6 +77,7 @@ Chih-Yuan Chen
 Chris AtLee
 Chris Laws
 Chris Moore
+Chris Shucksmith
 Christopher Schmitt
 Claudiu Popa
 Colin Dunklau
@@ -207,6 +208,7 @@ Kevin Samuel
 Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
+Konstantin Shutkin
 Konstantin Valetov
 Krzysztof Blazewicz
 Kyrylo Perevozchikov
@@ -278,9 +280,11 @@ Pawel Kowalski
 Pawel Miech
 Pepe Osca
 Philipp A.
+Pierre-Louis Peeters
 Pieter van Beek
 Qiao Han
 Rafael Viotti
+Rahul Nahata
 Raphael Bialon
 Raúl Cumplido
 Required Field
@@ -362,6 +366,7 @@ William Grzybowski
 William S.
 Wilson Ong
 wouter bolsterlee
+Xavier Halloran
 Xiang Li
 Yang Zhou
 Yannick Koechlin

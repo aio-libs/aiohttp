@@ -13,7 +13,9 @@ from typing import (
 )
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, istr
-from yarl import URL
+from yarl import URL, Query as _Query
+
+Query = _Query
 
 DEFAULT_JSON_ENCODER = json.dumps
 DEFAULT_JSON_DECODER = json.loads

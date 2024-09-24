@@ -1,4 +1,6 @@
+import sys
 from typing import Any
+from unittest import mock
 
 import pytest
 
@@ -82,6 +84,32 @@ def test_entry_func_non_existent_attribute(mocker: Any) -> None:
     )
 
 
+@pytest.mark.skipif(sys.platform.startswith("win32"), reason="Windows not Unix")
+def test_path_no_host(mocker: Any, monkeypatch: Any) -> None:
+    argv = "--path=test_path.sock alpha.beta:func".split()
+    mocker.patch("aiohttp.web.import_module")
+
+    run_app = mocker.patch("aiohttp.web.run_app")
+    with pytest.raises(SystemExit):
+        web.main(argv)
+
+    run_app.assert_called_with(mock.ANY, path="test_path.sock", host=None, port=None)
+
+
+@pytest.mark.skipif(sys.platform.startswith("win32"), reason="Windows not Unix")
+def test_path_and_host(mocker: Any, monkeypatch: Any) -> None:
+    argv = "--path=test_path.sock --host=localhost --port=8000 alpha.beta:func".split()
+    mocker.patch("aiohttp.web.import_module")
+
+    run_app = mocker.patch("aiohttp.web.run_app")
+    with pytest.raises(SystemExit):
+        web.main(argv)
+
+    run_app.assert_called_with(
+        mock.ANY, path="test_path.sock", host="localhost", port=8000
+    )
+
+
 def test_path_when_unsupported(mocker: Any, monkeypatch: Any) -> None:
     argv = "--path=test_path.sock alpha.beta:func".split()
     mocker.patch("aiohttp.web.import_module")
@@ -92,7 +120,7 @@ def test_path_when_unsupported(mocker: Any, monkeypatch: Any) -> None:
         web.main(argv)
 
     error.assert_called_with(
-        "file system paths not supported by your" " operating environment"
+        "file system paths not supported by your operating environment"
     )
 
 
@@ -109,7 +137,7 @@ def test_entry_func_call(mocker: Any) -> None:
         web.main(argv)
 
     module.func.assert_called_with(
-        ("--extra-optional-eins --extra-optional-zwei extra positional " "args").split()
+        ("--extra-optional-eins --extra-optional-zwei extra positional args").split()
     )
 
 

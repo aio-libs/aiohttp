@@ -43,7 +43,7 @@ class TestClientResponseError:
             history=(),
             status=400,
             message="Something wrong",
-            headers={},
+            headers=CIMultiDict(foo="bar"),
         )
         err.foo = "bar"  # type: ignore[attr-defined]
         for proto in range(pickle.HIGHEST_PROTOCOL + 1):
@@ -53,7 +53,8 @@ class TestClientResponseError:
             assert err2.history == ()
             assert err2.status == 400
             assert err2.message == "Something wrong"
-            assert err2.headers == {}
+            # Use headers.get() to verify static type is correct.
+            assert err2.headers.get("foo") == "bar"
             assert err2.foo == "bar"
 
     def test_repr(self) -> None:
@@ -65,11 +66,11 @@ class TestClientResponseError:
             history=(),
             status=400,
             message="Something wrong",
-            headers={},
+            headers=CIMultiDict(),
         )
         assert repr(err) == (
             "ClientResponseError(%r, (), status=400, "
-            "message='Something wrong', headers={})" % (self.request_info,)
+            "message='Something wrong', headers=<CIMultiDict()>)" % (self.request_info,)
         )
 
     def test_str(self) -> None:
@@ -78,7 +79,7 @@ class TestClientResponseError:
             history=(),
             status=400,
             message="Something wrong",
-            headers={},
+            headers=CIMultiDict(),
         )
         assert str(err) == ("400, message='Something wrong', url='http://example.com'")
 
@@ -220,7 +221,7 @@ class TestServerDisconnectedError:
 
     def test_repr(self) -> None:
         err = client.ServerDisconnectedError()
-        assert repr(err) == ("ServerDisconnectedError" "('Server disconnected')")
+        assert repr(err) == ("ServerDisconnectedError('Server disconnected')")
 
         err = client.ServerDisconnectedError(message="No connection")
         assert repr(err) == "ServerDisconnectedError('No connection')"

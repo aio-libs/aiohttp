@@ -496,14 +496,12 @@ Framework Agnostic Utilities
 
 High level test creation::
 
-    from aiohttp.test_utils import TestClient, TestServer, loop_context
+    from aiohttp.test_utils import TestClient, TestServer
     from aiohttp import request
 
-    # loop_context is provided as a utility. You can use any
-    # asyncio.BaseEventLoop class in its place.
-    with loop_context() as loop:
+    async def test():
         app = _create_example_app()
-        with TestClient(TestServer(app), loop=loop) as client:
+        async with TestClient(TestServer(app)) as client:
 
             async def test_get_route():
                 nonlocal client
@@ -512,7 +510,7 @@ High level test creation::
                 text = await resp.text()
                 assert "Hello, world" in text
 
-            loop.run_until_complete(test_get_route())
+            await test_get_route()
 
 
 If it's preferred to handle the creation / teardown on a more granular
@@ -520,10 +518,10 @@ basis, the TestClient object can be used directly::
 
     from aiohttp.test_utils import TestClient, TestServer
 
-    with loop_context() as loop:
+    async def test():
         app = _create_example_app()
-        client = TestClient(TestServer(app), loop=loop)
-        loop.run_until_complete(client.start_server())
+        client = TestClient(TestServer(app))
+        await client.start_server()
         root = "http://127.0.0.1:{}".format(port)
 
         async def test_get_route():
@@ -532,8 +530,8 @@ basis, the TestClient object can be used directly::
             text = await resp.text()
             assert "Hello, world" in text
 
-        loop.run_until_complete(test_get_route())
-        loop.run_until_complete(client.close())
+        await test_get_route()
+        await client.close()
 
 
 A full list of the utilities provided can be found at the

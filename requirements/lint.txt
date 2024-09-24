@@ -8,35 +8,35 @@ aiodns==3.2.0
     # via -r requirements/lint.in
 aioredis==2.0.1
     # via -r requirements/lint.in
-annotated-types==0.6.0
+annotated-types==0.7.0
     # via pydantic
 async-timeout==4.0.3
     # via aioredis
-certifi==2024.7.4
+certifi==2024.8.30
     # via requests
-cffi==1.16.0
+cffi==1.17.1
     # via
     #   cryptography
     #   pycares
-cfgv==3.3.1
+cfgv==3.4.0
     # via pre-commit
 charset-normalizer==3.3.2
     # via requests
-click==8.1.6
+click==8.1.7
     # via
     #   slotscheck
     #   typer
-cryptography==43.0.0
+cryptography==43.0.1
     # via trustme
-distlib==0.3.7
+distlib==0.3.8
     # via virtualenv
-exceptiongroup==1.1.2
+exceptiongroup==1.2.2
     # via pytest
-filelock==3.12.2
+filelock==3.16.1
     # via virtualenv
 freezegun==1.5.1
     # via -r requirements/lint.in
-identify==2.5.26
+identify==2.6.1
     # via pre-commit
 idna==3.7
     # via
@@ -48,31 +48,31 @@ markdown-it-py==3.0.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-mypy==1.11.1 ; implementation_name == "cpython"
+mypy==1.11.2 ; implementation_name == "cpython"
     # via -r requirements/lint.in
 mypy-extensions==1.0.0
     # via mypy
-nodeenv==1.8.0
+nodeenv==1.9.1
     # via pre-commit
-packaging==23.1
+packaging==24.1
     # via pytest
-platformdirs==3.10.0
+platformdirs==4.3.6
     # via virtualenv
-pluggy==1.4.0
+pluggy==1.5.0
     # via pytest
 pre-commit==3.5.0
     # via -r requirements/lint.in
-proxy-py==2.4.7
+proxy-py==2.4.8
     # via -r requirements/lint.in
 pycares==4.4.0
     # via aiodns
 pycparser==2.22
     # via cffi
-pydantic==2.7.1
+pydantic==2.9.2
     # via python-on-whales
-pydantic-core==2.18.2
+pydantic-core==2.23.4
     # via pydantic
-pygments==2.17.2
+pygments==2.18.0
     # via rich
 pytest==8.1.1
     # via
@@ -82,13 +82,13 @@ pytest-mock==3.14.0
     # via -r requirements/lint.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.72.0
+python-on-whales==0.73.0
     # via -r requirements/lint.in
-pyyaml==6.0.1
+pyyaml==6.0.2
     # via pre-commit
-requests==2.32.0
+requests==2.32.3
     # via python-on-whales
-rich==13.7.1
+rich==13.8.1
     # via typer
 shellingham==1.5.4
     # via typer
@@ -101,13 +101,13 @@ tomli==2.0.1
     #   mypy
     #   pytest
     #   slotscheck
-tqdm==4.66.3
+tqdm==4.66.5
     # via python-on-whales
 trustme==1.1.0
     # via -r requirements/lint.in
-typer==0.12.3
+typer==0.12.5
     # via python-on-whales
-typing-extensions==4.10.0
+typing-extensions==4.12.2
     # via
     #   aioredis
     #   annotated-types
@@ -117,13 +117,9 @@ typing-extensions==4.10.0
     #   python-on-whales
     #   rich
     #   typer
-urllib3==2.2.2
+urllib3==2.2.3
     # via requests
-uvloop==0.20.0 ; platform_system != "Windows"
+uvloop==0.21.0b1 ; platform_system != "Windows"
     # via -r requirements/lint.in
-virtualenv==20.24.2
+virtualenv==20.26.5
     # via pre-commit
-
-# The following packages are considered to be unsafe in a requirements file:
-setuptools==70.0.0
-    # via nodeenv

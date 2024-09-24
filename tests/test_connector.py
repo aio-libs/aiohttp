@@ -1,5 +1,4 @@
 # Tests of http client with custom Connector
-
 import asyncio
 import gc
 import hashlib
@@ -9,18 +8,19 @@ import ssl
 import sys
 import uuid
 from collections import deque
-from contextlib import closing
+from concurrent import futures
+from contextlib import closing, suppress
 from typing import (
     Awaitable,
     Callable,
     Dict,
     Iterator,
     List,
+    Literal,
     NoReturn,
     Optional,
     Sequence,
     Tuple,
-    Type,
 )
 from unittest import mock
 
@@ -30,11 +30,23 @@ from pytest_mock import MockerFixture
 from yarl import URL
 
 import aiohttp
-from aiohttp import ClientRequest, ClientSession, ClientTimeout, web
+from aiohttp import (
+    ClientRequest,
+    ClientSession,
+    ClientTimeout,
+    connector as connector_module,
+    web,
+)
 from aiohttp.abc import ResolveResult
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ConnectionKey
-from aiohttp.connector import Connection, TCPConnector, _DNSCacheTable
+from aiohttp.connector import (
+    _SSL_CONTEXT_UNVERIFIED,
+    _SSL_CONTEXT_VERIFIED,
+    Connection,
+    TCPConnector,
+    _DNSCacheTable,
+)
 from aiohttp.locks import EventResultOrError
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import make_mocked_coro, unused_port
@@ -1710,23 +1722,11 @@ async def test_tcp_connector_clear_dns_cache_bad_args(
         conn.clear_dns_cache("localhost")
 
 
-async def test_dont_recreate_ssl_context() -> None:
-    conn = aiohttp.TCPConnector()
-    ctx = await conn._make_or_get_ssl_context(True)
-    assert ctx is await conn._make_or_get_ssl_context(True)
-
-
-async def test_dont_recreate_ssl_context2() -> None:
-    conn = aiohttp.TCPConnector()
-    ctx = await conn._make_or_get_ssl_context(False)
-    assert ctx is await conn._make_or_get_ssl_context(False)
-
-
 async def test___get_ssl_context1() -> None:
     conn = aiohttp.TCPConnector()
     req = mock.Mock()
     req.is_ssl.return_value = False
-    assert await conn._get_ssl_context(req) is None
+    assert conn._get_ssl_context(req) is None
 
 
 async def test___get_ssl_context2() -> None:
@@ -1735,7 +1735,7 @@ async def test___get_ssl_context2() -> None:
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = ctx
-    assert await conn._get_ssl_context(req) is ctx
+    assert conn._get_ssl_context(req) is ctx
 
 
 async def test___get_ssl_context3() -> None:
@@ -1744,7 +1744,7 @@ async def test___get_ssl_context3() -> None:
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = True
-    assert await conn._get_ssl_context(req) is ctx
+    assert conn._get_ssl_context(req) is ctx
 
 
 async def test___get_ssl_context4() -> None:
@@ -1753,9 +1753,7 @@ async def test___get_ssl_context4() -> None:
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = False
-    assert await conn._get_ssl_context(req) is await conn._make_or_get_ssl_context(
-        False
-    )
+    assert conn._get_ssl_context(req) is _SSL_CONTEXT_UNVERIFIED
 
 
 async def test___get_ssl_context5() -> None:
@@ -1764,9 +1762,7 @@ async def test___get_ssl_context5() -> None:
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = aiohttp.Fingerprint(hashlib.sha256(b"1").digest())
-    assert await conn._get_ssl_context(req) is await conn._make_or_get_ssl_context(
-        False
-    )
+    assert conn._get_ssl_context(req) is _SSL_CONTEXT_UNVERIFIED
 
 
 async def test___get_ssl_context6() -> None:
@@ -1774,7 +1770,7 @@ async def test___get_ssl_context6() -> None:
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = True
-    assert await conn._get_ssl_context(req) is await conn._make_or_get_ssl_context(True)
+    assert conn._get_ssl_context(req) is _SSL_CONTEXT_VERIFIED
 
 
 async def test_ssl_context_once() -> None:
@@ -1786,31 +1782,9 @@ async def test_ssl_context_once() -> None:
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = True
-    assert await conn1._get_ssl_context(req) is await conn1._make_or_get_ssl_context(
-        True
-    )
-    assert await conn2._get_ssl_context(req) is await conn1._make_or_get_ssl_context(
-        True
-    )
-    assert await conn3._get_ssl_context(req) is await conn1._make_or_get_ssl_context(
-        True
-    )
-    assert conn1._made_ssl_context is conn2._made_ssl_context is conn3._made_ssl_context
-    assert True in conn1._made_ssl_context
-
-
-@pytest.mark.parametrize("exception", [OSError, ssl.SSLError, asyncio.CancelledError])
-async def test_ssl_context_creation_raises(exception: Type[BaseException]) -> None:
-    """Test that we try again if SSLContext creation fails the first time."""
-    conn = aiohttp.TCPConnector()
-    conn._made_ssl_context.clear()
-
-    with mock.patch.object(
-        conn, "_make_ssl_context", side_effect=exception
-    ), pytest.raises(exception):
-        await conn._make_or_get_ssl_context(True)
-
-    assert isinstance(await conn._make_or_get_ssl_context(True), ssl.SSLContext)
+    assert conn1._get_ssl_context(req) is _SSL_CONTEXT_VERIFIED
+    assert conn2._get_ssl_context(req) is _SSL_CONTEXT_VERIFIED
+    assert conn3._get_ssl_context(req) is _SSL_CONTEXT_VERIFIED
 
 
 async def test_close_twice(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
@@ -1837,6 +1811,39 @@ async def test_close_cancels_cleanup_handle(
     assert conn._cleanup_handle is not None
     await conn.close()
     assert conn._cleanup_handle is None
+
+
+async def test_close_cancels_resolve_host(loop: asyncio.AbstractEventLoop) -> None:
+    cancelled = False
+
+    async def delay_resolve_host(*args: object) -> None:
+        """Delay _resolve_host() task in order to test cancellation."""
+        nonlocal cancelled
+        try:
+            await asyncio.sleep(10)
+        except asyncio.CancelledError:
+            cancelled = True
+            raise
+
+    conn = aiohttp.TCPConnector()
+    req = ClientRequest(
+        "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
+    )
+    with mock.patch.object(conn, "_resolve_host_with_throttle", delay_resolve_host):
+        t = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
+        # Let it create the internal task
+        await asyncio.sleep(0)
+        # Let that task start running
+        await asyncio.sleep(0)
+
+        # We now have a task being tracked and can ensure that .close() cancels it.
+        assert len(conn._resolve_host_tasks) == 1
+        await conn.close()
+        assert cancelled
+        assert len(conn._resolve_host_tasks) == 0
+
+        with suppress(asyncio.CancelledError):
+            await t
 
 
 async def test_close_abort_closed_transports(loop: asyncio.AbstractEventLoop) -> None:
@@ -2944,3 +2951,42 @@ async def test_connector_does_not_remove_needed_waiters(
             )
 
             await connector.close()
+
+
+def test_connector_multiple_event_loop() -> None:
+    """Test the connector with multiple event loops."""
+
+    async def async_connect() -> Literal[True]:
+        conn = aiohttp.TCPConnector()
+        loop = asyncio.get_running_loop()
+        req = ClientRequest("GET", URL("https://127.0.0.1"), loop=loop)
+        with suppress(aiohttp.ClientConnectorError):
+            with mock.patch.object(
+                conn._loop,
+                "create_connection",
+                autospec=True,
+                spec_set=True,
+                side_effect=ssl.CertificateError,
+            ):
+                await conn.connect(req, [], ClientTimeout())
+        return True
+
+    def test_connect() -> Literal[True]:
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(async_connect())
+        finally:
+            loop.close()
+
+    with futures.ThreadPoolExecutor() as executor:
+        res_list = [executor.submit(test_connect) for _ in range(2)]
+        raw_response_list = [res.result() for res in futures.as_completed(res_list)]
+
+    assert raw_response_list == [True, True]
+
+
+def test_default_ssl_context_creation_without_ssl() -> None:
+    """Verify _make_ssl_context does not raise when ssl is not available."""
+    with mock.patch.object(connector_module, "ssl", None):
+        assert connector_module._make_ssl_context(False) is None
+        assert connector_module._make_ssl_context(True) is None

@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import io
 import pathlib
+import sys
 import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from typing import Any, AsyncIterator, Callable, Dict, Iterator, List, Protocol
@@ -445,6 +446,13 @@ def test_basic_auth_from_url(make_request: _RequestMaker) -> None:
     req = make_request("get", "http://nkim:1234@python.org")
     assert "AUTHORIZATION" in req.headers
     assert "Basic bmtpbToxMjM0" == req.headers["AUTHORIZATION"]
+    assert "python.org" == req.host
+
+
+def test_basic_auth_no_user_from_url(make_request: _RequestMaker) -> None:
+    req = make_request("get", "http://:1234@python.org")
+    assert "AUTHORIZATION" in req.headers
+    assert "Basic OjEyMzQ=" == req.headers["AUTHORIZATION"]
     assert "python.org" == req.host
 
 
@@ -951,7 +959,7 @@ async def test_precompressed_data_stays_intact(loop: asyncio.AbstractEventLoop) 
         URL("http://python.org/"),
         data=data,
         headers={"CONTENT-ENCODING": "deflate"},
-        compress=None,
+        compress=False,
         loop=loop,
     )
     assert not req.compress
@@ -1225,6 +1233,22 @@ async def test_oserror_on_write_bytes(
     assert conn.protocol.set_exception.called
     exc = conn.protocol.set_exception.call_args[0][0]
     assert isinstance(exc, aiohttp.ClientOSError)
+
+
+@pytest.mark.skipif(sys.version_info < (3, 11), reason="Needs Task.cancelling()")
+async def test_cancel_close(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+    req = ClientRequest("get", URL("http://python.org"), loop=loop)
+    req._writer = asyncio.Future()  # type: ignore[assignment]
+
+    t = asyncio.create_task(req.close())
+
+    # Start waiting on _writer
+    await asyncio.sleep(0)
+
+    t.cancel()
+    # Cancellation should not be suppressed.
+    with pytest.raises(asyncio.CancelledError):
+        await t
 
 
 async def test_terminate(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:

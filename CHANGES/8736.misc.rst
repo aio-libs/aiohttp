@@ -1,1 +1,0 @@
-Improved performance of the WebSocket reader -- by :user:`bdraco`.

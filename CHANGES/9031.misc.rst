@@ -1,0 +1,1 @@
+Avoided tracing overhead in the http writer when there are no active traces -- by user:`bdraco`.

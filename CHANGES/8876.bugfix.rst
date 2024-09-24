@@ -1,0 +1,1 @@
+Fixed error handling after 100-continue so server sends 500 response instead of disconnecting -- by :user:`Dreamsorcerer`.

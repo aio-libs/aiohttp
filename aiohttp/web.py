@@ -6,6 +6,7 @@ import sys
 import warnings
 from argparse import ArgumentParser
 from collections.abc import Iterable
+from contextlib import suppress
 from importlib import import_module
 from typing import (
     Any,
@@ -501,11 +502,15 @@ def run_app(
     except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
         pass
     finally:
-        _cancel_tasks({main_task}, loop)
-        _cancel_tasks(asyncio.all_tasks(loop), loop)
-        loop.run_until_complete(loop.shutdown_asyncgens())
-        loop.close()
-        asyncio.set_event_loop(None)
+        try:
+            main_task.cancel()
+            with suppress(asyncio.CancelledError):
+                loop.run_until_complete(main_task)
+        finally:
+            _cancel_tasks(asyncio.all_tasks(loop), loop)
+            loop.run_until_complete(loop.shutdown_asyncgens())
+            loop.close()
+            asyncio.set_event_loop(None)
 
 
 def main(argv: List[str]) -> None:
@@ -523,21 +528,21 @@ def main(argv: List[str]) -> None:
     arg_parser.add_argument(
         "-H",
         "--hostname",
-        help="TCP/IP hostname to serve on (default: %(default)r)",
-        default="localhost",
+        help="TCP/IP hostname to serve on (default: localhost)",
+        default=None,
     )
     arg_parser.add_argument(
         "-P",
         "--port",
         help="TCP/IP port to serve on (default: %(default)r)",
         type=int,
-        default="8080",
+        default=8080,
     )
     arg_parser.add_argument(
         "-U",
         "--path",
-        help="Unix file system path to serve on. Specifying a path will cause "
-        "hostname and port arguments to be ignored.",
+        help="Unix file system path to serve on. Can be combined with hostname "
+        "to serve on both Unix and TCP.",
     )
     args, extra_argv = arg_parser.parse_known_args(argv)
 
@@ -559,13 +564,19 @@ def main(argv: List[str]) -> None:
     # Compatibility logic
     if args.path is not None and not hasattr(socket, "AF_UNIX"):
         arg_parser.error(
-            "file system paths not supported by your operating" " environment"
+            "file system paths not supported by your operating environment"
         )
 
     logging.basicConfig(level=logging.DEBUG)
 
+    if args.path and args.hostname is None:
+        host = port = None
+    else:
+        host = args.hostname or "localhost"
+        port = args.port
+
     app = func(extra_argv)
-    run_app(app, host=args.hostname, port=args.port, path=args.path)
+    run_app(app, host=host, port=port, path=args.path)
     arg_parser.exit(message="Stopped\n")
 
 

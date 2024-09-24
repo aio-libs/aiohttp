@@ -69,6 +69,7 @@ from .typedefs import (
     JSONDecoder,
     LooseCookies,
     LooseHeaders,
+    Query,
     RawHeaders,
 )
 
@@ -124,9 +125,7 @@ class Fingerprint:
         if not hashfunc:
             raise ValueError("fingerprint has invalid length")
         elif hashfunc is md5 or hashfunc is sha1:
-            raise ValueError(
-                "md5 and sha1 are insecure and " "not supported. Use sha256."
-            )
+            raise ValueError("md5 and sha1 are insecure and not supported. Use sha256.")
         self._hashfunc = hashfunc
         self._fingerprint = fingerprint
 
@@ -197,14 +196,14 @@ class ClientRequest:
         method: str,
         url: URL,
         *,
-        params: Optional[Mapping[str, str]] = None,
+        params: Query = None,
         headers: Optional[LooseHeaders] = None,
-        skip_auto_headers: Iterable[str] = frozenset(),
+        skip_auto_headers: Optional[Iterable[str]] = None,
         data: Any = None,
         cookies: Optional[LooseCookies] = None,
         auth: Optional[BasicAuth] = None,
         version: http.HttpVersion = http.HttpVersion11,
-        compress: Optional[str] = None,
+        compress: Union[str, bool] = False,
         chunked: Optional[bool] = None,
         expect100: bool = False,
         loop: asyncio.AbstractEventLoop,
@@ -231,15 +230,11 @@ class ClientRequest:
         # assert session is not None
         self._session = cast("ClientSession", session)
         if params:
-            q = MultiDict(url.query)
-            url2 = url.with_query(params)
-            q.extend(url2.query)
-            url = url.with_query(q)
+            url = url.extend_query(params)
         self.original_url = url
         self.url = url.with_fragment(None)
         self.method = method.upper()
         self.chunked = chunked
-        self.compress = compress
         self.loop = loop
         self.length = None
         if response_class is None:
@@ -259,7 +254,7 @@ class ClientRequest:
         self.update_headers(headers)
         self.update_auto_headers(skip_auto_headers)
         self.update_cookies(cookies)
-        self.update_content_encoding(data)
+        self.update_content_encoding(data, compress)
         self.update_auth(auth, trust_env)
         self.update_proxy(proxy, proxy_auth, proxy_headers)
 
@@ -338,8 +333,8 @@ class ClientRequest:
 
         # basic auth info
         username, password = url.user, url.password
-        if username:
-            self.auth = helpers.BasicAuth(username, password or "")
+        if username or password:
+            self.auth = helpers.BasicAuth(username or "", password or "")
 
     def update_version(self, version: Union[http.HttpVersion, str]) -> None:
         """Convert request version to two elements tuple.
@@ -381,12 +376,18 @@ class ClientRequest:
                 else:
                     self.headers.add(key, value)
 
-    def update_auto_headers(self, skip_auto_headers: Iterable[str]) -> None:
-        self.skip_auto_headers = CIMultiDict(
-            (hdr, None) for hdr in sorted(skip_auto_headers)
-        )
-        used_headers = self.headers.copy()
-        used_headers.extend(self.skip_auto_headers)  # type: ignore[arg-type]
+    def update_auto_headers(self, skip_auto_headers: Optional[Iterable[str]]) -> None:
+        if skip_auto_headers is not None:
+            self.skip_auto_headers = CIMultiDict(
+                (hdr, None) for hdr in sorted(skip_auto_headers)
+            )
+            used_headers = self.headers.copy()
+            used_headers.extend(self.skip_auto_headers)  # type: ignore[arg-type]
+        else:
+            # Fast path when there are no headers to skip
+            # which is the most common case.
+            self.skip_auto_headers = CIMultiDict()
+            used_headers = self.headers
 
         for hdr, val in self.DEFAULT_HEADERS.items():
             if hdr not in used_headers:
@@ -420,20 +421,19 @@ class ClientRequest:
 
         self.headers[hdrs.COOKIE] = c.output(header="", sep=";").strip()
 
-    def update_content_encoding(self, data: Any) -> None:
+    def update_content_encoding(self, data: Any, compress: Union[bool, str]) -> None:
         """Set request content encoding."""
-        if data is None:
+        self.compress = None
+        if not data:
             return
 
-        enc = self.headers.get(hdrs.CONTENT_ENCODING, "").lower()
-        if enc:
-            if self.compress:
+        if self.headers.get(hdrs.CONTENT_ENCODING):
+            if compress:
                 raise ValueError(
-                    "compress can not be set " "if Content-Encoding header is set"
+                    "compress can not be set if Content-Encoding header is set"
                 )
-        elif self.compress:
-            if not isinstance(self.compress, str):
-                self.compress = "deflate"
+        elif compress:
+            self.compress = compress if isinstance(compress, str) else "deflate"
             self.headers[hdrs.CONTENT_ENCODING] = self.compress
             self.chunked = True  # enable chunked, no need to deal with length
 
@@ -451,7 +451,7 @@ class ClientRequest:
         elif self.chunked:
             if hdrs.CONTENT_LENGTH in self.headers:
                 raise ValueError(
-                    "chunked can not be set " "if Content-Length header is set"
+                    "chunked can not be set if Content-Length header is set"
                 )
 
             self.headers[hdrs.TRANSFER_ENCODING] = "chunked"
@@ -508,9 +508,7 @@ class ClientRequest:
         # copy payload headers
         assert body.headers
         for key, value in body.headers.items():
-            if key in self.headers:
-                continue
-            if key in self.skip_auto_headers:
+            if key in self.headers or key in self.skip_auto_headers:
                 continue
             self.headers[key] = value
 
@@ -559,11 +557,8 @@ class ClientRequest:
         """Support coroutines that yields bytes objects."""
         # 100 response
         if self._continue is not None:
-            try:
-                await writer.drain()
-                await self._continue
-            except asyncio.CancelledError:
-                return
+            await writer.drain()
+            await self._continue
 
         protocol = conn.protocol
         assert protocol is not None
@@ -590,7 +585,9 @@ class ClientRequest:
 
             set_exception(protocol, reraised_exc, underlying_exc)
         except asyncio.CancelledError:
-            await writer.write_eof()
+            # Body hasn't been fully sent, so connection can't be reused.
+            conn.close()
+            raise
         except Exception as underlying_exc:
             set_exception(
                 protocol,
@@ -626,11 +623,15 @@ class ClientRequest:
         writer = StreamWriter(
             protocol,
             self.loop,
-            on_chunk_sent=functools.partial(
-                self._on_chunk_request_sent, self.method, self.url
+            on_chunk_sent=(
+                functools.partial(self._on_chunk_request_sent, self.method, self.url)
+                if self._traces
+                else None
             ),
-            on_headers_sent=functools.partial(
-                self._on_headers_request_sent, self.method, self.url
+            on_headers_sent=(
+                functools.partial(self._on_headers_request_sent, self.method, self.url)
+                if self._traces
+                else None
             ),
         )
 
@@ -662,9 +663,8 @@ class ClientRequest:
             self.headers[hdrs.CONNECTION] = connection
 
         # status + headers
-        status_line = "{0} {1} HTTP/{v.major}.{v.minor}".format(
-            self.method, path, v=self.version
-        )
+        v = self.version
+        status_line = f"{self.method} {path} HTTP/{v.major}.{v.minor}"
         await writer.write_headers(status_line, self.headers)
         coro = self.write_bytes(writer, conn)
 
@@ -694,8 +694,15 @@ class ClientRequest:
 
     async def close(self) -> None:
         if self._writer is not None:
-            with contextlib.suppress(asyncio.CancelledError):
+            try:
                 await self._writer
+            except asyncio.CancelledError:
+                if (
+                    sys.version_info >= (3, 11)
+                    and (task := asyncio.current_task())
+                    and task.cancelling()
+                ):
+                    raise
 
     def terminate(self) -> None:
         if self._writer is not None:
@@ -734,6 +741,7 @@ class ClientResponse(HeadersMixin):
     # post-init stage allows to not change ctor signature
     _closed = True  # to allow __del__ for non-initialized properly response
     _released = False
+    _in_context = False
     __writer = None
 
     def __init__(
@@ -1019,7 +1027,12 @@ class ClientResponse(HeadersMixin):
         if not self.ok:
             # reason should always be not None for a started response
             assert self.reason is not None
-            self.release()
+
+            # If we're in a context we can rely on __aexit__() to release as the
+            # exception propagates.
+            if not self._in_context:
+                self.release()
+
             raise ClientResponseError(
                 self.request_info,
                 self.history,
@@ -1038,7 +1051,15 @@ class ClientResponse(HeadersMixin):
 
     async def _wait_released(self) -> None:
         if self._writer is not None:
-            await self._writer
+            try:
+                await self._writer
+            except asyncio.CancelledError:
+                if (
+                    sys.version_info >= (3, 11)
+                    and (task := asyncio.current_task())
+                    and task.cancelling()
+                ):
+                    raise
         self._release_connection()
 
     def _cleanup_writer(self) -> None:
@@ -1055,7 +1076,15 @@ class ClientResponse(HeadersMixin):
 
     async def wait_for_close(self) -> None:
         if self._writer is not None:
-            await self._writer
+            try:
+                await self._writer
+            except asyncio.CancelledError:
+                if (
+                    sys.version_info >= (3, 11)
+                    and (task := asyncio.current_task())
+                    and task.cancelling()
+                ):
+                    raise
         self.release()
 
     async def read(self) -> bytes:
@@ -1084,7 +1113,7 @@ class ClientResponse(HeadersMixin):
 
         encoding = mimetype.parameters.get("charset")
         if encoding:
-            with contextlib.suppress(LookupError):
+            with contextlib.suppress(LookupError, ValueError):
                 return codecs.lookup(encoding).name
 
         if mimetype.type == "application" and (
@@ -1103,8 +1132,7 @@ class ClientResponse(HeadersMixin):
 
     async def text(self, encoding: Optional[str] = None, errors: str = "strict") -> str:
         """Read response payload and decode."""
-        if self._body is None:
-            await self.read()
+        await self.read()
 
         if encoding is None:
             encoding = self.get_encoding()
@@ -1119,8 +1147,7 @@ class ClientResponse(HeadersMixin):
         content_type: Optional[str] = "application/json",
     ) -> Any:
         """Read and decodes JSON response."""
-        if self._body is None:
-            await self.read()
+        await self.read()
 
         if content_type:
             if not is_expected_content_type(self.content_type, content_type):
@@ -1141,6 +1168,7 @@ class ClientResponse(HeadersMixin):
         return loads(self._body.decode(encoding))  # type: ignore[union-attr]
 
     async def __aenter__(self) -> "ClientResponse":
+        self._in_context = True
         return self
 
     async def __aexit__(
@@ -1149,6 +1177,7 @@ class ClientResponse(HeadersMixin):
         exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
     ) -> None:
+        self._in_context = False
         # similar to _RequestContextManager, we do not need to check
         # for exceptions, response object can close connection
         # if state is broken

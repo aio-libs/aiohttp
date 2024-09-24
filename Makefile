@@ -117,11 +117,7 @@ define run_tests_in_docker
 	docker run --rm -ti -v `pwd`:/src -w /src "aiohttp-test-$(1)-$(2)" $(TEST_SPEC)
 endef
 
-.PHONY: test-3.8-no-extensions test-3.8 test-3.9-no-extensions test
-test-3.8-no-extensions:
-	$(call run_tests_in_docker,3.8,y)
-test-3.8:
-	$(call run_tests_in_docker,3.8,n)
+.PHONY: test-3.9-no-extensions test
 test-3.9-no-extensions:
 	$(call run_tests_in_docker,3.9,y)
 test-3.9:
