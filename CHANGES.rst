@@ -89,7 +89,7 @@ Bug fixes
 
 
 
-- Fixed race condition that could cause server to close connection incorrectly at keepalive timeout -- by :user:`Dreamosorcerer`.
+- Fixed race condition that could cause server to close connection incorrectly at keepalive timeout -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
