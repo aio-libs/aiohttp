@@ -107,7 +107,7 @@ typing-extensions==4.11.0
     #   typer
 urllib3==2.2.1
     # via requests
-uvloop==0.19.0 ; platform_system != "Windows"
+uvloop==0.21.0b1 ; platform_system != "Windows"
     # via -r requirements/lint.in
 virtualenv==20.24.2
     # via pre-commit
