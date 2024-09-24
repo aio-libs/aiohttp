@@ -236,7 +236,7 @@ trustme==1.1.0 ; platform_machine != "i686"
     # via -r requirements/test.in
 typer==0.9.0
     # via python-on-whales
-typing-extensions==4.11.0
+typing-extensions==4.12.2
     # via
     #   aioredis
     #   annotated-types
