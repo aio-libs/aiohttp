@@ -10,124 +10,18 @@
 
 .. towncrier release notes start
 
-3.10.6rc2 (2024-09-23)
-======================
-
-No significant changes.
-
-
-----
-
-
-3.10.6rc1 (2024-09-22)
-======================
-
-Removals and backward incompatible breaking changes
----------------------------------------------------
-
-- Increased minimum yarl version to 1.12.0 -- by :user:`bdraco`.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`9267`.
-
-
-
-
-----
-
-
-3.10.6rc0 (2024-09-22)
-======================
+3.10.6 (2024-09-24)
+===================
 
 Bug fixes
 ---------
 
-- Implemented binding to IPv6 addresses in the pytest server fixture.
+- Added :exc:`aiohttp.ClientConnectionResetError`. Client code that previously threw :exc:`ConnectionResetError`
+  will now throw this -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
-  :issue:`4650`.
-
-
-
-- Fixed StreamResponse.prepared to return True after EOF is sent -- by :user:`arthurdarcet`.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`5343`.
-
-
-
-- Fixed ``Response.text`` when body is a ``Payload`` -- by :user:`Dreamsorcerer`.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`6485`.
-
-
-
-- Added support for URL credentials with empty (zero-length) username, e.g. ``https://:password@host`` -- by :user:`shuckc`
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`6494`.
-
-
-
-- Fixed handling of some file-like objects (e.g. ``tarfile.extractfile()``) which raise ``AttributeError`` instead of ``OSError`` when ``fileno`` fails for streaming payload data -- by :user:`ReallyReivax`.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`6732`.
-
-
-
-- Stopped logging exceptions from ``web.run_app()`` that would be raised regardless -- by :user:`Dreamsorcerer`.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`6807`.
-
-
-
-- Changed ``make_mocked_request()`` to use empty payload by default -- by :user:`rahulnht`.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`7167`.
-
-
-
-- Used more precise type for ``ClientResponseError.headers``, fixing some type errors when using them -- by :user:`Dreamorcerer`.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`8768`.
-
-
-
-- Fixed Python parser chunked handling with multiple Transfer-Encoding values -- by :user:`Dreamsorcerer`.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`8823`.
-
-
-
-- Changed behavior when returning an invalid response to send a 500 response -- by :user:`Dreamsorcerer`.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`8845`.
-
-
-
-- Stopped adding a default Content-Type header when response has no content -- by :user:`Dreamsorcerer`.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`8858`.
+  :issue:`9137`.
 
 
 
@@ -139,46 +33,6 @@ Bug fixes
 
 
 
-- Fixed error handling after 100-continue so server sends 500 response instead of disconnecting -- by :user:`Dreamsorcerer`.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`8876`.
-
-
-
-- Fixed response reading from closed session to throw an error immediately instead of timing out -- by :user:`Dreamsorcerer`.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`8878`.
-
-
-
-- Fixed web router not matching pre-encoded URLs (requires yarl 1.9.6+) -- by :user:`Dreamsorcerer`.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`8898`.
-
-
-
-- Fixed ``CancelledError`` from one cleanup context stopping other contexts from completing -- by :user:`Dreamsorcerer`.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`8908`.
-
-
-
-- Fixed ``Site.name`` when host is an empty string -- by :user:`Dreamsorcerer`.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`8929`.
-
-
-
 - Fixed resolve_host() 'Task was destroyed but is pending' errors -- by :user:`Dreamsorcerer`.
 
 
@@ -187,11 +41,43 @@ Bug fixes
 
 
 
-- Fixed changing scheme/host in ``Response.clone()`` for absolute URLs -- by :user:`Dreamsorcerer`.
+- Fixed handling of some file-like objects (e.g. ``tarfile.extractfile()``) which raise ``AttributeError`` instead of ``OSError`` when ``fileno`` fails for streaming payload data -- by :user:`ReallyReivax`.
 
 
   *Related issues and pull requests on GitHub:*
-  :issue:`8990`.
+  :issue:`6732`.
+
+
+
+- Fixed web router not matching pre-encoded URLs (requires yarl 1.9.6+) -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8898`, :issue:`9267`.
+
+
+
+- Fixed an error when trying to add a route for multiple methods with a path containing a regex pattern -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8998`.
+
+
+
+- Fixed ``Response.text`` when body is a ``Payload`` -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`6485`.
+
+
+
+- Fixed compressed requests failing when no body was provided -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9108`.
 
 
 
@@ -203,11 +89,133 @@ Bug fixes
 
 
 
-- Fixed an error when trying to add a route for multiple methods with a path containing a regex pattern -- by :user:`Dreamsorcerer`.
+- Fixed race condition that could cause server to close connection incorrectly at keepalive timeout -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
-  :issue:`8998`.
+  :issue:`9140`.
+
+
+
+- Fixed Python parser chunked handling with multiple Transfer-Encoding values -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8823`.
+
+
+
+- Fixed error handling after 100-continue so server sends 500 response instead of disconnecting -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8876`.
+
+
+
+- Stopped adding a default Content-Type header when response has no content -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8858`.
+
+
+
+- Added support for URL credentials with empty (zero-length) username, e.g. ``https://:password@host`` -- by :user:`shuckc`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`6494`.
+
+
+
+- Stopped logging exceptions from ``web.run_app()`` that would be raised regardless -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`6807`.
+
+
+
+- Implemented binding to IPv6 addresses in the pytest server fixture.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`4650`.
+
+
+
+- Fixed the incorrect use of flags for ``getnameinfo()`` in the Resolver --by :user:`GitNMLee`
+
+  Link-Local IPv6 addresses can now be handled by the Resolver correctly.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9032`.
+
+
+
+- Fixed StreamResponse.prepared to return True after EOF is sent -- by :user:`arthurdarcet`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`5343`.
+
+
+
+- Changed ``make_mocked_request()`` to use empty payload by default -- by :user:`rahulnht`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`7167`.
+
+
+
+- Used more precise type for ``ClientResponseError.headers``, fixing some type errors when using them -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8768`.
+
+
+
+- Changed behavior when returning an invalid response to send a 500 response -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8845`.
+
+
+
+- Fixed response reading from closed session to throw an error immediately instead of timing out -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8878`.
+
+
+
+- Fixed ``CancelledError`` from one cleanup context stopping other contexts from completing -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8908`.
+
+
+
+- Fixed changing scheme/host in ``Response.clone()`` for absolute URLs -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8990`.
+
+
+
+- Fixed ``Site.name`` when host is an empty string -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8929`.
 
 
 
@@ -235,16 +243,6 @@ Bug fixes
 
 
 
-- Fixed the incorrect use of flags for ``getnameinfo()`` in the Resolver --by :user:`GitNMLee`
-
-  Link-Local IPv6 addresses can now be handled by the Resolver correctly.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`9032`.
-
-
-
 - Fixed exception information getting lost on ``HttpProcessingError`` -- by :user:`Dreamsorcerer`.
 
 
@@ -258,31 +256,6 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`9063`.
-
-
-
-- Fixed compressed requests failing when no body was provided -- by :user:`Dreamsorcerer`.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`9108`.
-
-
-
-- Added :exc:`aiohttp.ClientConnectionResetError`. Client code that previously threw :exc:`ConnectionResetError`
-  will now throw this -- by :user:`Dreamsorcerer`.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`9137`.
-
-
-
-- Fixed race condition that could cause server to close connection incorrectly at keepalive timeout -- by :user:`Dreamosorcerer`.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`9140`.
 
 
 
@@ -322,6 +295,14 @@ Features
 
 
 
+- Declared Python 3.13 supported -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8748`.
+
+
+
 
 Removals and backward incompatible breaking changes
 ---------------------------------------------------
@@ -333,6 +314,14 @@ Removals and backward incompatible breaking changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`9200`.
+
+
+
+- Increased minimum yarl version to 1.12.0 -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9267`.
 
 
 
