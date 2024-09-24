@@ -1,1 +1,0 @@
-Used more precise type for ``ClientResponseError.headers``, fixing some type errors when using them -- by :user:`Dreamorcerer`.

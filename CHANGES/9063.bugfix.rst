@@ -1,1 +1,0 @@
-Fixed ``If-None-Match`` not using weak comparison -- by :user:`Dreamsorcerer`.

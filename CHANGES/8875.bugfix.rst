@@ -1,1 +1,0 @@
-Fixed an unclosed transport ``ResourceWarning`` on web handlers -- by :user:`Dreamsorcerer`.
