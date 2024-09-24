@@ -15,14 +15,14 @@
 
 Bug fixes
 ---------
-  
+
 - Added :exc:`aiohttp.ClientConnectionResetError`. Client code that previously threw :exc:`ConnectionResetError`
   will now throw this -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`9137`.
-  
+
 
 
 - Fixed an unclosed transport ``ResourceWarning`` on web handlers -- by :user:`Dreamsorcerer`.
@@ -30,9 +30,9 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`8875`.
-  
-  
-  
+
+
+
 - Fixed resolve_host() 'Task was destroyed but is pending' errors -- by :user:`Dreamsorcerer`.
 
 
@@ -40,23 +40,23 @@ Bug fixes
   :issue:`8967`.
 
 
-  
+
 - Fixed handling of some file-like objects (e.g. ``tarfile.extractfile()``) which raise ``AttributeError`` instead of ``OSError`` when ``fileno`` fails for streaming payload data -- by :user:`ReallyReivax`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`6732`.
-  
-  
-  
+
+
+
 - Fixed web router not matching pre-encoded URLs (requires yarl 1.9.6+) -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`8898`, :issue:`9267`.
-  
-  
-  
+
+
+
 - Fixed an error when trying to add a route for multiple methods with a path containing a regex pattern -- by :user:`Dreamsorcerer`.
 
 
@@ -70,65 +70,65 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`6485`.
-  
-  
-  
+
+
+
 - Fixed compressed requests failing when no body was provided -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`9108`.
-  
-  
-  
+
+
+
 - Fixed client incorrectly reusing a connection when the previous message had not been fully sent -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`8992`.
-  
-  
-  
+
+
+
 - Fixed race condition that could cause server to close connection incorrectly at keepalive timeout -- by :user:`Dreamosorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`9140`.
-  
-  
-  
+
+
+
 - Fixed Python parser chunked handling with multiple Transfer-Encoding values -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`8823`.
-  
-  
-  
+
+
+
 - Fixed error handling after 100-continue so server sends 500 response instead of disconnecting -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`8876`.
-  
-  
-  
+
+
+
 - Stopped adding a default Content-Type header when response has no content -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`8858`.
-  
-  
-  
+
+
+
 - Added support for URL credentials with empty (zero-length) username, e.g. ``https://:password@host`` -- by :user:`shuckc`
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`6494`.
-  
-  
-  
+
+
+
 - Stopped logging exceptions from ``web.run_app()`` that would be raised regardless -- by :user:`Dreamsorcerer`.
 
 
@@ -142,9 +142,9 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`4650`.
-  
-  
-  
+
+
+
 - Fixed the incorrect use of flags for ``getnameinfo()`` in the Resolver --by :user:`GitNMLee`
 
   Link-Local IPv6 addresses can now be handled by the Resolver correctly.
@@ -152,137 +152,137 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`9032`.
-  
-  
-  
+
+
+
 - Fixed StreamResponse.prepared to return True after EOF is sent -- by :user:`arthurdarcet`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`5343`.
-  
-  
-  
+
+
+
 - Changed ``make_mocked_request()`` to use empty payload by default -- by :user:`rahulnht`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`7167`.
-  
-  
-  
+
+
+
 - Used more precise type for ``ClientResponseError.headers``, fixing some type errors when using them -- by :user:`Dreamorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`8768`.
-  
-  
-  
+
+
+
 - Changed behavior when returning an invalid response to send a 500 response -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`8845`.
-  
-  
-  
+
+
+
 - Fixed response reading from closed session to throw an error immediately instead of timing out -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`8878`.
-  
-  
-  
+
+
+
 - Fixed ``CancelledError`` from one cleanup context stopping other contexts from completing -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`8908`.
-  
-  
-  
+
+
+
 - Fixed changing scheme/host in ``Response.clone()`` for absolute URLs -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`8990`.
-  
-  
-  
+
+
+
 - Fixed ``Site.name`` when host is an empty string -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`8929`.
-  
-  
-  
+
+
+
 - Updated Python parser to reject messages after a close message, matching C parser behaviour -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`9018`.
-  
-  
-  
+
+
+
 - Fixed creation of ``SSLContext`` inside of :py:class:`aiohttp.TCPConnector` with multiple event loops in different threads -- by :user:`bdraco`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`9029`.
-  
-  
-  
+
+
+
 - Fixed (on Python 3.11+) some edge cases where a task cancellation may get incorrectly suppressed -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`9030`.
-  
-  
-  
+
+
+
 - Fixed exception information getting lost on ``HttpProcessingError`` -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`9052`.
-  
-  
-  
+
+
+
 - Fixed ``If-None-Match`` not using weak comparison -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`9063`.
-  
-  
-  
+
+
+
 - Fixed badly encoded charset crashing when getting response text instead of falling back to charset detector.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`9160`.
-  
-  
-  
+
+
+
 - Rejected `\n` in `reason` values to avoid sending broken HTTP messages -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`9167`.
-  
-  
-  
+
+
+
 - Changed :py:meth:`ClientResponse.raise_for_status() <aiohttp.ClientResponse.raise_for_status>` to only release the connection when invoked outside an ``async with`` context -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`9239`.
-  
-  
-  
+
+
+
 
 Features
 --------
@@ -292,17 +292,17 @@ Features
 
   *Related issues and pull requests on GitHub:*
   :issue:`8564`.
-  
-  
-  
+
+
+
 - Declared Python 3.13 supported -- by :user:`bdraco`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`8748`.
-  
-  
-  
+
+
+
 
 Removals and backward incompatible breaking changes
 ---------------------------------------------------
@@ -314,17 +314,17 @@ Removals and backward incompatible breaking changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`9200`.
-  
-  
-  
+
+
+
 - Increased minimum yarl version to 1.12.0 -- by :user:`bdraco`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`9267`.
-  
-  
-  
+
+
+
 
 Improved documentation
 ----------------------
@@ -334,33 +334,33 @@ Improved documentation
 
   *Related issues and pull requests on GitHub:*
   :issue:`4414`.
-  
-  
-  
+
+
+
 - Clarified that auth parameter in ClientSession will persist and be included with any request to any origin, even during redirects to different origins.  -- by :user:`MaximZemskov`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`6764`.
-  
-  
-  
+
+
+
 - Clarified which timeout exceptions happen on which timeouts -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`8968`.
-  
-  
-  
+
+
+
 - Updated ``ClientSession`` parameters to match current code -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`8991`.
-  
-  
-  
+
+
+
 
 Packaging updates and notes for downstreams
 -------------------------------------------
@@ -370,9 +370,9 @@ Packaging updates and notes for downstreams
 
   *Related issues and pull requests on GitHub:*
   :issue:`9004`.
-  
-  
-  
+
+
+
 
 Miscellaneous internal changes
 ------------------------------
@@ -382,33 +382,33 @@ Miscellaneous internal changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`8847`.
-  
-  
-  
+
+
+
 - Exported ``aiohttp.TraceRequestHeadersSentParams`` -- by :user:`Hadock-is-ok`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`8947`.
-  
-  
-  
+
+
+
 - Avoided tracing overhead in the http writer when there are no active traces -- by user:`bdraco`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`9031`.
-  
-  
-  
+
+
+
 - Improved performance of reify Cython implementation -- by :user:`bdraco`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`9054`.
-  
-  
-  
+
+
+
 - Use :meth:`URL.extend_query() <yarl.URL.extend_query>` to extend query params (requires yarl 1.11.0+) -- by :user:`bdraco`.
 
   If yarl is older than 1.11.0, the previous slower hand rolled version will be used.
@@ -416,17 +416,17 @@ Miscellaneous internal changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`9068`.
-  
-  
-  
+
+
+
 - Improved performance of checking if a host is an IP Address -- by :user:`bdraco`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`9095`.
-  
-  
-  
+
+
+
 - Significantly improved performance of middlewares -- by :user:`bdraco`.
 
   The construction of the middleware wrappers is now cached and is built once per handler instead of on every request.
@@ -434,25 +434,25 @@ Miscellaneous internal changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`9158`, :issue:`9170`.
-  
-  
-  
+
+
+
 - Improved performance of web requests -- by :user:`bdraco`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`9168`, :issue:`9169`, :issue:`9172`, :issue:`9174`, :issue:`9175`, :issue:`9241`.
-  
-  
-  
+
+
+
 - Improved performance of starting web requests when there is no response prepare hook -- by :user:`bdraco`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`9173`.
-  
-  
-  
+
+
+
 - Significantly improved performance of expiring cookies -- by :user:`bdraco`.
 
   Expiring cookies has been redesigned to use :mod:`heapq` instead of a linear search, to better scale.
@@ -460,17 +460,17 @@ Miscellaneous internal changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`9203`.
-  
-  
-  
+
+
+
 - Significantly sped up filtering cookies -- by :user:`bdraco`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`9204`.
-  
-  
-  
+
+
+
 
 ----
 
