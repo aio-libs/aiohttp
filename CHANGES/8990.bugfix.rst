@@ -1,1 +1,0 @@
-Fixed changing scheme/host in ``Response.clone()`` for absolute URLs -- by :user:`Dreamsorcerer`.

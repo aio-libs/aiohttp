@@ -68,7 +68,7 @@ class ClientWebSocketResponse:
         self._closed = False
         self._closing = False
         self._close_code: Optional[int] = None
-        self._timeout: ClientWSTimeout = timeout
+        self._timeout = timeout
         self._autoclose = autoclose
         self._autoping = autoping
         self._heartbeat = heartbeat
