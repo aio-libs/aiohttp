@@ -1,1 +1,0 @@
-Fixed compressed requests failing when no body was provided -- by :user:`Dreamsorcerer`.

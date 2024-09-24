@@ -1,1 +1,0 @@
-Fixed ``Site.name`` when host is an empty string -- by :user:`Dreamsorcerer`.
