@@ -171,7 +171,7 @@ Bug fixes
 
 
 
-- Used more precise type for ``ClientResponseError.headers``, fixing some type errors when using them -- by :user:`Dreamorcerer`.
+- Used more precise type for ``ClientResponseError.headers``, fixing some type errors when using them -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
