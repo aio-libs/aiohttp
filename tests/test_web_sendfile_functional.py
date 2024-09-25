@@ -25,7 +25,9 @@ try:
 except ImportError:
     ssl = None  # type: ignore[assignment]
 
-_Sender = Callable[..., web.FileResponse]
+class _Sender(Protocol):
+    def __call__(self, path: PathLike, chunk_size: int = 256 * 1024) -> web.FileResponse:
+        ...
 
 
 HELLO_AIOHTTP = b"Hello aiohttp! :-)\n"
