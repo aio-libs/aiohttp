@@ -173,7 +173,8 @@ class RequestHandler(BaseProtocol):
         manager: "Server",
         *,
         loop: asyncio.AbstractEventLoop,
-        keepalive_timeout: float = 75.0,  # NGINX default is 75 secs
+        # Default should be high enough that it's likely longer than a reverse proxy.
+        keepalive_timeout: float = 3630,
         tcp_keepalive: bool = True,
         logger: Logger = server_logger,
         access_log_class: Type[AbstractAccessLogger] = AccessLogger,
