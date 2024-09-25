@@ -85,7 +85,7 @@ class ZLibCompressor(ZlibBaseHandler):
             # there are multiple writers, we need to lock
             # the compressor so that only one writer can
             # compress at a time.
-            return await asyncio.get_event_loop().run_in_executor(
+            return await asyncio.get_running_loop().run_in_executor(
                 self._executor, self.compress_sync, data
             )
 
