@@ -1,0 +1,1 @@
+Improved performance of compressing small amount of data -- by :user:`bdraco`.
