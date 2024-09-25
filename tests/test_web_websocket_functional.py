@@ -18,12 +18,10 @@ from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 async def test_websocket_can_prepare(
     loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
-    async def handler(request: web.Request) -> web.Response:
+    async def handler(request: web.Request) -> NoReturn:
         ws = web.WebSocketResponse()
-        if not ws.can_prepare(request):
-            raise web.HTTPUpgradeRequired()
-
-        return web.Response()
+        assert not ws.can_prepare(request)
+        raise web.HTTPUpgradeRequired()
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
@@ -38,8 +36,7 @@ async def test_websocket_json(
 ) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
-        if not ws.can_prepare(request):
-            raise web.HTTPUpgradeRequired()
+        assert ws.can_prepare(request)
 
         await ws.prepare(request)
         msg = await ws.receive()
@@ -1001,8 +998,7 @@ async def test_receive_str_nonstring(
 ) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
-        if not ws.can_prepare(request):
-            raise web.HTTPUpgradeRequired()
+        assert ws.can_prepare(request)
 
         await ws.prepare(request)
         await ws.send_bytes(b"answer")
@@ -1021,15 +1017,13 @@ async def test_receive_str_nonstring(
 async def test_receive_bytes_nonbytes(
     loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
-    async def handler(request: web.Request) -> web.WebSocketResponse:
+    async def handler(request: web.Request) -> NoReturn:
         ws = web.WebSocketResponse()
-        if not ws.can_prepare(request):
-            raise web.HTTPUpgradeRequired()
+        assert ws.can_prepare(request)
 
         await ws.prepare(request)
         await ws.send_bytes("answer")  # type: ignore[arg-type]
-        await ws.close()
-        return ws
+        assert False
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)

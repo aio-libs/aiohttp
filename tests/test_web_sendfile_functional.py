@@ -4,7 +4,7 @@ import gzip
 import pathlib
 import socket
 import zlib
-from typing import Callable, Iterable, Iterator, NoReturn, Optional, Tuple
+from typing import Callable, Iterable, Iterator, NoReturn, Optional, Protocol, Tuple
 from unittest import mock
 
 import pytest
