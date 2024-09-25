@@ -70,19 +70,24 @@ class ZLibCompressor(ZlibBaseHandler):
         return self._compressor.compress(data)
 
     async def compress(self, data: bytes) -> bytes:
+        """Compress the data.
+
+        If there is a max_sync_chunk_size, then the compression
+        will happen in the executor.
+        """
+        if self._max_sync_chunk_size is None or len(data) < self._max_sync_chunk_size:
+            # No need to lock if the compress can happen
+            # synchronously.
+            return self.compress_sync(data)
+
         async with self._compress_lock:
             # To ensure the stream is consistent in the event
             # there are multiple writers, we need to lock
             # the compressor so that only one writer can
             # compress at a time.
-            if (
-                self._max_sync_chunk_size is not None
-                and len(data) > self._max_sync_chunk_size
-            ):
-                return await asyncio.get_event_loop().run_in_executor(
-                    self._executor, self.compress_sync, data
-                )
-            return self.compress_sync(data)
+            return await asyncio.get_event_loop().run_in_executor(
+                self._executor, self.compress_sync, data
+            )
 
     def flush(self, mode: int = zlib.Z_FINISH) -> bytes:
         return self._compressor.flush(mode)
