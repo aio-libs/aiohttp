@@ -89,7 +89,7 @@ class ZLibCompressor(ZlibBaseHandler):
             # there are multiple writers, we need to lock
             # the compressor so that only one writer can
             # compress at a time.
-            compressed = await asyncio.get_event_loop().run_in_executor(
+            compressed = await asyncio.get_running_loop().run_in_executor(
                 self._executor, compressor.compress, data
             )
             if flush_mode is not None:
