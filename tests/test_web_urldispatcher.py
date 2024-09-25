@@ -5,7 +5,7 @@ import pathlib
 import socket
 import sys
 from stat import S_IFIFO, S_IMODE
-from typing import Any, Generator, Optional
+from typing import Any, Generator, NoReturn, Optional
 
 import pytest
 import yarl
@@ -862,6 +862,22 @@ async def test_decoded_url_match(
 
     async with client.get(yarl.URL(urlencoded_path, encoded=True)) as resp:
         assert resp.status == expected_http_resp_status
+
+
+async def test_decoded_raw_match_regex(aiohttp_client: AiohttpClient) -> None:
+    """Verify that raw_match only matches decoded url."""
+    app = web.Application()
+
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
+
+    app.router.add_get("/467%2C802%2C24834%2C24952%2C25362%2C40574/hello", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get(
+        yarl.URL("/467%2C802%2C24834%2C24952%2C25362%2C40574/hello", encoded=True)
+    ) as resp:
+        assert resp.status == 404  # should only match decoded url
 
 
 async def test_order_is_preserved(aiohttp_client: AiohttpClient) -> None:

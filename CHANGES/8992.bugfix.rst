@@ -1,1 +1,0 @@
-Fixed client incorrectly reusing a connection when the previous message had not been fully sent -- by :user:`Dreamsorcerer`.

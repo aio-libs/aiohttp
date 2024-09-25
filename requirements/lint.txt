@@ -62,7 +62,7 @@ pluggy==1.5.0
     # via pytest
 pre-commit==3.5.0
     # via -r requirements/lint.in
-proxy-py==2.4.7
+proxy-py==2.4.8
     # via -r requirements/lint.in
 pycares==4.4.0
     # via aiodns
@@ -119,7 +119,7 @@ typing-extensions==4.12.2
     #   typer
 urllib3==2.2.3
     # via requests
-uvloop==0.20.0 ; platform_system != "Windows"
+uvloop==0.21.0b1 ; platform_system != "Windows"
     # via -r requirements/lint.in
 virtualenv==20.26.5
     # via pre-commit

@@ -1,1 +1,0 @@
-Clarified that auth parameter in ClientSession will persist and be included with any request to any origin, even during redirects to different origins.  -- by :user:`MaximZemskov`.

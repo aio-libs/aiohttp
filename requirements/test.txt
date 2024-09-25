@@ -69,7 +69,7 @@ packaging==24.1
     #   pytest
 pluggy==1.5.0
     # via pytest
-proxy-py==2.4.7
+proxy-py==2.4.8
     # via -r requirements/test.in
 pycares==4.4.0
     # via aiodns
@@ -127,9 +127,9 @@ typing-extensions==4.12.2
     #   typer
 urllib3==2.2.3
     # via requests
-uvloop==0.20.0 ; platform_system != "Windows" and implementation_name == "cpython"
+uvloop==0.21.0b1 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
 wait-for-it==2.2.2
     # via -r requirements/test.in
-yarl==1.11.1
+yarl==1.12.1
     # via -r requirements/runtime-deps.in
