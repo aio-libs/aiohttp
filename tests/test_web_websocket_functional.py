@@ -1027,7 +1027,7 @@ async def test_receive_bytes_nonbytes(
             raise web.HTTPUpgradeRequired()
 
         await ws.prepare(request)
-        await ws.send_bytes(b"answer")
+        await ws.send_bytes("answer")  # type: ignore[arg-type]
         await ws.close()
         return ws
 

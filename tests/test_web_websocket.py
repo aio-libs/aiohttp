@@ -28,9 +28,8 @@ class _RequestMaker(Protocol):
 
 @pytest.fixture
 def app(loop: asyncio.AbstractEventLoop) -> web.Application:
-    ret: web.Application = mock.create_autospec(
-        web.Application, spec_set=True, on_response_prepare=aiosignal.Signal(ret)
-    )
+    ret: web.Application = mock.create_autospec(web.Application, spec_set=True)
+    ret.on_response_prepare = aiosignal.Signal(ret)  # type: ignore[misc]
     ret.on_response_prepare.freeze()
     return ret
 
@@ -366,12 +365,10 @@ async def test_receive_eofstream_in_reader(
     assert ws._payload_writer is not None
     f = loop.create_future()
     f.set_result(True)
-    with mock.patch.object(
-        ws._payload_writer, "drain", autospec=True, spec_set=True, return_value=f
-    ):
-        msg = await ws.receive()
-        assert msg.type == WSMsgType.CLOSED
-        assert ws.closed
+    ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.CLOSED
+    assert ws.closed
 
 
 async def test_receive_exception_in_reader(
@@ -388,15 +385,14 @@ async def test_receive_exception_in_reader(
     ws._reader.read = make_mocked_coro(res)
 
     f = loop.create_future()
+    assert ws._payload_writer is not None
+    ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
     f.set_result(True)
-    with mock.patch.object(
-        ws._payload_writer, "drain", autospec=True, spec_set=True, return_value=f
-    ):
-        msg = await ws.receive()
-        assert msg.type == WSMsgType.ERROR
-        assert ws.closed
-        assert req.transport is not None
-        assert len(req.transport.close.mock_calls) == 1  # type: ignore[attr-defined]
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.ERROR
+    assert ws.closed
+    assert req.transport is not None
+    assert len(req.transport.close.mock_calls) == 1  # type: ignore[attr-defined]
 
 
 async def test_receive_close_but_left_open(
@@ -411,15 +407,14 @@ async def test_receive_close_but_left_open(
     ws._reader.read = mock.AsyncMock(return_value=close_message)
 
     f = loop.create_future()
+    assert ws._payload_writer is not None
+    ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
     f.set_result(True)
-    with mock.patch.object(
-        ws._payload_writer, "drain", autospec=True, spec_set=True, return_value=f
-    ):
-        msg = await ws.receive()
-        assert msg.type == WSMsgType.CLOSE
-        assert ws.closed
-        assert req.transport is not None
-        assert len(req.transport.close.mock_calls) == 1  # type: ignore[attr-defined]
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.CLOSE
+    assert ws.closed
+    assert req.transport is not None
+    assert len(req.transport.close.mock_calls) == 1  # type: ignore[attr-defined]
 
 
 async def test_receive_closing(
@@ -435,22 +430,21 @@ async def test_receive_closing(
     ws._reader.read = read_mock
 
     f = loop.create_future()
+    assert ws._payload_writer is not None
+    ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
     f.set_result(True)
-    with mock.patch.object(
-        ws._payload_writer, "drain", autospec=True, spec_set=True, return_value=f
-    ):
-        msg = await ws.receive()
-        assert msg.type == WSMsgType.CLOSING
-        assert not ws.closed
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.CLOSING
+    assert not ws.closed
 
-        msg = await ws.receive()
-        assert msg.type == WSMsgType.CLOSING
-        assert not ws.closed
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.CLOSING
+    assert not ws.closed
 
-        ws._cancel(ConnectionResetError("Connection lost"))
+    ws._cancel(ConnectionResetError("Connection lost"))
 
-        msg = await ws.receive()
-        assert msg.type == WSMsgType.CLOSING
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.CLOSING
 
 
 async def test_close_after_closing(
@@ -465,19 +459,18 @@ async def test_close_after_closing(
     ws._reader.read = mock.AsyncMock(return_value=closing_message)
 
     f = loop.create_future()
+    assert ws._payload_writer is not None
+    ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
     f.set_result(True)
-    with mock.patch.object(
-        ws._payload_writer, "drain", autospec=True, spec_set=True, return_value=f
-    ):
-        msg = await ws.receive()
-        assert msg.type == WSMsgType.CLOSING
-        assert not ws.closed
-        assert req.transport is not None
-        assert len(req.transport.close.mock_calls) == 0  # type: ignore[attr-defined]
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.CLOSING
+    assert not ws.closed
+    assert req.transport is not None
+    assert len(req.transport.close.mock_calls) == 0  # type: ignore[attr-defined]
 
-        await ws.close()
-        assert ws.closed
-        assert len(req.transport.close.mock_calls) == 1
+    await ws.close()
+    assert ws.closed
+    assert len(req.transport.close.mock_calls) == 1
 
 
 async def test_receive_timeouterror(
