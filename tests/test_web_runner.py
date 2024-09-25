@@ -244,7 +244,7 @@ async def test_tcpsite_default_host(make_runner: _RunnerMaker) -> None:
     m.create_server.return_value = mock.create_autospec(asyncio.Server, spec_set=True)
     with mock.patch(
         "asyncio.get_event_loop", autospec=True, spec_set=True, return_value=m
-    ) as mock_get_loop:
+    ):
         await site.start()
 
     m.create_server.assert_called_once()

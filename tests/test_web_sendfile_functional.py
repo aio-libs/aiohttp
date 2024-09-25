@@ -3,7 +3,6 @@ import bz2
 import gzip
 import pathlib
 import socket
-import ssl
 import zlib
 from typing import Callable, Iterable, Iterator, NoReturn, Optional, Tuple
 from unittest import mock
@@ -565,7 +564,7 @@ async def test_static_file_if_none_match_star(
 
 @pytest.mark.parametrize("if_modified_since", ("", "Fri, 31 Dec 9999 23:59:59 GMT"))
 async def test_static_file_if_none_match_weak(
-    aiohttp_client: Any,
+    aiohttp_client: AiohttpClient,
     app_with_static_route: web.Application,
     if_modified_since: str,
 ) -> None:
