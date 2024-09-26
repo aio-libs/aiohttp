@@ -716,7 +716,8 @@ async def test_default_proxy(loop: asyncio.AbstractEventLoop) -> None:
     proxy_url2 = URL("http://proxy.example2.com")
     proxy_auth2 = mock.Mock()
 
-    class OnCall(Exception): ...
+    class OnCall(Exception):
+        pass
 
     request_class_mock = mock.Mock(side_effect=OnCall())
     session = ClientSession(
