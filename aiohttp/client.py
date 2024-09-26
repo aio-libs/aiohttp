@@ -365,11 +365,6 @@ class ClientSession:
 
         self._resolve_charset = fallback_charset_resolver
 
-        if proxy is not None:
-            try:
-                proxy = URL(proxy)
-            except ValueError as e:
-                raise InvalidURL(proxy) from e
         self._default_proxy = proxy
         self._default_proxy_auth = proxy_auth
 
