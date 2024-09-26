@@ -36,7 +36,7 @@ def test_formdata_multipart(buf: bytearray) -> None:
 def test_invalid_formdata_payload_multipart(obj: object) -> None:
     form = FormData()
     form.add_field("test", obj, filename="test.txt")
-    with pytest.raises(TypeError, match="expected str"):
+    with pytest.raises(TypeError, match="Can not serialize value"):
         form()
 
 
