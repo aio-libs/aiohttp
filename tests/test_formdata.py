@@ -36,14 +36,14 @@ def test_formdata_multipart(buf: bytearray) -> None:
 def test_invalid_formdata_payload_multipart(obj: object) -> None:
     form = FormData()
     form.add_field("test", obj, filename="test.txt")
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, matches="expected str"):
         form()
 
 
 @pytest.mark.parametrize("obj", (object(), None))
 def test_invalid_formdata_payload_urlencoded(obj: object) -> None:
     form = FormData({"test": obj})
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, matches="expected str"):
         form()
 
 
