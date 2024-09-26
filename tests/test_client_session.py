@@ -209,7 +209,7 @@ async def test_merge_headers_with_list_of_tuples_duplicated_names(
 
 @pytest.mark.parametrize("obj", (object(), None))
 async def test_invalid_data(session: ClientSession, obj: object) -> None:
-    with pytest.raises(TypeError, matches="expected str"):
+    with pytest.raises(TypeError, match="expected str"):
         await session.post("http://example.test/", data={"some": obj})
 
 
