@@ -240,7 +240,7 @@ async def test_post_form(aiohttp_client: AiohttpClient) -> None:
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
-    resp = await client.post("/", data={"a": 1, "b": 2, "c": ""})
+    resp = await client.post("/", data={"a": "1", "b": "2", "c": ""})
     assert 200 == resp.status
     txt = await resp.text()
     assert "OK" == txt
@@ -528,7 +528,7 @@ async def test_post_form_with_duplicate_keys(aiohttp_client: AiohttpClient) -> N
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
-    resp = await client.post("/", data=MultiDict([("a", 1), ("a", 2)]))
+    resp = await client.post("/", data=MultiDict([("a", "1"), ("a", "2")]))
     assert 200 == resp.status
 
     resp.release()
