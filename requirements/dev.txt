@@ -10,7 +10,7 @@ aiodns==3.2.0 ; sys_platform == "linux" or sys_platform == "darwin"
     #   -r requirements/runtime-deps.in
 aiohappyeyeballs==2.4.0
     # via -r requirements/runtime-deps.in
-aiohttp-theme==0.1.6
+aiohttp-theme==0.1.7
     # via -r requirements/doc.in
 aioredis==2.0.1
     # via -r requirements/lint.in
@@ -141,7 +141,7 @@ pluggy==1.5.0
     # via pytest
 pre-commit==3.5.0
     # via -r requirements/lint.in
-proxy-py==2.4.7
+proxy-py==2.4.8
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -187,10 +187,6 @@ pytz==2024.2
     # via babel
 pyyaml==6.0.2
     # via pre-commit
-re-assert==1.1.0
-    # via -r requirements/test.in
-regex==2024.9.11
-    # via re-assert
 requests==2.32.3
     # via
     #   cherry-picker
@@ -267,7 +263,7 @@ uritemplate==4.1.1
     # via gidgethub
 urllib3==2.2.3
     # via requests
-uvloop==0.20.0 ; platform_system != "Windows" and implementation_name == "cpython"
+uvloop==0.21.0b1 ; platform_system != "Windows" and implementation_name == "cpython"
     # via
     #   -r requirements/base.in
     #   -r requirements/lint.in
@@ -279,7 +275,7 @@ webcolors==24.8.0
     # via blockdiag
 wheel==0.44.0
     # via pip-tools
-yarl==1.11.1
+yarl==1.12.1
     # via -r requirements/runtime-deps.in
 zipp==3.20.2
     # via

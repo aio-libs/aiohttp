@@ -14,6 +14,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    Dict,
     Generic,
     Iterator,
     List,
@@ -22,6 +23,7 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    overload,
 )
 from unittest import IsolatedAsyncioTestCase, mock
 
@@ -37,19 +39,20 @@ from aiohttp.client import (
 )
 
 from . import ClientSession, hdrs
-from .abc import AbstractCookieJar
+from .abc import AbstractCookieJar, AbstractStreamWriter
 from .client_reqrep import ClientResponse
 from .client_ws import ClientWebSocketResponse
 from .helpers import sentinel
 from .http import HttpVersion, RawRequestMessage
 from .streams import EMPTY_PAYLOAD, StreamReader
-from .typedefs import StrOrURL
+from .typedefs import LooseHeaders, StrOrURL
 from .web import (
     Application,
     AppRunner,
     BaseRequest,
     BaseRunner,
     Request,
+    RequestHandler,
     Server,
     ServerRunner,
     SockSite,
@@ -70,6 +73,7 @@ if sys.version_info >= (3, 11):
 else:
     Self = Any
 
+_ApplicationNone = TypeVar("_ApplicationNone", Application, None)
 _Request = TypeVar("_Request", bound=BaseRequest)
 
 REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
@@ -119,7 +123,7 @@ class BaseTestServer(ABC, Generic[_Request]):
         self.runner: Optional[BaseRunner[_Request]] = None
         self._root: Optional[URL] = None
         self.host = host
-        self.port = port
+        self.port = port or 0
         self._closed = False
         self.scheme = scheme
         self.skip_url_asserts = skip_url_asserts
@@ -131,8 +135,6 @@ class BaseTestServer(ABC, Generic[_Request]):
         self._ssl = kwargs.pop("ssl", None)
         self.runner = await self._make_runner(handler_cancellation=True, **kwargs)
         await self.runner.setup()
-        if not self.port:
-            self.port = 0
         absolute_host = self.host
         try:
             version = ipaddress.ip_address(self.host).version
@@ -200,7 +202,7 @@ class BaseTestServer(ABC, Generic[_Request]):
             assert self.runner is not None
             await self.runner.cleanup()
             self._root = None
-            self.port = None
+            self.port = 0
             self._closed = True
 
     async def __aenter__(self) -> Self:
@@ -251,7 +253,7 @@ class RawTestServer(BaseTestServer[BaseRequest]):
         return ServerRunner(srv, **kwargs)
 
 
-class TestClient(Generic[_Request]):
+class TestClient(Generic[_Request, _ApplicationNone]):
     """
     A test client implementation.
 
@@ -261,7 +263,23 @@ class TestClient(Generic[_Request]):
 
     __test__ = False
 
+    @overload
     def __init__(
+        self: "TestClient[Request, Application]",
+        server: TestServer,
+        *,
+        cookie_jar: Optional[AbstractCookieJar] = None,
+        **kwargs: Any,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self: "TestClient[_Request, None]",
+        server: BaseTestServer[_Request],
+        *,
+        cookie_jar: Optional[AbstractCookieJar] = None,
+        **kwargs: Any,
+    ) -> None: ...
+    def __init__(  # type: ignore[misc]
         self,
         server: BaseTestServer[_Request],
         *,
@@ -292,7 +310,7 @@ class TestClient(Generic[_Request]):
         return self._server.host
 
     @property
-    def port(self) -> Optional[int]:
+    def port(self) -> int:
         return self._server.port
 
     @property
@@ -300,8 +318,8 @@ class TestClient(Generic[_Request]):
         return self._server
 
     @property
-    def app(self) -> Optional[Application]:
-        return cast(Optional[Application], getattr(self._server, "app", None))
+    def app(self) -> _ApplicationNone:
+        return getattr(self._server, "app", None)  # type: ignore[return-value]
 
     @property
     def session(self) -> ClientSession:
@@ -505,7 +523,7 @@ class AioHTTPTestCase(IsolatedAsyncioTestCase, ABC):
         """Return a TestServer instance."""
         return TestServer(app)
 
-    async def get_client(self, server: TestServer) -> TestClient[Request]:
+    async def get_client(self, server: TestServer) -> TestClient[Request, Application]:
         """Return a TestClient instance."""
         return TestClient(server)
 
@@ -586,15 +604,15 @@ def _create_transport(sslcontext: Optional[SSLContext] = None) -> mock.Mock:
 def make_mocked_request(
     method: str,
     path: str,
-    headers: Any = None,
+    headers: Optional[LooseHeaders] = None,
     *,
-    match_info: Any = sentinel,
+    match_info: Optional[Dict[str, str]] = None,
     version: HttpVersion = HttpVersion(1, 1),
     closing: bool = False,
-    app: Any = None,
-    writer: Any = sentinel,
-    protocol: Any = sentinel,
-    transport: Any = sentinel,
+    app: Optional[Application] = None,
+    writer: Optional[AbstractStreamWriter] = None,
+    protocol: Optional[RequestHandler[Request]] = None,
+    transport: Optional[asyncio.Transport] = None,
     payload: StreamReader = EMPTY_PAYLOAD,
     sslcontext: Optional[SSLContext] = None,
     client_max_size: int = 1024**2,
@@ -646,14 +664,14 @@ def make_mocked_request(
     if app is None:
         app = _create_app_mock()
 
-    if transport is sentinel:
+    if transport is None:
         transport = _create_transport(sslcontext)
 
-    if protocol is sentinel:
+    if protocol is None:
         protocol = mock.Mock()
         protocol.transport = transport
 
-    if writer is sentinel:
+    if writer is None:
         writer = mock.Mock()
         writer.write_headers = make_mocked_coro(None)
         writer.write = make_mocked_coro(None)
@@ -662,14 +680,13 @@ def make_mocked_request(
         writer.transport = transport
 
     protocol.transport = transport
-    protocol.writer = writer
 
     req = Request(
         message, payload, protocol, writer, task, loop, client_max_size=client_max_size
     )
 
     match_info = UrlMappingMatchInfo(
-        {} if match_info is sentinel else match_info, mock.Mock()
+        {} if match_info is None else match_info, mock.Mock()
     )
     match_info.add_app(app)
     req._match_info = match_info

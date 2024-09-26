@@ -1,1 +1,0 @@
-Changed behaviour when returning an invalid response to send a 500 response -- by :user:`Dreamsorcerer`.
