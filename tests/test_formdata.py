@@ -32,10 +32,18 @@ def test_formdata_multipart(buf: bytearray) -> None:
     assert form.is_multipart
 
 
-def test_invalid_formdata_payload() -> None:
+@pytest.mark.parametrize("obj", (object(), None))
+def test_invalid_formdata_payload_multipart(obj: object) -> None:
     form = FormData()
-    form.add_field("test", object(), filename="test.txt")
-    with pytest.raises(TypeError):
+    form.add_field("test", obj, filename="test.txt")
+    with pytest.raises(TypeError, match="Can not serialize value"):
+        form()
+
+
+@pytest.mark.parametrize("obj", (object(), None))
+def test_invalid_formdata_payload_urlencoded(obj: object) -> None:
+    form = FormData({"test": obj})
+    with pytest.raises(TypeError, match="expected str"):
         form()
 
 

@@ -207,6 +207,12 @@ async def test_merge_headers_with_list_of_tuples_duplicated_names(
     ]
 
 
+@pytest.mark.parametrize("obj", (object(), None))
+async def test_invalid_data(session: ClientSession, obj: object) -> None:
+    with pytest.raises(TypeError, match="expected str"):
+        await session.post("http://example.test/", data={"some": obj})
+
+
 async def test_http_GET(session: ClientSession, params: _Params) -> None:
     with mock.patch(
         "aiohttp.client.ClientSession._request", autospec=True, spec_set=True
