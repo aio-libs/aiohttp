@@ -526,6 +526,16 @@ def test_url_url() -> None:
     assert URL("http://example.com/path") == req.url
 
 
+def test_url_non_default_port() -> None:
+    req = make_mocked_request("GET", "/path", headers={"HOST": "example.com:8123"})
+    assert req.url == URL("http://example.com:8123/path")
+
+
+def test_url_ipv6() -> None:
+    req = make_mocked_request("GET", "/path", headers={"HOST": "[::1]:8123"})
+    assert req.url == URL("http://[::1]:8123/path")
+
+
 def test_clone() -> None:
     req = make_mocked_request("GET", "/path")
     req2 = req.clone()
