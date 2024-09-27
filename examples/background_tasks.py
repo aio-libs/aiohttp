@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Example of aiohttp.web.Application.on_startup signal handler"""
 import asyncio
+from contextlib import suppress
 from typing import List
 
 import valkey.asyncio as valkey
@@ -30,34 +31,28 @@ async def on_shutdown(app: web.Application) -> None:
 
 
 async def listen_to_valkey(app: web.Application) -> None:
-    r = valkey.Valkey(host="localhost", port=6379, encoding="utf-8")
-    ch = r.pubsub()
-    await ch.subscribe("news")
-    try:
-        async for msg in ch.listen():
+    r = valkey.Valkey(host="localhost", port=6379, decode_responses=True)
+    channel = "news"
+    async with r.pubsub() as sub:
+        await sub.subscribe(channel)
+        async for msg in sub.listen():
             if msg["type"] != "message":
                 continue
             # Forward message to all connected websockets:
             for ws in app[websockets]:
-                await ws.send_str(f"news: {msg}")
-            print(f"message in news: {msg}")
-    except asyncio.CancelledError:
-        pass
-    finally:
-        print("Cancel Valkey listener: close connection...")
-        await ch.unsubscribe()
-        await r.quit()
-        print("Valkey connection closed.")
+                await ws.send_str(f"{channel}: {msg}")
+            print(f"message in {channel}: {msg}")
 
 
-async def start_background_tasks(app: web.Application) -> None:
+async def background_tasks(app: web.Application):
     app[valkey_listener] = asyncio.create_task(listen_to_valkey(app))
 
+    yield
 
-async def cleanup_background_tasks(app: web.Application) -> None:
     print("cleanup background tasks...")
     app[valkey_listener].cancel()
-    await app[valkey_listener]
+    with suppress(asyncio.CancelledError):
+        await app[valkey_listener]
 
 
 def init() -> web.Application:
@@ -65,8 +60,7 @@ def init() -> web.Application:
     l: List[web.WebSocketResponse] = []
     app[websockets] = l
     app.router.add_get("/news", websocket_handler)
-    app.on_startup.append(start_background_tasks)
-    app.on_cleanup.append(cleanup_background_tasks)
+    app.cleanup_ctx.append(background_tasks)
     app.on_shutdown.append(on_shutdown)
     return app
 
