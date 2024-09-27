@@ -286,13 +286,13 @@ def test_host_header_ipv4(make_request: _RequestMaker) -> None:
 def test_host_header_ipv6(
     make_request: _RequestMaker, yarl_supports_host_subcomponent: bool
 ) -> None:
-    req = make_request("get", "http://[::2]")
     # Ensure the old path is tested for old yarl versions
     with mock.patch.object(
         client_reqrep,
         "_YARL_SUPPORTS_HOST_SUBCOMPONENT",
         yarl_supports_host_subcomponent,
     ):
+        req = make_request("get", "http://[::2]")
         assert req.headers["HOST"] == "[::2]"
 
 
