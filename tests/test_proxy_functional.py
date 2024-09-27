@@ -12,7 +12,7 @@ import pytest
 from yarl import URL
 
 import aiohttp
-from aiohttp import client_reqrep, web
+from aiohttp import web
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.helpers import IS_MACOS, IS_WINDOWS
 
@@ -95,7 +95,6 @@ async def web_server_endpoint_url(
     reason="asyncio on this python does not support TLS in TLS",
 )
 @pytest.mark.parametrize("web_server_endpoint_type", ("http", "https"))
-@pytest.mark.parametrize("yarl_supports_host_subcomponent", [True, False])
 @pytest.mark.filterwarnings(r"ignore:.*ssl.OP_NO_SSL*")
 # Filter out the warning from
 # https://github.com/abhinavsingh/proxy.py/blob/30574fd0414005dfa8792a6e797023e862bdcf43/proxy/common/utils.py#L226
@@ -105,25 +104,18 @@ async def test_secure_https_proxy_absolute_path(
     secure_proxy_url: URL,
     web_server_endpoint_url: str,
     web_server_endpoint_payload: str,
-    yarl_supports_host_subcomponent: bool,
 ) -> None:
     """Ensure HTTP(S) sites are accessible through a secure proxy."""
     conn = aiohttp.TCPConnector()
     sess = aiohttp.ClientSession(connector=conn)
 
-    # Ensure the old path is tested for old yarl versions
-    with mock.patch.object(
-        client_reqrep,
-        "_YARL_SUPPORTS_HOST_SUBCOMPONENT",
-        yarl_supports_host_subcomponent,
-    ):
-        async with sess.get(
-            web_server_endpoint_url,
-            proxy=secure_proxy_url,
-            ssl=client_ssl_ctx,  # used for both proxy and endpoint connections
-        ) as response:
-            assert response.status == 200
-            assert await response.text() == web_server_endpoint_payload
+    async with sess.get(
+        web_server_endpoint_url,
+        proxy=secure_proxy_url,
+        ssl=client_ssl_ctx,  # used for both proxy and endpoint connections
+    ) as response:
+        assert response.status == 200
+        assert await response.text() == web_server_endpoint_payload
 
     await sess.close()
     await conn.close()
