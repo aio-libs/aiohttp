@@ -13,7 +13,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
 
 import aiohttp
-from aiohttp import BaseConnector, hdrs, helpers, payload
+from aiohttp import BaseConnector, client_reqrep, hdrs, helpers, payload
 from aiohttp.abc import AbstractStreamWriter
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.client_exceptions import ClientConnectionError
@@ -282,9 +282,18 @@ def test_host_header_ipv4(make_request: _RequestMaker) -> None:
     assert req.headers["HOST"] == "127.0.0.2"
 
 
-def test_host_header_ipv6(make_request: _RequestMaker) -> None:
+@pytest.mark.parametrize("yarl_supports_host_subcomponent", [True, False])
+def test_host_header_ipv6(
+    make_request: _RequestMaker, yarl_supports_host_subcomponent: bool
+) -> None:
     req = make_request("get", "http://[::2]")
-    assert req.headers["HOST"] == "[::2]"
+    # Ensure the old path is tested for old yarl versions
+    with mock.patch.object(
+        client_reqrep,
+        "_YARL_SUPPORTS_HOST_SUBCOMPONENT",
+        yarl_supports_host_subcomponent,
+    ):
+        assert req.headers["HOST"] == "[::2]"
 
 
 def test_host_header_ipv4_with_port(make_request: _RequestMaker) -> None:
