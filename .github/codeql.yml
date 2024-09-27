@@ -1,3 +1,4 @@
 query-filters:
   - exclude:
+      id: py/ineffectual-statement
       id: py/unsafe-cyclic-import
