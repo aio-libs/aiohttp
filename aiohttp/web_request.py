@@ -431,6 +431,10 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         - overridden value by .clone(host=new_host) call.
         - HOST HTTP header
         - socket.getfqdn() value
+
+        For example, 'example.com' or 'localhost:8080'.
+
+        For historical reasons, the port number may be included.
         """
         host = self._message.headers.get(hdrs.HOST)
         if host is not None:
@@ -454,8 +458,10 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
     @reify
     def url(self) -> URL:
-        url = URL.build(scheme=self.scheme, host=self.host)
-        return url.join(self._rel_url)
+        """The full URL of the request."""
+        # authority is used here because it may include the port number
+        # and we want yarl to parse it correctly
+        return URL.build(scheme=self.scheme, authority=self.host).join(self._rel_url)
 
     @reify
     def path(self) -> str:
