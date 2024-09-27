@@ -449,12 +449,9 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
     @reify
     def url(self) -> URL:
         """The full URL of the request."""
-        host, has_port, port = self.host.partition(":")
-        if has_port:
-            url = URL.build(scheme=self.scheme, host=host, port=port)
-        else:
-            url = URL.build(scheme=self.scheme, host=host)
-        return url.join(self._rel_url)
+        # authority is used here because it may include the port number
+        # and we want yarl to parse it correctly
+        return URL.build(scheme=self.scheme, authority=self.host).join(self._rel_url)
 
     @reify
     def path(self) -> str:
