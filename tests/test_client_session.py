@@ -710,6 +710,55 @@ async def test_proxy_str(session: ClientSession, params: _Params) -> None:
     ]
 
 
+async def test_default_proxy(loop: asyncio.AbstractEventLoop) -> None:
+    proxy_url = URL("http://proxy.example.com")
+    proxy_auth = mock.Mock()
+    proxy_url2 = URL("http://proxy.example2.com")
+    proxy_auth2 = mock.Mock()
+
+    class OnCall(Exception):
+        pass
+
+    request_class_mock = mock.Mock(side_effect=OnCall())
+    session = ClientSession(
+        proxy=proxy_url, proxy_auth=proxy_auth, request_class=request_class_mock
+    )
+
+    assert session._default_proxy == proxy_url, "`ClientSession._default_proxy` not set"
+    assert (
+        session._default_proxy_auth == proxy_auth
+    ), "`ClientSession._default_proxy_auth` not set"
+
+    with pytest.raises(OnCall):
+        await session.get(
+            "http://example.com",
+        )
+
+    assert request_class_mock.called, "request class not called"
+    assert (
+        request_class_mock.call_args[1].get("proxy") == proxy_url
+    ), "`ClientSession._request` uses default proxy not one used in ClientSession.get"
+    assert (
+        request_class_mock.call_args[1].get("proxy_auth") == proxy_auth
+    ), "`ClientSession._request` uses default proxy_auth not one used in ClientSession.get"
+
+    request_class_mock.reset_mock()
+    with pytest.raises(OnCall):
+        await session.get(
+            "http://example.com", proxy=proxy_url2, proxy_auth=proxy_auth2
+        )
+
+    assert request_class_mock.called, "request class not called"
+    assert (
+        request_class_mock.call_args[1].get("proxy") == proxy_url2
+    ), "`ClientSession._request` uses default proxy not one used in ClientSession.get"
+    assert (
+        request_class_mock.call_args[1].get("proxy_auth") == proxy_auth2
+    ), "`ClientSession._request` uses default proxy_auth not one used in ClientSession.get"
+
+    await session.close()
+
+
 async def test_request_tracing(
     loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:

@@ -605,6 +605,13 @@ Authentication credentials can be passed in proxy URL::
    session.get("http://python.org",
                proxy="http://user:pass@some.proxy.com")
 
+And you may set default proxy::
+
+   proxy_auth = aiohttp.BasicAuth('user', 'pass')
+   async with aiohttp.ClientSession(proxy="http://proxy.com", proxy_auth=proxy_auth) as session:
+       async with session.get("http://python.org") as resp:
+           print(resp.status)
+
 Contrary to the ``requests`` library, it won't read environment
 variables by default. But you can do so by passing
 ``trust_env=True`` into :class:`aiohttp.ClientSession`

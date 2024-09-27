@@ -252,6 +252,8 @@ class ClientSession:
         "_max_line_size",
         "_max_field_size",
         "_resolve_charset",
+        "_default_proxy",
+        "_default_proxy_auth",
     )
 
     def __init__(
@@ -261,6 +263,8 @@ class ClientSession:
         connector: Optional[BaseConnector] = None,
         cookies: Optional[LooseCookies] = None,
         headers: Optional[LooseHeaders] = None,
+        proxy: Optional[StrOrURL] = None,
+        proxy_auth: Optional[BasicAuth] = None,
         skip_auto_headers: Optional[Iterable[str]] = None,
         auth: Optional[BasicAuth] = None,
         json_serialize: JSONEncoder = json.dumps,
@@ -360,6 +364,9 @@ class ClientSession:
             trace_config.freeze()
 
         self._resolve_charset = fallback_charset_resolver
+
+        self._default_proxy = proxy
+        self._default_proxy_auth = proxy_auth
 
     def __init_subclass__(cls: Type["ClientSession"]) -> None:
         raise TypeError(
@@ -479,6 +486,11 @@ class ClientSession:
         if skip_auto_headers is not None:
             for i in skip_auto_headers:
                 skip_headers.add(istr(i))
+
+        if proxy is None:
+            proxy = self._default_proxy
+        if proxy_auth is None:
+            proxy_auth = self._default_proxy_auth
 
         if proxy is not None:
             try:
