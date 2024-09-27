@@ -1,3 +1,0 @@
-Improved performance of determining if a URL is absolute -- by :user:`bdraco`.
-
-The property :attr:`~yarl.URL.absolute` is more performant than the method ``URL.is_absolute()`` and preferred when newer versions of yarl are used.
