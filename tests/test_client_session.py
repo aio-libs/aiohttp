@@ -729,12 +729,10 @@ async def test_default_proxy(loop: asyncio.AbstractEventLoop) -> None:
         session._default_proxy_auth == proxy_auth
     ), "`ClientSession._default_proxy_auth` not set"
 
-    try:
+    with pytest.raises(OnCall):
         await session.get(
             "http://example.com",
         )
-    except OnCall:
-        pass
 
     assert request_class_mock.called, "request class not called"
     assert (
@@ -745,12 +743,10 @@ async def test_default_proxy(loop: asyncio.AbstractEventLoop) -> None:
     ), "`ClientSession._request` uses default proxy_auth not one used in ClientSession.get"
 
     request_class_mock.reset_mock()
-    try:
+    with pytest.raises(OnCall):
         await session.get(
             "http://example.com", proxy=proxy_url2, proxy_auth=proxy_auth2
         )
-    except OnCall:
-        pass
 
     assert request_class_mock.called, "request class not called"
     assert (
