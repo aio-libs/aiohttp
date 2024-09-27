@@ -10,6 +10,46 @@
 
 .. towncrier release notes start
 
+3.10.7 (2024-09-27)
+===================
+
+Bug fixes
+---------
+
+- Fixed assembling the :class:`~yarl.URL` for web requests when the host contains a non-default port or IPv6 address -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9309`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of determining if a URL is absolute -- by :user:`bdraco`.
+
+  The property :attr:`~yarl.URL.absolute` is more performant than the method ``URL.is_absolute()`` and preferred when newer versions of yarl are used.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9171`.
+
+
+
+- Replaced code that can now be handled by ``yarl`` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9301`.
+
+
+
+
+----
+
+
 3.10.6 (2024-09-24)
 ===================
 
