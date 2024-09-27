@@ -27,7 +27,7 @@ from typing import (
 
 import attr
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
-from yarl import URL, __version__ as yarl_version
+from yarl import URL
 
 from . import hdrs, helpers, http, multipart, payload
 from .abc import AbstractStreamWriter
@@ -90,10 +90,6 @@ if TYPE_CHECKING:
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 json_re = re.compile(r"^application/(?:[\w.+-]+?\+)?json")
-_YARL_SUPPORTS_HOST_SUBCOMPONENT = tuple(map(int, yarl_version.split(".")[:2])) >= (
-    1,
-    13,
-)
 
 
 def _gen_default_accept_encoding() -> str:
@@ -431,13 +427,8 @@ class ClientRequest:
         self.headers: CIMultiDict[str] = CIMultiDict()
 
         # add host
-        if _YARL_SUPPORTS_HOST_SUBCOMPONENT:
-            netloc = self.url.host_subcomponent
-            assert netloc is not None
-        else:
-            netloc = cast(str, self.url.raw_host)
-            if helpers.is_ipv6_address(netloc):
-                netloc = f"[{netloc}]"
+        netloc = self.url.host_subcomponent
+        assert netloc is not None
         # See https://github.com/aio-libs/aiohttp/issues/3636.
         netloc = netloc.rstrip(".")
         if self.url.port is not None and not self.url.is_default_port():
@@ -682,14 +673,8 @@ class ClientRequest:
         # - not CONNECT proxy must send absolute form URI
         # - most common is origin form URI
         if self.method == hdrs.METH_CONNECT:
-            if _YARL_SUPPORTS_HOST_SUBCOMPONENT:
-                connect_host = self.url.host_subcomponent
-                assert connect_host is not None
-            else:
-                connect_host = self.url.raw_host
-                assert connect_host is not None
-                if helpers.is_ipv6_address(connect_host):
-                    connect_host = f"[{connect_host}]"
+            connect_host = self.url.host_subcomponent
+            assert connect_host is not None
             path = f"{connect_host}:{self.url.port}"
         elif self.proxy and not self.is_ssl():
             path = str(self.url)
