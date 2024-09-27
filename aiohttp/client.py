@@ -225,38 +225,34 @@ _CharsetResolver = Callable[[ClientResponse, bytes], str]
 class ClientSession:
     """First-class interface for making HTTP requests."""
 
-    ATTRS = frozenset(
-        [
-            "_base_url",
-            "_source_traceback",
-            "_connector",
-            "requote_redirect_url",
-            "_loop",
-            "_cookie_jar",
-            "_connector_owner",
-            "_default_auth",
-            "_version",
-            "_json_serialize",
-            "_requote_redirect_url",
-            "_timeout",
-            "_raise_for_status",
-            "_auto_decompress",
-            "_trust_env",
-            "_default_headers",
-            "_skip_auto_headers",
-            "_request_class",
-            "_response_class",
-            "_ws_response_class",
-            "_trace_configs",
-            "_read_bufsize",
-            "_max_line_size",
-            "_max_field_size",
-            "_resolve_charset",
-        ]
+    __slots__ = (
+        "_base_url",
+        "_source_traceback",
+        "_connector",
+        "_loop",
+        "_cookie_jar",
+        "_connector_owner",
+        "_default_auth",
+        "_version",
+        "_json_serialize",
+        "_requote_redirect_url",
+        "_timeout",
+        "_raise_for_status",
+        "_auto_decompress",
+        "_trust_env",
+        "_default_headers",
+        "_skip_auto_headers",
+        "_request_class",
+        "_response_class",
+        "_ws_response_class",
+        "_trace_configs",
+        "_read_bufsize",
+        "_max_line_size",
+        "_max_field_size",
+        "_resolve_charset",
+        "_default_proxy",
+        "_default_proxy_auth",
     )
-
-    _source_traceback: Optional[traceback.StackSummary] = None
-    _connector: Optional[BaseConnector] = None
 
     def __init__(
         self,
@@ -266,6 +262,8 @@ class ClientSession:
         loop: Optional[asyncio.AbstractEventLoop] = None,
         cookies: Optional[LooseCookies] = None,
         headers: Optional[LooseHeaders] = None,
+        proxy: Optional[StrOrURL] = None,
+        proxy_auth: Optional[BasicAuth] = None,
         skip_auto_headers: Optional[Iterable[str]] = None,
         auth: Optional[BasicAuth] = None,
         json_serialize: JSONEncoder = json.dumps,
@@ -395,6 +393,9 @@ class ClientSession:
             trace_config.freeze()
 
         self._resolve_charset = fallback_charset_resolver
+
+        self._default_proxy = proxy
+        self._default_proxy_auth = proxy_auth
 
     def __init_subclass__(cls: Type["ClientSession"]) -> None:
         warnings.warn(
@@ -530,6 +531,11 @@ class ClientSession:
         if skip_auto_headers is not None:
             for i in skip_auto_headers:
                 skip_headers.add(istr(i))
+
+        if proxy is None:
+            proxy = self._default_proxy
+        if proxy_auth is None:
+            proxy_auth = self._default_proxy_auth
 
         if proxy is not None:
             try:
