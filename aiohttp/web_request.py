@@ -421,6 +421,10 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         - overridden value by .clone(host=new_host) call.
         - HOST HTTP header
         - socket.getfqdn() value
+
+        For example, 'example.com' or 'localhost:8080'.
+
+        For historical reasons, the port number may be included.
         """
         host = self._message.headers.get(hdrs.HOST)
         if host is not None:
@@ -444,7 +448,12 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
     @reify
     def url(self) -> URL:
-        url = URL.build(scheme=self.scheme, host=self.host)
+        """The full URL of the request."""
+        host, has_port, port = self.host.partition(":")
+        if has_port:
+            url = URL.build(scheme=self.scheme, host=host, port=port)
+        else:
+            url = URL.build(scheme=self.scheme, host=host)
         return url.join(self._rel_url)
 
     @reify
