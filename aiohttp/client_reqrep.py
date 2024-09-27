@@ -93,7 +93,7 @@ if TYPE_CHECKING:
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 _YARL_SUPPORTS_HOST_SUBCOMPONENT = tuple(map(int, yarl_version.split(".")[:2])) >= (
     1,
-    11,
+    13,
 )
 
 
