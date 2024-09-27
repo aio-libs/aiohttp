@@ -451,7 +451,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         """The full URL of the request."""
         host, has_port, port = self.host.partition(":")
         if has_port:
-            url = URL.build(scheme=self.scheme, host=host, port=port)
+            url = URL.build(scheme=self.scheme, host=host, port=int(port))
         else:
             url = URL.build(scheme=self.scheme, host=host)
         return url.join(self._rel_url)
