@@ -1,0 +1,1 @@
+Fixed assembling the :class:`~yarl.URL` for web requests when the host contains a non-default port or IPv6 address -- by :user:`bdraco`.
