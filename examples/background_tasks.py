@@ -2,7 +2,7 @@
 """Example of aiohttp.web.Application.on_startup signal handler"""
 import asyncio
 from contextlib import suppress
-from typing import List
+from typing import AsyncIterator, List
 
 import valkey.asyncio as valkey
 
@@ -44,7 +44,7 @@ async def listen_to_valkey(app: web.Application) -> None:
             print(f"message in {channel}: {msg}")
 
 
-async def background_tasks(app: web.Application):
+async def background_tasks(app: web.Application) -> AsyncIterator[None]:
     app[valkey_listener] = asyncio.create_task(listen_to_valkey(app))
 
     yield
