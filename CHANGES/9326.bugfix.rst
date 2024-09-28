@@ -1,0 +1,1 @@
+Fixed cancellation leaking upwards on timeout -- by :user:`bdraco`.
