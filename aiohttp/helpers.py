@@ -692,6 +692,17 @@ class TimerNoop(BaseTimerContext):
         return
 
 
+if sys.version_info >= (3, 11):
+
+    def _uncancel_task(task: "asyncio.Task[object]") -> None:
+        task.uncancel()
+
+else:
+
+    def _uncancel_task(task: "asyncio.Task[object]") -> None:
+        pass
+
+
 class TimerContext(BaseTimerContext):
     """Low resolution timeout context manager"""
 
@@ -723,10 +734,16 @@ class TimerContext(BaseTimerContext):
         exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
     ) -> Optional[bool]:
+        enter_task: Optional[asyncio.Task[Any]] = None
         if self._tasks:
-            self._tasks.pop()  # type: ignore[unused-awaitable]
+            enter_task = self._tasks.pop()
 
         if exc_type is asyncio.CancelledError and self._cancelled:
+            assert enter_task is not None
+            # The timeout was hit, and the task was cancelled
+            # so we need to uncancel the last task that entered the context manager
+            # since the cancellation should not leak out of the context manager
+            _uncancel_task(enter_task)
             raise asyncio.TimeoutError from None
         return None
 
