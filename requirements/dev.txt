@@ -10,10 +10,8 @@ aiodns==3.2.0 ; sys_platform == "linux" or sys_platform == "darwin"
     #   -r requirements/runtime-deps.in
 aiohappyeyeballs==2.4.0
     # via -r requirements/runtime-deps.in
-aiohttp-theme==0.1.6
+aiohttp-theme==0.1.7
     # via -r requirements/doc.in
-aioredis==2.0.1
-    # via -r requirements/lint.in
 aiosignal==1.3.1
     # via -r requirements/runtime-deps.in
 alabaster==0.7.13
@@ -23,7 +21,7 @@ annotated-types==0.7.0
 async-timeout==4.0.3 ; python_version < "3.11"
     # via
     #   -r requirements/runtime-deps.in
-    #   aioredis
+    #   valkey
 babel==2.16.0
     # via sphinx
 blockdiag==3.0.0
@@ -66,7 +64,7 @@ docutils==0.20.1
     # via sphinx
 exceptiongroup==1.2.2
     # via pytest
-filelock==3.16.0
+filelock==3.16.1
     # via virtualenv
 freezegun==1.5.1
     # via
@@ -82,16 +80,16 @@ gidgethub==5.3.0
     # via cherry-picker
 gunicorn==23.0.0
     # via -r requirements/base.in
-identify==2.6.0
+identify==2.6.1
     # via pre-commit
-idna==3.4
+idna==3.6
     # via
     #   requests
     #   trustme
     #   yarl
 imagesize==1.4.1
     # via sphinx
-importlib-metadata==8.4.0
+importlib-metadata==8.5.0
     # via
     #   build
     #   sphinx
@@ -135,13 +133,13 @@ pillow==9.5.0
     #   blockdiag
 pip-tools==7.4.1
     # via -r requirements/dev.in
-platformdirs==4.3.2
+platformdirs==4.3.6
     # via virtualenv
 pluggy==1.5.0
     # via pytest
 pre-commit==3.5.0
     # via -r requirements/lint.in
-proxy-py==2.4.7
+proxy-py==2.4.8
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -149,18 +147,16 @@ pycares==4.4.0
     # via aiodns
 pycparser==2.22
     # via cffi
-pydantic==2.9.1
+pydantic==2.9.2
     # via python-on-whales
-pydantic-core==2.23.3
+pydantic-core==2.23.4
     # via pydantic
 pygments==2.18.0
     # via
     #   rich
     #   sphinx
 pyjwt==2.8.0
-    # via
-    #   gidgethub
-    #   pyjwt
+    # via gidgethub
 pyproject-hooks==1.1.0
     # via
     #   build
@@ -187,10 +183,6 @@ pytz==2024.2
     # via babel
 pyyaml==6.0.2
     # via pre-commit
-re-assert==1.1.0
-    # via -r requirements/test.in
-regex==2024.7.24
-    # via re-assert
 requests==2.32.3
     # via
     #   cherry-picker
@@ -254,7 +246,6 @@ typer==0.12.5
     # via python-on-whales
 typing-extensions==4.12.2
     # via
-    #   aioredis
     #   annotated-types
     #   multidict
     #   mypy
@@ -265,13 +256,15 @@ typing-extensions==4.12.2
     #   typer
 uritemplate==4.1.1
     # via gidgethub
-urllib3==2.2.2
+urllib3==2.2.3
     # via requests
-uvloop==0.20.0 ; platform_system != "Windows" and implementation_name == "cpython"
+uvloop==0.21.0b1 ; platform_system != "Windows" and implementation_name == "cpython"
     # via
     #   -r requirements/base.in
     #   -r requirements/lint.in
-virtualenv==20.26.4
+valkey==6.0.2
+    # via -r requirements/lint.in
+virtualenv==20.26.5
     # via pre-commit
 wait-for-it==2.2.2
     # via -r requirements/test.in
@@ -279,9 +272,9 @@ webcolors==24.8.0
     # via blockdiag
 wheel==0.44.0
     # via pip-tools
-yarl==1.11.1
+yarl==1.13.0
     # via -r requirements/runtime-deps.in
-zipp==3.20.1
+zipp==3.20.2
     # via
     #   importlib-metadata
     #   importlib-resources
@@ -289,7 +282,7 @@ zipp==3.20.1
 # The following packages are considered to be unsafe in a requirements file:
 pip==24.2
     # via pip-tools
-setuptools==74.1.2
+setuptools==75.1.0
     # via
     #   blockdiag
     #   incremental

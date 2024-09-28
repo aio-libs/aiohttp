@@ -203,7 +203,7 @@ class ClientRequest:
         cookies: Optional[LooseCookies] = None,
         auth: Optional[BasicAuth] = None,
         version: http.HttpVersion = http.HttpVersion11,
-        compress: Union[str, bool, None] = None,
+        compress: Union[str, bool] = False,
         chunked: Optional[bool] = None,
         expect100: bool = False,
         loop: asyncio.AbstractEventLoop,
@@ -235,7 +235,6 @@ class ClientRequest:
         self.url = url.with_fragment(None)
         self.method = method.upper()
         self.chunked = chunked
-        self.compress = compress
         self.loop = loop
         self.length = None
         if response_class is None:
@@ -255,7 +254,7 @@ class ClientRequest:
         self.update_headers(headers)
         self.update_auto_headers(skip_auto_headers)
         self.update_cookies(cookies)
-        self.update_content_encoding(data)
+        self.update_content_encoding(data, compress)
         self.update_auth(auth, trust_env)
         self.update_proxy(proxy, proxy_auth, proxy_headers)
 
@@ -357,9 +356,8 @@ class ClientRequest:
         self.headers: CIMultiDict[str] = CIMultiDict()
 
         # add host
-        netloc = cast(str, self.url.raw_host)
-        if helpers.is_ipv6_address(netloc):
-            netloc = f"[{netloc}]"
+        netloc = self.url.host_subcomponent
+        assert netloc is not None
         # See https://github.com/aio-libs/aiohttp/issues/3636.
         netloc = netloc.rstrip(".")
         if self.url.port is not None and not self.url.is_default_port():
@@ -422,22 +420,19 @@ class ClientRequest:
 
         self.headers[hdrs.COOKIE] = c.output(header="", sep=";").strip()
 
-    def update_content_encoding(self, data: Any) -> None:
+    def update_content_encoding(self, data: Any, compress: Union[bool, str]) -> None:
         """Set request content encoding."""
+        self.compress = None
         if not data:
-            # Don't compress an empty body.
-            self.compress = None
             return
 
-        enc = self.headers.get(hdrs.CONTENT_ENCODING, "").lower()
-        if enc:
-            if self.compress:
+        if self.headers.get(hdrs.CONTENT_ENCODING):
+            if compress:
                 raise ValueError(
                     "compress can not be set if Content-Encoding header is set"
                 )
-        elif self.compress:
-            if not isinstance(self.compress, str):
-                self.compress = "deflate"
+        elif compress:
+            self.compress = compress if isinstance(compress, str) else "deflate"
             self.headers[hdrs.CONTENT_ENCODING] = self.compress
             self.chunked = True  # enable chunked, no need to deal with length
 
@@ -561,11 +556,8 @@ class ClientRequest:
         """Support coroutines that yields bytes objects."""
         # 100 response
         if self._continue is not None:
-            try:
-                await writer.drain()
-                await self._continue
-            except asyncio.CancelledError:
-                return
+            await writer.drain()
+            await self._continue
 
         protocol = conn.protocol
         assert protocol is not None
@@ -594,6 +586,7 @@ class ClientRequest:
         except asyncio.CancelledError:
             # Body hasn't been fully sent, so connection can't be reused.
             conn.close()
+            raise
         except Exception as underlying_exc:
             set_exception(
                 protocol,
@@ -612,17 +605,13 @@ class ClientRequest:
         # - not CONNECT proxy must send absolute form URI
         # - most common is origin form URI
         if self.method == hdrs.METH_CONNECT:
-            connect_host = self.url.raw_host
+            connect_host = self.url.host_subcomponent
             assert connect_host is not None
-            if helpers.is_ipv6_address(connect_host):
-                connect_host = f"[{connect_host}]"
             path = f"{connect_host}:{self.url.port}"
         elif self.proxy and not self.is_ssl():
             path = str(self.url)
         else:
-            path = self.url.raw_path
-            if self.url.raw_query_string:
-                path += "?" + self.url.raw_query_string
+            path = self.url.raw_path_qs
 
         protocol = conn.protocol
         assert protocol is not None
@@ -642,7 +631,7 @@ class ClientRequest:
         )
 
         if self.compress:
-            writer.enable_compression(self.compress)  # type: ignore[arg-type]
+            writer.enable_compression(self.compress)
 
         if self.chunked is not None:
             writer.enable_chunking()
@@ -700,8 +689,15 @@ class ClientRequest:
 
     async def close(self) -> None:
         if self._writer is not None:
-            with contextlib.suppress(asyncio.CancelledError):
+            try:
                 await self._writer
+            except asyncio.CancelledError:
+                if (
+                    sys.version_info >= (3, 11)
+                    and (task := asyncio.current_task())
+                    and task.cancelling()
+                ):
+                    raise
 
     def terminate(self) -> None:
         if self._writer is not None:
@@ -740,6 +736,7 @@ class ClientResponse(HeadersMixin):
     # post-init stage allows to not change ctor signature
     _closed = True  # to allow __del__ for non-initialized properly response
     _released = False
+    _in_context = False
     __writer = None
 
     def __init__(
@@ -1025,7 +1022,12 @@ class ClientResponse(HeadersMixin):
         if not self.ok:
             # reason should always be not None for a started response
             assert self.reason is not None
-            self.release()
+
+            # If we're in a context we can rely on __aexit__() to release as the
+            # exception propagates.
+            if not self._in_context:
+                self.release()
+
             raise ClientResponseError(
                 self.request_info,
                 self.history,
@@ -1044,7 +1046,15 @@ class ClientResponse(HeadersMixin):
 
     async def _wait_released(self) -> None:
         if self._writer is not None:
-            await self._writer
+            try:
+                await self._writer
+            except asyncio.CancelledError:
+                if (
+                    sys.version_info >= (3, 11)
+                    and (task := asyncio.current_task())
+                    and task.cancelling()
+                ):
+                    raise
         self._release_connection()
 
     def _cleanup_writer(self) -> None:
@@ -1061,7 +1071,15 @@ class ClientResponse(HeadersMixin):
 
     async def wait_for_close(self) -> None:
         if self._writer is not None:
-            await self._writer
+            try:
+                await self._writer
+            except asyncio.CancelledError:
+                if (
+                    sys.version_info >= (3, 11)
+                    and (task := asyncio.current_task())
+                    and task.cancelling()
+                ):
+                    raise
         self.release()
 
     async def read(self) -> bytes:
@@ -1090,7 +1108,7 @@ class ClientResponse(HeadersMixin):
 
         encoding = mimetype.parameters.get("charset")
         if encoding:
-            with contextlib.suppress(LookupError):
+            with contextlib.suppress(LookupError, ValueError):
                 return codecs.lookup(encoding).name
 
         if mimetype.type == "application" and (
@@ -1109,8 +1127,7 @@ class ClientResponse(HeadersMixin):
 
     async def text(self, encoding: Optional[str] = None, errors: str = "strict") -> str:
         """Read response payload and decode."""
-        if self._body is None:
-            await self.read()
+        await self.read()
 
         if encoding is None:
             encoding = self.get_encoding()
@@ -1125,8 +1142,7 @@ class ClientResponse(HeadersMixin):
         content_type: Optional[str] = "application/json",
     ) -> Any:
         """Read and decodes JSON response."""
-        if self._body is None:
-            await self.read()
+        await self.read()
 
         if content_type:
             if not is_expected_content_type(self.content_type, content_type):
@@ -1147,6 +1163,7 @@ class ClientResponse(HeadersMixin):
         return loads(self._body.decode(encoding))  # type: ignore[union-attr]
 
     async def __aenter__(self) -> "ClientResponse":
+        self._in_context = True
         return self
 
     async def __aexit__(
@@ -1155,6 +1172,7 @@ class ClientResponse(HeadersMixin):
         exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
     ) -> None:
+        self._in_context = False
         # similar to _RequestContextManager, we do not need to check
         # for exceptions, response object can close connection
         # if state is broken

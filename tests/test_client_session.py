@@ -207,6 +207,12 @@ async def test_merge_headers_with_list_of_tuples_duplicated_names(
     ]
 
 
+@pytest.mark.parametrize("obj", (object(), None))
+async def test_invalid_data(session: ClientSession, obj: object) -> None:
+    with pytest.raises(TypeError, match="expected str"):
+        await session.post("http://example.test/", data={"some": obj})
+
+
 async def test_http_GET(session: ClientSession, params: _Params) -> None:
     with mock.patch(
         "aiohttp.client.ClientSession._request", autospec=True, spec_set=True
@@ -702,6 +708,55 @@ async def test_proxy_str(session: ClientSession, params: _Params) -> None:
         (session, "GET", "http://test.example.com"),
         dict(allow_redirects=True, proxy="http://proxy.com", **params),
     ]
+
+
+async def test_default_proxy(loop: asyncio.AbstractEventLoop) -> None:
+    proxy_url = URL("http://proxy.example.com")
+    proxy_auth = mock.Mock()
+    proxy_url2 = URL("http://proxy.example2.com")
+    proxy_auth2 = mock.Mock()
+
+    class OnCall(Exception):
+        pass
+
+    request_class_mock = mock.Mock(side_effect=OnCall())
+    session = ClientSession(
+        proxy=proxy_url, proxy_auth=proxy_auth, request_class=request_class_mock
+    )
+
+    assert session._default_proxy == proxy_url, "`ClientSession._default_proxy` not set"
+    assert (
+        session._default_proxy_auth == proxy_auth
+    ), "`ClientSession._default_proxy_auth` not set"
+
+    with pytest.raises(OnCall):
+        await session.get(
+            "http://example.com",
+        )
+
+    assert request_class_mock.called, "request class not called"
+    assert (
+        request_class_mock.call_args[1].get("proxy") == proxy_url
+    ), "`ClientSession._request` uses default proxy not one used in ClientSession.get"
+    assert (
+        request_class_mock.call_args[1].get("proxy_auth") == proxy_auth
+    ), "`ClientSession._request` uses default proxy_auth not one used in ClientSession.get"
+
+    request_class_mock.reset_mock()
+    with pytest.raises(OnCall):
+        await session.get(
+            "http://example.com", proxy=proxy_url2, proxy_auth=proxy_auth2
+        )
+
+    assert request_class_mock.called, "request class not called"
+    assert (
+        request_class_mock.call_args[1].get("proxy") == proxy_url2
+    ), "`ClientSession._request` uses default proxy not one used in ClientSession.get"
+    assert (
+        request_class_mock.call_args[1].get("proxy_auth") == proxy_auth2
+    ), "`ClientSession._request` uses default proxy_auth not one used in ClientSession.get"
+
+    await session.close()
 
 
 async def test_request_tracing(

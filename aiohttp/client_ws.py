@@ -3,7 +3,8 @@
 import asyncio
 import dataclasses
 import sys
-from typing import Any, Final, Optional, cast
+from types import TracebackType
+from typing import Any, Final, Optional, Type, cast
 
 from .client_exceptions import ClientError, ServerTimeoutError
 from .client_reqrep import ClientResponse
@@ -67,7 +68,7 @@ class ClientWebSocketResponse:
         self._closed = False
         self._closing = False
         self._close_code: Optional[int] = None
-        self._timeout: ClientWSTimeout = timeout
+        self._timeout = timeout
         self._autoclose = autoclose
         self._autoping = autoping
         self._heartbeat = heartbeat
@@ -395,3 +396,14 @@ class ClientWebSocketResponse:
         if msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSING, WSMsgType.CLOSED):
             raise StopAsyncIteration
         return msg
+
+    async def __aenter__(self) -> "ClientWebSocketResponse":
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
+        await self.close()

@@ -44,7 +44,7 @@ frozenlist==1.4.1
     #   aiosignal
 gunicorn==23.0.0
     # via -r requirements/base.in
-idna==3.4
+idna==3.6
     # via
     #   requests
     #   trustme
@@ -69,15 +69,15 @@ packaging==24.1
     #   pytest
 pluggy==1.5.0
     # via pytest
-proxy-py==2.4.7
+proxy-py==2.4.8
     # via -r requirements/test.in
 pycares==4.4.0
     # via aiodns
 pycparser==2.22
     # via cffi
-pydantic==2.9.1
+pydantic==2.9.2
     # via python-on-whales
-pydantic-core==2.23.3
+pydantic-core==2.23.4
     # via pydantic
 pygments==2.18.0
     # via rich
@@ -94,10 +94,6 @@ python-dateutil==2.9.0.post0
     # via freezegun
 python-on-whales==0.73.0
     # via -r requirements/test.in
-re-assert==1.1.0
-    # via -r requirements/test.in
-regex==2024.7.24
-    # via re-assert
 requests==2.32.3
     # via python-on-whales
 rich==13.8.1
@@ -129,11 +125,11 @@ typing-extensions==4.12.2
     #   python-on-whales
     #   rich
     #   typer
-urllib3==2.2.2
+urllib3==2.2.3
     # via requests
-uvloop==0.20.0 ; platform_system != "Windows" and implementation_name == "cpython"
+uvloop==0.21.0b1 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
 wait-for-it==2.2.2
     # via -r requirements/test.in
-yarl==1.11.1
+yarl==1.13.0
     # via -r requirements/runtime-deps.in

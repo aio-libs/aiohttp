@@ -244,6 +244,7 @@ Matthieu Hauglustaine
 Matthieu Rigal
 Matvey Tingaev
 Meet Mangukiya
+Meshya
 Michael Ihnatenko
 Michał Górny
 Mikhail Burshteyn
@@ -281,6 +282,7 @@ Pawel Kowalski
 Pawel Miech
 Pepe Osca
 Philipp A.
+Pierre-Louis Peeters
 Pieter van Beek
 Qiao Han
 Rafael Viotti

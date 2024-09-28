@@ -8,4 +8,4 @@ Brotli; platform_python_implementation == 'CPython'
 brotlicffi; platform_python_implementation != 'CPython'
 frozenlist >= 1.1.1
 multidict >=4.5, < 7.0
-yarl >= 1.11.0, < 2.0
+yarl >= 1.13.0, < 2.0

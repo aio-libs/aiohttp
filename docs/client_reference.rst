@@ -134,7 +134,7 @@ The client session supports the context manager protocol for self closing.
 
    :param bool raise_for_status:
 
-      Automatically call :meth:`ClientResponse.raise_for_status()` for
+      Automatically call :meth:`ClientResponse.raise_for_status` for
       each response, ``False`` by default.
 
       This parameter can be overridden when making a request, e.g.::
@@ -309,7 +309,7 @@ The client session supports the context manager protocol for self closing.
 
    .. attribute:: raise_for_status
 
-      Should :meth:`ClientResponse.raise_for_status()` be called for each response
+      Should :meth:`ClientResponse.raise_for_status` be called for each response
 
       Either :class:`bool` or :class:`collections.abc.Callable`
 
@@ -438,7 +438,7 @@ The client session supports the context manager protocol for self closing.
       :param bool expect100: Expect 100-continue response from server.
                              ``False`` by default (optional).
 
-      :param bool raise_for_status: Automatically call :meth:`ClientResponse.raise_for_status()` for
+      :param bool raise_for_status: Automatically call :meth:`ClientResponse.raise_for_status` for
                                     response if set to ``True``.
                                     If set to ``None`` value from ``ClientSession`` will be used.
                                     ``None`` by default (optional).
@@ -635,8 +635,8 @@ The client session supports the context manager protocol for self closing.
                               <ClientResponse>` object.
 
    .. method:: ws_connect(url, *, method='GET', \
-                            protocols=(), timeout=10.0,\
-                            receive_timeout=None,\
+                            protocols=(), \
+                            timeout=sentinel,\
                             auth=None,\
                             autoclose=True,\
                             autoping=True,\
@@ -659,12 +659,11 @@ The client session supports the context manager protocol for self closing.
 
       :param tuple protocols: Websocket protocols
 
-      :param float timeout: Timeout for websocket to close. ``10`` seconds
-                            by default
-
-      :param float receive_timeout: Timeout for websocket to receive
-                                    complete message.  ``None`` (unlimited)
-                                    seconds by default
+      :param timeout: a :class:`ClientWSTimeout` timeout for websocket.
+                      By default, the value
+                      `ClientWSTimeout(ws_receive=None, ws_close=10.0)` is used
+                      (``10.0`` seconds for the websocket to close).
+                      ``None`` means no timeout will be used.
 
       :param aiohttp.BasicAuth auth: an object that represents HTTP
                                      Basic Authorization (optional)
@@ -861,7 +860,7 @@ certification chaining.
                           ``False`` by default (optional).
 
    :param bool raise_for_status: Automatically call
-                                 :meth:`ClientResponse.raise_for_status()`
+                                 :meth:`ClientResponse.raise_for_status`
                                  for response if set to ``True``.  If
                                  set to ``None`` value from
                                  ``ClientSession`` will be used.
@@ -1705,7 +1704,22 @@ Utilities
 
       :class:`float`, ``None`` by default.
 
-   .. versionadded:: 3.3
+
+.. class:: ClientWSTimeout(*, ws_receive=None, ws_close=None)
+
+   A data class for websocket client timeout settings.
+
+   .. attribute:: ws_receive
+
+      A timeout for websocket to receive a complete message.
+
+      :class:`float`, ``None`` by default.
+
+   .. attribute:: ws_close
+
+      A timeout for the websocket to close.
+
+      :class:`float`, ``10.0`` by default.
 
 
    .. note::
@@ -2193,6 +2207,10 @@ Connection errors
 
    Derived from :exc:`ClientError`
 
+.. class:: ClientConnectionResetError
+
+   Derived from :exc:`ClientConnectionError` and :exc:`ConnectionResetError`
+
 .. class:: ClientOSError
 
    Subset of connection errors that are initiated by an :exc:`OSError`
@@ -2278,6 +2296,8 @@ Hierarchy of exceptions
 * :exc:`ClientError`
 
   * :exc:`ClientConnectionError`
+
+    * :exc:`ClientConnectionResetError`
 
     * :exc:`ClientOSError`
 

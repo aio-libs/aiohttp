@@ -8,6 +8,7 @@ from multidict import CIMultiDict
 
 from .abc import AbstractStreamWriter
 from .base_protocol import BaseProtocol
+from .client_exceptions import ClientConnectionResetError
 from .compression_utils import ZLibCompressor
 from .helpers import NO_EXTENSIONS
 
@@ -70,9 +71,9 @@ class StreamWriter(AbstractStreamWriter):
         size = len(chunk)
         self.buffer_size += size
         self.output_size += size
-        transport = self.transport
-        if not self._protocol.connected or transport is None or transport.is_closing():
-            raise ConnectionResetError("Cannot write to closing transport")
+        transport = self._protocol.transport
+        if transport is None or transport.is_closing():
+            raise ClientConnectionResetError("Cannot write to closing transport")
         transport.write(chunk)
 
     async def write(
