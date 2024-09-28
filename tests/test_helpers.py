@@ -433,6 +433,7 @@ async def test_timer_context_timeout_does_not_leak_upward() -> None:
     loop = asyncio.get_running_loop()
     ctx = helpers.TimerContext(loop)
     current_task = asyncio.current_task()
+    assert current_task is not None
     with pytest.raises(asyncio.TimeoutError):
         with ctx:
             assert current_task.cancelling() == 0
