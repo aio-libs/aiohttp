@@ -427,9 +427,8 @@ class ClientRequest:
         self.headers: CIMultiDict[str] = CIMultiDict()
 
         # add host
-        netloc = cast(str, self.url.raw_host)
-        if helpers.is_ipv6_address(netloc):
-            netloc = f"[{netloc}]"
+        netloc = self.url.host_subcomponent
+        assert netloc is not None
         # See https://github.com/aio-libs/aiohttp/issues/3636.
         netloc = netloc.rstrip(".")
         if self.url.port is not None and not self.url.is_default_port():
@@ -674,17 +673,13 @@ class ClientRequest:
         # - not CONNECT proxy must send absolute form URI
         # - most common is origin form URI
         if self.method == hdrs.METH_CONNECT:
-            connect_host = self.url.raw_host
+            connect_host = self.url.host_subcomponent
             assert connect_host is not None
-            if helpers.is_ipv6_address(connect_host):
-                connect_host = f"[{connect_host}]"
             path = f"{connect_host}:{self.url.port}"
         elif self.proxy and not self.is_ssl():
             path = str(self.url)
         else:
-            path = self.url.raw_path
-            if self.url.raw_query_string:
-                path += "?" + self.url.raw_query_string
+            path = self.url.raw_path_qs
 
         protocol = conn.protocol
         assert protocol is not None
