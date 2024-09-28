@@ -10,6 +10,24 @@
 
 .. towncrier release notes start
 
+3.10.8 (2024-09-28)
+===================
+
+Bug fixes
+---------
+
+- Fixed cancellation leaking upwards on timeout -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9326`.
+
+
+
+
+----
+
+
 3.10.7 (2024-09-27)
 ===================
 
