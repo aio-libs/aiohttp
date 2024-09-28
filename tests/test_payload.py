@@ -1,6 +1,8 @@
 import array
-from io import StringIO
+import io
+from pathlib import Path
 from typing import Any, AsyncIterator, Iterator
+from unittest import mock
 
 import pytest
 
@@ -92,11 +94,44 @@ def test_string_payload() -> None:
 
 
 def test_string_io_payload() -> None:
-    s = StringIO("ű" * 5000)
+    s = io.StringIO("ű" * 5000)
     p = payload.StringIOPayload(s)
     assert p.encoding == "utf-8"
     assert p.content_type == "text/plain; charset=utf-8"
     assert p.size == 10000
+
+
+def test_text_io_payload() -> None:
+    filepath = Path(__file__).with_name("sample.txt")
+    filesize = filepath.stat().st_size
+    with filepath.open("r") as f:
+        p = payload.TextIOPayload(f)
+        assert p.encoding == "utf-8"
+        assert p.content_type == "text/plain; charset=utf-8"
+        assert p.size == filesize
+        assert not f.closed
+
+
+def test_bytes_io_payload() -> None:
+    filepath = Path(__file__).with_name("sample.txt")
+    filesize = filepath.stat().st_size
+    with filepath.open("rb") as f:
+        p = payload.BytesIOPayload(f)
+        assert p.size == filesize
+
+        p._seekable = False
+        assert p.size is None
+
+        assert not f.closed
+
+
+def test_buffered_reader_payload() -> None:
+    filepath = Path(__file__).with_name("sample.txt")
+    filesize = filepath.stat().st_size
+    with filepath.open("rb") as f:
+        p = payload.BufferedReaderPayload(f)
+        assert p.size == filesize
+        assert not f.closed
 
 
 def test_async_iterable_payload_default_content_type() -> None:
@@ -120,3 +155,132 @@ def test_async_iterable_payload_explicit_content_type() -> None:
 def test_async_iterable_payload_not_async_iterable() -> None:
     with pytest.raises(TypeError):
         payload.AsyncIterablePayload(object())  # type: ignore[arg-type]
+
+
+async def test_string_io_payload_write() -> None:
+    content = "ű" * 5000
+
+    s = io.StringIO(content)
+    p = payload.StringIOPayload(s)
+
+    assert p.decode() == content
+
+    with mock.patch("aiohttp.http_writer.StreamWriter") as mock_obj:
+        instance = mock_obj.return_value
+        instance.write = mock.AsyncMock()
+
+        await p.write(instance)
+        instance.write.assert_called_once_with(content.encode("utf-8"))
+
+        instance.write.reset_mock()
+
+        await p.write(instance)
+        instance.write.assert_called_once_with(content.encode("utf-8"))
+
+
+async def test_io_base_payload_write() -> None:
+    filepath = Path(__file__).with_name("sample.txt")
+    with filepath.open("rb") as f:
+        content = f.read()
+        with io.BytesIO(content) as bf:
+
+            p = payload.IOBasePayload(bf)
+
+            assert p.decode() == content.decode()
+
+            p._seekable = False
+            assert p.decode() == ""
+            p._seekable = True
+
+            with mock.patch("aiohttp.http_writer.StreamWriter") as mock_obj:
+                instance = mock_obj.return_value
+                instance.write = mock.AsyncMock()
+
+                await p.write(instance)
+                instance.write.assert_called_once_with(content)  # 1 chunk
+
+                instance.write.reset_mock()
+
+                await p.write(instance)
+                instance.write.assert_called_once_with(content)  # 1 chunk
+
+
+async def test_text_io_payload_write() -> None:
+    filepath = Path(__file__).with_name("sample.txt")
+    with filepath.open("r") as f:
+        content = f.read()
+        f.seek(0)
+
+        p = payload.TextIOPayload(f)
+
+        assert p.decode() == content
+
+        p._seekable = False
+        assert p.decode() == ""
+        p._seekable = True
+
+        with mock.patch("aiohttp.http_writer.StreamWriter") as mock_obj:
+            instance = mock_obj.return_value
+            instance.write = mock.AsyncMock()
+
+            await p.write(instance)
+            instance.write.assert_called_once_with(content.encode("utf-8"))  # 1 chunk
+
+            instance.write.reset_mock()
+
+            await p.write(instance)
+            instance.write.assert_called_once_with(content.encode("utf-8"))  # 1 chunk
+
+
+async def test_bytes_io_payload_write() -> None:
+    filepath = Path(__file__).with_name("sample.txt")
+    with filepath.open("rb") as f:
+        content = f.read()
+        with io.BytesIO(content) as bf:
+
+            p = payload.BytesIOPayload(bf)
+
+            assert p.decode() == content.decode()
+
+            p._seekable = False
+            assert p.decode() == ""
+            p._seekable = True
+
+            with mock.patch("aiohttp.http_writer.StreamWriter") as mock_obj:
+                instance = mock_obj.return_value
+                instance.write = mock.AsyncMock()
+
+                await p.write(instance)
+                instance.write.assert_called_once_with(content)  # 1 chunk
+
+                instance.write.reset_mock()
+
+                await p.write(instance)
+                instance.write.assert_called_once_with(content)  # 1 chunk
+
+
+async def test_buffered_reader_payload_write() -> None:
+    filepath = Path(__file__).with_name("sample.txt")
+    with filepath.open("rb") as f:
+        content = f.read()
+        f.seek(0)
+
+        p = payload.BufferedReaderPayload(f)
+
+        assert p.decode() == content.decode()
+
+        p._seekable = False
+        assert p.decode() == ""
+        p._seekable = True
+
+        with mock.patch("aiohttp.http_writer.StreamWriter") as mock_obj:
+            instance = mock_obj.return_value
+            instance.write = mock.AsyncMock()
+
+            await p.write(instance)
+            instance.write.assert_called_once_with(content)  # 1 chunk
+
+            instance.write.reset_mock()
+
+            await p.write(instance)
+            instance.write.assert_called_once_with(content)  # 1 chunk

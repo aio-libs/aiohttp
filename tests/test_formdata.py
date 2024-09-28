@@ -1,9 +1,14 @@
 import io
+import tarfile
+import tempfile
+from pathlib import Path
+from typing import NoReturn
 from unittest import mock
 
 import pytest
 
 from aiohttp import FormData, web
+from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.http_writer import StreamWriter
 from aiohttp.pytest_plugin import AiohttpClient
 
@@ -103,28 +108,143 @@ async def test_formdata_field_name_is_not_quoted(
     assert b'name="email 1"' in buf
 
 
-async def test_mark_formdata_as_processed(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
-
-    app = web.Application()
-    app.add_routes([web.post("/", handler)])
-
-    client = await aiohttp_client(app)
-
-    data = FormData()
-    data.add_field("test", "test_value", content_type="application/json")
-
-    resp = await client.post("/", data=data)
-    assert len(data._writer._parts) == 1
-
-    with pytest.raises(RuntimeError):
-        await client.post("/", data=data)
-
-    resp.release()
-
-
 async def test_formdata_boundary_param() -> None:
     boundary = "some_boundary"
     form = FormData(boundary=boundary)
     assert form._writer.boundary == boundary
+
+
+async def test_formdata_on_redirect(aiohttp_client: AiohttpClient) -> None:
+    with Path(__file__).with_name("sample.txt").open("rb") as fobj:
+        content = fobj.read()
+        fobj.seek(0)
+
+        async def handler_0(request: web.Request) -> web.Response:
+            raise web.HTTPPermanentRedirect("/1")
+
+        async def handler_1(request: web.Request) -> web.Response:
+            req_data = await request.post()
+            assert ["sample.txt"] == list(req_data.keys())
+            file_field = req_data["sample.txt"]
+            assert isinstance(file_field, web.FileField)
+            assert content == file_field.file.read()
+            return web.Response()
+
+        app = web.Application()
+        app.router.add_post("/0", handler_0)
+        app.router.add_post("/1", handler_1)
+
+        client = await aiohttp_client(app)
+
+        data = FormData()
+        data.add_field("sample.txt", fobj)
+
+        resp = await client.post("/0", data=data)
+        assert len(data._writer._parts) == 1
+        assert resp.status == 200
+
+        resp.release()
+
+
+async def test_formdata_on_redirect_after_recv(aiohttp_client: AiohttpClient) -> None:
+    with Path(__file__).with_name("sample.txt").open("rb") as fobj:
+        content = fobj.read()
+        fobj.seek(0)
+
+        async def handler_0(request: web.Request) -> web.Response:
+            req_data = await request.post()
+            assert ["sample.txt"] == list(req_data.keys())
+            file_field = req_data["sample.txt"]
+            assert isinstance(file_field, web.FileField)
+            assert content == file_field.file.read()
+            raise web.HTTPPermanentRedirect("/1")
+
+        async def handler_1(request: web.Request) -> web.Response:
+            req_data = await request.post()
+            assert ["sample.txt"] == list(req_data.keys())
+            file_field = req_data["sample.txt"]
+            assert isinstance(file_field, web.FileField)
+            assert content == file_field.file.read()
+            return web.Response()
+
+        app = web.Application()
+        app.router.add_post("/0", handler_0)
+        app.router.add_post("/1", handler_1)
+
+        client = await aiohttp_client(app)
+
+        data = FormData()
+        data.add_field("sample.txt", fobj)
+
+        resp = await client.post("/0", data=data)
+        assert len(data._writer._parts) == 1
+        assert resp.status == 200
+
+        resp.release()
+
+
+async def test_nonseekable_io_on_redirect(aiohttp_client: AiohttpClient) -> None:
+    async def handler_0(request: web.Request) -> web.Response:
+        await request.read()
+        raise web.HTTPPermanentRedirect("/1")
+
+    async def handler_1(request: web.Request) -> NoReturn:
+        await request.read()
+        assert False
+
+    app = web.Application()
+    app.router.add_post("/0", handler_0)
+    app.router.add_post("/1", handler_1)
+    client = await aiohttp_client(app)
+
+    data = b"Test io data."
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w") as tf:
+        ti = tarfile.TarInfo(name="payload1.txt")
+        ti.size = len(data)
+        tf.addfile(tarinfo=ti, fileobj=io.BytesIO(data))
+
+    # Streaming tarfile.
+    buf.seek(0)
+    tf = tarfile.open(fileobj=buf, mode="r|")
+    for entry in tf:
+        with pytest.raises(ClientConnectionError) as exc_info:
+            await client.post("/0", data=tf.extractfile(entry))
+        raw_exc_info = exc_info._excinfo
+        assert isinstance(raw_exc_info, tuple)
+        cause_exc = raw_exc_info[1].__cause__
+        assert isinstance(cause_exc, RuntimeError)
+        assert len(cause_exc.args) == 1
+        assert cause_exc.args[0].startswith("Non-seekable IO payload")
+
+
+async def test_nonseekable_text_io_on_redirect(aiohttp_client: AiohttpClient) -> None:
+    async def handler_0(request: web.Request) -> web.Response:
+        await request.read()
+        raise web.HTTPPermanentRedirect("/1")
+
+    async def handler_1(request: web.Request) -> NoReturn:
+        await request.read()
+        assert False
+
+    app = web.Application()
+    app.router.add_post("/0", handler_0)
+    app.router.add_post("/1", handler_1)
+    client = await aiohttp_client(app)
+
+    data = "Test io data."
+    with tempfile.SpooledTemporaryFile(mode="w+") as temp_file:
+        temp_file.write(data)
+        temp_file.seek(0)
+
+        f = getattr(temp_file, "_file")
+        assert isinstance(f, io.TextIOBase)
+        with mock.patch.object(f, "seekable", return_value=False):
+            with pytest.raises(ClientConnectionError) as exc_info:
+                await client.post("/0", data=f)
+            raw_exc_info = exc_info._excinfo
+            assert isinstance(raw_exc_info, tuple)
+            cause_exc = raw_exc_info[1].__cause__
+            assert isinstance(cause_exc, RuntimeError)
+            assert len(cause_exc.args) == 1
+            assert cause_exc.args[0].startswith("Non-seekable IO payload")
