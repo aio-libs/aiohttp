@@ -684,6 +684,7 @@ class TimerContext(BaseTimerContext):
         self._loop = loop
         self._tasks: List[asyncio.Task[Any]] = []
         self._cancelled = False
+        self._cancelling = 0
 
     def assert_timeout(self) -> None:
         """Raise TimeoutError if timer has already been cancelled."""
@@ -692,9 +693,14 @@ class TimerContext(BaseTimerContext):
 
     def __enter__(self) -> BaseTimerContext:
         task = asyncio.current_task(loop=self._loop)
-
         if task is None:
             raise RuntimeError("Timeout context manager should be used inside a task")
+
+        if sys.version_info >= (3, 11):
+            # Remember if the task was already cancelling
+            # so when we __exit__ we can decide if we should
+            # raise asyncio.TimeoutError or let the cancellation propagate
+            self._cancelling = task.cancelling()
 
         if self._cancelled:
             raise asyncio.TimeoutError from None
@@ -708,11 +714,22 @@ class TimerContext(BaseTimerContext):
         exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
     ) -> Optional[bool]:
+        enter_task: Optional[asyncio.Task[Any]] = None
         if self._tasks:
-            self._tasks.pop()
+            enter_task = self._tasks.pop()
 
         if exc_type is asyncio.CancelledError and self._cancelled:
-            raise asyncio.TimeoutError from None
+            assert enter_task is not None
+            # The timeout was hit, and the task was cancelled
+            # so we need to uncancel the last task that entered the context manager
+            # since the cancellation should not leak out of the context manager
+            if sys.version_info >= (3, 11):
+                # If the task was already cancelling don't raise
+                # asyncio.TimeoutError and instead return None
+                # to allow the cancellation to propagate
+                if enter_task.uncancel() > self._cancelling:
+                    return None
+            raise asyncio.TimeoutError from exc_val
         return None
 
     def timeout(self) -> None:
