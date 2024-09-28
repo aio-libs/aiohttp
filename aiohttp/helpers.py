@@ -733,7 +733,7 @@ class TimerContext(BaseTimerContext):
         if self._tasks:
             enter_task = self._tasks.pop()
 
-        if self._cancelled and exc_type is asyncio.CancelledError:
+        if exc_type is asyncio.CancelledError and self._cancelled:
             assert enter_task is not None
             # The timeout was hit, and the task was cancelled
             # so we need to uncancel the last task that entered the context manager
