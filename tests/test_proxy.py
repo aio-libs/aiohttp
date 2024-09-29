@@ -5,6 +5,7 @@ import ssl
 import unittest
 from unittest import mock
 
+import pytest
 from yarl import URL
 
 import aiohttp
