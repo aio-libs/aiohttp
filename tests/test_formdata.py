@@ -22,11 +22,19 @@ def writer(buf):
     return writer
 
 
-def test_formdata_multipart(buf, writer) -> None:
-    form = FormData()
+def test_formdata_multipart(buf: bytearray) -> None:
+    form = FormData(default_to_multipart=False)
     assert not form.is_multipart
 
     form.add_field("test", b"test", filename="test.txt")
+    assert form.is_multipart
+
+
+def test_form_data_is_multipart_param(buf: bytearray) -> None:
+    form = FormData(default_to_multipart=True)
+    assert form.is_multipart
+
+    form.add_field("test", "test")
     assert form.is_multipart
 
 
