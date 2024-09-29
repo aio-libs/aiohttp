@@ -415,14 +415,14 @@ class TestProxy(unittest.TestCase):
                             self.loop.run_until_complete(req.close())
                 self.loop.run_until_complete(connector.close())
 
+    @mock.patch("aiohttp.connector.ClientRequest")
     @mock.patch(
         "aiohttp.connector.aiohappyeyeballs.start_connection",
         autospec=True,
         spec_set=True,
     )
-    @mock.patch("aiohttp.connector.ClientRequest")
     def test_https_connect_fingerprint_mismatch(
-        self, ClientRequestMock: mock.Mock, start_connection: mock.Mock
+        self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         async def make_conn() -> aiohttp.TCPConnector:
             return aiohttp.TCPConnector()
@@ -507,14 +507,14 @@ class TestProxy(unittest.TestCase):
                         connector._create_connection(req, [], aiohttp.ClientTimeout())
                     )
 
+    @mock.patch("aiohttp.connector.ClientRequest")
     @mock.patch(
         "aiohttp.connector.aiohappyeyeballs.start_connection",
         autospec=True,
         spec_set=True,
     )
-    @mock.patch("aiohttp.connector.ClientRequest")
     def test_https_connect(
-        self, ClientRequestMock: mock.Mock, start_connection: mock.Mock
+        self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         proxy_req = ClientRequest(
             "GET", URL("http://proxy.example.com"), loop=self.loop
