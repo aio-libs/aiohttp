@@ -3,6 +3,8 @@
 Contributing
 ============
 
+(:doc:`contributing-admins`)
+
 Instructions for contributors
 -----------------------------
 
@@ -110,6 +112,8 @@ Install pre-commit hooks:
 
 Congratulations, you are ready to run the test suite!
 
+.. include:: ../vendor/README.rst
+
 
 Run autoformatter
 -----------------
@@ -149,37 +153,77 @@ Any extra texts (print statements and so on) should be removed.
 
      make test-<python-version>[-no-extensions]
 
-   For example, if you want to run tests for python3.7
+   For example, if you want to run tests for python3.10
    without extensions, you can run this command::
 
-     make test-3.7-no-extensions
+     make test-3.10-no-extensions
 
-Tests coverage
---------------
+Code coverage
+-------------
 
-We are trying hard to have good test coverage; please don't make it worse.
+We use *codecov.io* as an indispensable tool for analyzing our coverage
+results. Visit https://codecov.io/gh/aio-libs/aiohttp to see coverage
+reports for the master branch, history, pull requests etc.
 
-Use:
+We'll use an example from a real PR to demonstrate how we use this.
+Once the tests run in a PR, you'll see a comment posted by *codecov*.
+The most important thing to check here is whether there are any new
+missed or partial lines in the report:
 
-.. code-block:: shell
+.. image:: _static/img/contributing-cov-comment.svg
 
-   $ make cov-dev
+Here, the PR has introduced 1 miss and 2 partials. Now we
+click the link in the comment header to open the full report:
 
-to run test suite and collect coverage information. Once the command
-has finished check your coverage at the file that appears in the last
-line of the output:
-``open file:///.../aiohttp/htmlcov/index.html``
+.. image:: _static/img/contributing-cov-header.svg
+   :alt: Codecov report
 
-Please go to the link and make sure that your code change is covered.
+Now, if we look through the diff under 'Files changed' we find one of
+our partials:
 
+.. image:: _static/img/contributing-cov-partial.svg
+   :alt: A while loop with partial coverage.
 
-The project uses *codecov.io* for storing coverage results. Visit
-https://codecov.io/gh/aio-libs/aiohttp for looking on coverage of
-master branch, history, pull requests etc.
+In this case, the while loop is never skipped in our tests. This is
+probably not worth writing a test for (and may be a situation that is
+impossible to trigger anyway), so we leave this alone.
+
+We're still missing a partial and a miss, so we switch to the
+'Indirect changes' tab and take a look through the diff there. This
+time we find the remaining 2 lines:
+
+.. image:: _static/img/contributing-cov-miss.svg
+   :alt: An if statement that isn't covered anymore.
+
+After reviewing the PR, we find that this code is no longer needed as
+the changes mean that this method will never be called under those
+conditions. Thanks to this report, we were able to remove some
+redundant code from a performance-critical part of our codebase (this
+check would have been run, probably multiple times, for every single
+incoming request).
+
+.. tip::
+   Sometimes the diff on *codecov.io* doesn't make sense. This is usually
+   caused by the branch being out of sync with master. Try merging
+   master into the branch and it will likely fix the issue. Failing
+   that, try checking coverage locally as described in the next section.
+
+Other tools
+-----------
 
 The browser extension https://docs.codecov.io/docs/browser-extension
-is highly recommended for analyzing the coverage just in *Files
-Changed* tab on *GitHub Pull Request* review page.
+is also a useful tool for analyzing the coverage directly from *Files
+Changed* tab on the *GitHub Pull Request* review page.
+
+
+You can also produce coverage reports locally with ``make cov-dev``
+or just adding ``--cov-report=html`` to ``pytest``.
+
+This will run the test suite and collect coverage information. Once
+finished, coverage results can be view by opening:
+```console
+$ python -m webbrowser -n file://"$(pwd)"/htmlcov/index.html
+```
 
 Documentation
 -------------
@@ -216,40 +260,23 @@ To run spell checker on Linux box you should install it first:
    $ sudo apt-get install enchant
    $ pip install sphinxcontrib-spelling
 
+
+Preparing a pull request
+------------------------
+
+When making a pull request, please include a short summary of the changes
+and a reference to any issue tickets that the PR is intended to solve.
+All PRs with code changes should include tests. All changes should
+include a changelog entry.
+
+
 Changelog update
 ----------------
 
-The ``CHANGES.rst`` file is managed using `towncrier
-<https://github.com/hawkowl/towncrier>`_ tool and all non trivial
-changes must be accompanied by a news entry.
-
-To add an entry to the news file, first you need to have created an
-issue describing the change you want to make. A Pull Request itself
-*may* function as such, but it is preferred to have a dedicated issue
-(for example, in case the PR ends up rejected due to code quality
-reasons).
-
-Once you have an issue or pull request, you take the number and you
-create a file inside of the ``CHANGES/`` directory named after that
-issue number with an extension of ``.removal``, ``.feature``,
-``.bugfix``, or ``.doc``.  Thus if your issue or PR number is ``1234`` and
-this change is fixing a bug, then you would create a file
-``CHANGES/1234.bugfix``. PRs can span multiple categories by creating
-multiple files (for instance, if you added a feature and
-deprecated/removed the old feature at the same time, you would create
-``CHANGES/NNNN.feature`` and ``CHANGES/NNNN.removal``). Likewise if a PR touches
-multiple issues/PRs you may create a file for each of them with the
-exact same contents and *Towncrier* will deduplicate them.
-
-The contents of this file are *reStructuredText* formatted text that
-will be used as the content of the news file entry. You do not need to
-reference the issue or PR numbers here as *towncrier* will automatically
-add a reference to all of the affected issues when rendering the news
-file.
+.. include:: ../CHANGES/README.rst
 
 
-
-Making a Pull Request
+Making a pull request
 ---------------------
 
 After finishing all steps make a GitHub_ Pull Request with *master* base branch.
@@ -315,7 +342,7 @@ The rules for committers are simple:
 4. Keep test suite comprehensive. In practice it means leveling up
    coverage. 97% is not bad but we wish to have 100% someday. Well, 99%
    is good target too.
-5. Don't hesitate to improve our docs. Documentation is very important
+5. Don't hesitate to improve our docs. Documentation is a very important
    thing, it's the key for project success. The documentation should
    not only cover our public API but help newbies to start using the
    project and shed a light on non-obvious gotchas.

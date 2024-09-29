@@ -1,7 +1,7 @@
-# type: ignore
-from typing import Any
+import asyncio
 from unittest import mock
 
+from pytest_mock import MockerFixture
 from yarl import URL
 
 from aiohttp import http
@@ -9,9 +9,10 @@ from aiohttp.client_exceptions import ClientOSError, ServerDisconnectedError
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.helpers import TimerNoop
+from aiohttp.http_parser import RawResponseMessage
 
 
-async def test_oserror(loop: Any) -> None:
+async def test_oserror(loop: asyncio.AbstractEventLoop) -> None:
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)
@@ -21,7 +22,7 @@ async def test_oserror(loop: Any) -> None:
     assert isinstance(proto.exception(), ClientOSError)
 
 
-async def test_pause_resume_on_error(loop: Any) -> None:
+async def test_pause_resume_on_error(loop: asyncio.AbstractEventLoop) -> None:
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)
@@ -33,7 +34,7 @@ async def test_pause_resume_on_error(loop: Any) -> None:
     assert not proto._reading_paused
 
 
-async def test_client_proto_bad_message(loop: Any) -> None:
+async def test_client_proto_bad_message(loop: asyncio.AbstractEventLoop) -> None:
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)
@@ -45,24 +46,25 @@ async def test_client_proto_bad_message(loop: Any) -> None:
     assert isinstance(proto.exception(), http.HttpProcessingError)
 
 
-async def test_uncompleted_message(loop: Any) -> None:
+async def test_uncompleted_message(loop: asyncio.AbstractEventLoop) -> None:
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)
     proto.set_response_params(read_until_eof=True)
 
     proto.data_received(
-        b"HTTP/1.1 301 Moved Permanently\r\n" b"Location: http://python.org/"
+        b"HTTP/1.1 301 Moved Permanently\r\nLocation: http://python.org/"
     )
     proto.connection_lost(None)
 
     exc = proto.exception()
     assert isinstance(exc, ServerDisconnectedError)
+    assert isinstance(exc.message, RawResponseMessage)
     assert exc.message.code == 301
     assert dict(exc.message.headers) == {"Location": "http://python.org/"}
 
 
-async def test_client_protocol_readuntil_eof(loop: Any) -> None:
+async def test_client_protocol_readuntil_eof(loop: asyncio.AbstractEventLoop) -> None:
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)
@@ -99,30 +101,34 @@ async def test_client_protocol_readuntil_eof(loop: Any) -> None:
     assert response.content.is_eof()
 
 
-async def test_empty_data(loop: Any) -> None:
+async def test_empty_data(loop: asyncio.AbstractEventLoop) -> None:
     proto = ResponseHandler(loop=loop)
     proto.data_received(b"")
 
     # do nothing
 
 
-async def test_schedule_timeout(loop: Any) -> None:
+async def test_schedule_timeout(loop: asyncio.AbstractEventLoop) -> None:
     proto = ResponseHandler(loop=loop)
     proto.set_response_params(read_timeout=1)
+    assert proto._read_timeout_handle is None
+    proto.start_timeout()
     assert proto._read_timeout_handle is not None
 
 
-async def test_drop_timeout(loop: Any) -> None:
+async def test_drop_timeout(loop: asyncio.AbstractEventLoop) -> None:
     proto = ResponseHandler(loop=loop)
     proto.set_response_params(read_timeout=1)
+    proto.start_timeout()
     assert proto._read_timeout_handle is not None
     proto._drop_timeout()
     assert proto._read_timeout_handle is None
 
 
-async def test_reschedule_timeout(loop: Any) -> None:
+async def test_reschedule_timeout(loop: asyncio.AbstractEventLoop) -> None:
     proto = ResponseHandler(loop=loop)
     proto.set_response_params(read_timeout=1)
+    proto.start_timeout()
     assert proto._read_timeout_handle is not None
     h = proto._read_timeout_handle
     proto._reschedule_timeout()
@@ -130,9 +136,26 @@ async def test_reschedule_timeout(loop: Any) -> None:
     assert proto._read_timeout_handle is not h
 
 
-async def test_eof_received(loop: Any) -> None:
+async def test_eof_received(loop: asyncio.AbstractEventLoop) -> None:
     proto = ResponseHandler(loop=loop)
     proto.set_response_params(read_timeout=1)
+    proto.start_timeout()
     assert proto._read_timeout_handle is not None
     proto.eof_received()
     assert proto._read_timeout_handle is None
+
+
+async def test_connection_lost_sets_transport_to_none(
+    loop: asyncio.AbstractEventLoop, mocker: MockerFixture
+) -> None:
+    """Ensure that the transport is set to None when the connection is lost.
+
+    This ensures the writer knows that the connection is closed.
+    """
+    proto = ResponseHandler(loop=loop)
+    proto.connection_made(mocker.Mock())
+    assert proto.transport is not None
+
+    proto.connection_lost(OSError())
+
+    assert proto.transport is None

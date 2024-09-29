@@ -17,6 +17,12 @@ import re
 from pathlib import Path
 
 PROJECT_ROOT_DIR = Path(__file__).parents[1].resolve()
+IS_RELEASE_ON_RTD = (
+    os.getenv("READTHEDOCS", "False") == "True"
+    and os.environ["READTHEDOCS_VERSION_TYPE"] == "tag"
+)
+if IS_RELEASE_ON_RTD:
+    tags.add("is_release")
 
 _docs_path = os.path.dirname(__file__)
 _version_path = os.path.abspath(
@@ -51,9 +57,8 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     # Third-party extensions:
-    "sphinxcontrib.asyncio",
     "sphinxcontrib.blockdiag",
-    "sphinxcontrib.towncrier",  # provides `towncrier-draft-entries` directive
+    "sphinxcontrib.towncrier.ext",  # provides `towncrier-draft-entries` directive
 ]
 
 
@@ -66,6 +71,7 @@ except ImportError:
 
 
 intersphinx_mapping = {
+    "pytest": ("http://docs.pytest.org/en/latest/", None),
     "python": ("http://docs.python.org/3", None),
     "multidict": ("https://multidict.readthedocs.io/en/stable/", None),
     "yarl": ("https://yarl.readthedocs.io/en/stable/", None),
@@ -74,7 +80,7 @@ intersphinx_mapping = {
     "aiohttpremotes": ("https://aiohttp-remotes.readthedocs.io/en/stable/", None),
     "aiohttpsession": ("https://aiohttp-session.readthedocs.io/en/stable/", None),
     "aiohttpdemos": ("https://aiohttp-demos.readthedocs.io/en/latest/", None),
-    "asynctest": ("https://asynctest.readthedocs.io/en/latest/", None),
+    "aiojobs": ("https://aiojobs.readthedocs.io/en/stable/", None),
 }
 
 # Add any paths that contain templates here, relative to this directory.
@@ -99,7 +105,7 @@ github_repo_url = f"{github_url}/{github_repo_slug}"
 github_sponsors_url = f"{github_url}/sponsors"
 
 project = github_repo_name
-copyright = f"2013-2020, {project} maintainers"
+copyright = f"{project} contributors"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -156,11 +162,11 @@ highlight_language = "python3"
 
 # -- Options for extlinks extension ---------------------------------------
 extlinks = {
-    "issue": (f"{github_repo_url}/issues/%s", "#"),
-    "pr": (f"{github_repo_url}/pull/%s", "PR #"),
-    "commit": (f"{github_repo_url}/commit/%s", ""),
-    "gh": (f"{github_url}/%s", "GitHub: "),
-    "user": (f"{github_sponsors_url}/%s", "@"),
+    "issue": (f"{github_repo_url}/issues/%s", "#%s"),
+    "pr": (f"{github_repo_url}/pull/%s", "PR #%s"),
+    "commit": (f"{github_repo_url}/commit/%s", "%s"),
+    "gh": (f"{github_url}/%s", "GitHub: %s"),
+    "user": (f"{github_sponsors_url}/%s", "@%s"),
 }
 
 # -- Options for HTML output ----------------------------------------------
@@ -198,12 +204,6 @@ html_theme_options = {
             "target": f"https://badge.fury.io/py/{project}",
             "height": "20",
             "alt": "Latest PyPI package version",
-        },
-        {
-            "image": f"https://img.shields.io/discourse/status?server=https%3A%2F%2F{github_repo_org}.discourse.group",
-            "target": f"https://{github_repo_org}.discourse.group",
-            "height": "20",
-            "alt": "Discourse status",
         },
         {
             "image": "https://badges.gitter.im/Join%20Chat.svg",
@@ -390,11 +390,11 @@ nitpick_ignore = [
     ("py:class", "aiohttp.SimpleCookie"),  # undocumented
     ("py:class", "aiohttp.web.RequestHandler"),  # undocumented
     ("py:class", "aiohttp.NamedPipeConnector"),  # undocumented
-    ("py:meth", "aiohttp.ClientSession.request"),  # undocumented
     ("py:class", "aiohttp.protocol.HttpVersion"),  # undocumented
     ("py:class", "aiohttp.ClientRequest"),  # undocumented
     ("py:class", "aiohttp.payload.Payload"),  # undocumented
-    ("py:class", "aiohttp.abc.AbstractResolver"),  # undocumented
+    ("py:class", "aiohttp.resolver.AsyncResolver"),  # undocumented
+    ("py:class", "aiohttp.resolver.ThreadedResolver"),  # undocumented
     ("py:func", "aiohttp.ws_connect"),  # undocumented
     ("py:meth", "start"),  # undocumented
     ("py:exc", "aiohttp.ClientHttpProxyError"),  # undocumented

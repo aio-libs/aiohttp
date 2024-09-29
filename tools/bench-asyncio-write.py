@@ -67,16 +67,16 @@ writes = [
 
 bodies = (
     [],
-    [10 * 2 ** 0],
-    [10 * 2 ** 7],
-    [10 * 2 ** 17],
-    [10 * 2 ** 27],
-    [50 * 2 ** 27],
-    [1 * 2 ** 0 for _ in range(10)],
-    [1 * 2 ** 7 for _ in range(10)],
-    [1 * 2 ** 17 for _ in range(10)],
-    [1 * 2 ** 27 for _ in range(10)],
-    [10 * 2 ** 27 for _ in range(5)],
+    [10 * 2**0],
+    [10 * 2**7],
+    [10 * 2**17],
+    [10 * 2**27],
+    [50 * 2**27],
+    [1 * 2**0 for _ in range(10)],
+    [1 * 2**7 for _ in range(10)],
+    [1 * 2**17 for _ in range(10)],
+    [1 * 2**27 for _ in range(10)],
+    [10 * 2**27 for _ in range(5)],
 )
 
 
@@ -123,10 +123,11 @@ async def main(loop):
         base = await bench(t, writes[0], c)
         for w in writes[1:]:
             await bench("", w, c, base)
-    with open("bench.md", "w") as f:
-        for line in res:
-            f.write("| {} |\n".format(" | ".join(line)))
+    return res
 
 
 loop = asyncio.get_event_loop()
-loop.run_until_complete(main(loop))
+results = loop.run_until_complete(main(loop))
+with open("bench.md", "w") as f:
+    for line in results:
+        f.write("| {} |\n".format(" | ".join(line)))

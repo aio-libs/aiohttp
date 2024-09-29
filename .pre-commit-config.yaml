@@ -6,9 +6,35 @@ repos:
     language: fail
     entry: >-
       Changelog files must be named
-      ####.(bugfix|feature|removal|doc|misc)(.#)?(.rst)?
+      ####.(
+      bugfix
+      | feature
+      | deprecation
+      | breaking
+      | doc
+      | packaging
+      | contrib
+      | misc
+      )(.#)?(.rst)?
     exclude: >-
-      ^CHANGES/(\.TEMPLATE\.rst|\.gitignore|\d+\.(bugfix|feature|removal|doc|misc)(\.\d+)?(\.rst)?|README\.rst)$
+      (?x)
+      ^
+        CHANGES/(
+          \.gitignore
+          |(\d+|[0-9a-f]{8}|[0-9a-f]{7}|[0-9a-f]{40})\.(
+            bugfix
+            |feature
+            |deprecation
+            |breaking
+            |doc
+            |packaging
+            |contrib
+            |misc
+          )(\.\d+)?(\.rst)?
+          |README\.rst
+          |\.TEMPLATE\.rst
+        )
+      $
     files: ^CHANGES/
   - id: changelogs-user-role
     name: Changelog files should use a non-broken :user:`name` role
@@ -22,31 +48,30 @@ repos:
     entry: ./tools/check_changes.py
     pass_filenames: false
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v4.1.0'
+  rev: 'v4.6.0'
   hooks:
   - id: check-merge-conflict
 - repo: https://github.com/asottile/yesqa
-  rev: v1.3.0
+  rev: v1.5.0
   hooks:
   - id: yesqa
 - repo: https://github.com/PyCQA/isort
-  rev: '5.10.1'
+  rev: '5.13.2'
   hooks:
   - id: isort
 - repo: https://github.com/psf/black
-  rev: '21.12b0'
+  rev: '24.8.0'
   hooks:
     - id: black
       language_version: python3 # Should be a command that runs python
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v4.1.0'
+  rev: 'v4.6.0'
   hooks:
   - id: end-of-file-fixer
     exclude: >-
       ^docs/[^/]*\.svg$
   - id: requirements-txt-fixer
-    exclude: >-
-      ^requirements/constraints[.]txt$
+    files: requirements/.*\.in$
   - id: trailing-whitespace
   - id: file-contents-sorter
     args: ['--ignore-case']
@@ -72,18 +97,20 @@ repos:
   - id: detect-private-key
     exclude: ^examples/
 - repo: https://github.com/asottile/pyupgrade
-  rev: 'v2.31.0'
+  rev: 'v3.17.0'
   hooks:
   - id: pyupgrade
-    args: ['--py36-plus']
+    args: ['--py37-plus']
 - repo: https://github.com/PyCQA/flake8
-  rev: '4.0.1'
+  rev: '7.1.1'
   hooks:
   - id: flake8
     additional_dependencies:
       - flake8-docstrings==1.6.0
+      - flake8-no-implicit-concat==0.3.4
+      - flake8-requirements==1.7.8
     exclude: "^docs/"
-- repo: git://github.com/Lucas-C/pre-commit-hooks-markup
+- repo: https://github.com/Lucas-C/pre-commit-hooks-markup
   rev: v1.0.1
   hooks:
   - id: rst-linter
@@ -91,3 +118,9 @@ repos:
       ^[^/]+[.]rst$
     exclude: >-
       ^CHANGES\.rst$
+- repo: https://github.com/codespell-project/codespell
+  rev: v2.3.0
+  hooks:
+  - id: codespell
+    additional_dependencies:
+    - tomli

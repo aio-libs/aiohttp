@@ -1,11 +1,6 @@
 import asyncio
 import collections
-from typing import Any, Optional
-
-try:
-    from typing import Deque
-except ImportError:
-    from typing_extensions import Deque
+from typing import Any, Deque, Optional
 
 
 class EventResultOrError:

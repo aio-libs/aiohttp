@@ -1,29 +1,30 @@
-# type: ignore
-from typing import Any
+import io
 from unittest import mock
 
 import pytest
 
 from aiohttp import FormData, web
+from aiohttp.http_writer import StreamWriter
+from aiohttp.pytest_plugin import AiohttpClient
 
 
 @pytest.fixture
-def buf():
+def buf() -> bytearray:
     return bytearray()
 
 
 @pytest.fixture
-def writer(buf: Any):
-    writer = mock.Mock()
+def writer(buf: bytearray) -> StreamWriter:
+    writer = mock.create_autospec(StreamWriter, spec_set=True)
 
-    async def write(chunk):
+    async def write(chunk: bytes) -> None:
         buf.extend(chunk)
 
     writer.write.side_effect = write
-    return writer
+    return writer  # type: ignore[no-any-return]
 
 
-def test_formdata_multipart(buf: Any, writer: Any) -> None:
+def test_formdata_multipart(buf: bytearray) -> None:
     form = FormData()
     assert not form.is_multipart
 
@@ -31,7 +32,7 @@ def test_formdata_multipart(buf: Any, writer: Any) -> None:
     assert form.is_multipart
 
 
-def test_form_data_is_multipart_param(buf: Any, writer: Any) -> None:
+def test_form_data_is_multipart_param(buf: bytearray) -> None:
     form = FormData(default_to_multipart=True)
     assert form.is_multipart
 
@@ -39,7 +40,7 @@ def test_form_data_is_multipart_param(buf: Any, writer: Any) -> None:
     assert form.is_multipart
 
 
-def test_formdata_multipart(buf: Any, writer: Any) -> None:
+def test_formdata_multipart(buf: bytearray) -> None:
     form = FormData(default_to_multipart=False)
     assert not form.is_multipart
 
@@ -47,10 +48,18 @@ def test_formdata_multipart(buf: Any, writer: Any) -> None:
     assert form.is_multipart  # Adding binary data convert FormData to multpart
 
 
-def test_invalid_formdata_payload() -> None:
+@pytest.mark.parametrize("obj", (object(), None))
+def test_invalid_formdata_payload_multipart(obj: object) -> None:
     form = FormData()
-    form.add_field("test", object(), filename="test.txt")
-    with pytest.raises(TypeError):
+    form.add_field("test", obj, filename="test.txt")
+    with pytest.raises(TypeError, match="Can not serialize value"):
+        form()
+
+
+@pytest.mark.parametrize("obj", (object(), None))
+def test_invalid_formdata_payload_urlencoded(obj: object) -> None:
+    form = FormData({"test": obj})
+    with pytest.raises(TypeError, match="expected str"):
         form()
 
 
@@ -64,12 +73,22 @@ def test_invalid_formdata_params2() -> None:
         FormData("as")  # 2-char str is not allowed
 
 
+async def test_formdata_textio_charset(buf: bytearray, writer: StreamWriter) -> None:
+    form = FormData()
+    body = io.TextIOWrapper(io.BytesIO(b"\xe6\x97\xa5\xe6\x9c\xac"), encoding="utf-8")
+    form.add_field("foo", body, content_type="text/plain; charset=shift-jis")
+    payload = form()
+    await payload.write(writer)
+    assert b"charset=shift-jis" in buf
+    assert b"\x93\xfa\x96{" in buf
+
+
 def test_invalid_formdata_content_type() -> None:
     form = FormData()
     invalid_vals = [0, 0.1, {}, [], b"foo"]
     for invalid_val in invalid_vals:
         with pytest.raises(TypeError):
-            form.add_field("foo", "bar", content_type=invalid_val)
+            form.add_field("foo", "bar", content_type=invalid_val)  # type: ignore[arg-type]
 
 
 def test_invalid_formdata_filename() -> None:
@@ -77,18 +96,12 @@ def test_invalid_formdata_filename() -> None:
     invalid_vals = [0, 0.1, {}, [], b"foo"]
     for invalid_val in invalid_vals:
         with pytest.raises(TypeError):
-            form.add_field("foo", "bar", filename=invalid_val)
+            form.add_field("foo", "bar", filename=invalid_val)  # type: ignore[arg-type]
 
 
-def test_invalid_formdata_content_transfer_encoding() -> None:
-    form = FormData()
-    invalid_vals = [0, 0.1, {}, [], b"foo"]
-    for invalid_val in invalid_vals:
-        with pytest.raises(TypeError):
-            form.add_field("foo", "bar", content_transfer_encoding=invalid_val)
-
-
-async def test_formdata_field_name_is_quoted(buf: Any, writer: Any) -> None:
+async def test_formdata_field_name_is_quoted(
+    buf: bytearray, writer: StreamWriter
+) -> None:
     form = FormData(charset="ascii")
     form.add_field("email 1", "xxx@x.co", content_type="multipart/form-data")
     payload = form()
@@ -96,7 +109,9 @@ async def test_formdata_field_name_is_quoted(buf: Any, writer: Any) -> None:
     assert b'name="email\\ 1"' in buf
 
 
-async def test_formdata_field_name_is_not_quoted(buf: Any, writer: Any) -> None:
+async def test_formdata_field_name_is_not_quoted(
+    buf: bytearray, writer: StreamWriter
+) -> None:
     form = FormData(quote_fields=False, charset="ascii")
     form.add_field("email 1", "xxx@x.co", content_type="multipart/form-data")
     payload = form()
@@ -104,8 +119,8 @@ async def test_formdata_field_name_is_not_quoted(buf: Any, writer: Any) -> None:
     assert b'name="email 1"' in buf
 
 
-async def test_mark_formdata_as_processed(aiohttp_client: Any) -> None:
-    async def handler(request):
+async def test_mark_formdata_as_processed(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
         return web.Response()
 
     app = web.Application()
