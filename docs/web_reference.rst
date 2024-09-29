@@ -1159,11 +1159,11 @@ and :ref:`aiohttp-web-signals` handlers::
       for *message*.
 
       It is recommended to use the :meth:`send_str`, :meth:`send_bytes`
-        or :meth:`send_json` methods instead of this method.
+      or :meth:`send_json` methods instead of this method.
 
       The primary use case for this method is to send bytes that are
       have already been encoded without having to decode and
-        re-encode them.
+      re-encode them.
 
       :param bytes message: message to send.
 
