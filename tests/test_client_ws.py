@@ -797,9 +797,7 @@ async def test_ws_connect_deflate_per_message(
                 )
 
                 await resp.send_frame(b"[{}]", aiohttp.WSMsgType.TEXT, compress=-9)
-                send_frame.assert_called_with(
-                    b"[{}]", aiohttp.WSMsgType.TEXT, compress=-9
-                )
+                send_frame.assert_called_with(b"[{}]", aiohttp.WSMsgType.TEXT, -9)
 
                 await session.close()
 
