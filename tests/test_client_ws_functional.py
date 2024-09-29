@@ -131,7 +131,29 @@ async def test_send_recv_json(aiohttp_client) -> None:
     await resp.close()
 
 
-async def test_ping_pong(aiohttp_client) -> None:
+async def test_send_recv_frame(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        data = await ws.receive()
+        await ws.send_frame(data.data, data.type)
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/")
+    await resp.send_frame(b"test", WSMsgType.BINARY)
+
+    data = await resp.receive()
+    assert data.data == b"test"
+    assert data.type is WSMsgType.BINARY
+    await resp.close()
+
+
+async def test_ping_pong(aiohttp_client: AiohttpClient) -> None:
     loop = asyncio.get_event_loop()
     closed = loop.create_future()
 

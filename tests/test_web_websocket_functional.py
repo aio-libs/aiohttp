@@ -376,7 +376,7 @@ async def test_close_op_code_from_client(loop: Any, aiohttp_client: Any) -> None
 
     ws: web.WebSocketResponse = await client.ws_connect("/", protocols=("eggs", "bar"))
 
-    await ws._writer._send_frame(b"", WSMsgType.CLOSE)
+    await ws._writer.send_frame(b"", WSMsgType.CLOSE)
 
     msg = await ws.receive()
     assert msg.type == WSMsgType.CLOSE
