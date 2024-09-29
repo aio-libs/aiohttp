@@ -438,8 +438,16 @@ class TestProxy(unittest.TestCase):
             loop=self.loop,
             session=mock.Mock(),
         )
-        with mock.patch.object(proxy_req, "send", autospec=True, spec_set=True, return_value=proxy_resp):
-            with mock.patch.object(proxy_resp, "start", autospec=True, spec_set=True, return_value=mock.Mock(status=200)):
+        with mock.patch.object(
+            proxy_req, "send", autospec=True, spec_set=True, return_value=proxy_resp
+        ):
+            with mock.patch.object(
+                proxy_resp,
+                "start",
+                autospec=True,
+                spec_set=True,
+                return_value=mock.Mock(status=200),
+            ):
                 connector = self.loop.run_until_complete(make_conn())
                 host = [
                     {
@@ -451,29 +459,59 @@ class TestProxy(unittest.TestCase):
                         "flags": 0,
                     }
                 ]
-                with mock.patch.object(connector, "_resolve_host", autospec=True, spec_set=True, return_value=host):
+                with mock.patch.object(
+                    connector,
+                    "_resolve_host",
+                    autospec=True,
+                    spec_set=True,
+                    return_value=host,
+                ):
                     fingerprint_mock = mock.Mock()
-                    fingerprint_mock.check.side_effect = aiohttp.ServerFingerprintMismatch(
-                        b"exp", b"got", "example.com", 8080
+                    fingerprint_mock.check.side_effect = (
+                        aiohttp.ServerFingerprintMismatch(
+                            b"exp", b"got", "example.com", 8080
+                        )
                     )
-                    with mock.patch.object(connector, "_get_fingerprint", autospec=True, spec_set=True, return_value=mock.Mock(return_value=fingerprint_mock)):
+                    with mock.patch.object(
+                        connector,
+                        "_get_fingerprint",
+                        autospec=True,
+                        spec_set=True,
+                        return_value=mock.Mock(return_value=fingerprint_mock),
+                    ):
                         # Called on connection to http://proxy.example.com
-                        with mock.patch.object(self.loop, "create_connection", autospec=True, spec_set=True, return_value=(mock.Mock(), mock.Mock())):
+                        with mock.patch.object(
+                            self.loop,
+                            "create_connection",
+                            autospec=True,
+                            spec_set=True,
+                            return_value=(mock.Mock(), mock.Mock()),
+                        ):
                             # Called on connection to https://www.python.org
                             class TransportMock(asyncio.Transport):
                                 def close(self) -> None:
                                     pass
 
-                            with mock.patch.object(self.loop, "start_tls", autospec=True, spec_set=True, return_value=TransportMock()):
+                            with mock.patch.object(
+                                self.loop,
+                                "start_tls",
+                                autospec=True,
+                                spec_set=True,
+                                return_value=TransportMock(),
+                            ):
                                 req = ClientRequest(
                                     "GET",
                                     URL("https://www.python.org"),
                                     proxy=URL("http://proxy.example.com"),
                                     loop=self.loop,
                                 )
-                                with self.assertRaises(aiohttp.ServerFingerprintMismatch):
+                                with self.assertRaises(
+                                    aiohttp.ServerFingerprintMismatch
+                                ):
                                     self.loop.run_until_complete(
-                                        connector._create_connection(req, [], aiohttp.ClientTimeout())
+                                        connector._create_connection(
+                                            req, [], aiohttp.ClientTimeout()
+                                        )
                                     )
 
     @mock.patch(
