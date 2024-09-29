@@ -416,7 +416,9 @@ class TestProxy(unittest.TestCase):
                 self.loop.run_until_complete(connector.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
-    def test_https_connect_fingerprint_mismatch(self, ClientRequestMock: mock.Mock) -> None:
+    def test_https_connect_fingerprint_mismatch(
+        self, ClientRequestMock: mock.Mock
+    ) -> None:
         proxy_req = ClientRequest(
             "GET", URL("http://proxy.example.com"), loop=self.loop
         )
