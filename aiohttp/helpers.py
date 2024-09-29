@@ -469,11 +469,8 @@ except ImportError:
     pass
 
 
-def is_ipv4_address(host: Optional[Union[str, bytes]]) -> bool:
-    """Check if host looks like an IPv4 address.
-
-    This function does not validate that the format is correct, only that
-    the host is a str or bytes, and its all numeric.
+def is_ip_address(host: Optional[str]) -> bool:
+    """Check if host looks like an IP Address.
 
     This check is only meant as a heuristic to ensure that
     a host is not a domain name.
@@ -481,39 +478,8 @@ def is_ipv4_address(host: Optional[Union[str, bytes]]) -> bool:
     if not host:
         return False
     # For a host to be an ipv4 address, it must be all numeric.
-    if isinstance(host, str):
-        return host.replace(".", "").isdigit()
-    if isinstance(host, (bytes, bytearray, memoryview)):
-        return host.decode("ascii").replace(".", "").isdigit()
-    raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
-
-
-def is_ipv6_address(host: Optional[Union[str, bytes]]) -> bool:
-    """Check if host looks like an IPv6 address.
-
-    This function does not validate that the format is correct, only that
-    the host contains a colon and that it is a str or bytes.
-
-    This check is only meant as a heuristic to ensure that
-    a host is not a domain name.
-    """
-    if not host:
-        return False
     # The host must contain a colon to be an IPv6 address.
-    if isinstance(host, str):
-        return ":" in host
-    if isinstance(host, (bytes, bytearray, memoryview)):
-        return b":" in host
-    raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
-
-
-def is_ip_address(host: Optional[Union[str, bytes, bytearray, memoryview]]) -> bool:
-    """Check if host looks like an IP Address.
-
-    This check is only meant as a heuristic to ensure that
-    a host is not a domain name.
-    """
-    return is_ipv4_address(host) or is_ipv6_address(host)
+    return ":" in host or host.replace(".", "").isdigit()
 
 
 _cached_current_datetime: Optional[int] = None
