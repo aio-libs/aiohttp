@@ -496,8 +496,10 @@ def is_ip_address(host: Optional[Union[str, bytes, bytearray, memoryview]]) -> b
     # The host must contain a colon to be an IPv6 address.
     if isinstance(host, str):
         return ":" in host or host.replace(".", "").isdigit()
-    if isinstance(host, (bytes, bytearray, memoryview)):
+    if isinstance(host, (bytes, bytearray)):
         return b":" in host or host.decode("ascii").replace(".", "").isdigit()
+    if isinstance(host, memoryview):
+        return b":" in host or bytes(host).decode("ascii").replace(".", "").isdigit()
     raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
 
 
