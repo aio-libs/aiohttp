@@ -512,8 +512,9 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
+    @mock.patch("aiohttp.connector.ClientRequest")
     def test_https_connect(
-        self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
+        self, ClientRequestMock: mock.Mock, start_connection: mock.Mock
     ) -> None:
         proxy_req = ClientRequest(
             "GET", URL("http://proxy.example.com"), loop=self.loop
