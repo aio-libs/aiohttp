@@ -81,6 +81,12 @@ async def test_nonstarted_pong() -> None:
         await ws.pong()
 
 
+async def test_nonstarted_send_frame() -> None:
+    ws = web.WebSocketResponse()
+    with pytest.raises(RuntimeError):
+        await ws.send_frame(b"string", WSMsgType.TEXT)
+
+
 async def test_nonstarted_send_str() -> None:
     ws = web.WebSocketResponse()
     with pytest.raises(RuntimeError):
@@ -266,6 +272,18 @@ async def test_send_json_closed(make_request: _RequestMaker) -> None:
 
     with pytest.raises(ConnectionError):
         await ws.send_json({"type": "json"})
+
+
+async def test_send_frame_closed(make_request: _RequestMaker) -> None:
+    req = make_request("GET", "/")
+    ws = web.WebSocketResponse()
+    await ws.prepare(req)
+    assert ws._reader is not None
+    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    await ws.close()
+
+    with pytest.raises(ConnectionError):
+        await ws.send_frame(b'{"type": "json"}', WSMsgType.TEXT)
 
 
 async def test_ping_closed(make_request: _RequestMaker) -> None:
@@ -560,15 +578,18 @@ async def test_send_with_per_message_deflate(
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
-    with mock.patch.object(ws._writer, "send", autospec=True, spec_set=True) as m:
+    with mock.patch.object(ws._writer, "send_frame", autospec=True, spec_set=True) as m:
         await ws.send_str("string", compress=15)
-        m.assert_called_with("string", binary=False, compress=15)
+        m.assert_called_with(b"string", WSMsgType.TEXT, compress=15)
 
         await ws.send_bytes(b"bytes", compress=0)
-        m.assert_called_with(b"bytes", binary=True, compress=0)
+        m.assert_called_with(b"bytes", WSMsgType.BINARY, compress=0)
 
         await ws.send_json("[{}]", compress=9)
-        m.assert_called_with('"[{}]"', binary=False, compress=9)
+        m.assert_called_with(b'"[{}]"', WSMsgType.TEXT, compress=9)
+
+        await ws.send_frame(b"[{}]", WSMsgType.TEXT, compress=9)
+        m.assert_called_with(b"[{}]", WSMsgType.TEXT, compress=9)
 
 
 async def test_no_transfer_encoding_header(

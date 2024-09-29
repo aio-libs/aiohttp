@@ -5,7 +5,7 @@ from unittest import mock
 
 import pytest
 
-from aiohttp import DataQueue, WSMessage
+from aiohttp import DataQueue, WSMessage, WSMsgType
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.http import WebSocketReader, WebSocketWriter
 from aiohttp.test_utils import make_mocked_coro
@@ -41,22 +41,22 @@ async def test_ping(writer: WebSocketWriter) -> None:
 
 
 async def test_send_text(writer: WebSocketWriter) -> None:
-    await writer.send(b"text")
+    await writer.send_frame(b"text", WSMsgType.TEXT)
     writer.transport.write.assert_called_with(b"\x81\x04text")  # type: ignore[attr-defined]
 
 
 async def test_send_binary(writer: WebSocketWriter) -> None:
-    await writer.send("binary", True)
+    await writer.send_frame(b"binary", WSMsgType.BINARY)
     writer.transport.write.assert_called_with(b"\x82\x06binary")  # type: ignore[attr-defined]
 
 
 async def test_send_binary_long(writer: WebSocketWriter) -> None:
-    await writer.send(b"b" * 127, True)
+    await writer.send_frame(b"b" * 127, WSMsgType.BINARY)
     assert writer.transport.write.call_args[0][0].startswith(b"\x82~\x00\x7fb")  # type: ignore[attr-defined]
 
 
 async def test_send_binary_very_long(writer: WebSocketWriter) -> None:
-    await writer.send(b"b" * 65537, True)
+    await writer.send_frame(b"b" * 65537, WSMsgType.BINARY)
     assert (
         writer.transport.write.call_args_list[0][0][0]  # type: ignore[attr-defined]
         == b"\x82\x7f\x00\x00\x00\x00\x00\x01\x00\x01"
@@ -82,7 +82,7 @@ async def test_send_text_masked(
     writer = WebSocketWriter(
         protocol, transport, use_mask=True, random=random.Random(123)
     )
-    await writer.send(b"text")
+    await writer.send_frame(b"text", WSMsgType.TEXT)
     writer.transport.write.assert_called_with(b"\x81\x84\rg\xb3fy\x02\xcb\x12")  # type: ignore[attr-defined]
 
 
@@ -90,9 +90,9 @@ async def test_send_compress_text(
     protocol: BaseProtocol, transport: asyncio.Transport
 ) -> None:
     writer = WebSocketWriter(protocol, transport, compress=15)
-    await writer.send(b"text")
+    await writer.send_frame(b"text", WSMsgType.TEXT)
     writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")  # type: ignore[attr-defined]
-    await writer.send(b"text")
+    await writer.send_frame(b"text", WSMsgType.TEXT)
     writer.transport.write.assert_called_with(b"\xc1\x05*\x01b\x00\x00")  # type: ignore[attr-defined]
 
 
@@ -100,9 +100,9 @@ async def test_send_compress_text_notakeover(
     protocol: BaseProtocol, transport: asyncio.Transport
 ) -> None:
     writer = WebSocketWriter(protocol, transport, compress=15, notakeover=True)
-    await writer.send(b"text")
+    await writer.send_frame(b"text", WSMsgType.TEXT)
     writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")  # type: ignore[attr-defined]
-    await writer.send(b"text")
+    await writer.send_frame(b"text", WSMsgType.TEXT)
     writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")  # type: ignore[attr-defined]
 
 
@@ -110,11 +110,11 @@ async def test_send_compress_text_per_message(
     protocol: BaseProtocol, transport: asyncio.Transport
 ) -> None:
     writer = WebSocketWriter(protocol, transport)
-    await writer.send(b"text", compress=15)
+    await writer.send_frame(b"text", WSMsgType.TEXT, compress=15)
     writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")  # type: ignore[attr-defined]
-    await writer.send(b"text")
+    await writer.send_frame(b"text", WSMsgType.TEXT)
     writer.transport.write.assert_called_with(b"\x81\x04text")  # type: ignore[attr-defined]
-    await writer.send(b"text", compress=15)
+    await writer.send_frame(b"text", WSMsgType.TEXT, compress=15)
     writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")  # type: ignore[attr-defined]
 
 
@@ -161,7 +161,7 @@ async def test_concurrent_messages(
             point = payload_point_generator(count)
             payload = bytes((point,)) * point
             payloads.append(payload)
-            writers.append(writer.send(payload, binary=True))
+            writers.append(writer.send_frame(payload, WSMsgType.BINARY))
         await asyncio.gather(*writers)
 
     for call in writer.transport.write.call_args_list:  # type: ignore[attr-defined]

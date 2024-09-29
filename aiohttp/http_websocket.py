@@ -605,7 +605,7 @@ class WebSocketWriter:
         self._output_size = 0
         self._compressobj: Any = None  # actually compressobj
 
-    async def _send_frame(
+    async def send_frame(
         self, message: bytes, opcode: int, compress: Optional[int] = None
     ) -> None:
         """Send a frame over the websocket with message as its payload."""
@@ -710,32 +710,18 @@ class WebSocketWriter:
 
     async def pong(self, message: bytes = b"") -> None:
         """Send pong message."""
-        await self._send_frame(message, WSMsgType.PONG)
+        await self.send_frame(message, WSMsgType.PONG)
 
     async def ping(self, message: bytes = b"") -> None:
         """Send ping message."""
-        await self._send_frame(message, WSMsgType.PING)
-
-    async def send(
-        self,
-        message: Union[str, bytes],
-        binary: bool = False,
-        compress: Optional[int] = None,
-    ) -> None:
-        """Send a frame over the websocket with message as its payload."""
-        if isinstance(message, str):
-            message = message.encode("utf-8")
-        if binary:
-            await self._send_frame(message, WSMsgType.BINARY, compress)
-        else:
-            await self._send_frame(message, WSMsgType.TEXT, compress)
+        await self.send_frame(message, WSMsgType.PING)
 
     async def close(self, code: int = 1000, message: Union[bytes, str] = b"") -> None:
         """Close the websocket, sending the specified code and message."""
         if isinstance(message, str):
             message = message.encode("utf-8")
         try:
-            await self._send_frame(
+            await self.send_frame(
                 PACK_CLOSE_CODE(code) + message, opcode=WSMsgType.CLOSE
             )
         finally:
