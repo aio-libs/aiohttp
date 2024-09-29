@@ -16,6 +16,9 @@ def registry() -> Iterator[payload.PayloadRegistry]:
 
 
 class Payload(payload.Payload):
+    def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        assert False
+
     async def write(self, writer: Any) -> None:
         pass
 
@@ -115,6 +118,5 @@ def test_async_iterable_payload_explicit_content_type() -> None:
 
 
 def test_async_iterable_payload_not_async_iterable() -> None:
-
     with pytest.raises(TypeError):
         payload.AsyncIterablePayload(object())  # type: ignore[arg-type]

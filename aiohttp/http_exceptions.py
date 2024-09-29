@@ -1,6 +1,6 @@
 """Low-level http related exceptions."""
 
-
+from textwrap import indent
 from typing import Optional, Union
 
 from .typedefs import _CIMultiDict
@@ -35,14 +35,14 @@ class HttpProcessingError(Exception):
         self.message = message
 
     def __str__(self) -> str:
-        return f"{self.code}, message={self.message!r}"
+        msg = indent(self.message, "  ")
+        return f"{self.code}, message:\n{msg}"
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__}: {self}>"
+        return f"<{self.__class__.__name__}: {self.code}, message={self.message!r}>"
 
 
 class BadHttpMessage(HttpProcessingError):
-
     code = 400
     message = "Bad Request"
 
@@ -52,7 +52,6 @@ class BadHttpMessage(HttpProcessingError):
 
 
 class HttpBadRequest(BadHttpMessage):
-
     code = 400
     message = "Bad Request"
 
@@ -85,18 +84,15 @@ class LineTooLong(BadHttpMessage):
 
 class InvalidHeader(BadHttpMessage):
     def __init__(self, hdr: Union[bytes, str]) -> None:
-        if isinstance(hdr, bytes):
-            hdr = hdr.decode("utf-8", "surrogateescape")
-        super().__init__(f"Invalid HTTP Header: {hdr}")
-        self.hdr = hdr
+        hdr_s = hdr.decode(errors="backslashreplace") if isinstance(hdr, bytes) else hdr
+        super().__init__(f"Invalid HTTP header: {hdr!r}")
+        self.hdr = hdr_s
         self.args = (hdr,)
 
 
 class BadStatusLine(BadHttpMessage):
-    def __init__(self, line: str = "") -> None:
-        if not isinstance(line, str):
-            line = repr(line)
-        super().__init__(f"Bad status line {line!r}")
+    def __init__(self, line: str = "", error: Optional[str] = None) -> None:
+        super().__init__(error or f"Bad status line {line!r}")
         self.args = (line,)
         self.line = line
 

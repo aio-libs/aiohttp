@@ -14,7 +14,9 @@
 
 <!-- Please describe steps to reproduce the issue.
      If you have a script that does that please include it here within
-     markdown code markup -->
+     markdown code markup. The chances of someone looking at your issue
+     are *vastly* improved if you provide complete code that can be
+     copy/pasted and executed directly in Python. -->
 
 ## Your environment
 

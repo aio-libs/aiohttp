@@ -2,79 +2,92 @@
 <meta charset="utf-8" />
 <html>
 <head>
-<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js">
-</script>
   <script language="javascript" type="text/javascript">
-    $(function() {
-      var conn = null;
-      function log(msg) {
-        var control = $('#log');
-        control.html(control.html() + msg + '<br/>');
-        control.scrollTop(control.scrollTop() + 1000);
-      }
-      function connect() {
+    var socket = null;
+
+    function log(msg) {
+        const logElem = document.getElementById("log");
+        const p = document.createElement("p");
+        p.textContent = msg;
+        logElem.appendChild(p);
+        logElem.scroll(0, logElem.scrollHeight);
+    }
+
+    function connect() {
         disconnect();
-        var wsUri = (window.location.protocol=='https:'&&'wss://'||'ws://')+window.location.host;
-        conn = new WebSocket(wsUri);
-        log('Connecting...');
-        conn.onopen = function() {
-          log('Connected.');
-          update_ui();
-        };
-        conn.onmessage = function(e) {
-          log('Received: ' + e.data);
-        };
-        conn.onclose = function() {
-          log('Disconnected.');
-          conn = null;
-          update_ui();
-        };
-      }
-      function disconnect() {
-        if (conn != null) {
-          log('Disconnecting...');
-          conn.close();
-          conn = null;
-          update_ui();
+        socket = new WebSocket(document.getElementById("wsUri").value);
+        log("Connecting...");
+        socket.addEventListener("open", function() {
+            log("Connected.");
+            update_ui();
+        });
+        socket.addEventListener("message", function(e) {
+            log("Received: " + e.data);
+        });
+        socket.addEventListener("close", function() {
+            log("Disconnected.");
+            socket = null;
+            update_ui();
+        });
+    }
+
+    function disconnect() {
+        if (socket !== null) {
+            log("Disconnecting...");
+            socket.close();
+            socket = null;
+            update_ui();
         }
-      }
-      function update_ui() {
-        if (conn == null) {
-          $('#status').text('disconnected');
-          $('#connect').html('Connect');
+    }
+
+    function update_ui() {
+        const status = document.getElementById("status");
+        const connect = document.getElementById("connect");
+        if (socket === null) {
+            status.innerText = "disconnected";
+            connect.innerText = "Connect";
         } else {
-          $('#status').text('connected (' + conn.protocol + ')');
-          $('#connect').html('Disconnect');
+            status.innerText = "connected (" + socket.protocol + ")";
+            connect.innerText = "Disconnect";
         }
-      }
-      $('#connect').click(function() {
-        if (conn == null) {
-          connect();
-        } else {
-          disconnect();
-        }
-        update_ui();
-        return false;
-      });
-      $('#send').click(function() {
-        var text = $('#text').val();
-        log('Sending: ' + text);
-        conn.send(text);
-        $('#text').val('').focus();
-        return false;
-      });
-      $('#text').keyup(function(e) {
-        if (e.keyCode === 13) {
-          $('#send').click();
-          return false;
-        }
-      });
+    }
+
+    window.addEventListener("DOMContentLoaded", function() {
+        const protocol = (window.location.protocol=="https:" && "wss://" || "ws://");
+        document.getElementById("wsUri").value = protocol + (window.location.host || "localhost:8080");
+
+        document.getElementById("connect").addEventListener("click", function() {
+            if (socket == null) {
+                connect();
+            } else {
+                disconnect();
+            }
+            update_ui();
+            return false;
+        });
+
+        document.getElementById("send").addEventListener("click", function() {
+            const text = document.getElementById("text");
+            log("Sending: " + text.value);
+            socket.send(text.value);
+            text.value = "";
+            text.focus();
+            return false;
+        });
+
+        document.getElementById("text").addEventListener("keyup", function(e) {
+            if (e.keyCode === 13) {
+                document.getElementById("send").click();
+                return false;
+            }
+        });
     });
 </script>
 </head>
 <body>
 <h3>Chat!</h3>
 <div>
+  <input id="wsUri" type="text" />
   <button id="connect">Connect</button>&nbsp;|&nbsp;Status:
   <span id="status">disconnected</span>
 </div>

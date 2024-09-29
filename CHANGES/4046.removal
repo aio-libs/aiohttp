@@ -1,1 +1,0 @@
-Drop Python 3.5 support, aiohttp works on 3.6+ now.
