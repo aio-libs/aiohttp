@@ -416,13 +416,13 @@ class TestProxy(unittest.TestCase):
                             self.loop.run_until_complete(req.close())
                 self.loop.run_until_complete(connector.close())
 
-    @pytest.mark.parametrize("cleanup", (True, False))
     @mock.patch("aiohttp.connector.ClientRequest")
     @mock.patch(
         "aiohttp.connector.aiohappyeyeballs.start_connection",
         autospec=True,
         spec_set=True,
     )
+    @pytest.mark.parametrize("cleanup", (True, False))
     def test_https_connect_fingerprint_mismatch(
         self, start_connection: mock.Mock, ClientRequestMock: mock.Mock, cleanup: bool
     ) -> None:
