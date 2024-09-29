@@ -929,11 +929,18 @@ class TCPConnector(BaseConnector):
         # the underlying lookup or else the cancel event will get broadcast to
         # all the waiters across all connections.
         #
-        resolved_host_task = asyncio.create_task(
-            self._resolve_host_with_throttle(key, host, port, traces)
-        )
-        self._resolve_host_tasks.add(resolved_host_task)
-        resolved_host_task.add_done_callback(self._resolve_host_tasks.discard)
+        coro = self._resolve_host_with_throttle(key, host, port, traces)
+        loop = asyncio.get_running_loop()
+        if sys.version_info >= (3, 12):
+            # Optimization for Python 3.12, try to send immediately
+            resolved_host_task = asyncio.Task(coro, loop=loop, eager_start=True)
+        else:
+            resolved_host_task = loop.create_task(coro)
+
+        if not resolved_host_task.done():
+            self._resolve_host_tasks.add(resolved_host_task)
+            resolved_host_task.add_done_callback(self._resolve_host_tasks.discard)
+
         try:
             return await asyncio.shield(resolved_host_task)
         except asyncio.CancelledError:
