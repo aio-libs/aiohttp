@@ -677,7 +677,7 @@ class ClientRequest:
         self.response = response_class(
             self.method,
             self.original_url,
-            writer=self.__writer,
+            writer=task,
             continue100=self._continue,
             timer=self._timer,
             request_info=self.request_info,
