@@ -934,8 +934,8 @@ and :ref:`aiohttp-web-signals` handlers::
 
    To enable back-pressure from slow websocket clients treat methods
    :meth:`ping`, :meth:`pong`, :meth:`send_str`,
-   :meth:`send_bytes`, :meth:`send_json` as coroutines.  By
-   default write buffer size is set to 64k.
+   :meth:`send_bytes`, :meth:`send_json`, :meth:`send_frame` as coroutines.
+   By default write buffer size is set to 64k.
 
    :param bool autoping: Automatically send
                          :const:`~aiohttp.WSMsgType.PONG` on
@@ -1148,6 +1148,31 @@ and :ref:`aiohttp-web-signals` handlers::
 
          The method is converted into :term:`coroutine`,
          *compress* parameter added.
+
+   .. method:: send_frame(message, opcode, compress=None)
+      :async:
+
+      Send a :const:`~aiohttp.WSMsgType` message *message* to peer.
+
+      This method is low-level and should be used with caution as it
+      only accepts UTF-8 encoded bytes for *message*.
+
+      It is recommended to use the :meth:`send_str`, :meth:`send_bytes`
+        or :meth:`send_json` methods instead of this method.
+
+      The primary use case for this method is to send bytes that are
+      have already been encoded without having to decode and
+        re-encode them.
+
+      :param bytes message: message to send.
+
+      :param :const:`~aiohttp.WSMsgType` opcode: opcode of the message.
+
+      :param int compress: sets specific level of compression for
+                           single message,
+                           ``None`` for not overriding per-socket setting.
+
+      .. versionadded:: 3.11
 
    .. method:: close(*, code=WSCloseCode.OK, message=b'', drain=True)
       :async:
