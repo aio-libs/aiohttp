@@ -234,8 +234,6 @@ class ClientWebSocketResponse:
         self, message: bytes, opcode: WSMsgType, compress: Optional[int] = None
     ) -> None:
         """Send a frame over the websocket."""
-        if self._writer is None:
-            raise RuntimeError("Call .prepare() first")
         await self._writer.send_frame(message, opcode, compress)
 
     async def send_str(self, data: str, compress: Optional[int] = None) -> None:
