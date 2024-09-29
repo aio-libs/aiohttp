@@ -1167,7 +1167,7 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :param bytes message: message to send.
 
-      :param :const:`~aiohttp.WSMsgType` opcode: opcode of the message.
+      :param ~aiohttp.WSMsgType opcode: opcode of the message.
 
       :param int compress: sets specific level of compression for
                            single message,
