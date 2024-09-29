@@ -702,12 +702,6 @@ class TimerContext(BaseTimerContext):
             # raise asyncio.TimeoutError or let the cancellation propagate
             self._cancelling = task.cancelling()
 
-        if sys.version_info >= (3, 11):
-            # Remember if the task was already cancelling
-            # so when we __exit__ we can decide if we should
-            # raise asyncio.TimeoutError or let the cancellation propagate
-            self._cancelling = task.cancelling()
-
         if self._cancelled:
             raise asyncio.TimeoutError from None
 
