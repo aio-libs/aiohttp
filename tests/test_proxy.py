@@ -416,7 +416,7 @@ class TestProxy(unittest.TestCase):
                 self.loop.run_until_complete(connector.close())
 
     @mock.patch("aiohttp.connector.ClientRequest")
-    def test_https_connect_fingerprint_mismatch(self, ClientRequestMock: Any) -> None:
+    def test_https_connect_fingerprint_mismatch(self, ClientRequestMock: mock.Mock) -> None:
         proxy_req = ClientRequest(
             "GET", URL("http://proxy.example.com"), loop=self.loop
         )
@@ -436,7 +436,7 @@ class TestProxy(unittest.TestCase):
         proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
 
-        async def make_conn():
+        async def make_conn() -> aiohttp.TCPConnector:
             return aiohttp.TCPConnector()
 
         connector = self.loop.run_until_complete(make_conn())
@@ -463,7 +463,7 @@ class TestProxy(unittest.TestCase):
 
         # Called on connection to https://www.python.org
         class TransportMock(asyncio.Transport):
-            def close(self):
+            def close(self) -> None:
                 pass
 
         self.loop.start_tls = make_mocked_coro(TransportMock())
