@@ -287,16 +287,6 @@ def test_is_ip_address() -> None:
     assert not helpers.is_ip_address("www.example.com")
 
 
-def test_is_ip_address_bytes() -> None:
-    assert helpers.is_ip_address(b"127.0.0.1")
-    assert helpers.is_ip_address(b"::1")
-    assert helpers.is_ip_address(b"FE80:0000:0000:0000:0202:B3FF:FE1E:8329")
-
-    # Hostnames
-    assert not helpers.is_ip_address(b"localhost")
-    assert not helpers.is_ip_address(b"www.example.com")
-
-
 def test_ipv4_addresses() -> None:
     ip_addresses = [
         "0.0.0.0",
@@ -304,8 +294,6 @@ def test_ipv4_addresses() -> None:
         "255.255.255.255",
     ]
     for address in ip_addresses:
-        assert helpers.is_ipv4_address(address)
-        assert not helpers.is_ipv6_address(address)
         assert helpers.is_ip_address(address)
 
 
@@ -321,8 +309,6 @@ def test_ipv6_addresses() -> None:
         "1::1",
     ]
     for address in ip_addresses:
-        assert not helpers.is_ipv4_address(address)
-        assert helpers.is_ipv6_address(address)
         assert helpers.is_ip_address(address)
 
 
@@ -343,18 +329,6 @@ def test_is_ip_address_invalid_type() -> None:
 
     with pytest.raises(TypeError):
         helpers.is_ip_address(object())  # type: ignore[arg-type]
-
-    with pytest.raises(TypeError):
-        helpers.is_ipv4_address(123)  # type: ignore[arg-type]
-
-    with pytest.raises(TypeError):
-        helpers.is_ipv4_address(object())  # type: ignore[arg-type]
-
-    with pytest.raises(TypeError):
-        helpers.is_ipv6_address(123)  # type: ignore[arg-type]
-
-    with pytest.raises(TypeError):
-        helpers.is_ipv6_address(object())  # type: ignore[arg-type]
 
 
 # ----------------------------------- TimeoutHandle -------------------

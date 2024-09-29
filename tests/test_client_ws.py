@@ -569,6 +569,7 @@ async def test_send_data_after_close(
                 (resp.send_str, ("s",)),
                 (resp.send_bytes, (b"b",)),
                 (resp.send_json, ({},)),
+                (resp.send_frame, (b"", aiohttp.WSMsgType.BINARY)),
             ):
                 with pytest.raises(exc):  # Verify exc can be caught with both classes
                     await meth(*args)
@@ -775,19 +776,28 @@ async def test_ws_connect_deflate_per_message(
                 m_req.return_value = loop.create_future()
                 m_req.return_value.set_result(mresp)
                 writer = WebSocketWriter.return_value = mock.Mock()
-                send = writer.send = make_mocked_coro()
+                send_frame = writer.send_frame = make_mocked_coro()
 
                 session = aiohttp.ClientSession()
                 resp = await session.ws_connect("http://test.org")
 
                 await resp.send_str("string", compress=-1)
-                send.assert_called_with("string", binary=False, compress=-1)
+                send_frame.assert_called_with(
+                    b"string", aiohttp.WSMsgType.TEXT, compress=-1
+                )
 
                 await resp.send_bytes(b"bytes", compress=15)
-                send.assert_called_with(b"bytes", binary=True, compress=15)
+                send_frame.assert_called_with(
+                    b"bytes", aiohttp.WSMsgType.BINARY, compress=15
+                )
 
                 await resp.send_json([{}], compress=-9)
-                send.assert_called_with("[{}]", binary=False, compress=-9)
+                send_frame.assert_called_with(
+                    b"[{}]", aiohttp.WSMsgType.TEXT, compress=-9
+                )
+
+                await resp.send_frame(b"[{}]", aiohttp.WSMsgType.TEXT, compress=-9)
+                send_frame.assert_called_with(b"[{}]", aiohttp.WSMsgType.TEXT, -9)
 
                 await session.close()
 
