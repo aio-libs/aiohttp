@@ -1068,7 +1068,13 @@ async def test_tcp_connector_family_is_respected(
                 established_connection.close()
 
 
+@mock.patch(
+    "aiohttp.connector.aiohappyeyeballs.start_connection",
+    autospec=True,
+    spec_set=True,
+)
 async def test_tcp_connector_multiple_hosts_one_timeout(
+    start_connection: mock.Mock,
     loop: asyncio.AbstractEventLoop,
 ) -> None:
     conn = aiohttp.TCPConnector()
