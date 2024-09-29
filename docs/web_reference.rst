@@ -1155,7 +1155,8 @@ and :ref:`aiohttp-web-signals` handlers::
       Send a :const:`~aiohttp.WSMsgType` message *message* to peer.
 
       This method is low-level and should be used with caution as it
-      only accepts UTF-8 encoded bytes for *message*.
+      only accepts bytes which must conform to the correct message type
+      for *message*.
 
       It is recommended to use the :meth:`send_str`, :meth:`send_bytes`
         or :meth:`send_json` methods instead of this method.
