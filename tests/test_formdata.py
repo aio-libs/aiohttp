@@ -32,7 +32,7 @@ def test_formdata_multipart(buf: Any, writer: Any) -> None:
 
 
 def test_form_data_is_multipart_param(buf: Any, writer: Any) -> None:
-    form = FormData(is_multipart=True)
+    form = FormData(default_to_multipart=True)
     assert form.is_multipart
 
     form.add_field("test", "test")
@@ -40,7 +40,7 @@ def test_form_data_is_multipart_param(buf: Any, writer: Any) -> None:
 
 
 def test_formdata_multipart(buf: Any, writer: Any) -> None:
-    form = FormData(is_multipart=False)
+    form = FormData(default_to_multipart=False)
     assert not form.is_multipart
 
     form.add_field("test", b"test", filename="test.txt")

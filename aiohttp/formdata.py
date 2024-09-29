@@ -23,12 +23,13 @@ class FormData:
         quote_fields: bool = True,
         charset: Optional[str] = None,
         boundary: Optional[str] = None,
-        is_multipart: bool = False,
+        *,
+        default_to_multipart: bool = False,
     ) -> None:
         self._boundary = boundary
         self._writer = multipart.MultipartWriter("form-data", boundary=self._boundary)
         self._fields: List[Any] = []
-        self._is_multipart = is_multipart
+        self._is_multipart = default_to_multipart
         self._is_processed = False
         self._quote_fields = quote_fields
         self._charset = charset
