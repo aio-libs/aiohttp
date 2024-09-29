@@ -260,7 +260,9 @@ class BaseConnector:
         self._force_close = force_close
 
         # {host_key: FIFO list of waiters}
-        self._waiters = defaultdict(deque)  # type: ignore[var-annotated]
+        self._waiters: DefaultDict[ConnectionKey, deque[asyncio.Future[None]]] = (
+            defaultdict(deque)
+        )
 
         self._loop = loop
         self._factory = functools.partial(ResponseHandler, loop=loop)
@@ -390,13 +392,10 @@ class BaseConnector:
     def _drop_acquired_per_host(
         self, key: "ConnectionKey", val: ResponseHandler
     ) -> None:
-        acquired_per_host = self._acquired_per_host
-        if key not in acquired_per_host:
-            return
-        conns = acquired_per_host[key]
-        conns.remove(val)
-        if not conns:
-            del self._acquired_per_host[key]
+        if conns := self._acquired_per_host.get(key):
+            conns.remove(val)
+            if not conns:
+                del self._acquired_per_host[key]
 
     def _cleanup_closed(self) -> None:
         """Double confirmation for transport close.
@@ -514,7 +513,7 @@ class BaseConnector:
         # Wait if there are no available connections or if there are/were
         # waiters (i.e. don't steal connection from a waiter about to wake up)
         if available <= 0 or key in self._waiters:
-            fut = self._loop.create_future()
+            fut: asyncio.Future[None] = self._loop.create_future()
 
             # This connection will now count towards the limit.
             self._waiters[key].append(fut)
@@ -681,20 +680,21 @@ class BaseConnector:
 
             if key.is_ssl and not self._cleanup_closed_disabled:
                 self._cleanup_closed_transports.append(transport)
-        else:
-            conns = self._conns.get(key)
-            if conns is None:
-                conns = self._conns[key] = []
-            conns.append((protocol, self._loop.time()))
+            return
 
-            if self._cleanup_handle is None:
-                self._cleanup_handle = helpers.weakref_handle(
-                    self,
-                    "_cleanup",
-                    self._keepalive_timeout,
-                    self._loop,
-                    timeout_ceil_threshold=self._timeout_ceil_threshold,
-                )
+        conns = self._conns.get(key)
+        if conns is None:
+            conns = self._conns[key] = []
+        conns.append((protocol, self._loop.time()))
+
+        if self._cleanup_handle is None:
+            self._cleanup_handle = helpers.weakref_handle(
+                self,
+                "_cleanup",
+                self._keepalive_timeout,
+                self._loop,
+                timeout_ceil_threshold=self._timeout_ceil_threshold,
+            )
 
     async def _create_connection(
         self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
