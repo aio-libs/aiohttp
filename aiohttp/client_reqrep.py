@@ -745,7 +745,7 @@ class ClientRequest:
         self.response = response_class(
             self.method,
             self.original_url,
-            writer=self._writer,
+            writer=task,
             continue100=self._continue,
             timer=self._timer,
             request_info=self.request_info,
@@ -756,9 +756,9 @@ class ClientRequest:
         return self.response
 
     async def close(self) -> None:
-        if self._writer is not None:
+        if self.__writer is not None:
             try:
-                await self._writer
+                await self.__writer
             except asyncio.CancelledError:
                 if (
                     sys.version_info >= (3, 11)
@@ -768,11 +768,11 @@ class ClientRequest:
                     raise
 
     def terminate(self) -> None:
-        if self._writer is not None:
+        if self.__writer is not None:
             if not self.loop.is_closed():
-                self._writer.cancel()
-            self._writer.remove_done_callback(self.__reset_writer)
-            self._writer = None
+                self.__writer.cancel()
+            self.__writer.remove_done_callback(self.__reset_writer)
+            self.__writer = None
 
     async def _on_chunk_request_sent(self, method: str, url: URL, chunk: bytes) -> None:
         for trace in self._traces:
@@ -828,8 +828,8 @@ class ClientResponse(HeadersMixin):
 
         self._real_url = url
         self._url = url.with_fragment(None)
-        self._body: Any = None
-        self._writer: Optional[asyncio.Task[None]] = writer
+        self._body: Optional[bytes] = None
+        self._writer = writer
         self._continue = continue100  # None by default
         self._closed = True
         self._history: Tuple[ClientResponse, ...] = ()
@@ -857,10 +857,16 @@ class ClientResponse(HeadersMixin):
 
     @property
     def _writer(self) -> Optional["asyncio.Task[None]"]:
+        """The writer task for streaming data.
+
+        _writer is only provided for backwards compatibility
+        for subclasses that may need to access it.
+        """
         return self.__writer
 
     @_writer.setter
     def _writer(self, writer: Optional["asyncio.Task[None]"]) -> None:
+        """Set the writer task for streaming data."""
         if self.__writer is not None:
             self.__writer.remove_done_callback(self.__reset_writer)
         self.__writer = writer
@@ -1111,16 +1117,16 @@ class ClientResponse(HeadersMixin):
 
     def _release_connection(self) -> None:
         if self._connection is not None:
-            if self._writer is None:
+            if self.__writer is None:
                 self._connection.release()
                 self._connection = None
             else:
-                self._writer.add_done_callback(lambda f: self._release_connection())
+                self.__writer.add_done_callback(lambda f: self._release_connection())
 
     async def _wait_released(self) -> None:
-        if self._writer is not None:
+        if self.__writer is not None:
             try:
-                await self._writer
+                await self.__writer
             except asyncio.CancelledError:
                 if (
                     sys.version_info >= (3, 11)
@@ -1131,8 +1137,8 @@ class ClientResponse(HeadersMixin):
         self._release_connection()
 
     def _cleanup_writer(self) -> None:
-        if self._writer is not None:
-            self._writer.cancel()
+        if self.__writer is not None:
+            self.__writer.cancel()
         self._session = None
 
     def _notify_content(self) -> None:
@@ -1142,9 +1148,9 @@ class ClientResponse(HeadersMixin):
         self._released = True
 
     async def wait_for_close(self) -> None:
-        if self._writer is not None:
+        if self.__writer is not None:
             try:
-                await self._writer
+                await self.__writer
             except asyncio.CancelledError:
                 if (
                     sys.version_info >= (3, 11)
@@ -1172,7 +1178,7 @@ class ClientResponse(HeadersMixin):
         protocol = self._connection and self._connection.protocol
         if protocol is None or not protocol.upgraded:
             await self._wait_released()  # Underlying connection released
-        return self._body  # type: ignore[no-any-return]
+        return self._body
 
     def get_encoding(self) -> str:
         ctype = self.headers.get(hdrs.CONTENT_TYPE, "").lower()
@@ -1205,9 +1211,7 @@ class ClientResponse(HeadersMixin):
         if encoding is None:
             encoding = self.get_encoding()
 
-        return self._body.decode(  # type: ignore[no-any-return,union-attr]
-            encoding, errors=errors
-        )
+        return self._body.decode(encoding, errors=errors)  # type: ignore[union-attr]
 
     async def json(
         self,
