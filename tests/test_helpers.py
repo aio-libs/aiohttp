@@ -287,25 +287,6 @@ def test_is_ip_address() -> None:
     assert not helpers.is_ip_address("www.example.com")
 
 
-def test_is_ip_address_bytes() -> None:
-    assert helpers.is_ip_address(b"127.0.0.1")
-    assert helpers.is_ip_address(b"::1")
-    assert helpers.is_ip_address(b"FE80:0000:0000:0000:0202:B3FF:FE1E:8329")
-
-    # Hostnames
-    assert not helpers.is_ip_address(b"localhost")
-    assert not helpers.is_ip_address(b"www.example.com")
-
-
-def test_is_ip_address_memoryview() -> None:
-    assert helpers.is_ip_address(memoryview(b"127.0.0.1"))
-    assert helpers.is_ip_address(memoryview(b"::1"))
-
-    # Hostnames
-    assert not helpers.is_ip_address(memoryview(b"localhost"))
-    assert not helpers.is_ip_address(memoryview(b"www.example.com"))
-
-
 def test_ipv4_addresses() -> None:
     ip_addresses = [
         "0.0.0.0",

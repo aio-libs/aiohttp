@@ -484,7 +484,7 @@ except ImportError:
     pass
 
 
-def is_ip_address(host: Optional[Union[str, bytes, bytearray, memoryview]]) -> bool:
+def is_ip_address(host: Optional[str]) -> bool:
     """Check if host looks like an IP Address.
 
     This check is only meant as a heuristic to ensure that
@@ -494,13 +494,7 @@ def is_ip_address(host: Optional[Union[str, bytes, bytearray, memoryview]]) -> b
         return False
     # For a host to be an ipv4 address, it must be all numeric.
     # The host must contain a colon to be an IPv6 address.
-    if isinstance(host, str):
-        return ":" in host or host.replace(".", "").isdigit()
-    if isinstance(host, (bytes, bytearray)):
-        return b":" in host or host.decode("ascii").replace(".", "").isdigit()
-    if isinstance(host, memoryview):
-        return b":" in host or bytes(host).decode("ascii").replace(".", "").isdigit()
-    raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
+    return ":" in host or host.replace(".", "").isdigit()
 
 
 _cached_current_datetime: Optional[int] = None
