@@ -1178,7 +1178,7 @@ class ClientResponse(HeadersMixin):
         protocol = self._connection and self._connection.protocol
         if protocol is None or not protocol.upgraded:
             await self._wait_released()  # Underlying connection released
-        return self._body  # type: ignore[no-any-return]
+        return self._body
 
     def get_encoding(self) -> str:
         ctype = self.headers.get(hdrs.CONTENT_TYPE, "").lower()
@@ -1211,9 +1211,7 @@ class ClientResponse(HeadersMixin):
         if encoding is None:
             encoding = self.get_encoding()
 
-        return self._body.decode(  # type: ignore[no-any-return,union-attr]
-            encoding, errors=errors
-        )
+        return self._body.decode(encoding, errors=errors)  # type: ignore[union-attr]
 
     async def json(
         self,
