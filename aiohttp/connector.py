@@ -1140,6 +1140,8 @@ class TCPConnector(BaseConnector):
                             fingerprint.check(tls_transport)
                         except ServerFingerprintMismatch:
                             tls_transport.close()
+                            if not self._cleanup_closed_disabled:
+                                self._cleanup_closed_transports.append(transp)
                             raise
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
