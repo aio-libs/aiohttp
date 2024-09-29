@@ -416,7 +416,7 @@ class TestProxy(unittest.TestCase):
                             self.loop.run_until_complete(req.close())
                 self.loop.run_until_complete(connector.close())
 
-    @pytest.parametrize("cleanup", (True, False))
+    @pytest.mark.parametrize("cleanup", (True, False))
     @mock.patch("aiohttp.connector.ClientRequest")
     @mock.patch(
         "aiohttp.connector.aiohappyeyeballs.start_connection",
