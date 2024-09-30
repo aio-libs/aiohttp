@@ -775,11 +775,7 @@ async def test_ws_connect_deflate_per_message(
                 m_req.return_value = loop.create_future()
                 m_req.return_value.set_result(mresp)
                 writer = WebSocketWriter.return_value = mock.Mock()
-<<<<<<< Updated upstream
-                send_frame = writer.send_frame = make_mocked_coro()
-=======
-                send = writer.send = mock.AsyncMock()
->>>>>>> Stashed changes
+                send_frame = writer.send = mock.AsyncMock()
 
                 session = aiohttp.ClientSession()
                 resp = await session.ws_connect("http://test.org")
