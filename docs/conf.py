@@ -56,8 +56,8 @@ extensions = [
     "sphinx.ext.extlinks",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
+    "sphinx.ext.graphviz",
     # Third-party extensions:
-    "sphinxcontrib.blockdiag",
     "sphinxcontrib.towncrier.ext",  # provides `towncrier-draft-entries` directive
 ]
 
