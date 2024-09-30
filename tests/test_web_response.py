@@ -20,7 +20,7 @@ from aiohttp.helpers import ETag
 from aiohttp.http_writer import StreamWriter, _serialize_headers
 from aiohttp.multipart import BodyPartReader, MultipartWriter
 from aiohttp.payload import BytesPayload, StringPayload
-from aiohttp.test_utils import make_mocked_coro, make_mocked_request
+from aiohttp.test_utils import make_mocked_request
 from aiohttp.typedefs import LooseHeaders
 
 
@@ -856,7 +856,7 @@ async def test_prepare_twice() -> None:
 
 async def test_prepare_calls_signal() -> None:
     app = mock.create_autospec(web.Application, spec_set=True)
-    sig = make_mocked_coro()
+    sig = mock.AsyncMock()
     app.on_response_prepare = aiosignal.Signal(app)
     app.on_response_prepare.append(sig)
     req = make_request("GET", "/", app=app)
@@ -1121,8 +1121,8 @@ async def test_send_set_cookie_header(
 
 async def test_consecutive_write_eof() -> None:
     writer = mock.Mock()
-    writer.write_eof = make_mocked_coro()
-    writer.write_headers = make_mocked_coro()
+    writer.write_eof = mock.AsyncMock()
+    writer.write_headers = mock.AsyncMock()
     req = make_request("GET", "/", writer=writer)
     data = b"data"
     resp = web.Response(body=data)

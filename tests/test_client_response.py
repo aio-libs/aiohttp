@@ -16,7 +16,6 @@ from aiohttp import ClientSession, http
 from aiohttp.client_reqrep import ClientResponse, RequestInfo
 from aiohttp.connector import Connection
 from aiohttp.helpers import TimerNoop
-from aiohttp.test_utils import make_mocked_coro
 
 
 class WriterMock(mock.AsyncMock):
@@ -1124,7 +1123,7 @@ async def test_response_read_triggers_callback(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     trace = mock.Mock()
-    trace.send_response_chunk_received = make_mocked_coro()
+    trace.send_response_chunk_received = mock.AsyncMock()
     response_method = "get"
     response_url = URL("http://def-cl-resp.org")
     response_body = b"This is response"

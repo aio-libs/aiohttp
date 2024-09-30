@@ -11,7 +11,7 @@ from pytest_mock import MockerFixture
 from aiohttp import WSMsgType, web
 from aiohttp.http import WS_CLOSED_MESSAGE, WSMessage
 from aiohttp.streams import EofStream
-from aiohttp.test_utils import make_mocked_coro, make_mocked_request
+from aiohttp.test_utils import make_mocked_request
 from aiohttp.web_ws import WebSocketReady
 
 
@@ -380,7 +380,7 @@ async def test_receive_eofstream_in_reader(
     exc = EofStream()
     res = loop.create_future()
     res.set_exception(exc)
-    ws._reader.read = make_mocked_coro(res)
+    ws._reader.read = mock.AsyncMock(res)
     assert ws._payload_writer is not None
     f = loop.create_future()
     f.set_result(True)
@@ -401,7 +401,7 @@ async def test_receive_exception_in_reader(
     exc = Exception()
     res = loop.create_future()
     res.set_exception(exc)
-    ws._reader.read = make_mocked_coro(res)
+    ws._reader.read = mock.AsyncMock(res)
 
     f = loop.create_future()
     assert ws._payload_writer is not None
@@ -504,7 +504,7 @@ async def test_receive_timeouterror(
     ws._reader = mock.Mock()
     res = loop.create_future()
     res.set_exception(asyncio.TimeoutError())
-    ws._reader.read = make_mocked_coro(res)
+    ws._reader.read = mock.AsyncMock(res)
 
     with pytest.raises(asyncio.TimeoutError):
         await ws.receive()

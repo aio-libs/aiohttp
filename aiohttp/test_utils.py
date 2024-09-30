@@ -673,10 +673,10 @@ def make_mocked_request(
 
     if writer is None:
         writer = mock.Mock()
-        writer.write_headers = make_mocked_coro(None)
-        writer.write = make_mocked_coro(None)
-        writer.write_eof = make_mocked_coro(None)
-        writer.drain = make_mocked_coro(None)
+        writer.write_headers = mock.AsyncMock(None)
+        writer.write = mock.AsyncMock(None)
+        writer.write_eof = mock.AsyncMock(None)
+        writer.drain = mock.AsyncMock(None)
         writer.transport = transport
 
     protocol.transport = transport

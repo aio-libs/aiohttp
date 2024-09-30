@@ -9,7 +9,6 @@ from multidict import CIMultiDict
 
 from aiohttp import ClientConnectionResetError, http
 from aiohttp.base_protocol import BaseProtocol
-from aiohttp.test_utils import make_mocked_coro
 
 
 @pytest.fixture
@@ -270,7 +269,7 @@ async def test_write_calls_callback(
     transport: asyncio.Transport,
     loop: asyncio.AbstractEventLoop,
 ) -> None:
-    on_chunk_sent = make_mocked_coro()
+    on_chunk_sent = mock.AsyncMock()
     msg = http.StreamWriter(protocol, loop, on_chunk_sent=on_chunk_sent)
     chunk = b"1"
     await msg.write(chunk)
@@ -283,7 +282,7 @@ async def test_write_eof_calls_callback(
     transport: asyncio.Transport,
     loop: asyncio.AbstractEventLoop,
 ) -> None:
-    on_chunk_sent = make_mocked_coro()
+    on_chunk_sent = mock.AsyncMock()
     msg = http.StreamWriter(protocol, loop, on_chunk_sent=on_chunk_sent)
     chunk = b"1"
     await msg.write_eof(chunk=chunk)

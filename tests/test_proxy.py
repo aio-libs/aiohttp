@@ -11,7 +11,6 @@ import aiohttp
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
 from aiohttp.connector import _SSL_CONTEXT_VERIFIED
 from aiohttp.helpers import TimerNoop
-from aiohttp.test_utils import make_mocked_coro
 
 
 class TestProxy(unittest.TestCase):
@@ -20,7 +19,7 @@ class TestProxy(unittest.TestCase):
     }
     mocked_response = mock.Mock(**response_mock_attrs)
     clientrequest_mock_attrs = {
-        "return_value.send.return_value.start": make_mocked_coro(mocked_response),
+        "return_value.send.return_value.start": mock.AsyncMock(return_value=mocked_response),
     }
 
     def setUp(self) -> None:
