@@ -374,7 +374,7 @@ class ClientRequest:
     def connection_key(self) -> ConnectionKey:
         proxy_headers = self.proxy_headers
         if proxy_headers:
-            h: Optional[int] = hash(tuple((k, v) for k, v in proxy_headers.items()))
+            h: Optional[int] = hash(tuple(proxy_headers.items()))
         else:
             h = None
         return ConnectionKey(
