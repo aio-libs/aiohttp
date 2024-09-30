@@ -434,11 +434,11 @@ class TestProxy(unittest.TestCase):
                     "GET", URL("http://proxy.example.com"), loop=self.loop
                 )
                 ClientRequestMock.return_value = proxy_req
-        
+
                 class TransportMock(asyncio.Transport):
                     def close(self) -> None:
                         pass
-        
+
                 proxy_resp = ClientResponse(
                     "get",
                     URL("http://proxy.example.com"),
@@ -455,7 +455,11 @@ class TestProxy(unittest.TestCase):
                     b"exp", b"got", "example.com", 8080
                 )
                 with mock.patch.object(
-                    proxy_req, "send", autospec=True, spec_set=True, return_value=proxy_resp
+                    proxy_req,
+                    "send",
+                    autospec=True,
+                    spec_set=True,
+                    return_value=proxy_resp,
                 ), mock.patch.object(
                     proxy_resp,
                     "start",
@@ -507,7 +511,9 @@ class TestProxy(unittest.TestCase):
                         )
                         with self.assertRaises(aiohttp.ServerFingerprintMismatch):
                             self.loop.run_until_complete(
-                                connector._create_connection(req, [], aiohttp.ClientTimeout())
+                                connector._create_connection(
+                                    req, [], aiohttp.ClientTimeout()
+                                )
                             )
 
     @mock.patch("aiohttp.connector.ClientRequest")
