@@ -271,7 +271,7 @@ uvloop==0.21.0b1 ; platform_system != "Windows" and implementation_name == "cpyt
     # via
     #   -r requirements/base.in
     #   -r requirements/lint.in
-virtualenv==20.26.5
+virtualenv==20.26.6
     # via pre-commit
 wait-for-it==2.2.2
     # via -r requirements/test.in
