@@ -19,7 +19,9 @@ class TestProxy(unittest.TestCase):
     }
     mocked_response = mock.Mock(**response_mock_attrs)
     clientrequest_mock_attrs = {
-        "return_value.send.return_value.start": mock.AsyncMock(return_value=mocked_response),
+        "return_value.send.return_value.start": mock.AsyncMock(
+            return_value=mocked_response
+        ),
     }
 
     def setUp(self) -> None:
