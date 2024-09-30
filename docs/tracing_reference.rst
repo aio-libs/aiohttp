@@ -118,9 +118,9 @@ Connection acquiring
    * - Name
      - Description
    * - begin
-     - 
+     -
    * - end
-     - 
+     -
    * - queued_start
      - on_connection_queued_start
    * - create_start
@@ -167,9 +167,9 @@ DNS resolving
    * - Name
      - Description
    * - begin
-     - 
+     -
    * - end
-     - 
+     -
    * - exception
      - Exception raised
    * - resolve_end
