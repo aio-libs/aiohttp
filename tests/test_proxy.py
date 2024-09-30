@@ -422,7 +422,7 @@ class TestProxy(unittest.TestCase):
         spec_set=True,
     )
     def test_https_connect_fingerprint_mismatch(
-        self, start_connection: mock.Mock, ClientRequestMock: mock.Mock, cleanup: bool
+        self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         async def make_conn() -> aiohttp.TCPConnector:
             return aiohttp.TCPConnector(enable_cleanup_closed=cleanup)
