@@ -63,6 +63,7 @@ Boris Feld
 Borys Vorona
 Boyi Chen
 Brett Cannon
+Brett Higgins
 Brian Bouterse
 Brian C. Lane
 Brian Muller
