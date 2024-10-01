@@ -18,6 +18,7 @@ from typing import (
     Iterable,
     List,
     Mapping,
+    NamedTuple,
     Optional,
     Tuple,
     Type,
@@ -208,8 +209,13 @@ def _merge_ssl_params(
     return ssl
 
 
-@attr.s(auto_attribs=True, slots=True, frozen=True, cache_hash=True)
-class ConnectionKey:
+_SSL_SCHEMES = frozenset(("https", "wss"))
+
+
+# ConnectionKey is a NamedTuple because it is used as a key in a dict
+# and a set in the connector. Since a NamedTuple is a tuple it uses
+# the fast native tuple __hash__ and __eq__ implementation in CPython.
+class ConnectionKey(NamedTuple):
     # the key should contain an information about used proxy / TLS
     # to prevent reusing wrong connections from a pool
     host: str
@@ -358,7 +364,7 @@ class ClientRequest:
             writer.add_done_callback(self.__reset_writer)
 
     def is_ssl(self) -> bool:
-        return self.url.scheme in ("https", "wss")
+        return self.url.scheme in _SSL_SCHEMES
 
     @property
     def ssl(self) -> Union["SSLContext", bool, Fingerprint]:
@@ -366,16 +372,16 @@ class ClientRequest:
 
     @property
     def connection_key(self) -> ConnectionKey:
-        proxy_headers = self.proxy_headers
-        if proxy_headers:
+        if proxy_headers := self.proxy_headers:
             h: Optional[int] = hash(tuple(proxy_headers.items()))
         else:
             h = None
+        url = self.url
         return ConnectionKey(
-            self.host,
-            self.port,
-            self.is_ssl(),
-            self.ssl,
+            url.raw_host or "",
+            url.port,
+            url.scheme in _SSL_SCHEMES,
+            self._ssl,
             self.proxy,
             self.proxy_auth,
             h,
