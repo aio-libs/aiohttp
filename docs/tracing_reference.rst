@@ -21,23 +21,20 @@ A request goes through the following stages and corresponding fallbacks.
 Overview
 ^^^^^^^^
 
-.. blockdiag::
-   :desctable:
+.. graphviz::
 
+   digraph {
 
-   blockdiag {
-     orientation = portrait;
+     start[shape=point, xlabel="start", width="0.1"];
+     redirect[shape=box];
+     end[shape=point, xlabel="end  ", width="0.1"];
+     exception[shape=oval];
 
-     start[shape=beginpoint, description="on_request_start"];
-     redirect[description="on_request_redirect"];
-     end[shape=endpoint, description="on_request_end"];
-     exception[shape=flowchart.terminator, description="on_request_exception"];
-
-     acquire_connection[description="Connection acquiring"];
-     headers_received;
-     headers_sent[description="on_request_headers_sent"];
-     chunk_sent[description="on_request_chunk_sent"];
-     chunk_received[description="on_response_chunk_received"];
+     acquire_connection[shape=box];
+     headers_received[shape=box];
+     headers_sent[shape=box];
+     chunk_sent[shape=box];
+     chunk_received[shape=box];
 
      start -> acquire_connection;
      acquire_connection -> headers_sent;
@@ -57,28 +54,48 @@ Overview
 
    }
 
+.. list-table::
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - start
+     - on_request_start
+   * - redirect
+     - on_request_redirect
+   * - acquire_connection
+     - Connection acquiring
+   * - headers_received
+     -
+   * - exception
+     - on_request_exception
+   * - end
+     - on_request_end
+   * - headers_sent
+     - on_request_headers_sent
+   * - chunk_sent
+     - on_request_chunk_sent
+   * - chunk_received
+     - on_response_chunk_received
 
 Connection acquiring
 ^^^^^^^^^^^^^^^^^^^^
 
-.. blockdiag::
-   :desctable:
+.. graphviz::
 
-   blockdiag {
-     orientation = portrait;
+   digraph {
 
-     begin[shape=beginpoint];
-     end[shape=endpoint];
-     exception[shape=flowchart.terminator, description="Exception raised"];
+     begin[shape=point, xlabel="begin", width="0.1"];
+     end[shape=point, xlabel="end ", width="0.1"];
+     exception[shape=oval];
 
-     queued_start[description="on_connection_queued_start"];
-     queued_end[description="on_connection_queued_end"];
-     create_start[description="on_connection_create_start"];
-     create_end[description="on_connection_create_end"];
-     reuseconn[description="on_connection_reuseconn"];
-
-     resolve_dns[description="DNS resolving"];
-     sock_connect[description="Connection establishment"];
+     queued_start[shape=box];
+     queued_end[shape=box];
+     create_start[shape=box];
+     create_end[shape=box];
+     reuseconn[shape=box];
+     resolve_dns[shape=box];
+     sock_connect[shape=box];
 
      begin -> reuseconn;
      begin -> create_start;
@@ -95,23 +112,47 @@ Connection acquiring
 
    }
 
+.. list-table::
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - begin
+     -
+   * - end
+     -
+   * - queued_start
+     - on_connection_queued_start
+   * - create_start
+     - on_connection_create_start
+   * - reuseconn
+     - on_connection_reuseconn
+   * - queued_end
+     - on_connection_queued_end
+   * - create_end
+     - on_connection_create_end
+   * - exception
+     - Exception raised
+   * - resolve_dns
+     - DNS resolving
+   * - sock_connect
+     - Connection establishment
+
 DNS resolving
 ^^^^^^^^^^^^^
 
-.. blockdiag::
-   :desctable:
+.. graphviz::
 
-   blockdiag {
-     orientation = portrait;
+   digraph {
 
-     begin[shape=beginpoint];
-     end[shape=endpoint];
-     exception[shape=flowchart.terminator, description="Exception raised"];
+     begin[shape=point, xlabel="begin", width="0.1"];
+     end[shape=point, xlabel="end", width="0.1"];
+     exception[shape=oval];
 
-     resolve_start[description="on_dns_resolvehost_start"];
-     resolve_end[description="on_dns_resolvehost_end"];
-     cache_hit[description="on_dns_cache_hit"];
-     cache_miss[description="on_dns_cache_miss"];
+     resolve_start[shape=box];
+     resolve_end[shape=box];
+     cache_hit[shape=box];
+     cache_miss[shape=box];
 
      begin -> cache_hit -> end;
      begin -> cache_miss -> resolve_start;
@@ -120,6 +161,25 @@ DNS resolving
 
    }
 
+.. list-table::
+   :header-rows: 1
+
+   * - Name
+     - Description
+   * - begin
+     -
+   * - end
+     -
+   * - exception
+     - Exception raised
+   * - resolve_end
+     - on_dns_resolvehost_end
+   * - resolve_start
+     - on_dns_resolvehost_start
+   * - cache_hit
+     - on_dns_cache_hit
+   * - cache_miss
+     - on_dns_cache_miss
 
 Classes
 -------
