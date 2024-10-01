@@ -154,6 +154,10 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 3.3
 
+      .. versionchanged:: 3.10.9
+
+         The default value for the ``sock_connect`` timeout has been changed to 30 seconds.
+
    :param bool auto_decompress: Automatically decompress response body (``True`` by default).
 
       .. versionadded:: 2.3
