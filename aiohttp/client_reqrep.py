@@ -355,17 +355,17 @@ class ClientRequest:
         """Update request headers."""
         self.headers: CIMultiDict[str] = CIMultiDict()
 
-        # add host
-        netloc = self.url.host_subcomponent
-        assert netloc is not None
+        # Build the host header
+        host = self.url.host_subcomponent
+        assert host is not None
 
-        if netloc[-1] == ".":
+        if host[-1] == ".":
             # Remove all trailing dots from the netloc as while
             # they are valid FQDNs in DNS, TLS validation fails.
             # See https://github.com/aio-libs/aiohttp/issues/3636.
             # To avoid string manipulation we only call rstrip if
             # the last character is a dot.
-            netloc = netloc.rstrip(".")
+            host = host.rstrip(".")
 
         # If explicit port is not None, it means that the port was
         # explicitly specified in the URL. In this case we check
@@ -375,8 +375,9 @@ class ClientRequest:
         # in the cache and non-default port URLs are far less common.
         explicit_port = self.url.explicit_port
         if explicit_port is not None and not self.url.is_default_port():
-            netloc = f"{netloc}:{explicit_port}"
-        self.headers[hdrs.HOST] = netloc
+            host = f"{host}:{explicit_port}"
+
+        self.headers[hdrs.HOST] = host
 
         if headers:
             if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
