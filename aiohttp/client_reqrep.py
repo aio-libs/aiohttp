@@ -379,7 +379,7 @@ class ClientRequest:
 
         self.headers[hdrs.HOST] = host
 
-        if headers:
+        if not headers:
             return
 
         if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
