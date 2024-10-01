@@ -733,9 +733,15 @@ async def test_tcp_connector_multiple_hosts_errors(loop) -> None:
 
         assert False
 
-    conn._loop.create_connection = create_connection
-
-    with mock.patch(
+    with mock.patch.object(
+        conn, "_resolve_host", autospec=True, spec_set=True, side_effect=_resolve_host
+    ), mock.patch.object(
+        conn._loop,
+        "create_connection",
+        autospec=True,
+        spec_set=True,
+        side_effect=create_connection,
+    ), mock.patch(
         "aiohttp.connector.aiohappyeyeballs.start_connection", start_connection
     ):
         established_connection = await conn.connect(req, [], ClientTimeout())
@@ -885,9 +891,15 @@ async def test_tcp_connector_interleave(loop: Any) -> None:
         pr = create_mocked_conn(loop)
         return tr, pr
 
-    conn._loop.create_connection = create_connection
-
-    with mock.patch(
+    with mock.patch.object(
+        conn, "_resolve_host", autospec=True, spec_set=True, side_effect=_resolve_host
+    ), mock.patch.object(
+        conn._loop,
+        "create_connection",
+        autospec=True,
+        spec_set=True,
+        side_effect=create_connection,
+    ), mock.patch(
         "aiohttp.connector.aiohappyeyeballs.start_connection", start_connection
     ):
         established_connection = await conn.connect(req, [], ClientTimeout())
