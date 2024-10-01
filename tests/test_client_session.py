@@ -708,9 +708,7 @@ async def test_default_proxy(loop: asyncio.AbstractEventLoop) -> None:
     await session.close()
 
 
-async def test_request_tracing(
-    loop: asyncio.AbstractEventLoop, aiohttp_client
-) -> None:
+async def test_request_tracing(loop: asyncio.AbstractEventLoop, aiohttp_client) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.json_response({"ok": True})
 
