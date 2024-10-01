@@ -469,11 +469,8 @@ except ImportError:
     pass
 
 
-def is_ipv4_address(host: Optional[Union[str, bytes]]) -> bool:
-    """Check if host looks like an IPv4 address.
-
-    This function does not validate that the format is correct, only that
-    the host is a str or bytes, and its all numeric.
+def is_ip_address(host: Optional[str]) -> bool:
+    """Check if host looks like an IP Address.
 
     This check is only meant as a heuristic to ensure that
     a host is not a domain name.
@@ -481,39 +478,8 @@ def is_ipv4_address(host: Optional[Union[str, bytes]]) -> bool:
     if not host:
         return False
     # For a host to be an ipv4 address, it must be all numeric.
-    if isinstance(host, str):
-        return host.replace(".", "").isdigit()
-    if isinstance(host, (bytes, bytearray, memoryview)):
-        return host.decode("ascii").replace(".", "").isdigit()
-    raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
-
-
-def is_ipv6_address(host: Optional[Union[str, bytes]]) -> bool:
-    """Check if host looks like an IPv6 address.
-
-    This function does not validate that the format is correct, only that
-    the host contains a colon and that it is a str or bytes.
-
-    This check is only meant as a heuristic to ensure that
-    a host is not a domain name.
-    """
-    if not host:
-        return False
     # The host must contain a colon to be an IPv6 address.
-    if isinstance(host, str):
-        return ":" in host
-    if isinstance(host, (bytes, bytearray, memoryview)):
-        return b":" in host
-    raise TypeError(f"{host} [{type(host)}] is not a str or bytes")
-
-
-def is_ip_address(host: Optional[Union[str, bytes, bytearray, memoryview]]) -> bool:
-    """Check if host looks like an IP Address.
-
-    This check is only meant as a heuristic to ensure that
-    a host is not a domain name.
-    """
-    return is_ipv4_address(host) or is_ipv6_address(host)
+    return ":" in host or host.replace(".", "").isdigit()
 
 
 _cached_current_datetime: Optional[int] = None
@@ -684,6 +650,7 @@ class TimerContext(BaseTimerContext):
         self._loop = loop
         self._tasks: List[asyncio.Task[Any]] = []
         self._cancelled = False
+        self._cancelling = 0
 
     def assert_timeout(self) -> None:
         """Raise TimeoutError if timer has already been cancelled."""
@@ -692,9 +659,20 @@ class TimerContext(BaseTimerContext):
 
     def __enter__(self) -> BaseTimerContext:
         task = asyncio.current_task(loop=self._loop)
-
         if task is None:
             raise RuntimeError("Timeout context manager should be used inside a task")
+
+        if sys.version_info >= (3, 11):
+            # Remember if the task was already cancelling
+            # so when we __exit__ we can decide if we should
+            # raise asyncio.TimeoutError or let the cancellation propagate
+            self._cancelling = task.cancelling()
+
+        if sys.version_info >= (3, 11):
+            # Remember if the task was already cancelling
+            # so when we __exit__ we can decide if we should
+            # raise asyncio.TimeoutError or let the cancellation propagate
+            self._cancelling = task.cancelling()
 
         if self._cancelled:
             raise asyncio.TimeoutError from None
@@ -708,11 +686,22 @@ class TimerContext(BaseTimerContext):
         exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
     ) -> Optional[bool]:
+        enter_task: Optional[asyncio.Task[Any]] = None
         if self._tasks:
-            self._tasks.pop()
+            enter_task = self._tasks.pop()
 
         if exc_type is asyncio.CancelledError and self._cancelled:
-            raise asyncio.TimeoutError from None
+            assert enter_task is not None
+            # The timeout was hit, and the task was cancelled
+            # so we need to uncancel the last task that entered the context manager
+            # since the cancellation should not leak out of the context manager
+            if sys.version_info >= (3, 11):
+                # If the task was already cancelling don't raise
+                # asyncio.TimeoutError and instead return None
+                # to allow the cancellation to propagate
+                if enter_task.uncancel() > self._cancelling:
+                    return None
+            raise asyncio.TimeoutError from exc_val
         return None
 
     def timeout(self) -> None:

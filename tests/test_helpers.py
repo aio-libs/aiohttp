@@ -268,16 +268,6 @@ def test_is_ip_address() -> None:
     assert not helpers.is_ip_address("www.example.com")
 
 
-def test_is_ip_address_bytes() -> None:
-    assert helpers.is_ip_address(b"127.0.0.1")
-    assert helpers.is_ip_address(b"::1")
-    assert helpers.is_ip_address(b"FE80:0000:0000:0000:0202:B3FF:FE1E:8329")
-
-    # Hostnames
-    assert not helpers.is_ip_address(b"localhost")
-    assert not helpers.is_ip_address(b"www.example.com")
-
-
 def test_ipv4_addresses() -> None:
     ip_addresses = [
         "0.0.0.0",
@@ -285,8 +275,6 @@ def test_ipv4_addresses() -> None:
         "255.255.255.255",
     ]
     for address in ip_addresses:
-        assert helpers.is_ipv4_address(address)
-        assert not helpers.is_ipv6_address(address)
         assert helpers.is_ip_address(address)
 
 
@@ -302,8 +290,6 @@ def test_ipv6_addresses() -> None:
         "1::1",
     ]
     for address in ip_addresses:
-        assert not helpers.is_ipv4_address(address)
-        assert helpers.is_ipv6_address(address)
         assert helpers.is_ip_address(address)
 
 
@@ -324,18 +310,6 @@ def test_is_ip_address_invalid_type() -> None:
 
     with pytest.raises(TypeError):
         helpers.is_ip_address(object())
-
-    with pytest.raises(TypeError):
-        helpers.is_ipv4_address(123)  # type: ignore[arg-type]
-
-    with pytest.raises(TypeError):
-        helpers.is_ipv4_address(object())  # type: ignore[arg-type]
-
-    with pytest.raises(TypeError):
-        helpers.is_ipv6_address(123)  # type: ignore[arg-type]
-
-    with pytest.raises(TypeError):
-        helpers.is_ipv6_address(object())  # type: ignore[arg-type]
 
 
 # ----------------------------------- TimeoutHandle -------------------
@@ -398,7 +372,61 @@ def test_timer_context_not_cancelled() -> None:
         assert not m_asyncio.current_task.return_value.cancel.called
 
 
-def test_timer_context_no_task(loop) -> None:
+@pytest.mark.skipif(
+    sys.version_info < (3, 11), reason="Python 3.11+ is required for .cancelling()"
+)
+async def test_timer_context_timeout_does_not_leak_upward() -> None:
+    """Verify that the TimerContext does not leak cancellation outside the context manager."""
+    loop = asyncio.get_running_loop()
+    ctx = helpers.TimerContext(loop)
+    current_task = asyncio.current_task()
+    assert current_task is not None
+    with pytest.raises(asyncio.TimeoutError):
+        with ctx:
+            assert current_task.cancelling() == 0
+            loop.call_soon(ctx.timeout)
+            await asyncio.sleep(1)
+
+    # After the context manager exits, the task should no longer be cancelling
+    assert current_task.cancelling() == 0
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 11), reason="Python 3.11+ is required for .cancelling()"
+)
+async def test_timer_context_timeout_does_swallow_cancellation() -> None:
+    """Verify that the TimerContext does not swallow cancellation."""
+    loop = asyncio.get_running_loop()
+    current_task = asyncio.current_task()
+    assert current_task is not None
+    ctx = helpers.TimerContext(loop)
+
+    async def task_with_timeout() -> None:
+        nonlocal ctx
+        new_task = asyncio.current_task()
+        assert new_task is not None
+        with pytest.raises(asyncio.TimeoutError):
+            with ctx:
+                assert new_task.cancelling() == 0
+                await asyncio.sleep(1)
+
+    task = asyncio.create_task(task_with_timeout())
+    await asyncio.sleep(0)
+    task.cancel()
+    assert task.cancelling() == 1
+    ctx.timeout()
+
+    # Cancellation should not leak into the current task
+    assert current_task.cancelling() == 0
+    # Cancellation should not be swallowed if the task is cancelled
+    # and it also times out
+    await asyncio.sleep(0)
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert task.cancelling() == 1
+
+
+def test_timer_context_no_task(loop: asyncio.AbstractEventLoop) -> None:
     with pytest.raises(RuntimeError):
         with helpers.TimerContext(loop):
             pass
