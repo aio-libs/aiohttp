@@ -425,25 +425,45 @@ class ClientRequest:
         """Update request headers."""
         self.headers: CIMultiDict[str] = CIMultiDict()
 
-        # add host
-        netloc = self.url.host_subcomponent
-        assert netloc is not None
-        # See https://github.com/aio-libs/aiohttp/issues/3636.
-        netloc = netloc.rstrip(".")
-        if self.url.port is not None and not self.url.is_default_port():
-            netloc += ":" + str(self.url.port)
-        self.headers[hdrs.HOST] = netloc
+        # Build the host header
+        host = self.url.host_subcomponent
 
-        if headers:
-            if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
-                headers = headers.items()
+        # host_subcomponent is None when the URL is a relative URL.
+        # but we know we do not have a relative URL here.
+        assert host is not None
 
-            for key, value in headers:  # type: ignore[misc]
-                # A special case for Host header
-                if key.lower() == "host":
-                    self.headers[key] = value
-                else:
-                    self.headers.add(key, value)
+        if host[-1] == ".":
+            # Remove all trailing dots from the netloc as while
+            # they are valid FQDNs in DNS, TLS validation fails.
+            # See https://github.com/aio-libs/aiohttp/issues/3636.
+            # To avoid string manipulation we only call rstrip if
+            # the last character is a dot.
+            host = host.rstrip(".")
+
+        # If explicit port is not None, it means that the port was
+        # explicitly specified in the URL. In this case we check
+        # if its not the default port for the scheme and add it to
+        # the host header. We check explicit_port first because
+        # yarl caches explicit_port and its likely to already be
+        # in the cache and non-default port URLs are far less common.
+        explicit_port = self.url.explicit_port
+        if explicit_port is not None and not self.url.is_default_port():
+            host = f"{host}:{explicit_port}"
+
+        self.headers[hdrs.HOST] = host
+
+        if not headers:
+            return
+
+        if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
+            headers = headers.items()
+
+        for key, value in headers:  # type: ignore[misc]
+            # A special case for Host header
+            if key.lower() == "host":
+                self.headers[key] = value
+            else:
+                self.headers.add(key, value)
 
     def update_auto_headers(self, skip_auto_headers: Optional[Iterable[str]]) -> None:
         if skip_auto_headers is not None:
