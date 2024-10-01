@@ -1,5 +1,4 @@
 import asyncio
-import dataclasses
 import functools
 import logging
 import random
@@ -1312,8 +1311,8 @@ class TCPConnector(BaseConnector):
             # asyncio handles this perfectly
             proxy_req.method = hdrs.METH_CONNECT
             proxy_req.url = req.url
-            key = dataclasses.replace(
-                req.connection_key, proxy=None, proxy_auth=None, proxy_headers_hash=None
+            key = req.connection_key._replace(
+                proxy=None, proxy_auth=None, proxy_headers_hash=None
             )
             conn = Connection(self, key, proto, self._loop)
             proxy_resp = await proxy_req.send(conn)
