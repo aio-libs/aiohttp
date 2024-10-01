@@ -28,8 +28,6 @@ attrs==24.2.0
     # via -r requirements/runtime-deps.in
 babel==2.16.0
     # via sphinx
-blockdiag==3.0.0
-    # via sphinxcontrib-blockdiag
 brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
 build==1.2.2
@@ -78,8 +76,6 @@ frozenlist==1.4.1
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-funcparserlib==1.0.1
-    # via blockdiag
 gidgethub==5.3.0
     # via cherry-picker
 gunicorn==23.0.0
@@ -131,10 +127,6 @@ packaging==24.1
     #   gunicorn
     #   pytest
     #   sphinx
-pillow==9.5.0
-    # via
-    #   -c requirements/broken-projects.in
-    #   blockdiag
 pip-tools==7.4.1
     # via -r requirements/dev.in
 platformdirs==4.3.6
@@ -158,9 +150,7 @@ pygments==2.18.0
     #   rich
     #   sphinx
 pyjwt==2.8.0
-    # via
-    #   gidgethub
-    #   pyjwt
+    # via gidgethub
 pyproject-hooks==1.2.0
     # via
     #   build
@@ -211,12 +201,9 @@ snowballstemmer==2.2.0
 sphinx==7.1.2
     # via
     #   -r requirements/doc.in
-    #   sphinxcontrib-blockdiag
     #   sphinxcontrib-towncrier
 sphinxcontrib-applehelp==1.0.4
     # via sphinx
-sphinxcontrib-blockdiag==3.0.0
-    # via -r requirements/doc.in
 sphinxcontrib-devhelp==1.0.2
     # via sphinx
 sphinxcontrib-htmlhelp==2.0.1
@@ -275,8 +262,6 @@ virtualenv==20.26.6
     # via pre-commit
 wait-for-it==2.2.2
     # via -r requirements/test.in
-webcolors==24.8.0
-    # via blockdiag
 wheel==0.44.0
     # via pip-tools
 yarl==1.13.1
@@ -291,6 +276,5 @@ pip==24.2
     # via pip-tools
 setuptools==75.1.0
     # via
-    #   blockdiag
     #   incremental
     #   pip-tools
