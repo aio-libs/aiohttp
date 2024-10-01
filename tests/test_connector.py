@@ -791,29 +791,27 @@ async def test_tcp_connector_multiple_hosts_errors(
 
     with mock.patch.object(
         conn, "_resolve_host", autospec=True, spec_set=True, side_effect=_resolve_host
+    ), mock.patch.object(
+        conn._loop,
+        "create_connection",
+        autospec=True,
+        spec_set=True,
+        side_effect=create_connection,
+    ), mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection", start_connection
     ):
-        with mock.patch.object(
-            conn._loop,
-            "create_connection",
-            autospec=True,
-            spec_set=True,
-            side_effect=create_connection,
-        ):
-            with mock.patch(
-                "aiohttp.connector.aiohappyeyeballs.start_connection", start_connection
-            ):
-                established_connection = await conn.connect(req, [], ClientTimeout())
+        established_connection = await conn.connect(req, [], ClientTimeout())
 
-            assert ips_tried == ips
-            assert addrs_tried == [(ip, 443) for ip in ips]
+    assert ips_tried == ips
+    assert addrs_tried == [(ip, 443) for ip in ips]
 
-            assert os_error
-            assert certificate_error
-            assert ssl_error
-            assert fingerprint_error
-            assert connected
+    assert os_error
+    assert certificate_error
+    assert ssl_error
+    assert fingerprint_error
+    assert connected
 
-            established_connection.close()
+    established_connection.close()
 
 
 @pytest.mark.parametrize(
@@ -971,22 +969,20 @@ async def test_tcp_connector_interleave(loop: asyncio.AbstractEventLoop) -> None
 
     with mock.patch.object(
         conn, "_resolve_host", autospec=True, spec_set=True, side_effect=_resolve_host
+    ), mock.patch.object(
+        conn._loop,
+        "create_connection",
+        autospec=True,
+        spec_set=True,
+        side_effect=create_connection,
+    ), mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection", start_connection
     ):
-        with mock.patch.object(
-            conn._loop,
-            "create_connection",
-            autospec=True,
-            spec_set=True,
-            side_effect=create_connection,
-        ):
-            with mock.patch(
-                "aiohttp.connector.aiohappyeyeballs.start_connection", start_connection
-            ):
-                established_connection = await conn.connect(req, [], ClientTimeout())
+        established_connection = await conn.connect(req, [], ClientTimeout())
 
-            assert success_ips == [ip4]
-            assert interleave_val == 2
-            established_connection.close()
+    assert success_ips == [ip4]
+    assert interleave_val == 2
+    established_connection.close()
 
 
 async def test_tcp_connector_family_is_respected(
