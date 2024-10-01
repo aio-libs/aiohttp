@@ -1480,7 +1480,11 @@ async def test_connection_key_with_proxy() -> None:
     """Verify the proxy headers are included in the ConnectionKey when a proxy is used."""
     proxy = URL("http://proxy.example.com")
     req = ClientRequest(
-        "GET", URL("http://example.com"), proxy=proxy, proxy_headers={"X-Proxy": "true"}
+        "GET",
+        URL("http://example.com"),
+        proxy=proxy,
+        proxy_headers={"X-Proxy": "true"},
+        loop=asyncio.get_running_loop(),
     )
     assert req.connection_key.proxy_headers_hash is not None
     await req.close()
@@ -1490,7 +1494,10 @@ async def test_connection_key_without_proxy() -> None:
     """Verify the proxy headers are not included in the ConnectionKey when a proxy is used."""
     # If proxy is unspecified, proxy_headers should be ignored
     req = ClientRequest(
-        "GET", URL("http://example.com"), proxy_headers={"X-Proxy": "true"}
+        "GET",
+        URL("http://example.com"),
+        proxy_headers={"X-Proxy": "true"},
+        loop=asyncio.get_running_loop(),
     )
     assert req.connection_key.proxy_headers_hash is None
     await req.close()
