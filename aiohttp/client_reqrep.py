@@ -359,9 +359,11 @@ class ClientRequest:
         netloc = self.url.host_subcomponent
         assert netloc is not None
         # See https://github.com/aio-libs/aiohttp/issues/3636.
-        netloc = netloc.rstrip(".")
-        if self.url.port is not None and not self.url.is_default_port():
-            netloc += ":" + str(self.url.port)
+        if netloc[-1] == ".":
+            netloc = netloc[:-1]
+        explicit_port = self.url.explicit_port
+        if explicit_port is not None and not self.url.is_default_port():
+            netloc = f"{netloc}:{explicit_port}"
         self.headers[hdrs.HOST] = netloc
 
         if headers:
