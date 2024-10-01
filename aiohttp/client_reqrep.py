@@ -332,7 +332,7 @@ class ClientRequest:
             raise InvalidURL(url)
 
         # basic auth info
-        if url.raw_user is not None or url.raw_password is not None:
+        if url.raw_user or url.raw_password:
             self.auth = helpers.BasicAuth(url.user or "", url.password or "")
 
     def update_version(self, version: Union[http.HttpVersion, str]) -> None:
