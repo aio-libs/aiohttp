@@ -1,0 +1,3 @@
+Fixed proxy headers being used in the ``ConnectionKey`` hash when proxy was being used -- by :user:`bdraco`.
+
+If default headers are used, they are also used for proxy headers. This could have led to creating connections that were not needed when one was already available.
