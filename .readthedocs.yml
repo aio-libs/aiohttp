@@ -16,6 +16,8 @@ build:
     python: "3.11"
 
   jobs:
+    post_system_dependencies:
+    - apt update && apt install -y graphviz
     post_create_environment:
     - >-
       pip install
