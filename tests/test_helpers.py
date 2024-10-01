@@ -197,6 +197,12 @@ def test_basic_auth_no_user_from_url() -> None:
     assert auth.password == "pass"
 
 
+def test_basic_auth_no_auth_from_url() -> None:
+    url = URL("http://example.com")
+    auth = helpers.BasicAuth.from_url(url)
+    assert auth is None
+
+
 def test_basic_auth_from_not_url() -> None:
     with pytest.raises(TypeError):
         helpers.BasicAuth.from_url("http://user:pass@example.com")

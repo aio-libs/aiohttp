@@ -163,7 +163,9 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
         """Create BasicAuth from url."""
         if not isinstance(url, URL):
             raise TypeError("url should be yarl.URL instance")
-        if url.user is None and url.password is None:
+        # Check raw_user and raw_password first as yarl is likely
+        # to already have these values parsed from the netloc in the cache.
+        if url.raw_user is None and url.raw_password is None:
             return None
         return cls(url.user or "", url.password or "", encoding=encoding)
 
@@ -174,11 +176,12 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
 
 
 def strip_auth_from_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
-    auth = BasicAuth.from_url(url)
-    if auth is None:
+    """Remove user and password from URL if present and return BasicAuth object."""
+    # Check raw_user and raw_password first as yarl is likely
+    # to already have these values parsed from the netloc in the cache.
+    if url.raw_user is None and url.raw_password is None:
         return url, None
-    else:
-        return url.with_user(None), auth
+    return url.with_user(None), BasicAuth(url.user or "", url.password or "")
 
 
 def netrc_from_env() -> Optional[netrc.netrc]:

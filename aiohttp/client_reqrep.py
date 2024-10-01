@@ -409,9 +409,8 @@ class ClientRequest:
             raise InvalidURL(url)
 
         # basic auth info
-        username, password = url.user, url.password
-        if username or password:
-            self.auth = helpers.BasicAuth(username or "", password or "")
+        if url.raw_user or url.raw_password:
+            self.auth = helpers.BasicAuth(url.user or "", url.password or "")
 
     def update_version(self, version: Union[http.HttpVersion, str]) -> None:
         """Convert request version to two elements tuple.
