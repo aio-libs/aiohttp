@@ -84,7 +84,7 @@ gunicorn==23.0.0
     # via -r requirements/base.in
 identify==2.6.1
     # via pre-commit
-idna==3.3
+idna==3.10
     # via
     #   requests
     #   trustme
@@ -155,7 +155,9 @@ pygments==2.18.0
     #   rich
     #   sphinx
 pyjwt==2.9.0
-    # via gidgethub
+    # via
+    #   gidgethub
+    #   pyjwt
 pyproject-hooks==1.2.0
     # via
     #   build
