@@ -380,15 +380,17 @@ class ClientRequest:
         self.headers[hdrs.HOST] = host
 
         if headers:
-            if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
-                headers = headers.items()
+            return
 
-            for key, value in headers:  # type: ignore[misc]
-                # A special case for Host header
-                if key.lower() == "host":
-                    self.headers[key] = value
-                else:
-                    self.headers.add(key, value)
+        if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
+            headers = headers.items()
+
+        for key, value in headers:  # type: ignore[misc]
+            # A special case for Host header
+            if key.lower() == "host":
+                self.headers[key] = value
+            else:
+                self.headers.add(key, value)
 
     def update_auto_headers(self, skip_auto_headers: Optional[Iterable[str]]) -> None:
         if skip_auto_headers is not None:
