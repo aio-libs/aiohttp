@@ -157,7 +157,7 @@ _SSL_SCHEMES = frozenset(("https", "wss"))
 class ConnectionKey(NamedTuple):
     # the key should contain an information about used proxy / TLS
     # to prevent reusing wrong connections from a pool
-    host: Optional[str]
+    host: str
     port: Optional[int]
     is_ssl: bool
     ssl: Union[SSLContext, bool, Fingerprint]
@@ -304,7 +304,7 @@ class ClientRequest:
             h = None
         url = self.url
         return ConnectionKey(
-            url.raw_host,
+            url.raw_host or "",
             url.port,
             url.scheme in _SSL_SCHEMES,
             self._ssl,
