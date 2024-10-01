@@ -60,6 +60,7 @@ Bob Haddleton
 Boris Feld
 Boyi Chen
 Brett Cannon
+Brett Higgins
 Brian Bouterse
 Brian C. Lane
 Brian Muller
