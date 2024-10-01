@@ -360,7 +360,7 @@ class ClientRequest:
         assert netloc is not None
         # See https://github.com/aio-libs/aiohttp/issues/3636.
         if netloc[-1] == ".":
-            netloc = netloc[:-1]
+            netloc = netloc.rstrip(".")
         explicit_port = self.url.explicit_port
         if explicit_port is not None and not self.url.is_default_port():
             netloc = f"{netloc}:{explicit_port}"
