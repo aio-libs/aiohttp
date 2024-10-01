@@ -357,6 +357,9 @@ class ClientRequest:
 
         # Build the host header
         host = self.url.host_subcomponent
+
+        # host_subcomponent is None when the URL is a relative URL.
+        # but we know we do not have a relative URL here.
         assert host is not None
 
         if host[-1] == ".":
