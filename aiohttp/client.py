@@ -542,7 +542,7 @@ class ClientSession:
         if proxy_auth is None:
             proxy_auth = self._default_proxy_auth
 
-        if proxy is not None:
+        if proxy is None:
             proxy_headers = None
         else:
             proxy_headers = self._prepare_headers(proxy_headers)
