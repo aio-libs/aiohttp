@@ -32,7 +32,6 @@ from typing import (
 )
 
 import aiohappyeyeballs
-import attr
 
 from . import hdrs, helpers
 from .abc import AbstractResolver, ResolveResult
@@ -1401,8 +1400,8 @@ class TCPConnector(BaseConnector):
             # asyncio handles this perfectly
             proxy_req.method = hdrs.METH_CONNECT
             proxy_req.url = req.url
-            key = attr.evolve(
-                req.connection_key, proxy=None, proxy_auth=None, proxy_headers_hash=None
+            key = req.connection_key._replace(
+                proxy=None, proxy_auth=None, proxy_headers_hash=None
             )
             conn = Connection(self, key, proto, self._loop)
             proxy_resp = await proxy_req.send(conn)
