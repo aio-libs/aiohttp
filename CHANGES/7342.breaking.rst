@@ -1,3 +1,3 @@
 Fixed failure to try next host after single-host connection timeout -- by :user:`brettdh`.
 
-The default ``ClientTimeout`` params has changed to include a ``sock_connect`` timeout of 30 seconds so that this correct behavior happens by default.
+The default :class:`aiohttp.ClientTimeout` params has changed to include a ``sock_connect`` timeout of 30 seconds so that this correct behavior happens by default.
