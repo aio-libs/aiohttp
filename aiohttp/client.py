@@ -286,6 +286,7 @@ class ClientSession:
         max_line_size: int = 8190,
         max_field_size: int = 8190,
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
+        test: bool = False,
     ) -> None:
         # We initialise _connector to None immediately, as it's referenced in __del__()
         # and could cause issues if an exception occurs during initialisation.
@@ -367,6 +368,7 @@ class ClientSession:
 
         self._default_proxy = proxy
         self._default_proxy_auth = proxy_auth
+        self._test = test
 
     def __init_subclass__(cls: Type["ClientSession"]) -> None:
         raise TypeError(
@@ -539,7 +541,9 @@ class ClientSession:
         try:
             with timer:
                 # https://www.rfc-editor.org/rfc/rfc9112.html#name-retrying-requests
-                retry_persistent_connection = method in IDEMPOTENT_METHODS
+                retry_persistent_connection = (
+                    False if self._test else method in IDEMPOTENT_METHODS
+                )
                 while True:
                     url, auth_from_url = strip_auth_from_url(url)
                     if not url.raw_host:
