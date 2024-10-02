@@ -238,7 +238,7 @@ class ClientRequest:
         if params:
             url = url.extend_query(params)
         self.original_url = url
-        self.url = url.with_fragment(None)
+        self.url = url.with_fragment(None) if url.raw_fragment else url
         self.method = method.upper()
         self.chunked = chunked
         self.loop = loop
@@ -539,7 +539,10 @@ class ClientRequest:
     def update_expect_continue(self, expect: bool = False) -> None:
         if expect:
             self.headers[hdrs.EXPECT] = "100-continue"
-        elif self.headers.get(hdrs.EXPECT, "").lower() == "100-continue":
+        elif (
+            hdrs.EXPECT in self.headers
+            and self.headers[hdrs.EXPECT].lower() == "100-continue"
+        ):
             expect = True
 
         if expect:
@@ -790,7 +793,7 @@ class ClientResponse(HeadersMixin):
         self.cookies = SimpleCookie()
 
         self._real_url = url
-        self._url = url.with_fragment(None)
+        self._url = url.with_fragment(None) if url.raw_fragment else url
         self._body: Optional[bytes] = None
         self._writer = writer
         self._continue = continue100  # None by default
