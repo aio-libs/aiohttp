@@ -417,7 +417,8 @@ Timeouts
 Timeout settings are stored in :class:`ClientTimeout` data structure.
 
 By default *aiohttp* uses a *total* 300 seconds (5min) timeout, it means that the
-whole operation should finish in 5 minutes.
+whole operation should finish in 5 minutes. In order to allow time for DNS fallback,
+the default ``sock_connect`` timeout is 30 seconds.
 
 The value could be overridden by *timeout* parameter for the session (specified in seconds)::
 
