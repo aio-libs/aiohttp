@@ -2,7 +2,6 @@ import asyncio
 import base64
 import datetime
 import gc
-import platform
 import sys
 import weakref
 from math import ceil, modf
@@ -23,9 +22,6 @@ from aiohttp.helpers import (
     parse_http_date,
     should_remove_content_length,
 )
-
-IS_PYPY = platform.python_implementation() == "PyPy"
-
 
 # ------------------- parse_mimetype ----------------------------------
 
