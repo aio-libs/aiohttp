@@ -148,7 +148,9 @@ pygments==2.18.0
     #   rich
     #   sphinx
 pyjwt==2.8.0
-    # via gidgethub
+    # via
+    #   gidgethub
+    #   pyjwt
 pyproject-hooks==1.2.0
     # via
     #   build
@@ -180,7 +182,7 @@ requests==2.32.3
     #   cherry-picker
     #   python-on-whales
     #   sphinx
-rich==13.8.1
+rich==13.9.1
     # via typer
 setuptools-git==1.2
     # via -r requirements/test.in
