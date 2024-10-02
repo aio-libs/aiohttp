@@ -1318,7 +1318,7 @@ class TCPConnector(BaseConnector):
                     req=req,
                     client_error=client_error,
                 )
-            except ClientConnectorError as exc:
+            except (ClientConnectorError, asyncio.TimeoutError) as exc:
                 last_exc = exc
                 aiohappyeyeballs.pop_addr_infos_interleave(addr_infos, self._interleave)
                 continue
