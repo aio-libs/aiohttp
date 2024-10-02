@@ -254,6 +254,7 @@ class ClientSession:
         "_resolve_charset",
         "_default_proxy",
         "_default_proxy_auth",
+        "_test",
     )
 
     def __init__(
