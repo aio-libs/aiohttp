@@ -129,7 +129,6 @@ class StreamReader(AsyncStreamReaderMixin):
         "_exception",
         "_timer",
         "_eof_callbacks",
-        "total_bytes",
     )
 
     total_bytes = 0
@@ -601,15 +600,6 @@ EMPTY_PAYLOAD: Final[StreamReader] = EmptyStreamReader()
 class DataQueue(Generic[_SizedT]):
     """DataQueue is a general-purpose blocking queue with one reader."""
 
-    __slots__ = (
-        "_loop",
-        "_eof",
-        "_waiter",
-        "_exception",
-        "_size",
-        "_buffer",
-    )
-
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
         self._eof = False
@@ -689,8 +679,6 @@ class FlowControlDataQueue(DataQueue[_SizedT]):
 
     It is a destination for parsed data.
     """
-
-    __slots__ = ("_protocol", "_limit")
 
     def __init__(
         self, protocol: BaseProtocol, limit: int, *, loop: asyncio.AbstractEventLoop
