@@ -183,7 +183,7 @@ class _RequestOptions(TypedDict, total=False):
     ssl: Union[SSLContext, bool, Fingerprint]
     server_hostname: Union[str, None]
     proxy_headers: Union[LooseHeaders, None]
-    trace_request_ctx: Union[Mapping[str, str], None]
+    trace_request_ctx: Union[Mapping[str, Any], None]
     read_bufsize: Union[int, None]
     auto_decompress: Union[bool, None]
     max_line_size: Union[int, None]
@@ -489,7 +489,7 @@ class ClientSession:
         ssl: Union[SSLContext, bool, Fingerprint] = True,
         server_hostname: Optional[str] = None,
         proxy_headers: Optional[LooseHeaders] = None,
-        trace_request_ctx: Optional[Mapping[str, str]] = None,
+        trace_request_ctx: Optional[Mapping[str, Any]] = None,
         read_bufsize: Optional[int] = None,
         auto_decompress: Optional[bool] = None,
         max_line_size: Optional[int] = None,
