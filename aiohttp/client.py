@@ -94,6 +94,7 @@ from .helpers import (
     BasicAuth,
     TimeoutHandle,
     ceil_timeout,
+    frozen_dataclass_decorator,
     get_env_proxy_for_url,
     method_must_be_empty_body,
     sentinel,
@@ -191,7 +192,7 @@ class _RequestOptions(TypedDict, total=False):
     max_field_size: Union[int, None]
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class ClientTimeout:
     total: Optional[float] = None
     connect: Optional[float] = None

@@ -1,5 +1,4 @@
 import asyncio
-import dataclasses
 import datetime
 import io
 import re
@@ -38,6 +37,7 @@ from .helpers import (
     ChainMapProxy,
     ETag,
     HeadersMixin,
+    frozen_dataclass_decorator,
     is_expected_content_type,
     parse_http_date,
     reify,
@@ -76,7 +76,7 @@ if TYPE_CHECKING:
     from .web_urldispatcher import UrlMappingMatchInfo
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class FileField:
     name: str
     filename: str

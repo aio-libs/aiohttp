@@ -60,7 +60,14 @@ if sys.version_info >= (3, 11):
 else:
     import async_timeout
 
-__all__ = ("BasicAuth", "ChainMapProxy", "ETag")
+if sys.version_info < (3, 10):
+    frozen_dataclass_decorator = functools.partial(dataclasses.dataclass, frozen=True)
+else:
+    frozen_dataclass_decorator = functools.partial(
+        dataclasses.dataclass, frozen=True, slots=True
+    )
+
+__all__ = ("BasicAuth", "ChainMapProxy", "ETag", "frozen_dataclass_decorator")
 
 PY_310 = sys.version_info >= (3, 10)
 
@@ -227,7 +234,7 @@ def netrc_from_env() -> Optional[netrc.netrc]:
     return None
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class ProxyInfo:
     proxy: URL
     proxy_auth: Optional[BasicAuth]
@@ -302,7 +309,7 @@ def get_env_proxy_for_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
         return proxy_info.proxy, proxy_info.proxy_auth
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class MimeType:
     type: str
     subtype: str
@@ -1072,7 +1079,7 @@ LIST_QUOTED_ETAG_RE = re.compile(rf"({_QUOTED_ETAG})(?:\s*,\s*|$)|(.)")
 ETAG_ANY = "*"
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class ETag:
     value: str
     is_weak: bool = False

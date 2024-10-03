@@ -1,7 +1,6 @@
 import asyncio
 import base64
 import binascii
-import dataclasses
 import hashlib
 import json
 import sys
@@ -11,7 +10,12 @@ from multidict import CIMultiDict
 
 from . import hdrs
 from .abc import AbstractStreamWriter
-from .helpers import calculate_timeout_when, set_exception, set_result
+from .helpers import (
+    calculate_timeout_when,
+    frozen_dataclass_decorator,
+    set_exception,
+    set_result,
+)
 from .http import (
     WS_CLOSED_MESSAGE,
     WS_CLOSING_MESSAGE,
@@ -46,7 +50,7 @@ __all__ = (
 THRESHOLD_CONNLOST_ACCESS: Final[int] = 5
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class WebSocketReady:
     ok: bool
     protocol: Optional[str]

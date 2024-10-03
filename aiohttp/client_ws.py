@@ -1,14 +1,13 @@
 """WebSocket client for asyncio."""
 
 import asyncio
-import dataclasses
 import sys
 from types import TracebackType
 from typing import Any, Final, Optional, Type, cast
 
 from .client_exceptions import ClientError, ServerTimeoutError
 from .client_reqrep import ClientResponse
-from .helpers import calculate_timeout_when, set_result
+from .helpers import calculate_timeout_when, frozen_dataclass_decorator, set_result
 from .http import (
     WS_CLOSED_MESSAGE,
     WS_CLOSING_MESSAGE,
@@ -32,7 +31,7 @@ else:
     import async_timeout
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class ClientWSTimeout:
     ws_receive: Optional[float] = None
     ws_close: Optional[float] = None
