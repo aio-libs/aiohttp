@@ -132,6 +132,7 @@ class StreamReader(AsyncStreamReaderMixin):
         "_exception",
         "_timer",
         "_eof_callbacks",
+        "_eof_counter",
         "total_bytes",
     )
 
@@ -160,6 +161,7 @@ class StreamReader(AsyncStreamReaderMixin):
         self._exception: Optional[Union[Type[BaseException], BaseException]] = None
         self._timer = TimerNoop() if timer is None else timer
         self._eof_callbacks: List[Callable[[], None]] = []
+        self._eof_counter = 0
         self.total_bytes = 0
 
     def __repr__(self) -> str:
