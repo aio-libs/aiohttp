@@ -1,0 +1,1 @@
+Reduced memory required for timer objects created during the client request lifecycle -- by :user:`bdraco`.
