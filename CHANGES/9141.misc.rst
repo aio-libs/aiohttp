@@ -1,3 +1,3 @@
-Modified the `ClientSession` class by adding a private attribute `_test` of type `bool`, with a default value of `False` to the class.
-Modified the default value of `retry_persistent_connection` in `ClientSession` to `False` if `_test` was `True`.
-Also, `TestClient` initialized `ClientSession` with `test=True`. -- by :user:`ShubhAgarwal-dev`.
+Modified the `ClientSession` class by adding a private attribute `_retry_connection` of type `bool`, with a default value of `True` to the class.
+`retry_persistent_connection` in `ClientSession` is set to `False` if `_retry_connection` was `False`.
+In the session of `TestClient`, `ClientSession` attribute `_retry_connection` is changed to `False` -- by :user:`ShubhAgarwal-dev`.
