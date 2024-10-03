@@ -12,14 +12,12 @@ def protocol():
 
 @pytest.fixture
 def stream(loop, protocol):
-    out = streams.StreamReader(protocol, limit=1, loop=loop)
-    return out
+    return streams.StreamReader(protocol, limit=1, loop=loop)
 
 
 @pytest.fixture
 def buffer(loop, protocol):
-    out = streams.FlowControlDataQueue(protocol, limit=1, loop=loop)
-    return out
+    return streams.FlowControlDataQueue(protocol, limit=1, loop=loop)
 
 
 class TestFlowControlStreamReader:
