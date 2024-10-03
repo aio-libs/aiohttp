@@ -84,6 +84,6 @@ skip = '.git,*.pdf,*.svg,Makefile,CONTRIBUTORS.txt,venvs,_build'
 ignore-words-list = 'te,assertIn'
 
 [tool.slotscheck]
-# Remove aiohttp.helpers once https://github.com/python/cpython/pull/106771
+# TODO(3.13): Remove aiohttp.helpers once https://github.com/python/cpython/pull/106771
 # is available in all supported cpython versions
 exclude-modules = "(^aiohttp\\.helpers)"
