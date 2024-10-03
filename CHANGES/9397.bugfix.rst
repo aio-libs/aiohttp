@@ -1,0 +1,2 @@
+Widened the type of the trace_request_ctx parameter of ClientSession.request and friends
+-- by :user:`layday`.
