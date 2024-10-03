@@ -220,7 +220,7 @@ sphinxcontrib-spelling==8.0.0 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.in
 sphinxcontrib-towncrier==0.4.0a0
     # via -r requirements/doc.in
-tomli==2.0.1
+tomli==2.0.2
     # via
     #   build
     #   cherry-picker
