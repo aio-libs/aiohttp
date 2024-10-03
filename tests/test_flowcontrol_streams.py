@@ -13,14 +13,12 @@ def protocol():
 @pytest.fixture
 def stream(loop, protocol):
     out = streams.StreamReader(protocol, limit=1, loop=loop)
-    out._allow_pause = True
     return out
 
 
 @pytest.fixture
 def buffer(loop, protocol):
     out = streams.FlowControlDataQueue(protocol, limit=1, loop=loop)
-    out._allow_pause = True
     return out
 
 
