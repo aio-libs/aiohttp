@@ -581,6 +581,8 @@ def calculate_timeout_when(
 class TimeoutHandle:
     """Timeout handle"""
 
+    __slots__ = ("_timeout", "_loop", "_ceil_threshold", "_callbacks")
+
     def __init__(
         self,
         loop: asyncio.AbstractEventLoop,
@@ -629,11 +631,17 @@ class TimeoutHandle:
 
 
 class BaseTimerContext(ContextManager["BaseTimerContext"]):
+
+    __slots__ = ()
+
     def assert_timeout(self) -> None:
         """Raise TimeoutError if timeout has been exceeded."""
 
 
 class TimerNoop(BaseTimerContext):
+
+    __slots__ = ()
+
     def __enter__(self) -> BaseTimerContext:
         return self
 
@@ -648,6 +656,8 @@ class TimerNoop(BaseTimerContext):
 
 class TimerContext(BaseTimerContext):
     """Low resolution timeout context manager"""
+
+    __slots__ = ("_loop", "_tasks", "_cancelled", "_cancelling")
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
