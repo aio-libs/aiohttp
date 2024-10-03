@@ -212,7 +212,7 @@ sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
 sphinxcontrib-towncrier==0.4.0a0
     # via -r requirements/doc.in
-tomli==2.0.1
+tomli==2.0.2
     # via
     #   build
     #   cherry-picker
