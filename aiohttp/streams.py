@@ -79,6 +79,9 @@ class ChunkTupleAsyncStreamIterator:
 
 
 class AsyncStreamReaderMixin:
+
+    __slots__ = ()
+
     def __aiter__(self) -> AsyncStreamIterator[bytes]:
         return AsyncStreamIterator(self.readline)  # type: ignore[attr-defined]
 
