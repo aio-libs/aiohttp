@@ -42,6 +42,9 @@ class EofStream(Exception):
 
 
 class AsyncStreamIterator(Generic[_T]):
+
+    __slots__ = ("read_func",)
+
     def __init__(self, read_func: Callable[[], Awaitable[_T]]) -> None:
         self.read_func = read_func
 
@@ -59,6 +62,9 @@ class AsyncStreamIterator(Generic[_T]):
 
 
 class ChunkTupleAsyncStreamIterator:
+
+    __slots__ = ("_stream",)
+
     def __init__(self, stream: "StreamReader") -> None:
         self._stream = stream
 
@@ -106,6 +112,25 @@ class StreamReader(AsyncStreamReaderMixin):
             ...
 
     """
+
+    __slots__ = (
+        "_protocol",
+        "_low_water",
+        "_high_water",
+        "_loop",
+        "_size",
+        "_cursor",
+        "_http_chunk_splits",
+        "_buffer",
+        "_buffer_offset",
+        "_eof",
+        "_waiter",
+        "_eof_waiter",
+        "_exception",
+        "_timer",
+        "_eof_callbacks",
+        "total_bytes",
+    )
 
     total_bytes = 0
 
@@ -505,6 +530,9 @@ class StreamReader(AsyncStreamReaderMixin):
 
 
 class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
+
+    __slots__ = ("_read_eof_chunk",)
+
     def __init__(self) -> None:
         self._read_eof_chunk = False
 
@@ -572,6 +600,15 @@ EMPTY_PAYLOAD: Final[StreamReader] = EmptyStreamReader()
 
 class DataQueue(Generic[_SizedT]):
     """DataQueue is a general-purpose blocking queue with one reader."""
+
+    __slots__ = (
+        "_loop",
+        "_eof",
+        "_waiter",
+        "_exception",
+        "_size",
+        "_buffer",
+    )
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
@@ -652,6 +689,8 @@ class FlowControlDataQueue(DataQueue[_SizedT]):
 
     It is a destination for parsed data.
     """
+
+    __slots__ = ("_protocol", "_limit")
 
     def __init__(
         self, protocol: BaseProtocol, limit: int, *, loop: asyncio.AbstractEventLoop
