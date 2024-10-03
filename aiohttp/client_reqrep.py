@@ -751,6 +751,9 @@ class ClientRequest:
             await trace.send_request_headers(method, url, headers)
 
 
+_CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
+
+
 class ClientResponse(HeadersMixin):
     # Some of these attributes are None when created,
     # but will be set by the start() method.
@@ -1106,7 +1109,7 @@ class ClientResponse(HeadersMixin):
         content = self.content
         # content can be None here, but the types are cheated elsewhere.
         if content and content.exception() is None:  # type: ignore[truthy-bool]
-            set_exception(content, ClientConnectionError("Connection closed"))
+            set_exception(content, _CONNECTION_CLOSED_EXCEPTION)
         self._released = True
 
     async def wait_for_close(self) -> None:
