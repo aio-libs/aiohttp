@@ -790,29 +790,27 @@ async def test_tcp_connector_multiple_hosts_errors(
 
     with mock.patch.object(
         conn, "_resolve_host", autospec=True, spec_set=True, side_effect=_resolve_host
+    ), mock.patch.object(
+        conn._loop,
+        "create_connection",
+        autospec=True,
+        spec_set=True,
+        side_effect=create_connection,
+    ), mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection", start_connection
     ):
-        with mock.patch.object(
-            conn._loop,
-            "create_connection",
-            autospec=True,
-            spec_set=True,
-            side_effect=create_connection,
-        ):
-            with mock.patch(
-                "aiohttp.connector.aiohappyeyeballs.start_connection", start_connection
-            ):
-                established_connection = await conn.connect(req, [], ClientTimeout())
+        established_connection = await conn.connect(req, [], ClientTimeout())
 
-            assert ips_tried == ips
-            assert addrs_tried == [(ip, 443) for ip in ips]
+    assert ips_tried == ips
+    assert addrs_tried == [(ip, 443) for ip in ips]
 
-            assert os_error
-            assert certificate_error
-            assert ssl_error
-            assert fingerprint_error
-            assert connected
+    assert os_error
+    assert certificate_error
+    assert ssl_error
+    assert fingerprint_error
+    assert connected
 
-            established_connection.close()
+    established_connection.close()
 
 
 @pytest.mark.parametrize(
@@ -970,22 +968,20 @@ async def test_tcp_connector_interleave(loop: asyncio.AbstractEventLoop) -> None
 
     with mock.patch.object(
         conn, "_resolve_host", autospec=True, spec_set=True, side_effect=_resolve_host
+    ), mock.patch.object(
+        conn._loop,
+        "create_connection",
+        autospec=True,
+        spec_set=True,
+        side_effect=create_connection,
+    ), mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection", start_connection
     ):
-        with mock.patch.object(
-            conn._loop,
-            "create_connection",
-            autospec=True,
-            spec_set=True,
-            side_effect=create_connection,
-        ):
-            with mock.patch(
-                "aiohttp.connector.aiohappyeyeballs.start_connection", start_connection
-            ):
-                established_connection = await conn.connect(req, [], ClientTimeout())
+        established_connection = await conn.connect(req, [], ClientTimeout())
 
-            assert success_ips == [ip4]
-            assert interleave_val == 2
-            established_connection.close()
+    assert success_ips == [ip4]
+    assert interleave_val == 2
+    established_connection.close()
 
 
 async def test_tcp_connector_family_is_respected(
@@ -1065,6 +1061,115 @@ async def test_tcp_connector_family_is_respected(
                 assert connected
 
                 established_connection.close()
+
+
+@pytest.mark.parametrize(
+    ("request_url"),
+    [
+        ("http://mocked.host"),
+        ("https://mocked.host"),
+    ],
+)
+async def test_tcp_connector_multiple_hosts_one_timeout(
+    loop: asyncio.AbstractEventLoop,
+    request_url: str,
+) -> None:
+    conn = aiohttp.TCPConnector()
+
+    ip1 = "192.168.1.1"
+    ip2 = "192.168.1.2"
+    ips = [ip1, ip2]
+    ips_tried = []
+    ips_success = []
+    timeout_error = False
+    connected = False
+
+    req = ClientRequest(
+        "GET",
+        URL(request_url),
+        loop=loop,
+    )
+
+    async def _resolve_host(
+        host: str, port: int, traces: object = None
+    ) -> List[ResolveResult]:
+        return [
+            {
+                "hostname": host,
+                "host": ip,
+                "port": port,
+                "family": socket.AF_INET6 if ":" in ip else socket.AF_INET,
+                "proto": 0,
+                "flags": socket.AI_NUMERICHOST,
+            }
+            for ip in ips
+        ]
+
+    async def start_connection(
+        addr_infos: Sequence[AddrInfoType],
+        *,
+        interleave: Optional[int] = None,
+        **kwargs: object,
+    ) -> socket.socket:
+        nonlocal timeout_error
+
+        addr_info = addr_infos[0]
+        addr_info_addr = addr_info[-1]
+
+        ip = addr_info_addr[0]
+        ips_tried.append(ip)
+
+        if ip == ip1:
+            timeout_error = True
+            raise asyncio.TimeoutError
+
+        if ip == ip2:
+            mock_socket = mock.create_autospec(
+                socket.socket, spec_set=True, instance=True
+            )
+            mock_socket.getpeername.return_value = addr_info_addr
+            return mock_socket  # type: ignore[no-any-return]
+
+        assert False
+
+    async def create_connection(
+        *args: object, sock: Optional[socket.socket] = None, **kwargs: object
+    ) -> Tuple[ResponseHandler, ResponseHandler]:
+        nonlocal connected
+
+        assert isinstance(sock, socket.socket)
+        addr_info = sock.getpeername()
+        ip = addr_info[0]
+        ips_success.append(ip)
+        connected = True
+
+        # Close the socket since we are not actually connecting
+        # and we don't want to leak it.
+        sock.close()
+        tr = create_mocked_conn(loop)
+        pr = create_mocked_conn(loop)
+        return tr, pr
+
+    with mock.patch.object(
+        conn, "_resolve_host", autospec=True, spec_set=True, side_effect=_resolve_host
+    ), mock.patch.object(
+        conn._loop,
+        "create_connection",
+        autospec=True,
+        spec_set=True,
+        side_effect=create_connection,
+    ), mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection", start_connection
+    ):
+        established_connection = await conn.connect(req, [], ClientTimeout())
+
+    assert ips_tried == ips
+    assert ips_success == [ip2]
+
+    assert timeout_error
+    assert connected
+
+    established_connection.close()
 
 
 async def test_tcp_connector_resolve_host(loop: asyncio.AbstractEventLoop) -> None:

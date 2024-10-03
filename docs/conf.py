@@ -54,10 +54,10 @@ with open(_version_path, encoding="latin1") as fp:
 extensions = [
     # stdlib-party extensions:
     "sphinx.ext.extlinks",
+    "sphinx.ext.graphviz",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     # Third-party extensions:
-    "sphinxcontrib.blockdiag",
     "sphinxcontrib.towncrier.ext",  # provides `towncrier-draft-entries` directive
 ]
 

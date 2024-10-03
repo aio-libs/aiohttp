@@ -1,5 +1,4 @@
 import asyncio
-import dataclasses
 import functools
 import logging
 import random
@@ -1133,6 +1132,16 @@ class TCPConnector(BaseConnector):
                     # chance to do this:
                     underlying_transport.close()
                     raise
+                if isinstance(tls_transport, asyncio.Transport):
+                    fingerprint = self._get_fingerprint(req)
+                    if fingerprint:
+                        try:
+                            fingerprint.check(tls_transport)
+                        except ServerFingerprintMismatch:
+                            tls_transport.close()
+                            if not self._cleanup_closed_disabled:
+                                self._cleanup_closed_transports.append(tls_transport)
+                            raise
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:
@@ -1234,7 +1243,7 @@ class TCPConnector(BaseConnector):
                     req=req,
                     client_error=client_error,
                 )
-            except ClientConnectorError as exc:
+            except (ClientConnectorError, asyncio.TimeoutError) as exc:
                 last_exc = exc
                 aiohappyeyeballs.pop_addr_infos_interleave(addr_infos, self._interleave)
                 continue
@@ -1302,8 +1311,8 @@ class TCPConnector(BaseConnector):
             # asyncio handles this perfectly
             proxy_req.method = hdrs.METH_CONNECT
             proxy_req.url = req.url
-            key = dataclasses.replace(
-                req.connection_key, proxy=None, proxy_auth=None, proxy_headers_hash=None
+            key = req.connection_key._replace(
+                proxy=None, proxy_auth=None, proxy_headers_hash=None
             )
             conn = Connection(self, key, proto, self._loop)
             proxy_resp = await proxy_req.send(conn)

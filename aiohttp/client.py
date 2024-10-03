@@ -214,7 +214,7 @@ class ClientTimeout:
 
 
 # 5 Minute default read timeout
-DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60)
+DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60, sock_connect=30)
 
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
@@ -471,7 +471,6 @@ class ClientSession:
 
         # Merge with default headers and transform to CIMultiDict
         headers = self._prepare_headers(headers)
-        proxy_headers = self._prepare_headers(proxy_headers)
 
         try:
             url = self._build_url(str_or_url)
@@ -492,7 +491,10 @@ class ClientSession:
         if proxy_auth is None:
             proxy_auth = self._default_proxy_auth
 
-        if proxy is not None:
+        if proxy is None:
+            proxy_headers = None
+        else:
+            proxy_headers = self._prepare_headers(proxy_headers)
             try:
                 proxy = URL(proxy)
             except ValueError as e:

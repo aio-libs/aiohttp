@@ -63,6 +63,7 @@ Boris Feld
 Borys Vorona
 Boyi Chen
 Brett Cannon
+Brett Higgins
 Brian Bouterse
 Brian C. Lane
 Brian Muller
@@ -134,6 +135,7 @@ Franek Magiera
 Frederik Gladhorn
 Frederik Peter Aalund
 Gabriel Tremblay
+Gang Ji
 Gary Wilson Jr.
 Gennady Andreyev
 Georges Dubus
