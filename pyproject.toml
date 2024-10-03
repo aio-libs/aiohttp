@@ -82,3 +82,8 @@ skip = "pp*"
 [tool.codespell]
 skip = '.git,*.pdf,*.svg,Makefile,CONTRIBUTORS.txt,venvs,_build'
 ignore-words-list = 'te,assertIn'
+
+[tool.slotscheck]
+# Remove require-superclass = false once https://github.com/python/cpython/pull/106771
+# is available in all supported cpython versions
+require-superclass = false
