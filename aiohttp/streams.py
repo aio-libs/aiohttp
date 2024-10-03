@@ -42,6 +42,9 @@ class EofStream(Exception):
 
 
 class AsyncStreamIterator(Generic[_T]):
+
+    __slots__ = ("read_func",)
+
     def __init__(self, read_func: Callable[[], Awaitable[_T]]) -> None:
         self.read_func = read_func
 
@@ -59,6 +62,9 @@ class AsyncStreamIterator(Generic[_T]):
 
 
 class ChunkTupleAsyncStreamIterator:
+
+    __slots__ = ("_stream",)
+
     def __init__(self, stream: "StreamReader") -> None:
         self._stream = stream
 
@@ -73,6 +79,9 @@ class ChunkTupleAsyncStreamIterator:
 
 
 class AsyncStreamReaderMixin:
+
+    __slots__ = ()
+
     def __aiter__(self) -> AsyncStreamIterator[bytes]:
         return AsyncStreamIterator(self.readline)  # type: ignore[attr-defined]
 
@@ -107,7 +116,25 @@ class StreamReader(AsyncStreamReaderMixin):
 
     """
 
-    total_bytes = 0
+    __slots__ = (
+        "_protocol",
+        "_low_water",
+        "_high_water",
+        "_loop",
+        "_size",
+        "_cursor",
+        "_http_chunk_splits",
+        "_buffer",
+        "_buffer_offset",
+        "_eof",
+        "_waiter",
+        "_eof_waiter",
+        "_exception",
+        "_timer",
+        "_eof_callbacks",
+        "_eof_counter",
+        "total_bytes",
+    )
 
     def __init__(
         self,
@@ -134,6 +161,8 @@ class StreamReader(AsyncStreamReaderMixin):
         self._exception: Optional[Union[Type[BaseException], BaseException]] = None
         self._timer = TimerNoop() if timer is None else timer
         self._eof_callbacks: List[Callable[[], None]] = []
+        self._eof_counter = 0
+        self.total_bytes = 0
 
     def __repr__(self) -> str:
         info = [self.__class__.__name__]
@@ -505,6 +534,9 @@ class StreamReader(AsyncStreamReaderMixin):
 
 
 class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
+
+    __slots__ = ("_read_eof_chunk",)
+
     def __init__(self) -> None:
         self._read_eof_chunk = False
 
