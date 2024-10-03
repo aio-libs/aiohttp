@@ -26,6 +26,7 @@ from math import ceil
 from pathlib import Path
 from types import TracebackType
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     ContextManager,
@@ -60,7 +61,9 @@ if sys.version_info >= (3, 11):
 else:
     import async_timeout
 
-if sys.version_info < (3, 10):
+if TYPE_CHECKING:
+    from dataclasses import dataclass as frozen_dataclass_decorator
+elif sys.version_info < (3, 10):
     frozen_dataclass_decorator = functools.partial(dataclasses.dataclass, frozen=True)
 else:
     frozen_dataclass_decorator = functools.partial(
