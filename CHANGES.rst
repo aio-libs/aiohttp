@@ -10,6 +10,70 @@
 
 .. towncrier release notes start
 
+3.10.9 (2024-10-04)
+===================
+
+Bug fixes
+---------
+
+- Fixed proxy headers being used in the ``ConnectionKey`` hash when a proxy was not being used -- by :user:`bdraco`.
+
+  If default headers are used, they are also used for proxy headers. This could have led to creating connections that were not needed when one was already available.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9368`.
+
+
+
+- Widened the type of the ``trace_request_ctx`` parameter of
+  :meth:`ClientSession.request() <aiohttp.ClientSession.request>` and friends
+  -- by :user:`layday`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9397`.
+
+
+
+
+Removals and backward incompatible breaking changes
+---------------------------------------------------
+
+- Fixed failure to try next host after single-host connection timeout -- by :user:`brettdh`.
+
+  The default client :class:`aiohttp.ClientTimeout` params has changed to include a ``sock_connect`` timeout of 30 seconds so that this correct behavior happens by default.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`7342`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of resolving hosts with Python 3.12+ -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9342`.
+
+
+
+- Reduced memory required for timer objects created during the client request lifecycle -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9406`.
+
+
+
+
+----
+
+
 3.10.8 (2024-09-28)
 ===================
 
