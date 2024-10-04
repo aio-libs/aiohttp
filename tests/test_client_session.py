@@ -694,7 +694,9 @@ async def test_cookie_jar_usage(
 
 
 @pytest.mark.xfail(reason="Reproducer for #9336")
-async def test_cookies_with_not_quoted_cookie_jar(aiohttp_server: AiohttpServer) -> None:
+async def test_cookies_with_not_quoted_cookie_jar(
+    aiohttp_server: AiohttpServer,
+) -> None:
     async def handler(_: web.Request) -> web.Response:
         return web.Response()
 
