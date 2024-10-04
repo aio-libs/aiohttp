@@ -29,8 +29,9 @@ from aiohttp.client import ClientSession
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientRequest, ConnectionKey
 from aiohttp.connector import BaseConnector, Connection, TCPConnector, UnixConnector
+from aiohttp.cookiejar import CookieJar
 from aiohttp.http import RawResponseMessage
-from aiohttp.pytest_plugin import AiohttpClient
+from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.tracing import Trace
 
@@ -690,6 +691,21 @@ async def test_cookie_jar_usage(
     assert isinstance(resp_cookies, SimpleCookie)
     assert "response" in resp_cookies
     assert resp_cookies["response"].value == "resp_value"
+
+
+@pytest.mark.xfail(reason="Reproducer for #9336")
+async def test_cookies_with_not_quoted_cookie_jar(aiohttp_server: AiohttpServer) -> None:
+    async def handler(_: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    server = await aiohttp_server(app)
+    jar = CookieJar(quote_cookie=False)
+    cookies = {"name": "val=foobar"}
+    async with aiohttp.ClientSession(cookie_jar=jar) as sess:
+        resp = await sess.request("GET", server.make_url("/"), cookies=cookies)
+    assert resp.request_info.headers.get("Cookie", "") == "name=val=foobar"
 
 
 async def test_session_default_version(loop: asyncio.AbstractEventLoop) -> None:
