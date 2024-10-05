@@ -1,7 +1,6 @@
 import asyncio
 import functools
 import logging
-import random
 import socket
 import sys
 import traceback
@@ -544,7 +543,7 @@ class BaseConnector:
                 if not self._closed:
                     self._acquired.remove(placeholder)
                     self._drop_acquired_per_host(key, placeholder)
-                    self._release_waiter()
+                    self._release_waiter(key)
                 raise
             else:
                 if not self._closed:
@@ -600,31 +599,25 @@ class BaseConnector:
         del self._conns[key]
         return None
 
-    def _release_waiter(self) -> None:
+    def _release_waiter(self, key: "ConnectionKey") -> None:
         """
-        Iterates over all waiters until one to be released is found.
+        Iterates over waiters for key until one to be released is found.
 
         The one to be released is not finished and
         belongs to a host that has available connections.
         """
-        if not self._waiters:
+        if not self._waiters or key not in self._waiters:
             return
 
-        # Having the dict keys ordered this avoids to iterate
-        # at the same order at each call.
-        queues = list(self._waiters.keys())
-        random.shuffle(queues)
+        if self._available_connections(key) < 1:
+            return
 
-        for key in queues:
-            if self._available_connections(key) < 1:
-                continue
-
-            waiters = self._waiters[key]
-            while waiters:
-                waiter = waiters.popleft()
-                if not waiter.done():
-                    waiter.set_result(None)
-                    return
+        waiters = self._waiters[key]
+        while waiters:
+            waiter = waiters.popleft()
+            if not waiter.done():
+                waiter.set_result(None)
+                return
 
     def _release_acquired(self, key: "ConnectionKey", proto: ResponseHandler) -> None:
         if self._closed:
@@ -639,7 +632,7 @@ class BaseConnector:
             # finalization due garbage collection.
             pass
         else:
-            self._release_waiter()
+            self._release_waiter(key)
 
     def _release(
         self,

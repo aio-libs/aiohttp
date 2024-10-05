@@ -464,7 +464,7 @@ async def test_release_waiter_no_limit(
     w = mock.Mock()
     w.done.return_value = False
     conn._waiters[key].append(w)
-    conn._release_waiter()
+    conn._release_waiter(key)
     assert len(conn._waiters[key]) == 0
     assert w.done.called
     await conn.close()
@@ -479,7 +479,7 @@ async def test_release_waiter_first_available(
     w2.done.return_value = False
     conn._waiters[key].append(w2)
     conn._waiters[key2].append(w1)
-    conn._release_waiter()
+    conn._release_waiter(key)
     assert (
         w1.set_result.called
         and not w2.set_result.called
@@ -497,7 +497,7 @@ async def test_release_waiter_release_first(
     w1.done.return_value = False
     w2.done.return_value = False
     conn._waiters[key] = deque([w1, w2])
-    conn._release_waiter()
+    conn._release_waiter(key)
     assert w1.set_result.called
     assert not w2.set_result.called
     await conn.close()
@@ -511,7 +511,7 @@ async def test_release_waiter_skip_done_waiter(
     w1.done.return_value = True
     w2.done.return_value = False
     conn._waiters[key] = deque([w1, w2])
-    conn._release_waiter()
+    conn._release_waiter(key)
     assert not w1.set_result.called
     assert w2.set_result.called
     await conn.close()
@@ -527,7 +527,7 @@ async def test_release_waiter_per_host(
     w2.done.return_value = False
     conn._waiters[key] = deque([w1])
     conn._waiters[key2] = deque([w2])
-    conn._release_waiter()
+    conn._release_waiter(key)
     assert (w1.set_result.called and not w2.set_result.called) or (
         not w1.set_result.called and w2.set_result.called
     )
@@ -545,7 +545,7 @@ async def test_release_waiter_no_available(
     with mock.patch.object(
         conn, "_available_connections", autospec=True, spec_set=True, return_value=0
     ):
-        conn._release_waiter()
+        conn._release_waiter(key)
         assert len(conn._waiters) == 1
         assert not w.done.called
         await conn.close()
