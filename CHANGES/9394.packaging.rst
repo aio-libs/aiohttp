@@ -1,0 +1,3 @@
+Switched to using the ``propcache`` package for property caching -- by :user:`bdraco`.
+
+The ``propcache `` package is derived from the property caching code in ``yarl`` and has been broken out to avoid maintaining it for multiple projects.
