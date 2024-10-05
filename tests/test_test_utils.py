@@ -317,10 +317,12 @@ def test_testcase_no_app(
     result.stdout.fnmatch_lines(["*TypeError*"])
 
 
-async def test_disable_retry_persistent_connection(aiohttp_client: AiohttpClient):
+async def test_disable_retry_persistent_connection(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         request.close()
-        return web.Response(200)
+        return web.Response()
 
     app = web.Application()
     app.router.add_get("/", handler)
