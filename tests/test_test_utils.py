@@ -11,6 +11,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import web
+from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.test_utils import (
     AioHTTPTestCase,
     RawTestServer,
@@ -314,6 +315,18 @@ def test_testcase_no_app(
     )
     result = testdir.runpytest()
     result.stdout.fnmatch_lines(["*TypeError*"])
+
+
+async def test_disable_retry_persistent_connection(aiohttp_client: AiohttpClient):
+    async def handler(request: web.Request) -> web.Response:
+        request.close()
+        return web.Response(200)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+    async with client.get("/") as _:
+        assert client._session.closed is False
 
 
 async def test_server_context_manager(
