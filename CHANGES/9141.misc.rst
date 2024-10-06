@@ -1,3 +1,3 @@
-Modified the `ClientSession` class by adding a private attribute `_retry_connection` of type `bool`, with a default value of `True` to the class.
-`retry_persistent_connection` in `ClientSession` is set to `False` if `_retry_connection` was `False`.
-In the session of `TestClient`, `ClientSession` attribute `_retry_connection` is changed to `False` -- by :user:`ShubhAgarwal-dev`.
+Modified the :class:`aiohttp.ClientSession` class by adding a private attribute ``_retry_connection`` of type :class:`bool`, with a default value of :data:`True` to the class.
+``retry_persistent_connection`` in :class:`aiohttp.ClientSession` is set to :data:`False` if `_retry_connection` was :data:`False`.
+In the session of :class:`aiohttp.test_utils.TestClient`, :class:`aiohttp.ClientSession` attribute ``_retry_connection`` is changed to :data:`False` -- by :user:`ShubhAgarwal-dev`.
