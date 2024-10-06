@@ -225,36 +225,34 @@ _CharsetResolver = Callable[[ClientResponse, bytes], str]
 class ClientSession:
     """First-class interface for making HTTP requests."""
 
-    ATTRS = frozenset(
-        [
-            "_base_url",
-            "_source_traceback",
-            "_connector",
-            "requote_redirect_url",
-            "_loop",
-            "_cookie_jar",
-            "_connector_owner",
-            "_default_auth",
-            "_version",
-            "_json_serialize",
-            "_requote_redirect_url",
-            "_timeout",
-            "_raise_for_status",
-            "_auto_decompress",
-            "_trust_env",
-            "_default_headers",
-            "_skip_auto_headers",
-            "_request_class",
-            "_response_class",
-            "_ws_response_class",
-            "_trace_configs",
-            "_read_bufsize",
-            "_max_line_size",
-            "_max_field_size",
-            "_resolve_charset",
-            "_default_proxy",
-            "_default_proxy_auth",
-        ]
+    __slots__ = (
+        "_base_url",
+        "_source_traceback",
+        "_connector",
+        "_loop",
+        "_cookie_jar",
+        "_connector_owner",
+        "_default_auth",
+        "_version",
+        "_json_serialize",
+        "_requote_redirect_url",
+        "_timeout",
+        "_raise_for_status",
+        "_auto_decompress",
+        "_trust_env",
+        "_default_headers",
+        "_skip_auto_headers",
+        "_request_class",
+        "_response_class",
+        "_ws_response_class",
+        "_trace_configs",
+        "_read_bufsize",
+        "_max_line_size",
+        "_max_field_size",
+        "_resolve_charset",
+        "_default_proxy",
+        "_default_proxy_auth",
+        "_retry_connection",
     )
 
     _source_traceback: Optional[traceback.StackSummary] = None
@@ -402,6 +400,7 @@ class ClientSession:
 
         self._default_proxy = proxy
         self._default_proxy_auth = proxy_auth
+        self._retry_connection: bool = True
 
     def __init_subclass__(cls: Type["ClientSession"]) -> None:
         warnings.warn(
@@ -593,7 +592,9 @@ class ClientSession:
         try:
             with timer:
                 # https://www.rfc-editor.org/rfc/rfc9112.html#name-retrying-requests
-                retry_persistent_connection = method in IDEMPOTENT_METHODS
+                retry_persistent_connection = (
+                    self._retry_connection and method in IDEMPOTENT_METHODS
+                )
                 while True:
                     url, auth_from_url = strip_auth_from_url(url)
                     if not url.raw_host:
