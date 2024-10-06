@@ -10,7 +10,7 @@ from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
 import aiohttp
-from aiohttp import web, ServerDisconnectedError
+from aiohttp import ServerDisconnectedError, web
 from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.test_utils import (
     AioHTTPTestCase,
