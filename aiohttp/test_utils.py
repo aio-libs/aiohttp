@@ -294,6 +294,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         if cookie_jar is None:
             cookie_jar = aiohttp.CookieJar(unsafe=True)
         self._session = ClientSession(cookie_jar=cookie_jar, **kwargs)
+        self._session._retry_connection = False
         self._closed = False
         self._responses: List[ClientResponse] = []
         self._websockets: List[ClientWebSocketResponse] = []
