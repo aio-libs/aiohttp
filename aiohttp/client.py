@@ -254,6 +254,7 @@ class ClientSession:
             "_default_proxy",
             "_default_proxy_auth",
             "_retry_connection",
+            "requote_redirect_url",
         ]
     )
 
