@@ -11,6 +11,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import web
+from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.test_utils import (
     AioHTTPTestCase,
     RawTestServer as _RawTestServer,
@@ -332,6 +333,27 @@ def test_testcase_no_app(testdir, loop) -> None:
     )
     result = testdir.runpytest()
     result.stdout.fnmatch_lines(["*RuntimeError*"])
+
+
+async def test_disable_retry_persistent_connection(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    num_requests = 0
+
+    async def handler(request: web.Request) -> web.Response:
+        nonlocal num_requests
+
+        num_requests += 1
+        request.protocol.force_close()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+    with pytest.raises(aiohttp.ServerDisconnectedError):
+        await client.get("/")
+
+    assert num_requests == 1
 
 
 async def test_server_context_manager(app, loop) -> None:
