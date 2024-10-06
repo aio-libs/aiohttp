@@ -356,11 +356,9 @@ async def test_disable_retry_persistent_connection(
     assert num_requests == 1
 
 
-async def test_server_context_manager(
-    app: web.Application, loop: asyncio.AbstractEventLoop
-) -> None:
-    async with TestServer(app) as server:
-        async with aiohttp.ClientSession() as client:
+async def test_server_context_manager(app, loop) -> None:
+    async with TestServer(app, loop=loop) as server:
+        async with aiohttp.ClientSession(loop=loop) as client:
             async with client.head(server.make_url("/")) as resp:
                 assert resp.status == 200
 
