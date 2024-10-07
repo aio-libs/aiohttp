@@ -49,7 +49,7 @@ from urllib.parse import quote
 from urllib.request import getproxies, proxy_bypass
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, MultiMapping
-from propcache.api import under_cached_property as reify
+from propcache.api import under_cached_property as reify  # noqa: F401
 from yarl import URL
 
 from . import hdrs
