@@ -120,6 +120,10 @@ class CookieJar(AbstractCookieJar):
             )
         self._expire_heap: List[Tuple[float, Tuple[str, str, str]]] = []
         self._expirations: Dict[Tuple[str, str, str], float] = {}
+        self._cookies_loaded = threading.Event()
+        self._cookies_saved = threading.Event()
+        self._cookies_loaded.set()  # Initialized as set when no cookies need to be loaded
+
 
     def save(self, file_path: PathLike) -> None:
         self._cookies_saved.clear()
