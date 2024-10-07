@@ -30,7 +30,7 @@ babel==2.16.0
     # via sphinx
 brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
-build==1.2.2
+build==1.2.2.post1
     # via pip-tools
 certifi==2024.8.30
     # via requests
