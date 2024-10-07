@@ -49,7 +49,7 @@ from urllib.parse import quote
 from urllib.request import getproxies, proxy_bypass
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, MultiMapping
-from propcache.api import under_cached_property as reify  # noqa: F401
+from propcache.api import under_cached_property as reify
 from yarl import URL
 
 from . import hdrs
@@ -61,7 +61,7 @@ if sys.version_info >= (3, 11):
 else:
     import async_timeout
 
-__all__ = ("BasicAuth", "ChainMapProxy", "ETag")
+__all__ = ("BasicAuth", "ChainMapProxy", "ETag", "reify")
 
 PY_310 = sys.version_info >= (3, 10)
 
