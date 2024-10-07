@@ -61,7 +61,7 @@ if sys.version_info >= (3, 11):
 else:
     import async_timeout
 
-__all__ = ("BasicAuth", "ChainMapProxy", "ETag", "reify")
+__all__ = ("BasicAuth", "ChainMapProxy", "ETag")
 
 PY_310 = sys.version_info >= (3, 10)
 
