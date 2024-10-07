@@ -1,3 +1,4 @@
+import asyncio
 import calendar
 import contextlib
 import datetime
@@ -90,7 +91,9 @@ class CookieJar(AbstractCookieJar):
         unsafe: bool = False,
         quote_cookie: bool = True,
         treat_as_secure_origin: Union[StrOrURL, Iterable[StrOrURL], None] = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
+        super().__init__(loop=loop)
         self._cookies: DefaultDict[Tuple[str, str], SimpleCookie] = defaultdict(
             SimpleCookie
         )
@@ -119,14 +122,33 @@ class CookieJar(AbstractCookieJar):
         self._expirations: Dict[Tuple[str, str, str], float] = {}
 
     def save(self, file_path: PathLike) -> None:
+        self._cookies_saved.clear()
+        loop = asyncio.get_event_loop()
+        loop.run_in_executor(None, self._save_cookies, file_path)
+        # Wait until saving is complete
+        self._cookies_saved.wait()
+
+    def _save_cookies(self, file_path: PathLike) -> None:
         file_path = pathlib.Path(file_path)
         with file_path.open(mode="wb") as f:
             pickle.dump(self._cookies, f, pickle.HIGHEST_PROTOCOL)
+        self._cookies_saved.set()
 
     def load(self, file_path: PathLike) -> None:
+        self._cookies_loaded.clear()
+        loop = asyncio.get_event_loop()
+        loop.run_in_executor(None, self._load_cookies, file_path)
+        # Wait until loading is complete
+        self._cookies_loaded.wait()
+
+    def _load_cookies(self, file_path: PathLike) -> None:
         file_path = pathlib.Path(file_path)
+        if not file_path.is_file():
+            self._cookies_loaded.set()
+            return
         with file_path.open(mode="rb") as f:
             self._cookies = pickle.load(f)
+        self._cookies_loaded.set()
 
     def clear(self, predicate: Optional[ClearCookiePredicate] = None) -> None:
         if predicate is None:
