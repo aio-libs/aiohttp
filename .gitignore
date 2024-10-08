@@ -37,8 +37,6 @@
 aiohttp/_find_header.c
 aiohttp/_headers.html
 aiohttp/_headers.pxi
-aiohttp/_helpers.c
-aiohttp/_helpers.html
 aiohttp/_http_parser.c
 aiohttp/_http_parser.html
 aiohttp/_http_writer.c

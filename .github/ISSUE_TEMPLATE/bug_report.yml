@@ -88,6 +88,15 @@ body:
     required: true
 - type: textarea
   attributes:
+    label: propcache Version
+    description: Attach your version of propcache.
+    render: console
+    value: |
+      $ python -m pip show propcache
+  validations:
+    required: true
+- type: textarea
+  attributes:
     label: yarl Version
     description: Attach your version of yarl.
     render: console

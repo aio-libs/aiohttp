@@ -74,6 +74,7 @@ intersphinx_mapping = {
     "pytest": ("http://docs.pytest.org/en/latest/", None),
     "python": ("http://docs.python.org/3", None),
     "multidict": ("https://multidict.readthedocs.io/en/stable/", None),
+    "propcache": ("https://propcache.aio-libs.org/en/stable", None),
     "yarl": ("https://yarl.readthedocs.io/en/stable/", None),
     "aiosignal": ("https://aiosignal.readthedocs.io/en/stable/", None),
     "aiohttpjinja2": ("https://aiohttp-jinja2.readthedocs.io/en/stable/", None),
