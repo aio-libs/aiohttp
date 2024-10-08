@@ -1,0 +1,4 @@
+Changes to prevent the event loop from being blocked by synchronous file operations -- by :user:`jleinenbach` and :user:`danielbrunt57`.
+- Offload file operations in the save and load methods to separate threads using run_in_executor.
+- Use threading.Event to wait for the completion of loading and saving operations.
+- Ensure synchronization, so methods accessing self._cookies wait until the cookies are fully loaded.
