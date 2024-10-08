@@ -2,7 +2,6 @@ import asyncio
 import base64
 import datetime
 import gc
-import platform
 import sys
 import weakref
 from math import ceil, modf
@@ -21,9 +20,6 @@ from aiohttp.helpers import (
     parse_http_date,
     should_remove_content_length,
 )
-
-IS_PYPY = platform.python_implementation() == "PyPy"
-
 
 # ------------------- parse_mimetype ----------------------------------
 
@@ -206,59 +202,6 @@ def test_basic_auth_no_auth_from_url() -> None:
 def test_basic_auth_from_not_url() -> None:
     with pytest.raises(TypeError):
         helpers.BasicAuth.from_url("http://user:pass@example.com")
-
-
-class ReifyMixin:
-    reify = NotImplemented
-
-    def test_reify(self) -> None:
-        class A:
-            def __init__(self):
-                self._cache = {}
-
-            @self.reify
-            def prop(self):
-                return 1
-
-        a = A()
-        assert 1 == a.prop
-
-    def test_reify_class(self) -> None:
-        class A:
-            def __init__(self):
-                self._cache = {}
-
-            @self.reify
-            def prop(self):
-                """Docstring."""
-                return 1
-
-        assert isinstance(A.prop, self.reify)
-        assert "Docstring." == A.prop.__doc__
-
-    def test_reify_assignment(self) -> None:
-        class A:
-            def __init__(self):
-                self._cache = {}
-
-            @self.reify
-            def prop(self):
-                return 1
-
-        a = A()
-
-        with pytest.raises(AttributeError):
-            a.prop = 123
-
-
-class TestPyReify(ReifyMixin):
-    reify = helpers.reify_py
-
-
-if not helpers.NO_EXTENSIONS and not IS_PYPY and hasattr(helpers, "reify_c"):
-
-    class TestCReify(ReifyMixin):
-        reify = helpers.reify_c
 
 
 # ----------------------------------- is_ip_address() ----------------------
