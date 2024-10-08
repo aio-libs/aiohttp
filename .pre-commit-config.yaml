@@ -48,7 +48,7 @@ repos:
     entry: ./tools/check_changes.py
     pass_filenames: false
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v4.6.0'
+  rev: 'v5.0.0'
   hooks:
   - id: check-merge-conflict
 - repo: https://github.com/asottile/yesqa
@@ -65,7 +65,7 @@ repos:
     - id: black
       language_version: python3 # Should be a command that runs python
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v4.6.0'
+  rev: 'v5.0.0'
   hooks:
   - id: end-of-file-fixer
     exclude: >-
