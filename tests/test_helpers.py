@@ -2,12 +2,11 @@ import asyncio
 import base64
 import datetime
 import gc
-import platform
 import sys
 import weakref
 from math import ceil, modf
 from pathlib import Path
-from typing import Any, Dict, Iterator, Optional, Type, Union
+from typing import Dict, Iterator, Optional, Union
 from unittest import mock
 from urllib.request import getproxies_environment  # type: ignore[attr-defined]
 
@@ -23,9 +22,6 @@ from aiohttp.helpers import (
     parse_http_date,
     should_remove_content_length,
 )
-
-IS_PYPY = platform.python_implementation() == "PyPy"
-
 
 # ------------------- parse_mimetype ----------------------------------
 
@@ -225,59 +221,6 @@ def test_basic_auth_no_auth_from_url() -> None:
 def test_basic_auth_from_not_url() -> None:
     with pytest.raises(TypeError):
         helpers.BasicAuth.from_url("http://user:pass@example.com")  # type: ignore[arg-type]
-
-
-class ReifyMixin:
-    reify: Type["helpers.reify[Any]"]
-
-    def test_reify(self) -> None:
-        class A:
-            def __init__(self) -> None:
-                self._cache: Dict[str, str] = {}
-
-            @self.reify  # type: ignore[misc]
-            def prop(self) -> int:
-                return 1
-
-        a = A()
-        assert 1 == a.prop
-
-    def test_reify_class(self) -> None:
-        class A:
-            def __init__(self) -> None:
-                self._cache: Dict[str, str] = {}
-
-            @self.reify  # type: ignore[misc]
-            def prop(self) -> int:
-                """Docstring."""
-                return 1
-
-        assert isinstance(A.prop, self.reify)  # type: ignore[arg-type]
-        assert "Docstring." == A.prop.__doc__  # type: ignore[arg-type]
-
-    def test_reify_assignment(self) -> None:
-        class A:
-            def __init__(self) -> None:
-                self._cache: Dict[str, str] = {}
-
-            @self.reify  # type: ignore[misc]
-            def prop(self) -> int:
-                return 1
-
-        a = A()
-
-        with pytest.raises(AttributeError):
-            a.prop = 123
-
-
-class TestPyReify(ReifyMixin):
-    reify = helpers.reify_py
-
-
-if not helpers.NO_EXTENSIONS and not IS_PYPY and hasattr(helpers, "reify_c"):
-
-    class TestCReify(ReifyMixin):
-        reify = helpers.reify_c  # type: ignore[attr-defined,assignment]
 
 
 # ----------------------------------- is_ip_address() ----------------------

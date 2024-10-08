@@ -30,6 +30,8 @@ multidict==6.1.0
     #   yarl
 packaging==24.1
     # via gunicorn
+propcache==0.2.0
+    # via -r requirements/runtime-deps.in
 pycares==4.4.0
     # via aiodns
 pycparser==2.22

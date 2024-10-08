@@ -131,6 +131,8 @@ pluggy==1.5.0
     # via pytest
 pre-commit==3.5.0
     # via -r requirements/lint.in
+propcache==0.2.0
+    # via -r requirements/runtime-deps.in
 proxy-py==2.4.8
     # via
     #   -r requirements/lint.in
