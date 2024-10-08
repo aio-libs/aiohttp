@@ -132,7 +132,9 @@ pluggy==1.5.0
 pre-commit==3.5.0
     # via -r requirements/lint.in
 propcache==0.2.0
-    # via -r requirements/runtime-deps.in
+    # via
+    #   -r requirements/runtime-deps.in
+    #   yarl
 proxy-py==2.4.8
     # via
     #   -r requirements/lint.in
@@ -263,7 +265,7 @@ wait-for-it==2.2.2
     # via -r requirements/test.in
 wheel==0.44.0
     # via pip-tools
-yarl==1.13.1
+yarl==1.14.0
     # via -r requirements/runtime-deps.in
 zipp==3.20.2
     # via
