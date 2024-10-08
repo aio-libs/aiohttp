@@ -28,11 +28,13 @@ multidict==6.1.0
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
+propcache==0.2.0
+    # via yarl
 pycares==4.4.0
     # via aiodns
 pycparser==2.22
     # via cffi
 typing-extensions==4.12.2
     # via multidict
-yarl==1.13.1
+yarl==1.14.0
     # via -r requirements/runtime-deps.in
