@@ -50,6 +50,7 @@ from urllib.parse import quote
 from urllib.request import getproxies, proxy_bypass
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, MultiMapping
+from propcache.api import under_cached_property as reify
 from yarl import URL
 
 from . import hdrs
@@ -70,7 +71,7 @@ else:
         dataclasses.dataclass, frozen=True, slots=True
     )
 
-__all__ = ("BasicAuth", "ChainMapProxy", "ETag", "frozen_dataclass_decorator")
+__all__ = ("BasicAuth", "ChainMapProxy", "ETag", "frozen_dataclass_decorator", "reify")
 
 PY_310 = sys.version_info >= (3, 10)
 
@@ -448,53 +449,6 @@ def is_expected_content_type(
     if expected_content_type == "application/json":
         return json_re.match(response_content_type) is not None
     return expected_content_type in response_content_type
-
-
-class _TSelf(Protocol, Generic[_T]):
-    _cache: Dict[str, _T]
-
-
-class reify(Generic[_T]):
-    """Use as a class method decorator.
-
-    It operates almost exactly like
-    the Python `@property` decorator, but it puts the result of the
-    method it decorates into the instance dict after the first call,
-    effectively replacing the function it decorates with an instance
-    variable.  It is, in Python parlance, a data descriptor.
-    """
-
-    def __init__(self, wrapped: Callable[..., _T]) -> None:
-        self.wrapped = wrapped
-        self.__doc__ = wrapped.__doc__
-        self.name = wrapped.__name__
-
-    def __get__(self, inst: _TSelf[_T], owner: Optional[Type[Any]] = None) -> _T:
-        try:
-            try:
-                return inst._cache[self.name]
-            except KeyError:
-                val = self.wrapped(inst)
-                inst._cache[self.name] = val
-                return val
-        except AttributeError:
-            if inst is None:
-                return self
-            raise
-
-    def __set__(self, inst: _TSelf[_T], value: _T) -> None:
-        raise AttributeError("reified property is read-only")
-
-
-reify_py = reify
-
-try:
-    from ._helpers import reify as reify_c
-
-    if not NO_EXTENSIONS:
-        reify = reify_c  # type: ignore[misc,assignment]
-except ImportError:
-    pass
 
 
 def is_ip_address(host: Optional[str]) -> bool:

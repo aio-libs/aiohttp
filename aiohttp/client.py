@@ -255,6 +255,7 @@ class ClientSession:
         "_resolve_charset",
         "_default_proxy",
         "_default_proxy_auth",
+        "_retry_connection",
     )
 
     def __init__(
@@ -368,6 +369,7 @@ class ClientSession:
 
         self._default_proxy = proxy
         self._default_proxy_auth = proxy_auth
+        self._retry_connection: bool = True
 
     def __init_subclass__(cls: Type["ClientSession"]) -> None:
         raise TypeError(
@@ -540,7 +542,9 @@ class ClientSession:
         try:
             with timer:
                 # https://www.rfc-editor.org/rfc/rfc9112.html#name-retrying-requests
-                retry_persistent_connection = method in IDEMPOTENT_METHODS
+                retry_persistent_connection = (
+                    self._retry_connection and method in IDEMPOTENT_METHODS
+                )
                 while True:
                     url, auth_from_url = strip_auth_from_url(url)
                     if not url.raw_host:

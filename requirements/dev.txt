@@ -26,7 +26,7 @@ babel==2.16.0
     # via sphinx
 brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
-build==1.2.2
+build==1.2.2.post1
     # via pip-tools
 certifi==2024.8.30
     # via requests
@@ -131,6 +131,10 @@ pluggy==1.5.0
     # via pytest
 pre-commit==3.5.0
     # via -r requirements/lint.in
+propcache==0.2.0
+    # via
+    #   -r requirements/runtime-deps.in
+    #   yarl
 proxy-py==2.4.8
     # via
     #   -r requirements/lint.in
@@ -182,7 +186,7 @@ requests==2.32.3
     #   cherry-picker
     #   python-on-whales
     #   sphinx
-rich==13.9.1
+rich==13.9.2
     # via typer
 setuptools-git==1.2
     # via -r requirements/test.in
@@ -261,7 +265,7 @@ wait-for-it==2.2.2
     # via -r requirements/test.in
 wheel==0.44.0
     # via pip-tools
-yarl==1.13.1
+yarl==1.14.0
     # via -r requirements/runtime-deps.in
 zipp==3.20.2
     # via

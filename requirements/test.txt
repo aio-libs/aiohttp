@@ -69,6 +69,10 @@ packaging==24.1
     #   pytest
 pluggy==1.5.0
     # via pytest
+propcache==0.2.0
+    # via
+    #   -r requirements/runtime-deps.in
+    #   yarl
 proxy-py==2.4.8
     # via -r requirements/test.in
 pycares==4.4.0
@@ -96,7 +100,7 @@ python-on-whales==0.73.0
     # via -r requirements/test.in
 requests==2.32.3
     # via python-on-whales
-rich==13.9.1
+rich==13.9.2
     # via typer
 setuptools-git==1.2
     # via -r requirements/test.in
@@ -131,5 +135,5 @@ uvloop==0.21.0b1 ; platform_system != "Windows" and implementation_name == "cpyt
     # via -r requirements/base.in
 wait-for-it==2.2.2
     # via -r requirements/test.in
-yarl==1.13.1
+yarl==1.14.0
     # via -r requirements/runtime-deps.in

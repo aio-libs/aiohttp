@@ -1,3 +1,0 @@
-Widened the type of the ``trace_request_ctx`` parameter of
-:meth:`ClientSession.request() <aiohttp.ClientSession.request>` and friends
--- by :user:`layday`.

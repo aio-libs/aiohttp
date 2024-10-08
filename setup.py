@@ -40,7 +40,6 @@ extensions = [
         define_macros=[("LLHTTP_STRICT_MODE", 0)],
         include_dirs=["vendor/llhttp/build"],
     ),
-    Extension("aiohttp._helpers", ["aiohttp/_helpers.c"]),
     Extension("aiohttp._http_writer", ["aiohttp/_http_writer.c"]),
 ]
 
