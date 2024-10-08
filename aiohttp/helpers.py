@@ -47,6 +47,7 @@ from urllib.request import getproxies, proxy_bypass
 
 import attr
 from multidict import MultiDict, MultiDictProxy, MultiMapping
+from propcache.api import under_cached_property as reify
 from yarl import URL
 
 from . import hdrs
@@ -57,7 +58,7 @@ if sys.version_info >= (3, 11):
 else:
     import async_timeout
 
-__all__ = ("BasicAuth", "ChainMapProxy", "ETag")
+__all__ = ("BasicAuth", "ChainMapProxy", "ETag", "reify")
 
 IS_MACOS = platform.system() == "Darwin"
 IS_WINDOWS = platform.system() == "Windows"
@@ -423,53 +424,6 @@ def content_disposition_header(
         sparams = "; ".join("=".join(pair) for pair in lparams)
         value = "; ".join((value, sparams))
     return value
-
-
-class _TSelf(Protocol, Generic[_T]):
-    _cache: Dict[str, _T]
-
-
-class reify(Generic[_T]):
-    """Use as a class method decorator.
-
-    It operates almost exactly like
-    the Python `@property` decorator, but it puts the result of the
-    method it decorates into the instance dict after the first call,
-    effectively replacing the function it decorates with an instance
-    variable.  It is, in Python parlance, a data descriptor.
-    """
-
-    def __init__(self, wrapped: Callable[..., _T]) -> None:
-        self.wrapped = wrapped
-        self.__doc__ = wrapped.__doc__
-        self.name = wrapped.__name__
-
-    def __get__(self, inst: _TSelf[_T], owner: Optional[Type[Any]] = None) -> _T:
-        try:
-            try:
-                return inst._cache[self.name]
-            except KeyError:
-                val = self.wrapped(inst)
-                inst._cache[self.name] = val
-                return val
-        except AttributeError:
-            if inst is None:
-                return self
-            raise
-
-    def __set__(self, inst: _TSelf[_T], value: _T) -> None:
-        raise AttributeError("reified property is read-only")
-
-
-reify_py = reify
-
-try:
-    from ._helpers import reify as reify_c
-
-    if not NO_EXTENSIONS:
-        reify = reify_c  # type: ignore[misc,assignment]
-except ImportError:
-    pass
 
 
 def is_ip_address(host: Optional[str]) -> bool:
