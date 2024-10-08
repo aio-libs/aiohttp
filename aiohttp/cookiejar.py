@@ -125,7 +125,6 @@ class CookieJar(AbstractCookieJar):
         self._cookies_saved = threading.Event()
         self._cookies_loaded.set()  # Initialized as set when no cookies need to be loaded
 
-
     def save(self, file_path: PathLike) -> None:
         self._cookies_saved.clear()
         loop = asyncio.get_event_loop()
