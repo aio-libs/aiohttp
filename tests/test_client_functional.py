@@ -2927,6 +2927,59 @@ async def test_creds_in_auth_and_url() -> None:
         await session.close()
 
 
+async def test_creds_in_auth_and_redirect_url(
+    create_server_for_url_and_handler: Callable[[URL, Handler], Awaitable[TestServer]],
+) -> None:
+    url_from = URL("http://example.com")
+    url_to = URL("http://user@example.com")
+
+    async def srv(request: web.Request) -> web.Response:
+        assert request.host == url_from.host
+
+        if request.headers.get(hdrs.AUTHORIZATION) == "Basic dXNlcjpwYXNz":
+            raise web.HTTPMovedPermanently(url_to)
+
+        return web.Response()
+
+    server = await create_server_for_url_and_handler(url_from, srv)
+
+    etc_hosts = {
+        (url_from.host, 80): server,
+    }
+
+    class FakeResolver(AbstractResolver):
+        async def resolve(
+            self,
+            host: str,
+            port: int = 0,
+            family: socket.AddressFamily = socket.AF_INET,
+        ) -> List[ResolveResult]:
+            server = etc_hosts[(host, port)]
+            assert server.port is not None
+
+            return [
+                {
+                    "hostname": host,
+                    "host": server.host,
+                    "port": server.port,
+                    "family": socket.AF_INET,
+                    "proto": 0,
+                    "flags": socket.AI_NUMERICHOST,
+                }
+            ]
+
+        async def close(self) -> None:
+            """Dummy"""
+
+    connector = aiohttp.TCPConnector(resolver=FakeResolver(), ssl=False)
+
+    async with aiohttp.ClientSession(connector=connector) as client:
+        resp = await client.get(url_from, auth=aiohttp.BasicAuth("user", "pass"))
+        assert len(resp.history) == 1
+        assert str(resp.url) == "http://example.com"
+        assert resp.status == 200
+
+
 @pytest.fixture
 def create_server_for_url_and_handler(
     aiohttp_server: AiohttpServer, tls_certificate_authority: trustme.CA
