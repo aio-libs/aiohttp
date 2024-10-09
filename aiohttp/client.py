@@ -472,7 +472,7 @@ class ClientSession:
             data = payload.JsonPayload(json, dumps=self._json_serialize)
 
         redirects = 0
-        history = []
+        history: List[ClientResponse] = []
         version = self._version
         params = params or {}
 
@@ -560,7 +560,10 @@ class ClientSession:
                             else InvalidUrlClientError
                         )
                         raise err_exc_cls(url)
-                    if auth and auth_from_url:
+                    # If `auth` was passed for an already authenticated URL,
+                    # disallow only if this is the initial URL; this is to avoid issues
+                    # with sketchy redirects that are not the caller's responsibility
+                    if not history and (auth and auth_from_url):
                         raise ValueError(
                             "Cannot combine AUTH argument with "
                             "credentials encoded in URL"
