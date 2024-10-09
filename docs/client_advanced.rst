@@ -67,6 +67,13 @@ argument. An instance of :class:`BasicAuth` can be passed in like this::
     async with ClientSession(auth=auth) as session:
         ...
 
+Note that if the request is redirected and the redirect URL contains
+credentials, those credentials will supersede any previously set credentials.
+In other words, if ``http://user@example.com`` redirects to
+``http://other_user@example.com``, the second request will be authenticated
+as ``other_user``. Providing both the ``auth`` parameter and authentication in
+the *initial* URL will result in a :exc:`ValueError`.
+
 For other authentication flows, the ``Authorization`` header can be set
 directly::
 

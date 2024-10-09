@@ -1,0 +1,1 @@
+Ignore client auth clashes caused by redirects and make redirect URL auth take precedence over input auth -- by :user:`PLPeeters`.
