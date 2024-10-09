@@ -2983,6 +2983,9 @@ async def test_creds_in_auth_and_redirect_url(
         assert len(resp.history) == 1
         assert str(resp.url) == "http://example.com"
         assert resp.status == 200
+        assert (
+            resp.request_info.headers.get("authorization") == "Basic dXNlcjo="
+        ), "Expected redirect credentials to take precedence over provided auth"
 
 
 @pytest.fixture
