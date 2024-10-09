@@ -2930,6 +2930,7 @@ async def test_creds_in_auth_and_url() -> None:
 async def test_creds_in_auth_and_redirect_url(
     create_server_for_url_and_handler: Callable[[URL, Handler], Awaitable[TestServer]],
 ) -> None:
+    """Verify that credentials in redirect URLs can and do override any previous credentials."""
     url_from = URL("http://example.com")
     url_to = URL("http://user@example.com")
     redirected = False
@@ -2983,6 +2984,9 @@ async def test_creds_in_auth_and_redirect_url(
         assert len(resp.history) == 1
         assert str(resp.url) == "http://example.com"
         assert resp.status == 200
+        assert (
+            resp.request_info.headers.get("authorization") == "Basic dXNlcjo="
+        ), "Expected redirect credentials to take precedence over provided auth"
 
 
 @pytest.fixture
