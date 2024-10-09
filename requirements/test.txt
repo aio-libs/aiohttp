@@ -24,7 +24,7 @@ cffi==1.17.1
     # via
     #   cryptography
     #   pycares
-charset-normalizer==3.3.2
+charset-normalizer==3.4.0
     # via requests
 click==8.1.7
     # via
@@ -72,7 +72,9 @@ packaging==24.1
 pluggy==1.5.0
     # via pytest
 propcache==0.2.0
-    # via yarl
+    # via
+    #   -r requirements/runtime-deps.in
+    #   yarl
 proxy-py==2.4.8
     # via -r requirements/test.in
 pycares==4.4.0
