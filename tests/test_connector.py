@@ -1099,6 +1099,7 @@ def dns_response(loop):
     async def coro():
         # simulates a network operation
         await asyncio.sleep(0)
+        await asyncio.sleep(0)
         return ["127.0.0.1"]
 
     return coro
