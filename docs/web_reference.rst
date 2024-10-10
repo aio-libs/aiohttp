@@ -983,13 +983,13 @@ and :ref:`aiohttp-web-signals` handlers::
           async for msg in ws:
               print(msg.data)
 
-    .. warning::
+   .. warning::
 
-        When using ``async for msg in ws:``, messages of type
-        :attr:`~aiohttp.WSMsgType.CLOSE`, :attr:`~aiohttp.WSMsgType.CLOSED`,
-        and :attr:`~aiohttp.WSMsgType.CLOSING` are swallowed. If you need to
-        handle these messages, you should use the
-        :meth:`~aiohttp.web.WebSocketResponse.receive` method instead.
+       When using ``async for msg in ws:``, messages of type
+       :attr:`~aiohttp.WSMsgType.CLOSE`, :attr:`~aiohttp.WSMsgType.CLOSED`,
+       and :attr:`~aiohttp.WSMsgType.CLOSING` are swallowed. If you need to
+       handle these messages, you should use the
+       :meth:`~aiohttp.web.WebSocketResponse.receive` method instead.
 
    .. method:: prepare(request)
       :async:
