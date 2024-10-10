@@ -983,7 +983,7 @@ and :ref:`aiohttp-web-signals` handlers::
           async for msg in ws:
               print(msg.data)
 
-   .. warning::
+   .. note::
 
        When using ``async for msg in ws:``, messages of type
        :attr:`~aiohttp.WSMsgType.CLOSE`, :attr:`~aiohttp.WSMsgType.CLOSED`,
