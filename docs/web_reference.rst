@@ -985,7 +985,7 @@ and :ref:`aiohttp-web-signals` handlers::
 
     .. warning::
 
-        When using the ``async for msg in ws:``, messages of type
+        When using ``async for msg in ws:``, messages of type
         :attr:`~aiohttp.WSMsgType.CLOSE`, :attr:`~aiohttp.WSMsgType.CLOSED`,
         and :attr:`~aiohttp.WSMsgType.CLOSING` are swallowed. If you need to
         handle these messages, you should use the
