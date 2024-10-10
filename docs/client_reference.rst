@@ -1504,6 +1504,21 @@ manually.
       :param default: Default value to be used when no value for ``name`` is
                       found (default is ``None``).
 
+   The class supports ``async for`` statement for iterating over
+   incoming messages::
+
+      async for msg in ws:
+        print(msg.data)
+
+   .. warning::
+
+       When using ``async for msg in ws:``, messages of type
+       :attr:`~aiohttp.WSMsgType.CLOSE`, :attr:`~aiohttp.WSMsgType.CLOSED`,
+       and :attr:`~aiohttp.WSMsgType.CLOSING` are swallowed. If you need to
+       handle these messages, you should use the
+       :meth:`~aiohttp.ClientWebSocketResponse.receive` method instead.
+
+
    .. method:: exception()
 
       Returns exception if any occurs or returns None.
@@ -1690,20 +1705,6 @@ manually.
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
       :raise ValueError: if message is not valid JSON.
-
-   The class supports ``async for`` statement for iterating over
-   incoming messages::
-
-      async for msg in ws:
-        print(msg.data)
-
-   .. warning::
-
-       When using ``async for msg in ws:``, messages of type
-       :attr:`~aiohttp.WSMsgType.CLOSE`, :attr:`~aiohttp.WSMsgType.CLOSED`,
-       and :attr:`~aiohttp.WSMsgType.CLOSING` are swallowed. If you need to
-       handle these messages, you should use the
-       :meth:`~aiohttp.ClientWebSocketResponse.receive` method instead.
 
 
 Utilities
