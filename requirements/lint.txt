@@ -38,7 +38,7 @@ freezegun==1.5.1
     # via -r requirements/lint.in
 identify==2.6.1
     # via pre-commit
-idna==3.7
+idna==3.10
     # via
     #   requests
     #   trustme
