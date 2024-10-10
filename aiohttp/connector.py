@@ -938,16 +938,7 @@ class TCPConnector(BaseConnector):
         # the underlying lookup or else the cancel event will get broadcast to
         # all the waiters across all connections.
         #
-        loop = asyncio.get_running_loop()
         coro = self._resolve_host_with_throttle(key, host, port, futures, traces)
-        #
-        # If there is no resolution in progress, we need to start one.
-        #
-        # In this case we need to create a task to ensure that we can shield
-        # the task from cancellation as cancelling this lookup should not cancel
-        # the underlying lookup or else the cancel event will get broadcast to
-        # all the waiters across all connections.
-        #
         loop = asyncio.get_running_loop()
         if sys.version_info >= (3, 12):
             # Optimization for Python 3.12, try to send immediately
