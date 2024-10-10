@@ -161,7 +161,7 @@ class AsyncResolver(AbstractResolver):
             resp = await self._resolver.query(host, qtype)
         except aiodns.error.DNSError as exc:
             msg = exc.args[1] if len(exc.args) >= 1 else "DNS lookup failed"
-            raise OSError(msg) from exc
+            raise OSError(None, msg) from exc
 
         hosts = []
         for rr in resp:
@@ -177,7 +177,7 @@ class AsyncResolver(AbstractResolver):
             )
 
         if not hosts:
-            raise OSError("DNS lookup failed")
+            raise OSError(None, "DNS lookup failed")
 
         return hosts
 
