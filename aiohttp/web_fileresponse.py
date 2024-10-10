@@ -96,7 +96,7 @@ class FileResponse(StreamResponse):
 
         await loop.run_in_executor(None, fobj.seek, offset)
 
-        chunk = await loop.run_in_executor(None, fobj.read, chunk_size)
+        chunk = await loop.run_in_executor(None, fobj.read, min(chunk_size, count))
         while chunk:
             await writer.write(chunk)
             count = count - chunk_size
