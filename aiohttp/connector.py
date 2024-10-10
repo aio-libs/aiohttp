@@ -988,8 +988,9 @@ class TCPConnector(BaseConnector):
             for fut in futures:
                 set_result(fut, None)
         except BaseException as e:
-            # any DNS exception, independently of the implementation
-            # is set for the waiters to raise the same exception.
+            # any DNS exception is set for the waiters to raise the same exception.
+            # This coro is always run in task that is shielded from cancellation so
+            # we should never be propagating cancellation here.
             for fut in futures:
                 set_exception(fut, e)
             raise
