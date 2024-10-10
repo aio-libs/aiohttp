@@ -3248,7 +3248,38 @@ async def test_aiohttp_request_ctx_manager_not_found() -> None:
             assert False, "never executed"  # pragma: no cover
 
 
-async def test_yield_from_in_session_request(aiohttp_client) -> None:
+async def test_raising_client_connector_dns_error_on_dns_failure() -> None:
+    """Verify that the exception raised when a DNS lookup fails is specific to DNS."""
+    with mock.patch(
+        "aiohttp.connector.TCPConnector._resolve_host", autospec=True, spec_set=True
+    ) as mock_resolve_host:
+        mock_resolve_host.side_effect = OSError(None, "DNS lookup failed")
+        with pytest.raises(aiohttp.ClientConnectorDNSError, match="DNS lookup failed"):
+            async with aiohttp.request("GET", "http://wrong-dns-name.com"):
+                assert False, "never executed"
+
+
+async def test_aiohttp_request_coroutine(aiohttp_server: AiohttpServer) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    not_an_awaitable = aiohttp.request("GET", server.make_url("/"))
+    with pytest.raises(
+        TypeError,
+        match="^object _SessionRequestContextManager "
+        "can't be used in 'await' expression$",
+    ):
+        await not_an_awaitable  # type: ignore[misc]
+
+    await not_an_awaitable._coro  # coroutine 'ClientSession._request' was never awaited
+    await server.close()
+
+
+async def test_yield_from_in_session_request(aiohttp_client: AiohttpClient) -> None:
     # a test for backward compatibility with yield from syntax
     async def handler(request):
         return web.Response()

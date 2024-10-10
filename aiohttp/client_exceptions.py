@@ -30,6 +30,7 @@ __all__ = (
     "ClientConnectorError",
     "ClientProxyConnectionError",
     "ClientSSLError",
+    "ClientConnectorDNSError",
     "ClientConnectorSSLError",
     "ClientConnectorCertificateError",
     "ConnectionTimeoutError",
@@ -204,6 +205,14 @@ class ClientConnectorError(ClientOSError):
 
     # OSError.__reduce__ does too much black magick
     __reduce__ = BaseException.__reduce__
+
+
+class ClientConnectorDNSError(ClientConnectorError):
+    """DNS resolution failed during client connection.
+
+    Raised in :class:`aiohttp.connector.TCPConnector` if
+        DNS resolution fails.
+    """
 
 
 class ClientProxyConnectionError(ClientConnectorError):
