@@ -925,7 +925,7 @@ class TCPConnector(BaseConnector):
         # and then use the result for all the waiters.
         #
         if key in self._throttle_dns_futures:
-            # get queue early, before any await (#4014)
+            # get futures early, before any await (#4014)
             futures = self._throttle_dns_futures[key]
             future: asyncio.Future[None] = self._loop.create_future()
             futures.add(future)
