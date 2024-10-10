@@ -36,7 +36,7 @@ cffi==1.17.1
     #   pycares
 cfgv==3.4.0
     # via pre-commit
-charset-normalizer==3.3.2
+charset-normalizer==3.4.0
     # via requests
 cherry-picker==2.2.0
     # via -r requirements/dev.in
