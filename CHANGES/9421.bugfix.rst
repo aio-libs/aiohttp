@@ -1,1 +1,1 @@
-Fix the connection limit so that the algorithm does not enumerate unrelated connections -- by user:`bdraco`.
+Fix the connection limit so that the algorithm does not enumerate unrelated connection waiters -- by user:`bdraco`.
