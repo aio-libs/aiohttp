@@ -1,1 +1,1 @@
-Added a warning to the documentation about the WebSocket async iterators swallowing close messages -- by :user:`bdraco`.
+Added a note to the documentation about the WebSocket async iterators swallowing close messages -- by :user:`bdraco`.
