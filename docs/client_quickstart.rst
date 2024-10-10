@@ -404,7 +404,7 @@ multiple writer tasks which can only send data asynchronously (by
     When using ``async for msg in ws:``, messages of type
     :attr:`~aiohttp.WSMsgType.CLOSE`, :attr:`~aiohttp.WSMsgType.CLOSED`,
     and :attr:`~aiohttp.WSMsgType.CLOSING` are swallowed. If you need to
-    handle these messages, you should use the
+    handle these messages, use the
     :meth:`~aiohttp.ClientWebSocketResponse.receive` method instead.
 
 .. _aiohttp-client-timeouts:
