@@ -1518,7 +1518,6 @@ manually.
        handle these messages, you should use the
        :meth:`~aiohttp.ClientWebSocketResponse.receive` method instead.
 
-
    .. method:: exception()
 
       Returns exception if any occurs or returns None.
