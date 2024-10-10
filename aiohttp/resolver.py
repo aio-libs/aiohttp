@@ -109,7 +109,7 @@ class AsyncResolver(AbstractResolver):
             )
         except aiodns.error.DNSError as exc:
             msg = exc.args[1] if len(exc.args) >= 1 else "DNS lookup failed"
-            raise OSError(msg) from exc
+            raise OSError(None, msg) from exc
         hosts: List[ResolveResult] = []
         for node in resp.nodes:
             address: Union[Tuple[bytes, int], Tuple[bytes, int, int, int]] = node.addr
@@ -143,7 +143,7 @@ class AsyncResolver(AbstractResolver):
             )
 
         if not hosts:
-            raise OSError("DNS lookup failed")
+            raise OSError(None, "DNS lookup failed")
 
         return hosts
 
