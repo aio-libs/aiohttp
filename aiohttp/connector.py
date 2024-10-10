@@ -922,7 +922,7 @@ class TCPConnector(BaseConnector):
         #
         # If multiple connectors are resolving the same host, we wait
         # for the first one to resolve and then use the result for all of them.
-        # We use a throttle event to ensure that we only resolve the host once
+        # We use a throttle to ensure that we only resolve the host once
         # and then use the result for all the waiters.
         #
         if key in self._throttle_dns_futures:
