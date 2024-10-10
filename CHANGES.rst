@@ -10,6 +10,48 @@
 
 .. towncrier release notes start
 
+3.10.10 (2024-10-10)
+====================
+
+Bug fixes
+---------
+
+- Fixed error messages from :py:class:`~aiohttp.resolver.AsyncResolver` being swallowed -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9451`, :issue:`9455`.
+
+
+
+
+Features
+--------
+
+- Added :exc:`aiohttp.ClientConnectorDNSError` for differentiating DNS resolution errors from other connector errors -- by :user:`mstojcevich`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8455`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Simplified DNS resolution throttling code to reduce chance of race conditions -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9454`.
+
+
+
+
+----
+
+
 3.10.9 (2024-10-04)
 ===================
 

@@ -1,1 +1,0 @@
-Fixed error messages from :py:class:`~aiohttp.resolver.AsyncResolver` being swallowed -- by :user:`bdraco`.
