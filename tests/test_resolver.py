@@ -323,8 +323,10 @@ async def test_async_resolver_error_messages_passed(
     with patch("aiodns.DNSResolver", autospec=True, spec_set=True) as mock:
         mock().getaddrinfo.side_effect = aiodns.error.DNSError(1, "Test error message")
         resolver = AsyncResolver()
-        with pytest.raises(OSError, match="Test error message"):
+        with pytest.raises(OSError, match="Test error message") as excinfo:
             await resolver.resolve("x.org")
+
+        assert excinfo.value.strerror == "Test error message"
 
 
 async def test_async_resolver_aiodns_not_present(loop: Any, monkeypatch: Any) -> None:
