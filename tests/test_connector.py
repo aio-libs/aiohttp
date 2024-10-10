@@ -47,7 +47,6 @@ from aiohttp.connector import (
     TCPConnector,
     _DNSCacheTable,
 )
-from aiohttp.locks import EventResultOrError
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import make_mocked_coro, unused_port
 from aiohttp.tracing import Trace
@@ -1921,8 +1920,8 @@ async def test_close_cancels_cleanup_handle(
 async def test_close_cancels_resolve_host(loop: asyncio.AbstractEventLoop) -> None:
     cancelled = False
 
-    async def delay_resolve_host(*args: object) -> None:
-        """Delay _resolve_host() task in order to test cancellation."""
+    async def delay_resolve(*args: object, **kwargs: object) -> None:
+        """Delay resolve() task in order to test cancellation."""
         nonlocal cancelled
         try:
             await asyncio.sleep(10)
@@ -1934,7 +1933,7 @@ async def test_close_cancels_resolve_host(loop: asyncio.AbstractEventLoop) -> No
     req = ClientRequest(
         "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
     )
-    with mock.patch.object(conn, "_resolve_host_with_throttle", delay_resolve_host):
+    with mock.patch.object(conn._resolver, "resolve", delay_resolve):
         t = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
         # Let it create the internal task
         await asyncio.sleep(0)
@@ -2996,12 +2995,13 @@ async def test_connector_throttle_trace_race(loop: asyncio.AbstractEventLoop) ->
             """Dummy"""
 
         async def send_dns_cache_hit(self, *args: object, **kwargs: object) -> None:
-            event = connector._throttle_dns_events.pop(key)
-            event.set()
+            futures = connector._throttle_dns_futures.pop(key)
+            for fut in futures:
+                fut.set_result(None)
             connector._cached_hosts.add(key, [token])
 
     connector = TCPConnector()
-    connector._throttle_dns_events[key] = EventResultOrError(loop)
+    connector._throttle_dns_futures[key] = set()
     traces = [DummyTracer()]
     assert await connector._resolve_host("", 0, traces) == [token]
 
