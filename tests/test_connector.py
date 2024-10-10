@@ -34,7 +34,6 @@ from aiohttp.connector import (
     TCPConnector,
     _DNSCacheTable,
 )
-from aiohttp.locks import EventResultOrError
 from aiohttp.resolver import ResolveResult
 from aiohttp.test_utils import make_mocked_coro, unused_port
 from aiohttp.tracing import Trace
@@ -1766,8 +1765,8 @@ async def test_close_cancels_cleanup_handle(loop) -> None:
 async def test_close_cancels_resolve_host(loop: asyncio.AbstractEventLoop) -> None:
     cancelled = False
 
-    async def delay_resolve_host(*args: object) -> None:
-        """Delay _resolve_host() task in order to test cancellation."""
+    async def delay_resolve(*args: object, **kwargs: object) -> None:
+        """Delay resolve() task in order to test cancellation."""
         nonlocal cancelled
         try:
             await asyncio.sleep(10)
@@ -1779,7 +1778,7 @@ async def test_close_cancels_resolve_host(loop: asyncio.AbstractEventLoop) -> No
     req = ClientRequest(
         "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
     )
-    with mock.patch.object(conn, "_resolve_host_with_throttle", delay_resolve_host):
+    with mock.patch.object(conn._resolver, "resolve", delay_resolve):
         t = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
         # Let it create the internal task
         await asyncio.sleep(0)
@@ -1795,6 +1794,301 @@ async def test_close_cancels_resolve_host(loop: asyncio.AbstractEventLoop) -> No
 
         with suppress(asyncio.CancelledError):
             await t
+
+
+async def test_multiple_dns_resolution_requests_success(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Verify that multiple DNS resolution requests are handled correctly."""
+
+    async def delay_resolve(*args: object, **kwargs: object) -> List[ResolveResult]:
+        """Delayed resolve() task."""
+        for _ in range(3):
+            await asyncio.sleep(0)
+        return [
+            {
+                "hostname": "localhost",
+                "host": "127.0.0.1",
+                "port": 80,
+                "family": socket.AF_INET,
+                "proto": 0,
+                "flags": socket.AI_NUMERICHOST,
+            },
+        ]
+
+    conn = aiohttp.TCPConnector(force_close=True)
+    req = ClientRequest(
+        "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
+    )
+    with mock.patch.object(conn._resolver, "resolve", delay_resolve), mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        side_effect=OSError(1, "Forced connection to fail"),
+    ):
+        task1 = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
+
+        # Let it create the internal task
+        await asyncio.sleep(0)
+        # Let that task start running
+        await asyncio.sleep(0)
+
+        # Ensure the task is running
+        assert len(conn._resolve_host_tasks) == 1
+
+        task2 = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
+        task3 = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
+
+        with pytest.raises(
+            aiohttp.ClientConnectorError, match="Forced connection to fail"
+        ):
+            await task1
+
+        # Verify the the task is finished
+        assert len(conn._resolve_host_tasks) == 0
+
+        with pytest.raises(
+            aiohttp.ClientConnectorError, match="Forced connection to fail"
+        ):
+            await task2
+        with pytest.raises(
+            aiohttp.ClientConnectorError, match="Forced connection to fail"
+        ):
+            await task3
+
+
+async def test_multiple_dns_resolution_requests_failure(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Verify that DNS resolution failure for multiple requests is handled correctly."""
+
+    async def delay_resolve(*args: object, **kwargs: object) -> List[ResolveResult]:
+        """Delayed resolve() task."""
+        for _ in range(3):
+            await asyncio.sleep(0)
+        raise OSError(None, "DNS Resolution mock failure")
+
+    conn = aiohttp.TCPConnector(force_close=True)
+    req = ClientRequest(
+        "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
+    )
+    with mock.patch.object(conn._resolver, "resolve", delay_resolve), mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        side_effect=OSError(1, "Forced connection to fail"),
+    ):
+        task1 = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
+
+        # Let it create the internal task
+        await asyncio.sleep(0)
+        # Let that task start running
+        await asyncio.sleep(0)
+
+        # Ensure the task is running
+        assert len(conn._resolve_host_tasks) == 1
+
+        task2 = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
+        task3 = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
+
+        with pytest.raises(
+            aiohttp.ClientConnectorError, match="DNS Resolution mock failure"
+        ):
+            await task1
+
+        # Verify the the task is finished
+        assert len(conn._resolve_host_tasks) == 0
+
+        with pytest.raises(
+            aiohttp.ClientConnectorError, match="DNS Resolution mock failure"
+        ):
+            await task2
+        with pytest.raises(
+            aiohttp.ClientConnectorError, match="DNS Resolution mock failure"
+        ):
+            await task3
+
+
+async def test_multiple_dns_resolution_requests_cancelled(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Verify that DNS resolution cancellation does not affect other tasks."""
+
+    async def delay_resolve(*args: object, **kwargs: object) -> List[ResolveResult]:
+        """Delayed resolve() task."""
+        for _ in range(3):
+            await asyncio.sleep(0)
+        raise OSError(None, "DNS Resolution mock failure")
+
+    conn = aiohttp.TCPConnector(force_close=True)
+    req = ClientRequest(
+        "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
+    )
+    with mock.patch.object(conn._resolver, "resolve", delay_resolve), mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        side_effect=OSError(1, "Forced connection to fail"),
+    ):
+        task1 = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
+
+        # Let it create the internal task
+        await asyncio.sleep(0)
+        # Let that task start running
+        await asyncio.sleep(0)
+
+        # Ensure the task is running
+        assert len(conn._resolve_host_tasks) == 1
+
+        task2 = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
+        task3 = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
+
+        task1.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task1
+
+        with pytest.raises(
+            aiohttp.ClientConnectorError, match="DNS Resolution mock failure"
+        ):
+            await task2
+        with pytest.raises(
+            aiohttp.ClientConnectorError, match="DNS Resolution mock failure"
+        ):
+            await task3
+
+        # Verify the the task is finished
+        assert len(conn._resolve_host_tasks) == 0
+
+
+async def test_multiple_dns_resolution_requests_first_cancelled(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Verify that first DNS resolution cancellation does not make other resolutions fail."""
+
+    async def delay_resolve(*args: object, **kwargs: object) -> List[ResolveResult]:
+        """Delayed resolve() task."""
+        for _ in range(3):
+            await asyncio.sleep(0)
+        return [
+            {
+                "hostname": "localhost",
+                "host": "127.0.0.1",
+                "port": 80,
+                "family": socket.AF_INET,
+                "proto": 0,
+                "flags": socket.AI_NUMERICHOST,
+            },
+        ]
+
+    conn = aiohttp.TCPConnector(force_close=True)
+    req = ClientRequest(
+        "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
+    )
+    with mock.patch.object(conn._resolver, "resolve", delay_resolve), mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        side_effect=OSError(1, "Forced connection to fail"),
+    ):
+        task1 = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
+
+        # Let it create the internal task
+        await asyncio.sleep(0)
+        # Let that task start running
+        await asyncio.sleep(0)
+
+        # Ensure the task is running
+        assert len(conn._resolve_host_tasks) == 1
+
+        task2 = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
+        task3 = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
+
+        task1.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task1
+
+        # The second and third tasks should still make the connection
+        # even if the first one is cancelled
+        with pytest.raises(
+            aiohttp.ClientConnectorError, match="Forced connection to fail"
+        ):
+            await task2
+        with pytest.raises(
+            aiohttp.ClientConnectorError, match="Forced connection to fail"
+        ):
+            await task3
+
+        # Verify the the task is finished
+        assert len(conn._resolve_host_tasks) == 0
+
+
+async def test_multiple_dns_resolution_requests_first_fails_second_successful(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Verify that first DNS resolution fails the first time and is successful the second time."""
+    attempt = 0
+
+    async def delay_resolve(*args: object, **kwargs: object) -> List[ResolveResult]:
+        """Delayed resolve() task."""
+        nonlocal attempt
+        for _ in range(3):
+            await asyncio.sleep(0)
+        attempt += 1
+        if attempt == 1:
+            raise OSError(None, "DNS Resolution mock failure")
+        return [
+            {
+                "hostname": "localhost",
+                "host": "127.0.0.1",
+                "port": 80,
+                "family": socket.AF_INET,
+                "proto": 0,
+                "flags": socket.AI_NUMERICHOST,
+            },
+        ]
+
+    conn = aiohttp.TCPConnector(force_close=True)
+    req = ClientRequest(
+        "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
+    )
+    with mock.patch.object(conn._resolver, "resolve", delay_resolve), mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        side_effect=OSError(1, "Forced connection to fail"),
+    ):
+        task1 = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
+
+        # Let it create the internal task
+        await asyncio.sleep(0)
+        # Let that task start running
+        await asyncio.sleep(0)
+
+        # Ensure the task is running
+        assert len(conn._resolve_host_tasks) == 1
+
+        task2 = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
+
+        with pytest.raises(
+            aiohttp.ClientConnectorError, match="DNS Resolution mock failure"
+        ):
+            await task1
+
+        assert len(conn._resolve_host_tasks) == 0
+        # The second task should also get the dns resolution failure
+        with pytest.raises(
+            aiohttp.ClientConnectorError, match="DNS Resolution mock failure"
+        ):
+            await task2
+
+        # The third task is created after the resolution finished so
+        # it should try again and succeed
+        task3 = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
+        # Let it create the internal task
+        await asyncio.sleep(0)
+        # Let that task start running
+        await asyncio.sleep(0)
+
+        # Ensure the task is running
+        assert len(conn._resolve_host_tasks) == 1
+
+        with pytest.raises(
+            aiohttp.ClientConnectorError, match="Forced connection to fail"
+        ):
+            await task3
+
+        # Verify the the task is finished
+        assert len(conn._resolve_host_tasks) == 0
 
 
 async def test_close_abort_closed_transports(loop: asyncio.AbstractEventLoop) -> None:
@@ -2762,14 +3056,18 @@ async def test_connector_throttle_trace_race(loop):
     key = ("", 0)
     token = object()
 
-    class DummyTracer:
-        async def send_dns_cache_hit(self, *args, **kwargs):
-            event = connector._throttle_dns_events.pop(key)
-            event.set()
+    class DummyTracer(Trace):
+        def __init__(self) -> None:
+            """Dummy"""
+
+        async def send_dns_cache_hit(self, *args: object, **kwargs: object) -> None:
+            futures = connector._throttle_dns_futures.pop(key)
+            for fut in futures:
+                fut.set_result(None)
             connector._cached_hosts.add(key, [token])
 
     connector = TCPConnector()
-    connector._throttle_dns_events[key] = EventResultOrError(loop)
+    connector._throttle_dns_futures[key] = set()
     traces = [DummyTracer()]
     assert await connector._resolve_host("", 0, traces) == [token]
 
