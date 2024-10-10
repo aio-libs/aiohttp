@@ -918,6 +918,7 @@ class TCPConnector(BaseConnector):
         port: int,
         traces: Optional[Sequence["Trace"]],
     ) -> None:
+        futures: Set[asyncio.Future[None]]
         #
         # If multiple connectors are resolving the same host, we wait
         # for the first one to resolve and then use the result for all of them.
@@ -939,8 +940,7 @@ class TCPConnector(BaseConnector):
             return
 
         # update dict early, before any await (#4014)
-        futures: Set[asyncio.Future[None]] = set()
-        self._throttle_dns_futures[key] = futures
+        self._throttle_dns_futures[key] = futures = set()
         if traces:
             for trace in traces:
                 await trace.send_dns_cache_miss(host)
@@ -984,7 +984,7 @@ class TCPConnector(BaseConnector):
                 for trace in traces:
                     await trace.send_dns_resolvehost_end(host)
 
-            self._cached_hosts.add(key, addrs)
+            self._cached_hosts.add(key, addrs)  # type: ignore[possibly-undefined]
             for fut in futures:
                 set_result(fut, None)
         except BaseException as e:
