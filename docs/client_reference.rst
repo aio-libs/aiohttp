@@ -1504,6 +1504,20 @@ manually.
       :param default: Default value to be used when no value for ``name`` is
                       found (default is ``None``).
 
+   The class supports ``async for`` statement for iterating over
+   incoming messages::
+
+      async for msg in ws:
+        print(msg.data)
+
+   .. note::
+
+       When using ``async for msg in ws:``, messages of type
+       :attr:`~aiohttp.WSMsgType.CLOSE`, :attr:`~aiohttp.WSMsgType.CLOSED`,
+       and :attr:`~aiohttp.WSMsgType.CLOSING` are swallowed. If you need to
+       handle these messages, use the
+       :meth:`~aiohttp.ClientWebSocketResponse.receive` method instead.
+
    .. method:: exception()
 
       Returns exception if any occurs or returns None.

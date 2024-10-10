@@ -399,6 +399,13 @@ ws.receive()`` or ``async for msg in ws:``) and writing but may have
 multiple writer tasks which can only send data asynchronously (by
 ``await ws.send_str('data')`` for example).
 
+.. note::
+
+    When using ``async for msg in ws:``, messages of type
+    :attr:`~aiohttp.WSMsgType.CLOSE`, :attr:`~aiohttp.WSMsgType.CLOSED`,
+    and :attr:`~aiohttp.WSMsgType.CLOSING` are swallowed. If you need to
+    handle these messages, use the
+    :meth:`~aiohttp.ClientWebSocketResponse.receive` method instead.
 
 .. _aiohttp-client-timeouts:
 

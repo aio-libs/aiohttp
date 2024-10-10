@@ -122,7 +122,12 @@ WebSocket utilities
 
       Close frame.
 
-   .. attribute:: CLOSED FRAME
+   .. attribute:: CLOSING
+
+      Actually not frame but a flag indicating that websocket is
+      closing.
+
+   .. attribute:: CLOSED
 
       Actually not frame but a flag indicating that websocket was
       closed.

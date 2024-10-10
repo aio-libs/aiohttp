@@ -635,6 +635,14 @@ The handler should be registered as HTTP GET processor::
 
     app.add_routes([web.get('/ws', websocket_handler)])
 
+.. note::
+
+    When using ``async for msg in ws:``, messages of type
+    :attr:`~aiohttp.WSMsgType.CLOSE`, :attr:`~aiohttp.WSMsgType.CLOSED`,
+    and :attr:`~aiohttp.WSMsgType.CLOSING` are swallowed. If you need to
+    handle these messages, use the
+    :meth:`~aiohttp.web.WebSocketResponse.receive` method instead.
+
 .. _aiohttp-web-redirects:
 
 Redirects
