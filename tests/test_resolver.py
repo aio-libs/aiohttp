@@ -329,6 +329,20 @@ async def test_async_resolver_error_messages_passed(
         assert excinfo.value.strerror == "Test error message"
 
 
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+async def test_async_resolver_error_messages_passed_no_hosts(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Ensure error messages are passed through from aiodns."""
+    with patch("aiodns.DNSResolver", autospec=True, spec_set=True) as mock:
+        mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv6_result([])
+        resolver = AsyncResolver()
+        with pytest.raises(OSError, match="DNS lookup failed") as excinfo:
+            await resolver.resolve("x.org")
+
+        assert excinfo.value.strerror == "DNS lookup failed"
+
+
 async def test_async_resolver_aiodns_not_present(loop: Any, monkeypatch: Any) -> None:
     monkeypatch.setattr("aiohttp.resolver.aiodns", None)
     with pytest.raises(RuntimeError):
