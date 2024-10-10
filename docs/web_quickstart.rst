@@ -618,12 +618,12 @@ with the peer::
         async for msg in ws:
             # ws.__next__() automatically terminates the loop
             # after ws.close() or ws.exception() is called
-            if msg.type == aiohttp.WSMsgType.TEXT:
+            if msg.type is aiohttp.WSMsgType.TEXT:
                 if msg.data == 'close':
                     await ws.close()
                 else:
                     await ws.send_str(msg.data + '/answer')
-            elif msg.type == aiohttp.WSMsgType.ERROR:
+            elif msg.type is aiohttp.WSMsgType.ERROR:
                 print('ws connection closed with exception %s' %
                       ws.exception())
 
@@ -634,6 +634,14 @@ with the peer::
 The handler should be registered as HTTP GET processor::
 
     app.add_routes([web.get('/ws', websocket_handler)])
+
+.. warning::
+
+    When using the ``async for msg in ws:``, messages of type
+    :attr:`~aiohttp.WSMsgType.CLOSE`, :attr:`~aiohttp.WSMsgType.CLOSED`,
+    and :attr:`~aiohttp.WSMsgType.CLOSING` are swallowed. If you need to
+    handle these messages, you should use the
+    :meth:`~aiohttp.web.WebSocketResponse.receive` method instead.
 
 .. _aiohttp-web-redirects:
 

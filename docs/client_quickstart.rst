@@ -384,13 +384,13 @@ methods::
 
    async with session.ws_connect('http://example.org/ws') as ws:
        async for msg in ws:
-           if msg.type == aiohttp.WSMsgType.TEXT:
+           if msg.type is aiohttp.WSMsgType.TEXT:
                if msg.data == 'close cmd':
                    await ws.close()
                    break
                else:
                    await ws.send_str(msg.data + '/answer')
-           elif msg.type == aiohttp.WSMsgType.ERROR:
+           elif msg.type is aiohttp.WSMsgType.ERROR:
                break
 
 
@@ -399,6 +399,13 @@ ws.receive()`` or ``async for msg in ws:``) and writing but may have
 multiple writer tasks which can only send data asynchronously (by
 ``await ws.send_str('data')`` for example).
 
+.. warning::
+
+    When using the ``async for msg in ws:``, messages of type
+    :attr:`~aiohttp.WSMsgType.CLOSE`, :attr:`~aiohttp.WSMsgType.CLOSED`,
+    and :attr:`~aiohttp.WSMsgType.CLOSING` are swallowed. If you need to
+    handle these messages, you should use the
+    :meth:`~aiohttp.ClientWebSocketResponse.receive` method instead.
 
 .. _aiohttp-client-timeouts:
 

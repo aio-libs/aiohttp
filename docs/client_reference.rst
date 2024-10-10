@@ -1691,6 +1691,20 @@ manually.
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
       :raise ValueError: if message is not valid JSON.
 
+   The class supports ``async for`` statement for iterating over
+   incoming messages::
+
+      async for msg in ws:
+        print(msg.data)
+
+    .. warning::
+
+        When using the ``async for msg in ws:``, messages of type
+        :attr:`~aiohttp.WSMsgType.CLOSE`, :attr:`~aiohttp.WSMsgType.CLOSED`,
+        and :attr:`~aiohttp.WSMsgType.CLOSING` are swallowed. If you need to
+        handle these messages, you should use the
+        :meth:`~aiohttp.web.WebSocketResponse.receive` method instead.
+
 
 Utilities
 ---------
