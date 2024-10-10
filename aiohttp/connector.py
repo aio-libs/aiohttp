@@ -960,7 +960,7 @@ class TCPConnector(BaseConnector):
             resolved_host_task.add_done_callback(self._resolve_host_tasks.discard)
 
         try:
-            await asyncio.shield(resolved_host_task)
+            return await asyncio.shield(resolved_host_task)
         except asyncio.CancelledError:
 
             def drop_exception(fut: "asyncio.Future[List[ResolveResult]]") -> None:
@@ -970,8 +970,6 @@ class TCPConnector(BaseConnector):
             resolved_host_task.add_done_callback(drop_exception)
             raise
 
-        return self._cached_hosts.next_addrs(key)
-
     async def _resolve_host_with_throttle(
         self,
         key: Tuple[str, int],
@@ -979,7 +977,7 @@ class TCPConnector(BaseConnector):
         port: int,
         futures: Set[asyncio.Future[None]],
         traces: Optional[Sequence["Trace"]],
-    ) -> None:
+    ) -> List[ResolveResult]:
         """Resolve host and set result for all waiters.
 
         This method must be run in a task and shielded from cancellation
@@ -1009,6 +1007,8 @@ class TCPConnector(BaseConnector):
             raise
         finally:
             self._throttle_dns_futures.pop(key)
+
+        return self._cached_hosts.next_addrs(key)
 
     async def _create_connection(
         self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
