@@ -10,7 +10,7 @@ from collections import defaultdict, deque
 from contextlib import suppress
 from http import HTTPStatus
 from http.cookies import SimpleCookie
-from itertools import cycle, islice
+from itertools import chain, cycle, islice
 from time import monotonic
 from types import TracebackType
 from typing import (
@@ -836,9 +836,8 @@ class TCPConnector(BaseConnector):
         self._resolve_host_tasks: Set["asyncio.Task[List[ResolveResult]]"] = set()
 
     def _close_immediately(self) -> List[Awaitable[object]]:
-        for future_set in self._throttle_dns_futures.values():
-            for fut in future_set:
-                fut.cancel()
+        for fut in chain.from_iterable(self._throttle_dns_futures.values()):
+            fut.cancel()
 
         waiters = super()._close_immediately()
 
