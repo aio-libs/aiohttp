@@ -1,4 +1,3 @@
-import dataclasses
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, Awaitable, Generic, Protocol, TypeVar, overload
 
@@ -7,6 +6,7 @@ from multidict import CIMultiDict
 from yarl import URL
 
 from .client_reqrep import ClientResponse
+from .helpers import frozen_dataclass_decorator
 
 if TYPE_CHECKING:
     from .client import ClientSession
@@ -221,7 +221,7 @@ class TraceConfig(Generic[_T]):
         return self._on_request_headers_sent
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceRequestStartParams:
     """Parameters sent by the `on_request_start` signal"""
 
@@ -230,7 +230,7 @@ class TraceRequestStartParams:
     headers: "CIMultiDict[str]"
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceRequestChunkSentParams:
     """Parameters sent by the `on_request_chunk_sent` signal"""
 
@@ -239,7 +239,7 @@ class TraceRequestChunkSentParams:
     chunk: bytes
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceResponseChunkReceivedParams:
     """Parameters sent by the `on_response_chunk_received` signal"""
 
@@ -248,7 +248,7 @@ class TraceResponseChunkReceivedParams:
     chunk: bytes
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceRequestEndParams:
     """Parameters sent by the `on_request_end` signal"""
 
@@ -258,7 +258,7 @@ class TraceRequestEndParams:
     response: ClientResponse
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceRequestExceptionParams:
     """Parameters sent by the `on_request_exception` signal"""
 
@@ -268,7 +268,7 @@ class TraceRequestExceptionParams:
     exception: BaseException
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceRequestRedirectParams:
     """Parameters sent by the `on_request_redirect` signal"""
 
@@ -278,60 +278,60 @@ class TraceRequestRedirectParams:
     response: ClientResponse
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceConnectionQueuedStartParams:
     """Parameters sent by the `on_connection_queued_start` signal"""
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceConnectionQueuedEndParams:
     """Parameters sent by the `on_connection_queued_end` signal"""
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceConnectionCreateStartParams:
     """Parameters sent by the `on_connection_create_start` signal"""
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceConnectionCreateEndParams:
     """Parameters sent by the `on_connection_create_end` signal"""
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceConnectionReuseconnParams:
     """Parameters sent by the `on_connection_reuseconn` signal"""
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceDnsResolveHostStartParams:
     """Parameters sent by the `on_dns_resolvehost_start` signal"""
 
     host: str
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceDnsResolveHostEndParams:
     """Parameters sent by the `on_dns_resolvehost_end` signal"""
 
     host: str
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceDnsCacheHitParams:
     """Parameters sent by the `on_dns_cache_hit` signal"""
 
     host: str
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceDnsCacheMissParams:
     """Parameters sent by the `on_dns_cache_miss` signal"""
 
     host: str
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceRequestHeadersSentParams:
     """Parameters sent by the `on_request_headers_sent` signal"""
 
