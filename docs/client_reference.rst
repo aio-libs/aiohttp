@@ -2254,6 +2254,12 @@ Connection errors
 
    Derived from :exc:`ClientOSError`
 
+.. class:: ClientConnectorDNSError
+
+   DNS resolution error.
+
+   Derived from :exc:`ClientConnectorError`
+
 .. class:: ClientProxyConnectionError
 
    Derived from :exc:`ClientConnectorError`
@@ -2334,6 +2340,8 @@ Hierarchy of exceptions
       * :exc:`ClientConnectorError`
 
         * :exc:`ClientProxyConnectionError`
+
+        * :exc:`ClientConnectorDNSError`
 
         * :exc:`ClientSSLError`
 
