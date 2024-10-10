@@ -845,9 +845,9 @@ class TCPConnector(BaseConnector):
 
         self._use_dns_cache = use_dns_cache
         self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache)
-        self._throttle_dns_futures: Dict[Tuple[str, int], Set[asyncio.Future[None]]] = (
-            {}
-        )
+        self._throttle_dns_futures: Dict[
+            Tuple[str, int], Set["asyncio.Future[None]"]
+        ] = {}
         self._family = family
         self._local_addr_infos = aiohappyeyeballs.addr_to_addr_infos(local_addr)
         self._happy_eyeballs_delay = happy_eyeballs_delay
@@ -925,7 +925,7 @@ class TCPConnector(BaseConnector):
                     await trace.send_dns_cache_hit(host)
             return result
 
-        futures: Set[asyncio.Future[None]]
+        futures: Set["asyncio.Future[None]"]
         #
         # If multiple connectors are resolving the same host, we wait
         # for the first one to resolve and then use the result for all of them.
@@ -981,7 +981,7 @@ class TCPConnector(BaseConnector):
         key: Tuple[str, int],
         host: str,
         port: int,
-        futures: Set[asyncio.Future[None]],
+        futures: Set["asyncio.Future[None]"],
         traces: Optional[Sequence["Trace"]],
     ) -> List[ResolveResult]:
         """Resolve host and set result for all waiters.
