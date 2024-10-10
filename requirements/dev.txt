@@ -56,7 +56,7 @@ cryptography==43.0.1
     # via
     #   pyjwt
     #   trustme
-distlib==0.3.8
+distlib==0.3.9
     # via virtualenv
 docutils==0.20.1
     # via sphinx
