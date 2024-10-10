@@ -646,7 +646,10 @@ class Response(StreamResponse):
             return None
 
         if hdrs.CONTENT_LENGTH in self._headers:
-            return super().content_length
+            content_length = self._headers[hdrs.CONTENT_LENGTH]
+            if content_length is not None:
+                return int(content_length)
+            return None
 
         if self._compressed_body is not None:
             # Return length of the compressed body
