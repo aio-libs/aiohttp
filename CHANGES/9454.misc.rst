@@ -1,0 +1,1 @@
+Simplified DNS resolution throttling code to reduce chance of race conditions -- by :user:`bdraco`.
