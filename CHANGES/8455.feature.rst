@@ -1,1 +1,1 @@
-Added `ClientConnectorDNSError` for differentiating DNS resolution errors from other connector errors.
+Added :exc:`aiohttp.ClientConnectorDNSError` for differentiating DNS resolution errors from other connector errors.
