@@ -907,16 +907,6 @@ class TCPConnector(BaseConnector):
                     await trace.send_dns_cache_hit(host)
             return result
 
-        await self._resolve_host_with_throttle(key, host, port, traces)
-        return self._cached_hosts.next_addrs(key)
-
-    async def _resolve_host_with_throttle(
-        self,
-        key: Tuple[str, int],
-        host: str,
-        port: int,
-        traces: Optional[Sequence["Trace"]],
-    ) -> None:
         futures: Set[asyncio.Future[None]]
         #
         # If multiple connectors are resolving the same host, we wait
@@ -936,19 +926,19 @@ class TCPConnector(BaseConnector):
                 await future
             finally:
                 futures.discard(future)
-            return
-
-        # update dict early, before any await (#4014)
-        self._throttle_dns_futures[key] = futures = set()
-        if traces:
-            for trace in traces:
-                await trace.send_dns_cache_miss(host)
-        try:
-            if traces:
-                for trace in traces:
-                    await trace.send_dns_resolvehost_start(host)
-
-            coro = self._resolver.resolve(host, port, family=self._family)
+        else:
+            # update dict early, before any await (#4014)
+            self._throttle_dns_futures[key] = futures = set()
+            #
+            # If there is no resolution in progress, we need to start one.
+            #
+            # In this case we need to create a task to ensure that we can shield
+            # the task from cancellation as cancelling this lookup should not cancel
+            # the underlying lookup or else the cancel event will get broadcast to
+            # all the waiters across all connections.
+            #
+            loop = asyncio.get_running_loop()
+            coro = self._resolve_host_with_throttle(key, host, port, futures, traces)
             #
             # If there is no resolution in progress, we need to start one.
             #
@@ -969,7 +959,7 @@ class TCPConnector(BaseConnector):
                 resolved_host_task.add_done_callback(self._resolve_host_tasks.discard)
 
             try:
-                addrs = await asyncio.shield(resolved_host_task)
+                await asyncio.shield(resolved_host_task)
             except asyncio.CancelledError:
 
                 def drop_exception(fut: "asyncio.Future[List[ResolveResult]]") -> None:
@@ -979,11 +969,35 @@ class TCPConnector(BaseConnector):
                 resolved_host_task.add_done_callback(drop_exception)
                 raise
 
+        return self._cached_hosts.next_addrs(key)
+
+    async def _resolve_host_with_throttle(
+        self,
+        key: Tuple[str, int],
+        host: str,
+        port: int,
+        futures: Set[asyncio.Future[None]],
+        traces: Optional[Sequence["Trace"]],
+    ) -> None:
+        """Resolve host and set result for all waiters.
+
+        This method must be run in a task and shielded from cancellation
+        to avoid cancelling the underlying lookup.
+        """
+        if traces:
+            for trace in traces:
+                await trace.send_dns_cache_miss(host)
+        try:
+            if traces:
+                for trace in traces:
+                    await trace.send_dns_resolvehost_start(host)
+
+            addrs = await self._resolver.resolve(host, port, family=self._family)
             if traces:
                 for trace in traces:
                     await trace.send_dns_resolvehost_end(host)
 
-            self._cached_hosts.add(key, addrs)  # type: ignore[possibly-undefined]
+            self._cached_hosts.add(key, addrs)
             for fut in futures:
                 set_result(fut, None)
         except BaseException as e:
