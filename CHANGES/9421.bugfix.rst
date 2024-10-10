@@ -1,0 +1,1 @@
+Fix the connection limit so that the algorithm does not enumerate unrelated connections -- by user:`bdraco`.
