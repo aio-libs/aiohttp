@@ -930,9 +930,6 @@ class TCPConnector(BaseConnector):
 
         # update dict early, before any await (#4014)
         self._throttle_dns_futures[key] = futures = set()
-        #
-        # If there is no resolution in progress, we need to start one.
-        #
         # In this case we need to create a task to ensure that we can shield
         # the task from cancellation as cancelling this lookup should not cancel
         # the underlying lookup or else the cancel event will get broadcast to
