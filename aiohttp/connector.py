@@ -926,48 +926,49 @@ class TCPConnector(BaseConnector):
                 await future
             finally:
                 futures.discard(future)
+            return self._cached_hosts.next_addrs(key)
+
+        # update dict early, before any await (#4014)
+        self._throttle_dns_futures[key] = futures = set()
+        #
+        # If there is no resolution in progress, we need to start one.
+        #
+        # In this case we need to create a task to ensure that we can shield
+        # the task from cancellation as cancelling this lookup should not cancel
+        # the underlying lookup or else the cancel event will get broadcast to
+        # all the waiters across all connections.
+        #
+        loop = asyncio.get_running_loop()
+        coro = self._resolve_host_with_throttle(key, host, port, futures, traces)
+        #
+        # If there is no resolution in progress, we need to start one.
+        #
+        # In this case we need to create a task to ensure that we can shield
+        # the task from cancellation as cancelling this lookup should not cancel
+        # the underlying lookup or else the cancel event will get broadcast to
+        # all the waiters across all connections.
+        #
+        loop = asyncio.get_running_loop()
+        if sys.version_info >= (3, 12):
+            # Optimization for Python 3.12, try to send immediately
+            resolved_host_task = asyncio.Task(coro, loop=loop, eager_start=True)
         else:
-            # update dict early, before any await (#4014)
-            self._throttle_dns_futures[key] = futures = set()
-            #
-            # If there is no resolution in progress, we need to start one.
-            #
-            # In this case we need to create a task to ensure that we can shield
-            # the task from cancellation as cancelling this lookup should not cancel
-            # the underlying lookup or else the cancel event will get broadcast to
-            # all the waiters across all connections.
-            #
-            loop = asyncio.get_running_loop()
-            coro = self._resolve_host_with_throttle(key, host, port, futures, traces)
-            #
-            # If there is no resolution in progress, we need to start one.
-            #
-            # In this case we need to create a task to ensure that we can shield
-            # the task from cancellation as cancelling this lookup should not cancel
-            # the underlying lookup or else the cancel event will get broadcast to
-            # all the waiters across all connections.
-            #
-            loop = asyncio.get_running_loop()
-            if sys.version_info >= (3, 12):
-                # Optimization for Python 3.12, try to send immediately
-                resolved_host_task = asyncio.Task(coro, loop=loop, eager_start=True)
-            else:
-                resolved_host_task = loop.create_task(coro)
+            resolved_host_task = loop.create_task(coro)
 
-            if not resolved_host_task.done():
-                self._resolve_host_tasks.add(resolved_host_task)
-                resolved_host_task.add_done_callback(self._resolve_host_tasks.discard)
+        if not resolved_host_task.done():
+            self._resolve_host_tasks.add(resolved_host_task)
+            resolved_host_task.add_done_callback(self._resolve_host_tasks.discard)
 
-            try:
-                await asyncio.shield(resolved_host_task)
-            except asyncio.CancelledError:
+        try:
+            await asyncio.shield(resolved_host_task)
+        except asyncio.CancelledError:
 
-                def drop_exception(fut: "asyncio.Future[List[ResolveResult]]") -> None:
-                    with suppress(Exception, asyncio.CancelledError):
-                        fut.result()
+            def drop_exception(fut: "asyncio.Future[List[ResolveResult]]") -> None:
+                with suppress(Exception, asyncio.CancelledError):
+                    fut.result()
 
-                resolved_host_task.add_done_callback(drop_exception)
-                raise
+            resolved_host_task.add_done_callback(drop_exception)
+            raise
 
         return self._cached_hosts.next_addrs(key)
 
