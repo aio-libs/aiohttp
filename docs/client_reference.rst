@@ -1703,7 +1703,7 @@ manually.
         :attr:`~aiohttp.WSMsgType.CLOSE`, :attr:`~aiohttp.WSMsgType.CLOSED`,
         and :attr:`~aiohttp.WSMsgType.CLOSING` are swallowed. If you need to
         handle these messages, you should use the
-        :meth:`~aiohttp.web.WebSocketResponse.receive` method instead.
+        :meth:`~aiohttp.ClientWebSocketResponse.receive` method instead.
 
 
 Utilities
