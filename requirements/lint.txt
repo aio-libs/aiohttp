@@ -28,7 +28,7 @@ click==8.1.7
     #   typer
 cryptography==43.0.1
     # via trustme
-distlib==0.3.8
+distlib==0.3.9
     # via virtualenv
 exceptiongroup==1.2.2
     # via pytest
