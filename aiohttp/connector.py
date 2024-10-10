@@ -38,6 +38,7 @@ from .abc import AbstractResolver, ResolveResult
 from .client_exceptions import (
     ClientConnectionError,
     ClientConnectorCertificateError,
+    ClientConnectorDNSError,
     ClientConnectorError,
     ClientConnectorSSLError,
     ClientHttpProxyError,
@@ -1328,7 +1329,7 @@ class TCPConnector(BaseConnector):
                 raise
             # in case of proxy it is not ClientProxyConnectionError
             # it is problem of resolving proxy ip itself
-            raise ClientConnectorError(req.connection_key, exc) from exc
+            raise ClientConnectorDNSError(req.connection_key, exc) from exc
 
         last_exc: Optional[Exception] = None
         addr_infos = self._convert_hosts_to_addr_infos(hosts)
