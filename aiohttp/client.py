@@ -231,6 +231,7 @@ class ClientSession:
 
     __slots__ = (
         "_base_url",
+        "_base_url_origin",
         "_source_traceback",
         "_connector",
         "_loop",
@@ -295,10 +296,12 @@ class ClientSession:
         self._connector: Optional[BaseConnector] = None
         if base_url is None or isinstance(base_url, URL):
             self._base_url: Optional[URL] = base_url
+            self._base_url_origin = None if base_url is None else base_url.origin()
         else:
             self._base_url = URL(base_url)
+            self._base_url_origin = self._base_url.origin()
             assert (
-                self._base_url.origin() == self._base_url
+                self._base_url_origin == self._base_url
             ), "Only absolute URLs without path part are supported"
 
         loop = asyncio.get_running_loop()
@@ -566,8 +569,12 @@ class ClientSession:
                     if auth is None:
                         auth = auth_from_url
 
-                    if auth is None and (
-                        not self._base_url or self._base_url.origin() == url.origin()
+                    if (
+                        auth is None
+                        and self._default_auth
+                        and (
+                            not self._base_url or self._base_url_origin == url.origin()
+                        )
                     ):
                         auth = self._default_auth
                     # It would be confusing if we support explicit
