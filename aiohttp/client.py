@@ -742,8 +742,8 @@ class ClientSession:
                             ) from origin_val_err
 
                         if (
-                            url.origin() != redirect_origin
-                            and not is_same_host_https_redirect
+                            not is_same_host_https_redirect
+                            and url.origin() != redirect_origin
                         ):
                             auth = None
                             headers.pop(hdrs.AUTHORIZATION, None)
