@@ -3,6 +3,7 @@ import codecs
 import contextlib
 import functools
 import io
+import logging
 import re
 import sys
 import traceback
@@ -233,6 +234,9 @@ def _is_expected_content_type(
     if expected_content_type == "application/json":
         return json_re.match(response_content_type) is not None
     return expected_content_type in response_content_type
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class ClientRequest:
@@ -496,6 +500,7 @@ class ClientRequest:
         if not cookies:
             return
 
+        _LOGGER.warning("update_cookies: %s", cookies)
         c = SimpleCookie()
         if hdrs.COOKIE in self.headers:
             c.load(self.headers.get(hdrs.COOKIE, ""))
