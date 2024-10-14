@@ -12,8 +12,6 @@ aiohappyeyeballs==2.4.3
     # via -r requirements/runtime-deps.in
 aiohttp-theme==0.1.7
     # via -r requirements/doc.in
-aioredis==2.0.1
-    # via -r requirements/lint.in
 aiosignal==1.3.1
     # via -r requirements/runtime-deps.in
 alabaster==0.7.13
@@ -23,7 +21,7 @@ annotated-types==0.7.0
 async-timeout==4.0.3 ; python_version < "3.11"
     # via
     #   -r requirements/runtime-deps.in
-    #   aioredis
+    #   valkey
 attrs==24.2.0
     # via -r requirements/runtime-deps.in
 babel==2.16.0
@@ -247,7 +245,6 @@ typer==0.12.5
     # via python-on-whales
 typing-extensions==4.12.2
     # via
-    #   aioredis
     #   annotated-types
     #   multidict
     #   mypy
@@ -264,6 +261,8 @@ uvloop==0.21.0b1 ; platform_system != "Windows" and implementation_name == "cpyt
     # via
     #   -r requirements/base.in
     #   -r requirements/lint.in
+valkey==6.0.2
+    # via -r requirements/lint.in
 virtualenv==20.26.6
     # via pre-commit
 wait-for-it==2.2.2
