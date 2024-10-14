@@ -1,5 +1,4 @@
 aiodns
-aioredis
 freezegun
 mypy; implementation_name == "cpython"
 pre-commit
@@ -9,3 +8,4 @@ python-on-whales
 slotscheck
 trustme
 uvloop; platform_system != "Windows"
+valkey
