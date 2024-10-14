@@ -1,3 +1,5 @@
+from io import BytesIO
+from os import stat_result
 from pathlib import Path
 from stat import S_IFREG, S_IRUSR, S_IWUSR
 from typing import Any
@@ -126,3 +128,56 @@ def test_status_controlled_by_user(loop: Any) -> None:
     loop.run_until_complete(file_sender.prepare(request))
 
     assert file_sender._status == 203
+
+
+def test_custom_path(loop: Any) -> None:
+    request = make_mocked_request("GET", "http://python.org/hello")
+
+    # ZipFile has no with_name and stat
+    # file = BytesIO()
+    # zipfile = ZipFile(file, "w")
+    # zipfile.writestr("hello", "world")
+    # filepath = ZipPath(zipfile)
+
+    class MyPath:
+        name = "hello"
+        content = b"world"
+
+        def open(self, mode: str, *args, **kwargs):
+            return BytesIO(self.content)
+
+        def stat(self, **_):
+            ts = 1701435976
+            return stat_result(
+                (
+                    0o444,
+                    -1,
+                    -1,
+                    1,
+                    0,
+                    0,
+                    len(self.content),
+                    ts,
+                    ts,
+                    ts,
+                    ts,
+                    ts,
+                    ts,
+                    ts * 1000000000,
+                    ts * 1000000000,
+                    ts * 1000000000,
+                )
+            )
+
+        def with_name(self, name):
+            return NoPath()
+
+    class NoPath:
+        def is_file(self):
+            return False
+
+    filepath = MyPath()
+    file_sender = FileResponse(filepath)
+    file_sender._sendfile = make_mocked_coro(None)  # type: ignore[method-assign]
+
+    loop.run_until_complete(file_sender.prepare(request))
