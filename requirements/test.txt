@@ -141,5 +141,5 @@ uvloop==0.21.0b1 ; platform_system != "Windows" and implementation_name == "cpyt
     # via -r requirements/base.in
 wait-for-it==2.2.2
     # via -r requirements/test.in
-yarl==1.14.0
+yarl==1.15.2
     # via -r requirements/runtime-deps.in
