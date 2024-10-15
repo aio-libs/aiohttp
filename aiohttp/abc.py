@@ -190,6 +190,11 @@ class AbstractStreamWriter(ABC):
 
     __slots__ = ("buffer_size", "output_size", "length")
 
+    def __init__(self) -> None:
+        self.buffer_size = 0
+        self.output_size = 0
+        self.length: Optional[int] = None
+
     @abstractmethod
     async def write(self, chunk: bytes) -> None:
         """Write chunk into stream."""

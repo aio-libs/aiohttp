@@ -48,13 +48,11 @@ class StreamWriter(AbstractStreamWriter):
         on_chunk_sent: _T_OnChunkSent = None,
         on_headers_sent: _T_OnHeadersSent = None,
     ) -> None:
+        super().__init__()
         self._protocol = protocol
 
         self.loop = loop
-        self.length = None
         self.chunked = False
-        self.buffer_size = 0
-        self.output_size = 0
 
         self._eof = False
         self._compress: Optional[ZLibCompressor] = None
