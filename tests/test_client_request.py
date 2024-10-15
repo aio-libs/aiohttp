@@ -1344,7 +1344,7 @@ async def test_custom_req_rep(
             resp = self.response_class(
                 self.method,
                 self.url,
-                writer=self._writer,  # type: ignore[arg-type]
+                writer=self._writer,
                 continue100=self._continue,
                 timer=self._timer,
                 request_info=self.request_info,
