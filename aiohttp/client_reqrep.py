@@ -713,7 +713,7 @@ class ClientRequest:
         if task.done():
             task = None
         else:
-            self.__writer = task
+            self._writer = task
 
         response_class = self.response_class
         assert response_class is not None
