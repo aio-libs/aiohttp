@@ -29,6 +29,21 @@ _T_OnHeadersSent = Optional[Callable[["CIMultiDict[str]"], Awaitable[None]]]
 
 
 class StreamWriter(AbstractStreamWriter):
+
+    __slots__ = (
+        "_protocol",
+        "loop",
+        "length",
+        "chunked",
+        "buffer_size",
+        "output_size",
+        "_eof",
+        "_compress",
+        "_drain_waiter",
+        "_on_chunk_sent",
+        "_on_headers_sent",
+    )
+
     def __init__(
         self,
         protocol: BaseProtocol,
