@@ -284,17 +284,11 @@ class ClientRequest:
         return self.__writer
 
     @_writer.setter
-    def _writer(self, writer: Optional["asyncio.Task[None]"]) -> None:
+    def _writer(self, writer: "asyncio.Task[None]") -> None:
         if self.__writer is not None:
             self.__writer.remove_done_callback(self.__reset_writer)
         self.__writer = writer
-        if writer is None:
-            return
-        if writer.done():
-            # The writer is already done, so we can clear it immediately.
-            self.__writer = None
-        else:
-            writer.add_done_callback(self.__reset_writer)
+        writer.add_done_callback(self.__reset_writer)
 
     def is_ssl(self) -> bool:
         return self.url.scheme in _SSL_SCHEMES
