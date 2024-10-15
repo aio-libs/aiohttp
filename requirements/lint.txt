@@ -114,7 +114,7 @@ typing-extensions==4.12.2
     #   typer
 urllib3==2.2.3
     # via requests
-uvloop==0.21.0b1 ; platform_system != "Windows"
+uvloop==0.21.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
 valkey==6.0.2
     # via -r requirements/lint.in
