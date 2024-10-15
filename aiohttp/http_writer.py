@@ -33,10 +33,7 @@ class StreamWriter(AbstractStreamWriter):
     __slots__ = (
         "_protocol",
         "loop",
-        "length",
         "chunked",
-        "buffer_size",
-        "output_size",
         "_eof",
         "_compress",
         "_drain_waiter",

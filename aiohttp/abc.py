@@ -188,7 +188,7 @@ class AbstractCookieJar(Sized, IterableBase):
 class AbstractStreamWriter(ABC):
     """Abstract stream writer."""
 
-    __slots__ = ()
+    __slots__ = ("buffer_size", "output_size", "length")
 
     buffer_size = 0
     output_size = 0
