@@ -268,7 +268,7 @@ class TestProxy(unittest.TestCase):
             "get",
             URL("http://proxy.example.com"),
             request_info=mock.Mock(),
-            writer=None,  # type: ignore[arg-type]
+            writer=None,
             continue100=None,
             timer=TimerNoop(),
             traces=[],
@@ -351,7 +351,7 @@ class TestProxy(unittest.TestCase):
             "get",
             URL("http://proxy.example.com"),
             request_info=mock.Mock(),
-            writer=None,  # type: ignore[arg-type]
+            writer=None,
             continue100=None,
             timer=TimerNoop(),
             traces=[],
@@ -533,7 +533,7 @@ class TestProxy(unittest.TestCase):
             "get",
             URL("http://proxy.example.com"),
             request_info=mock.Mock(),
-            writer=None,  # type: ignore[arg-type]
+            writer=None,
             continue100=None,
             timer=TimerNoop(),
             traces=[],
@@ -615,7 +615,7 @@ class TestProxy(unittest.TestCase):
             "get",
             URL("http://proxy.example.com"),
             request_info=mock.Mock(),
-            writer=None,  # type: ignore[arg-type]
+            writer=None,
             continue100=None,
             timer=TimerNoop(),
             traces=[],
@@ -692,7 +692,7 @@ class TestProxy(unittest.TestCase):
             "get",
             URL("http://proxy.example.com"),
             request_info=mock.Mock(),
-            writer=None,  # type: ignore[arg-type]
+            writer=None,
             continue100=None,
             timer=TimerNoop(),
             traces=[],
@@ -767,7 +767,7 @@ class TestProxy(unittest.TestCase):
             "get",
             URL("http://proxy.example.com"),
             request_info=mock.Mock(),
-            writer=None,  # type: ignore[arg-type]
+            writer=None,
             continue100=None,
             timer=TimerNoop(),
             traces=[],
@@ -843,7 +843,7 @@ class TestProxy(unittest.TestCase):
             "get",
             URL("http://proxy.example.com"),
             request_info=mock.Mock(),
-            writer=None,  # type: ignore[arg-type]
+            writer=None,
             continue100=None,
             timer=TimerNoop(),
             traces=[],
@@ -979,7 +979,7 @@ class TestProxy(unittest.TestCase):
             "get",
             URL("http://proxy.example.com"),
             request_info=mock.Mock(),
-            writer=None,  # type: ignore[arg-type]
+            writer=None,
             continue100=None,
             timer=TimerNoop(),
             traces=[],
@@ -1072,7 +1072,7 @@ class TestProxy(unittest.TestCase):
             "get",
             URL("http://proxy.example.com"),
             request_info=mock.Mock(),
-            writer=None,  # type: ignore[arg-type]
+            writer=None,
             continue100=None,
             timer=TimerNoop(),
             traces=[],
