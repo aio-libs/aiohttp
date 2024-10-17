@@ -953,12 +953,18 @@ and :ref:`aiohttp-web-signals` handlers::
                            connection if `pong` response is not
                            received. The timer is reset on any data reception.
 
+   :param float timeout: Timeout value for the `close`
+                         operation. After sending the close websocket message,
+                         `close` waits for ``timeout`` seconds for a response.
+                         Default value is ``10.0`` (10 seconds for `close`
+                         operation)
+
    :param float receive_timeout: Timeout value for `receive`
-                                 operations.  Default value is None
+                                 operations.  Default value is ``None``
                                  (no timeout for receive operation)
 
    :param bool compress: Enable per-message deflate extension support.
-                          False for disabled, default value is True.
+                          False for disabled, default value is ``True``.
 
    :param int max_msg_size: maximum size of read websocket message, 4
                             MB by default. To disable the size limit use ``0``.
