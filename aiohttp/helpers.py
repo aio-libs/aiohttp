@@ -160,7 +160,7 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
     @classmethod
     def from_url(cls, url: URL, *, encoding: str = "latin1") -> Optional["BasicAuth"]:
         """Create BasicAuth from url."""
-        if not isinstance(url, URL):
+        if type(url) is not URL:
             raise TypeError("url should be yarl.URL instance")
         # Check raw_user and raw_password first as yarl is likely
         # to already have these values parsed from the netloc in the cache.

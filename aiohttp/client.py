@@ -294,7 +294,7 @@ class ClientSession:
         # We initialise _connector to None immediately, as it's referenced in __del__()
         # and could cause issues if an exception occurs during initialisation.
         self._connector: Optional[BaseConnector] = None
-        if base_url is None or isinstance(base_url, URL):
+        if base_url is None or type(base_url) is URL:
             self._base_url: Optional[URL] = base_url
             self._base_url_origin = None if base_url is None else base_url.origin()
         else:

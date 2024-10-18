@@ -234,8 +234,9 @@ class ClientRequest:
                 f"Method cannot contain non-token characters {method!r} "
                 f"(found at least {match.group()!r})"
             )
-        assert isinstance(url, URL), url
-        assert isinstance(proxy, (URL, type(None))), proxy
+        assert type(url) is URL, url
+        if proxy is not None:
+            assert type(proxy) is URL, proxy
         # FIXME: session is None in tests only, need to fix tests
         # assert session is not None
         self._session = cast("ClientSession", session)
@@ -795,7 +796,7 @@ class ClientResponse(HeadersMixin):
         loop: asyncio.AbstractEventLoop,
         session: "ClientSession",
     ) -> None:
-        assert isinstance(url, URL)
+        assert type(url) is URL
         super().__init__()
 
         self.method = method

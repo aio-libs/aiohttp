@@ -102,7 +102,7 @@ class CookieJar(AbstractCookieJar):
         self._quote_cookie = quote_cookie
         if treat_as_secure_origin is None:
             self._treat_as_secure_origin: FrozenSet[URL] = frozenset()
-        elif isinstance(treat_as_secure_origin, URL):
+        elif type(treat_as_secure_origin) is URL:
             self._treat_as_secure_origin = frozenset({treat_as_secure_origin.origin()})
         elif isinstance(treat_as_secure_origin, str):
             self._treat_as_secure_origin = frozenset(
@@ -301,7 +301,7 @@ class CookieJar(AbstractCookieJar):
 
     def filter_cookies(self, request_url: URL) -> "BaseCookie[str]":
         """Returns this jar's cookies filtered by their attributes."""
-        if not isinstance(request_url, URL):
+        if type(request_url) is not URL:
             warnings.warn(
                 "The method accepts yarl.URL instances only, got {}".format(
                     type(request_url)
