@@ -964,7 +964,7 @@ and :ref:`aiohttp-web-signals` handlers::
                                  (no timeout for receive operation)
 
    :param bool compress: Enable per-message deflate extension support.
-                          False for disabled, default value is ``True``.
+                          :data:`False` for disabled, default value is :data:`True`.
 
    :param int max_msg_size: maximum size of read websocket message, 4
                             MB by default. To disable the size limit use ``0``.
