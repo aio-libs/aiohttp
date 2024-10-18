@@ -956,7 +956,7 @@ and :ref:`aiohttp-web-signals` handlers::
    :param float timeout: Timeout value for the `close`
                          operation. After sending the close websocket message,
                          `close` waits for ``timeout`` seconds for a response.
-                         Default value is ``10.0`` (10 seconds for `close`
+                         Default value is ``10.0`` (10 seconds for ``close``
                          operation)
 
    :param float receive_timeout: Timeout value for `receive`
