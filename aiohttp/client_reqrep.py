@@ -375,14 +375,17 @@ class ClientRequest:
         else:
             h = None
         url = self.url
-        return ConnectionKey(
-            url.raw_host or "",
-            url.port,
-            url.scheme in _SSL_SCHEMES,
-            self._ssl,
-            self.proxy,
-            self.proxy_auth,
-            h,
+        return tuple.__new__(
+            ConnectionKey,
+            (
+                url.raw_host or "",
+                url.port,
+                url.scheme in _SSL_SCHEMES,
+                self._ssl,
+                self.proxy,
+                self.proxy_auth,
+                h,
+            ),
         )
 
     @property
