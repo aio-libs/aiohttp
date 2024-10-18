@@ -217,6 +217,7 @@ Kyrylo Perevozchikov
 Kyungmin Lee
 Lars P. Søndergaard
 Lee LieWhite
+Lénárd Szolnoki
 Liu Hua
 Louis-Philippe Huberdeau
 Loïc Lajeanne
