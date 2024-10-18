@@ -1,0 +1,2 @@
+Fixed ``WebSocketResponse.close()`` to discard non-close messages within its timeout window after sending close.
+-- by :user:`lenard-mosys`
