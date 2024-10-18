@@ -960,7 +960,7 @@ and :ref:`aiohttp-web-signals` handlers::
                          operation)
 
    :param float receive_timeout: Timeout value for `receive`
-                                 operations.  Default value is ``None``
+                                 operations.  Default value is :data:`None`
                                  (no timeout for receive operation)
 
    :param bool compress: Enable per-message deflate extension support.
