@@ -322,7 +322,8 @@ async def _default_expect_handler(request: Request) -> None:
 class Resource(AbstractResource):
     def __init__(self, *, name: Optional[str] = None) -> None:
         super().__init__(name=name)
-        self._routes: List[ResourceRoute] = []
+        self._routes: Dict[str, ResourceRoute] = {}
+        self._allowed_methods: Set[str] = set()
 
     def add_route(
         self,
@@ -331,13 +332,13 @@ class Resource(AbstractResource):
         *,
         expect_handler: Optional[_ExpectHandler] = None,
     ) -> "ResourceRoute":
-        for route_obj in self._routes:
-            if route_obj.method == method or route_obj.method == hdrs.METH_ANY:
-                raise RuntimeError(
-                    "Added route will never be executed, "
-                    "method {route.method} is already "
-                    "registered".format(route=route_obj)
-                )
+
+        if existing := self._routes.get(method, self._routes.get(hdrs.METH_ANY)):
+            raise RuntimeError(
+                "Added route will never be executed, "
+                f"method {existing.method} is already "
+                "registered"
+            )
 
         route_obj = ResourceRoute(method, handler, self, expect_handler=expect_handler)
         self.register_route(route_obj)
@@ -347,23 +348,17 @@ class Resource(AbstractResource):
         assert isinstance(
             route, ResourceRoute
         ), f"Instance of Route class is required, got {route!r}"
-        self._routes.append(route)
+        method = route.method
+        self._routes[method] = route
+        self._allowed_methods.add(method)
 
     async def resolve(self, request: Request) -> _Resolve:
-        allowed_methods: Set[str] = set()
-
-        match_dict = self._match(request.rel_url.path_safe)
-        if match_dict is None:
-            return None, allowed_methods
-
-        for route_obj in self._routes:
-            route_method = route_obj.method
-            allowed_methods.add(route_method)
-
-            if route_method == request.method or route_method == hdrs.METH_ANY:
-                return (UrlMappingMatchInfo(match_dict, route_obj), allowed_methods)
-        else:
-            return None, allowed_methods
+        if (match_dict := self._match(request.rel_url.path_safe)) is None:
+            return None, set()
+        routes = self._routes
+        if route_obj := routes.get(request.method, routes.get(hdrs.METH_ANY)):
+            return UrlMappingMatchInfo(match_dict, route_obj), self._allowed_methods
+        return None, self._allowed_methods
 
     @abc.abstractmethod
     def _match(self, path: str) -> Optional[Dict[str, str]]:
