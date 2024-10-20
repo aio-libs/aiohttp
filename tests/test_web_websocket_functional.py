@@ -1022,7 +1022,7 @@ async def test_receive_bytes_nonbytes(
         assert ws.can_prepare(request)
 
         await ws.prepare(request)
-        await ws.send_bytes("answer")  # type: ignore[arg-type]
+        await ws.send_str("answer")  # type: ignore[arg-type]
         assert False
 
     app = web.Application()
