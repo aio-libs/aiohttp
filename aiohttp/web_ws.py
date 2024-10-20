@@ -25,6 +25,7 @@ from .http import (
     ws_ext_gen,
     ws_ext_parse,
 )
+from .http_websocket import MESSAGE_TYPES_WITH_CONTENT
 from .log import ws_logger
 from .streams import EofStream, FlowControlDataQueue
 from .typedefs import JSONDecoder, JSONEncoder
@@ -594,6 +595,10 @@ class WebSocketResponse(StreamResponse):
 
     async def receive_str(self, *, timeout: Optional[float] = None) -> str:
         msg = await self.receive(timeout)
+        if msg.type not in MESSAGE_TYPES_WITH_CONTENT:
+            raise RuntimeError(
+                f"Received message {msg.type}:{msg.data!r} has no content"
+            )
         if msg.type is not WSMsgType.TEXT:
             raise TypeError(
                 "Received message {}:{!r} is not WSMsgType.TEXT".format(
@@ -604,6 +609,10 @@ class WebSocketResponse(StreamResponse):
 
     async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
+        if msg.type not in MESSAGE_TYPES_WITH_CONTENT:
+            raise RuntimeError(
+                f"Received message {msg.type}:{msg.data!r} has no content"
+            )
         if msg.type is not WSMsgType.BINARY:
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not bytes")
         return cast(bytes, msg.data)
