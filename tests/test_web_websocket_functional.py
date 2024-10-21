@@ -1238,7 +1238,11 @@ async def test_abnormal_closure_when_server_does_not_receive(
     """Test abnormal closure when the server closes and a message is pending."""
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
-        ws = web.WebSocketResponse()
+        # Setting close timeout to 0, otherwise the server waits for a
+        # close response for 10 seconds by default.
+        # This would make the client's autoclose in resp.receive() to succeed,
+        # closing the connection cleanly from both sides.
+        ws = web.WebSocketResponse(timeout=0)
         await ws.prepare(request)
         await ws.close()
         return ws
