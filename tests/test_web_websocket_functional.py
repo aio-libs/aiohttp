@@ -1256,3 +1256,30 @@ async def test_abnormal_closure_when_server_does_not_receive(
     msg = await resp.receive()
     assert msg.type is aiohttp.WSMsgType.CLOSE
     assert resp.close_code == WSCloseCode.ABNORMAL_CLOSURE
+
+
+async def test_abnormal_closure_when_client_does_not_close(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test abnormal closure when the server closes and the client doesn't respond."""
+
+    close_code: Optional[WSCloseCode] = None
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        # Setting a short close timeout
+        ws = web.WebSocketResponse(timeout=0.1)
+        await ws.prepare(request)
+        await ws.close()
+
+        nonlocal close_code
+        close_code = WSCloseCode(ws.close_code)
+
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    async with client.ws_connect("/", autoclose=False):
+        await asyncio.sleep(0.2)
+    await client.server.close()
+    assert close_code == WSCloseCode.ABNORMAL_CLOSURE
