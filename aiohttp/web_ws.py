@@ -486,14 +486,13 @@ class WebSocketResponse(StreamResponse):
             self._close_transport()
             return True
 
-        response_close_code: Optional[WSCloseCode] = None
         try:
             async with async_timeout.timeout(self._timeout):
                 while True:
                     msg = await reader.read()
                     if msg.type is WSMsgType.CLOSE:
-                        response_close_code = msg.data
-                        break
+                        self._set_code_close_transport(msg.data)
+                        return True
         except asyncio.CancelledError:
             self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
             raise
@@ -501,14 +500,6 @@ class WebSocketResponse(StreamResponse):
             self._exception = exc
             self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
             return True
-
-        if response_close_code is not None:
-            self._set_code_close_transport(response_close_code)
-            return True
-
-        self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
-        self._exception = asyncio.TimeoutError()
-        return True
 
     def _set_closing(self, code: WSCloseCode) -> None:
         """Set the close code and mark the connection as closing."""
