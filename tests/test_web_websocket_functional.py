@@ -1262,7 +1262,6 @@ async def test_abnormal_closure_when_client_does_not_close(
     aiohttp_client: AiohttpClient,
 ) -> None:
     """Test abnormal closure when the server closes and the client doesn't respond."""
-
     close_code: Optional[WSCloseCode] = None
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
@@ -1272,7 +1271,8 @@ async def test_abnormal_closure_when_client_does_not_close(
         await ws.close()
 
         nonlocal close_code
-        close_code = WSCloseCode(ws.close_code)
+        if ws.close_code is not None:
+            close_code = WSCloseCode(ws.close_code)
 
         return ws
 
