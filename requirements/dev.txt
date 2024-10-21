@@ -194,7 +194,7 @@ shellingham==1.5.4
     # via typer
 six==1.16.0
     # via python-dateutil
-slotscheck==0.19.0
+slotscheck==0.19.1
     # via -r requirements/lint.in
 snowballstemmer==2.2.0
     # via sphinx
