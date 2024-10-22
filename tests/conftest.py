@@ -7,7 +7,7 @@ import sys
 from hashlib import md5, sha1, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Callable, Iterator, List
+from typing import Any, Callable, Iterator
 from unittest import mock
 from uuid import uuid4
 
