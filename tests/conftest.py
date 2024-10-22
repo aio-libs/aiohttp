@@ -1,4 +1,3 @@
-# type: ignore
 import asyncio
 import base64
 import os
@@ -8,7 +7,7 @@ import sys
 from hashlib import md5, sha1, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, List
+from typing import Any, Callable, Iterator
 from unittest import mock
 from uuid import uuid4
 
@@ -28,7 +27,7 @@ try:
 except ImportError:
     TRUSTME = False
 
-pytest_plugins: List[str] = ["aiohttp.pytest_plugin", "pytester"]
+pytest_plugins = ("aiohttp.pytest_plugin", "pytester")
 
 IS_HPUX = sys.platform.startswith("hp-ux")
 IS_LINUX = sys.platform.startswith("linux")
@@ -42,7 +41,7 @@ def tls_certificate_authority() -> trustme.CA:
 
 
 @pytest.fixture
-def tls_certificate(tls_certificate_authority: Any) -> Any:
+def tls_certificate(tls_certificate_authority: trustme.CA) -> trustme.LeafCert:
     return tls_certificate_authority.issue_cert(
         "localhost",
         "xn--prklad-4va.localhost",
@@ -52,38 +51,38 @@ def tls_certificate(tls_certificate_authority: Any) -> Any:
 
 
 @pytest.fixture
-def ssl_ctx(tls_certificate: Any) -> ssl.SSLContext:
+def ssl_ctx(tls_certificate: trustme.LeafCert) -> ssl.SSLContext:
     ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     tls_certificate.configure_cert(ssl_ctx)
     return ssl_ctx
 
 
 @pytest.fixture
-def client_ssl_ctx(tls_certificate_authority: Any) -> ssl.SSLContext:
+def client_ssl_ctx(tls_certificate_authority: trustme.CA) -> ssl.SSLContext:
     ssl_ctx = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
     tls_certificate_authority.configure_trust(ssl_ctx)
     return ssl_ctx
 
 
 @pytest.fixture
-def tls_ca_certificate_pem_path(tls_certificate_authority: Any) -> None:
+def tls_ca_certificate_pem_path(tls_certificate_authority: trustme.CA) -> Iterator[str]:
     with tls_certificate_authority.cert_pem.tempfile() as ca_cert_pem:
         yield ca_cert_pem
 
 
 @pytest.fixture
-def tls_certificate_pem_path(tls_certificate: Any) -> None:
+def tls_certificate_pem_path(tls_certificate: trustme.LeafCert) -> Iterator[str]:
     with tls_certificate.private_key_and_cert_chain_pem.tempfile() as cert_pem:
         yield cert_pem
 
 
 @pytest.fixture
-def tls_certificate_pem_bytes(tls_certificate: Any) -> bytes:
+def tls_certificate_pem_bytes(tls_certificate: trustme.LeafCert) -> bytes:
     return tls_certificate.cert_chain_pems[0].bytes()
 
 
 @pytest.fixture
-def tls_certificate_fingerprint_sha256(tls_certificate_pem_bytes: Any) -> bytes:
+def tls_certificate_fingerprint_sha256(tls_certificate_pem_bytes: bytes) -> bytes:
     tls_cert_der = ssl.PEM_cert_to_DER_cert(tls_certificate_pem_bytes.decode())
     return sha256(tls_cert_der).digest()
 
@@ -95,18 +94,22 @@ def pipe_name() -> str:
 
 
 @pytest.fixture
-def create_mocked_conn(loop: Any):
-    def _proto_factory(conn_closing_result=None, **kwargs) -> ResponseHandler:
-        proto = mock.create_autospec(ResponseHandler, **kwargs)
+def create_mocked_conn(
+    loop: asyncio.AbstractEventLoop,
+) -> Iterator[Callable[[], ResponseHandler]]:
+    def _proto_factory() -> Any:
+        proto = mock.create_autospec(ResponseHandler, instance=True)
         proto.closed = loop.create_future()
-        proto.closed.set_result(conn_closing_result)
+        proto.closed.set_result(None)
         return proto
 
     yield _proto_factory
 
 
 @pytest.fixture
-def unix_sockname(tmp_path: Any, tmp_path_factory: Any):
+def unix_sockname(
+    tmp_path: Path, tmp_path_factory: pytest.TempPathFactory
+) -> Iterator[str]:
     # Generate an fs path to the UNIX domain socket for testing.
 
     # N.B. Different OS kernels have different fs path length limitations
@@ -136,14 +139,14 @@ def unix_sockname(tmp_path: Any, tmp_path_factory: Any):
         str(original_base_tmp_path).encode(),
     ).hexdigest()
 
-    def make_tmp_dir(base_tmp_dir):
+    def make_tmp_dir(base_tmp_dir: Path) -> TemporaryDirectory[str]:
         return TemporaryDirectory(
             dir=str(base_tmp_dir),
             prefix="pt-",
             suffix=f"-{original_base_tmp_path_hash!s}",
         )
 
-    def assert_sock_fits(sock_path):
+    def assert_sock_fits(sock_path: str) -> None:
         sock_path_len = len(sock_path.encode())
         # exit-check to verify that it's correct and simplify debugging
         # in the future
@@ -160,8 +163,8 @@ def unix_sockname(tmp_path: Any, tmp_path_factory: Any):
     paths_num = len(unique_paths)
 
     for num, tmp_dir_path in enumerate(paths, 1):
-        with make_tmp_dir(tmp_dir_path) as tmpd:
-            tmpd = Path(tmpd).resolve()
+        with make_tmp_dir(tmp_dir_path) as tmps:
+            tmpd = Path(tmps).resolve()
             sock_path = str(tmpd / sock_file_name)
             sock_path_len = len(sock_path.encode())
 
@@ -182,8 +185,8 @@ def unix_sockname(tmp_path: Any, tmp_path_factory: Any):
 
 
 @pytest.fixture
-def selector_loop() -> None:
-    policy = asyncio.WindowsSelectorEventLoopPolicy()
+def selector_loop() -> Iterator[asyncio.AbstractEventLoop]:
+    policy = asyncio.WindowsSelectorEventLoopPolicy()  # type: ignore[attr-defined]
     asyncio.set_event_loop_policy(policy)
 
     with loop_context(policy.new_event_loop) as _loop:
@@ -196,7 +199,7 @@ def netrc_contents(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     request: pytest.FixtureRequest,
-):
+) -> Path:
     """
     Prepare :file:`.netrc` with given contents.
 
@@ -214,7 +217,7 @@ def netrc_contents(
 
 
 @pytest.fixture
-def start_connection():
+def start_connection() -> Iterator[mock.Mock]:
     with mock.patch(
         "aiohttp.connector.aiohappyeyeballs.start_connection",
         autospec=True,
@@ -234,5 +237,5 @@ def key(key_data: bytes) -> bytes:
 
 
 @pytest.fixture
-def ws_key(key: bytes) -> bytes:
+def ws_key(key: bytes) -> str:
     return base64.b64encode(sha1(key + WS_KEY).digest()).decode()

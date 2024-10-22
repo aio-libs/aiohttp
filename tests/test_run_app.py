@@ -175,7 +175,7 @@ mock_server_default_8989 = [
         mock.ANY, None, 8989, ssl=None, backlog=128, reuse_address=None, reuse_port=None
     )
 ]
-mock_socket: Any = mock.Mock(getsockname=lambda: ("mock-socket", 123))
+mock_socket = mock.Mock(getsockname=lambda: ("mock-socket", 123))
 mixed_bindings_tests: Tuple[
     Tuple[str, Dict[str, Any], List[mock._Call], List[mock._Call]], ...
 ] = (

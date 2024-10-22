@@ -1,12 +1,11 @@
 import hashlib
-from typing import Any
 from unittest import mock
 
 import pytest
 
 import aiohttp
 
-ssl: Any = pytest.importorskip("ssl")
+ssl = pytest.importorskip("ssl")
 
 
 def test_fingerprint_sha256() -> None:

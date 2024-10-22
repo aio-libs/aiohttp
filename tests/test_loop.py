@@ -1,7 +1,6 @@
 import asyncio
 import platform
 import threading
-from typing import Any
 
 import pytest
 
@@ -12,7 +11,7 @@ from aiohttp.test_utils import AioHTTPTestCase, loop_context
 @pytest.mark.skipif(
     platform.system() == "Windows", reason="the test is not valid for Windows"
 )
-async def test_subprocess_co(loop: Any) -> None:
+async def test_subprocess_co(loop: asyncio.AbstractEventLoop) -> None:
     proc = await asyncio.create_subprocess_shell(
         "exit 0",
         stdin=asyncio.subprocess.DEVNULL,
@@ -30,14 +29,14 @@ class TestCase(AioHTTPTestCase):
         app.on_startup.append(self.on_startup_hook)
         return app
 
-    async def on_startup_hook(self, app: Any) -> None:
+    async def on_startup_hook(self, app: web.Application) -> None:
         self.on_startup_called = True
 
     async def test_on_startup_hook(self) -> None:
         self.assertTrue(self.on_startup_called)
 
 
-def test_default_loop(loop: Any) -> None:
+def test_default_loop(loop: asyncio.AbstractEventLoop) -> None:
     assert asyncio.get_event_loop_policy().get_event_loop() is loop
 
 

@@ -1,13 +1,13 @@
 import sys
-from typing import Any
 from unittest import mock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from aiohttp import web
 
 
-def test_entry_func_empty(mocker: Any) -> None:
+def test_entry_func_empty(mocker: MockerFixture) -> None:
     error = mocker.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
     argv = [""]
 
@@ -17,7 +17,7 @@ def test_entry_func_empty(mocker: Any) -> None:
     error.assert_called_with("'entry-func' not in 'module:function' syntax")
 
 
-def test_entry_func_only_module(mocker: Any) -> None:
+def test_entry_func_only_module(mocker: MockerFixture) -> None:
     argv = ["test"]
     error = mocker.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
 
@@ -27,7 +27,7 @@ def test_entry_func_only_module(mocker: Any) -> None:
     error.assert_called_with("'entry-func' not in 'module:function' syntax")
 
 
-def test_entry_func_only_function(mocker: Any) -> None:
+def test_entry_func_only_function(mocker: MockerFixture) -> None:
     argv = [":test"]
     error = mocker.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
 
@@ -37,7 +37,7 @@ def test_entry_func_only_function(mocker: Any) -> None:
     error.assert_called_with("'entry-func' not in 'module:function' syntax")
 
 
-def test_entry_func_only_separator(mocker: Any) -> None:
+def test_entry_func_only_separator(mocker: MockerFixture) -> None:
     argv = [":"]
     error = mocker.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
 
@@ -47,7 +47,7 @@ def test_entry_func_only_separator(mocker: Any) -> None:
     error.assert_called_with("'entry-func' not in 'module:function' syntax")
 
 
-def test_entry_func_relative_module(mocker: Any) -> None:
+def test_entry_func_relative_module(mocker: MockerFixture) -> None:
     argv = [".a.b:c"]
 
     error = mocker.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
@@ -57,7 +57,7 @@ def test_entry_func_relative_module(mocker: Any) -> None:
     error.assert_called_with("relative module names not supported")
 
 
-def test_entry_func_non_existent_module(mocker: Any) -> None:
+def test_entry_func_non_existent_module(mocker: MockerFixture) -> None:
     argv = ["alpha.beta:func"]
 
     mocker.patch("aiohttp.web.import_module", side_effect=ImportError("Test Error"))
@@ -69,7 +69,7 @@ def test_entry_func_non_existent_module(mocker: Any) -> None:
     error.assert_called_with("unable to import alpha.beta: Test Error")
 
 
-def test_entry_func_non_existent_attribute(mocker: Any) -> None:
+def test_entry_func_non_existent_attribute(mocker: MockerFixture) -> None:
     argv = ["alpha.beta:func"]
     import_module = mocker.patch("aiohttp.web.import_module")
     error = mocker.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
@@ -85,7 +85,7 @@ def test_entry_func_non_existent_attribute(mocker: Any) -> None:
 
 
 @pytest.mark.skipif(sys.platform.startswith("win32"), reason="Windows not Unix")
-def test_path_no_host(mocker: Any, monkeypatch: Any) -> None:
+def test_path_no_host(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch) -> None:
     argv = "--path=test_path.sock alpha.beta:func".split()
     mocker.patch("aiohttp.web.import_module")
 
@@ -97,7 +97,7 @@ def test_path_no_host(mocker: Any, monkeypatch: Any) -> None:
 
 
 @pytest.mark.skipif(sys.platform.startswith("win32"), reason="Windows not Unix")
-def test_path_and_host(mocker: Any, monkeypatch: Any) -> None:
+def test_path_and_host(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch) -> None:
     argv = "--path=test_path.sock --host=localhost --port=8000 alpha.beta:func".split()
     mocker.patch("aiohttp.web.import_module")
 
@@ -110,7 +110,9 @@ def test_path_and_host(mocker: Any, monkeypatch: Any) -> None:
     )
 
 
-def test_path_when_unsupported(mocker: Any, monkeypatch: Any) -> None:
+def test_path_when_unsupported(
+    mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
     argv = "--path=test_path.sock alpha.beta:func".split()
     mocker.patch("aiohttp.web.import_module")
     monkeypatch.delattr("socket.AF_UNIX", raising=False)
@@ -124,7 +126,7 @@ def test_path_when_unsupported(mocker: Any, monkeypatch: Any) -> None:
     )
 
 
-def test_entry_func_call(mocker: Any) -> None:
+def test_entry_func_call(mocker: MockerFixture) -> None:
     mocker.patch("aiohttp.web.run_app")
     import_module = mocker.patch("aiohttp.web.import_module")
     argv = (
@@ -141,7 +143,7 @@ def test_entry_func_call(mocker: Any) -> None:
     )
 
 
-def test_running_application(mocker: Any) -> None:
+def test_running_application(mocker: MockerFixture) -> None:
     run_app = mocker.patch("aiohttp.web.run_app")
     import_module = mocker.patch("aiohttp.web.import_module")
     exit = mocker.patch("aiohttp.web.ArgumentParser.exit", side_effect=SystemExit)
