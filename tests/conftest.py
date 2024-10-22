@@ -98,7 +98,7 @@ def create_mocked_conn(
     loop: asyncio.AbstractEventLoop,
 ) -> Iterator[Callable[[], ResponseHandler]]:
     def _proto_factory() -> Any:
-        proto = mock.create_autospec(ResponseHandler, spec_set=True, instance=True)
+        proto = mock.create_autospec(ResponseHandler, instance=True)
         proto.closed = loop.create_future()
         proto.closed.set_result(None)
         return proto
