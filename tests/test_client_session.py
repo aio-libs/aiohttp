@@ -534,7 +534,7 @@ async def test_ws_connect_allowed_protocols(
     create_session: Callable[..., Awaitable[ClientSession]],
     create_mocked_conn: Callable[[], ResponseHandler],
     protocol: str,
-    ws_key: bytes,
+    ws_key: str,
     key_data: bytes,
 ) -> None:
     resp = mock.create_autospec(aiohttp.ClientResponse)
@@ -595,7 +595,7 @@ async def test_ws_connect_unix_socket_allowed_protocols(
     create_session: Callable[..., Awaitable[ClientSession]],
     create_mocked_conn: Callable[[], ResponseHandler],
     protocol: str,
-    ws_key: bytes,
+    ws_key: str,
     key_data: bytes,
 ) -> None:
     resp = mock.create_autospec(aiohttp.ClientResponse)

@@ -1,7 +1,8 @@
 import os
 import platform
 import warnings
-from typing import Any
+
+import pytest
 
 from aiohttp import pytest_plugin
 
@@ -12,10 +13,10 @@ pytest_plugins = 'aiohttp.pytest_plugin'
 """
 
 
-IS_PYPY: Any = platform.python_implementation() == "PyPy"
+IS_PYPY = platform.python_implementation() == "PyPy"
 
 
-def test_aiohttp_plugin(testdir: Any) -> None:
+def test_aiohttp_plugin(testdir: pytest.Testdir) -> None:
     testdir.makepyfile(
         """\
 import pytest
@@ -123,7 +124,7 @@ async def test_custom_port_test_server(aiohttp_server, aiohttp_unused_port):
     result.assert_outcomes(passed=8)
 
 
-def test_warning_checks(testdir: Any) -> None:
+def test_warning_checks(testdir: pytest.Testdir) -> None:
     testdir.makepyfile(
         """\
 
@@ -151,7 +152,7 @@ async def test_bad() -> None:
     result.assert_outcomes(**expected_outcomes)
 
 
-def test_aiohttp_plugin_async_fixture(testdir: Any, capsys: Any) -> None:
+def test_aiohttp_plugin_async_fixture(testdir: pytest.Testdir, capsys: pytest.CaptureFixture[str]) -> None:
     testdir.makepyfile(
         """\
 import pytest
@@ -213,7 +214,7 @@ def test_bar(loop, bar) -> None:
     )
 
 
-def test_aiohttp_plugin_async_gen_fixture(testdir: Any) -> None:
+def test_aiohttp_plugin_async_gen_fixture(testdir: pytest.Testdir) -> None:
     testdir.makepyfile(
         """\
 import pytest
@@ -255,7 +256,7 @@ def test_finalized() -> None:
     result.assert_outcomes(passed=2)
 
 
-def test_warnings_propagated(recwarn: Any) -> None:
+def test_warnings_propagated(recwarn: pytest.WarningsRecorder) -> None:
     with pytest_plugin._runtime_warning_context():
         warnings.warn("test warning is propagated")
     assert len(recwarn) == 1
@@ -264,7 +265,7 @@ def test_warnings_propagated(recwarn: Any) -> None:
     assert message.args == ("test warning is propagated",)
 
 
-def test_aiohttp_client_cls_fixture_custom_client_used(testdir: Any) -> None:
+def test_aiohttp_client_cls_fixture_custom_client_used(testdir: pytest.Testdir) -> None:
     testdir.makepyfile(
         """
 import pytest
@@ -292,7 +293,7 @@ async def test_hello(aiohttp_client) -> None:
     result.assert_outcomes(passed=1)
 
 
-def test_aiohttp_client_cls_fixture_factory(testdir: Any) -> None:
+def test_aiohttp_client_cls_fixture_factory(testdir: pytest.Testdir) -> None:
     testdir.makeconftest(
         CONFTEST
         + """

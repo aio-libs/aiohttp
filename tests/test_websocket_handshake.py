@@ -2,7 +2,7 @@
 
 import base64
 import os
-from typing import Any, List, Tuple
+from typing import List, Tuple
 
 import pytest
 
@@ -165,7 +165,7 @@ async def test_handshake_protocol_agreement() -> None:
     assert ws.ws_protocol == best_proto
 
 
-async def test_handshake_protocol_unsupported(caplog: Any) -> None:
+async def test_handshake_protocol_unsupported(caplog: pytest.LogCaptureFixture) -> None:
     # Tests if a protocol mismatch handshake warns and returns None
     proto = "chat"
     req = make_mocked_request("GET", "/", headers=gen_ws_headers("test")[0])

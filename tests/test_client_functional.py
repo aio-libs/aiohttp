@@ -50,7 +50,7 @@ from aiohttp.connector import Connection
 from aiohttp.http_writer import StreamWriter
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import TestClient, TestServer, unused_port
-from aiohttp.typedefs import Handler
+from aiohttp.typedefs import Handler, Query
 
 
 @pytest.fixture
@@ -723,7 +723,7 @@ async def test_params_and_query_string(aiohttp_client: AiohttpClient) -> None:
 
 @pytest.mark.parametrize("params", [None, "", {}, MultiDict()])
 async def test_empty_params_and_query_string(
-    aiohttp_client: AiohttpClient, params: Any
+    aiohttp_client: AiohttpClient, params: Query
 ) -> None:
     """Test combining empty params with an existing query_string."""
 
