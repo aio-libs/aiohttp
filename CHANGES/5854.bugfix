@@ -1,1 +1,0 @@
-Fixed client timeout not working when incoming data is always available without waiting -- by :user:`Dreamsorcerer`.

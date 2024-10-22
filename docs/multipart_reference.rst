@@ -17,11 +17,13 @@ Multipart reference
 
       :rtype: bool
 
-   .. comethod:: next()
+   .. method:: next()
+      :async:
 
       Emits next multipart reader object.
 
-   .. comethod:: release()
+   .. method:: release()
+      :async:
 
       Releases the connection gracefully, reading all the content
       to the void.
@@ -31,7 +33,8 @@ Multipart reference
 
    Multipart reader for single body part.
 
-   .. comethod:: read(*, decode=False)
+   .. method:: read(*, decode=False)
+      :async:
 
       Reads body part data.
 
@@ -41,7 +44,8 @@ Multipart reference
 
       :rtype: bytearray
 
-   .. comethod:: read_chunk(size=chunk_size)
+   .. method:: read_chunk(size=chunk_size)
+      :async:
 
       Reads body part content chunk of the specified size.
 
@@ -49,19 +53,22 @@ Multipart reference
 
       :rtype: bytearray
 
-   .. comethod:: readline()
+   .. method:: readline()
+      :async:
 
       Reads body part by line by line.
 
       :rtype: bytearray
 
-   .. comethod:: release()
+   .. method:: release()
+      :async:
 
       Like :meth:`read`, but reads all the data to the void.
 
       :rtype: None
 
-   .. comethod:: text(*, encoding=None)
+   .. method:: text(*, encoding=None)
+      :async:
 
       Like :meth:`read`, but assumes that body part contains text data.
 
@@ -70,14 +77,16 @@ Multipart reference
 
       :rtype: str
 
-   .. comethod:: json(*, encoding=None)
+   .. method:: json(*, encoding=None)
+      :async:
 
       Like :meth:`read`, but assumes that body parts contains JSON data.
 
       :param str encoding: Custom JSON encoding. Overrides specified
                            in charset param of ``Content-Type`` header
 
-   .. comethod:: form(*, encoding=None)
+   .. method:: form(*, encoding=None)
+      :async:
 
       Like :meth:`read`, but assumes that body parts contains form
       urlencoded data.
@@ -144,15 +153,18 @@ Multipart reference
 
       :rtype: bool
 
-   .. comethod:: next()
+   .. method:: next()
+      :async:
 
       Emits the next multipart body part.
 
-   .. comethod:: release()
+   .. method:: release()
+      :async:
 
       Reads all the body parts to the void till the final boundary.
 
-   .. comethod:: fetch_next_part()
+   .. method:: fetch_next_part()
+      :async:
 
       Returns the next body part reader.
 
@@ -191,7 +203,8 @@ Multipart reference
 
       Size of the payload.
 
-   .. comethod:: write(writer, close_boundary=True)
+   .. method:: write(writer, close_boundary=True)
+      :async:
 
       Write body.
 

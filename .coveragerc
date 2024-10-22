@@ -2,3 +2,10 @@
 branch = True
 source = aiohttp, tests
 omit = site-packages
+
+[report]
+exclude_also =
+    if TYPE_CHECKING
+    assert False
+    : \.\.\.(\s*#.*)?$
+    ^ +\.\.\.$

@@ -8,6 +8,7 @@ from multidict import CIMultiDict
 
 from .abc import AbstractStreamWriter
 from .base_protocol import BaseProtocol
+from .client_exceptions import ClientConnectionResetError
 from .compression_utils import ZLibCompressor
 from .helpers import NO_EXTENSIONS
 
@@ -70,9 +71,9 @@ class StreamWriter(AbstractStreamWriter):
         size = len(chunk)
         self.buffer_size += size
         self.output_size += size
-        transport = self.transport
-        if not self._protocol.connected or transport is None or transport.is_closing():
-            raise ConnectionResetError("Cannot write to closing transport")
+        transport = self._protocol.transport
+        if transport is None or transport.is_closing():
+            raise ClientConnectionResetError("Cannot write to closing transport")
         transport.write(chunk)
 
     async def write(
@@ -189,7 +190,7 @@ def _py_serialize_headers(status_line: str, headers: "CIMultiDict[str]") -> byte
 _serialize_headers = _py_serialize_headers
 
 try:
-    import aiohttp._http_writer as _http_writer  # type: ignore[import]
+    import aiohttp._http_writer as _http_writer  # type: ignore[import-not-found]
 
     _c_serialize_headers = _http_writer._serialize_headers
     if not NO_EXTENSIONS:

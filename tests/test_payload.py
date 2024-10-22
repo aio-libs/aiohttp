@@ -1,10 +1,11 @@
 import array
 from io import StringIO
-from typing import Any, AsyncIterator, Iterator
+from typing import AsyncIterator, Iterator
 
 import pytest
 
 from aiohttp import payload
+from aiohttp.abc import AbstractStreamWriter
 
 
 @pytest.fixture
@@ -16,11 +17,14 @@ def registry() -> Iterator[payload.PayloadRegistry]:
 
 
 class Payload(payload.Payload):
-    async def write(self, writer: Any) -> None:
+    def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        assert False
+
+    async def write(self, writer: AbstractStreamWriter) -> None:
         pass
 
 
-def test_register_type(registry: Any) -> None:
+def test_register_type(registry: payload.PayloadRegistry) -> None:
     class TestProvider:
         pass
 
@@ -29,7 +33,7 @@ def test_register_type(registry: Any) -> None:
     assert isinstance(p, Payload)
 
 
-def test_register_unsupported_order(registry: Any) -> None:
+def test_register_unsupported_order(registry: payload.PayloadRegistry) -> None:
     class TestProvider:
         pass
 

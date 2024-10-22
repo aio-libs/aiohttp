@@ -1,1 +1,0 @@
-Fixed missing query in tracing method URLs when using ``yarl`` 1.9+.

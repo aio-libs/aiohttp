@@ -86,6 +86,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
                 access_log_format=self._get_valid_log_format(
                     self.cfg.access_log_format
                 ),
+                shutdown_timeout=self.cfg.graceful_timeout / 100 * 95,
             )
         await runner.setup()
 
@@ -99,7 +100,6 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
                 runner,
                 sock,
                 ssl_context=ctx,
-                shutdown_timeout=self.cfg.graceful_timeout / 100 * 95,
             )
             await site.start()
 
@@ -110,7 +110,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
                 self.notify()
 
                 cnt = server.requests_count
-                if self.cfg.max_requests and cnt > self.cfg.max_requests:
+                if self.max_requests and cnt > self.max_requests:
                     self.alive = False
                     self.log.info("Max requests, shutting down: %s", self)
 
@@ -178,12 +178,6 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         signal.siginterrupt(signal.SIGUSR1, False)
         # Reset signals so Gunicorn doesn't swallow subprocess return codes
         # See: https://github.com/aio-libs/aiohttp/issues/6130
-        if sys.version_info < (3, 8):
-            # Starting from Python 3.8,
-            # the default child watcher is ThreadedChildWatcher.
-            # The watcher doesn't depend on SIGCHLD signal,
-            # there is no need to reset it.
-            signal.signal(signal.SIGCHLD, signal.SIG_DFL)
 
     def handle_quit(self, sig: int, frame: Optional[FrameType]) -> None:
         self.alive = False

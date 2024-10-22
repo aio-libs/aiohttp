@@ -124,6 +124,40 @@ def test_empty_text_304() -> None:
     resp.text is None
 
 
+def test_no_link_451() -> None:
+    with pytest.raises(TypeError):
+        web.HTTPUnavailableForLegalReasons()  # type: ignore[call-arg]
+
+
+def test_link_none_451() -> None:
+    resp = web.HTTPUnavailableForLegalReasons(link=None)
+    assert resp.link is None
+    assert "Link" not in resp.headers
+
+
+def test_link_empty_451() -> None:
+    resp = web.HTTPUnavailableForLegalReasons(link="")
+    assert resp.link is None
+    assert "Link" not in resp.headers
+
+
+def test_link_str_451() -> None:
+    resp = web.HTTPUnavailableForLegalReasons(link="http://warning.or.kr/")
+    assert resp.link == URL("http://warning.or.kr/")
+    assert resp.headers["Link"] == '<http://warning.or.kr/>; rel="blocked-by"'
+
+
+def test_link_url_451() -> None:
+    resp = web.HTTPUnavailableForLegalReasons(link=URL("http://warning.or.kr/"))
+    assert resp.link == URL("http://warning.or.kr/")
+    assert resp.headers["Link"] == '<http://warning.or.kr/>; rel="blocked-by"'
+
+
+def test_link_CRLF_451() -> None:
+    resp = web.HTTPUnavailableForLegalReasons(link="http://warning.or.kr/\r\n")
+    assert "\r\n" not in resp.headers["Link"]
+
+
 def test_HTTPException_retains_cause() -> None:
     with pytest.raises(web.HTTPException) as ei:
         try:
@@ -148,6 +182,10 @@ class TestHTTPOk:
         assert resp.headers == compare
         assert resp.reason == "Done"
         assert resp.status == 200
+
+    def test_multiline_reason(self) -> None:
+        with pytest.raises(ValueError, match=r"Reason cannot contain \\n"):
+            web.HTTPOk(reason="Bad\r\nInjected-header: foo")
 
     def test_pickle(self) -> None:
         resp = web.HTTPOk(
@@ -288,7 +326,7 @@ class TestHTTPRequestEntityTooLarge:
             reason="Too large",
         )
         assert resp.text == (
-            "Maximum request body size 100 exceeded, " "actual body size 123"
+            "Maximum request body size 100 exceeded, actual body size 123"
         )
         compare: Mapping[str, str] = {"X-Custom": "value", "Content-Type": "text/plain"}
         assert resp.headers == compare
@@ -312,23 +350,51 @@ class TestHTTPRequestEntityTooLarge:
 
 class TestHTTPUnavailableForLegalReasons:
     def test_ctor(self) -> None:
-        resp = web.HTTPUnavailableForLegalReasons(
+        exc = web.HTTPUnavailableForLegalReasons(
             link="http://warning.or.kr/",
             headers={"X-Custom": "value"},
             reason="Zaprescheno",
             text="text",
             content_type="custom",
         )
-        assert resp.link == URL("http://warning.or.kr/")
-        assert resp.text == "text"
+        assert exc.link == URL("http://warning.or.kr/")
+        assert exc.text == "text"
         compare: Mapping[str, str] = {
             "X-Custom": "value",
             "Content-Type": "custom",
             "Link": '<http://warning.or.kr/>; rel="blocked-by"',
         }
-        assert resp.headers == compare
-        assert resp.reason == "Zaprescheno"
-        assert resp.status == 451
+        assert exc.headers == compare
+        assert exc.reason == "Zaprescheno"
+        assert exc.status == 451
+
+    def test_no_link(self) -> None:
+        with pytest.raises(TypeError):
+            web.HTTPUnavailableForLegalReasons()  # type: ignore[call-arg]
+
+    def test_none_link(self) -> None:
+        exc = web.HTTPUnavailableForLegalReasons(link=None)
+        assert exc.link is None
+        assert "Link" not in exc.headers
+
+    def test_empty_link(self) -> None:
+        exc = web.HTTPUnavailableForLegalReasons(link="")
+        assert exc.link is None
+        assert "Link" not in exc.headers
+
+    def test_link_str(self) -> None:
+        exc = web.HTTPUnavailableForLegalReasons(link="http://warning.or.kr/")
+        assert exc.link == URL("http://warning.or.kr/")
+        assert exc.headers["Link"] == '<http://warning.or.kr/>; rel="blocked-by"'
+
+    def test_link_url(self) -> None:
+        exc = web.HTTPUnavailableForLegalReasons(link=URL("http://warning.or.kr/"))
+        assert exc.link == URL("http://warning.or.kr/")
+        assert exc.headers["Link"] == '<http://warning.or.kr/>; rel="blocked-by"'
+
+    def test_link_CRLF(self) -> None:
+        exc = web.HTTPUnavailableForLegalReasons(link="http://warning.or.kr/\r\n")
+        assert "\r\n" not in exc.headers["Link"]
 
     def test_pickle(self) -> None:
         resp = web.HTTPUnavailableForLegalReasons(

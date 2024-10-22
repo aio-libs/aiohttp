@@ -1,16 +1,18 @@
-# type: ignore
 import asyncio
 from contextlib import suppress
-from typing import Any
+from typing import Callable, NoReturn
 from unittest import mock
 
 import pytest
 
-from aiohttp import client, helpers, web
+from aiohttp import client, web
+from aiohttp.pytest_plugin import AiohttpClient, AiohttpRawServer
 
 
-async def test_simple_server(aiohttp_raw_server: Any, aiohttp_client: Any) -> None:
-    async def handler(request):
+async def test_simple_server(
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
+    async def handler(request: web.BaseRequest) -> web.Response:
         return web.Response(text=str(request.rel_url))
 
     server = await aiohttp_raw_server(handler)
@@ -21,16 +23,12 @@ async def test_simple_server(aiohttp_raw_server: Any, aiohttp_client: Any) -> No
     assert txt == "/path/to"
 
 
-@pytest.mark.xfail(
-    not helpers.NO_EXTENSIONS,
-    raises=client.ServerDisconnectedError,
-    reason="The behavior of C-extensions differs from pure-Python: "
-    "https://github.com/aio-libs/aiohttp/issues/6446",
-)
-async def test_unsupported_upgrade(aiohttp_raw_server, aiohttp_client) -> None:
+async def test_unsupported_upgrade(
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
     # don't fail if a client probes for an unsupported protocol upgrade
     # https://github.com/aio-libs/aiohttp/issues/6446#issuecomment-999032039
-    async def handler(request: web.Request):
+    async def handler(request: web.BaseRequest) -> web.Response:
         return web.Response(body=await request.read())
 
     upgrade_headers = {"Connection": "Upgrade", "Upgrade": "unsupported_proto"}
@@ -44,14 +42,16 @@ async def test_unsupported_upgrade(aiohttp_raw_server, aiohttp_client) -> None:
 
 
 async def test_raw_server_not_http_exception(
-    aiohttp_raw_server: Any, aiohttp_client: Any, loop: Any
+    aiohttp_raw_server: AiohttpRawServer,
+    aiohttp_client: AiohttpClient,
+    loop: asyncio.AbstractEventLoop,
 ) -> None:
     # disable debug mode not to print traceback
     loop.set_debug(False)
 
     exc = RuntimeError("custom runtime error")
 
-    async def handler(request):
+    async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
 
     logger = mock.Mock()
@@ -69,13 +69,13 @@ async def test_raw_server_not_http_exception(
 
 
 async def test_raw_server_handler_timeout(
-    aiohttp_raw_server: Any, aiohttp_client: Any
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
     loop = asyncio.get_event_loop()
     loop.set_debug(True)
     exc = asyncio.TimeoutError("error")
 
-    async def handler(request):
+    async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
 
     logger = mock.Mock()
@@ -89,9 +89,9 @@ async def test_raw_server_handler_timeout(
 
 
 async def test_raw_server_do_not_swallow_exceptions(
-    aiohttp_raw_server: Any, aiohttp_client: Any
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
-    async def handler(request):
+    async def handler(request: web.BaseRequest) -> NoReturn:
         raise asyncio.CancelledError()
 
     loop = asyncio.get_event_loop()
@@ -107,13 +107,13 @@ async def test_raw_server_do_not_swallow_exceptions(
 
 
 async def test_raw_server_cancelled_in_write_eof(
-    aiohttp_raw_server: Any, aiohttp_client: Any
-):
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
     class MyResponse(web.Response):
-        async def write_eof(self, data=b""):
+        async def write_eof(self, data: bytes = b"") -> NoReturn:
             raise asyncio.CancelledError("error")
 
-    async def handler(request):
+    async def handler(request: web.BaseRequest) -> MyResponse:
         resp = MyResponse(text=str(request.rel_url))
         return resp
 
@@ -131,11 +131,11 @@ async def test_raw_server_cancelled_in_write_eof(
 
 
 async def test_raw_server_not_http_exception_debug(
-    aiohttp_raw_server: Any, aiohttp_client: Any
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
     exc = RuntimeError("custom runtime error")
 
-    async def handler(request):
+    async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
 
     loop = asyncio.get_event_loop()
@@ -154,14 +154,16 @@ async def test_raw_server_not_http_exception_debug(
 
 
 async def test_raw_server_html_exception(
-    aiohttp_raw_server: Any, aiohttp_client: Any, loop: Any
+    aiohttp_raw_server: AiohttpRawServer,
+    aiohttp_client: AiohttpClient,
+    loop: asyncio.AbstractEventLoop,
 ) -> None:
     # disable debug mode not to print traceback
     loop.set_debug(False)
 
     exc = RuntimeError("custom runtime error")
 
-    async def handler(request):
+    async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
 
     logger = mock.Mock()
@@ -183,11 +185,11 @@ async def test_raw_server_html_exception(
 
 
 async def test_raw_server_html_exception_debug(
-    aiohttp_raw_server: Any, aiohttp_client: Any
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
     exc = RuntimeError("custom runtime error")
 
-    async def handler(request):
+    async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
 
     loop = asyncio.get_event_loop()
@@ -210,11 +212,11 @@ async def test_raw_server_html_exception_debug(
     logger.exception.assert_called_with("Error handling request", exc_info=exc)
 
 
-async def test_handler_cancellation(aiohttp_unused_port) -> None:
+async def test_handler_cancellation(aiohttp_unused_port: Callable[[], int]) -> None:
     event = asyncio.Event()
     port = aiohttp_unused_port()
 
-    async def on_request(_: web.Request) -> web.Response:
+    async def on_request(request: web.Request) -> web.Response:
         nonlocal event
         try:
             await asyncio.sleep(10)
@@ -234,11 +236,12 @@ async def test_handler_cancellation(aiohttp_unused_port) -> None:
 
     await site.start()
 
+    assert runner.server is not None
     try:
         assert runner.server.handler_cancellation, "Flag was not propagated"
 
         async with client.ClientSession(
-            timeout=client.ClientTimeout(total=0.1)
+            timeout=client.ClientTimeout(total=0.15)
         ) as sess:
             with pytest.raises(asyncio.TimeoutError):
                 await sess.get(f"http://localhost:{port}/")
@@ -250,13 +253,15 @@ async def test_handler_cancellation(aiohttp_unused_port) -> None:
         await asyncio.gather(runner.shutdown(), site.stop())
 
 
-async def test_no_handler_cancellation(aiohttp_unused_port) -> None:
+async def test_no_handler_cancellation(aiohttp_unused_port: Callable[[], int]) -> None:
     timeout_event = asyncio.Event()
     done_event = asyncio.Event()
     port = aiohttp_unused_port()
+    started = False
 
-    async def on_request(_: web.Request) -> web.Response:
-        nonlocal done_event, timeout_event
+    async def on_request(request: web.Request) -> web.Response:
+        nonlocal done_event, started, timeout_event
+        started = True
         await asyncio.wait_for(timeout_event.wait(), timeout=5)
         done_event.set()
         return web.Response()
@@ -273,7 +278,7 @@ async def test_no_handler_cancellation(aiohttp_unused_port) -> None:
 
     try:
         async with client.ClientSession(
-            timeout=client.ClientTimeout(total=0.1)
+            timeout=client.ClientTimeout(total=0.2)
         ) as sess:
             with pytest.raises(asyncio.TimeoutError):
                 await sess.get(f"http://localhost:{port}/")
@@ -282,6 +287,7 @@ async def test_no_handler_cancellation(aiohttp_unused_port) -> None:
 
         with suppress(asyncio.TimeoutError):
             await asyncio.wait_for(done_event.wait(), timeout=1)
+        assert started
         assert done_event.is_set()
     finally:
         await asyncio.gather(runner.shutdown(), site.stop())

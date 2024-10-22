@@ -68,14 +68,14 @@ endpoints of ``http://httpbin.org`` can be used the following code::
 .. note::
 
    Don't create a session per request. Most likely you need a session
-   per application which performs all requests altogether.
+   per application which performs all requests together.
 
    More complex cases may require a session per site, e.g. one for
    Github and other one for Facebook APIs. Anyway making a session for
    every request is a **very bad** idea.
 
    A session contains a connection pool inside. Connection reusage and
-   keep-alives (both are on by default) may speed up total performance.
+   keep-alive (both are on by default) may speed up total performance.
 
    You may find more information about creating persistent sessions
    in :ref:`aiohttp-persistent-session`.
@@ -187,7 +187,8 @@ The ``gzip`` and ``deflate`` transfer-encodings are automatically
 decoded for you.
 
 You can enable ``brotli`` transfer-encodings support,
-just install  `Brotli <https://pypi.org/project/Brotli>`_.
+just install `Brotli <https://pypi.org/project/Brotli/>`_
+or `brotlicffi <https://pypi.org/project/brotlicffi/>`_.
 
 JSON Request
 ============
@@ -407,7 +408,8 @@ Timeouts
 Timeout settings are stored in :class:`ClientTimeout` data structure.
 
 By default *aiohttp* uses a *total* 300 seconds (5min) timeout, it means that the
-whole operation should finish in 5 minutes.
+whole operation should finish in 5 minutes. In order to allow time for DNS fallback,
+the default ``sock_connect`` timeout is 30 seconds.
 
 The value could be overridden by *timeout* parameter for the session (specified in seconds)::
 
