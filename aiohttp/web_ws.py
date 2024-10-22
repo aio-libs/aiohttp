@@ -11,6 +11,7 @@ from multidict import CIMultiDict
 
 from . import hdrs
 from .abc import AbstractStreamWriter
+from .client_exceptions import WSMessageTypeError
 from .helpers import calculate_timeout_when, set_exception, set_result
 from .http import (
     WS_CLOSED_MESSAGE,
@@ -595,11 +596,11 @@ class WebSocketResponse(StreamResponse):
 
     async def receive_str(self, *, timeout: Optional[float] = None) -> str:
         msg = await self.receive(timeout)
-        if msg.type not in MESSAGE_TYPES_WITH_CONTENT:
-            raise RuntimeError(
-                f"Received message {msg.type}:{msg.data!r} has no content"
-            )
         if msg.type is not WSMsgType.TEXT:
+            if msg.type not in MESSAGE_TYPES_WITH_CONTENT:
+                raise WSMessageTypeError(
+                    f"Received message {msg.type}:{msg.data!r} has no content"
+                )
             raise TypeError(
                 "Received message {}:{!r} is not WSMsgType.TEXT".format(
                     msg.type, msg.data
@@ -609,11 +610,11 @@ class WebSocketResponse(StreamResponse):
 
     async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
-        if msg.type not in MESSAGE_TYPES_WITH_CONTENT:
-            raise RuntimeError(
-                f"Received message {msg.type}:{msg.data!r} has no content"
-            )
         if msg.type is not WSMsgType.BINARY:
+            if msg.type not in MESSAGE_TYPES_WITH_CONTENT:
+                raise WSMessageTypeError(
+                    f"Received message {msg.type}:{msg.data!r} has no content"
+                )
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not bytes")
         return cast(bytes, msg.data)
 

@@ -6,7 +6,7 @@ import sys
 from types import TracebackType
 from typing import Any, Final, Optional, Type, cast
 
-from .client_exceptions import ClientError, ServerTimeoutError
+from .client_exceptions import ClientError, ServerTimeoutError, WSMessageTypeError
 from .client_reqrep import ClientResponse
 from .helpers import calculate_timeout_when, set_result
 from .http import (
@@ -377,21 +377,21 @@ class ClientWebSocketResponse:
 
     async def receive_str(self, *, timeout: Optional[float] = None) -> str:
         msg = await self.receive(timeout)
-        if msg.type not in MESSAGE_TYPES_WITH_CONTENT:
-            raise RuntimeError(
-                f"Received message {msg.type}:{msg.data!r} has no content"
-            )
         if msg.type is not WSMsgType.TEXT:
+            if msg.type not in MESSAGE_TYPES_WITH_CONTENT:
+                raise WSMessageTypeError(
+                    f"Received message {msg.type}:{msg.data!r} has no content"
+                )
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not str")
         return cast(str, msg.data)
 
     async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
-        if msg.type not in MESSAGE_TYPES_WITH_CONTENT:
-            raise RuntimeError(
-                f"Received message {msg.type}:{msg.data!r} has no content"
-            )
         if msg.type is not WSMsgType.BINARY:
+            if msg.type not in MESSAGE_TYPES_WITH_CONTENT:
+                raise WSMessageTypeError(
+                    f"Received message {msg.type}:{msg.data!r} has no content"
+                )
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not bytes")
         return cast(bytes, msg.data)
 
