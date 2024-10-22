@@ -152,7 +152,9 @@ async def test_bad() -> None:
     result.assert_outcomes(**expected_outcomes)
 
 
-def test_aiohttp_plugin_async_fixture(testdir: pytest.Testdir, capsys: pytest.CaptureFixture[str]) -> None:
+def test_aiohttp_plugin_async_fixture(
+    testdir: pytest.Testdir, capsys: pytest.CaptureFixture[str]
+) -> None:
     testdir.makepyfile(
         """\
 import pytest

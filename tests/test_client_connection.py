@@ -30,13 +30,23 @@ def protocol() -> mock.Mock:
     return mock.Mock(should_close=False)
 
 
-def test_ctor(connector: BaseConnector, key: ConnectionKey, protocol: ResponseHandler, loop: asyncio.AbstractEventLoop) -> None:
+def test_ctor(
+    connector: BaseConnector,
+    key: ConnectionKey,
+    protocol: ResponseHandler,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     conn = Connection(connector, key, protocol, loop)
     assert conn.protocol is protocol
     conn.close()
 
 
-def test_callbacks_on_close(connector: BaseConnector, key: ConnectionKey, protocol: ResponseHandler, loop: asyncio.AbstractEventLoop) -> None:
+def test_callbacks_on_close(
+    connector: BaseConnector,
+    key: ConnectionKey,
+    protocol: ResponseHandler,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     conn = Connection(connector, key, protocol, loop)
     notified = False
 
@@ -50,7 +60,10 @@ def test_callbacks_on_close(connector: BaseConnector, key: ConnectionKey, protoc
 
 
 def test_callbacks_on_release(
-    connector: BaseConnector, key: ConnectionKey, protocol: ResponseHandler, loop: asyncio.AbstractEventLoop
+    connector: BaseConnector,
+    key: ConnectionKey,
+    protocol: ResponseHandler,
+    loop: asyncio.AbstractEventLoop,
 ) -> None:
     conn = Connection(connector, key, protocol, loop)
     notified = False
@@ -65,7 +78,10 @@ def test_callbacks_on_release(
 
 
 def test_callbacks_exception(
-    connector: BaseConnector, key: ConnectionKey, protocol: ResponseHandler, loop: asyncio.AbstractEventLoop
+    connector: BaseConnector,
+    key: ConnectionKey,
+    protocol: ResponseHandler,
+    loop: asyncio.AbstractEventLoop,
 ) -> None:
     conn = Connection(connector, key, protocol, loop)
     notified = False
@@ -83,7 +99,12 @@ def test_callbacks_exception(
     assert notified
 
 
-def test_del(connector: BaseConnector, key: ConnectionKey, protocol: ResponseHandler, loop: mock.Mock) -> None:
+def test_del(
+    connector: BaseConnector,
+    key: ConnectionKey,
+    protocol: ResponseHandler,
+    loop: mock.Mock,
+) -> None:
     loop.is_closed.return_value = False
     conn = Connection(connector, key, protocol, loop)
     exc_handler = mock.Mock()
@@ -102,7 +123,12 @@ def test_del(connector: BaseConnector, key: ConnectionKey, protocol: ResponseHan
     loop.call_exception_handler.assert_called_with(msg)
 
 
-def test_close(connector: BaseConnector, key: ConnectionKey, protocol: ResponseHandler, loop: asyncio.AbstractEventLoop) -> None:
+def test_close(
+    connector: BaseConnector,
+    key: ConnectionKey,
+    protocol: ResponseHandler,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     conn = Connection(connector, key, protocol, loop)
     assert not conn.closed
     conn.close()
@@ -111,7 +137,12 @@ def test_close(connector: BaseConnector, key: ConnectionKey, protocol: ResponseH
     assert conn.closed
 
 
-def test_release(connector: BaseConnector, key: ConnectionKey, protocol: ResponseHandler, loop: asyncio.AbstractEventLoop) -> None:
+def test_release(
+    connector: BaseConnector,
+    key: ConnectionKey,
+    protocol: ResponseHandler,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     conn = Connection(connector, key, protocol, loop)
     assert not conn.closed
     conn.release()
@@ -123,7 +154,10 @@ def test_release(connector: BaseConnector, key: ConnectionKey, protocol: Respons
 
 
 def test_release_proto_should_close(
-    connector: BaseConnector, key: ConnectionKey, protocol: ResponseHandler, loop: asyncio.AbstractEventLoop
+    connector: BaseConnector,
+    key: ConnectionKey,
+    protocol: ResponseHandler,
+    loop: asyncio.AbstractEventLoop,
 ) -> None:
     protocol.should_close = True  # type: ignore[misc]
     conn = Connection(connector, key, protocol, loop)
@@ -136,7 +170,12 @@ def test_release_proto_should_close(
     assert conn.closed
 
 
-def test_release_released(connector: BaseConnector, key: ConnectionKey, protocol: ResponseHandler, loop: asyncio.AbstractEventLoop) -> None:
+def test_release_released(
+    connector: BaseConnector,
+    key: ConnectionKey,
+    protocol: ResponseHandler,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     conn = Connection(connector, key, protocol, loop)
     conn.release()
     connector._release.reset_mock()  # type: ignore[attr-defined]

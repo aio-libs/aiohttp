@@ -110,7 +110,9 @@ def test_path_and_host(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch) -
     )
 
 
-def test_path_when_unsupported(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_path_when_unsupported(
+    mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
     argv = "--path=test_path.sock alpha.beta:func".split()
     mocker.patch("aiohttp.web.import_module")
     monkeypatch.delattr("socket.AF_UNIX", raising=False)

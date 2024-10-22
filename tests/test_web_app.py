@@ -392,7 +392,9 @@ async def test_cleanup_ctx_multiple_yields() -> None:
     assert out == ["pre_1", "post_1"]
 
 
-async def test_subapp_chained_config_dict_visibility(aiohttp_client: AiohttpClient) -> None:
+async def test_subapp_chained_config_dict_visibility(
+    aiohttp_client: AiohttpClient,
+) -> None:
     key1 = web.AppKey("key1", str)
     key2 = web.AppKey("key2", str)
 
@@ -423,7 +425,9 @@ async def test_subapp_chained_config_dict_visibility(aiohttp_client: AiohttpClie
     assert resp.status == 201
 
 
-async def test_subapp_chained_config_dict_overriding(aiohttp_client: AiohttpClient) -> None:
+async def test_subapp_chained_config_dict_overriding(
+    aiohttp_client: AiohttpClient,
+) -> None:
     key = web.AppKey("key", str)
 
     async def main_handler(request: web.Request) -> web.Response:

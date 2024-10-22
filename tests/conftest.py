@@ -94,7 +94,9 @@ def pipe_name() -> str:
 
 
 @pytest.fixture
-def create_mocked_conn(loop: asyncio.AbstractEventLoop) -> Iterator[Callable[[], ResponseHandler]]:
+def create_mocked_conn(
+    loop: asyncio.AbstractEventLoop,
+) -> Iterator[Callable[[], ResponseHandler]]:
     def _proto_factory() -> Any:
         proto = mock.create_autospec(ResponseHandler, spec_set=True, instance=True)
         proto.closed = loop.create_future()
@@ -105,7 +107,9 @@ def create_mocked_conn(loop: asyncio.AbstractEventLoop) -> Iterator[Callable[[],
 
 
 @pytest.fixture
-def unix_sockname(tmp_path: Path, tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
+def unix_sockname(
+    tmp_path: Path, tmp_path_factory: pytest.TempPathFactory
+) -> Iterator[str]:
     # Generate an fs path to the UNIX domain socket for testing.
 
     # N.B. Different OS kernels have different fs path length limitations
