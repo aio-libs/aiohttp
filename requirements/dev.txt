@@ -109,7 +109,7 @@ multidict==6.1.0
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.11.2 ; implementation_name == "cpython"
+mypy==1.13.0 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
