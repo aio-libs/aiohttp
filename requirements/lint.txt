@@ -84,7 +84,7 @@ pyyaml==6.0.2
     # via pre-commit
 requests==2.32.3
     # via python-on-whales
-rich==13.9.2
+rich==13.9.3
     # via typer
 shellingham==1.5.4
     # via typer
