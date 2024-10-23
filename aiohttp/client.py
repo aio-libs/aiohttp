@@ -303,6 +303,8 @@ class ClientSession:
             assert (
                 self._base_url.absolute
             ), "Only absolute URLs are supported"
+        if self._base_url is not None:
+            assert self._base_url.path.endswith("/")
 
         loop = asyncio.get_running_loop()
 
@@ -416,7 +418,6 @@ class ClientSession:
             return url
         else:
             assert not url.absolute
-            assert self._base_url.path.endswith("/")
             return self._base_url.join(URL(url.path_qs.lstrip("/")))
 
     async def _request(
