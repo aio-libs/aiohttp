@@ -300,9 +300,7 @@ class ClientSession:
         else:
             self._base_url = URL(base_url)
             self._base_url_origin = self._base_url.origin()
-            assert (
-                self._base_url.absolute
-            ), "Only absolute URLs are supported"
+            assert self._base_url.absolute, "Only absolute URLs are supported"
         if self._base_url is not None:
             assert self._base_url.path.endswith("/")
 
