@@ -16,6 +16,7 @@ from aiohttp import (
     hdrs,
 )
 from aiohttp.http import WS_KEY
+from aiohttp.http_websocket import WSMessageClose
 from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro
 
@@ -386,7 +387,7 @@ async def test_close(
                 assert not resp.closed
 
                 resp._reader.feed_data(
-                    aiohttp.WSMessage(aiohttp.WSMsgType.CLOSE, b"", "")
+                    WSMessageClose(data=0, extra="")
                 )
 
                 res = await resp.close()

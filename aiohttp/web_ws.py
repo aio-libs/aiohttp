@@ -211,7 +211,7 @@ class WebSocketResponse(StreamResponse):
         self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
         self._exception = exc
         if self._waiting and not self._closing and self._reader is not None:
-            self._reader.feed_data(WSMessage(WSMsgType.ERROR, exc, None))
+            self._reader.feed_data(WSMessageError(data=exc, extra=None))
 
     def _set_closed(self) -> None:
         """Set the connection to closed.
@@ -480,7 +480,7 @@ class WebSocketResponse(StreamResponse):
             assert self._loop is not None
             assert self._close_wait is None
             self._close_wait = self._loop.create_future()
-            reader.feed_data(WS_CLOSING_MESSAGE)
+            reader.feed_data(WSMessageClosing())
             await self._close_wait
 
         if self._closing:
@@ -506,13 +506,13 @@ class WebSocketResponse(StreamResponse):
         self._exception = asyncio.TimeoutError()
         return True
 
-    def _set_closing(self, code: WSCloseCode) -> None:
+    def _set_closing(self, code: int) -> None:
         """Set the close code and mark the connection as closing."""
         self._closing = True
         self._close_code = code
         self._cancel_heartbeat()
 
-    def _set_code_close_transport(self, code: WSCloseCode) -> None:
+    def _set_code_close_transport(self, code: int) -> None:
         """Set the close code and close the transport."""
         self._close_code = code
         self._close_transport()
@@ -601,13 +601,13 @@ class WebSocketResponse(StreamResponse):
                     msg.type, msg.data
                 )
             )
-        return cast(str, msg.data)
+        return msg.data
 
     async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.BINARY:
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not bytes")
-        return cast(bytes, msg.data)
+        return msg.data
 
     async def receive_json(
         self, *, loads: JSONDecoder = json.loads, timeout: Optional[float] = None

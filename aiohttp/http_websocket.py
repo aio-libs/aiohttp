@@ -184,7 +184,7 @@ class WSMessageClosed(_WSMessage):
 
 @dataclass
 class WSMessageError(_WSMessage):
-    data: Exception
+    data: BaseException
     type: Literal[WSMsgType.ERROR] = WSMsgType.ERROR
 
 
@@ -396,6 +396,7 @@ class WebSocketReader:
         return False, b""
 
     def _feed_data(self, data: bytes) -> None:
+        msg: WSMessageType
         for fin, opcode, payload, compressed in self.parse_frame(data):
             if opcode in MESSAGE_TYPES_WITH_CONTENT:
                 # load text/binary
@@ -475,13 +476,11 @@ class WebSocketReader:
                             WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
                         ) from exc
 
-                    # tuple.__new__ is used to avoid the overhead of the lambda
-                    msg = tuple.__new__(WSMessage, (WSMsgType.TEXT, text, ""))
+                    msg = WSMessageText(data=text, extra="")
                     self.queue.feed_data(msg)
                     continue
 
-                # tuple.__new__ is used to avoid the overhead of the lambda
-                msg = tuple.__new__(WSMessage, (WSMsgType.BINARY, payload_merged, ""))
+                msg = WSMessageBinary(data=payload_merged, extra="")
                 self.queue.feed_data(msg)
             elif opcode == WSMsgType.CLOSE:
                 if len(payload) >= 2:
@@ -509,11 +508,11 @@ class WebSocketReader:
                 self.queue.feed_data(msg)
 
             elif opcode == WSMsgType.PING:
-                msg = WSMessagePing(data=payload, extra=""), len(payload)
+                msg = WSMessagePing(data=payload, extra="")
                 self.queue.feed_data(msg)
 
             elif opcode == WSMsgType.PONG:
-                msg = WSMessagePong(data=payload, extra=""), len(payload)
+                msg = WSMessagePong(data=payload, extra="")
                 self.queue.feed_data(msg)
 
             else:

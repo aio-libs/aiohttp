@@ -4,7 +4,7 @@ import asyncio
 import dataclasses
 import sys
 from types import TracebackType
-from typing import Any, Final, Optional, Type, cast
+from typing import Any, Final, Optional, Type
 
 from .client_exceptions import ClientError, ServerTimeoutError
 from .client_reqrep import ClientResponse
@@ -172,7 +172,7 @@ class ClientWebSocketResponse:
         self._exception = exc
         self._response.close()
         if self._waiting and not self._closing:
-            self._reader.feed_data(WSMessage(WSMsgType.ERROR, exc, None))
+            self._reader.feed_data(WSMessageError(data=exc, extra=None))
 
     def _set_closed(self) -> None:
         """Set the connection to closed.
@@ -378,13 +378,13 @@ class ClientWebSocketResponse:
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.TEXT:
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not str")
-        return cast(str, msg.data)
+        return msg.data
 
     async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.BINARY:
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not bytes")
-        return cast(bytes, msg.data)
+        return msg.data
 
     async def receive_json(
         self,
