@@ -1122,6 +1122,18 @@ async def test_requote_redirect_url_default_disable() -> None:
             URL("http://example.com/test"),
             id="base_url=URL('http://example.com') url='/test'",
         ),
+        pytest.param(
+            URL("http://example.com/test1/"),
+            "test2",
+            URL("http://example.com/test1/test2"),
+            id="base_url=URL('http://example.com/test1/') url='test2'",
+        ),
+        pytest.param(
+            URL("http://example.com/test1/"),
+            "/test2",
+            URL("http://example.com/test1/test2"),
+            id="base_url=URL('http://example.com/test1/') url='/test2'",
+        ),
     ],
 )
 async def test_build_url_returns_expected_url(
