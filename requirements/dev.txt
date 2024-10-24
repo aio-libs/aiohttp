@@ -186,7 +186,7 @@ requests==2.32.3
     #   cherry-picker
     #   python-on-whales
     #   sphinx
-rich==13.9.2
+rich==13.9.3
     # via typer
 setuptools-git==1.2
     # via -r requirements/test.in
