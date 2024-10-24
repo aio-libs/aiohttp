@@ -4,20 +4,19 @@ import asyncio
 import dataclasses
 import sys
 from types import TracebackType
-from typing import Any, Final, Optional, Type, cast
+from typing import Any, Final, Optional, Type
 
 from .client_exceptions import ClientError, ServerTimeoutError
 from .client_reqrep import ClientResponse
 from .helpers import calculate_timeout_when, set_result
 from .http import (
-    WS_CLOSED_MESSAGE,
-    WS_CLOSING_MESSAGE,
     WebSocketError,
     WSCloseCode,
-    WSMessage,
+    WSMessageClosed,
+    WSMessageClosing,
     WSMsgType,
 )
-from .http_websocket import WebSocketWriter  # WSMessage
+from .http_websocket import WebSocketWriter, WSMessageError, WSMessageType
 from .streams import EofStream, FlowControlDataQueue
 from .typedefs import (
     DEFAULT_JSON_DECODER,
@@ -46,7 +45,7 @@ DEFAULT_WS_CLIENT_TIMEOUT: Final[ClientWSTimeout] = ClientWSTimeout(
 class ClientWebSocketResponse:
     def __init__(
         self,
-        reader: "FlowControlDataQueue[WSMessage]",
+        reader: "FlowControlDataQueue[WSMessageType]",
         writer: WebSocketWriter,
         protocol: Optional[str],
         response: ClientResponse,
@@ -173,7 +172,7 @@ class ClientWebSocketResponse:
         self._exception = exc
         self._response.close()
         if self._waiting and not self._closing:
-            self._reader.feed_data(WSMessage(WSMsgType.ERROR, exc, None))
+            self._reader.feed_data(WSMessageError(data=exc, extra=None))
 
     def _set_closed(self) -> None:
         """Set the connection to closed.
@@ -264,7 +263,7 @@ class ClientWebSocketResponse:
             assert self._loop is not None
             self._close_wait = self._loop.create_future()
             self._set_closing()
-            self._reader.feed_data(WS_CLOSING_MESSAGE)
+            self._reader.feed_data(WSMessageClosing())
             await self._close_wait
 
         if not self._closed:
@@ -306,7 +305,7 @@ class ClientWebSocketResponse:
         else:
             return False
 
-    async def receive(self, timeout: Optional[float] = None) -> WSMessage:
+    async def receive(self, timeout: Optional[float] = None) -> WSMessageType:
         receive_timeout = timeout or self._timeout.ws_receive
 
         while True:
@@ -314,10 +313,10 @@ class ClientWebSocketResponse:
                 raise RuntimeError("Concurrent call to receive() is not allowed")
 
             if self._closed:
-                return WS_CLOSED_MESSAGE
+                return WSMessageClosed()
             elif self._closing:
                 await self.close()
-                return WS_CLOSED_MESSAGE
+                return WSMessageClosed()
 
             try:
                 self._waiting = True
@@ -342,22 +341,22 @@ class ClientWebSocketResponse:
             except EofStream:
                 self._close_code = WSCloseCode.OK
                 await self.close()
-                return WSMessage(WSMsgType.CLOSED, None, None)
+                return WSMessageClosed()
             except ClientError:
                 # Likely ServerDisconnectedError when connection is lost
                 self._set_closed()
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
-                return WS_CLOSED_MESSAGE
+                return WSMessageClosed()
             except WebSocketError as exc:
                 self._close_code = exc.code
                 await self.close(code=exc.code)
-                return WSMessage(WSMsgType.ERROR, exc, None)
+                return WSMessageError(data=exc)
             except Exception as exc:
                 self._exception = exc
                 self._set_closing()
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 await self.close()
-                return WSMessage(WSMsgType.ERROR, exc, None)
+                return WSMessageError(data=exc)
 
             if msg.type is WSMsgType.CLOSE:
                 self._set_closing()
@@ -379,13 +378,13 @@ class ClientWebSocketResponse:
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.TEXT:
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not str")
-        return cast(str, msg.data)
+        return msg.data
 
     async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.BINARY:
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not bytes")
-        return cast(bytes, msg.data)
+        return msg.data
 
     async def receive_json(
         self,
@@ -399,7 +398,7 @@ class ClientWebSocketResponse:
     def __aiter__(self) -> "ClientWebSocketResponse":
         return self
 
-    async def __anext__(self) -> WSMessage:
+    async def __anext__(self) -> WSMessageType:
         msg = await self.receive()
         if msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSING, WSMsgType.CLOSED):
             raise StopAsyncIteration

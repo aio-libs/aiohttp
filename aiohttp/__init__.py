@@ -55,7 +55,7 @@ from .http import (
     HttpVersion11,
     WebSocketError,
     WSCloseCode,
-    WSMessage,
+    WSMessageType,
     WSMsgType,
 )
 from .multipart import (
@@ -173,7 +173,7 @@ __all__: Tuple[str, ...] = (
     "HttpVersion11",
     "WSMsgType",
     "WSCloseCode",
-    "WSMessage",
+    "WSMessageType",
     "WebSocketError",
     # multipart
     "BadContentDispositionHeader",

@@ -16,20 +16,20 @@ async def start_client(url: str) -> None:
         while True:
             msg = await ws.receive()
 
-            if msg.type == aiohttp.WSMsgType.TEXT:
+            if msg.type is aiohttp.WSMsgType.TEXT:
                 print("Text: ", msg.data.strip())
-            elif msg.type == aiohttp.WSMsgType.BINARY:
+            elif msg.type is aiohttp.WSMsgType.BINARY:
                 print("Binary: ", msg.data)
-            elif msg.type == aiohttp.WSMsgType.PING:
+            elif msg.type is aiohttp.WSMsgType.PING:
                 await ws.pong()
-            elif msg.type == aiohttp.WSMsgType.PONG:
+            elif msg.type is aiohttp.WSMsgType.PONG:
                 print("Pong received")
             else:
-                if msg.type == aiohttp.WSMsgType.CLOSE:
+                if msg.type is aiohttp.WSMsgType.CLOSE:
                     await ws.close()
-                elif msg.type == aiohttp.WSMsgType.ERROR:
+                elif msg.type is aiohttp.WSMsgType.ERROR:
                     print("Error during receive %s" % ws.exception())
-                elif msg.type == aiohttp.WSMsgType.CLOSED:
+                elif msg.type is aiohttp.WSMsgType.CLOSED:
                     pass
 
                 break

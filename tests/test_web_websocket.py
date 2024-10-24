@@ -9,7 +9,8 @@ from multidict import CIMultiDict
 from pytest_mock import MockerFixture
 
 from aiohttp import WSMsgType, web
-from aiohttp.http import WS_CLOSED_MESSAGE, WSMessage
+from aiohttp.http import WSMessageType
+from aiohttp.http_websocket import WSMessageClose, WSMessageClosed, WSMessageClosing
 from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web_ws import WebSocketReady
@@ -241,7 +242,7 @@ async def test_send_str_closed(make_request: _RequestMaker) -> None:
     ws = web.WebSocketResponse()
     await ws.prepare(req)
     assert ws._reader is not None
-    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    ws._reader.feed_data(WSMessageClosed())
     await ws.close()
     assert req.transport is not None
     assert len(req.transport.close.mock_calls) == 1  # type: ignore[attr-defined]
@@ -255,7 +256,7 @@ async def test_send_bytes_closed(make_request: _RequestMaker) -> None:
     ws = web.WebSocketResponse()
     await ws.prepare(req)
     assert ws._reader is not None
-    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    ws._reader.feed_data(WSMessageClosed())
     await ws.close()
 
     with pytest.raises(ConnectionError):
@@ -267,7 +268,7 @@ async def test_send_json_closed(make_request: _RequestMaker) -> None:
     ws = web.WebSocketResponse()
     await ws.prepare(req)
     assert ws._reader is not None
-    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    ws._reader.feed_data(WSMessageClosed())
     await ws.close()
 
     with pytest.raises(ConnectionError):
@@ -279,7 +280,7 @@ async def test_send_frame_closed(make_request: _RequestMaker) -> None:
     ws = web.WebSocketResponse()
     await ws.prepare(req)
     assert ws._reader is not None
-    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    ws._reader.feed_data(WSMessageClosed())
     await ws.close()
 
     with pytest.raises(ConnectionError):
@@ -291,7 +292,7 @@ async def test_ping_closed(make_request: _RequestMaker) -> None:
     ws = web.WebSocketResponse()
     await ws.prepare(req)
     assert ws._reader is not None
-    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    ws._reader.feed_data(WSMessageClosed())
     await ws.close()
 
     with pytest.raises(ConnectionError):
@@ -303,7 +304,7 @@ async def test_pong_closed(make_request: _RequestMaker, mocker: MockerFixture) -
     ws = web.WebSocketResponse()
     await ws.prepare(req)
     assert ws._reader is not None
-    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    ws._reader.feed_data(WSMessageClosed())
     await ws.close()
 
     with pytest.raises(ConnectionError):
@@ -315,7 +316,7 @@ async def test_close_idempotent(make_request: _RequestMaker) -> None:
     ws = web.WebSocketResponse()
     await ws.prepare(req)
     assert ws._reader is not None
-    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    ws._reader.feed_data(WSMessageClosed())
     close_code = await ws.close(code=1, message=b"message1")
     assert close_code == 1
     assert ws.closed
@@ -360,7 +361,7 @@ async def test_write_eof_idempotent(make_request: _RequestMaker) -> None:
     assert len(req.transport.close.mock_calls) == 0  # type: ignore[attr-defined]
 
     assert ws._reader is not None
-    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    ws._reader.feed_data(WSMessageClosed())
     await ws.close()
 
     await ws.write_eof()
@@ -420,7 +421,7 @@ async def test_receive_close_but_left_open(
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
-    close_message = WSMessage(WSMsgType.CLOSE, 1000, "close")
+    close_message = WSMessageClose(data=1000, extra="close")
 
     ws._reader = mock.Mock()
     ws._reader.read = mock.AsyncMock(return_value=close_message)
@@ -442,7 +443,7 @@ async def test_receive_closing(
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
-    closing_message = WSMessage(WSMsgType.CLOSING, 1000, "closing")
+    closing_message = WSMessageClosing()
 
     ws._reader = mock.Mock()
     read_mock = mock.AsyncMock(return_value=closing_message)
@@ -472,7 +473,7 @@ async def test_close_after_closing(
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
-    closing_message = WSMessage(WSMsgType.CLOSING, 1000, "closing")
+    closing_message = WSMessageClosing()
 
     ws._reader = mock.Mock()
     ws._reader.read = mock.AsyncMock(return_value=closing_message)
@@ -520,7 +521,7 @@ async def test_multiple_receive_on_close_connection(
     ws = web.WebSocketResponse()
     await ws.prepare(req)
     assert ws._reader is not None
-    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    ws._reader.feed_data(WSMessageClosed())
     await ws.close()
 
     await ws.receive()

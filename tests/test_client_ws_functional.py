@@ -136,8 +136,9 @@ async def test_send_recv_frame(aiohttp_client: AiohttpClient) -> None:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
 
-        data = await ws.receive()
-        await ws.send_frame(data.data, data.type)
+        msg = await ws.receive()
+        assert msg.type is WSMsgType.BINARY
+        await ws.send_frame(msg.data, msg.type)
         await ws.close()
         return ws
 
@@ -840,7 +841,6 @@ async def test_heartbeat_no_pong_concurrent_receive(
         msg = await resp.receive(5.0)
         assert ping_received
         assert resp.close_code is WSCloseCode.ABNORMAL_CLOSURE
-        assert msg
         assert msg.type is WSMsgType.ERROR
         assert isinstance(msg.data, ServerTimeoutError)
 
@@ -990,6 +990,7 @@ async def test_ws_async_with(aiohttp_server: AiohttpServer) -> None:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         msg = await ws.receive()
+        assert msg.type is WSMsgType.TEXT
         await ws.send_str(msg.data + "/answer")
         await ws.close()
         return ws
@@ -1015,6 +1016,7 @@ async def test_ws_async_with_send(aiohttp_server: AiohttpServer) -> None:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         msg = await ws.receive()
+        assert msg.type is WSMsgType.TEXT
         await ws.send_str(msg.data + "/answer")
         await ws.close()
         return ws
@@ -1038,6 +1040,7 @@ async def test_ws_async_with_shortcut(aiohttp_server: AiohttpServer) -> None:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         msg = await ws.receive()
+        assert msg.type is WSMsgType.TEXT
         await ws.send_str(msg.data + "/answer")
         await ws.close()
         return ws

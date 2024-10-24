@@ -41,6 +41,7 @@ async def test_websocket_json(
         await ws.prepare(request)
         msg = await ws.receive()
 
+        assert msg.type is WSMsgType.TEXT
         msg_json = msg.json()
         answer = msg_json["test"]
         await ws.send_str(answer)
@@ -234,6 +235,7 @@ async def test_send_recv_json(
 
     await ws.send_str('{"request": "test"}')
     msg = await ws.receive()
+    assert msg.type is WSMsgType.TEXT
     data = msg.json()
     assert msg.type == aiohttp.WSMsgType.TEXT
     assert data["response"] == "test"
@@ -1173,6 +1175,7 @@ async def test_websocket_shutdown(aiohttp_client: AiohttpClient) -> None:
 
         try:
             async for message in websocket:
+                assert message.type is WSMsgType.TEXT
                 await websocket.send_json({"ok": True, "message": message.json()})
         finally:
             request.app[websockets].discard(websocket)
