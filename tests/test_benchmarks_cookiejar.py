@@ -8,7 +8,7 @@ from yarl import URL
 from aiohttp.cookiejar import CookieJar
 
 
-async def test_process_cookies(benchmark: BenchmarkFixture) -> None:
+async def test_load_cookies_into_temp_cookiejar(benchmark: BenchmarkFixture) -> None:
     """Benchmark for creating a temp CookieJar and filtering by URL.
 
     This benchmark matches what the client request does when cookies

@@ -9,7 +9,7 @@ from yarl import URL
 from aiohttp.client_reqrep import ClientRequest
 
 
-def test_update_cookies(
+def test_client_request_update_cookies(
     loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
