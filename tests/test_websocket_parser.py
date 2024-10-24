@@ -169,7 +169,9 @@ def test_parse_frame_header_payload_size(
         parser.parse_frame(struct.pack("!BB", 0b10001000, 0b01111110))
 
 
-def test_ping_frame(out: aiohttp.DataQueue[WSMessageType], parser: WebSocketReader) -> None:
+def test_ping_frame(
+    out: aiohttp.DataQueue[WSMessageType], parser: WebSocketReader
+) -> None:
     with mock.patch.object(parser, "parse_frame", autospec=True) as m:
         m.return_value = [(1, WSMsgType.PING, b"data", False)]
 
@@ -178,7 +180,9 @@ def test_ping_frame(out: aiohttp.DataQueue[WSMessageType], parser: WebSocketRead
         assert res == WSMessagePing(data=b"data", extra="")
 
 
-def test_pong_frame(out: aiohttp.DataQueue[WSMessageType], parser: WebSocketReader) -> None:
+def test_pong_frame(
+    out: aiohttp.DataQueue[WSMessageType], parser: WebSocketReader
+) -> None:
     with mock.patch.object(parser, "parse_frame", autospec=True) as m:
         m.return_value = [(1, WSMsgType.PONG, b"data", False)]
 
