@@ -115,22 +115,15 @@ DEFAULT_LIMIT: Final[int] = 2**16
 MASK_LEN: Final[int] = 4
 
 
-@dataclass
-class _WSMessage:
-    data: object
-    type: WSMsgType
-    extra: Optional[str] = None
-
-
-@dataclass
-class WSMessageContinuation(_WSMessage):
+class WSMessageContinuation(NamedTuple):
     data: bytes
+    extra: Optional[str] = None
     type: Literal[WSMsgType.CONTINUATION] = WSMsgType.CONTINUATION
 
 
-@dataclass
-class WSMessageText(_WSMessage):
+class WSMessageText(NamedTuple):
     data: str
+    extra: Optional[str] = None
     type: Literal[WSMsgType.TEXT] = WSMsgType.TEXT
 
     def json(
@@ -140,9 +133,9 @@ class WSMessageText(_WSMessage):
         return loads(self.data)
 
 
-@dataclass
-class WSMessageBinary(_WSMessage):
+class WSMessageBinary(NamedTuple):
     data: bytes
+    extra: Optional[str] = None
     type: Literal[WSMsgType.BINARY] = WSMsgType.BINARY
 
     def json(
@@ -152,39 +145,39 @@ class WSMessageBinary(_WSMessage):
         return loads(self.data)
 
 
-@dataclass
-class WSMessagePing(_WSMessage):
+class WSMessagePing(NamedTuple):
     data: bytes
+    extra: Optional[str] = None
     type: Literal[WSMsgType.PING] = WSMsgType.PING
 
 
-@dataclass
-class WSMessagePong(_WSMessage):
+class WSMessagePong(NamedTuple):
     data: bytes
+    extra: Optional[str] = None
     type: Literal[WSMsgType.PONG] = WSMsgType.PONG
 
 
-@dataclass
-class WSMessageClose(_WSMessage):
+class WSMessageClose(NamedTuple):
     data: int
+    extra: Optional[str] = None
     type: Literal[WSMsgType.CLOSE] = WSMsgType.CLOSE
 
 
-@dataclass
-class WSMessageClosing(_WSMessage):
+class WSMessageClosing(NamedTuple):
     data: None = None
+    extra: Optional[str] = None
     type: Literal[WSMsgType.CLOSING] = WSMsgType.CLOSING
 
 
-@dataclass
-class WSMessageClosed(_WSMessage):
+class WSMessageClosed(NamedTuple):
     data: None = None
+    extra: Optional[str] = None
     type: Literal[WSMsgType.CLOSED] = WSMsgType.CLOSED
 
 
-@dataclass
-class WSMessageError(_WSMessage):
+class WSMessageError(NamedTuple):
     data: BaseException
+    extra: Optional[str] = None
     type: Literal[WSMsgType.ERROR] = WSMsgType.ERROR
 
 
