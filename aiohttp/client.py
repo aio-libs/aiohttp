@@ -301,8 +301,8 @@ class ClientSession:
             self._base_url = URL(base_url)
             self._base_url_origin = self._base_url.origin()
             assert self._base_url.absolute, "Only absolute URLs are supported"
-        if self._base_url is not None:
-            assert self._base_url.path.endswith("/")
+        if self._base_url is not None and not self._base_url.path.endswith("/"):
+            raise ValueError("base_url must have a trailing '/'")
 
         loop = asyncio.get_running_loop()
 
