@@ -23,5 +23,4 @@ async def test_load_cookies_into_temp_cookiejar(benchmark: BenchmarkFixture) -> 
         tmp_cookie_jar = CookieJar()
         tmp_cookie_jar.update_cookies(cookies)
         req_cookies = tmp_cookie_jar.filter_cookies(url)
-        if req_cookies:
-            all_cookies.load(req_cookies)
+        all_cookies.load(req_cookies)
