@@ -72,7 +72,7 @@ freezegun==1.5.1
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-frozenlist==1.4.1
+frozenlist==1.5.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
