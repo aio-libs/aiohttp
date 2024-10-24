@@ -1,0 +1,1 @@
+Fixed websocket ``receive_str`` and ``receive_bytes`` methods to raise ``RuntimeError``, instead of ``TypeError``, when websocket messages without content are received -- by :user:`ara-25`.

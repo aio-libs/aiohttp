@@ -1,6 +1,7 @@
 - Contributors -
 ----------------
 A. Jesse Jiryu Davis
+Abdur Rehman Ali
 Adam Bannister
 Adam Cooper
 Adam Horacek
