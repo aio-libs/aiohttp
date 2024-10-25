@@ -70,7 +70,7 @@ freezegun==1.5.1
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-frozenlist==1.4.1
+frozenlist==1.5.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
@@ -191,7 +191,7 @@ requests==2.32.3
     #   cherry-picker
     #   python-on-whales
     #   sphinx
-rich==13.9.2
+rich==13.9.3
     # via typer
 setuptools-git==1.2
     # via -r requirements/test.in
@@ -283,7 +283,7 @@ zipp==3.20.2
 # The following packages are considered to be unsafe in a requirements file:
 pip==24.2
     # via pip-tools
-setuptools==75.1.0
+setuptools==75.2.0
     # via
     #   incremental
     #   pip-tools
