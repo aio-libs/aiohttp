@@ -24,6 +24,7 @@ cffi==1.17.1
     # via
     #   cryptography
     #   pycares
+    #   pytest-codspeed
 charset-normalizer==3.4.0
     # via requests
 click==8.1.7
@@ -38,6 +39,8 @@ cryptography==43.0.3
     # via trustme
 exceptiongroup==1.2.2
     # via pytest
+filelock==3.16.1
+    # via pytest-codspeed
 freezegun==1.5.1
     # via -r requirements/test.in
 frozenlist==1.5.0
@@ -90,8 +93,11 @@ pygments==2.18.0
 pytest==8.3.3
     # via
     #   -r requirements/test.in
+    #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
+pytest-codspeed==2.2.1
+    # via -r requirements/test.in
 pytest-cov==5.0.0
     # via -r requirements/test.in
 pytest-mock==3.14.0

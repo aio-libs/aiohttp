@@ -7,6 +7,7 @@ proxy.py >= 2.4.4rc4
 pytest
 pytest-cov
 pytest-mock
+pytest_codspeed
 python-on-whales
 re-assert
 setuptools-git
