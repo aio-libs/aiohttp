@@ -95,7 +95,7 @@ WebSocket utilities
 
 .. class:: WSMsgType
 
-   An :class:`~enum.IntEnum` for describing :class:`WSMessage` type.
+   An :class:`~enum.IntEnum` for describing :class:`WSMessageType` type.
 
    .. attribute:: CONTINUATION
 
@@ -133,13 +133,11 @@ WebSocket utilities
       received an error.
 
 
-.. class:: WSMessage
+.. class:: WSMessageType
 
-   Websocket message, returned by ``.receive()`` calls.
-
-   .. attribute:: type
-
-      Message type, :class:`WSMsgType` instance.
+   Websocket message, returned by ``.receive()`` calls. This is actually defined as a
+   :class:`typing.Union` of different message types. All messages are a
+   :class:`collections.namedtuple` with the below attributes.
 
    .. attribute:: data
 
@@ -149,21 +147,31 @@ WebSocket utilities
 
       2. :class:`bytes` for :attr:`WSMsgType.BINARY` messages.
 
-      3. :class:`WSCloseCode` for :attr:`WSMsgType.CLOSE` messages.
+      3. :class:`int` (see :class:`WSCloseCode` for common codes)
+         for :attr:`WSMsgType.CLOSE` messages.
 
       4. :class:`bytes` for :attr:`WSMsgType.PING` messages.
 
       5. :class:`bytes` for :attr:`WSMsgType.PONG` messages.
 
+      6. :class:`Exception` for :attr:`WSMsgType.ERROR` messages.
+
+      7. ``None`` for :attr:`WSMsgType.CLOSED`/:attr:`WSMsgType.CLOSING` messages.
+
    .. attribute:: extra
 
-      Additional info, :class:`str`.
+      Additional info, :class:`str` if provided, otherwise defaults to ``None``.
 
       Makes sense only for :attr:`WSMsgType.CLOSE` messages, contains
       optional message description.
 
+   .. attribute:: type
+
+      Message type, :class:`WSMsgType` instance.
+
    .. method:: json(*, loads=json.loads)
 
-      Returns parsed JSON data.
+      Returns parsed JSON data (the method is only present on :attr:`WSMsgType.TEXT`
+      and :attr:`WSMsgType.BINARY` messages).
 
       :param loads: optional JSON decoder function.
