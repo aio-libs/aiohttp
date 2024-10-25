@@ -443,7 +443,7 @@ async def test_receive_closing(
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
-    closing_message = WS_CLOSED_MESSAGE
+    closing_message = WSMessageClosing(data=1000, extra="closing")
 
     ws._reader = mock.Mock()
     read_mock = mock.AsyncMock(return_value=closing_message)
@@ -473,7 +473,7 @@ async def test_close_after_closing(
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
-    closing_message = WS_CLOSED_MESSAGE
+    closing_message = WSMessageClosing(data=1000, extra="closing")
 
     ws._reader = mock.Mock()
     ws._reader.read = mock.AsyncMock(return_value=closing_message)
