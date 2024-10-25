@@ -20,7 +20,7 @@ from .http import (
     WebSocketReader,
     WebSocketWriter,
     WSCloseCode,
-    WSMessageType,
+    WSMessage,
     WSMsgType,
     ws_ext_gen,
     ws_ext_parse,
@@ -101,7 +101,7 @@ class WebSocketResponse(StreamResponse):
         self._protocols = protocols
         self._ws_protocol: Optional[str] = None
         self._writer: Optional[WebSocketWriter] = None
-        self._reader: Optional[FlowControlDataQueue[WSMessageType]] = None
+        self._reader: Optional[FlowControlDataQueue[WSMessage]] = None
         self._closed = False
         self._closing = False
         self._conn_lost = 0
@@ -522,7 +522,7 @@ class WebSocketResponse(StreamResponse):
         if self._req is not None and self._req.transport is not None:
             self._req.transport.close()
 
-    async def receive(self, timeout: Optional[float] = None) -> WSMessageType:
+    async def receive(self, timeout: Optional[float] = None) -> WSMessage:
         if self._reader is None:
             raise RuntimeError("Call .prepare() first")
 
@@ -621,7 +621,7 @@ class WebSocketResponse(StreamResponse):
     def __aiter__(self) -> "WebSocketResponse":
         return self
 
-    async def __anext__(self) -> WSMessageType:
+    async def __anext__(self) -> WSMessage:
         msg = await self.receive()
         if msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSING, WSMsgType.CLOSED):
             raise StopAsyncIteration

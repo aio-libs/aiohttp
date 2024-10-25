@@ -95,7 +95,7 @@ WebSocket utilities
 
 .. class:: WSMsgType
 
-   An :class:`~enum.IntEnum` for describing :class:`WSMessageType` type.
+   An :class:`~enum.IntEnum` for describing :class:`WSMessage` type.
 
    .. attribute:: CONTINUATION
 
@@ -133,7 +133,7 @@ WebSocket utilities
       received an error.
 
 
-.. class:: WSMessageType
+.. class:: WSMessage
 
    Websocket message, returned by ``.receive()`` calls. This is actually defined as a
    :class:`typing.Union` of different message types. All messages are a

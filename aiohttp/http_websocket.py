@@ -180,7 +180,7 @@ class WSMessageError(NamedTuple):
     type: Literal[WSMsgType.ERROR] = WSMsgType.ERROR
 
 
-WSMessageType = Union[
+WSMessage = Union[
     WSMessageContinuation,
     WSMessageText,
     WSMessageBinary,
@@ -351,7 +351,7 @@ class WSParserState(IntEnum):
 
 class WebSocketReader:
     def __init__(
-        self, queue: DataQueue[WSMessageType], max_msg_size: int, compress: bool = True
+        self, queue: DataQueue[WSMessage], max_msg_size: int, compress: bool = True
     ) -> None:
         self.queue = queue
         self._max_msg_size = max_msg_size
@@ -391,7 +391,7 @@ class WebSocketReader:
         return False, b""
 
     def _feed_data(self, data: bytes) -> None:
-        msg: WSMessageType
+        msg: WSMessage
         for fin, opcode, payload, compressed in self.parse_frame(data):
             if opcode in MESSAGE_TYPES_WITH_CONTENT:
                 # load text/binary

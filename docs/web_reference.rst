@@ -1215,7 +1215,7 @@ and :ref:`aiohttp-web-signals` handlers::
 
          timeout value overrides response`s receive_timeout attribute.
 
-      :return: :class:`~aiohttp.WSMessageType`
+      :return: :class:`~aiohttp.WSMessage`
 
       :raise RuntimeError: if connection is not started
 

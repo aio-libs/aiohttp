@@ -1651,7 +1651,7 @@ manually.
 
       It process *ping-pong game* and performs *closing handshake* internally.
 
-      :return: :class:`~aiohttp.WSMessageType`
+      :return: :class:`~aiohttp.WSMessage`
 
    .. method:: receive_str()
       :async:

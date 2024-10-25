@@ -14,9 +14,10 @@ from .http import (
     WS_CLOSING_MESSAGE,
     WebSocketError,
     WSCloseCode,
+    WSMessage,
     WSMsgType,
 )
-from .http_websocket import WebSocketWriter, WSMessageError, WSMessageType
+from .http_websocket import WebSocketWriter, WSMessageError
 from .streams import EofStream, FlowControlDataQueue
 from .typedefs import (
     DEFAULT_JSON_DECODER,
@@ -45,7 +46,7 @@ DEFAULT_WS_CLIENT_TIMEOUT: Final[ClientWSTimeout] = ClientWSTimeout(
 class ClientWebSocketResponse:
     def __init__(
         self,
-        reader: "FlowControlDataQueue[WSMessageType]",
+        reader: "FlowControlDataQueue[WSMessage]",
         writer: WebSocketWriter,
         protocol: Optional[str],
         response: ClientResponse,
@@ -305,7 +306,7 @@ class ClientWebSocketResponse:
         else:
             return False
 
-    async def receive(self, timeout: Optional[float] = None) -> WSMessageType:
+    async def receive(self, timeout: Optional[float] = None) -> WSMessage:
         receive_timeout = timeout or self._timeout.ws_receive
 
         while True:
@@ -398,7 +399,7 @@ class ClientWebSocketResponse:
     def __aiter__(self) -> "ClientWebSocketResponse":
         return self
 
-    async def __anext__(self) -> WSMessageType:
+    async def __anext__(self) -> WSMessage:
         msg = await self.receive()
         if msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSING, WSMsgType.CLOSED):
             raise StopAsyncIteration
