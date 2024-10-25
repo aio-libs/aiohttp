@@ -5,6 +5,7 @@ pre-commit
 proxy.py
 pytest
 pytest-mock
+pytest_codspeed
 python-on-whales
 slotscheck
 trustme
