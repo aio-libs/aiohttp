@@ -479,7 +479,9 @@ class WebSocketReader:
                     self.queue.feed_data(msg)
                     continue
 
-                msg = tuple.__new__(WSMessageBinary, (payload_merged, "", WSMsgType.BINARY))
+                msg = tuple.__new__(
+                    WSMessageBinary, (payload_merged, "", WSMsgType.BINARY)
+                )
                 self.queue.feed_data(msg)
             elif opcode == WSMsgType.CLOSE:
                 if len(payload) >= 2:
