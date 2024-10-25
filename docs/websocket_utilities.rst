@@ -137,7 +137,7 @@ WebSocket utilities
 
    Websocket message, returned by ``.receive()`` calls. This is actually defined as a
    :class:`typing.Union` of different message types. All messages are a
-   :class:`collections.namedtuple` with the below attributes.
+   :func:`collections.namedtuple` with the below attributes.
 
    .. attribute:: data
 
@@ -155,8 +155,6 @@ WebSocket utilities
       5. :class:`bytes` for :attr:`WSMsgType.PONG` messages.
 
       6. :class:`Exception` for :attr:`WSMsgType.ERROR` messages.
-
-      7. ``None`` for :attr:`WSMsgType.CLOSED`/:attr:`WSMsgType.CLOSING` messages.
 
    .. attribute:: extra
 
