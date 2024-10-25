@@ -36,6 +36,7 @@ cffi==1.17.1
     # via
     #   cryptography
     #   pycares
+    #   pytest-codspeed
 cfgv==3.4.0
     # via pre-commit
 charset-normalizer==3.4.0
@@ -65,7 +66,9 @@ docutils==0.20.1
 exceptiongroup==1.2.2
     # via pytest
 filelock==3.16.1
-    # via virtualenv
+    # via
+    #   pytest-codspeed
+    #   virtualenv
 freezegun==1.5.1
     # via
     #   -r requirements/lint.in
@@ -111,7 +114,7 @@ multidict==6.1.0
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.11.2 ; implementation_name == "cpython"
+mypy==1.13.0 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -163,8 +166,13 @@ pytest==8.3.3
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
+    #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
+pytest-codspeed==2.2.1
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/test.in
 pytest-cov==5.0.0
     # via -r requirements/test.in
 pytest-mock==3.14.0
