@@ -14,7 +14,6 @@ from typing import (
     Any,
     Callable,
     Final,
-    Generic,
     List,
     Literal,
     NamedTuple,
@@ -22,10 +21,8 @@ from typing import (
     Pattern,
     Set,
     Tuple,
-    TypeVar,
     Union,
     cast,
-    overload,
 )
 
 from .base_protocol import BaseProtocol

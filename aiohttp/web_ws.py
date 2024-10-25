@@ -5,7 +5,7 @@ import dataclasses
 import hashlib
 import json
 import sys
-from typing import Any, Final, Iterable, Optional, Tuple, cast
+from typing import Any, Final, Iterable, Optional, Tuple
 
 from multidict import CIMultiDict
 
