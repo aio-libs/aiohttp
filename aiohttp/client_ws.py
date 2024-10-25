@@ -10,10 +10,10 @@ from .client_exceptions import ClientError, ServerTimeoutError
 from .client_reqrep import ClientResponse
 from .helpers import calculate_timeout_when, set_result
 from .http import (
+    WS_CLOSED_MESSAGE,
+    WS_CLOSING_MESSAGE,
     WebSocketError,
     WSCloseCode,
-    WSMessageClosed,
-    WSMessageClosing,
     WSMsgType,
 )
 from .http_websocket import WebSocketWriter, WSMessageError, WSMessageType
@@ -263,7 +263,7 @@ class ClientWebSocketResponse:
             assert self._loop is not None
             self._close_wait = self._loop.create_future()
             self._set_closing()
-            self._reader.feed_data(WSMessageClosing())
+            self._reader.feed_data(WS_CLOSING_MESSAGE)
             await self._close_wait
 
         if not self._closed:
@@ -313,10 +313,10 @@ class ClientWebSocketResponse:
                 raise RuntimeError("Concurrent call to receive() is not allowed")
 
             if self._closed:
-                return WSMessageClosed()
+                return WS_CLOSED_MESSAGE
             elif self._closing:
                 await self.close()
-                return WSMessageClosed()
+                return WS_CLOSED_MESSAGE
 
             try:
                 self._waiting = True
@@ -341,12 +341,12 @@ class ClientWebSocketResponse:
             except EofStream:
                 self._close_code = WSCloseCode.OK
                 await self.close()
-                return WSMessageClosed()
+                return WS_CLOSED_MESSAGE
             except ClientError:
                 # Likely ServerDisconnectedError when connection is lost
                 self._set_closed()
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
-                return WSMessageClosed()
+                return WS_CLOSED_MESSAGE
             except WebSocketError as exc:
                 self._close_code = exc.code
                 await self.close(code=exc.code)

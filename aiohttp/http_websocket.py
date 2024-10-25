@@ -7,7 +7,6 @@ import random
 import re
 import sys
 import zlib
-from dataclasses import dataclass
 from enum import IntEnum
 from functools import partial
 from struct import Struct
@@ -192,6 +191,9 @@ WSMessageType = Union[
     WSMessageClosed,
     WSMessageError,
 ]
+
+WS_CLOSED_MESSAGE = WSMessageClosed()
+WS_CLOSING_MESSAGE = WSMessageClosing()
 
 
 class WebSocketError(Exception):
@@ -469,11 +471,15 @@ class WebSocketReader:
                             WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
                         ) from exc
 
-                    msg = WSMessageText(data=text, extra="")
+                    # XXX: The Text and Binary messages here can be a performance
+                    # bottleneck, so we use tuple.__new__ to improve performance.
+                    # This is not type safe, but many tests should fail in
+                    # test_client_ws_functional.py if this is wrong.
+                    msg = tuple.__new__(WSMessageText, (text, "", WSMsgType.TEXT))
                     self.queue.feed_data(msg)
                     continue
 
-                msg = WSMessageBinary(data=payload_merged, extra="")
+                msg = tuple.__new__(WSMessageBinary, (payload_merged, "", WSMsgType.BINARY))
                 self.queue.feed_data(msg)
             elif opcode == WSMsgType.CLOSE:
                 if len(payload) >= 2:

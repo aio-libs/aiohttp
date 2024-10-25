@@ -13,13 +13,13 @@ from . import hdrs
 from .abc import AbstractStreamWriter
 from .helpers import calculate_timeout_when, set_exception, set_result
 from .http import (
+    WS_CLOSED_MESSAGE,
+    WS_CLOSING_MESSAGE,
     WS_KEY,
     WebSocketError,
     WebSocketReader,
     WebSocketWriter,
     WSCloseCode,
-    WSMessageClosed,
-    WSMessageClosing,
     WSMessageType,
     WSMsgType,
     ws_ext_gen,
@@ -480,7 +480,7 @@ class WebSocketResponse(StreamResponse):
             assert self._loop is not None
             assert self._close_wait is None
             self._close_wait = self._loop.create_future()
-            reader.feed_data(WSMessageClosing())
+            reader.feed_data(WS_CLOSING_MESSAGE)
             await self._close_wait
 
         if self._closing:
@@ -537,9 +537,9 @@ class WebSocketResponse(StreamResponse):
                 self._conn_lost += 1
                 if self._conn_lost >= THRESHOLD_CONNLOST_ACCESS:
                     raise RuntimeError("WebSocket connection is closed.")
-                return WSMessageClosed()
+                return WS_CLOSED_MESSAGE
             elif self._closing:
-                return WSMessageClosing()
+                return WS_CLOSING_MESSAGE
 
             try:
                 self._waiting = True
@@ -563,7 +563,7 @@ class WebSocketResponse(StreamResponse):
             except EofStream:
                 self._close_code = WSCloseCode.OK
                 await self.close()
-                return WSMessageClosed()
+                return WS_CLOSED_MESSAGE
             except WebSocketError as exc:
                 self._close_code = exc.code
                 await self.close(code=exc.code)

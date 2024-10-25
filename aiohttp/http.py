@@ -11,13 +11,13 @@ from .http_parser import (
     RawResponseMessage,
 )
 from .http_websocket import (
+    WS_CLOSED_MESSAGE,
+    WS_CLOSING_MESSAGE,
     WS_KEY,
     WebSocketError,
     WebSocketReader,
     WebSocketWriter,
     WSCloseCode,
-    WSMessageClosed,
-    WSMessageClosing,
     WSMessageType,
     WSMsgType,
     ws_ext_gen,
@@ -41,8 +41,8 @@ __all__ = (
     "RawRequestMessage",
     "RawResponseMessage",
     # .http_websocket
-    "WSMessageClosed",
-    "WSMessageClosing",
+    "WS_CLOSED_MESSAGE",
+    "WS_CLOSING_MESSAGE",
     "WS_KEY",
     "WebSocketReader",
     "WebSocketWriter",
