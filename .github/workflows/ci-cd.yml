@@ -51,7 +51,7 @@ jobs:
       with:
         python-version: 3.11
     - name: Cache PyPI
-      uses: actions/cache@v4.1.0
+      uses: actions/cache@v4.1.2
       with:
         key: pip-lint-${{ hashFiles('requirements/*.txt') }}
         path: ~/.cache/pip
@@ -112,7 +112,7 @@ jobs:
       with:
         submodules: true
     - name: Cache llhttp generated files
-      uses: actions/cache@v4.1.0
+      uses: actions/cache@v4.1.2
       id: cache
       with:
         key: llhttp-${{ hashFiles('vendor/llhttp/package*.json', 'vendor/llhttp/src/**/*') }}
@@ -179,7 +179,7 @@ jobs:
         echo "dir=$(pip cache dir)" >> "${GITHUB_OUTPUT}"
       shell: bash
     - name: Cache PyPI
-      uses: actions/cache@v4.1.0
+      uses: actions/cache@v4.1.2
       with:
         key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-${{ hashFiles('requirements/*.txt') }}
         path: ${{ steps.pip-cache.outputs.dir }}
@@ -253,6 +253,47 @@ jobs:
       uses: codecov/test-results-action@v1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
+
+  benchmark:
+    name: Benchmark
+    needs: gen_llhttp
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - name: Checkout project
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+    - name: Setup Python 3.12
+      id: python-install
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.12
+        cache: pip
+        cache-dependency-path: requirements/*.txt
+    - name: Update pip, wheel, setuptools, build, twine
+      run: |
+        python -m pip install -U pip wheel setuptools build twine
+    - name: Install dependencies
+      run: |
+        python -m pip install -r requirements/test.in -c requirements/test.txt
+    - name: Restore llhttp generated files
+      uses: actions/download-artifact@v3
+      with:
+        name: llhttp
+        path: vendor/llhttp/build/
+    - name: Cythonize
+      run: |
+        make cythonize
+    - name: Install self
+      run: python -m pip install -e .
+    - name: Run benchmarks
+      uses: CodSpeedHQ/action@v3
+      with:
+        token: ${{ secrets.CODSPEED_TOKEN }}
+        run: python -Im pytest --no-cov -vvvvv --codspeed
+
 
   check:  # This job does nothing and is only used for the branch protection
     if: always()
