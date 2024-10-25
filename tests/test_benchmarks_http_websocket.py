@@ -5,6 +5,7 @@ import asyncio
 from pytest_codspeed import BenchmarkFixture  # type: ignore[import-untyped]
 
 from aiohttp import DataQueue
+from aiohttp.base_protocol import BaseProtocol
 from aiohttp.http_websocket import (
     WebSocketReader,
     WebSocketWriter,
@@ -46,12 +47,12 @@ def test_send_one_hundred_websocket_text_messages(
         def write(self, data: bytes) -> None:
             """Swallow writes."""
 
-    class MockProtocol(asyncio.Protocol):
+    class MockProtocol(BaseProtocol):
 
         async def _drain_helper(self) -> None:
             """Swallow drain."""
 
-    writer = WebSocketWriter(MockProtocol(), MockTransport())
+    writer = WebSocketWriter(MockProtocol(loop=loop), MockTransport())
     raw_message = b"Hello, World!" * 100
 
     async def _send_one_hundred_websocket_text_messages() -> None:
