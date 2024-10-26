@@ -28,6 +28,10 @@ from aiohttp.http_websocket import (
 )
 
 
+class PatchableWebsocketReader(WebSocketReader):
+    """WebSocketReader subclass that allows for patching parse_frame."""
+
+
 def build_frame(
     message: bytes,
     opcode: int,
@@ -97,8 +101,8 @@ def out(loop: asyncio.AbstractEventLoop) -> aiohttp.DataQueue[WSMessage]:
 
 
 @pytest.fixture()
-def parser(out: aiohttp.DataQueue[WSMessage]) -> WebSocketReader:
-    return WebSocketReader(out, 4 * 1024 * 1024)
+def parser(out: aiohttp.DataQueue[WSMessage]) -> PatchableWebsocketReader:
+    return PatchableWebsocketReader(out, 4 * 1024 * 1024)
 
 
 def test_parse_frame(parser: WebSocketReader) -> None:
