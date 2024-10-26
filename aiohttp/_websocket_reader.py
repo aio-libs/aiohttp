@@ -24,18 +24,21 @@ from .compression_utils import ZLibDecompressor
 from .helpers import set_exception
 from .streams import DataQueue
 
-MESSAGE_TYPES_WITH_CONTENT: Final[Set[WSMsgType]] = {
-    WSMsgType.BINARY,
-    WSMsgType.TEXT,
-    WSMsgType.CONTINUATION,
-}
 ALLOWED_CLOSE_CODES: Final[Set[int]] = {int(i) for i in WSCloseCode}
-
 
 READ_HEADER = 1
 READ_PAYLOAD_LENGTH = 2
 READ_PAYLOAD_MASK = 3
 READ_PAYLOAD = 4
+
+# WSMsgType values unpacked so they can by
+# cythonized to unsigned int
+OP_CODE_CONTINUATION = WSMsgType.CONTINUATION.value
+OP_CODE_TEXT = WSMsgType.TEXT.value
+OP_CODE_BINARY = WSMsgType.BINARY.value
+OP_CODE_CLOSE = WSMsgType.CLOSE.value
+OP_CODE_PING = WSMsgType.PING.value
+OP_CODE_PONG = WSMsgType.PONG.value
 
 
 class WebSocketReader:
@@ -81,10 +84,15 @@ class WebSocketReader:
 
     def _feed_data(self, data: bytes) -> None:
         msg: WSMessage
-        for fin, opcode, payload, compressed in self.parse_frame(data):
-            if opcode in MESSAGE_TYPES_WITH_CONTENT:
+        for frame in self.parse_frame(data):
+            fin = frame[0]
+            opcode = frame[1]
+            payload = frame[2]
+            compressed = frame[3]
+
+            is_continuation = opcode == OP_CODE_CONTINUATION
+            if opcode == OP_CODE_TEXT or opcode == OP_CODE_BINARY or is_continuation:
                 # load text/binary
-                is_continuation = opcode == WSMsgType.CONTINUATION
                 if not fin:
                     # got partial frame payload
                     if not is_continuation:
@@ -152,7 +160,7 @@ class WebSocketReader:
                 else:
                     payload_merged = bytes(assembled_payload)
 
-                if opcode == WSMsgType.TEXT:
+                if opcode == OP_CODE_TEXT:
                     try:
                         text = payload_merged.decode("utf-8")
                     except UnicodeDecodeError as exc:
@@ -172,7 +180,7 @@ class WebSocketReader:
                     WSMessageBinary, (payload_merged, "", WSMsgType.BINARY)
                 )
                 self.queue.feed_data(msg)
-            elif opcode == WSMsgType.CLOSE:
+            elif opcode == OP_CODE_CLOSE:
                 if len(payload) >= 2:
                     close_code = UNPACK_CLOSE_CODE(payload[:2])[0]
                     if close_code < 3000 and close_code not in ALLOWED_CLOSE_CODES:
@@ -197,11 +205,11 @@ class WebSocketReader:
 
                 self.queue.feed_data(msg)
 
-            elif opcode == WSMsgType.PING:
+            elif opcode == OP_CODE_PING:
                 msg = WSMessagePing(data=payload, extra="")
                 self.queue.feed_data(msg)
 
-            elif opcode == WSMsgType.PONG:
+            elif opcode == OP_CODE_PONG:
                 msg = WSMessagePong(data=payload, extra="")
                 self.queue.feed_data(msg)
 
