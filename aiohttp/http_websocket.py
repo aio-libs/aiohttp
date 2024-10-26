@@ -15,6 +15,7 @@ from typing import (
     Callable,
     Final,
     List,
+    Literal,
     NamedTuple,
     Optional,
     Pattern,
@@ -110,26 +111,86 @@ DEFAULT_LIMIT: Final[int] = 2**16
 MASK_LEN: Final[int] = 4
 
 
-class WSMessage(NamedTuple):
-    type: WSMsgType
-    # To type correctly, this would need some kind of tagged union for each type.
-    data: Any
-    extra: Optional[str]
+class WSMessageContinuation(NamedTuple):
+    data: bytes
+    extra: Optional[str] = None
+    type: Literal[WSMsgType.CONTINUATION] = WSMsgType.CONTINUATION
 
-    def json(self, *, loads: Callable[[Any], Any] = json.loads) -> Any:
-        """Return parsed JSON data.
 
-        .. versionadded:: 0.22
-        """
+class WSMessageText(NamedTuple):
+    data: str
+    extra: Optional[str] = None
+    type: Literal[WSMsgType.TEXT] = WSMsgType.TEXT
+
+    def json(
+        self, *, loads: Callable[[Union[str, bytes, bytearray]], Any] = json.loads
+    ) -> Any:
+        """Return parsed JSON data."""
         return loads(self.data)
 
 
-# Constructing the tuple directly to avoid the overhead of
-# the lambda and arg processing since NamedTuples are constructed
-# with a run time built lambda
-# https://github.com/python/cpython/blob/d83fcf8371f2f33c7797bc8f5423a8bca8c46e5c/Lib/collections/__init__.py#L441
-WS_CLOSED_MESSAGE = tuple.__new__(WSMessage, (WSMsgType.CLOSED, None, None))
-WS_CLOSING_MESSAGE = tuple.__new__(WSMessage, (WSMsgType.CLOSING, None, None))
+class WSMessageBinary(NamedTuple):
+    data: bytes
+    extra: Optional[str] = None
+    type: Literal[WSMsgType.BINARY] = WSMsgType.BINARY
+
+    def json(
+        self, *, loads: Callable[[Union[str, bytes, bytearray]], Any] = json.loads
+    ) -> Any:
+        """Return parsed JSON data."""
+        return loads(self.data)
+
+
+class WSMessagePing(NamedTuple):
+    data: bytes
+    extra: Optional[str] = None
+    type: Literal[WSMsgType.PING] = WSMsgType.PING
+
+
+class WSMessagePong(NamedTuple):
+    data: bytes
+    extra: Optional[str] = None
+    type: Literal[WSMsgType.PONG] = WSMsgType.PONG
+
+
+class WSMessageClose(NamedTuple):
+    data: int
+    extra: Optional[str] = None
+    type: Literal[WSMsgType.CLOSE] = WSMsgType.CLOSE
+
+
+class WSMessageClosing(NamedTuple):
+    data: None = None
+    extra: Optional[str] = None
+    type: Literal[WSMsgType.CLOSING] = WSMsgType.CLOSING
+
+
+class WSMessageClosed(NamedTuple):
+    data: None = None
+    extra: Optional[str] = None
+    type: Literal[WSMsgType.CLOSED] = WSMsgType.CLOSED
+
+
+class WSMessageError(NamedTuple):
+    data: BaseException
+    extra: Optional[str] = None
+    type: Literal[WSMsgType.ERROR] = WSMsgType.ERROR
+
+
+WSMessage = Union[
+    WSMessageContinuation,
+    WSMessageText,
+    WSMessageBinary,
+    WSMessagePing,
+    WSMessagePong,
+    WSMessageClose,
+    WSMessageClosing,
+    WSMessageClosed,
+    WSMessageError,
+]
+
+WS_CLOSED_MESSAGE = WSMessageClosed()
+WS_CLOSING_MESSAGE = WSMessageClosing()
 
 
 class WebSocketError(Exception):
@@ -327,6 +388,7 @@ class WebSocketReader:
         return False, b""
 
     def _feed_data(self, data: bytes) -> None:
+        msg: WSMessage
         for fin, opcode, payload, compressed in self.parse_frame(data):
             if opcode in MESSAGE_TYPES_WITH_CONTENT:
                 # load text/binary
@@ -406,13 +468,17 @@ class WebSocketReader:
                             WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
                         ) from exc
 
-                    # tuple.__new__ is used to avoid the overhead of the lambda
-                    msg = tuple.__new__(WSMessage, (WSMsgType.TEXT, text, ""))
+                    # XXX: The Text and Binary messages here can be a performance
+                    # bottleneck, so we use tuple.__new__ to improve performance.
+                    # This is not type safe, but many tests should fail in
+                    # test_client_ws_functional.py if this is wrong.
+                    msg = tuple.__new__(WSMessageText, (text, "", WSMsgType.TEXT))
                     self.queue.feed_data(msg)
                     continue
 
-                # tuple.__new__ is used to avoid the overhead of the lambda
-                msg = tuple.__new__(WSMessage, (WSMsgType.BINARY, payload_merged, ""))
+                msg = tuple.__new__(
+                    WSMessageBinary, (payload_merged, "", WSMsgType.BINARY)
+                )
                 self.queue.feed_data(msg)
             elif opcode == WSMsgType.CLOSE:
                 if len(payload) >= 2:
@@ -428,25 +494,23 @@ class WebSocketReader:
                         raise WebSocketError(
                             WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
                         ) from exc
-                    msg = tuple.__new__(
-                        WSMessage, (WSMsgType.CLOSE, close_code, close_message)
-                    )
+                    msg = WSMessageClose(data=close_code, extra=close_message)
                 elif payload:
                     raise WebSocketError(
                         WSCloseCode.PROTOCOL_ERROR,
                         f"Invalid close frame: {fin} {opcode} {payload!r}",
                     )
                 else:
-                    msg = tuple.__new__(WSMessage, (WSMsgType.CLOSE, 0, ""))
+                    msg = WSMessageClose(data=0, extra="")
 
                 self.queue.feed_data(msg)
 
             elif opcode == WSMsgType.PING:
-                msg = tuple.__new__(WSMessage, (WSMsgType.PING, payload, ""))
+                msg = WSMessagePing(data=payload, extra="")
                 self.queue.feed_data(msg)
 
             elif opcode == WSMsgType.PONG:
-                msg = tuple.__new__(WSMessage, (WSMsgType.PONG, payload, ""))
+                msg = WSMessagePong(data=payload, extra="")
                 self.queue.feed_data(msg)
 
             else:

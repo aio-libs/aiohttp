@@ -9,7 +9,8 @@ from multidict import CIMultiDict
 from pytest_mock import MockerFixture
 
 from aiohttp import WSMsgType, web
-from aiohttp.http import WS_CLOSED_MESSAGE, WSMessage
+from aiohttp.http import WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE
+from aiohttp.http_websocket import WSMessageClose
 from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web_ws import WebSocketReady
@@ -420,7 +421,7 @@ async def test_receive_close_but_left_open(
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
-    close_message = WSMessage(WSMsgType.CLOSE, 1000, "close")
+    close_message = WSMessageClose(data=1000, extra="close")
 
     ws._reader = mock.Mock()
     ws._reader.read = mock.AsyncMock(return_value=close_message)
@@ -442,7 +443,7 @@ async def test_receive_closing(
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
-    closing_message = WSMessage(WSMsgType.CLOSING, 1000, "closing")
+    closing_message = WS_CLOSING_MESSAGE
 
     ws._reader = mock.Mock()
     read_mock = mock.AsyncMock(return_value=closing_message)
@@ -472,7 +473,7 @@ async def test_close_after_closing(
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
-    closing_message = WSMessage(WSMsgType.CLOSING, 1000, "closing")
+    closing_message = WS_CLOSING_MESSAGE
 
     ws._reader = mock.Mock()
     ws._reader.read = mock.AsyncMock(return_value=closing_message)

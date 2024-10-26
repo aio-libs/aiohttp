@@ -17,6 +17,11 @@ from aiohttp.http_websocket import (
     PACK_LEN2,
     PACK_LEN3,
     WebSocketReader,
+    WSMessageBinary,
+    WSMessageClose,
+    WSMessagePing,
+    WSMessagePong,
+    WSMessageText,
     _websocket_mask,
 )
 
@@ -170,7 +175,7 @@ def test_ping_frame(out: aiohttp.DataQueue[WSMessage], parser: WebSocketReader) 
 
         parser.feed_data(b"")
         res = out._buffer[0]
-        assert res == (WSMsgType.PING, b"data", "")
+        assert res == WSMessagePing(data=b"data", extra="")
 
 
 def test_pong_frame(out: aiohttp.DataQueue[WSMessage], parser: WebSocketReader) -> None:
@@ -179,7 +184,7 @@ def test_pong_frame(out: aiohttp.DataQueue[WSMessage], parser: WebSocketReader) 
 
         parser.feed_data(b"")
         res = out._buffer[0]
-        assert res == (WSMsgType.PONG, b"data", "")
+        assert res == WSMessagePong(data=b"data", extra="")
 
 
 def test_close_frame(
@@ -190,7 +195,7 @@ def test_close_frame(
 
         parser.feed_data(b"")
         res = out._buffer[0]
-        assert res == (WSMsgType.CLOSE, 0, "")
+        assert res == WSMessageClose(data=0, extra="")
 
 
 def test_close_frame_info(
@@ -201,7 +206,7 @@ def test_close_frame_info(
 
         parser.feed_data(b"")
         res = out._buffer[0]
-        assert res == WSMessage(WSMsgType.CLOSE, 12337, "12345")
+        assert res == WSMessageClose(data=12337, extra="12345")
 
 
 def test_close_frame_invalid(
@@ -252,7 +257,7 @@ def test_simple_text(
     data = build_frame(b"text", WSMsgType.TEXT)
     parser._feed_data(data)
     res = out._buffer[0]
-    assert res == (WSMsgType.TEXT, "text", "")
+    assert res == WSMessageText(data="text", extra="")
 
 
 def test_simple_text_unicode_err(parser: WebSocketReader) -> None:
@@ -272,7 +277,7 @@ def test_simple_binary(
 
         parser.feed_data(b"")
         res = out._buffer[0]
-        assert res == (WSMsgType.BINARY, b"binary", "")
+        assert res == WSMessageBinary(data=b"binary", extra="")
 
 
 def test_fragmentation_header(
@@ -283,7 +288,7 @@ def test_fragmentation_header(
     parser._feed_data(data[1:])
 
     res = out._buffer[0]
-    assert res == (WSMessage(WSMsgType.TEXT, "a", ""))
+    assert res == WSMessageText(data="a", extra="")
 
 
 def test_continuation(
@@ -296,7 +301,7 @@ def test_continuation(
     parser._feed_data(data2)
 
     res = out._buffer[0]
-    assert res == (WSMessage(WSMsgType.TEXT, "line1line2", ""))
+    assert res == WSMessageText(data="line1line2", extra="")
 
 
 def test_continuation_with_ping(
@@ -319,9 +324,9 @@ def test_continuation_with_ping(
         parser._feed_data(data3)
 
         res = out._buffer[0]
-        assert res == WSMessage(WSMsgType.PING, b"", "")
+        assert res == WSMessagePing(data=b"", extra="")
         res = out._buffer[1]
-        assert res == WSMessage(WSMsgType.TEXT, "line1line2", "")
+        assert res == WSMessageText(data="line1line2", extra="")
 
 
 def test_continuation_err(
@@ -354,9 +359,9 @@ def test_continuation_with_close(
 
         parser.feed_data(b"")
         res = out._buffer[0]
-        assert res, WSMessage(WSMsgType.CLOSE, 1002, "test")
+        assert res == WSMessageClose(data=1002, extra="test")
         res = out._buffer[1]
-        assert res == WSMessage(WSMsgType.TEXT, "line1line2", "")
+        assert res == WSMessageText(data="line1line2", extra="")
 
 
 def test_continuation_with_close_unicode_err(
@@ -424,9 +429,9 @@ def test_continuation_with_close_empty(
 
         parser.feed_data(b"")
         res = out._buffer[0]
-        assert res, WSMessage(WSMsgType.CLOSE, 0, "")
+        assert res == WSMessageClose(data=0, extra="")
         res = out._buffer[1]
-        assert res == WSMessage(WSMsgType.TEXT, "line1line2", "")
+        assert res == WSMessageText(data="line1line2", extra="")
 
 
 websocket_mask_data: bytes = b"some very long data for masking by websocket"
