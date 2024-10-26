@@ -14,6 +14,9 @@ cdef object WSMsgType
 cdef object WSMessageText
 cdef object WSMessageBinary
 
+cdef set ALLOWED_CLOSE_CODES
+cdef set MESSAGE_TYPES_WITH_CONTENT
+
 cdef class WebSocketReader:
 
     cdef object queue
