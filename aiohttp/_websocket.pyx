@@ -213,11 +213,11 @@ cdef class WebSocketReaderBaseCython:
                 chunk_len = buf_length - start_pos
                 if length >= chunk_len:
                     self._payload_length = length - chunk_len
-                    payload += buf[start_pos:]
+                    payload.extend(buf[start_pos:])
                     start_pos = buf_length
                 else:
                     self._payload_length = 0
-                    payload += buf[start_pos : start_pos + length]
+                    payload.extend(buf[start_pos : start_pos + length])
                     start_pos = start_pos + length
 
                 if self._payload_length != 0:
