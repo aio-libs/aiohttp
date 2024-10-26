@@ -7,12 +7,12 @@ from ._websocket_helpers import (
     UNPACK_CLOSE_CODE,
     UNPACK_LEN2,
     UNPACK_LEN3,
-    WSCloseCode,
     websocket_mask,
 )
 from ._websocket_models import (
     WS_DEFLATE_TRAILING,
     WebSocketError,
+    WSCloseCode,
     WSMessage,
     WSMessageBinary,
     WSMessageClose,
