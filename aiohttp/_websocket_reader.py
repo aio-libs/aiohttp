@@ -1,6 +1,5 @@
 """Reader for WebSocket protocol versions 13 and 8."""
 
-from enum import IntEnum
 from typing import Final, List, Optional, Set, Tuple
 
 from ._websocket_helpers import (
@@ -36,11 +35,10 @@ MESSAGE_TYPES_WITH_CONTENT: Final = frozenset(
 ALLOWED_CLOSE_CODES: Final[Set[int]] = {int(i) for i in WSCloseCode}
 
 
-class WSParserState(IntEnum):
-    READ_HEADER = 1
-    READ_PAYLOAD_LENGTH = 2
-    READ_PAYLOAD_MASK = 3
-    READ_PAYLOAD = 4
+READ_HEADER = 1
+READ_PAYLOAD_LENGTH = 2
+READ_PAYLOAD_MASK = 3
+READ_PAYLOAD = 4
 
 
 class WebSocketReader:
@@ -52,7 +50,7 @@ class WebSocketReader:
 
         self._exc: Optional[BaseException] = None
         self._partial = bytearray()
-        self._state = WSParserState.READ_HEADER
+        self._state = READ_HEADER
 
         self._opcode: Optional[int] = None
         self._frame_fin = False
@@ -228,12 +226,13 @@ class WebSocketReader:
 
         while True:
             # read header
-            if self._state is WSParserState.READ_HEADER:
+            if self._state == READ_HEADER:
                 if buf_length - start_pos < 2:
                     break
                 data = buf[start_pos : start_pos + 2]
                 start_pos += 2
-                first_byte, second_byte = data
+                first_byte = data[0]
+                second_byte = data[1]
 
                 fin = (first_byte >> 7) & 1
                 rsv1 = (first_byte >> 6) & 1
@@ -289,10 +288,10 @@ class WebSocketReader:
                 self._frame_opcode = opcode
                 self._has_mask = bool(has_mask)
                 self._payload_length_flag = length
-                self._state = WSParserState.READ_PAYLOAD_LENGTH
+                self._state = READ_PAYLOAD_LENGTH
 
             # read payload length
-            if self._state is WSParserState.READ_PAYLOAD_LENGTH:
+            if self._state == READ_PAYLOAD_LENGTH:
                 length_flag = self._payload_length_flag
                 if length_flag == 126:
                     if buf_length - start_pos < 2:
@@ -309,21 +308,17 @@ class WebSocketReader:
                 else:
                     self._payload_length = length_flag
 
-                self._state = (
-                    WSParserState.READ_PAYLOAD_MASK
-                    if self._has_mask
-                    else WSParserState.READ_PAYLOAD
-                )
+                self._state = READ_PAYLOAD_MASK if self._has_mask else READ_PAYLOAD
 
             # read payload mask
-            if self._state is WSParserState.READ_PAYLOAD_MASK:
+            if self._state == READ_PAYLOAD_MASK:
                 if buf_length - start_pos < 4:
                     break
                 self._frame_mask = buf[start_pos : start_pos + 4]
                 start_pos += 4
-                self._state = WSParserState.READ_PAYLOAD
+                self._state = READ_PAYLOAD
 
-            if self._state is WSParserState.READ_PAYLOAD:
+            if self._state == READ_PAYLOAD:
                 length = self._payload_length
                 payload = self._frame_payload
 
@@ -348,7 +343,7 @@ class WebSocketReader:
                     (self._frame_fin, self._frame_opcode, payload, self._compressed)
                 )
                 self._frame_payload = bytearray()
-                self._state = WSParserState.READ_HEADER
+                self._state = READ_HEADER
 
         self._tail = buf[start_pos:]
 
