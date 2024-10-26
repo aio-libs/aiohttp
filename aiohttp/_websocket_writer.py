@@ -16,16 +16,21 @@ from ._websocket_helpers import (
     PACK_RANDBITS,
     websocket_mask,
 )
-from ._websocket_models import (
-    WEBSOCKET_MAX_SYNC_CHUNK_SIZE,
-    WS_DEFLATE_TRAILING,
-    WSMsgType,
-)
+from ._websocket_models import WS_DEFLATE_TRAILING, WSMsgType
 from .base_protocol import BaseProtocol
 from .client_exceptions import ClientConnectionResetError
 from .compression_utils import ZLibCompressor
 
 DEFAULT_LIMIT: Final[int] = 2**16
+
+# For websockets, keeping latency low is extremely important as implementations
+# generally expect to be able to send and receive messages quickly.  We use a
+# larger chunk size than the default to reduce the number of executor calls
+# since the executor is a significant source of latency and overhead when
+# the chunks are small. A size of 5KiB was chosen because it is also the
+# same value python-zlib-ng choose to use as the threshold to release the GIL.
+
+WEBSOCKET_MAX_SYNC_CHUNK_SIZE = 5 * 1024
 
 
 class WebSocketWriter:

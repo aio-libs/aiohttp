@@ -8,22 +8,24 @@ from unittest import mock
 import pytest
 
 import aiohttp
-from aiohttp import http_websocket
-from aiohttp.http import WebSocketError, WSCloseCode, WSMessage, WSMsgType
-from aiohttp.http_websocket import (
-    _WS_DEFLATE_TRAILING,
+from aiohttp import _websocket_helpers
+from aiohttp._websocket_helpers import (
     PACK_CLOSE_CODE,
     PACK_LEN1,
     PACK_LEN2,
     PACK_LEN3,
-    WebSocketReader,
+    websocket_mask,
+)
+from aiohttp._websocket_models import (
+    WS_DEFLATE_TRAILING,
     WSMessageBinary,
     WSMessageClose,
     WSMessagePing,
     WSMessagePong,
     WSMessageText,
-    _websocket_mask,
 )
+from aiohttp.http import WebSocketError, WSCloseCode, WSMessage, WSMsgType
+from aiohttp.http_websocket import WebSocketReader
 
 
 def build_frame(
@@ -39,7 +41,7 @@ def build_frame(
         compressobj = zlib.compressobj(wbits=-9)
         message = compressobj.compress(message)
         message = message + compressobj.flush(zlib.Z_SYNC_FLUSH)
-        if message.endswith(_WS_DEFLATE_TRAILING):
+        if message.endswith(WS_DEFLATE_TRAILING):
             message = message[:-4]
     msg_length = len(message)
     if use_mask:  # pragma: no cover
@@ -66,7 +68,7 @@ def build_frame(
         maski = random.randrange(0, 0xFFFFFFFF)
         mask = maski.to_bytes(4, "big")
         message = bytearray(message)
-        _websocket_mask(mask, message)
+        websocket_mask(mask, message)
         if noheader:
             return message
         else:
@@ -443,31 +445,31 @@ websocket_mask_masked: bytes = (
 
 def test_websocket_mask_python() -> None:
     message = bytearray(websocket_mask_data)
-    http_websocket._websocket_mask_python(websocket_mask_mask, message)
+    _websocket_helpers._websocket_mask_python(websocket_mask_mask, message)
     assert message == websocket_mask_masked
 
 
 @pytest.mark.skipif(
-    not hasattr(http_websocket, "_websocket_mask_cython"), reason="Requires Cython"
+    not hasattr(_websocket_helpers, "_websocket_mask_cython"), reason="Requires Cython"
 )
 def test_websocket_mask_cython() -> None:
     message = bytearray(websocket_mask_data)
-    http_websocket._websocket_mask_cython(websocket_mask_mask, message)  # type: ignore[attr-defined]
+    _websocket_helpers._websocket_mask_cython(websocket_mask_mask, message)  # type: ignore[attr-defined]
     assert message == websocket_mask_masked
 
 
 def test_websocket_mask_python_empty() -> None:
     message = bytearray()
-    http_websocket._websocket_mask_python(websocket_mask_mask, message)
+    _websocket_helpers._websocket_mask_python(websocket_mask_mask, message)
     assert message == bytearray()
 
 
 @pytest.mark.skipif(
-    not hasattr(http_websocket, "_websocket_mask_cython"), reason="Requires Cython"
+    not hasattr(_websocket_helpers, "_websocket_mask_cython"), reason="Requires Cython"
 )
 def test_websocket_mask_cython_empty() -> None:
     message = bytearray()
-    http_websocket._websocket_mask_cython(websocket_mask_mask, message)  # type: ignore[attr-defined]
+    _websocket_helpers._websocket_mask_cython(websocket_mask_mask, message)  # type: ignore[attr-defined]
     assert message == bytearray()
 
 

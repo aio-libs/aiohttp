@@ -1,12 +1,14 @@
 """WebSocket protocol versions 13 and 8."""
 
-from ._websocket_helpers import WS_KEY
+from ._websocket_helpers import WS_KEY, ws_ext_gen, ws_ext_parse
 from ._websocket_models import (
     WS_CLOSED_MESSAGE,
     WS_CLOSING_MESSAGE,
     WebSocketError,
     WSCloseCode,
+    WSHandshakeError,
     WSMessage,
+    WSMessageError,
     WSMsgType,
 )
 from ._websocket_reader import WebSocketReader
@@ -22,4 +24,8 @@ __all__ = (
     "WebSocketError",
     "WSMsgType",
     "WSCloseCode",
+    "ws_ext_gen",
+    "ws_ext_parse",
+    "WSMessageError",
+    "WSHandshakeError",
 )

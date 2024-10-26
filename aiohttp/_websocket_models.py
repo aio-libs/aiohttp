@@ -23,16 +23,6 @@ class WSCloseCode(IntEnum):
     BAD_GATEWAY = 1014
 
 
-# For websockets, keeping latency low is extremely important as implementations
-# generally expect to be able to send and receive messages quickly.  We use a
-# larger chunk size than the default to reduce the number of executor calls
-# since the executor is a significant source of latency and overhead when
-# the chunks are small. A size of 5KiB was chosen because it is also the
-# same value python-zlib-ng choose to use as the threshold to release the GIL.
-
-WEBSOCKET_MAX_SYNC_CHUNK_SIZE = 5 * 1024
-
-
 class WSMsgType(IntEnum):
     # websocket spec types
     CONTINUATION = 0x0
