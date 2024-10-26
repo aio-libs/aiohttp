@@ -67,23 +67,24 @@ cpdef _websocket_mask_cython(object mask, object data):
 
 
 
-cdef WSParserState_READ_HEADER = WSParserState.READ_HEADER
-cdef WSParserState_READ_PAYLOAD_LENGTH = WSParserState.READ_PAYLOAD_LENGTH
-cdef WSParserState_READ_PAYLOAD_MASK = WSParserState.READ_PAYLOAD_MASK
-cdef WSParserState_READ_PAYLOAD = WSParserState.READ_PAYLOAD
+cdef unsigned int WSParserState_READ_HEADER = WSParserState.READ_HEADER.value
+cdef unsigned int WSParserState_READ_PAYLOAD_LENGTH = WSParserState.READ_PAYLOAD_LENGTH.value
+cdef unsigned int WSParserState_READ_PAYLOAD_MASK = WSParserState.READ_PAYLOAD_MASK.value
+cdef unsigned int WSParserState_READ_PAYLOAD = WSParserState.READ_PAYLOAD.value
 
 cdef class WebSocketReaderBaseCython:
 
     cdef bytes _tail
     cdef bytes _frame_mask
     cdef bint _compress
+    cdef object _compressed
+    cdef object _frame_fin
+    cdef object _frame_opcode
     cdef bint _has_mask
     cdef unsigned int _payload_length
     cdef unsigned int _payload_length_flag
+    cdef unsigned int _state
     cdef bytearray _frame_payload
-    cdef object _state
-    cdef object _frame_fin
-    cdef object _compressed
 
     def parse_frame(
         self, buf: bytes
@@ -104,7 +105,7 @@ cdef class WebSocketReaderBaseCython:
 
         while True:
             # read header
-            if self._state is WSParserState_READ_HEADER:
+            if self._state == WSParserState_READ_HEADER:
                 if buf_length - start_pos < 2:
                     break
                 data = buf[start_pos : start_pos + 2]
@@ -169,7 +170,7 @@ cdef class WebSocketReaderBaseCython:
                 self._state = WSParserState_READ_PAYLOAD_LENGTH
 
             # read payload length
-            if self._state is WSParserState_READ_PAYLOAD_LENGTH:
+            if self._state == WSParserState_READ_PAYLOAD_LENGTH:
                 length_flag = self._payload_length_flag
                 if length_flag == 126:
                     if buf_length - start_pos < 2:
@@ -193,14 +194,14 @@ cdef class WebSocketReaderBaseCython:
                 )
 
             # read payload mask
-            if self._state is WSParserState_READ_PAYLOAD_MASK:
+            if self._state == WSParserState_READ_PAYLOAD_MASK:
                 if buf_length - start_pos < 4:
                     break
                 self._frame_mask = buf[start_pos : start_pos + 4]
                 start_pos += 4
                 self._state = WSParserState_READ_PAYLOAD
 
-            if self._state is WSParserState_READ_PAYLOAD:
+            if self._state == WSParserState_READ_PAYLOAD:
                 length = self._payload_length
                 payload = self._frame_payload
 
