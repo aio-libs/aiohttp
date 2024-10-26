@@ -6,7 +6,7 @@ import zlib
 from functools import partial
 from typing import Any, Final, Optional, Union
 
-from ._http_websocket_helpers import (
+from ._websocket_helpers import (
     MASK_LEN,
     MSG_SIZE,
     PACK_CLOSE_CODE,
@@ -16,7 +16,7 @@ from ._http_websocket_helpers import (
     PACK_RANDBITS,
     websocket_mask,
 )
-from ._http_websocket_models import (
+from ._websocket_models import (
     WEBSOCKET_MAX_SYNC_CHUNK_SIZE,
     WS_DEFLATE_TRAILING,
     WSMsgType,

@@ -3,14 +3,14 @@
 from enum import IntEnum
 from typing import Final, List, Optional, Set, Tuple
 
-from ._http_websocket_helpers import (
+from ._websocket_helpers import (
     UNPACK_CLOSE_CODE,
     UNPACK_LEN2,
     UNPACK_LEN3,
     WSCloseCode,
     websocket_mask,
 )
-from ._http_websocket_models import (
+from ._websocket_models import (
     WS_DEFLATE_TRAILING,
     WebSocketError,
     WSMessage,

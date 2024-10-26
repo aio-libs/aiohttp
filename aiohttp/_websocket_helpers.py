@@ -5,7 +5,7 @@ import re
 from struct import Struct
 from typing import TYPE_CHECKING, Final, List, Optional, Pattern, Tuple
 
-from ._http_websocket_models import WSHandshakeError
+from ._websocket_models import WSHandshakeError
 from .helpers import NO_EXTENSIONS
 
 UNPACK_LEN2 = Struct("!H").unpack_from
