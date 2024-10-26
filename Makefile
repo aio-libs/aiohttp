@@ -4,6 +4,7 @@ to-hash-one = $(dir $1).hash/$(addsuffix .hash,$(notdir $1))
 to-hash = $(foreach fname,$1,$(call to-hash-one,$(fname)))
 
 CYS := $(wildcard aiohttp/*.pyx) $(wildcard aiohttp/*.pyi)  $(wildcard aiohttp/*.pxd)
+PY_WITH_PXD := aiohttp/_websocket_reader.py
 PYXS := $(wildcard aiohttp/*.pyx)
 CS := $(wildcard aiohttp/*.c)
 PYS := $(wildcard aiohttp/*.py)
@@ -56,6 +57,9 @@ endif
 aiohttp/_find_header.c: $(call to-hash,aiohttp/hdrs.py ./tools/gen.py)
 	./tools/gen.py
 
+aiohttp/_websocket_reader.c: aiohttp/_websocket_reader.py
+	cython -3 -o $@ $< -I aiohttp -Werror
+
 # _find_headers generator creates _headers.pyi as well
 aiohttp/%.c: aiohttp/%.pyx $(call to-hash,$(CYS)) aiohttp/_find_header.c
 	cython -3 -o $@ $< -I aiohttp -Werror
@@ -71,7 +75,7 @@ vendor/llhttp/node_modules: vendor/llhttp/package.json
 generate-llhttp: .llhttp-gen
 
 .PHONY: cythonize
-cythonize: .install-cython $(PYXS:.pyx=.c)
+cythonize: .install-cython $(PYXS:.pyx=.c) $(PY_WITH_PXD:.py=.c)
 
 .install-deps: .install-cython $(PYXS:.pyx=.c) $(call to-hash,$(CYS) $(REQS))
 	@python -m pip install -r requirements/dev.in -c requirements/dev.txt
@@ -154,6 +158,7 @@ clean:
 	@rm -f aiohttp/_http_parser.c
 	@rm -f aiohttp/_http_writer.c
 	@rm -f aiohttp/_websocket.c
+	@rm -f aiohttp/_websocket_reader.c
 	@rm -rf .tox
 	@rm -f .develop
 	@rm -f .flake

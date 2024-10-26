@@ -9,7 +9,7 @@ cdef class WebSocketReader:
     cdef object queue
     cdef unsigned int _max_msg_size
 
-    cdef BaseException _exc
+    cdef object _exc
     cdef bytearray _partial
     cdef unsigned int _state
 
@@ -28,13 +28,13 @@ cdef class WebSocketReader:
     cdef bint _compress
 
     @cython.locals(
-        start_pos=unsigned int,
-        buf_len=unsigned int,
-        length=unsigned int,
-        chunk_size=unsigned int,
+        start_pos="unsigned int",
+        buf_len="unsigned int",
+        length="unsigned int",
+        chunk_size="unsigned int",
         data=bytes,
         payload=bytearray,
-        first_byte=char
+        first_byte=char,
         second_byte=char
     )
     cpdef parse_frame(self, bytes buf)

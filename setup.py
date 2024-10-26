@@ -41,6 +41,7 @@ extensions = [
         include_dirs=["vendor/llhttp/build"],
     ),
     Extension("aiohttp._http_writer", ["aiohttp/_http_writer.c"]),
+    Extension("aiohttp._websocket_reader", ["aiohttp/_websocket_reader.c"]),
 ]
 
 
