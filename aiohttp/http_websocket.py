@@ -8,7 +8,15 @@ from ._websocket_models import (
     WSCloseCode,
     WSHandshakeError,
     WSMessage,
+    WSMessageBinary,
+    WSMessageClose,
+    WSMessageClosed,
+    WSMessageClosing,
+    WSMessageContinuation,
     WSMessageError,
+    WSMessagePing,
+    WSMessagePong,
+    WSMessageText,
     WSMsgType,
 )
 from ._websocket_reader import WebSocketReader
@@ -28,4 +36,12 @@ __all__ = (
     "ws_ext_parse",
     "WSMessageError",
     "WSHandshakeError",
+    "WSMessageClose",
+    "WSMessageClosed",
+    "WSMessageClosing",
+    "WSMessagePong",
+    "WSMessageBinary",
+    "WSMessageText",
+    "WSMessagePing",
+    "WSMessageContinuation",
 )

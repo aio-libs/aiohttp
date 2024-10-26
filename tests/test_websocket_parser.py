@@ -16,16 +16,16 @@ from aiohttp._websocket_helpers import (
     PACK_LEN3,
     websocket_mask,
 )
-from aiohttp._websocket_models import (
-    WS_DEFLATE_TRAILING,
+from aiohttp._websocket_models import WS_DEFLATE_TRAILING
+from aiohttp.http import WebSocketError, WSCloseCode, WSMessage, WSMsgType
+from aiohttp.http_websocket import (
+    WebSocketReader,
     WSMessageBinary,
     WSMessageClose,
     WSMessagePing,
     WSMessagePong,
     WSMessageText,
 )
-from aiohttp.http import WebSocketError, WSCloseCode, WSMessage, WSMsgType
-from aiohttp.http_websocket import WebSocketReader
 
 
 def build_frame(
