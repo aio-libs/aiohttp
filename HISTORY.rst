@@ -1459,7 +1459,7 @@ Misc
 
 - Rename ``aiohttp.MsgType`` to ``aiohttp.WSMsgType``
 
-- Introduce :class:`aiohttp.WSMessage` officially
+- Introduce ``aiohttp.WSMessage`` officially
 
 - Rename Message -> WSMessage
 
