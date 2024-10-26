@@ -81,6 +81,9 @@ cdef class WebSocketReaderBaseCython:
     cdef unsigned int _payload_length
     cdef unsigned int _payload_length_flag
     cdef bytearray _frame_payload
+    cdef object _state
+    cdef object _frame_fin
+    cdef object _compressed
 
     def parse_frame(
         self, buf: bytes
