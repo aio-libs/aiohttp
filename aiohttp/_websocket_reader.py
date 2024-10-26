@@ -24,14 +24,11 @@ from .compression_utils import ZLibDecompressor
 from .helpers import set_exception
 from .streams import DataQueue
 
-MESSAGE_TYPES_WITH_CONTENT: Final = frozenset(
-    {
-        WSMsgType.BINARY,
-        WSMsgType.TEXT,
-        WSMsgType.CONTINUATION,
-    }
-)
-
+MESSAGE_TYPES_WITH_CONTENT: Final[Set[WSMsgType]] = {
+    WSMsgType.BINARY,
+    WSMsgType.TEXT,
+    WSMsgType.CONTINUATION,
+}
 ALLOWED_CLOSE_CODES: Final[Set[int]] = {int(i) for i in WSCloseCode}
 
 
