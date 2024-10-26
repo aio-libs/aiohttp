@@ -96,3 +96,10 @@ class WSHandshakeError(Exception):
 
 
 native_byteorder: Final[str] = sys.byteorder
+
+
+class WSParserState(IntEnum):
+    READ_HEADER = 1
+    READ_PAYLOAD_LENGTH = 2
+    READ_PAYLOAD_MASK = 3
+    READ_PAYLOAD = 4

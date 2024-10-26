@@ -6,7 +6,6 @@ import json
 import random
 import re
 import zlib
-from enum import IntEnum
 from functools import partial
 from typing import (
     TYPE_CHECKING,
@@ -58,6 +57,7 @@ from .websocket_models import (
     WSCloseCode,
     WSHandshakeError,
     WSMsgType,
+    WSParserState,
 )
 
 
@@ -199,13 +199,6 @@ def ws_ext_gen(
     # if client_notakeover:
     #     enabledext.append('client_no_context_takeover')
     return "; ".join(enabledext)
-
-
-class WSParserState(IntEnum):
-    READ_HEADER = 1
-    READ_PAYLOAD_LENGTH = 2
-    READ_PAYLOAD_MASK = 3
-    READ_PAYLOAD = 4
 
 
 class WebSocketReaderBasePython:
