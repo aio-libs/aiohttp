@@ -1,4 +1,4 @@
-"""WebSocket protocol versions 13 and 8."""
+"""Reader for WebSocket protocol versions 13 and 8."""
 
 from enum import IntEnum
 from typing import Final, List, Optional, Set, Tuple

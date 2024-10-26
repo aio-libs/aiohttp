@@ -1,4 +1,4 @@
-"""WebSocket protocol versions 13 and 8."""
+"""Helpers for WebSocket protocol versions 13 and 8."""
 
 import functools
 import re
