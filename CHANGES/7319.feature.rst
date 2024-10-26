@@ -1,4 +1,4 @@
-Changed ``WSMessage`` to a tagged union of ``NamedTuple``s -- by :user:`Dreamsorcerer`.
+Changed ``WSMessage`` to a tagged union of ``NamedTuple`` -- by :user:`Dreamsorcerer`.
 
 This change allows type checkers to know the precise type of ``data``
 after checking the ``type`` attribute.
