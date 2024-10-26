@@ -203,6 +203,18 @@ def ws_ext_gen(
 
 class WebSocketReaderBasePython:
 
+    _state: WSParserState
+    _frame_payload: bytearray
+    _tail: bytes
+    _frame_fin: Optional[bool]
+    _frame_opcode: Optional[int]
+    _has_mask: bool
+    _frame_mask: Optional[bytes]
+    _payload_length: int
+    _payload_length_flag: int
+    _compressed: Optional[bool]
+    _compress: bool
+
     def __init__(self) -> None:
         self._state = WSParserState.READ_HEADER
         self._frame_payload = bytearray()
