@@ -363,8 +363,6 @@ wildcard
 Workflow
 ws
 wsgi
-WSMessage
-WSMsgType
 wss
 www
 xxx
