@@ -96,7 +96,8 @@ cdef class WebSocketReaderBaseCython:
         """Return the next frame from the socket."""
         frames: List[Tuple[bool, Optional[int], bytearray, Optional[bool]]] = []
         if self._tail:
-            buf, self._tail = self._tail + buf, b""
+            buf = self._tail + buf
+            self._tail = b""
 
         cdef unsigned int start_pos = 0
         cdef unsigned int buf_length = len(buf)
