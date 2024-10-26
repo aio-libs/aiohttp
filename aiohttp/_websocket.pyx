@@ -79,7 +79,7 @@ cdef class WebSocketReaderBaseCython:
     cdef bint _compress
     cdef object _compressed
     cdef bint _frame_fin
-    cdef object _frame_opcode
+    cdef unsigned int _frame_opcode
     cdef bint _has_mask
     cdef unsigned int _payload_length
     cdef unsigned int _payload_length_flag
