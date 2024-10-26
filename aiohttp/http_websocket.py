@@ -203,6 +203,10 @@ def ws_ext_gen(
 
 class WebSocketReaderBasePython:
 
+    def __init__(self) -> None:
+        self._state = WSParserState.READ_HEADER
+        self._frame_payload = bytearray()
+
     def parse_frame(
         self, buf: bytes
     ) -> List[Tuple[bool, Optional[int], bytearray, Optional[bool]]]:
@@ -365,17 +369,16 @@ class WebSocketReader(WebSocketReaderBase):
     def __init__(
         self, queue: DataQueue[WSMessage], max_msg_size: int, compress: bool = True
     ) -> None:
+        super().__init__()
         self.queue = queue
         self._max_msg_size = max_msg_size
 
         self._exc: Optional[BaseException] = None
         self._partial = bytearray()
-        self._state = WSParserState.READ_HEADER
 
         self._opcode: Optional[int] = None
         self._frame_fin = False
         self._frame_opcode: Optional[int] = None
-        self._frame_payload = bytearray()
 
         self._tail: bytes = b""
         self._has_mask = False

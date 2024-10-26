@@ -86,6 +86,10 @@ cdef class WebSocketReaderBaseCython:
     cdef unsigned int _state
     cdef bytearray _frame_payload
 
+    def __init__(self):
+        self._frame_payload = bytearray()
+        self._state = WSParserState_READ_HEADER
+
     def parse_frame(
         self, buf: bytes
     ) -> List[Tuple[bool, Optional[int], bytearray, Optional[bool]]]:
