@@ -1,8 +1,18 @@
+import cython
+
 
 cdef unsigned int READ_HEADER
 cdef unsigned int READ_PAYLOAD_LENGTH
 cdef unsigned int READ_PAYLOAD_MASK
 cdef unsigned int READ_PAYLOAD
+
+cdef object UNPACK_LEN2
+cdef object UNPACK_LEN3
+
+cdef object WSMsgType
+
+cdef object WSMessageText
+cdef object WSMessageBinary
 
 cdef class WebSocketReader:
 
@@ -27,11 +37,22 @@ cdef class WebSocketReader:
     cdef object _decompressobj
     cdef bint _compress
 
+    cpdef feed_data(self, bytes data)
+
+    @cython.locals(
+        is_continuation=bint,
+        fin=bint,
+        has_partial=bint,
+        payload_merged=bytes
+    )
+    cpdef _feed_data(self, bytes data)
+
     @cython.locals(
         start_pos="unsigned int",
         buf_len="unsigned int",
         length="unsigned int",
         chunk_size="unsigned int",
+        buf_length="unsigned int",
         data=bytes,
         payload=bytearray,
         first_byte=char,
