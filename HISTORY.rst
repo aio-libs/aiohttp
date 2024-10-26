@@ -1457,7 +1457,7 @@ Misc
 
 - Rename aiohttp.websocket to aiohttp._ws_impl
 
-- Rename :class:`aiohttp.WSMsgType` tp aiohttp.WSMsgType
+- Rename ``aiohttp.WSMsgType`` tp aiohttp.WSMsgType
 
 - Introduce :class:`aiohttp.WSMessage` officially
 
