@@ -78,7 +78,7 @@ cdef class WebSocketReaderBaseCython:
     cdef bytes _frame_mask
     cdef bint _compress
     cdef object _compressed
-    cdef object _frame_fin
+    cdef bint _frame_fin
     cdef object _frame_opcode
     cdef bint _has_mask
     cdef unsigned int _payload_length
@@ -167,9 +167,9 @@ cdef class WebSocketReaderBaseCython:
                         "Received frame with non-zero reserved bits",
                     )
 
-                self._frame_fin = bool(fin)
+                self._frame_fin = fin
                 self._frame_opcode = opcode
-                self._has_mask = bool(has_mask)
+                self._has_mask = has_mask
                 self._payload_length_flag = length
                 self._state = WSParserState_READ_PAYLOAD_LENGTH
 
