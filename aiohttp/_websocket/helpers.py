@@ -28,7 +28,7 @@ def _xor_table() -> List[bytes]:
     return [bytes(a ^ b for a in range(256)) for b in range(256)]
 
 
-def _mask_python(mask: bytes, data: bytearray) -> None:
+def _websocket_mask_python(mask: bytes, data: bytearray) -> None:
     """Websocket masking function.
 
     `mask` is a `bytes` object of length 4; `data` is a `bytearray`
@@ -54,14 +54,14 @@ def _mask_python(mask: bytes, data: bytearray) -> None:
 
 
 if TYPE_CHECKING or NO_EXTENSIONS:  # pragma: no cover
-    websocket_mask = _mask_python
+    websocket_mask = _websocket_mask_python
 else:
     try:
-        from .mask import _mask_cython  # type: ignore[import-not-found]
+        from ._websocket import _websocket_mask_cython  # type: ignore[import-not-found]
 
-        websocket_mask = _mask_cython
+        websocket_mask = _websocket_mask_cython
     except ImportError:  # pragma: no cover
-        websocket_mask = _mask_python
+        websocket_mask = _websocket_mask_python
 
 
 _WS_EXT_RE: Final[Pattern[str]] = re.compile(

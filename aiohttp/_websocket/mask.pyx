@@ -8,7 +8,7 @@ cdef extern from "Python.h":
 from libc.stdint cimport uint32_t, uint64_t, uintmax_t
 
 
-def _mask_cython(object mask, object data):
+def _websocket_mask_cython(object mask, object data):
     """Note, this function mutates its `data` argument
     """
     cdef:
